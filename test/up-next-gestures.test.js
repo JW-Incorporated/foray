@@ -33,6 +33,13 @@
  * 11. the ✕ still removes, beside the swipe (the alternative a pointer-only
  *     gesture owes keyboard and switch users, WCAG 2.5.1).
  *
+ * PORTED (Redesign 2026, ambient; the Up Next page unit): the page's row is Library's QueueRow (ui/library.js
+ * `libQueueRowHtml` with the `page` flag), so the gestures are bound to it: the drag is a HOLD on the row's cover
+ * (`[data-drag-handle]` is the cover button; iteration 2 removed the `.qp-handle` glyph button, the direction gives the
+ * row one trailing control), the swipe listens on the same cover (`.qp-row > .lb-cover`, what a finger lands on), the arrows and the ✕ are the row's
+ * menu (Move up, Move down, Remove: pinned by test/ambient-up-next.test.js), and a removal by swipe has the same Toast
+ * and Undo as the menu's. What each gesture does to the list is unchanged, and so are the rules' tests.
+ *
  * Every test names the mutation that kills it (CLAUDE.md: "a green test is not
  * evidence until you have broken it"); each was run and went red.
  *
@@ -94,6 +101,23 @@ const PAGE_IDS = [
   "banner-slot", "pl-form", "pl-input", "pl-note",
 ];
 
+/** The page repaints its section IN PLACE (app.js repaintQueuePage -> repaintLibraryUpNext): `#view` answers the one
+    selector that asks with a section whose innerHTML reads and writes the slice of the page between its tags, and whose
+    `querySelectorAll` is the view's own (so the rows a repaint draws are bound, as a real DOM would). */
+function sectionAware(el) {
+  const open = '<section class="lb-section qp-section" data-lb-section="upnext" data-lb-page="queue">';
+  el.querySelector = (sel) => {
+    if (!String(sel).includes('data-lb-section="upnext"') || !el.innerHTML.includes(open)) return null;
+    const bounds = () => { const a = el.innerHTML.indexOf(open) + open.length; return [a, el.innerHTML.indexOf("</section>", a)]; };
+    return {
+      dataset: { lbPage: "queue" }, contains: () => false, querySelector: () => null,
+      querySelectorAll: (q) => el.querySelectorAll(q), getBoundingClientRect: () => ({ top: 0 }),
+      get innerHTML() { const [a, b] = bounds(); return el.innerHTML.slice(a, b); },
+      set innerHTML(v) { const [a, b] = bounds(); el.innerHTML = el.innerHTML.slice(0, a) + v + el.innerHTML.slice(b); },
+    };
+  };
+}
+
 function mount({ ids = ["a", "b", "c"], hash = "#/queue" } = {}) {
   const store = new Map([["cp_queue", JSON.stringify(ids)]]);
   const writes = [];
@@ -103,6 +127,7 @@ function mount({ ids = ["a", "b", "c"], hash = "#/queue" } = {}) {
     return [id, el];
   }));
   const body = makeEl("body");
+  sectionAware(byId.get("view"));
   const ctx = {
     console: { ...console, warn() {}, error() {} },
     fetch: () => new Promise(() => {}),
@@ -128,10 +153,18 @@ function mount({ ids = ["a", "b", "c"], hash = "#/queue" } = {}) {
     history: { replaceState() {}, pushState() {} },
     CSS: { escape: (s) => String(s) },
     URL, URLSearchParams, Math, Date, JSON, Promise, clearTimeout,
-    setTimeout: (fn, ms) => { const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t; },
+    /* The drag's hold (QP_HOLD_MS) is driven by the test, not the clock: a hold timer is parked in `holds` and `releaseHold()`
+       completes it (`dropHold` clears it, as a real clearTimeout would). Every other timer is real. */
+    setTimeout: (fn, ms) => {
+      if (ms === holdMs()) { const h = { fn, live: true }; holds.push(h); return h; }
+      const t = setTimeout(fn, ms); if (t && t.unref) t.unref(); return t;
+    },
+    clearTimeout: (t) => { if (t && typeof t === "object" && "live" in t) t.live = false; else clearTimeout(t); },
     encodeURIComponent, decodeURIComponent,
     forayEventLog: { append() {} },
   };
+  const holds = [];
+  const holdMs = () => { try { return vm.runInContext("QP_HOLD_MS", ctx); } catch (_) { return -1; } };
   ctx.window = ctx;
   ctx.globalThis = ctx;
   /* As player/client.js publishes them, at module evaluation. */
@@ -151,6 +184,9 @@ function mount({ ids = ["a", "b", "c"], hash = "#/queue" } = {}) {
     queueRaw: () => JSON.parse(store.get("cp_queue") || "null"),
     queueWrites: () => writes.filter((k) => k === "cp_queue").length,
     said: () => body.children.map((c) => c.textContent).filter(Boolean).pop() || "",
+    pendingHolds: () => holds.filter((h) => h.live).length,
+    /* The hold completes: every live hold timer fires once. */
+    releaseHold: () => { for (const h of holds.splice(0)) if (h.live) { h.live = false; h.fn(); } },
   };
 }
 
@@ -166,17 +202,17 @@ function classes() {
 }
 
 /** The rendered Up Next rows as the drag binder sees them: row i's top edge at
-    56*i, each holding a ⋮⋮ handle that remembers its listeners. */
+    56*i, each holding a drag handle that remembers its listeners. */
 function dragScope(ids) {
   const rows = ids.map((id, i) => ({
-    classList: classes(), style: {},
+    classList: classes(), style: {}, dataset: { lbQ: id },
     getBoundingClientRect: () => ({ top: 56 * i }),
   }));
   const handles = ids.map((id, i) => {
     const h = {
       dataset: { dragHandle: id }, disabled: false, listeners: {},
       addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); },
-      closest: (sel) => (sel === ".up-next-row" ? rows[i] : null),
+      closest: (sel) => (sel === ".qp-row" ? rows[i] : null),
       setPointerCapture() {},
       getBoundingClientRect: () => ({ top: 56 * i + 8 }),
       focus() {},
@@ -184,9 +220,16 @@ function dragScope(ids) {
     return h;
   });
   const scope = {
-    querySelectorAll: (sel) => (sel === "[data-drag-handle]" ? handles : sel === ".up-next-row" ? rows : []),
+    querySelectorAll: (sel) => (sel === "[data-drag-handle]" ? handles : sel === ".qp-row" ? rows : []),
   };
   return { scope, rows, handles };
+}
+
+/** A press on a cover, held until the row is lifted (the hold timer completes). */
+function press(m, el, init = {}) {
+  const e = fire(el, "pointerdown", init);
+  m.releaseHold();
+  return e;
 }
 
 function fire(el, type, init = {}) {
@@ -197,50 +240,101 @@ function fire(el, type, init = {}) {
 
 /* ==================================================================== */
 
-test("every Up Next row has a drag handle, the hint exists once, and the page binds the drag (PQ-04, #762)", () => {
-  /* MUTATION (run, red): delete the drag-handle <button> from upNextRow -> 0
-     handles for 3 rows. MUTATION 2 (run, red): delete `bindUpNextDrag($("#view"));`
-     from renderQueue -> the page renders handles nothing listens to; `bound`
-     stays 0. */
+test("every Up Next row with a menu is dragged by a hold on its cover, the hint exists once, and the page binds the drag (PQ-04, #762)", () => {
+  /* MUTATION (run, red): delete the \`data-drag-handle\` attribute from the cover in libQueueRowHtml -> 0 draggable
+     covers for 3 rows. MUTATION 2 (run, red): delete \`bindUpNextDrag($("#view"));\` from renderQueue -> the page
+     renders covers nothing listens to; \`bound\` stays 0. MUTATION 3 (run, red): restore the \`qp-handle\` button
+     beside the menu -> the no-glyph assertion is red (iteration 2: the row has one trailing control). */
   const m = mount();
   let bound = 0;
   const real = m.ctx.bindUpNextDrag;
   m.ctx.bindUpNextDrag = (scope) => { bound++; return real(scope); };
   m.ctx.renderQueue();
   const html = m.view();
-  const handles = [...html.matchAll(/<button type="button" class="reorder drag-handle" data-drag-handle="([^"]+)" aria-label="Drag to reorder" aria-describedby="up-next-drag-hint">/g)].map((x) => x[1]);
-  assert.deepStrictEqual(handles, ["a", "b", "c"], "one handle per row, in list order");
-  assert.strictEqual((html.match(/id="up-next-drag-hint"/g) || []).length, 1, "the hint every handle points at exists exactly once");
-  assert.ok(html.indexOf('data-drag-handle="a"') < html.indexOf('data-reorder-up="a"'), "the handle opens the arrows' group; the arrows remain");
+  const covers = [...html.matchAll(/<button type="button" class="lb-cover" data-lb-play="([^"]+)" data-swipe-id="[^"]+" data-drag-handle="([^"]+)" aria-describedby="up-next-drag-hint" data-ctx="upnext" data-title="Episode [^"]+" aria-label="(?:Play|Pause) Episode [^"]+"><\/button>/g)].map((x) => [x[1], x[2]]);
+  assert.deepStrictEqual(covers, [["a", "a"], ["b", "b"], ["c", "c"]], "one draggable cover per row, in list order");
+  assert.ok(!/qp-handle/.test(html), "no handle glyph: the menu is the row's one trailing control");
+  assert.strictEqual((html.match(/id="up-next-drag-hint"/g) || []).length, 1, "the hint every cover points at exists exactly once");
+  assert.match(html, /id="up-next-drag-hint">Hold, then drag, to move this episode\. Its menu has Move up and Move down\.</, "it says how");
+  assert.ok(html.indexOf('data-drag-handle="a"') < html.indexOf('data-lb-menu="a"'), "the cover sits before the menu; the menu (Move up, Move down) remains for keyboard and switch users");
   assert.strictEqual(bound, 1, "renderQueue binds the drag once per render");
 
   const empty = mount({ ids: [] });
   empty.ctx.renderQueue();
-  assert.ok(!empty.view().includes("up-next-drag-hint"), "no rows, no handles, no hint");
+  assert.ok(!empty.view().includes("up-next-drag-hint"), "no rows, no covers, no hint");
 });
 
-test("a press moves nothing under the 6 px lock; at 6 px the drag claims and the row follows the finger (PQ-04, #762)", () => {
-  /* MUTATION (run, red): drop `!g.claimsTouch(drag)` from paint's guard -> the
-     row is translated at 5 px, while the press may still be a tap.
-     MUTATION 2 (run, red): delete `row.classList.add("is-dragging")` from the
-     pointerdown handler -> the pressed row is never lifted.
-     MUTATION 3 (run, red): drop `g.claimsTouch(drag) &&` from the handle's
-     touchmove listener -> a press under the lock cancels the page's scroll. */
+test("a hold lifts the row; under the 6 px lock nothing moves, at 6 px the drag claims and the row follows the finger (PQ-04, #762)", () => {
+  /* MUTATION (run, red): drop \`!g.claimsTouch(drag)\` from paint's guard -> the row is translated at 5 px, while the press
+     may still be a tap. MUTATION 2 (run, red): delete \`row.classList.add("is-dragging")\` from lift -> the held row is
+     never lifted. MUTATION 3 (run, red): change the touchmove guard from \`drag &&\` to \`drag && drag.claimed &&\`
+     -> a held row that has not yet moved lets the page pan under the finger. MUTATION 4 (run, red): lift on pointerdown
+     (call \`lift()\` there) -> the "not lifted before the hold" assertion is red. */
   const m = mount();
   const { scope, rows, handles } = dragScope(["a", "b", "c"]);
   m.ctx.bindUpNextDrag(scope);
   fire(handles[0], "pointerdown", { clientY: 20 });
-  assert.ok(rows[0].classList.contains("is-dragging"), "the pressed row is lifted at the press");
-  fire(handles[0], "pointermove", { clientY: 25 });
-  assert.ok(!rows[0].style.transform, `5 px is still a tap: nothing moves (${rows[0].style.transform})`);
+  assert.ok(!rows[0].classList.contains("is-dragging"), "a press is not a lift: nothing happens before the hold completes");
+  assert.strictEqual(m.pendingHolds(), 1, "the hold is running");
   let cancelled = false;
   fire(handles[0], "touchmove", { preventDefault() { cancelled = true; } });
-  assert.strictEqual(cancelled, false, "under the lock the page keeps the finger (it may be a scroll)");
+  assert.strictEqual(cancelled, false, "before the hold the page keeps the finger (it may be a scroll)");
+  m.releaseHold();
+  assert.ok(rows[0].classList.contains("is-dragging"), "the held row is lifted");
+  assert.strictEqual(m.said(), "Picked up.", "and it says so");
+  fire(handles[0], "pointermove", { clientY: 25 });
+  assert.ok(!rows[0].style.transform, `5 px is still under the lock: nothing moves (${rows[0].style.transform})`);
+  fire(handles[0], "touchmove", { preventDefault() { cancelled = true; } });
+  assert.strictEqual(cancelled, true, "once lifted the page under the finger must not pan, even under the lock");
   fire(handles[0], "pointermove", { clientY: 26 });
   assert.strictEqual(rows[0].style.transform, "translateY(6px)", "at 6 px the row follows the finger");
-  fire(handles[0], "touchmove", { preventDefault() { cancelled = true; } });
-  assert.strictEqual(cancelled, true, "once claimed, the page under the finger must not pan");
   assert.strictEqual(m.queueWrites(), 0, "moving is not committing: nothing is written mid-drag");
+});
+
+test("a finger that travels before the hold completes is a scroll or a swipe: no lift, the hold is dropped (PQ-04, #762)", () => {
+  /* MUTATION (run, red): delete the slop check in pointermove (\`Math.hypot(...) >= QP_HOLD_SLOP\`) -> the hold
+     completes under a scrolling finger and lifts the row. MUTATION 2 (run, red): raise QP_HOLD_SLOP to 40 -> 9 px of
+     travel no longer drops the hold. Both a vertical (scroll) and a horizontal (swipe) start are covered. */
+  for (const [dx, dy] of [[0, 9], [-9, 0]]) {
+    const m = mount();
+    const { scope, rows, handles } = dragScope(["a", "b", "c"]);
+    m.ctx.bindUpNextDrag(scope);
+    fire(handles[0], "pointerdown", { clientX: 200, clientY: 20 });
+    fire(handles[0], "pointermove", { clientX: 200 + dx, clientY: 20 + dy });
+    assert.strictEqual(m.pendingHolds(), 0, `travel (${dx}, ${dy}) drops the hold`);
+    m.releaseHold();
+    assert.ok(!rows[0].classList.contains("is-dragging"), `travel (${dx}, ${dy}): the row is never lifted`);
+    fire(handles[0], "pointerup", { clientX: 200 + dx, clientY: 20 + dy });
+    assert.strictEqual(m.queueWrites(), 0);
+  }
+  /* A small drift (inside the 8 px slop) keeps the hold, and the lift starts from where the finger is now. */
+  const m = mount();
+  const { scope, rows, handles } = dragScope(["a", "b", "c"]);
+  m.ctx.bindUpNextDrag(scope);
+  fire(handles[0], "pointerdown", { clientX: 200, clientY: 20 });
+  fire(handles[0], "pointermove", { clientX: 202, clientY: 24 });
+  m.releaseHold();
+  assert.ok(rows[0].classList.contains("is-dragging"), "4 px of drift is still a hold");
+  fire(handles[0], "pointermove", { clientX: 202, clientY: 29 });
+  assert.ok(!rows[0].style.transform, "the drag's origin is the finger at the lift (24), so 5 px on is still under the lock");
+  fire(handles[0], "pointermove", { clientX: 202, clientY: 30 });
+  assert.strictEqual(rows[0].style.transform, "translateY(6px)");
+});
+
+test("released before the hold, a press is a tap: nothing is lifted, nothing swallowed, the click plays the row (PQ-04, #762)", () => {
+  /* MUTATION (run, red): delete \`dropHold()\` from reset -> the abandoned hold completes later and lifts a row nobody
+     is holding (\`pendingHolds\` stays 1 and the late lift is painted). MUTATION 2 (run, red): set \`btn._lbSwallow = true\`
+     unconditionally in pointerup -> a tap's click is swallowed and the row never plays. */
+  const m = mount();
+  const { scope, rows, handles } = dragScope(["a", "b", "c"]);
+  m.ctx.bindUpNextDrag(scope);
+  fire(handles[1], "pointerdown", { clientY: 80 });
+  fire(handles[1], "pointerup", { clientY: 80 });
+  assert.strictEqual(m.pendingHolds(), 0, "the hold is dropped at the release");
+  m.releaseHold();
+  assert.ok(!rows[1].classList.contains("is-dragging"), "no late lift");
+  assert.ok(!handles[1]._lbSwallow, "the click that follows a tap is a tap to play");
+  assert.strictEqual(m.queueWrites(), 0);
 });
 
 test("release at y=141 from row 0 commits on pointerup: cp_queue becomes [b, c, a] (PQ-04, #762)", () => {
@@ -250,9 +344,10 @@ test("release at y=141 from row 0 commits on pointerup: cp_queue becomes [b, c, 
      MUTATION 2 (run, red): pass `r.from` instead of `r.to` to moveTo ->
      moveTo hands back the same list and nothing moves. */
   const m = mount();
+  m.ctx.renderQueue(); // the page the repaint below is of: it repaints its section in place, it does not draw a page
   const { scope, rows, handles } = dragScope(["a", "b", "c"]);
   m.ctx.bindUpNextDrag(scope);
-  fire(handles[0], "pointerdown", { clientY: 20 });
+  press(m, handles[0], { clientY: 20 });
   fire(handles[0], "pointermove", { clientY: 141 });
   assert.ok(rows[2].classList.contains("drop-after"), "the row it would land below is marked on its lower edge");
   assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"], "nothing is written before the release");
@@ -263,21 +358,44 @@ test("release at y=141 from row 0 commits on pointerup: cp_queue becomes [b, c, 
   assert.deepStrictEqual(order, ["b", "c", "a"], "the page is a live view of cp_queue: it repainted in the new order");
 });
 
-test("a release without movement writes nothing and leaves the row unpainted (PQ-04, #762)", () => {
-  /* MUTATION (run, red): delete `reset();` from the pointerup handler -> the
-     tapped row keeps `is-dragging` and the next press on any handle is
-     refused (`pointer` still held). */
+test("a drag never carries a row above the playing one, and an unqueued playing row is not written into cp_queue (PQ-04, #762)", () => {
+  /* The playing row is drawn first (Library's Up Next model) and stays first, as Move up on the second row is disabled.
+     The drawn list is the list the finger is over; cp_queue holds the playing row only if it was queued.
+     MUTATION 1 (run, red): drop \`Math.max(pinned ? 1 : 0, r.to)\` (use r.to) -> c lands above z: [z] is not first.
+     MUTATION 2 (run, red): drop the \`.filter((x) => x !== pinned)\` -> the unqueued z is written into cp_queue.
+     MUTATION 3 (run, red): move on \`queueIds()\` instead of the drawn rows (\`shown\`) -> the index is off by one when
+     z is not queued. */
+  const drive = (queued) => {
+    const m = mount({ ids: queued });
+    m.state.itemIndex.z = { id: "z", title: "Episode z", show: "S", audio_url: "https://x.test/z.mp3", topics: [] };
+    m.ctx.window.ForayPlayer = { currentEpisodeId: () => "z", isCurrent: (id) => id === "z", isPlaying: () => true };
+    const { scope, handles } = dragScope(["z", "a", "b", "c"]);
+    m.ctx.bindUpNextDrag(scope);
+    press(m, handles[3], { clientY: 3 * 56 + 8 });
+    fire(handles[3], "pointermove", { clientY: 5 });
+    fire(handles[3], "pointerup", { clientY: 5 });
+    return m.queueRaw();
+  };
+  assert.deepStrictEqual(drive(["a", "b", "c"]), ["c", "a", "b"], "z is playing but not queued: c goes to the top of the queue, z stays out of it");
+  assert.deepStrictEqual(drive(["z", "a", "b", "c"]), ["z", "c", "a", "b"], "z is queued and playing: it stays first, c lands right after it");
+});
+
+test("a lifted row released without movement writes nothing, leaves the row unpainted, and swallows the click (PQ-04, #762)", () => {
+  /* MUTATION (run, red): delete \`reset();\` from the pointerup handler -> the held row keeps \`is-dragging\` and the
+     next press on any cover is refused (\`pointer\` still held). MUTATION 2 (run, red): delete the \`btn._lbSwallow = true\`
+     line -> the click that follows the release plays the row the listener only meant to hold. */
   const m = mount();
   const { scope, rows, handles } = dragScope(["a", "b", "c"]);
   m.ctx.bindUpNextDrag(scope);
-  fire(handles[1], "pointerdown", { clientY: 80 });
+  press(m, handles[1], { clientY: 80 });
+  assert.ok(rows[1].classList.contains("is-dragging"), "precondition: lifted");
   fire(handles[1], "pointerup", { clientY: 80 });
   assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"]);
-  assert.strictEqual(m.queueWrites(), 0, "a tap on the handle is not a reorder");
+  assert.strictEqual(m.queueWrites(), 0, "a hold with no travel is not a reorder");
   assert.ok(!rows[1].classList.contains("is-dragging"), "the lift is undone at the release");
-  assert.strictEqual(m.said(), "", "nothing moved, so nothing is announced");
+  assert.strictEqual(handles[1]._lbSwallow, true, "the click after a lifted release is the gesture's end, not a tap to play");
   /* The next press is a fresh gesture, not refused by a stale one. */
-  fire(handles[0], "pointerdown", { clientY: 20, pointerId: 2 });
+  press(m, handles[0], { clientY: 20, pointerId: 2 });
   assert.ok(rows[0].classList.contains("is-dragging"), "the binder is free for the next press");
 });
 
@@ -289,7 +407,7 @@ test("pointercancel writes nothing and clears the paint (PQ-04, #762)", () => {
   const m = mount();
   const { scope, rows, handles } = dragScope(["a", "b", "c"]);
   m.ctx.bindUpNextDrag(scope);
-  fire(handles[0], "pointerdown", { clientY: 20 });
+  press(m, handles[0], { clientY: 20 });
   fire(handles[0], "pointermove", { clientY: 141 });
   assert.ok(rows[0].style.transform && rows[2].classList.contains("drop-after"), "precondition: a claimed drag over slot 3");
   fire(handles[0], "pointercancel");
@@ -319,7 +437,7 @@ test("a row carried past the screen's edge lands where the finger is in the list
   m.ctx.scrollBy = (_x, dy) => { nudges.push(dy); m.ctx.scrollY += dy; };
   const { scope, handles } = dragScope(["a", "b", "c"]);
   m.ctx.bindUpNextDrag(scope);
-  fire(handles[0], "pointerdown", { clientY: 20 });
+  press(m, handles[0], { clientY: 20 });
   fire(handles[0], "pointermove", { clientY: 100 });
   assert.deepStrictEqual(nudges, [], "mid-screen: no autoscroll");
   fire(handles[0], "pointermove", { clientY: 138 });
@@ -333,11 +451,11 @@ test("a row carried past the screen's edge lands where the finger is in the list
 /* Swipe left to remove (PQ-06, #762)                                    */
 
 /** #view as the swipe and the ✕ see it: `querySelectorAll` answers from the
-    CURRENT innerHTML, so every repaint (`saveQueueIds` -> `renderQueue`) hands
-    out fresh elements, as a real live view does. Each row's `.info` remembers
-    its listeners and leads to a row whose class list really records; each ✕
-    remembers its listeners and records focus. `focused` is the last element
-    given focus, as `{ attr, id }`. */
+    CURRENT innerHTML, so every repaint (`saveQueueIds` -> the section's in-place
+    repaint) hands out fresh elements, as a real live view does. Each row's cover
+    remembers its listeners and leads to a row whose class list really records; each
+    menu button remembers its listeners and records focus. `focused` is the last
+    element given focus, as `{ attr, id }`. */
 function liveView(m) {
   const view = m.byId.get("view");
   const seen = { html: null, infos: [], removes: [] };
@@ -353,27 +471,25 @@ function liveView(m) {
       const row = { classList: classes(), style: {} };
       return Object.assign(listenable(), {
         dataset: { swipeId: x[1] }, row,
-        closest: (sel) => (sel === ".up-next-row" ? row : null),
+        closest: (sel) => (sel === ".qp-row" ? row : null),
         setPointerCapture() {},
       });
     });
-    seen.removes = [...seen.html.matchAll(/data-dequeue="([^"]+)"/g)].map((x) => Object.assign(listenable(), {
-      dataset: { dequeue: x[1] }, disabled: false,
-      getAttribute: (a) => (a === "data-dequeue" ? x[1] : null),
-      focus() { out.focused = { attr: "data-dequeue", id: x[1] }; },
-      click() { for (const fn of this.listeners.click || []) fn({ preventDefault() {}, stopPropagation() {} }); },
+    seen.removes = [...seen.html.matchAll(/data-lb-menu="([^"]+)"/g)].map((x) => Object.assign(listenable(), {
+      dataset: { lbMenu: x[1] }, disabled: false,
+      getAttribute: (a) => (a === "data-lb-menu" ? x[1] : null),
+      focus() { out.focused = { attr: "data-lb-menu", id: x[1] }; },
     }));
     return seen;
   };
   view.querySelectorAll = (sel) => {
     const v = build();
-    if (sel === ".up-next-row > .info") return v.infos;
-    if (sel === "[data-dequeue]") return v.removes;
+    if (sel === ".qp-row > .lb-cover") return v.infos;
+    if (sel === "[data-lb-menu]") return v.removes;
     return [];
   };
-  view.querySelector = () => null;
   out.info = (id) => build().infos.find((i) => i.dataset.swipeId === id);
-  out.remove = (id) => build().removes.find((b) => b.dataset.dequeue === id);
+  out.menu = (id) => build().removes.find((b) => b.dataset.lbMenu === id);
   return out;
 }
 
@@ -394,7 +510,7 @@ function swipe(el, x0, y0, moves, { hold = false } = {}) {
   return cancelled;
 }
 
-test("a 100 px leftward pull on a row's text block removes it on pointerup (PQ-06, #762)", () => {
+test("a 100 px leftward pull on a row removes it on pointerup, with the menu's Toast and Undo (PQ-06, #762)", () => {
   /* MUTATION (run, red): bind the swipe's removal handler to "click" instead
      of "pointerup" -> the release writes nothing and cp_queue keeps b (lane
      L2: the removal belongs to the release, never to the click after it).
@@ -405,10 +521,10 @@ test("a 100 px leftward pull on a row's text block removes it on pointerup (PQ-0
   const m = mount();
   const v = liveView(m);
   m.ctx.renderQueue();
-  assert.strictEqual((m.view().match(/<span class="swipe-under" aria-hidden="true">Remove<\/span>/g) || []).length, 3,
+  assert.strictEqual((m.view().match(/<span class="qp-under" aria-hidden="true">Remove<\/span>/g) || []).length, 3,
     "every row carries the label the swipe reveals, hidden from assistive tech");
   const info = v.info("b");
-  assert.ok(info, "the swipe listens on the row's text block, keyed by its id");
+  assert.ok(info, "the swipe listens on the row's cover, keyed by its id");
   fire(info, "pointerdown", { clientX: 300, clientY: 60, timeStamp: 0 });
   fire(info, "pointermove", { clientX: 250, clientY: 61, timeStamp: 50 });
   assert.ok(info.row.classList.contains("swiping"), "past the lock the row is carried");
@@ -419,6 +535,13 @@ test("a 100 px leftward pull on a row's text block removes it on pointerup (PQ-0
   assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the swiped row left Up Next");
   assert.strictEqual(m.queueWrites(), 1, "one write, through removeFromQueue -> saveQueueIds");
   assert.ok(!m.view().includes('data-swipe-id="b"'), "the page is a live view of cp_queue: b's row is gone");
+  /* A removal by swipe is the menu's Remove: the same Undo, so it can be taken back. (MUTATION: have the swipe call
+     removeFromQueue directly instead of libRemoveRow -> libUi.undo is null and Undo restores nothing.) */
+  m.ctx.libUndo();
+  assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"], "Undo puts the swiped row back where it was");
+  /* The click that follows a claimed swipe is the end of the gesture, not a tap to play. (MUTATION: delete the
+     `_lbSwallow` line in the swipe's pointerup -> the flag stays false and the cover would play the row.) */
+  assert.strictEqual(info._lbSwallow, true, "a claimed swipe tells the cover's click to stand down");
 });
 
 test("a gesture that moves vertically first is the list scrolling: nothing moves, nothing is written (PQ-06, #762)", () => {
@@ -459,17 +582,18 @@ test("a rightward drag never paints and never removes (PQ-06, #762)", () => {
   assert.strictEqual(m.queueWrites(), 0);
 });
 
-test("after a swipe removal: 'Removed from Up Next.' and focus on the ✕ that took its place (PQ-06, #762)", () => {
+test("after a swipe removal: 'Removed from Up Next.' and focus on the menu of the row that took its place (PQ-06, #762)", () => {
   /* MUTATION (run, red): delete `afterQueueRemove(index);` from the swipe's
-     pointerup handler -> nothing is announced and focus is left behind.
-     MUTATION 2 (run, red): pass `index + 1` -> focus lands on c's ✕. */
+     pointerup handler -> focus is left behind.
+     MUTATION 2 (run, red): pass `index + 1` -> focus lands on c's menu.
+     MUTATION 3 (run, red): delete `announce(...)` from libRemoveRow -> nothing is announced. */
   const m = mount();
   const v = liveView(m);
   m.ctx.renderQueue();
   swipe(v.info("a"), 300, 20, [[280, 21], [240, 21], [190, 21]]);
   assert.deepStrictEqual(m.queueRaw(), ["b", "c"]);
   assert.strictEqual(m.said(), "Removed from Up Next.", "the removal is said, politely (the shared status region)");
-  assert.deepStrictEqual(v.focused, { attr: "data-dequeue", id: "b" }, "focus goes to the ✕ of the row that took its place");
+  assert.deepStrictEqual(v.focused, { attr: "data-lb-menu", id: "b" }, "focus goes to the menu of the row that took its place");
   /* A pull short of the threshold, released slowly, springs back. */
   const info = v.info("b");
   fire(info, "pointerdown", { clientX: 300, clientY: 20, timeStamp: 0 });
@@ -481,18 +605,19 @@ test("after a swipe removal: 'Removed from Up Next.' and focus on the ✕ that t
   assert.deepStrictEqual(m.queueRaw(), ["b", "c"], "and stays");
 });
 
-test("the ✕ still removes beside the swipe, with the same after-step (PQ-06, #762)", () => {
-  /* MUTATION (run, red): delete the `[data-dequeue]` binder from
-     bindUpNextReorder -> the ✕ click does nothing and cp_queue keeps b.
+test("the menu's Remove still removes beside the swipe, with the same after-step (PQ-06, #762)", () => {
+  /* MUTATION (run, red): delete the `remove` branch from libMenuAct -> the item does nothing and cp_queue keeps b.
      MUTATION 2 (run, red): delete `info.addEventListener("pointercancel",
-     cancel);` -> the cancelled row stays carried and translated. */
+     cancel);` -> the cancelled row stays carried and translated.
+     (The ✕ is gone with the row's arrow buttons; the menu is the alternative a pointer-only gesture owes keyboard and
+     switch users, WCAG 2.5.1.) */
   const m = mount();
   const v = liveView(m);
   m.ctx.renderQueue();
-  v.remove("b").click();
-  assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the ✕ removes its row");
+  m.ctx.libMenuAct("b", "remove");
+  assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "the menu's Remove removes its row");
   assert.strictEqual(m.said(), "Removed from Up Next.");
-  assert.deepStrictEqual(v.focused, { attr: "data-dequeue", id: "c" }, "focus goes to the ✕ that took its place");
+  assert.deepStrictEqual(v.focused, { attr: "data-lb-menu", id: "c" }, "focus goes to the menu of the row that took its place");
   /* A swipe the system cancels writes nothing and springs the row back. */
   const info = v.info("a");
   fire(info, "pointerdown", { clientX: 300, clientY: 20, timeStamp: 0 });
@@ -502,4 +627,20 @@ test("the ✕ still removes beside the swipe, with the same after-step (PQ-06, #
   assert.ok(!info.row.classList.contains("swiping") && !info.row.style.transform, "a cancel springs the row back");
   fire(info, "pointerup", { clientX: 180, clientY: 20, timeStamp: 60 });
   assert.deepStrictEqual(m.queueRaw(), ["a", "c"], "a release after the cancel finds no gesture to commit");
+});
+
+test("a row lifted by a hold is not swiped: the swipe lets go while the drag owns the finger (PQ-04 and PQ-06 share one cover)", () => {
+  /* MUTATION (run, red): delete \`if (info._dragArmed) { reset(); return; }\` from the swipe's pointermove -> a lifted row
+     dragged sideways is also carried left and removed on release. */
+  const m = mount();
+  const v = liveView(m);
+  m.ctx.renderQueue();
+  const info = v.info("a");
+  info._dragArmed = true; // what bindUpNextDrag sets at the lift
+  fire(info, "pointerdown", { clientX: 300, clientY: 20, timeStamp: 0 });
+  fire(info, "pointermove", { clientX: 180, clientY: 21, timeStamp: 50 });
+  assert.ok(!info.row.classList.contains("swiping") && !info.row.style.transform, "the swipe paints nothing under a drag");
+  fire(info, "pointerup", { clientX: 180, clientY: 21, timeStamp: 80 });
+  assert.deepStrictEqual(m.queueRaw(), ["a", "b", "c"], "and removes nothing");
+  assert.strictEqual(m.queueWrites(), 0);
 });

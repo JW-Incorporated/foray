@@ -1095,6 +1095,8 @@
     if (name === 'now-playing' && S.cur) { showNP(true, false, Q.get('eyebrow') !== 'on'); }
     else if (S.npOpen && name !== 'now-playing') closeNP(true);
     if (kind === 'discover' && S.stateParam === 'kb' && scr._input) { $app.classList.add('kb'); try { scr._input.focus(); } catch (e) { /* ignore */ } }
+    /* ?state=upnextmenu (Library): the first Up Next row's menu open, for the harness (Redesign 2026, build loop). */
+    if (kind === 'library' && S.stateParam === 'upnextmenu' && S.upnext.length && scr._renderUp) { applyScroll(scr); queueMenu(0, S.upnext[0].ep, scr._renderUp); }
     if (forceRebuild) applyScroll(scr);
   }
   /* ?scroll=<px>: scroll the active scroller after render so the harness can shoot the lower sections

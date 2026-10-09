@@ -228,11 +228,13 @@ test("an episode row with no duration has no empty field between separators", ()
   assert.ok(!/·\s*<\/div>/.test(noDate), `trailing separator: ${noDate}`);
 });
 
-/* MUTATION: restore `${esc(item.show)} · ${fmtDur(item.duration_min)}` in upNextRow. */
+/* MUTATION: restore `${esc(item.show)} · ${fmtDur(item.duration_min)}` in libQueueRowHtml (the Up Next row is Library's
+   QueueRow since the Up Next page unit, Redesign 2026: the caption is one joined line, so a missing length leaves no
+   trailing separator). */
 test("a live Up Next row with no duration ends at the show name", () => {
   const { ctx } = mount();
-  const html = ctx.upNextRow({ id: "e", state: "live", item: { id: "e", title: "T", show: "Lex", audio_url: "https://a.test/x.mp3" } }, 0, 1);
-  assert.match(html, /<div class="s">Lex<\/div>/, html);
+  const html = ctx.libQueueRowHtml({ id: "e", state: "live", item: { id: "e", title: "T", show: "Lex", audio_url: "https://a.test/x.mp3" } }, { upnext: true, menu: true, ctx: "upnext" });
+  assert.match(html, /<span class="lb-ell">Lex<\/span>/, html);
 });
 
 /* The aged-out playlist row said "not available" twice on one line (qa row 142):

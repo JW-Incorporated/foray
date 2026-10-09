@@ -371,7 +371,7 @@ test("'Up Next' is a page over real cp_queue state, not a slot filled to match t
   return mountBooted({ cp_queue: JSON.stringify([item.id]) }).then((m) => {
     m.ctx.renderQueue();
     const html = m.view();
-    assert.ok(html.includes("<h2>Up Next</h2>"), "the page must be the Up Next page");
+    assert.ok(html.includes('<h2 class="t-title" tabindex="-1">Up Next</h2>'), "the page must be the Up Next page");
     assert.ok(html.includes("1 queued"), "the count must come from the stored queue");
     assert.ok(html.includes(m.ctx.esc(item.title)), "the queued episode must actually render");
   });
@@ -409,7 +409,10 @@ test("'Starred Shows' left the menu without leaving the app — Library carries 
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.ok(m.view().includes("Followed shows"), "#/starred-shows must still route to its own page");
+  /* REDESIGN 2026 (ambient Library): the Dock folded #/starred-shows into #/library (ROUTE_ALIASES), and Library's grid
+     has no "Followed shows" head, so the page still routing means the followed show is a ShowTile on the Library grid.
+     MUTATION: delete the "#/starred-shows" entry from ROUTE_ALIASES -> the route falls through to Today, no `lb-show` tile. */
+  assert.ok(/class="lb-tile lb-show"[^>]*>[^]*Show A/.test(m.view()), "#/starred-shows must still land on the followed shows (Library's grid)");
 });
 
 test("with nothing followed, Discover draws no 'Followed shows ›' row — a fresh install's first tappable row was a dead end", () => {

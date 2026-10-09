@@ -420,8 +420,8 @@ test("a refused download (downloadFailed 403) shows the note and a disabled cont
 });
 
 test("Library lists finished downloads with the usage line, after Up Next and before History", () => {
-  /* MUTATION: move `${state.downloadBridge ? libSection("Downloads", …) : ""}`
-     below the History line — the order assertion fails.
+  /* MUTATION: move the `state.downloadBridge ? <section data-lb-section="downloads">…` line in renderLibrary
+     below the History line — the order assertion fails. (Redesign 2026: the heads are Library's SectionHeads.)
      MUTATION 2: list every row, not only `done` ones (drop the status filter in
      libraryDownloadsHtml) — the queued episode appears beside a usage line that
      does not count it. */
@@ -435,7 +435,7 @@ test("Library lists finished downloads with the usage line, after Up Next and be
 
   m.ctx.renderLibrary();
   const html = m.view.innerHTML;
-  const heads = [...html.matchAll(/class="lib-section-head">([^<]*)</g)].map((x) => x[1]);
+  const heads = [...html.matchAll(/<h3 class="t-headline">([^<]*)<\/h3>/g)].map((x) => x[1]);
   const at = (t) => heads.indexOf(t);
   assert.ok(at("Downloads") > -1, `a Downloads section on the shell: ${heads.join(", ")}`);
   assert.strictEqual(at("Downloads"), at("Up Next") + 1, `Downloads right after Up Next: ${heads.join(", ")}`);
