@@ -1013,4 +1013,75 @@ public class EngineCoreTest {
         List<EngineCommand> again = host.send(EngineContract.Command.PLAY);
         assertEquals(again.toString(), 1, again.stream().filter(c -> c instanceof EngineCommand.SessionActivate).count());
     }
+
+    // ---- CH3-17: the JVM core matches Swift on the episode path (code-health-3 R3-01, R3-02, R3-04, R3-07)
+
+    /**
+     * R3-01, AS IT STANDS ON MAIN: the JVM still learns a car from any route event naming one
+     * and resumes when it comes back, even after the listener's own pause (the rule DECISIONS
+     * 2026-09-25 Q5 deleted). Pinned as today; CH3-17 flips it.
+     */
+    @Test
+    public void aKnownCarReturningAfterTheListenersPause() {
+        Host car = playing();
+        car.send(EngineContract.Command.PAUSE);
+        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", true))));
+        assertTrue("today the known car resumes the listener's pause: " + back, index(back, EngineCoreTest::isLoad) >= 0);
+    }
+
+    /**
+     * R3-02: STOP IS SILENCE (player-core-7; Swift {@code stop(persist:)}). From
+     * {@code interrupted} the reducer's stop emits no pause, so a deck audible behind a paused
+     * machine (Media3 resumed after a transient loss) must be paused by the deck's own word.
+     * RED on main: the JVM {@code stop()} never reads the deck.
+     */
+    @Test
+    public void stopIsSilenceBehindAPausedMachine() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.reading.audible = true;
+        List<EngineCommand> out = host.send(new EngineContract.Command.Stop(true));
+        int row = stopRow(Vocabulary.StopCause.CLOSE, out);
+        int pause = index(out, EngineCoreTest::isPause);
+        assertTrue("the deck audible behind a paused machine is paused by the stop: " + out, pause >= 0);
+        assertTrue("the cause row first", row >= 0 && row < pause);
+        EngineCommand.DiagEntry forced = rows("pause", out).get(0);
+        assertEquals(JsonNode.str("forced"), forced.field("kind"));
+        assertFalse("silent afterwards", host.reading.audible);
+    }
+
+    /** R3-04, AS IT STANDS ON MAIN: grace expiry ends the span before it writes its stop row (Swift writes the row first). */
+    @Test
+    public void graceExpiryRowOrder() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.send(remote(MediaMapping.RemoteCommand.PLAY));
+        List<EngineCommand> out = host.send(new EngineInput.Timer(EngineTimer.GRACE_EXPIRED));
+        int row = stopRow(Vocabulary.StopCause.GRACE_EXPIRED, out);
+        int end = out.indexOf(new EngineCommand.GraceEnd(GraceOutcome.EXPIRED));
+        assertTrue(out.toString(), row >= 0 && end >= 0);
+        assertTrue("today the span ends before the row: " + out, end < row);
+    }
+
+    /** R3-04, AS IT STANDS ON MAIN: the page's {@code dispose()} while playing writes no stop row (Swift writes {@code relinquish}). */
+    @Test
+    public void teardownWhilePlayingStopRow() {
+        Host host = playing();
+        List<EngineCommand> out = host.send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()));
+        assertEquals("today no stop row: " + out, -1, stopRow(Vocabulary.StopCause.RELINQUISH, out));
+    }
+
+    /**
+     * R3-07: "waiting is buffering" (P-14, the stall display) is Swift's provisional
+     * {@code bufferingWhileWaiting} knob; the JVM must read the same knob, not hard-code it.
+     */
+    @Test
+    public void waitingIsBufferingWhileTheKnobSaysSo() {
+        Host host = playing();
+        host.send(new EngineInput.Deck(new DeckEvent.TimeControl(host.lastLoad, DeckEvent.TimeControlStatus.WAITING, null)));
+        assertTrue("a waiting deck shows buffering", host.core.state().buffering);
+        host.confirm();
+        assertFalse("playing again clears it", host.core.state().buffering);
+    }
 }
