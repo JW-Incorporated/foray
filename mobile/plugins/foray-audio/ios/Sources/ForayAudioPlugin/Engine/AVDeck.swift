@@ -366,7 +366,8 @@ final class AVDeck: DeckDriving {
 
     /// Internal, not private: the Simulator tests read the real player's
     /// rate, and pause it behind the deck's back to stand in for the system.
-    let player: AVPlayer
+    /// A var only for `rebuildPlayer()`: a media-services reset kills it.
+    private(set) var player: AVPlayer
 
     /// Every AVPlayer call that can move the audible state, in order. The
     /// XCTests assert on it ("no preroll was issued", "no play before
@@ -464,14 +465,20 @@ final class AVDeck: DeckDriving {
 
     init(config: Config) {
         self.config = config
-        player = AVPlayer()
-        // Plan §4.3's deck settings. `.pause` at the item's end, because the
-        // core, not AVPlayer, decides what plays next (an auto-advance is a
-        // continuation hop); stall-waiting on, because a play on a thin
-        // network should wait rather than start and starve.
+        player = Self.makePlayer()
+        observePlayer()
+    }
+
+    /// The deck's player, with plan §4.3's settings: `.pause` at the item's
+    /// end, because the core, not AVPlayer, decides what plays next (an
+    /// auto-advance is a continuation hop); stall-waiting on, because a play
+    /// on a thin network should wait rather than start and starve. The one
+    /// place a deck's AVPlayer is made, at `init` and at `rebuildPlayer()`.
+    private static func makePlayer() -> AVPlayer {
+        let player = AVPlayer()
         player.actionAtItemEnd = .pause
         player.automaticallyWaitsToMinimizeStalling = true
-        observePlayer()
+        return player
     }
 
     deinit {
@@ -565,9 +572,39 @@ final class AVDeck: DeckDriving {
         playerObservations = []
     }
 
-    /// True while a player-level KVO is registered (the Simulator test of
-    /// `invalidate()` reads it; nothing else does).
+    /// True while a player-level KVO is registered (the Simulator tests of
+    /// `invalidate()` and `rebuildPlayer()` read it; nothing else does).
     var isObservingPlayer: Bool { !playerObservations.isEmpty }
+
+    /// The seam's `rebuild()` (the host's `.sessionRebuild`).
+    func rebuild() {
+        rebuildPlayer()
+    }
+
+    /// Media services were reset (CH3-03, R2-03): the AVPlayer died with the
+    /// media server, and an item attached to it never turns ready, so every
+    /// later load ran to the deadline (`deadline playerStatus=failed`) until
+    /// the app was killed. Apple's rule for a reset: make the objects again.
+    ///
+    /// In this order: `unload()` silences and detaches the old player's item
+    /// and moves the generation, so a completion still in flight for its load
+    /// (a duration, a seek, a preroll) lands on a stale generation and is
+    /// dropped; the out-point reset inside it takes the boundary observer off
+    /// the OLD player (a time observer must be removed by the player that
+    /// added it); the old player's KVO goes; then a new player with the same
+    /// settings, observed the same way. The listener's rate is the deck's,
+    /// not the player's, and survives (every play re-applies it). Nothing is
+    /// reported: the core lands paused and loads again on the next play.
+    func rebuildPlayer() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !invalidated else { return }
+        unload()
+        playerObservations.forEach { $0.invalidate() }
+        playerObservations = []
+        player = Self.makePlayer()
+        observePlayer()
+        record("rebuild")
+    }
 
     // MARK: - Load (steps 1-2)
 

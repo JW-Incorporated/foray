@@ -547,7 +547,17 @@ final class ForayEngine {
         case .sessionReapplyCategory:
             seams.session.reapplyCategory()
         case .sessionRebuild:
+            // A media-services reset (CH3-03, R2-03): every AVFoundation
+            // object died with the media server, the players too. The session
+            // forgets its activation; then every player the shell holds is
+            // made again, before the core's `.unload` that follows in this
+            // turn. A deck kept from before would take every later load to
+            // the deadline until the app was killed.
             seams.session.rebuild()
+            seams.deck.rebuild()
+            seams.preview?.rebuild()
+            seams.speaker.rebuild()
+            seams.interlude?.release()
         case let .graceBegin(reason):
             beginGrace(reason)
         case let .graceEnd(outcome):

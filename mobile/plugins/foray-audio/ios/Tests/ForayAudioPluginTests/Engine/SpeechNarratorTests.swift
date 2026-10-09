@@ -90,6 +90,33 @@ final class SpeechNarratorTests: XCTestCase {
         XCTAssertEqual(events, [.started(seq: 7, voiceFallback: false), .resumed(seq: 7, answer: .continued), .finished(seq: 7)])
     }
 
+    /// A media-services reset (CH3-03, R2-03) took the narration voice's
+    /// audio engine with it. The output is rebuilt (here: the line silenced),
+    /// the line in flight is HELD, so the core's pause asks nothing of the
+    /// output, and its resume speaks the same line again from its first word,
+    /// answered `.fromStart` so the core's clock restarts with it; its end is
+    /// then the line's one `finished`. An audition in flight ends `cancelled`.
+    /// TO SEE IT FAIL: drop the `.fromStart` branch from `resume` (the output
+    /// is asked to continue a line it no longer holds, and says `.continued`
+    /// over silence), or leave the line unheld in `rebuild()` (the pause
+    /// reaches the output).
+    func testARebuildHoldsTheLineAndItsResumeSpeaksItAgainFromTheStart() {
+        let narrator = makeNarrator()
+        narrator.narrate(.speak(seq: 4, text: "A line the reset cut.", voiceId: nil, utteranceRate: 1))
+        narrator.rebuild()
+        narrator.narrate(.pause(seq: 4))
+        narrator.narrate(.resume(seq: 4))
+        XCTAssertEqual(output.calls, ["start:1", "stop", "start:2"], "rebuilt, held, then the same line spoken again")
+        XCTAssertEqual(output.started.last?.line, output.started.first?.line)
+        output.end(output.lastId)
+        XCTAssertEqual(events, [.started(seq: 4, voiceFallback: false), .resumed(seq: 4, answer: .fromStart), .finished(seq: 4)])
+
+        let audition = makeNarrator()
+        audition.speak(text: "An audition the reset cut.", voiceId: nil)
+        audition.rebuild()
+        XCTAssertEqual(ends, [.cancelled])
+    }
+
     /// Stop does not advance: a stopped line reports `cancelled`, and an end
     /// the output reports for it afterwards is not a `finished`.
     /// TO SEE IT FAIL: map `.stop` to `.finished`, or keep the line current
