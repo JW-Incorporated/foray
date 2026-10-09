@@ -459,3 +459,221 @@ test("PQ-07: Clear re-sends the plan: the chain goes on with the play list and h
   assert.ok(plan.chain.every((h) => h.fromList === true && !h.fromTail), "no queued hops left in the plan");
   assert.ok(plan.planSeq > queuedPlan.planSeq, "the new plan supersedes the old one");
 });
+
+/* ==================================================================== */
+/* CH3-04 (R4-01): the plan carries each hop's downloaded source        */
+/* ==================================================================== */
+
+/* Everything above is app.js BUILDING the plan; this is player/client.js
+   SENDING it. In the native lane the engine walks the chain by itself
+   (Continuous playback at an episode end, the wheel's next/previous) with the
+   page asleep, so the `audio_url` each hop carries is the only source the
+   engine has. A page-started play goes through `localSourceFor` (the
+   downloaded file, the stream kept as `source_audio_url`); a hop did not, so
+   an offline drive through a downloaded Up Next walked onto a dead link:
+   `stop cause=load-deadline`, silence.
+
+   Harness: the real client.js in a pretend iOS shell over the reference
+   engine, cut down from player/native-mode.test.js's `bootNative` (duplicated
+   rather than imported for the reason that file gives: importing a test file
+   runs its tests). Nothing plays here; the suite reads the `setContinuation`
+   payloads the page sends. */
+
+let nativeBootSeq = 0;
+
+function nativeNode(tag) {
+  return {
+    tagName: String(tag).toUpperCase(), children: [], attrs: new Map(), listeners: new Map(),
+    style: {}, dataset: {}, className: "", textContent: "", hidden: false,
+    classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+    append(...kids) { for (const k of kids) this.children.push(k); },
+    appendChild(k) { this.children.push(k); return k; },
+    setAttribute(k, v) { this.attrs.set(k, String(v)); },
+    getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; },
+    removeAttribute(k) { this.attrs.delete(k); },
+    addEventListener(type, fn) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(fn);
+    },
+    removeEventListener(type, fn) { this.listeners.get(type)?.delete(fn); },
+  };
+}
+
+async function bootNativeClient(t) {
+  const { pathToFileURL } = require("node:url");
+  const { createReferenceEngine } = await import("../player/parity/reference-engine.js");
+  const { __resetInstanceForTests } = await import("../player/queue-manager.js");
+  let mono = 0;
+  const scheduler = {
+    nowMs: () => ++mono,
+    schedule: () => () => {},
+  };
+  const ref = createReferenceEngine({ scheduler, now: () => 1_790_000_000_000 });
+  const base = ref.asCapacitor({ platform: "ios" });
+  /** Every `setContinuation` the page sent the engine, as the wire carried it. */
+  const plans = [];
+  const capacitor = {
+    ...base,
+    nativePromise(plugin, method, payload) {
+      if (plugin === "ForayAudio" && method === "engineSend" && payload?.cmd === "setContinuation") {
+        plans.push(JSON.parse(JSON.stringify(payload.args)));
+      }
+      return base.nativePromise(plugin, method, payload);
+    },
+  };
+  const rows = new Map();
+  const storage = {
+    get length() { return rows.size; },
+    key: (i) => [...rows.keys()][i] ?? null,
+    getItem: (k) => (rows.has(k) ? rows.get(k) : null),
+    setItem: (k, v) => { rows.set(k, String(v)); },
+    removeItem: (k) => { rows.delete(k); },
+  };
+  const docListeners = new Map();
+  const doc = {
+    hidden: false,
+    activeElement: null,
+    body: nativeNode("body"),
+    createElement: (tag) => nativeNode(tag),
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    addEventListener(type, fn) {
+      if (!docListeners.has(type)) docListeners.set(type, new Set());
+      docListeners.get(type).add(fn);
+    },
+    removeEventListener(type, fn) { docListeners.get(type)?.delete(fn); },
+    fire(type) { for (const fn of [...(docListeners.get(type) ?? [])]) fn(); },
+  };
+  const win = {
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent: () => true,
+    Capacitor: capacitor,
+    speechSynthesis: {
+      speak() {}, cancel() {}, pause() {}, resume() {}, getVoices: () => [], addEventListener() {},
+    },
+    ForayMediaSession: { install: () => true, uninstall: () => true },
+  };
+  const names = ["window", "document", "localStorage", "navigator", "Event", "Audio"];
+  const prev = new Map(names.map((n) => [n, Object.getOwnPropertyDescriptor(globalThis, n)]));
+  const set = (n, value) => Object.defineProperty(globalThis, n, { value, writable: true, configurable: true });
+  set("window", win);
+  set("document", doc);
+  set("localStorage", storage);
+  set("navigator", { storage: { persisted: async () => false }, mediaSession: null });
+  set("Event", class { constructor(type) { this.type = type; } });
+  set("Audio", function Audio() { throw new Error("the native lane builds no <audio>"); });
+  __resetInstanceForTests();
+  const href = pathToFileURL(path.join(ROOT, "player", "client.js")).href;
+  const client = (await import(`${href}?ch3-04=${++nativeBootSeq}`)).default;
+  t.after(async () => {
+    try {
+      doc.hidden = true;
+      doc.fire("visibilitychange");
+      for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r));
+    } finally {
+      ref.dispose();
+      for (const [n, d] of prev) {
+        if (d) Object.defineProperty(globalThis, n, d);
+        else delete globalThis[n];
+      }
+    }
+  });
+  assert.strictEqual(await client.whenEngineReady(), "native", "fixture premise: the native lane");
+  /* app.js's half of the downloads surface (bootDownloads): the record is
+     `cp_downloads`, read through the published store's own reader. */
+  win.forayDownloads.recordFor = (id) => win.forayDownloads.store.readDownloads(win.forayStorage).items[id] || null;
+  return { client, win, plans };
+}
+
+const remoteEpisode = (id) => ({
+  id, kind: "episode", title: `Title ${id}`, show: "Show", audio_url: `https://cdn/${id}.mp3`, duration_sec: 3600,
+});
+/** continuation.js's hop shape, `lastEpisodeRow` built from the ORIGINAL item. */
+const planHop = (planSeq, hopSeq, finishedId, item) => ({
+  planSeq, hopSeq, finishedId, nextId: item.id, fromList: false, fromTail: false, queueAfter: [], item,
+  lastEpisodeRow: { id: item.id, title: item.title, show: item.show, audio_url: item.audio_url, duration_sec: item.duration_sec },
+});
+
+/** app.js's `onDownloadEvent` for one plugin event, through the published store. */
+function downloadEvent(win, name, payload) {
+  const rules = win.forayDownloads.store;
+  const report = rules.reportFromEvent(name, payload, { now: Date.now() });
+  rules.writeDownloads(win.forayStorage, rules.applyProgress(rules.readDownloads(win.forayStorage), report));
+}
+
+const FILE_B = "/var/mobile/Containers/Data/Application/X/Library/Application Support/downloads/b.mp3";
+
+test("CH3-04: a hop of a downloaded episode is sent with its file, the stream kept as source_audio_url; lastEpisodeRow still names the stream", async (t) => {
+  /* R4's repro: `chain.map(h => h.item.audio_url)` was `https://cdn/b.mp3` for
+     a `done` row, so the engine streamed the episode the listener downloaded.
+     MUTATION: drop the `localSourceFor` map in sendEnginePlan (send the chain
+     as built) — hop b goes out with the remote URL; red.
+     MUTATION 2: rebuild `lastEpisodeRow` from the localised item — the pointer
+     row the engine stores names a file that may be evicted by tomorrow; red. */
+  const { client, win, plans } = await bootNativeClient(t);
+  win.forayDownloads.store.writeDownloads(win.forayStorage, {
+    items: { b: { status: "done", path: FILE_B, bytes: 10, total: 10 } },
+  });
+  const hops = [planHop(7, 1, "z", remoteEpisode("a")), planHop(7, 2, "a", remoteEpisode("b"))];
+  const handed = JSON.parse(JSON.stringify(hops));
+  assert.strictEqual(await client.setContinuation({ planSeq: 7, autoAdvance: true, chain: hops }), true);
+  const sent = plans.at(-1);
+  assert.ok(sent, "the plan reached the engine");
+  const hopB = sent.chain[1];
+  assert.ok(hopB.item.audio_url.startsWith("file://"), `the engine walks to the file, not ${hopB.item.audio_url}`);
+  assert.ok(hopB.item.audio_url.endsWith("/b.mp3"));
+  assert.strictEqual(hopB.item.source_audio_url, "https://cdn/b.mp3", "the stream rides along, as for a page-started play");
+  assert.strictEqual(hopB.item.isLocalFile, true);
+  assert.deepStrictEqual(hopB.lastEpisodeRow, handed[1].lastEpisodeRow, "the pointer row names the episode's stream");
+  assert.deepStrictEqual(hops, handed, "app.js's plan is not mutated");
+});
+
+test("CH3-04: a hop with no download is sent byte-identical to the hop app.js handed over", async (t) => {
+  /* MUTATION: localise every hop unconditionally (`{ ...hop, item: { ...hop.item,
+     isLocalFile: false } }`) — the streamed hop gains a field; red. */
+  const { client, plans } = await bootNativeClient(t);
+  const hops = [planHop(8, 1, "z", remoteEpisode("a")), planHop(8, 2, "a", remoteEpisode("c"))];
+  const handed = JSON.parse(JSON.stringify(hops));
+  await client.setContinuation({ planSeq: 8, autoAdvance: false, chain: hops });
+  assert.deepStrictEqual(plans.at(-1), { planSeq: 8, autoAdvance: false, chain: handed });
+});
+
+test("CH3-04: a download that finishes or is removed for a hop re-sends the plan; one for no hop does not", async (t) => {
+  /* The plan is sent at a play or an Up Next edit; a download that lands
+     afterwards would otherwise still stream on the drive.
+     MUTATION: drop the re-send call from the published store's writer — no
+     second plan after `downloadDone`; red.
+     MUTATION 2: re-send on every write (drop the "did a hop's source move"
+     check) — a progress tick for an episode in no hop re-sends; red. */
+  const { client, win, plans } = await bootNativeClient(t);
+  win.forayDownloads.store.writeDownloads(win.forayStorage, {
+    items: {
+      b: { status: "downloading", bytes: 1, total: 10 },
+      q: { status: "downloading", bytes: 1, total: 10 },
+    },
+  });
+  const hops = [planHop(9, 1, "z", remoteEpisode("a")), planHop(9, 2, "a", remoteEpisode("b"))];
+  await client.setContinuation({ planSeq: 9, autoAdvance: true, chain: hops });
+  assert.strictEqual(plans.length, 1);
+  assert.strictEqual(plans[0].chain[1].item.audio_url, "https://cdn/b.mp3", "fixture premise: b is still downloading");
+
+  downloadEvent(win, "downloadProgress", { id: "q", bytes: 5, total: 10 });
+  downloadEvent(win, "downloadProgress", { id: "b", bytes: 5, total: 10 });
+  assert.strictEqual(plans.length, 1, "a tick that moves no hop's source sends nothing");
+
+  downloadEvent(win, "downloadDone", { id: "b", path: FILE_B, bytes: 10 });
+  assert.strictEqual(plans.length, 2, "b's file landed: the plan is re-sent");
+  assert.strictEqual(plans[1].planSeq, 9, "the same plan, not a new one");
+  assert.ok(plans[1].chain[1].item.audio_url.startsWith("file://"), "now the engine walks to the file");
+  assert.deepStrictEqual(plans[1].chain[0], plans[0].chain[0], "the other hop is unchanged");
+
+  downloadEvent(win, "downloadDone", { id: "q", path: "/x/q.mp3", bytes: 10 });
+  assert.strictEqual(plans.length, 2, "a download for an episode in no hop sends nothing");
+
+  const rules = win.forayDownloads.store;
+  rules.writeDownloads(win.forayStorage, rules.removeRow(rules.readDownloads(win.forayStorage), "b"));
+  assert.strictEqual(plans.length, 3, "b's file removed: the plan is re-sent");
+  assert.strictEqual(plans[2].chain[1].item.audio_url, "https://cdn/b.mp3", "and the engine streams b again");
+  assert.strictEqual(plans[2].chain[1].item.source_audio_url, undefined);
+});
