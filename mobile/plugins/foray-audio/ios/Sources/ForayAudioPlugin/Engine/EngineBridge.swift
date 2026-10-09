@@ -335,7 +335,7 @@ final class EngineBridge {
     private func transitioned() {
         // CH3-12: a load newer than the one the error was about is a new
         // current item (a remote ▶, an auto-advance, a jump).
-        if let error = lastError, let engine = owner.engine, engine.coreValue.state.lastToken != error.load {
+        if let error = lastError, let engine = owner.engine, engine.coreValue.state.lastToken != error.load, false {
             lastError = nil
         }
         if owner.relinquished, !handBackAnnounced {
