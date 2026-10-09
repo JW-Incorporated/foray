@@ -174,7 +174,7 @@ final class AudioSessionOwner: SessionControlling {
         // deactivate), and a play on it is an implicit activation (CH3-15,
         // half of R2-08). Any other failure left the session as it was, so it
         // still reads active: a play on it is owned.
-        if ok || token == Vocabulary.SessionErrorDetail.isBusy.rawValue { phase = .inactive }
+        phase = .inactive
         // L13: WHY it failed, on failure only (`is-busy`: I/O was still
         // running, and the deactivation stopped it).
         row("deactivated", [JSONMember("ok", .bool(ok)), JSONMember("notify", .bool(notifyOthers))]
