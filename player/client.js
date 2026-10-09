@@ -2102,9 +2102,22 @@ function seekEpisodeTo(seconds) {
   return landEpisodeSeek(clampEpisodeTarget(seconds, episodeDurationSec()));
 }
 
-/** A relative seek, from wherever the bar says the listener is. */
+/** A relative seek, from wherever the bar says the listener is.
+
+    NATIVE LANE: THE STEP IS THE INTENT (CH3-18, R4-05). The engine owns the
+    playhead, and a load it started by itself (the wheel's ⏭, an auto-advance)
+    is one the page never asked for: no `loadingStart`, a snapshot reading 0
+    until the deck holds the item. A target computed here from that 0 and sent
+    as `seekTo` started the episode at 0:30 and overwrote a 38:00 resume point.
+    So whenever there is something to seek in, the engine is sent the step
+    (`seekBy`) and finds the target from where it knows the listener is
+    (EngineCore.swift `seekBy`). With nothing to seek in (a restored bar, an
+    ended episode) the pend below is unchanged: that position is the page's. */
 function seekEpisodeBy(offsetSec) {
   if (!current || foray || !manager) return Promise.resolve(false);
+  if (engineMode === "native" && seekAction({ restored: restoredPending != null, stateType: manager.state?.type }) === SEEK.SEEK) {
+    return landEngineNudge(Number(offsetSec || 0));
+  }
   return landEpisodeSeek(skipTarget({
     foray: false, positionSec: episodePositionSec(), offsetSec, durationSec: episodeDurationSec(),
   }));
@@ -2123,6 +2136,16 @@ async function landEpisodeSeek(target) {
     return true;
   }
   await manager.seek(target, { precise: true });
+  render();
+  return true;
+}
+
+/** Send a native-lane nudge to the engine as its step (`seekEpisodeBy`). A
+    step that is not a number lands nowhere, as `clampEpisodeTarget` refuses
+    one on the page's own path. */
+async function landEngineNudge(deltaSec) {
+  if (!Number.isFinite(deltaSec)) return false;
+  await manager.seekBy(deltaSec);
   render();
   return true;
 }

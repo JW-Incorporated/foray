@@ -340,6 +340,19 @@ export class NativeManagerFacade {
     return this._send("seekTo", { sec: Number.isFinite(sec) ? Math.max(0, sec) : 0 }, opts?.source);
   }
 
+  /**
+   * A nudge (↺15 / 30↻), as the intent it is: the step, never a target (CH3-18,
+   * R4-05). The ENGINE knows where the listener is — its deck's playhead, or
+   * while a load is in flight the second that load will land on, which for a
+   * load the engine started itself (the wheel's ⏭, an auto-advance) the page
+   * never knew (EngineCore.swift `seekBy`). A target computed from the page's
+   * copy of the playhead read that load's 0 and overwrote the resume point.
+   */
+  seekBy(deltaSec, opts) {
+    const d = Number(deltaSec);
+    return this._send("seekBy", { deltaSec: Number.isFinite(d) ? d : 0 }, opts?.source);
+  }
+
   /* ---------- a Foray, as intents (NE-35) ---------- */
 
   /**
