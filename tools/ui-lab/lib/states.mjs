@@ -555,7 +555,22 @@ export function appStates(fx) {
           ready: ".ag-np-eyebrow.is-lit",
         },
         {
+          /* The prototype's np-detail3 is an EPISODE scrolled to the bottom of its sheet (afterglow.js sets scroll 99999):
+             Speed/Sleep/Bookmark/Share, Show notes, the Up Next peek. The Foray's detail (clips, sources) is the step below. */
           label: "now-playing-detail",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, ep0);
+            await page.evaluate(() => {
+              const scroller = document.querySelector(".ag-np .fp-sheet-scroll") || document.querySelector(".ag-np");
+              scroller.scrollTop = scroller.scrollHeight;
+            });
+            await wait(page, 300);
+          },
+          ready: ".ag-np-detail",
+        },
+        {
+          label: "now-playing-detail-foray",
           route: "#/foray/" + encodeURIComponent(foray0),
           run: async (page) => {
             await startForayPlayback(page);

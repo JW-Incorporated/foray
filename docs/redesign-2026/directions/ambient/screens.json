@@ -705,13 +705,9 @@
           "prototype": ".np-detail .sec-row",
           "app": ".ag-np-actions"
         },
-        "segments": {
-          "prototype": ".np-detail .stack-8",
-          "app": ".ag-np-clip-list"
-        },
-        "sources": {
-          "prototype": ".np-detail .grid-3",
-          "app": ".ag-np-source-grid"
+        "notes": {
+          "prototype": ".np-detail .section",
+          "app": ".ag-np-notes"
         }
       }
     },

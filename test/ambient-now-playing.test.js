@@ -183,3 +183,18 @@ test("review round 1: Follow is the Library's record, Share is a timestamp link,
   assert.equal((gates.match(/heightFloor: true/g) || []).length, 3, "all three timeline selectors keep the height floor");
   assert.match(rules, /!s\.heightFloor \|\| e\.h \+ tol >= min/);
 });
+
+test("round 2: the Foray's 'Now: <show>' caption does not follow the listener into an episode, and the detail step shoots an episode like the prototype", () => {
+  /* MUTATION 1: delete the `/^Now: /` block at the top of agNpPaintEpisode -> red (an episode opened inside the 3s window wore the
+     previous Foray's caption; found in the first episode-detail render).
+     MUTATION 2: change the `detail` step's startEpisodePlayback back to startForayPlayback in tools/ui-lab/lib/states.mjs -> red
+     (the prototype's np-detail3 is an episode scrolled to the bottom; the Foray's detail has its own `now-playing-detail-foray` step). */
+  const paint = /function agNpPaintEpisode\(ui\) \{[\s\S]*?\n\}/.exec(ui)[0];
+  assert.match(paint, /classList\.contains\("is-lit"\) && \/\^Now: \/\.test\(ui\.eyebrow\.textContent/);
+  assert.match(paint, /clearTimeout\(ui\.captionTimer\)/);
+  const states = read("tools/ui-lab/lib/states.mjs");
+  const detail = /label: "now-playing-detail",[\s\S]*?ready: "\.ag-np-detail"/.exec(states)[0];
+  assert.match(detail, /startEpisodePlayback\(page, ep0\)/);
+  assert.match(detail, /scrollTop = scroller\.scrollHeight/);
+  assert.match(states, /label: "now-playing-detail-foray"/);
+});

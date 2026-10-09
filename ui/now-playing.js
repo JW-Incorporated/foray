@@ -499,6 +499,12 @@ function agNpPaintEpisode(ui) {
   if (!ui?.ag) return;
   ui.sheet.classList.remove("is-foray");
   ui.showLine = null;
+  /* A Foray's "Now: <show>" caption does not follow the listener into an episode: it names a show of the Foray that just ended.
+     MUTATION: delete this block and an episode opened inside the 3s window wears the previous Foray's caption. */
+  if (ui.eyebrow?.classList.contains("is-lit") && /^Now: /.test(ui.eyebrow.textContent || "")) {
+    clearTimeout(ui.captionTimer);
+    ui.eyebrow.classList.remove("is-lit");
+  }
   /* The collage and the strip are torn down below, so the same Foray played again must rebuild both. */
   ui.foraySignature = null;
   ui.collageSources = null;
