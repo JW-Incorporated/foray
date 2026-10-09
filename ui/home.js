@@ -543,6 +543,7 @@ function todayForayPick(picks, resumeEntry = null) {
     fix for the same strip on the Foray page), so a tick is only ever where a clip ends
     and another begins. The card's band is not a scrub target, which is the one reason
     the strip keeps the merge off elsewhere; the accessible label still counts items. */
+const TODAY_KEY_MAX = 8; // the palette's length: a ninth show would only repeat an enamel
 function todayHeroModel(pick) {
   const { foray, r } = pick;
   const player = window.ForayPlayer;
@@ -555,6 +556,12 @@ function todayHeroModel(pick) {
     narration: s.kind === "narration",
   }));
   const shows = [...new Set(items.filter(s => s.kind !== "narration" && s.show).map(s => s.show))];
+  /* THE KEY TO THE BAND. Each contributing show, in first-appearance order, wears the
+     enamel of its own bars: `enamel` is tactileHash of the very `showId` the band
+     above was just handed for that show (not a second guess at its name), so a
+     disc's ring and its show's segments cannot disagree. One show is one ring. */
+  const enamelOf = new Map();
+  for (const s of segments) if (!s.narration && s.show && !enamelOf.has(s.show)) enamelOf.set(s.show, tactileHash(s.showId));
   const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
   const facts = joinMeta(
     forayRuntimeLabel(player, tally, r.totalSec),
@@ -563,7 +570,8 @@ function todayHeroModel(pick) {
   const summary = String(foray.summary || "").trim();
   return {
     foray, r, segments, facts,
-    discs: shows.slice(0, 3).map(name => ({ url: showArtworkUrl({ title: name }), initials: todayInitials(name) })),
+    discs: shows.slice(0, TODAY_KEY_MAX).map(name => ({ name, enamel: enamelOf.get(name), url: showArtworkUrl({ title: name }), initials: todayInitials(name) })),
+    moreShows: Math.max(0, shows.length - TODAY_KEY_MAX),
     why: summary && wordCount(summary) <= TODAY_WHY_WORDS ? summary : "",
     bandLabel: tally
       ? `Foray band: ${countLabel(tally.clips + tally.bridges, "clip")} from ${countLabel(tally.shows, "show")}${tally.bridges ? ", with 4a narration between them" : ""}`
@@ -590,7 +598,11 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
   if (!hero) return "";
   const { foray } = hero;
   const path = forayRoutePath(foray.id);
-  const discs = hero.discs.map(d => tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })).join("");
+  /* A ring in the show's band enamel (the `t-band__bar--c` index the bars wear), the show's
+     name as the item's accessible name: the colour is never the only thing that says who. */
+  const keys = hero.discs.map(d => `<span class="today-hero__key today-hero__key--c${Number(d.enamel) || 0}" role="listitem" aria-label="${esc(d.name || "")}">${tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })}</span>`).join("");
+  const more = hero.moreShows > 0 ? `<span class="readout today-hero__more" role="listitem" aria-label="${esc(countLabel(hero.moreShows, "more show"))}">+${esc(String(hero.moreShows))}</span>` : "";
+  const discs = `<span class="today-hero__discs" role="list" aria-label="Shows in this foray">${keys}${more}</span>`;
   const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;
   /* A Foray is streamed from each show's own feed, never downloaded: offline its key is
      always blocked, and the sentence is drawn once under the keys. */
@@ -602,7 +614,7 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
     <div class="today-hero__eyebrow">${tactileTag({ kind: "narration", text: "Today's foray" })}</div>
     <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="${esc(safeUrl("#" + path))}">${esc(foray.title)}</a></h2>
     <div class="well today-hero__band">${tactileBand({ kind: "mini", segments: hero.segments, renderWidth: todayBandWidth(), label: hero.bandLabel })}</div>
-    <div class="today-hero__meta"><span class="today-hero__discs">${discs}</span><span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
+    <div class="today-hero__meta">${discs}<span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
     ${why ? `<p class="today-hero__why">${esc(why)}</p>` : ""}
     <div class="today-hero__keys">
       ${play}
