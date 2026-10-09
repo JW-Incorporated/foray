@@ -429,7 +429,8 @@ final class AVDeck: DeckDriving {
     private(set) var loadedURL: String?
     private var loadedPreciseTiming = false
     /// The attached item is a Foray clip (the load's `bounded`, CH3-11): what
-    /// §16's continue and lapse are keyed on (see the header).
+    /// §16's continue and lapse are keyed on (see the header). Written on
+    /// every path that keeps an item for a load: the attach and the reuse.
     private var loadedBounded = false
     /// The current load kept the attached item (same source) rather than
     /// making a new one. For the rows.
@@ -641,6 +642,10 @@ final class AVDeck: DeckDriving {
         let idleSec = item == nil ? nil : max(0, (config.idleClockMs() - lastLiveMs) / 1000)
         let cold = coldReason(urlString, preciseTiming: preciseTiming, idleSec: idleSec)
         if cold == nil {
+            // The kept item is THIS load's: `coldReason` does not compare
+            // `bounded`, so a clip reusing an episode's item (or the reverse)
+            // must not carry the previous load's flag into §16's lapse.
+            loadedBounded = bounded
             reuse(token: newToken, startSec: startSec, idleSec: idleSec, deadlineClass: newClass)
             return
         }
