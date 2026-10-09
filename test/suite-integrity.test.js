@@ -1925,11 +1925,16 @@ const FLOORS = {
      before backfill-audio / classify-dai write any file, with replacer
      functions so a `$&` in an audio URL stays literal. Zero slack. */
   "tools/refresh/session-patch.test.mjs": 4,
+  /* CH2-36 (docs/roadmap/code-health-2.md, T1-02 + T1-11): --force never
+     targets a session episode that already has audio (the patch would refuse
+     the run), and an iTunes outage is a lookup failure through resolve.mjs's
+     lookupEpisodes at limit=200, not "no match". New, zero slack. */
+  "tools/refresh/backfill-audio.test.mjs": 7,
   /* Audit round 3 (L8, data-tools-2/-15): the nightly resolve matches on guid,
      enclosure URL, exact title, and fuzzy only on the same release date; a
      failed lookup or a not-yet-indexed episode is carried in the scan state
      rather than dropped. Zero slack. */
-  "tools/refresh/resolve.test.mjs": 16, // CH2-10 (T1-01, docs/roadmap/code-health-2.md): explicit is a tri-state -- Explicit -> true and Clean -> false (characterization), no rating + the feed's explicit_hint -> true, no rating and no hint -> null (unrated); the suite already stood at 13 against 9, so the floor is set exact: 9 -> 16
+  "tools/refresh/resolve.test.mjs": 17, // CH2-36 (T1-11, docs/roadmap/code-health-2.md): lookupEpisodes takes a `limit` (25 by default, 200 for backfill-audio's fallback); 16 -> 17 // CH2-10 (T1-01, docs/roadmap/code-health-2.md): explicit is a tri-state -- Explicit -> true and Clean -> false (characterization), no rating + the feed's explicit_hint -> true, no rating and no hint -> null (unrated); the suite already stood at 13 against 9, so the floor is set exact: 9 -> 16
   /* Android on a runner (#245). ZERO SLACK, deliberately, and for a reason the iOS
      entry above does not have. Two of these 26 tests are the ONLY thing in the repo
      that notices if the Android job stops checking that `cap sync` still wires

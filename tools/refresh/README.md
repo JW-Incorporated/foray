@@ -158,13 +158,20 @@ the next night's real episodes.
 ```bash
 node tools/refresh/backfill-audio.mjs --dry-run     # report only
 node tools/refresh/backfill-audio.mjs              # write data files
-node tools/refresh/backfill-audio.mjs --force      # re-resolve everything
+node tools/refresh/backfill-audio.mjs --force      # re-resolve discover items
 ```
 
 Idempotent and re-runnable; skips items that already have `audio_url` unless
-`--force`. Fetches each **show** feed once, then matches all of that show's
-items. Coverage is reported separately for 2026+ and pre-2026 — a single
-blended number hides exactly the failure mode described in rule 1 above.
+`--force`. **`--force` re-resolves `discover.json` items only.** `session.json`
+is text-patched, and the patch fills a block only when its audio fields are
+empty (see `session-patch.mjs`), so a session episode that already has audio is
+never a target: forcing it would make the patch's verify step refuse the whole
+run on the first moved URL. Fetches each **show** feed once, then matches all of
+that show's items; leftovers fall back to `resolve.mjs`'s `lookupEpisodes` at
+`limit=200`, and an iTunes outage is reported in UNRESOLVED as `iTunes lookup
+failed (...)`, never as "no match". Coverage is reported separately for 2026+
+and pre-2026 — a single blended number hides exactly the failure mode described
+in rule 1 above.
 
 The **judgment step** (writing hooks + tags) is the only non-deterministic part.
 It is performed by an agent (Claude Code locally today, a Claude Cloud scheduled
