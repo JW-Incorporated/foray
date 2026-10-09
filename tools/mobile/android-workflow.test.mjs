@@ -113,11 +113,27 @@ const BUNDLE_ACTION_REL = ".github/actions/android-bundle/action.yml";
 const BUN = fs.readFileSync(path.join(ROOT, BUNDLE_ACTION_REL), "utf8");
 const BYML = code(BUN);
 
+/* THE EMULATOR BRING-UP BOTH EMULATOR LANES CALL (CH2-33). KVM, the SDK, the
+   AVD, the boot and the install/launch moved out of android-smoke.yml (and
+   android-playback.yml's comment-free copy) into
+   `.github/actions/android-emulator`, so the launch pins below read it: that
+   is the code the smoke job executes. The CH2-33 section pins the calls. */
+const EMULATOR_ACTION_REL = ".github/actions/android-emulator/action.yml";
+const EMU = fs.readFileSync(path.join(ROOT, EMULATOR_ACTION_REL), "utf8");
+const EYML = code(EMU);
+
 /** One composite step, comments stripped. A composite's steps sit at four
  *  spaces and `step()` splits at six (a workflow's), so the file is indented
  *  by two first; the steps themselves are unchanged. */
 function bundleActionStepCode(nameFragment) {
   const s = step(BUN.replace(/^/gm, "  "), nameFragment);
+  return s === null ? null : code(s);
+}
+
+/** One step of the android-emulator composite, comments stripped; same
+ *  re-indent as `bundleActionStepCode`. */
+function emulatorStepCode(nameFragment) {
+  const s = step(EMU.replace(/^/gm, "  "), nameFragment);
   return s === null ? null : code(s);
 }
 
@@ -452,7 +468,9 @@ test("no emulator is created, booted or installed", () => {
      shell PR. Asserting it is there stops the pair from drifting into "no
      emulator anywhere", which is how the launch check would be lost while this
      test stayed green and looked like the reason. */
-  assert.match(SYML, /avdmanager create avd/, "the emulator smoke test must exist somewhere — android-smoke.yml is where (A-02)");
+  /* CH2-33: the AVD is created in the android-emulator composite that
+     android-smoke.yml calls (pinned in the CH2-33 section). */
+  assert.match(EYML, /avdmanager create avd/, "the emulator smoke test must exist somewhere — android-smoke.yml, through the android-emulator composite, is where (A-02, CH2-33)");
 });
 
 /* ───────────── the two checks that ONLY a build can make ──────────────────── */
@@ -985,7 +1003,17 @@ test("every action is GitHub's own — including for the emulator, where it is t
     ["./.github/actions/android-bundle", "./.github/workflows/android-smoke.yml"],
     "the only local calls are the release composite and the smoke workflow"
   );
-  const actions = [...uses.filter((u) => !u.startsWith("./")), ...usesOf(SMK)];
+  /* CH2-33: android-smoke.yml's one local call is the emulator bring-up it
+     shares with android-playback.yml, and that composite uses no action at
+     all, so nothing third-party arrives through it. */
+  const smokeUses = usesOf(SMK);
+  assert.deepEqual(
+    [...new Set(smokeUses.filter((u) => u.startsWith("./")))],
+    ["./.github/actions/android-emulator"],
+    "the smoke's only local call is the android-emulator composite"
+  );
+  assert.deepEqual(usesOf(EMU), [], "the android-emulator composite calls no action");
+  const actions = [...uses.filter((u) => !u.startsWith("./")), ...smokeUses.filter((u) => !u.startsWith("./"))];
   assert.ok(actions.length >= 8, `expected at least eight actions across the two jobs, found ${actions.length}`);
   for (const u of actions) {
     assert.match(u, /^actions\/[\w-]+@v\d+$/, `${u} is not a major-pinned first-party actions/* action`);
@@ -1477,7 +1505,7 @@ test("every pipeline whose failure has a diagnostic can actually reach it", () =
      and the operator gets the tool's own error instead — which is exactly the
      shape android-build.yml's `find … || true` comment already records for the
      merged-manifest diagnostic. */
-  const launch = smokeStepCode("Install the app and start it");
+  const launch = emulatorStepCode("Install the app and start it");
   assert.match(launch, /adb install -r -g "\$APK"[^\n]*\|\| true/, "adb install exits non-zero on failure");
   assert.match(launch, /am start -W -n "\$PKG\/\.MainActivity"[^\n]*\|\| true/, "adb shell forwards am's status");
   const key = bundleActionStepCode("Materialise the upload key");
@@ -1648,7 +1676,7 @@ test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
      founder's own box, missing their system images. A grep for the name over
      that output is satisfied by an AVD the emulator cannot start, which is this
      same bug wearing a check. */
-  const s = smokeStepCode("name: Create the AVD");
+  const s = emulatorStepCode("name: Create the AVD");
   assert.ok(s, "no step creates the AVD and verifies it");
   assert.match(s, /avdmanager create avd/, "the AVD must be created");
   assert.match(
@@ -1688,7 +1716,7 @@ test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
   assert.match(s, /-d pixel_6/, "a device profile must be given so the interactive prompt never happens");
   assert.match(s, /< \/dev\/null/, "and stdin closed, so a prompt cannot hang the job");
   assert.equal(
-    /echo no \| avdmanager/.test(SYML),
+    /echo no \| avdmanager/.test(SYML + EYML),
     false,
     "`echo no | avdmanager` is the recipe that exited 0 and created nothing"
   );
@@ -1697,7 +1725,7 @@ test("THE AVD IS PROVEN TO EXIST BEFORE ANYTHING IS LAUNCHED", () => {
      resolve their root through different variables. */
   assert.match(s, /ANDROID_AVD_HOME="\$HOME\/\.android\/avd"/, "the AVD root must be pinned for both tools");
   /* AND IT IS A SEPARATE STEP FROM THE BOOT, so its verdict is its own. */
-  const boot = smokeStepCode("name: Boot it");
+  const boot = emulatorStepCode("name: Boot it");
   assert.ok(boot, "no step boots the emulator");
   assert.equal(
     /avdmanager create/.test(boot),
@@ -1717,7 +1745,7 @@ test("a dead emulator is noticed in seconds, not at the end of the timeout", () 
      a bad flag, no KVM, a corrupt image — blocks it for the full timeout with the
      answer already sitting in the log. Watching the pid it started turns every
      one of those into a failure in seconds. */
-  const s = smokeStepCode("name: Boot it");
+  const s = emulatorStepCode("name: Boot it");
   assert.match(s, /EMU_PID=\$!/, "the emulator's pid must be captured");
   assert.match(s, /kill -0 "\$EMU_PID"/, "and checked while waiting, or a dead emulator waits out the clock");
   assert.match(s, /getprop sys\.boot_completed/, "the boot must be waited for on sys.boot_completed");
@@ -1734,7 +1762,13 @@ test("the emulator image is NOT API 36, because that cost is measured", () => {
      so many words to pin an older API level. targetSdk is 36; the emulator's API
      level is not what this job tests, and paying §6.2's bill again to make it
      match a number would be paying it for nothing. */
-  assert.match(SMK, /EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64/);
+  /* CH2-33: the image is the android-emulator composite's
+     `system-images;android-<api-level>;google_apis;x86_64`, and the smoke
+     passes `api-level: 34`, so the MUTATION is now `api-level: 36`. */
+  assert.match(SYML, /^ {10}api-level: 34$/m, "the smoke boots API 34");
+  assert.equal((SYML.match(/^ {10}api-level: /gm) ?? []).length, 1, "and names exactly one API level");
+  assert.match(EYML, /EMULATOR_IMAGE="system-images;android-\$\{API_LEVEL\};google_apis;x86_64"/,
+    "the composite derives the image from the API level, so the level IS the image");
   assert.equal(
     /system-images;android-3[56]/.test(SYML),
     false,
@@ -1761,7 +1795,7 @@ test("KVM is enabled and ASSERTED, not hoped for", () => {
      (`test -c`, a real missing-KVM runner class) and one for "exists but still
      not writable" (`test -w`, the final gate after settle+retries). Both must
      still be able to fail the job independently. */
-  const s = smokeStepCode("Enable KVM");
+  const s = emulatorStepCode("Enable KVM");
   assert.ok(s, "nothing enables KVM");
   assert.match(s, /99-kvm4all\.rules/);
   assert.match(s, /udevadm settle/, "udevadm trigger only queues the change; settle must wait for it before the check runs");
@@ -1777,7 +1811,7 @@ test("the app is installed and started, and `am start` must report ok", () => {
      `Error type 3` on stdout and a zero exit status, so without reading the
      Status line the "launch" step is an echo. `-W` is what makes the Status line
      exist. `adb install` has the same shape and gets the same treatment. */
-  const s = smokeStepCode("Install the app and start it");
+  const s = emulatorStepCode("Install the app and start it");
   assert.ok(s, "no step installs and launches the app");
   assert.match(s, /adb install -r -g "\$APK"/);
   assert.match(s, /grep -q '\^Success'/, "adb install also prints failures to stdout and exits 0");
@@ -1932,6 +1966,8 @@ test("A-02: the smoke fires on android-build.yml's path set, the two bundled roo
     "tools/mobile/wire-signing.mjs",
     "tools/mobile/webview-probe.mjs",
     SMOKE_REL,
+    /* CH2-33: the emulator bring-up the smoke runs. MUTATION: drop it -> fails. */
+    ".github/actions/android-emulator/**",
   ]) {
     assert.ok(smokePaths.includes(p), `the smoke must still fire on ${p}`);
   }
@@ -1947,7 +1983,7 @@ test("A-02: the smoke fires on android-build.yml's path set, the two bundled roo
   for (const wide of ["data/**", "docs/**", "backend/**", "**", "test/**"]) {
     assert.equal(smokePaths.includes(wide), false, `${wide} would boot an emulator for a content PR`);
   }
-  assert.equal(smokePaths.length, 12, `exactly the twelve paths above, found: ${JSON.stringify(smokePaths)}`);
+  assert.equal(smokePaths.length, 13, `exactly the thirteen paths above, found: ${JSON.stringify(smokePaths)}`);
 });
 
 test("A-02: android-release.yml calls the smoke on a dispatch only, hands it no secret, and never chains it", () => {
@@ -1978,10 +2014,15 @@ test("A-02: the smoke never uploads to a store and reads no secret", () => {
      THE RULE THAT MAKES A WIDE TRIGGER SAFE. A job that runs on every app PR
      must not be a way to reach a credential or a store. The only thing it
      publishes is its own evidence directory, as a GitHub Actions artifact. */
-  assert.equal(/secrets\./.test(SYML), false, "the smoke job reads no secret, so it runs on any PR, fork or not");
-  assert.equal(/secrets:/.test(SYML), false, "and declares none for a caller to pass");
-  for (const store of ["upload-google-play", "upload-testflight", "altool", "fastlane", "PLAY_SERVICE_ACCOUNT_JSON"]) {
-    assert.equal(SYML.includes(store), false, `${store} would make the launch check an upload path`);
+  /* CH2-33: and the android-emulator composite it calls, which is code the
+     smoke job executes. MUTATION: add `KEY: ${{ secrets.X }}` to a composite
+     step's env -> fails. */
+  for (const [what, src] of [["the smoke job", SYML], ["the android-emulator composite", EYML]]) {
+    assert.equal(/secrets\./.test(src), false, `${what} reads no secret, so it runs on any PR, fork or not`);
+    assert.equal(/secrets:/.test(src), false, `${what} declares none for a caller to pass`);
+    for (const store of ["upload-google-play", "upload-testflight", "altool", "fastlane", "PLAY_SERVICE_ACCOUNT_JSON"]) {
+      assert.equal(src.includes(store), false, `${store} would make the launch check an upload path`);
+    }
   }
   const uploads = SYML.split(/\r?\n/).filter((l) => /uses: actions\/upload-artifact@/.test(l));
   assert.equal(uploads.length, 1, "exactly one artifact upload: the launch evidence");
@@ -2012,4 +2053,83 @@ test("A-02: the smoke's concurrency cancels superseded runs, apart from its call
   for (const w of ["write", "write-all", "packages:", "id-token"]) {
     assert.equal(perms.includes(w), false, `the smoke job has no reason to hold ${w}`);
   }
+});
+
+/* ───────── CH2-33: one emulator bring-up for both emulator lanes ────────────
+ *
+ * docs/roadmap/code-health-2.md CH2-33 (T2-08). android-playback.yml carried
+ * android-smoke.yml's KVM, SDK, AVD, boot and install steps verbatim, ~250
+ * lines of shell, kept equal by a byte-for-byte test but written twice. They
+ * are `.github/actions/android-emulator` now, called in three stages (`sdk`,
+ * `boot`, `launch`) because each job does its own work between them.
+ */
+
+/** The `stage:` of every android-emulator call in a workflow, in file order
+ *  (code only, so a comment cannot add a call). */
+function emulatorStages(src) {
+  return code(src)
+    .split(/\n(?= {6}- (?:name|uses):)/)
+    .filter((c) => /^ {8}uses: \.\/\.github\/actions\/android-emulator$/m.test(c) || /^ {6}- uses: \.\/\.github\/actions\/android-emulator$/m.test(c))
+    .map((c) => /^ {10}stage: (\S+)$/m.exec(c)?.[1] ?? null);
+}
+
+test("CH2-33: both emulator lanes boot through the android-emulator composite, and neither carries an emulator step of its own", () => {
+  /* MUTATION (RUN): paste the composite's `Boot it` step back into
+     android-playback.yml (or android-smoke.yml) -> fails: an inline emulator
+     step in one workflow is the drift this card removed.
+     MUTATION (RUN): drop the `launch` call from android-smoke.yml -> fails.
+     MUTATION (RUN): give the launch call no `id: launch` -> fails (every
+     scenario and the smoke summary read `steps.launch.outcome`). */
+  const PLAY = fs.readFileSync(path.join(ROOT, ".github/workflows/android-playback.yml"), "utf8");
+  for (const [name, src] of [["android-smoke.yml", SMK], ["android-playback.yml", PLAY]]) {
+    assert.deepEqual(emulatorStages(src), ["sdk", "boot", "launch"], `${name} calls the composite once per stage, in order`);
+    const yml = code(src);
+    for (const inline of ["avdmanager", "emulator -avd", "udevadm", "sdkmanager", "adb install", "am start -W"]) {
+      assert.equal(yml.includes(inline), false, `${name} runs \`${inline}\` itself; the bring-up is the composite's`);
+    }
+    const launch = step(src, "name: Install the app and start it");
+    assert.ok(launch, `${name} has no launch call`);
+    assert.match(code(launch), /^ {8}id: launch$/m, `${name}'s launch call is \`steps.launch\``);
+    assert.match(code(launch), /^ {10}apk: \$\{\{ env\.APK \}\}$/m, `${name} installs the APK its build step exported`);
+    assert.match(code(launch), /^ {10}package: \$\{\{ env\.PKG \}\}$/m);
+    /* The APK is built between `sdk` and `boot`, so the build needs the SDK
+       and the boot needs nothing the build did not finish. */
+    const at = (needle) => src.indexOf(needle);
+    assert.ok(at("stage: sdk") < at("- name: Build the webDir") && at("- name: Build the webDir") < at("stage: boot"),
+      `${name} builds its APK between the sdk and boot stages`);
+  }
+  /* The composite's own shape: the five steps it took over, each its own
+     verdict, each gated on its stage, and no action or secret inside it. */
+  for (const [name, stage] of [
+    ["Enable KVM", "sdk"],
+    ["The Android SDK, plus the emulator", "sdk"],
+    ["name: Create the AVD", "boot"],
+    ["name: Boot it", "boot"],
+    ["Install the app and start it", "launch"],
+  ]) {
+    const s = emulatorStepCode(name);
+    assert.ok(s, `the composite has no "${name}" step`);
+    assert.match(s, new RegExp(`^ {8}if: inputs\\.stage == '${stage}'$`, "m"), `"${name}" runs in the ${stage} stage only`);
+    assert.match(s, /^ {8}shell: bash$/m, "a composite run step must name its shell");
+  }
+  assert.match(EMU, /^ {2}using: "composite"$/m);
+  for (const exported of ["ART", "ANDROID_HOME", "SDK_PLATFORM", "SDK_BUILD_TOOLS", "EMULATOR_IMAGE", "ANDROID_AVD_HOME", "AVD_NAME"]) {
+    assert.match(EYML, new RegExp(`echo "${exported}=`), `the composite exports ${exported} for the stages and steps after it`);
+  }
+});
+
+test("CH2-33: the composite refuses a stage it does not know, and a later stage run without the sdk stage", () => {
+  /* MUTATION (RUN): delete the `*)` arm's `exit 1` -> fails: a typo'd stage
+     would skip every gated step and report the bring-up green.
+     MUTATION (RUN): gate the guard on `inputs.stage == 'sdk'` -> fails. */
+  const guard = emulatorStepCode("The stage is one this action knows");
+  assert.ok(guard, "the composite has no stage guard");
+  assert.equal(/^ {8}if:/m.test(guard), false, "the guard runs on every call");
+  assert.ok(EYML.indexOf("The stage is one this action knows") < EYML.indexOf("Enable KVM"), "and first");
+  assert.match(guard, /^ {12}\*\)\n {14}echo "unknown stage[^\n]*\n {14}exit 1$/m, "an unknown stage fails the call");
+  assert.match(guard, /stage sdk needs api-level/);
+  assert.match(guard, /\[\[ "\$API_LEVEL" =~ \^\[0-9\]\+\$ \]\]/, "the API level is a number, so the image name is well formed");
+  assert.match(guard, /ART or EMULATOR_IMAGE is unset/, "boot without sdk fails here, not in avdmanager");
+  assert.match(guard, /stage launch needs apk and package/);
+  assert.equal(failureClauses(guard), 6, "every refusal can fail the call");
 });
