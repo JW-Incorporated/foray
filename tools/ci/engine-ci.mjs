@@ -419,40 +419,33 @@ export function releaseDispatchPlan({ byName = {}, refName, defaultBranch, branc
 
 /* ─────────────────────────────── GitHub API ───────────────────────────────── */
 
-function githubGetter(env = process.env) {
+/** The GitHub API, as `{ get, post }` over ONE header object: the reads
+ *  (ios-gate, release-checks) and the one write (release-checks' ci.yml
+ *  dispatch) cannot drift onto different auth or API versions (CH2-23, T2-17).
+ *  `get` returns the parsed body; `post` sends JSON and returns nothing. */
+export function github(env = process.env, fetchImpl = globalThis.fetch) {
   const token = env.GITHUB_TOKEN || env.GH_TOKEN;
   const api = env.GITHUB_API_URL || "https://api.github.com";
   if (!token) throw new Error("GITHUB_TOKEN is not set");
-  return async (route) => {
-    const res = await fetch(`${api}${route}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
-    if (!res.ok) throw new Error(`GET ${route} -> ${res.status}`);
-    return res.json();
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
   };
-}
-
-/** POST, for the one write this file makes: release-checks' ci.yml dispatch. */
-function githubPoster(env = process.env) {
-  const token = env.GITHUB_TOKEN || env.GH_TOKEN;
-  const api = env.GITHUB_API_URL || "https://api.github.com";
-  if (!token) throw new Error("GITHUB_TOKEN is not set");
-  return async (route, body) => {
-    const res = await fetch(`${api}${route}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`POST ${route} -> ${res.status}`);
+  return {
+    async get(route) {
+      const res = await fetchImpl(`${api}${route}`, { headers });
+      if (!res.ok) throw new Error(`GET ${route} -> ${res.status}`);
+      return res.json();
+    },
+    async post(route, body) {
+      const res = await fetchImpl(`${api}${route}`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error(`POST ${route} -> ${res.status}`);
+    },
   };
 }
 
@@ -510,7 +503,7 @@ async function main(argv) {
     if (!swiftChanged) {
       verdict = iosGateVerdict({ swiftChanged, job: null });
     } else {
-      const get = githubGetter(env);
+      const { get } = github(env);
       const route = `/repos/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}/jobs?filter=latest&per_page=100`;
       verdict = await pollUntilDone({
         fetchOnce: async () => (await get(route)).jobs?.find((j) => j.name === "ios-kit") ?? null,
@@ -530,7 +523,7 @@ async function main(argv) {
       console.error(`release-checks: '${sha}' is not a commit SHA`);
       return 2;
     }
-    const get = githubGetter(env);
+    const { get, post } = github(env);
     const repo = env.GITHUB_REPOSITORY;
     const fetchChecks = async () => {
       const byName = {};
@@ -551,7 +544,7 @@ async function main(argv) {
       const plan = releaseDispatchPlan({ byName: await fetchChecks(), refName: env.REF_NAME, defaultBranch, branchHeadSha, sha });
       console.log(`release-checks: ${plan.reason}`);
       if (plan.dispatch) {
-        await githubPoster(env)(`/repos/${repo}/actions/workflows/ci.yml/dispatches`, { ref: defaultBranch });
+        await post(`/repos/${repo}/actions/workflows/ci.yml/dispatches`, { ref: defaultBranch });
       }
     } catch (e) {
       console.log(`release-checks: could not dispatch ci.yml (${e instanceof Error ? e.message : e}); waiting for checks as before`);
