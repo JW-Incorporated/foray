@@ -1218,7 +1218,7 @@ test("Stop while ANOTHER sheet is open does not un-inert the topbar behind that 
      MUTATION 1: make `if (wasExpanded) releaseBarAndTopbar();` unconditional again -> the first case is red (gear and
      menu clickable behind the Delete sheet). MUTATION 2: delete the call -> the second case is red (Stop from the
      expanded sheet leaves the gear inert and the next mini bar aria-hidden). */
-  const grab = (re, what) => { const hit = re.exec(CLIENT_SRC); assert.ok(hit, `${what} is in client.js`); return hit[0]; };
+  const grab = (re, what) => { const hit = re.exec(CLIENT_SRC.replace(/\r\n/g, "\n")); assert.ok(hit, `${what} is in client.js`); return hit[0]; };
   const release = grab(/function releaseBarAndTopbar\(\) \{[\s\S]*?\n\}\n/, "releaseBarAndTopbar");
   const stop = grab(/async function stopAndClose\([^)]*\) \{[\s\S]*?\n\}\n/, "stopAndClose");
   const build = (m, ui) => {
