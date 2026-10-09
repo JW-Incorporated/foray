@@ -156,8 +156,8 @@ describe("report.json is merged across re-runs", () => {
 
 /* CH2-25 / B2-14: the two generation CLIs used to default to different author
    ids ("founder" and "founder-1") and spell the flag two ways (`--author-id`
-   and `--author`), and `author_id` is the key `BudgetGuard` sums the daily
-   spend by. Both now read one flag and default to one constant. */
+   and `--author`), and `author_id` is the `userId` every cost event
+   `BudgetGuard` records is attributed to. Both now read one flag and default to one constant. */
 describe("author id flag and default (B2-14)", () => {
   const BATCH = ["--prompts", "p.json"];
   const SINGLE = ["--prompt", "Mercury", "--duration", "short"];
@@ -202,6 +202,6 @@ describe("author id flag and default (B2-14)", () => {
       await guard.checkAndRecord({ userId, operation: "voice_intent", provider: "stub", estimatedUsd: 0.5 });
     }
     expect(new Set((await sink.all()).map((e) => e.userId))).toEqual(new Set([DEFAULT_AUTHOR_ID]));
-    expect(await guard.spentToday(DEFAULT_AUTHOR_ID)).toBe(1);
+    expect(await guard.spentThisRun()).toBe(1);
   });
 });

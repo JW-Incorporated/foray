@@ -20,9 +20,9 @@ export type GenerationRequest = z.infer<typeof GenerationRequestSchema>;
 
 /**
  * The `author_id` both generation CLIs (`generate-foray`, `generate-forays`)
- * record when no flag names one (CH2-25 / B2-14). It is the key `BudgetGuard`
- * sums the daily spend by, so the two must agree or one founder's spend is
- * split across two users. "founder-1" is the batch driver's long-standing
+ * record when no flag names one (CH2-25 / B2-14). It is the `userId` every
+ * cost event `BudgetGuard` records is attributed to, so the two must agree or
+ * one founder's spend is split across two users. "founder-1" is the batch driver's long-standing
  * default — the CLI that spends — so its key does not move.
  */
 export const DEFAULT_AUTHOR_ID = "founder-1";
