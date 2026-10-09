@@ -3034,6 +3034,13 @@ const BACKEND_FLOORS = {
      are compared on apostrophe variants, punctuation, NFKC and whitespace, and
      today's canonical form is pinned on both. */
   "test/anchorTextParity.test.ts": 2,
+  /* CH2-28 (B1-04, T1-10): backend/src/feeds/conditionalGet.ts and
+     tools/poll/fetch-feed.mjs run against one loopback server -- identical
+     results for 200/304/500/declared-oversize/endless, the same request
+     headers, BOTH cancel a non-2xx body (the TS did not), the same default
+     cap and 15 s timeout, and fetch-feed's BOM decode equal to fetch-limits'
+     reader (the TS keeping the BOM is pinned as a named divergence). */
+  "test/fetchFeedParity.test.ts": 7,
   /* F-82 (generation run 6): a connective page cites the adjacent tape it
      restates. A page holds the windows of BOTH segments beside it in play
      order (across slot edges), the prefetch stage keys on them so the hit
