@@ -41,8 +41,9 @@
      FOLD_TAXONOMY_PATH   default data/taxonomy.json                          */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const envPath = (name, fallback) => (process.env[name] ? resolvePath(process.env[name]) : join(ROOT, fallback));
@@ -96,6 +97,6 @@ export function main(argv = process.argv.slice(2)) {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   process.exitCode = main();
 }

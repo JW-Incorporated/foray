@@ -46,6 +46,7 @@ import nodeFs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { DEFAULT_THRESHOLD_HOURS, digestDate } from "./watch-nightly.mjs";
 import { MERGE_SUMMARY } from "./merge.mjs";
@@ -317,8 +318,7 @@ export function run(argv, deps = {}) {
   return { code: EXIT.USAGE, text: `UNKNOWN_COMMAND ${command ?? "(none)"}\n${USAGE}` };
 }
 
-const invokedDirectly =
-  process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/refresh/nightly-runner.mjs");
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   const { code, text } = run(process.argv.slice(2));
   process.stdout.write(text);

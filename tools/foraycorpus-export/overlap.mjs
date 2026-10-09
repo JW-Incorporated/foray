@@ -25,8 +25,8 @@
    into export.mjs. */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { ROOT } from "./config.mjs";
@@ -98,7 +98,7 @@ function main(argv) {
   console.log(JSON.stringify(computeOverlap(readShowsJsonl(values.shows), breadthDoc), null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   try {
     main(process.argv.slice(2));
   } catch (e) {

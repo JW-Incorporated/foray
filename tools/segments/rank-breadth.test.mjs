@@ -412,9 +412,12 @@ test("the ranker has no network path at all", () => {
   assert.deepEqual(src.match(/(?<!\w)fetch\s*\(/g), null);
   assert.deepEqual(src.match(/(?<!\w)(?:request|get)\s*\(\s*["'`]?https?:/g), null);
   assert.equal(/politeness\.mjs/.test(src), false, "nothing to be polite about — it makes no requests");
-  // Only node builtins. A transitive import is a transitive network path.
-  const imports = [...src.matchAll(/^import .*? from "([^"]+)";$/gm)].map((m) => m[1]);
-  assert.deepEqual(imports, ["node:fs", "node:url", "node:path"]);
+  // Only node builtins. A transitive import is a transitive network path. The
+  // one local import is the entry guard (CH2-41b), itself builtins-only.
+  const importsOf = (text) => [...text.matchAll(/^import .*? from "([^"]+)";$/gm)].map((m) => m[1]);
+  assert.deepEqual(importsOf(src), ["node:fs", "node:url", "node:path", "../ci/entry.mjs"]);
+  const entry = readFileSync(new URL("../ci/entry.mjs", import.meta.url), "utf8");
+  assert.deepEqual(importsOf(entry).filter((m) => !m.startsWith("node:")), [], "tools/ci/entry.mjs imports only node builtins");
 });
 
 /* MUTATION: go back to `avPaths.filter(existsSync).map(readJson)`, which is

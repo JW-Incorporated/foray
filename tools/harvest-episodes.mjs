@@ -7,9 +7,10 @@
    Usage: node tools/harvest-episodes.mjs [--top N] [--out path]           */
 
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { gzipSync } from "node:zlib";
+import { isEntryScript } from "./ci/entry.mjs";
 import { UA } from "./segments/politeness.mjs";
 import { durationMinutes } from "./refresh/enclosure.mjs";
 import { fetchFeedCapped } from "./refresh/fetch-limits.mjs";
@@ -142,6 +143,6 @@ async function main() {
   console.log("ARCHIVE_COMPLETE");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch(e => { console.error("FATAL:", e); process.exit(1); });
 }

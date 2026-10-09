@@ -44,7 +44,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import copyRules from "../../backend/src/copy/rules.js";
 import { episodeTopics, topicSource } from "./topics.mjs";
 import { minutesFromSeconds } from "../check-durations.mjs";
@@ -238,8 +238,10 @@ export function run() {
   return 0;
 }
 
-/* Entry guard (CH2-14). merge.mjs was top-level script code, so importing it
-   ran a merge. `pathToFileURL` is the form tools/entrypoint-guards.test.mjs
-   blesses; a `file://` template is silently false on Windows. exitCode, not
-   process.exit(), so the summary lines finish flushing to a pipe first. */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) process.exitCode = run();
+/* Entry guard (CH2-14; isEntryScript since CH2-41b). merge.mjs was top-level
+   script code, so importing it ran a merge. tools/ci/entry.mjs's guard is the
+   one form tools/entrypoint-guards.test.mjs allows; a `file://` template is
+   silently false on Windows, a pathToFileURL comparison through a junction.
+   exitCode, not process.exit(), so the summary lines finish flushing to a pipe
+   first. */
+if (isEntryScript(import.meta.url)) process.exitCode = run();

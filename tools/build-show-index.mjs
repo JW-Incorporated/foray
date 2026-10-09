@@ -161,9 +161,10 @@
    Usage: node tools/build-show-index.mjs [--out path] [--check] [--max-rank n] */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { isEntryScript } from "./ci/entry.mjs";
 import { isChartRank, rankByAppleId } from "./harvest-merge.mjs";
 
 /* The client's own fold, not a copy of it: the sort key here and the lookup
@@ -300,9 +301,8 @@ function main() {
   console.log(`wrote ${path.relative(ROOT, outPath)}: ${rows.length} shows, ${text.length} B (max chart_rank ${maxRank}).`);
 }
 
-/* `pathToFileURL`, not a `file://${argv[1]}` template — the template form is
-   what tools/build-catalog-client.mjs uses and it is silently FALSE on Windows
-   (a `C:\…` path is not `file://C:\…`), so the script would exit 0 having
-   written nothing. tools/ci/path-policy.mjs already uses this form; matched to
-   it rather than to the older neighbour. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();
+/* tools/ci/entry.mjs's guard, not a `file://${argv[1]}` template (silently
+   FALSE on Windows: a `C:\…` path is not `file://C:\…`) nor a pathToFileURL
+   comparison (false through a junction), either of which would exit 0 having
+   written nothing. See tools/entrypoint-guards.test.mjs. */
+if (isEntryScript(import.meta.url)) main();

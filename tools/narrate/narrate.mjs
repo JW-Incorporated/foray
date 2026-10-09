@@ -23,6 +23,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { createAdapter, costOf, DEFAULT_MODEL_ID, DEFAULT_OUTPUT_FORMAT } from "./adapter.mjs";
 import { NarrationCache } from "./cache.mjs";
 import { projectForay, tierFor, SPINE, BUDGETS } from "./projection.mjs";
@@ -184,6 +185,6 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (isEntryScript(import.meta.url)) {
   process.exit(main(process.argv));
 }

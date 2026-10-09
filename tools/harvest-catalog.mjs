@@ -15,6 +15,7 @@
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { isEntryScript } from "./ci/entry.mjs";
 import { writeMergedHarvest, politeFetchJson } from "./harvest-merge.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -190,4 +191,4 @@ async function main() {
   console.log("HARVEST_COMPLETE");
 }
 
-main().catch(e => { console.error("FATAL:", e); process.exit(1); });
+if (isEntryScript(import.meta.url)) main().catch(e => { console.error("FATAL:", e); process.exit(1); });

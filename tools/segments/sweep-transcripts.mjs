@@ -86,8 +86,9 @@
      CATALOG_PATH, AVAILABILITY_PATH, TRANSCRIPT_PROGRESS_PATH                */
 
 import { readFileSync, writeFileSync, renameSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import { durationSeconds, enclosureLengthBytes, hostOf } from "../refresh/enclosure.mjs";
 import { classifyShow, isDaiHost } from "../refresh/dai.mjs";
 import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
@@ -726,7 +727,7 @@ async function main() {
   console.log(`SWEEP_COMPLETE: ${outPath}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error("FATAL:", e instanceof SweepError ? e.message : e);
     process.exit(1);

@@ -22,10 +22,10 @@
    hand-downloaded/extracted sqlite db stands in for a real network fetch,
    so this file's own tests and CI's `db` job never touch the real 1.8GB
    dump either. */
-import { pathToFileURL } from "node:url";
 import { from as copyFrom } from "pg-copy-streams";
 import { Readable } from "node:stream";
 import { pipeline as streamPipeline } from "node:stream/promises";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import {
   DATABASE_URL_VARS, checkMissingMapping, checksumFile, loadCuratedShows, resolveDatabaseUrl,
@@ -440,7 +440,7 @@ async function main() {
   console.log("LOAD_COMPLETE");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error("FATAL:", e);
     process.exit(1);

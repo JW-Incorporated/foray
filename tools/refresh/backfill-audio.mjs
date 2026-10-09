@@ -34,8 +34,9 @@
    feeds; corner case #8 wants per-host politeness, hence the throttle.        */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { minutesFromSeconds } from "../check-durations.mjs";
@@ -346,6 +347,6 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => { console.error("FATAL:", e); process.exit(1); });
 }

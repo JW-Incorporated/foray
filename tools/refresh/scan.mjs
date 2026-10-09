@@ -36,6 +36,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createHash } from "node:crypto";
+import { isEntryScript } from "../ci/entry.mjs";
 import { feedParser, itemIdentity, itemToPendingRecord } from "./feed-xml.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { fetchFeedCapped, capItems } from "./fetch-limits.mjs";
@@ -165,4 +166,4 @@ async function main() {
   console.log("REFRESH_SCAN_COMPLETE");
 }
 
-main().catch((e) => { console.error("FATAL:", e); process.exit(1); });
+if (isEntryScript(import.meta.url)) main().catch((e) => { console.error("FATAL:", e); process.exit(1); });

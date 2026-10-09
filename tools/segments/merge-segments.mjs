@@ -97,6 +97,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import copyRules from "../../backend/src/copy/rules.js";
 import { normalize } from "./transcript-normalize.mjs";
 
@@ -709,5 +710,5 @@ function main() {
   console.log(`SEGMENT_MERGE_COMPLETE: batch_id=${batch.batch_id} merged=${outcome.merged} rejected=${outcome.rejected}`);
 }
 
-const invokedDirectly = process.argv[1] && resolvePath(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) main();

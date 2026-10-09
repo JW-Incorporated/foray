@@ -46,7 +46,8 @@
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 import { NIGHTLY_UA } from "../segments/politeness.mjs";
 
@@ -414,6 +415,6 @@ async function main() {
   for (const d of out.dropped) console.log(`  drop: ${d.show} :: ${d.title} :: ${d.reason}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => { console.error("FATAL:", e); process.exit(1); });
 }

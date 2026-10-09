@@ -23,8 +23,9 @@
    Usage: node tools/build-catalog-client.mjs [--out path] [--check] */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { isEntryScript } from "./ci/entry.mjs";
 import { rankByAppleId } from "./harvest-merge.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -129,7 +130,7 @@ function main() {
   console.log(`wrote ${path.relative(ROOT, outPath)}: ${client.shows.length} shows, ${text.length} B.`);
 }
 
-/* THE ENTRYPOINT GUARD, AND WHY IT IS `pathToFileURL` AND NOT A TEMPLATE STRING.
+/* THE ENTRYPOINT GUARD, AND WHY IT IS `isEntryScript` AND NOT A TEMPLATE STRING.
    This line used to read:
 
        if (import.meta.url === `file://${process.argv[1]}`) main();
@@ -143,13 +144,11 @@ function main() {
    have passed its own gate on every developer machine in this project (all
    Windows) and only failed on a Linux runner, if at all.
 
-   `pathToFileURL` produces the same percent-encoded, forward-slashed, drive-
-   lettered URL Node puts in `import.meta.url`, so the comparison is true on
-   both platforms. It is the idiom every other `.mjs` in this repo already used
-   — this file was the last holdout (`tools/build-show-index.mjs`'s header says
-   so in as many words), which is why the bug survived: the fleet was right and
-   the one exception was silent.
-
-   The `process.argv[1] &&` guard matters for `node --eval`, where argv[1] is
-   undefined and `pathToFileURL(undefined)` throws. */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+   The fix that followed, `import.meta.url === pathToFileURL(process.argv[1]).href`,
+   cured the slashes but not junctions: Node realpaths the main module before it
+   builds `import.meta.url` and only makes `process.argv[1]` absolute, so from a
+   Windows junction or a symlinked checkout it was false too (code-health T2-04).
+   `isEntryScript` (tools/ci/entry.mjs) realpaths both sides and answers false
+   when there is no argv[1] (`node --eval`); since CH2-41b it is the one guard
+   every CLI under tools/ uses, and tools/entrypoint-guards.test.mjs holds them to it. */
+if (isEntryScript(import.meta.url)) main();

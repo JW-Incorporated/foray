@@ -43,6 +43,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 /* Shared with backend/test/copyRules.test.ts and tools/refresh/merge.mjs, which
  * imports it exactly this way. Imported, not re-declared: two independently
@@ -1971,7 +1972,7 @@ export function loadFiles(root = REPO_ROOT) {
 
 /* --------------------------------------------------------------------- cli */
 
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   const json = process.argv.includes("--json");
   const rootFlag = process.argv.indexOf("--root");

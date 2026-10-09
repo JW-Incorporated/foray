@@ -78,7 +78,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, openSync, readSync, closeSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 /* IMPORTED, NEVER RESTATED -- the eighth duplicated implementation is always
    one convenience away. `fetchEpisode` is the repo's enclosure downloader with
@@ -1136,7 +1137,7 @@ rewrote ${REPORT_PATH} from stored measurements — no download`);
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).then(
     (code) => process.exit(code),
     (err) => {

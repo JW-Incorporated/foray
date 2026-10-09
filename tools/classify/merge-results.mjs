@@ -62,8 +62,9 @@
      PROGRESS_PATH                (default data/classify-progress.json)   */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import copyRules from "../../backend/src/copy/rules.js";
 import { LABEL_SCHEMA_VERSION, mergeTranscriptLabels, classifyProgressPath } from "./labels.mjs";
 import { decodeEntities } from "../refresh/entities.mjs";
@@ -286,6 +287,6 @@ function main() {
 }
 
 /* Only run as a script, so validateResult can be imported by the suites. */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main();
 }
