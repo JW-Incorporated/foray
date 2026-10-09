@@ -69,7 +69,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { MANIFEST_NAME, decodePlist } from "./inject-privacy-manifest.mjs";
 import { isBinaryPlist, readPlistXml } from "./ios-embedded-frameworks.mjs";
 
@@ -275,8 +275,7 @@ export function dependenciesOf(mobileDir) {
   return new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})]);
 }
 
-const isMain =
-  process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 const USAGE = "Usage: node tools/mobile/privacy-manifest-report.mjs <path/to/App.app> [--mobile <mobile>]";
 

@@ -35,7 +35,7 @@
 import { execFile } from "node:child_process";
 import { appendFile } from "node:fs/promises";
 import { promisify } from "node:util";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "./entry.mjs";
 
 const execFileP = promisify(execFile);
 
@@ -212,7 +212,7 @@ async function main() {
   return 1;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().then(
     (code) => process.exit(code),
     (e) => {

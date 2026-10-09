@@ -313,7 +313,7 @@ test("REAL REPO: the catalogue module is a stamp module, so Vercel builds when i
 
 // ------------------------------------------------------------ the real CLI --
 
-const CLI_MODULES = ["generate-manifest.mjs", "crlf-guard.mjs", "forays-directory.mjs", "catalogue-directory.mjs"];
+const CLI_MODULES = ["generate-manifest.mjs", "entry.mjs", "crlf-guard.mjs", "forays-directory.mjs", "catalogue-directory.mjs"];
 const EPOCH = "1759633200"; // 2025-10-05T03:00:00Z — pins built_at for the CLI runs
 
 const CATALOGUE_BY_PATH = Object.fromEntries(Object.entries(CATALOGUE_FILES).map(([k, rel]) => [rel, BODIES[k]]));
