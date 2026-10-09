@@ -1408,7 +1408,7 @@ const FLOORS = {
      Text assertions over workflow YAML — the same idiom as
      tools/mobile/ios-workflow.test.mjs, and the same honest limit: it catches a
      step being deleted, not a step that runs and does nothing. */
-  "tools/ci/lab-build-workflow.test.mjs": 14, // Redesign 2026 phase 0e: lab-build.yml -- the guard script is EXTRACTED AND RUN under bash over a ref matrix (main, v*, tags, SHAs, non-redesign branches refused, also with the allow-list removed; dispatch only from main), dispatch is the only trigger, the iOS job uses the LAB profile, Android the lab package, every checkout builds inputs.ref, the lab-path check precedes each action
+  "tools/ci/lab-build-workflow.test.mjs": 18, // Redesign 2026 phase 0e: lab-build.yml -- the guard script is EXTRACTED AND RUN under bash over a ref matrix (main, v*, tags, SHAs, non-redesign branches refused, also with the allow-list removed; dispatch only from main), dispatch is the only trigger, the iOS job uses the LAB profile, Android the lab package, every checkout builds inputs.ref, the lab-path check precedes each action
   "tools/ci/ci-workflow.test.mjs": 18, // round-3 L7: +5 -- security-3 (read-only ci.yml, every workflow declares permissions), tests-4 (timeout-minutes on every job), ci-release-11 (npm ci in the api job), arch-drift-12 (api typecheck before its tests); 13 -> 18 // NE-06: +8 -- engine-parity (swift:5.10, parity env, family table, no dispatch skip, step-level short-circuit on an explicit "false" only), engine-paths, ios-gate on every event, and ios-kit running on a Swift dispatch; 5 -> 13
   /* The native engine's CI gates (NE-06, docs/native-engine-plan.md §6.8):
      the changed-path classifier whose every "could not tell" is "everything
