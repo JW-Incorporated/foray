@@ -459,6 +459,9 @@ test("writeBuildOutput: under the unmapped ceiling it warns naming the show, bui
   // checkMissingMapping (shared with load-postgres.mjs).
   // MUTATION: drop the under-ceiling console.warn in checkMissingMapping -> red.
   // MUTATION: `curatedTotal` not returned to writeBuildOutput (manifest total undefined) -> red.
+  // MUTATION (CH2-31): drop `export_version: exportVersion,` from writeBuildOutput's
+  // manifest -> red. manifest.json's export_version is the build -> publish hand-off
+  // (run-and-publish.mjs tags the release from it), so it is pinned here, on disk too.
   const rows = Array.from({ length: 20 }, (_, i) =>
     fixtureRow({ id: i + 1, url: `https://feeds.example.com/s${i}`, title: `Distinct Show ${i}`, itunesAuthor: `Author ${i}` }));
   const curatedShows = [
@@ -474,6 +477,8 @@ test("writeBuildOutput: under the unmapped ceiling it warns naming the show, bui
     const result = runPipeline(db, { curatedShows, now: NOW });
     assert.equal(result.missing.length, 1);
     const manifest = await writeBuildOutput(result, { outDir, exportVersion: "v1", builtAt: "2026-09-05T00:00:00.000Z" });
+    assert.equal(manifest.export_version, "v1");
+    assert.equal(JSON.parse(readFileSync(join(outDir, "manifest.json"), "utf8")).export_version, "v1");
     assert.equal(manifest.curated.total, 21);
     assert.equal(manifest.curated.mapped, 20);
     assert.deepEqual(manifest.curated.unmapped, [{ show_id: "ghost-show", title: "Ghost Show" }]);
@@ -505,4 +510,16 @@ test("checksumFile streams a sha256 of the dump, and import-dump.mjs hashes --du
   assert.match(src, /import \{[^}]*\bchecksumFile\b[^}]*\} from "\.\/config\.mjs"/);
   assert.match(src, /await checksumFile\(dumpFileArg\)/);
   assert.doesNotMatch(src, /createReadStream/);
+});
+
+test("CH2-31: no local already-built marker — import-dump.mjs always builds, releaseExists is the one idempotency rule", () => {
+  /* T1-15: state.mjs's "durable" marker file was never committed or
+     cached, so its SKIP branch could fire only on a persistent workstation.
+     It is deleted; this is the honest guard for the deletion.
+     MUTATION: put `import { alreadyBuilt } from "./state.mjs"` (or an
+     alreadyBuilt check) back in import-dump.mjs -> red. Ran it: red. */
+  const src = readFileSync(new URL("./import-dump.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /\balreadyBuilt\b/);
+  assert.doesNotMatch(src, /\.\/state\.mjs/);
+  assert.doesNotMatch(src, /^\s*console\.log\(`SKIP:/m);
 });
