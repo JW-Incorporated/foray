@@ -8,7 +8,11 @@
    in politeness.test.mjs's pattern: it reads backend/src/feeds/conditionalGet.ts
    and backend/src/feeds/userAgent.ts as TEXT (this suite runs with no TS loader),
    so a constant changed on either side alone is a red suite. The rest talk to a
-   node:http server on 127.0.0.1:0 -- loopback only, never a real publisher. */
+   node:http server on 127.0.0.1:0 -- loopback only, never a real publisher.
+   The behavioural pin across the two runtimes (same loopback server, identical
+   results, both cancel a non-2xx body, same default cap and timeout) is
+   backend/test/fetchFeedParity.test.ts (CH2-28); this suite keeps the cheap
+   text pin and the .mjs-only cases. */
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -39,7 +43,8 @@ async function withServer(handler, fn) {
 }
 
 test("the port's constants equal backend/src/feeds/conditionalGet.ts and userAgent.ts", () => {
-  // MUTATION: `MAX_FEED_BYTES = 20 * 1024 * 1024` -> `21 * 1024 * 1024` in fetch-feed.mjs -> red.
+  // MUTATION: `MAX_FEED_BYTES = 20 * 1024 * 1024` -> `21 * 1024 * 1024` in tools/refresh/fetch-limits.mjs
+  // (fetch-feed.mjs re-exports it since CH2-28) -> red.
   // MUTATION: `DEFAULT_TIMEOUT_MS = 15_000` -> `15_001` -> red.
   // MUTATION: drop "; contact wjduvall@gmail.com" from DEFAULT_FEED_USER_AGENT -> red.
   const cond = fs.readFileSync(COND_TS, "utf8");
@@ -138,7 +143,8 @@ test("a declared Content-Length above the cap is rejected before the body is rea
 });
 
 test("a body with no Content-Length is aborted mid-stream past maxBytes", async () => {
-  // MUTATION: `if (total > maxBytes)` -> `if (false)` in readBodyCapped -> red (body returned, status 200).
+  // MUTATION: `if (total > maxBytes)` -> `if (false)` in fetch-limits.mjs's readBodyCapped (the reader
+  // fetch-feed.mjs imports since CH2-28) -> red (body returned, status 200).
   let written = 0;
   await withServer(
     (req, res) => {

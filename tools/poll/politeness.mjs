@@ -22,8 +22,8 @@
    - recordSuccess clears the failure count and the block (not the spacing).
    - hostOf lowercases the URL's hostname and returns the input unchanged when
      it does not parse.
-   The TS file's KNOWN_DAI_HOSTS / hostSuggestsDai are not part of the budget
-   and are not ported. */
+   The TS file's hostSuggestsDai (which reads tools/refresh/dai-hosts.json) is
+   not part of the budget and is not ported. */
 
 export const DEFAULT_CONFIG = Object.freeze({
   minIntervalMs: 2000,
