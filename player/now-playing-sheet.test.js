@@ -1145,6 +1145,23 @@ test("a crowded code row drops the narrowest run's code instead of cramming it, 
   assert.deepStrictEqual(dial.fitCodes(sparse, sparse.map(() => size), [50, 50, 50, 50], sparse.map(() => false), 345), [true, true, true, true]);
 });
 
+test("the code row's computed spread is DRAWN: the JS sets --dx and .np__code translates by it", () => {
+  /* The spread (dialSpreadCodes) was computed and written to --dx, but nothing read --dx, so every kept code sat at its
+     raw --x and the planned gap was never on screen; the arithmetic test above stayed green throughout.
+     MUTATIONS: drop `var(--dx` from the .np__code transform in styles.css -> the CSS assertion fails; delete the
+     `span.style.setProperty("--dx"` line in ui/now-playing.js -> the JS assertion fails. */
+  assert.match(NP_FLAT_TEXT, /span\.style\.setProperty\("--dx"/, "the spread offset is written per code");
+  assert.match(CSS_RULES, /\.np__code \{[^}]*transform:\s*translateX\(calc\(-50% \+ var\(--dx, 0px\)\)\)/, ".np__code reads --dx, so the spread is drawn");
+  /* The offset written is placed - centre: on the shipped fixture the first two kept codes are 19px apart raw (5px
+     of air for 14px glyphs), and the offsets must restore the planned gap. */
+  const { dial } = loadDial();
+  const raw = [15, 34];
+  const placed = dial.spreadCodes(raw, [14, 14], 345);
+  const drawn = placed.map((x, i) => x);
+  assert.ok(drawn[1] - drawn[0] >= 14 + dial.codeGap - 0.01, "offset centres have the planned gap");
+  assert.ok(placed[1] - raw[1] > 0 || placed[0] - raw[0] < 0, "at least one code is actually shifted, so --dx is non-zero");
+});
+
 test("the needle has a 44px-wide hit area, a 2px stroke, and its buffering pulse runs on the buffer token", () => {
   /* MUTATION: change `.np__needle`'s width from 44px -> red; put a literal `1s` back
      in the pulse -> red here and in ui-tokens-dial. */

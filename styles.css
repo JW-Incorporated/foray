@@ -5152,7 +5152,7 @@ body.ui-v2 .fp-sheet.np .fp-left { color: var(--ink-2); }
 .np__band-svg .t-band__code, .np__band-svg .needle { display: none; }
 /* 7px up from the visual's bottom edge: the prototype centres the station codes in the 19px under the bars, not on the well's lip (fidelity, it2). */
 .np__codes { position: absolute; left: 0; right: 0; bottom: 7px; height: 16px; }
-.np__code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(-50%); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
+.np__code { position: absolute; left: calc(var(--x, 0) * 100%); bottom: 0; transform: translateX(calc(-50% + var(--dx, 0px))); color: var(--ink-2); font: 700 0.6875rem/16px var(--font-mono); white-space: nowrap; }
 .np__code.is-current { color: var(--ink); font-weight: 800; }
 .np:not(.np--foray) .np__band-svg .t-band__bar { fill: var(--persimmon); }
 .np:not(.np--foray) .np__codes { display: none; }
