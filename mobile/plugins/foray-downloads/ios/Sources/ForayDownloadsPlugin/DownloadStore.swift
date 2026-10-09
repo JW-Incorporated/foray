@@ -160,23 +160,46 @@ final class DownloadStore: NSObject {
     /// A row left `queued` or `downloading` by a process that died has no
     /// probe (those live in memory) and may have no transfer: it would read
     /// "Downloading" forever. Such a row becomes `failed` / `interrupted`,
-    /// which the page offers to retry. Rows with a live transfer are left alone.
+    /// which the page offers to retry, and a `downloadFailed` says so -- as
+    /// the Java twin's `pollOnce` does (CH3-05, R4-04). Rows with a live
+    /// transfer are left alone. This runs at the plugin's `load()`, usually
+    /// before the page listens; the page's boot `list()` replay
+    /// (player/download-bridge.js) covers that, and the emit covers a flip that
+    /// lands after the page subscribed.
     private func reconcileInterrupted() {
         session.getAllTasks { [weak self] tasks in
             guard let self = self else { return }
             let live = Set(tasks.compactMap { $0.taskDescription })
-            self.queue.sync {
-                var changed = false
-                for (id, record) in self.index.items
-                    where (record.status == "queued" || record.status == "downloading")
-                    && !live.contains(id) && self.probes[id] == nil {
-                    self.index.items[id]?.status = "failed"
-                    self.index.items[id]?.reason = DownloadPolicy.reasonInterrupted
-                    changed = true
-                }
-                if changed { self.save() }
+            let events: [(name: String, payload: [String: Any])] = self.queue.sync {
+                let probing = Set(self.probes.keys)
+                let owed = DownloadStore.settleInterrupted(&self.index, live: live, probing: probing)
+                if !owed.isEmpty { self.save() }
+                return owed
             }
+            for event in events { self.emit?(event.name, event.payload) }
         }
+    }
+
+    /// `reconcileInterrupted`'s rule, pure (CH3-05): every `queued` /
+    /// `downloading` row with neither a live transfer (`live`, the task
+    /// descriptions) nor a probe (`probing`) becomes `failed` /
+    /// `interrupted`, and the `downloadFailed` owed for it is returned, one
+    /// per flipped row, in id order. Every other row is untouched.
+    /// MUTATION: return `[]` (flip silently, as before CH3-05) ->
+    /// `DownloadStoreTests.testSettleInterruptedOwesOneDownloadFailedPerFlippedRow`.
+    static func settleInterrupted(_ index: inout DownloadIndex, live: Set<String>,
+                                  probing: Set<String>) -> [(name: String, payload: [String: Any])] {
+        var owed: [(name: String, payload: [String: Any])] = []
+        for id in index.items.keys.sorted() {
+            guard let record = index.items[id],
+                  record.status == "queued" || record.status == "downloading",
+                  !live.contains(id), !probing.contains(id) else { continue }
+            index.items[id]?.status = "failed"
+            index.items[id]?.reason = DownloadPolicy.reasonInterrupted
+            owed.append((name: DownloadPolicy.eventFailed,
+                         payload: DownloadPolicy.failedPayload(id: id, reason: DownloadPolicy.reasonInterrupted, status: nil)))
+        }
+        return owed
     }
 
     /// The AppDelegate hook's target (wired by PQ-21). Holds iOS's completion

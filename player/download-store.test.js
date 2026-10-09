@@ -299,20 +299,20 @@ test("CH-27 characterization: playSource's gate is `done` with a non-empty path,
 
 /* ---------- what the WebView reads (CH-27, P2-18) ---------- */
 
-test("readSource: a done file opens at bridge.fileSrc, else the stored webSrc; a file: URL and a throwing bridge are null", () => {
-  /* MUTATIONS: `record.webSrc ?? bridge.fileSrc(...)` -> the stale stored URL
+test("readSource: a done file opens at bridge.webSrc (CH3-05: was fileSrc), else the stored webSrc; a file: URL and a throwing bridge are null", () => {
+  /* MUTATIONS: `record.webSrc ?? bridge.webSrc(...)` -> the stale stored URL
      wins and the first assert goes red; drop `!src.startsWith("file:")` -> the
      file:// answers are returned; drop the try/catch -> the throwing bridge
      throws out of readSource. */
   const rec = { ...done(MB), path: "/data/files/e1.mp3", webSrc: "https://localhost/_capacitor_file_/old/e1.mp3" };
-  const bridge = { fileSrc: ({ path }) => `capacitor://localhost/_capacitor_file_${path}` };
+  const bridge = { webSrc: (path) => `capacitor://localhost/_capacitor_file_${path}` };
   assert.equal(readSource(rec, bridge), "capacitor://localhost/_capacitor_file_/data/files/e1.mp3");
   assert.equal(readSource(rec, null), rec.webSrc, "no bridge: the stored webSrc");
-  assert.equal(readSource(rec, {}), rec.webSrc, "a bridge without fileSrc: the stored webSrc");
+  assert.equal(readSource(rec, {}), rec.webSrc, "a bridge without webSrc: the stored webSrc");
   assert.equal(readSource({ ...rec, webSrc: null }, null), null, "nothing the WebView can open");
   assert.equal(readSource({ ...rec, webSrc: "file:///data/files/e1.mp3" }, null), null, "file: refused");
-  assert.equal(readSource(rec, { fileSrc: () => "file:///data/files/e1.mp3" }), null, "file: from the bridge refused too");
-  assert.equal(readSource(rec, { fileSrc: () => { throw new Error("boom"); } }), null, "total");
+  assert.equal(readSource(rec, { webSrc: () => "file:///data/files/e1.mp3" }), null, "file: from the bridge refused too");
+  assert.equal(readSource(rec, { webSrc: () => { throw new Error("boom"); } }), null, "total");
 });
 
 test("readSource shares playSource's gate: a row the record reads back as missing opens nothing", () => {
@@ -320,7 +320,7 @@ test("readSource shares playSource's gate: a row the record reads back as missin
      MUTATION: in readSource, replace `hasFile(record)` with the old inline
      `record.status === "done" && typeof record.path === "string"` -> the
      empty path yields a URL and this goes red. */
-  const bridge = { fileSrc: ({ path }) => `https://localhost/_capacitor_file_${path}` };
+  const bridge = { webSrc: (path) => `https://localhost/_capacitor_file_${path}` };
   const item = { id: "e1", audio_url: "https://cdn/e1.mp3" };
   const base = { ...done(MB), webSrc: "https://localhost/_capacitor_file_/files/e1.mp3" };
   const rows = [base, { ...base, path: "" }, { ...base, path: null }, null,
@@ -433,4 +433,36 @@ test("CH3-05 characterization: playSource opens the stored path verbatim, whatev
     audio_url: "file:///var/mobile/Containers/Data/Application/OLD-UUID/Library/Application%20Support/foray-downloads/e1.bin",
     isLocalFile: true,
   });
+});
+
+/* CH3-05: download-bridge.js replays the plugin's list() at every boot, so the
+   same report arrives again. A report that changes nothing but the clock is
+   identity — the refusal shape app.js already skips (no write, no repaint,
+   no "Downloaded.") — and `updated_at`, the eviction rank of a never-played
+   file, is not restamped. A report that moves anything (today's path after an
+   update, a new reason, new bytes) still lands, and `last_played_at` (CH-02)
+   rides through it.
+   MUTATION: delete the `sameRow` guard line in applyProgress -> the three
+   identity assertions are red. */
+test("CH3-05: a report that changes nothing is identity; one that moves the path lands and keeps last_played_at", () => {
+  const OLD = "/var/mobile/Containers/Data/Application/OLD/Library/Application Support/foray-downloads/e1.bin";
+  const NEW = "/var/mobile/Containers/Data/Application/NEW/Library/Application Support/foray-downloads/e1.bin";
+  const base = applyProgress(readDownloads(null), { id: "e1", status: "done", path: OLD, bytes: 9 * MB, webSrc: "capacitor://x" + OLD, now: "2026-10-01T00:00:00Z" });
+  const played = markPlayed(base, "e1", "2026-10-02T00:00:00Z");
+  const again = { id: "e1", status: "done", path: OLD, bytes: 9 * MB, total: 9 * MB, webSrc: "capacitor://x" + OLD, now: "2026-10-09T00:00:00Z" };
+  assert.equal(applyProgress(played, again), played, "the same done row, replayed: identity");
+
+  const moved = applyProgress(played, { ...again, path: NEW, webSrc: "capacitor://x" + NEW });
+  assert.notEqual(moved, played);
+  assert.equal(moved.items.e1.path, NEW);
+  assert.equal(moved.items.e1.webSrc, "capacitor://x" + NEW);
+  assert.equal(moved.items.e1.last_played_at, "2026-10-02T00:00:00.000Z", "CH-02's stamp survives the rewrite");
+
+  const failed = applyProgress(readDownloads(null), { id: "f", status: "failed", reason: "interrupted", now: "2026-10-01T00:00:00Z" });
+  assert.equal(applyProgress(failed, { id: "f", status: "failed", reason: "interrupted", now: "2026-10-09T00:00:00Z" }), failed);
+  assert.notEqual(applyProgress(failed, { id: "f", status: "failed", reason: "cancelled" }), failed, "a new reason lands");
+
+  const ticking = applyProgress(readDownloads(null), { id: "g", status: "downloading", bytes: 10, total: 100, now: "2026-10-01T00:00:00Z" });
+  assert.equal(applyProgress(ticking, { id: "g", status: "downloading", bytes: 10, total: 100 }), ticking);
+  assert.equal(applyProgress(ticking, { id: "g", status: "downloading", bytes: 11, total: 100 }).items.g.bytes, 11);
 });

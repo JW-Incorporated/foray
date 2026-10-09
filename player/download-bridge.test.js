@@ -22,7 +22,7 @@ import fs from "node:fs";
 import {
   DOWNLOADS_PLUGIN, USER_AGENT, CALL_TIMEOUT_MS, DOWNLOAD_EVENTS, SITE_URL,
   DOWNLOAD_ATTEMPT_EVENT, ATTEMPT_DOM_EVENT, attemptSessionDetail,
-  createDownloadBridge, userAgentFor,
+  createDownloadBridge, userAgentFor, listReplay,
 } from "./download-bridge.js";
 import { DiagnosticLog, PlayerDiagnostics, DOWNLOAD_OUTCOMES } from "./diagnostic-log.js";
 
@@ -174,16 +174,23 @@ test("without addListener, events arrive through nativeCallback(plugin, \"addLis
   assert.deepEqual(hostileDl.handles, [null, null, null]);
 });
 
-// Mutation: return `path` unconditionally from `fileSrc`.
-test("fileSrc uses the bridge's convertFileSrc when present, else the path as given", () => {
+// Mutation: return `path` unconditionally from `webSrc`.
+test("webSrc uses the bridge's convertFileSrc when present, else the path as given; fileSrc({path}) is app.js's spelling of it", () => {
+  /* CH3-05 (R4-10): renamed from `fileSrc`, the plugin's own (uncalled)
+     method's name. app.js (UI freeze) still calls `fileSrc({ path })`, so it
+     stays as the same answer. MUTATION: make `fileSrc` return `path` -> the
+     alias assertion is red. */
   const { bridge } = fakeBridge({ convertFileSrc: (p) => `https://localhost/_capacitor_file_${p}` });
   const dl = createDownloadBridge({ bridge });
-  assert.equal(dl.fileSrc({ path: "/data/files/ep-1.mp3" }), "https://localhost/_capacitor_file_/data/files/ep-1.mp3");
+  assert.equal(dl.webSrc("/data/files/ep-1.mp3"), "https://localhost/_capacitor_file_/data/files/ep-1.mp3");
+  assert.equal(dl.fileSrc({ path: "/data/files/ep-1.mp3" }), dl.webSrc("/data/files/ep-1.mp3"));
   const plain = createDownloadBridge({ bridge: fakeBridge().bridge });
-  assert.equal(plain.fileSrc({ path: "/data/files/ep-1.mp3" }), "/data/files/ep-1.mp3");
+  assert.equal(plain.webSrc("/data/files/ep-1.mp3"), "/data/files/ep-1.mp3");
+  const throwing = createDownloadBridge({ bridge: fakeBridge({ convertFileSrc: () => { throw new Error("no"); } }).bridge });
+  assert.equal(throwing.webSrc("/x"), "/x", "a convertFileSrc that throws is the raw path");
   // Synchronous: it rewrites a string, it asks the phone nothing.
   const { bridge: b2, calls } = fakeBridge({ convertFileSrc: (p) => p });
-  createDownloadBridge({ bridge: b2 }).fileSrc({ path: "/x" });
+  createDownloadBridge({ bridge: b2 }).webSrc("/x");
   assert.equal(calls.length, 0);
 });
 
@@ -191,7 +198,7 @@ test("fileSrc uses the bridge's convertFileSrc when present, else the path as gi
 test("removeAll, list and usage exist, take no arguments and reach the plugin by name", async () => {
   const { bridge, calls } = fakeBridge({ answer: (method) => ({ ok: true, method }) });
   const dl = createDownloadBridge({ bridge });
-  for (const m of ["enqueue", "cancel", "remove", "removeAll", "list", "usage", "fileSrc"]) {
+  for (const m of ["enqueue", "cancel", "remove", "removeAll", "list", "usage", "webSrc", "fileSrc"]) {
     assert.equal(typeof dl[m], "function", `${m} is a function`);
   }
   assert.deepEqual(await dl.removeAll(), { ok: true, method: "removeAll" });
@@ -425,17 +432,25 @@ const NEW_PATH = "/var/mobile/Containers/Data/Application/NEW-UUID/Library/Appli
 /** Wait out the bridge's own promise chain (call -> withinMs -> then). */
 const settleBridge = () => new Promise((r) => setImmediate(r));
 
-/* CH3-05 characterization (R4-02/R4-04): today a bridge built WITH a listener
-   asks the plugin nothing — `list()` has no production caller (the only
-   `.list(` calls in app.js and player/ are forayProgress's). */
-test("CH3-05 characterization: a bridge with a listener asks the plugin nothing; list() has no production caller", async () => {
-  const { bridge, calls } = fakeBridge({ answer: { items: [] } });
-  createDownloadBridge({ bridge, onEvent: () => {} });
-  await settleBridge();
-  assert.deepEqual(calls.map((c) => c.method), []);
+/* CH3-05 (R4-02/R4-04). Characterized on main as "a bridge with a listener
+   asks the plugin nothing; list() has no production caller" (commit 1 of this
+   card). Now: a bridge WITH a listener asks `list()` exactly once, at
+   subscription, and that is its one production caller (the other `.list(`
+   calls in app.js and player/ are forayProgress's); a bridge with no listener
+   still asks nothing, so a caller that only wants the calls pays for none.
+   MUTATION: make `reconciled` call list() with or without a listener -> the
+   `[]` assertion is red (and so are this suite's call-count tests). */
+test("CH3-05: a bridge with a listener asks list() once at subscription — its one production caller; with no listener, nothing", async () => {
+  const withListener = fakeBridge({ answer: { items: [] } });
+  const dl = createDownloadBridge({ bridge: withListener.bridge, onEvent: () => {} });
+  assert.equal(await dl.reconciled, 0);
+  assert.deepEqual(withListener.calls.map((c) => [c.plugin, c.method, c.options]), [["ForayDownloads", "list", {}]]);
+  const without = fakeBridge({ answer: { items: [] } });
+  assert.equal(await createDownloadBridge({ bridge: without.bridge }).reconciled, 0);
+  assert.deepEqual(without.calls, []);
   const callers = ["../app.js", "./client.js", "./download-store.js", "./download-bridge.js"]
-    .flatMap((rel) => fs.readFileSync(new URL(rel, import.meta.url), "utf8").split("\n").filter((l) => /\.list\(/.test(l) && !/forayProgress\.list\(/.test(l)));
-  assert.deepEqual(callers.filter((l) => !/list: \(\) =>|list\(\): Promise/.test(l)), []);
+    .flatMap((rel) => fs.readFileSync(new URL(rel, import.meta.url), "utf8").split("\n").filter((l) => /\.list\(|call\("list"/.test(l) && !/forayProgress\.list\(/.test(l)));
+  assert.deepEqual(callers.map((l) => l.trim()), [': call("list", {}).then((answer) => {', 'list: () => call("list", {}),']);
 });
 
 // RED on main: R4-02 — nothing calls list(), so the listener never hears today's path.
@@ -449,4 +464,96 @@ test("CH3-05: a listener hears the native index at subscription: a done row is r
   await settleBridge();
   assert.deepEqual(calls.map((c) => c.method), ["list"]);
   assert.deepEqual(seen, [["downloadDone", { id: "e1", path: NEW_PATH, bytes: 1234 }]]);
+});
+
+/* MUTATIONS: replay a `queued` row as downloadProgress -> the queued
+   assertion is red; drop the `unplayable-here` reason override -> that row
+   comes back with its own reason only (here: none) and the record would call
+   it `failed`; drop the `isStr(row.path)` check -> the path-less done row is
+   replayed. */
+test("CH3-05: listReplay maps each native row to the event the page handles, and skips what has nothing to say", () => {
+  assert.deepEqual(listReplay({ items: [
+    { id: "d", status: "done", bytes: 9, total: 9, reason: null, path: NEW_PATH },
+    { id: "f", status: "failed", bytes: 3, total: 10, reason: "interrupted", path: null },
+    { id: "c", status: "failed", bytes: 0, total: null, reason: null, path: null },
+    { id: "u", status: "unplayable-here", bytes: 0, total: null, reason: null, path: null },
+    { id: "g", status: "downloading", bytes: 87, total: 100, reason: null, path: null },
+    { id: "h", status: "downloading", bytes: 5, reason: null, path: null },
+    { id: "q", status: "queued", bytes: 0, total: null, reason: null, path: null },
+    { id: "m", status: "missing", bytes: 9, total: 9, reason: null, path: null },
+    { id: "n", status: "done", bytes: 9, total: 9, reason: null, path: null },
+    { status: "done", path: NEW_PATH }, { id: "", status: "done", path: NEW_PATH }, null, "row",
+  ] }), [
+    ["downloadDone", { id: "d", path: NEW_PATH, bytes: 9 }],
+    ["downloadFailed", { id: "f", reason: "interrupted", status: null }],
+    ["downloadFailed", { id: "c", reason: null, status: null }],
+    ["downloadFailed", { id: "u", reason: "unplayable-here", status: null }],
+    ["downloadProgress", { id: "g", bytes: 87, total: 100 }],
+    ["downloadProgress", { id: "h", bytes: 5, total: null }],
+  ]);
+  for (const junk of [null, undefined, {}, { items: null }, { items: "x" }, [], { ok: true }]) {
+    assert.deepEqual(listReplay(junk), [], JSON.stringify(junk));
+  }
+});
+
+/* The replay goes through the record's own rule: each replayed event, fed to
+   reportFromEvent, is the record status the native row has.
+   MUTATION: replay `failed` rows as `downloadFailed` with `status: 403` ->
+   an interrupted row would be recorded `unplayable-here`. */
+test("CH3-05: every replayed event becomes the native row's own record status through reportFromEvent", async () => {
+  const { reportFromEvent } = await import("./download-store.js");
+  const rows = [
+    { id: "d", status: "done", bytes: 9, total: 9, reason: null, path: NEW_PATH },
+    { id: "f", status: "failed", bytes: 3, total: 10, reason: "interrupted", path: null },
+    { id: "u", status: "unplayable-here", bytes: 0, total: null, reason: "unplayable-here", path: null },
+    { id: "g", status: "downloading", bytes: 87, total: 100, reason: null, path: null },
+  ];
+  const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+  for (const [name, payload] of listReplay({ items: rows })) {
+    const report = reportFromEvent(name, payload, {});
+    assert.equal(report.status, byId[payload.id].status, payload.id);
+    if (report.status === "done") assert.equal(report.path, NEW_PATH);
+  }
+});
+
+/* MUTATION: drop `if (!answer || answer.ok === false) return 0;` -> a plugin
+   answering `ok: false` with rows (or a timeout) is replayed. */
+test("CH3-05: a list() that fails, times out or throws replays nothing and never rejects; a listener that throws stops nothing", async () => {
+  const refusing = fakeBridge({ answer: { ok: false, items: [{ id: "e1", status: "done", path: NEW_PATH, bytes: 1 }] } });
+  const seen = [];
+  assert.equal(await createDownloadBridge({ bridge: refusing.bridge, onEvent: (n) => seen.push(n) }).reconciled, 0);
+  const throwing = fakeBridge({ throws: new Error("plugin ForayDownloads is not implemented") });
+  assert.equal(await createDownloadBridge({ bridge: throwing.bridge, onEvent: (n) => seen.push(n) }).reconciled, 0);
+  const timer = manualTimer();
+  const hung = createDownloadBridge({ bridge: { nativePromise: () => new Promise(() => {}) }, onEvent: (n) => seen.push(n), setTimeoutFn: timer.setTimeoutFn });
+  timer.fire();
+  assert.equal(await hung.reconciled, 0);
+  assert.deepEqual(seen, []);
+  /* A listener's bug on one row does not stop the next. */
+  const two = fakeBridge({ answer: { items: [
+    { id: "a", status: "done", bytes: 1, path: NEW_PATH },
+    { id: "b", status: "failed", reason: "interrupted" },
+  ] } });
+  const heard = [];
+  const dl = createDownloadBridge({ bridge: two.bridge, onEvent: (n, p) => { heard.push(p.id); if (p.id === "a") throw new Error("page bug"); } });
+  assert.equal(await dl.reconciled, 2);
+  assert.deepEqual(heard, ["a", "b"]);
+});
+
+/* R4-04's iOS half: DownloadStore.swift's `reconcileInterrupted` (run at the
+   plugin's load) used to flip a dead `queued`/`downloading` row to
+   `failed`/`interrupted` SILENTLY, where the Java twin's `pollOnce` emits
+   `downloadFailed`. The flip is `settleInterrupted` (pure; its XCTest,
+   DownloadStoreTests.swift, pins one `downloadFailed` per flipped row); this
+   pins that the instance method emits every event it returns, after saving.
+   MUTATION: delete the `for event in events { self.emit?(...) }` line -> red. */
+test("CH3-05: DownloadStore.swift's reconcileInterrupted emits every event settleInterrupted owes", () => {
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  const store = strip(fs.readFileSync(new URL("../mobile/plugins/foray-downloads/ios/Sources/ForayDownloadsPlugin/DownloadStore.swift", import.meta.url), "utf8"));
+  const body = /private func reconcileInterrupted\(\) \{([\s\S]*?)\n    \}\n/.exec(store)?.[1] ?? "";
+  assert.match(body, /DownloadStore\.settleInterrupted\(&self\.index, live: live, probing: probing\)/);
+  assert.match(body, /for event in events \{ self\.emit\?\(event\.name, event\.payload\) \}/);
+  const settle = /static func settleInterrupted\([\s\S]*?\n    \}\n/.exec(store)?.[0] ?? "";
+  assert.match(settle, /DownloadPolicy\.failedPayload\(id: id, reason: DownloadPolicy\.reasonInterrupted, status: nil\)/);
+  assert.match(settle, /DownloadPolicy\.eventFailed/);
 });

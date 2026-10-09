@@ -34,6 +34,9 @@
  *     (`missingFileAction`), client.js's degrade executed over each answer,
  *     the earcon executed over a fake Web Audio, and app.js dropping the
  *     episode from Up Next and playing the next by the natural end's rule.
+ * 12. CH3-05: at boot the record follows the plugin's `list()` (today's path
+ *     after an app update; a transfer settled while 4a was not running), and
+ *     an unchanged index rewrites nothing.
  *
  * Tests 9 and 10 are beyond the plan's eight: 9 because eviction deletes a
  * listener's files, 10 because the stand-in would otherwise be unchecked.
@@ -1088,4 +1091,42 @@ test("CH3-05: a transfer that finished, or was interrupted, while 4a was not run
   assert.strictEqual(items[a].path, NEW_IOS_PATH(a));
   assert.strictEqual(items[b].status, "failed", "the interrupted one is offered for retry");
   assert.strictEqual(items[b].reason, "interrupted");
+});
+
+/* The reconcile runs at every boot, so it must rewrite only what moved
+   (code-health-3 CH3-05 "Risk"): a row already `done` at the same path is not
+   re-written — `last_played_at` (CH-02) and `updated_at` survive byte for byte,
+   and nothing is repainted or announced. A native row the page never asked
+   for is dropped by app.js's own rule (it may be a purge "Delete my data" just
+   ran), and a refused one stays refused.
+   MUTATION: delete the `sameRow` guard in download-store.js's applyProgress ->
+   the stored string changes (updated_at restamped) and this is red.
+   MUTATION 2: drop `|| status === "unplayable-here"` from listReplay -> the
+   refused row stays `queued` and the last assertion is red. */
+test("CH3-05: a second boot over an unchanged native index rewrites nothing; a row the page never asked for is dropped", async () => {
+  const store = new Map();
+  const [a, b] = CATALOGUE_IDS();
+  seedRow(store, a, { status: "done", path: NEW_IOS_PATH(a), bytes: 1234, webSrc: `capacitor://localhost/_capacitor_file_${NEW_IOS_PATH(a)}` });
+  store.set("cp_downloads", JSON.stringify(STORE.markPlayed(JSON.parse(store.get("cp_downloads")), a, "2026-10-06T08:00:00Z")));
+  seedRow(store, b, { status: "queued" });
+  const stored = store.get("cp_downloads");
+  const cap = makeCapacitor({ list: () => ({ items: [
+    { id: a, status: "done", bytes: 1234, total: 1234, reason: null, path: NEW_IOS_PATH(a) },
+    { id: "ghost", status: "done", bytes: 9, total: 9, reason: null, path: NEW_IOS_PATH("ghost") },
+    { id: b, status: "queued", bytes: 0, total: null, reason: null, path: null },
+  ] }) });
+  const m = mount({ store, capacitor: cap });
+  await settle();
+  assert.ok(cap.calls.some((c) => c.method === "list"), "fixture premise: the boot asked the native index");
+  assert.strictEqual(store.get("cp_downloads"), stored, "nothing moved, nothing written");
+  assert.strictEqual(m.record().items[a].last_played_at, "2026-10-06T08:00:00.000Z");
+  assert.ok(!("ghost" in m.record().items), "a row the page never asked for is not written back");
+
+  const refused = new Map();
+  seedRow(refused, a, { status: "queued" });
+  const m2 = mount({ store: refused, capacitor: makeCapacitor({ list: () => ({ items: [
+    { id: a, status: "unplayable-here", bytes: 0, total: null, reason: "unplayable-here", path: null },
+  ] }) }) });
+  await settle();
+  assert.strictEqual(m2.record().items[a].status, "unplayable-here");
 });
