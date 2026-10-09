@@ -8,7 +8,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
 import { loadShowIdMap } from "../_lib/showIdMap.ts";
-import { episodeFeedFailureCache } from "../_lib/searchCache.ts";
 import { appleCallerBuckets } from "../_lib/clientLimit.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
@@ -31,14 +30,15 @@ function mockRes() {
 }
 
 function resetSharedState() {
-  /* P-05 piece 3: the feed-failure memory is module scope and 90 s long, so a
-     failure remembered by one test would answer a later one from a different
-     test's setup. Cleared here rather than per-test for the same reason the
-     id-map cache is. */
-  episodeFeedFailureCache.clear();
-  /* round-3 audit, search-api-css-4: the per-show feed-fetch limiter is module
-     scope too, and this file fetches the same show more than its budget. */
+  /* The feed reader is module scope: its per-show feed-fetch limiter
+     (round-3 audit, search-api-css-4; this file fetches the same show more
+     than its budget) and its 90 s feed-failure memory (P-05 piece 3, in
+     feedCache.ts since code-health-2 CH2-38), which would let a failure
+     remembered by one test answer a later one. The show-scoped answers are
+     module scope too. Cleared here rather than per-test for the same reason
+     the id-map cache is. */
   searchModule.sharedFeedReader.clear();
+  searchModule.showScopedResultCache.clear();
   /* security-10: the per-client Apple budget is module scope; these requests
      carry no x-forwarded-for, so they all share the "unknown" client. */
   appleCallerBuckets.clear();
@@ -460,9 +460,10 @@ test("show-scoped: a feed that just failed is not refetched for the next, differ
   // episodeSearchCache's query-keyed entry cannot be what answers the second
   // one — only the show-keyed failure memory can.
   //
-  // MUTATION THAT TURNS THIS RED: delete the `episodeFeedFailureCache.get`
-  // short-circuit in the handler's showScope branch, or the
-  // `else if (feedFailed)` write that fills it. `feedFetches` becomes 2.
+  // MUTATION THAT TURNS THIS RED: delete the `failures.get` short-circuit in
+  // feedCache.ts read(), or the `failures.set` in its `failed()` that fills
+  // it (CH2-38 moved the memory there from this handler). `feedFetches`
+  // becomes 2.
   resetSharedState();
   let feedFetches = 0;
   const fetchImpl = async (url) => {
@@ -494,12 +495,12 @@ test("show-scoped: a remembered failure is never replayed as an empty success, a
   // listener their query matched nothing (the client's
   // `searchShowEpisodesScoped` branches on exactly that and would stop falling
   // back to `filterLoadedEpisodes`). And a cacheable `Cache-Control` would let
-  // the CDN keep the dark window alive long past FEED_FAILURE_TTL_MS, turning
-  // a 90-second guard into an unbounded outage.
+  // the CDN keep the dark window alive long past feedCache.ts's
+  // FEED_FAILURE_TTL_MS, turning a 90-second guard into an unbounded outage.
   //
-  // MUTATION THAT TURNS THIS RED: answer the short-circuit with
-  // `degraded: false`, or give it the success path's
-  // `public, max-age=300, ...` header.
+  // MUTATION THAT TURNS THIS RED: answer a remembered failure with
+  // `degraded: false`, or give the show-scoped error answer the success
+  // path's `public, max-age=300, ...` header.
   resetSharedState();
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
@@ -524,10 +525,10 @@ test("show-scoped: an unknown show_id is not remembered as a feed failure", asyn
   // more to the point, a failure memory that fills up with non-failures is one
   // that will eventually dark-window a show that was never broken.
   //
-  // MUTATION THAT TURNS THIS RED: write the failure cache on any `error`
-  // rather than on `feedFailed` (i.e. drop the `feedFailed` flag threaded
-  // through searchWithinShow). The second call would be answered from the
-  // remembered failure and `reached` would stay false.
+  // MUTATION THAT TURNS THIS RED: remember an unresolved show as a feed
+  // failure (resolveShow's errors never reach feedCache.ts's failure memory).
+  // The second call would be answered from the remembered failure rather than
+  // the real unknown-id answer.
   resetSharedState();
   await handler({ method: "GET", query: { q: "anything", show: "definitely-not-a-real-show" }, headers: {} }, mockRes());
 
@@ -543,8 +544,9 @@ test("show-scoped: a healthy feed is never poisoned by another show's failure", 
   // The memory is keyed by show. A broken feed elsewhere in the catalogue must
   // not take a working show's search box down with it.
   //
-  // MUTATION THAT TURNS THIS RED: key episodeFeedFailureCache on anything
-  // shared across shows (a single boolean, the query, the empty string).
+  // MUTATION THAT TURNS THIS RED: key feedCache.ts's failure memory on
+  // anything shared across shows (a single boolean, the query, the empty
+  // string).
   resetSharedState();
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {

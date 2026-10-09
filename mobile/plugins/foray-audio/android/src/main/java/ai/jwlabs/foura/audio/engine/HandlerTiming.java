@@ -13,8 +13,12 @@ import android.os.SystemClock;
  * <p>A POSTED TIMER IS ON UPTIME, and uptime stops while the CPU sleeps. The engine's timers are
  * the position tick, the pause hold and grace's; each fires while audio plays (a wake lock is
  * held: the deck's wake mode) or measures a span that sleeping would only lengthen, which is why
- * uptime is acceptable here and the load deadline (the deck's own, on the player's clock) is not
- * one of them.
+ * uptime is acceptable here. The load deadline is not one of them, but it is NOT on another
+ * clock: {@link ExoDeck} posts it with {@code postDelayed} on its own handler (Media3's
+ * {@code Clock.createHandler}, a {@link Handler} on the player's looper in a shipping build), so
+ * it is on uptime too. What keeps it honest is the gate's own CPU and Wi-Fi locks (ExoDeck's
+ * "THE GATE HOLDS ITS OWN WAKE LOCK"), held from the attach until the gate ends, so the CPU does
+ * not sleep under a load in flight.
  */
 public final class HandlerTiming implements EngineSeams.Timing {
     private final Handler handler;
