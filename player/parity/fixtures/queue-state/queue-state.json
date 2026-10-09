@@ -526,7 +526,7 @@
           {
             "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
             "type": "interrupted",
-            "wasPlaying": false
+            "wasPlaying": true
           },
           [{ "message": "interruption.began.duringLoad", "type": "emitTelemetry" }]
         ]
@@ -541,7 +541,7 @@
         {
           "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
           "type": "interrupted",
-          "wasPlaying": false
+          "wasPlaying": true
         },
         { "type": "itemLoaded" }
       ],
@@ -550,11 +550,11 @@
           {
             "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
             "type": "interrupted",
-            "wasPlaying": false
+            "wasPlaying": true
           },
           [
             {
-              "message": "itemLoaded.ignored: unexpected in state interrupted(episode-a, wasPlaying: false)",
+              "message": "itemLoaded.ignored: unexpected in state interrupted(episode-a, wasPlaying: true)",
               "type": "emitTelemetry"
             }
           ]
@@ -570,18 +570,25 @@
         {
           "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
           "type": "interrupted",
-          "wasPlaying": false
+          "wasPlaying": true
         },
         { "shouldResume": true, "type": "interruptionEnded" }
       ],
       "expect": {
         "return": [
           {
-            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
-            "type": "interrupted",
-            "wasPlaying": false
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
           },
-          [{ "message": "interruption.ended.staysPaused", "type": "emitTelemetry" }]
+          [
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            },
+            { "message": "interruption.ended.resumed", "type": "emitTelemetry" }
+          ]
         ]
       }
     },

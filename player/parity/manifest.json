@@ -1404,7 +1404,7 @@
     },
     "queue-state": {
       "files": {
-        "player/parity/fixtures/queue-state/queue-state.json": "acf9f3c193d449377676a3470d4ffb7333d0287bce5d73b5ba1eadc0c3820cd3"
+        "player/parity/fixtures/queue-state/queue-state.json": "0476e86eb9232eba304211b3ced90eb4badb42e3060b292feb45107003ae2fde"
       },
       "ids": [
         "queue-state/play-from-idle",

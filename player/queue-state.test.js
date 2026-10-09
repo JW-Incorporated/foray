@@ -171,17 +171,21 @@ test("testLongCall_PositionAndItemIdentityPreservedThroughoutInterruption", () =
 });
 
 test("testInterruptionBeganDuringLoadDoesNotPauseOrSavePosition", () => {
-  // Nothing audible yet; no position to save, nothing to pause.
+  // Nothing audible yet; no position to save, nothing to pause. It records
+  // wasPlaying: true (CH3-01): the listener's intent was to play.
   const [state, effects] = reduce(S.loadingItem(episodeA, null), E.interruptionBegan());
-  assert.deepStrictEqual(state, S.interrupted(episodeA, false));
+  assert.deepStrictEqual(state, S.interrupted(episodeA, true));
   assert.deepStrictEqual(effects, [F.emitTelemetry("interruption.began.duringLoad")]);
 });
 
 test("testInterruptionDuringLoad_EndsWithShouldResume", () => {
   // CH3-01 (R2-01): a nav prompt or "Hey Siri" that lands while the target is
-  // still LOADING (a cold play, a seam, a retry), and ends with shouldResume.
+  // still LOADING (a cold play, a seam, a retry), and ends with shouldResume,
+  // resumes the load (founder question 1's default, docs/roadmap/code-health-3.md).
+  // KILLING MUTATION: the load arm's `interrupted(target, true)` reverted to
+  // `false` (red here, in the Swift twin, and in the queue-state fixtures).
   const [interrupted] = reduce(S.loadingItem(episodeA, null), E.interruptionBegan());
-  assert.deepStrictEqual(interrupted, S.interrupted(episodeA, false));
+  assert.deepStrictEqual(interrupted, S.interrupted(episodeA, true));
 
   // A stray itemLoaded arriving inside the interruption must not start
   // playback into the call.
@@ -189,9 +193,11 @@ test("testInterruptionDuringLoad_EndsWithShouldResume", () => {
   assert.deepStrictEqual(stray, interrupted);
   assert.ok(isTelemetry(strayEffects[0]), "expected itemLoaded to be ignored");
 
-  const [after, effects] = reduce(interrupted, E.interruptionEnded(true));
-  assert.deepStrictEqual(after, S.interrupted(episodeA, false));
-  assert.deepStrictEqual(effects, [F.emitTelemetry("interruption.ended.staysPaused")]);
+  const [resumed, effects] = reduce(interrupted, E.interruptionEnded(true));
+  assert.deepStrictEqual(resumed, S.loadingItem(episodeA, episodeA));
+  assert.deepStrictEqual(effects, [
+    F.loadItem(episodeA), F.emitTelemetry("interruption.ended.resumed"),
+  ]);
 });
 
 test("testRouteLostDuringLoad_ThenACallEndsWithShouldResume_StaysPaused", () => {
