@@ -3502,9 +3502,10 @@ const EPISODE_NAVIGATION = {
     /* PROVENANCE FROM THE PICK'S SOURCE, not from whether a hook exists (whyFor falls back to item.hook, so nearly every
        catalogue episode has a reason). 4a made the pick only when the continuation took it from the tail ("more of what
        fits"); an entry in Up Next is the listener's own, and the list is the one they started from. Only a 4a pick
-       carries a why-line to the sheet. */
+       carries a why-line to the sheet — the SAME line startChained will give it (chainedWhy), so a stretch pick shows
+       its bridge in the preview as it does on play. */
     const source = plan?.fromTail ? "tail" : (plan?.fromList ? "list" : "queue");
-    return { ...item, source, why: source === "tail" ? (whyFor(id, item) || "") : "" };
+    return { ...item, source, why: source === "tail" ? (chainedWhy(id, item, true) || "") : "" };
   },
   isSaved(id) { return isSaved(id); },
   toggleSaved(id) { toggleStar(id); return isSaved(id); },

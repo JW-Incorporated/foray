@@ -3201,6 +3201,7 @@ async function stopAndClose({ persist = true } = {}) {
      one landing rule (`landOnPage` — the heading, or #view) takes over, then
      the stop is announced from app.js's region, which the hidden root cannot
      silence. */
+  const wasExpanded = !ui.sheet.hidden;
   ui.root.hidden = true;
   ui.sheet.hidden = true;
   /* Nothing is playing, so nothing is left for car posture to be about. */
@@ -3213,8 +3214,12 @@ async function stopAndClose({ persist = true } = {}) {
   /* Opening the sheet made the bar inert + aria-hidden and the topbar inert (setExpanded(true)); the owner's
      closeSheet lifts only what IT recorded, and the topbar is on its keepReachable list, not its inert list. Stop
      from the open sheet never reaches setExpanded(false), so without this the gear stays inert and the next play's
-     mini bar comes back aria-hidden. MUTATION: delete this call -> the stop-from-expanded test goes red. */
-  releaseBarAndTopbar();
+     mini bar comes back aria-hidden. ONLY when Now Playing was the open sheet: Stop also arrives while another modal
+     sheet owns the topbar's inert (the delete-data flow runs stopAndClose with its own sheet open; a lock-screen
+     Remote Stop can land under any sheet), and un-inerting the topbar then leaves the gear and menu clickable behind
+     that modal. MUTATION 1: delete this call -> the stop-from-expanded test goes red. MUTATION 2: make it
+     unconditional again -> the stop-under-another-sheet test goes red. */
+  if (wasExpanded) releaseBarAndTopbar();
   document.body.classList.remove("fp-open", "fp-expanded");
   globalThis.syncDock?.();
   const nav = typeof window !== "undefined" ? window.ForayNav : null;

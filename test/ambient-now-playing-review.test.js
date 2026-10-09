@@ -151,14 +151,28 @@ test("Up Next says '4a added' by the pick's source, not by whether a hook exists
 
 test("app.js nextItem hands the sheet the pick's source, and only a tail pick keeps a why-line", () => {
   /* MUTATION: derive the why-line from `whyFor(id, item) || item.hook` for every source (the old shape) -> the queue
-     and list cases go red. */
+     and list cases go red; for the tail only -> the stretch case goes red. */
   const app = read("app.js").replace(/\r\n/g, "\n");
   const m = /get nextItem\(\) \{([\s\S]*?)\n  \},\n  isSaved/.exec(app);
   assert.ok(m, "the nextItem getter is where the sheet reads it");
-  const run = (plan, queueFirst) => new Function("window", "planAfterEnded", "queueIds", "episode", "whyFor", m[1])(
-    { ForayPlayer: { currentEpisodeId: () => (plan ? "cur" : null) } },
-    () => plan, () => queueFirst, (id) => ({ id, title: id, hook: "hook" }), () => "curated or hook why",
-  );
+  /* The REAL chainedWhy, cut from the same source and run over stubs, so the preview and the play share one function
+     here as they do in the app. `tailReason` is what the nightly tail-fill says about the pick. */
+  const cw = /function chainedWhy\(nextId, nextItem, fromTail\) \{[\s\S]*?\n\}\n/.exec(app);
+  assert.ok(cw, "chainedWhy is the line startChained gives the same pick on play");
+  let tailReason = () => null;
+  const run = (plan, queueFirst) => {
+    const win = {
+      ForayPlayer: { currentEpisodeId: () => (plan ? "cur" : null) },
+      forayTailFill: { tailReason: (...a) => tailReason(...a) },
+    };
+    const whyFor = () => "curated or hook why";
+    const chainedWhy = new Function("window", "state", "stretchBridgeText", "subjectLabel", "whyFor", `${cw[0]}; return chainedWhy;`)(
+      win, { cardSlots: [] }, (label) => `Bridge via ${label}`, (b) => `subject ${b}`, whyFor,
+    );
+    return new Function("window", "planAfterEnded", "queueIds", "episode", "chainedWhy", m[1])(
+      win, () => plan, () => queueFirst, (id) => ({ id, title: id, hook: "hook" }), chainedWhy,
+    );
+  };
   const queued = run({ nextId: "q1", fromList: false, fromTail: false }, ["q1"]);
   assert.strictEqual(queued.source, "queue");
   assert.strictEqual(queued.why, "", "a catalogue hook is not provenance");
@@ -168,6 +182,14 @@ test("app.js nextItem hands the sheet the pick's source, and only a tail pick ke
   const tail = run({ nextId: "t1", fromList: false, fromTail: true }, []);
   assert.strictEqual(tail.source, "tail");
   assert.strictEqual(tail.why, "curated or hook why");
+  /* A STRETCH pick states its bridge in the preview, the same line the play will give it (copy rule: stretch picks
+     state their bridge). MUTATION: put `whyFor(id, item)` back in nextItem's tail branch -> this goes red (the hook
+     shows with no bridge, and the preview disagrees with the play). */
+  tailReason = () => ({ role: "stretch", branch: "geology" });
+  const stretch = run({ nextId: "t2", fromList: false, fromTail: true }, []);
+  assert.strictEqual(stretch.why, "Bridge via subject geology");
+  assert.notStrictEqual(stretch.why, "curated or hook why", "not the hook that whyFor falls back to");
+  tailReason = () => null;
   const idle = run(null, ["q9"]);
   assert.strictEqual(idle.source, "queue", "nothing playing: the head of Up Next is the listener's own entry");
   assert.strictEqual(idle.why, "");
