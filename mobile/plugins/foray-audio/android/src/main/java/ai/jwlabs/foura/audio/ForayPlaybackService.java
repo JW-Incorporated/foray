@@ -369,7 +369,7 @@ public class ForayPlaybackService extends MediaSessionService {
                then resets the mode, which AudioService applies on its own thread), so the resume
                does not ask it: refusing would be R5-02's "nothing resumes after the call". */
             if (resumingAnInterruption()) return EngineSeams.Activation.granted();
-            String call = callInProgress(audioMode());
+            String call = null; // MUTANT CH3-08 a
             if (call == null) return EngineSeams.Activation.granted();
             String token = "insufficient-priority";
             List<JsonNode.Member> fields = kind("activate-refused");
