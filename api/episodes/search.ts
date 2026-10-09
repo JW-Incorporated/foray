@@ -1,8 +1,8 @@
 import { applyCors } from "../_lib/cors";
 import { firstParam } from "../_lib/params";
 import { type ParsedEpisode } from "../../backend/src/feeds/parser";
-import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { appleSearchBucket } from "../_lib/appleBucket";
+import { appleSearch } from "../_lib/appleClient";
 import { loadShowIdMap } from "../_lib/showIdMap";
 import { resolveShow, isPiShowId, UNKNOWN_SHOW_ID } from "../_lib/resolveShow";
 import { TtlCache, episodeSearchCache, normalizeQueryKey, showScopedQueryKey } from "../_lib/searchCache";
@@ -68,12 +68,14 @@ import {
  * / product principle #3), same as every other endpoint in this directory.
  */
 
-const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
-/* Imported, never restated (round-3 audit, arch-drift-14): one drifted copy of
-   this string was 403'd by a feed host and cost 423 transcripts (#316). The
-   politeness scan in tools/segments/politeness.test.mjs now reads api/ too. */
-const EPISODE_USER_AGENT = DEFAULT_FEED_USER_AGENT;
-const APPLE_TIMEOUT_MS = 8_000; // keeps the <1.5s acceptance target reachable even with cache misses
+/* THE EPISODE CALLER'S APPLE BUDGET (code-health-2 CH2-39). The call itself
+   is api/_lib/appleClient.ts, shared with the show directory. 8 s is
+   UNMEASURED: nobody has timed `entity=podcastEpisode`, and an 8 s bound does
+   not keep a 1.5 s target reachable, which is what this line used to claim.
+   The directory's 2 s was measured on `entity=podcast` only. Whether this
+   drops to 2 s is founder question 3 (docs/roadmap/code-health-2.md §1;
+   default: keep 8 s until an episode-entity measurement exists). */
+export const APPLE_EPISODE_TIMEOUT_MS = 8_000;
 const MAX_RESULTS = 25;
 
 /* OUTBOUND FEED FETCHES ARE LIMITED PER SHOW (round-3 audit, search-api-css-4),
@@ -252,23 +254,11 @@ async function searchApple(
   limit: number,
   fetchImpl: typeof fetch
 ): Promise<{ hits: AppleEpisodeHit[]; error: string | null }> {
-  const ask = appleEpisodeAsk(limit);
-  const url = `${APPLE_SEARCH_URL}?entity=podcastEpisode&limit=${encodeURIComponent(String(ask))}&term=${encodeURIComponent(query)}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), APPLE_TIMEOUT_MS);
-  try {
-    const res = await fetchImpl(url, {
-      headers: { "User-Agent": EPISODE_USER_AGENT, Accept: "application/json" },
-      signal: controller.signal
-    });
-    if (!res.ok) return { hits: [], error: `Apple search HTTP ${res.status}` };
-    const body = (await res.json()) as { results?: AppleEpisodeHit[] };
-    return { hits: body.results ?? [], error: null };
-  } catch (err) {
-    return { hits: [], error: `Apple search fetch error: ${(err as Error).message}` };
-  } finally {
-    clearTimeout(timer);
-  }
+  const { results, error } = await appleSearch<AppleEpisodeHit>("podcastEpisode", query, appleEpisodeAsk(limit), {
+    fetchImpl,
+    timeoutMs: APPLE_EPISODE_TIMEOUT_MS
+  });
+  return { hits: results, error };
 }
 
 /* A feed that just failed is answered from the feed reader's 90 s failure
@@ -301,7 +291,7 @@ async function searchWithinShow(
   }
   const meta = lookup.meta;
 
-  const feed = await sharedFeedReader.read(meta.showId, meta.feedUrl, { fetchImpl, userAgent: EPISODE_USER_AGENT });
+  const feed = await sharedFeedReader.read(meta.showId, meta.feedUrl, { fetchImpl });
   if (!feed.parsed) return { results: [], error: feed.error ?? "feed unavailable", stale: false };
 
   const parsed = feed.parsed;
