@@ -124,7 +124,8 @@ body.view-library #view { padding-top: 0; }
    than hiding what follows it; the row grows to fit (its 64 is a minimum). */
 .ag .lb-qrow .ag-row-meta { display: block; margin-top: 0; }
 .ag .lb-qrow .ag-row-meta .lb-ell { display: inline; overflow: visible; text-overflow: clip; white-space: normal; }
-.ag .lb-qrow .ag-row-state { margin-inline-end: var(--s-1); }
+/* "Playing" is the caption's own colour (the prototype sets the whole meta line in text-2; the state is carried by the Fill glyph and the row's tint, not a Lamp word). */
+.ag .lb-qrow .ag-row-state { margin-inline-end: var(--s-1); color: inherit; }
 
 /* Playlists as rows: a 56 collage (no lit glow at this size), the name, the length, the played count in Ember. */
 .ag .lb-prow { min-height: var(--row-queue); padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2); display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); align-items: center; gap: var(--s-3); }

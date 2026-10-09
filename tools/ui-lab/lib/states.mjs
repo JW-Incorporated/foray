@@ -18,11 +18,19 @@ import { forayDetailPicks } from "./seed.mjs";
 
 const wait = (page, ms) => page.waitForTimeout(ms);
 
-/* The page the Dawn and unavailable helpers park on while the scheme flips: a LEGACY page, because a page that wears `.ag`
-   crossfades its colours for 200ms when the scheme changes and the reduced-motion gate reads that as a violation. The Forays
-   list used to be that page; it is Afterglow now (Redesign 2026). When Followed shows is re-skinned, park on whichever
-   legacy page is left. */
-const PARK_ROUTE = "#/starred-shows";
+/* Where the Dawn and unavailable helpers park while the scheme flips. No legacy page is left (every route wears `.ag` now,
+   and a drawn `.ag` page crossfades its colours for 200ms when the scheme changes, which the reduced-motion gate reads as
+   a violation), so the helper parks on this route and then EMPTIES #view: nothing drawn, nothing to crossfade. The target
+   route is painted new afterwards. (Up Next page, iteration 2: `#/starred-shows` became Library, the last park page.) */
+const PARK_ROUTE = "#/about";
+
+async function parkAway(page) {
+  const hash = await page.evaluate((r) => { const h = location.hash; location.hash = r; return h; }, PARK_ROUTE);
+  await wait(page, 500);
+  await page.evaluate(() => { const v = document.getElementById("view"); if (v) v.replaceChildren(); });
+  await wait(page, 100);
+  return hash;
+}
 
 /** Start playback of a seeded item through the real player, then pin it: seek to
     a fixed offset and pause, so the mini bar and sheet show a deterministic
@@ -91,8 +99,7 @@ const forayRoute = (foray) => "#/foray/" + encodeURIComponent(foray.id);
 async function openUnavailableForay(page, foray) {
   /* Off the Afterglow page while the scheme goes back to dark (the Dawn step before this one left it light), so no
      drawn page crossfades; the Foray is then painted new. */
-  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
-  await wait(page, 400);
+  await parkAway(page);
   await page.emulateMedia({ colorScheme: "dark" });
   await wait(page, 400);
   await page.evaluate((hash) => {
@@ -107,8 +114,7 @@ async function openUnavailableForay(page, foray) {
 async function goDawn(page) {
   /* Leave the Afterglow page first and come back after the flip, so the scheme change is not a live colour change on a page
      that is already drawn (every .ag element would crossfade for 200ms): the page is painted new, in Dawn. */
-  const hash = await page.evaluate((r) => { const h = location.hash; location.hash = r; return h; }, PARK_ROUTE);
-  await wait(page, 500);
+  const hash = await parkAway(page);
   await page.emulateMedia({ colorScheme: "light" });
   await wait(page, 500);
   await page.evaluate((h) => { location.hash = h; }, hash);
@@ -120,8 +126,7 @@ async function goDawn(page) {
    painted new in the light palette rather than crossfading a drawn one. (Each state gets a fresh context, so the scheme
    returns to dark for the next state.) */
 async function goDawnForays(page) {
-  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
-  await wait(page, 500);
+  await parkAway(page);
   await page.emulateMedia({ colorScheme: "light" });
   await wait(page, 500);
   await page.evaluate(() => { location.hash = "#/forays"; });

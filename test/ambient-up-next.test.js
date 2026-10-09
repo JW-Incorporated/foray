@@ -499,6 +499,18 @@ test("Clear is a quiet grey word, never Ember (iteration 2): the header carries 
   assert.ok(/\.ag \.ag-btn-quiet\s*\{[^}]*color:\s*var\(--ember\)/.test(read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, " ")), "premise: the quiet button IS Ember by default, so the override is what keeps Clear grey");
 });
 
+test("the playing row's \"Playing\" word is the caption's own colour, not Lamp (iteration 2)", () => {
+  /* The prototype sets the whole meta line in text-2 and carries the state with the Fill glyph and the row tint; a Lamp word
+     made the app's playing row read as a second voice. The generic .ag-row-state is Lamp, so the Up Next row overrides it.
+     MUTATION 1: delete `color: inherit` from the `.lb-qrow .ag-row-state` rule in library.css -> the colour assertion is red.
+     MUTATION 2: change it to `var(--lamp-text)` -> the no-Lamp assertion is red. */
+  const rule = /\.ag \.lb-qrow \.ag-row-state\s*\{([^}]*)\}/.exec(LIB_CSS);
+  assert.ok(rule, "the Up Next row's state rule exists");
+  assert.match(rule[1], /color:\s*inherit/);
+  assert.doesNotMatch(rule[1], /lamp/);
+  assert.ok(/\.ag \.ag-row-state\s*\{[^}]*color:\s*var\(--lamp-text\)/.test(read("ui/primitives.css").replace(/\/\*[\s\S]*?\*\//g, " ")), "premise: the generic state word IS Lamp, so the override is what keeps it grey");
+});
+
 test("titles and captions are never cut: the title is not clamped and the caption runs as wrapping text (iteration 2)", () => {
   /* The first judge pass saw 'Head, School of Nuclear...' and '56 ...': a two-line clamp on the title and a nowrap ellipsis
      on the caption hid the very length a listener reads a queue for. DIRECTION: titles never cut; the prototype wraps a
