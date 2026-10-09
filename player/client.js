@@ -3211,6 +3211,8 @@ async function stopAndClose({ persist = true } = {}) {
       && ui.root.contains(active) && typeof active.blur === "function") active.blur();
   const owner = sheetOwner();
   if (owner) owner.closeSheet(ui.sheet);
+  /* A lock-screen Stop collapses the sheet without setExpanded(false): drop the Now Playing dots menu with it. */
+  ui.closeMenu?.(false);
   /* Opening the sheet made the bar inert + aria-hidden and the topbar inert (setExpanded(true)); the owner's
      closeSheet lifts only what IT recorded, and the topbar is on its keepReachable list, not its inert list. Stop
      from the open sheet never reaches setExpanded(false), so without this the gear stays inert and the next play's
@@ -4014,6 +4016,9 @@ function bind() {
          button below, which the posture's chrome rules must not be hiding when it lands. */
       window.AfterglowCar?.leave(document);
       releaseBarAndTopbar();
+      /* The Now Playing dots menu is built for the state it opened in; Android back / a navigation collapse the sheet
+         through here and never reach closeBtn, so a menu left open would reappear stale (Save/Next) on the next open. */
+      ui.closeMenu?.(false);
     }
     /* Closing: the owner first, while the sheet is still shown — it lifts
        `inert` off the bar and hands focus back to the button that opened
@@ -4159,6 +4164,14 @@ function bind() {
   /* Sleep timer (Afterglow's detail posture): the screen file cycles the minutes, this owns the clock and the
      pause. It only pauses; it never seeks, stops the Foray or touches the queue. */
   if (ui.ag) {
+    /* Share sends a timestamp link: the episode now playing and the second it is at, the pair a Bookmark records.
+       The screen file builds the address with app.js's episodeDeepLinkHash; this only knows what is playing. */
+    ui.shareTarget = () => {
+      const seg = ForayPlayer.currentEpisodeId();
+      if (!seg) return null;
+      const pos = Number(episodePositionSec());
+      return { seg, t: Number.isFinite(pos) && pos > 0 ? Math.floor(pos) : null };
+    };
     let sleepTimer = 0;
     ui.requestSleep = (minutes) => {
       clearTimeout(sleepTimer);

@@ -36,16 +36,17 @@ async function parkAway(page) {
     a fixed offset and pause, so the mini bar and sheet show a deterministic
     position. (The audio is the silent 60 s fixture, so the bar's time reads
     against that, not the episode's real length.) */
-async function startPlayback(page, itemId) {
-  await page.evaluate(async (id) => {
+async function startPlayback(page, itemId, extra = {}) {
+  await page.evaluate(async ({ id, extra }) => {
     const saved = JSON.parse(localStorage.getItem("cp_saved") || "{}");
     const it = saved[id];
+    const { why, ...fields } = extra;
     if (!it) throw new Error("uilab: seeded item missing: " + id);
     await window.ForayPlayer.play(
-      { ...it, duration_sec: it.duration_sec || (it.duration_min || 60) * 60 },
-      { why: "uilab fixture" }
+      { ...it, ...fields, duration_sec: it.duration_sec || (it.duration_min || 60) * 60 },
+      { why: why || "uilab fixture" }
     );
-  }, itemId);
+  }, { id: itemId, extra });
   await page.waitForFunction(() => (window.__audios || []).some((a) => a.src && !a.paused && a.currentTime > 0), null, { timeout: 20000 });
   await page.evaluate(() => {
     for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.pause(); } catch (_) { /* ignore */ } }
@@ -117,6 +118,8 @@ async function resetAmbientNowPlaying(page) {
   await page.evaluate(() => {
     document.documentElement.classList.remove("ag-np-textscale");
     document.documentElement.style.removeProperty("font-size");
+    /* The detail step stands in a 4a pick for the queue's next episode; every other step reads the real one. */
+    if (window.__npRealNextItem) { Object.defineProperty(EPISODE_NAVIGATION, "nextItem", window.__npRealNextItem); window.__npRealNextItem = null; }
     const ui = window.__afterglowNowPlayingUi;
     ui?.artSwap?.classList.remove("is-frozen-ending");
     ui?.artSwap?.querySelector(".ag-np-art-out")?.remove();
@@ -137,9 +140,9 @@ async function startForayPlayback(page, seekSeconds = 21) {
   await page.waitForSelector(".ag-np-strip-button", { state: "visible", timeout: 10000 });
 }
 
-async function startEpisodePlayback(page, itemId) {
+async function startEpisodePlayback(page, itemId, extra = {}) {
   await resetAmbientNowPlaying(page);
-  await startPlayback(page, itemId);
+  await startPlayback(page, itemId, extra);
   await openNowPlaying(page);
 }
 
@@ -461,7 +464,13 @@ function coreRoutes(fx, { entities }) {
 /** @returns {Array<{id:string, description:string, seed:string, steps:Array}>} */
 export function appStates(fx) {
   const ep0 = fx.items[0].id;
+  /* Now Playing shots an episode whose title sets on two lines like the prototype's ("The Neuroscience of Déjà Vu"); ep0's three-line title keeps its own step (now-playing-longtitle) and the menu step. */
+  const epShort = (fx.items.find((item) => item.title.length >= 24 && item.title.length <= 34) || fx.items[0]).id;
+  /* The prototype's episode why-line runs two lines; the harness's "uilab fixture" runs one, which would shift the centred block 12px. */
+  const npWhy = { why: "Why a drilling project meant to study the crust became a record that has stood for decades." };
   const foray0 = fx.forays.find((foray) => foray.status === "published")?.id || fx.forays[0]?.id;
+  /* A published Foray that carries narration: the strip's ivory lights only exist for one of these (foray0 has none). */
+  const forayNarrated = fx.forays.find((foray) => foray.status === "published" && (foray.items || []).some((item) => item.type === "narration" || item.kind === "tts"))?.id || foray0;
   return [
     {
       id: "gallery",
@@ -642,101 +651,6 @@ export function appStates(fx) {
       steps: [{ label: "home", route: "#/", ready: ".td-keep" }],
     },
     {
-      id: "ambient-now-playing",
-      description: "Afterglow Now Playing: Foray, episode, paused, transition, detail, ending and large text.",
-      seed: "returning",
-      steps: [
-        {
-          label: "now-playing-foray",
-          route: "#/foray/" + encodeURIComponent(foray0),
-          /* 15 minutes in, as the prototype is shot: bars behind the listener are lit at full colour, the current one fills. */
-          run: (page) => startForayPlayback(page, 900),
-          ready: ".ag-np.is-foray",
-        },
-        {
-          label: "now-playing-episode",
-          route: "#/library",
-          run: (page) => startEpisodePlayback(page, ep0),
-          ready: ".ag-np:not(.is-foray)",
-        },
-        {
-          label: "now-playing-paused",
-          route: "#/library",
-          run: async (page) => {
-            await startEpisodePlayback(page, ep0);
-            await page.evaluate(async () => {
-              const status = window.ForayPlayer?.forayStatus?.();
-              if (status?.running) await window.ForayPlayer.forayToggle();
-              for (const audio of window.__audios || []) if (!audio.paused) audio.pause();
-            });
-            await wait(page, 300);
-          },
-          ready: ".ag-np.is-paused",
-        },
-        {
-          label: "now-playing-segchange",
-          route: "#/foray/" + encodeURIComponent(foray0),
-          run: async (page) => {
-            await startForayPlayback(page);
-            await page.evaluate(async () => {
-              await window.ForayPlayer.forayJump(1);
-              const ui = window.__afterglowNowPlayingUi;
-              const show = ui?.segmentsSection?.querySelectorAll(".ag-np-clip-row .t-caption")?.[1]?.textContent?.split(" \u00b7 ")?.[0] || "Next show";
-              window.AfterglowNowPlaying?.flashCaption(ui, `Now: ${show}`, true);
-              ui?.roomLayers?.forEach((layer) => layer.classList.add("is-on"));
-              ui?.sShow?.classList.add("is-crossfading");
-            });
-            await wait(page, 120);
-          },
-          ready: ".ag-np-eyebrow.is-lit",
-        },
-        {
-          label: "now-playing-detail",
-          route: "#/foray/" + encodeURIComponent(foray0),
-          run: async (page) => {
-            await startForayPlayback(page);
-            const detail = page.locator(".ag-np-detail");
-            await detail.evaluate((node) => node.scrollIntoView({ block: "start" }));
-            await wait(page, 300);
-          },
-          ready: ".ag-np-detail",
-        },
-        {
-          label: "now-playing-ending",
-          route: "#/library",
-          run: async (page) => {
-            await startEpisodePlayback(page, ep0);
-            await page.evaluate(() => {
-              const ui = window.__afterglowNowPlayingUi;
-              const saved = Object.values(JSON.parse(localStorage.getItem("cp_saved") || "{}"));
-              const next = saved.find((item) => item.id !== window.ForayPlayer?.currentEpisodeId?.() && item.artwork_url);
-              if (!ui || !next) return;
-              const previousSrc = ui.sArt.getAttribute("src") || next.artwork_url;
-              ui.sArt.src = safeUrl(next.artwork_url);
-              ui.sTitle.textContent = next.title || "Up next";
-              ui.sShow.textContent = next.show || "";
-              window.AfterglowNowPlaying.handoff(ui, previousSrc, next.artwork_url, { freeze: true });
-            });
-            await wait(page, 120);
-          },
-          ready: ".ag-np-art-swap.is-frozen-ending",
-        },
-        {
-          label: "now-playing-textscale",
-          route: "#/library",
-          run: async (page) => {
-            await startEpisodePlayback(page, ep0);
-            await page.evaluate(() => {
-              document.documentElement.classList.add("ag-np-textscale");
-              document.documentElement.style.setProperty("font-size", "20.8px");
-            });
-            await wait(page, 300);
-          },
-          ready: ".ag-np",
-        },
-      ],
-    },
-    {
       id: "library",
       description: "Library with forays opened and an episode playing: the top of the page (the Dock's cast under the grid), scrolled to Up Next and History, then an Up Next row's menu open.",
       seed: "library",
@@ -765,6 +679,160 @@ export function appStates(fx) {
       description: "A fresh profile on a show page (Redesign 2026, ambient): the Room lit by the show, Follow in its off state (the Regular plus), the latest episode first. The returning state's `show` step is the followed state.",
       seed: "dismissed",
       steps: [{ label: "show-unfollowed", route: "#/show/" + encodeURIComponent(fx.shows[0].show_id), ready: "[data-sh-room]" }],
+    },
+    {
+      id: "ambient-now-playing",
+      description: "Afterglow Now Playing: Foray, episode, paused, transition, detail, ending and large text.",
+      seed: "returning",
+      steps: [
+        {
+          label: "now-playing-foray",
+          route: "#/foray/" + encodeURIComponent(foray0),
+          /* 15 minutes in, as the prototype is shot: bars behind the listener are lit at full colour, the current one fills. */
+          run: (page) => startForayPlayback(page, 900),
+          ready: ".ag-np.is-foray",
+        },
+        {
+          label: "now-playing-episode",
+          route: "#/library",
+          run: (page) => startEpisodePlayback(page, epShort, npWhy),
+          ready: ".ag-np:not(.is-foray)",
+        },
+        {
+          label: "now-playing-paused",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, epShort, npWhy);
+            await page.evaluate(async () => {
+              const status = window.ForayPlayer?.forayStatus?.();
+              if (status?.running) await window.ForayPlayer.forayToggle();
+              for (const audio of window.__audios || []) if (!audio.paused) audio.pause();
+            });
+            await wait(page, 300);
+          },
+          ready: ".ag-np.is-paused",
+        },
+        {
+          label: "now-playing-segchange",
+          route: "#/foray/" + encodeURIComponent(foray0),
+          run: async (page) => {
+            await startForayPlayback(page);
+            await page.evaluate(async () => {
+              await window.ForayPlayer.forayJump(1);
+              const ui = window.__afterglowNowPlayingUi;
+              const show = ui?.segmentsSection?.querySelectorAll(".ag-np-clip-row .t-caption")?.[1]?.textContent?.split(" \u00b7 ")?.[0] || "Next show";
+              window.AfterglowNowPlaying?.flashCaption(ui, `Now: ${show}`, true);
+              ui?.roomLayers?.forEach((layer) => layer.classList.add("is-on"));
+              ui?.sShow?.classList.add("is-crossfading");
+            });
+            await wait(page, 120);
+          },
+          ready: ".ag-np-eyebrow.is-lit",
+        },
+        {
+          /* The prototype's np-detail3 is an EPISODE scrolled to the bottom of its sheet (afterglow.js sets scroll 99999):
+             Speed/Sleep/Bookmark/Share, Show notes, the Up Next peek. The Foray's detail (clips, sources) is the step below. */
+          label: "now-playing-detail",
+          route: "#/library",
+          run: async (page) => {
+            /* The seeded episodes carry no publisher notes, so the detail posture had no Show notes section to look at. The
+               prototype's scrolled view shows one (a four-line clamp, "More"); this step plays epShort with notes of its own. */
+            await startEpisodePlayback(page, epShort, { ...npWhy,
+              description: "A conversation about how a small team turns a rough idea into something people pay for, and what it gave up on the way. The publisher's notes run here in full, with the guest's links and timestamps that seek to the moment they name. Nothing is rehosted: the audio plays from the show's own feed.",
+            });
+            /* The prototype's peek is a 4a pick ("4a added" with a why-line) over a queue count of 5. The app only calls a pick 4a's
+               when it came from the tail, which needs an EMPTY queue (and then the count link is gone), so that combination is not
+               reachable by playing. The step paints the real peek with the queue's own next episode marked as a tail pick, so the
+               fidelity report measures the card's four rows against the prototype's. The peek is painted last, after the layout settles. */
+            await page.evaluate(() => {
+              const ui = window.__afterglowNowPlayingUi;
+              const nav = EPISODE_NAVIGATION;
+              const real = Object.getOwnPropertyDescriptor(nav, "nextItem");
+              if (real && !window.__npRealNextItem) {
+                window.__npRealNextItem = real;
+                Object.defineProperty(nav, "nextItem", { configurable: true, enumerable: real.enumerable, get() {
+                  const n = real.get.call(this);
+                  return n && { ...n, source: "tail", why: "Founders on cooling devices and wholesale, the same practical vein as this one." };
+                } });
+              }
+              if (ui && nav.nextItem) window.AfterglowNowPlaying.paintUpNext(ui, nav.nextItem, nav.upNextCount);
+              const scroller = document.querySelector(".ag-np .fp-sheet-scroll") || document.querySelector(".ag-np");
+              scroller.scrollTop = scroller.scrollHeight;
+            });
+            await wait(page, 300);
+          },
+          ready: ".ag-np-detail",
+        },
+        {
+          label: "now-playing-detail-foray",
+          route: "#/foray/" + encodeURIComponent(foray0),
+          run: async (page) => {
+            await startForayPlayback(page);
+            const detail = page.locator(".ag-np-detail");
+            await detail.evaluate((node) => node.scrollIntoView({ block: "start" }));
+            await wait(page, 300);
+          },
+          ready: ".ag-np-detail",
+        },
+        {
+          label: "now-playing-ending",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, epShort, npWhy);
+            await page.evaluate(() => {
+              const ui = window.__afterglowNowPlayingUi;
+              const saved = Object.values(JSON.parse(localStorage.getItem("cp_saved") || "{}"));
+              const next = saved.find((item) => item.id !== window.ForayPlayer?.currentEpisodeId?.() && item.artwork_url);
+              if (!ui || !next) return;
+              const previousSrc = ui.sArt.getAttribute("src") || next.artwork_url;
+              ui.sArt.src = safeUrl(next.artwork_url);
+              ui.sTitle.textContent = next.title || "Up next";
+              ui.sShow.textContent = next.show || "";
+              window.AfterglowNowPlaying.handoff(ui, previousSrc, next.artwork_url, { freeze: true });
+            });
+            await wait(page, 120);
+          },
+          ready: ".ag-np-art-swap.is-frozen-ending",
+        },
+        {
+          label: "now-playing-textscale",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, epShort, npWhy);
+            await page.evaluate(() => {
+              document.documentElement.classList.add("ag-np-textscale");
+              document.documentElement.style.setProperty("font-size", "20.8px");
+            });
+            await wait(page, 300);
+          },
+          ready: ".ag-np",
+        },
+        {
+          label: "now-playing-foray-narrated",
+          route: "#/foray/" + encodeURIComponent(forayNarrated),
+          run: (page) => startForayPlayback(page, 900),
+          ready: ".ag-np.is-foray",
+        },
+        {
+          /* The three-line title: art clamps to 180 under 700px tall and the Play still clears the More handle by 24. */
+          label: "now-playing-longtitle",
+          route: "#/library",
+          run: (page) => startEpisodePlayback(page, ep0),
+          ready: ".ag-np.is-long-title",
+        },
+        {
+          /* The dots menu (Save, Next, Episode page, Stop): the visible home of the legacy second row. Last in the state so the
+             open menu is never carried into another step. */
+          label: "now-playing-menu",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, epShort, npWhy);
+            await page.locator('.ag-np [aria-label="More player options"]').click();
+            await wait(page, 300);
+          },
+          ready: ".ag-np-menu:not([hidden])",
+        },
+      ],
     },
   ];
 }

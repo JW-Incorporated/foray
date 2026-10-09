@@ -10,7 +10,7 @@ function agNpEl(tag, cls, text) {
   return node;
 }
 
-const AG_NP_ICONS = new Set(["back15", "bookmark", "chevron-down", "dots", "fwd30", "gauge", "moon", "pause", "play", "share"]);
+const AG_NP_ICONS = new Set(["back15", "bookmark", "books", "check-circle", "check-circle-fill", "chevron-down", "dots", "fwd30", "gauge", "moon", "pause", "play", "share", "skip-next", "sparkle", "x"]);
 
 function agNpIconNode(name, size = 24) {
   const icon = AG_NP_ICONS.has(name) ? name : "play";
@@ -100,6 +100,13 @@ function agNpShow(item) {
   return item?.show || item?.show_title || (item?.kind === "tts" ? "4a narration" : "Unknown show");
 }
 
+/* The catalogue show a source belongs to: its own id when the catalogue knows it, else the title join the Foray page uses. */
+function agNpShowId(item) {
+  if (!item || item.kind === "tts") return null;
+  if (item.show_id && typeof showById === "function" && showById(item.show_id)) return item.show_id;
+  return typeof showIdForShowName === "function" ? showIdForShowName(item.show || item.show_title) : null;
+}
+
 function agNpArt(item) {
   return item?.artwork_url || item?.artworkUrl || item?.image || "";
 }
@@ -146,6 +153,10 @@ function agNpAdopt(ui) {
   ui.scrub.classList.add("ag-np-scrubber");
   ui.times = ui.tNow.parentElement || ui.times;
   ui.tNow.parentElement?.classList.add("ag-np-times", "t-caption");
+  /* The one caption an un-narrated Foray carries, in the time row between the two clocks (hidden when there is narration to see). */
+  ui.stripCaption = agNpEl("span", "ag-np-strip-caption");
+  ui.stripCaption.hidden = true;
+  ui.times?.insertBefore(ui.stripCaption, ui.times.lastElementChild);
   progress.append(strip, ui.scrub, ui.tNow.parentElement);
 
   ui.row.classList.add("ag-np-transport");
@@ -202,20 +213,94 @@ function agNpAdopt(ui) {
   const upNextSection = agNpEl("section", "ag-np-section ag-np-up-next");
   upNextSection.append(agNpEl("h3", "t-headline", "Up next"), agNpEl("div", "ag-np-up-next-row"), ui.queueLink);
 
+  /* The legacy second row (Stop, Next, Save, Episode, Back to this Foray) is not in the prototype's detail posture and read as
+     a second, competing control row. Its buttons stay in the DOM, display:none, because player/client.js owns their behaviour
+     and paint; the dots menu below is their one visible face and forwards a click to each. */
   ui.row2.classList.add("ag-np-legacy-actions");
   detail.append(actionRow, segmentsSection, sourcesSection, notesSection, upNextSection, ui.clips, ui.row2, ui.sErr, ui.note);
   ui.scroll.replaceChildren(first, detail);
   ui.sheet.prepend(roomLayers);
 
   /* The More handle and the dots both bring the detail posture up and park focus on its first control. */
+  /* A programmatic scroll ignores the CSS reduced-motion block, so Reduce Motion is read here. */
+  const reduce = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const openDetail = () => {
     /* The detail is not drawn in car posture (ui/car.css): the dots there end it first, so what they lead to exists. */
     window.AfterglowCar?.leave(document);
-    detail.scrollIntoView({ behavior: "smooth", block: "start" });
+    detail.scrollIntoView({ behavior: reduce() ? "auto" : "smooth", block: "start" });
     ui.rateBtn.focus({ preventScroll: true });
   };
   detailHandle.addEventListener("click", openDetail);
-  moreMenuBtn.addEventListener("click", openDetail);
+
+  /* The dots open the player menu (the prototype's npMenu): Save, Next, the episode's page, back to the Foray, Stop. Each item
+     forwards a click to the legacy button that owns the behaviour and its visibility, so a button the page hides (Next at the
+     end of the queue, Save inside a Foray) is simply not offered. Saved wears Ember: the listener's own mark. */
+  const menu = agNpEl("div", "ag-np-menu");
+  menu.setAttribute("role", "menu");
+  menu.setAttribute("aria-label", "Player options");
+  menu.hidden = true;
+  const isSaved = () => ui.saveBtn.classList.contains("on");
+  const menuSpecs = [
+    { source: ui.saveBtn, icon: () => (isSaved() ? "check-circle-fill" : "check-circle"), label: () => (isSaved() ? "Saved" : "Save"), saved: isSaved },
+    { source: ui.nextBtn, icon: () => "skip-next", label: () => "Next episode" },
+    { source: ui.openLink, icon: () => "books", label: () => "Episode page" },
+    { source: ui.forayLink, icon: () => "sparkle", label: () => "Back to this Foray" },
+    { source: ui.stopBtn, icon: () => "x", label: () => "Stop" },
+  ];
+  moreMenuBtn.setAttribute("aria-haspopup", "menu");
+  moreMenuBtn.setAttribute("aria-expanded", "false");
+  const closeMenu = (restoreFocus) => {
+    if (menu.hidden) return;
+    menu.hidden = true;
+    menu.replaceChildren();
+    moreMenuBtn.setAttribute("aria-expanded", "false");
+    if (restoreFocus) moreMenuBtn.focus({ preventScroll: true });
+  };
+  const openMenu = () => {
+    menu.replaceChildren();
+    for (const spec of menuSpecs) {
+      if (!spec.source || spec.source.hidden) continue;
+      const item = agNpEl("button", "ag-np-menu-item t-label");
+      item.type = "button";
+      item.setAttribute("role", "menuitem");
+      item.classList.toggle("is-saved", Boolean(spec.saved?.()));
+      const glyph = agNpEl("span", "ag-np-menu-icon");
+      glyph.append(agNpIconNode(spec.icon(), 24));
+      item.append(glyph, agNpEl("span", "ag-np-menu-label", spec.label()));
+      item.addEventListener("click", () => {
+        closeMenu(false);
+        spec.source.click();
+      });
+      menu.append(item);
+    }
+    menu.hidden = false;
+    moreMenuBtn.setAttribute("aria-expanded", "true");
+    menu.firstElementChild?.focus({ preventScroll: true });
+  };
+  moreMenuBtn.addEventListener("click", () => (menu.hidden ? openMenu() : closeMenu(true)));
+  menu.addEventListener("keydown", (event) => {
+    const items = [...menu.children];
+    const at = items.indexOf(document.activeElement);
+    if (event.key === "Escape") {
+      /* The sheet's own Escape closes the whole player; inside the menu it closes the menu only. */
+      event.preventDefault();
+      event.stopPropagation();
+      closeMenu(true);
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (items.length) items[(at + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus({ preventScroll: true });
+    } else if (event.key === "Tab") {
+      closeMenu(false);
+    }
+  });
+  ui.sheet.addEventListener("pointerdown", (event) => {
+    if (!menu.hidden && !menu.contains(event.target) && !moreMenuBtn.contains(event.target)) closeMenu(false);
+  });
+  ui.closeBtn.addEventListener("click", () => closeMenu(false));
+  /* The sheet also collapses without touching closeBtn (Android back, a navigation, a lock-screen Stop all go through
+     player/client.js's setExpanded(false) / stopAndClose), so the owner of those paths calls this to drop an open menu. */
+  ui.closeMenu = closeMenu;
+  ui.sheet.append(menu);
   /* Sleep cycles off, 15, 30, 60, off. The timer itself belongs to player/client.js (it owns playback): it is
      handed the minutes through ui.requestSleep and calls ui.resetSleep when it fires. */
   let sleepMinutes = 0;
@@ -231,7 +316,11 @@ function agNpAdopt(ui) {
   });
   ui.resetSleep = () => { sleepMinutes = 0; paintSleep(); };
   shareBtn.addEventListener("click", async () => {
-    const url = safeUrl(location.href);
+    /* The timestamp link (#/episode/<id>?t=N) on the published site, never the shell's own origin; with nothing
+       playing to name, the page address. */
+    const target = typeof ui.shareTarget === "function" ? ui.shareTarget() : null;
+    const base = typeof FORAY_SHARE_BASE === "string" ? FORAY_SHARE_BASE : `${location.origin}${location.pathname}`;
+    const url = safeUrl(target && typeof episodeDeepLinkHash === "function" ? base + episodeDeepLinkHash(target) : location.href);
     try {
       if (navigator.share) await navigator.share({ title: ui.sTitle.textContent, url });
       else if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url);
@@ -357,6 +446,7 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
       button.style.setProperty("--c", item?.kind === "tts" ? "var(--lamp)" : agNpColour(name));
       const bar = agNpEl("span", item?.kind === "tts" ? "ag-np-strip-bar is-narration" : "ag-np-strip-bar");
       bar.append(agNpEl("span", "ag-np-strip-fill"));
+      if (item?.kind === "tts") button.dataset.narration = "1";
       button.append(bar);
       /* Neighbouring cuts from one show are one lantern: they touch (no gap, square inner corners), so the strip reads
          as shows joined by narration instead of a row of equal chips. */
@@ -377,11 +467,24 @@ function agNpPaintForay(ui, { items = [], model = null, currentIndex = 0, starts
     const index = Number(button.dataset.index);
     const current = index === currentIndex;
     button.classList.toggle("is-current", current);
+    /* The current bar is taller than the lanterns beside it. Touching a same-show neighbour it would read as a raised nub on
+       the end of one long bar, so the current bar and the two bars around it step apart (the strip's 2px gap) whatever joined
+       them; every other pair of one show's cuts still touches. A data attribute, not a class, for the tap-exemption reason above. */
+    const nearCurrent = (neighbour) => Number(neighbour?.dataset.index) === currentIndex;
+    button.dataset.gapPrev = current || nearCurrent(ui.strip.children[order - 1]) ? "1" : "0";
+    button.dataset.gapNext = current || nearCurrent(ui.strip.children[order + 1]) ? "1" : "0";
     button.classList.toggle("is-past", segment?.state === "past");
     button.querySelector(".ag-np-strip-fill")?.style.setProperty("--fill", String(current ? segment?.progress ?? 0 : 0));
   });
   setStatusText(ui.sTitle, title);
-  agNpSetShowLine(ui, `${new Set(items.map(agNpShow).filter((name) => name !== "4a narration")).size} shows · ${show}`);
+  /* A Foray with no narration draws no ivory lights; the one caption says why (direction: "Un-narrated: no ivory lights, one caption"). */
+  const narrated = items.some((item) => item?.kind === "tts");
+  const showCount = new Set(items.map(agNpShow).filter((name) => name !== "4a narration")).size;
+  agNpSetShowLine(ui, `${showCount} ${showCount === 1 ? "show" : "shows"} · ${show}`);
+  if (ui.stripCaption) {
+    ui.stripCaption.textContent = narrated ? "" : "Not narrated";
+    ui.stripCaption.hidden = narrated;
+  }
   ui.strip.setAttribute("aria-label", `Foray position ${agNpClock(elapsed)}`);
 }
 
@@ -418,11 +521,6 @@ function agNpPaintCollage(ui, items) {
     collage.append(img);
   });
   collage.dataset.count = String(sources.length);
-  ui.artSwap.querySelector(".ag-np-halo")?.remove();
-  const halo = collage.cloneNode(true);
-  halo.className = "ag-np-halo";
-  halo.setAttribute("aria-hidden", "true");
-  ui.artSwap.prepend(halo);
   ui.sArt.hidden = true;
 }
 
@@ -496,18 +594,24 @@ function agNpPaintEpisode(ui) {
   if (!ui?.ag) return;
   ui.sheet.classList.remove("is-foray");
   ui.showLine = null;
+  /* A Foray's "Now: <show>" caption does not follow the listener into an episode: it names a show of the Foray that just ended.
+     MUTATION: delete this block and an episode opened inside the 3s window wears the previous Foray's caption. */
+  if (ui.eyebrow?.classList.contains("is-lit") && /^Now: /.test(ui.eyebrow.textContent || "")) {
+    clearTimeout(ui.captionTimer);
+    ui.eyebrow.classList.remove("is-lit");
+  }
   /* The collage and the strip are torn down below, so the same Foray played again must rebuild both. */
   ui.foraySignature = null;
   ui.collageSources = null;
   for (const layer of ui.roomLayers) if (layer.dataset.artless === "1") layer.replaceChildren();
   ui.strip.hidden = true;
+  if (ui.stripCaption) ui.stripCaption.hidden = true;
   ui.scrub.hidden = false;
   ui.segmentsSection.hidden = true;
   ui.sourcesSection.hidden = true;
   ui.notesSection.hidden = ui.sDesc.hidden;
   ui.sArt.hidden = false;
   ui.artSwap.querySelector(".ag-np-collage")?.remove();
-  ui.artSwap.querySelector(".ag-np-halo")?.remove();
 }
 
 function agNpPaintUpNext(ui, item, count = 0) {

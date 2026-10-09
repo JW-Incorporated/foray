@@ -109,15 +109,53 @@ test("secondary buttons keep their icon: paintControl writes Speed's rate and Bo
   assert.match(ui, /"t-caption ag-np-action-caption"/);
 });
 
-test("no control in the sheet is decoration: the dots open the detail, Sleep really pauses, and the legacy second row stays reachable", () => {
-  /* MUTATION 1: delete `moreMenuBtn.addEventListener("click", openDetail)` -> red (the dots were a dead 44px button).
+test("no control in the sheet is decoration: the dots open the player menu, Sleep really pauses, and the legacy second row lives on as that menu", () => {
+  /* RULING THAT FELL (iteration 2, fidelity): build-log call 7 kept the legacy row (Stop, Next, Save, Episode, Back to this Foray)
+     visible at the foot of the detail posture. The prototype has no such row; it read as a second control row, with a Unicode skip
+     glyph and a violet "Saved". Its buttons are now display:none and the dots menu forwards a click to each, so nothing is lost.
+     MUTATION 1: delete `spec.source.click();` in the menu item handler -> red (every menu item would be a dead button).
      MUTATION 2: change `minutes * 60000` to `minutes * 6000` in player/client.js -> red (the timer would fire 10x early).
-     MUTATION 3: put `display: none` back on `.ag-np-legacy-actions` -> red (Stop, Next, Save, Episode and Back to this Foray vanished with it). */
-  assert.match(ui, /moreMenuBtn\.addEventListener\("click", openDetail\)/);
+     MUTATION 3: set `.ag-np-legacy-actions` back to `display: flex` -> red (the second row returns beside the menu).
+     MUTATION 4: delete the `if (!spec.source || spec.source.hidden) continue;` line -> red (Next offered at the end of the queue, Save inside a Foray).
+     MUTATION 5: change `.ag-np-menu-item.is-saved { color: var(--ember); }` to `var(--violet)` -> red (Saved is the listener's own mark: Ember). */
+  assert.match(ui, /moreMenuBtn\.addEventListener\("click", \(\) => \(menu\.hidden \? openMenu\(\) : closeMenu\(true\)\)\);/);
+  assert.match(ui, /item\.addEventListener\("click", \(\) => \{\s*closeMenu\(false\);\s*spec\.source\.click\(\);\s*\}\);/);
+  for (const source of ["ui.saveBtn", "ui.nextBtn", "ui.openLink", "ui.forayLink", "ui.stopBtn"]) {
+    assert.ok(ui.includes(`{ source: ${source},`), `${source} has a menu item`);
+  }
+  assert.match(ui, /if \(!spec\.source \|\| spec\.source\.hidden\) continue;/, "an item the page hides is not offered");
+  assert.match(ui, /event\.stopPropagation\(\);\s*closeMenu\(true\);/, "Escape closes the menu, not the whole player");
   assert.match(ui, /ui\.requestSleep\?\.\(sleepMinutes\)/);
   assert.match(client, /ui\.requestSleep = \(minutes\) => \{[\s\S]*?if \(isRunning\(\)\) setRunning\(false, "sleep"\);[\s\S]*?\}, minutes \* 60000\);/);
-  assert.match(css, /\.ag-np-legacy-actions \{[^}]*display: flex/);
-  assert.doesNotMatch(css, /\.ag-np-legacy-actions[^{]*\{[^}]*display:\s*none/);
+  assert.match(css, /\.ag-np-legacy-actions \{ display: none; \}/);
+  assert.match(css, /\.ag-np-menu-item\.is-saved \{ color: var\(--ember\); \}/);
+  assert.doesNotMatch(css, /\.ag-np-menu[^{]*\{[^}]*backdrop-filter/, "the Dock is the only glass");
+  /* No Unicode glyph in the menu: every icon is a sprite symbol, in the sprite and in the local allow-list (an unknown name falls back to the play glyph). */
+  const menuBlock = /const menuSpecs = \[[\s\S]*?\n  \];/.exec(ui)[0];
+  const icons = [...menuBlock.matchAll(/"([a-z]+(?:-[a-z]+)*)"/g)].map((m) => m[1]).filter((n) => /^(check-circle|check-circle-fill|skip-next|books|sparkle|x)$/.test(n));
+  assert.ok(icons.length >= 6, "all five items name their sprite icon (Save names two)");
+  const sprite = read("ui/icons.svg");
+  const allow = /const AG_NP_ICONS = new Set\(\[[^\]]*\]\)/.exec(ui)[0];
+  for (const name of icons) {
+    assert.ok(sprite.includes(`id="i-${name}"`), `${name} is a sprite symbol`);
+    assert.ok(allow.includes(`"${name}"`), `${name} is in AG_NP_ICONS`);
+  }
+  assert.doesNotMatch(menuBlock, /[⏭✓✔]/, "no Unicode skip glyph or checkmark");
+});
+
+test("iteration 2 (strip + queue): the current bar steps apart from its neighbours, and Up Next's peek reads queued episodes outside the session", () => {
+  /* MUTATION 1: delete the `data-gap-prev` rule's `margin-left: 0` -> red (a same-show neighbour touches the taller current bar again: the nub).
+     MUTATION 2: in ui/now-playing.js change `current || nearCurrent(ui.strip.children[order - 1])` to `current` -> red (the bar before the current one stays welded to it).
+     MUTATION 3: in app.js drop `|| state.itemIndex[id] || storedEpisode(id)` from `nextItem` -> red (a queued episode outside today's session gave a null
+       peek, and the Up Next section vanished from the detail posture exactly when a listener had an Up Next). */
+  assert.match(ui, /button\.dataset\.gapPrev = current \|\| nearCurrent\(ui\.strip\.children\[order - 1\]\) \? "1" : "0";/);
+  assert.match(ui, /button\.dataset\.gapNext = current \|\| nearCurrent\(ui\.strip\.children\[order \+ 1\]\) \? "1" : "0";/);
+  assert.match(css, /\[data-join-prev\]\[data-gap-prev="1"\] \{ margin-left: 0; --rl: var\(--r-xs\); \}/);
+  assert.match(css, /\[data-join-next\]\[data-gap-next="1"\] \{ --rr: var\(--r-xs\); \}/);
+  /* MUTATION 4: delete the `.fp-upnext` rule's `color: var(--ember)` -> red (body.ui-v2 .fp-openep paints the Up Next link violet, which the direction overturned). */
+  assert.match(css, /\.ag-np-up-next \.fp-upnext \{[^}]*color: var\(--ember\)/);
+  assert.match(css, /\.fp-s-desc summary::after \{ content: none; \}/);
+  assert.match(read("app.js"), /const item = id \? \(episode\(id\) \|\| state\.itemIndex\[id\] \|\| storedEpisode\(id\)\) : null;/);
 });
 
 test("a Foray with no artwork URLs still draws its collage, from the strip's own colours", () => {
@@ -127,10 +165,10 @@ test("a Foray with no artwork URLs still draws its collage, from the strip's own
   assert.match(css, /\.ag-np-collage-tile \{[^}]*background: var\(--c\)/);
 });
 
-test("a Foray's Room is its blurred collage, the sleeve casts a halo of its own tones, and the strip joins one show's cuts", () => {
+test("a Foray's Room is its blurred collage, the sleeve casts ONE tone of light, and the strip joins one show's cuts", () => {
   /* MUTATION 1: in agNpSetRoom change `if (artless) agNpFillRoomCollage(incoming, ui.collageSources)` to `if (false)` -> red
        (iteration 2: the Room was one flat Glow colour and none of the sleeves' purple or cyan reached the wall).
-     MUTATION 2: delete `ui.artSwap.prepend(halo)` -> red (the 280px collage sat on the wall with only a darker edge, a shadow not a lamp).
+     MUTATION 2 (iteration 3: the blurred-collage halo read as a multi-hue smudge, so it is gone): re-add `ui.artSwap.prepend(halo)` or an `.ag-np-halo` rule -> the doesNotMatch lines below go red.
      MUTATION 3: set `.ag-np-strip-button[data-join-prev] { margin-left: -2px }` to `0` -> red (24 equal chips with uniform gaps again).
      MUTATION 4: drop the `show !== "4a narration"` clause from `artless` -> red (narration would keep a show's collage instead of lamp-warm). */
   assert.match(ui, /const artless = css === "none" && show !== "4a narration";/);
@@ -138,15 +176,123 @@ test("a Foray's Room is its blurred collage, the sleeve casts a halo of its own 
   assert.match(ui, /for \(const layer of ui\.roomLayers\) if \(layer\.dataset\.artless === "1"\) agNpFillRoomCollage\(layer, sources\);/, "a collage that arrives after setRoom still reaches the layer that is on");
   assert.match(ui, /for \(const layer of ui\.roomLayers\) if \(layer\.dataset\.artless === "1"\) layer\.replaceChildren\(\);/, "an episode never inherits a Foray's collage");
   assert.match(css, /\.ag-np-room-collage \{[^}]*position: absolute;[^}]*height: 66%;[^}]*display: grid;/s);
+  /* The blurred layer is inset past its own blur radius (64px) so the blur's fade never lands inside the viewport; with a bare -12% the
+     layer edge sat 47px out on a 393 wide sheet and a colour band could read down each screen edge.
+     MUTATION: put `inset: -12%;` back on `.ag-np-room-layer` (drop the `- 64px`) -> red. */
+  assert.match(css, /\.ag-np-room-layer \{[^}]*inset: calc\(-12% - 64px\);[^}]*filter: blur\(64px\)/s, "the Room layer bleeds past the viewport by at least its blur radius");
   assert.match(css, /\.ag-np-room-tile \{[^}]*background: var\(--c, transparent\)/);
-  assert.match(ui, /ui\.artSwap\.style\.setProperty\("--art-glow", glow\);/, "the glow colour lives on the art box so the collage, the halo and an episode sleeve all cast it");
-  assert.match(ui, /ui\.artSwap\.prepend\(halo\);/);
-  assert.match(ui, /halo\.setAttribute\("aria-hidden", "true"\);/);
-  assert.match(css, /\.ag-np-halo \{[^}]*filter: blur\(34px\)[^}]*pointer-events: none;/s);
-  assert.match(css, /prefers-reduced-transparency: reduce\) \{ \.ag-np\.fp-sheet \.ag-np-halo \{ display: none;/);
+  assert.match(ui, /ui\.artSwap\.style\.setProperty\("--art-glow", glow\);/, "the glow colour lives on the art box so the collage and an episode sleeve both cast it, in ONE tone");
+  assert.doesNotMatch(ui, /halo/i, "no second blurred copy of the collage: its tones spilled as a purple/teal/orange ring");
+  assert.doesNotMatch(css, /halo/i);
   assert.match(css, /\.ag-np-art-swap > \.lit-art \{ box-shadow: var\(--shadow-1\), 0 0 calc\(var\(--lit-r\) \* \.6\)[^;]*var\(--art-glow, var\(--glow\)\)/);
   assert.match(ui, /if \(runOf\(order - 1\)\) button\.dataset\.joinPrev = "1";/);
   assert.match(ui, /if \(runOf\(order \+ 1\)\) button\.dataset\.joinNext = "1";/, "a data attribute, not a class: gates.mjs keys its tap-target exemption on the class list, so a new class would void it");
-  assert.match(css, /\.ag-np-strip-button\[data-join-prev\] \{ margin-left: -2px; \}/);
-  assert.match(css, /\[data-join-prev\] \.ag-np-strip-bar \{ border-top-left-radius: 0; border-bottom-left-radius: 0; \}/);
+  assert.match(css, /\.ag-np-strip-button\[data-join-prev\] \{ margin-left: -2px; --rl: 0; \}/);
+  assert.match(css, /\.ag-np-strip-button\[data-join-next\] \{ --rr: 0; \}/);
+  /* The squared corners travel as --rl / --rr (one rule per side, not four radius rules: now-playing.css was 200 bytes over its 14 KB budget).
+     MUTATION 5: take `var(--rl, var(--r-xs))` out of `.ag-np-strip-bar`'s border-radius -> red (joined cuts keep rounded corners). */
+  assert.match(css, /\.ag-np-strip-bar \{[^}]*border-radius: var\(--rl, var\(--r-xs\)\) var\(--rr, var\(--r-xs\)\) var\(--rr, var\(--r-xs\)\) var\(--rl, var\(--r-xs\)\);/);
+});
+
+test("iteration 3: every show bar is at full art colour, the current bar's fill is the lighter tint, narration is a thin shrinkable light, an un-narrated Foray carries one caption", () => {
+  /* MUTATION 1: put `color-mix(in oklab, var(--c) 38%, transparent)` back as the bar's base background -> the first doesNotMatch goes red
+       (bars ahead of the playhead went dark teal/olive/brown, so the map was unreadable ahead).
+     MUTATION 2: delete the `[data-narration] { min-width: 2px; }` rule -> red (a Foray with 40 bridges in 51 items ran 90px off the right edge of the strip).
+     MUTATION 3: change `ui.stripCaption.hidden = narrated` to `= false` -> red (an un-narrated Foray said nothing, a narrated one said "Not narrated" over its own ivory lights). */
+  const bar = css.match(/\.ag-np\.fp-sheet \.ag-np-strip-bar \{[^}]*\}/s)?.[0] || "";
+  assert.match(bar, /background: var\(--c\);/);
+  assert.doesNotMatch(bar, /transparent/, "a bar ahead of the playhead is not a faded copy of its colour");
+  assert.match(css, /\.ag-np-strip-fill \{[^}]*background: color-mix\(in oklab, var\(--c\) 78%, var\(--lamp\)\)/s, "the fill is a lighter tint of the same colour, not a different hue");
+  assert.match(css, /\.ag-np-strip-button\[data-narration\] \{ min-width: 2px; \}/);
+  assert.match(ui, /if \(item\?\.kind === "tts"\) button\.dataset\.narration = "1";/);
+  assert.match(ui, /const narrated = items\.some\(\(item\) => item\?\.kind === "tts"\);/);
+  assert.match(ui, /ui\.stripCaption\.textContent = narrated \? "" : "Not narrated";/);
+  assert.match(ui, /ui\.stripCaption\.hidden = narrated;/);
+});
+
+test("review round 1: Follow is the Library's record, Share is a timestamp link, the detail scroll honours Reduce Motion, the timeline exemption is width-only", () => {
+  const gates = read("tools/ui-lab/lib/gates/config.mjs");
+  const rules = read("tools/ui-lab/lib/gates/rules.mjs");
+  /* MUTATION: replace `follows.toggle(item.show_id)` in the Follow click handler with a local aria-pressed flip -> red (Following and the Library disagree).
+     Follow goes through ForayNav.showFollow (the real star functions, pinned in ambient-now-playing-review.test.js), never a label of its own. */
+  assert.match(ui, /follows\.toggle\(item\.show_id\);/);
+  assert.match(ui, /window\.ForayNav\?\.showFollow/, "Follow reads the published follow store");
+  assert.doesNotMatch(ui, /getAttribute\("aria-pressed"\) !== "true"/, "no local toggle of aria-pressed survives");
+
+  /* MUTATION: put `safeUrl(location.href)` back as the only argument of the Share handler's url -> red (it shares the page, not the moment). */
+  assert.match(ui, /episodeDeepLinkHash\(target\)/);
+  assert.doesNotMatch(ui, /const url = safeUrl\(location\.href\);/);
+  assert.match(client, /ui\.shareTarget = \(\) => \{[\s\S]*?ForayPlayer\.currentEpisodeId\(\)[\s\S]*?episodePositionSec\(\)/, "the player says what is playing and where, as Bookmark does");
+  /* MUTATION: change `behavior: reduce() ? "auto" : "smooth"` back to `behavior: "smooth"` -> red. */
+  assert.match(ui, /prefers-reduced-motion: reduce\)"\)\.matches/);
+  assert.match(ui, /behavior: reduce\(\) \? "auto" : "smooth"/);
+  /* MUTATION: delete `heightFloor: true` from one timeline selector in gates/config.mjs -> red (tools/ui-lab/gates.test.mjs pins the rule itself). */
+  assert.equal((gates.match(/heightFloor: true/g) || []).length, 3, "all three timeline selectors keep the height floor");
+  assert.match(rules, /!s\.heightFloor \|\| e\.h \+ tol >= min/);
+});
+
+test("round 2: the Foray's 'Now: <show>' caption does not follow the listener into an episode, and the detail step shoots an episode like the prototype", () => {
+  /* MUTATION 1: delete the `/^Now: /` block at the top of agNpPaintEpisode -> red (an episode opened inside the 3s window wore the
+     previous Foray's caption; found in the first episode-detail render).
+     MUTATION 2: change the `detail` step's startEpisodePlayback back to startForayPlayback in tools/ui-lab/lib/states.mjs -> red
+     (the prototype's np-detail3 is an episode scrolled to the bottom; the Foray's detail has its own `now-playing-detail-foray` step). */
+  const paint = /function agNpPaintEpisode\(ui\) \{[\s\S]*?\n\}/.exec(ui)[0];
+  assert.match(paint, /classList\.contains\("is-lit"\) && \/\^Now: \/\.test\(ui\.eyebrow\.textContent/);
+  assert.match(paint, /clearTimeout\(ui\.captionTimer\)/);
+  const states = read("tools/ui-lab/lib/states.mjs");
+  const detail = /label: "now-playing-detail",[\s\S]*?ready: "\.ag-np-detail"/.exec(states)[0];
+  assert.match(detail, /startEpisodePlayback\(page, epShort, \{ \.\.\.npWhy,\s*description:/, "the detail step plays an episode WITH notes, so Show notes is on screen to be judged");
+  assert.match(detail, /scrollTop = scroller\.scrollHeight/);
+  assert.match(states, /label: "now-playing-detail-foray"/);
+});
+
+test("iteration 4 (fidelity round 3): long-title art follows the prototype's formula, the detail actions are 44 tall, tall sheets pad the block, and the harness shoots a two-line title", () => {
+  /* MUTATION 1: set `.ag-np.is-long-title`'s clamp maximum back to 284px -> red (a three-line title's art was 36px under the prototype at 393x852).
+     MUTATION 2: set `.ag-np-action`'s min-height back to 56px -> red (the actions row was 12px taller than the prototype's 44).
+     MUTATION 3: delete the `(min-height: 800px)` padding rule -> red (art 6px high against the prototype).
+     MUTATION 4: in tools/ui-lab/lib/states.mjs point `now-playing-episode` back at `ep0` -> red (the three-line fixture title is the long-title case, which keeps its own step). */
+  assert.match(css, /\.ag-np\.is-long-title \{ --np-art: clamp\(180px, calc\(100dvh - 556px\), 320px\); \}/);
+  assert.match(css, /\.ag-np-action \{ min-width: 64px; min-height: 44px;/);
+  assert.match(css, /@media \(min-height: 800px\) \{ \.ag-np\.fp-sheet \.ag-np-mid \{ padding-top: 4px; \} \}/);
+  const states = read("tools/ui-lab/lib/states.mjs");
+  assert.match(states, /label: "now-playing-episode",\s*route: "#\/library",\s*run: \(page\) => startEpisodePlayback\(page, epShort, npWhy\)/);
+  assert.match(states, /label: "now-playing-longtitle",[\s\S]*?startEpisodePlayback\(page, ep0\)[\s\S]*?ready: "\.ag-np\.is-long-title"/);
+});
+
+test("iteration 5 (fidelity round 4): the title group sits 12px under the art and the sleeve's glow stays under --lit-mix", () => {
+  /* MUTATION 1: set `.ag-np-titles` margin-top back to var(--s-5) -> red (title 8px under the prototype's gap; why-line to scrubber read 46 against 60).
+     MUTATION 2: set the inner ring's mix back to `calc(var(--lit-mix) + 25%)` -> red (a hard orange halo that outlined the sleeve).
+     MUTATION 3: set --rs2 back to `+ 20px` -> red (the scrim's mid stop would no longer sit where the text group starts). */
+  assert.match(css, /\.ag-np-titles \{ margin-top: var\(--s-3\);/);
+  assert.match(css, /--rs2: calc\(var\(--safe-top\) \+ 72px \+ var\(--np-art\) \+ 12px\)/);
+  const lit = css.match(/\.lit-art \{ box-shadow:[^}]*\}/)[0];
+  const mixes = [...lit.matchAll(/calc\(var\(--lit-mix\) ([+-]) (\d+)%\)/g)];
+  assert.equal(mixes.length, 2, "both glow rings read --lit-mix");
+  mixes.forEach((m) => assert.equal(m[1], "-", "a ring above --lit-mix is the neon edge-light the fidelity round removed"));
+});
+
+test("iteration 6 (fidelity round 5): Play and the scrubber block sit where the prototype puts them, the strip spotlights a segment change, notes use body type, the Up Next card centres its art", () => {
+  /* MUTATION 1: delete `.ag-np-detail-handle { margin-top: var(--s-3); }` from the (min-height: 701px) block -> red (Play 12px above the prototype's 708).
+     MUTATION 2: change the block's `margin-block: -2px` to -6px -> red (the scrubber block 8px short of the prototype's 58).
+     MUTATION 3: delete the `:has(.ag-np-eyebrow.is-lit)` rule -> red (the light no longer moves to the new show; every bar stays at full colour).
+     MUTATION 4: delete `font: var(--t-body)` from `.ep-description-text` -> red (notes at 14.4px/21.6, the block 9.6px short).
+     MUTATION 5: delete `align-items: center` from `.ag-np-up-next-row` -> red (72px art top-aligned against a four-line block). */
+  const block = css.match(/@media \(min-height: 701px\) \{([^@]*?)\n\}/)?.[1] || "";
+  assert.match(block, /\.ag-np-progress \{ margin-top: var\(--s-4\); \}/);
+  assert.match(block, /margin-block: -2px;/);
+  assert.match(block, /\.ag-np-strip \{ height: 40px; \}/);
+  assert.match(block, /\.ag-np-detail-handle \{ margin-top: var\(--s-3\); \}/);
+  assert.match(css, /:has\(\.ag-np-eyebrow\.is-lit\) \.ag-np-strip-button:not\(\.is-current\) \.ag-np-strip-bar:not\(\.is-narration\) \{ opacity: var\(--seg-dim\); \}/);
+  assert.match(css, /:has\(\.ag-np-eyebrow\.is-lit\) \.fp-s-show \{ color: var\(--text-3\); \}/);
+  assert.match(css, /\.ep-description-text \{[^}]*font: var\(--t-body\);/s);
+  assert.match(css, /\.ag-np-up-next-row \{[^}]*align-items: center;/s);
+});
+
+test("iteration 7: the Up Next peek's '4a added' eyebrow is a block line, so the card is 137.5px tall like the prototype's", () => {
+  /* An inline span in the copy div took the sheet body's line-height as its strut, so the eyebrow line was 6px taller than a
+     caption line and the whole detail block sat 6px high in the fidelity report (actions -6, notes -6).
+     MUTATION: delete `display: block;` from the `.ag-np-up-next-copy .eyebrow` rule -> red (eyebrow inline again, card +6px).
+     MUTATION: paint the eyebrow with another class than `eyebrow` -> red (the rule no longer reaches it). */
+  assert.match(css, /\.ag-np-up-next-copy \.eyebrow \{ display: block;/);
+  assert.match(ui, /agNpEl\("span", reason \? "eyebrow lamp" : "eyebrow", eyebrow\)/);
 });

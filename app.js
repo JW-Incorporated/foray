@@ -3462,7 +3462,11 @@ const EPISODE_NAVIGATION = {
     const cur = window.ForayPlayer?.currentEpisodeId?.();
     const plan = cur ? planAfterEnded(cur) : null;
     const id = plan ? plan.nextId : queueIds()[0];
-    const item = id ? episode(id) : null;
+    /* A queued or saved episode is usually not in today's session document, so the session alone answered null
+       and the sheet's Up Next peek vanished for exactly the listener who has an Up Next. The stored snapshot is
+       what Up Next itself plays from (liveEpisode). MUTATION: drop the `||` tail and a queued episode outside the
+       session gives null. */
+    const item = id ? (episode(id) || state.itemIndex[id] || storedEpisode(id)) : null;
     if (!item) return null;
     /* PROVENANCE FROM THE PICK'S SOURCE, not from whether a hook exists (whyFor falls back to item.hook, so nearly every
        catalogue episode has a reason). 4a made the pick only when the continuation took it from the tail ("more of what

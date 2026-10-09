@@ -142,7 +142,11 @@ test("the dots stay in the car head and lead out of the car to the detail action
   assert.ok(!/ag-np-more-btn/.test(src), "car.js adds no hiding class to the dots");
   const ui = read("ui/now-playing.js");
   assert.match(ui, /const openDetail = \(\) => \{\s*\/\*[^*]*\*\/\s*window\.AfterglowCar\?\.leave\(document\);\s*detail\.scrollIntoView/, "openDetail ends posture before it scrolls");
-  assert.match(ui, /moreMenuBtn\.addEventListener\("click", openDetail\)/, "the dots run openDetail");
+  /* Merge note (Now Playing iteration 2 meets the car): the dots became the player menu (Save, Next, Episode page, Stop), which
+     needs no detail and so stays usable in the car as it is; the More handle is the one way into the detail and it runs
+     openDetail. MUTATION: point the handle at a bare scrollIntoView -> red. */
+  assert.match(ui, /detailHandle\.addEventListener\("click", openDetail\)/, "the More handle runs openDetail");
+  assert.match(ui, /moreMenuBtn\.addEventListener\("click", \(\) => \(menu\.hidden \? openMenu\(\) : closeMenu\(true\)\)\)/, "the dots open the menu, which needs no detail");
   assert.match(css, /\.ag-np-head \{ display: grid; grid-template-columns: 1fr auto 1fr; \}/, "1fr / auto / 1fr: the chip is centred whatever the outer controls weigh");
   /* MUTATION: delete the `justify-self: end` rule -> red (the dots sit against the chip, not at the trailing edge, and the head reads lopsided again). */
   assert.match(css, /\.ag-np-head \.ag-np-car-chip \+ \.ag-np-icon-btn \{ justify-self: end; \}/, "the dots take the trailing edge, mirroring the chevron");

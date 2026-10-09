@@ -378,6 +378,7 @@ const NOT_CONTROLS = {
   "app.js": new Set([
     "pct", "el", "note", "$(\"#fy-total\")", "$(\"#fy-sheet-sub\")", "now", "ui.status", "ui.notice", "ddUi.status", "n",
     "link", // a drawer <a> with fixed text, written once
+    "ui.stripCaption", // Now Playing's "Not narrated" caption under the strip: a status line, not a button (ambient iteration 3)
     "region", // L3's announce(): the sr-only live region, a status line (integration)
     "countBadge", // the Library tab's aria-hidden Up Next count (ui/episode.js syncLibraryBadge): the tab's own name is set beside it
     "titleText", // the Episode page's title text span inside its h1 (ui/episode.js fitEpisodeTitle): a heading, not a control

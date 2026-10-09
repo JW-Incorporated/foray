@@ -194,3 +194,69 @@ test("app.js nextItem hands the sheet the pick's source, and only a tail pick ke
   assert.strictEqual(idle.source, "queue", "nothing playing: the head of Up Next is the listener's own entry");
   assert.strictEqual(idle.why, "");
 });
+
+/* ---- the dots menu closes whenever the sheet collapses, not only through its own close paths ---- */
+class RichNode extends FakeNode {
+  constructor(tag) { super(tag); this.parentElement = null; this.cls = new Set(); this.focused = false; }
+  get classList() {
+    const set = this.cls;
+    return { add: (...c) => c.forEach((x) => set.add(x)), remove: (...c) => c.forEach((x) => set.delete(x)), contains: (c) => set.has(c),
+      toggle: (c, on) => { const want = on === undefined ? !set.has(c) : Boolean(on); if (want) set.add(c); else set.delete(c); return want; } };
+  }
+  append(...nodes) { for (const n of nodes) { if (n instanceof RichNode) n.parentElement = this; } super.append(...nodes); }
+  prepend(...nodes) { for (const n of nodes) { if (n instanceof RichNode) n.parentElement = this; } super.prepend(...nodes); }
+  replaceChildren(...nodes) { super.replaceChildren(...nodes); for (const n of nodes) { if (n instanceof RichNode) n.parentElement = this; } }
+  insertBefore(node, ref) { const at = this.children.indexOf(ref); if (node instanceof RichNode) node.parentElement = this; this.children.splice(at < 0 ? this.children.length : at, 0, node); return node; }
+  get lastElementChild() { return this.children[this.children.length - 1]; }
+  get firstElementChild() { return this.children[0]; }
+  contains(node) { return node === this || this.all().includes(node); }
+  focus() { this.focused = true; }
+  scrollIntoView() {}
+  querySelector(sel) { return sel === "summary" || sel === ".fy-grab" ? (this._found ||= new RichNode(sel === "summary" ? "summary" : "div")) : null; }
+}
+
+function adoptRealSheet() {
+  const document = { createElement: (t) => new RichNode(t), createElementNS: (_n, t) => new RichNode(t), createTextNode: (text) => ({ text }), activeElement: null };
+  const ctx = { document, setTimeout, clearTimeout, safeUrl: (u) => u, setControlLabel() {}, window: {} };
+  vm.createContext(ctx);
+  vm.runInContext(ui, ctx, { filename: "ui/now-playing.js" });
+  const node = (tag = "div") => new RichNode(tag);
+  const sheetUi = {};
+  for (const k of ["root", "sheet", "grabZone", "closeBtn", "scroll", "sArt", "sTitle", "sShow", "sWhy", "scrub", "row", "backBtn", "bigPlay", "fwdBtn",
+    "rateBtn", "bookmarkBtn", "saveBtn", "nextBtn", "openLink", "forayLink", "stopBtn", "queueLink", "row2", "clips", "sErr", "note"]) sheetUi[k] = node("button");
+  sheetUi.tNow = node("span");
+  node("div").append(sheetUi.tNow, node("span"));
+  sheetUi.sDesc = node("details");
+  ctx.agNpAdopt(sheetUi);
+  const dots = sheetUi.grabZone.children.find((c) => c.getAttribute && c.getAttribute("aria-haspopup") === "menu");
+  const menu = sheetUi.sheet.children.find((c) => c.getAttribute && c.getAttribute("role") === "menu");
+  return { sheetUi, dots, menu };
+}
+
+test("the dots menu is dropped when the sheet collapses without ui.closeBtn (Android back, a navigation, a lock-screen Stop)", () => {
+  /* MUTATION 1: delete `ui.closeMenu = closeMenu;` in ui/now-playing.js -> red (nothing for the collapse paths to call).
+     MUTATION 2: delete `ui.closeMenu?.(false);` from the `!open` block of setExpanded in player/client.js -> red on the
+       client.js assertion (Android back would leave the menu showing and stale).
+     MUTATION 3: delete the same call from stopAndClose -> red on the second client.js assertion.
+     MUTATION 4: make closeMenu skip `menu.replaceChildren()` -> red on the emptied-menu step (a stale Save/Saved item survives). */
+  const { sheetUi, dots, menu } = adoptRealSheet();
+  assert.ok(dots && menu, "adopt built the dots and the menu");
+  sheetUi.stopBtn.hidden = false;
+  dots.click();
+  assert.strictEqual(menu.hidden, false, "the dots opened the menu");
+  assert.strictEqual(dots.getAttribute("aria-expanded"), "true");
+  assert.ok(menu.children.length > 0, "the menu was built for the state it opened in");
+  assert.strictEqual(typeof sheetUi.closeMenu, "function", "the collapse paths are handed a way to close the menu");
+  dots.focused = false;
+  sheetUi.closeMenu(false);
+  assert.strictEqual(menu.hidden, true, "closed");
+  assert.strictEqual(dots.getAttribute("aria-expanded"), "false");
+  assert.strictEqual(menu.children.length, 0, "no stale Save/Next item survives to the next open");
+  assert.strictEqual(dots.focused, false, "a collapse does not steal focus back into a sheet that is closing");
+  sheetUi.closeMenu(false); /* idempotent when already closed */
+  const client = read("player/client.js");
+  const closeBlock = /if \(!open\) \{\s*\/\*[\s\S]*?releaseBarAndTopbar\(\);[\s\S]*?ui\.closeMenu\?\.\(false\);\s*\}/.exec(client);
+  assert.ok(closeBlock, "setExpanded(false) closes the dots menu (the path Android back and navigation take)");
+  const stop = /async function stopAndClose[\s\S]*?\r?\n\}\r?\n/.exec(client)[0];
+  assert.match(stop, /owner\.closeSheet\(ui\.sheet\);[\s\S]*?ui\.closeMenu\?\.\(false\);/, "stopAndClose closes it too (lock-screen Stop never reaches setExpanded)");
+});

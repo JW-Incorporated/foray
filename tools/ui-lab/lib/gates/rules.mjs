@@ -66,7 +66,8 @@ export function evaluateTapTargets(screen, els, { min = MIN_TAP_PX, tol = TAP_TO
   const q = (n) => Math.floor(n / 4) * 4; // size bucket: a regression changes the key
   for (const e of els) {
     if (exemptions.inlineTextLinks && e.tag === "a" && e.inlineInText) continue;
-    if (exemptions.selectors.some((s) => s.id === e.selector)) continue;
+    /* A width-only exemption (`heightFloor`) still requires the full height: a bar that is also short is a real miss. */
+    if (exemptions.selectors.some((s) => s.id === e.selector && (!s.heightFloor || e.h + tol >= min))) continue;
     const boxOk = e.w + tol >= min && e.h + tol >= min;
     const hits = e.hits || [];
     const misses = hits.filter((h) => !h).length;
