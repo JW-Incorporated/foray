@@ -368,7 +368,7 @@ public class ForayPlaybackService extends MediaSessionService {
                audio mode can still say IN_CALL at that moment (Telecom abandons the call's focus,
                then resets the mode, which AudioService applies on its own thread), so the resume
                does not ask it: refusing would be R5-02's "nothing resumes after the call". */
-            if (resumingAnInterruption()) return EngineSeams.Activation.granted();
+            // MUTANT CH3-08 b: resume check dropped
             String call = callInProgress(audioMode());
             if (call == null) return EngineSeams.Activation.granted();
             String token = "insufficient-priority";
