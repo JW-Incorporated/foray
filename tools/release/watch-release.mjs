@@ -207,14 +207,26 @@ function isTestOrDoc(file) {
  * `npm run` followed into its package.json, `npm ci`'s manifests, a local
  * `uses: ./.github/actions/...` followed into its action.yml) plus everything
  * those scripts load by relative path: the walk tools/ci/path-policy.test.mjs
- * does over the signing jobs, here over every job of release.yml. Tests are not
- * followed (releaseTier never treats a test as a trigger), which is why
- * fetch-models.mjs is no longer listed: since CH-20 only
- * test/release-gates.test.js loads it, and that suite pins that no build path
- * runs it.
+ * does over the signing jobs, here over the jobs of release.yml that make the
+ * binary (releaseBinaryJobs, below). Tests are not followed (releaseTier never
+ * treats a test as a trigger), which is why fetch-models.mjs is no longer
+ * listed: since CH-20 only test/release-gates.test.js loads it, and that suite
+ * pins that no build path runs it.
  *
- * The derivation can only ADD triggers: the bundle, the prefixes above and the
- * inject-* rule classify exactly as before. */
+ * GATE JOBS ARE NOT READ (PR #1202 review). release.yml also runs jobs that
+ * only decide WHETHER to ship: `guard`, `ios-checks` (tools/ci/engine-ci.mjs
+ * release-checks) and `summary`. A script that only they run never reaches a
+ * store build, so an edit to it alone must not spend a TestFlight and a Play
+ * upload. Which jobs make the binary is read from the workflow's structure,
+ * not named here (releaseBinaryJobs). A script a gate job runs that a binary
+ * job ALSO runs or imports stays a trigger: release-ci.mjs (the guard job, and
+ * android-bundle's play-gate); generate-manifest.mjs and the stamp modules it
+ * imports (prepare-webdir.mjs imports it for the bundle's data list, build
+ * stamp and seed pointer, so they put bytes in the binary).
+ *
+ * The derivation can only ADD triggers to the old hand list: the bundle, the
+ * prefixes above and the inject-* rule classify exactly as before, and every
+ * file the hand list named is still reached from a binary job. */
 export const NATIVE_INPUT_RUNNERS = [
   ".github/workflows/release.yml",
   ".github/actions/ios-archive/action.yml",
@@ -229,6 +241,53 @@ export const NATIVE_INPUT_RUNNERS = [
 export const NATIVE_DATA_INPUTS = ["icon-1024.png", "tools/brand/4a-logo.png"];
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+/** The jobs of a workflow that make the binary, read from the workflow's own
+ *  structure (PR #1202 review):
+ *    - a job whose steps use a local composite (`uses: ./.github/actions/...`)
+ *      builds, signs or uploads the binary (release.yml: `ios`, `android`);
+ *    - a job whose OUTPUTS such a job reads as data (`needs.<id>.outputs` on a
+ *      line that is not an `if:`) feeds the binary too, transitively
+ *      (`version`: the marketing version and build number the composites
+ *      stamp into it).
+ *  Every other job is a gate or a report (`guard`, `ios-checks`, `summary`):
+ *  it can stop a release but puts no byte in one. An `if:` that reads a gate's
+ *  output is a gate decision, so it does not pull the gate in.
+ *  `code` has its full-line comments stripped. Returns `{ binary, jobs }`
+ *  (sorted job ids; id -> body lines), or null for a file with no top-level
+ *  `jobs:` (a composite's action.yml, which is read whole). */
+export function releaseBinaryJobs(code) {
+  const lines = code.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^jobs:\s*$/.test(l));
+  if (start < 0) return null;
+  const jobs = new Map();
+  let current = null;
+  for (const line of lines.slice(start + 1)) {
+    if (/^\S/.test(line)) break;
+    const header = /^ {2}([A-Za-z_][\w-]*):\s*$/.exec(line);
+    if (header) {
+      current = header[1];
+      jobs.set(current, []);
+    } else if (current) jobs.get(current).push(line);
+  }
+  const binary = new Set();
+  for (const [id, body] of jobs) {
+    if (body.some((l) => /uses:\s*\.\/\.github\/actions\//.test(l))) binary.add(id);
+  }
+  const queue = [...binary];
+  while (queue.length) {
+    for (const l of jobs.get(queue.shift())) {
+      if (/^\s*(?:-\s*)?if:/.test(l)) continue;
+      for (const m of l.matchAll(/\bneeds\.([\w-]+)\.outputs\b/g)) {
+        if (jobs.has(m[1]) && !binary.has(m[1])) {
+          binary.add(m[1]);
+          queue.push(m[1]);
+        }
+      }
+    }
+  }
+  return { binary: [...binary].sort(), jobs };
+}
 
 const repoPath = (wd, rel) => path.posix.normalize(path.posix.join(wd, rel)).replace(/^\.\//, "");
 
@@ -286,7 +345,16 @@ export function deriveNativeInputs(read, runners = NATIVE_INPUT_RUNNERS) {
     // Full-line comments are prose, not commands. Each step is its own chunk,
     // so a `working-directory` applies to its own `run` only.
     const code = must(f).split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#")).join("\n");
-    for (const chunk of code.split(/\n(?=\s*- (?:name|uses|run):)/)) {
+    // A workflow: only the jobs that make the binary. A composite: all of it.
+    const structure = releaseBinaryJobs(code);
+    let walked = code;
+    if (structure) {
+      if (!structure.binary.length) {
+        throw new Error(`watch-release: ${f} has no job that makes the binary (none uses a local composite)`);
+      }
+      walked = structure.binary.map((id) => structure.jobs.get(id).join("\n")).join("\n");
+    }
+    for (const chunk of walked.split(/\n(?=\s*- (?:name|uses|run):)/)) {
       for (const m of chunk.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) runner(`${m[1]}/action.yml`);
       command(chunk, /working-directory:\s*(\S+)/.exec(chunk)?.[1] ?? ".");
     }

@@ -39,6 +39,7 @@ import {
   watchVerdict, mainState, triggerDecision, triggerVerdict, selfBrokenVerdict, planIssue, renderIssueBody, run,
   GIT_LOG_FORMAT, ISSUE_MARKER, ISSUE_TITLE, GRACE_MINUTES, STALL_HOURS, STUCK_MINUTES,
   RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS, NATIVE_INPUT_FILES,
+  releaseBinaryJobs, deriveNativeInputs,
 } from "./watch-release.mjs";
 import { code, block, step, prose } from "../mobile/workflow-yaml.mjs";
 import { REQUIRED_CHECKS } from "../ci/pr-triage.mjs";
@@ -192,13 +193,36 @@ const RELEASE_RUNNER_FILES = [
   ".github/workflows/release.yml",
   ".github/actions/android-bundle/action.yml",
   ".github/actions/ios-archive/action.yml",
+  ".github/actions/ios-prepare/action.yml",
 ];
+
+/* release.yml's jobs that only decide WHETHER to ship, pinned by hand here so
+ * the module's structural reading (releaseBinaryJobs) is checked against an
+ * independent one (PR #1202 review). */
+const RELEASE_GATE_JOBS = ["guard", "ios-checks", "summary"];
+
+const releaseYml = () => code(fs.readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8"));
+
+/** The job ids under release.yml's `jobs:`, read crudely. */
+function releaseJobIds(text) {
+  return [...block(text, "jobs", 0).matchAll(/^ {2}([\w-]+):\s*$/gm)].map((m) => m[1]);
+}
+
+/** release.yml's job text with `gates` left out (every job when `gates` is []). */
+function releaseJobsText(gates = RELEASE_GATE_JOBS) {
+  const text = releaseYml();
+  return releaseJobIds(text).filter((id) => !gates.includes(id)).map((id) => block(text, id, 2)).join("\n");
+}
+
+function nodeScripts(text) {
+  return [...text.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)\b/g)].map((m) => m[1]);
+}
 
 function independentlyScannedReleaseScripts() {
   const found = new Set();
   for (const f of RELEASE_RUNNER_FILES) {
-    const text = code(fs.readFileSync(path.join(ROOT, f), "utf8"));
-    for (const m of text.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)\b/g)) found.add(m[1]);
+    const text = f.endsWith("release.yml") ? releaseJobsText() : code(fs.readFileSync(path.join(ROOT, f), "utf8"));
+    for (const script of nodeScripts(text)) found.add(script);
   }
   const queue = [...found];
   while (queue.length) {
@@ -239,6 +263,133 @@ test("CH2-19: every script the release composites execute, and its static import
   assert.deepEqual(missed, [], "executed by a release composite, but not a release trigger");
   // Read by path, not imported: inject-app-icon.mjs's DEFAULT_SOURCE.
   assert.equal(releaseTier("icon-1024.png", BUNDLE), "release");
+});
+
+/* ═══════ PR #1202 review: a script only a GATE job runs ships nothing ═══════ */
+
+test("release.yml's binary jobs are read from its structure: ios and android use a composite, version feeds them; guard, ios-checks and summary are gates", () => {
+  /* MUTATION (run): drop releaseBinaryJobs' `needs.<id>.outputs` walk -> version
+     is no longer a binary job (and version.mjs / build-number.mjs drop out).
+     MUTATION (run): stop skipping `if:` lines -> version's
+     `if: needs.guard.outputs.allowed` pulls guard in. */
+  const text = releaseYml();
+  const { binary, jobs } = releaseBinaryJobs(text);
+  assert.deepEqual(binary, ["android", "ios", "version"]);
+  assert.deepEqual([...jobs.keys()].filter((id) => !binary.includes(id)).sort(), [...RELEASE_GATE_JOBS].sort());
+  assert.deepEqual([...jobs.keys()].sort(), releaseJobIds(text).sort(), "the module and this suite see the same jobs");
+  const composite = code(fs.readFileSync(path.join(ROOT, ".github/actions/ios-archive/action.yml"), "utf8"));
+  assert.equal(releaseBinaryJobs(composite), null, "a composite has no jobs: it is read whole");
+});
+
+test("a script only a gate job runs is not a release trigger: engine-ci.mjs (ios-checks), and a commit touching only it dispatches nothing", () => {
+  /* The trigger list was built from EVERY job, so an edit to a CI-gate script
+     spent a TestFlight and a Play upload on an identical app.
+     MUTATION (run): walk the whole workflow instead of the binary jobs
+     (`walked = code`) -> engine-ci.mjs is a native input -> red. */
+  const binaryJobScripts = nodeScripts(releaseJobsText());
+  const compositeScripts = RELEASE_RUNNER_FILES.slice(1)
+    .flatMap((a) => nodeScripts(code(fs.readFileSync(path.join(ROOT, a), "utf8"))));
+  const gateOnly = nodeScripts(releaseJobsText([]))
+    .filter((f) => !binaryJobScripts.includes(f) && !compositeScripts.includes(f));
+  assert.ok(gateOnly.includes("tools/ci/engine-ci.mjs"), `the gate jobs no longer run engine-ci.mjs: ${gateOnly}`);
+  for (const f of gateOnly) {
+    assert.ok(!NATIVE_INPUT_FILES.includes(f), `${f} runs only in a gate job but is a native input`);
+    assert.equal(releaseTier(f, BUNDLE), null, f);
+  }
+  const ciOnly = [{ sha: "c".repeat(40), committedAt: "2026-10-08T00:00:00Z", subject: "ci: release-checks wording",
+    files: ["tools/ci/engine-ci.mjs", "tools/ci/engine-ci.test.mjs"] }];
+  assert.deepEqual(pendingWork(ciOnly, BUNDLE).release, []);
+  const d = triggerDecision({ runs: [{ id: 1, run_number: 1, status: "completed", conclusion: "success", head_sha: "e".repeat(40),
+    created_at: "2026-10-07T00:00:00Z", updated_at: "2026-10-07T00:05:00Z" }], commits: ciOnly, bundle: BUNDLE,
+  mainRuns: [], mainStatus: { total_count: 1, state: "success" } });
+  assert.notEqual(d.code, "DISPATCH", d.reason);
+});
+
+test("binary inputs stay triggers: icons, plists, inject scripts, the version job's scripts, and what prepare-webdir imports", () => {
+  /* A gate job running a file does not take it off the list when a binary job
+     reaches it too: release-ci.mjs runs in `guard` AND in android-bundle's
+     play-gate. generate-manifest.mjs and the stamp modules it imports are in
+     prepare-webdir.mjs's import closure: they decide the bundle's data list,
+     build stamp and seed pointer, so they put bytes in the binary.
+     MUTATION (run): drop the feeder walk -> version.mjs and build-number.mjs
+     are null -> red. MUTATION (run): stop the import closure at tools/mobile/
+     -> generate-manifest.mjs is null -> red. */
+  for (const f of [
+    "icon-1024.png",
+    "tools/brand/4a-logo.png",
+    "mobile/ios/App/App/Info.plist",
+    "mobile/ios/App/App/PrivacyInfo.xcprivacy",
+    "tools/mobile/inject-app-icon.mjs",
+    "tools/mobile/inject-background-audio.mjs",
+    "tools/mobile/inject-privacy-manifest.mjs",
+    "tools/mobile/inject-splash.mjs",
+    "tools/mobile/inject-interlude.mjs",
+    "tools/mobile/release-ci.mjs",
+    "tools/mobile/version.mjs",
+    "tools/release/build-number.mjs",
+    "tools/ci/generate-manifest.mjs",
+    "tools/ci/forays-directory.mjs",
+    "tools/ci/catalogue-directory.mjs",
+    "tools/ci/crlf-guard.mjs",
+  ]) {
+    assert.equal(releaseTier(f, BUNDLE), "release", f);
+  }
+});
+
+test("the derivation on a synthetic workflow: a gate job's script is out, a feeder job's is in, a script both reach is in", () => {
+  /* MUTATION (run): walk every job -> tools/x/gate.mjs and report.mjs appear.
+     MUTATION (run): drop the feeder walk -> tools/x/ver.mjs disappears.
+     MUTATION (run): do not skip `if:` lines -> the gate job joins and gate.mjs
+     appears. */
+  const files = {
+    ".github/workflows/rel.yml": [
+      "on: workflow_dispatch",
+      "jobs:",
+      "  gate:",
+      "    runs-on: ubuntu-latest",
+      "    steps:",
+      "      - run: node tools/x/gate.mjs",
+      "      - run: node tools/x/shared.mjs check",
+      "  ver:",
+      "    needs: gate",
+      "    if: needs.gate.outputs.ok == 'true'",
+      "    steps:",
+      "      - run: node tools/x/ver.mjs",
+      "  build:",
+      "    needs: [ver, gate]",
+      "    steps:",
+      "      - uses: ./.github/actions/b",
+      "        with:",
+      "          v: ${{ needs.ver.outputs.v }}",
+      "  report:",
+      "    needs: [build]",
+      "    steps:",
+      "      - run: node tools/x/report.mjs \"${{ needs.build.outputs.state }}\"",
+    ].join("\n"),
+    ".github/actions/b/action.yml": "runs:\n  using: composite\n  steps:\n    - run: node tools/x/build.mjs\n      shell: bash\n",
+    "tools/x/gate.mjs": "export const g = 1;\n",
+    "tools/x/shared.mjs": "export const s = 1;\n",
+    "tools/x/ver.mjs": "export const v = 1;\n",
+    "tools/x/report.mjs": "export const r = 1;\n",
+    "tools/x/build.mjs": 'import { s } from "./shared.mjs";\n',
+  };
+  const read = (f) => files[f] ?? null;
+  assert.deepEqual(deriveNativeInputs(read, [".github/workflows/rel.yml"]), [
+    ".github/actions/b/action.yml",
+    ".github/workflows/rel.yml",
+    "tools/x/build.mjs",
+    "tools/x/shared.mjs",
+    "tools/x/ver.mjs",
+  ]);
+});
+
+test("a workflow runner with no job that makes the binary throws, never derives an empty list", () => {
+  /* A renamed composite or a restructured release.yml must fail this suite,
+     not quietly drop every native trigger.
+     MUTATION (run): delete the no-binary-job throw -> the list is just the
+     workflow file and this goes red. */
+  const read = (f) => (f === "w.yml" ? "jobs:\n  only-gate:\n    steps:\n      - run: node tools/x/gate.mjs\n" : null);
+  assert.throws(() => deriveNativeInputs(read, ["w.yml"]), /w\.yml has no job that makes the binary/);
 });
 
 test("CH2-19: fetch-models.mjs is NOT a native input — no build path runs it (release-gates.test.js pins that)", () => {
