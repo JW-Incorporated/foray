@@ -489,6 +489,13 @@ final class DirectOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
 /// `AVAudioPlayerNode` plays it, on the session the core activated. A line is
 /// finished when the synthesizer has handed over its last buffer (the empty
 /// one, or its `didFinish`) AND the player has played every buffer back.
+///
+/// The engine runs between a line's first buffer and its end ONLY (CH3-15,
+/// R2-06): a line that ends or is silenced PAUSES it (`idle()`; the graph is
+/// kept, so the next line's `startEngine()` is cheap) and `stop()` stops it.
+/// Left running, it rendered silence for the rest of the process: a locked
+/// phone never suspended, and every later deactivation answered `is-busy`.
+/// A HELD line keeps it running: pause and resume are the player's.
 final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
     var onEnd: ((Int, SpeechEnd) -> Void)?
     let speech: AVSpeechSynthesizer
@@ -522,6 +529,10 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
     }
 
+    /// Whether the engine's audio I/O is running: between a line's first
+    /// buffer and its end only. The tests read it.
+    var engineIsRunning: Bool { engine.isRunning }
+
     func start(_ line: SpeechLine, id: Int) {
         silence()
         let utterance = SpeechNarrator.utterance(text: line.text, voiceId: line.voiceIdentifier, rate: line.rate,
@@ -553,8 +564,12 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         return true
     }
 
+    /// Silence the line in flight and stop the engine (`silence()` only
+    /// pauses it): a stop is the narration being let go, not a seam between
+    /// two lines.
     func stop() {
         silence()
+        if attached { engine.stop() }
     }
 
     /// Media services were reset (CH3-03): the engine and its player node
@@ -565,8 +580,7 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
     /// the first line of the process. The configuration observer follows the
     /// new engine (it is registered per engine object).
     func rebuild() {
-        silence()
-        if engine.isRunning { engine.stop() }
+        stop()
         if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
         configurationObserver = nil
         engine = AVAudioEngine()
@@ -624,6 +638,7 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         guard id == lineId else { return }
         lineId = nil
         utterance = nil
+        idle()
         onEnd?(id, end)
     }
 
@@ -637,6 +652,15 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         held = false
         if speech.isSpeaking { speech.stopSpeaking(at: .immediate) }
         if attached { player.stop() }
+        idle()
+    }
+
+    /// No line in flight: pause the engine, so it renders nothing until the
+    /// next line's first buffer starts it again (`received`). Pause, not
+    /// stop: the graph stays prepared, and the next start is cheap.
+    private func idle() {
+        guard lineId == nil, engine.isRunning else { return }
+        engine.pause()
     }
 
     /// The buffer in the player's standard (deinterleaved float) format at
