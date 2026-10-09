@@ -419,3 +419,40 @@ test("#1033 the baseline snapshot ships on the release the pointer names, at the
     await rm(root, { recursive: true, force: true });
   }
 });
+
+/* CH2-31 (T1-15) characterization: the contract that survives the deletion of
+   state.mjs. CI is always a fresh checkout — nothing commits or caches a
+   local "already built" marker — so the build step always runs in full, and
+   `releaseExists` is the one thing that stops a second release for the same
+   export_version. The fake build writes its output only when it is called,
+   exactly as import-dump.mjs does, so nothing from a previous run is on disk.
+   MUTATION THAT KILLS THIS: skip the `releaseExists` check before
+   `publishRelease` (always take the publish branch). The fake registry, like
+   real gh, refuses a second create under an existing tag and the run throws. */
+test("a fresh checkout runs the full build and releaseExists alone stops a duplicate release", async () => {
+  const root = await mkdtemp(join(tmpdir(), "shows-e2e-"));
+  const buildOutDir = join(root, "out");
+  const statePath = join(root, "state", "last-build.json");
+  const pointerPath = join(root, "shows-index-pointer.json");
+  const { ghExec, created } = fakeGhRegistry({
+    published: ["shows-index-local-fresh1", "shows-index-local-fresh1-shards-1"],
+  });
+  let builds = 0;
+  const buildExec = async () => {
+    builds += 1;
+    await seedBuildOutput({ buildOutDir, statePath, exportVersion: "local:fresh1", checksum: "fresh1" });
+    return { stdout: "BUILD_COMPLETE: out (export_version local:fresh1)" };
+  };
+  try {
+    const result = await runAndPublish(["--dump-file", "fixture.db"], {
+      buildExec, ghExec, statePath, buildOutDir, pointerPath, repo: "org/repo", log: () => {},
+    });
+    assert.equal(builds, 1, "the build ran in full");
+    assert.equal(result.published, false, "the release already exists on GitHub");
+    assert.equal(result.reason, "reconciled-existing-release");
+    assert.equal(created.size, 0, "no release of either kind was created");
+    assert.equal(JSON.parse(await readFile(pointerPath, "utf8")).release_tag, "shows-index-local-fresh1");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
