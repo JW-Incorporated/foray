@@ -414,3 +414,23 @@ test("localPlayable returns the same item (===) when the source is remote", () =
     "mutation: always spread -> a new object, and every caller's `===` check re-renders");
   assert.equal(localPlayable(item, null), item);
 });
+
+/* ---------- CH3-05: the native index is the one truth ---------- */
+
+/* CH3-05 characterization (R4-02). The record's `path` is read VERBATIM: the
+   player opens whatever absolute path the record holds, and nothing here asks
+   the phone where the file is today. iOS moves the app's container on every
+   update, so the only way a stale path heals is the record being rewritten
+   from the native index (download-bridge.js's boot reconcile) — this pins
+   that the fix lives there, not in a second path rule here.
+   MUTATION: in playSource, ignore `record.path` (e.g. `fileUrl("/x")`) -> the
+   iPhone assertion is red. */
+test("CH3-05 characterization: playSource opens the stored path verbatim, whatever container it names", () => {
+  const item = { id: "e1", audio_url: "https://cdn/e1.mp3" };
+  const OLD = "/var/mobile/Containers/Data/Application/OLD-UUID/Library/Application Support/foray-downloads/e1.bin";
+  const rec = { ...done(10 * MB), path: OLD };
+  assert.deepEqual(playSource(item, rec, { platform: "ios" }), {
+    audio_url: "file:///var/mobile/Containers/Data/Application/OLD-UUID/Library/Application%20Support/foray-downloads/e1.bin",
+    isLocalFile: true,
+  });
+});

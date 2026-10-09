@@ -1034,3 +1034,58 @@ test("native lane: the engine's load error over a held ticket streams online and
   assert.deepStrictEqual(wire("native"), ["error"], "native: the engine's load error reaches the settle");
   assert.deepStrictEqual(wire("js"), [], "the JS lane settles inside play()");
 });
+
+/* ==================================================================== */
+/* CH3-05 (docs/roadmap/code-health-3.md): the native index is the one truth.
+   iOS moves the app's container on every update, so a stored absolute path
+   goes stale; a transfer that finished (or was flipped to `interrupted`)
+   while 4a was not running emitted its event before the page listened. At
+   boot the page re-reads the plugin's `list()` and the record follows it. */
+
+const OLD_IOS_PATH = (id) => `/var/mobile/Containers/Data/Application/OLD-UUID/Library/Application Support/foray-downloads/${id}.bin`;
+const NEW_IOS_PATH = (id) => `/var/mobile/Containers/Data/Application/NEW-UUID/Library/Application Support/foray-downloads/${id}.bin`;
+
+/** The two catalogue episodes mount() puts in the pool, in its order. */
+const CATALOGUE_IDS = () => readJson("data/discover.json").items.filter((it) => it.audio_url).slice(0, 2).map((it) => it.id);
+
+/** One stored row in the store's own shape, written straight into storage. */
+function seedRow(store, id, report) {
+  const before = store.has("cp_downloads") ? JSON.parse(store.get("cp_downloads")) : STORE.normaliseDownloads({});
+  store.set("cp_downloads", JSON.stringify(STORE.applyProgress(before, { id, now: "2026-10-05T10:00:00Z", ...report })));
+}
+
+// RED on main: R4-02 — nothing reads list(), so the record keeps the pre-update path forever.
+/* MUTATION: drop the boot replay in download-bridge.js -> the record keeps OLD-UUID. */
+test("CH3-05: after an app update the record takes TODAY's path from the native index, and the play opens it", async () => {
+  const store = new Map();
+  const [id] = CATALOGUE_IDS();
+  seedRow(store, id, { status: "done", path: OLD_IOS_PATH(id), bytes: 1234 });
+  const cap = makeCapacitor({ list: () => ({ items: [{ id, status: "done", bytes: 1234, total: 1234, reason: null, path: NEW_IOS_PATH(id) }] }) });
+  const m = mount({ store, capacitor: cap });
+  await settle();
+  const rec = m.record().items[id];
+  assert.strictEqual(rec.status, "done");
+  assert.strictEqual(rec.path, NEW_IOS_PATH(id), "the stale container path is replaced");
+  assert.strictEqual(rec.webSrc, `capacitor://localhost/_capacitor_file_${NEW_IOS_PATH(id)}`);
+  assert.match(STORE.playSource(m.item, rec, { platform: "ios" }).audio_url, /NEW-UUID/);
+});
+
+// RED on main: R4-04 — a transfer that settled while 4a was not running reads "Downloading…" forever.
+/* MUTATION: drop the boot replay in download-bridge.js -> both rows stay `downloading`. */
+test("CH3-05: a transfer that finished, or was interrupted, while 4a was not running is recorded at boot", async () => {
+  const store = new Map();
+  const [a, b] = CATALOGUE_IDS();
+  seedRow(store, a, { status: "downloading", bytes: 87, total: 100 });
+  seedRow(store, b, { status: "downloading", bytes: 10, total: 100 });
+  const cap = makeCapacitor({ list: () => ({ items: [
+    { id: a, status: "done", bytes: 100, total: 100, reason: null, path: NEW_IOS_PATH(a) },
+    { id: b, status: "failed", bytes: 10, total: 100, reason: "interrupted", path: null },
+  ] }) });
+  const m = mount({ store, capacitor: cap });
+  await settle();
+  const items = m.record().items;
+  assert.strictEqual(items[a].status, "done", "the finished transfer is no longer Downloading 87%");
+  assert.strictEqual(items[a].path, NEW_IOS_PATH(a));
+  assert.strictEqual(items[b].status, "failed", "the interrupted one is offered for retry");
+  assert.strictEqual(items[b].reason, "interrupted");
+});

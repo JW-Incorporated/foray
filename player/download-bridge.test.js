@@ -411,3 +411,42 @@ test("#29: DownloadPolicy.swift's attempt event, payload keys and outcomes are t
   assert.doesNotMatch(body, /absoluteString|\.path\b|\.query\b/);
   assert.match(store, /emit\?\(DownloadPolicy\.eventAttempt,/);
 });
+
+/* ─────────── CH3-05: the native index is the one truth ───────────
+
+   iOS moves the app's container on every update, so a download's absolute
+   path changes; ForayDownloadsPlugin.swift's header says the page should take
+   paths from `list()`. And a transfer that finished (or was flipped to
+   `interrupted`) while 4a was not running emitted its event before the page
+   listened. Both heal only if the page re-reads the native index. */
+
+const NEW_PATH = "/var/mobile/Containers/Data/Application/NEW-UUID/Library/Application Support/foray-downloads/e1.bin";
+
+/** Wait out the bridge's own promise chain (call -> withinMs -> then). */
+const settleBridge = () => new Promise((r) => setImmediate(r));
+
+/* CH3-05 characterization (R4-02/R4-04): today a bridge built WITH a listener
+   asks the plugin nothing — `list()` has no production caller (the only
+   `.list(` calls in app.js and player/ are forayProgress's). */
+test("CH3-05 characterization: a bridge with a listener asks the plugin nothing; list() has no production caller", async () => {
+  const { bridge, calls } = fakeBridge({ answer: { items: [] } });
+  createDownloadBridge({ bridge, onEvent: () => {} });
+  await settleBridge();
+  assert.deepEqual(calls.map((c) => c.method), []);
+  const callers = ["../app.js", "./client.js", "./download-store.js", "./download-bridge.js"]
+    .flatMap((rel) => fs.readFileSync(new URL(rel, import.meta.url), "utf8").split("\n").filter((l) => /\.list\(/.test(l) && !/forayProgress\.list\(/.test(l)));
+  assert.deepEqual(callers.filter((l) => !/list: \(\) =>|list\(\): Promise/.test(l)), []);
+});
+
+// RED on main: R4-02 — nothing calls list(), so the listener never hears today's path.
+/* MUTATION: drop the boot replay in createDownloadBridge -> nothing is heard. */
+test("CH3-05: a listener hears the native index at subscription: a done row is replayed as downloadDone with TODAY's path", async () => {
+  const { bridge, calls } = fakeBridge({
+    answer: (method) => (method === "list" ? { items: [{ id: "e1", status: "done", bytes: 1234, total: 1234, reason: null, path: NEW_PATH }] } : {}),
+  });
+  const seen = [];
+  createDownloadBridge({ bridge, onEvent: (name, payload) => seen.push([name, payload]) });
+  await settleBridge();
+  assert.deepEqual(calls.map((c) => c.method), ["list"]);
+  assert.deepEqual(seen, [["downloadDone", { id: "e1", path: NEW_PATH, bytes: 1234 }]]);
+});
