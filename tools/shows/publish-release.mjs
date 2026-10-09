@@ -114,14 +114,12 @@ export async function releaseState(tag, { exec = execFileP, repo = REPO_SLUG } =
   };
 }
 
-/** True when a PUBLISHED release already exists for this tag — the
-    end-to-end idempotency check the card asks for, independent of (and in
-    addition to) S-04a's own local state.json skip. Two signals matter:
-    local state.json can be lost (fresh checkout, cache eviction, a runner
-    that never persists data-local/) while the release still exists on
-    GitHub, and this is what stops a second run from creating a duplicate
-    release in that case — state.json alone is not the whole idempotency
-    story.
+/** True when a PUBLISHED release already exists for this tag — THE
+    idempotency rule of the shows pipeline, and its one description. Every
+    run builds in full (CI is a fresh checkout and nothing persists a local
+    "already built" marker; CH2-31 deleted the one that claimed to), so this
+    check is what stops a second run on the same export_version from
+    creating a duplicate release.
 
     A DRAFT IS "NOT YET THERE". Since OPS-03 a release is created as a
     draft, filled in chunks, then published, so a draft under this tag is

@@ -2175,9 +2175,9 @@ const FLOORS = {
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
-  "tools/shows/import-dump.test.mjs": 14, // CH2-12: +2 (under-ceiling warn via the shared checkMissingMapping, streamed checksumFile + source pin); 12 -> 14 // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
+  "tools/shows/import-dump.test.mjs": 15, // CH2-31 (T1-15): +1 source guard -- no alreadyBuilt / state.mjs / SKIP branch in import-dump.mjs; 14 -> 15 // CH2-12: +2 (under-ceiling warn via the shared checkMissingMapping, streamed checksumFile + source pin); 12 -> 14 // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
-  "tools/shows/state.test.mjs": 6,
+  // CH2-31 (T1-15): the tools/shows state suite (floor 6) is gone with state.mjs, whose "durable" already-built marker was never committed or cached, so its SKIP branch was unreachable in CI; releaseExists is the one idempotency rule (pinned in run-and-publish.test.mjs)
   "tools/shows/watch-pointer.test.mjs": 12, // pointer-freshness-watch: absence watchdog, red >192h (below candidates.mjs 216h ceiling); +1 pins its own daily read-only workflow (shows-pointer-watch.yml), 11 -> 12
   /* S-04b: GitHub Release publishing + the run-then-publish orchestration
      (kanban t_3a896057), gated on S-04a above. publish-release.test.mjs
@@ -2186,12 +2186,12 @@ const FLOORS = {
      against a faked `gh`; run-and-publish.test.mjs is the end-to-end
      acceptance test the card's own criterion asks for — "two full runs on
      the same dump version -> no new release" — proven against the REAL
-     control flow (runAndPublish), not each piece in isolation, covering
-     both idempotency paths (S-04a's own state.json skip, and the
-     independent release-already-exists check that catches a lost
-     state.json). */
+     control flow (runAndPublish), not each piece in isolation, proving
+     the one idempotency rule (CH2-31, T1-15): releaseExists -- a second
+     run on the same export_version builds in full and publishes
+     nothing. */
   "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
-  "tools/shows/run-and-publish.test.mjs": 11, // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
+  "tools/shows/run-and-publish.test.mjs": 12, // CH2-31 (T1-15): +1 a fresh checkout runs the full build and releaseExists alone stops a duplicate release (the acceptance test's build-skipped run folded into its release-exists run); 11 -> 12 // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
