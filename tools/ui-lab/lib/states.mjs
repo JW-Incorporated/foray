@@ -312,7 +312,8 @@ async function holdCatalog(page) {
 const FORAY_NARRATED = "how-ai-actually-gets-built-3b83e1";
 const FORAY_UNNARRATED = "grilling-history-2";
 
-async function openForayDetail(page, id, { unlock = false, at = null } = {}) {
+/** Clear every stored Foray place and, with `at`, write one for `id` (seconds in, or "end"). */
+async function seedForayPlace(page, id, at) {
   /* Through the durable store the app itself writes with (memory, localStorage and IndexedDB
      together: clearing localStorage alone lets a stale row come back from IndexedDB), after the
      player lets go of what it has loaded (it would save its own place over the row as the page
@@ -338,6 +339,26 @@ async function openForayDetail(page, id, { unlock = false, at = null } = {}) {
     }
     await store.flush();
   }, { id, at });
+}
+
+/** Yours > Forays: the Forays chip pressed, with `at` seconds of `id` already played (or no
+    place at all). The place is written, then Yours is loaded fresh so the cards read it on
+    their first paint. */
+async function openYoursForays(page, { id = null, at = null } = {}) {
+  await seedForayPlace(page, id, at);
+  const url = new URL(page.url());
+  url.search = "";
+  url.hash = "#/library";
+  if (url.href === page.url()) await page.reload({ waitUntil: "load" });
+  else await page.goto(url.href, { waitUntil: "load" });
+  await page.waitForFunction(() => Boolean(window.ForayPlayer) && Boolean(document.querySelector('[data-yours-chip="forays"]')), null, { timeout: 45000 });
+  await page.locator('[data-yours-chip="forays"]').click();
+  await page.waitForSelector("#yours-panel-forays .yours-foray", { state: "visible", timeout: 15000 });
+  await wait(page, 700);
+}
+
+async function openForayDetail(page, id, { unlock = false, at = null } = {}) {
+  await seedForayPlace(page, id, at);
   const url = new URL(page.url());
   url.search = unlock ? "?foray=" + encodeURIComponent(id) : "";
   url.hash = "#/foray/" + encodeURIComponent(id);
@@ -421,6 +442,11 @@ export function appStates(fx) {
         /* Yours, Shows (tactile `library-shows`, BUILD-PLAN 2.14): the Shows chip pressed, then the first tile's ⋯ open. */
         { label: "yours-shows", route: "#/library", run: (page) => openYoursShows(page) },
         { label: "yours-shows-actions", route: "#/library", run: (page) => openYoursShowActions(page) },
+        /* Yours, Forays (tactile `library-forays`, BUILD-PLAN 2.13): the Forays chip pressed with nothing
+           played, then with the narrated Foray 12:40 in (the prototype's Resume at 12:40): its band shows
+           the played bars full, the rest at 40% and the needle where they stopped. */
+        { label: "yours-forays", route: "#/library", run: (page) => openYoursForays(page) },
+        { label: "yours-forays-progress", route: "#/library", run: (page) => openYoursForays(page, { id: FORAY_NARRATED, at: 760 }) },
         /* Appended by Tactile `foray`: the Foray detail page beyond its fresh state. In progress
            (12:40 in, the prototype's Resume at 12:40), played to the end, a Foray with no
            narration (BR BR at 412 is this one), and one that is not there. */

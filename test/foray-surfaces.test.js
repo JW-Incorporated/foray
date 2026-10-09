@@ -121,9 +121,11 @@ function loadApp(bridge, { showDrafts = true, created = [] } = {}) {
   return ctx;
 }
 
-/** Library's Foray rows as [title, sub] pairs, read from the markup. */
+/** Yours' Foray cards as [title, readout] pairs, read from the markup. Rewritten on purpose
+    by Tactile `library-forays`: the five-row summary (`.t` / `.s`) became cards whose title
+    is the link and whose readout is the mono line, "about 22 min · 4 shows · 12 min left". */
 function libraryRows(html) {
-  return [...html.matchAll(/<div class="t">([^<]*)<\/div>\s*<div class="s">([^<]*)<\/div>/g)].map((m) => [m[1], m[2]]);
+  return [...html.matchAll(/<a class="yours-foray__link"[^>]*><span class="yours-foray__text">([^<]*)<\/span><\/a>[\s\S]*?<span class="readout yours-foray__readout">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
 }
 
 const FROZEN_IDS = readFrozen("forays.json").forays.map((f) => f.id);
@@ -148,7 +150,7 @@ test("a part-played draft keeps its 'draft' tag beside its progress (honesty-12)
   const app = loadApp(await realBridge([[draft.id, { remainingSec: 1200 }]]));
   const row = libraryRows(app.libraryForaysHtml()).find(([t]) => t === draft.title);
   assert.ok(row, "the draft is listed");
-  assert.match(row[1], /^draft · 20 min left · /, `draft AND progress: "${row[1]}"`);
+  assert.match(row[1], /^draft · .+ · 20 min left$/, `draft AND progress: "${row[1]}"`);
 });
 
 test("a finished Foray says 'Played' on its rows and leaves Jump back in (honesty-2, founder Q3)", async () => {
@@ -160,7 +162,7 @@ test("a finished Foray says 'Played' on its rows and leaves Jump back in (honest
   assert.deepEqual([...app.forayResumeRows()].map((p) => p.id), [], "finished things leave Jump back in");
   const row = libraryRows(app.libraryForaysHtml()).find(([t]) => /types of capital/.test(t));
   assert.ok(row, "capital-types-1 is listed");
-  assert.match(row[1], /^Played · /, `Library: "${row[1]}"`);
+  assert.match(row[1], / · Played$/, `Library: "${row[1]}"`);
   const list = app.forayListHtml();
   const cap = /href="#\/foray\/capital-types-1">[\s\S]*?<\/a>/.exec(list)[0];
   assert.match(cap, /<span class="fy-home-sub">Played · /, `the Forays list row: ${cap}`);
@@ -187,7 +189,7 @@ test("every list row and Today's hero says how long a Foray is and what it is ma
   assert.match(app.todayHeroHtml(hero), /class="readout today-hero__facts">\d+ min · 7 shows</, "and it is drawn as the mono readout");
 
   const lib = libraryRows(app.libraryForaysHtml()).find(([t]) => t === doc.title);
-  assert.equal(lib[1], facts, "an unopened Foray's Library row is its length and makeup");
+  assert.equal(lib[1], `${resolve.fmtSpan(r.totalSec)} · 7 shows`, "an unopened Foray's Yours card reads its length and show count, as Today's hero does (the clip count left the card with the band)");
 });
 
 test("a narrated Foray's length is hedged on every list surface, and counts the narrator's clips (p-foray-8, states-11)", async () => {
