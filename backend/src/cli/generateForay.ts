@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { GenerationRequestSchema } from "../types/generation";
+import { GenerationRequestSchema, readAuthorIdFlag } from "../types/generation";
 import { createPromptUnderstander } from "../generation/createPromptUnderstander";
 import { understandPrompt } from "../generation/understandPrompt";
 
@@ -31,25 +31,25 @@ import { understandPrompt } from "../generation/understandPrompt";
  * Usage:
  *   npm run generate-foray -- --prompt "the history of grilling" --duration medium
  *   npm run generate-foray -- --prompt "Mercury" --duration short
- *     (author_id defaults to "founder"; phase 1's only real author — see
- *     types/generation.ts's GenerationRequestSchema for why the field is
- *     real rather than hardcoded away)
+ *     (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts,
+ *     the same default `generate-forays` uses — see GenerationRequestSchema
+ *     for why the field is real rather than hardcoded away)
  *
- * WHAT THIS PRINTS AND WHAT IT DOES NOT DO: this stage ends at §4.1's
- * structured understanding. It has no downstream stage to hand off to yet
- * (§4.2 research is the next kanban card), so it prints the result and
- * exits — there is no `data/forays.json` write, no draft record, nothing
- * persisted. The raw prompt is never written to disk by this command or
- * anything it calls (§9.4's ruling; see backend/test/promptNoPersistence.test.ts).
+ * WHAT THIS PRINTS AND WHAT IT DOES NOT DO: this command ends at §4.1's
+ * structured understanding, prints it and exits — there is no
+ * `data/forays.json` write, no draft record, nothing persisted. The whole
+ * chain is `npm run generate-forays` (`generateForays.ts`). The raw prompt is
+ * never written to disk by this command or anything it calls (§9.4's ruling;
+ * see backend/test/promptNoPersistence.test.ts).
  */
 
-interface CliArgs {
+export interface CliArgs {
   prompt: string | null;
   duration: "short" | "medium" | "long" | null;
   authorId: string;
 }
 
-function parseArgs(argv: string[]): CliArgs {
+export function parseArgs(argv: string[]): CliArgs {
   const get = (flag: string): string | undefined => {
     const idx = argv.indexOf(flag);
     return idx >= 0 ? argv[idx + 1] : undefined;
@@ -58,7 +58,7 @@ function parseArgs(argv: string[]): CliArgs {
   return {
     prompt: get("--prompt") ?? null,
     duration: duration === "short" || duration === "medium" || duration === "long" ? duration : null,
-    authorId: get("--author-id") ?? "founder"
+    authorId: readAuthorIdFlag(argv)
   };
 }
 
@@ -109,7 +109,11 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exitCode = 1;
-});
+/* Only run when invoked as a script, so a test can import `parseArgs` without
+   starting a run — the same guard `generateForays.ts` uses. */
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err instanceof Error ? err.message : err);
+    process.exitCode = 1;
+  });
+}

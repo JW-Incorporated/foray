@@ -103,7 +103,10 @@ export function toCatalogEpisode(showId: string, ep: ParsedEpisode): CatalogShow
  * Politeness gap (recorded here rather than in the applied 0016 comment,
  * which must not be edited): 0016 says this path "mirrors ADR-0001's ...
  * per-host politeness discipline", but feeds/politeness.ts PolitenessBudget
- * is NOT wired in. The only backoff is the per-show one above.
+ * is NOT wired in. The only backoff is the per-show one above. The live
+ * per-host budget is its pinned port, tools/poll/politeness.mjs, which the
+ * S-10 poller uses (tools/poll/select-due.mjs, poll-cycle.mjs; the daily
+ * episode-poll.yml run is a dry run until PKG-10) — not this path.
  */
 export async function ingestShowFeed(
   showId: string,
