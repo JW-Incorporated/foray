@@ -352,6 +352,32 @@ public class ForayEngineHostTest {
         assertSame(last, r.host.freshSurface());
     }
 
+    /**
+     * CH3-07: the torn-down hook (the service releases its Media3 session there) runs once, AFTER
+     * the listener's cleared surface, whatever took the engine down: a core relinquish or the
+     * service's own teardown at onDestroy.
+     * MUTATION: drop the hook's run from teardown(): red here (and the service test).
+     */
+    @Test
+    public void theTornDownHookRunsOnceAfterTheClearedSurface() {
+        Rig r = new Rig();
+        List<String> order = new ArrayList<>();
+        r.host.setSurfaceListener(s -> order.add(s.availability().clearsNowPlaying() ? "cleared" : "surface"));
+        r.host.setOnTornDown(() -> order.add("hook"));
+        r.host.handle(load("a"));
+        order.clear();
+        r.host.handle(relinquish());
+        assertEquals("the cleared surface, then the hook, once", java.util.Arrays.asList("cleared", "hook"), order);
+        r.host.teardown();
+        assertEquals("a second teardown runs nothing", java.util.Arrays.asList("cleared", "hook"), order);
+
+        Rig direct = new Rig();
+        int[] runs = {0};
+        direct.host.setOnTornDown(() -> runs[0]++);
+        direct.host.teardown();
+        assertEquals("a teardown the service started runs it too", 1, runs[0]);
+    }
+
     @Test
     public void aFocusInterruptionPausesAndItsEndResumes() {
         Rig r = new Rig();
