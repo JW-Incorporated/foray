@@ -38,19 +38,21 @@ public final class EngineSeams {
      * deck plays and refuses to sound without it; what the host hears back is
      * {@link FocusMapping}'s interruptions.
      *
-     * <p>WHAT ANDROID CAN AND CANNOT REFUSE. {@code activate()} answers whether the Media3
-     * session that owns the lock screen is alive, and that is the only refusal it can give: a
-     * dead session is {@code commandFailed(session-failed:other)} and no deck command, as on iOS.
-     * It CANNOT refuse for focus. There is no way to ask for focus without taking it from
-     * Media3's own request, and Media3 1.11 asks on its playback thread after the press's turn
-     * is over ({@code FocusIntegrationTest.aPlayRefusedFocusReadsAsPlayingInItsTurnAndArrivesLaterAsAPermanentLoss}).
-     * So a play the system refuses focus for (the driver is on a call) answers {@code success};
-     * a turn later Media3 drops play-when-ready with reason AUDIO_FOCUS_LOSS and the mapping
-     * reports an interruption that never ends. iOS refuses that same press as
-     * {@code commandFailed}, because {@code setActive(true)} fails in its turn. That drift is
-     * R5-02 (docs/roadmap/code-health-3.md, CH3-08), still open. What holds on both: nothing
-     * sounds without focus, because the core will not command a play without this answer and
-     * Media3 will not start one without focus.
+     * <p>WHAT ANDROID CAN AND CANNOT REFUSE. {@code activate()} refuses twice, each a
+     * {@code commandFailed} and no deck command, as on iOS: a dead Media3 session
+     * ({@code session-failed:other}), and a call in progress (CH3-08, R5-02: the audio mode is
+     * {@code MODE_IN_CALL} or {@code MODE_IN_COMMUNICATION}; token {@code insufficient-priority},
+     * what iOS's {@code setActive(true)} fails with on a call, admitted as
+     * {@code session-failed:other}). It CANNOT refuse for focus itself. There is no way to ask
+     * for focus without taking it from Media3's own request, and Media3 1.11 asks on its playback
+     * thread after the press's turn is over
+     * ({@code FocusIntegrationTest.aPlayRefusedFocusReadsAsPlayingInItsTurnAndArrivesLaterAsAPermanentLoss}).
+     * So a refusal the audio mode does not foretell still answers {@code success}, and a turn
+     * later Media3 drops play-when-ready with reason AUDIO_FOCUS_LOSS and the mapping reports an
+     * interruption. The same holds for a play that needs no activation (the core does not
+     * re-activate an active session per press). What holds on both platforms: nothing sounds
+     * without focus, because the core will not command a play without this answer and Media3
+     * will not start one without focus.
      */
     public interface Session {
         Activation activate();

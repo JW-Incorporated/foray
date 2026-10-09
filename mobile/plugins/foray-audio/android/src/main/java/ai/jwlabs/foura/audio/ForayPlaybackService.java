@@ -20,6 +20,7 @@ import ai.jwlabs.foura.engine.MediaMapping;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -318,13 +319,27 @@ public class ForayPlaybackService extends MediaSessionService {
 
     /**
      * The core's audio session on Android. Focus is Media3's (see {@link EngineSeams.Session}),
-     * so activation answers whether the session that owns the lock screen is alive; the rest are
-     * rows, because Android has no category to re-apply and no session to rebuild.
+     * so activation answers whether the session that owns the lock screen is alive and whether a
+     * call holds the audio (CH3-08); the rest are rows, because Android has no category to
+     * re-apply and no session to rebuild.
      */
     private final class SessionSeam implements EngineSeams.Session {
         @Override
         public EngineSeams.Activation activate() {
-            return session != null ? EngineSeams.Activation.granted() : new EngineSeams.Activation(false, "other", null);
+            if (session == null) return new EngineSeams.Activation(false, "other", null);
+            /* A CALL IS A REFUSED ACTIVATION, AS ON iOS (CH3-08, R5-02). Media3 asks for focus a
+               turn after the press (FocusIntegrationTest), too late to fail it; iOS's
+               setActive(true) fails in the press's turn, insufficient-priority for a call, which
+               the core answers commandFailed(session-failed:other). Android reads the same fact
+               up front from the audio mode: no permission, no focus request of its own. */
+            String call = callInProgress(audioMode());
+            if (call == null) return EngineSeams.Activation.granted();
+            String token = "insufficient-priority";
+            List<JsonNode.Member> fields = kind("activate-refused");
+            fields.add(JsonNode.member("token", JsonNode.str(token)));
+            fields.add(JsonNode.member("call", JsonNode.str(call)));
+            log.diag(new EngineCommand.DiagEntry("session", fields));
+            return new EngineSeams.Activation(false, token, null);
         }
 
         @Override
@@ -341,6 +356,26 @@ public class ForayPlaybackService extends MediaSessionService {
         public void rebuild() {
             log.diag(new EngineCommand.DiagEntry("session", kind("rebuild-noop")));
         }
+    }
+
+    /** The audio mode now, or {@code MODE_NORMAL} when there is no AudioManager to ask. */
+    private int audioMode() {
+        AudioManager audio = getSystemService(AudioManager.class);
+        return audio == null ? AudioManager.MODE_NORMAL : audio.getMode();
+    }
+
+    /**
+     * The call an audio mode says is in progress, as the {@code session} row spells it, or null:
+     * {@code MODE_IN_CALL} is a telephony call, {@code MODE_IN_COMMUNICATION} a VoIP one. Both
+     * hold the audio, so a play would be refused focus. {@code getMode()} needs no permission;
+     * the telephony call state would need READ_PHONE_STATE. A ringing phone
+     * ({@code MODE_RINGTONE}) is not a call yet: Media3's own request answers for it.
+     */
+    @Nullable
+    static String callInProgress(int audioMode) {
+        if (audioMode == AudioManager.MODE_IN_CALL) return "in-call";
+        if (audioMode == AudioManager.MODE_IN_COMMUNICATION) return "in-communication";
+        return null;
     }
 
     /** The 15/30 pair: the session's media button preferences, shown by the default notification and the system controls. */
