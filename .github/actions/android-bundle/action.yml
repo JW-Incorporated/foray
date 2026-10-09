@@ -44,6 +44,16 @@ inputs:
       consistency step refuses a mismatch rather than upload one app to the other's listing.
     required: false
     default: "ai.jwlabs.foura"
+  app_name:
+    description: >-
+      The home-screen name of a lab build ("4a Lab", "4a Tactile", "4a Ambient").
+      Only meaningful with lab=true, where it MUST be a "4a <Word>" lab name; with
+      lab=false it MUST be left at its default (the consistency step refuses
+      anything else). lab-build.yml computes it from the ref and checks that this
+      action declares the input, so an older ref fails loudly instead of building
+      the wrong name.
+    required: false
+    default: "4a Lab"
   artifact_name:
     description: "Name of the uploaded .aab artifact."
     required: false
@@ -126,19 +136,24 @@ runs:
       env:
         LAB: ${{ inputs.lab }}
         APP_ID_IN: ${{ inputs.app_id }}
+        APP_NAME_IN: ${{ inputs.app_name }}
       run: |
         set -euo pipefail
         case "$LAB" in
           true)
-            if [ "$APP_ID_IN" != "ai.jwlabs.foura.lab" ]; then
-              echo "::error::lab=true must build ai.jwlabs.foura.lab, got app_id '$APP_ID_IN'"; exit 1
-            fi
-            node tools/mobile/lab-variant.mjs apply-config mobile/capacitor.config.json
+            case "$APP_ID_IN" in
+              ai.jwlabs.foura.lab|ai.jwlabs.foura.lab.tactile) ;;
+              *) echo "::error::lab=true must build a lab app id (ai.jwlabs.foura.lab or ai.jwlabs.foura.lab.tactile), got app_id '$APP_ID_IN'"; exit 1 ;;
+            esac
+            node tools/mobile/lab-variant.mjs apply-config mobile/capacitor.config.json --app-id "$APP_ID_IN" --app-name "$APP_NAME_IN"
             echo "FORAY_LAB=1" >> "$GITHUB_ENV"
             ;;
           false)
             if [ "$APP_ID_IN" != "ai.jwlabs.foura" ]; then
               echo "::error::lab=false must build ai.jwlabs.foura, got app_id '$APP_ID_IN'"; exit 1
+            fi
+            if [ "$APP_NAME_IN" != "4a Lab" ]; then
+              echo "::error::lab=false takes no app_name, got '$APP_NAME_IN'"; exit 1
             fi
             ;;
           *) echo "::error::lab must be 'true' or 'false', got '$LAB'"; exit 1 ;;
@@ -158,18 +173,22 @@ runs:
       # The "green and wrong" guard: a config edit that did not reach Gradle would
       # build the REAL application id and name under the lab listing.
       shell: bash
+      env:
+        APP_ID_IN: ${{ inputs.app_id }}
+        APP_NAME_IN: ${{ inputs.app_name }}
       run: |
         set -euo pipefail
+        : "${APP_ID_IN:?}" "${APP_NAME_IN:?}"
         # Not `ls a b | head -1`: ls exits 2 when either file is missing, and under
         # pipefail that killed this step with no message on the first real run.
         GRADLE=mobile/android/app/build.gradle
         [ -f "$GRADLE" ] || GRADLE=mobile/android/app/build.gradle.kts
         [ -f "$GRADLE" ] || { echo "::error::no mobile/android/app/build.gradle(.kts) was generated"; exit 1; }
-        grep -Eq 'applicationId[ =]+"ai\.jwlabs\.foura\.lab"' "$GRADLE" || { echo "::error::$GRADLE does not declare applicationId ai.jwlabs.foura.lab"; grep -n applicationId "$GRADLE" || true; exit 1; }
+        grep -Eq "applicationId[ =]+\"${APP_ID_IN//./\\.}\"" "$GRADLE" || { echo "::error::$GRADLE does not declare applicationId $APP_ID_IN"; grep -n applicationId "$GRADLE" || true; exit 1; }
         if grep -Eq 'applicationId[ =]+"ai\.jwlabs\.foura"' "$GRADLE"; then
           echo "::error::$GRADLE still declares the REAL applicationId"; exit 1
         fi
-        grep -q '<string name="app_name">4a Lab</string>' mobile/android/app/src/main/res/values/strings.xml || { echo "::error::strings.xml app_name is not '4a Lab'"; exit 1; }
+        grep -qF "<string name=\"app_name\">$APP_NAME_IN</string>" mobile/android/app/src/main/res/values/strings.xml || { echo "::error::strings.xml app_name is not '$APP_NAME_IN'"; exit 1; }
         grep -q '__FORAY_LAB__' mobile/android/app/src/main/assets/public/foray-lab.js || { echo "::error::the lab bundle has no foray-lab.js flag"; exit 1; }
         grep -q 'foray-lab.js' mobile/android/app/src/main/assets/public/index.html || { echo "::error::index.html does not load foray-lab.js"; exit 1; }
 

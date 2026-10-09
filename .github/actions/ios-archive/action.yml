@@ -46,6 +46,16 @@ inputs:
       refuses a mismatch rather than archive one app under the other's profile.
     required: false
     default: "ai.jwlabs.foura"
+  app_name:
+    description: >-
+      The home-screen name of a lab build ("4a Lab", "4a Tactile", "4a Ambient").
+      Only meaningful with lab=true, where it MUST be a "4a <Word>" lab name; with
+      lab=false it MUST be left at its default (the consistency step refuses
+      anything else). lab-build.yml computes it from the ref and checks that this
+      action declares the input, so an older ref fails loudly instead of building
+      the wrong name.
+    required: false
+    default: "4a Lab"
 
 outputs:
   state:
@@ -96,19 +106,24 @@ runs:
       env:
         LAB: ${{ inputs.lab }}
         APP_ID_IN: ${{ inputs.app_id }}
+        APP_NAME_IN: ${{ inputs.app_name }}
       run: |
         set -euo pipefail
         case "$LAB" in
           true)
-            if [ "$APP_ID_IN" != "ai.jwlabs.foura.lab" ]; then
-              echo "::error::lab=true must build ai.jwlabs.foura.lab, got app_id '$APP_ID_IN'"; exit 1
-            fi
-            node tools/mobile/lab-variant.mjs apply-config mobile/capacitor.config.json
+            case "$APP_ID_IN" in
+              ai.jwlabs.foura.lab|ai.jwlabs.foura.lab.tactile) ;;
+              *) echo "::error::lab=true must build a lab app id (ai.jwlabs.foura.lab or ai.jwlabs.foura.lab.tactile), got app_id '$APP_ID_IN'"; exit 1 ;;
+            esac
+            node tools/mobile/lab-variant.mjs apply-config mobile/capacitor.config.json --app-id "$APP_ID_IN" --app-name "$APP_NAME_IN"
             echo "FORAY_LAB=1" >> "$GITHUB_ENV"
             ;;
           false)
             if [ "$APP_ID_IN" != "ai.jwlabs.foura" ]; then
               echo "::error::lab=false must build ai.jwlabs.foura, got app_id '$APP_ID_IN'"; exit 1
+            fi
+            if [ "$APP_NAME_IN" != "4a Lab" ]; then
+              echo "::error::lab=false takes no app_name, got '$APP_NAME_IN'"; exit 1
             fi
             ;;
           *) echo "::error::lab must be 'true' or 'false', got '$LAB'"; exit 1 ;;
@@ -127,17 +142,21 @@ runs:
       # that did not reach the Xcode project would archive the REAL bundle id under
       # the lab profile. Every PRODUCT_BUNDLE_IDENTIFIER the project declares for the
       # app target must be the lab id, none may be the real one, the display name
-      # must be "4a Lab", and the web bundle must carry the flag.
+      # must be the requested lab name, and the web bundle must carry the flag.
       shell: bash
+      env:
+        APP_ID_IN: ${{ inputs.app_id }}
+        APP_NAME_IN: ${{ inputs.app_name }}
       run: |
         set -euo pipefail
+        : "${APP_ID_IN:?}" "${APP_NAME_IN:?}"
         PBX=mobile/ios/App/App.xcodeproj/project.pbxproj
-        grep -q 'PRODUCT_BUNDLE_IDENTIFIER = ai.jwlabs.foura.lab;' "$PBX"           || { echo "::error::the generated project does not declare ai.jwlabs.foura.lab"; exit 1; }
+        grep -qF "PRODUCT_BUNDLE_IDENTIFIER = $APP_ID_IN;" "$PBX"           || { echo "::error::the generated project does not declare $APP_ID_IN"; exit 1; }
         if grep -q 'PRODUCT_BUNDLE_IDENTIFIER = ai.jwlabs.foura;' "$PBX"; then
           echo "::error::the generated project still declares the REAL bundle id ai.jwlabs.foura"; exit 1
         fi
         DISPLAY_NAME=$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" mobile/ios/App/App/Info.plist)
-        [ "$DISPLAY_NAME" = "4a Lab" ] || { echo "::error::CFBundleDisplayName is '$DISPLAY_NAME', not '4a Lab'"; exit 1; }
+        [ "$DISPLAY_NAME" = "$APP_NAME_IN" ] || { echo "::error::CFBundleDisplayName is '$DISPLAY_NAME', not '$APP_NAME_IN'"; exit 1; }
         grep -q '__FORAY_LAB__' mobile/ios/App/App/public/foray-lab.js           || { echo "::error::the lab bundle has no foray-lab.js flag"; exit 1; }
         grep -q 'foray-lab.js' mobile/ios/App/App/public/index.html           || { echo "::error::index.html does not load foray-lab.js"; exit 1; }
 
