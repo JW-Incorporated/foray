@@ -2185,10 +2185,10 @@ const FLOORS = {
      against a faked `gh`; run-and-publish.test.mjs is the end-to-end
      acceptance test the card's own criterion asks for — "two full runs on
      the same dump version -> no new release" — proven against the REAL
-     control flow (runAndPublish), not each piece in isolation, covering
-     both idempotency paths (S-04a's own state.json skip, and the
-     independent release-already-exists check that catches a lost
-     state.json). */
+     control flow (runAndPublish), not each piece in isolation, proving
+     the one idempotency rule (CH2-31, T1-15): releaseExists -- a second
+     run on the same export_version builds in full and publishes
+     nothing. */
   "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
   "tools/shows/run-and-publish.test.mjs": 12, // CH2-31 (T1-15): +1 a fresh checkout runs the full build and releaseExists alone stops a duplicate release (the acceptance test's build-skipped run folded into its release-exists run); 11 -> 12 // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
