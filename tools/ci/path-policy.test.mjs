@@ -1547,3 +1547,111 @@ test("review: CLI decide --armed-by reports founder_armed for the workflow's Dis
   rawRunCli(["decide", "--files-from", "f", "--author", "stranger", "--armed-by", "github-actions[bot]", "--github-output", "O"], h2.io);
   assert.match(h2.appended.O, /founder_armed=false/);
 });
+
+
+/* ---------- CH2-34b (T2-16): ONE protect-main required list, rendered everywhere ---------- */
+
+import { REQUIRED_CHECKS as TRIAGE_REQUIRED_CHECKS } from "./pr-triage.mjs";
+
+/* Every job id any workflow declares: the names a required context can have. */
+function workflowJobIds() {
+  const dir = path.join(REPO, ".github", "workflows");
+  const ids = new Set(["path-policy"]);
+  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".yml"))) {
+    let inJobs = false;
+    for (const line of fs.readFileSync(path.join(dir, f), "utf8").split(/\r?\n/)) {
+      if (/^\S/.test(line)) inJobs = /^jobs:\s*$/.test(line);
+      const m = inJobs && /^ {2}([A-Za-z0-9][\w-]*):\s*(#.*)?$/.exec(line);
+      if (m) ids.add(m[1]);
+    }
+  }
+  return ids;
+}
+
+/* The files that talk about protect-main's list: every workflow and composite,
+ * and the merge machinery's own modules. */
+function requiredListProseFiles() {
+  const out = [];
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(REPO, rel), { withFileTypes: true })) {
+      const r = `${rel}/${e.name}`;
+      if (e.isDirectory()) walk(r);
+      else if (/\.ya?ml$/.test(e.name)) out.push(r);
+    }
+  };
+  walk(".github");
+  out.push("tools/ci/path-policy.mjs", "tools/ci/pr-triage.mjs", "tools/release/watch-release.mjs");
+  return out;
+}
+
+/* Comment markers and string concatenation stripped, lines joined, so a
+ * sentence that wraps across comment lines (or `"..." +` pieces) is one string. */
+function proseOf(src) {
+  return src
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:#+|\/\/+|\/\*+|\*+\/?)?\s?/, ""))
+    .join(" ")
+    .replace(/["'`]\s*\+\s*["'`]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+/* Every sentence that states protect-main's required list by enumerating two
+ * or more check names, with the names it enumerates. */
+function requiredListMentions(text, names) {
+  const NAME = /`([A-Za-z0-9][\w-]*)`/.source;
+  const SEP = /\s*(?:,\s*(?:and|or)?|and|or)\s*/.source;
+  const enumRe = new RegExp(`${NAME}(?:${SEP}${NAME})+`, "g");
+  const trigger = /protect-main|required[ -](?:status[ -])?(?:checks?|contexts?)/i;
+  const out = [];
+  for (const sentence of text.split(/(?<=[.!?])\s+(?=[A-Z`"(*])/)) {
+    if (!trigger.test(sentence)) continue;
+    for (const m of sentence.matchAll(enumRe)) {
+      const listed = [...m[0].matchAll(/`([A-Za-z0-9][\w-]*)`/g)].map((x) => x[1]).filter((n) => names.has(n));
+      if (listed.length >= 2) out.push({ sentence: sentence.slice(0, 240), listed });
+    }
+  }
+  return out;
+}
+
+test("CH2-34b: every prose copy of protect-main's required list equals pr-triage's REQUIRED_CHECKS", () => {
+  /* T2-16. The list was hand-copied into a dozen comments and one rendered
+     message, and the copies disagreed with each other (android-release.yml
+     named `path-policy`, which was never required) and with the ruleset.
+     A comment either names the constant or enumerates exactly what it holds.
+     MUTATION: put "`backend`, `data-and-site`, `path-policy`" back in
+     android-release.yml's header -> red, naming the file and the sentence. */
+  const names = workflowJobIds();
+  const want = [...TRIAGE_REQUIRED_CHECKS].sort();
+  const wrong = [];
+  for (const rel of requiredListProseFiles()) {
+    for (const m of requiredListMentions(proseOf(fs.readFileSync(path.join(REPO, rel), "utf8")), names)) {
+      if (JSON.stringify([...new Set(m.listed)].sort()) !== JSON.stringify(want)) {
+        wrong.push(`${rel}: [${m.listed.join(", ")}] in "${m.sentence}"`);
+      }
+    }
+  }
+  assert.deepStrictEqual(wrong, [], `REQUIRED_CHECKS is [${want.join(", ")}]`);
+});
+
+test("CH2-34b: the prose scanner finds an enumeration that wraps across comment lines", () => {
+  /* The scanner above is only as good as its parser: a scanner that finds
+     nothing passes vacuously. MUTATION: drop the line join in proseOf -> the
+     wrapped list is two one-name fragments and nothing is found. */
+  const names = new Set(["backend", "data-and-site", "path-policy"]);
+  const yml = "# accident — `protect-main` matches required contexts BY NAME (`backend`,\n# `data-and-site`, `path-policy`). A flaky required check is worse.\n";
+  assert.deepStrictEqual(requiredListMentions(proseOf(yml), names).map((m) => m.listed), [["backend", "data-and-site", "path-policy"]]);
+  const js = '      ? "Auto-merge has been enabled. `protect-main` still requires `backend` and " +\n          "`data-and-site` to pass, so a red PR does not merge."\n';
+  assert.deepStrictEqual(requiredListMentions(proseOf(js), names).map((m) => m.listed), [["backend", "data-and-site"]]);
+  // One name, or a list with no protect-main/required-check wording, is not the list.
+  assert.deepStrictEqual(requiredListMentions(proseOf("# the required `ios-gate` already encodes it.\n"), names), []);
+  assert.deepStrictEqual(requiredListMentions(proseOf("# runs `backend` and `data-and-site` first.\n"), names), []);
+});
+
+test("CH2-34b: the armed auto-merge message names every required check", () => {
+  /* The one rendered copy: what the PR comment says still guards the merge.
+     MUTATION: hardcode "`backend` and `data-and-site`" back into formatDecision
+     -> red as soon as the constant holds anything else. */
+  const md = formatDecision(automergeDecision({ files: ["data/x.json"] }));
+  assert.match(md, /Auto-merge has been enabled/);
+  for (const name of TRIAGE_REQUIRED_CHECKS) assert.ok(md.includes(`\`${name}\``), `${name} missing from: ${md}`);
+});
