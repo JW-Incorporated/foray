@@ -855,7 +855,7 @@
     },
     "reconnecting a route never resumes on the web and Android path, even one reported as a car (player-core-10)": {
       "reason": "webview-only",
-      "why": "The JS manager's route policy runs only on the web and Android path (founder Q5 default, audit round 3): reconnecting never resumes there. The native engine owns route policy (EngineCore.knownCarRoutes) and pins it with its own XCTests."
+      "why": "The JS manager's route policy runs only on the web and Android path (founder Q5 default, audit round 3): reconnecting never resumes there. Swift's route policy is RouteResume (a known route resumes only what the route itself paused), pinned by the route-resume family and RouteResumeTests. The JVM core has no route resume: a reconnect never resumes there either, until A-61 ports RouteResume (code-health-3 CH3-17 deleted its knownCarRoutes branch)."
     },
     "§14: a media error during the first line's load does not stop the player before the fallback": {
       "reason": "webview-only",
@@ -963,7 +963,7 @@
   "route-resume": {
     "neither queue-manager.js nor client.js imports route-resume.js: the JS lanes never resume on a reconnect": {
       "reason": "js-module-shape",
-      "why": "Pins that player/queue-manager.js and player/client.js do not import or name route-resume.js, so the web and Android JS lanes keep 'a reconnect never resumes' (player-core-10); the native engines have neither file, and their port of the rule is checked by the route-resume family instead."
+      "why": "Pins that player/queue-manager.js and player/client.js do not import or name route-resume.js, so the web and Android JS lanes keep 'a reconnect never resumes' (player-core-10). Swift's port of the rule is RouteResume, checked by the route-resume family and RouteResumeTests; the JVM core has no route resume until A-61 ports it (the family is owed to A-61 in jvm-pending.json)."
     }
   },
   "seam-gap": {
