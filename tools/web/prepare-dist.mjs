@@ -54,6 +54,8 @@ const SHELL = [
   "ui/dock.css", // Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), linked after primitives.css
   "ui/library.css", // Redesign 2026 (ambient): Library, a screen on the system
   "ui/today.css", // Redesign 2026 (ambient): Today, the first screen on the system
+  "ui/now-playing.css", // Redesign 2026 (ambient): artwork-lit Now Playing Room
+  "ui/car.css", // Redesign 2026 (ambient): car posture (Now Playing glance screen)
   "ui/onboarding.css", // Redesign 2026 (ambient): the first-run Room
   "ui/show.css", // Redesign 2026 (ambient): the show page, the Room and its EpisodeRows
   "ui/browse.css", // Redesign 2026 (ambient): the subject page, the collage lead and ShowTiles

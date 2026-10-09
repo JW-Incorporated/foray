@@ -273,6 +273,8 @@ export const SHELL_FILES = [
   "ui/dock.css", // Redesign 2026 (ambient): the Dock's own styles; minified like styles.css
   "ui/library.css",
   "ui/today.css",
+  "ui/now-playing.css",
+  "ui/car.css",
   "ui/onboarding.css",
   "ui/show.css",
   "ui/browse.css",
@@ -1913,6 +1915,10 @@ export function prepare({
   for (const f of shellOnly) {
     const src = path.join(root, f.src);
     if (isMinified(f.dest)) minify(src, f.dest);
+    /* A shell-only JSON document ships compact, like every data/*.json beside it (Redesign 2026: kokoro-probe-passage.json is
+       pretty-printed in the repo for git diffs, 35 KB against 14 KB compact, and that 21 KB is what kept the bundle under the
+       3 MB cap once car posture landed; the page reads it with fetch().json() and the web keeps serving the indented source). */
+    else if (f.dest.endsWith(".json")) reserialize(src, f.dest);
     else copy(src, f.dest);
   }
 
@@ -1952,6 +1958,17 @@ export function prepare({
     const labbed = injectLabFlag(fs.readFileSync(indexAbs, "utf8"));
     if (labbed.changed) fs.writeFileSync(indexAbs, labbed.html);
     assertLabFlagPresent(fs.readFileSync(indexAbs, "utf8"));
+  }
+  /* THE BUNDLE'S index.html SHIPS WITHOUT ITS COMMENTS, like the JS and CSS beside it (Redesign 2026, ambient: the
+     stylesheet and script comments in index.html had grown to 5.4 KB, which took the bundle past the 3 MB cap by 1.6 KB
+     when car posture landed). The web keeps serving the commented source. Done last, after the injections and their
+     re-reads, so no tag they look for can be inside a comment they removed; the script/link tags are re-asserted below. */
+  {
+    const before = fs.readFileSync(indexAbs, "utf8");
+    const stripped = stripHtmlComments(before);
+    if (stripped !== before) fs.writeFileSync(indexAbs, stripped);
+    assertShellScriptsPresent(fs.readFileSync(indexAbs, "utf8"), shellOnly);
+    if (lab) assertLabFlagPresent(fs.readFileSync(indexAbs, "utf8"));
   }
 
   /* THE SLICES, RE-READ, for the same reason and in the same place. */
@@ -2077,4 +2094,11 @@ if (isMain) {
     console.error(`prepare-webdir failed: ${e.message}`);
     process.exit(1);
   }
+}
+
+/** `html` without its `<!-- ... -->` comments, and without the blank line a comment alone on its line leaves behind.
+ *  index.html has no inline script or style (the CSP forbids it), so a comment opener is never inside a string. A comment
+ *  that is not closed is left alone rather than eating the rest of the document. Pure and idempotent. */
+export function stripHtmlComments(html) {
+  return String(html).replace(/^[ \t]*<!--[\s\S]*?-->[ \t]*\r?\n/gm, "").replace(/<!--[\s\S]*?-->/g, "");
 }

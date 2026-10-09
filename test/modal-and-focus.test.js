@@ -415,6 +415,29 @@ test("QA fix: a kept topbar the page hides with display:none is not a Tab stop -
   assert.strictEqual(m.doc.activeElement, m.menu, "a laid-out ☰ is still reached");
 });
 
+test("a control the sheet hides with display:none is not its last Tab stop - the trap wraps over the visible ones (car posture)", () => {
+  /* Car posture (ui/car.css) leaves the detail handle and the secondary row in the sheet's DOM at display:none.
+     The trap took the last of them as the sheet's last control, so Tab from the last VISIBLE control was not
+     wrapped and focus left the sheet (ui-lab gate sheet-focus, tab-escapes, player/now-playing-car: 1 of 10 Tabs
+     landed on body). A hidden element has no client rects. MUTATION: drop `.filter(isRendered)` from `items` in
+     onSheetKeydown (ui/sheets.js) -> the first assertion fails (focus stays on the last visible control). */
+  const m = mount();
+  const s = sheet(m);
+  const hidden = m.doc.createElement("button");
+  s.panel.appendChild(hidden);                     // after the last visible control, like .ag-np-detail-handle
+  hidden.getClientRects = () => [];
+  m.ctx.openSheet(s.wrap, {});
+  s.b.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, s.a, "Tab from the last visible control wraps to the first");
+  m.doc.key("Tab", { shiftKey: true });
+  assert.strictEqual(m.doc.activeElement, s.b, "Shift+Tab from the first wraps to the last visible control, not the hidden one");
+  hidden.getClientRects = () => [{ width: 44, height: 44 }];
+  s.a.focus();
+  m.doc.key("Tab", { shiftKey: true });
+  assert.strictEqual(m.doc.activeElement, hidden, "once laid out, the same control is the last stop again");
+});
+
 test("the modal lock is derived from what is open: kept across a render, dropped when the sheet's DOM is gone", () => {
   /* THE BACK-GESTURE BUG. The feedback sheet lives inside #view; a navigation
      replaced #view and `fy-sheet-open` was carried forward because it was
@@ -1184,4 +1207,66 @@ test("Home names itself: 'Home' is said when focus survived, and a lost focus la
   const greeting = m.view.querySelector(".td-wordmark");
   assert.strictEqual(m.doc.activeElement, greeting, "focus lands on the header mark, not the bare region");
   assert.strictEqual(greeting.getAttribute("tabindex"), "-1");
+});
+
+test("Stop while ANOTHER sheet is open does not un-inert the topbar behind that modal (review: stopAndClose released unconditionally)", async () => {
+  /* Runs the REAL `stopAndClose` and `releaseBarAndTopbar`, cut from player/client.js (which cannot be imported under
+     node), over the real owner and a stubbed player. The delete-data flow calls stopAndClose with the Delete sheet
+     open, and a lock-screen Remote Stop can land under any sheet; Now Playing was never expanded, so it has nothing to
+     undo, and the topbar's inert belongs to the other sheet. A browser reflects `el.inert` onto the `inert` attribute
+     the owner writes, so the stub topbar does too (without it this harness would pass for the wrong reason).
+     MUTATION 1: make `if (wasExpanded) releaseBarAndTopbar();` unconditional again -> the first case is red (gear and
+     menu clickable behind the Delete sheet). MUTATION 2: delete the call -> the second case is red (Stop from the
+     expanded sheet leaves the gear inert and the next mini bar aria-hidden). */
+  const grab = (re, what) => { const hit = re.exec(CLIENT_SRC.replace(/\r\n/g, "\n")); assert.ok(hit, `${what} is in client.js`); return hit[0]; };
+  const release = grab(/function releaseBarAndTopbar\(\) \{[\s\S]*?\n\}\n/, "releaseBarAndTopbar");
+  const stop = grab(/async function stopAndClose\([^)]*\) \{[\s\S]*?\n\}\n/, "stopAndClose");
+  const build = (m, ui) => {
+    const stubs = { ui, flushPositions() {}, manager: { stop: async () => {} }, media: null, syncCardButtons() {} };
+    const make = vm.runInContext(
+      `(function (s) { const { ui, flushPositions, manager, media, syncCardButtons } = s;
+         const engineMode = "web", engine = null, STOPPED_LINE = "Stopped", sheetOwner = () => window.ForaySheets;
+         let lastMediaPositionKey = null, restoredPending = null, foray = null, current = null;
+         ${release}
+         ${stop}
+         return stopAndClose; })`, m.ctx);
+    return make(stubs);
+  };
+  const player = (m) => {
+    const root = m.doc.createElement("div");
+    const bar = m.doc.createElement("div");
+    const sheetEl = m.doc.createElement("div");
+    root.append(bar, sheetEl);
+    m.doc.body.appendChild(root);
+    return { root, bar, sheet: sheetEl };
+  };
+  const reflectInert = (el) => Object.defineProperty(el, "inert", {
+    get() { return el.hasAttribute("inert"); },
+    set(v) { if (v) el.setAttribute("inert", ""); else el.removeAttribute("inert"); },
+  });
+
+  /* 1. Another modal sheet owns the topbar's inert; Now Playing was never open. */
+  const m = mount();
+  reflectInert(m.topbar);
+  const ui = player(m);
+  ui.sheet.hidden = true;
+  const other = sheet(m, "delete-sheet");
+  m.ctx.openSheet(other.wrap, { panel: other.panel });
+  assert.ok(inert(m.topbar), "fixture: the Delete sheet inerted the topbar");
+  await build(m, ui)({ persist: false });
+  assert.ok(inert(m.topbar), "the topbar is still out of reach behind the open sheet");
+  assert.strictEqual(other.wrap.hidden, false, "and the other sheet is still open");
+
+  /* 2. Now Playing WAS the open sheet: Stop gives back what expanding it took. */
+  const m2 = mount();
+  reflectInert(m2.topbar);
+  const ui2 = player(m2);
+  ui2.sheet.hidden = false;
+  m2.ctx.openSheet(ui2.sheet, { panel: ui2.sheet, keepReachable: [".topbar", ".fp-announce"] });
+  ui2.bar.inert = true;
+  ui2.bar.setAttribute("aria-hidden", "true");
+  m2.topbar.inert = true;
+  await build(m2, ui2)({ persist: false });
+  assert.ok(!inert(m2.topbar), "the topbar the expanded sheet inerted is released");
+  assert.ok(!inert(ui2.bar) && ui2.bar.getAttribute("aria-hidden") === "false", "and so is the mini bar");
 });
