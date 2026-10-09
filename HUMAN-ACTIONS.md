@@ -2,9 +2,43 @@
 
 <!-- ha-format: 2 -->
 
-> **31 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **34 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #153 🟡 [DECIDE] Approve the "4a Tactile" lab-build change: label PR #1254 (~2 min)
+<!-- ha filed=2026-10-09 -->
+
+**Why:** The lab-build workflow holds the app-signing setup, so changes to it need a founder's OK. PR #1254 sends Tactile builds to the new 4a Tactile app and names 4a Lab "4a Ambient". Merged before #151 and #152 are done, every Tactile lab build fails on purpose.
+**Steps:**
+1. Finish #151 (Apple) and #152 (Play) first.
+2. github.com/JW-Incorporated/foray/pull/1254 → read the TL;DR at the top.
+3. Labels (right column) → add `founder-approved`. Claude merges it once the checks are green.
+**Worked if:** PR #1254 shows merged, and the next Tactile lab build lands as "4a Tactile" in TestFlight and on Play.
+
+## #152 🟢 [UPGRADE] Google Play: set up the separate "4a Tactile" Android app (~10 min)
+<!-- ha filed=2026-10-09 -->
+
+**Why:** You chose to use both redesign directions live, side by side. Tactile gets its own lab app so it installs next to 4a Lab (which becomes "4a Ambient") and the real 4a. Nothing about the real app changes.
+**Steps:**
+1. Play Console → Create app → Name `4a Tactile`, App, Free → accept the declarations.
+2. Testing → Internal testing → Testers: add the same email list 4a Lab uses (Joey's Google account). Save the opt-in link.
+3. Users and permissions: grant the service account CI uses for 4a "Release to testing tracks" on 4a Tactile.
+4. Play may require the first bundle of a new app to be uploaded by hand. If so, the session supplies the file and the clicks.
+**Worked if:** the opt-in link installs "4a Tactile" from the Play Store beside 4a Lab and the real 4a.
+
+## #151 🟢 [UPGRADE] Apple: set up the separate "4a Tactile" iOS app (~20 min)
+<!-- ha filed=2026-10-09 -->
+
+**Why:** You chose to use both redesign directions live, side by side. Tactile gets its own TestFlight app so Wyatt can keep it installed next to 4a Lab (which becomes "4a Ambient") and the real 4a. Nothing about the real app changes.
+**Steps:**
+1. developer.apple.com → Account → Identifiers → + → App IDs → App. Description `4a Tactile`, Explicit ID `ai.jwlabs.foura.lab.tactile`, no capabilities → Register.
+2. appstoreconnect.apple.com → Apps → + → New App: iOS, `4a Tactile` (if taken `4a Tactile by JW`), English (U.S.), that bundle ID, SKU `4a-tactile`, Full Access.
+3. Profiles → + → App Store Connect distribution, that App ID, the Apple Distribution cert 4a Lab uses, name `4a Tactile App Store` → Download.
+4. PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME\Downloads\4a_Tactile_App_Store.mobileprovision")) | Set-Clipboard`
+5. github.com/JW-Incorporated/foray/settings/secrets/actions → New repository secret `IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64`, paste.
+6. 4a Tactile → TestFlight → Internal Testing → +: group `Founders`, add Joey and Wyatt, automatic distribution.
+**Worked if:** the first Tactile lab build appears in TestFlight as "4a Tactile" and installs beside 4a Lab and the real 4a.
 
 ## #150 🟡 [DECIDE] Approve privacy-policy sentences for `card_shown` and observed `finished`/`skipped_at`, and say yes or no to a `"top"` archetype (~10 min)
 <!-- ha filed=2026-10-07 kind=default -->
