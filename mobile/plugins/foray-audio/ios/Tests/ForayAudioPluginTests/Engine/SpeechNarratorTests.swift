@@ -247,7 +247,10 @@ final class SpeechNarratorTests: XCTestCase {
     /// Path B end to end on the rig: a line rendered by the synthesizer,
     /// played by the engine's own player, paused mid-line, resumed, and heard
     /// to its end. A Simulator has no lock and no car: this shows only that
-    /// the plumbing works; NE-37's H5/DV-9 re-check is the evidence.
+    /// the plumbing works; NE-37's H5/DV-9 re-check is the evidence. A held
+    /// line keeps the engine running (CH3-15 stops it between lines only).
+    /// TO SEE IT FAIL (the held-engine pin): pause the engine in
+    /// `PcmOutput.pause`.
     func testThePcmOutputPausesResumesAndFinishesOnTheSimulator() throws {
         try XCTSkipIf(AVSpeechSynthesisVoice.speechVoices().isEmpty, "this Simulator has no speech voice installed")
         var sessionRows: [DiagEntry] = []
@@ -269,9 +272,96 @@ final class SpeechNarratorTests: XCTestCase {
         XCTAssertTrue(pcm.pause())
         spin(until: 0.5, { false })
         XCTAssertEqual(ends, [], "a held line does not end")
+        XCTAssertTrue(pcm.engineIsRunning, "a held line keeps the engine running (CH3-15: pause/resume mid-line unchanged)")
         XCTAssertTrue(pcm.resume())
+        XCTAssertTrue(pcm.engineIsRunning)
         XCTAssertTrue(spin(until: 60, { !ends.isEmpty }), "the resumed line never ended: \(outputRows)")
         XCTAssertEqual(ends, [.finished])
+    }
+
+    /// CH3-15 (R2-06): the engine runs between a line's start and its end
+    /// ONLY. Before, it was started by the first line and never stopped, so it
+    /// rendered silence for the rest of the process: the app never suspended
+    /// on a locked phone, and every later deactivation said `is-busy`. The
+    /// next line starts it again.
+    /// TO SEE IT FAIL: drop the engine pause from `PcmOutput.end`.
+    func testThePcmEngineRunsOnlyWhileALineIsInFlight() throws {
+        let rig = try PcmRig()
+        defer { rig.close() }
+        try rig.startLine("This line is long enough to be caught while it plays.", id: 1)
+        XCTAssertTrue(rig.pcm.engineIsRunning, "a line in flight runs the engine")
+        XCTAssertTrue(spin(until: 60, { !rig.ends.isEmpty }), "the line never ended: \(rig.rows)")
+        XCTAssertEqual(rig.ends, [.finished])
+        XCTAssertFalse(rig.pcm.engineIsRunning, "a finished line leaves the engine stopped")
+
+        try rig.startLine("And a second line after it.", id: 2)
+        XCTAssertTrue(rig.pcm.engineIsRunning, "the next line starts the engine again")
+        XCTAssertTrue(spin(until: 60, { !rig.ends.isEmpty }), "the second line never ended: \(rig.rows)")
+        XCTAssertEqual(rig.ends, [.finished])
+        XCTAssertFalse(rig.pcm.engineIsRunning)
+    }
+
+    /// CH3-15: a stop mid-line stops the engine with the line and reports
+    /// nothing, and the next line plays to its end on the engine it restarts.
+    /// TO SEE IT FAIL: have `PcmOutput.stop` silence the line only (stop
+    /// neither the player's engine nor pause it).
+    func testAStopMidLineStopsThePcmEngineAndTheNextLineStartsIt() throws {
+        let rig = try PcmRig()
+        defer { rig.close() }
+        try rig.startLine("This line is stopped long before it is over.", id: 1)
+        rig.pcm.stop()
+        XCTAssertFalse(rig.pcm.engineIsRunning, "a stop leaves the engine stopped")
+        spin(until: 0.5, { false })
+        XCTAssertEqual(rig.ends, [], "a stop reports nothing")
+
+        try rig.startLine("The next line.", id: 2)
+        XCTAssertTrue(rig.pcm.engineIsRunning, "the next line starts the engine again")
+        XCTAssertTrue(spin(until: 60, { !rig.ends.isEmpty }), "the next line never ended: \(rig.rows)")
+        XCTAssertEqual(rig.ends, [.finished])
+        XCTAssertFalse(rig.pcm.engineIsRunning)
+    }
+
+    /// The real PCM output on a session the owner activated, and what it
+    /// reported: the CH3-15 smokes' rig. It skips where the Simulator cannot
+    /// speak (no voice) or run an engine, as the smoke above does.
+    private final class PcmRig {
+        let owner: AudioSessionOwner
+        let pcm: PcmOutput
+        /// The output's rows.
+        var rows: [DiagEntry] { readRows() }
+        var ends: [SpeechEnd] = []
+        private let readRows: () -> [DiagEntry]
+
+        init() throws {
+            try XCTSkipIf(AVSpeechSynthesisVoice.speechVoices().isEmpty, "this Simulator has no speech voice installed")
+            var sessionRows: [DiagEntry] = []
+            owner = AudioSessionOwner(config: AudioSessionOwner.Config(diag: { sessionRows.append($0) }))
+            var outputRows: [DiagEntry] = []
+            pcm = PcmOutput(diag: { outputRows.append($0) })
+            readRows = { outputRows }
+            pcm.onEnd = { [unowned self] _, end in self.ends.append(end) }
+            XCTAssertTrue(owner.activate().ok, "\(sessionRows)")
+        }
+
+        func close() {
+            owner.deactivate(notifyOthers: false)
+        }
+
+        /// Start line `id` (ids count from 1, one per line) and wait until it
+        /// is audibly begun, with nothing reported yet.
+        func startLine(_ text: String, id: Int) throws {
+            ends = []
+            pcm.start(SpeechLine(text: text, voiceIdentifier: nil, rate: AVSpeechUtteranceDefaultSpeechRate, overrides: []),
+                      id: id)
+            let until = Date().addingTimeInterval(60)
+            while Date() < until, pcm.linesStarted < id, ends.isEmpty {
+                RunLoop.main.run(until: Date().addingTimeInterval(0.005))
+            }
+            try XCTSkipIf(rows.contains { $0[field: "kind"] == .string("engine-start-failed") },
+                          "this runner's AVAudioEngine would not start: \(rows)")
+            guard pcm.linesStarted == id else { throw XCTSkip("the Simulator's synthesizer rendered nothing in 60 s") }
+            XCTAssertEqual(ends, [], "line \(id) is in flight")
+        }
     }
 
     @discardableResult

@@ -522,6 +522,9 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
     }
 
+    /// Whether the engine's audio I/O is running. The tests read it.
+    var engineIsRunning: Bool { engine.isRunning }
+
     func start(_ line: SpeechLine, id: Int) {
         silence()
         let utterance = SpeechNarrator.utterance(text: line.text, voiceId: line.voiceIdentifier, rate: line.rate,
