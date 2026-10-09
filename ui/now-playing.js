@@ -222,10 +222,12 @@ function agNpAdopt(ui) {
   ui.sheet.prepend(roomLayers);
 
   /* The More handle and the dots both bring the detail posture up and park focus on its first control. */
+  /* A programmatic scroll ignores the CSS reduced-motion block, so Reduce Motion is read here. */
+  const reduce = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
   const openDetail = () => {
-    /* A programmatic scroll ignores the CSS reduced-motion block, so Reduce Motion is read here. */
-    const reduce = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-    detail.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    /* The detail is not drawn in car posture (ui/car.css): the dots there end it first, so what they lead to exists. */
+    window.AfterglowCar?.leave(document);
+    detail.scrollIntoView({ behavior: reduce() ? "auto" : "smooth", block: "start" });
     ui.rateBtn.focus({ preventScroll: true });
   };
   detailHandle.addEventListener("click", openDetail);
@@ -519,6 +521,17 @@ function agNpPaintCollage(ui, items) {
   ui.sArt.hidden = true;
 }
 
+function agNpFollowStore() {
+  const store = typeof window !== "undefined" ? window.ForayNav?.showFollow : null;
+  return store && typeof store.followable === "function" && typeof store.toggle === "function" && typeof store.isFollowing === "function" ? store : null;
+}
+
+function agNpPaintFollow(button, on) {
+  const show = button.dataset.npFollowName || "";
+  button.setAttribute("aria-pressed", on ? "true" : "false");
+  setControlLabel(button, on ? "Following" : "Follow", on ? `Following ${show}` : `Follow ${show}`);
+}
+
 function agNpPaintDetails(ui, items, onSeek, model) {
   const list = ui.segmentsSection.querySelector(".ag-np-clip-list");
   const grid = ui.sourcesSection.querySelector(".ag-np-source-grid");
@@ -552,20 +565,24 @@ function agNpPaintDetails(ui, items, onSeek, model) {
     const art = agNpArtNode("ag-np-source-art lit-art lit-40", item, show);
     art.style.setProperty("--art-glow", agNpColour(show));
     const name = agNpEl("p", "t-caption clamp3", show);
-    const follow = agNpEl("button", "ag-np-follow t-label", "Follow");
-    follow.type = "button";
-    /* Follow is the one record the Library reads (cp_starred_shows, through toggleShowStar), never a label of its own:
-       the label and aria-pressed are repainted from that stored state on every paint and after every tap. */
-    const showId = agNpShowId(item);
-    const paintFollow = () => {
-      const on = Boolean(showId) && isShowStarred(showId);
-      follow.setAttribute("aria-pressed", on ? "true" : "false");
-      setControlLabel(follow, on ? "Following" : "Follow", on ? `Following ${show}` : `Follow ${show}`);
-    };
-    paintFollow();
-    if (showId) follow.addEventListener("click", () => { toggleShowStar(showId); paintFollow(); });
-    else follow.disabled = true;
-    tile.append(art, name, follow);
+    tile.append(art, name);
+    /* No decorative controls: Follow is the library's real follow (cp_starred_shows, through ForayNav.showFollow), so
+       what it says is what the Library holds. A source whose show the catalogue does not know cannot be followed, and
+       gets no button rather than one that only changes its own label. */
+    const follows = agNpFollowStore();
+    if (follows && follows.followable(item?.show_id)) {
+      const follow = agNpEl("button", "ag-np-follow t-label", "Follow");
+      follow.type = "button";
+      follow.dataset.npFollow = item.show_id;
+      follow.dataset.npFollowName = show;
+      agNpPaintFollow(follow, follows.isFollowing(item.show_id));
+      follow.addEventListener("click", () => {
+        follows.toggle(item.show_id);
+        /* Repainted from the store, not from the old label, so a stale tile corrects itself on the tap. */
+        grid.querySelectorAll("[data-np-follow]").forEach((btn) => agNpPaintFollow(btn, follows.isFollowing(btn.dataset.npFollow)));
+      });
+      tile.append(follow);
+    }
     grid.append(tile);
   });
 }
@@ -601,9 +618,11 @@ function agNpPaintUpNext(ui, item, count = 0) {
   if (!item) return;
   const image = agNpArtNode("ag-np-up-next-art", item, agNpShow(item));
   const copy = agNpEl("div", "ag-np-up-next-copy");
-  /* "4a added" only when 4a authored a reason for this pick; anything else in the queue is the listener's own. */
-  const reason = item.why || "";
-  copy.append(agNpEl("span", reason ? "eyebrow lamp" : "eyebrow", reason ? "4a added" : "In your queue"));
+  /* "4a added" only for a pick 4a made (the app hands over source "tail") AND wrote a reason for; an entry the listener
+     queued, or the next row of a list they started, is theirs and gets no 4a label or why-line, hook or not. */
+  const reason = item.source === "tail" ? (item.why || "") : "";
+  const eyebrow = reason ? "4a added" : (item.source === "list" ? "Next in your list" : (item.source === "tail" ? "Up next" : "In your queue"));
+  copy.append(agNpEl("span", reason ? "eyebrow lamp" : "eyebrow", eyebrow));
   copy.append(agNpEl("p", "t-label clamp2", item.title || "Up next"));
   const minutes = Math.round(Number(item.duration_sec || 0) / 60);
   copy.append(agNpEl("p", "t-caption clamp1", minutes > 0 ? `${agNpShow(item)} · ${minutes} min` : agNpShow(item)));

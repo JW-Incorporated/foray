@@ -113,10 +113,10 @@ export const REAL_DATA_SUITES: readonly string[] = [
      at render time), so a publish that changes a narration shape the picker
      mishandles is refused here rather than found on the founder's PC. */
   "tools/narration/render-audition.test.mjs",
-  /* Added 2026-10-08 with the Ambient redesign suites (Foray detail, Forays list,
-     Library). Each reads the real `data/forays.json` to mount its screen over
-     the committed Forays, so a publish that adds a Foray a screen mishandles
-     is refused here. */
+  /* Added 2026-10-09 with the ambient redesign screens (foray detail, forays
+     list, library). Each loads a forays.json/segments.json through a read-shaped
+     call, so REAL_DATA_READ_RE flags them; they are consumer checks of the
+     shapes the painters read, and belong in the gate. */
   "test/ambient-foray-detail.test.js",
   "test/ambient-forays-list.test.js",
   "test/ambient-library.test.js"

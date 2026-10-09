@@ -54,6 +54,8 @@ const SHELL = [
   "ui/dock.css", // Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), linked after primitives.css
   "ui/library.css", // Redesign 2026 (ambient): Library, a screen on the system
   "ui/today.css", // Redesign 2026 (ambient): Today, the first screen on the system
+  "ui/now-playing.css", // Redesign 2026 (ambient): artwork-lit Now Playing Room
+  "ui/car.css", // Redesign 2026 (ambient): car posture (Now Playing glance screen)
   "ui/onboarding.css", // Redesign 2026 (ambient): the first-run Room
   "ui/show.css", // Redesign 2026 (ambient): the show page, the Room and its EpisodeRows
   "ui/browse.css", // Redesign 2026 (ambient): the subject page, the collage lead and ShowTiles
@@ -61,7 +63,6 @@ const SHELL = [
   "ui/settings.css", // Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet
   "ui/queue.css", // Redesign 2026 (ambient): the Up Next page, Library's Up Next section given the screen
   "ui/forays.css", // Redesign 2026 (ambient): the Forays list, two-up ForayCards
-  "ui/now-playing.css", // Redesign 2026 (ambient): artwork-lit Now Playing Room
   "ui/playlist.css", // Redesign 2026 (ambient): Playlist detail and the Playlists list
   "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
   "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite

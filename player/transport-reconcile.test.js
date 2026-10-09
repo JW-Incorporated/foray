@@ -37,6 +37,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import vm from "node:vm";
 
 import { HtmlAudioBackend } from "./html-audio-backend.js";
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
@@ -830,6 +832,8 @@ async function bootClient(t, { seed = [], mediaSession = null, capacitor = null,
     body: new Node("body"),
     createElement: (tag) => (String(tag).toLowerCase() === "audio" ? audio : new Node(tag)),
     querySelectorAll: () => [],
+    /* setExpanded reads the top bar (`.topbar`) to lift its `inert` on collapse; the stub page has none, so null. */
+    querySelector: () => null,
     listeners: new Map(),
     addEventListener(t, fn) {
       if (!this.listeners.has(t)) this.listeners.set(t, new Set());
@@ -3973,6 +3977,24 @@ function captureHoldTimers(t) {
   return timers;
 }
 
+/** The REAL ui/car.js (the owner of the hold gesture and the posture attribute) run against the stub page and put on its
+    window before the player builds its bar, as index.html's script order does. Its timers are the captured ones: the
+    context's `setTimeout` looks `globalThis.setTimeout` up at call time. A suite that left it out would be testing a mini
+    row with no hold at all (client.js binds the gesture only when `window.AfterglowCar` exists). */
+function loadRealCar(win, doc) {
+  const ctx = {
+    document: doc, location: { search: "" }, URLSearchParams, safeUrl: (u) => u,
+    setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms),
+    clearTimeout: (id) => globalThis.clearTimeout(id),
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(new URL("../ui/car.js", import.meta.url), "utf8"), ctx, { filename: "ui/car.js" });
+  /* `adopt` builds the chip with createElementNS, which the stub page lacks; the chip is pinned in
+     test/ambient-now-playing-car.test.js (executed against its own fake DOM), so here it is the one stubbed part. */
+  win.AfterglowCar = { ...ctx.AfterglowCar, adopt: (ui) => ui };
+}
+
 test("DOCK: the player hands its bar to the Dock's mini row, and tells the Dock when it starts and stops", async (t) => {
   /* KILLING MUTATION: `root.append(progress, bar)` unconditionally in buildUI (a second bar, in the root)
      -> the bar is found in the root and the hand-off assertion goes red; drop `globalThis.syncDock?.()`
@@ -4052,12 +4074,15 @@ test("DOCK: a tap on the rest of the mini row opens Now Playing; the two buttons
 });
 
 test("DOCK: a 600ms hold on the mini row enters car posture and opens Now Playing; collapsing the sheet ends it", async (t) => {
-  /* KILLING MUTATION: change CAR_PRESS_MS to 300 or 1200 -> no 600ms timer is armed and the first
-     assertion goes red; delete the `data-posture` write -> the posture assertion goes red; delete the
-     `removeAttribute` in setExpanded's closed branch -> posture outlives the sheet it opened; drop the
-     capture listener -> the click that ends the hold toggles the sheet shut again. */
-  const { client, doc, restore } = await bootClient(t);
+  /* The gesture is ui/car.js's (run for real below); this file's part is the sheet it opens and the posture it ends.
+     KILLING MUTATION: change AG_CAR_HOLD_MS in ui/car.js to 300 or 1200 -> no 600ms timer is armed and the first
+     assertion goes red; delete the `setAttribute("data-posture", "car")` in agCarEnter -> the posture assertion goes
+     red; delete `window.AfterglowCar?.leave(document)` / the `removeAttribute` in setExpanded's closed branch ->
+     posture outlives the sheet it opened; drop the capture-phase click listener in agCarBindPress -> the click that
+     ends the hold toggles the sheet shut again. */
+  const { client, doc, win, restore } = await bootClient(t);
   doc.documentElement = new Node("html");
+  loadRealCar(win, doc);
   const timers = captureHoldTimers(t);
   await client.play(episodeItem());
   await settle();
@@ -4085,11 +4110,12 @@ test("DOCK: a 600ms hold on the mini row enters car posture and opens Now Playin
 });
 
 test("DOCK: releasing early, sliding away, or pressing a button never starts the hold", async (t) => {
-  /* KILLING MUTATION: drop `cancelCarPress` from the pointerup/cancel/leave loop -> an early release still
-     leaves a timer; drop the slop check in pointermove -> a drag still does; drop the `inBarControl`
-     guard in pointerdown -> pressing Play arms the timer. */
-  const { client, doc, restore } = await bootClient(t);
+  /* KILLING MUTATION: drop `cancel` from the pointerup/cancel/leave loop in agCarBindPress (ui/car.js) -> an early
+     release still leaves a timer; drop the slop check in pointermove -> a drag still does; make client.js's `inBarControl`
+     return false -> pressing Play arms the timer. */
+  const { client, doc, win, restore } = await bootClient(t);
   doc.documentElement = new Node("html");
+  loadRealCar(win, doc);
   const timers = captureHoldTimers(t);
   await client.play(episodeItem());
   await settle();

@@ -383,6 +383,35 @@ test("the page is not 'empty' while ANY group still owes an answer — the episo
   assert.match(m.byId.get("sh-note").textContent, /^Searching for “zzqx”…$/, "and says it is searching");
 });
 
+test("a query that matches only Episodes settles #sh-note: no 'Searching for…' once every group has answered", async () => {
+  /* The shows passes find nothing and the episode endpoint answers with one episode, so the page is not empty and
+     paintDiscoverEmpty never runs; the Shows group's note used to stay on "Searching for “zzqx”…" for good.
+     MUTATION: delete the `if (!rows.length) paintShowResults(query, rows, myToken);` line in runShowSearchCostly's
+     answerDone (ui/search.js) -> the note still reads "Searching for “zzqx”…" and the first assertion fails. */
+  const m = mount({
+    fetchImpl: (url) => {
+      const u = String(url);
+      if (u.includes("api/episodes/search")) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ episodes: [{ id: "ep-zz", title: "Zzqx Episode", show: "Some Show", show_id: "ss", audio_url: "https://cdn.test/zz.mp3", duration_min: 30, release_date: "2026-09-12" }], degraded: false, source: ["apple"] }) });
+      }
+      if (!u.includes("api/")) return new Promise(() => {});
+      if (u.includes("api/shows/index/")) return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ shows: [], degraded: false, fallthrough: { attempted: true, error: null } }) });
+    },
+  });
+  m.ctx.renderAllShows();
+  m.ctx.renderShowSearchResults("zzqx");
+  const note = m.byId.get("sh-note");
+  const ep = m.byId.get("ep-search-results");
+  const deadline = Date.now() + 1500;
+  while ((ep.hidden || m.evalIn("showSearchAnswered.token") !== m.evalIn("showSearchToken") || /^Searching/.test(note.textContent)) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 10));
+  assert.strictEqual(ep.hidden, false, "fixture: the Episodes group has its row");
+  assert.strictEqual(m.evalIn("showSearchAnswered.token"), m.evalIn("showSearchToken"), "fixture: every half has answered");
+  assert.doesNotMatch(note.textContent, /Searching/, "the note no longer says it is searching");
+  assert.strictEqual(note.hidden, true, "and is hidden: the episode rows are the answer");
+  assert.strictEqual(m.byId.get("sh-empty").hidden, true, "the page is not empty either");
+});
+
 test("the Make button shows it is working: disabled and busy while the build waits, restored after", () => {
   /* The build waits for the search documents (seconds on a cold start); a tap that looks like nothing is the failure.
      MUTATION: delete `paintMakePending(true, btn)` from buildPlaylistFromDiscover -> the busy assertion fails. */

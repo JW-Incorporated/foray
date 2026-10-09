@@ -2484,6 +2484,9 @@ function setNowPlaying(item, why) {
   current = item;
   ui.root.hidden = false;
   document.body.classList.add("fp-open");
+  /* `?posture=car` (the harness's way into car posture) is already on the page; Now Playing opens by itself once there
+     is something to show. After a collapse the posture is gone, so this fires once, at the start. */
+  if (window.AfterglowCar?.active(document)) ui.openSheet?.();
   /* The Dock's mini row follows `fp-open` (ui/tabbar.js); no Dock, no call. */
   globalThis.syncDock?.();
   ui.title.textContent = item.title || "";
@@ -3163,6 +3166,15 @@ async function setRunning(want, source = "tap") {
  * deleted, and the listener would be told their data was gone while their place
  * in the hour sat in both tiers.
  */
+/* The one place the expanded-sheet side effects on the mini bar and the topbar are undone. Shared by setExpanded(false)
+   and stopAndClose(), which hides the sheet directly and never passes through setExpanded. */
+function releaseBarAndTopbar() {
+  ui.bar.inert = false;
+  ui.bar.setAttribute("aria-hidden", "false");
+  const topbar = document.querySelector(".topbar");
+  if (topbar) topbar.inert = false;
+}
+
 async function stopAndClose({ persist = true } = {}) {
   /* Closing the bar is not "I am done with this Foray", it is "get this off my
      screen". Keep the resume point; the only thing that clears it is finishing.
@@ -3189,13 +3201,25 @@ async function stopAndClose({ persist = true } = {}) {
      one landing rule (`landOnPage` — the heading, or #view) takes over, then
      the stop is announced from app.js's region, which the hidden root cannot
      silence. */
+  const wasExpanded = !ui.sheet.hidden;
   ui.root.hidden = true;
   ui.sheet.hidden = true;
+  /* Nothing is playing, so nothing is left for car posture to be about. */
+  window.AfterglowCar?.leave(document);
   const active = document.activeElement;
   if (active && active !== document.body && typeof ui.root.contains === "function"
       && ui.root.contains(active) && typeof active.blur === "function") active.blur();
   const owner = sheetOwner();
   if (owner) owner.closeSheet(ui.sheet);
+  /* Opening the sheet made the bar inert + aria-hidden and the topbar inert (setExpanded(true)); the owner's
+     closeSheet lifts only what IT recorded, and the topbar is on its keepReachable list, not its inert list. Stop
+     from the open sheet never reaches setExpanded(false), so without this the gear stays inert and the next play's
+     mini bar comes back aria-hidden. ONLY when Now Playing was the open sheet: Stop also arrives while another modal
+     sheet owns the topbar's inert (the delete-data flow runs stopAndClose with its own sheet open; a lock-screen
+     Remote Stop can land under any sheet), and un-inerting the topbar then leaves the gear and menu clickable behind
+     that modal. MUTATION 1: delete this call -> the stop-from-expanded test goes red. MUTATION 2: make it
+     unconditional again -> the stop-under-another-sheet test goes red. */
+  if (wasExpanded) releaseBarAndTopbar();
   document.body.classList.remove("fp-open", "fp-expanded");
   globalThis.syncDock?.();
   const nav = typeof window !== "undefined" ? window.ForayNav : null;
@@ -3986,9 +4010,10 @@ function bind() {
     const owner = sheetOwner();
     const topbar = document.querySelector(".topbar");
     if (!open) {
-      ui.bar.inert = false;
-      ui.bar.setAttribute("aria-hidden", "false");
-      if (topbar) topbar.inert = false;
+      /* Car posture lasts as long as the sheet it opened. Ended BEFORE the owner hands focus back to the bar's title
+         button below, which the posture's chrome rules must not be hiding when it lands. */
+      window.AfterglowCar?.leave(document);
+      releaseBarAndTopbar();
     }
     /* Closing: the owner first, while the sheet is still shown — it lifts
        `inert` off the bar and hands focus back to the button that opened
@@ -4079,52 +4104,24 @@ function bind() {
      title button beside it already is that control for keyboard and screen
      reader, and the art stays `alt=""` decoration to them. */
   ui.art.addEventListener("click", toggleExpandedFromMini);
-
-  /* THE REST OF THE ROW, AND THE LONG PRESS (Redesign 2026, ambient, the Dock).
-     Tapping anywhere on the mini row that is not one of its two buttons opens
-     Now Playing - the title button and the artwork above already do; this is the
-     padding and the gaps, so no part of the row between the controls is dead.
-     HOLDING it for 600ms enters car posture (`data-posture="car"` on <html>: the
-     Dock hides and Now Playing opens by itself) - the manual path in; the
-     Bluetooth-route observer that will also enter it is Native and not built.
-     The two buttons keep their own jobs and never start the press. The click
-     that ends a long press is swallowed in the CAPTURE phase, before the title
-     button or the artwork can turn it into a toggle that closes what the press
-     just opened. Posture ends when the sheet collapses (`setExpanded(false)`). */
-  const CAR_PRESS_MS = 600;
-  const CAR_PRESS_SLOP_PX = 10;
-  let carPressTimer = null;
-  let carPressFired = false;
-  let carPressAt = null;
-  const cancelCarPress = () => {
-    if (carPressTimer !== null) { clearTimeout(carPressTimer); carPressTimer = null; }
-  };
+  /* A 600ms HOLD on the mini row enters car posture and opens Now Playing by itself (BUILD-NOTES 4.2). The two transport
+     buttons keep their own jobs and never start the press. ui/car.js owns the gesture, the haptic hook, the capture-phase
+     swallow of the click that ends a hold, the image-menu guard and the posture attribute; this file owns only the sheet
+     it opens. */
+  ui.openSheet = () => { if (ui.sheet.hidden) toggleExpandedFromMini(); };
   const inBarControl = (t) => typeof t?.closest === "function" && Boolean(t.closest(".fp-play, .fp-skip"));
-  ui.bar.addEventListener("pointerdown", (e) => {
-    if ((e.button ?? 0) !== 0 || inBarControl(e.target)) return;
-    carPressFired = false;
-    carPressAt = { x: e.clientX ?? 0, y: e.clientY ?? 0 };
-    cancelCarPress();
-    carPressTimer = setTimeout(() => {
-      carPressTimer = null;
-      carPressFired = true;
-      document.documentElement?.setAttribute?.("data-posture", "car");
-      setExpanded(true);
-    }, CAR_PRESS_MS);
+  window.AfterglowCar?.bindPress(ui.bar, {
+    isControl: inBarControl,
+    onHold: () => {
+      window.AfterglowCar.haptic();
+      window.AfterglowCar.enter(document);
+      ui.openSheet();
+    },
   });
-  ui.bar.addEventListener("pointermove", (e) => {
-    if (carPressTimer === null || !carPressAt) return;
-    if (Math.abs((e.clientX ?? 0) - carPressAt.x) > CAR_PRESS_SLOP_PX || Math.abs((e.clientY ?? 0) - carPressAt.y) > CAR_PRESS_SLOP_PX) cancelCarPress();
-  });
-  for (const type of ["pointerup", "pointercancel", "pointerleave"]) ui.bar.addEventListener(type, cancelCarPress);
-  /* A held artwork would otherwise raise the browser's image menu on top of the sheet. */
-  ui.bar.addEventListener("contextmenu", (e) => e.preventDefault?.());
-  ui.bar.addEventListener("click", (e) => {
-    if (!carPressFired) return;
-    carPressFired = false;
-    e.preventDefault?.();
-    e.stopPropagation?.();
-  }, true);
+  /* THE REST OF THE ROW (Redesign 2026, ambient, the Dock). Tapping anywhere on the mini row that is not one of its two
+     buttons opens Now Playing - the title button and the artwork above already do; this is the padding and the gaps, so no
+     part of the row between the controls is dead. The click that ends a hold never reaches here (ui/car.js swallows it in
+     the capture phase). */
   ui.bar.addEventListener("click", (e) => {
     const t = e.target;
     if (t === ui.art || inBarControl(t)) return;
@@ -4458,6 +4455,7 @@ function bootNative() {
   if (!ui) {
     ui = buildUI();
     ui = window.AfterglowNowPlaying?.adopt(ui) || ui;
+    ui = window.AfterglowCar?.adopt(ui) || ui;
     bind();
   }
   /* The page still owns cp_rate / cp_voice (§5.2), so the engine is told what
@@ -4594,6 +4592,7 @@ function ensureJsBooted() {
   if (!ui) {
     ui = buildUI();
     ui = window.AfterglowNowPlaying?.adopt(ui) || ui;
+    ui = window.AfterglowCar?.adopt(ui) || ui;
     bind();
   }
 

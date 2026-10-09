@@ -130,6 +130,59 @@ test("the sheet's scroller starts with the artwork, then the title", () => {
   assert.match(CODE, /const sArt = el\(/, "the sheet must build its own artwork element");
   assert.match(CODE, /window\.safeUrl\(item\.artwork_url\)/, "the item's artwork crosses the URL gate");
   assert.match(CODE, /ui\.sArt\.src = artUrl;/, "and the gated URL fills the sheet artwork");
+  /* The mini bar's artwork too (it was unpinned: a revert to `ui.art.src = item.artwork_url` left every assertion green, and
+     MUTATION: that revert -> this line is red). */
+  assert.match(CODE, /ui\.art\.src = artUrl;/, "and the gated URL fills the mini bar's artwork");
+  assert.doesNotMatch(CODE, /\.src = item\.artwork_url/, "no artwork element takes the item's raw URL");
+});
+
+/* THE ARTWORK BLOCK IS EXECUTED, NOT ONLY READ (ambient CI fix, 2026-10-09). The text assertions above pass for a file in which
+   `artUrl` is computed and then ignored (`ui.art.src = item.artwork_url`), because they match each fragment separately. This one
+   lifts the real block out of client.js - `if (item.artwork_url) { ... }` up to the Afterglow room call - and runs it against
+   app.js's REAL `safeUrl` (extracted from the source, not re-typed: a stand-in that answered more kindly than the real one is
+   how a gate test goes green over an open gate), with a hostile URL and a good one. The stand-in elements record `src` as an
+   attribute write does and drop it on `removeAttribute("src")`.
+   MUTATION, run and red: delete the `window.safeUrl(...)` call so `artUrl` is the raw URL -> both hostile-URL assertions fail
+   (the block would write javascript: into both elements). HONEST LIMIT, found by running it: `ui.art.src = artUrl` ->
+   `ui.art.src = item.artwork_url` SURVIVES this test, because `safeUrl` returns its input or "#" and a "#" is turned away
+   before the assignment, so inside the else branch the two values are always equal. That mutation is equivalent in behaviour
+   and is pinned by the text assertions in the test above (both `ui.art.src = artUrl;` and `ui.sArt.src = artUrl;`). */
+test("a hostile artwork URL never reaches ui.art.src or ui.sArt.src; a good one reaches both", () => {
+  const start = TEXT.indexOf("if (item.artwork_url) {");
+  const end = TEXT.indexOf("if (ui.ag) {", start);
+  assert.ok(start > 0 && end > start, "the artwork block is where this test looks for it");
+  const block = TEXT.slice(start, end);
+  const app = read("app.js");
+  const fnAt = app.indexOf("function safeUrl(u) {");
+  const fnEnd = app.indexOf("\n}\n", fnAt);
+  assert.ok(fnAt >= 0 && fnEnd > fnAt, "app.js's safeUrl is where this test looks for it");
+  const safeUrl = new Function(`${app.slice(fnAt, fnEnd + 2)}\nreturn safeUrl;`)();
+  assert.equal(safeUrl("javascript:alert(1)"), "#", "the real gate refuses the hostile URL (the premise of everything below)");
+  const run = (artwork_url, { gate = true } = {}) => {
+    const img = () => ({
+      hidden: true, src: undefined,
+      removeAttribute(name) { if (name === "src") this.src = undefined; },
+    });
+    const ui = { art: img(), sArt: img() };
+    new Function("ui", "item", "window", block)(ui, { artwork_url }, gate ? { safeUrl } : {});
+    return ui;
+  };
+  for (const hostile of ["javascript:alert(1)", "data:text/html,<script>1</script>", "vbscript:x", "//evil.example/a.png"]) {
+    const ui = run(hostile);
+    assert.equal(ui.art.src, undefined, `the mini bar's art took ${hostile}`);
+    assert.equal(ui.sArt.src, undefined, `the sheet's art took ${hostile}`);
+    assert.equal(ui.art.hidden, true, `and the mini bar's art is hidden for ${hostile}`);
+    assert.equal(ui.sArt.hidden, true, `and the sheet's art is hidden for ${hostile}`);
+  }
+  const good = run("https://example.com/art.jpg");
+  assert.equal(good.art.src, "https://example.com/art.jpg");
+  assert.equal(good.sArt.src, "https://example.com/art.jpg");
+  assert.equal(good.art.hidden, false);
+  assert.equal(good.sArt.hidden, false);
+  /* No gate on the page (a script-order break) must fail CLOSED, not open. */
+  const ungated = run("https://example.com/art.jpg", { gate: false });
+  assert.equal(ungated.art.src, undefined, "without window.safeUrl the mini bar's art is left empty");
+  assert.equal(ungated.sArt.src, undefined, "without window.safeUrl the sheet's art is left empty");
 });
 
 test("the sheet's notes are the episode page's notes, built as nodes from the one tokeniser — never from an HTML string", () => {
@@ -519,6 +572,27 @@ test("ROUND 2 a11y-2: the live region is a sibling of the bar AND the sheet, and
   assert.match(FLAT_TEXT, /root\.append\(sheet, announce\);/);
   assert.doesNotMatch(FLAT_TEXT, /bar\.append\([^)]*announce/);
   assert.match(setExpandedBody(), /keepReachable: \[[^\]]*"\.fp-announce"/);
+});
+
+test("Stop from the EXPANDED sheet gives the mini bar and the topbar back (ambient review: bar aria-hidden, gear inert)", () => {
+  /* setExpanded(true) makes the bar inert + aria-hidden and the topbar inert (the owner leaves .topbar reachable, so it
+     is not on the owner's own inert list). stopAndClose hides the sheet directly and never calls setExpanded(false), so
+     the undo has to be named inside it. MUTATION 1: delete the `releaseBarAndTopbar();` call from stopAndClose -> red
+     (gear stays inert, next play's bar is aria-hidden). MUTATION 2: drop the topbar line from releaseBarAndTopbar -> red.
+     MUTATION 3: drop the call from setExpanded(false) -> red. */
+  const stop = /async function stopAndClose\([^)]*\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.ok(stop);
+  assert.match(stop[0], /releaseBarAndTopbar\(\);/, "Stop undoes what opening the sheet did to the bar and the topbar");
+  const helper = /function releaseBarAndTopbar\(\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.ok(helper, "one shared undo");
+  assert.match(helper[0], /ui\.bar\.inert = false;/);
+  assert.match(helper[0], /ui\.bar\.setAttribute\("aria-hidden", "false"\)/);
+  assert.match(helper[0], /topbar\.inert = false/);
+  const expand = /const setExpanded = \(open\) => \{[\s\S]*?\n  \};/.exec(TEXT);
+  assert.ok(expand);
+  assert.match(expand[0], /if \(!open\) \{[\s\S]*?releaseBarAndTopbar\(\);/, "closing the sheet normally uses the same undo");
+  /* The pair it undoes is real, so the test cannot pass against a client that never inerts anything. */
+  assert.match(expand[0], /if \(open\) \{\s*ui\.bar\.inert = true;\s*ui\.bar\.setAttribute\("aria-hidden", "true"\);/);
 });
 
 test("ROUND 2 a11y-6: Stop hides the player BEFORE the owner lets go, lands focus on the page and says so from outside the root", () => {

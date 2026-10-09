@@ -168,6 +168,8 @@ const SHELL = [
   "ui/library.css",
   /* Redesign 2026 (ambient): Today, the first screen on the system. A stylesheet, so listed by name. */
   "ui/today.css",
+  "ui/now-playing.css",
+  "ui/car.css",
   /* Redesign 2026 (ambient): the first-run Room. A stylesheet, so listed by name. */
   "ui/onboarding.css",
   /* Redesign 2026 (ambient): the show page, the Room and its EpisodeRows. A stylesheet, so listed by name. */
@@ -182,7 +184,6 @@ const SHELL = [
   "ui/queue.css",
   /* Redesign 2026 (ambient): the Forays list, two-up ForayCards. A stylesheet, so listed by name. */
   "ui/forays.css",
-  "ui/now-playing.css",
   /* Redesign 2026 (ambient): Playlist detail and the Playlists list. A stylesheet, so listed by name. */
   "ui/playlist.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.

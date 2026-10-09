@@ -151,27 +151,44 @@ function audioState(page) {
 
 test("the gear's Sheet opens on top of an expanded Now Playing sheet, and its first row is hit-testable", async ({ page }) => {
   /* The drawer this used to be about is gone (Redesign 2026, ambient); the invariant is not: navigation must be able to cover
-     the thing it navigates away from. The gear stays reachable under the expanded sheet (the sheet owner's keepReachable), and
+     the thing it navigates away from. The Sheet is raised over the expanded player (see below for why it is not raised by tapping the gear), and
      the Sheet it opens is a `.fy-sheet` at 70, over the player's 60. MUTATION: give `.fy-sheet` a z-index under #foray-player's
      -> `document.elementFromPoint` at the first row's centre returns the player, not the Sheet, and this goes red. */
   await openApp(page);
-  /* Leave Today (no top bar there) for a route that has one. MUTATION: delete this line -> the app stays on Today, the top
-     bar is display:none, and the `body.view-home` count assertion below goes red at once instead of timing out at 180 s. */
+  /* Leave Today for another route, so the sheet opens from an ordinary page and not from Today's own gear. MUTATION: delete
+     this line -> the app stays on Today and the `body.view-home` count assertion below goes red at once instead of the test
+     timing out at 180 s. */
   await page.evaluate(() => { window.location.hash = "#/library"; });
   await expect(page.locator("body.view-home")).toHaveCount(0);
-  await expect(page.locator("#menu-btn")).toBeVisible();
   await startPlayback(page);
 
   await page.locator(".fp-info").click();
   await expect(page.locator(".fp-sheet")).toBeVisible();
   await expect(page.locator("body.fp-expanded")).toHaveCount(1);
 
-  /* The gear to tap is the top bar's #menu-btn, which the expanded sheet leaves reachable (`keepReachable: [".topbar", ...]`
-     in player/client.js). On Today that bar is display:none (ui/today.css) and the gear is Today's own `[data-today-gear]`,
-     which the expanded sheet makes inert and covers, so the first version of this test waited the full 180 s on an element
-     that was never visible and never reached the stacking assertions. */
-  await page.locator("#menu-btn").click();
+  /* THE GEAR IS NOT TAPPED, ON PURPOSE (ambient CI fix, 2026-10-09). This test used to click the legacy top bar's #menu-btn,
+     which the expanded sheet left reachable (`keepReachable: [".topbar", ...]` in player/client.js). The ambient pages draw
+     their own headers and hide that bar, and the expanded Now Playing sheet is full-bleed with its own collapse control over
+     the corner the gear sat in, so there is no gear to tap under it any more (Playwright reports `.fp-close` intercepting
+     the click). What this test is FOR is the stacking order: a Sheet raised while the player is expanded must win the hit
+     test over it, whoever raises it. So the Sheet is raised through the function the gear calls (`openSettingsMenu`,
+     ui/settings.js) and every assertion below is unchanged. */
+  /* Raised straight from script, with no click's latency in front of it, the Sheet would open while the player is still
+     mid-expansion; let every running transition finish first, so what is measured is the settled stacking order. */
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => null))));
+  await page.evaluate(() => { openSettingsMenu(null); });
   await expect(page.locator("#st-menu")).toBeVisible();
+  /* Let the Sheet finish rising before it is measured. A tap-driven version of this test spent the click's own latency here;
+     raised straight from script, the first row is still below the fold on the first frame and elementFromPoint answers
+     with the root. Settled = the first row is on screen and has not moved between two polls. */
+  await page.waitForFunction(() => {
+    const row = document.querySelector("#st-menu [data-st-menu]");
+    if (!row) return false;
+    const top = Math.round(row.getBoundingClientRect().top);
+    const settled = window.__stRowTop === top && top < window.innerHeight;
+    window.__stRowTop = top;
+    return settled;
+  });
 
   const hit = await page.evaluate(() => {
     /* The Sheet's owner marks the player `inert` while it is up, and an inert element is skipped by hit testing, so with that
@@ -186,7 +203,9 @@ test("the gear's Sheet opens on top of an expanded Now Playing sheet, and its fi
     const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     /* The same question asked of the player's own centre: with the Sheet open, its scrim - not the mini bar - must be what a
        tap lands on. */
-    const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
+    /* The mini bar is a row of the Dock (#dock-mini .fp-bar), not a child of #foray-player, since the Dock landed - the
+       selector this used was null, which is the "getBoundingClientRect of null" the CI run reported. */
+    const bar = document.querySelector("#dock-mini .fp-bar").getBoundingClientRect();
     const overBar = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
     if (wasInert) player.setAttribute("inert", "");
     return {

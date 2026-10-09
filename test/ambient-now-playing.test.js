@@ -209,17 +209,19 @@ test("iteration 3: every show bar is at full art colour, the current bar's fill 
 test("review round 1: Follow is the Library's record, Share is a timestamp link, the detail scroll honours Reduce Motion, the timeline exemption is width-only", () => {
   const gates = read("tools/ui-lab/lib/gates/config.mjs");
   const rules = read("tools/ui-lab/lib/gates/rules.mjs");
-  /* MUTATION: replace `toggleShowStar(showId)` in the Follow click handler with a local aria-pressed flip -> red (Following and the Library disagree). */
-  assert.match(ui, /follow\.addEventListener\("click", \(\) => \{ toggleShowStar\(showId\); paintFollow\(\); \}\)/);
-  assert.match(ui, /const on = Boolean\(showId\) && isShowStarred\(showId\);/, "the label is read back from cp_starred_shows, never held locally");
+  /* MUTATION: replace `follows.toggle(item.show_id)` in the Follow click handler with a local aria-pressed flip -> red (Following and the Library disagree).
+     Follow goes through ForayNav.showFollow (the real star functions, pinned in ambient-now-playing-review.test.js), never a label of its own. */
+  assert.match(ui, /follows\.toggle\(item\.show_id\);/);
+  assert.match(ui, /window\.ForayNav\?\.showFollow/, "Follow reads the published follow store");
   assert.doesNotMatch(ui, /getAttribute\("aria-pressed"\) !== "true"/, "no local toggle of aria-pressed survives");
+
   /* MUTATION: put `safeUrl(location.href)` back as the only argument of the Share handler's url -> red (it shares the page, not the moment). */
   assert.match(ui, /episodeDeepLinkHash\(target\)/);
   assert.doesNotMatch(ui, /const url = safeUrl\(location\.href\);/);
   assert.match(client, /ui\.shareTarget = \(\) => \{[\s\S]*?ForayPlayer\.currentEpisodeId\(\)[\s\S]*?episodePositionSec\(\)/, "the player says what is playing and where, as Bookmark does");
-  /* MUTATION: change `behavior: reduce ? "auto" : "smooth"` back to `behavior: "smooth"` -> red. */
+  /* MUTATION: change `behavior: reduce() ? "auto" : "smooth"` back to `behavior: "smooth"` -> red. */
   assert.match(ui, /prefers-reduced-motion: reduce\)"\)\.matches/);
-  assert.match(ui, /behavior: reduce \? "auto" : "smooth"/);
+  assert.match(ui, /behavior: reduce\(\) \? "auto" : "smooth"/);
   /* MUTATION: delete `heightFloor: true` from one timeline selector in gates/config.mjs -> red (tools/ui-lab/gates.test.mjs pins the rule itself). */
   assert.equal((gates.match(/heightFloor: true/g) || []).length, 3, "all three timeline selectors keep the height floor");
   assert.match(rules, /!s\.heightFloor \|\| e\.h \+ tol >= min/);

@@ -3452,13 +3452,21 @@ const EPISODE_NAVIGATION = {
   get upNextCount() { return queueIds().length; },
   get nextItem() {
     const cur = window.ForayPlayer?.currentEpisodeId?.();
-    const id = cur ? planAfterEnded(cur).nextId : queueIds()[0];
+    const plan = cur ? planAfterEnded(cur) : null;
+    const id = plan ? plan.nextId : queueIds()[0];
     /* A queued or saved episode is usually not in today's session document, so the session alone answered null
        and the sheet's Up Next peek vanished for exactly the listener who has an Up Next. The stored snapshot is
        what Up Next itself plays from (liveEpisode). MUTATION: drop the `||` tail and a queued episode outside the
        session gives null. */
     const item = id ? (episode(id) || state.itemIndex[id] || storedEpisode(id)) : null;
-    return item ? { ...item, why: whyFor(id, item) || item.hook || "" } : null;
+    if (!item) return null;
+    /* PROVENANCE FROM THE PICK'S SOURCE, not from whether a hook exists (whyFor falls back to item.hook, so nearly every
+       catalogue episode has a reason). 4a made the pick only when the continuation took it from the tail ("more of what
+       fits"); an entry in Up Next is the listener's own, and the list is the one they started from. Only a 4a pick
+       carries a why-line to the sheet — the SAME line startChained will give it (chainedWhy), so a stretch pick shows
+       its bridge in the preview as it does on play. */
+    const source = plan?.fromTail ? "tail" : (plan?.fromList ? "list" : "queue");
+    return { ...item, source, why: source === "tail" ? (chainedWhy(id, item, true) || "") : "" };
   },
   isSaved(id) { return isSaved(id); },
   toggleSaved(id) { toggleStar(id); return isSaved(id); },
@@ -4536,7 +4544,17 @@ function bindHardwareBack(win = window) {
 }
 
 if (typeof window !== "undefined") {
-  window.ForayNav = { handleBack, landOnPage, announce };
+  /* The follow store, for the Now Playing sheet's "Where this came from" tiles (a classic script on the same page, but
+     reached through this one published object like the rest of what the player layer asks of the page). `followable`
+     is false for a show id the catalogue does not know, which toggleShowStar would silently refuse. */
+  window.ForayNav = {
+    handleBack, landOnPage, announce,
+    showFollow: {
+      followable: (id) => typeof id === "string" && id !== "" && Boolean(showById(id)),
+      isFollowing: (id) => isShowStarred(id),
+      toggle: (id) => { toggleShowStar(id); return isShowStarred(id); },
+    },
+  };
 }
 
 /* ---------- router ---------- */
