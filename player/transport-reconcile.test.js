@@ -4041,6 +4041,7 @@ test("DOCK: a tap on the rest of the mini row opens Now Playing; the two buttons
   const bar = find(doc.body, "fp-bar");
   const sheet = find(doc.body, "fp-sheet");
   sheet.style.setProperty = () => {};   // the stub has no CSSOM; opening the sheet writes its drag offset
+  if (typeof doc.querySelector !== "function") doc.querySelector = () => null;   // setExpanded looks up the legacy .topbar to make it inert
   sheet.style.removeProperty = () => {};
   assert.equal(sheet.hidden, true, "precondition: the sheet is closed");
   dispatchPath([bar], "click", { target: insideControl({}, "fp-play") });
@@ -4063,6 +4064,7 @@ test("DOCK: a 600ms hold on the mini row enters car posture and opens Now Playin
   const bar = find(doc.body, "fp-bar");
   const sheet = find(doc.body, "fp-sheet");
   sheet.style.setProperty = () => {};   // the stub has no CSSOM; opening the sheet writes its drag offset
+  if (typeof doc.querySelector !== "function") doc.querySelector = () => null;   // setExpanded looks up the legacy .topbar to make it inert
   sheet.style.removeProperty = () => {};
   dispatchPath([bar], "pointerdown", { target: bar, button: 0, clientX: 10, clientY: 10 });
   assert.equal(timers.size, 1, "a press on the row arms exactly one 600ms timer");
