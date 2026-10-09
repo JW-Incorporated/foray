@@ -67,6 +67,11 @@
    height (180 under a three-line title, above) rather than ending the title in an ellipsis on line two (critique round 3
    did it at 393x852; iteration 2 at 375x667). */
 [data-posture="car"] .ag-np.fp-sheet .fp-s-title { -webkit-line-clamp: 3; line-clamp: 3; }
+/* ...and it is cut on the third line's boundary, not ellipsised. A `-webkit-box` clamp centres the third line at its full,
+   untruncated width and only then swaps its tail for the ellipsis, so the visible run sat about 30px right of the centre of
+   lines one and two (iteration 2 review, measured in Chromium). A block box clipped to exactly three lines keeps every line
+   on the one centre axis; the full title stays the heading a screen reader reads and the episode page prints it whole. */
+[data-posture="car"] .ag-np.fp-sheet .fp-s-title { display: block; max-height: 3lh; overflow: hidden; }
 
 /* Play's bottom edge stays 24px or more above the viewport bottom: the handle that used to hold that margin is gone, so
    the first screen pads its own foot (round 1 clipped Play at 375x667). */

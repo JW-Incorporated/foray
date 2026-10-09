@@ -112,6 +112,9 @@ test("car.css carries the plan's numbers: artwork 240 / 200 / 180, Play 112, ski
   assert.match(css, /\.ag-np-skip \.icon \{ --icon-size: 48px; \}/);
   assert.match(css, /\[data-posture="car"\] \.ag-np\.fp-sheet \.fp-s-title \{ -webkit-line-clamp: 3; line-clamp: 3; \}/, "three lines at every height");
   assert.doesNotMatch(css, /-webkit-line-clamp: 2/, "no two-line clamp survives in car.css");
+  /* MUTATION (iteration 2 review): change the title's `display: block` to `display: -webkit-box` (or delete the rule) -> red: the
+     -webkit-box clamp centres the third line before it ellipsises, so its visible run drifts ~30px off the centre axis of lines 1-2. */
+  assert.match(css, /\[data-posture="car"\] \.ag-np\.fp-sheet \.fp-s-title \{ display: block; max-height: 3lh; overflow: hidden; \}/, "the title is clipped on a block box at three lines, not ellipsised in a -webkit-box");
 });
 
 test("car.css does not render the why-line, the secondary row, the More handle, the show notes or the chapters", () => {
