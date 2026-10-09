@@ -109,7 +109,7 @@ function playlistsOf(items, titles) {
 }
 
 /**
- * @param {string} kind  empty | dismissed | returning | midlisten | stress
+ * @param {string} kind  empty | dismissed | returning | midlisten | stress | foray-resume | playlist-started
  * @returns {Record<string, unknown>}  localStorage key -> JSON-serialisable value
  */
 export function buildSeed(kind, fx) {
@@ -148,9 +148,23 @@ export function buildSeed(kind, fx) {
     ["cp_pos:" + mid.id]: { seconds: 2400, duration: mid.duration_sec || mid.duration_min * 60, updated_at: new Date(FIXED_NOW - 3600000).toISOString(), source: "local" },
   } : {};
 
+  /* playlist-started (Playlist detail, the Playlists list): the returning profile with the first playlist's first two parts
+     finished (a stored position inside the last 30 seconds is the player's "played") and its third part half heard, so the
+     header reads "2 of 4 played", the next part is marked and the tile carries the same line. */
+  const startedRow = (it, frac) => {
+    const dur = Number(it.duration_sec) || (Number(it.duration_min) || 30) * 60;
+    return { seconds: frac >= 1 ? dur - 5 : Math.round(dur * frac), duration: dur, updated_at: new Date(FIXED_NOW - 7200000).toISOString(), source: "local" };
+  };
+  const playlistStarted = kind === "playlist-started" ? {
+    ["cp_pos:" + items[0].id]: startedRow(items[0], 1),
+    ["cp_pos:" + items[1].id]: startedRow(items[1], 1),
+    ["cp_pos:" + items[2].id]: startedRow(items[2], 0.5),
+  } : {};
+
   return {
     ...base,
     ...midlisten,
+    ...playlistStarted,
     cp_saved: saved,
     cp_episode_snaps: snaps,
     cp_queue: items.slice(0, kind === "stress" ? 4 : 5).map((i) => i.id),
