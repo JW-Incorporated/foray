@@ -218,6 +218,12 @@ final class ForayEngine {
         seams.preview?.onEvent = { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.preview(event)) }
         }
+        // An artwork that was still loading when the entry was written
+        // (CH3-16): the host, the entry's one holder, rewrites it. Nil-ed at
+        // teardown, so a landing after a relinquish reaches no one.
+        seams.nowPlaying.onArtworkLanded = { [weak self] src in
+            MainActor.assumeIsolated { self?.artworkLanded(src) }
+        }
         observations.append(seams.session.observe { [weak self] event in
             MainActor.assumeIsolated { self?.receive(.session(event)) }
         })
@@ -244,7 +250,8 @@ final class ForayEngine {
     /// It deliberately does NOT deactivate the session or clear Now Playing:
     /// a relinquish keeps the session active with no notify (no app 4a
     /// interrupted is invited back) and leaves the entry for the legacy lane
-    /// to overwrite (plan §4.6).
+    /// to overwrite (plan §4.6). It only lets go of the artwork-landing hook,
+    /// so nothing of ours writes the entry again (CH3-16, R1-01).
     func teardown() {
         guard !isTornDown else { return }
         isTornDown = true
@@ -252,9 +259,12 @@ final class ForayEngine {
         observations = []
         timers.values.forEach { $0.cancel() }
         timers = [:]
-        // The 1 s refresh of a running entry: the entry itself is left for the
-        // legacy lane, but nothing of ours may write it again.
+        // The 1 s refresh of a running entry and an artwork still loading: the
+        // entry itself is left for the legacy lane, but nothing of ours may
+        // write it again (an artwork landing up to 10 s later once repainted
+        // the engine's pre-relinquish title over the legacy lane's, R1-01).
         cancelSurfaceRefresh()
+        seams.nowPlaying.onArtworkLanded = nil
         if let task = graceTask {
             graceTask = nil
             seams.background.endTask(task)
@@ -621,9 +631,12 @@ final class ForayEngine {
 
     /// What moved the playhead in the turn being interpreted: the deck
     /// jumped (a load, an unload or a seek), or a spoken line's clock pulsed
-    /// (NE-31s). Either forces a rewrite after the turn; a jump is on record
-    /// (`via=seek`), a pulse (four a second while a line sounds) is counted.
-    private enum SurfaceMove { case pulse, jump }
+    /// (NE-31s); or, outside a turn, the entry's artwork landed (CH3-16).
+    /// Each forces a rewrite at the deck's own playhead; a jump is on record
+    /// (`via=seek`), a landing as `via=artwork` (not a seek: engine-report's
+    /// rate-latch reads `via=seek` as the listener's jump, and a landing is
+    /// the clock), and a pulse (four a second while a line sounds) is counted.
+    private enum SurfaceMove { case pulse, jump, artwork }
     private var surfaceMove: SurfaceMove?
 
     /// How far the deck's playhead may sit from where the lock screen's
@@ -730,6 +743,8 @@ final class ForayEngine {
             via = "rate"
         } else if move == .jump {
             via = "seek"
+        } else if move == .artwork {
+            via = "artwork"
         } else if reason == .drift {
             via = "drift"
         } else {
@@ -810,6 +825,19 @@ final class ForayEngine {
     private func cancelSurfaceRefresh() {
         surfaceRefresh?.cancel()
         surfaceRefresh = nil
+    }
+
+    /// The entry's artwork landed after the write that asked for it (CH3-16):
+    /// the entry is rewritten through `publishSurface`, at the deck's own
+    /// playhead, and the publisher attaches the square from its cache. Only
+    /// while the entry the engine published still names that artwork; never
+    /// after a teardown (the hook is nil then, and `publishSurface` refuses).
+    /// A landing inside a turn is left to the publish that ends it.
+    private func artworkLanded(_ src: String) {
+        guard !isTornDown, let published, published.view.metadata.artwork.first?.src == src else { return }
+        if surfaceMove == nil { surfaceMove = .artwork }
+        guard depth == 0 else { return }
+        publishSurface()
     }
 
     /// The heartbeat: the surface is published as after a turn, and

@@ -3613,7 +3613,12 @@ test("NE-15h: the host and its seams touch no platform API, every seam has a rec
   ]) {
     assert.match(teardown ?? "", re, `teardown() no longer releases ${what}`);
   }
-  assert.doesNotMatch(teardown ?? "", /deactivate|nowPlaying/, "teardown keeps the session and Now Playing (plan §4.6)");
+  /* CH3-16: the one Now Playing line teardown may hold lets go of the
+     artwork-landing hook; it never writes or clears the entry. */
+  const ARTWORK_HOOK_RELEASE = /seams\.nowPlaying\.onArtworkLanded = nil/;
+  assert.match(teardown ?? "", ARTWORK_HOOK_RELEASE, "teardown() no longer lets go of the artwork-landing hook (R1-01)");
+  assert.doesNotMatch((teardown ?? "").replace(ARTWORK_HOOK_RELEASE, ""), /deactivate|nowPlaying/,
+    "teardown keeps the session and Now Playing (plan §4.6)");
   assert.match(swiftFuncBody(host, "runTurn") ?? "", /session == \.relinquished \{ teardown\(\) \}/, "a relinquish tears the host down by itself");
 
   const timing = stripSwiftComments(fs.readFileSync(TIMING_SWIFT, "utf8"));
@@ -4971,12 +4976,21 @@ test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared onl
      `clear()`; clear or write Now Playing from teardown; publish after a
      teardown; write the listener's rate instead of NowPlayingRate; let the
      host call `nowPlaying.clear()` anywhere but publishSurface; accept an
-     `http` artwork; drop the artwork deadline or the cached failure. Each
-     fails here. */
+     `http` artwork; drop the artwork deadline or the cached failure; give
+     the publisher a held view again or let it write the centre on an
+     artwork landing; leave the landing hook set at teardown, or write or
+     clear Now Playing there (CH3-16). Each fails here. */
   const publisher = stripSwiftComments(fs.readFileSync(PUBLISHER_SWIFT, "utf8"));
   assert.doesNotMatch(publisher, /playbackState\s*=/, "OQ-8: playbackState is macOS-only and never written");
   assert.equal([...publisher.matchAll(/nowPlayingInfo = nil/g)].length, 1, "one way to nil");
   assert.match(swiftFuncBody(publisher, "clear") ?? "", /center\.nowPlayingInfo = nil/);
+  /* CH3-16 (R1-01, R1-05): the host is the entry's one holder. The publisher
+     keeps no view and writes the centre only from write() and clear(); an
+     artwork landing is handed to the host's hook. */
+  assert.equal([...publisher.matchAll(/center\.nowPlayingInfo = /g)].length, 2, "the centre is written by write() and clear() only");
+  assert.match(swiftFuncBody(publisher, "write") ?? "", /center\.nowPlayingInfo = Self\.info\(/);
+  assert.doesNotMatch(publisher, /\bprivate var current\b|advancedBySec|uptime/, "no second holder of the entry, no second clock");
+  assert.match(swiftFuncBody(publisher, "write") ?? "", /self\?\.onArtworkLanded\?\(src\)/, "a landing goes to the host");
   const info = swiftFuncBody(publisher, "info") ?? "";
   assert.match(info, /let rate = NowPlayingRate\.of\(view\)/);
   assert.match(info, /MPNowPlayingInfoPropertyPlaybackRate: NSNumber\(value: rate\)/);
@@ -4990,7 +5004,13 @@ test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared onl
   assert.match(publish, /^\{\s*guard !isTornDown else \{ return \}/, "a relinquish leaves Now Playing and the targets for the legacy lane");
   assert.match(publish, /seams\.nowPlaying\.clear\(\)/);
   assert.match(publish, /availability\.clearsNowPlaying/, "nil only for a finished Foray, a close or a data deletion");
-  assert.doesNotMatch(swiftFuncBody(host, "teardown") ?? "", /publishSurface|nowPlaying/);
+  const teardownBody = swiftFuncBody(host, "teardown") ?? "";
+  assert.match(teardownBody, /seams\.nowPlaying\.onArtworkLanded = nil/, "a landing after a relinquish reaches no one (R1-01)");
+  assert.doesNotMatch(teardownBody.replace(/seams\.nowPlaying\.onArtworkLanded = nil/, ""), /publishSurface|nowPlaying/);
+  assert.match(swiftFuncBody(host, "start") ?? "", /seams\.nowPlaying\.onArtworkLanded = \{/, "the host hears every landing");
+  const landed = swiftFuncBody(host, "artworkLanded") ?? "";
+  assert.match(landed, /publishSurface\(\)/, "a landing is rewritten through publishSurface, at the deck's playhead");
+  assert.doesNotMatch(landed, /seams\.nowPlaying\.write/);
 
   const artwork = stripSwiftComments(fs.readFileSync(ARTWORK_SWIFT, "utf8"));
   assert.match(artwork, /static let timeoutSec: Double = 10\b/, "plan §4.5: bounded at 10 s");
