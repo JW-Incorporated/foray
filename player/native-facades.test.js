@@ -483,3 +483,36 @@ test("CH-37: the backend facade's `audible` mirrors HtmlAudioBackend's — a run
   await s.push({ state: "playing", running: true, ended: true, effectiveRate: 0 });
   assert.equal(s.f.backend.audible, false, "a deck that ran out");
 });
+
+/* ---------- CH3-18 (R4-05, docs/roadmap/code-health-3.md): a nudge is the step ---------- */
+
+test("CH3-18: a nudge is sent as seekBy carrying the step, never a target; the engine finds where it lands", async () => {
+  /* The page's half of transport-reconcile's ROUND 2 p-impatient-1 in the
+     native lane: the page sends the STEP, and the engine steps from where it
+     knows the listener is (EngineCore.swift `seekBy`, XCTest
+     testANudgeDuringAColdLoadStepsFromWhereTheLoadLands) — for a load the
+     engine started itself, a second the page never knew.
+     MUTATION: send `seekTo` with the step as `sec` (or any target) -> red on
+     the wire. MUTATION 2: drop the non-finite guard -> `deltaSec: null`
+     reaches the contract and the send is refused; red. */
+  const s = await scripted({ ...SNAP.playing, durationSec: 3600 });
+  assert.equal(await s.f.manager.seekBy(30), true);
+  await s.f.manager.seekBy(-15, { source: "remote" });
+  await s.f.manager.seekBy("abc");
+  const nudges = s.sent.filter((p) => p.cmd === "seekBy" || p.cmd === "seekTo").map(({ cmd, source, args }) => ({ cmd, source, args }));
+  assert.deepStrictEqual(nudges, [
+    { cmd: "seekBy", source: "tap", args: { deltaSec: 30 } },
+    { cmd: "seekBy", source: "remote", args: { deltaSec: -15 } },
+    { cmd: "seekBy", source: "tap", args: { deltaSec: 0 } },
+  ]);
+
+  // Over the reference engine the step lands from the engine's own playhead.
+  const r = await stack();
+  r.ref.positions.save("a", 600, { duration: 3600 });
+  r.f.manager.setQueueFromPick(episode("a"));
+  await r.f.manager.play(0);
+  assert.equal(await r.f.manager.seekBy(30), true);
+  assert.equal(r.ref.backend.currentTime, 630);
+  assert.deepStrictEqual(r.cmds().filter((c) => c !== "setPageVisible"), ["playEpisode", "seekBy"]);
+  r.done();
+});

@@ -330,7 +330,7 @@ function nativeNode(tag) {
 /** Let the engine client's serial send reach the wire. */
 const settle = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r)); };
 
-async function bootNativeClient(t) {
+async function bootNativeClient(t, { seed = [] } = {}) {
   const { pathToFileURL } = require("node:url");
   const { createReferenceEngine } = await import("../player/parity/reference-engine.js");
   const { __resetInstanceForTests } = await import("../player/queue-manager.js");
@@ -347,7 +347,10 @@ async function bootNativeClient(t) {
       return base.nativePromise(plugin, method, payload);
     },
   };
-  const rows = new Map();
+  /* A row present at launch is the engine's too: attach adopts the engine's
+     set over the page's (replace-set), as on a device. */
+  const rows = new Map(seed);
+  for (const [k, v] of seed) ref.storage.setItem(k, v);
   const storage = {
     get length() { return rows.size; },
     key: (i) => [...rows.keys()][i] ?? null,
@@ -426,21 +429,50 @@ const engineLoadingB = {
   nowPlaying: { title: "Title b", artist: "Show", album: "" },
 };
 
-test("CH3-18 characterization: a native-lane 30↻ during an engine-started load sends seekTo from the page's 0 (R4-05)", async (t) => {
-  /* Today's behaviour, pinned so commit 2 flips it: `seekEpisodeBy` reads
-     `episodePositionSec()` — the page's `loadingStart` is a's (or nothing), so
-     it falls to the facade's playhead, the snapshot's 0 — and lands
-     `skipTarget(0 + 30)` as an absolute seekTo. */
+test("CH3-18: a native-lane 30↻ during an engine-started load is sent as seekBy, the step, never a target from the page's 0 (R4-05)", async (t) => {
+  /* RED on main: R4-05. `seekEpisodeBy` read `episodePositionSec()` — the
+     page's `loadingStart` is not about a load the engine started, so it fell
+     to the facade's playhead, the snapshot's 0 — and sent `skipTarget(0 + 30)`
+     as seekTo {sec: 30}: the episode started at 0:30 and the 38:00 resume
+     point was overwritten. Now the step goes to the engine, which steps from
+     the second its load will land on (EngineCore.swift `seekBy`).
+     MUTATION: drop the native branch of `seekEpisodeBy` (fall back to the
+     page's seekTo) -> red, seekTo {sec: 30}. */
   const { client, sent, push } = await bootNativeClient(t);
   await push(engineLoadingB);
   const painted = client.restoreLastEpisode();
   await settle();
   assert.strictEqual(painted?.id, "b", "fixture premise: the bar is the engine's episode");
   const before = sent.length;
-  await client.nudge(30);
+  assert.strictEqual(await client.nudge(30), true);
+  await client.nudge(-15);
   await settle();
   const nudges = sent.slice(before).filter((c) => c.cmd === "seekTo" || c.cmd === "seekBy");
-  assert.deepStrictEqual(nudges, [{ cmd: "seekTo", args: { sec: 30 } }]);
+  assert.deepStrictEqual(nudges, [{ cmd: "seekBy", args: { deltaSec: 30 } }, { cmd: "seekBy", args: { deltaSec: -15 } }]);
+});
+
+test("CH3-18: a native-lane nudge on a RESTORED bar is still the page's pend, and the press carries it as playEpisode's start", async (t) => {
+  /* The engine holds nothing behind a restored bar (it would refuse a seekBy
+     as not-loaded), so the step is written into the page's pending position
+     exactly as before, and the first press carries it.
+     MUTATION: drop the `seekAction(...) === SEEK.SEEK` guard on the native
+     branch (send seekBy whenever native) -> a seekBy goes out and the press
+     starts at 600, not 630; red. */
+  const row = JSON.stringify({ id: "r", kind: "episode", title: "Title r", show: "Show", audio_url: "https://cdn/r.mp3", duration_sec: 3600, updated_at: new Date().toISOString() });
+  const pos = JSON.stringify({ seconds: 600, duration: 3600, updated_at: new Date().toISOString() });
+  const { client, sent } = await bootNativeClient(t, { seed: [["cp_last_episode", row], ["cp_pos:r", pos]] });
+  const painted = client.restoreLastEpisode();
+  await settle();
+  assert.strictEqual(painted?.id, "r", "fixture premise: a restored bar over an idle engine");
+  const before = sent.length;
+  assert.strictEqual(await client.nudge(30), true);
+  await settle();
+  assert.deepStrictEqual(sent.slice(before).filter((c) => c.cmd === "seekTo" || c.cmd === "seekBy"), [], "nothing to seek in: nothing sent");
+  await client.togglePlayback();
+  await settle();
+  const play = sent.slice(before).find((c) => c.cmd === "playEpisode");
+  assert.ok(play, "the press is a playEpisode");
+  assert.strictEqual(play.args.startSec, 630, "from the stored 600, stepped 30");
 });
 
 test("CH3-18 characterization: off the native lane an episode nudge steps from the bar's position and lands through landEpisodeSeek", () => {
