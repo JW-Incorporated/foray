@@ -298,4 +298,8 @@ function renderTabBar() {
     dockLastY = dockScrollY();
   }
   document.body.classList.toggle("dock-receded", dockReceded);
+  /* THE LIBRARY TAB'S UP NEXT COUNT, on every page and from a cold start: nothing else writes cp_queue at boot, so without this
+     the badge only appears after the first queue write or an Episode page. syncLibraryBadge lives in ui/episode.js, which loads
+     after this file, hence the typeof guard (it is best-effort chrome and never throws). */
+  if (typeof syncLibraryBadge === "function") syncLibraryBadge();
 }

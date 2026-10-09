@@ -349,6 +349,19 @@ test("the Library tab's count is the length of Up Next on every page: nothing at
   assert.deepStrictEqual(stub.queue(), ["z"], "the list is the truth");
 });
 
+test("the Library tab's count is there after a cold start: renderTabBar draws it from the stored queue, with no queue write", () => {
+  /* The bug: nothing at boot wrote cp_queue, so a reload with three episodes in Up Next showed no count (and no 'Library, 3 in Up Next'
+     name) until an Episode page or a queue write. The test seeds cp_queue straight into storage, as a previous session left it, and
+     only renders the tab bar. MUTATION: delete the `syncLibraryBadge()` call at the end of renderTabBar in ui/tabbar.js -> both
+     assertions go red. */
+  const m = mount();
+  m.store.set("cp_queue", JSON.stringify(["a", "b", "c"]));
+  assert.strictEqual(badgeText(m), null, "precondition: nothing has painted the count yet");
+  m.ctx.renderTabBar();
+  assert.strictEqual(badgeText(m), "3", "the count is the stored queue's length");
+  assert.strictEqual(m.tab.getAttribute("aria-label"), "Library, 3 in Up Next", "and the tab's name carries it");
+});
+
 /* ---------- 5. the show notes ---------- */
 
 const NOTES = "Prose first.\n\n00:00 Cold open\n02:15 The instrument\n\nThe best bit starts at 31:20 if you are short of time. Paper: https://example.org/p";
