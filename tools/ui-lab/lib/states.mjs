@@ -20,9 +20,10 @@ const wait = (page, ms) => page.waitForTimeout(ms);
 
 /* The page the Dawn and unavailable helpers park on while the scheme flips: a LEGACY page, because a page that wears `.ag`
    crossfades its colours for 200ms when the scheme changes and the reduced-motion gate reads that as a violation. The Forays
-   list used to be that page; it is Afterglow now (Redesign 2026). When Followed shows is re-skinned, park on whichever
+   list used to be that page, then #/starred-shows; both are Afterglow now (the Forays list, and Library, which folded the
+   followed shows in). The legacy Up Next page (#/queue) is left; when it is re-skinned, park on whichever
    legacy page is left. */
-const PARK_ROUTE = "#/starred-shows";
+const PARK_ROUTE = "#/queue";
 
 /** Start playback of a seeded item through the real player, then pin it: seek to
     a fixed offset and pause, so the mini bar and sheet show a deterministic
