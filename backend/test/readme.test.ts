@@ -27,6 +27,42 @@ function tsxScripts(): Map<string, string> {
   return out;
 }
 
+const REPO = path.resolve(BACKEND, "..");
+
+/**
+ * src/-relative file → the tools/ scripts that load it at runtime: a relative
+ * import or `new URL(...)` of `../backend/src/...`, or a
+ * `join(root, "backend", "src", ...)`. Prose that merely mentions a path
+ * (`backend/src/x.ts`, unquoted or without the leading `../`) does not
+ * match; tests are skipped.
+ */
+function toolsLoadsFromSrc(): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  const add = (file: string, user: string) => {
+    if (!out.has(file)) out.set(file, new Set());
+    out.get(file)!.add(user);
+  };
+  const walk = (dir: string) => {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) {
+        if (ent.name !== "node_modules") walk(full);
+        continue;
+      }
+      if (!/\.(mjs|cjs|js)$/.test(ent.name) || /\.test\.(mjs|cjs|js)$/.test(ent.name)) continue;
+      const src = fs.readFileSync(full, "utf8");
+      const user = path.relative(REPO, full).split(path.sep).join("/");
+      for (const m of src.matchAll(/["'](?:\.\.\/)+backend\/src\/([^"']+)["']/g)) if (m[1]) add(m[1], user);
+      for (const m of src.matchAll(/"backend",\s*"src",((?:\s*"[^"]+",?)+)\s*\)/g)) {
+        const parts = [...(m[1] ?? "").matchAll(/"([^"]+)"/g)].map((p) => p[1]);
+        add(parts.join("/"), user);
+      }
+    }
+  };
+  walk(path.join(REPO, "tools"));
+  return out;
+}
+
 /** The README section between `## <title>` and the next `## ` heading. */
 function section(title: string): string {
   const start = README.indexOf(`\n## ${title}\n`);
@@ -57,6 +93,27 @@ describe("backend/README.md describes the backend that exists", () => {
     // A literal id in prose is the drift this card fixed (`claude-haiku-4-5`
     // stayed in the README after models.ts moved every tier on).
     expect(README).not.toMatch(/claude-(opus|sonnet|haiku)-\d/);
+  });
+
+  it("names every backend/src file a tools/ script loads, next to that script", () => {
+    // B2-19 review: the README said everything outside the api/ table ran
+    // only from CLIs or tests, while five tools/ scripts import copy/rules.js.
+    const loads = toolsLoadsFromSrc();
+    // Sanity: the scan found the copy/ importers at all.
+    expect(loads.get("copy/rules.js")?.size ?? 0).toBeGreaterThan(0);
+
+    const rows = new Map<string, string>();
+    for (const line of section("Who calls this code in production").split("\n")) {
+      if (!line.startsWith("| `")) continue;
+      const cells = line.split("|");
+      for (const m of (cells[1] ?? "").matchAll(/`([^`]+)`/g)) if (m[1]) rows.set(m[1], cells[2] ?? "");
+    }
+    for (const [file, users] of loads) {
+      expect(rows.has(file), `README "Who calls this code in production" has no row for src/${file}`).toBe(true);
+      for (const user of users) {
+        expect(rows.get(file), `README row for src/${file} names ${user}`).toContain(`\`${user}\``);
+      }
+    }
   });
 
   it("states no test count", () => {

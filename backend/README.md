@@ -132,7 +132,22 @@ written:
 
 To re-check: `git grep -n "backend/src" -- api ':!api/_test'`.
 
-Everything else in `src/` runs only from the CLIs above or from tests.
+Some `../tools/` scripts also use `src/` directly, outside any CLI:
+
+| `src/` file | used by | how |
+|---|---|---|
+| `copy/rules.js` | `tools/foray/check-forays.mjs`, `tools/refresh/merge.mjs`, `tools/classify/merge-results.mjs`, `tools/segments/merge-segments.mjs`, `tools/segments/prepare-segment-batch.mjs` | imports it |
+| `copy/narratorStructure.js` | `tools/foray/check-narration.mjs` | imports it |
+| `feeds/entitiesTable.json` | `tools/refresh/entities.mjs` | reads the table |
+| `generation/catalogueLookup.ts`, `generation/resolveTopic.ts` | `tools/foraycorpus-export/topics.mjs` | reads the source text for its word lists |
+
+To re-check: `git grep -nE 'backend/src/|"backend", "src"' -- tools ':!*.test.mjs'`
+(most hits are comments; the rows above are the ones that load a file).
+`test/readme.test.ts` fails when a `tools/` script starts loading a `src/`
+file this table does not name.
+
+Apart from the files in these two tables, everything in `src/` runs only
+from the CLIs above or from tests.
 
 ## Test isolation (why `npm test` never touches a network or an LLM)
 
