@@ -367,6 +367,51 @@ final class DeckPairTests: XCTestCase {
         XCTAssertTrue(rows.contains { $0.kind == "prepare" && $0[field: "reason"] == .string("not-ready") })
     }
 
+    /// R2-07 (CH3-13): a warm load still IN FLIGHT at its own boundary is a
+    /// not-ready miss, and the player deck then loads THE SAME FILE cold. The
+    /// standby is let go BEFORE that cold load, so one URL is never fetched
+    /// by two items at once on a slow car link (the load the listener waits
+    /// through would share the link with a fetch nobody will play). A ready
+    /// warm load is still promoted with nothing unloaded
+    /// (`testAHitPromotesTheStandbyInHandoverOrderAndAnswersAtOnce`'s journal).
+    /// TO SEE IT FAIL: remove the standby's `.unload` from `load`'s miss path
+    /// (today's code: the standby keeps its item attached and fetching).
+    func testANotReadyMissOfTheSameFileLetsTheStandbyGoBeforeTheColdLoad() {
+        playingWithPrepare(readyStandby: false)
+        journal.entries.removeAll()
+        pair.send(.load(token: 2, itemId: "b", url: urlB, startSec: 300, preciseTiming: true))
+        XCTAssertTrue(pair.handoverLog.contains("promotion:not-ready"))
+        XCTAssertEqual(journal.entries, ["B.unload", "A.load"], "the standby lets go, then the player loads cold")
+        XCTAssertNil(b.loadedURL, "the standby no longer holds the file the player is fetching")
+        XCTAssertEqual(a.lastLoadToken, 2, "the ordinary load, on the player")
+        XCTAssertEqual(pair.activeIndex, 0)
+        XCTAssertEqual(pair.swaps, 0)
+        XCTAssertEqual(prepared(2)?.hit, false, "still reported to the core as a miss")
+        XCTAssertEqual(prepared(2)?.stages, [.attach])
+    }
+
+    /// The unload is only for the file the player is about to fetch: a
+    /// not-ready warm load at a boundary that loads SOMETHING ELSE (a skip)
+    /// keeps its item, and a warm load that FAILED is not unloaded either
+    /// (the card's minimal fix is the `.notReady` miss of the same URL).
+    /// TO SEE IT FAIL: drop the `held.warm.url == url` test or the
+    /// `.notReady` test from the unload's condition.
+    func testOnlyANotReadyMissOfTheSameFileUnloadsTheStandby() {
+        playingWithPrepare(readyStandby: false)
+        pair.send(.load(token: 2, itemId: "c", url: urlC, startSec: 10, preciseTiming: true))
+        XCTAssertTrue(pair.handoverLog.contains("promotion:not-ready"))
+        XCTAssertEqual(b.count("unload"), 0, "a skip elsewhere is not a second fetch of the warm file")
+        XCTAssertEqual(b.loadedURL, urlB)
+
+        pair.send(.prepare(itemId: "d", url: urlA, startSec: 50))
+        let warm = b.lastLoadToken ?? 0
+        b.onEvent?(.failed(token: warm, message: "HTTP 404"))
+        pair.send(.load(token: 3, itemId: "d", url: urlA, startSec: 50, preciseTiming: true))
+        XCTAssertTrue(pair.handoverLog.contains("promotion:failed"))
+        XCTAssertEqual(b.count("unload"), 0, "a failed warm load is not the not-ready miss")
+        XCTAssertEqual(a.lastLoadToken, 3)
+    }
+
     /// Readiness is re-asserted at the boundary: a warm deck at the wrong
     /// in-point, or one that drifted off it, is never promoted.
     func testAWrongOffsetOrADriftedWarmDeckIsNotPromoted() {
