@@ -78,11 +78,16 @@ jobs:
     # "The new `db` CI job is not a required check yet." Same reasoning
     # `api`/`ios-kit` document for themselves: promoting a job to required
     # is a founder call, and this job runs and reports regardless.
+    #
+    # THE IMAGE COMES FROM public.ecr.aws/docker/library, AWS's mirror of the
+    # Docker official images (same image, same tag), not Docker Hub: on
+    # 2026-10-09 this job and engine-parity repeatedly failed at "Initialize
+    # containers" on Docker Hub's anonymous pull rate limit (toomanyrequests).
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:17
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -494,11 +499,17 @@ jobs:
     # "image cached": GitHub has no cache for a job `container:` — it is pulled
     # before the first step runs, so no actions/cache step can reach it. The
     # pull is measured in docs/ios-native-engine-measurements.md §9.
+    #
+    # IT IS PULLED FROM public.ecr.aws/docker/library, AWS's mirror of the
+    # Docker official images (the same swift:5.10), not Docker Hub: on
+    # 2026-10-09 this required check repeatedly failed at "Initialize
+    # containers" on Docker Hub's anonymous pull rate limit (toomanyrequests),
+    # so every PR needed a manual rerun.
     needs: engine-paths
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    container: swift:5.10
+    container: public.ecr.aws/docker/library/swift:5.10
     env:
       RUN_PARITY: ${{ needs.engine-paths.outputs.engine == 'false' && 'false' || 'true' }}
     steps:

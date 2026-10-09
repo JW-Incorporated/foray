@@ -143,7 +143,10 @@ test("NE-06: engine-parity runs swift test on the core in swift:5.10 on Linux, w
      is the whole of G-1a. */
   const job = codeOf("engine-parity");
   assert.match(job, /^ {4}runs-on: ubuntu-latest$/m);
-  assert.match(job, /^ {4}container: swift:5\.10$/m);
+  // The official swift:5.10, from AWS's public mirror of the Docker official
+  // images: Docker Hub's anonymous pull rate limit failed this required check
+  // at "Initialize containers" on 2026-10-09.
+  assert.match(job, /^ {4}container: public\.ecr\.aws\/docker\/library\/swift:5\.10$/m);
   const run = jobStep("engine-parity", "swift test (foray-engine-core, Linux)");
   assert.ok(run, "no Linux swift test step");
   assert.match(run, /swift test --package-path mobile\/plugins\/foray-audio\/foray-engine-core/);
