@@ -16,6 +16,26 @@ import assert from "node:assert/strict";
 
 import { buildShows } from "./catalogue.mjs";
 import { buildEpisodes } from "./episodes.mjs";
+import { instant, toIsoOrNull } from "./time.mjs";
+
+/* instant() reads an ISO string with Date.parse and a pg Date with getTime(),
+   so a Date keeps its milliseconds; null, undefined and unparsable are null.
+   Mutation that turns this red: drop the `value instanceof Date` branch
+   (the .789 Date reads .000); return NaN instead of null for "nope". */
+test("instant: ISO string, pg Date, Date with milliseconds, and the null cases", () => {
+  assert.equal(instant("2026-10-01T06:00:00Z"), Date.UTC(2026, 9, 1, 6, 0, 0));
+  assert.equal(instant("2026-10-01T06:00:00.250Z"), Date.UTC(2026, 9, 1, 6, 0, 0, 250));
+  assert.equal(instant(new Date("2026-10-01T06:00:00Z")), Date.UTC(2026, 9, 1, 6, 0, 0));
+  assert.equal(instant(new Date("2026-10-01T06:00:00.789Z")), Date.UTC(2026, 9, 1, 6, 0, 0, 789));
+  assert.equal(instant(null), null);
+  assert.equal(instant(undefined), null);
+  assert.equal(instant("nope"), null);
+  assert.equal(instant(new Date("nope")), null);
+  assert.equal(toIsoOrNull(new Date("2026-10-01T06:00:00.789Z")), "2026-10-01T06:00:00.789Z");
+  assert.equal(toIsoOrNull("2026-10-01T06:00:00Z"), "2026-10-01T06:00:00.000Z");
+  assert.equal(toIsoOrNull("nope"), null);
+  assert.equal(toIsoOrNull(null), null);
+});
 
 /** A row source (row-source.mjs interface) over in-memory tables. */
 function memorySource(tables) {
