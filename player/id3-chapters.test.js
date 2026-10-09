@@ -467,7 +467,7 @@ test("a downloaded episode is read from its local file, offline, without touchin
   const bridge = fakeBridge(file);
   const downloads = {
     recordFor: (id) => (id === "ep1" ? { status: "done", path: "/data/files/ep1.mp3", webSrc: null } : null),
-    bridge: { fileSrc: ({ path }) => `capacitor://localhost/_capacitor_file_${path}` },
+    bridge: { webSrc: (path) => `capacitor://localhost/_capacitor_file_${path}` },
   };
   const r = createId3Reader({ fetchFn, getBridge: () => bridge, isOnline: () => false, getDownloads: () => downloads });
   assert.deepEqual(await r.forUrl(URL_A, { id: "ep1" }), BASIC);
@@ -478,10 +478,10 @@ test("a downloaded episode is read from its local file, offline, without touchin
   assert.equal(bridge.asked.length, 0);
 });
 
-test("CH-27 characterization: a downloaded episode opens at bridge.fileSrc before the stored webSrc, and a file: URL is never fetched", async () => {
+test("CH-27 characterization: a downloaded episode opens at bridge.webSrc before the stored webSrc, and a file: URL is never fetched", async () => {
   /* What the local read opens is download-store.readSource's rule (CH-27,
      P2-18). MUTATIONS: in readSource, swap the order to `record.webSrc ??
-     fileSrc(...)` -> the stale stored URL is fetched and the first assert goes
+     webSrc(...)` -> the stale stored URL is fetched and the first assert goes
      red; drop the `file:` refusal -> the file:// URL is fetched and the second
      goes red. */
   const file = withAudio(basic(3));
@@ -489,7 +489,7 @@ test("CH-27 characterization: a downloaded episode opens at bridge.fileSrc befor
   const fetchA = fakeFetch(file);
   assert.deepEqual(await createId3Reader({
     fetchFn: fetchA, isOnline: () => false,
-    getDownloads: () => ({ recordFor: () => rec, bridge: { fileSrc: ({ path }) => `https://localhost/_capacitor_file_${path}` } }),
+    getDownloads: () => ({ recordFor: () => rec, bridge: { webSrc: (path) => `https://localhost/_capacitor_file_${path}` } }),
   }).forUrl(URL_A, { id: "ep1" }), BASIC);
   assert.deepEqual([...new Set(fetchA.calls.map((c) => c.url))], ["https://localhost/_capacitor_file_/data/files/ep1.mp3"]);
 
@@ -503,14 +503,14 @@ test("CH-27 characterization: a downloaded episode opens at bridge.fileSrc befor
 test("CH-27: a done row with an empty path is a missing download, so the chapter reader fetches nothing local", async () => {
   /* download-store normalises `done` without a path to `missing` (it plays the
      stream); the reader used to gate on `typeof path === "string"` and asked
-     fileSrc for "", fetching the shell's file root and spending the 10 s
+     webSrc for "", fetching the shell's file root and spending the 10 s
      deadline on every episode page open. MUTATION: put the inline gate back in
      localSrc (`typeof rec.path !== "string"` instead of readSource) -> the
      empty path is fetched and this goes red. */
   const fetchFn = fakeFetch(withAudio(basic(3)));
   const downloads = {
     recordFor: () => ({ status: "done", path: "", webSrc: null }),
-    bridge: { fileSrc: ({ path }) => `https://localhost/_capacitor_file_${path}` },
+    bridge: { webSrc: (path) => `https://localhost/_capacitor_file_${path}` },
   };
   assert.deepEqual(await createId3Reader({ fetchFn, isOnline: () => false, getDownloads: () => downloads }).forUrl(URL_A, { id: "ep1" }), []);
   assert.equal(fetchFn.calls.length, 0);
