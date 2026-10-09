@@ -114,6 +114,8 @@ final class NarrationSeamTests: XCTestCase {
 
         func invalidate() { pair.invalidate() }
 
+        func rebuild() { pair.rebuild() }
+
         /// The core token of the last load of `itemId`.
         func token(of itemId: String) -> DeckToken? { loads.last { $0.itemId == itemId }?.token }
 
@@ -144,6 +146,7 @@ final class NarrationSeamTests: XCTestCase {
 
         func speak(text: String, voiceId: String?) {}
         func stopSpeaking() { sounding = false }
+        func rebuild() { sounding = false }
 
         func narrate(_ command: NarrationCommand) {
             switch command {

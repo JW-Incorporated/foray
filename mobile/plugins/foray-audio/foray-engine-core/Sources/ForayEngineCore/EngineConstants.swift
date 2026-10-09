@@ -98,7 +98,7 @@ public enum EngineConstants {
         /// `ENGINE_PLATFORMS`
         public static let enginePlatforms: [String] = ["ios", "android"]
         /// `EVENTS`
-        public static let events: [String] = ["snapshot", "advanced", "skipped", "error", "voiceFallback", "diag", "modeChanged"]
+        public static let events: [String] = ["snapshot", "advanced", "skipped", "error", "diag", "modeChanged"]
         /// `HANDSHAKE_REASONS`
         public static let handshakeReasons: [String] = ["native", "not-ios", "no-method", "no-hello", "bad-hello", "engine-legacy", "protocol-mismatch"]
         /// `HELLO_PLATFORMS`

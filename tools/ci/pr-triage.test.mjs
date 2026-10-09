@@ -34,6 +34,7 @@ import {
   ciDispatchIsRedundant,
   recheckArm,
   renderWaitingBlock,
+  REQUIRED_CHECKS,
   runCli,
   spliceBlock,
 } from "./pr-triage.mjs";
@@ -433,7 +434,7 @@ test("the age gate reads the head commit's clock, not the PR's updatedAt", () =>
 
 test("a head missing ONE required check is re-dispatched — a partial dispatch is still a stall", () => {
   /* MUTATION: restore `missing.length === requiredChecks.length`. `backend`
-     reported and `data-and-site` never did, so `missing` is 1 of 2 and the
+     reported and the others never did, so `missing` is 3 of 4 and the
      all-or-nothing test is false: nothing is planned, and the PR sits at
      "Expected — waiting for status to be reported" forever because it is no
      longer `behind` and nothing else ever looks at it again.
@@ -455,7 +456,7 @@ test("a head carrying every required check is left alone", () => {
     [
       pr({
         autoMergeEnabled: true,
-        checkNames: ["backend", "data-and-site", "Vercel Preview Comments"],
+        checkNames: [...REQUIRED_CHECKS, "Vercel Preview Comments"],
         updatedAt: OLD,
       }),
     ],

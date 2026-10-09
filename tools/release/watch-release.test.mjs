@@ -1253,7 +1253,7 @@ test("ci-release-6: an advisory ios-kit failure no longer holds the release", ()
   /* The measured case: runs 35950411353 and 35900753042 were `failure` with
      only ios-kit red. MUTATION: drop the `/ci.yml` skip in mainState -> the
      whole-run conclusion wins again and this is HOLD_MAIN_RED. */
-  const mainChecks = [check("backend", "success"), check("data-and-site", "success"), check("ios-kit", "failure"), check("playwright", "failure")];
+  const mainChecks = [...REQUIRED_CHECKS.map((n) => check(n, "success")), check("ios-kit", "failure"), check("playwright", "failure")];
   const d = triggerDecision({ runs: [DONE], commits: WAITING, bundle: BUNDLE, mainRuns: [CI_RUN_RED], mainStatus: {}, mainChecks });
   assert.equal(d.code, "DISPATCH", d.reason);
 });
@@ -1278,7 +1278,7 @@ test("ci-release-6: the newest run of a required check wins (a green re-run clea
   const rerun = [
     check("backend", "failure", "completed", "2026-09-24T10:00:00Z"),
     check("backend", "success", "completed", "2026-09-24T11:00:00Z"),
-    check("data-and-site", "success"),
+    ...REQUIRED_CHECKS.filter((n) => n !== "backend").map((n) => check(n, "success")),
   ];
   assert.equal(mainState(CI_RAN, {}, rerun).state, "green");
 });

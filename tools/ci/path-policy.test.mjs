@@ -1547,3 +1547,207 @@ test("review: CLI decide --armed-by reports founder_armed for the workflow's Dis
   rawRunCli(["decide", "--files-from", "f", "--author", "stranger", "--armed-by", "github-actions[bot]", "--github-output", "O"], h2.io);
   assert.match(h2.appended.O, /founder_armed=false/);
 });
+
+
+/* ---------- CH2-34b (T2-16): ONE protect-main required list, rendered everywhere ---------- */
+
+import { REQUIRED_CHECKS as TRIAGE_REQUIRED_CHECKS } from "./pr-triage.mjs";
+
+/* Every job id any workflow declares: the names a required context can have. */
+function workflowJobIds() {
+  const dir = path.join(REPO, ".github", "workflows");
+  const ids = new Set(["path-policy"]);
+  for (const f of fs.readdirSync(dir).filter((n) => n.endsWith(".yml"))) {
+    let inJobs = false;
+    for (const line of fs.readFileSync(path.join(dir, f), "utf8").split(/\r?\n/)) {
+      if (/^\S/.test(line)) inJobs = /^jobs:\s*$/.test(line);
+      const m = inJobs && /^ {2}([A-Za-z0-9][\w-]*):\s*(#.*)?$/.exec(line);
+      if (m) ids.add(m[1]);
+    }
+  }
+  return ids;
+}
+
+/* The files that talk about protect-main's list: every workflow and composite,
+ * and the merge machinery's own modules. */
+function requiredListProseFiles() {
+  const out = [];
+  const walk = (rel) => {
+    for (const e of fs.readdirSync(path.join(REPO, rel), { withFileTypes: true })) {
+      const r = `${rel}/${e.name}`;
+      if (e.isDirectory()) walk(r);
+      else if (/\.ya?ml$/.test(e.name)) out.push(r);
+    }
+  };
+  walk(".github");
+  out.push("tools/ci/path-policy.mjs", "tools/ci/pr-triage.mjs", "tools/release/watch-release.mjs");
+  return out;
+}
+
+/* Comment markers and string concatenation stripped, lines joined, so a
+ * sentence that wraps across comment lines (or `"..." +` pieces) is one string. */
+function proseOf(src) {
+  return src
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:#+|\/\/+|\/\*+|\*+\/?)?\s?/, ""))
+    .join(" ")
+    .replace(/["'`]\s*\+\s*["'`]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+/* Every sentence that states protect-main's required list by enumerating two
+ * or more check names, with the names it enumerates. */
+function requiredListMentions(text, names) {
+  const NAME = /`([A-Za-z0-9][\w-]*)`/.source;
+  const SEP = /\s*(?:,\s*(?:and|or)?|and|or)\s*/.source;
+  const enumRe = new RegExp(`${NAME}(?:${SEP}${NAME})+`, "g");
+  const trigger = /protect-main|required[ -](?:status[ -])?(?:checks?|contexts?)/i;
+  const out = [];
+  for (const sentence of text.split(/(?<=[.!?])\s+(?=[A-Z`"(*])/)) {
+    if (!trigger.test(sentence)) continue;
+    for (const m of sentence.matchAll(enumRe)) {
+      const listed = [...m[0].matchAll(/`([A-Za-z0-9][\w-]*)`/g)].map((x) => x[1]).filter((n) => names.has(n));
+      if (listed.length >= 2) out.push({ sentence: sentence.slice(0, 240), listed });
+    }
+  }
+  return out;
+}
+
+test("CH2-34b: every prose copy of protect-main's required list equals pr-triage's REQUIRED_CHECKS", () => {
+  /* T2-16. The list was hand-copied into a dozen comments and one rendered
+     message, and the copies disagreed with each other (android-release.yml
+     named `path-policy`, which was never required) and with the ruleset.
+     A comment either names the constant or enumerates exactly what it holds.
+     MUTATION: put "`backend`, `data-and-site`, `path-policy`" back in
+     android-release.yml's header -> red, naming the file and the sentence. */
+  const names = workflowJobIds();
+  const want = [...TRIAGE_REQUIRED_CHECKS].sort();
+  const wrong = [];
+  for (const rel of requiredListProseFiles()) {
+    for (const m of requiredListMentions(proseOf(fs.readFileSync(path.join(REPO, rel), "utf8")), names)) {
+      if (JSON.stringify([...new Set(m.listed)].sort()) !== JSON.stringify(want)) {
+        wrong.push(`${rel}: [${m.listed.join(", ")}] in "${m.sentence}"`);
+      }
+    }
+  }
+  assert.deepStrictEqual(wrong, [], `REQUIRED_CHECKS is [${want.join(", ")}]`);
+});
+
+test("CH2-34b: the prose scanner finds an enumeration that wraps across comment lines", () => {
+  /* The scanner above is only as good as its parser: a scanner that finds
+     nothing passes vacuously. MUTATION: drop the line join in proseOf -> the
+     wrapped list is two one-name fragments and nothing is found. */
+  const names = new Set(["backend", "data-and-site", "path-policy"]);
+  const yml = "# accident — `protect-main` matches required contexts BY NAME (`backend`,\n# `data-and-site`, `path-policy`). A flaky required check is worse.\n";
+  assert.deepStrictEqual(requiredListMentions(proseOf(yml), names).map((m) => m.listed), [["backend", "data-and-site", "path-policy"]]);
+  const js = '      ? "Auto-merge has been enabled. `protect-main` still requires `backend` and " +\n          "`data-and-site` to pass, so a red PR does not merge."\n';
+  assert.deepStrictEqual(requiredListMentions(proseOf(js), names).map((m) => m.listed), [["backend", "data-and-site"]]);
+  // One name, or a list with no protect-main/required-check wording, is not the list.
+  assert.deepStrictEqual(requiredListMentions(proseOf("# the required `ios-gate` already encodes it.\n"), names), []);
+  assert.deepStrictEqual(requiredListMentions(proseOf("# runs `backend` and `data-and-site` first.\n"), names), []);
+});
+
+test("CH2-34b: the armed auto-merge message names every required check", () => {
+  /* The one rendered copy: what the PR comment says still guards the merge.
+     MUTATION: hardcode "`backend` and `data-and-site`" back into formatDecision
+     -> red as soon as the constant holds anything else. */
+  const md = formatDecision(automergeDecision({ files: ["data/x.json"] }));
+  assert.match(md, /Auto-merge has been enabled/);
+  for (const name of TRIAGE_REQUIRED_CHECKS) assert.ok(md.includes(`\`${name}\``), `${name} missing from: ${md}`);
+});
+
+import * as policyModule from "./path-policy.mjs";
+
+/* The live answer of `gh api repos/JW-Incorporated/foray/rules/branches/main`
+ * on 2026-10-09, trimmed to the fields the comparison reads. */
+const LIVE_RULES_2026_10_09 = [
+  { type: "pull_request", parameters: { required_approving_review_count: 0 }, ruleset_id: 19713996 },
+  { type: "non_fast_forward", ruleset_id: 19713996 },
+  { type: "deletion", ruleset_id: 19713996 },
+  {
+    type: "required_status_checks",
+    parameters: {
+      strict_required_status_checks_policy: false,
+      required_status_checks: [{ context: "backend" }, { context: "data-and-site" }, { context: "engine-parity" }, { context: "ios-gate" }],
+    },
+    ruleset_id: 19713996,
+  },
+];
+
+test("CH2-34b: pr-triage's REQUIRED_CHECKS IS path-policy's — one array, not a second literal", () => {
+  /* MUTATION: declare `export const REQUIRED_CHECKS = ["backend", "data-and-site"]`
+     in pr-triage.mjs again -> a different array, red. */
+  assert.strictEqual(TRIAGE_REQUIRED_CHECKS, policyModule.REQUIRED_CHECKS);
+});
+
+test("CH2-34b: REQUIRED_CHECKS agrees with the ruleset as read on 2026-10-09", () => {
+  /* The audit is what keeps this true after today; this pins the day it was
+     read (SEC-06, docs/audit/security-review-2026-10.md lists the same four).
+     MUTATION: drop "ios-gate" from REQUIRED_CHECKS -> missing [ios-gate]. */
+  const d = policyModule.requiredChecksDrift(LIVE_RULES_2026_10_09);
+  assert.deepStrictEqual([d.ok, d.missing, d.extra], [true, [], []]);
+  assert.deepStrictEqual(d.live, ["backend", "data-and-site", "engine-parity", "ios-gate"]);
+});
+
+test("CH2-34b: the ruleset gaining a check, or dropping one, is drift in the right direction", () => {
+  /* The card's mutation: the ruleset gains a check (`path-policy`, SEC-06's
+     settings item) -> `missing`; the ruleset drops one -> `extra`.
+     MUTATION: swap the two filters in requiredChecksDrift -> both rows flip. */
+  const withRule = (contexts) => [{ type: "required_status_checks", parameters: { required_status_checks: contexts.map((context) => ({ context })) } }];
+  const gained = policyModule.requiredChecksDrift(withRule(["backend", "data-and-site", "engine-parity", "ios-gate", "path-policy"]));
+  assert.deepStrictEqual([gained.ok, gained.missing, gained.extra], [false, ["path-policy"], []]);
+  const dropped = policyModule.requiredChecksDrift(withRule(["backend", "data-and-site"]));
+  assert.deepStrictEqual([dropped.ok, dropped.missing, dropped.extra], [false, [], ["engine-parity", "ios-gate"]]);
+  // Two rulesets binding main: the union is what binds.
+  const split = policyModule.requiredChecksDrift([...withRule(["backend", "data-and-site"]), ...withRule(["engine-parity", "ios-gate"])]);
+  assert.equal(split.ok, true);
+  // No required_status_checks rule at all is an answer (nothing required), not an error.
+  assert.deepStrictEqual(policyModule.requiredChecksDrift([]).extra, [...policyModule.REQUIRED_CHECKS].sort());
+});
+
+test("CH2-34b: an unreadable ruleset is never 'agrees' — the CLI exits 2", () => {
+  /* An error page is an object ({ message: "Not Found" }), not the rules array.
+     MUTATION: let requiredChecksDrift treat a non-array as [] -> exit 1 with a
+     confident "nothing required", and the not-JSON row still 2. */
+  assert.throws(() => policyModule.requiredChecksDrift({ message: "Not Found" }), /array of rules/);
+  for (const body of ['{"message":"Not Found"}', "<html>", ""]) {
+    const h = harness({ "rules.json": body });
+    assert.equal(rawRunCli(["required-checks", "--rules", "rules.json"], h.io), 2, body);
+  }
+  assert.equal(rawRunCli(["required-checks"], harness().io), 2, "--rules is required");
+});
+
+test("CH2-34b: the required-checks CLI answers 0 when the ruleset agrees and 1 with the ledger section when it does not", () => {
+  /* MUTATION: return 0 whatever the drift -> the gained row exits 0 and
+     merge-audit.yml would never warn. */
+  const same = harness({ "rules.json": JSON.stringify(LIVE_RULES_2026_10_09) });
+  assert.equal(rawRunCli(["required-checks", "--rules", "rules.json", "--summary", "S"], same.io), 0);
+  assert.match(same.appended.S, /exactly `REQUIRED_CHECKS` in `tools\/ci\/path-policy\.mjs`/);
+  const gained = JSON.parse(JSON.stringify(LIVE_RULES_2026_10_09));
+  gained[3].parameters.required_status_checks.push({ context: "path-policy" });
+  const drift = harness({ "rules.json": JSON.stringify(gained) });
+  assert.equal(rawRunCli(["required-checks", "--rules", "rules.json", "--summary", "S"], drift.io), 1);
+  assert.match(drift.appended.S, /disagree/);
+  assert.match(drift.appended.S, /Required live, missing from the list: `path-policy`/);
+  assert.equal(policyModule.renderChecks(["a", "b", "c"]), "`a`, `b` and `c`");
+  assert.equal(policyModule.renderChecks(["a"]), "`a`");
+});
+
+test("CH2-34b: merge-audit.yml reads the live ruleset read-only and adds it to a ledger the audit wrote", () => {
+  /* MUTATIONS: drop the step -> red; give its gh api call a --method/-X ->
+     red (this job changes no setting); append to body.md without the `-s`
+     guard -> red, because an audit that died leaves body.md empty and the
+     "treat this week as unaudited" step must still see it empty. */
+  const yml = fs.readFileSync(path.join(REPO, ".github", "workflows", "merge-audit.yml"), "utf8");
+  const start = yml.indexOf("- name: Compare protect-main's live required checks with REQUIRED_CHECKS");
+  assert.ok(start > 0, "the comparison step exists");
+  const step = yml.slice(start, yml.indexOf("- name:", start + 10));
+  assert.match(step, /gh api "repos\/\$REPO\/rules\/branches\/main" > rules\.json/);
+  assert.match(step, /node tools\/ci\/path-policy\.mjs required-checks --rules rules\.json/);
+  assert.doesNotMatch(step, /--method|\s-X\s|--input|-f |-F /);
+  assert.match(step, /if \[ -s body\.md \] && \[ -s ruleset\.md \]; then \{ echo; cat ruleset\.md; \} >> body\.md; fi/);
+  assert.match(step, /::warning::/);
+  assert.match(step, /exit 0\s*$/);
+  // It runs before the ledger is posted, so its section is in the one comment.
+  assert.ok(start < yml.indexOf("- name: Post the ledger as one comment on issue 129"));
+});

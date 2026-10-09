@@ -181,8 +181,10 @@ final class AudioSessionOwner: SessionControlling {
     /// After a media-services reset every AVFoundation object is gone, and
     /// the session with them: the owner forgets its activation (the core
     /// lands inactive and activates again on the next play). The category is
-    /// the core's separate `reapplyCategory`; the decks are rebuilt by the
-    /// core's `.unload`. The notification observers need nothing: they are
+    /// the core's separate `reapplyCategory`. The players are the shell's to
+    /// rebuild, right after this (the host's `.sessionRebuild`: both decks,
+    /// the narration voice's engine, the jingle); the core's `.unload` only
+    /// detaches the item. The notification observers need nothing: they are
     /// on `NotificationCenter`, which survives the reset.
     func rebuild() {
         phase = .inactive

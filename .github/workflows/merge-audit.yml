@@ -186,6 +186,46 @@ jobs:
           if [ -s body.md ]; then { cat body.md; echo; } >> "$GITHUB_STEP_SUMMARY"; fi
           exit 0
 
+      # CH2-34b (T2-16, docs/roadmap/code-health-2.md). The repo keeps ONE copy
+      # of protect-main's required checks, `REQUIRED_CHECKS` in
+      # tools/ci/path-policy.mjs; pr-triage's self-heal and the release trigger
+      # judge by it. The ruleset is a GitHub setting no PR can change, so the
+      # copy can only follow it, and this step is how it learns it is stale:
+      # it reads the rules binding `main` with this job's own token and adds a
+      # section to the ledger (plus a warning annotation) saying whether the two
+      # agree. READ-ONLY: it changes no setting. It never fails the run: the
+      # audit's own exit code is what turns the run red, and a ruleset it could
+      # not read is said on the ledger as unknown, never as "agrees".
+      # Appends only to a body the audit wrote: an empty body.md means the
+      # audit died, and the step below must still see it empty.
+      - name: Compare protect-main's live required checks with REQUIRED_CHECKS
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -uo pipefail
+          code=0
+          if gh api "repos/$REPO/rules/branches/main" > rules.json; then
+            node tools/ci/path-policy.mjs required-checks --rules rules.json --summary ruleset.md || code=$?
+          else
+            code=2
+          fi
+          if [ "$code" = 2 ]; then
+          cat > ruleset.md <<'MD'
+          ### protect-main's required checks
+
+          The live ruleset could not be read this week, so whether `REQUIRED_CHECKS` (`tools/ci/path-policy.mjs`) still matches it is unknown.
+          MD
+          fi
+          case "$code" in
+            0) ;;
+            1) echo "::warning::protect-main's live required checks differ from REQUIRED_CHECKS in tools/ci/path-policy.mjs (see the ledger on #129)" ;;
+            *) echo "::warning::could not compare protect-main's live required checks with REQUIRED_CHECKS (exit $code)" ;;
+          esac
+          if [ -s ruleset.md ]; then { echo; cat ruleset.md; } >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -s body.md ] && [ -s ruleset.md ]; then { echo; cat ruleset.md; } >> body.md; fi
+          exit 0
+
       - name: Post the ledger as one comment on issue 129
         id: report
         env:

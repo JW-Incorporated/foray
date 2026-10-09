@@ -1022,6 +1022,87 @@ final class AVDeckTests: XCTestCase {
         deck.send(.loadURL(token: 2, url: try fixture("click", "wav"), startSec: 0, preciseTiming: true))
         XCTAssertNil(deck.player.currentItem, "a command after invalidate ran")
     }
+
+    // MARK: - A media-services reset (CH3-03, R2-03)
+
+    /// A reset kills the deck's AVPlayer, and an item attached to a dead
+    /// player never turns ready. `rebuildPlayer()` silences and detaches the
+    /// old one (its out-point's boundary observer removed from IT, the player
+    /// that added it), and makes a new player with plan §4.3's settings,
+    /// observed: the next load reaches `.ready` on the new player, plays at
+    /// the rate the listener chose before the reset, and its time-control
+    /// changes (player KVO) reach the core.
+    /// TO SEE IT FAIL: leave `player` as it was (no new object); make the new
+    /// one with a bare `AVPlayer()` (the settings fail); drop `observePlayer()`
+    /// after the swap (no `.timeControl(.playing)` for token 2); or make the
+    /// new player BEFORE `unload()` (the old boundary observer is removed
+    /// from the wrong player: AVFoundation raises, and the run crashes).
+    func testARebuildMakesANewObservedPlayerAndTheNextLoadPlaysOnIt() throws {
+        deck.send(.setRate(1.5))
+        guard loadAndWaitReady(try fixture("click", "wav"), token: 1, startSec: 2) != nil else { return }
+        deck.send(.play)
+        deck.send(.setOutPoint(sec: 30))
+        XCTAssertEqual(deck.player.rate, 1.5)
+        let old = deck.player
+
+        deck.rebuildPlayer()
+
+        XCTAssertFalse(deck.player === old, "the deck kept the player the reset killed")
+        XCTAssertEqual(old.rate, 0, "the old player still sounds")
+        XCTAssertNil(old.currentItem, "the old player still holds the item")
+        XCTAssertEqual(deck.player.actionAtItemEnd, .pause)
+        XCTAssertTrue(deck.player.automaticallyWaitsToMinimizeStalling)
+        XCTAssertTrue(deck.isObservingPlayer)
+        XCTAssertNil(deck.reading.positionSec, "a rebuilt deck holds nothing until the next load")
+        XCTAssertEqual(deck.primitives.last, "rebuild")
+
+        events.removeAll()
+        guard loadAndWaitReady(try fixture("click-cbr", "mp3"), token: 2, startSec: 4) != nil else { return }
+        XCTAssertNotNil(deck.player.currentItem)
+        deck.send(.play)
+        XCTAssertEqual(deck.player.rate, 1.5, "the listener's rate is the deck's, and survives the reset")
+        waitPlaying(2)
+    }
+
+    /// A load still in flight when the player is rebuilt reports nothing
+    /// afterwards: its item is detached, its asset cancelled, and the
+    /// generation moved, so the duration (or any other completion) that lands
+    /// late is dropped rather than reported under the load's token, and the
+    /// deck reads idle.
+    /// TO SEE IT FAIL: drop `unload()` from `rebuildPlayer()` (the old item
+    /// stays observed under its token and generation: `.durationLoaded(1)`).
+    func testALoadInFlightAtARebuildReportsNothingAfterIt() throws {
+        var assets: [AVURLAsset] = []
+        deck = makeDeck(makeAsset: { url, precise in
+            let asset = AVDeck.defaultAsset(url, precise)
+            assets.append(asset)
+            return asset
+        })
+        deck.send(.loadURL(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 5, preciseTiming: true))
+        let asset = try XCTUnwrap(assets.first)
+
+        deck.rebuildPlayer()
+
+        // Until the asset's duration request has answered (loaded, failed or
+        // cancelled) and the deck's own completion hop has had time to land.
+        XCTAssertTrue(spin(until: {
+            let status = asset.statusOfValue(forKey: "duration", error: nil)
+            return status != .loading && status != .unknown
+        }))
+        spin(0.5)
+        let late = events.filter {
+            switch $0 {
+            case .ready(1, _, _, _), .durationLoaded(1, _), .notReady(1, _, _), .failed(1, _, _),
+                 .deadlineExceeded(1, _, _), .timeControl(1, _, _):
+                return true
+            default:
+                return false
+            }
+        }
+        XCTAssertEqual(late, [], "the load the reset interrupted still reported")
+        XCTAssertNil(deck.reading.positionSec)
+        XCTAssertNil(deck.player.currentItem)
+    }
 }
 
 /// AVDeck's timers and clock in virtual time (`Config.after`, `Config.nowMs`).
