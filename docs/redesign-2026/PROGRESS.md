@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **finishing** (`wf_937abf71-8ca`, from 2026-10-08 17:10 PDT: the last 9 screens) | foundation 8/8; screens 26/35 merged (tactile 16/19, ambient 10/16); QA + QA fixes merged in both; see In flight |
+| 3–5 | **fix pass** (`wf_4cfe618f-f9c`, from 2026-10-08 23:20 PDT) | tactile 19/19 screens; ambient 13/16 (library, up-next, forays-list merged ESCALATED); fix pass: ambient now-playing, episode, now-playing-car, CI fixes both, ambient QA follow-up |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -167,3 +167,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-08 — tactile: Phase 5 QA 0 high-severity issues, fixes not needed; final lab build dispatched
 - 2026-10-08 — ambient: Phase 4 screens 3/6 merged; escalated: library, up-next
 - 2026-10-08 — ambient: Phase 5 QA 2 high-severity issues, fixes merged; final lab build dispatched
+- 2026-10-08 23:20 PDT — Finishing run `wf_937abf71-8ca` (152 agents, 0 errors, 14 Fable): tactile library, now-playing, library-forays merged (judged faithful + better than today) -> **tactile 19/19**, final QA 0 high. Ambient playlist-detail-and-playlists merged; library (not faithful, judges preferred today) and up-next (not faithful) merged ESCALATED; not merged: now-playing (ui/now-playing.css 14.2 KB > 14 KB budget, fidelity deltas), episode (inherited reduced-motion debt from ui/playlist.css), now-playing-car (review: CRLF-fragile test). Ambient QA found 1 real high (Discover search status never settles when only non-show groups match) plus the pre-existing Now Playing artwork src without safeUrl (also on main); the QA-fix unit was falsely skipped (an earlier p5-qa-fixes merge matched). Workflow gained args.rulings / extraUnits / skipQA (d0970645). Fix pass `wf_4cfe618f-f9c` launched: the 3 ambient screens with rulings, CI-fix units for both directions, ambient p5-qa-fixes-2; skipQA. ESCALATED screens for the owner's eye: ambient library, up-next, forays-list.
