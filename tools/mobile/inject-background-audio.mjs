@@ -71,6 +71,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 /** The one value iOS needs for backgrounded `<audio>`. Named so the reason
  *  travels with it. */
@@ -1067,8 +1068,7 @@ export function injectBackgroundSession(src) {
 
 /* --------------------------------------------------------------------- main */
 
-const isMain =
-  process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 /** `--encryption <true|false>` -> a boolean, or null if it is neither.
  *

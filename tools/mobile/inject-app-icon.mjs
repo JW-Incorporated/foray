@@ -62,6 +62,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { header, decode, encode } from "../brand/png.mjs";
 import { resizeArea } from "../brand/build-icons.mjs";
@@ -421,8 +422,7 @@ export function checkAppIcon(dir, sourcePath = DEFAULT_SOURCE) {
 const USAGE =
   "Usage: node tools/mobile/inject-app-icon.mjs <AppIcon.appiconset> [--check] [--source icon-1024.png]";
 
-const isMain =
-  process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 if (isMain) {
   const argv = process.argv.slice(2);

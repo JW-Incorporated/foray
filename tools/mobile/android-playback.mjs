@@ -63,7 +63,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { PKG, adb, device, num, pidOf, pngInfo, sleep } from "./adb.mjs";
 import { evaluate, expectedTitle, listTargets, pickPage, probe as launchProbe } from "./webview-probe.mjs";
 import { LOAD_SETTLE_TIMEOUT_MS } from "../../player/deck-policy.js";
@@ -2084,7 +2084,7 @@ async function main(argv) {
   return code;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).then(
     (c) => process.exit(c),
     (err) => {

@@ -31,6 +31,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { speak, buildIpaOverrides, buildAndroidSsml } from "../../mobile/plugins/foray-tts/web/foray-tts.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -168,6 +169,6 @@ function matchTermsOnly(text, lexiconEntries) {
   return matches;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv).then((code) => process.exit(code));
 }

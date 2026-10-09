@@ -83,6 +83,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -329,7 +330,7 @@ export function verifyOnDisk(pins = PINS, root = REPO_ROOT) {
 
 const USAGE = "Usage: node tools/mobile/fetch-models.mjs [--fetch|--verify|--check]";
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 /* Wrapped in a function rather than run at module scope so this file carries NO
    top-level await: `test/release-gates.test.js` is a CommonJS suite and imports
