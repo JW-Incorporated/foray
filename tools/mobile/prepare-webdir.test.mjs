@@ -53,6 +53,7 @@ import {
   UNPINNED_DATA, unpinnedDataPlan, unpinnedDataOverBudget,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
   MODEL_EXTENSIONS, assertNoModelWeights,
+  UNREAD_DATA_KEYS, unreadKeyHits, dropUnreadKeys,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
 import { isGeneratedDraft } from "../../player/foray-resolve.js";
@@ -202,6 +203,127 @@ test("the bundle ships the web's player module list, not the directory (perf/bun
     .filter((rel) => !web.includes(rel));
   assert.ok(orphans.length > 0, "no unimported player module exists, so this test no longer proves the trim");
   for (const rel of orphans) assert.ok(!planned.includes(rel), `${rel} is imported by nothing and must not ship`);
+});
+
+/* ─────────────────── the keys nothing on a device reads (perf/bundle-trim-2) ─────────────────── */
+
+/** A fixture whose documents carry UNREAD_DATA_KEYS beside keys that must ship. */
+function makeRepoWithUnreadKeys(opts = {}) {
+  const fake = makeFakeRepo(opts);
+  const rw = (rel, edit) => {
+    const abs = path.join(fake, rel);
+    const doc = JSON.parse(fs.readFileSync(abs, "utf8"));
+    edit(doc);
+    fs.writeFileSync(abs, JSON.stringify(doc, null, 2) + "\n");
+  };
+  rw("data/discover.json", (d) => { for (const it of d.items) it.episode_guid = `guid-${it.id}`; });
+  rw("data/segment-sources.json", (d) => {
+    d.provenance = { produced_by: "fixture" };
+    for (const s of d.sources) Object.assign(s, { feed_url: "https://feed.test/rss", ad_tier: "low", ad_pad_sec: 4 });
+  });
+  fs.writeFileSync(path.join(fake, "data/taxonomy.json"), JSON.stringify({
+    version: 1,
+    episode_attributes: { format: ["interview"] },
+    nodes: [{ id: "science", label: "Science", parent: null, apple_anchor: "Science", last_evidence_at: "2026-10-01" }],
+  }));
+  fs.writeFileSync(path.join(fake, "data/validated-links.json"), JSON.stringify({
+    checked_at: "2026-10-01", podlink_note: "prose",
+    episodes: { "ep-1": { apple_episode_url: "https://podcasts.apple.com/x", episode_guid: "g", duration_min_confirmed: 40 } },
+  }));
+  return fake;
+}
+
+test("perf/bundle-trim-2: unread data keys leave the bundle, and only the bundle", () => {
+  /* KILLING MUTATION: make `dropUnreadKeys` return `doc` unchanged. Every listed key
+     below is then still in the bundle (and the copied-file re-read in
+     assertSlicesOnDisk agrees, since it compares against the same untrimmed view). */
+  const fake = makeRepoWithUnreadKeys();
+  const sourceBytes = (rel) => fs.readFileSync(path.join(fake, rel));
+  const before = ["data/discover.json", "data/segment-sources.json", "data/taxonomy.json", "data/validated-links.json"]
+    .map((rel) => [rel, sourceBytes(rel)]);
+  prepare({ root: fake, out: "www" });
+  const out = (rel) => JSON.parse(fs.readFileSync(path.join(fake, "www", rel), "utf8"));
+
+  const tax = out("data/taxonomy.json");
+  assert.equal("episode_attributes" in tax, false);
+  assert.deepEqual(tax.nodes, [{ id: "science", label: "Science", parent: null }], "the read keys of a node ship");
+
+  const links = out("data/validated-links.json");
+  assert.equal("podlink_note" in links, false);
+  assert.equal(links.checked_at, "2026-10-01", "an unlisted key ships");
+  assert.deepEqual(links.episodes["ep-1"], { apple_episode_url: "https://podcasts.apple.com/x" });
+
+  /* The two SLICES are cut from the trimmed document, so the trim reaches them too. */
+  const items = out("data/discover.json").items;
+  assert.ok(items.length > 0 && items.every((it) => !("episode_guid" in it) && typeof it.id === "string"));
+  const sources = out("data/segment-sources.json");
+  assert.equal("provenance" in sources, false);
+  assert.ok(sources.sources.length > 0);
+  for (const s of sources.sources) {
+    assert.equal("feed_url" in s, false);
+    assert.equal("ad_tier" in s, false);
+    assert.equal(s.ad_pad_sec, 4, "ad_pad_sec is read by foray-resolve and must ship");
+  }
+
+  /* The repo's documents are untouched: the website keeps every key. */
+  for (const [rel, bytes] of before) assert.ok(sourceBytes(rel).equals(bytes), `${rel} was modified by the build`);
+});
+
+test("perf/bundle-trim-2: a listed key that shipped or native code names fails the build, naming it", () => {
+  /* KILLING MUTATION: delete the `assertUnreadKeysUnread(absOut, root)` call in
+     `prepare`. All three builds below then succeed and the listed key ships missing
+     to a reader. */
+  const fetches = [
+    "data/session.json", "data/taxonomy.json", "data/discover.json", "data/item-tags.json",
+    "data/forays.json", "data/segments.json", "data/segment-sources.json",
+    "data/semantic-index.json", "data/validated-links.json",
+  ].map((f) => `await fetchJson("${f}");`).join("\n");
+  const reader = makeRepoWithUnreadKeys({ appSrc: `${fetches}\nconst anchor = (n) => n.apple_anchor;\n` });
+  assert.throws(() => prepare({ root: reader, out: "www" }), (e) =>
+    e instanceof WebDirError && /data\/taxonomy\.json nodes\[\]\.apple_anchor/.test(e.message) &&
+    /app\.js/.test(e.message) && /UNREAD_DATA_KEYS/.test(e.message));
+
+  const nativeRel = "mobile/plugins/foray-audio/android/src/main/java/ai/jwlabs/X.java";
+  const native = makeRepoWithUnreadKeys();
+  fs.mkdirSync(path.dirname(path.join(native, nativeRel)), { recursive: true });
+  fs.writeFileSync(path.join(native, nativeRel), 'class X { String f(JSObject o) { return o.getString("last_evidence_at"); } }\n');
+  assert.throws(() => prepare({ root: native, out: "www" }), (e) =>
+    e instanceof WebDirError && /last_evidence_at/.test(e.message) && e.message.includes(nativeRel));
+
+  /* A native TEST naming a key is not a reader on a phone. */
+  const testOnly = makeRepoWithUnreadKeys();
+  const testRel = "mobile/plugins/foray-audio/android/src/test/java/ai/jwlabs/XTest.java";
+  fs.mkdirSync(path.dirname(path.join(testOnly, testRel)), { recursive: true });
+  fs.writeFileSync(path.join(testOnly, testRel), 'class XTest { String k = "last_evidence_at"; }\n');
+  assert.doesNotThrow(() => prepare({ root: testOnly, out: "www" }));
+});
+
+test("perf/bundle-trim-2: dropUnreadKeys copies, and walks arrays and maps", () => {
+  const doc = { keep: 1, gone: 2, rows: [{ a: 1, x: 2 }, { a: 3 }], map: { k1: { a: 1, x: 2 }, k2: null } };
+  const table = { "data/t.json": ["gone", "rows[].x", "map.*.x", "absent", "rows[].absent"] };
+  const out = dropUnreadKeys("data/t.json", doc, table);
+  assert.deepEqual(out, { keep: 1, rows: [{ a: 1 }, { a: 3 }], map: { k1: { a: 1 }, k2: null } });
+  assert.equal(doc.gone, 2, "the argument is never mutated: readers cache it");
+  assert.equal(doc.rows[0].x, 2);
+  assert.equal(dropUnreadKeys("data/other.json", doc, table), doc, "a file with no entry is passed through as is");
+});
+
+test("REAL REPO: every UNREAD_DATA_KEYS path still names a key in its source, and the bundle carries none", () => {
+  /* Non-vacuity: a path that matches nothing is a rule that has stopped being
+     tested (the key was renamed upstream, say) — delete it deliberately. And the
+     real bundle, built through every slice, carries none of the listed keys.
+     KILLING MUTATION: in `projectData`, read through `docReader(root)` instead of
+     `sourceReader(root)` — the discover slice keeps `episode_guid` and this fails. */
+  for (const [rel, paths] of Object.entries(UNREAD_DATA_KEYS)) {
+    const source = JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+    for (const p of paths) assert.ok(unreadKeyHits(source, p).length > 0, `${rel} ${p} names no key in the source`);
+  }
+  withRealBundle((r, absOut) => {
+    for (const [rel, paths] of Object.entries(UNREAD_DATA_KEYS)) {
+      const bundled = JSON.parse(fs.readFileSync(path.join(absOut, rel), "utf8"));
+      for (const p of paths) assert.equal(unreadKeyHits(bundled, p).length, 0, `the bundled ${rel} still carries ${p}`);
+    }
+  });
 });
 
 test("index.html's own script and style references are all bundled", () => {
