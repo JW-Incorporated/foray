@@ -344,7 +344,7 @@ describe("a budget stop names the stage and the spend (F-04)", () => {
     expect(stop.message).toContain("--budget-usd");
   });
 
-  it("names the daily cap when that is the one that tripped, through §4.4's own wrapper", async () => {
+  it("names the run cap when that is the one that tripped, through §4.4's own wrapper", async () => {
     /* §4.4 catches everything an act's build throws and re-throws its own
        `ActDeepeningError` with the original on `cause`. Without the cause walk
        this surfaces as "Deepening act 1 failed after 1 retry" and the dollar
@@ -352,7 +352,7 @@ describe("a budget stop names the stage and the spend (F-04)", () => {
        wrapper further out. */
     const deps = countingDeps().deps;
     deps.deepenBuilder.deepenAct = async () => {
-      throw new BudgetExceededError(1, 24.9, 0.2, 25);
+      throw new BudgetExceededError(24.9, 0.2, 25);
     };
     const err = await runForayPipeline(request, { userId: "u" }, { ...deps, finalize: fakeFinalize().fn }).then(
       () => null,
@@ -360,8 +360,8 @@ describe("a budget stop names the stage and the spend (F-04)", () => {
     );
     expect(err).toBeInstanceOf(BudgetStopError);
     expect((err as BudgetStopError).stage).toBe("deepen");
-    expect((err as BudgetStopError).scope).toBe("daily");
-    expect((err as Error).message).toContain("DAILY_BUDGET_USD");
+    expect((err as BudgetStopError).scope).toBe("run");
+    expect((err as Error).message).toContain("RUN_BUDGET_USD");
   });
 
   it("leaves a non-budget failure exactly as it was", async () => {
