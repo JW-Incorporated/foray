@@ -552,7 +552,7 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
     func pause() -> Bool {
         guard lineId != nil, !held else { return false }
         held = true
-        if attached { player.pause() }
+        if attached { player.pause(); engine.pause() }
         return true
     }
 
@@ -638,7 +638,6 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         guard id == lineId else { return }
         lineId = nil
         utterance = nil
-        idle()
         onEnd?(id, end)
     }
 
