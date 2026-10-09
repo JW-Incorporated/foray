@@ -166,9 +166,12 @@ public final class EngineState {
      * A load in flight, and the second it was asked to land on: until the deck holds the
      * item, that is where the listener is (client.js {@code episodePositionSec}'s
      * {@code loadingStart}, audit round 2 p-impatient-1). A rendered bridge and a spoken
-     * line load differently; they arrive with A-40 and A-41.
+     * line load differently; they arrive with A-40 and A-41. {@code url} is the URL this
+     * deck load opened: a {@code file:} URL that fails is retried once on the item's stream
+     * ({@code fallBackToStream}, CH3-12), whose own load opened the stream, so its failure
+     * is the stop.
      */
-    public record PendingLoad(int token, String itemId, double startSec) {}
+    public record PendingLoad(int token, String itemId, double startSec, String url) {}
 
     /** A play-ish intent waiting for its activation's answer. */
     public record PendingActivation(int requestId, DeferredIntent intent, Vocabulary.Source source) {}

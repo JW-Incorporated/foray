@@ -4812,38 +4812,57 @@ function degradeLocalPlay() {
 
 /** The native engine's word on the downloaded copy `play()` left it loading
     (the ticket `play()` HELD past `loadingItem`; review of offline-missing-file).
-    Called with every engine event in native mode.
-    - `error` with code "load" while the ticket names the current episode: the
-      file was not there. `degradeLocalPlay` — online the stream retry (and a
-      retry that fails is painted, as `reportPlayFailure` chains it), offline
-      the drop: bar line, earcon, and app.js moves Up Next on.
-    - a snapshot that says that episode is `playing` (or already `ended`): the
-      file played. The ticket is spent and app.js stamps the play
-      (`onPlayedFromFile`), exactly what `play()` does when a load has settled
-      by the time it returns.
+    Called with every engine event in native mode. It only BOOKKEEPS: the
+    engine streams a file that will not open by itself (CH3-12, R4-03:
+    EngineCore `fallBackToStream`), because the page may be asleep when it
+    fails.
+    - `error` with code "load" while the ticket names the current episode, or
+      a snapshot of that episode whose `lastError` is "load": the file was not
+      there (`engineFileMissing`). The snapshot is how a page that was ASLEEP
+      learns it: the bridge drops every event while the page is hidden, and
+      the snapshot it reads on its way back (`attachEngine`) still says it,
+      because `lastError` means the current item (the bridge ends it with
+      every start; R1-17). Without it the stream's `playing` snapshot below
+      would stamp the missing file as played.
+    - a snapshot that says that episode is `playing` (or already `ended`)
+      with no error: the file played. The ticket is spent and app.js stamps
+      the play (`onPlayedFromFile`), exactly what `play()` does when a load
+      has settled by the time it returns.
     Anything else leaves the ticket alone: `loadingItem` is still going, and
-    `idle` is what the engine snapshots JUST BEFORE its load error (the
-    snapshot comes first, native-engine.js), so idle must not spend it. A
+    an `idle` snapshot with no error says nothing about the file. A
     `chain-start` error is a hop the engine walked, never this play. */
 function settleEngineLocalLoad(ev) {
   const attempt = localAttempt;
   if (!attempt || current?.id !== attempt.item.id) return;
   if (ev?.type === "error") {
-    if (ev.code !== "load") return;
-    const retry = degradeLocalPlay();
-    if (retry && typeof retry.then === "function") {
-      retry.then(
-        (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },
-        (e) => ForayPlayer.reportPlayFailure(e),
-      );
-    }
+    if (ev.code === "load") engineFileMissing();
     return;
   }
   if (ev?.type !== "snapshot") return;
   const s = ev.snapshot;
-  if (s?.itemId !== attempt.item.id || (s.state !== "playing" && s.state !== "ended")) return;
+  if (s?.itemId !== attempt.item.id) return;
+  if (s.lastError === "load") return engineFileMissing();
+  if (s.state !== "playing" && s.state !== "ended") return;
   localAttempt = null;
   try { window.forayDownloads?.onPlayedFromFile?.(attempt.item.id); } catch (_) { /* the record is app.js's; the play already started */ }
+}
+
+/** The engine could not open the downloaded copy the held ticket names
+    (CH3-12). #29's rule (`missingFileAction`) still decides, but online the
+    stream is already the ENGINE's — it loads `source_audio_url` itself — so
+    the page only spends the ticket and has app.js mark the record ("streaming
+    instead"); a second stream started here would only fight the engine's.
+    Offline is `degradeLocalPlay`'s drop, as in the JS lane: the engine cannot
+    know it is offline, and moving Up Next on supersedes a stream that could
+    only time out. */
+function engineFileMissing() {
+  if (downloadStore.missingFileAction({ online: browserOnline() }) === downloadStore.MISSING_DROP) {
+    degradeLocalPlay();
+    return;
+  }
+  const attempt = localAttempt;
+  localAttempt = null;
+  try { window.forayDownloads?.onMissing?.(attempt.item.id); } catch (_) { /* the record is app.js's; the engine streams it */ }
 }
 
 /* The earcon (#29; docs/brief/04_VOICE_AUDIO_SPEC.md: "Confirmations are

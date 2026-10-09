@@ -582,8 +582,8 @@ test("CH3-12: a downloaded copy that will not load lands idle after one load —
      fallback stays the page's (client.js `degradeLocalPlay`, test/
      downloads.test.js), which reads exactly this idle landing. So the
      manager itself never retries: one load, idle, nothing audible.
-     MUTATION: have `_loadItem` retry a failed load on `item.source_audio_url`
-     -> a second load and a playing state, red. */
+     MUTATION: in `_loadRenderedOrCatch`'s catch, load `{ ...item, audio_url:
+     item.source_audio_url }` again -> a second load, red. */
   const { m, backend } = make({ backend: { failLoadFor: ["a"] } });
   m.setQueueFromPick(ep("a", { audio_url: "file:///files/a.mp3", source_audio_url: "https://cdn/a.mp3", isLocalFile: true }));
   await m.play(0).catch(() => {});

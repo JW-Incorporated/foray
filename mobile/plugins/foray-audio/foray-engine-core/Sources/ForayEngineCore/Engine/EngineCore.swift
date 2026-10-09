@@ -1079,8 +1079,10 @@ public struct EngineCore {
     /// one `.load` with a fresh token. The index moves NOW (after the outgoing
     /// save already ran); the loaded id moves only when `.ready` comes back.
     /// `attempt` is §16's: 1 for every load the reducer asks for, higher only
-    /// for a Foray clip's retry (`retryOrSkipClip`).
-    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets, attempt: Int = 1) {
+    /// for a Foray clip's retry (`retryOrSkipClip`). `url` replaces the
+    /// item's own `audio_url` for this one load: the stream a downloaded copy
+    /// that will not open falls back to (`fallBackToStream`, CH3-12).
+    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets, attempt: Int = 1, url: String? = nil) {
         guard let item = state.queue.first(where: { $0.id == ref.id }) else {
             // Drop the beat's deadline with the item it belonged to.
             endSeamGap("unknownRef")
@@ -1145,8 +1147,9 @@ public struct EngineCore {
             // SPOKEN (NE-31s).
             return loadSpokenLine(item, token: token, restart: offsets.forced != nil)
         }
-        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec, attempt: attempt)
-        deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
+        let opened = url ?? item.audioUrl
+        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec, attempt: attempt, url: opened)
+        deckCommand(.load(token: token, itemId: item.id, url: opened, startSec: startSec,
                           preciseTiming: item.preciseTiming(approximateCBR: config.approximateCBRClips),
                           deadlineClass: DeckDeadlineClass(item)))
     }
@@ -1332,6 +1335,11 @@ public struct EngineCore {
         if isPending, let pending = state.pendingLoad, retryOrSkipClip(pending, cause: cause, why: fallbackCause) {
             return
         }
+        // CH3-12: a downloaded copy that will not open streams instead.
+        if isPending, let pending = state.pendingLoad,
+           fallBackToStream(pending, message: message, cause: cause, why: fallbackCause) {
+            return
+        }
         let itemId = state.pendingLoad?.itemId ?? state.loadedId ?? "?"
         state.pendingLoad = nil
         stopRow(cause)
@@ -1345,6 +1353,43 @@ public struct EngineCore {
             out.append(.emit(.error(code: "load", message: message)))
         }
         dispatch(.error("loadItem(\(itemId)) failed: \(message)"))
+    }
+
+    /// CH3-12 (R4-03): a DOWNLOADED copy that will not open (the file was
+    /// removed, or an app update moved the container it lived in) is loaded
+    /// again from its stream, at the same second, once. The page sends a
+    /// downloaded item with the file in `audio_url` and the stream kept as
+    /// `source_audio_url` (download-store.js `localPlayable`); in the JS lane
+    /// the page itself streams it (client.js `degradeLocalPlay`), but here the
+    /// failure can land with the page asleep (a car press after a cold
+    /// restore, a hop the engine walked), and the bridge drops every event
+    /// while the page is hidden, so the page's fallback never ran.
+    ///
+    ///   - Only a load that opened a `file:` URL falls back, and only onto a
+    ///     non-empty `source_audio_url`. The fallback's own load opened the
+    ///     stream, so a failure of THAT is the caller's stop, as today: once.
+    ///   - Offline is not the core's to know: the stream runs into its own
+    ///     deadline, and then stops `cause=load-deadline`.
+    ///   - No `stopRow`: a fallback is not a stop (`deck kind=stream-fallback`
+    ///     says what happened). The page still hears `error` code `load`, so
+    ///     it marks the download missing; that code is the snapshot's
+    ///     `lastError` too, which is how a page that slept through it learns.
+    ///
+    /// Not pinned by a fixture: the JS manager has no such rule (its lane's
+    /// fallback is the page's), so `player/parity/exclusions.json` says so and
+    /// both cores pin it with identically named unit tests.
+    private mutating func fallBackToStream(_ pending: PendingLoad, message: String, cause: Vocabulary.StopCause,
+                                           why: Vocabulary.NarrationFallbackCause) -> Bool {
+        guard !pending.bridge, pending.spokenSeq == nil, pending.url?.hasPrefix("file:") == true,
+              let item = state.queue.first(where: { $0.id == pending.itemId }),
+              let stream = item.node["source_audio_url"]?.stringValue, !stream.isEmpty else { return false }
+        // `why`, not `cause`, as in `retryOrSkipClip`: this row is not a stop.
+        diag("deck", [JSONMember("kind", .string("stream-fallback")), JSONMember("token", .number(Double(pending.token))),
+                      JSONMember("why", .string(cause.rawValue)), JSONMember("fileCause", .string(why.rawValue))])
+        state.pendingLoad = nil
+        out.append(.emit(.error(code: "load", message: message)))
+        load(item.ref, offsets: LoadOffsets(explicit: pending.startSec), attempt: pending.attempt, url: stream)
+        return true
     }
 
     /// §16 (queue-manager.js `_retryOrSkipClip`; the M2 car drive,

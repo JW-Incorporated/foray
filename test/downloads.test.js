@@ -771,7 +771,7 @@ test("client.js degrade: offline drops (bar line, earcon, onMissing offline, ans
      app.js says "streaming instead" and never advances; red.
      MUTATION 4: `return null;` instead of `return false;` in the branch —
      play() falls through to its rethrow/"couldn't load"; red on the answer. */
-  const src = clientFn("function degradeLocalPlay(");
+  const src = clientFn("function degradeLocalPlay() {");
   const run = (online, { ticketFor = "ep-1" } = {}) => {
     const log = { missing: [], plays: [], lines: [], earcons: 0 };
     const window = { forayDownloads: { onMissing: (...a) => log.missing.push(a) } };
@@ -951,20 +951,21 @@ test("native lane: play() holds the downloaded copy's ticket while the engine is
     "a thrown play is never a hold, never a stamp");
 });
 
-test("native lane: the engine's load error over a held ticket streams online and drops offline; a playing snapshot spends it", async () => {
-  /* settleEngineLocalLoad + degradeLocalPlay, executed together over one
-     shared ticket, and onEngineEvent's call into them.
+test("native lane: the engine's load error over a held ticket is marked online (the engine streams it) and dropped offline; a playing snapshot spends it", async () => {
+  /* settleEngineLocalLoad + engineFileMissing + degradeLocalPlay, executed
+     together over one shared ticket, and onEngineEvent's call into them.
      MUTATION: delete `settleEngineLocalLoad(ev);` from onEngineEvent — the
      engine's load error reaches nothing: no earcon, no drop, no stream; red
      on the wiring case.
      MUTATION 2: drop the `(s.state !== "playing" && s.state !== "ended")`
      test — the idle snapshot the engine sends JUST BEFORE its load error
      spends the ticket, and the error then degrades nothing; red.
-     MUTATION 3: drop `if (ev.code !== "load") return;` — a hop the engine
-     walked (`chain-start`) drops or streams the episode on screen; red.
-     MUTATION 4: drop the `retry.then(...)` chain — a stream retry that fails
-     too is never painted; red on `reports`. */
-  const src = `${clientFn("function degradeLocalPlay(")}\n${clientFn("function settleEngineLocalLoad(ev) {")}`;
+     MUTATION 3: drop the `ev.code === "load"` test — a hop the engine
+     walked (`chain-start`) drops or marks the episode on screen; red.
+     CH3-12: online the ENGINE streams the file that would not open
+     (EngineCore `fallBackToStream`), so the page only marks the record — no
+     second stream of its own, and nothing for it to paint. */
+  const src = ["function degradeLocalPlay() {", "function engineFileMissing() {", "function settleEngineLocalLoad(ev) {"].map((head) => clientFn(head)).join("\n");
   const lane = ({ online, playOk = true, currentId = "ep-1" }) => {
     const log = { missing: [], plays: [], lines: [], earcons: 0, stamped: [], reports: [] };
     const window = { forayDownloads: {
@@ -1009,9 +1010,10 @@ test("native lane: the engine's load error over a held ticket streams online and
   on.settle(loadError);
   await settle();
   assert.deepStrictEqual(on.log.missing, [["ep-1"]], "online: marked, streaming instead");
-  assert.deepStrictEqual(on.log.plays, [{ id: "ep-1", opts: { why: "w", noLocal: true } }], "streamed once, noLocal");
+  assert.deepStrictEqual(on.log.plays, [], "the engine streams it; the page starts no second stream (CH3-12)");
   assert.strictEqual(on.log.earcons, 0);
-  assert.deepStrictEqual(on.log.reports, [null], "and a stream that fails too is painted");
+  assert.deepStrictEqual(on.log.reports, [], "nothing of the page's to paint");
+  assert.strictEqual(on.held(), false, "spent");
 
   const played = lane({ online: false });
   played.settle(snap("playing", "ep-other"));
@@ -1052,10 +1054,9 @@ test("CH3-12: the engine streams a downloaded copy that will not open; the page 
      MUTATION: drop the `s.lastError === "load"` branch from
      settleEngineLocalLoad — the return snapshot stamps a missing file as
      played (red on `stamped`), and offline nothing is dropped.
-     MUTATION 2: drop `if (streamedByEngine) return true;` from
-     degradeLocalPlay — the page starts a second stream over the engine's;
-     red on `plays`. */
-  const src = `${clientFn("function degradeLocalPlay(")}\n${clientFn("function settleEngineLocalLoad(ev) {")}`;
+     MUTATION 2: make engineFileMissing call `degradeLocalPlay()` online too
+     — the page starts a second stream over the engine's; red on `plays`. */
+  const src = ["function degradeLocalPlay() {", "function engineFileMissing() {", "function settleEngineLocalLoad(ev) {"].map((head) => clientFn(head)).join("\n");
   const lane = ({ online }) => {
     const log = { missing: [], plays: [], lines: [], earcons: 0, stamped: [] };
     const window = { forayDownloads: {
