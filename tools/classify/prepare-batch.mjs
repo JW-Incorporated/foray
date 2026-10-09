@@ -63,7 +63,6 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import {
   parseShard,
@@ -76,6 +75,7 @@ import {
 import { selectFreshCandidates, selectEscalateCandidates } from "./select.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { readResponseCapped } from "../refresh/fetch-limits.mjs";
+import { feedParser } from "../refresh/feed-xml.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -185,8 +185,7 @@ export function tier0Prior(show, gmap, taxonomyIds, staleTopics = new Set()) {
 let xmlParserInstance = null;
 function xmlParser() {
   if (!xmlParserInstance) {
-    const { XMLParser } = createRequire(join(ROOT, "backend", "package.json"))("fast-xml-parser");
-    xmlParserInstance = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
+    xmlParserInstance = feedParser();
   }
   return xmlParserInstance;
 }

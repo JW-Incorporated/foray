@@ -171,10 +171,49 @@ test("testLongCall_PositionAndItemIdentityPreservedThroughoutInterruption", () =
 });
 
 test("testInterruptionBeganDuringLoadDoesNotPauseOrSavePosition", () => {
-  // Nothing audible yet; no position to save, nothing to pause.
+  // Nothing audible yet; no position to save, nothing to pause. It records
+  // wasPlaying: true (CH3-01): the listener's intent was to play.
   const [state, effects] = reduce(S.loadingItem(episodeA, null), E.interruptionBegan());
-  assert.deepStrictEqual(state, S.interrupted(episodeA, false));
+  assert.deepStrictEqual(state, S.interrupted(episodeA, true));
   assert.deepStrictEqual(effects, [F.emitTelemetry("interruption.began.duringLoad")]);
+});
+
+test("testInterruptionDuringLoad_EndsWithShouldResume", () => {
+  // CH3-01 (R2-01): a nav prompt or "Hey Siri" that lands while the target is
+  // still LOADING (a cold play, a seam, a retry), and ends with shouldResume,
+  // resumes the load (founder question 1's default, docs/roadmap/code-health-3.md).
+  // KILLING MUTATION: the load arm's `interrupted(target, true)` reverted to
+  // `false` (red here, in the Swift twin, and in the queue-state fixtures).
+  const [interrupted] = reduce(S.loadingItem(episodeA, null), E.interruptionBegan());
+  assert.deepStrictEqual(interrupted, S.interrupted(episodeA, true));
+
+  // A stray itemLoaded arriving inside the interruption must not start
+  // playback into the call.
+  const [stray, strayEffects] = reduce(interrupted, E.itemLoaded());
+  assert.deepStrictEqual(stray, interrupted);
+  assert.ok(isTelemetry(strayEffects[0]), "expected itemLoaded to be ignored");
+
+  const [resumed, effects] = reduce(interrupted, E.interruptionEnded(true));
+  assert.deepStrictEqual(resumed, S.loadingItem(episodeA, episodeA));
+  assert.deepStrictEqual(effects, [
+    F.loadItem(episodeA), F.emitTelemetry("interruption.ended.resumed"),
+  ]);
+});
+
+test("testRouteLostDuringLoad_ThenACallEndsWithShouldResume_StaysPaused", () => {
+  // A lost route is not resumable, and a call that begins and ends inside the
+  // loss does not make it so. KILLING MUTATION: the route arm's
+  // `interrupted(target, false)` during a load flipped to `true`.
+  const [lost] = reduce(S.loadingItem(episodeA, null), E.routeChanged(true));
+  assert.deepStrictEqual(lost, S.interrupted(episodeA, false));
+
+  const [ringing, beganEffects] = reduce(lost, E.interruptionBegan());
+  assert.deepStrictEqual(ringing, lost);
+  assert.deepStrictEqual(beganEffects, []);
+
+  const [after, effects] = reduce(ringing, E.interruptionEnded(true));
+  assert.deepStrictEqual(after, S.interrupted(episodeA, false));
+  assert.deepStrictEqual(effects, [F.emitTelemetry("interruption.ended.staysPaused")]);
 });
 
 test("testInterruptionBeganIsIdempotent", () => {

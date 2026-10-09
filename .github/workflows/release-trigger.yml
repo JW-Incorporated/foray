@@ -23,13 +23,17 @@
 # the founder's current same-day cadence buys.
 #
 # ⚠️ IT DISPATCHES; IT NEVER RE-RUNS
-# release.yml derives the build number from `github.run_number`, and "Re-run
-# failed jobs" reuses the version job's cached outputs — the SAME build number,
-# which App Store Connect refuses as a duplicate (the plan's "BUILD NUMBER
-# COLLIDES ON A RE-RUN" section). A fresh dispatch gets a new run_number, so a
-# new build number, and rebuilds both stores from one commit, which is also
-# what re-converges two stores that diverged. watch-release.test.mjs pins that
-# no workflow in this pair says `rerun`.
+# release.yml's `version` job computes the build number once per run: the UTC
+# day plus a run-of-day slot from tools/release/build-number.mjs, the larger of
+# the count of that day's release.yml runs so far and one past the highest
+# slot an earlier run of the day printed (ci-release-4). "Re-run failed jobs"
+# replays the version job's cached outputs — the SAME build number, which App
+# Store Connect refuses as a duplicate (the plan's "BUILD NUMBER COLLIDES ON A
+# RE-RUN" section), and since OPS-04 the ios and android jobs refuse a re-run
+# attempt outright. A fresh dispatch is a new run of the day, so it counts one
+# higher, gets a new build number, and rebuilds both stores from one commit,
+# which is also what re-converges two stores that diverged.
+# watch-release.test.mjs pins that no workflow in this pair says `rerun`.
 #
 # IT ALSO WATCHES THE WATCHDOG
 # release-watch.yml checks this workflow is alive; this one checks that one.

@@ -53,9 +53,12 @@ test("no string value in any data/*.json carries an HTML entity", async () => {
 });
 
 test("the ingest points that write listener-facing text all decode through the one module", () => {
-  /* MUTATION: drop the `decodeEntities(` around a title in tools/refresh/scan.mjs -> red. */
+  /* MUTATION: drop the `decodeEntities(` around the title in tools/refresh/feed-xml.mjs -> red.
+     scan.mjs and backfill-show.mjs read every RSS title through feed-xml.mjs's itemIdentity
+     (code-health-2 CH2-29); tools/refresh/feed-xml.test.mjs pins that they import it. */
   const uses = (rel, re) => assert.match(fs.readFileSync(path.join(ROOT, rel), "utf8"), re, rel);
-  uses("tools/refresh/scan.mjs", /import \{ decodeEntities \} from "\.\/entities\.mjs";[\s\S]*const title = decodeEntities\(text\(it\.title\)\);/);
-  uses("tools/refresh/backfill-show.mjs", /import \{ decodeEntities \} from "\.\/entities\.mjs";[\s\S]*const title = decodeEntities\(text\(it\.title\)\);/);
+  uses("tools/refresh/feed-xml.mjs", /import \{ decodeEntities \} from "\.\/entities\.mjs";[\s\S]*const title = decodeEntities\(text\(it\.title\)\);/);
+  uses("tools/refresh/scan.mjs", /import \{[^}]*itemIdentity[^}]*\} from "\.\/feed-xml\.mjs";/);
+  uses("tools/refresh/backfill-show.mjs", /import \{[^}]*itemToPendingRecord[^}]*\} from "\.\/feed-xml\.mjs";/);
   uses("tools/classify/merge-results.mjs", /import \{ decodeEntities \} from "\.\.\/refresh\/entities\.mjs";[\s\S]*blurb: typeof raw\.blurb === "string" \? decodeEntities\(raw\.blurb\)/);
 });

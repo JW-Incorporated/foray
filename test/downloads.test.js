@@ -623,9 +623,12 @@ test("player/client.js publishes the real modules on window.forayDownloads, and 
   assert.match(src, /import \{ createDownloadBridge, USER_AGENT, userAgentFor \} from "\.\/download-bridge\.js";/);
   const published = /window\.forayDownloads = \{([\s\S]*?)\n\};/.exec(src);
   assert.ok(published, "window.forayDownloads is published");
-  for (const field of ["store: downloadStore,", "createBridge: createDownloadBridge,", "USER_AGENT,", "recordFor:", "onMissing:", "onPlayedFromFile:"]) {
+  for (const field of ["store: downloadRecordRules,", "createBridge: createDownloadBridge,", "USER_AGENT,", "recordFor:", "onMissing:", "onPlayedFromFile:"]) {
     assert.ok(published[1].includes(field), `window.forayDownloads carries ${field}`);
   }
+  /* CH3-04: the store is download-store.js's own rules, its writer wrapped
+     only to re-send the engine's plan (test/engine-continuation.test.js). */
+  assert.match(src, /const downloadRecordRules = Object\.freeze\(\{\s*\.\.\.downloadStore,\s*writeDownloads\(storageArea, value\) \{\s*const wrote = downloadStore\.writeDownloads\(storageArea, value\);/);
   assert.match(src, /surface\.userAgent = userAgentFor\(stamp\.native \?\? stamp\.version\);/);
   assert.strictEqual((src.match(/\breadBuildStamp\(/g) || []).length, 1, "one build-stamp read, shared");
   assert.match(src, /noteDownloadsBuild\(stamp\)/, "the one read's answer reaches the downloads UA");

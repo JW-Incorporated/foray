@@ -13,7 +13,7 @@
    `max_episode_updated_at` stays null when no row carries one. The asset-id
    half still works on its own, which is the fallback corpus.md PKG-03 names.
 
-   Timestamps are compared as instants (Date.parse), not as strings: the
+   Timestamps are compared as instants (time.mjs instant), not as strings: the
    synthetic fixture writes `...:00Z`, episodes.mjs writes `...:00.000Z`, and
    pg returns Date objects, and as strings "Z" sorts after ".". State is
    written with tools/segments/sweep-transcripts.mjs writeJsonAtomic (imported;
@@ -22,6 +22,7 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { writeJsonAtomic } from "../segments/sweep-transcripts.mjs";
+import { instant } from "./time.mjs";
 
 export class DeltaError extends Error {
   constructor(code, detail) {
@@ -34,14 +35,6 @@ export class DeltaError extends Error {
 
 export function emptyState() {
   return { version: 1, last_export_version: null, high_water: { max_asset_id: 0, max_episode_updated_at: null } };
-}
-
-/** An instant in ms, or null for null / unparsable. Accepts ISO strings and
-    Date objects (what pg returns for timestamptz). */
-function instant(value) {
-  if (value == null) return null;
-  const t = value instanceof Date ? value.getTime() : Date.parse(value);
-  return Number.isNaN(t) ? null : t;
 }
 
 /**

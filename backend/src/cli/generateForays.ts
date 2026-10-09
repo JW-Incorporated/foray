@@ -60,8 +60,8 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *   the rule it applies is the founder's: every step a person or an
  *   orchestrating session does by hand is a defect. So the driver now
  *   resumes itself from the checkpoint on a transient failure — a transport
- *   timeout (I-27's "Request timed out." on the relay), a 5xx/429, a daily
- *   budget window — up to `--max-resumes` times with backoff; ends a run with a
+ *   timeout (I-27's "Request timed out." on the relay), a 5xx/429 — up to
+ *   `--max-resumes` times with backoff; ends a run with a
  *   NAMED reason when the partial candidate is refused (step 10) instead of a
  *   person watching for it; runs a shell hook with a one-line summary at the
  *   end (step 24, I-15's lost completion signal); and suffixes a duplicate id
@@ -105,10 +105,10 @@ export interface CliArgs {
   /**
    * Per-run spend ceiling in USD (F-04 / I-01). Null means "use the
    * environment's caps", which is the normal case. Given a number, it becomes
-   * BOTH the per-Foray and the daily ceiling for this process — the two must
-   * move together, because generation calls are not tier-prefixed and so are
-   * scored tier 1, whose cutoff is the whole daily budget: raising only the
-   * per-Foray cap would just move the stop to the daily one.
+   * BOTH the per-Foray and the run ceiling for this process — the two must
+   * move together, because every metered call also counts against the whole
+   * run cap: raising only the per-Foray cap would just move the stop to the
+   * run one.
    */
   budgetUsd: number | null;
   /** Ignore any checkpoint on disk and rebuild every stage (F-17/F-18). */
@@ -222,11 +222,10 @@ export type FailureKind =
   /** Transport or upstream trouble that a later attempt can clear: a timeout,
    * a connection reset, a 5xx, a 429/overloaded reply. Resumed with backoff. */
   | "transient"
-  /** The DAILY budget cap (manual step 26): resumed when the local day rolls
-   * over, because that is when `BudgetGuard`'s window resets. */
-  | "budget-window"
-  /** The PER-FORAY cap: not resumable — the same Foray would trip it again;
-   * raising the cap is a decision, not a retry. */
+  /** Either budget cap: not resumable. The per-Foray cap would trip again on
+   * the same Foray, and the RUN cap is this process's whole budget — there is
+   * no window that resets it (CH2-04). Raising a cap is a decision, not a
+   * retry; a run-cap stop also ends the batch (`runBudgetSpent`). */
   | "budget-stop"
   /** `RefusedPartialError` (manual step 10): the named abort. */
   | "refused-partial"
@@ -257,7 +256,7 @@ function errorMessage(err: unknown): string {
 export function classifyFailure(err: unknown): FailureClass {
   if (err instanceof RefusedPartialError) return { kind: "refused-partial", reason: err.message };
   if (err instanceof BudgetStopError) {
-    return { kind: err.scope === "daily" ? "budget-window" : "budget-stop", reason: err.message };
+    return { kind: "budget-stop", reason: err.message };
   }
   let current: unknown = err;
   for (let depth = 0; depth < 8 && current !== undefined && current !== null; depth++) {
@@ -281,19 +280,11 @@ export function resumeBackoffMs(resumeIndex: number): number {
   return Math.min(30_000 * 2 ** resumeIndex, 600_000);
 }
 
-/** Until the next local midnight plus a minute — `startOfLocalDayIso` is the
- * window `BudgetGuard` sums against, so that is exactly when a daily stop
- * clears (manual step 26). */
-export function msUntilNextLocalDay(now: Date): number {
-  const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
-  return next.getTime() - now.getTime() + 60_000;
-}
-
 /** One automatic resume, as recorded in `report.json`. */
 export interface ResumeRecord {
   /** 1-based: the Nth resume of this prompt. */
   attempt: number;
-  kind: "transient" | "budget-window";
+  kind: "transient";
   reason: string;
   waitedMs: number;
   /** ISO time the wait began. */
@@ -303,6 +294,50 @@ export interface ResumeRecord {
 /** The named reasons a run ends without a pipeline outcome (G-30 b). A plain
  * bug still lands as `outcome: "error"`, exactly as before. */
 export type AbortReason = "refused-partial" | "budget-stop" | "resumes-exhausted";
+
+/** What one prompt produced. `runBudgetSpent` is set only when the prompt
+ * stopped on the RUN cap (`RUN_BUDGET_USD`), which is the whole process's
+ * budget — so the batch stops there instead of starting prompts that cannot
+ * spend anything (CH2-04). */
+export interface CandidateResult {
+  skipped: boolean;
+  entry?: ReportEntry;
+  file?: string;
+  runBudgetSpent?: true;
+}
+
+/** The batch: one prompt after another, ending early on a run-cap stop. One
+ * prompt's other failures never end it (they are recorded and the next prompt
+ * is attempted). Returns what the report needs, and how many prompts were
+ * never attempted because the run cap was spent. */
+export async function generateQueue(
+  queue: PromptSpec[],
+  generateOne: (spec: PromptSpec) => Promise<CandidateResult>
+): Promise<{ report: ReportEntry[]; generated: number; skipped: number; notAttempted: number }> {
+  const report: ReportEntry[] = [];
+  let generated = 0;
+  let skipped = 0;
+  for (const [i, spec] of queue.entries()) {
+    const result = await generateOne(spec);
+    if (result.skipped) {
+      skipped++;
+      continue;
+    }
+    if (result.entry) {
+      report.push(result.entry);
+      if (result.file) generated++;
+    }
+    if (result.runBudgetSpent) {
+      const notAttempted = queue.length - i - 1;
+      console.log(
+        `STOP   RUN_BUDGET_USD spent: the run cap is everything this process may spend, so ${notAttempted} prompt(s) were not attempted. ` +
+          `Raise it with --budget-usd (or RUN_BUDGET_USD) and re-run; candidates already built are skipped.`
+      );
+      return { report, generated, skipped, notAttempted };
+    }
+  }
+  return { report, generated, skipped, notAttempted: 0 };
+}
 
 /* ────────────────────────────────────────────────────────────────────────────
    G-30 (c): the completion hook. A shell command, not a service — the
@@ -507,7 +542,7 @@ export function mergeReportEntries(prior: readonly PriorReportEntry[], current: 
  * the exact moment WS-D2's "rewrites it on each act" happens, rather than
  * only at the very end once (on success) the partial file has already been
  * cleaned up. `deps.sleep`/`deps.now` are the resume loop's clocks, injected
- * so a test can prove a day-long budget wait without taking a day; `deps.notify`
+ * so a test can prove a backoff without waiting it out; `deps.notify`
  * replaces the shell hook for the same reason.
  */
 export async function generateOneCandidate(
@@ -525,7 +560,7 @@ export async function generateOneCandidate(
     now?: () => Date;
     notify?: (summary: NotifySummary) => Promise<NotificationResult>;
   }
-): Promise<{ skipped: boolean; entry?: ReportEntry; file?: string }> {
+): Promise<CandidateResult> {
   const runPipeline = deps.runPipeline ?? runForayPipeline;
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const now = deps.now ?? (() => new Date());
@@ -659,9 +694,9 @@ export async function generateOneCandidate(
       /* F-87: the act the refusal landed on, for the report (`refusedAtAct`). */
       const refusedAtAct = err instanceof RefusedPartialError ? { act: err.actIndex, totalActs: err.totalActs } : null;
 
-      if (failure.kind === "transient" || failure.kind === "budget-window") {
+      if (failure.kind === "transient") {
         if (resumes.length < args.maxResumes) {
-          const waitMs = failure.kind === "budget-window" ? msUntilNextLocalDay(now()) : resumeBackoffMs(resumes.length);
+          const waitMs = resumeBackoffMs(resumes.length);
           resumes.push({ attempt: resumes.length + 1, kind: failure.kind, reason: detail.slice(0, 300), waitedMs: waitMs, at: now().toISOString() });
           console.log(
             `  retry  ${spec.prompt.slice(0, 60)} — resume ${resumes.length}/${args.maxResumes} in ${Math.round(waitMs / 1000)}s ` +
@@ -701,7 +736,14 @@ export async function generateOneCandidate(
           ...(refusedPartials.length ? { refusedPartials } : {}),
           ...(refusedAtAct ? { refusedAtAct } : {})
         };
-        return { skipped: false, entry: await finishEntry(entry, `aborted:${failure.kind}`, lastPartialId) };
+        /* CH2-04: the RUN cap is this process's whole budget, so every later
+           prompt would stop at its first metered call. Say so to the batch. */
+        const runBudgetSpent = err instanceof BudgetStopError && err.scope === "run";
+        return {
+          skipped: false,
+          entry: await finishEntry(entry, `aborted:${failure.kind}`, lastPartialId),
+          ...(runBudgetSpent ? { runBudgetSpent: true } : {})
+        };
       }
 
       console.log(`  ERROR  ${spec.prompt.slice(0, 60)} — ${detail.slice(0, 120)}${checkpointNote}`);
@@ -791,14 +833,14 @@ async function main(): Promise<void> {
   const batchStartedMs = Date.now();
 
   try {
-    /* F-04. Run 1 could only be started by setting DAILY_BUDGET_USD=1000 in the
-       environment, and the run log had to record that as an intervention (I-01)
-       because there was no way to say "this run may spend N" on the command
-       line. Both caps move together: generation calls are not tier-prefixed, so
-       BudgetGuard scores them tier 1, whose cutoff is the whole daily budget —
-       raising only the per-Foray ceiling would just move the stop. */
+    /* F-04. Run 1 could only be started by setting DAILY_BUDGET_USD=1000 (now
+       RUN_BUDGET_USD) in the environment, and the run log had to record that as
+       an intervention (I-01) because there was no way to say "this run may
+       spend N" on the command line. Both caps move together: every metered
+       call also counts against the whole run cap, so raising only the
+       per-Foray ceiling would just move the stop. */
     if (args.budgetUsd !== null) {
-      defaultBudgetGuard.setCaps({ dailyUsd: args.budgetUsd, episodeUsd: args.budgetUsd });
+      defaultBudgetGuard.setCaps({ runUsd: args.budgetUsd, episodeUsd: args.budgetUsd });
     }
 
     const specs = normalizePrompts(JSON.parse(fs.readFileSync(path.resolve(args.prompts), "utf8")));
@@ -811,7 +853,7 @@ async function main(): Promise<void> {
     console.log(
       env.anthropicDryRun
         ? `MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`
-        : `MODE: live — Anthropic builders, metered by BudgetGuard (daily $${caps.dailyUsd}, per-Foray $${caps.episodeUsd}).`
+        : `MODE: live — Anthropic builders, metered by BudgetGuard (run $${caps.runUsd} for this process, per-Foray $${caps.episodeUsd}).`
     );
     /* Which models a run ACTUALLY used, printed rather than assumed: F-03 was
        found by reading source, which is not where a run's behaviour should have
@@ -821,8 +863,8 @@ async function main(): Promise<void> {
       console.log(`MODELS: opus=${models.opus} sonnet=${models.sonnet} haiku=${models.haiku}`);
     }
     /* G-30: the hands-free policy, stated up front for the same reason the
-       mode is — a run that quietly aborted on its first refused partial, or
-       quietly slept until midnight, should not be a surprise in the log. */
+       mode is — a run that quietly aborted on its first refused partial
+       should not be a surprise in the log. */
     console.log(
       `POLICY: max-resumes=${args.maxResumes}, refused partial → ${args.continueOnRefusedPartial ? "continue" : "abort"}, ` +
         `notify=${args.notify ? JSON.stringify(args.notify) : "(none)"}`
@@ -831,9 +873,6 @@ async function main(): Promise<void> {
 
     fs.mkdirSync(path.resolve(args.out), { recursive: true });
 
-    const report: ReportEntry[] = [];
-    let generated = 0;
-    let skipped = 0;
     const cueProvider = new FileTranscriptCueProvider();
     /* WS-H (F-06): the same machine holds the transcript BODIES, so tier 2 also
        gets the text index built over them — read through the cue provider above,
@@ -858,17 +897,9 @@ async function main(): Promise<void> {
     });
     if (corpus.showsOnDisk > 0) console.log(corpusCoverageLine(corpus));
 
-    for (const spec of queue) {
-      const result = await generateOneCandidate(spec, args, { cueProvider, textIndex });
-      if (result.skipped) {
-        skipped++;
-        continue;
-      }
-      if (result.entry) {
-        report.push(result.entry);
-        if (result.file) generated++;
-      }
-    }
+    const { report, generated, skipped } = await generateQueue(queue, (spec) =>
+      generateOneCandidate(spec, args, { cueProvider, textIndex })
+    );
 
     /* Count what actually happened, not what the outcome tag says. A run that
        reached §4.9 and FAILED validation still carries `outcome: "generated"` —
