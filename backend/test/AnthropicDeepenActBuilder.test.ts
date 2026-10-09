@@ -214,7 +214,7 @@ describe("AnthropicDeepenActBuilder", () => {
 
   it("a budgetGuard refusal inside the re-ask surfaces to the caller, not swallowed as a JSON-shape error", async () => {
     const guard = new BudgetGuard(new InMemoryCostEventSink(), 100);
-    const budgetErr = new BudgetExceededError(1, 99, 5, 100);
+    const budgetErr = new BudgetExceededError(99, 5, 100);
     let checkAndRecordCalls = 0;
     vi.spyOn(guard, "checkAndRecord").mockImplementation(async (input) => {
       checkAndRecordCalls += 1;
@@ -236,7 +236,7 @@ describe("AnthropicDeepenActBuilder", () => {
 
     expect(checkAndRecordCalls).toBe(2);
     expect(caught).toBeInstanceOf(Error);
-    expect((caught as Error).message).toMatch(/Daily budget exceeded/);
+    expect((caught as Error).message).toMatch(/Run budget exceeded/);
     // parseWithRetry.ts sets `cause` to the re-ask's own failure (not the
     // original parse error) specifically so a BudgetExceededError /
     // EpisodeBudgetExceededError stays visible to a `findBudgetError`-style

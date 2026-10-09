@@ -1,27 +1,34 @@
 import { env } from "../config/env";
-import { costEvents, defaultCostEventSink, startOfLocalDayIso, type CostEventInput, type CostEventSink } from "./costEvents";
+import { costEvents, defaultCostEventSink, type CostEventInput, type CostEventSink } from "./costEvents";
 
 /**
- * Daily budget cap (01_PROMPT.md #8, corner case 33: "A bug queues 500
- * episodes for transcription overnight"). The cap halts Tier 2 (transcript
- * enrichment) first, then Tier 1 (cheap classification), and never blocks
- * Tier 0 (free metadata normalization) or feed ingestion — matching
- * 02_ARCHITECTURE.md's enrichment pipeline description verbatim.
+ * Spend caps (01_PROMPT.md #8, corner case 33: "A bug queues 500 episodes for
+ * transcription overnight"). Two, and both are PER PROCESS:
+ *
+ *   - the RUN cap (`RUN_BUDGET_USD`): everything this process may spend, on
+ *     every metered call alike — no operation gets a smaller or larger share;
+ *   - the per-Foray cap (`EPISODE_BUDGET_USD`): one generation run's spend,
+ *     for calls that carry a `sessionId`.
+ *
+ * Per process because the sink is in memory (costEvents.ts): a second
+ * process starts at $0. That is by design until a multi-process generator
+ * exists (docs/DECISIONS.md 2026-10-07); the run cap used to be called a
+ * "daily" cap, and its name now says what it does.
  *
  * Every LLM/TTS call site should call `budgetGuard.checkAndRecord(...)`
  * rather than writing to costEvents directly, so the cap is structurally
  * impossible to bypass by accident.
  */
 
+/** Thrown when a call would push this process's total spend past the RUN cap. */
 export class BudgetExceededError extends Error {
   constructor(
-    public readonly tier: 0 | 1 | 2,
     public readonly spentUsd: number,
     public readonly attemptedUsd: number,
     public readonly capUsd: number
   ) {
     super(
-      `Daily budget exceeded for tier ${tier}: spent $${spentUsd.toFixed(4)} + attempted $${attemptedUsd.toFixed(4)} > cap $${capUsd.toFixed(4)}`
+      `Run budget exceeded (RUN_BUDGET_USD): spent $${spentUsd.toFixed(4)} + attempted $${attemptedUsd.toFixed(4)} > cap $${capUsd.toFixed(4)}`
     );
     this.name = "BudgetExceededError";
   }
@@ -31,7 +38,7 @@ export class BudgetExceededError extends Error {
  * Thrown when a single Foray's generation run (scoped by `sessionId`) would
  * spend past the founder-approved per-Foray ceiling (docs/curation/
  * generation-architecture.md §9.2, ~$5-10/Foray, default env.episodeBudgetUsd).
- * Distinct from BudgetExceededError (the daily per-user cap) — a call can
+ * Distinct from BudgetExceededError (the per-process run cap) — a call can
  * trip either, both, or neither independently.
  */
 export class EpisodeBudgetExceededError extends Error {
@@ -48,23 +55,16 @@ export class EpisodeBudgetExceededError extends Error {
   }
 }
 
-/** Fraction of the daily budget each tier is allowed to consume before it gets cut off. */
-const TIER_CUTOFF_FRACTION: Record<0 | 1 | 2, number> = {
-  0: Number.POSITIVE_INFINITY, // ingestion / metadata-only: never budget-gated
-  1: 1.0, // cheap classification: allowed up to the full daily budget
-  2: 0.6 // transcript enrichment: cut off earlier, leaving headroom for Tier 1 and TTS
-};
-
 /**
  * Thrown by the pipeline (not by this class) when a budget error escaped a
  * STAGE, so the message names what the raw guard cannot know: which stage was
  * running and how far the Foray got.
  *
- * WHY IT EXISTS. Run 1 needed `DAILY_BUDGET_USD=1000` to start at all (F-04 /
- * I-01), and the reason the shipped default was never noticed is that the
- * guard's own message is stage-blind: "Daily budget exceeded for tier 1: spent
- * $1.9970 + attempted $0.0240 > cap $2.0000" is true, is unactionable, and
- * reads identically whether it stopped the spine call or beat 23 of 31. This
+ * WHY IT EXISTS. Run 1 needed `DAILY_BUDGET_USD=1000` (now `RUN_BUDGET_USD`)
+ * to start at all (F-04 / I-01), and the reason the shipped default was never
+ * noticed is that the guard's own message is stage-blind: "spent $1.9970 +
+ * attempted $0.0240 > cap $2.0000" is true, is unactionable, and reads
+ * identically whether it stopped the spine call or beat 23 of 31. This
  * error carries the stage name, the spend so far, and — because F-17/F-18's
  * checkpoint means the work is on disk — the resume instruction.
  */
@@ -73,7 +73,7 @@ export class BudgetStopError extends Error {
     public readonly stage: string,
     public readonly spentUsd: number,
     public readonly capUsd: number,
-    public readonly scope: "daily" | "per-foray",
+    public readonly scope: "run" | "per-foray",
     public readonly cause: BudgetExceededError | EpisodeBudgetExceededError,
     resumeHint?: string
   ) {
@@ -81,7 +81,7 @@ export class BudgetStopError extends Error {
       `Budget stop in stage "${stage}": the ${scope} cap of $${capUsd.toFixed(2)} was reached ` +
         `(spent $${spentUsd.toFixed(4)}; this call would have added $${cause.attemptedUsd.toFixed(4)}). ` +
         (resumeHint ? `${resumeHint} ` : "") +
-        `Raise the cap with --budget-usd (or ${scope === "daily" ? "DAILY_BUDGET_USD" : "EPISODE_BUDGET_USD"}) and re-run.`
+        `Raise the cap with --budget-usd (or ${scope === "run" ? "RUN_BUDGET_USD" : "EPISODE_BUDGET_USD"}) and re-run.`
     );
     this.name = "BudgetStopError";
   }
@@ -118,7 +118,7 @@ export function findBudgetError(err: unknown): BudgetExceededError | EpisodeBudg
 export class BudgetGuard {
   constructor(
     private readonly sink: CostEventSink = defaultCostEventSink,
-    private dailyBudgetUsd: number = env.dailyBudgetUsd,
+    private runBudgetUsd: number = env.runBudgetUsd,
     private episodeBudgetUsd: number = env.episodeBudgetUsd
   ) {}
 
@@ -137,9 +137,9 @@ export class BudgetGuard {
    * declared ceiling from a place a human typed a number (a CLI flag), and it
    * cannot remove the ceiling: a non-finite or negative value is ignored.
    */
-  setCaps(caps: { dailyUsd?: number; episodeUsd?: number }): void {
-    if (caps.dailyUsd !== undefined && Number.isFinite(caps.dailyUsd) && caps.dailyUsd >= 0) {
-      this.dailyBudgetUsd = caps.dailyUsd;
+  setCaps(caps: { runUsd?: number; episodeUsd?: number }): void {
+    if (caps.runUsd !== undefined && Number.isFinite(caps.runUsd) && caps.runUsd >= 0) {
+      this.runBudgetUsd = caps.runUsd;
     }
     if (caps.episodeUsd !== undefined && Number.isFinite(caps.episodeUsd) && caps.episodeUsd >= 0) {
       this.episodeBudgetUsd = caps.episodeUsd;
@@ -148,22 +148,13 @@ export class BudgetGuard {
 
   /** The caps currently in force — for a run log, so a report records the
    * ceiling the run actually had rather than the one in `.env`. */
-  caps(): { dailyUsd: number; episodeUsd: number } {
-    return { dailyUsd: this.dailyBudgetUsd, episodeUsd: this.episodeBudgetUsd };
-  }
-
-  private tierOf(operation: string): 0 | 1 | 2 {
-    if (operation.startsWith("tier2")) return 2;
-    if (operation.startsWith("tier1")) return 1;
-    if (operation.startsWith("tier0")) return 0;
-    // TTS / voice-intent / why-line calls aren't tier-prefixed; treat as tier 1
-    // (cheap-LLM-class spend) for cutoff purposes.
-    return 1;
+  caps(): { runUsd: number; episodeUsd: number } {
+    return { runUsd: this.runBudgetUsd, episodeUsd: this.episodeBudgetUsd };
   }
 
   /**
-   * Throws BudgetExceededError if recording `estimatedUsd` would push
-   * today's spend for this operation's tier past its cutoff, or
+   * Throws BudgetExceededError if recording `estimatedUsd` would push this
+   * process's total spend past the run cap (every operation alike), or
    * EpisodeBudgetExceededError if `input.sessionId` is set and recording
    * would push that single Foray's generation-run spend past
    * `episodeBudgetUsd` (docs/curation/generation-architecture.md §9.2).
@@ -190,13 +181,11 @@ export class BudgetGuard {
   private lock: Promise<void> = Promise.resolve();
 
   private async checkAndRecordNow(input: CostEventInput) {
-    const tier = this.tierOf(input.operation);
-    const cap = this.dailyBudgetUsd * TIER_CUTOFF_FRACTION[tier];
-    const since = startOfLocalDayIso();
-    const spent = await this.sink.sumUsdSince(input.userId, since);
+    const cap = this.runBudgetUsd;
+    const spent = await this.sink.sumUsd();
 
-    if (Number.isFinite(cap) && spent + input.estimatedUsd > cap) {
-      throw new BudgetExceededError(tier, spent, input.estimatedUsd, cap);
+    if (spent + input.estimatedUsd > cap) {
+      throw new BudgetExceededError(spent, input.estimatedUsd, cap);
     }
 
     if (input.sessionId && this.sink.sumUsdBySession && Number.isFinite(this.episodeBudgetUsd)) {
@@ -209,13 +198,14 @@ export class BudgetGuard {
     return this.sink.record(input);
   }
 
-  async spentToday(userId: string): Promise<number> {
-    return this.sink.sumUsdSince(userId, startOfLocalDayIso());
+  /** What this guard's sink holds — this process's spend so far. */
+  async spentThisRun(): Promise<number> {
+    return this.sink.sumUsd();
   }
 
-  async remainingToday(userId: string): Promise<number> {
-    const spent = await this.spentToday(userId);
-    return Math.max(0, this.dailyBudgetUsd - spent);
+  async remainingThisRun(): Promise<number> {
+    const spent = await this.spentThisRun();
+    return Math.max(0, this.runBudgetUsd - spent);
   }
 
   /** Spend so far for a single Foray's generation run, or 0 if the sink can't scope by session. */
@@ -226,7 +216,7 @@ export class BudgetGuard {
 }
 
 /** Process-wide default guard, wired to the default in-memory sink and env budget. */
-export const defaultBudgetGuard = new BudgetGuard(defaultCostEventSink, env.dailyBudgetUsd, env.episodeBudgetUsd);
+export const defaultBudgetGuard = new BudgetGuard(defaultCostEventSink, env.runBudgetUsd, env.episodeBudgetUsd);
 
 // re-export so call sites can `import { costEvents } from "../cost/budgetGuard"` if preferred
 export { costEvents };

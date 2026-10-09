@@ -931,7 +931,7 @@ export async function runForayPipeline(
    *     and records it as resumed rather than as a stage that took 0 ms.
    *   - PERSIST. Writes the stage's output the moment it exists (F-18).
    *   - NAME THE STAGE ON A BUDGET STOP (F-04). `BudgetGuard` throws from
-   *     inside a builder and knows only a tier and a dollar figure; this is
+   *     inside a builder and knows only the dollar figures; this is
    *     the only place that also knows which stage was running and that the
    *     work so far is on disk.
    */
@@ -943,7 +943,7 @@ export async function runForayPipeline(
          `ActDeepeningError` and would otherwise bury the dollar figures. */
       const budget = findBudgetError(err);
       if (budget) {
-        const scope = budget instanceof EpisodeBudgetExceededError ? "per-foray" : "daily";
+        const scope = budget instanceof EpisodeBudgetExceededError ? "per-foray" : "run";
         throw new BudgetStopError(name, budget.spentUsd, budget.capUsd, scope, budget, resumeHint);
       }
       throw err;
