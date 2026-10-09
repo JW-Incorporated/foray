@@ -298,9 +298,9 @@ function someBreadthOnlyShow() {
 
 async function loadFallbackMap() {
   _resetShowIdMapCacheForTests();
-  // A fetchImpl that throws proves the map is built from committed files
-  // alone: data/shows-index-pointer.json does not exist on main, so
-  // tryLoadReleaseIdMap() must bail before it ever reaches the network.
+  // A fetchImpl that throws proves the map is built from the committed
+  // catalogue files alone: showIdMap.ts never touches the network (the
+  // release id-map reader was deleted in CH2-02).
   const map = await loadShowIdMap({
     fetchImpl: async () => {
       throw new Error("no network in this test");

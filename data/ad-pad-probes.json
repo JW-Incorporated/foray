@@ -1,5 +1,1046 @@
 {
   "version": 1,
   "notes": "Same-episode delivery probes for ADR-0008's pad (docs/roadmap/dai.md DAI-02). Each row is one observation of one episode's delivered file: a ranged-get row records the feed-declared and the delivered byte length (and the host that answered); a decode row records a fully decoded duration. A pad needs N >= 2 usable rows for the same item_id: tools/segments/ad-pad.mjs computes pad = max(0, delta_max) + spread from them. Rows are appended by tools/segments/probe-ad-pad.mjs and consumed by tools/segments/stamp-ad-pad.mjs, which writes the stamped ad_* fields onto data/segment-sources.json. A ranged-get row from a host on RANGED_GET_UNTRUSTED_HOSTS (tools/transcribe/ad-inflation.mjs) is evidence of the declaration only and poisons that episode's set.",
-  "probes": []
+  "probes": [
+    {
+      "item_id": "origin-stories-cooking-human",
+      "probed_at": "2026-10-07T03:15:30.628Z",
+      "method": "ranged-get",
+      "host": "traffic.libsyn.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 36904701,
+      "delivered_bytes": 36904701
+    },
+    {
+      "item_id": "bfh-griddle-bakestone",
+      "probed_at": "2026-10-07T03:15:31.176Z",
+      "method": "ranged-get",
+      "host": "dts.podtrac.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 44296704,
+      "delivered_bytes": 44296704
+    },
+    {
+      "item_id": "bfh-medieval-meals-manners",
+      "probed_at": "2026-10-07T03:15:32.069Z",
+      "method": "ranged-get",
+      "host": "dts.podtrac.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35352820,
+      "delivered_bytes": 35352820
+    },
+    {
+      "item_id": "bfh-18c-tavern-briggs",
+      "probed_at": "2026-10-07T03:15:33.273Z",
+      "method": "ranged-get",
+      "host": "dts.podtrac.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 40914608,
+      "delivered_bytes": 40914608
+    },
+    {
+      "item_id": "bbqc-moss-school",
+      "probed_at": "2026-10-07T03:15:33.975Z",
+      "method": "ranged-get",
+      "host": "mgln.ai",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 59747855,
+      "delivered_bytes": 59753507
+    },
+    {
+      "item_id": "bbqc-traeger-history",
+      "probed_at": "2026-10-07T03:15:34.943Z",
+      "method": "ranged-get",
+      "host": "mgln.ai",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 89611338,
+      "delivered_bytes": 89611338
+    },
+    {
+      "item_id": "bbqrn-santa-maria-grillzilla",
+      "probed_at": "2026-10-07T03:15:35.279Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 30986479,
+      "delivered_bytes": 30986479
+    },
+    {
+      "item_id": "bbqrn-argentina-open-fire",
+      "probed_at": "2026-10-07T03:15:36.299Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 29060854,
+      "delivered_bytes": 29060854
+    },
+    {
+      "item_id": "moreish-jerk-jamaica",
+      "probed_at": "2026-10-07T03:15:36.905Z",
+      "method": "ranged-get",
+      "host": "content.rss.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 23120419,
+      "delivered_bytes": 23120419
+    },
+    {
+      "item_id": "satay-okay-e01-satay-myth",
+      "probed_at": "2026-10-07T03:15:37.923Z",
+      "method": "ranged-get",
+      "host": "content.rss.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 37175073,
+      "delivered_bytes": 37175073
+    },
+    {
+      "item_id": "ss-inlaw-investors",
+      "probed_at": "2026-10-07T03:15:38.427Z",
+      "method": "ranged-get",
+      "host": "traffic.libsyn.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 20822516,
+      "delivered_bytes": 20822516
+    },
+    {
+      "item_id": "yc-how-fundraising-works",
+      "probed_at": "2026-10-07T03:15:38.671Z",
+      "method": "ranged-get",
+      "host": "anchor.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 27062438,
+      "delivered_bytes": 27062438
+    },
+    {
+      "item_id": "am-sba-lender-roundtable",
+      "probed_at": "2026-10-07T03:15:39.055Z",
+      "method": "ranged-get",
+      "host": "media.transistor.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 77391337,
+      "delivered_bytes": 77391337
+    },
+    {
+      "item_id": "ftb-89-sbir-grants",
+      "probed_at": "2026-10-07T03:15:39.539Z",
+      "method": "ranged-get",
+      "host": "media.blubrry.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 95531703,
+      "delivered_bytes": 95531703
+    },
+    {
+      "item_id": "crowdcrux-557-atombeam",
+      "probed_at": "2026-10-07T03:15:39.742Z",
+      "method": "ranged-get",
+      "host": "traffic.libsyn.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 63916575,
+      "delivered_bytes": 63916575
+    },
+    {
+      "item_id": "rtn-venture-debt",
+      "probed_at": "2026-10-07T03:15:39.876Z",
+      "method": "ranged-get",
+      "host": "anchor.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 53426049,
+      "delivered_bytes": 53426049
+    },
+    {
+      "item_id": "tbf-309-funded",
+      "probed_at": "2026-10-07T03:15:41.214Z",
+      "method": "ranged-get",
+      "host": "2.gum.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 65142108,
+      "delivered_bytes": 65142108
+    },
+    {
+      "item_id": "tbf-328-tringas",
+      "probed_at": "2026-10-07T03:15:42.298Z",
+      "method": "ranged-get",
+      "host": "2.gum.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 53260620,
+      "delivered_bytes": 53260620
+    },
+    {
+      "item_id": "grill-coach-adrian-miller",
+      "probed_at": "2026-10-07T03:15:43.071Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 39775895,
+      "delivered_bytes": 39775895
+    },
+    {
+      "item_id": "practical-ai--building-durable-ai-agents",
+      "probed_at": "2026-10-07T03:15:45.302Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 44818279,
+      "delivered_bytes": 44818279
+    },
+    {
+      "item_id": "practical-ai--the-future-of-ai-infrastructure-with-coreweave",
+      "probed_at": "2026-10-07T03:15:45.670Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 48106607,
+      "delivered_bytes": 48106607
+    },
+    {
+      "item_id": "practical-ai--federated-learning-in-production-part-2",
+      "probed_at": "2026-10-07T03:15:46.862Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 43855107,
+      "delivered_bytes": 43855107
+    },
+    {
+      "item_id": "practical-ai--creating-a-private-ai-assistant-in-thunderbird",
+      "probed_at": "2026-10-07T03:15:48.084Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 51281590,
+      "delivered_bytes": 51281590
+    },
+    {
+      "item_id": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026",
+      "probed_at": "2026-10-07T03:15:49.260Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 40703534,
+      "delivered_bytes": 40703534
+    },
+    {
+      "item_id": "practical-ai--ai-at-the-edge-is-a-different-operating-environment",
+      "probed_at": "2026-10-07T03:15:50.501Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 45136659,
+      "delivered_bytes": 45136659
+    },
+    {
+      "item_id": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes",
+      "probed_at": "2026-10-07T03:15:51.664Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 46262132,
+      "delivered_bytes": 46262132
+    },
+    {
+      "item_id": "practical-ai--ai-policy-and-the-battle-for-computing-power",
+      "probed_at": "2026-10-07T03:15:52.881Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 70437623,
+      "delivered_bytes": 70437623
+    },
+    {
+      "item_id": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world",
+      "probed_at": "2026-10-07T03:15:54.067Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 34217114,
+      "delivered_bytes": 34217114
+    },
+    {
+      "item_id": "practical-ai--educating-a-data-literate-generation",
+      "probed_at": "2026-10-07T03:15:55.288Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 43102364,
+      "delivered_bytes": 43102364
+    },
+    {
+      "item_id": "practical-ai--reimagining-actuarial-science-with-ai",
+      "probed_at": "2026-10-07T03:15:56.503Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 39533500,
+      "delivered_bytes": 39533500
+    },
+    {
+      "item_id": "practical-ai--breaking-down-the-2026-stanford-ai-index-report",
+      "probed_at": "2026-10-07T03:15:57.686Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 45365394,
+      "delivered_bytes": 45365394
+    },
+    {
+      "item_id": "practical-ai--federated-learning-in-production-part-1",
+      "probed_at": "2026-10-07T03:15:58.887Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 43046110,
+      "delivered_bytes": 43046110
+    },
+    {
+      "item_id": "practical-ai--model-context-protocol-deep-dive",
+      "probed_at": "2026-10-07T03:16:00.121Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 40814001,
+      "delivered_bytes": 40814001
+    },
+    {
+      "item_id": "practical-ai--software-and-hardware-acceleration-with-groq",
+      "probed_at": "2026-10-07T03:16:01.281Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 62680686,
+      "delivered_bytes": 62680686
+    },
+    {
+      "item_id": "practical-ai--how-is-ai-shaping-democracy",
+      "probed_at": "2026-10-07T03:16:02.488Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 46583280,
+      "delivered_bytes": 46583280
+    },
+    {
+      "item_id": "practical-ai--autonomous-vehicle-research-at-waymo",
+      "probed_at": "2026-10-07T03:16:03.672Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 50178657,
+      "delivered_bytes": 50178657
+    },
+    {
+      "item_id": "being-an-engineer--s5e50-roopinder-tara-timing-fea-the-beginning-of-cad",
+      "probed_at": "2026-10-07T03:16:04.062Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 30414211,
+      "delivered_bytes": 30414211
+    },
+    {
+      "item_id": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation",
+      "probed_at": "2026-10-07T03:16:05.079Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 36199155,
+      "delivered_bytes": 36199155
+    },
+    {
+      "item_id": "being-an-engineer--s2e36-shaking-things-up-as-we-get-to-know-aaron-moncur",
+      "probed_at": "2026-10-07T03:16:06.302Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35228190,
+      "delivered_bytes": 35228190
+    },
+    {
+      "item_id": "being-an-engineer--s6s25-andy-thompson-practical-applications-of-gd-t",
+      "probed_at": "2026-10-07T03:16:07.478Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 32915615,
+      "delivered_bytes": 32915615
+    },
+    {
+      "item_id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation",
+      "probed_at": "2026-10-07T03:16:08.669Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35152338,
+      "delivered_bytes": 35152338
+    },
+    {
+      "item_id": "being-an-engineer--s6e5-keegan-schoch-pro-tips-on-creating-an-engineering-consu",
+      "probed_at": "2026-10-07T03:16:09.869Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35391982,
+      "delivered_bytes": 35391982
+    },
+    {
+      "item_id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en",
+      "probed_at": "2026-10-07T03:16:11.129Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 34107954,
+      "delivered_bytes": 34107954
+    },
+    {
+      "item_id": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an",
+      "probed_at": "2026-10-07T03:16:12.295Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 37817251,
+      "delivered_bytes": 37817251
+    },
+    {
+      "item_id": "being-an-engineer--s4e45-jonathan-macwilliams-career-planning-metallurgy-dealin",
+      "probed_at": "2026-10-07T03:16:13.502Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 39009992,
+      "delivered_bytes": 39009992
+    },
+    {
+      "item_id": "being-an-engineer--s5e9-jon-montcrief-medical-device-engineering-leaders-8",
+      "probed_at": "2026-10-07T03:16:14.672Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 28340452,
+      "delivered_bytes": 28340452
+    },
+    {
+      "item_id": "being-an-engineer--s6e18-nikolaj-kloch-public-speaking-career-changes-leading-w",
+      "probed_at": "2026-10-07T03:16:15.869Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 41325598,
+      "delivered_bytes": 41325598
+    },
+    {
+      "item_id": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations",
+      "probed_at": "2026-10-07T03:16:17.051Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 29761523,
+      "delivered_bytes": 29761523
+    },
+    {
+      "item_id": "being-an-engineer--s4e30-dhruv-bhate-engineering-in-india-biomimicry-using-whit",
+      "probed_at": "2026-10-07T03:16:18.567Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 34996296,
+      "delivered_bytes": 34996296
+    },
+    {
+      "item_id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac",
+      "probed_at": "2026-10-07T03:16:19.719Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 38621859,
+      "delivered_bytes": 38621859
+    },
+    {
+      "item_id": "being-an-engineer--ray-kampmeier-the-humble-transistor",
+      "probed_at": "2026-10-07T03:16:21.141Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 37409942,
+      "delivered_bytes": 37409942
+    },
+    {
+      "item_id": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler",
+      "probed_at": "2026-10-07T03:16:21.879Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 22077997,
+      "delivered_bytes": 22077997
+    },
+    {
+      "item_id": "origin-stories-cooking-human",
+      "probed_at": "2026-10-09T16:35:45.040Z",
+      "method": "ranged-get",
+      "host": "traffic.libsyn.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 36904701,
+      "delivered_bytes": 36904701
+    },
+    {
+      "item_id": "bfh-griddle-bakestone",
+      "probed_at": "2026-10-09T16:35:45.739Z",
+      "method": "ranged-get",
+      "host": "dts.podtrac.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 44296704,
+      "delivered_bytes": 44296704
+    },
+    {
+      "item_id": "bfh-medieval-meals-manners",
+      "probed_at": "2026-10-09T16:35:46.702Z",
+      "method": "ranged-get",
+      "host": "dts.podtrac.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35352820,
+      "delivered_bytes": 35352820
+    },
+    {
+      "item_id": "bfh-18c-tavern-briggs",
+      "probed_at": "2026-10-09T16:35:47.908Z",
+      "method": "ranged-get",
+      "host": "dts.podtrac.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 40914608,
+      "delivered_bytes": 40914608
+    },
+    {
+      "item_id": "bbqc-moss-school",
+      "probed_at": "2026-10-09T16:35:48.696Z",
+      "method": "ranged-get",
+      "host": "mgln.ai",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 59747855,
+      "delivered_bytes": 59753507
+    },
+    {
+      "item_id": "bbqc-traeger-history",
+      "probed_at": "2026-10-09T16:35:49.625Z",
+      "method": "ranged-get",
+      "host": "mgln.ai",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 89611338,
+      "delivered_bytes": 89611338
+    },
+    {
+      "item_id": "bbqrn-santa-maria-grillzilla",
+      "probed_at": "2026-10-09T16:35:50.156Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 30986479,
+      "delivered_bytes": 30986479
+    },
+    {
+      "item_id": "bbqrn-argentina-open-fire",
+      "probed_at": "2026-10-09T16:35:51.496Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 29060854,
+      "delivered_bytes": 29060854
+    },
+    {
+      "item_id": "moreish-jerk-jamaica",
+      "probed_at": "2026-10-09T16:35:52.061Z",
+      "method": "ranged-get",
+      "host": "content.rss.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 23120419,
+      "delivered_bytes": 23120419
+    },
+    {
+      "item_id": "satay-okay-e01-satay-myth",
+      "probed_at": "2026-10-09T16:35:53.440Z",
+      "method": "ranged-get",
+      "host": "content.rss.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 37175073,
+      "delivered_bytes": 37175073
+    },
+    {
+      "item_id": "ss-inlaw-investors",
+      "probed_at": "2026-10-09T16:35:54.322Z",
+      "method": "ranged-get",
+      "host": "traffic.libsyn.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 20822516,
+      "delivered_bytes": 20822516
+    },
+    {
+      "item_id": "yc-how-fundraising-works",
+      "probed_at": "2026-10-09T16:35:54.673Z",
+      "method": "ranged-get",
+      "host": "anchor.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 27062438,
+      "delivered_bytes": 27062438
+    },
+    {
+      "item_id": "am-sba-lender-roundtable",
+      "probed_at": "2026-10-09T16:35:55.156Z",
+      "method": "ranged-get",
+      "host": "media.transistor.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 77391337,
+      "delivered_bytes": 77391337
+    },
+    {
+      "item_id": "ftb-89-sbir-grants",
+      "probed_at": "2026-10-09T16:35:55.668Z",
+      "method": "ranged-get",
+      "host": "media.blubrry.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 95531703,
+      "delivered_bytes": 95531703
+    },
+    {
+      "item_id": "crowdcrux-557-atombeam",
+      "probed_at": "2026-10-09T16:35:55.936Z",
+      "method": "ranged-get",
+      "host": "traffic.libsyn.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 63916575,
+      "delivered_bytes": 63916575
+    },
+    {
+      "item_id": "rtn-venture-debt",
+      "probed_at": "2026-10-09T16:35:56.347Z",
+      "method": "ranged-get",
+      "host": "anchor.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 53426049,
+      "delivered_bytes": 53426049
+    },
+    {
+      "item_id": "tbf-309-funded",
+      "probed_at": "2026-10-09T16:35:57.437Z",
+      "method": "ranged-get",
+      "host": "2.gum.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 65142108,
+      "delivered_bytes": 65142108
+    },
+    {
+      "item_id": "tbf-328-tringas",
+      "probed_at": "2026-10-09T16:35:57.971Z",
+      "method": "ranged-get",
+      "host": "2.gum.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 53260620,
+      "delivered_bytes": 53260620
+    },
+    {
+      "item_id": "grill-coach-adrian-miller",
+      "probed_at": "2026-10-09T16:35:58.435Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 39775895,
+      "delivered_bytes": 39775895
+    },
+    {
+      "item_id": "practical-ai--building-durable-ai-agents",
+      "probed_at": "2026-10-09T16:35:59.497Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 44818279,
+      "delivered_bytes": 44818279
+    },
+    {
+      "item_id": "practical-ai--the-future-of-ai-infrastructure-with-coreweave",
+      "probed_at": "2026-10-09T16:36:00.039Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 48106607,
+      "delivered_bytes": 48106607
+    },
+    {
+      "item_id": "practical-ai--federated-learning-in-production-part-2",
+      "probed_at": "2026-10-09T16:36:01.261Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 43855107,
+      "delivered_bytes": 43855107
+    },
+    {
+      "item_id": "practical-ai--creating-a-private-ai-assistant-in-thunderbird",
+      "probed_at": "2026-10-09T16:36:02.439Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 51281590,
+      "delivered_bytes": 51281590
+    },
+    {
+      "item_id": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026",
+      "probed_at": "2026-10-09T16:36:03.628Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 40703534,
+      "delivered_bytes": 40703534
+    },
+    {
+      "item_id": "practical-ai--ai-at-the-edge-is-a-different-operating-environment",
+      "probed_at": "2026-10-09T16:36:05.483Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 45136659,
+      "delivered_bytes": 45136659
+    },
+    {
+      "item_id": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes",
+      "probed_at": "2026-10-09T16:36:06.426Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 46262132,
+      "delivered_bytes": 46262132
+    },
+    {
+      "item_id": "practical-ai--ai-policy-and-the-battle-for-computing-power",
+      "probed_at": "2026-10-09T16:36:07.804Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 70437623,
+      "delivered_bytes": 70437623
+    },
+    {
+      "item_id": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world",
+      "probed_at": "2026-10-09T16:36:08.556Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 34217114,
+      "delivered_bytes": 34217114
+    },
+    {
+      "item_id": "practical-ai--educating-a-data-literate-generation",
+      "probed_at": "2026-10-09T16:36:09.586Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 43102364,
+      "delivered_bytes": 43102364
+    },
+    {
+      "item_id": "practical-ai--reimagining-actuarial-science-with-ai",
+      "probed_at": "2026-10-09T16:36:10.805Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 39533500,
+      "delivered_bytes": 39533500
+    },
+    {
+      "item_id": "practical-ai--breaking-down-the-2026-stanford-ai-index-report",
+      "probed_at": "2026-10-09T16:36:12.030Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 45365394,
+      "delivered_bytes": 45365394
+    },
+    {
+      "item_id": "practical-ai--federated-learning-in-production-part-1",
+      "probed_at": "2026-10-09T16:36:13.232Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 43046110,
+      "delivered_bytes": 43046110
+    },
+    {
+      "item_id": "practical-ai--model-context-protocol-deep-dive",
+      "probed_at": "2026-10-09T16:36:14.451Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 40814001,
+      "delivered_bytes": 40814001
+    },
+    {
+      "item_id": "practical-ai--software-and-hardware-acceleration-with-groq",
+      "probed_at": "2026-10-09T16:36:15.656Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 62680686,
+      "delivered_bytes": 62680686
+    },
+    {
+      "item_id": "practical-ai--how-is-ai-shaping-democracy",
+      "probed_at": "2026-10-09T16:36:16.831Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 46583280,
+      "delivered_bytes": 46583280
+    },
+    {
+      "item_id": "practical-ai--autonomous-vehicle-research-at-waymo",
+      "probed_at": "2026-10-09T16:36:18.024Z",
+      "method": "ranged-get",
+      "host": "pscrb.fm",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 50178657,
+      "delivered_bytes": 50178657
+    },
+    {
+      "item_id": "being-an-engineer--s5e50-roopinder-tara-timing-fea-the-beginning-of-cad",
+      "probed_at": "2026-10-09T16:37:19.642Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 2,
+      "declared_bytes": 30414211,
+      "delivered_bytes": 30414211
+    },
+    {
+      "item_id": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation",
+      "probed_at": "2026-10-09T16:37:20.335Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 36199155,
+      "delivered_bytes": 36199155
+    },
+    {
+      "item_id": "being-an-engineer--s2e36-shaking-things-up-as-we-get-to-know-aaron-moncur",
+      "probed_at": "2026-10-09T16:37:21.313Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35228190,
+      "delivered_bytes": 35228190
+    },
+    {
+      "item_id": "being-an-engineer--s6s25-andy-thompson-practical-applications-of-gd-t",
+      "probed_at": "2026-10-09T16:37:22.444Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 32915615,
+      "delivered_bytes": 32915615
+    },
+    {
+      "item_id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation",
+      "probed_at": "2026-10-09T16:37:23.864Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35152338,
+      "delivered_bytes": 35152338
+    },
+    {
+      "item_id": "being-an-engineer--s6e5-keegan-schoch-pro-tips-on-creating-an-engineering-consu",
+      "probed_at": "2026-10-09T16:37:24.844Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 35391982,
+      "delivered_bytes": 35391982
+    },
+    {
+      "item_id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en",
+      "probed_at": "2026-10-09T16:37:26.093Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 34107954,
+      "delivered_bytes": 34107954
+    },
+    {
+      "item_id": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an",
+      "probed_at": "2026-10-09T16:37:27.282Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 37817251,
+      "delivered_bytes": 37817251
+    },
+    {
+      "item_id": "being-an-engineer--s4e45-jonathan-macwilliams-career-planning-metallurgy-dealin",
+      "probed_at": "2026-10-09T16:37:28.401Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 39009992,
+      "delivered_bytes": 39009992
+    },
+    {
+      "item_id": "being-an-engineer--s5e9-jon-montcrief-medical-device-engineering-leaders-8",
+      "probed_at": "2026-10-09T16:37:29.821Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 28340452,
+      "delivered_bytes": 28340452
+    },
+    {
+      "item_id": "being-an-engineer--s6e18-nikolaj-kloch-public-speaking-career-changes-leading-w",
+      "probed_at": "2026-10-09T16:37:30.860Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 41325598,
+      "delivered_bytes": 41325598
+    },
+    {
+      "item_id": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations",
+      "probed_at": "2026-10-09T16:37:31.831Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 29761523,
+      "delivered_bytes": 29761523
+    },
+    {
+      "item_id": "being-an-engineer--s4e30-dhruv-bhate-engineering-in-india-biomimicry-using-whit",
+      "probed_at": "2026-10-09T16:37:33.160Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 34996296,
+      "delivered_bytes": 34996296
+    },
+    {
+      "item_id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac",
+      "probed_at": "2026-10-09T16:37:34.646Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 38621859,
+      "delivered_bytes": 38621859
+    },
+    {
+      "item_id": "being-an-engineer--ray-kampmeier-the-humble-transistor",
+      "probed_at": "2026-10-09T16:37:35.834Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 37409942,
+      "delivered_bytes": 37409942
+    },
+    {
+      "item_id": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler",
+      "probed_at": "2026-10-09T16:37:37.020Z",
+      "method": "ranged-get",
+      "host": "www.buzzsprout.com",
+      "status": 206,
+      "attempts": 1,
+      "declared_bytes": 22077997,
+      "delivered_bytes": 22077997
+    }
+  ]
 }

@@ -3814,6 +3814,12 @@ and belongs with #133's live position, not behind a `tabindex` on a `role="img"`
 
 ## Completed workstreams
 
+### DAI-08 — ADR-0008 pad probes, N=2 24 h+ apart, stamped onto segment-sources (2026-10-07 → 2026-10-09) — `data/ad-pad-probes-r1`, PR #1150
+
+- **What:** two `probe-ad-pad.mjs --all` rounds (2-byte ranged GETs through the politeness gate): day 1 finished 2026-10-07T03:16:21Z, day 2 ran 2026-10-09T16:35:45Z → 16:37:37Z. 52 rows each round, all 206, 0 × 429/403/404. Then `stamp-ad-pad.mjs` (`--check` prints nothing): 52 rows stamped PADDABLE, n=2; 51 at pad 0 s, `bbqc-moss-school` at 0.4 s (delivered 5,652 bytes over the declared length both days; used only by the draft Foray `grilling-history-2`). 0 refused. 46 rows skipped for no denominator (op3.dev 12, anchor.fm geology-bites 31, media.blubrry.com rewilding-earth 3).
+- **Files:** `data/ad-pad-probes.json` (104 probe rows), `data/segment-sources.json` (ad_* fields only). No `.mjs`, no `data/segments.json`.
+- **Released:** both files are free for other sessions again; DAI-09 (the D5 flip) can read this data once #1150 is on main.
+
 ### mobile bundle — minified code and compact JSON: 2,625 → 1,530 KB (2026-09-04, one PR, no follow-up) — `feature/mobile-bundle-minify`
 
 - **What:** recommendations 1 and 2 of `docs/mobile-shell-bundle-reduction.md`

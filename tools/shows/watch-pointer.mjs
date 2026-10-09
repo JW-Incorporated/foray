@@ -28,11 +28,13 @@
  * least one red run BEFORE the ceiling is crossed. A healthy week does not get
  * near it: a weekly import publishing on time leaves a pointer about 7 days
  * old the evening before the next one lands. The ceiling itself is
- * candidates.mjs's number and is not changed here; the suite pins it by text so
- * that raising or lowering it there is a visible decision here too.
+ * candidates.mjs's number, imported from there (MAX_INDEX_AGE_HOURS, CH2-14),
+ * and not changed here; the suite pins its value, so raising or lowering it
+ * there is a visible decision here too.
  *
  * WHAT THIS DOES NOT DO
- * No network, nothing written, node: builtins only. It reports; it does not
+ * No network, nothing written, no npm dependencies (node: builtins and the
+ * ceiling from tools/refresh/candidates.mjs). It reports; it does not
  * re-run the import or touch the pointer. A watchdog that can change the thing
  * it watches is not a watchdog.
  *
@@ -46,7 +48,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const CEILING_HOURS = 24 * 9; // loadChangeIndex's default maxAgeHours; pinned by the suite
+import { MAX_INDEX_AGE_HOURS } from "../refresh/candidates.mjs";
+
+export const CEILING_HOURS = MAX_INDEX_AGE_HOURS; // loadChangeIndex's default maxAgeHours; its value is pinned by the suite
 export const THRESHOLD_HOURS = 24 * 8;
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

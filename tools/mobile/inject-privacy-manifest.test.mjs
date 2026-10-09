@@ -406,6 +406,8 @@ test("REAL REPO: data-safety.md B4 names each declared category and reason code"
 
 const WF = read(".github/workflows/ios-build.yml");
 const ACTION = read(".github/actions/ios-archive/action.yml");
+/* CH2-16: the write and its checks live once, in the composite both paths run. */
+const PREPARE = read(".github/actions/ios-prepare/action.yml");
 
 /** One composite-action step (4-space list indent, not the workflow's 6). */
 function actionStep(src, fragment) {
@@ -413,16 +415,17 @@ function actionStep(src, fragment) {
 }
 
 test("ios-build.yml writes and checks the manifest after the project exists and before any build", () => {
-  /* MUTATION: delete the `--check` line from the step -> fails. Move the step
-     below "Build for the iOS Simulator" -> fails. RUN (the first). */
-  const s = code(step(WF, "Add the privacy manifest") ?? "");
-  assert.ok(s, "ios-build.yml has no privacy-manifest step");
+  /* CH2-16: the step is ios-prepare's; ios-build.yml runs that composite.
+     MUTATION: delete the `--check` line from the step -> fails. Move the
+     ios-prepare use below "Build for the iOS Simulator" -> fails. RUN (the first). */
+  const s = code(actionStep(PREPARE, "Add the privacy manifest") ?? "");
+  assert.ok(s, "ios-prepare has no privacy-manifest step");
   assert.match(s, /^\s*node tools\/mobile\/inject-privacy-manifest\.mjs "\$IOS_DIR\/App"\s*$/m, "the write is gone");
   assert.match(s, /^\s*node tools\/mobile\/inject-privacy-manifest\.mjs "\$IOS_DIR\/App" --check\s*$/m, "the read-back is gone");
   assert.match(s, /plutil -lint "\$IOS_DIR\/App\/App\.xcodeproj\/project\.pbxproj"/, "Apple's parser never reads the edited project");
-  const at = (f) => WF.indexOf(`- name: ${f}`);
-  assert.ok(at("Add the privacy manifest") > at("Build the webDir and generate the iOS project"));
-  assert.ok(at("Add the privacy manifest") < at("Build for the iOS Simulator"));
+  const prepareAt = WF.indexOf("uses: ./.github/actions/ios-prepare");
+  assert.ok(prepareAt > WF.indexOf("- name: Build the webDir and generate the iOS project"));
+  assert.ok(prepareAt > 0 && prepareAt < WF.indexOf("- name: Build for the iOS Simulator"));
   assert.equal(/continue-on-error/.test(s), false);
 });
 
@@ -439,11 +442,11 @@ test("the ios-archive action (the App Store path) writes, checks, and reads it b
   /* The release composite is a third build path; #675 shipped a rejection
      because a fix reached only the PR-time workflow. MUTATION: delete the
      action's privacy-manifest step -> fails. RUN. */
-  const s = code(actionStep(ACTION, "Add the privacy manifest") ?? "");
-  assert.ok(s, "the ios-archive action has no privacy-manifest step");
-  assert.match(s, /^\s*node tools\/mobile\/inject-privacy-manifest\.mjs mobile\/ios\/App\s*$/m);
-  assert.match(s, /^\s*node tools\/mobile\/inject-privacy-manifest\.mjs mobile\/ios\/App --check\s*$/m);
-  assert.ok(ACTION.indexOf("- name: Add the privacy manifest") < ACTION.indexOf("- name: Archive and sign"));
+  /* CH2-16: the write is ios-prepare's (pinned above); the archive runs that
+     composite before it signs. MUTATION: drop the ios-prepare use -> fails. */
+  const prepareAt = ACTION.indexOf("uses: ./.github/actions/ios-prepare");
+  assert.ok(prepareAt > 0, "the ios-archive action does not run ios-prepare, so it writes no manifest");
+  assert.ok(prepareAt < ACTION.indexOf("- name: Archive and sign"));
   const back = code(actionStep(ACTION, "Read the privacy manifest back out of the archive") ?? "");
   assert.match(back, /inject-privacy-manifest\.mjs --bundle \\\n\s*"\$RUNNER_TEMP\/Foray\.xcarchive\/Products\/Applications\/App\.app"/);
   assert.ok(ACTION.indexOf("- name: Read the privacy manifest back") > ACTION.indexOf("- name: Archive and sign"));

@@ -185,6 +185,9 @@ export const ISSUE_TITLE = "Release watchdog: the app stores need attention";
 export const NATIVE_INPUT_PREFIXES = [
   "mobile/",
   ".github/actions/ios-archive/",
+  /* ios-archive runs this composite (CH2-16): the plist keys, encryption
+   * declaration, privacy manifest, icon and splash that ship in the archive. */
+  ".github/actions/ios-prepare/",
   ".github/actions/android-bundle/",
 ];
 const INJECT_SCRIPT = /^tools\/mobile\/inject-[^/]+\.mjs$/;

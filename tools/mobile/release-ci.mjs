@@ -16,61 +16,60 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { readiness } from "../release/readiness.mjs";
+
 /* ─────────────────────────── Play upload gate ─────────────────────────────── */
 
 /** The one secret a Play upload needs.
  *
- *  A ONE-ELEMENT ARRAY, DELIBERATELY, AND SHAPED LIKE `SIGNING_SECRETS` ANYWAY.
- *  `signingReadiness()` in `ios-ci.mjs` has three outcomes because seven
- *  independent secrets can be half-set. Today Play has exactly one credential
- *  (`PLAY_SERVICE_ACCOUNT_JSON`), so `partial` can never be reached — but the
- *  function is written to the same {state, ready, present, missing, message}
- *  shape as its iOS counterpart on purpose, both so the two call sites in
- *  release.yml read identically and so a second Play secret (there is
- *  precedent: Apple needed seven) is a one-line addition here rather than a
- *  rewrite of the caller.
+ *  A ONE-ELEMENT ARRAY, DELIBERATELY. Play has exactly one credential today
+ *  (`PLAY_SERVICE_ACCOUNT_JSON`), so `partial` cannot be reached through this
+ *  list, but the gate runs on the same `readiness()` rule as the iOS one
+ *  (tools/release/readiness.mjs), so a second Play secret (there is precedent:
+ *  Apple needed seven) is a one-line addition here and gets the partial rule
+ *  with no other change.
  */
-export const PLAY_SECRETS = ["PLAY_SERVICE_ACCOUNT_JSON"];
+export const PLAY_SECRETS = Object.freeze(["PLAY_SERVICE_ACCOUNT_JSON"]);
+
+/** The Android upload-key trio the signing step decodes (`android-bundle`'s
+ *  `android_keystore_*` inputs, fed from release.yml). No gate reads it here:
+ *  the composite's own shell handles an absent keystore by building unsigned.
+ *  It is exported so `tools/ops/release-env-check.mjs` builds its list of every
+ *  release-environment secret from the lists the gates use instead of keeping a
+ *  third copy (CH2-21, T2-20). */
+export const ANDROID_SECRETS = Object.freeze([
+  "ANDROID_KEYSTORE_B64",
+  "ANDROID_KEYSTORE_PASSWORD",
+  "ANDROID_KEY_ALIAS",
+]);
+
+/** The words the Play gate says; the rule that picks one is `readiness()`. */
+export const PLAY_READINESS_MESSAGES = Object.freeze({
+  ready: "PLAY_SERVICE_ACCOUNT_JSON present — uploading the signed .aab to the Play internal testing track.",
+  absent:
+    "PLAY_SERVICE_ACCOUNT_JSON is not set, so the Play upload is skipped. The signed .aab still " +
+    "ships as a build artifact. Set up G2 (service account) and G3 (first manual upload) in " +
+    "HUMAN-ACTIONS.md to unblock this — see docs/release-lockstep-plan.md.",
+  subject: "Play upload",
+});
 
 /**
  * Is the Play internal-track upload configured?
  *
- * Same three-outcome shape as `signingReadiness()`, mirrored intentionally —
- * R-03's ask is "mirroring the iOS signing-gate's three-outcome rule".
+ * The iOS signing gate's three-outcome rule — R-03's ask is "mirroring the iOS
+ * signing-gate's three-outcome rule" — and since CH2-21 literally the same
+ * function, `readiness()` in tools/release/readiness.mjs.
  *
  *   ready   — every Play secret present. Upload to the internal track.
  *   absent  — none present. SKIP the upload; the signed `.aab` still ships as
  *             a build artifact. Expected today (HUMAN-ACTIONS.md G2/G3 open).
- *   partial — some present, some not. FAILS. Structurally unreachable with a
- *             single secret, kept for when a second one is added.
+ *   partial — some present, some not. FAILS. Unreachable with a single
+ *             secret; the shared rule covers it for when a second is added.
  *
  * @param {Record<string,string|undefined>} env
  */
 export function playReadiness(env = {}) {
-  const present = [];
-  const missing = [];
-  for (const key of PLAY_SECRETS) {
-    const v = env[key];
-    if (typeof v === "string" && v.trim() !== "") present.push(key);
-    else missing.push(key);
-  }
-  const state = missing.length === 0 ? "ready" : present.length === 0 ? "absent" : "partial";
-  return {
-    state,
-    ready: state === "ready",
-    present,
-    missing,
-    message:
-      state === "ready"
-        ? "PLAY_SERVICE_ACCOUNT_JSON present — uploading the signed .aab to the Play internal testing track."
-        : state === "absent"
-          ? "PLAY_SERVICE_ACCOUNT_JSON is not set, so the Play upload is skipped. The signed .aab still " +
-            "ships as a build artifact. Set up G2 (service account) and G3 (first manual upload) in " +
-            "HUMAN-ACTIONS.md to unblock this — see docs/release-lockstep-plan.md."
-          : `Play upload is HALF configured: ${present.length} of ${PLAY_SECRETS.length} secrets are ` +
-            `set and ${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} missing. Failing ` +
-            `rather than skipping, because a skipped upload on a green run is invisible.`,
-  };
+  return readiness(PLAY_SECRETS, env, PLAY_READINESS_MESSAGES);
 }
 
 /* ───────────────────────────── release guard ──────────────────────────────── */

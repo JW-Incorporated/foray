@@ -153,6 +153,8 @@ test("the allow-list: the bundle and the native inputs trigger, the bot-rewritte
     "mobile/ios/App/App/Info.plist": "release",
     ".github/workflows/release.yml": "release",
     ".github/actions/ios-archive/action.yml": "release",
+    // ios-archive's nested composite: the inject sequence that ships in the archive (CH2-16).
+    ".github/actions/ios-prepare/action.yml": "release",
     "tools/mobile/inject-splash.mjs": "release",
     "tools/mobile/prepare-webdir.mjs": "release",
     // CH2-19: ios-archive runs it (xcode-container, signing-gate). It was
@@ -292,6 +294,25 @@ test("CH2-19 (T2-09): the headers tell ci-release-4's build-number story and the
     assert.match(text, /tools\/release\/build-number\.mjs/, name);
   }
   assert.match(flat(prose(WATCH_WF)), new RegExp(`in ${TRIGGER_STALE_HOURS}h\\b`), "release-watch.yml's header states L's threshold");
+});
+
+test("every local composite release.yml reaches, nested ones included, is a release trigger", () => {
+  /* Walk `uses: ./.github/actions/<name>` from release.yml, transitively: a
+   * composite that another composite calls (ios-archive -> ios-prepare, CH2-16)
+   * builds the binary just as much. MUTATION: drop ".github/actions/ios-prepare/"
+   * from NATIVE_INPUT_PREFIXES -> red; make this walk non-transitive -> the
+   * ios-prepare assertion below goes red. */
+  const seen = new Set();
+  const queue = [".github/workflows/release.yml"];
+  while (queue.length) {
+    const src = fs.readFileSync(path.join(ROOT, queue.shift()), "utf8");
+    for (const m of src.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w.-]+)/g)) {
+      const action = `${m[1]}/action.yml`;
+      if (!seen.has(action)) { seen.add(action); queue.push(action); }
+    }
+  }
+  assert.ok(seen.has(".github/actions/ios-prepare/action.yml"), `the walk reaches the nested composite: ${[...seen]}`);
+  for (const action of seen) assert.equal(releaseTier(action, new Set()), "release", action);
 });
 
 test("the allow-list reads prepare-webdir.mjs's REAL plan, so a new player file is covered the day it lands", async () => {

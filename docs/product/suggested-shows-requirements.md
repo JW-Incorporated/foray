@@ -566,16 +566,15 @@ cached 1 h by `api/episodes/searchCache.ts` keyed
 `` `${show ?? ""}::${limit}::${q.trim().toLowerCase()}` ``. Every hit's
 `collectionId` is mapped back to a 4a `show_id` via
 `api/_lib/showIdMap.ts:loadShowIdMap`; **an unmapped hit is dropped** rather
-than shown with a broken link. The id map's preferred source is a released
-`id-map.json` named by `data/shows-index-pointer.json`'s `id_map_url`. The
-pointer **is committed** (re-pointed by #1012), but it carries **no
-`id_map_url`** — `tools/shows/publish-release.mjs:buildPointer` never writes
-one — so `tryLoadReleaseIdMap` returns no map and the release id-map is
-**not** in use. Every hit is mapped through the catalogue fallback instead,
-which P-05 (`docs/search-parity-plan.md` §4) widened from `data/catalog.json`
-alone (220 curated, slug ids) to curated-first plus `data/catalog-breadth.json`
-(~19.7k breadth, numeric ids). The old 220-show ceiling is gone because of
-P-05, not because of the pointer.
+than shown with a broken link. The id map's only source is the two committed
+catalogue files, which P-05 (`docs/search-parity-plan.md` §4) widened from
+`data/catalog.json` alone (220 curated, slug ids) to curated-first plus
+`data/catalog-breadth.json` (~19.7k breadth, numeric ids). The old 220-show
+ceiling is gone because of P-05, not because of the pointer. The shows-index
+release's `id-map.json` is **not** an input: it is curated slug →
+PodcastIndex id (`tools/shows/shard-build.mjs:buildIdMap`), not Apple
+`collectionId` → `show_id`, and `showIdMap.ts`'s unreachable reader for it was
+deleted (code-health-2 CH2-02).
 
 ### 3.7 The nightly refresh, and the weekly show import
 
@@ -1115,14 +1114,16 @@ code grows the local-hit branch or the sentence loses its condition.
   skips the rebuild now fails CI.
 - **`data/shows-index-pointer.json` does not exist** — **corrected; the
   220-show cap is gone (through P-05).** The pointer is committed now
-  (re-pointed by #1012), but it has no `id_map_url`, because
-  `tools/shows/publish-release.mjs:buildPointer` never writes one. So
-  `api/_lib/showIdMap.ts:tryLoadReleaseIdMap` still returns no map, and the
-  release id-map is **not** live. General episode search maps hits through
-  the catalogue fallback, which P-05 (`docs/search-parity-plan.md` §4)
-  widened to curated (220) plus breadth (~19.7k) — that is what removed the
-  220-show ceiling. Using the full release id-map would still need
-  `buildPointer` to publish an `id_map_url`.
+  (first by #720 on 2026-09-15, re-pointed by #1012). General episode search
+  maps hits through the two committed catalogue files, which P-05
+  (`docs/search-parity-plan.md` §4) widened to curated (220) plus breadth
+  (~19.7k) — that is what removed the 220-show ceiling. The release's
+  `id-map.json` is no substitute and must not be wired in: it is curated
+  slug → PodcastIndex id (`tools/shows/shard-build.mjs:buildIdMap`), not
+  Apple `collectionId` → `show_id`, so publishing an `id_map_url` would map
+  nothing. `api/_lib/showIdMap.ts`'s reader for it was unreachable and was
+  deleted (code-health-2 CH2-02); `api/_test/show-id-map.test.mjs` pins the
+  shape mismatch.
 - **Two stray root scripts** — `classify-shows.mjs` and `classify-shard-0.mjs`
   (the latter with hardcoded `/home/user/foray/...` paths) — **FIXED**: both
   deleted in the #560 item-10 residue PR. Nothing in the repo ran or imported

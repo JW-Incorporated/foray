@@ -1,0 +1,21 @@
+{
+  "//": "CH2-09 (docs/roadmap/code-health-2.md, B1-05): the shared entity fixture. backend/test/entitiesParity.test.ts runs BOTH decoders over every case -- backend/src/feeds/html.ts (the live API: parser titles, show notes) and tools/refresh/entities.mjs (the catalogue: data/discover.json) -- and asserts they agree with each other and with `expected`. One table (backend/src/feeds/entitiesTable.json), one code-point rule: decode to a fixed point (at most 4 passes); a C0 or C1 control (U+0000-U+001F, U+007F-U+009F) becomes a space; a number that is not a Unicode scalar value (a surrogate, or above U+10FFFF) becomes U+FFFD; a name or a malformed reference the table does not know is left exactly as written.",
+  "cases": [
+    { "name": "B1-05: a named accent the live list showed raw", "input": "Caf&eacute; &amp; Co", "expected": "Café & Co" },
+    { "name": "WordPress/PowerPress decimal ampersand", "input": "Vibe Coding &#038; Linux", "expected": "Vibe Coding & Linux" },
+    { "name": "double-encoded, as a CDATA title carries it", "input": "Grant &amp;#038; Lee", "expected": "Grant & Lee" },
+    { "name": "double-encoded named", "input": "&amp;amp;", "expected": "&" },
+    { "name": "nbsp is U+00A0, not a plain space", "input": "a&nbsp;b", "expected": "a b" },
+    { "name": "hellip and the quote marks", "input": "Wait&hellip; &lsquo;it&rsquo;s&rsquo; &ldquo;so&rdquo; &mdash; &ndash;", "expected": "Wait… ‘it’s’ “so” — –" },
+    { "name": "names only the catalogue table used to know", "input": "&Iacute;&Ntilde;&ccedil; &copy; &trade; &euro;", "expected": "ÍÑç © ™ €" },
+    { "name": "C0 controls, NUL included, become a space", "input": "a&#1;b&#0;c&#x1F;d", "expected": "a b c d" },
+    { "name": "tab, LF and CR references become a space", "input": "one&#9;two&#10;three&#13;four", "expected": "one two three four" },
+    { "name": "C1 controls (U+0085 NEL, U+007F DEL) become a space", "input": "next&#133;line&#x85;end&#127;!", "expected": "next line end !" },
+    { "name": "out of range and surrogates become U+FFFD", "input": "Bad &#99999999; &#x110000; &#1114112; &#55296; &#xD800; end", "expected": "Bad � � � � � end" },
+    { "name": "top of the range still decodes", "input": "&#x10FFFF;&#65;&#X42;&#x63;", "expected": "􏿿ABc" },
+    { "name": "markup entities decode (tag stripping is the sanitizer's job)", "input": "&lt;b&gt;bold&lt;/b&gt; &quot;q&quot; &apos;a&apos;", "expected": "<b>bold</b> \"q\" 'a'" },
+    { "name": "unknown names and prototype names are left as written", "input": "AT&T R&D &unknownname; &constructor; &toString; &__proto__; &AMP;", "expected": "AT&T R&D &unknownname; &constructor; &toString; &__proto__; &AMP;" },
+    { "name": "malformed references are left as written", "input": "&#; &#xZZ; &#1f; & ;", "expected": "&#; &#xZZ; &#1f; & ;" },
+    { "name": "plain text is untouched", "input": "100% & rising", "expected": "100% & rising" }
+  ]
+}
