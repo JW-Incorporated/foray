@@ -259,6 +259,9 @@ function fixtureRoot() {
   const fast = src.replace("const FETCH_BACKOFF_MS = 10_000;", "const FETCH_BACKOFF_MS = 0;");
   assert.notEqual(fast, src, "the fixture zeroes the retry backoff");
   fs.writeFileSync(path.join(dir, "fetch-models.mjs"), fast);
+  // Its one relative import, the entry guard (CH2-41a), at the same relative path.
+  fs.mkdirSync(path.join(root, "tools", "ci"), { recursive: true });
+  fs.copyFileSync(path.join(HERE, "..", "ci", "entry.mjs"), path.join(root, "tools", "ci", "entry.mjs"));
   const log = path.join(root, "fetched.log");
   const preload = path.join(root, "fake-fetch.mjs");
   fs.writeFileSync(preload, [

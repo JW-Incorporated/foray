@@ -89,7 +89,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { tags, PlistError } from "./inject-background-audio.mjs";
 import { readPlistXml } from "./ios-embedded-frameworks.mjs";
 
@@ -699,8 +699,7 @@ export function runBundle(appDir, read = readPlistXml) {
   return [`${file}: present; ${ACCESSED_API_TYPES.map((a) => `${a.category} ${a.reasons.join(",")}`).join("; ")}`];
 }
 
-const isMain =
-  process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 const USAGE =
   "Usage: node tools/mobile/inject-privacy-manifest.mjs <mobile/ios/App> [--check]\n" +

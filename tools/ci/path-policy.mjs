@@ -42,7 +42,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "./entry.mjs";
 
 /* ------------------------------------------------------------------ policy */
 
@@ -1221,7 +1222,7 @@ export function runCli(argv, io = {}) {
 }
 
 /* Import-safe: the workflows run it, the tests import it. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   process.exit(runCli(process.argv.slice(2)));
 }
 

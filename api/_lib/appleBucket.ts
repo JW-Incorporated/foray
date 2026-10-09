@@ -18,11 +18,7 @@
  * to fake), and the two are equivalent for a fixed-rate cap like this one.
  */
 
-export interface Clock {
-  now(): number;
-}
-
-export const realClock: Clock = { now: () => Date.now() };
+import { realClock, type Clock } from "./clock";
 
 export class SlidingWindowBucket {
   private readonly capacity: number;

@@ -438,7 +438,7 @@ test("END TO END (audit finding C, re-pinned for #701): a git revert gets a NEWE
 /* The real tool, run against a scratch tree that has every file the generator
    lists (so its private SHELL / RUNTIME_DATA / player lists are satisfied
    whatever they are today) with tiny LF bodies. */
-const CLI_MODULES = ["generate-manifest.mjs", "crlf-guard.mjs", "forays-directory.mjs", "catalogue-directory.mjs"];
+const CLI_MODULES = ["generate-manifest.mjs", "entry.mjs", "crlf-guard.mjs", "forays-directory.mjs", "catalogue-directory.mjs"];
 const EPOCH = "1757505600"; // 2025-09-10T12:00:00Z — pins built_at for the CLI runs
 
 function cliTree() {
@@ -619,8 +619,9 @@ test("CLI: --stamp refuses a CRLF tree before writing anything", () => {
 
 test("CLI: --stamp refuses the checkout it lives in unless CI says the tree is throwaway", () => {
   /* Stamping your own working tree rewrites the tracked sw.js — the exact commit
-     --check refuses. KILLED BY: dropping the `realOrSelf(dir) === realOrSelf(ROOT)`
-     guard. */
+     --check refuses. KILLED BY: dropping the `samePath(dir, ROOT)` guard, and
+     by generate-manifest.mjs calling a helper it no longer defines or imports
+     (the CH2-41a ReferenceError). */
   withTree(cliTree, (dir) => {
     const c = run(dir, ["--stamp", "."], { CI: "" });
     assert.equal(c.status, 1);

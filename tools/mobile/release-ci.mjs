@@ -12,9 +12,8 @@
  */
 
 import fs from "node:fs";
-import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { readiness } from "../release/readiness.mjs";
 
@@ -201,6 +200,6 @@ function main(argv) {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2));
 }
