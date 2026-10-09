@@ -25,11 +25,16 @@ import { decodeEntities } from "./entities.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-/** An element's text: fast-xml-parser yields a string (or number) for a bare
-    element and `{ "#text": …, "@_attr": … }` once it carries attributes. */
-export const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
+/** An element's text, ALWAYS a string (or null): fast-xml-parser yields a string
+    or a number for a bare element and `{ "#text": …, "@_attr": … }` once it
+    carries attributes, and that #text is a NUMBER too when the text is numeric
+    (`<guid isPermaLink="false">1234567</guid>` -> `{ "#text": 1234567, … }`).
+    Before CH2-29 scan.mjs and harvest-episodes.mjs stringified it through a guid
+    ternary; a numeric guid must stay the string refresh-state.json's `seen` holds,
+    or every such episode is pushed again (CH2-29 review). */
+export const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] == null ? null : String(v["#text"])) : String(v));
 
-/** A new XMLParser with the one configuration every RSS reader in tools/ uses
+/** An XMLParser instance with the one configuration every RSS reader in tools/ uses
     (attributes kept, under an `@_` prefix; values trimmed). */
 export function feedParser() {
   const { XMLParser } = createRequire(join(ROOT, "backend", "package.json"))("fast-xml-parser");
@@ -40,10 +45,10 @@ export function feedParser() {
     seen-guid state, window and known titles BEFORE it builds a record, and what
     the record itself carries. Any of the three may be null. */
 export function itemIdentity(it) {
-  /* `text()` already unwraps the `{ "#text": … }` form fast-xml-parser produces for
-     `<guid isPermaLink="false">`, so there is no ternary here (T1-18: scan.mjs and
-     harvest-episodes.mjs carried a dead one; a mutation test on it came back green).
-     No guid -> the enclosure URL stands in. */
+  /* `text()` unwraps the `{ "#text": … }` form fast-xml-parser produces for
+     `<guid isPermaLink="false">` AND stringifies it, which is all the guid ternary
+     scan.mjs and harvest-episodes.mjs carried did (T1-18); it was not dead: it was
+     what turned a numeric #text into a string. No guid -> the enclosure URL stands in. */
   const guid = text(it.guid) || text(it.enclosure?.["@_url"]);
   /* Entities decoded HERE, where the title enters data/ ("Vibe Coding &#038; Linux"
      rendered literally — visual pass 1 review, 2026-09-23; tools/refresh/entities.mjs). */

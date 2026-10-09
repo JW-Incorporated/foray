@@ -40,10 +40,14 @@ test("one <item> becomes one archive episode, field for field", () => {
 });
 
 /* MUTATION: guid read as `text(it.guid?.["#text"])` (string guids lost) -> red on
-   the string case; read as `String(it.guid)` -> red on the object case. */
+   the string case; read as `String(it.guid)` -> red on the object case;
+   feed-xml.mjs's text() returning a numeric #text unconverted -> red on the
+   numeric case (fast-xml-parser parses `<guid isPermaLink="false">123</guid>`
+   to `{ "#text": 123 }`; the archive always held the string). */
 test("guid is read from the string, the CDATA-string and the object form alike; a bad pubDate is null", () => {
   assert.equal(episodeOf({ title: "t", guid: "plain" }).guid, "plain");
   assert.equal(episodeOf({ title: "t", guid: { "#text": "obj" } }).guid, "obj");
+  assert.equal(episodeOf({ title: "t", guid: { "#text": 123, "@_isPermaLink": "false" } }).guid, "123");
   assert.equal(episodeOf({ title: "t", guid: { "@_isPermaLink": "true" } }).guid, null);
   assert.equal(episodeOf({ title: "t" }).guid, null);
   assert.equal(episodeOf({ title: "t", pubDate: "not a date" }).published_at, null);

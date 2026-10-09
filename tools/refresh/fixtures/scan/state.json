@@ -1,5 +1,5 @@
 {
-  "seen": { "1001": ["alpha-seen-guid"] },
+  "seen": { "1001": ["20261002"] },
   "retry": {
     "retry-guid-1": {
       "attempts": 2,

@@ -77,8 +77,11 @@ const normalise = (pendingText) => {
 
 /* MUTATION: change any field of the pushed record (rename `explicit_hint`, drop
    `audio_bytes`, swap the `||` guid fallback to the title) in feed-xml.mjs's
-   itemToPendingRecord, or move scan.mjs's `seen.has(guid)` check after the
-   cutoff check -> red, the diff names the field. Run: deleting `audio_bytes:`
+   itemToPendingRecord -> red, the diff names the field. The "Seen Last Night"
+   item's guid is `<guid isPermaLink="false">20261002</guid>`, which fast-xml-parser
+   types as the NUMBER 20261002, and state.json holds the string: text() handing
+   back the number unconverted -> red (the seen item misses `seen` and is pushed
+   again, 8 new episodes; CH2-29 review). Run: deleting `audio_bytes:`
    from the record -> red ("audio_bytes" missing from seven episodes). */
 test("fresh-pending.json is byte-identical to the pre-extraction snapshot", needParser, () => {
   const { pendingText, stdout } = runScan();
@@ -95,7 +98,7 @@ test("the seen-guid state records exactly the guids pushed, and keeps the retry 
   const { state } = runScan();
   assert.deepEqual(state.seen, {
     1001: [
-      "alpha-seen-guid",
+      "20261002",
       "alpha-cdata-guid",
       "alpha-object-guid",
       "https://cdn.example.test/alpha/ep3.mp3",
@@ -115,8 +118,8 @@ test("the seen-guid state records exactly the guids pushed, and keeps the retry 
 test("every record scan pushes deep-equals backfill-show's pendingRecord for the same <item>", needParser, async () => {
   const { pendingText } = runScan();
   const { pendingRecord } = await import("./backfill-show.mjs");
-  const { XMLParser } = backendRequire("fast-xml-parser");
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
+  const { feedParser } = await import("./feed-xml.mjs");
+  const parser = feedParser();
   const catalog = JSON.parse(readFileSync(join(FIXTURES, "catalog.json"), "utf8"));
   const sha1 = (s) => createHash("sha1").update(s).digest("hex");
 

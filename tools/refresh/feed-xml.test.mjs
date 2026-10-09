@@ -33,7 +33,9 @@ const SHOW = {
 };
 
 /* MUTATION: `typeof v === "object" ? v["#text"]` -> `String(v)` -> red on the
-   object cases; `v == null ? null` -> `v ? … : null` -> red on 0. */
+   object cases; `v == null ? null` -> `v ? … : null` -> red on 0;
+   `String(v["#text"])` -> `v["#text"]` (the pre-review helper) -> red on the
+   numeric #text. */
 test("text() reads a bare value and the #text of an attributed element", () => {
   assert.equal(text(null), null);
   assert.equal(text(undefined), null);
@@ -42,7 +44,10 @@ test("text() reads a bare value and the #text of an attributed element", () => {
   assert.equal(text(42), "42");
   assert.equal(text({ "#text": "inner", "@_isPermaLink": "false" }), "inner");
   assert.equal(text({ "@_isPermaLink": "true" }), null);
-  assert.equal(text({ "#text": 7 }), 7, "the #text is returned as the parser typed it (today's behaviour)");
+  /* fast-xml-parser types a numeric #text as a NUMBER: `<guid isPermaLink="false">1234567</guid>`
+     parses to exactly this. scan.mjs and harvest-episodes.mjs always stringified it. */
+  assert.equal(text({ "#text": 1234567, "@_isPermaLink": "false" }), "1234567");
+  assert.equal(text({ "#text": 0 }), "0");
 });
 
 /* The four cases the card names: a CDATA guid (a plain string once parsed), an
@@ -94,20 +99,32 @@ test("one <item> becomes the full fresh-pending record", () => {
 });
 
 /* MUTATION: drop the `|| text(it.enclosure?.["@_url"])` fallback -> red on the
-   no-guid case; drop decodeEntities -> red on the title. */
+   no-guid case; drop decodeEntities -> red on the title; `String(v["#text"])` ->
+   `v["#text"]` in text() -> red on the numeric guid (a number would miss every
+   string guid in refresh-state.json's `seen` and be pushed again). */
 test("itemIdentity: guid falls back to the enclosure URL, the title is entity-decoded, a bad pubDate is null", () => {
   const id = itemIdentity({ title: "A &amp; B", pubDate: "nope", enclosure: { "@_url": "https://cdn.example.test/x.mp3" } });
   assert.equal(id.guid, "https://cdn.example.test/x.mp3");
   assert.equal(id.title, "A & B");
   assert.equal(id.pub, null);
   assert.equal(itemIdentity({ title: "t", pubDate: "2026-10-05T00:00:00Z" }).pub.toISOString(), "2026-10-05T00:00:00.000Z");
+  const numeric = itemIdentity({ guid: { "#text": 1234567, "@_isPermaLink": "false" }, title: "t", pubDate: "2026-10-05" });
+  assert.equal(numeric.guid, "1234567");
+  assert.equal(itemToPendingRecord(SHOW, { guid: { "#text": 1234567 }, title: "t", pubDate: "2026-10-05" }).record.guid, "1234567");
 });
 
-/* MUTATION: swap the order of the guid/title/pubDate checks -> red on the reason. */
+/* The single-missing-field items pin each reason; the multi-missing ones pin the
+   PRECEDENCE (guid, then title, then pubDate). MUTATION, run: the reason ternary
+   reordered to `!pub ? "unparseable pubDate" : !title ? "no title" : "no guid"`
+   -> red on `{}` and on the no-title-bad-date item. */
 test("an item with no guid, no title or no pubDate yields no record and says which", () => {
   assert.deepEqual(itemToPendingRecord(SHOW, { title: "t", pubDate: "2026-10-05" }), { record: null, reason: "no guid" });
   assert.deepEqual(itemToPendingRecord(SHOW, { guid: "g", pubDate: "2026-10-05" }), { record: null, reason: "no title" });
   assert.deepEqual(itemToPendingRecord(SHOW, { guid: "g", title: "t", pubDate: "x" }), { record: null, reason: "unparseable pubDate" });
+  assert.deepEqual(itemToPendingRecord(SHOW, {}), { record: null, reason: "no guid" });
+  assert.deepEqual(itemToPendingRecord(SHOW, { pubDate: "x" }), { record: null, reason: "no guid" });
+  assert.deepEqual(itemToPendingRecord(SHOW, { title: "t", pubDate: "x" }), { record: null, reason: "no guid" });
+  assert.deepEqual(itemToPendingRecord(SHOW, { guid: "g", pubDate: "x" }), { record: null, reason: "no title" });
   const video = itemToPendingRecord(SHOW, { guid: "g", title: "t", pubDate: "2026-10-05", enclosure: { "@_url": "https://c.example.test/v.mp4", "@_type": "video/mp4" } });
   assert.equal(video.reason, "non-audio type video/mp4");
   assert.equal(video.record.audio_url, null);
@@ -130,7 +147,7 @@ test("one text(), one XMLParser config, one record builder: every reader imports
   const withText = files.filter((f) => /const text = \(v\) =>/.test(src(f)));
   assert.deepEqual(withText, ["tools/refresh/feed-xml.mjs"]);
   const parserScope = files.filter((f) => /^tools\/(refresh|classify)\//.test(f) || f === "tools/harvest-episodes.mjs");
-  assert.deepEqual(parserScope.filter((f) => /new XMLParser\(/.test(src(f))), ["tools/refresh/feed-xml.mjs"]);
+  assert.deepEqual(parserScope.filter((f) => /new\s+XMLParser\(/.test(src(f))), ["tools/refresh/feed-xml.mjs"]);
 
   const READERS = {
     "tools/refresh/scan.mjs": ["feedParser", "itemIdentity", "itemToPendingRecord"],
