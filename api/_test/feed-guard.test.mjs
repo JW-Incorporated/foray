@@ -16,9 +16,9 @@ import { assertPublicFeedUrl, guardFeedFetch, isBlockedAddress, FeedAddressError
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
 import { _setPointerPathForTests } from "../_lib/showsIndexRelease.ts";
+import { _resetPiShowCacheForTests } from "../_lib/resolveShow.ts";
 
 const handler = typeof episodesModule.default === "function" ? episodesModule.default : episodesModule.default.default;
-const { _resetPiShowCacheForTests } = episodesModule;
 
 const FEED = `<?xml version="1.0"?><rss version="2.0"><channel><title>Lex</title>
 <item><title>Alpha</title><guid>a</guid><enclosure url="https://cdn.example.com/a.mp3" type="audio/mpeg" length="1"/></item>
