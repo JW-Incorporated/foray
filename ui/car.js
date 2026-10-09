@@ -124,7 +124,14 @@ function agCarAdopt(ui) {
   use.setAttribute("href", safeUrl("ui/icons.svg#i-car"));
   svg.append(use);
   chip.append(svg, document.createTextNode("Car"));
-  chip.addEventListener("click", () => { agCarLeave(); });
+  /* Leaving posture hides this very chip (car.css: display none once data-posture is gone), and focus on a control that
+     stops rendering falls to <body> inside the still-open modal sheet. Hand it to the close chevron, which is always
+     shown and is the sheet's own way out (Play as the fallback). */
+  chip.addEventListener("click", () => {
+    agCarLeave();
+    const stable = ui.closeBtn || ui.playBtn;
+    if (stable && typeof stable.focus === "function") stable.focus();
+  });
   if (ui.moreMenuBtn) {
     ui.grabZone.insertBefore(chip, ui.moreMenuBtn);
   } else {

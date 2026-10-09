@@ -521,6 +521,27 @@ test("ROUND 2 a11y-2: the live region is a sibling of the bar AND the sheet, and
   assert.match(setExpandedBody(), /keepReachable: \[[^\]]*"\.fp-announce"/);
 });
 
+test("Stop from the EXPANDED sheet gives the mini bar and the topbar back (ambient review: bar aria-hidden, gear inert)", () => {
+  /* setExpanded(true) makes the bar inert + aria-hidden and the topbar inert (the owner leaves .topbar reachable, so it
+     is not on the owner's own inert list). stopAndClose hides the sheet directly and never calls setExpanded(false), so
+     the undo has to be named inside it. MUTATION 1: delete the `releaseBarAndTopbar();` call from stopAndClose -> red
+     (gear stays inert, next play's bar is aria-hidden). MUTATION 2: drop the topbar line from releaseBarAndTopbar -> red.
+     MUTATION 3: drop the call from setExpanded(false) -> red. */
+  const stop = /async function stopAndClose\([^)]*\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.ok(stop);
+  assert.match(stop[0], /releaseBarAndTopbar\(\);/, "Stop undoes what opening the sheet did to the bar and the topbar");
+  const helper = /function releaseBarAndTopbar\(\) \{[\s\S]*?\n\}/.exec(TEXT);
+  assert.ok(helper, "one shared undo");
+  assert.match(helper[0], /ui\.bar\.inert = false;/);
+  assert.match(helper[0], /ui\.bar\.setAttribute\("aria-hidden", "false"\)/);
+  assert.match(helper[0], /topbar\.inert = false/);
+  const expand = /const setExpanded = \(open\) => \{[\s\S]*?\n  \};/.exec(TEXT);
+  assert.ok(expand);
+  assert.match(expand[0], /if \(!open\) \{[\s\S]*?releaseBarAndTopbar\(\);/, "closing the sheet normally uses the same undo");
+  /* The pair it undoes is real, so the test cannot pass against a client that never inerts anything. */
+  assert.match(expand[0], /if \(open\) \{\s*ui\.bar\.inert = true;\s*ui\.bar\.setAttribute\("aria-hidden", "true"\);/);
+});
+
 test("ROUND 2 a11y-6: Stop hides the player BEFORE the owner lets go, lands focus on the page and says so from outside the root", () => {
   /* closeSheet handed focus to the bar's title button and the next line hid
      the root under it. MUTATION 1: move `ui.root.hidden = true` back below

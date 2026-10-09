@@ -88,7 +88,7 @@ test("car posture ships after Now Playing in every lane and the client wires it 
   }
   assert.equal((client.match(/AfterglowCar\?\.adopt\(ui\)/g) || []).length, 2, "native and JS boot both adopt the chip");
   assert.match(client, /window\.AfterglowCar\?\.bindPress\(ui\.bar,/, "the mini row is the hold's surface");
-  assert.match(client, /if \(!open\) \{\s*\/\*[^*]*\*\/\s*window\.AfterglowCar\?\.leave\(document\);\s*ui\.bar\.inert = false;/, "collapsing the sheet ends posture before focus returns to the bar");
+  assert.match(client, /if \(!open\) \{\s*\/\*[^*]*\*\/\s*window\.AfterglowCar\?\.leave\(document\);\s*releaseBarAndTopbar\(\);/, "collapsing the sheet ends posture before focus returns to the bar");
   assert.match(client, /ui\.root\.hidden = true;\s*ui\.sheet\.hidden = true;\s*\/\*[^*]*\*\/\s*window\.AfterglowCar\?\.leave\(document\);/, "Stop ends posture too");
   assert.match(client, /if \(window\.AfterglowCar\?\.active\(document\)\) ui\.openSheet\?\.\(\);/, "?posture=car opens Now Playing once something is loaded");
   assert.match(client, /onHold: \(\) => \{\s*window\.AfterglowCar\.haptic\(\);\s*window\.AfterglowCar\.enter\(document\);\s*ui\.openSheet\(\);/, "a hold fires the haptic, enters, and opens the sheet");
@@ -315,7 +315,9 @@ test("adopt puts one named chip before the dots; it reads the posture and its cl
   const close = new FakeEl("button");
   const more = new FakeEl("button");
   grabZone.append(close, more);
-  const ui = { grabZone, moreMenuBtn: more };
+  let focused = null;
+  close.focus = () => { focused = close; };
+  const ui = { grabZone, moreMenuBtn: more, closeBtn: close };
   car.adopt(ui);
   car.adopt(ui);
   const chips = grabZone.children.filter((c) => c.className && c.className.includes("ag-np-car-chip"));
@@ -330,4 +332,15 @@ test("adopt puts one named chip before the dots; it reads the posture and its cl
   chips[0].dispatch("click");
   assert.strictEqual(documentElement.getAttribute("data-posture"), null, "the chip leaves");
   assert.strictEqual(chips[0].getAttribute("aria-pressed"), "false");
+  /* MUTATION (focus): delete the `stable.focus()` line in the chip's click handler (ui/car.js) -> red: the chip is
+     display:none the instant posture ends, focus falls to <body> inside the still-open modal sheet. */
+  assert.strictEqual(focused, close, "focus moves to the close chevron before the chip stops rendering");
+  const bare = new FakeEl("div");
+  const play = new FakeEl("button");
+  let playFocused = false;
+  play.focus = () => { playFocused = true; };
+  car.adopt({ grabZone: bare, playBtn: play });
+  car.enter();
+  bare.children[0].dispatch("click");
+  assert.ok(playFocused, "Play is the fallback when there is no close chevron");
 });

@@ -3166,6 +3166,15 @@ async function setRunning(want, source = "tap") {
  * deleted, and the listener would be told their data was gone while their place
  * in the hour sat in both tiers.
  */
+/* The one place the expanded-sheet side effects on the mini bar and the topbar are undone. Shared by setExpanded(false)
+   and stopAndClose(), which hides the sheet directly and never passes through setExpanded. */
+function releaseBarAndTopbar() {
+  ui.bar.inert = false;
+  ui.bar.setAttribute("aria-hidden", "false");
+  const topbar = document.querySelector(".topbar");
+  if (topbar) topbar.inert = false;
+}
+
 async function stopAndClose({ persist = true } = {}) {
   /* Closing the bar is not "I am done with this Foray", it is "get this off my
      screen". Keep the resume point; the only thing that clears it is finishing.
@@ -3201,6 +3210,11 @@ async function stopAndClose({ persist = true } = {}) {
       && ui.root.contains(active) && typeof active.blur === "function") active.blur();
   const owner = sheetOwner();
   if (owner) owner.closeSheet(ui.sheet);
+  /* Opening the sheet made the bar inert + aria-hidden and the topbar inert (setExpanded(true)); the owner's
+     closeSheet lifts only what IT recorded, and the topbar is on its keepReachable list, not its inert list. Stop
+     from the open sheet never reaches setExpanded(false), so without this the gear stays inert and the next play's
+     mini bar comes back aria-hidden. MUTATION: delete this call -> the stop-from-expanded test goes red. */
+  releaseBarAndTopbar();
   document.body.classList.remove("fp-open", "fp-expanded");
   globalThis.syncDock?.();
   const nav = typeof window !== "undefined" ? window.ForayNav : null;
@@ -3994,9 +4008,7 @@ function bind() {
       /* Car posture lasts as long as the sheet it opened. Ended BEFORE the owner hands focus back to the bar's title
          button below, which the posture's chrome rules must not be hiding when it lands. */
       window.AfterglowCar?.leave(document);
-      ui.bar.inert = false;
-      ui.bar.setAttribute("aria-hidden", "false");
-      if (topbar) topbar.inert = false;
+      releaseBarAndTopbar();
     }
     /* Closing: the owner first, while the sheet is still shown — it lifts
        `inert` off the bar and hands focus back to the button that opened
