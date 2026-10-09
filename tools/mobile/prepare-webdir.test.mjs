@@ -92,6 +92,12 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
      round 4, about 10% over today's size. ui/tabbar.js and player/client.js are
      existing files and stay in the legacy count. */
   { rel: "ui/dock.css", maxBytes: 10.5 * 1024 },
+  /* Phase 4, Library: the screen's stylesheet, the Glow palette its tiles read, and ui/library.js itself, which the
+     screen rewrote (the capped link rows went; the grid, the rows, the Up Next menu, the Toast and the reorder
+     slide came). library.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy
+     alarm is not to be re-baselined a seventh time and this is a bounded feature step. Iteration 3: 6.4 KB minified once the stopgap Dock block went to ui/dock.css (it was 9.5 KB with it, over this ceiling). */
+  { rel: "ui/library.css", maxBytes: 8 * 1024 },
+  { rel: "ui/library.js", maxBytes: 30 * 1024 },
   /* Phase 4, Today (Home): the screen's stylesheet, the Glow palette, and ui/home.js itself, which Today rewrote
      (the Jump back in / Forays / Suggested renderers went; the hero, rows, rail, skeleton and play-state code
      came). home.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy alarm

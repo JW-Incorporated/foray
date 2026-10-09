@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/browse.css", "ui/forays.css", "ui/playlist.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/library.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/browse.css", "ui/forays.css", "ui/playlist.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -231,6 +231,8 @@ const BUTTONS = {
   ".ag-chip": { tall: ".ag .ag-chip", why: "a labelled pill with inline padding" },
   ".ag-strip-bar": { tall: ".ag .ag-strip-bar", why: "a flexible bar that fills the strip's width" },
   ".ag-tab": { tall: ".ag .ag-tab", why: "a tab that flexes across one third of the tab bar" },
+  ".lb-cover": { tall: ".ag .lb-cover", why: "Library's Up Next and History rows: an invisible button laid over the whole 64px row (inset: 0), under the menu button" },
+  ".lb-menu-item": { tall: ".ag .lb-menu-item", why: "a row of the Up Next menu sheet's full-width column, 48px tall" },
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
