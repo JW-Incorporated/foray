@@ -40,10 +40,11 @@ async function startPlayback(page, itemId, extra = {}) {
   await page.evaluate(async ({ id, extra }) => {
     const saved = JSON.parse(localStorage.getItem("cp_saved") || "{}");
     const it = saved[id];
+    const { why, ...fields } = extra;
     if (!it) throw new Error("uilab: seeded item missing: " + id);
     await window.ForayPlayer.play(
-      { ...it, ...extra, duration_sec: it.duration_sec || (it.duration_min || 60) * 60 },
-      { why: "uilab fixture" }
+      { ...it, ...fields, duration_sec: it.duration_sec || (it.duration_min || 60) * 60 },
+      { why: why || "uilab fixture" }
     );
   }, { id: itemId, extra });
   await page.waitForFunction(() => (window.__audios || []).some((a) => a.src && !a.paused && a.currentTime > 0), null, { timeout: 20000 });
@@ -403,6 +404,10 @@ function coreRoutes(fx, { entities }) {
 /** @returns {Array<{id:string, description:string, seed:string, steps:Array}>} */
 export function appStates(fx) {
   const ep0 = fx.items[0].id;
+  /* Now Playing shots an episode whose title sets on two lines like the prototype's ("The Neuroscience of Déjà Vu"); ep0's three-line title keeps its own step (now-playing-longtitle) and the menu step. */
+  const epShort = (fx.items.find((item) => item.title.length >= 24 && item.title.length <= 34) || fx.items[0]).id;
+  /* The prototype's episode why-line runs two lines; the harness's "uilab fixture" runs one, which would shift the centred block 12px. */
+  const npWhy = { why: "Why a drilling project meant to study the crust became a record that has stood for decades." };
   const foray0 = fx.forays.find((foray) => foray.status === "published")?.id || fx.forays[0]?.id;
   /* A published Foray that carries narration: the strip's ivory lights only exist for one of these (foray0 has none). */
   const forayNarrated = fx.forays.find((foray) => foray.status === "published" && (foray.items || []).some((item) => item.type === "narration" || item.kind === "tts"))?.id || foray0;
@@ -615,14 +620,14 @@ export function appStates(fx) {
         {
           label: "now-playing-episode",
           route: "#/library",
-          run: (page) => startEpisodePlayback(page, ep0),
+          run: (page) => startEpisodePlayback(page, epShort, npWhy),
           ready: ".ag-np:not(.is-foray)",
         },
         {
           label: "now-playing-paused",
           route: "#/library",
           run: async (page) => {
-            await startEpisodePlayback(page, ep0);
+            await startEpisodePlayback(page, epShort, npWhy);
             await page.evaluate(async () => {
               const status = window.ForayPlayer?.forayStatus?.();
               if (status?.running) await window.ForayPlayer.forayToggle();
@@ -656,8 +661,8 @@ export function appStates(fx) {
           route: "#/library",
           run: async (page) => {
             /* The seeded episodes carry no publisher notes, so the detail posture had no Show notes section to look at. The
-               prototype's scrolled view shows one (a four-line clamp, "More"); this step plays ep0 with notes of its own. */
-            await startEpisodePlayback(page, ep0, {
+               prototype's scrolled view shows one (a four-line clamp, "More"); this step plays epShort with notes of its own. */
+            await startEpisodePlayback(page, epShort, { ...npWhy,
               description: "A conversation about how a small team turns a rough idea into something people pay for, and what it gave up on the way. The publisher's notes run here in full, with the guest's links and timestamps that seek to the moment they name. Nothing is rehosted: the audio plays from the show's own feed.",
             });
             await page.evaluate(() => {
@@ -683,7 +688,7 @@ export function appStates(fx) {
           label: "now-playing-ending",
           route: "#/library",
           run: async (page) => {
-            await startEpisodePlayback(page, ep0);
+            await startEpisodePlayback(page, epShort, npWhy);
             await page.evaluate(() => {
               const ui = window.__afterglowNowPlayingUi;
               const saved = Object.values(JSON.parse(localStorage.getItem("cp_saved") || "{}"));
@@ -703,7 +708,7 @@ export function appStates(fx) {
           label: "now-playing-textscale",
           route: "#/library",
           run: async (page) => {
-            await startEpisodePlayback(page, ep0);
+            await startEpisodePlayback(page, epShort, npWhy);
             await page.evaluate(() => {
               document.documentElement.classList.add("ag-np-textscale");
               document.documentElement.style.setProperty("font-size", "20.8px");
@@ -719,12 +724,19 @@ export function appStates(fx) {
           ready: ".ag-np.is-foray",
         },
         {
+          /* The three-line title: art clamps to 180 under 700px tall and the Play still clears the More handle by 24. */
+          label: "now-playing-longtitle",
+          route: "#/library",
+          run: (page) => startEpisodePlayback(page, ep0),
+          ready: ".ag-np.is-long-title",
+        },
+        {
           /* The dots menu (Save, Next, Episode page, Stop): the visible home of the legacy second row. Last in the state so the
              open menu is never carried into another step. */
           label: "now-playing-menu",
           route: "#/library",
           run: async (page) => {
-            await startEpisodePlayback(page, ep0);
+            await startEpisodePlayback(page, epShort, npWhy);
             await page.locator('.ag-np [aria-label="More player options"]').click();
             await wait(page, 300);
           },

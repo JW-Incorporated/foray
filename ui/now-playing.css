@@ -27,7 +27,7 @@
 .ag-np.fp-sheet .ag-np-icon-btn, .ag-np.fp-sheet .ag-np-head .fp-close { position: relative; right: auto; top: auto; transform: none; display: inline-flex; align-items: center; justify-content: center; width: var(--tap); height: var(--tap); min-width: var(--tap); min-height: var(--tap); border: 0; color: var(--text); background: transparent; border-radius: var(--r-round); touch-action: auto; }
 .ag-np.fp-sheet .ag-np-mid { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
 .ag-np { --np-art: clamp(220px, calc(100dvh - 520px), 320px); }
-.ag-np.is-long-title { --np-art: clamp(180px, calc(100dvh - 556px), 284px); }
+.ag-np.is-long-title { --np-art: clamp(180px, calc(100dvh - 556px), 320px); }
 .ag-np.fp-sheet .ag-np-art-wrap { display: flex; justify-content: center; margin-top: var(--s-4); }
 .ag-np.fp-sheet .ag-np-art-swap { position: relative; width: var(--np-art); height: var(--np-art); }
 .ag-np.fp-sheet .ag-np-art-swap > img, .ag-np.fp-sheet .ag-np-collage { position: absolute; inset: 0; width: var(--np-art); height: var(--np-art); border-radius: var(--r-xl); object-fit: cover; overflow: hidden; }
@@ -85,7 +85,7 @@
 .ag-np.fp-sheet .ag-np-detail-handle { flex: none; width: 100%; height: 44px; min-height: 44px; margin: var(--s-6) 0 var(--safe-bottom); display: flex; align-items: center; justify-content: center; gap: var(--s-1); border: 0; background: transparent; color: var(--text-2); }
 .ag-np.fp-sheet .ag-np-detail { padding: var(--s-2) 0 calc(var(--safe-bottom) + var(--s-8)); }
 .ag-np.fp-sheet .ag-np-actions { display: flex; justify-content: space-around; gap: var(--s-2); }
-.ag-np.fp-sheet .ag-np-action { min-width: 44px; min-height: 56px; padding: 0; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: transparent; color: var(--text); }
+.ag-np.fp-sheet .ag-np-action { min-width: 64px; min-height: 44px; padding: 0; border: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: transparent; color: var(--text); }
 .ag-np.fp-sheet .ag-np-action .t-caption { color: var(--text-2); }
 .ag-np.fp-sheet .ag-np-section { margin-top: var(--s-8); }
 .ag-np.fp-sheet .ag-np-section > .t-headline { margin: 0 0 var(--s-3); }
@@ -138,6 +138,9 @@
   .ag-np.fp-sheet .ag-np-progress { margin-top: var(--s-1); }
   .ag-np.fp-sheet .fp-row.ag-np-transport { margin-top: 0; }
 }
+
+/* The 20px eyebrow floor and Play's 24px clearance of the More handle cost the centred block 6px of height against the prototype; 4px of top padding splits it so art and title both land within 4px. */
+@media (min-height: 800px) { .ag-np.fp-sheet .ag-np-mid { padding-top: 4px; } }
 
 :root[data-type-scale] .ag-np, :root.ag-np-textscale .ag-np { --np-art: 160px; }
 :root[data-type-scale] .ag-np.fp-sheet .fp-s-why, :root.ag-np-textscale .ag-np.fp-sheet .fp-s-why { display: none; }

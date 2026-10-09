@@ -235,7 +235,20 @@ test("round 2: the Foray's 'Now: <show>' caption does not follow the listener in
   assert.match(paint, /clearTimeout\(ui\.captionTimer\)/);
   const states = read("tools/ui-lab/lib/states.mjs");
   const detail = /label: "now-playing-detail",[\s\S]*?ready: "\.ag-np-detail"/.exec(states)[0];
-  assert.match(detail, /startEpisodePlayback\(page, ep0, \{\s*description:/, "the detail step plays an episode WITH notes, so Show notes is on screen to be judged");
+  assert.match(detail, /startEpisodePlayback\(page, epShort, \{ \.\.\.npWhy,\s*description:/, "the detail step plays an episode WITH notes, so Show notes is on screen to be judged");
   assert.match(detail, /scrollTop = scroller\.scrollHeight/);
   assert.match(states, /label: "now-playing-detail-foray"/);
+});
+
+test("iteration 4 (fidelity round 3): long-title art follows the prototype's formula, the detail actions are 44 tall, tall sheets pad the block, and the harness shoots a two-line title", () => {
+  /* MUTATION 1: set `.ag-np.is-long-title`'s clamp maximum back to 284px -> red (a three-line title's art was 36px under the prototype at 393x852).
+     MUTATION 2: set `.ag-np-action`'s min-height back to 56px -> red (the actions row was 12px taller than the prototype's 44).
+     MUTATION 3: delete the `(min-height: 800px)` padding rule -> red (art 6px high against the prototype).
+     MUTATION 4: in tools/ui-lab/lib/states.mjs point `now-playing-episode` back at `ep0` -> red (the three-line fixture title is the long-title case, which keeps its own step). */
+  assert.match(css, /\.ag-np\.is-long-title \{ --np-art: clamp\(180px, calc\(100dvh - 556px\), 320px\); \}/);
+  assert.match(css, /\.ag-np-action \{ min-width: 64px; min-height: 44px;/);
+  assert.match(css, /@media \(min-height: 800px\) \{ \.ag-np\.fp-sheet \.ag-np-mid \{ padding-top: 4px; \} \}/);
+  const states = read("tools/ui-lab/lib/states.mjs");
+  assert.match(states, /label: "now-playing-episode",\s*route: "#\/library",\s*run: \(page\) => startEpisodePlayback\(page, epShort, npWhy\)/);
+  assert.match(states, /label: "now-playing-longtitle",[\s\S]*?startEpisodePlayback\(page, ep0\)[\s\S]*?ready: "\.ag-np\.is-long-title"/);
 });
