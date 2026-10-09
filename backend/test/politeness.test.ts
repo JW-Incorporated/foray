@@ -76,8 +76,8 @@ describe("hostSuggestsDai", () => {
     expect(hostSuggestsDai("https://lexfridman.com/feed/podcast/")).toBe(false);
   });
 
-  // MUTATION: a literal host set back in politeness.ts (the old 6-host
-  // KNOWN_DAI_HOSTS) -> red: omny.fm is on dai-hosts.json and was not on it.
+  // MUTATION: a literal host set back in politeness.ts (the old
+  // six-host Set) -> red: omny.fm is on dai-hosts.json and was not on it.
   it("flags omny.fm, which tools/refresh/dai.mjs classifies DAI (B1-03)", () => {
     expect(hostSuggestsDai("https://traffic.omny.fm/d/clips/abc/audio.mp3")).toBe(true);
     expect(hostSuggestsDai("https://omny.fm/shows/x/feed")).toBe(true);

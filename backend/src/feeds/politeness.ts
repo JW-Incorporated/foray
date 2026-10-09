@@ -1,3 +1,6 @@
+import * as fs from "fs";
+import * as path from "path";
+
 /**
  * Per-host (not per-feed — corner case 8) request budget + exponential
  * backoff skeleton. A single host can serve dozens of feeds (e.g. every
@@ -98,17 +101,32 @@ export class PolitenessBudget {
   }
 }
 
-/** Hosts known to run dynamic ad insertion — seeds `shows.dai_suspected` (corner case 2). */
-export const KNOWN_DAI_HOSTS = new Set([
-  "megaphone.fm",
-  "traffic.megaphone.fm",
-  "acast.com",
-  "sphinx.acast.com",
-  "art19.com",
-  "rss.art19.com"
-]);
+/**
+ * Hosts known to run dynamic ad insertion — seeds `shows.dai_suspected`
+ * (corner case 2). The list is `tools/refresh/dai-hosts.json`, the same file
+ * `tools/refresh/dai.mjs` classifies the catalogue with, so this module and the
+ * tools pipeline cannot disagree about a host (CH2-26, B1-03: the 6-host
+ * literal that used to live here had drifted, and called omny.fm not-DAI).
+ *
+ * Read with `fs` at module load rather than imported: `tsconfig.build.json`
+ * has `rootDir: "src"`, so a static import from `tools/` cannot compile. That
+ * read is also why no `api/**` handler may import this module —
+ * `dai-hosts.json` is not in `vercel.json`'s `includeFiles`, so the function
+ * would fail at load. `api/_test/import-closure.test.mjs` pins that it stays out.
+ */
+const DAI_HOSTS_PATH = path.resolve(__dirname, "..", "..", "..", "tools", "refresh", "dai-hosts.json");
 
+function readDaiHosts(): readonly string[] {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- DAI_HOSTS_PATH is a hardcoded repo-relative path built from __dirname; not external input.
+  const list = JSON.parse(fs.readFileSync(DAI_HOSTS_PATH, "utf8")) as { hosts: Array<{ host: string }> };
+  return list.hosts.map((h) => h.host.toLowerCase());
+}
+
+const DAI_HOSTS = readDaiHosts();
+
+/** Suffix match on the hostname (dai-hosts.json's `_matching: "suffix"`), so
+    `megaphone.fm` covers `traffic.megaphone.fm` but not `notmegaphone.fm`. */
 export function hostSuggestsDai(url: string): boolean {
   const host = PolitenessBudget.hostOf(url);
-  return [...KNOWN_DAI_HOSTS].some((known) => host === known || host.endsWith(`.${known}`));
+  return DAI_HOSTS.some((known) => host === known || host.endsWith(`.${known}`));
 }

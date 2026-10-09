@@ -104,11 +104,11 @@ to the fixture corpus and fix forward"):
    exception.
 
 8. **Megaphone (`catalyst.xml`) and Anchor/Spotify (`fall-of-civilizations.xml`)
-   are both on `src/feeds/politeness.ts`'s `KNOWN_DAI_HOSTS`-adjacent list**
-   (Megaphone directly; Anchor is Spotify's creator tooling and increasingly
-   ad-inserted) — good candidates for exercising `dai_suspected` detection
-   once duration-variance-across-fetches tracking is wired up against a
-   live database.
+   are both DAI hosts on `tools/refresh/dai-hosts.json`**, the list
+   `src/feeds/politeness.ts`'s `hostSuggestsDai()` and
+   `tools/refresh/dai.mjs` both read (`megaphone.fm` and `anchor.fm`, suffix
+   match) — good candidates for exercising `dai_suspected` detection once
+   ingest is wired up against a live database.
 
 ## Regenerating
 
