@@ -51,11 +51,14 @@ const SHELL = [
   "styles.css",
   "ui/tokens.css", // Redesign 2026 (ambient): the Afterglow design tokens, linked after styles.css
   "ui/primitives.css", // Redesign 2026 (ambient): scoped component primitives and gallery composition
+  "ui/dock.css", // Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), linked after primitives.css
   "ui/today.css", // Redesign 2026 (ambient): Today, the first screen on the system
   "ui/onboarding.css", // Redesign 2026 (ambient): the first-run Room
   "ui/show.css", // Redesign 2026 (ambient): the show page, the Room and its EpisodeRows
+  "ui/browse.css", // Redesign 2026 (ambient): the subject page, the collage lead and ShowTiles
   "ui/foray-detail.css", // Redesign 2026 (ambient): Foray detail, the second screen on the system
   "ui/settings.css", // Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet
+  "ui/forays.css", // Redesign 2026 (ambient): the Forays list, two-up ForayCards
   "ui/now-playing.css", // Redesign 2026 (ambient): artwork-lit Now Playing Room
   "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
   "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite

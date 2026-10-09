@@ -323,19 +323,19 @@ test("REVIEW: a sheet opened over Now Playing is live, even though Now Playing h
   assert.ok(!inert(voice.wrap), "and nothing is left inert once both are closed");
 });
 
-test("REVIEW: a tab bar created while the first-run Room is open is out of reach too", () => {
-  /* The Room opens from Home's render, before renderTabBar creates the bar
-     on a first visit, so inertOutside never saw it. MUTATION: drop the
-     inertUnderOpenSheet(bar) call from renderTabBar. */
+test("REVIEW: a Dock created while the first-run explainer is open is out of reach too", () => {
+  /* The explainer opens from Home's render, before renderTabBar creates the Dock (the tab bar, and the
+     mini player and Discover's field with it) on a first visit, so inertOutside never saw it.
+     MUTATION: drop the inertUnderOpenSheet(layer) call from ensureDock in ui/tabbar.js. */
   const m = mount();
   m.tabBar.remove();                               // a first visit: no bar yet
   assert.strictEqual(m.ctx.showFirstTimeExplainerOnce(), true, "fixture: a fresh profile gets the Room");
   m.ctx.renderTabBar();
-  const bar = m.doc.body.querySelector("#tab-bar");
-  assert.ok(bar, "fixture: the bar was created");
-  assert.ok(inert(bar), "the new bar is behind the dialog like everything else");
+  const layer = m.doc.body.querySelector("#dock-layer");
+  assert.ok(layer, "fixture: the Dock was created");
+  assert.ok(inert(layer), "the new Dock is behind the dialog like everything else");
   m.doc.key("Escape");
-  assert.ok(!inert(bar), "and is released with the rest when the Room closes");
+  assert.ok(!inert(layer), "and is released with the rest when the explainer closes");
 });
 
 test("Escape asks the TOP sheet to close through its own handler", () => {
@@ -390,6 +390,29 @@ test("REVIEW: with the ☰ kept reachable, Tab reaches it — and an open drawer
   m.menu.focus();
   m.doc.key("Tab");
   assert.strictEqual(m.doc.activeElement, link, "from the ☰, Tab walks into the open drawer, not back into the sheet");
+});
+
+test("QA fix: a kept topbar the page hides with display:none is not a Tab stop - the trap wraps within the sheet", () => {
+  /* Forays, Foray detail, Settings, Category, car posture and the Today sheet hide `.topbar` with CSS. Its
+     ☰ is still in the DOM, so the trap cycled to it, called focus() on an unrenderable node (a no-op) after
+     preventing Tab's default, and focus froze on the sheet's last control. A hidden element has no client
+     rects. MUTATION: drop the `isRendered(el) &&` test in keptFocusables (ui/sheets.js) -> the second
+     assertion fails (focus stays on the last control). The real-browser repro is Now Playing opened from
+     #/forays: Tab 16 times and focus must reach 'Collapse' again. */
+  const m = mount();
+  const s = sheet(m);
+  m.ctx.openSheet(s.wrap, { keepReachable: [".topbar", "#drawer"] });
+  m.drawer.hidden = true;
+  m.menu.getClientRects = () => [];                 // display:none on the topbar: nothing is laid out
+  s.b.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, s.a, "Tab from the last control wraps to the first, past the hidden ☰");
+  m.doc.key("Tab", { shiftKey: true });
+  assert.strictEqual(m.doc.activeElement, s.b, "and Shift+Tab from the first wraps to the last");
+  m.menu.getClientRects = () => [{ width: 44, height: 44 }];  // the topbar is back: the ☰ is a stop again
+  s.b.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, m.menu, "a laid-out ☰ is still reached");
 });
 
 test("the modal lock is derived from what is open: kept across a render, dropped when the sheet's DOM is gone", () => {

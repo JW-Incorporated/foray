@@ -138,20 +138,92 @@ function catalogShowsOrNull() {
   return state.catalog ? (state.catalog.shows || []) : null;
 }
 
-/* A3.2's landing page. An unknown nodeId still renders — same "absence is a
-   real state, not an error" rule renderShow's not-found guard follows —
-   falling back to the raw id as its own label, and an empty result list
-   getting the shared "No shows here yet" copy rather than a dead end.
+/* THE SUBJECT PAGE (Redesign 2026, ambient, screen 15). A3.2's landing page, and the page a subject's name leads
+   to from Discover ("History" in the field): ONE anatomy for both, Discover's result anatomy under a SectionHead
+   that wears the subject's own 56 collage. Below it the subject's shows as ShowTiles, three across, each with the
+   Follow badge where the show is followed (the state varies here, so the mark earns its place; Library draws none),
+   then its latest episodes as Discover's compact rows. No pill wall: a subject's name is the only word the page
+   needs.
 
-   NO COUNT WITHOUT A CATALOGUE: "0 shows" over a failed fetch was the same
-   false claim as the empty-state sentence under it, so both wait on the
-   catalogue having answered. */
+   An unknown nodeId still renders - same "absence is a real state, not an error" rule renderShow's not-found
+   guard follows - falling back to the raw id as its own label, and an empty list getting the shared "No shows
+   here yet" copy rather than a dead end. NO COUNT WITHOUT A CATALOGUE: "0 shows" over a failed fetch was the same
+   false claim as the empty-state sentence under it, so the failed page keeps the shared template, which draws
+   neither. */
+const SUBJECT_EPISODES = 8;
+
+/** The first DISCOVER_TILE_ARTS covers among a subject's shows, in the order given: the 56 collage on a
+    subject's tile and on its page, so the two are one picture. */
+function subjectCollageArts(shows) {
+  const arts = [];
+  for (const show of shows) {
+    const src = showArtworkUrl(show);
+    if (src) arts.push({ name: show.title, src, tone: AG_TONES[arts.length % AG_TONES.length], decorative: true });
+    if (arts.length === DISCOVER_TILE_ARTS) break;
+  }
+  return arts;
+}
+
+/** Most-charted first, then code-unit title order: the same order on every device (see discoverCompare). */
+function subjectShowOrder(a, b) {
+  const ra = Number.isFinite(a.chart_rank) ? a.chart_rank : Infinity;
+  const rb = Number.isFinite(b.chart_rank) ? b.chart_rank : Infinity;
+  return ra - rb || discoverCompare(String(a.title), String(b.title));
+}
+
+/** One show as a ShowTile: art 104, the name under it (three lines), a link to the show's page, and the
+    Follow badge when the listener follows it. */
+function subjectShowTile(show) {
+  const followed = !!starredShowsMap()[show.show_id];
+  return agShowTile({
+    name: String(show.title || ""), src: showArtworkUrl(show) || "", showId: String(show.show_id), followed,
+    tone: AG_TONES[agFnv1a(String(show.show_id)) % AG_TONES.length],
+  });
+}
+
+/** The page's lead: the subject's 56 collage beside a SectionHead holding its name and "<n> shows". `level` 2
+    when the head IS the page's title (the category page), 3 under Discover's own title. */
+function subjectLeadHtml({ name, count, arts }, level = 2) {
+  const items = arts.length ? arts : [{ name, tone: "amber", decorative: true }];
+  return `<div class="cat-lead">${agCollage(items, { size: 56, lit: false })}${agSectionHead(name, countLabel(count, "show"), "", { level })}</div>`;
+}
+
+/** The newest episodes of the given shows from the discover pool, Family Mode applied, at most `limit`. One pass
+    over the pool, not one per show (episodesForShow's cost, times a subject's shows). */
+function subjectEpisodes(shows, limit = SUBJECT_EPISODES) {
+  const wanted = new Set();
+  for (const show of shows) {
+    wanted.add(show.title);
+    if (TITLE_ALIASES[show.title]) wanted.add(TITLE_ALIASES[show.title]);
+  }
+  return (state.discover?.items || [])
+    .filter((it) => wanted.has(it.show) && familyAllows(it))
+    .sort((a, b) => dateValue(b.release_date) - dateValue(a.release_date))
+    .slice(0, limit);
+}
+
 function renderCategory(nodeId) {
   const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
   const label = node?.label || nodeId;
   if (catalogShowsOrNull() === null) { renderShowIndexPage(label, "", null); return; }
-  const shows = showsForCategory(nodeId).slice().sort((a, b) => a.title.localeCompare(b.title));
-  renderShowIndexPage(label, countLabel(shows.length, "show"), shows);
+  const shows = showsForCategory(nodeId).slice().sort(subjectShowOrder);
+  const episodes = subjectEpisodes(shows);
+  setBodyClass("view-page");
+  $("#view").innerHTML = `
+    <div class="page ag cat">
+      <div class="page-head cat-head">
+        <a class="back ag-btn ag-btn-icon" href="#/" aria-label="Back">${agIcon("chevron-left", 24)}</a>
+        ${subjectLeadHtml({ name: label, count: shows.length, arts: subjectCollageArts(shows) })}
+      </div>
+      ${shows.length
+        ? `<div class="cat-tiles" role="list">${shows.map((show) => `<div role="listitem">${subjectShowTile(show)}</div>`).join("")}</div>`
+        : `<p class="note">No shows here yet.</p>`}
+      ${episodes.length
+        ? `<section class="dsc-group cat-episodes">${agSectionHead("Episodes")}<div class="dsc-list">${episodes.map((item) => discoverEpisodeRow(item, "category")).join("")}</div></section>`
+        : ""}
+    </div>`;
+  document.body.classList.add("ag-category");
+  bindPlay($("#view"));
 }
 
 /* A3.3 — the all-shows browsable index. A-Z over the full curated catalogue;
@@ -178,16 +250,6 @@ function renderCategory(nodeId) {
    The old browse-all link is gone rather than moved (item 6): it was a link
    from Home to THIS page, and the menu's own "Shows" item is now that
    affordance. Nothing else in the app linked to it. */
-/* U-05 (docs/ui-transition-plan.md): every taxonomy ROOT, for a "browse
-   subjects" pill row on the Shows page (v2 only). Distinct from leafNodes()
-   above the same way taxonomyNodes() is -- a root has `parent === null` --
-   and this stays its own tiny helper rather than reusing subjectLabel's
-   inline find, because that one looks up ONE root by id and this needs all
-   of them, sorted for a stable pill order across renders. */
-function taxonomyRootNodes() {
-  return (state.taxonomy?.nodes || []).filter(n => n.parent === null).slice().sort((a, b) => a.label.localeCompare(b.label));
-}
-
 /* `decodeURIComponent` throws a URIError on a lone `%` — and a hash is
    user-authored text that anyone can type or paste. The other routes get away
    with the bare call because their ids come from our own links; this one is
@@ -197,88 +259,184 @@ function safeDecode(s) {
   try { return decodeURIComponent(String(s || "")); } catch (_) { return ""; }
 }
 
-/* U-05: the "browse subjects" pill row the mockup's Search screen shows
-   above an active query (docs/ux/foray-mockup.jsx SearchScreen). v2-only —
-   v1's Shows page had no such row and must not grow one (offline/v1
-   behaviour unchanged is this card's own acceptance line).
-   ---------------------------------------------------------------------
-   FOUNDER, 2026-09-13 (issue #684): "clicking on any of the tiles on the
-   search page gives 0 results. It should just search for that text."
+/* ---------- DISCOVER'S SUBJECTS (Redesign 2026, ambient, screen 4) ----------
 
-   HE IS RIGHT, AND THE NUMBER IS WHY. These pills used to render
-   `taxonomyChip`, i.e. a link to `#/category/<root id>`, and
-   `showsForCategory` is an EXACT `taxonomy_node_ids.includes(id)` overlap
-   that never walks children. Measured against the committed catalogue
-   (data/taxonomy.json + data/catalog-client.json, 2026-09-13):
+   The idle page is five broad heads, each a 2-up grid of SubjectTiles: a 56
+   collage of the subject's own shows, its name and "<n> shows" (BUILD-NOTES
+   section 4.4). It replaces the pill wall this page used to open with (a
+   taxonomy-root pill for every one of 41 roots, 32 of which held no curated
+   show) and, with it, "Followed shows" (Library owns those now) and the A-Z
+   index of every show (the listener who does not know what they want gets
+   subjects, not 220 names). The taxonomy stays internal: the five group names
+   and the subjects' own labels are the only words on the page, never an id.
 
-     41 pills rendered. 32 of them match ZERO shows. Only 9 taxonomy roots
-     appear in any curated show's `taxonomy_node_ids` at all — shows are
-     tagged with LEAVES (`science/materials`, `comedy/casual-hangs`), and a
-     root is a leaf's parent, not one of its ids.
+   WHAT A SUBJECT IS. A taxonomy ROOT with at least DISCOVER_MIN_SHOWS curated
+   shows under it. A show is tagged with LEAVES ("science/materials"), so a
+   root's count is the shows with any leaf below it, each counted once. A root
+   with no show under it (Religion, News, Travel, Hobbies as of 2026-10-07)
+   draws no tile: a tile that opens an empty search is the failure the pill
+   wall had, and "1 show" is not a subject to browse. The groups are a fixed
+   map from root id to head, so a root the taxonomy adds later with shows under
+   it but no entry here is caught by test/discover-page.test.js rather than
+   silently missing from the page.
 
-   So this was never about tagging being sparse or about #679 untagging one
-   show. It is a root/leaf mismatch, and it made four fifths of the browse
-   furniture on this page a set of buttons that reliably say "No shows here
-   yet."
+   WHERE A TILE GOES: a search for its own label, `#/shows/q/<label>`, exactly
+   what the pills did (founder, 2026-09-13, issue #684: "clicking on any of the
+   tiles on the search page gives 0 results. It should just search for that
+   text."). The measurement behind that is unchanged: a root is almost never a
+   show's own tag, so `showsForCategory(root)` is empty for 32 of 41 roots,
+   while searching the label reaches the catalogue, the directory and the
+   on-device index. The count on the tile is the curated overlap and the search
+   finds more, which is why it says "shows" and not "results". */
+const DISCOVER_SUBJECT_GROUPS = [
+  ["Science & nature", ["science", "nature", "health", "medicine", "space", "math"]],
+  ["People & society", ["history", "society", "psychology", "true-crime", "relationships", "personal-journals",
+    "kids-family", "philosophy", "cities", "education", "religion", "news"]],
+  ["Business & work", ["business", "economics"]],
+  ["Arts & culture", ["culture", "music", "comedy", "fiction", "food", "tv-film", "paranormal", "gaming",
+    "sports", "adventure", "linguistics", "hobbies", "travel"]],
+  ["Making & tech", ["engineering", "craft", "computing", "automotive", "aviation", "transport", "architecture", "espionage"]],
+];
+const DISCOVER_MIN_SHOWS = 2;
+/* WHERE A LONG WORD MAY BREAK. The text column beside a 56 collage is 86px wide at 393 and 77 at 375, and
+   five root labels have a word of eleven letters or more (measured over data/taxonomy.json, 2026-10-07). A
+   name never ends in an ellipsis, and "Relationship / s" is worse than a cut, so those words carry one soft
+   hyphen at the syllable (invisible until the line needs it, ignored by a screen reader). The set is the
+   taxonomy's, not a hyphenation engine; a label added later that is too long still breaks (CSS
+   `overflow-wrap: anywhere`), it just breaks without a hyphen until someone adds it here. */
+const SOFT_HYPHEN = String.fromCharCode(0xAD);   // U+00AD, built rather than typed: an invisible character in source is a trap
+const DISCOVER_SOFT_BREAKS = {
+  Engineering: "Engi" + SOFT_HYPHEN + "neering", Architecture: "Archi" + SOFT_HYPHEN + "tecture", Linguistics: "Lin" + SOFT_HYPHEN + "guistics",
+  Spirituality: "Spiri" + SOFT_HYPHEN + "tuality", Relationships: "Relation" + SOFT_HYPHEN + "ships",
+};
 
-   WHY SEARCH AND NOT A DESCENDANT WALK. Teaching showsForCategory to expand
-   a root (the fix docs/product/suggested-shows-requirements.md §6.7
-   proposes) was measured too: it takes the 32 empty pills down to 4, with a
-   median of 4 shows behind a pill, because it can still only ever answer out
-   of the curated 220. Searching the pill's own label reaches the same local
-   catalogue AND the breadth endpoint AND the directory: measured live the
-   same day, every one of the 41 labels returns between 10 and 50 shows,
-   median 37, none empty. The founder's fix is both the simpler change and
-   the better answer, and it degrades the way the search box already does
-   rather than the way a join does.
+/** A subject's name as it is DRAWN (soft breaks in); `tile.name` stays the label the search is run for. */
+function discoverLabel(name) {
+  return String(name).replace(/[A-Za-z]{10,}/g, (word) => DISCOVER_SOFT_BREAKS[word] || word);
+}
+const DISCOVER_TILE_ARTS = 4;
 
-   THE PILL STAYS A PILL. Same `.fy-chip` class, same row, same styling; only
-   its destination changed, so nothing in styles.css moves.
-
-   STILL AN <a> TO A REAL ROUTE, not a button wired through JS — taxonomyChip's
-   reasoning holds unchanged, and a search you can link to is strictly better
-   than one you can only reach by tapping. `#/shows/q/<q>` rather than
-   `#/shows?q=<q>` because `renderCurrentPage` matches with anchored regexes
-   and an exact `h === "#/shows"`: a path segment is the shape that router
-   already speaks, a query string would have to be taught to every branch.
-
-   The prefix is a LITERAL, not an interpolated helper, for the same reason
-   every other in-app link in this file is (test/app-security.test.js's "every
-   interpolated href passes through safeUrl" rule): `safeUrl` gates schemes via
-   `new URL`, which throws on a bare hash, so a hash route must be visibly
-   constant in the template instead. The round trip from this href back through
-   the router is pinned in test/category-browse.test.js rather than held
-   together by a shared constant. */
-function browseTile(nodeId) {
-  const node = (state.taxonomy?.nodes || []).find(n => n.id === nodeId);
-  const label = node?.label || nodeId;
-  return `<a class="fy-chip" href="#/shows/q/${esc(encodeURIComponent(label))}">${esc(label)}</a>`;
+/** The root a taxonomy node id sits under (itself, when it is one). `null` for an id the taxonomy
+    does not know — a show can carry a stale tag and must not take the page down. */
+function discoverRootOf(nodeId, byId) {
+  let node = byId.get(nodeId);
+  for (let hops = 0; node && node.parent && hops < 8; hops++) node = byId.get(node.parent);
+  return node ? node.id : null;
 }
 
-function browsePillsHtml() {
-  const roots = taxonomyRootNodes();
-  if (!roots.length) return "";
-  return `<div class="sh-browse-pills">${roots.map(n => browseTile(n.id)).join("")}</div>`;
+/** Code-unit order, not localeCompare: the tiles and their collages must be the same set of shows
+    on every device (the same rule `showsWeVouchFor` follows, audit round 3, app-2-9). */
+function discoverCompare(a, b) {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
-/* THE BROWSE FURNITURE \u2014 everything on this page that is a SUGGESTION rather
-   than an ANSWER: the browse-subjects pill row, the starred-shows shortcut,
-   the "Shows we vouch for" editorial row, and the A\u2013Z index itself.
+let discoverGroupsMemo = { catalog: null, taxonomy: null, groups: [] };
 
-   Two nodes, not one wrapper, because the A\u2013Z list is rendered by
-   renderShowIndexPage AFTER `above` and the two therefore cannot be enclosed
-   in a single element without reshaping the template the category page
-   shares. Missing nodes are filtered out rather than guarded at each call
-   site, so this is safe on a page that has no search box at all. */
+/** The page's groups: `[{ name, tiles: [{ id, name, count, arts, shows }] }]` (`shows` is the subject's own set, in
+    subjectShowOrder, and `count` is its length: the lead's number and the tiles under it come from the one array), empty groups dropped, tiles
+    biggest first. Memoised on the two documents it reads, so typing never re-walks the catalogue. */
+function discoverGroups() {
+  const catalog = state.catalog;
+  const taxonomy = state.taxonomy;
+  if (discoverGroupsMemo.catalog === catalog && discoverGroupsMemo.taxonomy === taxonomy) return discoverGroupsMemo.groups;
+  const byId = new Map((taxonomy?.nodes || []).map((n) => [n.id, n]));
+  const showsByRoot = new Map();
+  for (const show of (catalog?.shows || [])) {
+    const roots = new Set();
+    for (const id of (show.taxonomy_node_ids || [])) {
+      const root = discoverRootOf(id, byId);
+      if (root) roots.add(root);
+    }
+    for (const root of roots) {
+      if (!showsByRoot.has(root)) showsByRoot.set(root, []);
+      showsByRoot.get(root).push(show);
+    }
+  }
+  const groups = DISCOVER_SUBJECT_GROUPS.map(([name, ids]) => ({
+    name,
+    tiles: ids
+      .filter((id) => byId.has(id) && (showsByRoot.get(id) || []).length >= DISCOVER_MIN_SHOWS)
+      .map((id) => {
+        const shows = showsByRoot.get(id).slice().sort(subjectShowOrder);
+        return { id, name: byId.get(id).label || id, count: shows.length, arts: subjectCollageArts(shows), shows };
+      })
+      .sort((a, b) => b.count - a.count || discoverCompare(a.name, b.name)),
+  })).filter((group) => group.tiles.length);
+  discoverGroupsMemo = { catalog, taxonomy, groups };
+  return groups;
+}
+
+function discoverTileHtml(tile) {
+  return agSubjectTile({ name: discoverLabel(tile.name), count: tile.count, items: tile.arts.length ? tile.arts : [{ name: tile.name, tone: "amber", decorative: true }], searchQuery: tile.name });
+}
+
+function discoverGroupsHtml(groups) {
+  return groups.map((group) => `<section class="dsc-group" aria-label="${esc(group.name)}">
+      ${agSectionHead(group.name)}
+      <div class="dsc-grid">${group.tiles.map(discoverTileHtml).join("")}</div>
+    </section>`).join("");
+}
+
+/** The subject a query names, for the empty page's "<Subject> is a subject" line, or `null`.
+    A subject's own name matches by substring first (exact, then prefix, then anywhere, then the
+    bigger one); failing that a GROUP's name does, and answers with that group's biggest subject.
+    Three characters at least: one letter is a substring of nearly every name. */
+function discoverSubjectMatch(query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (q.length < 3) return null;
+  const groups = discoverGroups();
+  const rank = (name) => { const n = name.toLowerCase(); return n === q ? 0 : n.startsWith(q) ? 1 : n.includes(q) ? 2 : 9; };
+  let best = null;
+  for (const group of groups) {
+    for (const tile of group.tiles) {
+      const r = rank(tile.name);
+      if (r < 9 && (!best || r < best.r || (r === best.r && tile.count > best.tile.count))) best = { r, tile };
+    }
+  }
+  if (best) return best.tile;
+  const group = groups.find((g) => g.name.toLowerCase().includes(q));
+  return group ? group.tiles[0] : null;
+}
+
+/** The subject a query NAMES, whole: "History" is the History page, "hist" is a search. Case is ignored, so a
+    tile's label, the same word lower-cased and a pasted `#/shows/q/history` all land on the subject page. */
+function discoverSubjectExact(query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return null;
+  for (const group of discoverGroups()) {
+    for (const tile of group.tiles) if (tile.name.toLowerCase() === q) return tile;
+  }
+  return null;
+}
+
+/* Which subject's lead is on the page now (`#sh-subject`), so a keystroke that keeps the same subject repaints
+   nothing: rebuilding the collage's images on every letter would flicker them. Reset by each render. */
+let subjectLeadShown = "";
+
+/** Paints, or clears, the subject lead above Discover's results: the field holds a subject's whole name. */
+function paintSubjectLead(text) {
+  const box = $("#sh-subject");
+  if (!box) return;
+  const tile = discoverSubjectExact(text);
+  const key = tile ? tile.id : "";
+  if (key === subjectLeadShown) return;
+  subjectLeadShown = key;
+  box.innerHTML = tile ? subjectLeadHtml(tile, 3) : "";
+  box.hidden = !tile;
+}
+
+/* THE IDLE FURNITURE: the five subject groups (or the failed-catalogue note
+   standing in for them). Visible exactly when the field holds no query; a
+   result list replaces it, and clearing the field brings it back. */
 function showBrowseSections() {
-  return [$("#sh-browse"), $("#view .show-index"), $("#view .show-index-failed")].filter(Boolean);
+  return [$("#sh-browse")].filter(Boolean);
 }
 
-/* Tracks whether the Shows-page search field currently holds focus. A flag
-   rather than `document.activeElement`: the field lives in an innerHTML
-   template that is thrown away and rebuilt on every render, so the only
-   honest source of truth is the focus/blur pair bound alongside it. Reset by
-   renderAllShows on every render. */
+/* Tracks whether the Discover field currently holds focus. A flag rather than
+   `document.activeElement`: the field lives in an innerHTML template that is
+   thrown away and rebuilt on every render, so the only honest source of truth
+   is the focus/blur pair bound alongside it. Reset by renderAllShows on every
+   render. */
 let showSearchFieldFocused = false;
 
 /* When that focus landed, in ms. Read by exactly one thing —
@@ -289,115 +447,55 @@ let showSearchFieldFocused = false;
    keyboard down the instant it comes up. */
 let showSearchFocusedAt = 0;
 
-/* Founder, 2026-09-13: "The cards below the search box are kind of helpful
-   initially, but should go away when I click on the search box to start
-   typing."
+/* THE PAGE'S ONE PREDICATE ABOUT THE FIELD, in one place: is there a query?
 
-   THE RULE, in one line: the browse furniture is visible exactly when the
-   field is NOT focused AND the query is empty. Everything else follows from
-   that single predicate rather than from a pile of event-specific branches.
+   Redesign 2026 (ambient) overturns two things the old rule did here, and the
+   PR names them (docs/redesign-2026/test-classification.md):
+     - FOCUS NO LONGER HIDES THE IDLE PAGE. It did (founder, 2026-09-13: "the
+       cards below the search box ... should go away when I click on the search
+       box to start typing"), because the page under it was 17,000 px of A-Z
+       shows and a focus that raised the keyboard also threw the viewport
+       somewhere in the middle of them. The idle page is five short grids now,
+       the prototype's focused state (`?state=kb`) keeps them on screen, and a
+       list that is replaced by results the moment there is text needs no
+       second rule for the moment before it. The scroll-to-top on focus went
+       with it: there is nothing tall enough to need it.
+     - THE x APPEARS WHEN THE FIELD IS FILLED, not when it is focused. It was
+       Apple's "never mind" for a focused empty field; an empty field has
+       nothing to clear, and the keyboard's return key and a tap elsewhere both
+       put it away.
+   What stays: the tab bar and the mini player yield to the KEYBOARD for as long
+   as the field has focus (`body.sh-searching`), and the page's height goes with
+   the idle furniture, which is why the pill must never be the only thing that
+   knows about it.
 
-     focus (tap the box)      -> hidden, immediately, before a single
-                                 keystroke. FOCUS, not first-keystroke, and
-                                 that is deliberate: on a phone the tap is
-                                 what raises the keyboard and reflows the
-                                 page, so doing both movements at once is one
-                                 settling motion instead of two, and the
-                                 first result then lands directly under the
-                                 field instead of being inserted above 220
-                                 unrelated rows. It is also what the report
-                                 literally says ("when I click on the search
-                                 box").
-     blur with an empty box   -> back. Dismissing the keyboard on an empty
-                                 field is "never mind", and browse is the
-                                 page's resting state.
-     blur with a live query   -> STAYS hidden. The results are the answer the
-                                 listener is reading; pushing them down the
-                                 page to re-expose the catalogue is the exact
-                                 clutter being complained about.
-     Escape                   -> clears the field, clears the results, blurs,
-                                 and so lands on the "blur with an empty box"
-                                 case: browse comes back. (Desktop only; a
-                                 phone keyboard has no Escape, which is why
-                                 blur has to be a restorer in its own right.)
-     deleting the query while still focused -> stays hidden. You are still
-                                 mid-search with the keyboard up; one blur
-                                 brings the catalogue back. */
+   `body.sh-searching` is a CLASS ON <body>, not `hidden` on the bars, for the
+   cascade reason renderTabBar's header documents: `.tab-bar` carries
+   `display: flex`, and an author `display` beats the UA sheet's
+   `[hidden] { display: none }` at any specificity. The class that hides the
+   bars is also the class that zeroes their terms in `--sh-dock` (styles.css),
+   so the pill cannot jump when they go. */
 function updateShowBrowseVisibility() {
   const input = $("#sh-input");
-  const hide = showSearchFieldFocused || !!(input && input.value.trim());
-  /* THE PAGE'S HEIGHT GOES WITH THE FURNITURE, and it is worth writing down
-     what that costs because #684 reports it as motion. Measured in Chromium at
-     390x844 against the shipped page: with the A-Z index showing,
-     `document.documentElement.scrollHeight` is 17809 px; the moment the field
-     takes focus it is 844. A listener who had scrolled the catalogue and then
-     reached for the field — which since #683 is a fixed pill at the BOTTOM of
-     the screen, i.e. the thing you tap WITHOUT scrolling back up — goes from
-     scrollY 4000 to 0.
-
-     THAT MOVEMENT IS INHERENT TO HIDING THE CATALOGUE, not a defect in how it
-     is hidden, and this function deliberately does NOT try to soften it. An
-     explicit `scrollPageTo(0)` here was written and then measured: Chromium
-     applies its own clamp synchronously, in the same turn as the `hidden`
-     writes, so the viewport is already at 0 before anything else can read it
-     and the extra call changed nothing observable. It was removed rather than
-     kept as a line that looks like a fix. If the settling still reads badly on
-     a device, the thing to revisit is #681's rule — hide on focus, and hide
-     the A-Z index along with the cards — not this write. */
-  for (const el of showBrowseSections()) el.hidden = hide;
-  /* THE SAME PREDICATE, INVERTED, decides the ✕ beside the pill (Apple
-     Podcasts swaps its idle Home button for one the moment the field is
-     live). Deliberately not a second rule: "there is a search in progress"
-     is one fact about this page, and the browse furniture going away and the
-     dismiss button arriving are the same event seen from two sides. A
-     separate predicate would be one more thing to drift. */
+  const text = input ? input.value.trim() : "";
+  for (const el of showBrowseSections()) el.hidden = !!text;
   const dismiss = $("#sh-dismiss");
-  if (dismiss) dismiss.hidden = !hide;
-
-  /* THE TAB BAR GOES AWAY WHILE THE FIELD HOLDS FOCUS (founder, 2026-09-14,
-     with a screenshot of it wedged between the pill and the keyboard: "when
-     the search bar is up, this home ribbon should go away"). Apple Podcasts
-     shows nothing in that strip, and his own reference screenshot of it —
-     which this whole row was built against — is the target.
-
-     ON `showSearchFieldFocused`, NOT ON `hide`, and the difference is not an
-     oversight. `hide` answers "is there a search in progress", which stays
-     true across a blur with a live query — and that is the state where the
-     listener is READING RESULTS with the keyboard gone. Taking the app's only
-     navigation away from someone reading a page of results traps them: there
-     would be no way off the search page but to empty the field. What the
-     founder is describing, and what Apple actually does, is narrower: the bar
-     yields to the KEYBOARD, for as long as the keyboard is up. Focus is that
-     fact, it is the fact this function is already built out of, and no second
-     listener is needed to observe it.
-
-     A CLASS ON <body>, NOT `hidden` ON THE ELEMENT. `.tab-bar` carries
-     `display: flex`, and any author `display` beats the UA sheet's
-     `[hidden] { display: none }` at any specificity — the exact cascade trap
-     renderTabBar's own header documents and test/home-layout.test.js's BUG 3
-     exists to catch. `body.sh-searching .tab-bar { display: none }` is an
-     author rule that outranks `.tab-bar`, so it wins on the terms the
-     cascade actually judges.
-
-     AND IT IS THE SAME CLASS THAT PAYS FOR IT. `--sh-dock` (styles.css) is
-     the sum of the room already taken at the bottom edge, and `--tab-bar-h`
-     is one of its terms. A bar that left without that term leaving with it
-     would drop the pill by exactly the bar's height at the moment the bar
-     vanished — the founder's report is a pill that MOVES, so fixing it by
-     introducing one more way for it to move would be a poor trade. One class
-     switches the visibility and the arithmetic together, which is the only
-     reason they cannot disagree. */
+  if (dismiss) dismiss.hidden = !text;
+  paintMakePlaylist(text);
+  paintSubjectLead(text);
   document.body.classList.toggle("sh-searching", showSearchFieldFocused);
 }
 
 /* "Never mind" — empty the field, drop the painted results (the same reset a
    deleted query already gets), and let go of focus, so the page lands back on
-   its browse state by the ordinary rule rather than by a special case.
+   its idle groups by the ordinary rule rather than by a special case.
 
-   ONE PATH, TWO TRIGGERS: Escape on a desktop keyboard, and the ✕ button for
-   a thumb. Extracted the day the button was added, rather than copied, so the
-   two can never answer differently. */
-function dismissShowSearch(input) {
+   ONE PATH, TWO TRIGGERS: Escape on a desktop keyboard (clear and let go), and
+   the x in the pill for a thumb (clear and KEEP the caret: the next thing the
+   listener does with a field they just emptied is type, so `keepFocus`).
+   Extracted the day the button was added, rather than copied, so the two can
+   never answer differently. */
+function dismissShowSearch(input, { keepFocus = false } = {}) {
   if (!input) return;
   /* THE IN-FLIGHT SEARCH GOES WITH THE QUERY (audit round 2, races-2). This
      emptied the field and the painted results but left the debounce tick and
@@ -412,280 +510,149 @@ function dismissShowSearch(input) {
   /* And the address: dismissing on `#/shows/q/Science` left the query in the
      URL, so a reload or a return brought "Science" back (audit 2026-09-22). */
   noteShowQueryInRoute("");
-  showSearchFieldFocused = false;
-  if (typeof input.blur === "function") input.blur();
+  if (!keepFocus) {
+    showSearchFieldFocused = false;
+    if (typeof input.blur === "function") input.blur();
+  }
   updateShowBrowseVisibility();
 }
 
-/* `initialQuery` is #/shows/q/<q>'s payload — the browse tiles' destination
-   (see `browseTile`) and anything else that wants to land on this page with
-   an answer already on it. Empty string is the ordinary #/shows arrival and
-   is byte-identical to what this rendered before.
+/* DISCOVER (#/shows, and #/shows/q/<q>) — Redesign 2026, ambient, screen 4.
 
-   IT DOES NOT FOCUS THE FIELD. On a phone, focus raises the keyboard, and a
-   listener who tapped "Science" asked to SEE shows, not to type. The query
-   is in the box so it can be edited, the results are painted, and the
-   keyboard stays down. */
+   One page, two postures. IDLE: the title, then the five subject groups (see
+   discoverGroups). TYPING: the groups give way to the results, in three (four)
+   groups under their own heads: Shows, Episodes, Playlists, and the Forays 4a
+   made on the subject. The field is the Dock's top row; it stays where the
+   founder put it on 2026-09-13 ("model it after most other text boxes, for
+   example in the Claude app or Apple Podcasts") and gains the Afterglow pill:
+   52 tall, the Veil, a magnifier, "Search, or name a subject", an x when it
+   holds text, and a 2px Lamp ring OUTSIDE it when it has focus.
+
+   `initialQuery` is #/shows/q/<q>'s payload — a subject tile's destination and
+   anything else that wants to land here with an answer already on it. Empty
+   string is the ordinary #/shows arrival. IT DOES NOT FOCUS THE FIELD. On a
+   phone, focus raises the keyboard, and a listener who tapped "Science" asked
+   to SEE shows, not to type. The query is in the box so it can be edited, the
+   results are painted, and the keyboard stays down.
+
+   WHAT THE FIELD IS, markup-wise. `#sh-compose` is `position: fixed`
+   (styles.css), so where it appears in this template decides two things and
+   neither is where it is painted: TAB / READING ORDER (it is emitted before
+   the results, because it is the page's primary control and a keyboard or
+   VoiceOver user should reach it without walking the grid) and LIFETIME (it is
+   inside `#view`, so the next render throws it away with the rest of the page).
+   `#sh-form` is still a real <form>: `submit` is what a phone keyboard's return
+   key fires, and that is how the keyboard is put away from inside the field
+   (the old Go button is gone for good, founder 2026-09-14). The x lives INSIDE
+   the pill now (it was a circle beside it); it is a 44px icon button, hidden
+   while the field is empty.
+
+   BODY CLASSES. `sh-compose` reserves the room the floating row takes at the
+   bottom edge; `ag-discover` is the page's own scheme (the warm Afterglow
+   ground) and hides the legacy top bar, whose job (a drawer, a refresh) the
+   direction moves to Today's gear. Both are added AFTER this function's own
+   `setBodyClass()`, which writes document.body.className wholesale and is also
+   what removes them again on the next navigation. */
 function renderAllShows(initialQuery = "") {
   const query = String(initialQuery || "").trim();
   const catalogShows = catalogShowsOrNull();
-  const shows = catalogShows && catalogShows.slice().sort((a, b) => a.title.localeCompare(b.title));
-  /* NO SUBTITLE (founder, 2026-09-13: "On the search page, delete '220 shows
-     in 4a's\u2026'"). renderCategory keeps its own \u2014 see renderShowIndexPage. */
-  /* THE FIELD IS A COMPOSE BAR AT THE BOTTOM (founder, 2026-09-13: "We should
-     likely also move the search bar down to the bottom - model it after most
-     other text boxes, for example in the Claude app or Apple Podcasts").
-
-     `#sh-compose` is `position: fixed` (styles.css), so where it appears in
-     this template decides only two things, and neither is where it is
-     painted:
-
-       TAB / READING ORDER. It is emitted FIRST, ahead of the results and the
-       browse furniture, because it is this page's primary control \u2014 the
-       reason anyone opens #/shows \u2014 and a keyboard or VoiceOver user should
-       reach it without walking 220 catalogue rows. Visually it is last;
-       those two orders disagree here on purpose, and the visual one is the
-       founder's ask.
-
-       LIFETIME. It is inside `#view`, so the next render throws it away with
-       the rest of the page and there is nothing to tear down by hand. A
-       fixed element parked on `<body>` would outlive the page that owns it.
-
-     THE SHAPE IS APPLE PODCASTS', matched against the founder's own
-     screenshots of it rather than guessed: a FLOATING ROW inset from both
-     screen edges \u2014 a translucent rounded pill holding the field, with the
-     page's content scrolling visibly behind it \u2014 and a circular companion
-     button beside the pill. The wrapper is a real element, not `position:
-     fixed` on `#sh-form`, precisely because the row holds two siblings: the
-     pill and that button.
-
-     THE COMPANION BUTTON IS A DISMISS, AND ONLY WHEN THERE IS SOMETHING TO
-     DISMISS. Apple's idle state puts a Home button there and swaps it for a
-     circular \u2715 on focus. We do not copy the Home half: Apple has no tab bar
-     in that screenshot \u2014 their floating Home pill IS their navigation \u2014
-     whereas `.tab-bar` already carries Home two rows below this one, and a
-     second Home button inside the search row would be the same destination
-     twice. So the slot is EMPTY when idle and holds the \u2715 when the field is
-     focused or holds a query, which is the half of Apple's pattern that does
-     something we lack.
-
-     And it fills a gap this page already had in writing: the Escape handler
-     below notes that Escape is "desktop only; a phone keyboard has no
-     Escape". This button is that key, for a thumb \u2014 it runs the identical
-     path, `dismissShowSearch`, rather than a parallel implementation.
-
-     NOTHING IN THE TRAILING SLOT. Apple's pill has a microphone there; we
-     have no dictation, and a glyph that does nothing is worse than an empty
-     slot. It held a "Go" submit button until 2026-09-14, and the founder
-     deleted it on sight: "since the search results are live, the 'go' button
-     is useless, delete it."
-
-     HE IS RIGHT, AND THE REASON IS IN THIS FILE. G2's standing decision was
-     "keep the button, keep Enter, make neither required" \u2014 written when the
-     button was the only way to run a search at all. S-02 then made the
-     results filter live on every keystroke (see the three bindings below),
-     which retired the button's job without retiring the button: by the time
-     a thumb travelled to it, the results it would have produced were already
-     on screen. A control whose only effect is to skip a 250ms debounce on
-     work that has already finished is not a shortcut, it is furniture.
-
-     THE FORM AND ITS `submit` HANDLER STAY. Deleting the button is not
-     deleting the path: `submit` is what a phone keyboard's return key fires,
-     and that is how the keyboard is DISMISSED from inside the field. A
-     `<form>` with no submit control still submits on Enter, so the return
-     key keeps working and keeps skipping the debounce; what is gone is only
-     the tappable duplicate of it.
-
-     The leading magnifier is kept: it is what tells you the pill is a search
-     field rather than a compose box. */
-  /* ONE NAME PER DESTINATION (audit 2026-09-22): the tab bar calls this page
-     Search, so its heading does too — it was "Shows" here and in the drawer. The
-     field searches shows, episodes and playlists, so the placeholder says more
-     than "shows by name". */
-  renderShowIndexPage("Search", "", shows, `
-      <div id="sh-compose">
-        <form id="sh-form" role="search" autocomplete="off">
-          <svg class="sh-glyph" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><line x1="16.5" y1="16.5" x2="21" y2="21"></line></svg>
-          <input id="sh-input" type="text" maxlength="120" placeholder="Search shows and episodes\u2026" aria-label="Search shows and episodes" ${SEARCH_INPUT_ATTRS}>
+  setBodyClass("view-page");
+  /* `catalogShows === null` IS "THE CATALOGUE DID NOT LOAD" and is a different page from a
+     catalogue with no subjects (audit 2026-09-22, theme G): the failed line has a Try again; a
+     loaded catalogue that yields no tile (an offline cold start with the taxonomy missing) paints
+     no furniture at all, and the field is the page. */
+  const idle = catalogShows === null
+    ? `<div class="show-index-failed">${failedNoteHtml("Couldn't load the show list.")}</div>`
+    : discoverGroupsHtml(discoverGroups());
+  $("#view").innerHTML = `
+    <div class="page ag disc">
+      <div class="page-head disc-head">
+        <div><h2 class="t-title">Discover</h2></div>
+      </div>
+      <div id="sh-compose" class="dock-field veil">
+        <form id="sh-form" class="ag-search-field" role="search" autocomplete="off">
+          ${agIcon("magnifier", 20)}
+          <input id="sh-input" type="text" maxlength="120" placeholder="Search, or name a subject" aria-label="Search, or name a subject" ${SEARCH_INPUT_ATTRS}>
+          <button id="sh-dismiss" class="ag-btn ag-btn-icon" type="button" aria-label="Clear search" hidden>${agIcon("x", 20)}</button>
         </form>
-        <button id="sh-dismiss" type="button" aria-label="Clear search" hidden>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
-        </button>
       </div>
       <p id="sh-note" class="note" role="status" aria-live="polite" hidden></p>
       <div id="sh-partial-note" hidden></div>
-      <div id="sh-empty-offer" hidden></div>
       <p id="sh-offline-note" class="note" hidden>${OFFLINE_SEARCH_NOTE}</p>
-      <div id="fy-search-results" hidden></div>
-      <!-- The shows tier's eyebrow (audit round 2, visual-16): Episodes and
-           Playlists label their tiers, and the first one was the only bare
-           list. styles.css hides it whenever #sh-results is hidden, so
-           paintShowResults needs no second switch to keep them in step. -->
-      <h3 class="sh-results-head">Shows</h3>
-      <div id="sh-results" class="show-results" hidden></div>
+      <div id="sh-subject" class="dsc-subject" hidden></div>
+      <h3 class="sh-results-head t-headline">Shows</h3>
+      <div id="sh-results" class="show-results dsc-list" hidden></div>
       <div id="ep-search-results" hidden></div>
       <div id="pl-search-results" hidden></div>
-      <div id="sh-browse">
-        <!-- ABOVE the browse cloud, not below it (visual pass 1, 2026-09-23):
-             below, the page's one non-chip action sat exactly under the
-             floating search pill at scroll 0 on a 390x844 phone. Apple keeps
-             its Library shortcuts at the top of Search for the same reason.
-             ONLY WHEN THERE IS SOMETHING BEHIND IT (audit round 2, p-first-12):
-             on a fresh install this was the page's first tappable row and it
-             led to "0 shows you follow". Apple hides an empty Library shortcut;
-             so does this. Library still lists the section, with its own empty
-             note, so the feature stays discoverable. -->
-        ${Object.keys(starredShowsMap()).length ? `<a class="page-link-row" href="#/starred-shows">Followed shows \u203a</a>` : ""}
-        ${browsePillsHtml()}
-        ${vouchForHtml()}
-      </div>`, { tabRoot: true });
-  /* The page reserves room at its bottom edge for a bar that is fixed and so
-     occupies none of its own. Added AFTER renderShowIndexPage, which writes
-     document.body.className wholesale through setBodyClass() and would
-     otherwise wipe it \u2014 and that same wholesale write is what removes this
-     class again on navigation away, so it needs no cleanup of its own. */
-  document.body.classList.add("sh-compose");
+      <div id="fy-search-results" hidden></div>
+      <div id="sh-empty" class="dsc-empty" hidden></div>
+      <div id="sh-make" class="dsc-make" hidden></div>
+      <div id="sh-browse">${idle}</div>
+    </div>`;
+  document.body.classList.add("sh-compose", "ag-discover");
+  if (catalogShows === null) bindRetry($("#view .show-index-failed"), retryCatalog);
 
-  /* S-02 (docs/search-plan.md, founder feedback F2: "Shows search should
-     filter live as you type. Hitting Go should not be required.").
+  /* S-02 (docs/search-plan.md, founder feedback F2: "Shows search should filter live as you type.
+     Hitting Go should not be required."). THREE BINDINGS, AND THE SPLIT BETWEEN THEM IS THE WHOLE
+     CARD:
 
-     THREE BINDINGS, AND THE SPLIT BETWEEN THEM IS THE WHOLE CARD:
-
-       input   -> the LOCAL pass only, every keystroke, no network, no episode
-                  search, no playlist CTA. Measured (docs/search-plan.md §1.6):
-                  0.010-0.074 ms median over the curated 220, 0.004-2.1 ms over
-                  S-03's 10,113-row index — inside a 16 ms frame either way.
-                  Then a 250 ms trailing debounce for everything that costs
-                  something.
-       submit  -> the same thing with the debounce SKIPPED. The keyboard's
-                  return key is the only thing that lands here now — the Go
-                  button was deleted 2026-09-14 (see the compose-bar comment
-                  above for why, and for why this path outlived it: return is
-                  how a phone keyboard is dismissed from inside the field).
-       focus   -> S-03's lazy index load, once. Never at init(): the decode is
-                  ~113 ms measured, and it must not sit on the boot path or on
-                  a keystroke.
-
-     WHY THE COSTLY PASSES MOVED (each of the three was measured in §1.5, and
-     naively adding an `input` listener would have multiplied all three by the
-     keystroke):
-       - `renderEpisodeSearchResults` is a SECOND network call, and the
-         SLOWER of the two;
-       - the breadth pass is a network call, 0.4-1.1 s;
-       - `renderPlaylistSearchResults`'s CTA schedules `topicSearchStatus()`, a
-         full relaxation scan this repo's own source measures at 1.3-8 s cold.
-     All three now run on the debounce tick only — see `runShowSearchCostly` —
-     each behind its own hot-query cache or the idle queue, and all three are
-     measured into the ONE `search` diagnostics record that tick writes. */
+       input   -> the LOCAL pass only, every keystroke, no network, no episode search, no playlist
+                  work (0.010-0.074 ms median over the curated 220, 0.004-2.1 ms over S-03's
+                  10,113-row index: inside a 16 ms frame either way). Then a 150 ms trailing
+                  debounce (SHOW_SEARCH_DEBOUNCE_MS; the direction's number, down from 250) for
+                  everything that costs something.
+       submit  -> the same thing with the debounce SKIPPED. The keyboard's return key is the only
+                  thing that lands here.
+       focus   -> S-03's lazy index load, once. Never at init(): the decode is ~113 ms measured,
+                  and it must not sit on the boot path or on a keystroke. */
   $("#sh-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const input = $("#sh-input");
-    const query = input.value.trim();
-    if (!query) return;
-    renderShowSearchResults(query);
-    /* AND THE KEYBOARD COMES DOWN (audit round 2, search-3). The two comments
-       above say return "is how the keyboard is DISMISSED from inside the
-       field", and the Go button was deleted on that premise — but nothing here
-       ever let go of the field, and a `preventDefault`ed submit leaves WebKit's
-       keyboard exactly where it was. The blur lands on the "blur with a live
-       query" case of updateShowBrowseVisibility: results stay, browse furniture
-       stays hidden, the tab bar returns. */
+    const text = input.value.trim();
+    if (!text) return;
+    renderShowSearchResults(text);
+    /* AND THE KEYBOARD COMES DOWN (audit round 2, search-3): "return" is how a phone keyboard is
+       dismissed from inside the field, and a `preventDefault`ed submit leaves WebKit's keyboard
+       exactly where it was. The blur leaves the results on screen. */
     if (typeof input.blur === "function") input.blur();
   });
 
-  /* A fresh render starts from the resting state: nothing focused, browse
-     furniture showing. Without this a return to #/shows after leaving it
-     mid-search would open with the catalogue already hidden.
-
-     `#/shows/q/<q>` is the one arrival that is NOT resting: the field is
-     seeded first so `updateShowBrowseVisibility`'s single predicate ("the
-     field is focused OR holds a query") hides the browse furniture for the
-     ordinary reason rather than through a second rule. */
+  /* A fresh render starts from the resting state: nothing focused, the idle groups showing.
+     `#/shows/q/<q>` is the one arrival that is NOT resting: the field is seeded first so
+     `updateShowBrowseVisibility`'s one predicate (the field holds a query) hides the groups for
+     the ordinary reason rather than through a second rule. */
   showSearchFieldFocused = false;
-  /* A NEW MOUNT SUPERSEDES EVERY PASS THE OLD ONE STARTED (audit 2026-09-22).
-     The token was only ever bumped by a keystroke, so type "radio", tap Home
-     and tap Search again inside the directory pass's ~0.5 s and the old pass
-     still held the current token — its "radio" results painted above the
-     browse list, under an empty field, for a query nobody could see. */
+  subjectLeadShown = "";
+  /* A NEW MOUNT SUPERSEDES EVERY PASS THE OLD ONE STARTED (audit 2026-09-22): type "radio", tap
+     Home and tap Discover again inside the directory pass's ~0.5 s and the old pass still held
+     the current token — its "radio" results painted above the groups, under an empty field. */
   supersedeShowSearch();
   if (query) {
     const seed = $("#sh-input");
     if (seed) seed.value = query;
   }
-  /* This page IS the Search tab's last stop, with or without a query; the tab
-     bar reads it back when the lit tab is tapped from a pushed page. */
+  /* This page IS the Discover tab's last stop, with or without a query; the tab bar reads it
+     back when the lit tab is tapped from a pushed page. */
   rememberSearchTabHash(query ? "#/shows/q/" + encodeURIComponent(query) : "#/shows");
   updateShowBrowseVisibility();
 
   const input = $("#sh-input");
   if (input) {
     input.addEventListener("input", () => { onShowSearchInput(input.value); updateShowBrowseVisibility(); });
-    /* Once. `loadShowIndex` is itself idempotent (it returns the in-flight
-       promise, then the resolved index), so a second focus costs nothing and
-       this needs no `{ once: true }` — which would be wrong anyway, since a
-       first attempt that failed offline should be retried on a later focus. */
+    /* Once. `loadShowIndex` is itself idempotent (it returns the in-flight promise, then the
+       resolved index), so a second focus costs nothing and this needs no `{ once: true }` —
+       which would be wrong anyway, since a first attempt that failed offline should be retried
+       on a later focus. */
     input.addEventListener("focus", () => {
       loadShowIndex();
       showSearchFieldFocused = true;
-      /* The two things scroll-to-dismiss needs, both stamped here rather than
-         in the scroll handler, because here is where the event actually is.
-         Re-baselining `lastScrollY` matters as much as the timestamp: without
-         it the first post-focus scroll is measured against wherever the page
-         last sat, and a stale baseline can hand the handler a large fake
-         downward delta on the very first frame after focus. */
+      /* The two things scroll-to-dismiss needs, both stamped here rather than in the scroll
+         handler, because here is where the event actually is. Re-baselining `lastScrollY`
+         matters as much as the timestamp: without it the first post-focus scroll is measured
+         against wherever the page last sat, and a stale baseline can hand the handler a large
+         fake downward delta on the very first frame after focus. (There is no scroll to the top
+         any more: see updateShowBrowseVisibility for why the page no longer needs one.) */
       showSearchFocusedAt = Date.now();
-      /* TO THE TOP, ON FOCUS (founder, 2026-09-17: "When I click search, it
-         jumps down to the bottom, so then I need to scroll up to find the top
-         search result for shows.")
-
-         The compose pill is `position: fixed` at the bottom edge, so it needs
-         no scrolling to be reachable — but the page under it is the full A–Z
-         show list, 17,712px tall as measured on 2026-09-17. iOS scrolls a
-         focused field into view against the LAYOUT viewport as the keyboard
-         comes up, and on a document that tall the correction lands thousands of
-         pixels down. Results then paint at the TOP of the page, above where the
-         listener is now standing, which is the "scroll up to find the top
-         result" in the report.
-
-         Desktop Chrome hides this: typing collapses the document to one
-         viewport (the browse list is hidden while searching) and the browser
-         clamps scrollY back to 0 on its own. Measured in a 390px harness — jump
-         to 6000, type, land at 0, first result at y=125. That clamp is the
-         browser being helpful, not a contract, and iOS with a keyboard up does
-         not do it. So the page says where it wants to be instead of hoping.
-
-         Before the results exist, not after: the scroll has to be settled while
-         the keyboard animates, or it fights the listener's own first scroll.
-
-         ONLY WHEN THE FIELD IS EMPTY, and that qualifier is the whole rule
-         rather than a detail. The first draft scrolled on EVERY focus, which
-         broke the opposite case just as badly: a listener scrolled down into
-         their results who taps the field to edit the query got yanked back to
-         the top — the same rudeness, pointed the other way. It also made the
-         very next upward scroll read as a large DOWNWARD delta (the page had
-         just moved to 0 under it), so `maybeDismissKeyboardOnScroll` blurred the
-         field and dropped the keyboard. Caught by
-         test/playwright/tests/search-chrome-dock.spec.js's "a downward scroll
-         blurs the field; an upward one does not", in a real browser, which is
-         the only place that arithmetic is observable.
-
-         An empty field is the case the founder reported: you are STARTING a
-         search, whatever is under you is the A-Z browse list, and the results
-         will paint at the top. A field with a query in it means you are already
-         reading results, and where you are standing is where you chose to be. */
-      if (!input.value.trim()) scrollPageTo(0);
-      /* Re-baselined AFTER the scroll above, and that order is the whole of it.
-         `maybeDismissKeyboardOnScroll` measures a DELTA against this; a
-         baseline captured before we move leaves the next frame comparing the
-         new position against the old one and reading a large fake downward
-         delta, which blurs the field and drops the keyboard the instant the
-         listener starts typing.
-
-         Read, not assumed to be 0. `scrollPageTo` moves a real viewport to 0,
-         but it is deliberately a no-op where there is nothing to move (its own
-         guard, for the node:vm suites), and asserting a position the viewport
-         never took is how this handler would start lying about the baseline.
-         Caught by test/keyboard-chrome-and-scroll.test.js's up-scroll case. */
       lastScrollY = window.scrollY || 0;
       updateShowBrowseVisibility();
     });
@@ -693,8 +660,7 @@ function renderAllShows(initialQuery = "") {
       showSearchFieldFocused = false;
       updateShowBrowseVisibility();
     });
-    /* Escape is the desktop "never mind". The ✕ button below is the same
-       thing for a thumb, which is why both call one function. */
+    /* Escape is the desktop "never mind": clear, and let go. */
     input.addEventListener("keydown", (e) => {
       if (e.key !== "Escape") return;
       dismissShowSearch(input);
@@ -703,46 +669,36 @@ function renderAllShows(initialQuery = "") {
 
   const dismiss = $("#sh-dismiss");
   if (dismiss) {
-    /* `mousedown`, NOT `click`, and that is the whole reason this is not a
-       one-liner. The button is only on screen while the field holds focus or
-       a query; pressing it blurs the field first, `updateShowBrowseVisibility`
-       then hides the button, and the `click` that would have followed lands on
-       an element that is no longer there — so on a desktop the button does
-       nothing at all. `mousedown` fires before focus moves. `preventDefault`
-       stops the press from stealing focus in the first place, so there is no
-       blur/refocus flicker either. Touch devices synthesise mousedown from a
-       tap, so one listener covers both. */
+    /* `mousedown`, NOT `click`, and that is the whole reason this is not a one-liner. Pressing a
+       button blurs the field first; the blur hides the x (an empty field has none), and the
+       `click` that would have followed lands on an element that is no longer there — so on a
+       desktop the button did nothing at all. `mousedown` fires before focus moves, and
+       `preventDefault` stops the press from stealing focus in the first place, so the field
+       keeps the caret and the keyboard stays up for the next query. Touch devices synthesise
+       mousedown from a tap, so one listener covers both. */
     dismiss.addEventListener("mousedown", (e) => {
       if (typeof e.preventDefault === "function") e.preventDefault();
-      dismissShowSearch(input);
+      dismissShowSearch(input, { keepFocus: true });
     });
-    /* AND `click`, for the keyboard (audit 2026-09-22, qa row 62). Enter and
-       Space on a <button> fire `click`, never `mousedown`, so a keyboard or
-       switch user reached a named, focusable control that did nothing. A
-       key-made click has `detail === 0`; a pointer's has already been handled
-       by the mousedown above, so it is skipped rather than run twice. */
+    /* AND `click`, for the keyboard (audit 2026-09-22, qa row 62). Enter and Space on a <button>
+       fire `click`, never `mousedown`, so a keyboard or switch user reached a named, focusable
+       control that did nothing. A key-made click has `detail === 0`; a pointer's has already
+       been handled by the mousedown above, so it is skipped rather than run twice. */
     dismiss.addEventListener("click", (e) => {
       if (e && e.detail !== 0) return;
-      dismissShowSearch(input);
+      dismissShowSearch(input, { keepFocus: true });
+      if (input && typeof input.focus === "function") input.focus();
     });
   }
 
-  /* LAST, after every listener is bound, because this paints into the nodes
-     above and then runs the same costly pass a submit would — a pass that can
-     resolve at any point and must not land on a half-wired page. It is
-     `renderShowSearchResults`, the SUBMIT path, verbatim: a tile IS a submit
-     the listener did not have to type.
-
-     AND IT LOADS THE INDEX (audit round 2, search-6). S-03 tied the index to
-     the first FOCUS so a listener who never searches never pays the decode;
-     #684 then made every browse pill a `#/shows/q/<label>` arrival, which
-     never focuses the field on purpose. So a pill, a return via ‹ and a reload
-     all ran their local pass over the curated 220 only, with the 10,113-row
-     index — the thing that makes search feel instant — never fetched until the
-     field was tapped. A query arriving here IS a search, which is the case
-     S-03's lazy rule was written to serve, not to skip; `#/shows` without a
-     query still fetches nothing. `repaintShowSearchForIndex` merges the rows
-     in when the index lands. */
+  /* LAST, after every listener is bound, because this paints into the nodes above and then runs
+     the same costly pass a submit would — a pass that can resolve at any point and must not land
+     on a half-wired page. It is `renderShowSearchResults`, the SUBMIT path, verbatim: a tile IS a
+     submit the listener did not have to type. AND IT LOADS THE INDEX (audit round 2, search-6):
+     S-03 tied the index to the first FOCUS so a listener who never searches never pays the
+     decode; a tile, a return via ‹ and a reload all arrive with a query and never focus the
+     field on purpose, so a query arriving here IS a search, which is the case S-03's lazy rule
+     was written to serve, not to skip. `#/shows` without a query still fetches nothing. */
   if (query) {
     loadShowIndex();
     renderShowSearchResults(query);

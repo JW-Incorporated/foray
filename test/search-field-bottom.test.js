@@ -251,8 +251,10 @@ test("the search field renders inside #sh-compose, a sibling of the page header"
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
-  assert.ok(html.includes('<div id="sh-compose">'), "the compose bar must be rendered");
-  const bar = html.slice(html.indexOf('<div id="sh-compose">'), html.indexOf("</div>", html.indexOf('id="sh-form"')));
+  /* `class="dock-field"` since Redesign 2026: the field is the Dock's top row, and that class is the handle the
+     Dock screen adopts it by (BUILD-PLAN screen 2). */
+  assert.ok(html.includes('<div id="sh-compose" class="dock-field veil">'), "the compose bar must be rendered, as the Dock's Veil row");
+  const bar = html.slice(html.indexOf('<div id="sh-compose"'), html.indexOf("</form>", html.indexOf('id="sh-form"')));
   assert.ok(bar.includes('id="sh-form"'), "…and it must hold the form");
   assert.ok(bar.includes('id="sh-input"'), "…and the field itself");
   /* Was `type="submit"`, the Go button, until the founder deleted it on
@@ -271,9 +273,11 @@ test("the compose bar is emitted FIRST, ahead of the results and the browse furn
   const html = m.view();
   const compose = html.indexOf('id="sh-compose"');
   assert.ok(compose !== -1, "fixture assumption: the bar rendered");
+  assert.ok(compose < html.indexOf('id="sh-note"'), "the status lines come after the field they describe");
   assert.ok(compose < html.indexOf('id="sh-results"'), "the field comes before the results it fills");
-  assert.ok(compose < html.indexOf('id="sh-browse"'), "…and before the browse furniture");
-  assert.ok(compose < html.indexOf("show-index"), "…and before the A–Z list");
+  assert.ok(compose < html.indexOf('id="sh-browse"'), "…and before the idle subject groups");
+  assert.ok(compose < html.indexOf('id="ep-search-results"') && compose < html.indexOf('id="pl-search-results"'),
+    "…and before every other result group");
 });
 
 test("the bar lives inside #view, so the next page render disposes of it", () => {
@@ -323,144 +327,132 @@ test("navigating to a page with no compose bar drops the class again", () => {
   assert.strictEqual(m.bodyHas("sh-compose"), false, "the category page must not pay for a bar it does not have");
 });
 
-test("the reservation rule exists and is scoped to that class", () => {
-  /* MUTATION: delete `body.sh-compose #view { padding-bottom: ... }` from
-     styles.css. This fails, and in a browser the last show in the A–Z list
-     sits under the search bar with no way to scroll it clear. RUN: failed as
-     named. */
-  const rule = cssRule("body.sh-compose #view");
-  assert.ok(rule, "the page must reserve room for a bar that occupies none of its own height");
-  assert.match(rule, /padding-bottom:\s*var\(--sh-compose-h\)/,
-    `the reservation must be the bar's own height token, got: ${rule}`);
-  assert.match(STYLES, /--sh-compose-h:\s*\d+px/, "…and that token must be defined");
+test("the Dock reserves the field row: Discover raises it to field + receded tabs, and #view keeps no padding of its own", () => {
+  /* RULING THAT FELL: "the search field floats as its own fixed row" (R in test-classification.md,
+     search-field-bottom). The field is the Dock's top row; the page reserves room for the WHOLE Dock in
+     ONE place (ui/dock.css), and `#view` no longer reserves the floating row's 66px on top of it.
+     MUTATION: restore `body.sh-compose #view { padding-bottom: var(--sh-compose-h) }` -> the #view
+     assertion goes red (a double reservation: a dead 66px under the last A-Z row). Delete the
+     `body.ui-v2.sh-compose` block's `--dock-field-h` -> the field row is not reserved and the row-height
+     assertion goes red. */
+  const dockCss = require("./helpers/dock-css.js");
+  const rest = dockCss.scope([]);
+  const discover = dockCss.scope(["sh-compose"]);
+  assert.strictEqual(dockCss.resolve(discover.get("--dock-field-h"), discover, 0), 48, "the field row is 48");
+  assert.strictEqual(dockCss.resolve(discover.get("--dock-tab-h"), discover, 0), 44, "and the tab row is receded on Discover (44: the labels go, the row does not)");
+  const reserve = (v) => dockCss.resolve(v.get("--dock-reserve"), v, 0);
+  assert.strictEqual(reserve(discover) - reserve(rest), 48 + 44 - 64, "Discover reserves field + receded tabs, over the tab row alone");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose #view", "padding-bottom"), "0",
+    "#view carries no padding of its own for the field: the body reserves the whole Dock");
+  assert.ok(!/--sh-compose-h/.test(STYLES), "and the floating row's own height token is gone");
+});
+
+test("with the keyboard up the field row floats mid-screen, so #view reserves the keyboard and the row and the root scroll-pads past them", () => {
+  /* A result scrolled into view (tap, focus move, the tap-target gate's scrollIntoView) must be able to clear
+     the field row riding the keyboard; without a reserve the last tiles / playlist row stayed under it (gate
+     debt: discover-kb "ag-subject-tile covered", discover-results-groups "dsc-pl covered").
+     MUTATION: delete the `body.ui-v2.sh-compose.kb-open #view` rule (or the `html:has(...)` scroll-padding one)
+     -> the matching assertion goes red; `gates.mjs --states discover` then reports the covered tiles again. */
+  const dockCss = require("./helpers/dock-css.js");
+  const want = "calc(var(--kb-inset, 0px) + var(--dock-field-row) + var(--s-8))";
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose.kb-open #view", "padding-bottom"), want,
+    "keyboard up: #view reserves keyboard + field row + a gap");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "html:has(body.ui-v2.kb-open)", "scroll-padding-bottom"), want,
+    "and the root scroll-pads by the same amount");
 });
 
 /* ==================================================================== */
 /* 3. THE STACKING ORDER                                                 */
 /* ==================================================================== */
 
-test("the compose bar stacks ABOVE the tab bar it docks on and BELOW the player/sheet", () => {
-  /* The whole argument, as three numbers rather than one: above `.tab-bar`
-     (55) because it docks on top of it exactly as the mini-player does; below
-     `#foray-player` (60) because that id is the mini bar AND the expanded Now
-     Playing sheet, and a search box floating over an open modal sheet is a
-     worse bug than any it could fix. They never actually overlap — see the
-     docking tests below — so yielding costs nothing.
-     MUTATION: raise `#sh-compose`'s z-index to 61 (the tempting "make sure
-     the field is never covered"). The upper bound fails. Lowering it to 54
-     fails the lower bound. RUN: both failed as named. */
-  const compose = zIndexOf("#sh-compose");
-  const tabBar = zIndexOf(".tab-bar");
+test("the field is a row of the Dock, which stacks at the old tab bar's rung: above the page, below the player's sheet", () => {
+  /* The whole argument, as three numbers: the Dock (55) took the tab bar's rung and with it the field's
+     (58) and the mini bar's: they are rows of it. Below `#foray-player` (60) because that id is now the
+     expanded Now Playing sheet, and a search box floating over an open modal sheet is a worse bug than any
+     it could fix; above the page and the sticky header (15, 20).
+     MUTATION: raise the layer's z-index to 61 (the tempting "make sure the field is never covered") ->
+     the upper bound fails; lower it to 20 -> the lower bound fails. */
+  const dockCss = require("./helpers/dock-css.js");
+  const layer = Number(dockCss.declOf("ui/dock.css", ".dock-layer", "z-index"));
   const player = zIndexOf("#foray-player");
-  assert.ok(tabBar < compose, `the bar must sit above the tab bar (${tabBar}), got ${compose}`);
-  assert.ok(compose < player, `…and below the player/sheet (${player}), got ${compose}`);
+  assert.strictEqual(layer, 55, "the Dock sits on the old tab bar's rung");
+  assert.ok(layer > 20, "above the fixed header (20)");
+  assert.ok(layer < player, `...and below the player's sheet (${player}), got ${layer}`);
+  assert.doesNotMatch(cssRule("#sh-compose"), /z-index/, "the field has no rung of its own: it is a row of the Dock");
 });
 
-test("the z-index ladder comment names the new layer — the file's own rule for adding one", () => {
-  /* styles.css keeps every fixed/sticky layer in one list precisely so the
-     next person does not have to grep for the numbers, and says so: "Anything
-     new that must cover the drawer needs a number above these, and a line in
-     this list."
-     MUTATION: add the rule without adding the ledger line. This fails. RUN:
-     failed as named. */
-  assert.match(STYLES, /^\s+58\s+#sh-compose\b/m,
-    "the ladder comment must carry a 58 #sh-compose line");
+test("the z-index ladder comment names the Dock - the file's own rule for adding a layer - and retires the two it replaced", () => {
+  /* styles.css keeps every fixed/sticky layer in one list precisely so the next person does not have to
+     grep for the numbers, and says so: "Anything new that must cover the drawer needs a number above
+     these, and a line in this list."
+     MUTATION: add the layer without the ledger line, or leave the retired `.tab-bar` / `#sh-compose`
+     lines in. This fails. */
+  assert.match(STYLES, /^\s+55\s+#dock-layer\b/m, "the ladder comment must carry a 55 #dock-layer line");
+  assert.doesNotMatch(STYLES, /^\s+55\s+\.tab-bar\b/m, "the retired tab bar's line is gone");
+  assert.doesNotMatch(STYLES, /^\s+58\s+#sh-compose\b/m, "and so is the field's own 58");
 });
 
 /* ==================================================================== */
 /* 4. THE DOCKING ARITHMETIC                                             */
 /* ==================================================================== */
 
-test("the row is fixed, inset from both edges, and rises by --kb-inset", () => {
-  /* Inset left AND right is the floating-row half of the reference: a bar
-     welded to the window would be `left: 0; right: 0`.
-     MUTATION: replace `bottom: calc(var(--kb-inset, 0px) + var(--sh-dock))`
-     with `bottom: var(--sh-dock)`. This fails, and on a phone the field goes
-     back behind the keyboard. A second, independent mutation also kills it:
-     `left: 0; right: 0`, which is the welded bar this replaced. RUN: both
-     failed as named. */
+test("the field has no placement of its own: the Dock insets it, floats it and lifts it by --kb-inset", () => {
+  /* Inset left AND right is the floating-row half of the reference: a bar welded to the window would be
+     `left: 0; right: 0`. That half now belongs to the Dock (the gutter inset); the keyboard lift belongs to
+     it too. MUTATION: put `position: fixed` back on `#sh-compose` -> the field stops being a row of the Dock
+     (the first assertion). Drop `var(--kb-inset, 0px)` from the Dock's `bottom` -> on a phone the field goes
+     back behind the keyboard (the second); `left: 0; right: 0` on the Dock is the welded bar -> the third. */
+  const dockCss = require("./helpers/dock-css.js");
   const rule = cssRule("#sh-compose");
   assert.ok(rule, "#sh-compose must have a rule");
-  assert.match(rule, /position:\s*fixed/, "it floats over the page, it is not page content");
-  assert.match(rule, /bottom:\s*calc\(var\(--kb-inset,\s*0px\)\s*\+\s*var\(--sh-dock\)\)/,
-    `the lift must compose the keyboard inset with the dock, got: ${rule}`);
-  assert.match(rule, /left:\s*var\(--sh-gap\);\s*right:\s*var\(--sh-gap\)/,
-    `the row must be inset from BOTH screen edges, not full-bleed, got: ${rule}`);
-  /* REWRITTEN 2026-09-14 with the block itself: the dock stopped being one
-     value enumerated per combination and became a SUM OF PER-OBJECT TERMS,
-     when the tab bar became the third thing that can be absent (founder:
-     "when the search bar is up, this home ribbon should go away"). The
-     property being pinned is unchanged — with nothing on screen the dock is
-     the bare gap — it is just now expressed as "every term defaults to 0". */
-  assert.match(rule, /--sh-dock:\s*calc\(var\(--sh-gap\)\s*\+\s*var\(--sh-tab\)\s*\+\s*var\(--sh-fp\)\s*\+\s*var\(--sh-safe\)\)/,
-    `the dock must be the sum of the gap and one term per optional object, got: ${rule}`);
-  for (const term of ["--sh-tab", "--sh-fp", "--sh-safe"]) {
-    assert.match(rule, new RegExp(`${term}:\\s*0px`),
-      `\`${term}\` must default to 0 — the keyboard-open case, which matches no term rule`);
-  }
+  assert.doesNotMatch(rule, /position:/, "it is a flex row inside the Dock, not a fixed element of its own");
+  assert.match(dockCss.declOf("ui/dock.css", ".dock-layer .dock", "bottom"), /var\(--kb-inset,\s*0px\)/,
+    "the Dock rises by the keyboard's inset");
+  assert.match(dockCss.declOf("ui/tokens.css", ".dock", "left") + dockCss.declOf("ui/tokens.css", ".dock", "right"), /var\(--gutter\)var\(--gutter\)/,
+    "and is inset from BOTH screen edges by the gutter, not full-bleed");
+  assert.match(dockCss.declOf("ui/dock.css", "body.ui-v2.kb-open .dock-layer .dock", "bottom"), /var\(--kb-inset/,
+    "and while the keyboard is up it still rides its top edge");
 });
 
-test("--sh-dock composes the tab bar, the player and the safe-area inset, counting each once", () => {
-  /* The same "reserve, don't overlap; add the home-indicator inset exactly
-     once" rule `body.fp-open`'s own reservations follow — now enforced by
-     construction rather than by four rules each remembering to.
-
-     MUTATION: give a term a SECOND rule — e.g. add
-     `body:not(.kb-open).view-page #sh-compose { --sh-fp: var(--fp-bar-h); }`
-     beside the existing one, which is how "the mini bar needs covering on
-     this page too" would naturally be written. The exactly-one-rule
-     assertion below fails, and on a phone the pill would float a mini
-     player's height too high. RUN: failed as named. A second, independent
-     mutation kills it from the other side: delete the `--sh-safe` rule
-     entirely, and on a notched phone the pill sits on the home indicator.
-     RUN: failed as named. */
-  const termRules = {
-    /* The tab bar's height leaves the dock through the SAME selector that
-       takes the bar off the screen — `.sh-searching` — which is the only
-       reason the pill does not jump at the moment the bar goes. */
-    "--sh-tab": { selector: "body:not(.kb-open).ui-v2:not(.sh-searching) #sh-compose", token: "var(--tab-bar-h)" },
-    "--sh-fp": { selector: "body:not(.kb-open).fp-open #sh-compose", token: "var(--fp-bar-h)" },
-    "--sh-safe": { selector: "body:not(.kb-open) #sh-compose", token: "env(safe-area-inset-bottom" },
-  };
-  for (const [term, { selector, token }] of Object.entries(termRules)) {
-    const rule = cssRule(selector);
-    assert.ok(rule, `missing the term rule for \`${selector}\``);
-    assert.ok(rule.includes(`${term}:`), `\`${selector}\` must set ${term}, got: ${rule}`);
-    assert.ok(rule.includes(token), `\`${selector}\` must account for ${token}, got: ${rule}`);
-    /* EXACTLY ONE RULE PER TERM IS THE WHOLE POINT of the rewrite: a term
-       that two selectors can set is a term that can be counted twice, which
-       is the bug the old four-rule enumeration had to be careful about by
-       hand. Counted over the whole sheet, not just this block, and the
-       defaults-to-zero declaration is excluded by value rather than by
-       position — `--sh-tab: 0px` is the floor, not a setter. */
-    const declarations = STYLES.match(new RegExp(`${term}:\\s*[^;]+;`, "g")) || [];
-    const setters = declarations.filter((d) => !/:\s*0px;$/.test(d));
-    assert.strictEqual(setters.length, 1,
-      `exactly one rule may turn \`${term}\` on, found ${setters.length}: ${JSON.stringify(setters)}`);
-    assert.strictEqual(declarations.length - setters.length, 1,
-      `\`${term}\` must have exactly one 0px default, or the keyboard-open case has no floor`);
-  }
+test("with the keyboard up the page reserves the keyboard's inset too, so the last row scrolls above the field", () => {
+  /* The field rides the keyboard's top edge (--kb-inset); a page that only reserves the Dock's own height ends
+     UNDER the field, and the last playlist row / subject tile sits covered at its centre (the ui-lab tap-targets
+     gate, discover-kb and discover-results-groups). MUTATION: delete the `+ var(--kb-inset, 0px)` from
+     body.ui-v2's padding-bottom in ui/dock.css -> this fails. */
+  const dockCss = require("./helpers/dock-css.js");
+  assert.match(dockCss.declOf("ui/dock.css", "body.ui-v2", "padding-bottom"), /var\(--dock-reserve\).*var\(--kb-inset,\s*0px\)/,
+    "the page's bottom reserve adds the keyboard inset to the Dock reserve");
 });
 
-test("every dock term rule is scoped :not(.kb-open) — an override would lose on specificity", () => {
-  /* While the keyboard is up there is nothing left to dock above: the player
-     is display:none, and the tab bar and the home indicator are behind the
-     keyboard. So every term must fall back to 0. Writing that as a
-     `body.kb-open #sh-compose` override would NOT work — `body.ui-v2.fp-open
-     #sh-compose` is the more specific selector and keeps winning. Scoping the
-     term rules is what makes the fallback happen by not matching.
-     MUTATION: delete `:not(.kb-open)` from any one of the term selectors.
-     This fails, and on a phone the field would float a tab bar's height above
-     the keyboard. RUN: failed as named. */
-  const termRules = STYLES.match(/^[^\n{]*#sh-compose\s*\{[^}]*--sh-(?:tab|fp|safe):[^}]*\}/gm) || [];
-  assert.ok(termRules.length >= 4,
-    `expected the default plus one rule per term, found ${termRules.length}`);
-  for (const rule of termRules) {
-    const selector = rule.slice(0, rule.indexOf("{")).trim();
-    if (selector === "#sh-compose") continue;   // the defaults-to-zero declaration itself
-    assert.ok(selector.includes(":not(.kb-open)"),
-      `\`${selector}\` must not apply while a keyboard is up`);
+test("the Dock's rows hide with the keyboard exactly as the old bars did - by a class, not by the hidden attribute", () => {
+  /* The old `--sh-dock` summed the tab bar, the player and the safe area to lift the field clear of both,
+     and every term was scoped :not(.kb-open) so it fell back to the bare gap while the keyboard was up.
+     The Dock needs no sum: the field is the top row of one surface, so when the keyboard is up the OTHER
+     two rows are display:none and the field is alone, and the surface drops to the keyboard's edge.
+     MUTATION: drop `.dock-mini` from the hiding rule -> the mini bar rides up onto the keyboard (the
+     founder's 2026-09-13 report, again); drop `.tab-bar` -> the tab bar wedges between the field and the
+     keyboard (his 2026-09-14 screenshot, again). */
+  const DOCK = require("./helpers/dock-css.js").stripped("ui/dock.css");
+  for (const state of ["kb-open", "sh-searching"]) {
+    for (const row of [".dock-mini", ".tab-bar"]) {
+      assert.match(DOCK, new RegExp(`body\\.ui-v2\\.${state}\\s+\\.dock-layer\\s+\\${row}[^{]*\\{[^}]*display:\\s*none`),
+        `${state} must take ${row} off the screen`);
+    }
   }
+  assert.ok(!/--sh-(?:dock|tab|fp|safe)\b/.test(STYLES.replace(/\/\*[\s\S]*?\*\//g, "")), "and no live rule still sums the old terms");
+});
+
+test("the field's row never hides for the keyboard it is tracking, and the Dock drops to the keyboard's edge", () => {
+  /* While the keyboard is up the Dock is the field row alone. MUTATION: add `.dock-field` to the
+     kb-open hiding rule (the copy-paste of the rows above it) -> the field vanishes and this fails;
+     lose the `kb-open` bottom override -> the Dock keeps the safe-area gap and floats 34px too high
+     above a keyboard that already covers the home indicator. */
+  const DOCK = require("./helpers/dock-css.js").stripped("ui/dock.css");
+  assert.ok(!/(?:kb-open|sh-searching)[^{}]*\.dock-field[^{}]*\{[^}]*display:\s*none/.test(DOCK), "the field row is never hidden by its own focus");
+  const dockCss = require("./helpers/dock-css.js");
+  const vars = new Map([...dockCss.scope(["kb-open"]), ["--kb-inset", "300px"], ["--safe-bottom", "34px"]]);
+  assert.strictEqual(dockCss.resolve(dockCss.declOf("ui/dock.css", "body.ui-v2.kb-open .dock-layer .dock", "bottom"), vars, 34), 308,
+    "the Dock sits 8px above the keyboard's top edge, with no home-indicator gap counted twice");
 });
 
 /* ==================================================================== */
@@ -649,18 +641,19 @@ test("a document with no documentElement style is survived, not thrown on", () =
 /* 6. THE TWO BOTTOM-EDGE RULES DO NOT FIGHT                             */
 /* ==================================================================== */
 
-test("kb-open takes the now-playing bar off the screen and leaves the compose bar on it", () => {
-  /* Two things read the same signal for opposite purposes, which is the point
-     of reusing it rather than adding a second detector: the player must go
-     (founder, 2026-09-13: "When the keyboard is present the now playing bar
-     should not be visible"), and the field must stay — it is what the
-     keyboard is open FOR.
-     MUTATION: add `body.kb-open #sh-compose { display: none; }` — the
-     copy-paste of the rule above it. This fails. RUN: failed as named. */
+test("kb-open takes the now-playing bar off the screen and leaves the field on it", () => {
+  /* Two things read the same signal for opposite purposes, which is the point of reusing it rather than
+     adding a second detector: the player must go (founder, 2026-09-13: "When the keyboard is present the
+     now playing bar should not be visible"), and the field must stay - it is what the keyboard is open
+     FOR. The sheet's root still goes (`body.kb-open #foray-player`), and so does the mini row (dock.css).
+     MUTATION: add `body.kb-open #sh-compose { display: none; }` - the copy-paste of the rule above it.
+     This fails. */
   assert.match(STYLES, /body\.kb-open\s+#foray-player\s*\{\s*display:\s*none/,
     "the player rule this change builds on must still be there");
   assert.ok(!/body\.kb-open\s+#sh-compose\s*\{[^}]*display:\s*none/.test(STYLES),
     "the compose bar must never be hidden by the keyboard it is tracking");
+  assert.match(require("./helpers/dock-css.js").stripped("ui/dock.css"), /body\.ui-v2\.kb-open\s+\.dock-layer\s+\.dock-mini/,
+    "and the mini row yields to it inside the Dock");
 });
 
 /* ==================================================================== */
@@ -674,86 +667,77 @@ test("kb-open takes the now-playing bar off the screen and leaves the compose ba
 /* this file.                                                           */
 /* ==================================================================== */
 
-test("the field is a translucent pill, not an opaque bar welded to the screen edge", () => {
-  /* The single most characteristic thing in the screenshots: the category
-     grid reads THROUGH the search pill. An opaque fill cuts the page off at a
-     hard line instead, which is what this replaced.
-     MUTATION: drop the `color-mix(...)` background from `#sh-compose #sh-form`
-     so only the opaque `var(--surface)` fallback remains. This fails. RUN:
-     failed as named. */
-  const pill = cssRule("#sh-compose #sh-form");
-  assert.ok(pill, "the pill must have a rule of its own inside the floating row");
-  /* The capsule is the pill step of the radius scale since visual pass 1
-     (2026-09-23); test/ui-tokens.test.js holds that `--radius-pill` is 999px. */
-  assert.match(pill, /border-radius:\s*var\(--radius-pill\)/, "rounded to a capsule, as in the reference");
-  /* `[^;]*` rather than `[^)]*`: the value nests a `var(--surface)`, so a
-     class excluding `)` stops inside it and never reaches `transparent`. */
-  assert.match(pill, /background:\s*color-mix\(in srgb[^;]*transparent\)/,
-    `the pill must be translucent so content reads through it, got: ${pill}`);
-  assert.match(pill, /background:\s*var\(--surface\);/,
-    "…with an opaque fallback first, for browsers without color-mix");
-  assert.match(STYLES, /backdrop-filter:\s*blur\(/, "and blurred where the platform supports it");
-});
-
-test("the pill's stronger translucency is gated on backdrop-filter actually working", () => {
-  /* An unblurred 55%-transparent pill over dense podcast artwork is
-     unreadable. The heavier transparency must be conditional on the blur
-     being real, not applied unconditionally and hoped for.
-     MUTATION: change the base rule's 72% to 55%, i.e. apply the gated value
-     unconditionally. This fails. RUN: failed as named. */
-  const base = cssRule("#sh-compose #sh-form");
-  assert.ok(!/55%/.test(base), "the heavier transparency must not be in the ungated rule");
-  const i = STYLES.indexOf("@supports (backdrop-filter: blur(20px))");
-  assert.ok(i !== -1, "the support gate must exist");
-  assert.ok(STYLES.slice(i, i + 600).includes("55%"), "…and must be where the 55% lives");
+/* REDESIGN 2026 (ambient, Discover) rewrote the chrome these four tests used to pin. The pill is no longer
+   styled by `#sh-compose #sh-form` (translucent `--surface`, `--radius-pill`, an `@supports` gate on 55%):
+   it is the Afterglow SearchField, `<form class="ag-search-field">`, a 40 pill on the Dock's top row, and
+   that row, `#sh-compose.veil` (iteration 2: the field is the Dock's top row, not a Veil pill of its own),
+   carries the translucency, the blur and every fallback of the Veil material in ui/tokens.css. What the screenshots settled is unchanged
+   and still pinned, against the new classes: a capsule you can read the page through, no second box inside
+   it, a magnifier at the leading edge, no microphone, nothing but the field (and the x once it is filled)
+   in the pill. */
+test("the field is a Veil capsule: translucent, blurred where the platform can, solid where it cannot", () => {
+  /* The single most characteristic thing in the screenshots: the page reads THROUGH the pill. The Veil is the
+     direction's one glass, and tokens.css owns its three fallbacks in one place.
+     MUTATION: drop `veil` from #sh-compose's class list in renderAllShows -> the first assertion fails. A second,
+     independent one: delete the `@supports not` fallback from tokens.css -> the last fails. */
+  const m = mount();
+  m.ctx.renderAllShows();
+  assert.match(m.view(), /<div id="sh-compose" class="dock-field veil">\s*<form id="sh-form" class="ag-search-field" role="search"/, "the Dock's top row is the Veil, the pill inside it is the SearchField");
+  const TOKENS = fs.readFileSync(path.join(ROOT, "ui", "tokens.css"), "utf8").replace(/\r\n/g, "\n");
+  const veil = /\n\.veil \{([^}]*)\}/.exec(TOKENS);
+  assert.ok(veil, "the Veil material must exist");
+  assert.match(veil[1], /background:\s*var\(--glow-veil\)/, "tinted by the playing item's Glow, translucent by construction");
+  assert.match(veil[1], /backdrop-filter:\s*blur\(20px\) saturate\(140%\)/, "and blurred");
+  assert.match(TOKENS, /@supports not \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\) \{\s*\.veil \{ background: var\(--bg1\); \}/,
+    "solid where the blur is not real: an unblurred translucent pill over dense artwork is unreadable");
+  const CSS = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8").replace(/\r\n/g, "\n");
+  const field = /\.ag \.ag-search-field \{([^}]*)\}/.exec(CSS);
+  assert.ok(field && /border-radius:\s*var\(--r-pill\)/.test(field[1]), "rounded to a capsule, as in the reference");
+  assert.ok(/min-height:\s*var\(--field\)/.test(field[1]), "52 tall (--field)");
 });
 
 test("the field gives up its own box so the pill is the only box", () => {
-  /* `#sh-input` carries a border, a surface fill and a shadow from its
-     page-content days. Left in place inside the pill, that is a box in a box.
-     MUTATION: delete the `#sh-compose #sh-input` rule. This fails. RUN:
-     failed as named. */
-  const field = cssRule("#sh-compose #sh-input");
-  assert.ok(field, "the field must be restyled inside the pill");
-  assert.match(field, /border:\s*0/, "no second border");
-  assert.match(field, /background:\s*none/, "no second fill");
-  assert.match(field, /box-shadow:\s*none/, "no second shadow");
+  /* The input is `border: 0; background: transparent` inside the capsule: a box in a box is what the old
+     page-content `#sh-input` rule would have made.
+     MUTATION: delete the `.ag .ag-search-field input` rule from primitives.css. This fails. */
+  const CSS = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8").replace(/\r\n/g, "\n");
+  const input = /\.ag \.ag-search-field input \{([^}]*)\}/.exec(CSS);
+  assert.ok(input, "the field must be restyled inside the pill");
+  assert.match(input[1], /border:\s*0/, "no second border");
+  assert.match(input[1], /background:\s*transparent/, "no second fill");
+  assert.ok(!/^#sh-input\s*\{/m.test(STYLES) && !/^body\.ui-v2 #sh-input\s*\{/m.test(STYLES),
+    "and no page-content rule for the old boxed #sh-input is left in styles.css");
 });
 
-test("there is a leading magnifier and NO microphone", () => {
-  /* Apple's pill has a magnifier at the leading edge and a microphone at the
-     trailing one. We copy the first and refuse the second: we have no
-     dictation, and a glyph wired to nothing is worse than an empty slot.
-     MUTATION: add a `<svg class="sh-mic">` beside the input. This fails on
-     the microphone assertion. RUN: failed as named. */
+test("there is a leading magnifier (the sprite's) and NO microphone", () => {
+  /* Apple's pill has a magnifier at the leading edge and a microphone at the trailing one. We copy the first and
+     refuse the second: we have no dictation, and a glyph wired to nothing is worse than an empty slot. The
+     magnifier is the sprite's `i-magnifier` (no inline svg, no text glyph) and the placeholder is the direction's.
+     MUTATION: add a `<svg class="sh-mic">` beside the input -> the microphone assertion fails. Another: put the
+     magnifier after the input -> the order assertion fails. */
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
-  assert.ok(html.includes('class="sh-glyph"'), "the leading magnifier must be in the pill");
-  assert.ok(html.indexOf('class="sh-glyph"') < html.indexOf('id="sh-input"'),
-    "…leading it, not trailing it");
+  const glyph = html.indexOf('ui/icons.svg#i-magnifier');
+  assert.ok(glyph !== -1, "the leading magnifier must be in the pill");
+  assert.ok(glyph < html.indexOf('id="sh-input"'), "…leading it, not trailing it");
+  assert.ok(html.includes('placeholder="Search, or name a subject"'), "the one field both searches and names a subject");
   assert.ok(!/mic/i.test(html), "no microphone: we have no dictation to wire one to");
-  assert.ok(cssRule("#sh-compose .sh-glyph"), "and the glyph must be styled, not a raw 24px SVG");
 });
 
-test("the trailing slot is empty — the Go button is gone", () => {
-  /* Founder, 2026-09-14: "since the search results are live, the 'go' button
-     is useless, delete it." He is right, and the reason is in this repo's own
-     history: G2's "keep the button, keep Enter, make neither required" was
-     decided when the button was the only way to run a search at all, and S-02
-     then made the results filter live on every keystroke. By the time a thumb
-     reached the button, the results it would have produced were already on
-     screen. Its only remaining effect was skipping a 250ms debounce on work
-     that had finished.
-
-     MUTATION: put `<button type="submit">Go</button>` back inside #sh-form.
-     This fails. RUN: failed as named. */
+test("the pill holds the field and the x — no Go button, and the x is hidden until the field is filled", () => {
+  /* Founder, 2026-09-14: "since the search results are live, the 'go' button is useless, delete it." The x
+     (Redesign 2026) is the one other control and lives INSIDE the pill, 44 tall, hidden while the field is empty.
+     MUTATION: put `<button type="submit">Go</button>` back inside #sh-form -> the button-count assertion
+     fails. Another: drop `hidden` from the x -> the idle assertion fails. */
   const m = mount();
   m.ctx.renderAllShows();
   const html = m.view();
   const form = html.slice(html.indexOf('id="sh-form"'), html.indexOf("</form>"));
-  assert.ok(!/<button/.test(form), `the pill holds the field and nothing else, got: ${form}`);
-  assert.ok(!/>Go</.test(html), "no Go button anywhere on the search page");
+  const buttons = form.match(/<button\b[^>]*>/g) || [];
+  assert.strictEqual(buttons.length, 1, `the pill holds the field and one x, got: ${buttons.join(" ")}`);
+  assert.match(buttons[0], /id="sh-dismiss"[^>]*aria-label="Clear search"[^>]*hidden/, "the x is named and hidden while idle");
+  assert.ok(!/>Go</.test(html), "no Go button anywhere on the page");
 });
 
 test("removing the button did not remove the submit path — return still searches", () => {
@@ -790,37 +774,19 @@ test("no orphan CSS is left behind the deleted button", () => {
     "…and the compose-bar sizing rule that had nothing left to size");
 });
 
-test("the companion button is absent when idle and present once the field is live", () => {
-  /* Apple swaps an idle Home button for a circular ✕ on focus. We do not copy
-     the Home half — `.tab-bar` already carries Home two rows below, and the
-     same destination twice is not a design. So the slot is EMPTY when idle,
-     which also lets the pill span the whole row.
-     MUTATION: change the dismiss line to `dismiss.hidden = false`. The button
-     then shows on an untouched page and the first assertion fails. RUN:
-     failed as named. */
+test("the x is absent while the field is empty and present once it is filled — even across a blur", () => {
+  /* Redesign 2026: the x (it was Apple's circular "never mind" beside the pill, drawn on focus) lives inside
+     the pill and is drawn when the field is FILLED. One predicate with the idle groups, inverted: "the field
+     holds a query" — including the case that separates it from a naive `focused` test, a blur with a live
+     query, where the results stay up and so must the way out of them.
+     MUTATION: `dismiss.hidden = !showSearchFieldFocused` in updateShowBrowseVisibility. The blur-with-a-query
+     case fails. */
   const m = mount();
   m.ctx.renderAllShows();
   const dismiss = m.byId.get("sh-dismiss");
-  assert.strictEqual(dismiss.hidden, true, "nothing to dismiss on a resting page");
+  assert.strictEqual(dismiss.hidden, true, "nothing to clear on a resting page");
   m.input.dispatch("focus");
-  assert.strictEqual(dismiss.hidden, false, "…and it arrives with the keyboard");
-  m.input.dispatch("blur");
-  assert.strictEqual(dismiss.hidden, true, "…and leaves again on a blur with an empty field");
-});
-
-test("the companion button follows the SAME predicate as the browse furniture, inverted", () => {
-  /* "There is a search in progress" is one fact about this page. The browse
-     furniture leaving and the ✕ arriving are that fact seen from two sides, so
-     they are computed together rather than by two rules that could drift —
-     including the case that separates them from a naive `focused` test: a
-     blur with a live query, where the results stay up and so must the way out
-     of them.
-     MUTATION: `dismiss.hidden = !showSearchFieldFocused`. The blur-with-a-
-     query case fails. RUN: failed as named. */
-  const m = mount();
-  m.ctx.renderAllShows();
-  const dismiss = m.byId.get("sh-dismiss");
-  m.input.dispatch("focus");
+  assert.strictEqual(dismiss.hidden, true, "…and focus alone does not draw it");
   m.input.value = "radio";
   m.input.dispatch("input");
   m.input.dispatch("blur");
@@ -830,9 +796,11 @@ test("the companion button follows the SAME predicate as the browse furniture, i
     "a live query keeps the results up, so it must keep the way OUT of them up too");
 });
 
-test("pressing the companion button clears the query, the results and the focus", () => {
+test("pressing the x clears the query and the results, and keeps the caret", () => {
   /* It is the phone's Escape key — the gap the Escape handler's own comment
-     names ("desktop only; a phone keyboard has no Escape").
+     names ("desktop only; a phone keyboard has no Escape") — except that, a
+     Redesign 2026 change, it KEEPS focus: the next thing anyone does with a
+     field they just emptied is type.
      MUTATION: bind the button to `click` instead of `mousedown`. On a desktop
      the press blurs the field first, updateShowBrowseVisibility hides the
      button, and the click never lands — this test dispatches `mousedown` and
@@ -849,10 +817,11 @@ test("pressing the companion button clears the query, the results and the focus"
   assert.strictEqual(m.input.value, "", "the field is emptied");
   assert.strictEqual(m.byId.get("sh-results").hidden, true, "the painted results are dropped");
   assert.deepStrictEqual(
-    { browse: m.byId.get("sh-browse").hidden, index: m.showIndex.hidden },
-    { browse: false, index: false },
-    "and the catalogue comes back");
+    { browse: m.byId.get("sh-browse").hidden },
+    { browse: false },
+    "and the idle groups come back");
   assert.strictEqual(dismiss.hidden, true, "…taking the button with it");
+  assert.strictEqual(m.bodyHas("sh-searching"), true, "…while the field keeps focus, so the bars stay out of the keyboard's way");
 });
 
 test("Escape and the button are one path, not two implementations", () => {
@@ -883,22 +852,23 @@ test("Escape and the button are one path, not two implementations", () => {
      `mousedown`, and the button's keyboard `click` — Enter and Space fire
      click, never mousedown, so the ✕ did nothing from a keyboard. Still one
      function; a third TRIGGER, not a second implementation. */
-  const calls = APP_SRC.match(/dismissShowSearch\(input\);/g) || [];
+  /* The x's two triggers pass `{ keepFocus: true }` (Redesign 2026): after the x the listener types again. */
+  const calls = APP_SRC.match(/dismissShowSearch\(input(?:, \{ keepFocus: true \})?\);/g) || [];
   assert.strictEqual(calls.length, 3, `one function, three callers, got ${calls.length}`);
   assert.strictEqual((APP_SRC.match(/function dismissShowSearch\(/g) || []).length, 1,
     "…and exactly one definition of it");
 });
 
-test("the page still reserves the row's height, so the last show stays reachable", () => {
-  /* Content scrolling BEHIND the pill is the look. Content permanently
-     UNREACHABLE behind it is not — and that distinction is why this
-     reservation survives the move from an opaque bar to a floating row.
-     MUTATION: delete `body.sh-compose #view`'s padding-bottom. This fails,
-     and in a browser the last of the 220 rows cannot be scrolled clear of the
-     pill. RUN: failed as named. */
-  const rule = cssRule("body.sh-compose #view");
-  assert.ok(rule && /padding-bottom/.test(rule), "the reservation must survive the restyle");
-  assert.match(STYLES, /--sh-compose-h:\s*\d+px/, "and be expressed as the row's own height");
+test("the page still reserves the field row's height, so the last show stays reachable", () => {
+  /* Content scrolling BEHIND the Dock is the look. Content permanently UNREACHABLE behind it is not - and
+     that distinction is why a reservation survives the move from a floating row to a Dock row.
+     MUTATION: delete the `body.ui-v2.sh-compose` block in ui/dock.css (or its `--dock-field-h`). This
+     fails, and in a browser the last of the 220 rows cannot be scrolled clear of the field. */
+  const dockCss = require("./helpers/dock-css.js");
+  const discover = dockCss.scope(["sh-compose"]);
+  const reserved = dockCss.resolve(dockCss.declOf("ui/dock.css", "body.ui-v2", "padding-bottom"), discover, 0);
+  assert.ok(reserved >= 48 + 36 + 12, `Discover reserves at least its field row, receded tabs and the float (${reserved})`);
+  assert.ok(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose", "--dock-field-h"), "expressed as the row's own height");
 });
 
 test("there is still exactly one keyboard detector in the app", () => {
@@ -917,68 +887,43 @@ test("there is still exactly one keyboard detector in the app", () => {
   assert.match(APP_SRC, /vv\.addEventListener\("scroll"/, "…and the scroll half, which is the re-anchor frame");
 });
 
-/* ---------- focusing the field lands the page at the top -------------------
+/* ---------- focusing the field NO LONGER scrolls the page (Redesign 2026) -------
 
    FOUNDER, 2026-09-17, verbatim: "When I click search, it jumps down to the
    bottom, so then I need to scroll up to find the top search result for shows."
+   That was answered by `scrollPageTo(0)` on focus of an empty field, and the
+   reason was the document under the pill: the whole A-Z show list, 17,712px
+   in a 390px harness, which iOS scrolled the focused field against as the
+   keyboard rose.
 
-   This is the cost of the very thing this file pins. The pill is fixed to the
-   bottom edge and needs no scrolling to reach — but the document under it is
-   the whole A-Z show list, measured at 17,712px in a 390px harness on
-   2026-09-17. iOS scrolls a focused field into view against the LAYOUT viewport
-   as the keyboard rises, and on a document that tall the correction lands
-   thousands of pixels down. Results paint at the TOP, above where the listener
-   now stands, and the only way back to the best match is a long scroll up.
+   THE REASON IS GONE. Discover's idle page is five short groups of subject
+   tiles (about 2,500px at 393) and the A-Z list is not on it; typing replaces
+   the groups with the results and the document collapses to them, so the
+   browser's own clamp lands at the top, which is where the results paint.
+   Scrolling on focus, BEFORE any text, is now the rude half: a listener who
+   scrolled down the subjects and tapped the field to type a name lost their
+   place for nothing. The prototype's focused state (`?state=kb`) does not
+   move the page either. So what is pinned here is the negative, plus the half
+   of the old rule that was about correctness and survives. */
 
-   THE LIMIT, stated rather than papered over: desktop Chrome cannot reproduce
-   it. Typing hides the browse list, the document collapses to one viewport, and
-   the browser clamps scrollY to 0 by itself — measured in the same harness:
-   jump to 6000, type, land at 0, first result at y=125. That clamp is the
-   browser being helpful, not a contract, and it is absent on iOS with a
-   keyboard up. So what is pinned here is that the app states the position
-   itself rather than inheriting whatever the browser chose. */
-
-test("focusing the show-search field scrolls the page to the top", () => {
-  /* MUTATION: delete the `scrollPageTo(0)` line from the focus handler. This
-     goes red. RUN: failed as named. */
+test("focusing the field does not scroll the page", () => {
+  /* MUTATION: put `if (!input.value.trim()) scrollPageTo(0);` back in the
+     focus handler. This goes red. */
   const focusHandler = /input\.addEventListener\("focus",\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s{4}\}\);/.exec(APP_SRC);
   assert.ok(focusHandler, "the show-search field must still have a focus handler");
-  /* GATED ON AN EMPTY FIELD, and that gate is load-bearing. Scrolling on EVERY
-     focus — the first draft — broke the mirror-image case: a listener scrolled
-     into their results who taps the field to edit the query was yanked to the
-     top, and the next upward scroll then read as a large DOWNWARD delta and
-     dropped the keyboard. A real browser caught that and these node:vm suites
-     could not: test/playwright/tests/search-chrome-dock.spec.js, "a downward
-     scroll blurs the field; an upward one does not".
-     MUTATION: drop the `if (!input.value.trim())` guard — this stays green, and
-     that playwright spec goes red. Which is the honest note to leave here: the
-     guard's REASON lives in a browser, not in this file. */
-  assert.match(focusHandler[1], /if \(!input\.value\.trim\(\)\) scrollPageTo\(0\)/,
-    "focus on an EMPTY field must put the page at the top, where the results paint");
+  assert.ok(!/scrollPageTo\(/.test(focusHandler[1]), "focus must not move the page: nothing under the field is tall enough to need it");
 });
 
-test("the scroll-dismiss baseline is re-read AFTER the scroll, not before it", () => {
-  /* Not cosmetic, and the ORDER is the invariant — not the value.
-     `maybeDismissKeyboardOnScroll` measures a DELTA against `lastScrollY`. Read
-     it before `scrollPageTo(0)` and the next frame compares the new position
-     against the old one, sees a large fake downward delta, and blurs the field
-     the instant the listener starts typing.
-
-     The first draft of this fix asserted `lastScrollY = 0` instead, reasoning
-     that we had just scrolled there. That was wrong, and
-     test/keyboard-chrome-and-scroll.test.js caught it: `scrollPageTo` is
-     deliberately a no-op where there is no viewport to move (its own guard, for
-     the node:vm suites), so pinning the literal made this handler assert a
-     position the viewport had never taken — and an up-scroll after a re-focus
-     then read as a 200px scroll DOWN and dismissed the keyboard.
-
-     MUTATION: move the `lastScrollY` line above `scrollPageTo(0)`. This goes
-     red, and so does that other suite — which is the part worth having. */
+test("the scroll-dismiss baseline is still re-read from the viewport when the field takes focus", () => {
+  /* The half of the old rule that was about correctness and survives.
+     `maybeDismissKeyboardOnScroll` measures a DELTA against `lastScrollY`; a
+     stale baseline hands it a large fake downward delta on the first frame
+     after focus and it blurs the field the instant the listener starts typing.
+     The old test pinned the ORDER (read after scrollPageTo(0)); with no scroll
+     there is no order, only the read.
+     MUTATION: delete the `lastScrollY = window.scrollY || 0;` line from the
+     focus handler. This goes red. */
   const focusHandler = /input\.addEventListener\("focus",\s*\(\)\s*=>\s*\{([\s\S]*?)\n\s{4}\}\);/.exec(APP_SRC);
-  const body = focusHandler[1];
-  assert.match(body, /lastScrollY\s*=\s*window\.scrollY/, "the baseline is read from the viewport");
-  assert.ok(
-    body.indexOf("scrollPageTo(0)") < body.indexOf("lastScrollY ="),
-    "…and read after the scroll it is meant to describe"
-  );
+  assert.match(focusHandler[1], /lastScrollY\s*=\s*window\.scrollY/, "the baseline is read from the viewport");
+  assert.match(focusHandler[1], /showSearchFocusedAt\s*=\s*Date\.now\(\)/, "…and the settle window is stamped beside it");
 });

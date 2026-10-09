@@ -11,12 +11,10 @@
    "get rid of the recommended foray at the top of Home. Move it into a page
    accessible via the menu exclusively for Forays").
 
-   "Jump back in" moves here WITH the list rather than staying on Home. The
-   two render the same `.fy-home-row` markup and read as one block, so
-   splitting them would have left Home with a row that looks exactly like the
-   thing the founder asked to remove. Both are still gated by the same
-   visibility rule (forayCards / forayResumeRows) — an unpublished Foray is
-   listed only to someone who arrived with its `?foray=` link this session. */
+   REDESIGN 2026 (ambient): the page is a grid of two-up ForayCards (below), and the "Jump back in" rows that sat above
+   the list are gone with their markup: each card's strip shows how far in the listener is. The list is still gated by
+   the same visibility rule (forayCards / forayResumeRows) — an unpublished Foray is listed only to someone who
+   arrived with its `?foray=` link this session. The `.fy-home-row` rows (forayRowsHtml) remain Search's Forays group. */
 /* THE THREE STATES, AND WHAT THE PAGE SAYS ABOVE THEM (audit 2026-09-22).
 
    It used to be synchronous and take `forayCards()` at face value — and that
@@ -42,15 +40,17 @@
    longer destructive: the sentence has a permanent home a tap away. */
 function renderForays() {
   setBodyClass("view-page");
+  /* From here the page is the ambient one (ui/forays.css): the legacy top bar steps aside, the page draws its own
+     header, and the Dock below it is the Veil. setBodyClass() clears this on the next route. */
+  try { document.body.classList.add("view-forays"); } catch (_) { /* a stub document */ }
   const head = `
-      <div class="page-head">
-        <a class="back" href="#/">‹</a>
-        <div>
-          <h2>Forays</h2>
-        </div>
-      </div>
-      <p class="note fy-about">${esc(forayAbout())}</p>`;
-  const paintStatus = (body) => { $("#view").innerHTML = `<div class="page">${head}${body}</div>`; };
+      <header class="fl-head">
+        <a class="back ag-btn ag-btn-icon fl-back" href="#/library" aria-label="Back">${agIcon("chevron-left", 24)}</a>
+        <h1 class="t-title fl-title" data-page-heading tabindex="-1">Forays</h1>
+      </header>
+      <p class="t-body fl-about">${esc(forayAbout())}</p>`;
+  const shell = (inner) => `<div class="page fl-list"><div class="ag fl-page">${head}${inner}${forayCastHtml()}</div></div>`;
+  const paintStatus = (body) => { $("#view").innerHTML = shell(`<div class="fl-status">${body}</div>`); };
 
   if (!window.ForayPlayer) {
     paintStatus(`<p class="note">Loading…</p>`);
@@ -75,17 +75,171 @@ function renderForays() {
     return;
   }
 
-  const list = forayCards();
-  const resume = forayResumeRows();
-  $("#view").innerHTML = `
-    <div class="page">
-      ${head}
-      ${jumpBackInHtml(resume)}
-      ${list.length
-        ? forayListHtml({ inSection: true })
-        : `<p class="note">No forays right now — 4a puts these together by hand, so they arrive a few at a time.</p>`}
-    </div>`;
-  sizeProgressBars($("#view"));
+  /* Every colour is worked out BEFORE the markup goes in (agGlowFor reads the live scheme from the styles, and a read after
+     the new nodes exist would start their first style pass on the default Glow); the writes below then land first. */
+  const cards = forayCardModels(forayCards());
+  $("#view").innerHTML = shell(cards.length
+    ? forayCardsHtml(cards)
+    : `<p class="note fl-status">No forays right now — 4a puts these together by hand, so they arrive a few at a time.</p>`);
+  paintForayCards($("#view"), cards);
+}
+
+/* ---------- the list: two-up ForayCards (Redesign 2026, ambient, BUILD-NOTES 3 "ForayCard") ----------
+
+   A card is the collage at 120 (the first show's square whole and on top), the "Foray" pill (Lamp fill, ink on it: 4a's hand), the title
+   as a headline (every word of it: a name is never cut), "<n> shows, <m> min", and a strip 12 tall (bars 8, the current bar 12). It is two-up and never
+   three-up: at 104 the title would be cut on every card (the Library's compact ForayTile is the three-up form).
+
+   STATE IS SHAPE, NOT COLOUR ALONE. A part-played Foray lights the strip up to where the listener is (the bars
+   already heard in full, the bar they are in part-lit, the rest at --seg-dim); a finished one lights all of it and
+   wears the Fill check on its collage, as a followed show wears it; one never opened is lit throughout, like the
+   Foray page's. The same words go to a screen reader ("18 min left", "Played"), after the meta, from the resume row
+   that already writes them for Library and the old list. Nothing is declared by the listener: this is observed. */
+
+/** "4 shows, 42 min": what the Foray is made of and how long it runs, from the strip's own tally (the number of
+    shows a listener will HEAR, not the authored count). "" when nothing resolved. */
+function forayCardMeta(r, player) {
+  if (!r) return "";
+  const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  const shows = tally ? tally.shows : (r.shows || []).length;
+  return [shows ? countLabel(shows, "show") : "", forayRuntimeLabel(player, tally, r.totalSec)].filter(Boolean).join(", ");
+}
+
+/** The card's bars: one per run of tape from one source (the strip's own capsules), as { tone, grow, fill, here }.
+    `grow` is the seconds the bar stands for (narration time belongs to the tape run before it, so the bars add up to
+    the whole Foray), `fill` the percent of it already heard (100 when `elapsed` is null: nothing to show), `here` is
+    true for the one bar the listener is inside. [] when there is nothing to draw. */
+function forayCardBars(r, player, elapsed = null) {
+  if (!r || !Array.isArray(r.playable) || !r.playable.length || typeof player?.stripModel !== "function") return [];
+  const model = player.stripModel(r.playable);
+  const tape = (model.runs || []).filter((run) => run.kind === "segment");
+  const total = Number(model.totalSec);
+  if (!tape.length || !(total > 0)) return [];
+  const startOf = (run, i) => (i === 0 ? 0 : Number(model.segments[run.from] && model.segments[run.from].startSec) || 0);
+  const positioned = typeof elapsed === "number" && !Number.isNaN(elapsed);
+  return tape.map((run, i) => {
+    const start = startOf(run, i);
+    const end = i + 1 < tape.length ? startOf(tape[i + 1], i + 1) : total;
+    const len = Math.max(0, end - start);
+    let fill = 100;
+    if (positioned) fill = len > 0 ? Math.round(Math.min(1, Math.max(0, (elapsed - start) / len)) * 100) : (elapsed >= end ? 100 : 0);
+    return { tone: Number.isInteger(run.tone) ? run.tone % 8 : 0, grow: Math.max(1, Math.round(len)), fill, here: positioned && fill > 0 && fill < 100 };
+  });
+}
+
+/** Every show a listener will HEAR in this Foray, authored shows first and then any the running order adds: the collage
+    draws these, so it agrees with the "<n> shows" the meta counts from the same strip (the authored list alone can name
+    fewer, and a 7-show Foray then drew one tile). */
+function forayTapeShows(r, player) {
+  const names = new Set(r.shows || []);
+  try {
+    const model = r.playable && r.playable.length && typeof player?.stripModel === "function" ? player.stripModel(r.playable) : null;
+    for (const name of (model && model.shows) || []) if (name) names.add(name);
+  } catch (_) { /* a malformed running order draws the authored shows only */ }
+  return [...names];
+}
+
+/** Everything one card draws, computed up front: { id, title, draft, covers, meta, state, stateLabel, bars, glow }.
+    `state` is "fresh" | "started" | "finished", read from the stored resume point (forayResumeRows, which applies the
+    draft rule and the live running order). */
+function forayCardModels(list) {
+  const player = window.ForayPlayer;
+  const rows = new Map(forayResumeRows({ limit: Infinity, includeFinished: true }).map((p) => [p.id, p]));
+  return list.map((f) => {
+    const r = resolveListedForay(f.id);
+    const shows = r ? forayShowsOf({ ...r, shows: forayTapeShows(r, player) }) : [];
+    const row = rows.get(f.id) || null;
+    const finished = Boolean(row && row.finished);
+    const started = Boolean(row && !row.finished && row.elapsedSec > 0);
+    const title = f.title || f.id;
+    const covers = (shows.length ? shows : [{ name: title, art: "" }]).slice(0, 4)
+      .map((s, i) => ({ name: s.name, src: s.art, tone: AG_TONES[i % AG_TONES.length] }));
+    return {
+      id: f.id, title, draft: f.status !== "published", covers,
+      meta: forayCardMeta(r, player),
+      state: finished ? "finished" : started ? "started" : "fresh",
+      stateLabel: row && (finished || started) ? row.label : "",
+      bars: forayCardBars(r, player, finished ? Infinity : started ? row.elapsedSec : null),
+      glow: typeof agGlowFor === "function" ? agGlowFor(covers[0].name) : "",
+    };
+  });
+}
+
+function forayCardHtml(c) {
+  const bars = c.bars.map((b) =>
+    `<span class="fl-bar t${esc(String(b.tone))}${b.here ? " is-here" : ""}" data-grow="${esc(String(b.grow))}"><i class="fl-fill" data-fill="${esc(String(b.fill))}"></i></span>`).join("");
+  const done = c.state === "finished" ? `<span class="fl-done">${agIcon("check-circle-fill", 20)}</span>` : "";
+  return `<article class="raised fl-card is-${esc(c.state)}" data-foray="${esc(c.id)}">
+      <span class="fl-art">${agCollage(c.covers, { size: 120 })}${done}</span>
+      <span class="ag-pill fl-eyebrow">${c.draft ? "Foray · draft" : "Foray"}</span>
+      <h2 class="t-headline fl-card-title"><a class="fl-link" href="#${esc(forayRoutePath(c.id))}">${esc(c.title)}</a></h2>
+      <p class="t-caption fl-meta">${esc(c.meta)}${c.stateLabel ? `<span class="sr-only">. ${esc(c.stateLabel)}</span>` : ""}</p>
+      ${bars ? `<div class="fl-strip" aria-hidden="true">${bars}</div>` : ""}
+    </article>`;
+}
+
+function forayCardsHtml(cards) {
+  return `<div class="fl-grid">${cards.map(forayCardHtml).join("")}</div>`;
+}
+
+/** The Dock's cast (ui/tokens.css `.dock-cast`): the Glow rising from the Dock's top edge, there only while something
+    plays (the mini player is up: body.fp-open) and absent when nothing does. The element is always on the page and the
+    stylesheet keys its display on that body class, so the cast follows the player LIVE: the mini bar arrives after the
+    page's first paint on a cold start (the ribbon is restored from the stored position), and a `data-state` written here
+    would be stale by then. */
+function forayCastHtml() {
+  return `<div class="dock-cast fl-cast" aria-hidden="true"></div>`;
+}
+
+/* THE ROOT'S GLOW IS BORROWED, NOT OWNED. The Dock lives on <body>, outside the page, so the Forays page lights the
+   root's --glow for it. Whatever the root held before is kept the first time and put back when the route changes
+   (route() calls forayReleaseRootGlow), or every page without a Glow of its own kept the Forays page's tint on its Veil. */
+let forayRootGlowHeld = false;
+let forayRootGlowBefore = "";
+
+function forayClaimRootGlow(glow) {
+  if (!glow) return;
+  try {
+    const root = document.documentElement;
+    if (!forayRootGlowHeld) {
+      forayRootGlowBefore = root.style.getPropertyValue("--glow") || "";
+      forayRootGlowHeld = true;
+    }
+    forayCssVar(root, "--glow", glow);
+  } catch (_) { /* a stub document */ }
+}
+
+function forayReleaseRootGlow() {
+  if (!forayRootGlowHeld) return;
+  forayRootGlowHeld = false;
+  try {
+    const root = document.documentElement;
+    if (forayRootGlowBefore) root.style.setProperty("--glow", forayRootGlowBefore);
+    else root.style.removeProperty("--glow");
+  } catch (_) { /* a stub document */ }
+  forayRootGlowBefore = "";
+}
+
+/** After the cards are in the document: the bars' widths and fills (a CSSOM write, never a style attribute: the CSP
+    forbids that), each collage in its first show's light, and the page and the root (the Dock lives on <body>, outside
+    the page) in the first card's. */
+function paintForayCards(scope, cards) {
+  if (!scope || typeof scope.querySelectorAll !== "function") return;
+  scope.querySelectorAll(".fl-bar[data-grow]").forEach((bar) => {
+    const grow = Number(bar.dataset.grow);
+    forayCssVar(bar, "flex-grow", String(Number.isFinite(grow) && grow > 0 ? grow : 1));
+  });
+  scope.querySelectorAll(".fl-fill[data-fill]").forEach((fill) => {
+    const pct = Math.max(0, Math.min(100, Number(fill.dataset.fill) || 0));
+    forayCssVar(fill, "width", `${pct}%`);
+  });
+  const glow = cards.length ? cards[0].glow : "";
+  const page = scope.querySelector(".fl-page");
+  if (glow) forayCssVar(page, "--glow", glow);
+  forayClaimRootGlow(glow);
+  scope.querySelectorAll(".fl-card .ag-collage").forEach((el, i) => {
+    if (cards[i] && cards[i].glow) forayCssVar(el, "--art-glow", cards[i].glow);
+  });
 }
 
 /** The Forays this visitor may see on the Forays page (#/forays). As of 2026-08-30 that is
@@ -278,22 +432,6 @@ function forayResumeRows({ limit = 3, includeFinished = false } = {}) {
     .slice(0, limit);
 }
 
-function jumpBackInHtml(rows) {
-  if (!rows.length) return "";
-  return `<div class="fy-home fy-jbi">${rows.map(p => `
-    <a class="fy-home-row fy-jbi-row" href="#${esc(forayRoutePath(p.id))}">
-      <span class="fy-home-kicker">Jump back in</span>
-      <span class="fy-home-title">${esc(p.title || p.id)}</span>
-      <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
-      <span class="fy-jbi-left">${esc(p.label)}</span>
-    </a>`).join("")}</div>`;
-}
-
-/** Bar widths are a DOM property, never a style attribute — the page CSP is
-    `style-src 'self'` and test/app-security.test.js gates it. */
-function sizeProgressBars(scope) {
-  scope.querySelectorAll(".fy-bar-fill[data-pct]").forEach(fill => {
-    const pct = Math.max(0, Math.min(100, Number(fill.dataset.pct) || 0));
-    fill.style.width = `${pct}%`;
-  });
-}
+/* "Jump back in" rows are gone from this page (Redesign 2026, ambient): a part-played Foray's card carries its own
+   progress in the strip, so a second row for the same Foray above the list said it twice. Today's "Keep listening"
+   is the resume surface; `forayResumeRows` stays as the one reader of the stored points. */

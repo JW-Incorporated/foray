@@ -78,25 +78,58 @@ const ROOT = path.resolve(HERE, "..", "..");
    so that alarm remains at 2.85 MB instead of being re-baselined a seventh time.
    The complete bundle still has to clear MAX_BYTES in the independent cap test. */
 const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
-  { rel: "ui/primitives.css", maxBytes: 20 * 1024 },
-  { rel: "ui/primitives.js", maxBytes: 16 * 1024 },
+  /* 20 -> 26 KB (Redesign 2026, ambient screen 4, Discover): the screen's CSS (the subject grid, the field's chrome, the
+     four result rows, the empty page and the Make button) is appended to this sheet, 24.0 KB shipped. The 0.75 floor
+     below still holds the number honest; the next screen that appends here moves it again, in its own PR. */
+  { rel: "ui/primitives.css", maxBytes: 28 * 1024 },   // 26 -> 28 KB (screen 4, Discover): the field/Dock rows, results and the small-subject tile rules; 27.5 KB shipped
+  { rel: "ui/primitives.js", maxBytes: 18 * 1024 },   // 16 -> 18 KB (screen 4): agSubjectTile / agEmptyState / agCollage take real data, 16.5 KB shipped
   { rel: "ui/gallery.js", maxBytes: 9 * 1024 },
+  /* Phase 4, screen "dock" (the IA change that lands before any tab page): the Dock's
+     own stylesheet, a NEW file, so it is budgeted the way the foundation files are
+     rather than against the legacy alarm. Measured 8,366 B minified in round 1 and
+     about 9.4 KB after rounds 2-3 (the whole-Dock fade, the receded tab row, the
+     field row, the playing mini row), so the ceiling was raised 9 -> 10.5 KB in
+     round 4, about 10% over today's size. ui/tabbar.js and player/client.js are
+     existing files and stay in the legacy count. */
+  { rel: "ui/dock.css", maxBytes: 10.5 * 1024 },
   /* Phase 4, Today (Home): the screen's stylesheet, the Glow palette, and ui/home.js itself, which Today rewrote
      (the Jump back in / Forays / Suggested renderers went; the hero, rows, rail, skeleton and play-state code
      came). home.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy alarm
      is not to be re-baselined a seventh time, and this is a bounded feature step. Measured minified, 2026-10-07:
      today.css 6.7 KB, palette.js 1.9 KB, home.js 28.5 KB.
-     Iteration 2 added the Dock block (the floating Veil tab bar, its fade, the mini row) to today.css: 9.2 KB minified, ceiling 10 KB. */
-  { rel: "ui/today.css", maxBytes: 10 * 1024 },
+     Iteration 2 added the Dock block (the floating Veil tab bar, its fade, the mini row) to today.css: 9.2 KB minified, ceiling 10 KB. Removed again when the Dock unit landed (the Dock is ui/dock.css on every page): ceiling back to 8 KB. */
+  { rel: "ui/today.css", maxBytes: 8 * 1024 },
   { rel: "ui/palette.js", maxBytes: 2 * 1024 },
   { rel: "ui/home.js", maxBytes: 32 * 1024 },
   /* Phase 4, Foray detail: the screen's stylesheet, the Glow palette, and ui/foray.js itself, which the screen rewrote (the
      page's markup, the show tiles, the strip's colours and thumbnails, share). foray.js is budgeted here, not in the legacy
      line, for the reason the primitives are: the legacy alarm is not to be re-baselined an eighth time, and this is a
      bounded feature step. Measured minified, 2026-10-07: foray-detail.css 9.0 KB, palette.js 1.8 KB, foray.js 26.8 KB. */
-  /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. */
-  { rel: "ui/foray-detail.css", maxBytes: 14 * 1024 },
+  /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. RETIRED by the Dock unit: the block went to ui/dock.css, ceiling back to 10 KB. */
+  { rel: "ui/foray-detail.css", maxBytes: 10 * 1024 },
   { rel: "ui/foray.js", maxBytes: 32 * 1024 },
+  /* QA fix (Phase 5, 2026-10-08): the rest of what the redesign ADDED to the bundle and nothing but the redesign owns —
+     the token sheet, the icon sprite and its licence notice, the sprite's loader, and the per-screen stylesheets that
+     no earlier unit listed. They were counted against the legacy line by omission, which is how the line (2.85 MB, not
+     to be raised) went red with 3.5 KB to spare on an LF checkout while 134 KB of the redesign was already budgeted
+     apart. Same rule as every entry above: a ceiling ~10-15% over the measured LF size, and the 0.75 floor below keeps
+     the ceiling honest. Measured 2026-10-08 (LF; minified for css/js, verbatim for svg/txt): tokens.css 11.3 KB,
+     icons.svg 15.7 KB, icons-LICENSES.txt 5.7 KB, icons.js 1.4 KB, onboarding.css 4.0 KB, show.css 1.8 KB,
+     browse.css 1.9 KB, settings.css 5.2 KB, forays.css 5.6 KB. JS that is the SPLIT of legacy app.js (ui/search.js,
+     ui/show.js, ...) is NOT listed: that is the old code in new files, and it belongs to the legacy line.
+     MUTATION (run red, 2026-10-08): delete these nine entries -> "the legacy bundle is 2.86 MB after 134.1 KB of
+     separately-budgeted Ambient foundation assets", the unchanged 2.85 MB alarm in "REAL REPO: the sliced bundle".
+     WHAT THIS DOES NOT BUY: the complete bundle is unchanged, 14-16 KB under the 3 MB cap. Reclassifying bytes
+     moves the alarm that names them, not the cap; the cap is the one that stops a native build. */
+  { rel: "ui/tokens.css", maxBytes: 13 * 1024 },
+  { rel: "ui/icons.svg", maxBytes: 18 * 1024 },
+  { rel: "ui/icons-LICENSES.txt", maxBytes: 6.5 * 1024 },
+  { rel: "ui/icons.js", maxBytes: 1.75 * 1024 },
+  { rel: "ui/onboarding.css", maxBytes: 4.5 * 1024 },
+  { rel: "ui/show.css", maxBytes: 2 * 1024 },
+  { rel: "ui/browse.css", maxBytes: 2.25 * 1024 },
+  { rel: "ui/settings.css", maxBytes: 6 * 1024 },
+  { rel: "ui/forays.css", maxBytes: 6.5 * 1024 },
   { rel: "ui/now-playing.css", maxBytes: 14 * 1024 }, // 12.7 KB minified
   { rel: "ui/now-playing.js", maxBytes: 18 * 1024 }, // 16.1 KB minified
 ]);

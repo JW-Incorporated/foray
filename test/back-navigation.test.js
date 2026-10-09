@@ -355,16 +355,16 @@ test("leaveRemovedPlaylist navigates directly to the list when there is no such 
   assert.strictEqual(m.ctx.location.hash, "#/show/abc", "‹ from the list goes to where the listener came from");
 });
 
-test("a removed/missing playlist still renders a page head with a working ‹ back link", () => {
-  /* MUTATION: revert renderPlaylistDetail's not-found branch to the bare
-     `<p class="note">Playlist not found.</p>` with no page-head/back link.
-     The assertion below fails. */
+test("a removed/missing playlist still offers a way out: the not-found page's Today button (the Dock is the rest)", () => {
+  /* RULING THAT FELL (Redesign 2026, ambient not-found): the page head and its ‹ went; the way out is the EmptyState's one
+     Secondary button to Today, and the Dock is on every page. MUTATION: revert renderPlaylistDetail's not-found branch to
+     the bare `<p class="note">Playlist not found.</p>`. No Today link, and the assertion below fails. */
   const m = mount();
   m.evalIn("playlistById = () => null; subjectQueueById = () => null;");
   m.evalIn(`renderPlaylistDetail("nonexistent")`);
   const html = m.ctx.document.querySelector("#view").innerHTML;
-  assert.ok(html.includes('class="back"'), "a not-found playlist page must still offer a way back");
-  assert.ok(html.includes("#/playlists"), "its back link must point at the playlists list");
+  assert.ok(/<a class="ag-btn ag-btn-secondary[^"]*" href="#\/">/.test(html), "a not-found playlist page must still offer a way out");
+  assert.ok(html.includes("Nothing here any more."), html.slice(0, 200));
 });
 
 /* ==================================================================== */

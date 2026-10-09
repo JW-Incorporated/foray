@@ -643,7 +643,16 @@ test("Today's bottom room is the body's, which counts the safe-area inset once; 
   const bottom = raw.slice(raw.lastIndexOf(" ") + 1);
   assert.doesNotMatch(raw, /env\(/, "Today's padding does not count the inset a second time");
   assert.match(bottom, /^var\(--s-\d+\)$/, `the bottom padding is breathing space on the spacing scale, not a bar height: ${raw}`);
-  assert.match(valueOf("body.ui-v2", "padding-bottom") || "", /env\(safe-area-inset-bottom/, "the body owns the inset");
+  /* The body still owns the inset, but the Dock unit moved the arithmetic into ui/dock.css: the body pads by
+     --dock-reserve, which counts --safe-bottom (tokens.css: env(safe-area-inset-bottom)) exactly once. test/tab-bar.test.js
+     section 6 resolves the numbers at insets 0, 34 and 59. MUTATION: drop var(--safe-bottom) from --dock-reserve -> red.
+     RULING: the body may add the keyboard inset on top, calc(var(--dock-reserve) + var(--kb-inset, 0px)), because the Dock rides the
+     keyboard; the inset is still counted once, inside --dock-reserve, and the kb term is 0px with no keyboard. MUTATION: change the
+     body's padding-bottom to a bare 0 or env(safe-area-inset-bottom) (dropping --dock-reserve) -> the regex below goes red. */
+  const dockCssSrc = fs.readFileSync(path.join(ROOT, "ui", "dock.css"), "utf8");
+  assert.match(dockCssSrc, /body\.ui-v2\s*\{[^}]*padding-bottom:\s*(?:var\(--dock-reserve\)|calc\(\s*var\(--dock-reserve\)\s*\+\s*var\(--kb-inset,\s*0px\)\s*\))\s*;/, "the body pads by the Dock's reserve");
+  assert.match(/--dock-reserve:([^;]*);/.exec(dockCssSrc)[1], /var\(--safe-bottom\)/, "and the reserve counts the inset");
+  assert.match(fs.readFileSync(path.join(ROOT, "ui", "tokens.css"), "utf8"), /--safe-bottom:\s*env\(safe-area-inset-bottom/, "once, from the token");
 });
 
 test("a stretch card's bridge line is a row of its own between the two arts and the pick, not a column beside Play", () => {

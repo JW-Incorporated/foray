@@ -97,7 +97,7 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
-    "a stored position makes the cold press a resume, and Start over clears it": {
+    "a stored position makes the cold press a resume, and a clip row starts from where it is named": {
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
@@ -1073,9 +1073,33 @@
       "reason": "dom-only",
       "why": "The previous/next clip row's label and visibility. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
-    "VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray": {
+    "VISUAL PASS: the mini bar's forward 30 is the same nudge, for an episode and for a Foray": {
       "reason": "dom-only",
-      "why": "The mini bar reusing the sheet's ↺15 handler is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+      "why": "The mini bar reusing the sheet's nudge handler (forward 30 in the Dock's mini row; it was back 15 before the Dock) is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "DOCK: the player hands its bar to the Dock's mini row, and tells the Dock when it starts and stops": {
+      "reason": "dom-only",
+      "why": "Which DOM node holds the mini bar and when the page's Dock row is told to show or hide. Page wiring that client.js does identically in both modes: where the mini bar's DOM lives (a row of the page's Dock), what it is named, which glyph it shows and which gesture opens the sheet. The engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "DOCK: without a Dock the bar stays in the player's root, in front of the sheet, as it always was": {
+      "reason": "dom-only",
+      "why": "The fallback parent of the mini bar when the page has no Dock. Page wiring that client.js does identically in both modes: where the mini bar's DOM lives (a row of the page's Dock), what it is named, which glyph it shows and which gesture opens the sheet. The engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "DOCK: the bar is a region named 'Now playing: <title>, <show>', and its Play carries a glyph flag": {
+      "reason": "dom-only",
+      "why": "The mini bar's accessible region name and the flag that picks its Play glyph, painted from the same running answer the transport already gives. Page wiring that client.js does identically in both modes: where the mini bar's DOM lives (a row of the page's Dock), what it is named, which glyph it shows and which gesture opens the sheet. The engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "DOCK: a tap on the rest of the mini row opens Now Playing; the two buttons keep their own jobs": {
+      "reason": "dom-only",
+      "why": "Which taps on the mini row open the sheet. Page wiring that client.js does identically in both modes: where the mini bar's DOM lives (a row of the page's Dock), what it is named, which glyph it shows and which gesture opens the sheet. The engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "DOCK: a 600ms hold on the mini row enters car posture and opens Now Playing; collapsing the sheet ends it": {
+      "reason": "dom-only",
+      "why": "The manual way into car posture (a long press on the mini row; the Bluetooth-route observer is the native side's, a later card) is a page attribute on <html> and the sheet opening. Page wiring that client.js does identically in both modes: where the mini bar's DOM lives (a row of the page's Dock), what it is named, which glyph it shows and which gesture opens the sheet. The engine never draws the page, so there is nothing here for Swift to reimplement."
+    },
+    "DOCK: releasing early, sliding away, or pressing a button never starts the hold": {
+      "reason": "dom-only",
+      "why": "The cancel rules of the long press on the mini row. Page wiring that client.js does identically in both modes: where the mini bar's DOM lives (a row of the page's Dock), what it is named, which glyph it shows and which gesture opens the sheet. The engine never draws the page, so there is nothing here for Swift to reimplement."
     },
     "a transition in flight is not a lie: reconciling mid-effect cannot stop a start": {
       "reason": "js-module-shape",

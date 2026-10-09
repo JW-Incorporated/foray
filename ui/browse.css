@@ -1,0 +1,51 @@
+/* ui/browse.css — the subject page (#/category/<id>, and Discover when the field holds a subject's whole name),
+   Redesign 2026, ambient direction ("Afterglow"), phase 4, screen 15.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md section 3 (ShowTile, SubjectTile, SectionHead)
+   and section 4.4 (Discover's result anatomy). The page is that anatomy under a lead: the subject's 56 collage beside a
+   SectionHead (its name, "<n> shows"), the shows as ShowTiles three across, and the newest episodes as Discover's
+   compact rows (ui/primitives.css owns `.dsc-*`; nothing here restyles a row).
+
+   Every selector is scoped under `.ag` or names this page's body class, and every class is `cat-*` or `dsc-subject`,
+   `dsc-tiles`, new names. Values come from ui/tokens.css. NO reduced-motion block lives in this file, on purpose:
+   ui/tokens.css has the one, and nothing here transitions or animates. */
+
+/* The page paints bg0 and the legacy bar steps aside (as on Today and the show page); the Dock fades to the same colour. */
+body.ag-category { background: var(--bg0); color: var(--ag-text); --dock-page-bg: var(--bg0); }
+body.ag-category .topbar { display: none; }
+body.ag-category #view { padding-top: 0; }
+.ag.cat { padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) var(--s-6); background: transparent; }
+body.ui-v2 .ag.cat .page-head {
+  position: static; transform: none; will-change: auto;
+  display: flex; flex-direction: column; align-items: stretch; gap: var(--s-2);
+  min-height: 0; margin: 0; padding: 0; background: transparent; border: 0;
+}
+.ag.cat .back { align-self: flex-start; color: var(--text); text-decoration: none; }
+
+/* The lead: the 56 collage left, the SectionHead filling the rest. The head is the PAGE's title on the category page
+   (an h2) and a head under Discover's own title (an h3); both set in the Headline style by `.t-headline`. */
+.ag .cat-lead { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+.ag .cat-lead > .ag-section-head { flex: 1 1 auto; min-width: 0; margin: 0; align-items: center; }
+.ag .cat-lead > .ag-section-head > div { min-width: 0; }
+.ag .cat-lead .ag-section-head h2, .ag .cat-lead .ag-section-head h3 { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.ag .cat-lead .ag-section-head .count { flex: none; }
+.ag .dsc-subject { margin: var(--s-4) 0 var(--s-3); }
+.ag .dsc-subject:not([hidden]) ~ .sh-results-head { display: none; }
+
+/* ShowTiles, three across: a cell is a third of the page less two gaps (about 104 at 393, 100 at 375, 113 at 412), the art is
+   the primitive's 104 held inside it, and the name sits under it on up to three lines, never cut mid-word. */
+.ag .cat-tiles, .ag.disc .dsc-list.dsc-tiles {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4) var(--s-4); align-items: start;
+}
+.ag .cat-tiles { margin-top: var(--s-4); }
+.ag .cat-tiles > *, .ag .dsc-tiles > .ag-show-tile { min-width: 0; }
+.ag .cat-tiles .ag-show-tile, .ag .dsc-tiles .ag-show-tile { width: 100%; color: var(--text); text-decoration: none; }
+.ag .cat-tiles .ag-art-104, .ag .dsc-tiles .ag-art-104 { width: min(100%, var(--art-tile)); height: auto; aspect-ratio: 1; }
+.ag .ag-show-tile h4 { width: 100%; overflow-wrap: normal; word-break: normal; hyphens: manual; }
+.ag a.ag-show-tile:active { opacity: .8; }
+.ag a.ag-show-tile:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
+.ag .dsc-tiles > .dsc-more { grid-column: 1 / -1; }
+
+/* The episodes under the tiles keep Discover's group rhythm: a SectionHead 24 under the grid, then the compact rows. */
+.ag.cat .cat-episodes > .ag-section-head { margin-top: var(--s-6); }
+.ag.cat .note { color: var(--text-2); font: var(--t-caption); margin: var(--s-4) 0 0; }
