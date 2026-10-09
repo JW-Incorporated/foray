@@ -70,14 +70,18 @@ public class ExoDeckTest {
 
             h.deck.send(DeckCommand.PLAY);
             h.runUntil(() -> h.player.isPlaying());
-            long t0 = h.clock.elapsedRealtime();
-            double p0 = h.deck.reading().positionSec;
+            // Clock and playhead are read together (DeckHarness.now): the player keeps playing
+            // while the test thread runs, so two separate reads are two different instants.
+            DeckHarness.Instant start = h.now();
+            long t0 = start.clockMs();
+            double p0 = start.reading().positionSec;
             assertTrue("playback starts where the gate landed: " + p0, p0 >= 30.0 && p0 < 30.25);
             h.runFor(1500);
-            DeckReading playing = h.deck.reading();
+            DeckHarness.Instant end = h.now();
+            DeckReading playing = end.reading();
             assertTrue(playing.audible);
             double content = playing.positionSec - p0;
-            double wall = (h.clock.elapsedRealtime() - t0) / 1000.0;
+            double wall = (end.clockMs() - t0) / 1000.0;
             assertTrue("the playhead moves at 1x: " + content + " s in " + wall + " s", wall >= 1.5 && Math.abs(content - wall) <= 0.05);
             assertTrue(h.deck.primitives().contains("attach"));
             assertTrue(h.deck.primitives().contains("play rate=1"));
@@ -108,11 +112,13 @@ public class ExoDeckTest {
             assertEquals(1.5f, h.player.getPlaybackParameters().speed, 0);
             assertTrue(h.deck.primitives().contains("play rate=1.5"));
             h.runUntil(() -> h.player.isPlaying());
-            long t0 = h.clock.elapsedRealtime();
-            double p0 = h.deck.reading().positionSec;
+            DeckHarness.Instant start = h.now();
+            long t0 = start.clockMs();
+            double p0 = start.reading().positionSec;
             h.runFor(2000);
-            double content = h.deck.reading().positionSec - p0;
-            double wall = (h.clock.elapsedRealtime() - t0) / 1000.0;
+            DeckHarness.Instant end = h.now();
+            double content = end.reading().positionSec - p0;
+            double wall = (end.clockMs() - t0) / 1000.0;
             assertTrue("1.5x plays 1.5 s of content a second: " + content + " s in " + wall + " s",
                     Math.abs(content / wall - 1.5) <= 0.05);
             h.deck.send(new DeckCommand.SetRate(0));
