@@ -310,7 +310,7 @@ test("a strip holds the narrator's short Lamp bars between the shows' bars, and 
   /* 3px a bar and 2px between: the cap must fit a 96px tile's art less the strip's 6px either side. */
   assert.ok(max * 3 + (max - 1) * 2 <= 96 - 12, `${max} bars fit the narrowest tile (${max * 3 + (max - 1) * 2}px of 84)`);
   /* Iteration 5: a crowded strip's SHOW bars are chunky (judges: thin alternating pips). The strip is 84px at the narrowest tile; the
-     narrator's dots are 4px and every gap 2px (library.css `.lb-bar.lb-narr`, `.lb-strip`); what is left is shared by the show bars.
+     narrator's bars are 4px and every gap 2px (library.css `.lb-bar.lb-narr`, `.lb-strip`); what is left is shared by the show bars.
      MUTATION 5: LIB_STRIP_BARS_MAX 11 -> 16 -> the show bars fall to 3.5px and this assertion is red. */
   const dots = crowded.filter((b) => b.narr).length;
   const shows = crowded.length - dots;
@@ -671,21 +671,25 @@ test("Library writes the playing item's Glow where the Dock reads it, and its st
   assert.ok(links.indexOf("ui/dock.css") >= 0 && links.indexOf("ui/dock.css") < links.indexOf("ui/library.css"), "dock.css is linked before library.css");
 });
 
-test("the foray strip is evenly rounded bars on a dark sill, the pill is the small one, and the grid's All trailer is indented 28", () => {
+test("the foray strip is small-radius bars of one height on a dark sill, the pill is the small one, and every quiet link sits on the gutter", () => {
   /* Iteration 5 (judges: bars sat on the coloured art without a sill, the second tile's strip read as alternating tall and
      short pips, the pill was larger than the prototype's, and "All" is indented in the prototype).
      MUTATION 1: take `--lb-on-art-sill` back to `--lb-on-art-soft` (0.55) on the floor -> the sill-strength assertion is red.
-     MUTATION 2: give `.lb-bar` `border-radius: 2px` again -> the evenly-rounded assertion is red.
-     MUTATION 3: let `.lb-narr` flex (drop `flex: none`) -> the narrator's bar stretches to a pip; the dot assertion is red.
+     MUTATION 2: give `.lb-bar` `border-radius: var(--r-round)` again -> the rectangle assertion is red (ovals read as beads).
+     MUTATION 3: let `.lb-narr` flex (drop `flex: none`) or give it its own `height` again -> the uniform-bar assertion is red.
      MUTATION 4: pill `min-height: var(--s-5)` -> the 16px assertion is red.
-     MUTATION 5: drop the `.lb-more-row .lb-more` rule -> the indent assertion is red. */
+     MUTATION 5: bring back `.ag .lb-more-row .lb-more { padding-inline-start: 28px }` -> the gutter assertion is red.
+     MUTATION 6: put `font: var(--t-headline)` on `.lb-saved .lb-ep-title` -> the label-face assertion is red (and the tap-target gate fails). */
   const sill = /--lb-on-art-sill:\s*rgb\(\d+ \d+ \d+ \/ ([\d.]+)\)/.exec(LIB_CSS);
   assert.ok(sill && Number(sill[1]) >= 0.7, "the sill behind the bars is at least 0.7 dark, so a bright collage cannot wash them out");
   assert.match(LIB_CSS, /\.ag \.lb-foray \.lb-art::after \{[^}]*linear-gradient\(transparent, var\(--lb-on-art-sill\)\)/, "the strip's floor is the sill");
-  assert.match(LIB_CSS, /\.ag \.lb-bar \{[^}]*border-radius: var\(--r-round\)/, "every bar is evenly rounded");
-  assert.match(LIB_CSS, /\.ag \.lb-bar\.lb-narr \{[^}]*flex: none;[^}]*width: var\(--s-1\);[^}]*height: var\(--s-1\);/, "the narrator's run is a 4px dot, never a stretched pip");
+  assert.match(LIB_CSS, /\.ag \.lb-bar \{[^}]*height: var\(--s-2\);[^}]*border-radius: var\(--r-xs\)/, "every bar is a small-radius rectangle of the strip's one height");
+  assert.match(LIB_CSS, /\.ag \.lb-bar\.lb-narr \{[^}]*flex: none;[^}]*width: var\(--s-1\);/, "the narrator's run is a 4px wide bar, never a stretched pip");
+  assert.doesNotMatch(/\.ag \.lb-bar\.lb-narr \{([^}]*)\}/.exec(LIB_CSS)[1], /height:/, "and it takes the strip's height, not its own");
+  assert.doesNotMatch(LIB_CSS, /\.lb-saved \.lb-ep-title \{[^}]*font:/, "Saved's title keeps the label face: the headline fails the 44px tap-target gate");
   assert.match(/\.ag \.lb-pill \{([^}]*)\}/.exec(LIB_CSS)[1], /min-height: var\(--s-4\);/, "the pill is 16 tall");
-  assert.match(LIB_CSS, /\.ag \.lb-more-row \.lb-more \{ padding-inline-start: calc\(var\(--s-4\) \+ var\(--s-3\)\); \}/, "the grid trailer is indented 16 + 12");
+  assert.doesNotMatch(LIB_CSS, /\.lb-more-row \.lb-more \{/, "the grid trailer has no indent of its own: it sits on the gutter with the other quiet links");
+  assert.match(LIB_CSS, /\.ag \.lb-more \{[^}]*padding-inline-start: 0;/, "a quiet link starts at the content edge");
 });
 
 /* ==================================================================== */

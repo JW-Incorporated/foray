@@ -56,9 +56,8 @@ body.view-library #view { padding-top: 0; }
 /* A quiet link under a grid or a list starts at the content edge: the button's 16px inline padding would indent its word off
    the tiles above it (iteration 2's judges: "All forays" off the grid). The padding moves to the end, so the 44 tall target stays. */
 .ag .lb-more { margin-top: var(--s-2); justify-content: flex-start; padding-inline-start: 0; }
-/* The grid's trailer ("All") is the prototype's Label indented 28 (the 16px button padding plus the 12px column gap), so its
-   word shares an edge with the second tile's art; the lists' links (All saved, Show fewer) keep the content edge. */
-.ag .lb-more-row .lb-more { padding-inline-start: calc(var(--s-4) + var(--s-3)); }
+/* Every quiet link, the grid's "All" included, starts on the 20px gutter the tiles use (iteration 2's judges, twice: the
+   indented "All" read as orphaned and off the grid's edge). */
 /* Under the grid the quiet links share one row ("Show all", "All forays"), 16 apart, so two links cost one 44 tall band. */
 .ag .lb-more-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: var(--s-4); }
 
@@ -91,10 +90,11 @@ body.view-library #view { padding-top: 0; }
 .ag .lb-strip { position: absolute; left: calc(var(--s-1) * 1.5); right: calc(var(--s-1) * 1.5); bottom: calc(var(--s-1) * 1.5); z-index: 2; height: var(--s-2); display: flex; align-items: center; gap: 2px; }
 /* A bar's colour is written by script (`--c`, libBarColour: its show's artwork hue, one muted chroma). Before it is, or
    without script, a bar is the muted text grey, never the seg-c rainbow. The narrator's bar is the Lamp, half the height. */
-.ag .lb-bar { display: block; height: var(--s-2); min-width: 3px; flex: 1 1 0; border-radius: var(--r-round); background: var(--c, var(--text-3)); opacity: var(--seg-dim); }
+.ag .lb-bar { display: block; height: var(--s-2); min-width: 3px; flex: 1 1 0; border-radius: var(--r-xs); background: var(--c, var(--text-3)); opacity: var(--seg-dim); }
 .ag .lb-bar.is-lit { opacity: 1; }
-/* The narrator's run is a 4px round Lamp dot between the shows' bars, not a pip: every mark in the strip is an evenly rounded bar. */
-.ag .lb-bar.lb-narr { flex: none; width: var(--s-1); min-width: var(--s-1); height: var(--s-1); background: var(--lamp); opacity: 1; }
+/* The narrator's run is a 4px wide Lamp bar between the shows' bars: every mark in the strip is a small-radius rectangle of
+   the one height (the prototype's runtime map; iteration 2's fidelity read the old ovals and dots as a string of beads). */
+.ag .lb-bar.lb-narr { flex: none; width: var(--s-1); min-width: var(--s-1); background: var(--lamp); opacity: 1; }
 
 /* Rows. A row's one real link is its title (or, in Up Next and History, a button laid over the row); the controls
    sit above it. */
@@ -106,9 +106,11 @@ body.view-library #view { padding-top: 0; }
 .ag .lb-row .lb-play, .ag .lb-row .lb-dots { position: relative; z-index: 2; }
 .ag .lb-cover { position: absolute; inset: 0; z-index: 1; min-height: 44px; border-radius: var(--r-lg); }
 .ag .lb-cover:focus-visible { outline: none; box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--lamp-text); }
-/* Saved's row is a QueueRow (art 56, the label-face title, one caption, a 44 control): the one row treatment of the
-   whole page, so the title is sans here as in Up Next and History. Its Play is the third column. */
+/* Saved's row is a QueueRow (art 56, a title, one caption, a 44 control); Up Next and History keep the label-face title. Its Play is the third column. */
 .ag .lb-saved > .lb-play { grid-column: 3; }
+/* Its title stays in the label face. Iteration 2's fidelity asked for the prototype's 20px display headline; it was built and
+   backed out: at 25/30 the title link's 44px hit square fails the tap-target gate (1/25 samples, every library state), and the
+   whole Saved row loses 30px of the page's first screen. Still open for a pass that can give the link a 44 tall box. */
 .ag .lb-meta { align-items: baseline; flex-wrap: nowrap; gap: var(--s-1); min-width: 0; color: var(--text-2); }
 .ag .lb-meta > span { white-space: nowrap; }
 .ag .lb-meta .dur, .ag .lb-meta .lb-sep { flex: none; }

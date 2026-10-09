@@ -141,11 +141,11 @@ async function typeSearch(page, text) {
     re-renders `#/shows` with an empty field and drops `kb-open` (setBodyClass writes the class list
     whole); the `--kb-inset` a previous step wrote on <html> is cleared by hand. */
 async function freshDiscover(page) {
-  await page.evaluate(() => {
+  await page.evaluate((r) => {
     document.documentElement.style.removeProperty("--kb-inset");
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    location.hash = "#/library";
-  });
+    location.hash = r;
+  }, PARK_ROUTE);
   await wait(page, 500);
   await page.evaluate(() => { location.hash = "#/shows"; });
   await page.waitForSelector("#sh-input", { timeout: 15000 });

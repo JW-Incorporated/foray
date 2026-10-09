@@ -581,10 +581,11 @@ test("the harness reaches the page: a seed with one Foray part-played and one fi
   assert.deepStrictEqual(Object.keys(seedMod.buildSeed("returning", fx)).filter((k) => k.startsWith("cp_foray:")), [], "the plain returning profile has none");
   /* The scheme-flip helpers park on a LEGACY page, never on this one: a page that wears `.ag` crossfades its colours when the
      scheme flips and the reduced-motion gate reads 94 transitions on it (the first gates run on this branch did exactly that).
-     MUTATION: `const PARK_ROUTE = "#/starred-shows"` -> `"#/forays"` in tools/ui-lab/lib/states.mjs -> red. */
+     Followed shows folded into Library (#/starred-shows is an alias of it now), so the park page is the legacy Up Next (#/queue).
+     MUTATION: `const PARK_ROUTE = "#/queue"` -> `"#/forays"` (or `"#/starred-shows"`) in tools/ui-lab/lib/states.mjs -> red. */
   const statesSrc = read("tools/ui-lab/lib/states.mjs");
-  assert.match(statesSrc, /const PARK_ROUTE = "#\/starred-shows";/, "parked on Followed shows, which is still a legacy page");
-  assert.strictEqual((statesSrc.match(/PARK_ROUTE\)/g) || []).length, 3, "all three helpers (unavailable, Dawn, Forays Dawn) park there");
+  assert.match(statesSrc, /const PARK_ROUTE = "#\/queue";/, "parked on Up Next (#/queue), which is still a legacy page");
+  assert.strictEqual((statesSrc.match(/PARK_ROUTE\)/g) || []).length, 4, "all four helpers (unavailable, Dawn, Forays Dawn, and freshDiscover's reset, which used to visit the now-Afterglow #/library) park there");
   const states = statesMod.appStates(fx);
   const st = states.find((s) => s.id === "forays-list");
   assert.ok(st && st.seed === "forays-progress");

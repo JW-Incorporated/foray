@@ -4140,3 +4140,19 @@ quoted query uses the typographic pair through one `quoteQuery` helper; and the
 on-device show index sorts and searches on the diacritic-folded title
 (`foldDiacritics` is the builder's sort key and the client's lookup key — the two
 must stay one function).
+
+## 2026-10-08 - Native bundle slice: two items per show, not three (Redesign 2026, ambient Library)
+
+The ambient Library screen (`ui/library.js` and `ui/library.css` (~+25 KB minified together)) took the native bundle to 3.02 MB
+against the 3 MB cap, and `tools/mobile/prepare-webdir.test.mjs` says not to raise the cap to pass. The designed lever is
+`BUNDLED_ITEMS_PER_SHOW` in `tools/mobile/prepare-webdir.mjs`: it went 3 -> 2. The bundle is now ~2.82 MB (~177 KB of
+headroom), the join anchor and every seeded Foray's segments still resolve out of it (the REAL REPO suites in
+`prepare-webdir.test.mjs` pass, 87/87), and the cap is unchanged.
+
+**What it costs a listener:** the offline seed carries ~415 episodes instead of ~622 (about four times the 100-item seen
+window, not six). The app still fetches the live catalogue on launch; this is the first-launch and no-network fallback only.
+**Why not delete legacy code instead:** ~11 KB of dead `styles.css` rules (Home v2, the old Foray page, Interests) were
+measured as removable, but their pins live in four other suites (`card-anatomy`, `ui-tokens`, `tap-targets`,
+`transport-controls`) and in `styles.css`, which every parallel screen edits; that cleanup belongs in its own change. It is
+the right second lever when this one is spent. **Reversal:** set the constant back to 3 once the dead-rule cleanup (or the
+`engine-contract.js` build-only half, ~5 KB) has bought the room.
