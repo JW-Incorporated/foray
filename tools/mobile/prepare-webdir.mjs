@@ -72,6 +72,10 @@
  *     indentation — the slices AND the copies. `assertSlicesOnDisk` therefore asserts
  *     that a copied document PARSES to the same document as the source, not that the
  *     bytes match; a trim still fails it, and that is all it ever guarded.
+ *   - (2026-10-09, perf/bundle-trim-2) The data keys no shipped code reads are left
+ *     out of every bundled document, slices and copies alike (`UNREAD_DATA_KEYS`),
+ *     and the build fails the day shipped JS or a native plugin names one. "The
+ *     source" above therefore means the source less those keys (`sourceReader`).
  * The web is untouched: the repo root stays dependency-free and no-build, GitHub
  * Pages serves the commented source, and the minifier lives in `tools/mobile/`'s
  * own package.json. `deploy-manifest.json` and `sw.js` hash the ROOT files for the
@@ -129,8 +133,9 @@
  * runs at build time, and the file it writes is a build artefact. The web keeps
  * fetching the whole document; nothing about `app.js` changes; the app just has
  * a smaller pool, and every field on every item it does have is identical (the
- * bytes differ only by the whitespace the re-serialisation drops).
- * Trimming FIELDS instead was measured and rejected: every field except
+ * bytes differ only by the whitespace the re-serialisation drops, and by
+ * `episode_guid`, which no shipped code reads: `UNREAD_DATA_KEYS`).
+ * Trimming FIELDS instead was measured and rejected as the fix for GROWTH: every field except
  * `episode_guid` (1.9 KB of 1.70 MB) has a live reader in `app.js`,
  * `search-engine.js` or `player/`, and the largest droppable one
  * (`apple_episode_url`, 205 KB) buys six nights. Bounding buys every night.
@@ -1897,6 +1902,178 @@ export function sliceBytes(json) {
   return Buffer.byteLength(serializeSlice(json), "utf8");
 }
 
+/* ------------------------------------- the keys nothing on a device reads */
+
+/**
+ * Data keys the bundle leaves out because NO CODE THE BUNDLE SHIPS READS THEM
+ * (perf/bundle-trim-2, 2026-10-09; docs/research/bundle-budget-2026-10.md item 5).
+ * 44,323 B on the day. They are pipeline bookkeeping (transcript hashes, ad-probe
+ * methods, batch ids, verification notes) that the website's whole files keep, and
+ * that a WebView parses and throws away.
+ *
+ * A PATH, per file: dot-separated keys, where `[]` after a key means "each element
+ * of this array" and `*` means "each value of this object". `provenance` drops a
+ * top-level key; `sources[].feed_url` drops `feed_url` from every source row;
+ * `episodes.*.format` drops `format` from every value of the `episodes` map.
+ *
+ * WHAT "NOTHING READS IT" MEANS, AND HOW IT IS KEPT TRUE. A key whose NAME occurs
+ * nowhere in the JavaScript the bundle ships cannot be read by that JavaScript: the
+ * minifier keeps every identifier and every string (minify.mjs), and the bundle's
+ * copies carry no comments, so an occurrence there is code. The native engines see
+ * only what JS hands them over the bridge, and a key they read by name would appear
+ * there as a quoted string. So `assertUnreadKeysUnread` scans both — the shipped
+ * `.js` for the bare word, the native plugin sources for `"key"` — and the build
+ * FAILS, naming the key, the day either one starts to mention it. The fix is to
+ * delete the entry here, not to rename the reader.
+ *
+ * WHAT THE NAME SCAN CANNOT SEE is a key forwarded without being named — a spread,
+ * `Object.entries`, a `JSON.stringify` of a whole row — so every file here was also
+ * checked by hand for that (the doc above has the walk): `hydrateForayItems` builds
+ * segment items from a whitelist, `snapshot()` is a whitelist, and `episode()`'s
+ * `{...ep}` only feeds it. `data/forays.json` is NOT here for exactly this reason:
+ * `{ ...foray, items }` forwards every top-level key of a Foray. A new spread over
+ * one of these documents is the change that must re-check this list.
+ *
+ * THE SEED IS STILL A SUBSET OF THE DIRECTORY'S FILES, row for row, modulo these
+ * keys: the Foray directory's whole files replace the seed on the first refresh that
+ * reaches the network, and carry every key. `ad_pad_sec`, the one ad field the
+ * player reads, is not listed and ships.
+ */
+export const UNREAD_DATA_KEYS = Object.freeze({
+  "data/catalog-client.json": Object.freeze(["shows[].episode_count"]),
+  "data/discover.json": Object.freeze(["items[].episode_guid"]),
+  "data/segment-sources.json": Object.freeze([
+    "provenance",
+    ...[
+      "feed_url", "episode_guid", "ad_free_ratio", "audio_verified_on", "ad_delta_sec",
+      "ad_delta_probes", "ad_delta_spread_sec", "ad_tier", "ad_pad_method", "ad_pad_measured_at",
+      "feed_declared_duration_sec", "transcript_url", "transcript_type", "transcript_sha256",
+    ].map((k) => `sources[].${k}`),
+  ]),
+  "data/segments.json": Object.freeze([
+    "provenance", "segments[].transcript_source", "segments[].batch_id", "segments[].needs_review",
+  ]),
+  "data/session.json": Object.freeze([
+    "commute", "categories",
+    "cards[].archetype_label", "cards[].fit_line", "cards[].alternates", "cards[].provenance",
+    "episodes.*.format", "episodes.*.reactor_types",
+  ]),
+  "data/taxonomy.json": Object.freeze(["episode_attributes", "nodes[].apple_anchor", "nodes[].last_evidence_at"]),
+  "data/validated-links.json": Object.freeze([
+    "podlink_episode_format", "podlink_note", "overcast_ok", "overcast_note", "verification_summary",
+    "episodes.*.episode_guid", "episodes.*.duration_min_confirmed",
+  ]),
+});
+
+/** The key a path removes: its last segment. */
+export function unreadKeyName(keyPath) {
+  return keyPath.split(".").pop();
+}
+
+/** Every key a path names in `doc`, as `[parent, key]` pairs (only where it exists). */
+export function unreadKeyHits(doc, keyPath) {
+  const hits = [];
+  const walk = (node, parts) => {
+    if (!node || typeof node !== "object") return;
+    const [head, ...rest] = parts;
+    if (head === "*") {
+      for (const v of Object.values(node)) walk(v, rest);
+      return;
+    }
+    const isEach = head.endsWith("[]");
+    const key = isEach ? head.slice(0, -2) : head;
+    if (!Object.prototype.hasOwnProperty.call(node, key)) return;
+    if (!rest.length) {
+      if (!isEach) hits.push([node, key]);
+      return;
+    }
+    if (isEach) {
+      if (Array.isArray(node[key])) for (const el of node[key]) walk(el, rest);
+    } else {
+      walk(node[key], rest);
+    }
+  };
+  walk(doc, keyPath.split("."));
+  return hits;
+}
+
+/** `doc` as the bundle carries it: a COPY without `UNREAD_DATA_KEYS[rel]`, or `doc`
+ *  itself when the file has no entry. Never mutates its argument — the readers that
+ *  hand it documents cache them, and a projection reads the same object twice. */
+export function dropUnreadKeys(rel, doc, table = UNREAD_DATA_KEYS) {
+  const paths = table[rel];
+  if (!paths || !paths.length || !doc || typeof doc !== "object") return doc;
+  const copy = structuredClone(doc);
+  for (const p of paths) for (const [parent, key] of unreadKeyHits(copy, p)) delete parent[key];
+  return copy;
+}
+
+/** Native plugin sources, as `{ rel, text }`: what the bridge's other end could read
+ *  a key by name in. Test trees are skipped (a test fixture naming a key is not a
+ *  reader on a phone), and so is anything a build or an install put there. */
+function nativeSources(root) {
+  const base = path.join(root, "mobile", "plugins");
+  const out = [];
+  const SKIP = new Set(["test", "Tests", "androidTest", "build", "node_modules", ".gradle", ".build", "Pods"]);
+  const walk = (abs) => {
+    if (!fs.existsSync(abs)) return;
+    for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+      const child = path.join(abs, e.name);
+      if (e.isDirectory()) {
+        if (!SKIP.has(e.name)) walk(child);
+      } else if (/\.(java|kt|swift)$/.test(e.name)) {
+        out.push({ rel: path.relative(root, child).split(path.sep).join("/"), text: fs.readFileSync(child, "utf8") });
+      }
+    }
+  };
+  walk(base);
+  return out;
+}
+
+/**
+ * Prove every `UNREAD_DATA_KEYS` name is still unread, against the bundle as built
+ * (`absOut`'s `.js`, minified, so prose cannot trip it) and the native plugin
+ * sources under `root`. Throws a `WebDirError` naming each key that is read and
+ * where. Run by `prepare` BEFORE it reports success, on every build.
+ */
+export function assertUnreadKeysUnread(absOut, root = REPO_ROOT, table = UNREAD_DATA_KEYS) {
+  const shipped = [];
+  const walk = (abs) => {
+    for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+      const child = path.join(abs, e.name);
+      if (e.isDirectory()) walk(child);
+      else if (e.name.endsWith(".js")) {
+        shipped.push({ rel: path.relative(absOut, child).split(path.sep).join("/"), text: fs.readFileSync(child, "utf8") });
+      }
+    }
+  };
+  walk(absOut);
+  const native = nativeSources(root);
+  const read = [];
+  for (const [rel, paths] of Object.entries(table)) {
+    for (const p of paths) {
+      const key = unreadKeyName(p);
+      const word = new RegExp(`(?<![\\w$])${key}(?![\\w$])`);
+      const quoted = `"${key}"`;
+      const where = [
+        ...shipped.filter((f) => word.test(f.text)).map((f) => f.rel),
+        ...native.filter((f) => f.text.includes(quoted)).map((f) => f.rel),
+      ];
+      if (where.length) read.push(`${rel} ${p}: "${key}" appears in ${where.join(", ")}`);
+    }
+  }
+  if (read.length) {
+    throw new WebDirError(
+      `these keys are left out of the bundle as unread, but shipped code now mentions them:\n  ` +
+        read.join("\n  ") +
+        `\nA reader on a phone would get undefined where the website gets a value. Delete the ` +
+        `entry from UNREAD_DATA_KEYS in tools/mobile/prepare-webdir.mjs (the key then ships), ` +
+        `or confirm the mention is not a read and rename it.`
+    );
+  }
+  return true;
+}
+
 /** A cached JSON reader rooted at one directory.
  *
  *  CACHED because a projection and its verification read the same documents and
@@ -1912,10 +2089,24 @@ function docReader(dir) {
   };
 }
 
+/** The repo's documents AS THE BUNDLE SEES THEM: `docReader(root)` with
+ *  `UNREAD_DATA_KEYS` left out. Every projection reads its source through this, and
+ *  every verifier judges the bundle against it, so a slice is a slice of the trimmed
+ *  document and a copied file must parse to exactly the trimmed document. The re-read
+ *  in `assertSlicesOnDisk` is what notices a copy that kept a listed key. */
+function sourceReader(root) {
+  const raw = docReader(root);
+  const cache = new Map();
+  return (rel) => {
+    if (!cache.has(rel)) cache.set(rel, dropUnreadKeys(rel, raw(rel)));
+    return cache.get(rel);
+  };
+}
+
 /** Build every slice, with the assertions that prove each one, and hand back the
  *  JSON to write. */
 export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW, plan = null } = {}) {
-  const read = docReader(root);
+  const read = sourceReader(root);
   if (plan) {
     const absent = PROJECTED_DATA.filter((p) => !plan.includes(p.rel)).map((p) => p.rel);
     if (absent.length) {
@@ -1955,7 +2146,7 @@ export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW
  * budget is enforced, so the budget is measured on the bytes that ship.
  */
 export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = null } = {}) {
-  const source = docReader(root);
+  const source = sourceReader(root);
   const bundled = docReader(absOut);
   for (const spec of PROJECTED_DATA) {
     const abs = path.join(absOut, spec.rel);
@@ -1979,8 +2170,9 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = nul
   }
   /* Every data file in the bundle that is not a slice, asserted on the bytes that
      ship — parsed, because the bytes are re-serialised on the way in. The
-     re-serialisation is the only transform they go through, and "parses to the same
-     document" is exactly the property that transform must preserve. */
+     re-serialisation and `UNREAD_DATA_KEYS` are the only transforms they go through,
+     and "parses to the same document as the source less those keys" (`source` is
+     `sourceReader`) is exactly the property both must preserve. */
   for (const rel of bundledDataFiles(absOut)) {
     if (PROJECTED_DATA.some((p) => p.rel === rel)) continue;
     /* The one data file that is neither a slice nor a copy: the seed's pointer, which
@@ -2004,7 +2196,8 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = nul
       throw new Error(
         `the bundled ${rel} does not parse to the same document as the source. It is neither ` +
           `sliced (PROJECTED_DATA) nor the seed's pointer, so the only thing that should ` +
-          `have happened to it on the way into the bundle is losing its whitespace.`
+          `have happened to it on the way into the bundle is losing its whitespace and ` +
+          `its UNREAD_DATA_KEYS.`
       );
     }
   }
@@ -2096,7 +2289,7 @@ export function prepare({
   for (const rel of plan) {
     const src = path.join(root, rel);
     if (slices.has(rel)) reserialize(src, rel, slices.get(rel));
-    else if (isBundledData(rel)) reserialize(src, rel);
+    else if (isBundledData(rel)) reserialize(src, rel, dropUnreadKeys(rel, JSON.parse(fs.readFileSync(src, "utf8"))));
     else if (isMinified(rel)) minify(src, rel);
     else copy(src, rel);
   }
@@ -2140,6 +2333,9 @@ export function prepare({
 
   /* THE SLICES, RE-READ, for the same reason and in the same place. */
   assertSlicesOnDisk(absOut, root, { seedPointer: webStamp && webStamp.pointer ? webStamp.pointer : null });
+  /* And the keys left out as unread are still unread by the code that just shipped
+     (UNREAD_DATA_KEYS). */
+  assertUnreadKeysUnread(absOut, root);
 
   const files = [];
   let total = 0;

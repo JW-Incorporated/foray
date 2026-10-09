@@ -590,7 +590,8 @@ extension EngineContract {
         public let canPrevious: Bool
         public let autoAdvance: Bool
         public let lastError: String?
-        public let voiceFallback: String?
+        /// Did the last spoken line use another voice than the one asked for?
+        public let voiceFallback: Bool?
         /// Counts here; the logs themselves travel in engineHello.
         public let skippedSegments: Int
         public let pendingAdvances: Int
@@ -634,7 +635,7 @@ extension EngineContract {
             canPrevious = try o.required("canPrevious", R.bool)
             autoAdvance = try o.required("autoAdvance", R.bool)
             lastError = try o.optionalNullable("lastError", R.string)
-            voiceFallback = try o.optionalNullable("voiceFallback", R.string)
+            voiceFallback = try o.optionalNullable("voiceFallback", R.bool)
             skippedSegments = try o.required("skippedSegments", R.nonNegativeInt)
             pendingAdvances = try o.required("pendingAdvances", R.nonNegativeInt)
             pendingEvents = try o.required("pendingEvents", R.nonNegativeInt)
@@ -676,7 +677,7 @@ extension EngineContract {
             case .modeChanged:
                 mode = try o.required("mode", ContractRead.token(EngineMode.Mode.self))
                 reason = try o.required("reason", ContractRead.token(Vocabulary.ModeReason.self))
-            case .advanced, .skipped, .voiceFallback, .diag:
+            case .advanced, .skipped, .diag:
                 break
             }
             self.snapshot = snapshot

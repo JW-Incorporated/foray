@@ -82,7 +82,6 @@ public enum EngineContract {
         case advanced
         case skipped
         case error
-        case voiceFallback
         case diag
         case modeChanged
     }

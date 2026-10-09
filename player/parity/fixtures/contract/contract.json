@@ -49,17 +49,7 @@
       "id": "contract/events",
       "covers": [],
       "read": "EVENTS",
-      "expect": {
-        "value": [
-          "snapshot",
-          "advanced",
-          "skipped",
-          "error",
-          "voiceFallback",
-          "diag",
-          "modeChanged"
-        ]
-      }
+      "expect": { "value": ["snapshot", "advanced", "skipped", "error", "diag", "modeChanged"] }
     },
     {
       "id": "contract/refusals",
