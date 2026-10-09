@@ -23,7 +23,7 @@
         git switch --no-track -c corpus-pointer/<tag> origin/main
         git add -- data/corpus-catalogue-pointer.json
         git diff --cached --name-only   (must be exactly that one path)
-        git commit -m <message + attribution trailers> -- data/corpus-catalogue-pointer.json
+        git commit -m <message [+ FORAY_COMMIT_TRAILERS]> -- data/corpus-catalogue-pointer.json
         git push -u origin corpus-pointer/<tag>
         sh -c <publishCorpus's prCommand>   (`gh pr create --draft ...`)
       then `git switch` back to the branch the run started on, even when a
@@ -44,7 +44,12 @@
    `--source pg` this is the hermes-vm smoke test: it reads the database and
    proves the chain end to end without publishing anything.
 
-   exec, now, log and fs (mkdtempSync/rmSync, for the dry run's tmp
+   The pointer commit carries no attribution trailer unless
+   FORAY_COMMIT_TRAILERS (newline-separated; set it in
+   ~/.foray/foraycorpus.env) names some: the cron is not a session, and no
+   model co-authors its commits.
+
+   exec, now, log, env and fs (mkdtempSync/rmSync, for the dry run's tmp
    directory) are injected; weekly.test.mjs runs the real export and the
    real adapter CLI on the synthetic fixture and fakes git/gh/sh.
 
@@ -74,11 +79,18 @@ const defaultExec = (cmd, args, opts = {}) => execFileP(cmd, args, { maxBuffer: 
 export const ADAPTER_SCRIPT = join(ROOT, "tools", "foraycorpus-export", "catalog-adapter.mjs");
 export const DEFAULT_BREADTH = join(ROOT, "data", "catalog-breadth.json");
 export const POINTER_BRANCH_PREFIX = "corpus-pointer/";
-/** The attribution trailers every pointer commit ends with. */
-export const COMMIT_TRAILERS = Object.freeze([
-  "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>",
-  "Claude-Session: https://claude.ai/code/session_01NGYodoWJ8oQbVycZhxg1AE",
-]);
+/** The environment variable naming the pointer commit's trailers (CH2-30,
+    T1-23), newline-separated. The cron has no session and no model of its
+    own, so nothing is baked in: unset or blank means no trailers. */
+export const TRAILERS_ENV = "FORAY_COMMIT_TRAILERS";
+
+/** The trailers `env[TRAILERS_ENV]` names: one per non-blank line, trimmed. */
+export function commitTrailers(env = process.env) {
+  return String(env?.[TRAILERS_ENV] ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "");
+}
 
 export class WeeklyError extends Error {
   constructor(code, message) {
@@ -105,21 +117,21 @@ export function adapterArgs({ versionDir, breadthPath, catalogPath, cataloguePat
   ];
 }
 
-/** The pointer commit's message: subject, one body line, the trailers. */
-export function commitMessage({ tag, pointerRel, exportVersion }) {
+/** The pointer commit's message: subject, one body line, then the trailers
+    (after a blank line) only when there are any. */
+export function commitMessage({ tag, pointerRel, exportVersion, trailers = [] }) {
   return [
     `data(corpus): point ${pointerRel} at ${tag}`,
     "",
     `Weekly corpus export ${exportVersion}, published by tools/foraycorpus-export/weekly.mjs (HUMAN-ACTIONS #139).`,
-    "",
-    ...COMMIT_TRAILERS,
+    ...(trailers.length ? ["", ...trailers] : []),
   ].join("\n");
 }
 
 const out = (r) => String(r?.stdout ?? "").trim();
 
 /** Step 4: commit the pointer on corpus-pointer/<tag> and open the PR. */
-async function openPointerPr({ exec, tag, pointerRel, exportVersion, prCommand, log }) {
+async function openPointerPr({ exec, tag, pointerRel, exportVersion, trailers, prCommand, log }) {
   const branch = POINTER_BRANCH_PREFIX + tag;
   if (!prCommand.includes(` --head ${branch} `)) {
     throw new WeeklyError("PR_HEAD_MISMATCH", `the PR command does not name --head ${branch}: ${prCommand}`);
@@ -140,7 +152,7 @@ async function openPointerPr({ exec, tag, pointerRel, exportVersion, prCommand, 
         `expected exactly ${pointerRel} staged, got [${staged.join(", ")}] (an empty set means the pointer equals main's)`,
       );
     }
-    await git(["commit", "-m", commitMessage({ tag, pointerRel, exportVersion }), "--", pointerRel]);
+    await git(["commit", "-m", commitMessage({ tag, pointerRel, exportVersion, trailers }), "--", pointerRel]);
     await git(["push", "-u", "origin", branch]);
     const pr = await exec("sh", ["-c", prCommand], { cwd: ROOT });
     log(`POINTER_PR: ${out(pr) || prCommand}`);
@@ -174,6 +186,7 @@ export async function runWeekly({
   log = console.log,
   warn = console.error,
   fs = nodeFs,
+  env = process.env,
   sourceFactory,
   sleep,
   pauseMs,
@@ -207,7 +220,7 @@ export async function runWeekly({
     }
 
     // 4. Pointer PR.
-    const { branch } = await openPointerPr({ exec, tag: published.tag, pointerRel: pointerRelPath(pointerPath), exportVersion, prCommand: published.prCommand, log });
+    const { branch } = await openPointerPr({ exec, tag: published.tag, pointerRel: pointerRelPath(pointerPath), exportVersion, trailers: commitTrailers(env), prCommand: published.prCommand, log });
     return { ...result, prOpened: true, branch };
   } finally {
     if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
