@@ -1365,6 +1365,7 @@ const FLOORS = {
      version and built_at and leaves the manifest alone; --verify and --check go
      red by name). Zero slack; every named mutation was run and killed. */
   "tools/ci/catalogue-directory.test.mjs": 17, // code-health CH2-22 (T2-06): +2 characterization pins of the catalogue pointer text and every problem line, byte for byte, now that it shares makeDirectoryPointer with the Foray pointer; 15 -> 17
+  "tools/ci/ship-lists.test.mjs": 6, // CH2-18 (T2-03): new -- what the app ships has one owner: the real dist is exactly generate-manifest's lists (+ sw.js, show index, site association, stamp), the native font literals and shell equal fontSources()/SHELL, app.js's fetchJson scan sits inside RUNTIME_DATA with only ladders + dai-classification shipped unfetched, a new fetchJson joins the deploy id with RUNTIME_DATA as the floor, and prepare-webdir uses generate-manifest's scanner
   "tools/ci/forays-directory.test.mjs": 37, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35. Code-health CH2-22 (T2-06): +2 characterization pins of the Foray pointer text and every problem line from the one makeDirectoryPointer; 35 -> 37
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
@@ -1754,7 +1755,7 @@ const FLOORS = {
      would read as coverage of a list that had quietly stopped discriminating. */
   "tools/release/upload-retry.test.mjs": 15, // CH2-21 (T2-14): the classify CLI line at every attempt, the line the composite evals, now decided by shouldRetry(); 14 -> 15 // 2026-09-22: new -- which store-upload failures are worth trying again
   "tools/release/build-number.test.mjs": 12, // 2026-10-04: +1 -- the first release of a UTC day (a one-line runs file) is run-of-day 1, not refused; 11 -> 12 // ci-release-4 (round-3 audit): new -- the run-of-day is a count of today's runs, floored above what an earlier run of the day used, and refuses past 99 instead of wrapping
-  "tools/release/watch-release.test.mjs": 46, // CH2-16 review (2026-10-07): +1 -- every local composite release.yml reaches, nested ones included (ios-archive -> ios-prepare), is a release trigger; 45 -> 46 // round-3 review: +1 -- a bot-merged head (no ci.yml run, so no required checks) still dispatches; 44 -> 45 // round-3 L7: +6 -- ci-release-6 (main judged by its REQUIRED checks, not ci.yml's whole run) and ci-release-9 (separate concurrency groups, pinned in the existing workflow test); 38 -> 44 // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
+  "tools/release/watch-release.test.mjs": 58, // PR #1202 review: +5 -- gate jobs (guard, ios-checks, summary) are not read: release.yml's binary jobs come from its structure (local composite + the jobs whose outputs feed it), engine-ci.mjs and a commit touching only it dispatch nothing, binary inputs (icons, plists, inject scripts, version scripts, prepare-webdir's imports) stay, a synthetic workflow pins gate-out/feeder-in/shared-in, and a workflow with no binary job throws; 53 -> 58 // merge with CH2-16 review (+1, nested composites): 52 + 1 = 53 // CH2-16 review (2026-10-07): +1 -- every local composite release.yml reaches, nested ones included (ios-archive -> ios-prepare), is a release trigger // CH2-19 (docs/roadmap/code-health-2.md): +7 -- the native inputs are derived from what release.yml and the two composites run (independent scan, wire-signing acceptance, fetch-models out, the derivation only adds), the retired run_number story and the 8h liveness header, and ONE isRed() (a cancelled run and a cancelled check agree; run, check and job agree on every conclusion); 45 -> 52 // round-3 review: +1 -- a bot-merged head (no ci.yml run, so no required checks) still dispatches; 44 -> 45 // round-3 L7: +6 -- ci-release-6 (main judged by its REQUIRED checks, not ci.yml's whole run) and ci-release-9 (separate concurrency groups, pinned in the existing workflow test); 38 -> 44 // 2026-09-22: new -- the release watchdog + trigger (reliability plan pieces 2 and 3), replayed against the real 00:28 partial failure; 2026-09-23: +2, G2 replays the real 09-06 summary log ("not reached" is unknown, the job decides); +1, the Fetch step executed against an expired (404) summary log
   "tools/mobile/foray-media-session.test.mjs": 102, // round-2 sweep (2026-09-23): a network stall reaches native as `stalled` (p-car-8), a finished ordinary episode keeps the service (native-1); 100 -> 102 audit round 2, lane L3 (2026-09-23): onPlayingChange on the transition only, wired to the shell; the track pair is not mirrored (p-impatient-3); 98 -> 100 // // review 2026-09-23: a WebKit-door press and an Android Media3 action are recorded under the record's dashed command (remoteCommandFor at the one seam); 95 -> 98 // founder 2026-09-23 (fix/founder-reports-2026-09-23): a BEHAVING fake WebKit reads what its own Now Playing entry would show (the "4a / unknown / unknown" state on main); the severing mutation test inverted; one press through two doors is applied once (both orders, the third copy, the window's end, a same-surface double tap, Android untouched); a WebKit-delivered press is a foray:remote row; inspect().tee; 88 -> 95 // 2026-09-23 founder report ("On the lock screen, it's 10s in both directions"): the iOS takeover mirrors the page's handlers, metadata and playbackState onto WebKit's own session — never seekto — so a press on WebKit's client reaches the page; wrap-mode reaches the prototype without looping; a refused mirror costs nothing; uninstall takes it all back. The suite stood at 81 against 80; 80 -> 88 // 2026-09-22: `sends` cannot be read in the turn of the write, against the REAL default scheduler; 79 -> 80 // M-03 (2026-09-12): the session event reaches the page; 75 -> 79
   /* iOS on a runner (#38). These four are the only tests in the repo that can be
      run for a macOS-only feature by someone with no Mac, which makes their
@@ -2177,9 +2178,9 @@ const FLOORS = {
   "tools/shows/dedupe.test.mjs": 11, // audit round 3 (L8): +2, Unicode dedupe key; 9 -> 11
   "tools/shows/filter.test.mjs": 11,
   "tools/shows/identity.test.mjs": 2,
-  "tools/shows/import-dump.test.mjs": 14, // CH2-12: +2 (under-ceiling warn via the shared checkMissingMapping, streamed checksumFile + source pin); 12 -> 14 // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
+  "tools/shows/import-dump.test.mjs": 15, // CH2-31 (T1-15): +1 source guard -- no alreadyBuilt / state.mjs / SKIP branch in import-dump.mjs; 14 -> 15 // CH2-12: +2 (under-ceiling warn via the shared checkMissingMapping, streamed checksumFile + source pin); 12 -> 14 // #1033: +4 changed.json baseline (snapshot round-trip, download reaches buildChanged, failed download -> baseline:false, never {}); 8 -> 12 // audit round 3 integration: the real post-merge count, 5 -> 8
   "tools/shows/shard-build.test.mjs": 15, // audit round 3 (L8): +1, changed.json baseline; 14 -> 15
-  "tools/shows/state.test.mjs": 6,
+  // CH2-31 (T1-15): the tools/shows state suite (floor 6) is gone with state.mjs, whose "durable" already-built marker was never committed or cached, so its SKIP branch was unreachable in CI; releaseExists is the one idempotency rule (pinned in run-and-publish.test.mjs)
   "tools/shows/watch-pointer.test.mjs": 12, // pointer-freshness-watch: absence watchdog, red >192h (below candidates.mjs 216h ceiling); +1 pins its own daily read-only workflow (shows-pointer-watch.yml), 11 -> 12
   /* S-04b: GitHub Release publishing + the run-then-publish orchestration
      (kanban t_3a896057), gated on S-04a above. publish-release.test.mjs
@@ -2188,12 +2189,12 @@ const FLOORS = {
      against a faked `gh`; run-and-publish.test.mjs is the end-to-end
      acceptance test the card's own criterion asks for — "two full runs on
      the same dump version -> no new release" — proven against the REAL
-     control flow (runAndPublish), not each piece in isolation, covering
-     both idempotency paths (S-04a's own state.json skip, and the
-     independent release-already-exists check that catches a lost
-     state.json). */
+     control flow (runAndPublish), not each piece in isolation, proving
+     the one idempotency rule (CH2-31, T1-15): releaseExists -- a second
+     run on the same export_version builds in full and publishes
+     nothing. */
   "tools/shows/publish-release.test.mjs": 28, // OPS-03 review: +2 -- a starter (half-uploaded) asset reads as missing, and a stranded draft BATCH resumes in publishShardReleases (the #969 fix at the call site); 26 -> 28 // OPS-03: draft -> chunked uploads -> publish, resume, retry, rate-limit wait, pacing, releaseState; 19 -> 26 (true count)
-  "tools/shows/run-and-publish.test.mjs": 11, // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
+  "tools/shows/run-and-publish.test.mjs": 12, // CH2-31 (T1-15): +1 a fresh checkout runs the full build and releaseExists alone stops a duplicate release (the acceptance test's build-skipped run folded into its release-exists run); 11 -> 12 // #1033: +1 the baseline snapshot ships on the pointer's release; 10 -> 11 // OPS-01: +3 describeExecError (FATAL lines carry code/signal/stderr/stdout); 6 -> 10 (true count: 7 existing + 3)
   /* Fresh-context review finding (2026-09-05): runBuild spawns
      import-dump.mjs as a real child process, and Node does NOT
      auto-inherit process.execArgv (e.g. --experimental-sqlite) into a
@@ -2449,7 +2450,7 @@ const BACKEND_FLOORS = {
      neither when it does not, and the seed the reply carries back. */
   "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
-  "test/budgetGuard.test.ts": 11, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11
+  "test/budgetGuard.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11; 11 -> 13 // CH2-04: per-process pins (N calls stop at the cap; a fresh guard starts at 0); 13 -> 12 // CH2-04: tier cutoff deleted (tier2/tier0 cases removed, exact), "every operation gets the full run cap" added
   "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
   "test/candidateExtractor.test.ts": 8,
   "test/conditionalGet.test.ts": 9,
@@ -2460,10 +2461,11 @@ const BACKEND_FLOORS = {
   "test/dataSchemaCompliance.test.ts": 8,
   "test/dedup.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-22: non-Latin titles normalise, dedup and key distinctly; 17 -> 20
   "test/duration.test.ts": 12,
-  /* DAILY_BUDGET_USD env parsing (L5): rejects negative / NaN / empty /
-     over-cap values at startup instead of silently substituting the
-     default, and leaves a genuinely unset variable on its fallback. */
-  "test/env.test.ts": 11,
+  /* RUN_BUDGET_USD (was DAILY_BUDGET_USD) and EPISODE_BUDGET_USD env parsing
+     (L5, CH2-04): rejects negative / NaN / empty / over-cap values at startup
+     instead of silently substituting the default, leaves a genuinely unset
+     variable on its fallback, and reads the old DAILY name as a deprecated alias. */
+  "test/env.test.ts": 29, // 11 -> 13 // CH2-04: EPISODE_BUDGET_USD lenient-parse characterization (-1 kept, 1O -> default); 13 -> 24 // CH2-04: EPISODE mirrors the bounded RUN cases (the two pins flip), DAILY rename refused, envPresenceSummary carries the episode cap; 24 -> 29 // CH2-04 review: DAILY_BUDGET_USD becomes a deprecated alias (the one refusal case becomes six: alias value + one warning, malformed alias, conflict fails, equal 25/25.0 loads, new name alone warns nothing, neither set warns nothing)
   "test/eventStore.test.ts": 5, // CH2-05 (docs/roadmap/code-health-2.md, B2-12): in-memory fetchPage includes rows at exactly afterTs with a null afterId (Postgres's rule, live-DB half in the db job) and minted ids sort in insertion order; new
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12
@@ -2878,7 +2880,7 @@ const BACKEND_FLOORS = {
      counts. */
   "test/spineSeeding.test.ts": 6,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
-  "test/generateForaysHandsFree.test.ts": 20,
+  "test/generateForaysHandsFree.test.ts": 21, // 20 -> 21 // CH2-04: a run-cap stop ends the batch (generateQueue)
   /* +1 audit finding E (2026-09-12): this package's `isGeneratedDraft` agrees
      with player/foray-resolve.js over the whole truth table; 8 -> 9. */
   "test/finalizeForay.test.ts": 10, // round-3 audit (L5-generation): gen-12 a duplicate id is a validation error, not a throw; 9 -> 10

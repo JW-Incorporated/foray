@@ -61,21 +61,21 @@ describe("generateForays --budget-usd (F-04)", () => {
 describe("BudgetGuard.setCaps — what the flag actually moves", () => {
   it("raises both ceilings and reports them", () => {
     const guard = new BudgetGuard(defaultCostEventSink, 2, 10);
-    expect(guard.caps()).toEqual({ dailyUsd: 2, episodeUsd: 10 });
-    guard.setCaps({ dailyUsd: 40, episodeUsd: 40 });
-    expect(guard.caps()).toEqual({ dailyUsd: 40, episodeUsd: 40 });
+    expect(guard.caps()).toEqual({ runUsd: 2, episodeUsd: 10 });
+    guard.setCaps({ runUsd: 40, episodeUsd: 40 });
+    expect(guard.caps()).toEqual({ runUsd: 40, episodeUsd: 40 });
   });
 
   it("ignores a value that would remove the ceiling", () => {
     const guard = new BudgetGuard(defaultCostEventSink, 25, 10);
-    guard.setCaps({ dailyUsd: Number.NaN, episodeUsd: -1 });
-    expect(guard.caps()).toEqual({ dailyUsd: 25, episodeUsd: 10 });
+    guard.setCaps({ runUsd: Number.NaN, episodeUsd: -1 });
+    expect(guard.caps()).toEqual({ runUsd: 25, episodeUsd: 10 });
   });
 
   it("actually stops a call once the cap is lowered under the spend", async () => {
     /* The setter has to change ENFORCEMENT, not just a reported number. */
     const guard = new BudgetGuard(defaultCostEventSink, 1000, 1000);
-    guard.setCaps({ dailyUsd: 0, episodeUsd: 0 });
+    guard.setCaps({ runUsd: 0, episodeUsd: 0 });
     await expect(
       guard.checkAndRecord({ userId: "budget-flag-test", operation: "tier1_classify", provider: "stub", estimatedUsd: 0.5 })
     ).rejects.toThrow(/budget exceeded/i);
