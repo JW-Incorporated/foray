@@ -92,6 +92,12 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
      round 4, about 10% over today's size. ui/tabbar.js and player/client.js are
      existing files and stay in the legacy count. */
   { rel: "ui/dock.css", maxBytes: 10.5 * 1024 },
+  /* Phase 4, Library: the screen's stylesheet, the Glow palette its tiles read, and ui/library.js itself, which the
+     screen rewrote (the capped link rows went; the grid, the rows, the Up Next menu, the Toast and the reorder
+     slide came). library.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy
+     alarm is not to be re-baselined a seventh time and this is a bounded feature step. Iteration 3: 6.4 KB minified once the stopgap Dock block went to ui/dock.css (it was 9.5 KB with it, over this ceiling). */
+  { rel: "ui/library.css", maxBytes: 8 * 1024 },
+  { rel: "ui/library.js", maxBytes: 30 * 1024 },
   /* Phase 4, Today (Home): the screen's stylesheet, the Glow palette, and ui/home.js itself, which Today rewrote
      (the Jump back in / Forays / Suggested renderers went; the hero, rows, rail, skeleton and play-state code
      came). home.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy alarm
@@ -108,6 +114,18 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. RETIRED by the Dock unit: the block went to ui/dock.css, ceiling back to 10 KB. */
   { rel: "ui/foray-detail.css", maxBytes: 10 * 1024 },
   { rel: "ui/foray.js", maxBytes: 32 * 1024 },
+  /* Phase 4, Library: the screen's stylesheet, the Glow palette its tiles read, and ui/library.js itself, which the
+     screen rewrote (the capped link rows went; the grid, the rows, the Up Next menu, the Toast and the reorder
+     slide came). library.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy
+     alarm is not to be re-baselined a seventh time and this is a bounded feature step. */
+  { rel: "ui/library.css", maxBytes: 8 * 1024 },
+  /* The Up Next page unit added the `page` flag on the QueueRow (handle, swipe id, Remove label), the page head's hook, the
+     in-place repaint's refocus fallback and `libRemoveRow` to this file: 30.2 KB minified against a 30 KB ceiling, so 30 to 32 KB,
+     a bounded step (the page's own code is ui/queue.js, which got smaller). */
+  { rel: "ui/library.js", maxBytes: 32 * 1024 },
+  /* Phase 4, Up Next page: its stylesheet (the head, the handle, the gestures' paint). ui/queue.js shrank (the page's own
+     row and its four arrow buttons went into Library's QueueRow), so it stays in the legacy line. */
+  { rel: "ui/queue.css", maxBytes: 1.75 * 1024 },
   /* Phase 4, Episode page: the screen's stylesheet (and the Library tab's count badge); the stopgap Dock block went to ui/dock.css with the Dock unit.
      Measured minified, 2026-10-08: 6.6 KB (6762 B); the 8 KB ceiling keeps the 0.75 floor (6144 B) readable. */
   { rel: "ui/episode.css", maxBytes: 8 * 1024 },

@@ -18,11 +18,19 @@ import { forayDetailPicks } from "./seed.mjs";
 
 const wait = (page, ms) => page.waitForTimeout(ms);
 
-/* The page the Dawn and unavailable helpers park on while the scheme flips: a LEGACY page, because a page that wears `.ag`
-   crossfades its colours for 200ms when the scheme changes and the reduced-motion gate reads that as a violation. The Forays
-   list used to be that page; it is Afterglow now (Redesign 2026). When Followed shows is re-skinned, park on whichever
-   legacy page is left. */
-const PARK_ROUTE = "#/starred-shows";
+/* Where the Dawn and unavailable helpers park while the scheme flips. No legacy page is left (every route wears `.ag` now,
+   and a drawn `.ag` page crossfades its colours for 200ms when the scheme changes, which the reduced-motion gate reads as
+   a violation), so the helper parks on this route and then EMPTIES #view: nothing drawn, nothing to crossfade. The target
+   route is painted new afterwards. (Up Next page, iteration 2: `#/starred-shows` became Library, the last park page.) */
+const PARK_ROUTE = "#/about";
+
+async function parkAway(page) {
+  const hash = await page.evaluate((r) => { const h = location.hash; location.hash = r; return h; }, PARK_ROUTE);
+  await wait(page, 500);
+  await page.evaluate(() => { const v = document.getElementById("view"); if (v) v.replaceChildren(); });
+  await wait(page, 100);
+  return hash;
+}
 
 /** Start playback of a seeded item through the real player, then pin it: seek to
     a fixed offset and pause, so the mini bar and sheet show a deterministic
@@ -91,8 +99,7 @@ const forayRoute = (foray) => "#/foray/" + encodeURIComponent(foray.id);
 async function openUnavailableForay(page, foray) {
   /* Off the Afterglow page while the scheme goes back to dark (the Dawn step before this one left it light), so no
      drawn page crossfades; the Foray is then painted new. */
-  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
-  await wait(page, 400);
+  await parkAway(page);
   await page.emulateMedia({ colorScheme: "dark" });
   await wait(page, 400);
   await page.evaluate((hash) => {
@@ -107,8 +114,7 @@ async function openUnavailableForay(page, foray) {
 async function goDawn(page) {
   /* Leave the Afterglow page first and come back after the flip, so the scheme change is not a live colour change on a page
      that is already drawn (every .ag element would crossfade for 200ms): the page is painted new, in Dawn. */
-  const hash = await page.evaluate((r) => { const h = location.hash; location.hash = r; return h; }, PARK_ROUTE);
-  await wait(page, 500);
+  const hash = await parkAway(page);
   await page.emulateMedia({ colorScheme: "light" });
   await wait(page, 500);
   await page.evaluate((h) => { location.hash = h; }, hash);
@@ -162,8 +168,7 @@ async function clickEpisodeControl(page, selector, ms = 900) {
    painted new in the light palette rather than crossfading a drawn one. (Each state gets a fresh context, so the scheme
    returns to dark for the next state.) */
 async function goDawnForays(page) {
-  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
-  await wait(page, 500);
+  await parkAway(page);
   await page.emulateMedia({ colorScheme: "light" });
   await wait(page, 500);
   await page.evaluate(() => { location.hash = "#/forays"; });
@@ -182,11 +187,11 @@ async function typeSearch(page, text) {
     re-renders `#/shows` with an empty field and drops `kb-open` (setBodyClass writes the class list
     whole); the `--kb-inset` a previous step wrote on <html> is cleared by hand. */
 async function freshDiscover(page) {
-  await page.evaluate(() => {
+  await page.evaluate((r) => {
     document.documentElement.style.removeProperty("--kb-inset");
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    location.hash = "#/library";
-  });
+    location.hash = r;
+  }, PARK_ROUTE);
   await wait(page, 500);
   await page.evaluate(() => { location.hash = "#/shows"; });
   await page.waitForSelector("#sh-input", { timeout: 15000 });
@@ -265,6 +270,24 @@ function galleryCaptureSteps(theme) {
   ];
 }
 
+/* Library (Redesign 2026, ambient): the page scrolled so the Up Next heading sits 24px from the top (the prototype's
+   ?scroll=1330 puts its own Up Next heading there), and the first Up Next row's menu open. The page scrolls as a
+   document. */
+async function scrollLibrary(page) {
+  await page.evaluate(() => {
+    const section = document.querySelector('[data-lb-section="upnext"]');
+    if (section) window.scrollTo(0, Math.max(0, section.getBoundingClientRect().top + window.scrollY - 24));
+  });
+  await wait(page, 500);
+}
+
+async function openLibraryMenu(page) {
+  await scrollLibrary(page);
+  await page.locator("[data-lb-menu]").first().click();
+  await page.waitForSelector(".lb-panel", { state: "visible", timeout: 10000 });
+  await wait(page, 700);
+}
+
 /* Today (Redesign 2026, ambient): the boot held open. The discover document never answers, so init()
    never reaches route() and the page stays on the screen it painted before its first await: on Home,
    Today's skeletons with the lamp sweep. The route is registered AFTER the harness stubs, and a later
@@ -318,6 +341,32 @@ function settingsSteps() {
     { label: "about", route: "#/about", ready: ".st-page[data-st-page=about]" },
     { label: "settings-dawn-chosen", route: "#/settings", run: (page) => chooseDawn(page), ready: ".st-page[data-st-page=settings]" },
   ];
+}
+
+/* The Up Next page (Redesign 2026, ambient): `#/queue` is Library's Up Next section given the screen. Playback starts on
+   another page and the queue is then opened fresh, as a listener would (the page's rows are drawn once, with the playing
+   row first); the menu is the first queued row's (the playing row has none); Remove opens the Toast over the mini row. */
+async function openQueueWithPlayback(page, itemId) {
+  await page.evaluate(() => { location.hash = "#/forays"; });
+  await wait(page, 500);
+  await startPlayback(page, itemId);
+  await page.evaluate(() => { location.hash = "#/queue"; });
+  await page.waitForSelector("[data-lb-page]", { timeout: 10000 });
+  await wait(page, 600);
+}
+
+async function openQueueMenu(page) {
+  await page.locator("[data-lb-menu]").first().click();
+  await page.waitForSelector(".lb-panel", { state: "visible", timeout: 10000 });
+  await wait(page, 700);
+}
+
+async function removeFirstQueueRow(page) {
+  /* The step before leaves the first queued row's menu open (a sheet makes the page inert): use it. */
+  if (!(await page.locator(".lb-panel").count())) await openQueueMenu(page);
+  await page.locator('[data-lb-do="remove"]').first().click();
+  await page.waitForSelector(".lb-toast.is-open", { timeout: 10000 });
+  await wait(page, 500);
 }
 
 /** Routes every seeded profile can show. `fx` supplies real ids. */
@@ -505,6 +554,19 @@ export function appStates(fx) {
       ],
     },
     {
+      id: "library",
+      description: "Library with forays opened and an episode playing: the top of the page (the Dock's cast under the grid), scrolled to Up Next and History, then an Up Next row's menu open.",
+      seed: "library",
+      steps: [
+        /* Playback starts on another page and Library is then opened fresh, as a listener would: Library never
+           redraws under a play that starts while it is showing, which under Reduce Motion is a colour crossfade
+           the motion gate (rightly) reads as motion. */
+        { label: "library", route: "#/library", run: async (page) => { await page.evaluate(() => { location.hash = "#/forays"; }); await wait(page, 500); await startPlayback(page, ep0); await page.evaluate(() => { location.hash = "#/library"; }); await wait(page, 700); } },
+        { label: "library-lower", route: "#/library", run: (page) => scrollLibrary(page) },
+        { label: "library-up-next-menu", route: "#/library", run: (page) => openLibraryMenu(page), ready: "[data-lb-menu]" },
+      ],
+    },
+    {
       id: "loading",
       description: "Today while the boot is held open: skeletons for the hero and four rows, the wash at the default Glow.",
       seed: "dismissed",
@@ -521,6 +583,30 @@ export function appStates(fx) {
       description: "Today with an episode part-played (40 minutes in): Keep listening, and the ribbon restored over the page.",
       seed: "midlisten",
       steps: [{ label: "home", route: "#/", ready: ".td-keep" }],
+    },
+    {
+      id: "library",
+      description: "Library with forays opened and an episode playing: the top of the page (the Dock's cast under the grid), scrolled to Up Next and History, then an Up Next row's menu open.",
+      seed: "library",
+      steps: [
+        /* Playback starts on another page and Library is then opened fresh, as a listener would: Library never
+           redraws under a play that starts while it is showing, which under Reduce Motion is a colour crossfade
+           the motion gate (rightly) reads as motion. */
+        { label: "library", route: "#/library", run: async (page) => { await page.evaluate(() => { location.hash = "#/forays"; }); await wait(page, 500); await startPlayback(page, ep0); await page.evaluate(() => { location.hash = "#/library"; }); await wait(page, 700); } },
+        { label: "library-lower", route: "#/library", run: (page) => scrollLibrary(page) },
+        { label: "library-up-next-menu", route: "#/library", run: (page) => openLibraryMenu(page), ready: "[data-lb-menu]" },
+      ],
+    },
+    {
+      id: "up-next",
+      description: "The Up Next page: the list; with an episode playing (the playing row first, the mini row up); a row's menu open; then after Remove, the Toast with Undo 8px above the mini row.",
+      seed: "returning",
+      steps: [
+        { label: "up-next-list", route: "#/queue", ready: "[data-lb-page]" },
+        { label: "up-next-playing", route: "#/forays", run: (page) => openQueueWithPlayback(page, ep0), ready: "[data-lb-page]" },
+        { label: "up-next-menu", route: "#/queue", run: (page) => openQueueMenu(page), ready: ".lb-panel" },
+        { label: "up-next-toast", route: "#/queue", run: (page) => removeFirstQueueRow(page), ready: ".lb-toast.is-open" },
+      ],
     },
     {
       id: "show",

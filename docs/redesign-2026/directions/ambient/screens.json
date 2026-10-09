@@ -139,17 +139,26 @@
         "route": "#/library"
       },
       "app": {
-        "state": "player",
-        "step": "mini-player-library"
+        "state": "library",
+        "step": "library"
       },
       "regions": {
         "header": {
           "prototype": ".t-title",
-          "app": ".page-head"
+          "app": ".lb-head h2"
+        },
+        "grid": {
+          "prototype": ".grid-3",
+          "app": ".lb-grid"
+        },
+        "tiles": {
+          "prototype": ".grid-3 .stile .art, .grid-3 .ftile .tile-art",
+          "app": ".lb-grid .lb-art",
+          "mode": "all"
         },
         "rows": {
           "prototype": ".q-row, .ep-row",
-          "app": ".ep-row",
+          "app": ".lb-row",
           "mode": "all"
         },
         "mini": {
@@ -159,6 +168,112 @@
         "tabBar": {
           "prototype": ".tabbar",
           "app": "#tab-bar"
+        }
+      }
+    },
+    "library-empty": {
+      "title": "Library, empty",
+      "prototype": {
+        "route": "?state=empty#/library"
+      },
+      "app": {
+        "state": "empty",
+        "step": "library"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".t-title",
+          "app": ".lb-head h2"
+        },
+        "empty": {
+          "prototype": ".empty",
+          "app": ".lb-empty",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library-lower": {
+      "title": "Library, scrolled to Up Next and History",
+      "prototype": {
+        "route": "?scroll=1330#/library"
+      },
+      "app": {
+        "state": "library",
+        "step": "library-lower"
+      },
+      "regions": {
+        "rows": {
+          "prototype": ".q-row",
+          "app": ".lb-qrow",
+          "mode": "all"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#foray-player"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "library-up-next-menu": {
+      "title": "Library, an Up Next row's menu open",
+      "prototype": {
+        "route": "?state=upnextmenu&scroll=1330#/library"
+      },
+      "app": {
+        "state": "library",
+        "step": "library-up-next-menu"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".sheet",
+          "app": ".lb-panel"
+        }
+      }
+    },
+    "up-next": {
+      "title": "Up Next page, an episode playing (no prototype route: paired with the prototype Library's Up Next section, the same QueueRow)",
+      "prototype": {
+        "route": "?scroll=1330&screen=up-next#/library"
+      },
+      "app": {
+        "state": "up-next",
+        "step": "up-next-playing"
+      },
+      "regions": {
+        "rows": {
+          "prototype": ".q-row",
+          "app": ".qp-row"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "up-next-menu": {
+      "title": "Up Next page, a row's menu open (the prototype's Library menu, the same sheet)",
+      "prototype": {
+        "route": "?state=upnextmenu&scroll=1330&screen=up-next#/library"
+      },
+      "app": {
+        "state": "up-next",
+        "step": "up-next-menu"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".sheet",
+          "app": ".lb-panel"
         }
       }
     },

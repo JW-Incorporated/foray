@@ -347,8 +347,14 @@ test("only a list whose order is the point is numbered: a playlist, not Saved, H
     assert.match(run(`archivedRow(${JSON.stringify(ITEM)}, 4, ${JSON.stringify(ctx)})`), /<span class="q-num">5<\/span>/,
       `${ctx}: an archived part keeps its number, so the count above stays true`);
   }
-  /* Up Next is a queue: its own row always numbers. */
-  assert.match(APP_SRC, /function upNextRow[\s\S]*?<span class="q-num">\$\{idx \+ 1\}<\/span>/, "Up Next keeps its numbers");
+  /* RULING THAT FELL (Redesign 2026, ambient; card anatomy, the Up Next page unit): "Up Next is a queue: its own row
+     always numbers" is gone. The page's row is Library's QueueRow (art, title, caption, handle, menu); the order is the
+     order on screen and a move says its new place aloud ("Moved to position 2 of 5."). MUTATION: put a `q-num` span
+     back into libQueueRowHtml -> red. */
+  const rowAt = APP_SRC.indexOf("function libQueueRowHtml(");
+  assert.ok(rowAt >= 0, "the QueueRow is where this test looks for it");
+  assert.doesNotMatch(APP_SRC.slice(rowAt, APP_SRC.indexOf("\n}\n", rowAt)), /q-num/, "the QueueRow carries no number");
+  assert.doesNotMatch(APP_SRC, /function upNextRow/, "the page has no row of its own");
   /* The Library's unnamed-history fallback row carries none. */
   assert.doesNotMatch(APP_SRC, /<div class="ep-row gone"><span class="q-num">/, "the History fallback row is not numbered");
 });
@@ -425,15 +431,16 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
      `<a class="back" href="#/">‹</a>` in renderAllShows's page-head -> red. */
   assert.doesNotMatch(body("renderAllShows"), /class="back"/, "Discover is a tab root and draws no ‹");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
-  for (const fn of ["renderQueue"]) {
-    assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
-  }
   /* REDESIGN 2026 (ambient, Forays list): the page draws its own Back chevron, the ordinary history-aware a.back. */
   assert.match(body("renderForays"), /class="back ag-btn ag-btn-icon fl-back"/, "renderForays is pushed from a tab and keeps its Back");
   /* The Playlists list (Redesign 2026 ambient) draws its head through playlistTopHtml, whose Back is the history-aware a.back.
      MUTATION: drop the `playlistTopHtml(` call from renderPlaylists, or the `class="back` from the helper -> red. */
   assert.match(body("renderPlaylists"), /playlistTopHtml\("library"/, "the Playlists list is pushed from Library and keeps its back");
   assert.match(body("playlistTopHtml"), /<a class="back ag-btn/, "and the shared head's back is the a.back");
+  /* The Up Next page (Redesign 2026, ambient) is pushed from Library and keeps its ‹, drawn by its own head and still the
+     history-aware a.back. MUTATION: drop `back` from that link's class (leave `qp-back`) -> the route no longer steps back. */
+  assert.match(body("queuePageHeadHtml"), /<a class="back qp-back /, "the Up Next page keeps its ‹ (a.back, the history-aware one)");
+  assert.match(body("renderQueue"), /queuePageHeadHtml|libUpNextInnerHtml\(true\)/, "and renderQueue draws that head");
   /* Tuning, Settings and About (Redesign 2026) share one head, stHeadHtml, whose Back chevron is the history-aware a.back. */
   assert.match(body("renderInterests"), /stPageHtml\(/, "Tuning is a Settings page: it wears the shared head");
   assert.match(body("stHeadHtml"), /<a class="back st-back /, "the shared head keeps its ‹ (a.back, the history-aware one)");

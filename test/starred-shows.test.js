@@ -329,21 +329,25 @@ test("renderStarredShows shows an honest empty state when nothing is starred", (
 /* 5. ROUTE WIRING                                                       */
 /* ==================================================================== */
 
-test("route() dispatches #/starred-shows to renderStarredShows, matching #/playlists/#/queue's pattern", () => {
-  /* MUTATION: delete the `#/starred-shows` branch from route(). This test
-     fails because renderHome (the fallback) runs instead and the view
-     never contains the starred-shows heading. */
-  const m = mount();
+test("route() sends #/starred-shows to Library, where the followed shows now live (ROUTE_ALIASES)", () => {
+  /* REDESIGN 2026 (ambient, Library + Dock): `#/starred-shows` is folded into Library, so route() rewrites the hash
+     and paints Library's grid, which has no "Followed shows" heading by design (a followed show needs no label).
+     MUTATION: delete the `"#/starred-shows": "#/library"` entry from ROUTE_ALIASES in app.js -> the hash stays and
+     the page is not Library's grid. */
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }) } });
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
   m.state.cardSlots = [];
   m.state.ready = true;
+  m.ctx.localStorage.setItem("cp_starred_shows", JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }));
 
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.ok(m.view().includes("Followed shows"), "route() must dispatch #/starred-shows to renderStarredShows");
+  /* REDESIGN 2026 (ambient Library): the route is aliased to #/library, whose grid has no "Followed shows" head; the
+     followed show is a ShowTile there. MUTATION: delete the "#/starred-shows" ROUTE_ALIASES entry -> Today renders, no tile. */
+  assert.ok(/class="lb-tile lb-show"[^>]*>[^]*Show A/.test(m.view()), "route() must send #/starred-shows to the followed shows (Library's grid)");
 });
 
 /* ==================================================================== */
@@ -356,7 +360,9 @@ test("the followed shows are on Library whole (Redesign 2026: #/starred-shows fo
      lists ALL of them: a cap or an "All N" link here would send the listener to the page they are on. The ruling
      that fell: "the Shows page carries the shortcut" (2026-09-03). The original reasoning below still describes the
      drawer half, which is unchanged.
-     MUTATION: re-cap libraryFollowedHtml with `.slice(0, LIBRARY_SECTION_CAP)` -> the six-rows assertion fails. */
+     The grid (libGridHtml) holds nine cells before "Show all", which opens the rest in place: six followed shows are all
+     drawn, and a tenth waits behind the toggle, never behind a link.
+     MUTATION: cut the grid to three cells (`LIB_GRID_MAX` = 3) -> the six-shows assertion fails. */
   /* Was: "the drawer nav carries a link to #/starred-shows". The founder
      named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
      Forays, Up Next) and Starred Shows is not one of them, so the drawer
@@ -385,9 +391,11 @@ test("the followed shows are on Library whole (Redesign 2026: #/starred-shows fo
   const many = {};
   for (let i = 0; i < 6; i++) many[`show-${i}`] = { show_id: `show-${i}`, title: `Show ${i}`, starred_at: `2026-09-0${i + 1}T00:00:00Z` };
   m.ctx.localStorage.setItem("cp_starred_shows", JSON.stringify(many));
-  const followedHtml = m.ctx.libraryFollowedHtml();
-  assert.strictEqual((followedHtml.match(/show-results|class="[^"]*show-row/g) || []).length >= 1, true, "Library draws the followed shows");
-  for (let i = 0; i < 6; i++) assert.ok(followedHtml.includes(`Show ${i}`), `Library lists followed show ${i}: all six, past the five-row cap other sections keep`);
+  /* REDESIGN 2026 (ambient Library): the grid is ShowTiles (nine cells at most, then the quiet row), not show rows.
+     MUTATION: drop followed shows from libGridHtml's cells (libFollowedShows() -> []) -> no tile is drawn, the assertions fail. */
+  const followedHtml = m.ctx.libGridHtml();
+  assert.strictEqual((followedHtml.match(/class="lb-tile lb-show"/g) || []).length, 6, "Library draws the followed shows as ShowTiles");
+  for (let i = 0; i < 6; i++) assert.ok(followedHtml.includes(`Show ${i}`), `Library lists followed show ${i}: all six fit under the nine-cell cap`);
   assert.ok(!followedHtml.includes('href="#/starred-shows"'), "and has no overflow link to a page it has folded in");
   m.ctx.renderAllShows();
   assert.ok(!m.view().includes('href="#/starred-shows"'), "…and Discover must not");

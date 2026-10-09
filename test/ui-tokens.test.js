@@ -922,14 +922,16 @@ test("a control marked loading has a look, and Reduce Motion stills it", () => {
 });
 
 test("the Up Next row the bar is on is drawn as the one that is on", () => {
-  /* Round-2 sweep, finishing p-impatient-6: upNextRow marks the row
-     `.is-current` + aria-current and left the look to this file; nothing drew
-     it. MUTATION: delete `body.ui-v2 .up-next-row.is-current` -> red. */
-  assert.match(APP_JS, /isCurrent \? " is-current" : ""/, "fixture assumption: app.js marks the row");
-  assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "border-color"), "var(--violet)",
-    "the same mark a Foray's sounding clip row wears");
-  assert.strictEqual(lastOn("body.ui-v2 .fy-row:has(.fy-jump.is-playing)", "border-color"), "var(--violet)", "for comparison");
-  assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "background"), "var(--surface2)");
+  /* Round-2 sweep, finishing p-impatient-6: the row the bar is on is marked `.is-current` + aria-current and the look
+     is drawn from that mark. REWRITTEN ON PURPOSE (Redesign 2026, ambient; the Up Next page unit): the row is Library's
+     QueueRow, not the legacy `.up-next-row`, and its look is the primitives' (`.ag .ag-queue-row.is-current` on the
+     Glow's row ground, with the Fill glyph and the word "Playing"), pinned for both pages by test/ambient-up-next.test.js.
+     What this keeps: app.js still marks the row, and the mark still has a look. MUTATION: delete the
+     `.ag .ag-queue-row.is-current` selector from ui/primitives.css, or the `is-current` class from libQueueRowHtml
+     -> red. */
+  assert.match(APP_JS, /\$\{current \? " is-current" : ""\}/, "fixture assumption: app.js marks the row");
+  const prim = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(prim, /\.ag \.ag-queue-row\.is-current\s*\{[^}]*background:[^;}]*var\(--glow-row\)/, "the current QueueRow is drawn on the Glow's row ground");
 });
 
 test("a route's focus landing never paints the ring — Home's wordmark included", () => {

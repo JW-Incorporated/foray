@@ -286,11 +286,13 @@ test("playing row k from the Up Next page moves THAT row to the top and keeps ev
   for (const it of [a, b, c, d]) m.ctx.addToQueue(it.id);
   const fake = makeFakePlayer();
   m.ctx.window.ForayPlayer = fake;
-  const rows = [a, b, c, d].map((it) => ({ id: it.id, ctx: "upnext" }));   // the literal upNextRow stamps (pinned below)
+  const rows = [a, b, c, d].map((it) => ({ id: it.id, ctx: "upnext" }));   // the literal the Up Next QueueRow stamps (pinned below)
   await clickRow(m, rows, 2);
   assert.strictEqual(fake.calls[0]?.item.id, c.id);
   assert.deepStrictEqual([...m.queueRaw()], [c.id, a.id, b.id, d.id], "c jumped to the top; nothing left, nothing else moved");
-  assert.match(m.ctx.upNextRow({ item: c, id: c.id, state: "live" }, 0, 1), /data-ctx="upnext"/, "the page's ▶ names its list");
+  /* PORTED (Redesign 2026, ambient): the page's row is Library's QueueRow, whose cover button names the list. MUTATION: draw
+     the cover with another data-ctx in libQueueRowHtml -> red. */
+  assert.match(m.ctx.libQueueRowHtml({ item: c, id: c.id, state: "live" }, { upnext: true, menu: true, page: true, ctx: "upnext" }), /data-lb-play="[^"]+" data-swipe-id="[^"]+" data-drag-handle="[^"]+" aria-describedby="up-next-drag-hint" data-ctx="upnext"/, "the page's row names its list");
 
   /* And when c ends, it leaves and the row that was first plays: nothing the
      listener passed over is lost. */

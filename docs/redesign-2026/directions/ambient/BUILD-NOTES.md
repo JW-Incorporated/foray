@@ -1126,6 +1126,213 @@ violet Play pill, Discover's pill wall and "Followed shows" button, the missing 
 upward onto a page that is not lit until those land.
 
 
+## 18. As built: phase 4, Library (`redesign/ambient-library`, `ui/library.js`, `ui/library.css`)
+
+Where the build departs from §3, §4.5, §10.7, §10.11, §11.1 and §12.2, or fills a gap in
+them. `test/ambient-library.test.js` pins every number here (each test names its mutation;
+58 were run red and restored); the live geometry was measured in a browser at 375, 393 and 412.
+
+1. **Which forays are in the grid.** The grid holds the forays the listener has **opened**
+   (a started or finished one has a progress row; most recent first), then followed shows.
+   A foray nobody opened is the catalogue's, not the listener's: Today offers it and
+   `#/forays` lists it. This is what lets a first-run Library say "Nothing followed yet."
+   and mean it (the harness's `empty` state lists two forays; listing them would make the
+   acceptance line unreachable). It overturns the 2026-09-22 "Forays into Library" cap-five
+   link section. Nine cells at most, forays first; one quiet "All" opens the list the nine
+   could not hold (`#/forays` when the forays alone overflow, else `#/starred-shows`).
+   Before the player module can list forays the grid claims nothing and offers "All forays".
+2. **Tiles.** Art is `--lb-art`: 104 at 393, 96 at 375 (`max-width: 392px`), 112 at 412
+   (`min-width: 412px`); columns are `1fr`, so a name has the full cell and clamps to three
+   lines (`overflow-wrap: normal`), `align-items: start`, row gap `--s-4` (16), column gap 12.
+   Measured: no `.name` overflows at any width; the longest seeded foray title is three lines.
+   The ForayTile's strip is one bar per run of the same show (narration left out, at 96px it
+   would be a sliver), the bars the listener has reached lit, 12 tall with 8px bars inside the
+   collage's bottom radius; the check shows on a finished foray. The Foray pill is 20 tall and
+   straddles the tile's top-left edge (§10.11, round 4 item 6). The pill and the strip's floor
+   use fixed on-art inks (`--lb-on-art` 0.86 dark under `#F3E7D3`), not the scheme's scrims:
+   in Dawn `--scrim-mid-base` is paper, which gave a cream pill with a cream label, and the
+   prototype's 0.55 reads 3.4:1 over white art. 0.86 reads 10:1 (pinned).
+3. **No followed badge** on a ShowTile (§10.7), and no `ag-art-badge` anywhere in the grid.
+4. **Sections.** Saved (EpisodeRows, five, then an in-place "All saved" that becomes "Show
+   fewer": there is no all-saved page, and Saved was never capped), Playlists (rows with a 56
+   collage, "6 episodes, 2 hr 10 min", "3 of 6 played" in Ember; five then "All playlists"),
+   Up Next, Downloads (native shell only, legacy markup inside the page), History (20,
+   newest first, a date caption, no menu). 32 between sections, 12 head to content, 8
+   between rows (measured). A SectionHead carries a count only when there is something to
+   count; History carries none. Saved's EpisodeRow has no why-line (it is a list of what the
+   listener kept) and **loses the legacy star and "+ Up Next" buttons**: its one control is
+   Play 44. Both stay on the episode page.
+5. **Up Next.** The playing row is first (Fill glyph 20, the Lamp word "Playing" and then
+   "· show · length", `--glow-row`), whether or not it is queued, with no menu: it leaves
+   the list when it ends. Every other row has the 44 menu. A tap anywhere on a row plays it
+   through `startEpisodePlay` with the Up Next context, so the played row moves to the top
+   (the Up Next model; `up-next-autoadvance` unchanged and green). The menu is a sheet (the
+   app's own `openSheet`: focus moves in, is trapped, returns to the dots button; Escape,
+   the scrim and a Close 44 dismiss it): Move up, Move down, Play next, Remove. Move up/down
+   write the whole list, playing row first, through `saveQueueIds`; Play next is
+   `playNextInQueue`; Remove is `removeFromQueue` and opens a 48 Toast with Undo for five
+   seconds, 8 above the bar. Undo restores the list exactly and the episode's snapshot.
+   Neighbours slide with a transform transition of `--m-ui` on `--e-out` (measured: two
+   280ms transitions on a Move down); Reduce Motion's one block forces the property list, so
+   they simply take their places. Focus returns to the moved row's dots button.
+   `saveQueueIds` repaints this section in place while Library is showing
+   (`repaintQueuePage` -> `repaintLibraryUpNext`); `#/queue` stays as the full page.
+   Capped at ten rows with "All N in Up Next" to `#/queue`.
+6. **Empty.** Every section is a SectionHead (no count), one line, one button: the grid
+   "Nothing followed yet." + "Find shows" (Discover, `#/shows` until the Dock unit retargets
+   it), "Nothing saved yet." / "Nothing queued." / "Nothing played yet." + "See today's
+   picks" (Today), "No playlists yet." + "Find shows". No paragraph anywhere.
+7. **Lit art.** Every grid tile writes its show's palette colour to `--art-glow` through the
+   CSSOM (`ui/palette.js`, byte for byte the Today unit's file: the prototype's 40 pairs
+   keyed by FNV-1a of the show name, hash hue otherwise); `.lit-art` paints it at radius 40.
+8. **The Dock's cast** is the token's `.dock-cast` element, drawn only while the bar is up
+   (`body.fp-open`, the player's own word, and `data-state` not idle), tinted by the playing
+   item's show: the page root's `--glow` is written from it, so `--glow-row` follows. It is
+   absent when nothing plays. It sits above the legacy bar (`--tab-bar-h` + `--mini`) until
+   the Dock unit replaces the bars.
+9. **No second reduced-motion block**, and no transition runs at first paint: the page is
+   drawn `.is-settling` (no transitions) and released two frames later, because reading the
+   Glow lightness forces a style recalculation before the Glow is written and the playing row
+   would otherwise crossfade from the default colour (the motion gate caught it).
+10. **Plumbing.** `#view` title row is `.lb-head` (the landing heading finds it); the legacy
+    top bar is hidden on Library as on Today; `body.view-library`. `ui/library.css` is in
+    `index.html` and the three shell lists; `ui/palette.js` is loaded after `ui/onboarding.js`.
+    Harness: seed `library` (the returning profile plus one part-played and one finished
+    foray), state `library` (steps `library`, `library-lower`, `library-up-next-menu`),
+    screens.json rows `library`, `library-empty`, `library-lower`, `library-up-next-menu`
+    (the prototype gained `?state=upnextmenu`), and `#lb-menu-panel` in the gates' sheet list.
+    Fidelity (393x852, run `library-i2`): the header box, the grid's origin and the sheet's
+    box are within 4px of the prototype; the tiles are 104 wide where the prototype's art
+    fills its 110px column (the acceptance numbers, 104 / 96 / 112, are the ones built);
+    the rows, mini and tab-bar deltas are data and the legacy chrome the Dock unit replaces.
+    `ambient-gallery` compares 123/123 identical; `ambient-app` differs only on Library
+    (24 shots) and gains the 9 `library` shots: re-record it on merge.
+
+### 17.1 Library, iteration 2 (art-director calls made unattended)
+
+Judges of iteration 1 did not prefer the build over today's Library: today labelled its sections and gave each
+foray its length, clip count and show count; the build's FORAY pills hung over the tiles' edges, its Saved row
+truncated the show name, and its titles mixed serif rows with sans captions. What changed, each pinned in
+`test/ambient-library.test.js` with a named mutation (all run red and restored):
+
+1. **Two labelled sections replace the one mixed grid.** "Forays" (the ones opened, six at most, a count in the
+   head, an Ember "All forays" link to `#/forays`, always there once forays are known) and "Followed shows" (six at
+   most, an in-place Ember "All" that becomes "Show fewer"). This overturns the prototype's one grid of nine and its
+   one "All"; the single "Nothing followed yet." line now sits under the Followed shows head. The "All" is in place
+   and not a link because the Dock unit folds `#/starred-shows` into Library (`ROUTE_ALIASES`): a link would point
+   at the page it is on. The Ember "All" the prototype has between grid and Saved is no longer missing.
+2. **No Foray pill.** The Forays head says what the pill said (the same logic as 10.7's followed badge), and the
+   pill overhung the tile's top-left edge. The strip along the tile's floor and the check on a finished foray stay.
+   This overturns 10.11 (round 4 item 6); `--lb-on-art`, `--lb-on-art-ink` and the pill's AA test are gone.
+3. **A foray tile carries its facts**, two short lines under the name (the three-line clamp stays): "51 min · 7
+   shows" and "22 clips", the same three facts `forayFactsLabel` gives the Forays page (the clip count includes the
+   narrator's clips, as the strip counts them). "about 43 min" reads "~43 min" in the tile so the line fits 96px.
+4. **Strip colours come from the artwork.** A bar's hue is its show's palette hue (`AG_PALETTES`, pushed 30 degrees
+   when within 24 of an earlier show, the prototype's rule) at the strip's lightness (Glow lightness 0.04 up in
+   Dusk, 0.04 down in Dawn, the prototype's `segColor2`) and ONE muted chroma, 0.10 (`LIB_BAR_CHROMA`). It is written
+   through the CSSOM (`--c`), never a style attribute. The `--seg-c0..7` rainbow is no longer drawn here; an
+   unpainted bar is the muted text grey.
+5. **One row treatment.** Saved's row is the QueueRow Up Next and History wear (art 56, the label-face title, one
+   caption, Play 44 as the third column), not a 96px serif EpisodeRow, and it drops the release date, which was
+   what squeezed the show to "Lex Fridman Po...". Its title is still the row's one link to the episode page (where
+   the star lives); Play is still `data-lb-play`. Serif now means a heading and nothing else on this page.
+
+Not this unit's: the Dock findings (one floating Veil, warm tint, three tabs, Phosphor Fill icons, the 44px
+forward-30 glyph and 2px Glow progress line, the mini player's DM Sans title) belong to `redesign/ambient-dock`;
+Library's shots still show the legacy bars until that branch merges. **At that merge** Library's own `.lb-cast`
+element and its `--tab-bar-h`-based offsets for the cast and the Toast should be retired in favour of the Dock's
+`#dock-cast` and its own bottom edge (the Dock draws its cast itself), and `ambient-app` re-recorded once.
+
+### 17.2 Library, iteration 3 (art-director calls made unattended)
+
+The iteration-2 review failed on tests, not on look: four `test/foray-surfaces.test.js` cases read the Foray rows by
+the old markup (`libraryRows`) and found none once the Library was tiles. What changed:
+
+1. **`libraryRows` is ported to the tile** (name, then the facts block, then the sr-only line), and the tests keep
+   what they pinned: every part-played Foray is labelled (not the rail's three), a part-played draft keeps its
+   "draft" tag, a finished one says "Played", every list surface says length and makeup. A Foray nobody opened is
+   not a tile (ruling 17.1.1), so the length-and-makeup test now opens it first.
+2. **The tile's screen-reader line is whole again.** It was `progress.get(id)` only, which lost the draft tag and
+   the length and makeup the old row said (honesty-12, p-foray-8). It is `forayListSubLabel`, the line every other
+   Foray list says, and the visible facts block is `aria-hidden` so they are read once.
+3. **A quiet link under a grid or list starts at the content edge** (`.lb-more`: no inline-start padding, the 44
+   tall target kept). "All forays" had been indented 16px off the tiles above it (judges of iteration 2).
+
+Not changed, and why. The two-section structure stays (17.1.1): it is what the judges praised (serif heads with
+counts, artwork-led tiles) and the prototype's single grid lost to today's Library on labelling in iteration 1; the
+fidelity deltas on the grid origin and tile height are that call and the facts under each tile (17.1.3). The
+Dock-owned findings (full-width opaque bar, violet play, four tabs, generic icons, back-15 glyph, the bar slicing
+the last caption row) belong to `redesign/ambient-dock`; the right-hand empty cell of a two-tile foray row is the
+grid, not a defect.
+
+### 17.3 Library, iteration 4 (art-director calls made unattended)
+
+Iteration 3's fidelity judges put the prototype ahead: the build's two labelled sections ("Forays" 2-up at ~208px,
+"Followed shows" under Fraunces heads with counts, a ~120px band between them) changed the density and hierarchy of the
+screen, its foray tiles carried two caption lines and a check badge the prototype does not, and Saved fell below the
+fold. DIRECTION is explicit ("Library forays are compact tiles", "art grids are 3-up", "the badge appears only where
+the state varies"), so the prototype's structure wins here and 17.1.1, 17.1.2 and 17.1.3 are overturned (17.1.4 and
+17.1.5 stand). Each change is pinned in `test/ambient-library.test.js` with a named mutation, all run red and restored:
+
+1. **One grid, no heads.** The forays the listener opened (six at most) then the followed shows, nine cells in three
+   rows of three, directly under the title (12 below it, as the prototype). No "Forays" or "Followed shows" head, no
+   count; the section carries `aria-label="Forays and followed shows"`. Under it one quiet row: an in-place
+   "Show all" ("Show fewer" once open) only when something is left out, and the Ember "All forays" link to `#/forays`
+   (the only way to the catalogue's unopened forays, so it stays). "Show all" is not the prototype's bare "All": a
+   second "All" next to "All forays" would not say what it opens.
+2. **The Lamp "Foray" pill is back**, as the prototype has it (`.pill.sm`, 20 tall, uppercase, 0.86 ink under the
+   Lamp's ivory, 10:1 over white art, AA-tested), but **inside** the art's top-left corner at 4/4 rather than
+   straddling the top edge: iteration 1's judges marked the overhang down, and an inset pill leaves the tile's box
+   the grid cell's box. This overturns 17.1.2 and keeps the rest of 10.11.
+3. **The strip is the prototype's `.mini-strip`**: a 36px shade along the collage's floor, the bars 8 tall, 6 in from
+   the sides and the floor, 3px wide at least, and the narrator's runs as 4px Lamp bars between the shows' (legible in
+   greyscale, DIRECTION's colour rule); the reached bars lit. At most sixteen bars (78px, inside a 96px tile): a foray
+   of fifty clips folds its two shortest neighbours until it fits, conserving the runtime. Before this a long foray's
+   bars ran out of the tile.
+4. **No status badge, no progress bar, no facts under the name.** A finished foray's check (BUILD-NOTES 3's ForayTile
+   row) is gone: the lit bars are the progress, and a Library tile only ever shows forays the listener has opened.
+   The facts block is gone; the screen-reader line (`forayListSubLabel`: draft tag, progress, length, makeup) still
+   says all of it, once.
+5. **Saved is on the first screen** (below the fold at 393x852 before; its head is at y=650 now the two sections are one grid) and the
+   section rhythm is the 4px grid's: 12 under the title, 8 to the quiet row, 32 to Saved.
+6. **Content fades behind the bars.** `.lb-fade` is a fixed 36px gradient from transparent to the page's ground over
+   the top edge of the legacy bars (above the mini player when it is up), clicks passing through, so a row is never
+   sliced mid-line by the bar's edge. Like `.lb-cast` it retires in favour of the Dock's own `.dock-fade` when
+   `redesign/ambient-dock` merges; `ambient-app` re-records once then.
+
+Not this unit's, and unchanged: the Dock findings (three tabs and no Create, one floating Veil, Ember play on a Glow
+tint, back-15 and forward-30 glyphs, the 2px Glow progress line, Phosphor Fill active tab) belong to
+`redesign/ambient-dock` and Library's shots still show the legacy bars until it merges.
+### 17.4 Library, iteration 5 (art-director calls made unattended)
+
+Judges of iteration 4 still marked the build down on the Dock and on three tile details. Each change is pinned in
+`test/ambient-library.test.js` with a named mutation (all run red and restored):
+
+1. **The Dock stopgap, as Today and Foray detail wear it** (`body.view-library` block in `ui/library.css`): the legacy
+   `#tab-bar` and `#foray-player` become one floating, gutter-inset, `--r-xl` Veil tinted by the playing item's Glow, a rim
+   between the rows and no gap, Ember Play, DM Sans title, a 2px Glow progress line, the active tab the Lamp Fill glyph. The
+   violet is gone. `libSyncCast` now writes the playing item's Glow on the root too, because the Dock is on `<body>`, outside
+   the page, and reads the root (the Veil takes the colour of whatever plays: the harness plays a blue-toned show, the
+   prototype a brown one; that is the Glow rule, not a fault). The hard-edged `.lb-fade` element is gone: the body's
+   `::after` fade (solid from 32px above the Dock's top row) means a Saved row runs dimmed under the Dock and is never sliced.
+   **Not done here, Dock-owned** (`redesign/ambient-dock`, which edits `player/client.js` and `ui/tabbar.js`): the 44px
+   forward-30 arc glyph in place of the text "back 15", and the Phosphor tab icons. At that merge `ui/library.css`'s block
+   retires with Today's and Foray detail's into `ui/dock.css`, as 457a4c15 did for them.
+2. **Two-line names.** `clamp3` -> `clamp2` on both tile kinds, so no row is taller than another (a three-line foray title
+   made row 1 taller than rows 2 and 3). The full title stays in the tile's screen-reader line and on its own page.
+3. **The strip is evenly rounded bars on a dark sill.** The shade along the collage's floor is a 28px gradient to
+   `--lb-on-art-sill` (0.78 ink; the 0.55 soft shade let the bars wash out over a bright collage, and its 36px reach tinted
+   the whole art brown), bars are fully rounded, the narrator's run is a 4px round Lamp dot (not a stretched pip), and a strip
+   holds eleven bars at most (not sixteen), so the show bars are 6px wide in the narrowest tile.
+4. **The Foray pill is the small one**: 16 tall (the ForayTile row of section 3), 11px type, 4px inside the top-left corner.
+   Its ink and ground are unchanged (10:1).
+5. **The grid's trailer reads "All"** (the prototype's word; its accessible name stays "All forays", which contains the
+   visible word) and is indented 28 (16 button padding plus the 12px column gap) so its word shares the second tile's edge;
+   the lists' links ("All saved", "Show fewer") keep the content edge. This overturns 17.2.3 for the grid only.
+
+Not changed: the 1px collage separator is already `gap: 1px` on `.ag-collage.c4` (the primitive; the Library adds no wash of its
+own), and the harness's letter artwork is fixture data.
+
 ## 16. As built: phase 4, Today (`redesign/ambient-today`, `ui/home.js`, `ui/today.css`, `ui/palette.js`)
 
 Screen 3 of `BUILD-PLAN.md` §2.1.3. What landed, and every place the build differs from a
@@ -1408,13 +1615,295 @@ Decisions the builder made while no one could be asked; each is also in the code
     replaces both. `foray-detail.css` minifies to 12.4 KB, its ceiling moves 10 to 14 KB in `prepare-webdir.test.mjs`. Fidelity
     `foray-detail-it4b`: header, hero, strip, primary regions unchanged from it3 (the foray row's 30px strip offset and the
     24px `why` height are the seed's one-line title and three-line why-line, as before).
+## 17. As built: phase 4, Library (`redesign/ambient-library`, `ui/library.js`, `ui/library.css`)
+
+Where the build departs from §3, §4.5, §10.7, §10.11, §11.1 and §12.2, or fills a gap in
+them. `test/ambient-library.test.js` pins every number here (each test names its mutation;
+58 were run red and restored); the live geometry was measured in a browser at 375, 393 and 412.
+
+1. **Which forays are in the grid.** The grid holds the forays the listener has **opened**
+   (a started or finished one has a progress row; most recent first), then followed shows.
+   A foray nobody opened is the catalogue's, not the listener's: Today offers it and
+   `#/forays` lists it. This is what lets a first-run Library say "Nothing followed yet."
+   and mean it (the harness's `empty` state lists two forays; listing them would make the
+   acceptance line unreachable). It overturns the 2026-09-22 "Forays into Library" cap-five
+   link section. Nine cells at most, forays first; one quiet "All" opens the list the nine
+   could not hold (`#/forays` when the forays alone overflow, else `#/starred-shows`).
+   Before the player module can list forays the grid claims nothing and offers "All forays".
+2. **Tiles.** Art is `--lb-art`: 104 at 393, 96 at 375 (`max-width: 392px`), 112 at 412
+   (`min-width: 412px`); columns are `1fr`, so a name has the full cell and clamps to three
+   lines (`overflow-wrap: normal`), `align-items: start`, row gap `--s-4` (16), column gap 12.
+   Measured: no `.name` overflows at any width; the longest seeded foray title is three lines.
+   The ForayTile's strip is one bar per run of the same show (narration left out, at 96px it
+   would be a sliver), the bars the listener has reached lit, 12 tall with 8px bars inside the
+   collage's bottom radius; the check shows on a finished foray. The Foray pill is 20 tall and
+   straddles the tile's top-left edge (§10.11, round 4 item 6). The pill and the strip's floor
+   use fixed on-art inks (`--lb-on-art` 0.86 dark under `#F3E7D3`), not the scheme's scrims:
+   in Dawn `--scrim-mid-base` is paper, which gave a cream pill with a cream label, and the
+   prototype's 0.55 reads 3.4:1 over white art. 0.86 reads 10:1 (pinned).
+3. **No followed badge** on a ShowTile (§10.7), and no `ag-art-badge` anywhere in the grid.
+4. **Sections.** Saved (EpisodeRows, five, then an in-place "All saved" that becomes "Show
+   fewer": there is no all-saved page, and Saved was never capped), Playlists (rows with a 56
+   collage, "6 episodes, 2 hr 10 min", "3 of 6 played" in Ember; five then "All playlists"),
+   Up Next, Downloads (native shell only, legacy markup inside the page), History (20,
+   newest first, a date caption, no menu). 32 between sections, 12 head to content, 8
+   between rows (measured). A SectionHead carries a count only when there is something to
+   count; History carries none. Saved's EpisodeRow has no why-line (it is a list of what the
+   listener kept) and **loses the legacy star and "+ Up Next" buttons**: its one control is
+   Play 44. Both stay on the episode page.
+5. **Up Next.** The playing row is first (Fill glyph 20, the Lamp word "Playing" and then
+   "· show · length", `--glow-row`), whether or not it is queued, with no menu: it leaves
+   the list when it ends. Every other row has the 44 menu. A tap anywhere on a row plays it
+   through `startEpisodePlay` with the Up Next context, so the played row moves to the top
+   (the Up Next model; `up-next-autoadvance` unchanged and green). The menu is a sheet (the
+   app's own `openSheet`: focus moves in, is trapped, returns to the dots button; Escape,
+   the scrim and a Close 44 dismiss it): Move up, Move down, Play next, Remove. Move up/down
+   write the whole list, playing row first, through `saveQueueIds`; Play next is
+   `playNextInQueue`; Remove is `removeFromQueue` and opens a 48 Toast with Undo for five
+   seconds, 8 above the bar. Undo restores the list exactly and the episode's snapshot.
+   Neighbours slide with a transform transition of `--m-ui` on `--e-out` (measured: two
+   280ms transitions on a Move down); Reduce Motion's one block forces the property list, so
+   they simply take their places. Focus returns to the moved row's dots button.
+   `saveQueueIds` repaints this section in place while Library is showing
+   (`repaintQueuePage` -> `repaintLibraryUpNext`); `#/queue` stays as the full page.
+   Capped at ten rows with "All N in Up Next" to `#/queue`.
+6. **Empty.** Every section is a SectionHead (no count), one line, one button: the grid
+   "Nothing followed yet." + "Find shows" (Discover, `#/shows` until the Dock unit retargets
+   it), "Nothing saved yet." / "Nothing queued." / "Nothing played yet." + "See today's
+   picks" (Today), "No playlists yet." + "Find shows". No paragraph anywhere.
+7. **Lit art.** Every grid tile writes its show's palette colour to `--art-glow` through the
+   CSSOM (`ui/palette.js`, byte for byte the Today unit's file: the prototype's 40 pairs
+   keyed by FNV-1a of the show name, hash hue otherwise); `.lit-art` paints it at radius 40.
+8. **The Dock's cast** is the token's `.dock-cast` element, drawn only while the bar is up
+   (`body.fp-open`, the player's own word, and `data-state` not idle), tinted by the playing
+   item's show: the page root's `--glow` is written from it, so `--glow-row` follows. It is
+   absent when nothing plays. It sits above the legacy bar (`--tab-bar-h` + `--mini`) until
+   the Dock unit replaces the bars.
+9. **No second reduced-motion block**, and no transition runs at first paint: the page is
+   drawn `.is-settling` (no transitions) and released two frames later, because reading the
+   Glow lightness forces a style recalculation before the Glow is written and the playing row
+   would otherwise crossfade from the default colour (the motion gate caught it).
+10. **Plumbing.** `#view` title row is `.lb-head` (the landing heading finds it); the legacy
+    top bar is hidden on Library as on Today; `body.view-library`. `ui/library.css` is in
+    `index.html` and the three shell lists; `ui/palette.js` is loaded after `ui/onboarding.js`.
+    Harness: seed `library` (the returning profile plus one part-played and one finished
+    foray), state `library` (steps `library`, `library-lower`, `library-up-next-menu`),
+    screens.json rows `library`, `library-empty`, `library-lower`, `library-up-next-menu`
+    (the prototype gained `?state=upnextmenu`), and `#lb-menu-panel` in the gates' sheet list.
+    Fidelity (393x852, run `library-i2`): the header box, the grid's origin and the sheet's
+    box are within 4px of the prototype; the tiles are 104 wide where the prototype's art
+    fills its 110px column (the acceptance numbers, 104 / 96 / 112, are the ones built);
+    the rows, mini and tab-bar deltas are data and the legacy chrome the Dock unit replaces.
+    `ambient-gallery` compares 123/123 identical; `ambient-app` differs only on Library
+    (24 shots) and gains the 9 `library` shots: re-record it on merge.
+
+### 17.1 Library, iteration 2 (art-director calls made unattended)
+
+Judges of iteration 1 did not prefer the build over today's Library: today labelled its sections and gave each
+foray its length, clip count and show count; the build's FORAY pills hung over the tiles' edges, its Saved row
+truncated the show name, and its titles mixed serif rows with sans captions. What changed, each pinned in
+`test/ambient-library.test.js` with a named mutation (all run red and restored):
+
+1. **Two labelled sections replace the one mixed grid.** "Forays" (the ones opened, six at most, a count in the
+   head, an Ember "All forays" link to `#/forays`, always there once forays are known) and "Followed shows" (six at
+   most, an in-place Ember "All" that becomes "Show fewer"). This overturns the prototype's one grid of nine and its
+   one "All"; the single "Nothing followed yet." line now sits under the Followed shows head. The "All" is in place
+   and not a link because the Dock unit folds `#/starred-shows` into Library (`ROUTE_ALIASES`): a link would point
+   at the page it is on. The Ember "All" the prototype has between grid and Saved is no longer missing.
+2. **No Foray pill.** The Forays head says what the pill said (the same logic as 10.7's followed badge), and the
+   pill overhung the tile's top-left edge. The strip along the tile's floor and the check on a finished foray stay.
+   This overturns 10.11 (round 4 item 6); `--lb-on-art`, `--lb-on-art-ink` and the pill's AA test are gone.
+3. **A foray tile carries its facts**, two short lines under the name (the three-line clamp stays): "51 min · 7
+   shows" and "22 clips", the same three facts `forayFactsLabel` gives the Forays page (the clip count includes the
+   narrator's clips, as the strip counts them). "about 43 min" reads "~43 min" in the tile so the line fits 96px.
+4. **Strip colours come from the artwork.** A bar's hue is its show's palette hue (`AG_PALETTES`, pushed 30 degrees
+   when within 24 of an earlier show, the prototype's rule) at the strip's lightness (Glow lightness 0.04 up in
+   Dusk, 0.04 down in Dawn, the prototype's `segColor2`) and ONE muted chroma, 0.10 (`LIB_BAR_CHROMA`). It is written
+   through the CSSOM (`--c`), never a style attribute. The `--seg-c0..7` rainbow is no longer drawn here; an
+   unpainted bar is the muted text grey.
+5. **One row treatment.** Saved's row is the QueueRow Up Next and History wear (art 56, the label-face title, one
+   caption, Play 44 as the third column), not a 96px serif EpisodeRow, and it drops the release date, which was
+   what squeezed the show to "Lex Fridman Po...". Its title is still the row's one link to the episode page (where
+   the star lives); Play is still `data-lb-play`. Serif now means a heading and nothing else on this page.
+
+Not this unit's: the Dock findings (one floating Veil, warm tint, three tabs, Phosphor Fill icons, the 44px
+forward-30 glyph and 2px Glow progress line, the mini player's DM Sans title) belong to `redesign/ambient-dock`;
+Library's shots still show the legacy bars until that branch merges. **At that merge** Library's own `.lb-cast`
+element and its `--tab-bar-h`-based offsets for the cast and the Toast should be retired in favour of the Dock's
+`#dock-cast` and its own bottom edge (the Dock draws its cast itself), and `ambient-app` re-recorded once.
+
+### 17.2 Library, iteration 3 (art-director calls made unattended)
+
+The iteration-2 review failed on tests, not on look: four `test/foray-surfaces.test.js` cases read the Foray rows by
+the old markup (`libraryRows`) and found none once the Library was tiles. What changed:
+
+1. **`libraryRows` is ported to the tile** (name, then the facts block, then the sr-only line), and the tests keep
+   what they pinned: every part-played Foray is labelled (not the rail's three), a part-played draft keeps its
+   "draft" tag, a finished one says "Played", every list surface says length and makeup. A Foray nobody opened is
+   not a tile (ruling 17.1.1), so the length-and-makeup test now opens it first.
+2. **The tile's screen-reader line is whole again.** It was `progress.get(id)` only, which lost the draft tag and
+   the length and makeup the old row said (honesty-12, p-foray-8). It is `forayListSubLabel`, the line every other
+   Foray list says, and the visible facts block is `aria-hidden` so they are read once.
+3. **A quiet link under a grid or list starts at the content edge** (`.lb-more`: no inline-start padding, the 44
+   tall target kept). "All forays" had been indented 16px off the tiles above it (judges of iteration 2).
+
+Not changed, and why. The two-section structure stays (17.1.1): it is what the judges praised (serif heads with
+counts, artwork-led tiles) and the prototype's single grid lost to today's Library on labelling in iteration 1; the
+fidelity deltas on the grid origin and tile height are that call and the facts under each tile (17.1.3). The
+Dock-owned findings (full-width opaque bar, violet play, four tabs, generic icons, back-15 glyph, the bar slicing
+the last caption row) belong to `redesign/ambient-dock`; the right-hand empty cell of a two-tile foray row is the
+grid, not a defect.
+
+### 17.3 Library, iteration 4 (art-director calls made unattended)
+
+Iteration 3's fidelity judges put the prototype ahead: the build's two labelled sections ("Forays" 2-up at ~208px,
+"Followed shows" under Fraunces heads with counts, a ~120px band between them) changed the density and hierarchy of the
+screen, its foray tiles carried two caption lines and a check badge the prototype does not, and Saved fell below the
+fold. DIRECTION is explicit ("Library forays are compact tiles", "art grids are 3-up", "the badge appears only where
+the state varies"), so the prototype's structure wins here and 17.1.1, 17.1.2 and 17.1.3 are overturned (17.1.4 and
+17.1.5 stand). Each change is pinned in `test/ambient-library.test.js` with a named mutation, all run red and restored:
+
+1. **One grid, no heads.** The forays the listener opened (six at most) then the followed shows, nine cells in three
+   rows of three, directly under the title (12 below it, as the prototype). No "Forays" or "Followed shows" head, no
+   count; the section carries `aria-label="Forays and followed shows"`. Under it one quiet row: an in-place
+   "Show all" ("Show fewer" once open) only when something is left out, and the Ember "All forays" link to `#/forays`
+   (the only way to the catalogue's unopened forays, so it stays). "Show all" is not the prototype's bare "All": a
+   second "All" next to "All forays" would not say what it opens.
+2. **The Lamp "Foray" pill is back**, as the prototype has it (`.pill.sm`, 20 tall, uppercase, 0.86 ink under the
+   Lamp's ivory, 10:1 over white art, AA-tested), but **inside** the art's top-left corner at 4/4 rather than
+   straddling the top edge: iteration 1's judges marked the overhang down, and an inset pill leaves the tile's box
+   the grid cell's box. This overturns 17.1.2 and keeps the rest of 10.11.
+3. **The strip is the prototype's `.mini-strip`**: a 36px shade along the collage's floor, the bars 8 tall, 6 in from
+   the sides and the floor, 3px wide at least, and the narrator's runs as 4px Lamp bars between the shows' (legible in
+   greyscale, DIRECTION's colour rule); the reached bars lit. At most sixteen bars (78px, inside a 96px tile): a foray
+   of fifty clips folds its two shortest neighbours until it fits, conserving the runtime. Before this a long foray's
+   bars ran out of the tile.
+4. **No status badge, no progress bar, no facts under the name.** A finished foray's check (BUILD-NOTES 3's ForayTile
+   row) is gone: the lit bars are the progress, and a Library tile only ever shows forays the listener has opened.
+   The facts block is gone; the screen-reader line (`forayListSubLabel`: draft tag, progress, length, makeup) still
+   says all of it, once.
+5. **Saved is on the first screen** (below the fold at 393x852 before; its head is at y=650 now the two sections are one grid) and the
+   section rhythm is the 4px grid's: 12 under the title, 8 to the quiet row, 32 to Saved.
+6. **Content fades behind the bars.** `.lb-fade` is a fixed 36px gradient from transparent to the page's ground over
+   the top edge of the legacy bars (above the mini player when it is up), clicks passing through, so a row is never
+   sliced mid-line by the bar's edge. Like `.lb-cast` it retires in favour of the Dock's own `.dock-fade` when
+   `redesign/ambient-dock` merges; `ambient-app` re-records once then.
+
+Not this unit's, and unchanged: the Dock findings (three tabs and no Create, one floating Veil, Ember play on a Glow
+tint, back-15 and forward-30 glyphs, the 2px Glow progress line, Phosphor Fill active tab) belong to
+`redesign/ambient-dock` and Library's shots still show the legacy bars until it merges.
+
+## 18. As built: phase 4, the Up Next page (`redesign/ambient-up-next`, `ui/queue.js`, `ui/queue.css`)
+
+Screen 13 (`#/queue`; `returning/up-next`, `player/mini-player-up-next`; the prototype has no route for it, so the
+fidelity pair is its Library Up Next section and the menu sheet, `screens.json` rows `up-next` and `up-next-menu`).
+**The page is Library's Up Next section given the screen**, and it does not draw a second copy of any of it:
+
+1. **One row, one menu, one Toast, five writers.** The page asks `ui/library.js` for every piece: `libQueueRowHtml` (the
+   QueueRow, with a `page` flag), `libMenuItems`/`libOpenMenu`/`libMenuAct` (Move up, Move down, Play next, Remove),
+   `libRemoveRow` + `libUndo` + `libToastHtml` (the Toast, five seconds), `libSlideRows` (the neighbours, `--m-ui` on
+   `--e-out`) and `repaintLibraryUpNext`, which now repaints either section in place: the page's carries
+   `data-lb-page`, and the repaint then draws the page's head (Back, title, "N queued", Clear, the drag hint) and all
+   rows (no cap, no "All N" link) instead of Library's head and ten. `repaintQueuePage` dispatches both routes to it,
+   so a write to `cp_queue` never rebuilds `#view` and the menu, Toast, scroll and focus survive. The playing row is
+   first with the Fill glyph and the Lamp word "Playing" (the Library rule: no menu, no handle, it leaves the list
+   when it ends). The page wears `body.view-library`, so Library's stylesheet (top bar off, the page's ground, the cast,
+   the fade, the Toast, the menu sheet) applies as is; `ui/queue.css` holds only what Library lacks (the head, the
+   handle, the gestures' paint, a fourth grid column).
+2. **What this overturns** (named for `test-classification.md`): the page's own numbered `.ep-row` with ▶, ☆, ⋮⋮, Next,
+   ↑, ↓ and ✕ ("card anatomy": the row numbers and the star left it; the star stays on the episode page, the order
+   is the order on screen and a move says its new place aloud), and the "Nothing in Up Next yet" paragraph (now
+   Library's one line and one button).
+3. **The founder's two gestures stay** (#762, PQ-04 drag to reorder, PQ-06 swipe left to remove; both KEEP in the
+   classification). Each row with a menu has a 44px drag handle drawn as six dots in `--text-2` (the sprite is closed at
+   37 symbols and has no grip), its column only 24 wide so the caption keeps the room (the button is 44 and reaches 10px
+   into the gaps; the menu's edge is 2px beyond it); the swipe listens on the row's cover (the button a finger lands
+   on), keeps the vertical scroll with `touch-action: pan-y`, reveals "Remove" past the row's right edge, and now
+   removes through `libRemoveRow`, so a swipe has the menu's Toast and Undo. A claimed swipe's trailing click does not
+   play the row (`_lbSwallow`). The drag moves the DRAWN rows (`data-lb-q`), keeps the playing row first and does not
+   write an unqueued playing row into `cp_queue`. The rules (`player/queue-drag.js`, `queue-swipe.js`) are untouched.
+4. **Two small changes to shared Library code, both better for Library too.** An Up Next row now says "Played" for a
+   queued episode already finished (audit round 2, honesty-5: the old page said it, the Library row did not); History
+   keeps its length. The Toast rises in by `animation: lb-toast-in` instead of a `transition`: under Reduce Motion the one
+   block can only soften a transition to a 200ms opacity crossfade, which the motion gate reads as motion (it flagged
+   the first Remove it saw, on this page; Library's Toast had the same latent finding, never exercised), while it
+   collapses an animation to 1ms. The Toast leaves at once.
+5. **Measured** (real browser, `up-next-toast` step, 375x667, 393x852, 412x915): the Toast's bottom is exactly 8px above
+   the mini row's top at all three (724 to 732, 539 to 547, 787 to 795), 48 tall; rows 72px; handle and menu both 44 with a
+   2px clearance; no horizontal overflow (scrollWidth = viewport). Fidelity against the prototype Library's Up Next
+   section: first row 353x72 on the same left edge (+0.4 in height), the menu sheet identical (0, 0, 0, 0); the
+   mini and tab bar deltas are the legacy bars, the Dock unit's.
+6. **Left alone on purpose.** styles.css keeps the dead `.up-next-row`, `.reorder`, `.up-next-remove`, `.q-num` and
+   `.swipe-under` rules (`ui-tokens` and `tap-targets` pin them as legacy look; retire them with the legacy sheet), and
+   `moveQueueItem` has no caller but its own tests (`up-next-queue`, K: they pin the swap rule and its bounds; Library's menu does its own swap, so a follow-up can delete both together).
+   `libCastHtml`'s cast and fade are reused as is and retire with the Library's when the Dock lands.
+7. **Iteration 2 (judge findings, after the merge of the Show page).** What fell, and what was left to its owner:
+   - **No handle glyph.** The direction gives a QueueRow one trailing control, the menu (Move up, Move down, Remove). The
+     six-dot handle (item 3 above) was a second control that crowded the text column to 24px and forced the cuts. It is gone,
+     with its fourth grid column, its `.qp-handle` styles and its `tap-targets` entry. **The founder's drag (#762, PQ-04) stays,
+     rebound:** a HOLD on the row's cover (`QP_HOLD_MS` 350, `QP_HOLD_SLOP` 8) lifts the row ("Picked up." said, the lift
+     shadow), and the rules in `player/queue-drag.js` run unchanged from there. A finger that travels 8px before the hold is a
+     scroll or a swipe and drops the hold; once lifted the touchmove is cancelled so the page does not pan; a lifted release
+     with no travel writes nothing and swallows the click (`_lbSwallow`, as a claimed swipe does); the swipe lets go while a
+     drag is armed (`_dragArmed`). The cover carries `data-drag-handle`, so the focus helpers find the row's cover; Move up /
+     Move down in the menu remain the way for a keyboard or switch user, and the sr-only hint now says "Hold, then drag".
+   - **Titles and captions are never cut** (DIRECTION: titles never cut; the prototype wraps a title whole). The QueueRow's
+     title lost `clamp2`, and its caption runs as inline wrapping text (`.lb-ell` is `white-space: normal`, the meta a block)
+     instead of one nowrap line with an ellipsis, so the length and date after a long show name are always readable. The row's
+     64 is a minimum; it grows. This is Library's QueueRow too (Up Next and History there), so the two cannot drift.
+   - **History continues under the queue on the page**, as it does in the prototype's Library: `libHistorySectionHtml()`
+     (the Library's own, factored out of `renderLibrary`) is drawn after the queue section. Back, "N queued" and Clear stay:
+     the page is reached from Library's "All N in Up Next" and Back returns there; Clear is the page's one destructive
+     control and a count is its own sentence; the prototype has no route for this page, so those three are owner calls the art
+     director keeps (decision logged here, not asked).
+   - **Not this unit's, left to the Dock unit** (the page wears the legacy mini player and tab bar until `redesign/ambient-dock`
+     merges): the floating Veil material and hairlines, the mini player's play colour and glyphs and its title face, the tab
+     labels. **Glow tint** (cool violet on the playing row and the bar) is the specified fallback, not a defect: a show
+     outside the palette table gets a hash hue (ui/palette.js, DIRECTION "a hash hue the fallback"), and the harness has no
+     remote artwork, so "Lex Fridman Podcast" hashes to violet; the prototype's seed happens to land on amber.
+   - Measured, `up-next-it2` (393x852): rows +0/+12 (the back row; the prototype is a scrolled crop of Library's section with
+     no page head) and +18.6 tall (the wrapped four-line title that used to be cut); sheet delta 0, 0, 0, 0; mini and tab bar
+     the Dock unit's (+40 wide).
+8. **Iteration 3 round (second judge pass), decided without the owner.** Fixed: **Clear is the caption's grey, not Ember**
+   (`.qp-clear`, `ui/queue.css`; Ember is the listener's own marks and `.ag-btn-quiet` paints it by default; a guard test pins the
+   override). Left, with the reason: (a) the **Back chevron and "N queued"** stay: this page is reached from Library's "All N in
+   Up Next" and by URL, not from the Dock, so it needs the history-aware Back (`card-anatomy`, KEEP), and the plain-language count
+   is pinned by `up-next-queue`; (b) the **cool tint on the playing row** is a harness artefact (item 7: no remote artwork, so the
+   show hashes to violet); a show in the palette table, or a real cover, reads as its own art, and `AG_NEUTRAL_GLOW` is warm; (c) the
+   **"4a added" eyebrow and why-line** are not built: `cp_queue` holds ids only and nothing records who queued a row, and "state
+   observed, never declared" forbids inventing the provenance; the primitive exists (`agQueueRow({state: "added"})`) for the day a
+   queue write carries a reason; (d) rows of 90 to 200px are real titles that are never cut (item 7), 64 is a minimum; (e) tab labels,
+   the mini player's title face and the Ember active tab belong to the Dock unit; (f) the Discover tap-target debt
+   (`discover-kb`, `discover-results-groups`, both covered tiles) and the Library, starred-shows and now-playing baseline diffs
+   belong to their own units: this branch changes neither.
+9. **Iteration 3 (third judge pass), decided without the owner.** Fixed: (a) **one Glow for the row and the Dock.** The mini player
+   and its cast live outside the page and read the ROOT's `--glow`, which only a pick on Today moved, so a track started anywhere else
+   lit the playing row in the show's hue over a mini player in the default warm one (the judges' "two surfaces, two light sources").
+   `libSyncCast` now sets the playing show's Glow on the root as well as on the page; row, mini and cast agree. The hue itself is
+   still the show's (a palette-table show or a real cover reads as its own art; the harness has no artwork, so "Lex Fridman Podcast"
+   hashes to violet, the specified fallback), so a cool tint is correct when the show is cool. (b) **The head is Library's section
+   head**: the title sits on the gutter edge every card shares and the count is a quiet numeral at the right (`5`, spoken as "5
+   queued" by an sr-only twin); Back moved to a slim row of its own above it instead of indenting the title. (c) **Clear is no header
+   action**: it sits under the last queued row as the quiet grey "Clear Up Next" (`.qp-foot`), still offered for more than one. Left:
+   Back stays (the page is reached from Library's "All N in Up Next" and by URL; `card-anatomy`, KEEP); the Dock's labelled tabs show
+   because the page is not scrolled, the recede is the Dock's scroll behaviour. The two Discover tap-target entries are the Discover
+   unit's (`gates --states up-next,library` is clean on this branch).
+10. **Iteration 6 (fourth review of the unit), decided without the owner.** Tests: the one failure this unit caused was
+   `test/ambient-forays-list.test.js`, which still pinned the harness park route as `#/queue`/`#/starred-shows`; it now pins
+   `#/about` plus `parkAway` emptying `#view` and the two places that name the route, each with its mutation. The bundle-cap
+   failure was not this unit: it was the base branch carrying Library twice in the three shell lists after the trunk merge;
+   with one `ui/library.css` entry (and `ui/queue.css` beside it) `tools/mobile` reads 1327 passing, and the 9 left are the
+   CRLF-checkout native/iOS file tests that need LF. Trunk merged in again (Library, Forays list, Playlists landed): Library
+   keeps trunk's Dock-owned cast/fade tests, this unit keeps `libHistorySectionHtml` (the Up Next page ends with History) and
+   the Toast on `--dock-h`. Gates (`up-next,library,returning,player`, 33 screens): new 0. The visual findings repeated from
+   items 7 to 9 and stand as decided there: the cool Glow is the hash-hue fallback for a show outside the palette table (the
+   harness has no artwork), the pushed screen's Back and the quiet "Clear Up Next" are kept, the Dock labels are the
+   un-scrolled state, and the mini player's 2px line is the Dock's, empty at 0% played.
 
 ## Episode page, as built (2026-10-08, branch `redesign/ambient-episode`, `ui/episode.js`, `ui/episode.css`)
-
 Screen 11 of `BUILD-PLAN.md` (`returning/episode`, `stress/episode`, `stress/episode-token`). There is no prototype route for
 it, so there is no fidelity run; the page borrows Now Playing's episode anatomy (title, show line, italic why-line) and Foray
 detail's Room, at the sizes the plan names. Where this departs from the lines above:
-
 1. **A Room that follows the scheme.** `.ag.ep` over a fixed `.room.ep-room`: the show's artwork blurred under the same
    pixel-set scrim as Foray detail (ramp from 120, mid stop at 236: 8 pad, 44 head, 8, the 160 art, 16, so the title's first line
    sits on the stop the token suite measures). Dawn takes the paper Room from the tokens. The page sets the root's `--glow` to the
@@ -1459,7 +1948,7 @@ detail's Room, at the sizes the plan names. Where this departs from the lines ab
    episode the returning seed neither saved nor queued (prose, a chapter-style list, an inline stamp, a link), the notes opened,
    and the Up Next add. `returning/episode`, `stress/episode` and `stress/episode-token` were already steps; the token seed's
    known-debt overflow entry (`overflow | stress/episode-token | div.page > div.page-head > div`) is now stale and can be removed.
-## 17. Show page (built, `redesign/ambient-show`)
+## 19. Show page (built, `redesign/ambient-show`)
 
 Screen 10 of the screen list: `ui/show.js` (`showRoomHtml`, `showEpisodeRowHtml`, `showRowsLatestFirst`), `ui/show.css`, and the Follow button in `app.js` (`showStarBtn`, `paintFollow`). No prototype route exists, so there is no fidelity pair; the is-it-better pair is the only judged one.
 

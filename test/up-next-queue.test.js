@@ -95,6 +95,20 @@ function makeViewEl() {
     set(v) { html = v; el._episodes = null; },
   });
   el.querySelector = (sel) => {
+    /* The Up Next page's section (ui/queue.js; Redesign 2026): `repaintLibraryUpNext` repaints it IN PLACE, so the
+       page is a live view without #view being rebuilt. This answers the one selector it asks with a section whose
+       innerHTML reads and writes the slice of the page between its tags, so the repaint shows in `view()`. */
+    if (String(sel).includes('data-lb-section="upnext"')) {
+      const open = '<section class="lb-section qp-section" data-lb-section="upnext" data-lb-page="queue">';
+      if (!html.includes(open)) return null;
+      const bounds = () => { const s = html.indexOf(open) + open.length; return [s, html.indexOf("</section>", s)]; };
+      return {
+        dataset: { lbPage: "queue" }, contains: () => false, querySelectorAll: () => [], querySelector: () => null,
+        getBoundingClientRect: () => ({ top: 0 }),
+        get innerHTML() { const [s, e] = bounds(); return html.slice(s, e); },
+        set innerHTML(v) { const [s, e] = bounds(); html = html.slice(0, s) + v + html.slice(e); },
+      };
+    }
     if (!String(sel).includes("[data-show-episodes]")) return null;
     if (!html.includes("data-show-episodes")) return null;
     if (!el._episodes) el._episodes = makeEl("div");
@@ -361,11 +375,13 @@ test("addToQueue does not duplicate an episode already queued", async () => {
 /* 4. #/queue LISTS EVERY QUEUED EPISODE, IN ORDER, PLAYABLE             */
 /* ==================================================================== */
 
-test("#/queue lists every queued episode in saved order, each playable and starrable", async () => {
+test("#/queue lists every queued episode in saved order, each playable (the star lives on the episode page)", async () => {
   /* MUTATION: sort queueRows() by anything other than insertion order (e.g.
      alphabetically by title). The order assertion fails.
-     MUTATION 2: drop playBtn(item) from upNextRow for a live row. The
-     data-play assertion fails. */
+     MUTATION 2: drop the cover button from libQueueRowHtml for a live row. The
+     data-lb-play assertion fails.
+     RULING THAT FELL (Redesign 2026, ambient; card anatomy): the page's row is Library's QueueRow, which has no star;
+     the star stays on the episode page. The `data-star` assertion went with it. */
   const m = await mountBooted();
   const discover = readJson("data/discover.json");
   const playable = discover.items.filter((it) => it.audio_url);
@@ -381,8 +397,9 @@ test("#/queue lists every queued episode in saved order, each playable and starr
   const posB = html.indexOf(m.ctx.esc(b.title));
   assert.ok(posA >= 0 && posB >= 0, "both queued episode titles must render");
   assert.ok(posA < posB, "episodes must render in the order they were added");
-  assert.ok(html.includes(`data-play="${m.ctx.esc(a.id)}"`), "a live queued episode must be playable in-app");
-  assert.ok(html.includes(`data-star="${m.ctx.esc(a.id)}"`), "a live queued episode must be starrable");
+  assert.ok(html.includes(`data-lb-play="${m.ctx.esc(a.id)}"`), "a live queued episode must be playable in-app");
+  assert.ok(html.includes(`data-lb-q="${m.ctx.esc(a.id)}"`), "and it is a QueueRow, the one Library draws");
+  assert.ok(!html.includes("data-star="), "no star on a QueueRow: it lives on the episode page");
 });
 
 /* ==================================================================== */
@@ -402,8 +419,9 @@ test("#/queue with nothing queued renders an honest empty state, not a blank pag
 
   assert.doesNotThrow(() => m.ctx.renderQueue());
   const html = m.view();
-  assert.ok(html.includes("Nothing in Up Next yet"), `expected an honest empty state, got: ${html}`);
-  assert.ok(!/class="ep-row/.test(html), "an empty queue must render zero rows");
+  assert.ok(html.includes("Nothing queued."), `expected an honest empty state, got: ${html}`);
+  assert.ok(html.includes("See today&#39;s picks"), "and the one button out of it");
+  assert.ok(!/class="[^"]*qp-row/.test(html), "an empty queue must render zero rows");
 });
 
 /* ==================================================================== */
@@ -434,7 +452,7 @@ test("removing the last item leaves #/queue on its honest empty state, not a bro
   m.ctx.removeFromQueue("ep-only");
   assert.doesNotThrow(() => m.ctx.renderQueue());
   const html = m.view();
-  assert.ok(html.includes("Nothing in Up Next yet"), `expected the empty state after removing the last item, got: ${html}`);
+  assert.ok(html.includes("Nothing queued."), `expected the empty state after removing the last item, got: ${html}`);
 });
 
 /* ==================================================================== */
@@ -485,7 +503,7 @@ test("route() dispatches #/queue to renderQueue, matching the #/playlists patter
 
   m.ctx.location.hash = "#/queue";
   m.ctx.route();
-  assert.ok(m.view().includes("Nothing in Up Next yet"), "route() must dispatch to renderQueue for #/queue");
+  assert.ok(m.view().includes("Nothing queued."), "route() must dispatch to renderQueue for #/queue");
 });
 
 /* ==================================================================== */
@@ -515,7 +533,7 @@ test("a write to Up Next repaints the page while it is showing, and only then (a
   /* The same write from continuous playback's end-of-episode path. */
   m.ctx.window.ForayPlayer = { async play() { return true; }, onEpisodeEnded() { return () => {}; }, setEpisodeNavigation() { return true; }, currentEpisodeId() { return null; } };
   m.ctx.advanceQueueOnEnded(b.id);
-  assert.ok(m.view().includes("Nothing in Up Next yet"), "the finished episode's row leaves the page it was watched from");
+  assert.ok(m.view().includes("Nothing queued."), "the finished episode's row leaves the page it was watched from");
 
   /* And on any other page, a write paints nothing into #view. */
   m.ctx.location.hash = "#/";
@@ -526,26 +544,31 @@ test("a write to Up Next repaints the page while it is showing, and only then (a
 
 test("the row the bar is on is marked .is-current, playing or paused (audit round 2, p-impatient-6)", async () => {
   /* Only the ❚❚ glyph said which row was current, and a paused current row
-     had none. MUTATION: drop the isCurrent read from upNextRow -> no row is
-     marked. */
+     had none. MUTATION: drop the `current` argument from the first row in libUpNextInnerHtml -> no row is
+     marked. MUTATION 2: key the mark on isPlaying instead of the bar's episode -> the paused case is red.
+     PORTED (Redesign 2026, ambient): the playing row is first on screen, marked by the Fill glyph, the word
+     "Playing" and aria-current; it is the row the BAR is on (playing OR paused), not the first queued. */
   const m = await mountBooted();
   const [a, b] = readJson("data/discover.json").items.filter((it) => it.audio_url);
   m.ctx.addToQueue(a.id);
   m.ctx.addToQueue(b.id);
-  m.ctx.window.ForayPlayer = { isCurrent: (id) => id === b.id };
+  m.ctx.window.ForayPlayer = { isCurrent: (id) => id === b.id, currentEpisodeId: () => b.id, isPlaying: () => false };
   m.ctx.renderQueue();
-  const rows = [...m.view().matchAll(/<div class="ep-row up-next-row([^"]*)"([^>]*)>/g)];
-  assert.strictEqual(rows.length, 2);
-  assert.ok(!rows[0][1].includes("is-current"), "row 1 is not current");
-  assert.ok(rows[1][1].includes("is-current") && rows[1][2].includes('aria-current="true"'), "row 2 is the one the bar is on");
+  const rows = [...m.view().matchAll(/<article class="([^"]*qp-row[^"]*)" data-lb-q="([^"]*)"([^>]*)>/g)];
+  assert.strictEqual(rows.length, 2, "the playing row is listed once, not twice");
+  assert.ok(rows[0][1].includes("is-current") && rows[0][3].includes('aria-current="true"'), "the row the bar is on is first and marked, though only paused");
+  assert.strictEqual(rows[0][2], m.ctx.esc(b.id), "and it is b, not the first queued");
+  assert.ok(!rows[1][1].includes("is-current"), "the other row is not current");
+  assert.match(m.view(), /<span class="ag-row-state">Playing<\/span>/, "the Lamp word");
 });
 
 test("a queued row and the episode page carry the player's 'Played' / 'NN min left' (audit round 2, honesty-5)", async () => {
   /* Every other episode row had the mark since persona 78; the Up Next row and
      the episode page did not, so a half-finished queued episode looked fresh and
      the mark vanished on the way into its page.
-     MUTATION: drop `progHtml` from upNextRow's live sub-line, or from
-     renderEpisode's meta line -> the matching assertion goes red. */
+     MUTATION: drop the `o.upnext` allowance for a played row in libQueueRowHtml, or `progHtml` from
+     renderEpisode's meta line -> the matching assertion goes red.
+     PORTED (Redesign 2026, ambient): the mark is the QueueRow's caption, not a span of its own. */
   const m = await mountBooted();
   const [a, b] = readJson("data/discover.json").items.filter((it) => it.audio_url);
   m.ctx.addToQueue(a.id);
@@ -556,8 +579,9 @@ test("a queued row and the episode page carry the player's 'Played' / 'NN min le
       : { state: "in-progress", percent: 50, label: "20 min left" }),
   };
   m.ctx.renderQueue();
-  assert.match(m.view(), /<span class="ep-progress is-played">Played<\/span>/, "the finished queued row says so");
-  assert.match(m.view(), /<span class="ep-progress">20 min left<\/span>/, "the half-way queued row says how far");
+  const rowOf = (id) => { const at = m.view().indexOf(`data-lb-q="${m.ctx.esc(id)}"`); return m.view().slice(at, m.view().indexOf("</article>", at)); };
+  assert.match(rowOf(a.id), /class="lb-ell">[^<]*\bPlayed<\/span>/, "the finished queued row says so");
+  assert.match(rowOf(b.id), /class="lb-ell">[^<]*\b20 min left<\/span>/, "the half-way queued row says how far");
   m.ctx.renderEpisode(b.id);
   assert.match(m.view(), /ep-caption[^]*?<span class="ep-progress">20 min left<\/span>/, "the episode page keeps the mark");
 });
@@ -569,8 +593,10 @@ test("an Up Next row with no details says one sentence about THIS page (audit ro
   const m = mount({ seed: { cp_queue: JSON.stringify(["an-id-nothing-can-name"]) } });
   m.state.session = { session_id: "s", episodes: {}, cards: [] };
   m.ctx.renderQueue();
-  assert.ok(m.view().includes("4a no longer has this episode's details"), m.view());
-  assert.ok(!/history/i.test(m.view()), "the sentence does not mention History");
+  assert.ok(m.view().includes(m.ctx.esc("4a no longer has this episode's details")), m.view());
+  /* The page now ends with Library's History section (its head says "History"), so the sentence is read from the queue's own section. */
+  const queueOnly = m.view().slice(0, m.view().indexOf('data-lb-section="history"') < 0 ? undefined : m.view().indexOf('data-lb-section="history"'));
+  assert.ok(!/history/i.test(queueOnly), "the sentence does not mention History");
 });
 
 test("the snapshot cap never prunes a QUEUED episode (audit round 2, p-impatient-11)", () => {
@@ -691,7 +717,7 @@ test("Clear keeps the playing row and announces the count (PQ-02, #762)", () => 
      row) -> cp_queue is [] and the announcement says 3, both red. */
   const m = mountQueue(["a", "b", "c"], "b");
   const clear = fakeButton({});
-  m.ctx.bindUpNextReorder({ querySelectorAll: (sel) => (sel === "#up-next-clear" ? [clear] : []) });
+  m.ctx.bindUpNextClear({ querySelectorAll: (sel) => (sel === "#up-next-clear" ? [clear] : []) });
   assert.ok(clear.onClick, "the Clear control is bound by the Up Next page's binder");
   clear.onClick(CLICK);
   assert.deepStrictEqual(m.queueRaw(), ["b"], "everything but the playing row is gone");
@@ -700,22 +726,24 @@ test("Clear keeps the playing row and announces the count (PQ-02, #762)", () => 
 });
 
 test("#/queue renders Clear only with two or more rows, and a Play next per row, disabled on the row after the playing one (PQ-02, #762)", () => {
-  /* MUTATION (run, red): drop `ids[curIdx + 1] === id` from upNextRow's
-     playNextDisabled (leave `false`) -> b's Play next is enabled. MUTATION 2:
-     render Clear for any non-empty list -> the one-row page shows it. */
+  /* MUTATION (run, red): drop `at === 0` from libMenuItems' Play next (leave
+     `!playable`) -> b's Play next is enabled. MUTATION 2: render Clear for any non-empty list -> the one-row page
+     shows it.
+     PORTED (Redesign 2026, ambient): Play next is an item of the row's menu (the same libMenuItems Library's menu uses),
+     not a button on the row; the playing row has no menu at all. Clear is in the page's head. */
   const m = mountQueue(["a", "b", "c"], "a");
   m.ctx.renderQueue();
   const html = m.view();
-  const controls = [...html.matchAll(/<button type="button" class="reorder playnext" data-playnext="([^"]+)" (disabled)?/g)]
-    .map((x) => [x[1], !!x[2]]);
-  assert.deepStrictEqual(controls, [["a", true], ["b", true], ["c", false]],
-    "one Play next per row; off on the playing row and on the row already next");
+  const menus = [...html.matchAll(/data-lb-menu="([^"]+)"/g)].map((x) => x[1]);
+  assert.deepStrictEqual(menus, ["b", "c"], "a menu per row, none on the playing row");
+  const next = (id) => m.ctx.libMenuItems(id).find((i) => i.key === "next").disabled;
+  assert.deepStrictEqual([next("b"), next("c")], [true, false], "off on the row already next, on for the one after it");
   assert.ok(html.includes('id="up-next-clear"'), "three rows: Clear is offered");
 
   const one = mountQueue(["a"], null);
   one.ctx.renderQueue();
   assert.ok(!one.view().includes('id="up-next-clear"'), "one row: no Clear");
-  assert.match(one.view(), /data-playnext="a" disabled/, "nothing playing: row 1 is already next");
+  assert.strictEqual(one.ctx.libMenuItems("a").find((i) => i.key === "next").disabled, true, "nothing playing: row 1 is already next");
 });
 
 test("#/episode renders Play next beside + Up Next, and its click goes through playNextInQueue (PQ-02, #762)", async () => {
