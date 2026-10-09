@@ -166,10 +166,17 @@ final class AudioSessionOwner: SessionControlling {
             token = Self.errorToken(code: (error as NSError).code)
         }
         let ok = token == nil
-        // A deactivation that failed left the session running, so it still
-        // reads active: a play on it is owned, not an implicit activation.
-        if ok { phase = .inactive }
-        // L13: WHY it failed, on failure only (`is-busy` is I/O still running).
+        // `is-busy` is NOT a refusal. Apple (`setActive(_:options:)`):
+        // "Deactivating an audio session that has running audio objects stops
+        // them, makes the session inactive, and returns an
+        // AVAudioSessionErrorCodeIsBusy error." So the session is inactive,
+        // as the core already holds it (the core hears no answer from a
+        // deactivate), and a play on it is an implicit activation (CH3-15,
+        // half of R2-08). Any other failure left the session as it was, so it
+        // still reads active: a play on it is owned.
+        if ok || token == Vocabulary.SessionErrorDetail.isBusy.rawValue { phase = .inactive }
+        // L13: WHY it failed, on failure only (`is-busy`: I/O was still
+        // running, and the deactivation stopped it).
         row("deactivated", [JSONMember("ok", .bool(ok)), JSONMember("notify", .bool(notifyOthers))]
             + (token.map { [JSONMember("token", .string($0))] } ?? []))
     }

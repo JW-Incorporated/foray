@@ -190,19 +190,41 @@ final class AudioSessionOwnerTests: XCTestCase {
         XCTAssertEqual(sessionRows("deactivated").map { $0[field: "token"] }, [nil, nil])
     }
 
-    /// A deactivation the system refused leaves the session running, so the
-    /// owner keeps reading it active, and the row says WHY (L13: `is-busy`
-    /// is I/O still running on the session).
-    /// TO SEE IT FAIL: set `.inactive` first, or drop `token` from the row.
-    func testARefusedDeactivationKeepsThePhase() {
+    /// `is-busy` is a deactivation that HAPPENED (CH3-15, half of R2-08).
+    /// Apple, `setActive(_:options:)`: "Deactivating an audio session that
+    /// has running audio objects stops them, makes the session inactive, and
+    /// returns an AVAudioSessionErrorCodeIsBusy error." So the owner reads
+    /// it inactive, as the core does (it hears no answer from a deactivate),
+    /// and the row still says why it was not clean (L13: I/O was running).
+    /// Until CH3-15 this pinned the opposite (the phase stayed `.active`).
+    /// TO SEE IT FAIL: set `.inactive` only when `ok`, or drop `token` from
+    /// the row.
+    func testAnIsBusyDeactivationStillDeactivates() {
         let api = FakeSessionAPI()
         api.deactivateError = NSError(domain: NSOSStatusErrorDomain, code: AVAudioSession.ErrorCode.isBusy.rawValue)
         let owner = makeOwner(api)
         _ = owner.activate()
         owner.deactivate(notifyOthers: false)
-        XCTAssertEqual(owner.phase, .active)
+        XCTAssertEqual(owner.phase, .inactive)
         XCTAssertEqual(sessionRows("deactivated").last?[field: "ok"], .bool(false))
         XCTAssertEqual(sessionRows("deactivated").last?[field: "token"], .string("is-busy"))
+        XCTAssertEqual(sessionRows("deactivated").last?[field: "phase"], .string("inactive"))
+    }
+
+    /// Any other failed deactivation left the session as it was, so the
+    /// owner keeps reading it active (a play on it is owned, not an implicit
+    /// activation), and the row says why.
+    /// TO SEE IT FAIL: set `.inactive` on every deactivation, failed or not.
+    func testARefusedDeactivationKeepsThePhase() {
+        let api = FakeSessionAPI()
+        api.deactivateError = NSError(domain: NSOSStatusErrorDomain,
+                                      code: AVAudioSession.ErrorCode.mediaServicesFailed.rawValue)
+        let owner = makeOwner(api)
+        _ = owner.activate()
+        owner.deactivate(notifyOthers: false)
+        XCTAssertEqual(owner.phase, .active)
+        XCTAssertEqual(sessionRows("deactivated").last?[field: "ok"], .bool(false))
+        XCTAssertEqual(sessionRows("deactivated").last?[field: "token"], .string("media-services-failed"))
     }
 
     /// A category the system refused says why (L13); one it took carries no
