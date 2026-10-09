@@ -11,6 +11,9 @@ import CryptoKit
 /// THE CONTRACT IS THE WEB HALF'S. `player/download-bridge.js` names the plugin
 /// (`ForayDownloads`), its seven calls and its three events, and
 /// `player/download-store.js`'s `reportFromEvent` reads the event payloads.
+/// A fourth event, `downloadAttempt`, is for the diagnostics record only (see
+/// "the attempt row" below); `player/download-bridge.test.js` pins its name,
+/// keys and outcomes against this file.
 /// `tools/mobile/foray-downloads.test.mjs` pins the names here against that
 /// file, so a rename on either side fails CI.
 ///
@@ -63,6 +66,73 @@ public enum DownloadPolicy {
     public static let reasonCancelled = "cancelled"
     public static let reasonNotSaved = "not-saved"
     public static let reasonInterrupted = "interrupted"
+
+    // MARK: the attempt row (#29 device check, 29-part)
+
+    /// `downloadAttempt { reqHost, finalHost, status, expected, received,
+    /// outcome, at }`: one per download attempt, when it ends. Not a record
+    /// status, so the page's download list never hears it:
+    /// `player/download-bridge.js` re-broadcasts it as a `foray:session` row
+    /// and `player/diagnostic-log.js` admits it, field by field, into the
+    /// diagnostics record. docs/downloads-device-check.md step 6 reads that
+    /// row to check that the first request went to the episode's ORIGINAL
+    /// enclosure host (#29: "downloads use the original URL"), without a
+    /// proxy.
+    ///
+    /// HOSTS, NEVER URLS. An enclosure's path and query can carry a
+    /// listener token; only `hostOf` reaches the payload.
+    public static let eventAttempt = "downloadAttempt"
+
+    /// How an attempt ended: the same six words as diagnostic-log.js's
+    /// `DOWNLOAD_OUTCOMES` (download-bridge.test.js holds them in step).
+    public static let outcomeDone = "done"
+    public static let outcomeRefusedStatus = "refused-status"
+    public static let outcomeRefusedRedirect = "refused-redirect"
+    public static let outcomeNetwork = "network"
+    public static let outcomeNotSaved = "not-saved"
+    public static let outcomeCancelled = "cancelled"
+
+    /// The outcome a failure reason ends an attempt with. A refused status
+    /// (`unplayable-here`, `http 404`) and a refused redirect are told apart,
+    /// because the device check asks which one stopped it; anything else the
+    /// store fails with is a transport error (`network <code>`).
+    /// MUTATION: map `reasonTooManyRedirects` to `outcomeRefusedStatus` ->
+    /// `testEachFailureReasonEndsInOneOutcome`.
+    public static func outcome(forReason reason: String) -> String {
+        switch reason {
+        case reasonTooManyRedirects, reasonBadRedirect: return outcomeRefusedRedirect
+        case reasonUnplayableHere: return outcomeRefusedStatus
+        case reasonNotSaved: return outcomeNotSaved
+        case reasonCancelled: return outcomeCancelled
+        default: return reason.hasPrefix("http ") ? outcomeRefusedStatus : outcomeNetwork
+        }
+    }
+
+    /// A URL's host and nothing else, lower-cased: no scheme, credentials,
+    /// port, path or query. Nil when it has none.
+    public static func hostOf(_ url: URL?) -> String? {
+        guard let host = url?.host?.lowercased(), !host.isEmpty else { return nil }
+        return host
+    }
+
+    static func nullable(_ value: Any?) -> Any {
+        value ?? NSNull()
+    }
+
+    /// The `downloadAttempt` payload. `requested` is the URL the page asked
+    /// for (the row's `url`, the episode's `audio_url`); `landed` is where
+    /// the last response came from after redirects, nil when no response
+    /// came. `status` is that response's HTTP status, nil when none;
+    /// `expected` is null when the host sent no length (URLSession's -1);
+    /// `at` is epoch milliseconds, the session rows' native clock.
+    /// MUTATION: `"reqHost": nullable(requested?.absoluteString)` ->
+    /// `testTheAttemptPayloadCarriesHostsOnly`.
+    public static func attemptPayload(requested: URL?, landed: URL?, status: Int?, expected: Int64, received: Int64,
+                                      outcome: String, at: Double) -> [String: Any] {
+        ["reqHost": nullable(hostOf(requested)), "finalHost": nullable(hostOf(landed)), "status": nullable(status),
+         "expected": expected > 0 ? expected as Any : NSNull() as Any, "received": max(0, received),
+         "outcome": outcome, "at": at]
+    }
 
     // MARK: sources
 

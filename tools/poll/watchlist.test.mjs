@@ -234,25 +234,156 @@ const quiet = () => {
   return { lines, log: (s) => lines.push(s), err: (s) => lines.push(s) };
 };
 
-test("build-watchlist-seed exits 2 and writes nothing when loadChangeIndex is ok:false", async () => {
+test("build-watchlist-seed exits 2 and writes nothing when loadChangeIndex is ok:false for a stale pointer", async () => {
   // MUTATION: in run(), `return 2;` after "change index unavailable" -> `return 0;` -> red.
+  // MUTATION: `if (!isNoBaselineReason(reason))` -> `if (false)` (every ok:false takes the fallback) -> red.
+  // A stale pointer is NOT the no-baseline case: no fallback, no fetch.
   const dir = tmp();
   try {
     const { catalogPath } = fixtureCatalog(dir);
     const outPath = path.join(dir, "seed.json");
+    const pointerPath = path.join(dir, "pointer.json");
+    writeFileSync(pointerPath, JSON.stringify({ release_tag: "shows-index-test", asset_base_url: "https://assets.example.com/rel" }));
     let asked;
     const loadIndex = async (opts) => {
       asked = opts;
-      return { ok: false, reason: "changed.json has no baseline (no previous-release snapshot) -- index unavailable" };
+      return { ok: false, reason: "pointer is stale: published_at 2026-09-15T06:20:47Z is 480.0h old (ceiling 216h)" };
+    };
+    let fetches = 0;
+    const fetchImpl = async () => {
+      fetches++;
+      throw new Error("no fetch on a stale pointer");
     };
     for (const extra of [[], ["--check"]]) {
       const io = quiet();
-      const code = await run({ argv: ["--out", outPath, ...extra], loadIndex, catalogPath, nowMs: NOW, ...io });
+      const code = await run({ argv: ["--out", outPath, "--pointer", pointerPath, ...extra], loadIndex, fetchImpl, catalogPath, nowMs: NOW, ...io });
       assert.equal(code, 2, `exit code with ${JSON.stringify(extra)}`);
       assert.equal(existsSync(outPath), false, "nothing written");
-      assert.match(io.lines.join("\n"), /no baseline/, "the loader's reason is printed");
+      assert.match(io.lines.join("\n"), /pointer is stale/, "the loader's reason is printed");
     }
     assert.deepEqual(Object.keys(asked), ["pointerPath"], "maxAgeHours is never overridden");
+    assert.equal(fetches, 0, "a stale pointer never reaches the id-map fallback");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* ---- no-baseline fallback: id-map.json only (PKG-07-part) --------------- */
+
+const BASE = "https://assets.example.com/rel";
+const NO_BASELINE = "changed.json has no baseline (no previous-release snapshot) -- index unavailable";
+const BARE_ARRAY = "changed.json is a bare array (pre-baseline release: every show listed, no real diff) -- index unavailable";
+
+/** A fake fetch serving one id-map.json body (or status); records every URL. */
+function fakeFetch({ body, status = 200 }) {
+  const urls = [];
+  const fetchImpl = async (url) => {
+    urls.push(url);
+    return { ok: status >= 200 && status < 300, status, json: async () => body };
+  };
+  return { urls, fetchImpl };
+}
+
+function fixturePointer(dir) {
+  const pointerPath = path.join(dir, "pointer.json");
+  writeFileSync(pointerPath, JSON.stringify({ release_tag: "shows-index-nobase", asset_base_url: BASE, published_at: "2026-10-04T23:32:30.065Z" }));
+  return pointerPath;
+}
+
+test("no-baseline release + a valid id-map.json writes a curated-only seed from the id-map alone", async () => {
+  // MUTATION: `if (!isNoBaselineReason(reason))` -> `if (true)` (no fallback) -> red (exit 2).
+  // MUTATION: in NO_BASELINE_REASONS, drop the bare-array regex -> red (the bare-array pass exits 2).
+  // MUTATION: in the fallback, `idMap: only.idMap` -> `idMap: {}` -> red (every row unmapped).
+  const dir = tmp();
+  try {
+    const { catalogPath, idMap, shows } = fixtureCatalog(dir);
+    const pointerPath = fixturePointer(dir);
+    for (const reason of [NO_BASELINE, BARE_ARRAY]) {
+      const outPath = path.join(dir, "seed.json");
+      rmSync(outPath, { force: true });
+      const { urls, fetchImpl } = fakeFetch({ body: idMap });
+      const io = quiet();
+      const code = await run({
+        argv: ["--out", outPath, "--pointer", pointerPath],
+        loadIndex: async () => ({ ok: false, reason }),
+        fetchImpl,
+        catalogPath,
+        nowMs: NOW,
+        ...io,
+      });
+      assert.equal(code, 0, io.lines.join("\n"));
+      assert.deepEqual(urls, [`${BASE}/id-map.json`], "only id-map.json is fetched, from the pointer's asset_base_url");
+      assert.match(io.lines.join("\n"), /id-map\.json only/, "stderr says the seed came from id-map only");
+      const seed = JSON.parse(readFileSync(outPath, "utf8"));
+      assert.equal(seed.version, 1);
+      assert.equal(seed.pointer_release_tag, "shows-index-nobase");
+      assert.equal(seed.rows.length, shows.length);
+      assert.ok(seed.rows.every((r) => r.watch_reasons[0] === "curated" && !r.watch_reasons.includes("changed_in_dump")));
+      assert.equal(seed.rows[0].pi_id, 5000);
+      assert.equal(seed.rows.filter((r) => r.pi_id !== null).length, shows.length - 1);
+      assert.deepEqual(seed.rows.at(-1).watch_reasons, ["curated", "unmapped"]);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("no-baseline fallback refuses an id-map.json with a non-numeric value (exit 1, nothing written)", async () => {
+  // MUTATION: in run(), delete the badIds refusal `return 1;` -> red (exit 0, a seed with pi_id "5000" written).
+  // The refusal must run AFTER the fallback swaps in the fetched id-map, so the fallback inherits it.
+  const dir = tmp();
+  try {
+    const { catalogPath, idMap } = fixtureCatalog(dir);
+    const pointerPath = fixturePointer(dir);
+    const outPath = path.join(dir, "seed.json");
+    const { fetchImpl } = fakeFetch({ body: { ...idMap, s0: "5000" } });
+    const io = quiet();
+    const code = await run({
+      argv: ["--out", outPath, "--pointer", pointerPath],
+      loadIndex: async () => ({ ok: false, reason: NO_BASELINE }),
+      fetchImpl,
+      catalogPath,
+      nowMs: NOW,
+      ...io,
+    });
+    assert.equal(code, 1);
+    assert.match(io.lines.join("\n"), /not numbers/);
+    assert.equal(existsSync(outPath), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("no-baseline fallback exits 2 and writes nothing on an id-map HTTP error, a bad shape, or a pointer with no asset_base_url", async () => {
+  // MUTATION: in run(), the fallback's `return 2;` -> `return 0;` -> red.
+  // MUTATION: in loadIdMapOnly, delete `if (!res || !res.ok) return ...` -> red (the 404 body {} builds an all-unmapped seed).
+  // MUTATION: in loadIdMapOnly, drop `|| Array.isArray(idMap)` -> red (an array id-map builds an all-unmapped seed).
+  const dir = tmp();
+  try {
+    const { catalogPath } = fixtureCatalog(dir);
+    const pointerPath = fixturePointer(dir);
+    const noBase = path.join(dir, "nobase.json");
+    writeFileSync(noBase, JSON.stringify({ release_tag: "x" }));
+    const outPath = path.join(dir, "seed.json");
+    const cases = [
+      { name: "HTTP 404", pointer: pointerPath, fetch: fakeFetch({ body: {}, status: 404 }), want: /HTTP 404/ },
+      { name: "array id-map", pointer: pointerPath, fetch: fakeFetch({ body: [] }), want: /unexpected asset shape/ },
+      { name: "no asset_base_url", pointer: noBase, fetch: fakeFetch({ body: {} }), want: /no asset_base_url/ },
+    ];
+    for (const c of cases) {
+      const io = quiet();
+      const code = await run({
+        argv: ["--out", outPath, "--pointer", c.pointer],
+        loadIndex: async () => ({ ok: false, reason: NO_BASELINE }),
+        fetchImpl: c.fetch.fetchImpl,
+        catalogPath,
+        nowMs: NOW,
+        ...io,
+      });
+      assert.equal(code, 2, c.name);
+      assert.match(io.lines.join("\n"), c.want, c.name);
+      assert.equal(existsSync(outPath), false, `${c.name}: nothing written`);
+    }
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

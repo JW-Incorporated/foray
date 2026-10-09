@@ -146,6 +146,7 @@ import * as queueOrder from "./queue-order.js";
 import * as queueDrag from "./queue-drag.js";
 import * as tailFill from "./tail-fill.js";
 import * as bookmarks from "./bookmarks.js";
+import * as showAlerts from "./show-alerts.js";
 import { bindIncomingLinks } from "./incoming-link.js";
 import { createId3Reader } from "./id3-chapters.js";
 
@@ -171,6 +172,11 @@ window.forayQueueDrag = queueDrag;
    its lsGet/lsSet); this module only says what a row is, what is a duplicate
    and what the caps drop. Device-only: no event, never sent (roadmap Q3). */
 window.forayBookmarks = bookmarks;
+/* New episodes of followed shows (#761, PQ-25/PQ-26), for app.js the same way:
+   the page owns the `cp_starred_shows` write (saveStarredShows), the check and
+   the "N new" badge; this module only says when a show is due, what is new and
+   where the watermark moves. No notification is posted from here. */
+window.forayShowAlerts = showAlerts;
 /* Shared links that open the app (#1071): Capacitor's `appUrlOpen` hands over
    https://foray-web-seven.vercel.app/#/<route>, and its hash becomes the page's
    hash, which app.js's router renders like any in-app link (see
@@ -2735,6 +2741,48 @@ function paintSheetChapter(i) {
   ui.chapterNext.disabled = i >= list.length - 1;
 }
 
+/* THE CHAPTER ON THE LOCK SCREEN (CH-5, #1071; founder 2026-10-05: chapters,
+   "see Apple Podcasts for an example how it is done there"). The JS lane only:
+   the web/PWA lock screen and the Android JS lane, through `mediaViewFields`
+   (its EPISODE object hands this `current`). Native mode never gets here
+   (`syncMediaSession` returns first), and the protocol is unchanged.
+
+   The item the OS view is built from, for the chapter the clock is in: a
+   SHALLOW COPY whose title is the chapter (`~` first when the chapter times are
+   approximate, the sheet line's rule above) and whose show is "<episode> ·
+   <show>", so `mediaMetadata` produces title = chapter, artist = episode and
+   show, album = APP_NAME (#1006) with no change to its signature or its output
+   for any other input. `current` itself is never touched.
+
+   `item` UNCHANGED whenever any of this fails: no chapters (fewer than two, no
+   bridge, a throwing bridge — `loadSheetChapters` left `sheetChapters` null),
+   a Foray loaded or restored (`forayId`), or a clock before the first start.
+
+   One OS write per chapter change: the strings are fixed inside a chapter, so
+   the bridge dedupe (`createMediaSession`, keyed on title/artist/album/artwork)
+   swallows the 4 Hz render. On Android each write re-pushes artwork through the
+   shim (#1124); once per chapter is the accepted cost.
+
+   FRESH WITHOUT THE SHEET: `sheetChapters` is (re)loaded by `paintSeekNote`,
+   which `setNowPlaying` runs on every item change and `play()` runs again once
+   the local file is known, whether or not the sheet was ever opened (its DOM
+   is built at boot). The index is computed here from the clock, not read from
+   `shownChapter`, which only the sheet paint advances.
+
+   THE LAYOUT IS A PROPOSAL, not a ruling: Apple Podcasts on current iOS is
+   reported to put chapter ARTWORK, not the chapter title, on the lock screen,
+   so the founder confirms this layout on a device. */
+function chapterMediaItem(item) {
+  if (!sheetChapters || foray || !item || item.forayId) return item;
+  const { list, precision } = sheetChapters;
+  const i = chapterIndexAt(list, episodePositionSec());
+  if (i < 0) return item;
+  const chapter = String(list[i].title ?? "").trim();
+  if (!chapter) return item;
+  const show = [item.title, item.show].map((s) => String(s ?? "").trim()).filter(Boolean).join(" · ");
+  return { ...item, title: `${precision === EXACT ? "" : "~"}${chapter}`, show };
+}
+
 /* ---------- what the bar says when there is no sound ----------
 
    Audit 2026-09-22, two silences the transport did not explain:
@@ -3628,7 +3676,7 @@ function mediaViewFields() {
   }
 
   return {
-    item: current,
+    item: chapterMediaItem(current),
     forayTitle: "",
     foray: false,
     index: 0,
@@ -5198,6 +5246,23 @@ const ForayPlayer = {
        computed against a number the file did not have. One rule for every
        surface: `knownEpisodeDurationSec`. */
     return episodeProgress({ duration_sec: knownEpisodeDurationSec(id, durationSec) }, stored?.seconds ?? null);
+  },
+
+  /**
+   * The length of the copy in hand, for a bookmark's drift test (issue #30;
+   * app.js `bookmarkObservedSec`): the duration the player MEASURED off the
+   * media element the last time this episode played, as `PositionStore`
+   * recorded it beside the position, or null when nothing was measured.
+   * Never the catalogue's `duration_sec` (so not `knownEpisodeDurationSec`,
+   * which falls back to it): the catalogue's number is the one the bookmark
+   * was likely set against, and comparing it with itself would claim an
+   * ad-stitched copy that moved by minutes is still exact to the second.
+   * Native: the engine's `cp_pos` rows carry the deck's measured duration
+   * (`Rows.position(..., deck.durationSec, ...)` in both engine cores), so
+   * the same reading holds once the deck has reported one.
+   */
+  observedDurationSec(id) {
+    return measuredDurationSec(id);
   },
 
   restoreLastEpisode() {

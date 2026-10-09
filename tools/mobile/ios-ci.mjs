@@ -32,6 +32,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { readiness } from "../release/readiness.mjs";
+
 /* ─────────────────────────────── signing gate ────────────────────────────── */
 
 /** Everything an App Store Connect upload needs, and nothing it does not.
@@ -41,7 +43,7 @@ import { fileURLToPath } from "node:url";
  *  list is here so the workflow can say precisely what is missing instead of
  *  "signing not configured", which is the message that makes someone go read a
  *  YAML file. */
-export const SIGNING_SECRETS = [
+export const SIGNING_SECRETS = Object.freeze([
   "IOS_DIST_CERT_P12_BASE64",
   "IOS_DIST_CERT_PASSWORD",
   "IOS_PROVISIONING_PROFILE_BASE64",
@@ -49,7 +51,17 @@ export const SIGNING_SECRETS = [
   "APP_STORE_CONNECT_KEY_ID",
   "APP_STORE_CONNECT_ISSUER_ID",
   "APP_STORE_CONNECT_PRIVATE_KEY_BASE64",
-];
+]);
+
+/** The words the iOS gate says. The rule that picks one is `readiness()`, shared
+ *  with release-ci.mjs's Play gate (CH2-21). */
+export const SIGNING_READINESS_MESSAGES = Object.freeze({
+  ready: "All 7 signing secrets present — archiving and uploading to TestFlight.",
+  absent:
+    "No signing secrets set, so the TestFlight upload is skipped. The unsigned build " +
+    "above still ran, and that is the designed behaviour — see HUMAN-ACTIONS.md #19.",
+  subject: "Signing",
+});
 
 /**
  * Is TestFlight upload configured?
@@ -64,33 +76,12 @@ export const SIGNING_SECRETS = [
  *             set six secrets, the run went green, and no build reached
  *             TestFlight. Silence there costs a release cycle to notice.
  *
+ * The rule is `tools/release/readiness.mjs`'s, the same one the Play gate uses.
+ *
  * @param {Record<string,string|undefined>} env
  */
 export function signingReadiness(env = {}) {
-  const present = [];
-  const missing = [];
-  for (const key of SIGNING_SECRETS) {
-    const v = env[key];
-    if (typeof v === "string" && v.trim() !== "") present.push(key);
-    else missing.push(key);
-  }
-  const state = missing.length === 0 ? "ready" : present.length === 0 ? "absent" : "partial";
-  return {
-    state,
-    ready: state === "ready",
-    present,
-    missing,
-    /** One line for the job summary, written so a founder can act on it. */
-    message:
-      state === "ready"
-        ? "All 7 signing secrets present — archiving and uploading to TestFlight."
-        : state === "absent"
-          ? "No signing secrets set, so the TestFlight upload is skipped. The unsigned build " +
-            "above still ran, and that is the designed behaviour — see HUMAN-ACTIONS.md #19."
-          : `Signing is HALF configured: ${present.length} of ${SIGNING_SECRETS.length} secrets are ` +
-            `set and ${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} missing. Failing ` +
-            `rather than skipping, because a skipped upload on a green run is invisible.`,
-  };
+  return readiness(SIGNING_SECRETS, env, SIGNING_READINESS_MESSAGES);
 }
 
 /* ─────────────────── which thing does xcodebuild get pointed at ───────────── */
@@ -2955,8 +2946,11 @@ if (isMain) {
     try { return JSON.parse(fs.readFileSync(p, "utf8")); } catch { return null; }
   };
 
-  try {
-    if (cmd === "signing-gate") {
+  /* THE DISPATCH TABLE. The usage line is generated from its keys, so every
+     subcommand is in it the moment it exists here (CH2-21, T2-13: the
+     hand-written line had fallen to five of eight). */
+  const COMMANDS = {
+    "signing-gate"() {
       const r = signingReadiness(process.env);
       appendOutput(`state=${r.state}`);
       appendOutput(`ready=${r.ready}`);
@@ -2964,7 +2958,8 @@ if (isMain) {
       console.error(r.message);
       /* `partial` is the one that fails. See signingReadiness(). */
       process.exit(r.state === "partial" ? 1 : 0);
-    } else if (cmd === "xcode-container") {
+    },
+    "xcode-container"() {
       const iosDir = rest[0];
       if (!iosDir) throw new Error("xcode-container needs the generated ios/ directory");
       const ws = path.join(iosDir, "App", "App.xcworkspace");
@@ -2977,14 +2972,16 @@ if (isMain) {
       appendOutput(`xc_path=${c.path}`);
       appendOutput(`xc_toolchain=${c.toolchain}`);
       console.error(`Building with ${c.flag} ${c.path} (${c.toolchain})`);
-    } else if (cmd === "pick-simulator") {
+    },
+    "pick-simulator"() {
       const raw = rest[0] ? fs.readFileSync(rest[0], "utf8") : fs.readFileSync(0, "utf8");
       const sim = pickSimulator(raw);
       appendOutput(`udid=${sim.udid}`);
       appendOutput(`name=${sim.name}`);
       appendOutput(`runtime=${sim.runtime}`);
       console.error(`Chose ${sim.name} (${sim.runtime})`);
-    } else if (cmd === "redact-localstorage") {
+    },
+    "redact-localstorage"() {
       /* In-place, and it must run BEFORE the file reaches the artifact
          directory. Writes the redacted array back over the same path so the
          workflow cannot accidentally upload the pre-redaction copy. */
@@ -3026,7 +3023,8 @@ if (isMain) {
         `redacted ${redacted.length} value(s) from ${rest[0]}` +
           (redacted.length ? `: ${redacted.join(", ")}` : "")
       );
-    } else if (cmd === "decode-localstorage") {
+    },
+    "decode-localstorage"() {
       if (!rest.length) throw new Error("decode-localstorage needs at least one rows.json");
       const rows = [];
       for (const f of rest) {
@@ -3034,7 +3032,8 @@ if (isMain) {
         if (Array.isArray(parsed)) rows.push(...parsed);
       }
       console.log(JSON.stringify(decodeLocalStorageRows(rows), null, 2));
-    } else if (cmd === "seed-mode") {
+    },
+    "seed-mode"() {
       /* NE-36. Writes the override, then reads it back. The read-back is printed as
          `seed_<mode>=<value>` for the steps file; a mismatch is LOUD but not fatal —
          the probe page's own engineHello answer is what the verdict trusts. */
@@ -3048,7 +3047,8 @@ if (isMain) {
       } catch (e) { back = `unreadable (${e.message.split("\n")[0]})`; }
       console.log(`seed_${mode}=${back}`);
       if (back !== mode) console.error(`::warning::seed-mode wrote ${mode} but read back ${back}`);
-    } else if (cmd === "native-rows") {
+    },
+    "native-rows"() {
       /* NE-36. The raw export stays wherever the workflow put it (a work directory
          that is never uploaded); ONLY the owned rows and the probe's record come
          out, on stdout, for $ART. */
@@ -3056,7 +3056,8 @@ if (isMain) {
       const r = parseDefaultsExport(fs.readFileSync(rest[0], "utf8"));
       console.log(JSON.stringify(r, null, 2));
       console.error(`kept ${Object.keys(r.rows).length} owned row(s) of ${r.keysSeen} key(s); probe record ${r.probe ? "present" : "ABSENT"}`);
-    } else if (cmd === "verdict") {
+    },
+    "verdict"() {
       const dump = readMaybe(rest[0]) || {};
       const consoleText =
         rest[1] && fs.existsSync(rest[1]) ? fs.readFileSync(rest[1], "utf8") : "";
@@ -3143,10 +3144,16 @@ if (isMain) {
          artifact. Nothing here writes to a PR — this workflow holds
          `contents: read` and no token, deliberately — so if a verdict belongs in a
          PR body, a human or a session puts it there. */
-    } else {
-      console.error("Usage: node tools/mobile/ios-ci.mjs <signing-gate|pick-simulator|verdict|seed-mode|native-rows> [args]");
+    },
+  };
+  const usage = `Usage: node tools/mobile/ios-ci.mjs <${Object.keys(COMMANDS).join("|")}> [args]`;
+
+  try {
+    if (!Object.hasOwn(COMMANDS, cmd)) {
+      console.error(usage);
       process.exit(2);
     }
+    COMMANDS[cmd]();
   } catch (e) {
     console.error(`ios-ci ${cmd} failed: ${e.message}`);
     process.exit(1);

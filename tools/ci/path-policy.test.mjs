@@ -293,6 +293,11 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   "tools/refresh/watch-nightly.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
   "tools/refresh/scan.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
   "tools/refresh/resolve.mjs": "nightly data-refresh pipeline; contents:write, no auto-merge decision at stake",
+  // pointer-freshness-watch: the only job of shows-pointer-watch.yml (its own
+  // workflow, because nightly-watch.yml is manually disabled). Read-only
+  // (contents/actions read), no secret, writes nothing; a neutered copy can
+  // only hide a stale-pointer alarm, never change what merges or ships.
+  "tools/shows/watch-pointer.mjs": "read-only absence watchdog in shows-pointer-watch.yml; no secret, writes nothing, no auto-merge decision at stake",
   // Re-invokes THIS policy (decide/check) from automerge-nightly.yml and
   // path-policy.yml — it cannot expose itself, it IS the gate under test.
   "tools/ci/path-policy.mjs": "the policy script itself; already covered by tools/ci/ in DENIED_PREFIXES",
@@ -328,6 +333,15 @@ const ACKNOWLEDGED_UNDENIED_GATES = {
   // to a bad build, not an unread security-relevant change. Found while fixing
   // PR #501's gate scan (kanban t_5458c0a2).
   "tools/mobile/version.mjs": "no auth/secret bypass; worst case is a mislabeled version or a failed (red) upload, not a silent bad deploy",
+  // 948-part (#948): ios-build.yml lists every privacy manifest in the BUILT
+  // App.app and fails on a bundled Required Reason plugin no manifest covers.
+  // That workflow holds no secret, signs nothing and is not a required check,
+  // and the script only reads the bundle after the build. The coverage that
+  // matters today (@capacitor/preferences' UserDefaults) is independently
+  // asserted by the DENIED inject-privacy-manifest.mjs --bundle, in this same
+  // workflow and in the release composite, so a neutered copy could only lose
+  // the report and the stale-class guard, not ship an undeclared API.
+  "tools/mobile/privacy-manifest-report.mjs": "read-only post-build report in the unsigned ios-build.yml; the coverage it checks is re-asserted by denied inject-privacy-manifest.mjs --bundle",
   // ios-ci.mjs, inject-background-audio.mjs and ios-embedded-frameworks.mjs
   // were acknowledged here as "no secret" until the round-3 review showed all
   // three run inside the release composite that holds the p12 and the App Store
@@ -392,6 +406,8 @@ test("review: the gate scan reads the composite actions as well as the workflows
      composite's own scripts vanish from the scan. */
   const found = allGateScripts();
   assert.ok([...found.get("tools/mobile/ios-embedded-frameworks.mjs") ?? []].includes(".github/actions/ios-archive/action.yml"));
+  // The inject sequence's composite (CH2-16) is scanned too.
+  assert.ok([...found.get("tools/mobile/inject-app-icon.mjs") ?? []].includes(".github/actions/ios-prepare/action.yml"));
   assert.ok(found.has("tools/release/upload-retry.mjs"), "upload-retry.mjs is run only by the ios-archive composite");
 });
 
@@ -1374,11 +1390,23 @@ function signingJobExecutables() {
     }
   }
   const texts = [];
+  // Composites are followed TRANSITIVELY: a composite may `uses:` another
+  // (CH2-16: ios-archive runs the inject sequence through ios-prepare), and a
+  // walk that read one level deep would be blind to every script in the inner
+  // one while it runs in the job that holds the signing secrets.
+  const seenActions = new Set();
+  const followActions = (text) => {
+    for (const m of text.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
+      if (seenActions.has(m[1])) continue;
+      seenActions.add(m[1]);
+      const inner = fs.readFileSync(path.join(REPO, m[1], "action.yml"), "utf8");
+      texts.push(inner);
+      followActions(inner);
+    }
+  };
   for (const { job } of jobs) {
     texts.push(job);
-    for (const m of job.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) {
-      texts.push(fs.readFileSync(path.join(REPO, m[1], "action.yml"), "utf8"));
-    }
+    followActions(job);
   }
   for (const text of texts) {
     for (const chunk of stripComments(text).split(/\n(?=\s*- (?:name|uses|run):)/)) {
@@ -1423,6 +1451,9 @@ test("review: every file a signing job executes is DENIED (or is app code, liste
     "mobile/package.json",
     "test/release-gates.test.js",
     "tools/release/upload-retry.mjs",
+    // Reached only through ios-archive -> ios-prepare (CH2-16): a nested
+    // composite. MUTATION: read composites one level deep -> red here.
+    "tools/mobile/inject-app-icon.mjs",
   ]) {
     assert.ok(files.has(expected), `the walk no longer reaches ${expected}: it has gone blind somewhere`);
   }

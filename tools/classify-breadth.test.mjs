@@ -399,3 +399,44 @@ test("keeps the refinement pipeline's provenance instead of signing over it", ()
   assert.equal(out.provenance.last_batch_tier, 1);
   assert.equal(out.provenance.base_layer.produced_by, "classify-breadth.mjs");
 });
+
+test("keeps top-level fields another layer owns, in place (label_schema_version)", () => {
+  // merge-results.mjs writes `label_schema_version` at the top level of the file.
+  // Until 2026-10 this script rebuilt the top level from four named keys, so the
+  // first genre-map run after a classify-agent merge silently dropped it.
+  const classification = {
+    version: 1,
+    built_at: "2026-09-09T08:19:28.364Z",
+    provenance: { produced_by: "tools/classify/merge-results.mjs" },
+    entries: { 1: { topics: ["space"], confidence: "high", source: "genre-map" } },
+    label_schema_version: 1,
+  };
+  const { res, out } = run({ shows: [show(1, "Astronomy")], classification });
+  assert.equal(res.status, 0, res.stderr);
+  assert.equal(out.label_schema_version, 1, "merge-results' label schema version must survive");
+  assert.deepEqual(Object.keys(out), ["version", "built_at", "provenance", "entries", "label_schema_version"], "key order is kept, so the diff stays minimal");
+});
+
+test("keeps a top-level key it has never heard of, and --dry-run leaves the file byte-identical", () => {
+  // The test above pins label_schema_version by name, so it would still pass if
+  // the fix were "carry label_schema_version across" instead of "spread prior".
+  // The next layer to add a top-level key must be protected by construction,
+  // the same fail-safe direction this script takes for unknown entry sources.
+  const classification = {
+    version: 1,
+    built_at: "2026-09-09T08:19:28.364Z",
+    provenance: { produced_by: "tools/classify/merge-results.mjs" },
+    entries: { 1: { topics: ["space"], confidence: "high", source: "genre-map" } },
+    label_schema_version: 1,
+    future_layer_marker: { owner: "some-later-layer", rev: 3 },
+  };
+  const { res, out } = run({ shows: [show(1, "Astronomy")], classification });
+  assert.equal(res.status, 0, res.stderr);
+  assert.equal(out.label_schema_version, 1);
+  assert.deepEqual(out.future_layer_marker, { owner: "some-later-layer", rev: 3 }, "an unknown top-level key must survive a run");
+
+  const before = JSON.stringify(classification, null, 2) + "\n";
+  const dry = run({ shows: [show(1, "Astronomy")], classification, args: ["--dry-run"] });
+  assert.equal(dry.res.status, 0, dry.res.stderr);
+  assert.equal(readFileSync(dry.path, "utf8"), before, "--dry-run must write nothing");
+});

@@ -863,6 +863,12 @@ export const SESSION_KINDS = new Set([
      and never on this — a heuristic may explain a stop, never cause one
      (`shell-invariants.test.mjs` pins client.js's list). */
   "focusChange",
+  /* #29 (29-part): one download attempt, from `DownloadStore.swift` through
+     `download-bridge.js` — the host asked for, the host the bytes came from,
+     the HTTP status, the byte counts, and an outcome from
+     `DOWNLOAD_OUTCOMES` in `reason`. Not on `onNativeSession`'s list in
+     `player/client.js`: the player never acts on a download row. */
+  "downloadAttempt",
 ]);
 
 /* ---------- Lane B's session facts (log-gaps 2026-09-26) ----------
@@ -1004,7 +1010,34 @@ export const REMOTE_COMMANDS = new Set([
     segment are silenced through different objects and a record that could not
     tell them apart would answer "the audio stopped" when the question is
     "which audio". */
-export const SESSION_PRODUCERS = new Set(["audio", "tts", "page"]);
+export const SESSION_PRODUCERS = new Set(["audio", "tts", "page", "downloads"]);
+
+/* ---------- #29: a download attempt (29-part) ----------
+
+   `ForayDownloads` on iOS raises `downloadAttempt` once per download attempt
+   (`DownloadPolicy.attemptPayload`), and `player/download-bridge.js` hands it
+   to the record as a `session` row of kind `downloadAttempt` from producer
+   `downloads`. It is what docs/downloads-device-check.md step 6 reads to
+   check #29's "downloads use the original URL" without a proxy:
+
+     reason     the outcome, from the set below (the Swift's `outcome*`
+                constants; a word outside it leaves `reason` blank)
+     reqHost    the HOST of the URL the page asked for (the episode's
+                `audio_url`, measurement prefixes included)
+     finalHost  the HOST the last response came from, after redirects
+     status     that response's HTTP status
+     expected   the length the host announced, absent when it sent none
+     received   the bytes that arrived
+
+   HOSTS, NEVER URLS. A host is admitted by `audioHostTokenOf`'s shape, the
+   rule the `narration` row already follows: the path and query of an
+   enclosure URL can carry a listener token, and they never enter. A podcast
+   host is catalogue metadata (`data/` ships every `audio_url`), not listener
+   input. */
+export const DOWNLOAD_OUTCOMES = new Set([
+  "done", "refused-status", "refused-redirect", "network", "not-saved", "cancelled",
+]);
+const httpStatusOr = (v) => (Number.isInteger(v) && v >= 100 && v <= 599 ? v : null);
 
 /** M-03(b). Where a play or a pause came from. The founder's F16 record shows
     a stop with no cause; half of "no cause" is that nothing ever recorded
@@ -1171,23 +1204,28 @@ export class PlayerDiagnostics {
     try { s = this._getState(); } catch (_) { s = null; }
     const o = s && typeof s === "object" ? s : {};
     const stateText = asText(o.state).trim();
-    const since = (type) => {
-      const wall = this._newestWall(type);
+    const since = (type, keep) => {
+      const wall = this._newestWall(type, keep);
       return wall == null ? null : Math.max(0, this._now() - wall);
     };
     return {
       state: /^[A-Za-z][A-Za-z0-9-]{0,31}$/.test(stateText) ? stateText : null,
       item: dataIdOf(o.item),
       sinceRemoteMs: since("remote"),
-      sinceSessionMs: since("session"),
+      /* #29: a `downloadAttempt` is a `session` row the player never acts on
+         (see SESSION_KINDS) -- a download finishing does not explain a pause,
+         so it never stands in for the route change or interruption this
+         points at. */
+      sinceSessionMs: since("session", (e) => e.kind !== "downloadAttempt"),
     };
   }
 
-  /** The page clock of the newest ring entry of `type`, or null. */
-  _newestWall(type) {
+  /** The page clock of the newest ring entry of `type` that `keep` (when
+      given) accepts, or null. */
+  _newestWall(type, keep) {
     const entries = this.log.entries;
     for (let i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].type === type) return entries[i].wall;
+      if (entries[i].type === type && (!keep || keep(entries[i]))) return entries[i].wall;
     }
     return null;
   }
@@ -1773,6 +1811,7 @@ export class PlayerDiagnostics {
     to = null, from = null, rawReason = null, cat = null, mode = null, mix = null,
     err = null, app = null, why = null, durMs = null, np = null, cmds = null, info = null,
     other = null, hint = null, availMb = null, nseq = null, nboot = null,
+    reqHost = null, finalHost = null, status = null, expected = null, received = null,
   } = {}) {
     const k = asText(kind).trim();
     if (!SESSION_KINDS.has(k)) {
@@ -1788,9 +1827,12 @@ export class PlayerDiagnostics {
        stamp from the moment the notification fired, so the pair is the
        delivery lag, and the lag is itself a finding. */
     const nativeAt = Number.isFinite(at) && at > 0 ? at : null;
+    const download = k === "downloadAttempt";
     const row = {
       kind: k,
-      reason: dataTokenOf(reason) ?? "",
+      /* A download row's reason is its outcome, from a closed set; a token
+         outside it is blank, like any reason that is not a token. */
+      reason: (download ? oneOf(DOWNLOAD_OUTCOMES, reason) : dataTokenOf(reason)) ?? "",
       producer: SESSION_PRODUCERS.has(who) ? who : "audio",
       at: nativeAt,
       lagMs: nativeAt == null ? null : this._now() - nativeAt,
@@ -1822,6 +1864,16 @@ export class PlayerDiagnostics {
       ["nseq", nonNegIntOr(nseq)],
       ["nboot", finiteOr(nboot) != null && nboot > 0 ? nboot : null],
     ]);
+    /* #29: the download facts, on a download row and on no other. */
+    if (download) {
+      putPresent(row, [
+        ["reqHost", audioHostTokenOf(reqHost)],
+        ["finalHost", audioHostTokenOf(finalHost)],
+        ["status", httpStatusOr(status)],
+        ["expected", nonNegIntOr(expected)],
+        ["received", nonNegIntOr(received)],
+      ]);
+    }
     return this.log.record("session", row);
   }
 
@@ -2674,6 +2726,11 @@ function lineFor(e) {
         (e.other === true ? " other=y" : "") +
         (e.hint === true ? " hint=y" : "") +
         (e.availMb != null ? ` avail ${e.availMb}MB` : "") +
+        /* #29: a download attempt — where it was asked for, where it landed. */
+        (e.kind === "downloadAttempt"
+          ? ` req=${e.reqHost ?? "?"} final=${e.finalHost ?? "?"} http=${e.status ?? "?"}` +
+            ` bytes ${e.received ?? "?"}/${e.expected ?? "?"}`
+          : "") +
         `  lag ${ms(e.lagMs)}  hidden=${e.hidden ? "y" : "n"}` +
         (e.hiddenForMs != null ? `  hiddenFor ${ms(e.hiddenForMs)}` : "");
     }

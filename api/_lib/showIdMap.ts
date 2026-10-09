@@ -4,22 +4,19 @@
  * to a 4a `show_id` so an episode result can link to a show page and reuse
  * the existing episode-row UI.
  *
- * TWO SOURCES, PREFERRING THE REAL RELEASE:
- *   1. S-04's shard-index release (`data/shows-index-pointer.json` ->
- *      released `id-map.json`, itunes_id -> show_id, built from the full
- *      PodcastIndex-derived catalogue). This is the intended long-term
- *      source and covers far more than the 220 curated shows.
- *   2. FALLBACK: the two committed catalogue files — `data/catalog.json`'s
- *      `apple_collection_id` (220 curated shows, slug ids) merged ahead of
- *      `data/catalog-breadth.json`'s (~19.7k breadth shows, numeric ids).
- *      S-04 still has not shipped as of P-05: `data/shows-index-pointer.json`
- *      does not exist on `main`, so `tryLoadReleaseIdMap()` returns null on
- *      every call and THIS IS THE ONLY SOURCE IN PRODUCTION — which is why
- *      P-05 widened it. See loadCatalogFallback() below for the measurement
- *      and for why curated must be merged first.
- *      Once a real release exists, source 1 is used and covers a superset
- *      of source 2 naturally (every curated show is required to be in
- *      S-04's id-map, per that card's own fail-closed acceptance rule).
+ * ONE SOURCE: the two committed catalogue files — `data/catalog.json`'s
+ * `apple_collection_id` (220 curated shows, slug ids) merged ahead of
+ * `data/catalog-breadth.json`'s (~19.7k breadth shows, numeric ids). See
+ * loadCatalogFallback() below for the measurement and for why curated must
+ * be merged first. ("Fallback" is historical: there is nothing left to fall
+ * back from.)
+ *
+ * NOT THE SHOWS-INDEX RELEASE. `data/shows-index-pointer.json` names a
+ * published release, but its `id-map.json` is curated slug -> PodcastIndex
+ * id (`tools/shows/shard-build.mjs:buildIdMap`), not Apple collectionId ->
+ * show_id, and the pointer names no id-map asset. The reader that would
+ * have fetched it was unreachable and was deleted (code-health-2 CH2-02,
+ * A1-01); `api/_test/show-id-map.test.mjs` pins the shape mismatch.
  *
  * Cached in-memory per warm instance (same per-instance caveat as
  * appleBucket.ts) — rebuilt lazily on first use, not on every request.
@@ -33,30 +30,10 @@ const REPO_ROOT = path.resolve(__dirname, "..", "..");
 export interface ShowIdMap {
   // collectionId -> show_id
   byCollectionId: Map<number, string>;
-  source: "release" | "catalog-fallback" | "none";
+  source: "catalog" | "none";
 }
 
 let cached: ShowIdMap | null = null;
-/* When the cached map is the catalogue fallback BECAUSE a release fetch
-   failed, the time to try the release again (round-3 audit,
-   search-api-css-8). null means "nothing to retry": the map came from the
-   release, or the pointer names no release at all. */
-let retryReleaseAt: number | null = null;
-
-/* The release id-map fetch runs inside a search request, after a bucket slot
-   was spent, so it gets a short deadline of its own; a failure is retried
-   after RELEASE_RETRY_MS rather than pinning the fallback for the instance's
-   life. */
-export const RELEASE_ID_MAP_TIMEOUT_MS = 2_000;
-export const RELEASE_RETRY_MS = 10 * 60_000;
-let pointerPath = path.join(REPO_ROOT, "data", "shows-index-pointer.json");
-
-interface ShowsIndexPointer {
-  id_map_url?: string;
-  // Other fields (manifest_url, version, etc.) are S-04b's concern; only
-  // id_map_url matters here. Absent/malformed pointer degrades to the
-  // catalog fallback, never a throw.
-}
 
 /* BOTH CATALOGUE FILES, CURATED FIRST (P-05, docs/search-parity-plan.md
    §4, 2026-09-12).
@@ -148,82 +125,20 @@ function loadCatalogFallback(): Map<number, string> {
   return map;
 }
 
-/**
- * Attempts to read the S-04 release pointer and fetch its id-map. Network
- * fetch (the release asset lives on GitHub Releases, not in this repo) —
- * failure of any kind degrades to `null` so the caller falls back to the
- * catalog-derived map rather than erroring the whole search request.
- */
-async function tryLoadReleaseIdMap(fetchImpl: typeof fetch): Promise<{ map: Map<number, string> | null; failed: boolean }> {
-  let pointer: ShowsIndexPointer;
-  try {
-    const raw = fs.readFileSync(pointerPath, "utf8");
-    pointer = JSON.parse(raw) as ShowsIndexPointer;
-  } catch {
-    return { map: null, failed: false }; // S-04 hasn't shipped a pointer yet — expected today
-  }
-  if (!pointer.id_map_url) return { map: null, failed: false };
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), RELEASE_ID_MAP_TIMEOUT_MS);
-  try {
-    const res = await fetchImpl(pointer.id_map_url, { signal: controller.signal });
-    if (!res.ok) return { map: null, failed: true };
-    const body = (await res.json()) as Record<string, string> | Array<{ itunes_id: number; show_id: string }>;
-    const map = new Map<number, string>();
-    if (Array.isArray(body)) {
-      for (const row of body) {
-        if (typeof row.itunes_id === "number" && typeof row.show_id === "string") {
-          map.set(row.itunes_id, row.show_id);
-        }
-      }
-    } else {
-      for (const [k, v] of Object.entries(body)) {
-        const id = Number(k);
-        if (Number.isFinite(id) && typeof v === "string") map.set(id, v);
-      }
-    }
-    return map.size > 0 ? { map, failed: false } : { map: null, failed: true };
-  } catch {
-    return { map: null, failed: true };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
+/** The map, built once per warm instance (`forceReload` rebuilds it). Async
+ *  only so `api/episodes/search.ts` keeps its call shape; nothing here awaits.
+ *  `fetchImpl` is accepted and unused: the map never touches the network. */
 export async function loadShowIdMap(
-  opts: { fetchImpl?: typeof fetch; forceReload?: boolean; now?: () => number } = {}
+  opts: { fetchImpl?: typeof fetch; forceReload?: boolean } = {}
 ): Promise<ShowIdMap> {
-  const now = opts.now ?? Date.now;
-  const retryDue = retryReleaseAt !== null && now() >= retryReleaseAt;
-  if (cached && !opts.forceReload && !retryDue) return cached;
-
-  const fetchImpl = opts.fetchImpl ?? fetch;
-  const fromRelease = await tryLoadReleaseIdMap(fetchImpl);
-  if (fromRelease.map) {
-    cached = { byCollectionId: fromRelease.map, source: "release" };
-    retryReleaseAt = null;
-    return cached;
+  if (!cached || opts.forceReload) {
+    const map = loadCatalogFallback();
+    cached = { byCollectionId: map, source: map.size > 0 ? "catalog" : "none" };
   }
-
-  /* The fallback map is rebuilt only when there is none yet; a retry that
-     fails again keeps it and just moves the next attempt. */
-  if (!cached || cached.source === "release" || opts.forceReload) {
-    const fallback = loadCatalogFallback();
-    cached = { byCollectionId: fallback, source: fallback.size > 0 ? "catalog-fallback" : "none" };
-  }
-  retryReleaseAt = fromRelease.failed ? now() + RELEASE_RETRY_MS : null;
   return cached;
 }
 
 /** Test-only: clears the module-level cache between test files. */
 export function _resetShowIdMapCacheForTests(): void {
   cached = null;
-  retryReleaseAt = null;
-}
-
-/** Test-only: read the shows-index pointer from elsewhere; no argument
-    restores the repo's own. */
-export function _setShowIdMapPointerPathForTests(p?: string): void {
-  pointerPath = p ?? path.join(REPO_ROOT, "data", "shows-index-pointer.json");
 }

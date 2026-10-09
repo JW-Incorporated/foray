@@ -88,27 +88,24 @@ export interface EventStore {
   record(input: EventRow): Promise<PersistedEvent>;
 
   /**
-   * Events for a user strictly after the given (ts, id) cursor, ordered
-   * ascending by (ts, id) — the learning job's read path. `afterId` breaks
-   * ties among events sharing the same `ts` so none are skipped or
-   * reprocessed at a cursor boundary. Pass `afterTs: null` to fetch a
-   * user's full history (first run / no cursor yet).
+   * A user's events strictly after the (ts, id) cursor, ascending by
+   * (ts, id), plus the rows that failed validation and the last (ts, id)
+   * fetched — the learning job's read path. `afterId` breaks ties among
+   * events sharing the same `ts` so none are skipped or reprocessed at a
+   * cursor boundary; a null `afterId` is the minimum id, so every row at
+   * exactly `afterTs` is included. Pass `afterTs: null` to fetch a user's
+   * full history (first run / no cursor yet).
    */
-  fetchSince(userId: string, afterTs: string | null, afterId: string | null, limit?: number): Promise<PersistedEvent[]>;
-
-  /** fetchSince plus the rows that failed validation and the last (ts, id) fetched — the learning job's read path. */
   fetchPage(userId: string, afterTs: string | null, afterId: string | null, limit?: number): Promise<EventPage>;
-
-  /** Test/debug helper — every event ever recorded, insertion order. */
-  all(): Promise<PersistedEvent[]>;
 }
 
 let idCounter = 0;
 function nextId(): string {
   idCounter += 1;
   // Not a real uuid — fine for the in-memory test double, which never
-  // touches a uuid-typed column.
-  return `evt-${idCounter}-${Date.now()}`;
+  // touches a uuid-typed column. Zero-padded so string order is minting
+  // order (`evt-10-` would otherwise sort before `evt-9-`).
+  return `evt-${String(idCounter).padStart(12, "0")}-${Date.now()}`;
 }
 
 export class InMemoryEventStore implements EventStore {
@@ -125,31 +122,24 @@ export class InMemoryEventStore implements EventStore {
     return record;
   }
 
-  async fetchSince(
-    userId: string,
-    afterTs: string | null,
-    afterId: string | null,
-    limit = 1000
-  ): Promise<PersistedEvent[]> {
-    const afterTsMs = afterTs ? new Date(afterTs).getTime() : -Infinity;
-    return this.events
+  /** Same comparison as PostgresEventStore.fetchPage's SQL: a null afterId is the minimum id. */
+  async fetchPage(userId: string, afterTs: string | null, afterId: string | null, limit = 1000): Promise<EventPage> {
+    const afterTsMs = afterTs === null ? null : new Date(afterTs).getTime();
+    const minId = afterId ?? "";
+    const events = this.events
       .filter((e) => {
         if (e.user_id !== userId) return false;
+        if (afterTsMs === null) return true;
         const ts = new Date(e.ts).getTime();
-        if (ts !== afterTsMs) return ts > afterTsMs;
-        // tie-break on id when timestamps are equal
-        return afterId !== null && e.id > afterId;
+        return ts > afterTsMs || (ts === afterTsMs && e.id > minId);
       })
       .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime() || (a.id < b.id ? -1 : 1))
       .slice(0, limit);
-  }
-
-  async fetchPage(userId: string, afterTs: string | null, afterId: string | null, limit = 1000): Promise<EventPage> {
-    const events = await this.fetchSince(userId, afterTs, afterId, limit);
     const last = events[events.length - 1];
     return { events, invalid: [], last: last ? { ts: last.ts, id: last.id } : null };
   }
 
+  /** Test helper — every event ever recorded, insertion order. */
   async all(): Promise<PersistedEvent[]> {
     return [...this.events];
   }
@@ -195,15 +185,6 @@ export class PostgresEventStore implements EventStore {
     } as PersistedEvent;
   }
 
-  async fetchSince(
-    userId: string,
-    afterTs: string | null,
-    afterId: string | null,
-    limit = 1000
-  ): Promise<PersistedEvent[]> {
-    return (await this.fetchPage(userId, afterTs, afterId, limit)).events;
-  }
-
   async fetchPage(userId: string, afterTs: string | null, afterId: string | null, limit = 1000): Promise<EventPage> {
     const result = await this.client.query<{
       id: string;
@@ -245,32 +226,5 @@ export class PostgresEventStore implements EventStore {
     }
     const lastRow = result.rows[result.rows.length - 1];
     return { events, invalid, last: lastRow ? { ts: lastRow.ts_text, id: lastRow.id } : null };
-  }
-
-  /** Debug helper only (small fixtures/manual inspection) — the job never calls this. */
-  async all(): Promise<PersistedEvent[]> {
-    const result = await this.client.query<{
-      id: string;
-      user_id: string;
-      ts: string;
-      type: string;
-      session_id: string | null;
-      episode_id: string | null;
-      archetype: string | null;
-      payload: unknown;
-    }>(`select id, user_id, ts, type, session_id, episode_id, archetype, payload from events order by ts asc, id asc limit 10000`);
-    return result.rows.map(
-      (row) =>
-        ({
-          id: row.id,
-          user_id: row.user_id,
-          ts: new Date(row.ts).toISOString(),
-          type: row.type,
-          session_id: row.session_id as null,
-          episode_id: row.episode_id as null,
-          archetype: row.archetype,
-          payload: row.payload
-        }) as PersistedEvent
-    );
   }
 }

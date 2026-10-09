@@ -132,12 +132,29 @@ request starts 3.28 s, every response 200; `docs/research/reharvest-2026-10-07.m
 ~9–13k unique shows (charts overlap heavily at the top). (Measured: 19,708 unique on
 2026-10-07, 19,787 on 2026-07-09 — the estimate was low.)
 
-**After a harvest, in this order:** `node tools/refresh/fold-breadth-topics.mjs`
-(the harvester rebuilds every row and does not know `taxonomy_node_ids`; the fold
-re-adds it, and its REAL DATA test is red until you do), then
-`node tools/build-show-index.mjs` and `node tools/build-catalog-client.mjs`. A
-show that entered the charts since `data/breadth-classification.json` was last
-built folds to `[]` — an honest "no subject" — until a classify pass covers it.
+**After a harvest, in this order:**
+
+0. `node tools/classify-breadth.mjs --in data/catalog-breadth.json` — gives every
+   show that entered the charts a genre-map base-layer entry in
+   `data/breadth-classification.json` (deterministic, no LLM, no key, $0; a merge
+   that never touches a `classify-agent-*` row, see "Classification layers and
+   precedence" below). Run `--dry-run` first: it must not print `UN-CLASSIFIED` or
+   `STALE GENRE MAP`. Skipping this step is how #1149's 6,553 newcomers sat with
+   no subject: the fold below gives `[]` to a row with no entry, and nothing went
+   red until `tools/refresh/fold-breadth-topics.test.mjs` grew the REAL DATA test
+   that every breadth row has an entry.
+1. `node tools/refresh/fold-breadth-topics.mjs` (the harvester rebuilds every row
+   and does not know `taxonomy_node_ids`; the fold re-adds it, and its REAL DATA
+   test is red until you do).
+2. `node tools/build-show-index.mjs` and `node tools/build-catalog-client.mjs`.
+
+A newcomer's genre-map row folds to its topics when its confidence is `high` or
+`medium`; a `low` one folds to `[]` — an honest "no subject" — by the fold's
+rule. ADR-0006 (`docs/adr/0006-podcast-classification-methodology.md`) calls this
+layer "a prior, never final": any later `classify-agent-*` pass over the same show
+overrides the genre-map row by layer precedence, so these rows are a floor, not a
+judgement. (`tools/classify/select.mjs` also ranks a genre-map row (1) above a
+never-classified one (0), so the newcomers move up the classify-agent queue.)
 
 ### Re-harvests keep shows that left the charts (since 2026-10-07)
 
@@ -215,7 +232,10 @@ comment, and the bottom layer did not honour it.
    default, not by remembering to list it.
 3. Entries for shows outside the input catalog are carried through untouched.
 4. Provenance is merged, not replaced: `merge-results.mjs` owns the top-level
-   keys, this script writes `provenance.base_layer`.
+   keys, this script writes `provenance.base_layer`. Every other top-level field
+   is carried through in its on-disk order (until 2026-10-07 a run rebuilt the
+   top level from four named keys and dropped `merge-results.mjs`'s
+   `label_schema_version`).
 5. A genre-map topic that is not a taxonomy node aborts the run before anything
    is written, naming the topic.
 

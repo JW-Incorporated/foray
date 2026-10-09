@@ -26,6 +26,8 @@
  *     the tab bar name #/shows the same.
  * 11. The header ↻ refreshes the page it is pressed on and never navigates.
  * 12. An Up Next reorder moves one row in place instead of rebuilding the list.
+ * 13. Followed shows marks a show's new episodes ("3 new") and its title
+ *     totals them (PQ-26, #761).
  *
  * Every test names the mutation that kills it, per CLAUDE.md "a green test
  * is not evidence until you have broken it".
@@ -484,6 +486,27 @@ test("Library lists the shows the listener follows, linking to each show", () =>
   assert.ok(html.includes(">Followed shows<"));
   assert.ok(html.includes('href="#/show/s-1"'));
   assert.ok(html.includes("A Followed Show"));
+});
+
+test("PQ-26 (#761): Followed shows marks each show's new episodes and totals them in the section title", () => {
+  /* The title counts every followed show, not only the five rows Library
+     draws. MUTATION: drop libraryFollowedTitle() from renderLibrary (back to
+     the bare "Followed shows") — the total is gone; or drop the badge span
+     from starredShowRow — the row's "3 new" is gone. */
+  const shows = {};
+  for (let i = 1; i <= 6; i++) {
+    shows[`s-${i}`] = { show_id: `s-${i}`, title: `Show ${i}`, artwork_url: null, starred_at: `2026-09-0${i}T00:00:00Z` };
+  }
+  shows["s-6"].unseen_count = 3;
+  shows["s-1"].unseen_count = 2; // the oldest follow: past the five Library draws
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify(shows) } });
+  seedEmpty(m);
+  m.state.catalog = { shows: [] };
+  m.ctx.renderLibrary();
+  const html = m.view();
+  assert.ok(html.includes(">Followed shows · 5 new<"), "the section title totals every followed show's new episodes");
+  assert.match(html, /Show 6<\/span>\s*<span class="show-new-badge" aria-label="3 new episodes">3 new<\/span>/);
+  assert.ok(!html.includes("Show 1<"), "premise: the sixth show is past the section cap");
 });
 
 test("the drawer and the tab bar use one name for #/shows", () => {

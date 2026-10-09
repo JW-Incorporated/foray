@@ -37,8 +37,10 @@ import { TranscriptSourceSchema, type TapeBoundary, type TranscriptSource } from
  *      which are written prose and are not spoken anywhere (F-61). The
  *      minted anchors are canonicalised the way
  *      `tools/segments/merge-segments.mjs` canonicalises both sides
- *      before comparing (`canonicalizeForAnchorMatch` below is a small,
- *      independently-implemented mirror of that module's `canonical()` —
+ *      before comparing (`canonicalizeForAnchorMatch`, from
+ *      `types/anchorText.ts`, is a small, independently-implemented
+ *      mirror of that module's `canonical()`, pinned to it by
+ *      `backend/test/anchorTextParity.test.ts` —
  *      not a re-import, since that module is an ESM `.mjs` build script
  *      and this is a CommonJS backend module; the ALGORITHM is what
  *      needs to match, and it does: case/whitespace/punctuation
@@ -570,20 +572,10 @@ function readCues(file: string): TranscriptCue[] | null {
   return cues.length ? cues : null;
 }
 
-/** Mirrors `tools/segments/merge-segments.mjs`'s `canonical()` exactly:
- * lowercase, NFKC, apostrophes elided, everything else non-alphanumeric
- * collapsed to a single space. Kept in sync deliberately — a divergence
- * here would let this module accept an anchor the real merge validator
- * would reject. See the module doc comment for why this is a mirror,
- * not a re-import (ESM `.mjs` build script vs. CJS backend module).
- *
- * The implementation lives in `types/anchorText.ts` (F-81) so that
- * `types/narration.ts` \u2014 which may not depend on a generation stage \u2014
- * checks a Frame's tape quote with the SAME canonicalisation \u00a74.5 mints
- * anchors with; re-exported here so nothing that imports it from this
- * module has to change. */
-export { canonicalizeForAnchorMatch };
-
+/* `canonicalizeForAnchorMatch` (imported from `types/anchorText.ts`, F-81)
+ * mirrors `tools/segments/merge-segments.mjs`'s `canonical()` exactly, and
+ * `backend/test/anchorTextParity.test.ts` pins the two against each other.
+ * Import it from `types/anchorText`; this module does not re-export it. */
 function canonicalWords(text: string): string[] {
   const c = canonicalizeForAnchorMatch(text);
   return c ? c.split(" ") : [];
@@ -1400,7 +1392,7 @@ function contentWordCount(words: string[]): number {
  * Mirrors `tools/segments/prepare-segment-batch.mjs`'s `slugify` + `mintItemIds`
  * shape (`<show_id>--<slug>`) closely enough to be recognizable as the same id
  * family, without importing that ESM build script into a CJS backend module
- * (same rationale as `canonicalizeForAnchorMatch` above).
+ * (same rationale as `canonicalizeForAnchorMatch` in `types/anchorText.ts`).
  *
  * HERE RATHER THAN IN `sourceBeats.ts`, WHERE IT LIVED (WS-L). It derives an id
  * from a digest ROW and knows nothing about beats or sourcing, and it now has a

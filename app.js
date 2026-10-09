@@ -1862,18 +1862,24 @@ function toggleMarkup(on, spec) {
    for two ideas. Storage keys (`cp_saved`, `cp_starred_shows`) are unchanged. */
 const SAVE_TOGGLE = { offText: "☆", onText: "★", offLabel: "Save episode", onLabel: "Saved" };
 const FOLLOW_TOGGLE = { offText: "+ Follow", onText: "✓ Followed", offLabel: "Follow show", onLabel: "Followed" };
-/* WHAT FOLLOWING DOES NOT DO, said where the tap happens (review 2026-09-23).
-   Apple's Follow delivers new episodes; 4a's is a bookmark (no feed, no
-   notifications, nothing added anywhere — CLAUDE.md principle 2), and the audit
-   verdict warned a switcher would wait for episodes that never come. The line
-   used to live only on #/starred-shows, a page the tap never shows. Whether the
-   word stays "Follow" is a founder noun ruling still open (docs/audit/
-   qa-synthesis.md); this line is right under either word.
+/* WHAT FOLLOWING DOES, AND DOES NOT DO, said where the tap happens (review
+   2026-09-23). Apple's Follow delivers new episodes; 4a's does not (no feed,
+   nothing added anywhere — CLAUDE.md principle 2), and the audit verdict warned
+   a switcher would wait for episodes that never come. The line used to live
+   only on #/starred-shows, a page the tap never shows. Whether the word stays
+   "Follow" is a founder noun ruling still open (docs/audit/qa-synthesis.md);
+   this line is right under either word.
    SAID AS WHAT FOLLOW IS, NOT AS WHAT IS MISSING (audit round 2, copy-14):
-   "4a doesn't add its new episodes anywhere" read like a bug report. The
-   meaning is unchanged — no feed, nothing queued — and stated the way round
-   a listener can use. */
-const FOLLOW_NOTE = "Following keeps a show one tap away in your Library. New episodes stay on the show's page; nothing is queued for you.";
+   "4a doesn't add its new episodes anywhere" read like a bug report.
+   SINCE PQ-26 (#761) a followed show is checked for new episodes and its row
+   is MARKED ("2 new", see checkFollowedShows) — so the note says that, and
+   says the two things the mark is not: nothing is queued, and no phone
+   notification is sent about the new episodes (privacy policy, the
+   `cp_starred_shows` row). SCOPED TO NEW EPISODES (review 2026-10-06): it
+   used to say "4a sends no phone notifications", which is false on Android —
+   the foray-audio plugin's PlaybackKeepAliveService posts a media
+   notification whenever audio plays. */
+const FOLLOW_NOTE = "Following keeps a show one tap away in your Library, marked when it has new episodes. Nothing is queued for you, and no phone notification is sent about them.";
 const UP_NEXT_TOGGLE = { offText: "+ Up Next", onText: "✓ Up Next", offLabel: "Add to Up Next", onLabel: "In Up Next" };
 /* Keeping a playlist 4a made (founder, 2026-09-25: "we should add a feature to
    save playlists"). Once saved the control reads "Saved" and is a state, not an
@@ -1972,13 +1978,138 @@ function upNextBtn(id, item = null) {
    Requirement A2.4 / Joey's Q2 answer: "yes, add starred shows, and a
    section for all of your starred shows. It is not the home page but is
    somewhat easily accessible." Deliberately NOT subscribe semantics — no
-   notifications, no auto-download, no algorithmic surfacing — just a
-   lightweight marker, mirroring the existing episode star (`cp_saved`)
-   pattern exactly, keyed on show_id instead of episode id. Same "state
-   observed, never declared" principle: starring a show changes nothing
-   about what the app recommends or fetches. */
+   auto-download, nothing queued, no algorithmic surfacing, and no phone
+   notification — mirroring the existing episode star (`cp_saved`) pattern,
+   keyed on show_id instead of episode id. Same "state observed, never
+   declared" principle: following a show changes nothing about what the app
+   recommends.
+
+   WHAT FOLLOWING DOES FETCH (PQ-26, #761; README default Q20). A followed
+   show is checked for new episodes — `checkFollowedShows` below asks the
+   same `api/shows/<id>/episodes` the show's page asks, while 4a is open, at
+   most once every six hours per show; a check that failed is tried again the
+   next time 4a is opened (privacy policy §4.3) — and its row is MARKED "N new" in Library and on
+   #/starred-shows until the listener opens the show's page. The rules (what is
+   new, when a check is due, the watermark) are `player/show-alerts.js`'s,
+   published by player/client.js as `window.forayShowAlerts`; what lives here
+   is the write, the badge and the switch. No rules loaded (a page that ran
+   app.js without the player module) means no check, no badge write and no
+   switch — the `queueOrderRules()` pattern. Nothing is queued, nothing is
+   logged (no event type), and there is no OS notification. */
 function starredShowsMap() { return plainObject(storedValue("cp_starred_shows", {})); }
 function isShowStarred(id) { return id in starredShowsMap(); }
+
+/** The new-episode rules, or null before the player module has published them. */
+function showAlertRules() {
+  const r = window.forayShowAlerts;
+  return r && typeof r.afterCheck === "function" ? r : null;
+}
+
+/** THE ONE WRITER OF `cp_starred_shows`. `edit` gets a copy of the stored map
+    and returns the map to keep; it runs now, or over the settled store once
+    hydration lands (editStored), so a check that resolves late edits the map
+    as it is THEN, never a snapshot taken before the fetch. */
+function saveStarredShows(edit) {
+  return editStored("cp_starred_shows", {}, (m) => edit({ ...plainObject(m) }));
+}
+
+/** Replace one followed show's record with `fn(record)` — only while it is
+    still followed: a check that lands after an unfollow must not bring the
+    show back. */
+function updateFollowedShow(id, fn) {
+  return saveStarredShows((out) => {
+    if (out[id] && typeof out[id] === "object") out[id] = fn(out[id]);
+    return out;
+  });
+}
+
+/** How many new episodes a followed show's row is marked with (0 = no badge). */
+function newEpisodeCount(entry) {
+  const n = entry && entry.unseen_count;
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
+const FOLLOWED_CHECK_CAP = 6;
+let followedCheckInFlight = null;
+/* show_id → when this session's last check of it FAILED. Session only, never
+   stored: a failed check leaves the record untouched (rule 1), so by its
+   record the show stays due, and without this every Library open and every
+   return to the foreground would send its id again. A fresh follow clears its
+   entry (toggleShowStar) so its seeding check is not held back. */
+const followedCheckFailedAt = new Map();
+
+/** Check the followed shows that are due for new episodes: alerts on, never
+    checked or checked at least six hours ago (`force` skips the clock), oldest
+    check first, at most FOLLOWED_CHECK_CAP per call. FIRE AND FORGET: every
+    caller is a render or a listener, and none awaits it. Resolves to how many
+    records it rewrote.
+    - A failed fetch (`fetchShowEpisodes` resolves `{ episodes: null }`; it
+      never throws), or the endpoint's degraded 200 (`{ episodes: [], error }`:
+      a feed it could not read — the failure renderEpisode also refuses),
+      leaves the record untouched, so the show stays due by its record. This
+      session waits CHECK_INTERVAL_MS before asking it again
+      (followedCheckFailedAt); the next session asks at once.
+    - A `pi:` show is asked for by its shard key, which only the show record in
+      memory can give (shardKeyForShow); a followed `pi:` show this session has
+      not seen is skipped rather than asked without one (a 404 by
+      construction).
+    - Library and #/starred-shows are repainted only when a badge changed. */
+function checkFollowedShows({ force = false } = {}) {
+  const rules = showAlertRules();
+  if (!rules) return Promise.resolve(0);
+  if (followedCheckInFlight) return followedCheckInFlight;
+  const now = Date.now();
+  const due = Object.values(starredShowsMap())
+    .filter((r) => r && typeof r === "object" && typeof r.show_id === "string" && r.show_id)
+    .filter((r) => rules.alertsOn(r) && (force || (rules.dueForCheck(r, now) && !failedRecently(r.show_id, now, rules))))
+    .filter((r) => !r.show_id.startsWith("pi:") || shardKeyForShow(showById(r.show_id)))
+    .sort((a, b) => String(a.checked_at || "").localeCompare(String(b.checked_at || "")))
+    .slice(0, FOLLOWED_CHECK_CAP);
+  if (!due.length) return Promise.resolve(0);
+  let badgeChanged = false;
+  const failed = (r) => { followedCheckFailedAt.set(r.show_id, Date.now()); return false; };
+  const one = (r) => fetchShowEpisodes(r.show_id).then((res) => {
+    if (!res || !Array.isArray(res.episodes) || (res.error && !res.episodes.length)) return failed(r);
+    followedCheckFailedAt.delete(r.show_id);
+    return updateFollowedShow(r.show_id, (rec) => {
+      const next = rules.afterCheck(rec, res.episodes, Date.now());
+      if (newEpisodeCount(next) !== newEpisodeCount(rec)) badgeChanged = true;
+      return next;
+    });
+  }, () => failed(r));
+  const run = Promise.all(due.map(one)).then((written) => {
+    if (badgeChanged) repaintFollowedIfShown();
+    return written.filter(Boolean).length;
+  });
+  followedCheckInFlight = run;
+  const clear = () => { if (followedCheckInFlight === run) followedCheckInFlight = null; };
+  run.then(clear, clear);
+  return run;
+}
+
+/** Whether this session's last check of `id` failed less than the check
+    interval ago (followedCheckFailedAt). */
+function failedRecently(id, now, rules) {
+  const at = followedCheckFailedAt.get(id);
+  return at !== undefined && now - at < rules.CHECK_INTERVAL_MS;
+}
+
+/** Library and #/starred-shows are the two pages that print the badge. */
+function repaintFollowedIfShown() {
+  const h = currentHash();
+  if (h === "#/library" || h === "#/starred-shows") renderCurrentPage();
+}
+
+/** The listener is looking at the show: the watermark catches up and its
+    badge clears (show-alerts.js markSeen). Written only when it changes. */
+function markFollowedShowSeen(id) {
+  const rules = showAlertRules();
+  const rec = starredShowsMap()[id];
+  if (!rules || !rec || typeof rec !== "object") return;
+  const seen = rules.markSeen(rec);
+  if (seen.unseen_count === rec.unseen_count && seen.seen_published_at === rec.seen_published_at) return;
+  updateFollowedShow(id, (r) => rules.markSeen(r));
+}
 
 function toggleShowStar(id) {
   const had = Boolean(starredShowsMap()[id]);
@@ -1998,8 +2129,7 @@ function toggleShowStar(id) {
      its answer ignored, a follow refused at quota was synced as
      `show_starred` while the button below repainted from storage as not
      followed. */
-  const ok = editStored("cp_starred_shows", {}, (m) => {
-    const out = plainObject(m);
+  const ok = saveStarredShows((out) => {
     if (had) delete out[id]; else out[id] = entry;
     return out;
   });
@@ -2011,6 +2141,12 @@ function toggleShowStar(id) {
     setToggleLabel(b, isShowStarred(id), FOLLOW_TOGGLE);
     b.classList.toggle("on", isShowStarred(id));
   });
+  paintShowAlertsBtns(id);
+  /* A fresh follow is due at once: its first check seeds the watermark, so
+     what the show publishes from now on is what reads as new (show-alerts.js:
+     a first check reports 0). A failure remembered from before an unfollow
+     does not hold it back. */
+  if (ok && !had) { followedCheckFailedAt.delete(id); checkFollowedShows(); }
 }
 
 /* Text label, not a bare glyph like starBtn -- this button sits alone in a
@@ -2032,26 +2168,80 @@ function bindShowStars(scope) {
       toggleShowStar(btn.dataset.showStar);
     });
   });
+  scope.querySelectorAll("[data-show-alerts]").forEach(btn => {
+    if (btn._bound) return;
+    btn._bound = true;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleShowAlerts(btn.dataset.showAlerts);
+    });
+  });
+}
+
+/* THE PER-SHOW SWITCH (PQ-26): with Follow on the show's page, present only
+   while the show is followed (hidden, not absent, so a Follow tapped on this
+   page reveals it without a repaint). Off means the show is no longer checked
+   and its row is never marked. No rules loaded: no switch — one that could not
+   act would be a control that lies. It wears Follow's capsule (`show-star`,
+   first, so test/tap-targets.test.js's census reads it as the control the
+   44px hit-area rule already covers) and Follow's `on`, and sits in the
+   hero under the note that says what following marks. */
+function showAlertsLabel(on) { return `New-episode alerts: ${on ? "on" : "off"}`; }
+
+function showAlertsBtn(show_id) {
+  const rules = showAlertRules();
+  if (!rules) return "";
+  const rec = starredShowsMap()[show_id];
+  const on = rules.alertsOn(rec);
+  return `<button type="button" class="show-star alerts-toggle${on ? " on" : ""}" data-show-alerts="${esc(show_id)}" aria-pressed="${on}"${rec ? "" : " hidden"}>${esc(showAlertsLabel(on))}</button>`;
+}
+
+function paintShowAlertsBtns(id) {
+  const rules = showAlertRules();
+  if (!rules) return;
+  const rec = starredShowsMap()[id];
+  const on = rules.alertsOn(rec);
+  document.querySelectorAll(`[data-show-alerts="${CSS.escape(id)}"]`).forEach(b => {
+    b.hidden = !rec;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-pressed", String(on));
+    setControlLabel(b, showAlertsLabel(on));
+  });
+}
+
+/** Flip one followed show's switch. Device-only: no event is logged. */
+function toggleShowAlerts(id) {
+  const rules = showAlertRules();
+  const rec = starredShowsMap()[id];
+  if (!rules || !rec || typeof rec !== "object") return;
+  const on = !rules.alertsOn(rec);
+  updateFollowedShow(id, (r) => rules.setAlerts(r, on));
+  paintShowAlertsBtns(id);
 }
 
 /* ---------- Starred Shows page (#/starred-shows) ----------
 
    Reachable from Library and the Shows page, deliberately NOT on the home
    screen (Joey's framing: "somewhat easily accessible" but distinct from
-   home). Renders exactly what cp_starred_shows holds -- no fetch, no ranking, no
-   algorithmic surfacing. An empty state is a real, renderable state, same
-   convention as every other page in the app. Reuses showResultRow's visual
-   language (artwork + title, no play/star/duration controls -- a show,
-   not a playable item) rather than inventing a second show-card shape. */
+   home). Renders what cp_starred_shows holds, in the order it was followed --
+   no ranking, no algorithmic surfacing; the only fetch is the new-episode
+   check (checkFollowedShows), which marks a row and never reorders or adds
+   one. An empty state is a real, renderable state, same convention as every
+   other page in the app. Reuses showResultRow's visual language (artwork +
+   title, no play/star/duration controls -- a show, not a playable item)
+   rather than inventing a second show-card shape. */
 function starredShowRow(entry) {
   /* The stored entry is a SNAPSHOT taken when the star was tapped, so it
      carries whatever `artwork_url` the show record had then — null for the 53
      shows harvested without one. Fall back through the live show record so a
      starred show is never blanker than the same show is on any other surface. */
   const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));
+  const n = newEpisodeCount(entry);
   return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}" title="${esc(entry.title)}">
     ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-title">${esc(entry.title)}</span>
+    ${n ? `<span class="show-new-badge" aria-label="${esc(countLabel(n, "new episode"))}">${n} new</span>` : ""}
   </a>`;
 }
 
@@ -2079,6 +2269,7 @@ function renderStarredShows() {
         : `<p class="note">No followed shows yet — tap Follow on a show's page to keep it here.</p>`}
       <p class="note">${esc(FOLLOW_NOTE)}</p>
     </div>`;
+  checkFollowedShows();
 }
 
 /* ---------- the four suggestions ---------- */
@@ -5779,10 +5970,14 @@ function shareLinkFor(target) {
     const p = t.playlist || playlistForId(t.id);
     if (!p) return null;
     if (p.isGenerated) return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id: p.id }), text: p.title || "" };
-    const e = [...new Set(playlistSpine(p).map(partId).filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
+    const parts = playlistSpine(p).map(partId).filter(Boolean);
+    const e = [...new Set(parts.filter(inDiscoverPool))].slice(0, SHARED_PLAYLIST_MAX);
     if (!e.length) return null;
     const id = SHARED_PLAYLIST_PREFIX + b64url(JSON.stringify({ t: String(p.title || ""), e }));
-    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "" };
+    /* `shared` of `total` (SH-PL-BREADTH part 1): what the link carries out of
+       the playlist's distinct parts, the total never capped, so shareTo can
+       say honestly what a recipient will find. url and text are unchanged. */
+    return { url: PUBLIC_WEB_ORIGIN + "#/" + playlistRoute({ id }), text: p.title || "", shared: e.length, total: new Set(parts).size };
   }
   if (t.kind === "foray") {
     const f = (state.forays?.forays || []).find(x => x && x.id === t.id);
@@ -5817,26 +6012,38 @@ function shareNote(anchor, msg, url = "") {
   if (input) { input.focus(); input.select(); } else if (note) setTimeout(() => note.remove(), 4000);
 }
 
+/** "3 of 8 episodes" when a frozen playlist link carries fewer episodes than
+    the playlist holds (shareLinkFor's `shared` and `total`), else "": a link
+    that left nothing out has nothing to own up to. */
+function shareCount(link) {
+  const { shared, total } = link || {};
+  return Number.isInteger(shared) && Number.isInteger(total) && shared < total ? `${shared} of ${total} episodes` : "";
+}
+
 /** Deliver a link: the native share plugin, the Web Share sheet, the
     clipboard, then the link on screen. A cancel ends it — it is not a failure
-    to fall back from. */
+    to fall back from. Every other outcome says how much of a playlist the
+    link holds when it is not all of it (SH-PL-BREADTH part 1); a cancel says
+    nothing. */
 async function shareTo(link, anchor = null) {
   if (!link) return "none";
   const data = { title: link.text, text: link.text, url: link.url };
+  const count = shareCount(link);
+  const sharedNote = () => { if (count) shareNote(anchor, `${count} ${link.shared === 1 ? "is" : "are"} in the link`); };
   const cancelled = (e) => !!e && (e.name === "AbortError" || /cancel/i.test(String(e.message || "")));
   const plugin = window.Capacitor?.Plugins?.Share;
   if (plugin && typeof plugin.share === "function") {
-    try { await plugin.share(data); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
+    try { await plugin.share(data); sharedNote(); return "shared"; } catch (e) { if (cancelled(e)) return "cancelled"; }
   }
   if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-    try { await navigator.share(data); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
+    try { await navigator.share(data); sharedNote(); return "shared"; } catch (e) { if (e && e.name === "AbortError") return "cancelled"; }
   }
   try {
     await navigator.clipboard.writeText(link.url);
-    shareNote(anchor, "Link copied");
+    shareNote(anchor, count ? `Link copied · ${count}` : "Link copied");
     return "copied";
   } catch (_) { /* no clipboard, or refused: show the link */ }
-  shareNote(anchor, "Copy this link", link.url);
+  shareNote(anchor, count ? `Copy this link · ${count}` : "Copy this link", link.url);
   return "manual";
 }
 
@@ -5995,6 +6202,9 @@ function renderShow(show_id, initialQuery = "") {
   const show = showById(show_id);
   if (!show) { resolveMissingShow(show_id); return; }
   rememberShardShow(show);
+  /* Opening a followed show's page is seeing it (PQ-26): its "N new" badge in
+     Library clears here. */
+  markFollowedShowSeen(show.show_id);
   fullPool(); // populate itemIndex/poolIds so curated-pool episode rows can play in-app
   const curatedEps = episodesForShow(show);
   const ctx = "show-" + show.show_id;
@@ -6019,6 +6229,7 @@ function renderShow(show_id, initialQuery = "") {
       ${showArt ? `<img class="show-art" src="${esc(safeUrl(showArt))}" alt="">` : ""}
       ${shareBtn({ kind: "show", id: show.show_id, title: show.title })}${showStarBtn(show.show_id)}
       <p class="note show-follow-note">${esc(FOLLOW_NOTE)}</p>
+      ${showAlertsBtn(show.show_id)}
     </div>
     <!-- The publisher's own description. EMPTY at first paint and filled by
          paintShowDescription() when the episode fetch resolves (or instantly
@@ -8486,7 +8697,11 @@ function seededShuffle(arr, seed) {
   let s = seed >>> 0;
   for (let i = a.length - 1; i > 0; i--) {
     s = (Math.imul(s, 1103515245) + 12345) >>> 0;
-    const j = s % (i + 1);
+    /* The HIGH 16 bits pick the swap (#560, the vouch eval's (b)): the low
+       bits of a power-of-two-modulus LCG repeat on short cycles, and
+       `s % (i + 1)` gave the first tenth of show_ids 23.2% of the year's
+       slots, not ~10%. */
+    const j = (s >>> 16) % (i + 1);
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
@@ -8495,6 +8710,13 @@ function seededShuffle(arr, seed) {
 function showsWeVouchFor(limit = 8, now = new Date()) {
   const shows = (state.catalog?.shows || [])
     .filter(s => s.editorial_note && s.editorial_note.trim())
+    /* FAMILY MODE BEFORE THE SORT AND THE SHUFFLE (#560, the vouch eval's
+       (d)): the row filled 573 of 2026's 2,920 slots, on 296 days, with shows
+       Family Mode hides. Filtering here, not after the slice, keeps all
+       `limit` slots full and the same set for every visitor in each mode. The
+       ONE rule: familyAllows, which tools/similar-eval/vouch-run.mjs also uses
+       to count violations, so its zero measures exactly this filter. */
+    .filter(familyAllows)
     .slice()
     /* CODEPOINT order, not localeCompare (audit round 3, app-2-9): with no
        locale argument that collates in the DEVICE's locale, and under lt, et,
@@ -13703,6 +13925,13 @@ function libraryFollowedHtml() {
     + (followed.length > LIBRARY_SECTION_CAP ? `<a class="lib-more" href="#/starred-shows">All ${followed.length} followed shows ›</a>` : "");
 }
 
+/* The section's title carries the total of the "N new" badges (PQ-26), so a
+   followed show past the first five still shows up in the count. */
+function libraryFollowedTitle() {
+  const total = Object.values(starredShowsMap()).reduce((sum, e) => sum + newEpisodeCount(e), 0);
+  return total ? `Followed shows · ${total} new` : "Followed shows";
+}
+
 function renderLibrary() {
   setBodyClass("view-page");
   fullPool(); // populate itemIndex/poolIds so saved/history rows can play in-app
@@ -13768,7 +13997,7 @@ function renderLibrary() {
         <div><h2>Library</h2></div>
       </div>
       ${libSection("Forays", libraryForaysHtml())}
-      ${libSection("Followed shows", libraryFollowedHtml())}
+      ${libSection(libraryFollowedTitle(), libraryFollowedHtml())}
       ${libSection("Saved", savedHtml)}
       ${libSection("Playlists", playlistsHtml)}
       ${libSection("Up Next", queueHtml)}
@@ -13781,6 +14010,9 @@ function renderLibrary() {
   bindUpNext($("#view"));
   bindDownloads($("#view"));
   bindPlay($("#view"));
+  /* Fire and forget (PQ-26): a show it finds new episodes for repaints this
+     page once, through repaintFollowedIfShown. */
+  checkFollowedShows();
 
   /* A COLD OPEN BEFORE THE PLAYER MODULE (review 2026-09-23). The Forays
      section can only list once the player is up, and the forayCards() header
@@ -17327,6 +17559,58 @@ function ensureInterestsDrawerLink() {
   }
 }
 
+/* ---------- Contact 4a + Privacy policy (UGC gate, step 1) ----------
+
+   Apple Guideline 1.2 asks for "published developer contact information", and
+   docs/curation/ugc-moderation-runbook.md §5 asks for the address in the app's
+   Settings too, "so a listener can find it without leaving 4a". The address
+   and the policy URL are HA #13's (docs/DECISIONS.md, "Privacy-policy facts
+   and choices"): help@jwlabs.ai, and jwlabs.ai/4a/privacy/, the URL the store
+   listings name (docs/store/play/README.md §8).
+
+   Two drawer ITEMS under "Settings", appended in JS for the reason
+   `ensureInterestsDrawerLink` states (index.html's drawer is outside the
+   auto-merge path). Not drawer SECTIONS: the five destinations stay five
+   (test/home-information-architecture.test.js). `init()` binds them after the
+   listener's settings and before the Developer group, so "Delete my data"
+   stays the drawer's last item.
+
+   THE HREFS. Both are fixed constants, never data. The mailto goes through
+   esc() only, never safeUrl(): safeUrl admits http/https and would turn it
+   into "#". The policy URL goes through the app's usual esc(safeUrl(…)). Both
+   are assigned as properties, so no markup is parsed and nothing inline
+   reaches the strict CSP. The address is in the label as well as the link: a
+   phone with no mail app does nothing on a mailto tap, and the listener can
+   still read and copy it.
+
+   IN THE SHELL. Neither is our origin, so Capacitor hands the navigation to
+   the OS (the mail app; Safari or the default browser), the same path the
+   show links' `target="_blank"` take. The drawer closes first, by
+   `onDrawerAction`'s rule. Bound once: remembered on the drawer, like the
+   Developer group, so a lookup that cannot see appended nodes never builds a
+   second pair. */
+const CONTACT_ADDRESS = "help@jwlabs.ai";
+const CONTACT_MAILTO = "mailto:" + CONTACT_ADDRESS;
+const PRIVACY_POLICY_URL = "https://jwlabs.ai/4a/privacy/";
+
+function bindContactPrivacyLinks() {
+  const drawer = $("#drawer");
+  if (!drawer || drawer._contactPrivacyAdded) return;
+  drawer._contactPrivacyAdded = true;
+
+  const contact = ddEl("a", "drawer-item drawer-wrap", `Contact 4a: ${CONTACT_ADDRESS}`);
+  contact.id = "drawer-contact";
+  contact.href = esc(CONTACT_MAILTO);
+  drawer.appendChild(contact);
+
+  const privacy = ddEl("a", "drawer-item", "Privacy policy");
+  privacy.id = "drawer-privacy";
+  privacy.href = esc(safeUrl(PRIVACY_POLICY_URL));
+  privacy.target = "_blank";
+  privacy.rel = "noopener";
+  drawer.appendChild(privacy);
+}
+
 /* ---------- delete my data (#42) ----------
 
    WHY THIS EXISTS
@@ -20592,6 +20876,9 @@ async function init() {
     if (document.hidden) return;
     refreshForayDirectory("foreground");
     refreshGreeting();
+    /* Followed shows' new episodes (PQ-26): due ones only, throttled per show
+       by show-alerts.js's six-hour interval, never awaited. */
+    checkFollowedShows();
   });
 
   /* Warm the concept-vocabulary DF caches now, while the app is idle between
@@ -20643,6 +20930,9 @@ async function init() {
   /* Narration voice (V-01): a listener setting, so it stays with the switches
      above rather than inside the Developer group below (2026-09-22 audit, R8). */
   bindVoiceControl();
+  /* Contact 4a and the privacy policy (UGC gate step 1): still Settings, still
+     above the Developer group and "Delete my data" — see their header. */
+  bindContactPrivacyLinks();
   /* The Developer group (R8): the founder's switch, then the field
      record's surface (#264), all inside one collapsed disclosure. Deliberately
      ABOVE the control below: "Delete my data" must stay the drawer's last item,

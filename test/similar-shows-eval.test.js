@@ -219,12 +219,17 @@ test(`floor: hit rate >= ${FLOOR.hitRateAll}, coverage >= ${FLOOR.coverageAll}`,
 });
 
 test(`ceiling: curated seeds show at most ${CEILING.violationsCurated} must-not shows`, async () => {
-  /* MUTATION (run): drop `&& s.label_scope !== "general"` from the mirror's
-     candidate filter (cbc-ideas returns to titans-of-nuclear's row) -> red.
-     Re-run 2026-10-05 against the #560-9 ceiling of 9: still red.
-     MUTATION (run 2026-10-05, #560-9): the alphabetical-tie-break revert
+  /* MUTATION (run 2026-10-05, #560-9): the alphabetical-tie-break revert
      described on the precision floor -> red (11 > 9: acquired and
-     fall-of-civilizations meet on history/technology again). */
+     fall-of-civilizations meet on history/technology again).
+     NOT THIS TEST'S KILL since #547 residue (2026-10-06): dropping
+     `&& s.label_scope !== "general"` from the candidate filter. That kill
+     came only from titans-of-nuclear's must-not cbc-ideas, and the two no
+     longer share a node (titans-of-nuclear is engineering/energy-fusion,
+     cbc-ideas philosophy/ideas + nature/earth-science). Re-run 2026-10-06
+     with the filter dropped from app.js AND the mirror: still 9, green.
+     (With the mirror alone, the drift pins go red, not this test.)
+     The next test owns that mutation on the real catalogue. */
   const { curated } = await measured();
   assert.ok(
     curated.violations <= CEILING.violationsCurated,
@@ -232,10 +237,38 @@ test(`ceiling: curated seeds show at most ${CEILING.violationsCurated} must-not 
   );
 });
 
+test("no catalogue show's Similar row offers a label_scope 'general' show (PKG-03)", async () => {
+  /* PKG-03 (founder ruling 24): a general show is never a candidate. The
+     must-not ceilings stopped catching a lost candidate filter on the real
+     catalogue once #547 residue split cbc-ideas from titans-of-nuclear (no
+     curated seed's must-not names a general show that shares one of its
+     nodes), and precision ROSE without the filter (0.613 -> 0.629), so no
+     floor catches it either. test/show-page.test.js pins the filter on a
+     fixture; this pins it on all 229 shipped rows.
+     MUTATION (run 2026-10-06): drop `&& s.label_scope !== "general"` from
+     the candidate filter in app.js AND the mirror (so the two drift pins stay
+     green) -> red: 47 rows list a general show, the first being omega-tau's
+     (stuff-you-should-know). The only other red is the stale-report check,
+     which a rerun of tools/similar-eval/run.mjs turns green again. */
+  const { similarShowsFor } = await load(MIRROR);
+  const catalog = readJson(CATALOG);
+  const general = new Set(catalog.shows.filter((s) => s.label_scope === "general").map((s) => s.show_id));
+  assert.ok(general.size > 0, "fixture assumption: the catalogue marks some show general");
+  const offending = catalog.shows
+    .map((show) => [show.show_id, similarShowsFor(catalog, show).map((s) => s.show_id).filter((id) => general.has(id))])
+    .filter(([, ids]) => ids.length);
+  assert.deepStrictEqual(offending, [], `${offending.length} rows offer a general show`);
+});
+
 test("ceiling: a general seed shows no must-not show", async () => {
-  /* MUTATION (run): drop the mirror's first line
-     `if (show?.label_scope === "general") return [];` (cbc-ideas lists
-     titans-of-nuclear on the fusion label again) -> red. */
+  /* MUTATION (run 2026-10-06, #547 residue): drop the mirror's first line
+     `if (show?.label_scope === "general") return [];` -> red (7 must-not
+     shows across 4 general seeds: stuff-you-should-know lists
+     materialism-podcast and mrs-bulletin-materials-news, being-an-engineer
+     lists around-the-house-eric-g and gardenfork-radio,
+     software-engineering-daily lists advent-of-computing, unexplainable lists
+     snap-judgment and the-moth). cbc-ideas is no longer among them:
+     titans-of-nuclear left the fusion label it shared. */
   const { general } = await measured();
   assert.strictEqual(general.violations, CEILING.violationsGeneral, `general seeds: ${general.violations} must-not shows appeared`);
 });

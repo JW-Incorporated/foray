@@ -1,12 +1,14 @@
 /* New-episode alerts for followed shows: the rules (PQ-25, issue #761;
  * docs/roadmap/player-features.md §3; README default Q20).
  *
- * Not on the boot path yet (CH-07): nothing in the page imports this module
- * until PQ-26 wires it, so the web neither modulepreloads, precaches nor
- * deploys it — importing it from client.js is what puts it on all three.
+ * On the boot path since PQ-26 (CH-07): player/client.js imports it and
+ * publishes it as `window.forayShowAlerts`, which is what puts it in the
+ * web's modulepreload list, the service worker's precache and the deploy.
+ * app.js (`checkFollowedShows`, the "N new" badge, the show page's switch)
+ * is its one page caller; nothing here posts a notification.
  *
- * WHY THIS EXISTS. Following a show (`cp_starred_shows`, written only by
- * app.js `toggleShowStar`) is today a marker and nothing more. Q20 adds one
+ * WHY THIS EXISTS. Following a show (`cp_starred_shows`, written only through
+ * app.js `saveStarredShows`) was a marker and nothing more. Q20 adds one
  * promise to it: when a followed show publishes a new episode, the device
  * notices and says so — on when you follow, with a per-show switch to turn it
  * off. This file is the whole of that rule set, written over the follow
@@ -60,8 +62,8 @@
  * ARRAY. This file's own guard used to let an array through, so an array
  * carrying an `alerts: false` property read as "alerts off" and an array row
  * with a `published_at` counted as new; both now read as absent, like null.
- * No production caller reaches this module yet (PQ-26 wires it), so no stored
- * record changes meaning.
+ * No production caller reached this module then (PQ-26 wired it later), so
+ * no stored record changed meaning.
  */
 
 import { isObj } from "./guards.js";

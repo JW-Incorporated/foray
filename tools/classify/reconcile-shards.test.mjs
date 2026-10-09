@@ -830,9 +830,17 @@ test("a row carrying superseded_topics carries a non-empty list", () => {
  * without saying why in the commit message — a drop means shows lost their
  * classification, which is the one thing this pipeline may never do. */
 const FLOOR = {
-  entries: 19787,      // the breadth catalogue. Exact: nothing may leave it.
+  // The breadth catalogue. Exact: nothing may leave it. 19,787 -> 26,340 on
+  // 2026-10-07 (breadth-genre-topics, health/ch-breadth-genre-topics): the 6,553
+  // PKG-14 re-harvest newcomers (#1148/#1149) got their genre-map base-layer rows.
+  entries: 26340,
   agent_rows: 19278,   // reconciled 2026-08-17 from the six shard branches
 };
+
+/* The catalogue size the 2026-08-17 reconciliation EVENT started from. It is
+ * a fact about that event, frozen in `provenance.reconciled_shards.baseline`,
+ * so it stays 19,787 when the live catalogue (FLOOR.entries) grows. */
+const RECONCILE_BASELINE_ENTRIES = 19787;
 
 test("the catalogue is exactly its committed size — nothing may leave it", () => {
   assert.equal(Object.keys(FILE.entries).length, FLOOR.entries);
@@ -858,7 +866,7 @@ test("the reconciliation record, if present, is internally consistent", () => {
   assert.equal(REC.baseline.agent_rows + REC.adopted_total, REC.agent_rows_after, "the union does not add up");
   assert.equal(REC.shards.reduce((n, s) => n + s.adopted, 0), REC.adopted_total, "the per-shard adoptions do not sum to the total");
   assert.equal(REC.shards.reduce((n, s) => n + s.refreshed, 0), REC.refreshed_total, "the per-shard refreshes do not sum to the total");
-  assert.equal(REC.baseline.entries, FLOOR.entries);
+  assert.equal(REC.baseline.entries, RECONCILE_BASELINE_ENTRIES);
   assert.equal(REC.adopted_total + REC.refreshed_total, REC.rows_replaced, "rows_replaced must be adoptions plus refreshes");
 });
 

@@ -17,10 +17,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import fs from "node:fs";
+
 import {
   DOWNLOADS_PLUGIN, USER_AGENT, CALL_TIMEOUT_MS, DOWNLOAD_EVENTS, SITE_URL,
+  DOWNLOAD_ATTEMPT_EVENT, ATTEMPT_DOM_EVENT, attemptSessionDetail,
   createDownloadBridge, userAgentFor,
 } from "./download-bridge.js";
+import { DiagnosticLog, PlayerDiagnostics, DOWNLOAD_OUTCOMES } from "./diagnostic-log.js";
 
 /** A bridge that records every `nativePromise` call and answers `answer`. */
 function fakeBridge({ answer = { ok: true }, throws = null, withAddListener = true, withNativeCallback = true, convertFileSrc } = {}) {
@@ -151,7 +155,9 @@ test("without addListener, events arrive through nativeCallback(plugin, \"addLis
   const dl = createDownloadBridge({ bridge, onEvent: (name, payload) => seen.push([name, payload]) });
   assert.ok(dl, "the bridge still exists without addListener");
   for (const name of DOWNLOAD_EVENTS) assert.ok(listeners.has(`ForayDownloads:${name}:cb`), `${name} subscribed via nativeCallback`);
-  assert.equal(listeners.size, DOWNLOAD_EVENTS.length, "nothing registered under any other plugin or event");
+  /* The three record events and the one diagnostics event (#29, 29-part). */
+  assert.equal(listeners.size, DOWNLOAD_EVENTS.length + 1, "nothing registered under any other plugin or event");
+  assert.ok(listeners.has(`ForayDownloads:${DOWNLOAD_ATTEMPT_EVENT}:cb`), "the attempt event too");
   // CH-12: the thinner primitive has no handle to give back, so each is null.
   assert.deepEqual(dl.handles, [null, null, null]);
   listeners.get("ForayDownloads:downloadDone:cb")({ id: "ep-1", path: "/files/ep-1.mp3", bytes: 7 });
@@ -293,4 +299,115 @@ test("CH-40 characterization: no timer, a throwing clear and a null handle all s
   assert.deepEqual(ra, { ok: false, reason: "timeout" });
   assert.deepEqual(rb, { ok: false, reason: "timeout" });
   assert.notStrictEqual(ra, rb, "a caller that edits its answer cannot edit another's");
+});
+
+/* ─────────── #29 (29-part): the download attempt row ───────────
+
+   `DownloadStore.swift` emits `downloadAttempt { reqHost, finalHost, status,
+   expected, received, outcome, at }` once per attempt. The bridge does NOT
+   hand it to `onEvent` (app.js's `reportFromEvent` keys record statuses, and
+   an attempt is not one): it re-broadcasts it on `window` as `foray:session`,
+   the channel `player/client.js` already feeds into `diag.sessionEvent`, as a
+   row of kind `downloadAttempt` from producer `downloads`. */
+
+/** A window that records what was dispatched on it. */
+function fakeWindow() {
+  const dispatched = [];
+  class CustomEvent {
+    constructor(type, init) { this.type = type; this.detail = init?.detail; }
+  }
+  return { dispatched, win: { CustomEvent, dispatchEvent: (e) => { dispatched.push(e); return true; } } };
+}
+
+const ATTEMPT = Object.freeze({
+  reqHost: "dts.podtrac.com", finalHost: "traffic.megaphone.fm", status: 200,
+  expected: 52_428_800, received: 52_428_800, outcome: "done", at: 1_759_700_000_000,
+});
+
+// Mutation: forward `downloadAttempt` through `forward(name, payload)` like the three record events.
+test("#29: downloadAttempt is re-broadcast as a foray:session row and never reaches onEvent", () => {
+  const { bridge, listeners } = fakeBridge();
+  const { dispatched, win } = fakeWindow();
+  const seen = [];
+  const dl = createDownloadBridge({ bridge, onEvent: (name) => seen.push(name), win });
+  assert.equal(DOWNLOAD_ATTEMPT_EVENT, "downloadAttempt");
+  assert.equal(ATTEMPT_DOM_EVENT, "foray:session");
+  assert.ok(!DOWNLOAD_EVENTS.includes(DOWNLOAD_ATTEMPT_EVENT), "not a record-status event");
+  assert.equal(typeof dl.attemptHandle?.remove, "function", "its addListener handle is kept apart from handles");
+  listeners.get(`ForayDownloads:${DOWNLOAD_ATTEMPT_EVENT}`)({ ...ATTEMPT });
+  assert.deepEqual(seen, []);
+  assert.equal(dispatched.length, 1);
+  assert.equal(dispatched[0].type, "foray:session");
+  assert.deepEqual(dispatched[0].detail, {
+    kind: "downloadAttempt", producer: "downloads", reason: "done", at: 1_759_700_000_000,
+    reqHost: "dts.podtrac.com", finalHost: "traffic.megaphone.fm", status: 200,
+    expected: 52_428_800, received: 52_428_800,
+  });
+  // No window, or one that throws, is no row and no crash.
+  const thrower = { CustomEvent: fakeWindow().win.CustomEvent, dispatchEvent: () => { throw new Error("no"); } };
+  const quiet = fakeBridge();
+  createDownloadBridge({ bridge: quiet.bridge, win: thrower });
+  assert.doesNotThrow(() => quiet.listeners.get(`ForayDownloads:${DOWNLOAD_ATTEMPT_EVENT}`)({ ...ATTEMPT }));
+  const none = fakeBridge();
+  createDownloadBridge({ bridge: none.bridge, win: null });
+  assert.doesNotThrow(() => none.listeners.get(`ForayDownloads:${DOWNLOAD_ATTEMPT_EVENT}`)({ ...ATTEMPT }));
+});
+
+// Mutation: build the detail as `{ ...payload, kind, producer }` -> `url` rides along.
+test("#29: the attempt detail TAKES its six fields and forces kind and producer, so the plugin cannot pose as a session event", () => {
+  /* `foray:session` also reaches client.js's `onNativeSession`, which pauses
+     on `routeChange`/`old-device-gone`: a payload that could set `kind` could
+     pause playback. */
+  const detail = attemptSessionDetail({
+    ...ATTEMPT, kind: "routeChange", reason: "old-device-gone", producer: "audio",
+    url: "https://dts.podtrac.com/redirect.mp3/x?token=abc",
+  });
+  assert.equal(detail.kind, "downloadAttempt");
+  assert.equal(detail.producer, "downloads");
+  assert.equal(detail.reason, "done", "reason is the payload's outcome, not its reason");
+  assert.deepEqual(Object.keys(detail).sort(),
+    ["at", "expected", "finalHost", "kind", "producer", "reason", "received", "reqHost", "status"]);
+  assert.deepEqual(attemptSessionDetail(null), {
+    kind: "downloadAttempt", producer: "downloads", reason: null, at: null,
+    reqHost: null, finalHost: null, status: null, expected: null, received: null,
+  });
+});
+
+// Mutation: drop "downloadAttempt" from diagnostic-log.js's SESSION_KINDS -> no row.
+test("#29: end to end, the bridge's row lands in the diagnostics record with hosts only", () => {
+  const { bridge, listeners } = fakeBridge();
+  const storage = { map: new Map(), getItem(k) { return this.map.get(k) ?? null; }, setItem(k, v) { this.map.set(k, v); }, removeItem(k) { this.map.delete(k); } };
+  const log = new DiagnosticLog({ storage, now: () => 1_759_700_000_100 });
+  const diag = new PlayerDiagnostics({ log, now: () => 1_759_700_000_100 });
+  const win = { CustomEvent: fakeWindow().win.CustomEvent, dispatchEvent: (e) => { diag.sessionEvent(e.detail); return true; } };
+  createDownloadBridge({ bridge, win });
+  listeners.get(`ForayDownloads:${DOWNLOAD_ATTEMPT_EVENT}`)({ ...ATTEMPT, reqHost: "https://dts.podtrac.com/x?t=1" });
+  const rows = log.read().entries.filter((e) => e.type === "session");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].kind, "downloadAttempt");
+  assert.equal(rows[0].producer, "downloads");
+  assert.equal(rows[0].reason, "done");
+  assert.equal(rows[0].reqHost, undefined, "a URL is refused by the record");
+  assert.equal(rows[0].finalHost, "traffic.megaphone.fm");
+  assert.equal(rows[0].lagMs, 100);
+  assert.doesNotMatch(JSON.stringify(log.read()), /token|\?t=|https:/);
+});
+
+// Mutation: rename `eventAttempt` in DownloadPolicy.swift, or a payload key, or an outcome constant -> red.
+test("#29: DownloadPolicy.swift's attempt event, payload keys and outcomes are the ones this side reads", () => {
+  const swiftDir = new URL("../mobile/plugins/foray-downloads/ios/Sources/ForayDownloadsPlugin/", import.meta.url);
+  const strip = (src) => src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
+  const policy = strip(fs.readFileSync(new URL("DownloadPolicy.swift", swiftDir), "utf8"));
+  const store = strip(fs.readFileSync(new URL("DownloadStore.swift", swiftDir), "utf8"));
+  assert.match(policy, new RegExp(`public static let eventAttempt = "${DOWNLOAD_ATTEMPT_EVENT}"`));
+  const body = /func attemptPayload\([^)]*\) -> \[String: Any\] \{([^}]*)\}/.exec(policy)?.[1] ?? "";
+  const keys = [...body.matchAll(/"([A-Za-z]+)":/g)].map((m) => m[1]).sort();
+  assert.deepEqual(keys, ["at", "expected", "finalHost", "outcome", "received", "reqHost", "status"]);
+  const outcomes = [...policy.matchAll(/public static let outcome[A-Z][A-Za-z]* = "([a-z-]+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(outcomes, [...DOWNLOAD_OUTCOMES].sort());
+  /* Hosts only: the payload is built from `hostOf`, never `absoluteString`. */
+  assert.match(body, /"reqHost": nullable\(hostOf\(requested\)\)/);
+  assert.match(body, /"finalHost": nullable\(hostOf\(landed\)\)/);
+  assert.doesNotMatch(body, /absoluteString|\.path\b|\.query\b/);
+  assert.match(store, /emit\?\(DownloadPolicy\.eventAttempt,/);
 });

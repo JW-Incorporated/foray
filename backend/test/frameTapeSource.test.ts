@@ -7,8 +7,7 @@ import { DefaultEvidenceGatherer } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
-import { canonicalizeForAnchorMatch as fromLookup } from "../src/generation/transcriptArchiveLookup";
-import { canonicalizeForAnchorMatch, phraseIsInWindow } from "../src/types/anchorText";
+import { phraseIsInWindow } from "../src/types/anchorText";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SelectedClaim } from "../src/generation/NarrationWriterBuilder";
@@ -295,13 +294,6 @@ describe("F-81 — the anchor canonicalisation is the quote matcher for tape", (
     expect(phraseIsInWindow("drivers dash", WINDOW_TEXT)).toBe(false);
     expect(phraseIsInWindow("", WINDOW_TEXT)).toBe(false);
     expect(phraseIsInWindow("hand-written rules", WINDOW_TEXT)).toBe(false);
-  });
-
-  it("transcriptArchiveLookup still exports the same function — one canonicalisation, two importers", () => {
-    /* MUTATION THAT KILLS THIS: leave a private copy behind in
-       `transcriptArchiveLookup.ts` that drifts from `types/anchorText.ts`. */
-    expect(fromLookup).toBe(canonicalizeForAnchorMatch);
-    expect(canonicalizeForAnchorMatch("Drivers’ DASH-cams, okay?")).toBe("drivers dash cams okay");
   });
 });
 

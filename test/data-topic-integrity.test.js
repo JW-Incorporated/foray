@@ -6,7 +6,9 @@
  * (.github/workflows/ci.yml) validates topic ids for `discover.json` ONLY.
  * Three other files carry node ids and were checked by nothing:
  *
- *   - data/breadth-classification.json  19,787 shows, ~24k topic references
+ *   - data/breadth-classification.json  26,340 shows, ~45k topic references
+ *                                       (19,787 until the 2026-10-07 re-harvest
+ *                                       newcomers got genre-map rows)
  *   - data/top-topics.json              155 topics -> node mappings
  *   - data/genre-taxonomy-map.json      110 Apple genres -> node mappings
  *
@@ -243,14 +245,23 @@ test("only an allowlisted fusion-specific show passes engineering/energy-fusion 
 
      Two halves: (1) no discover item outside the allowlist wears the leaf with
      `topics_source: "show"`; (2) no catalog row outside the allowlist carries
-     the leaf, unless it is general (merge.mjs then refuses an episode that has
-     no topic of its own, PKG-05a). Without (2), the next nightly episode of
-     such a show would inherit the leaf again.
+     the leaf. Without (2), the next nightly episode of such a show would
+     inherit the leaf again.
+     (2) once exempted `label_scope: "general"` rows, because merge.mjs refuses
+     an episode of a general show that has no topic of its own (PKG-05a). That
+     left the wrong "Fusion & energy systems" chip on the show pages of CBC
+     Ideas, Catalyst with Shayle Kann and TechSurge (#547, closing comment's
+     "known residue"): the chip is the show label itself. Their labels were
+     re-derived from each show's own episode topics in data/discover.json, so
+     the exemption is gone and a general show is held to the same rule.
      KILLED BY (run 2026-10-05): (1) setting
      cleantechies-podcast--291-building-physical-infrastructure-at-the back to
      `"topics": ["engineering/energy-fusion"], "topics_source": "show"` in
      data/discover.json; (2) putting `engineering/energy-fusion` back in
-     CleanTechies Podcast's `taxonomy_node_ids` in data/catalog.json. */
+     CleanTechies Podcast's `taxonomy_node_ids` in data/catalog.json.
+     KILLED BY (run 2026-10-06, #547 show-label residue): putting
+     `engineering/energy-fusion` back in cbc-ideas's `taxonomy_node_ids` in
+     data/catalog.json (a general show; red only without the old exemption). */
   const FUSION = "engineering/energy-fusion";
   const FUSION_SPECIFIC_SHOWS = new Set(["Titans of Nuclear", "omega tau"]);
   const shows = read("catalog.json").shows;
@@ -262,8 +273,39 @@ test("only an allowlisted fusion-specific show passes engineering/energy-fusion 
     .filter((i) => (i.topics || []).includes(FUSION) && i.topics_source === "show" && !FUSION_SPECIFIC_SHOWS.has(i.show))
     .map((i) => `inherited — ${i.show}: ${i.id}`);
   const labelled = shows
-    .filter((s) => (s.taxonomy_node_ids || []).includes(FUSION) && !FUSION_SPECIFIC_SHOWS.has(s.title) && s.label_scope !== "general")
+    .filter((s) => (s.taxonomy_node_ids || []).includes(FUSION) && !FUSION_SPECIFIC_SHOWS.has(s.title))
     .map((s) => `show label — ${s.show_id}`);
   const bad = [...inherited, ...labelled];
+  assert.deepEqual(bad, [], report(bad));
+});
+
+/* EPISODE TOPICS (PKG-29, docs/roadmap/corpus.md §3). data/episode-topics.json
+ * is written by tools/foraycorpus-export/topics.mjs in its own data PR, after
+ * PKG-28 sets the rule's numbers and PKG-30 reads it. Until that file exists
+ * both tests SKIP rather than pass, so they add nothing to the floor; the data
+ * PR removes the skip branch and raises the floor by 2.
+ *
+ * KILLED BY (run 2026-10-07, against a local, uncommitted
+ * data/episode-topics.json that passes both tests): (1) adding the node id
+ * "science/not-a-node" to one episode's topics; (2) adding "nope" to
+ * general_shows. */
+const EPISODE_TOPICS = path.join(DATA, "episode-topics.json");
+const EPISODE_TOPICS_ABSENT = "data/episode-topics.json not yet published (PKG-29 data PR)";
+
+test("every node id in data/episode-topics.json exists in the taxonomy", (t) => {
+  if (!fs.existsSync(EPISODE_TOPICS)) return t.skip(EPISODE_TOPICS_ABSENT);
+  const { episodes } = read("episode-topics.json");
+  const bad = [];
+  for (const [key, { topics }] of Object.entries(episodes)) {
+    for (const id of topics) if (!nodeIds.has(id)) bad.push(`${key}: ${id}`);
+  }
+  assert.deepEqual(bad, [], report(bad));
+});
+
+test("every general show in data/episode-topics.json is a catalog or breadth show", (t) => {
+  if (!fs.existsSync(EPISODE_TOPICS)) return t.skip(EPISODE_TOPICS_ABSENT);
+  const known = new Set(read("catalog.json").shows.map((s) => s.show_id));
+  for (const s of read("catalog-breadth.json").shows) known.add(String(s.apple_collection_id));
+  const bad = read("episode-topics.json").general_shows.filter((id) => !known.has(id));
   assert.deepEqual(bad, [], report(bad));
 });

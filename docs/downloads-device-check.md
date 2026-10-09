@@ -36,12 +36,17 @@ These are preconditions, not steps for the founder.
    for a TestFlight build. Without one, step 4 is recorded as "not run (no
    development build)" and the missing-file path stays proven by unit tests
    only.
-5. **For step 6: a proxy that can read HTTPS.** Proxyman or Charles on a Mac,
-   with the phone's Wi-Fi proxy pointed at it and the proxy's root certificate
-   installed and trusted on the phone (Settings → General → About →
-   Certificate Trust Settings). Proxyman's iPhone app also works without a Mac.
-   SSL proxying must be on for the podcast's hosts, or only the host name is
-   shown.
+5. **For step 6: the episode's enclosure URL, and optionally a proxy.** Step 6
+   reads the download's diagnostics row (29-part, 2026-10-06), so it needs only
+   the `url` in the `<enclosure>` of the show's RSS feed for the episode you
+   download there. A build from before 29-part writes no such row; on one,
+   step 6 needs the proxy. The proxy is also the optional deeper check: it
+   shows the request headers and every redirect hop, which the row does not.
+   Proxyman or Charles on a Mac, with the phone's Wi-Fi proxy pointed at it and
+   the proxy's root certificate installed and trusted on the phone (Settings →
+   General → About → Certificate Trust Settings). Proxyman's iPhone app also
+   works without a Mac. SSL proxying must be on for the podcast's hosts, or
+   only the host name is shown.
 
 ## What this script does not check, because it is not built
 
@@ -56,16 +61,25 @@ than it is.
   code implements from `docs/roadmap/README.md` question 17
   (`docs/roadmap/player-features.md` §1 question 2). No founder has ruled on
   it. This script checks the default works; it does not settle it.
-- **Bookmark rows never switch to the approximate "Around minute N"
-  wording.** Drift detection has no observed duration yet: `app.js`
-  `bookmarkObservedSec` reads `ForayPlayer.observedDurationSec`, which is not
-  built, so it passes null and `seekPrecision` reports the listener's own
-  bookmark as exact on any copy. PQ-24's "streamed another day → roughly"
-  check (`docs/roadmap/player-features.md`) cannot be run until a later card
-  exposes the measured length.
-  Step 3's second half only records the two lengths.
-- **The iOS plugin writes no diagnostics row.** Developer → Playback
-  diagnostics says nothing about downloads, so step 6 needs a proxy.
+- **The bookmark drift reading is the copy that played last, not a fresh
+  measurement.** `app.js` `bookmarkObservedSec` reads
+  `ForayPlayer.observedDurationSec` (built 2026-10-06, card
+  bookmark-observed-duration): the length the player measured the last time
+  the episode played, as stored beside its position. It is null until the
+  episode has played on this device, and then no drift is claimed. Opening the
+  page of a copy that has not played yet shows the previous copy's reading.
+  On a build from before that card, step 3's second half can only record the
+  two lengths.
+- **The download's diagnostics row has host names, not addresses.** Each
+  download attempt adds one `downloadAttempt` row to Developer → Playback
+  diagnostics (built 2026-10-06, card 29-part): the host the app asked
+  (`req=`), the host the audio came from after redirects (`final=`), the HTTP
+  status, the bytes and how it ended. It never holds a path, a query or the
+  hops in between, and it cannot show the request headers (`Range`,
+  `User-Agent`); those are proven by the plugin's unit tests
+  (`DownloadPolicyTests.swift`), and only the optional proxy shows them on the
+  phone. Android writes no such row yet: its half waits for the Android native
+  engine (D-A3).
 
 ## Rules for every step
 
@@ -116,20 +130,24 @@ than it is.
    *Expected:* under **Bookmarks** the row reads **"At 1:07:3x"** (the exact
    second you marked). Tap it: with no network, playback jumps to that second
    and plays on. This offline seek is what step 3 judges. The "At" wording
-   alone does not tell a downloaded copy from a streamed one: a streamed
-   `dai_suspected` bookmark also reads "At" today (see "What this script does
-   not check"). Write down the episode's total length the player shows.
+   alone does not tell a downloaded copy from a streamed one: a streamed copy
+   of the same length also reads "At". Write down the episode's total length
+   the player shows.
    Then, **on another day** (so the publisher can serve a different ad load):
    turn Airplane Mode off, tap **Downloaded ✓** on the episode's page to remove
-   the download, play the episode streamed for 10 seconds, and open its page
-   again. Write down the streamed length next to the downloaded one.
-   *Record only, no pass or fail:* the row reads **"At 1:07:3x"** whatever the
-   streamed length is, because the episode page does not yet measure the
-   copy's length (`app.js` `bookmarkObservedSec` returns null;
-   `ForayPlayer.observedDurationSec` is not built). The two lengths are kept
-   for the later card that exposes the measured length, when a gap over 30
-   seconds (`player/seek-policy.js` `DRIFT_TOLERANCE_SEC = 30`) will switch the
-   row to "Around minute 68".
+   the download, play the episode streamed for 10 seconds, **pause**, and open
+   its page again. Write down the streamed length next to the downloaded one.
+   *Expected:* when the two lengths differ by more than 30 seconds
+   (`player/seek-policy.js` `DRIFT_TOLERANCE_SEC = 30`), the row reads
+   **"Around minute 68"**: the player measured a copy that moved since the
+   mark, so the mark is no longer claimed to the second. When they differ by
+   30 seconds or less, it still reads **"At 1:07:3x"**. The wording comes from
+   `ForayPlayer.observedDurationSec`, the length stored with the position
+   when the episode last played, so the 10 seconds of streamed play come
+   first. On a build from before 2026-10-06 (no
+   `ForayPlayer.observedDurationSec`) the row reads "At 1:07:3x" whatever the
+   lengths are: record the two lengths and mark this half "not run (build
+   predates the drift reading)".
 
 4. **Missing-file degrade (#29: "delete a file behind the player, hit play, it
    degrades").** Needs precondition 4. Download the episode again and wait for
@@ -177,17 +195,33 @@ than it is.
    moves to **Downloading NN%** and finishes. Remove that download afterwards.
 
 6. **The download uses the original URL (#29: "checked by inspecting the real
-   request").** Needs precondition 5. With the proxy recording, tap
-   **Download** on an episode not yet downloaded.
-   *Expected, in the proxy:* the first request for the audio is a `GET` of the
-   episode's **original enclosure URL**, the `url` in the `<enclosure>` of the
-   show's RSS feed, measurement prefixes (for example Podtrac or Chartable)
-   included. It carries `Range: bytes=0-0` (the plugin's one-byte probe) and a
+   request").** Needs precondition 5. Menu → **Developer** → **Playback
+   diagnostics** → **Clear**, then tap **Download** on an episode not yet
+   downloaded and wait for **Downloaded ✓**. Open **Playback diagnostics**
+   again and **Copy**.
+   *Expected, in the copy:* one row like
+   `session    downloads downloadAttempt (done) req=dts.podtrac.com final=traffic.megaphone.fm http=200 bytes 52428800/52428800`.
+   - `req=` is the **host of the episode's original enclosure URL**, the `url`
+     in the `<enclosure>` of the show's RSS feed, measurement prefix (for
+     example Podtrac or Chartable) included: the host the app asked first.
+   - `final=` is the host the audio came from after the redirects; it differs
+     from `req=` whenever the feed's URL redirects, and that is fine.
+   - Neither is a 4a address (`foray-web-seven.vercel.app`, `*.jwlabs.ai`,
+     Supabase).
+   - It ends `(done)` with `http=` 200 or 206, and the two byte counts are
+     equal (or the second reads `?`: the host sent no length).
+   Write down `req=` and the feed's enclosure URL side by side. A row ending
+   in anything else (`refused-status`, `refused-redirect`, `network`,
+   `not-saved`) is a fail of step 6: paste the row into the comment. No row at
+   all on a build with 29-part is a fail too.
+   *Optional, with a proxy (and on a build without the row, required):* the
+   first request for the audio is a `GET` of the full original enclosure URL.
+   It carries `Range: bytes=0-0` (the plugin's one-byte probe) and a
    `User-Agent` starting `4a/`. Any redirects follow from that host. A second
    `GET` with no `Range` header, the transfer itself, fetches the URL the
    probe was redirected to, with the same `User-Agent`. No audio request goes
-   to a 4a address (`foray-web-seven.vercel.app`, `*.jwlabs.ai`, Supabase).
-   Write down the first URL and the feed's enclosure URL side by side.
+   to a 4a address. Write down the first URL and the feed's enclosure URL side
+   by side.
 
 7. **The Library's usage line matches the phone (#29: "Settings usage matches
    reality").** With two or three episodes downloaded, read Library →
@@ -211,7 +245,7 @@ than it is.
 
 Steps 1, 2, 3, 5, 6 and 7 must pass on the build named in the record. Step 4,
 online and offline, passes, or is "not run" only for want of a development
-build. The second half of step 3 is recorded, not judged. When every step is
-in the #29 comment, the device-check asks in #29 can be ticked. #29 itself
-stays open while automatic download of picks and the bookmark drift reading
-are unbuilt.
+build. The second half of step 3 is judged on a build with
+`ForayPlayer.observedDurationSec`, and recorded as "not run" on an older one.
+When every step is in the #29 comment, the device-check asks in #29 can be
+ticked. #29 itself stays open while automatic download of picks is unbuilt.

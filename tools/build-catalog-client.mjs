@@ -25,6 +25,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import { rankByAppleId } from "./harvest-merge.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
@@ -77,9 +78,9 @@ export function projectShow(show) {
 
 /* `breadth` is data/catalog-breadth.json, or null (every chart_rank null);
    `daiClass` is data/dai-classification.json, or null (every dai null).
-   The same join tools/build-show-index.mjs's mergeShowIndexRows makes for
-   data/show-index.tsv (PKG-11a) — copied, not imported, so neither builder
-   depends on the other. */
+   The rank join is harvest-merge.mjs's rankByAppleId, the one
+   tools/build-show-index.mjs's mergeShowIndexRows reads for
+   data/show-index.tsv (PKG-11a). */
 export function buildCatalogClient(catalog, breadth = null, daiClass = null) {
   if (!catalog || !Array.isArray(catalog.shows)) {
     throw new Error("data/catalog.json did not parse to { shows: [...] } — refusing to write an empty derivation");
@@ -88,13 +89,7 @@ export function buildCatalogClient(catalog, breadth = null, daiClass = null) {
     throw new Error("data/catalog-breadth.json did not parse to { shows: [...] } — refusing to write an empty derivation");
   }
 
-  /* Every breadth row, `in_curated` or not — the curated shows' twins are
-     exactly the `in_curated` rows, so filtering them out would join nothing. */
-  const rankByAppleId = new Map();
-  for (const row of breadth?.shows ?? []) {
-    const rank = Number(row?.chart_rank);
-    if (Number.isFinite(rank) && rank > 0) rankByAppleId.set(String(row?.apple_collection_id), rank);
-  }
+  const rankOf = rankByAppleId(breadth);
 
   const dai = (show) => {
     const v = daiClass?.shows?.[String(show?.apple_collection_id)]?.dai;
@@ -105,7 +100,7 @@ export function buildCatalogClient(catalog, breadth = null, daiClass = null) {
     version: catalog.version,
     shows: catalog.shows.map((show) => projectShow({
       ...show,
-      chart_rank: rankByAppleId.get(String(show?.apple_collection_id)) ?? null,
+      chart_rank: rankOf.get(String(show?.apple_collection_id)) ?? null,
       dai: dai(show),
     })),
   };

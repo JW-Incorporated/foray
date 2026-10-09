@@ -2859,6 +2859,7 @@ test("NE-01: the Preferences pin is test-only, cannot reach the app's package gr
     ".github/workflows/ios-build.yml",
     ".github/workflows/release.yml",
     ".github/actions/ios-archive/action.yml",
+    ".github/actions/ios-prepare/action.yml",
   ];
   for (const rel of appBuilders) {
     const abs = path.join(ROOT, rel);

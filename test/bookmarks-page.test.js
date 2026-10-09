@@ -21,13 +21,14 @@
  *  g. A refused Remove removes nothing and says nothing.
  *  h. A bookmark made from the sheet over this page is listed at once.
  *  i. A page painted before the durable store landed lists them when it does.
+ *  j. The player's half, end to end: the REAL player/client.js's
+ *     `ForayPlayer.observedDurationSec` (the duration PositionStore measured
+ *     beside the position, or null; never the catalogue's) drives the page,
+ *     so a drifted stitched copy reads "Around minute 62" on the device.
  *
- * The player's half of (c)/(d), the length of the copy in hand, is not built
- * here: PQ-15 says "Do not touch: client.js" and, since
- * `ForayPlayer.episodeProgress` has no duration field, pass `null` (its
- * escalation). Today ForayPlayer has no `observedDurationSec`, so the page
- * reads null and claims no drift; the stubs below stand in for the member a
- * later card exposes, and (c)/(d) pin what the page does once it exists.
+ * (c)/(d) stub the player's reading so each pins one page rule; (j) hands the
+ * page the real member (card bookmark-observed-duration, 2026-10-06), which
+ * PQ-15 could not build because it left client.js alone.
  *
  * Every test names the one-line mutation that kills it, and each was run.
  *
@@ -209,8 +210,8 @@ test("(a) no bookmarks, or no bookmark rules published: no Bookmarks section, an
 });
 
 /** A ForayPlayer that records every way audio could start, and reports the
-    length of the copy in hand (`observedDurationSec`, a member a later card
-    adds to client.js; absent today, so the page reads null). */
+    length of the copy in hand (`observedDurationSec`, player/client.js's
+    member; (j) swaps in the real one). */
 function recordingPlayer({ observed = null, current = false, loaded = true } = {}) {
   const rec = { plays: [], seeks: [], toggles: 0, asked: [] };
   rec.api = {
@@ -428,4 +429,62 @@ test("(i) a page painted while the durable store is still hydrating lists the bo
   store.land();
   m.evalIn("markStorageSettled()");
   assert.deepStrictEqual(rowsOf(m.section()).map((r) => r.ts), ["900"], "the durable bookmark is listed");
+});
+
+/* ---------- j: the real player's reading ---------- */
+
+/** The REAL player/client.js, imported over a stub localStorage seeded BEFORE
+    the import (its durable store reads storage into memory when the module
+    loads). The globals are put back once it has loaded: observedDurationSec
+    reads only the store the module already holds. */
+let clientSeq = 0;
+async function realClient(rows) {
+  const data = new Map(Object.entries(rows));
+  const ls = {
+    get length() { return data.size; },
+    key: (i) => [...data.keys()][i] ?? null,
+    getItem: (k) => (data.has(k) ? data.get(k) : null),
+    setItem: (k, v) => { data.set(k, String(v)); },
+    removeItem: (k) => { data.delete(k); },
+  };
+  const names = ["window", "document", "localStorage", "navigator"];
+  const prev = new Map(names.map((n) => [n, Object.getOwnPropertyDescriptor(globalThis, n)]));
+  const set = (n, value) => Object.defineProperty(globalThis, n, { value, writable: true, configurable: true });
+  set("localStorage", ls);
+  set("window", { addEventListener() {}, removeEventListener() {}, dispatchEvent: () => true });
+  set("document", { hidden: false, addEventListener() {}, removeEventListener() {}, querySelectorAll: () => [] });
+  set("navigator", {});
+  try {
+    const url = require("node:url").pathToFileURL(path.join(ROOT, "player", "client.js")).href;
+    return (await import(`${url}?bookmarks-page=${++clientSeq}`)).default;
+  } finally {
+    for (const [n, d] of prev) {
+      if (d) Object.defineProperty(globalThis, n, d);
+      else delete globalThis[n];
+    }
+  }
+}
+
+test("(j) with the real player: a stitched copy measured 45 s longer than the one the mark was set on reads 'Around minute 62'; nothing measured, no drift is claimed", async () => {
+  /* The catalogue (the item, and the bookmark's own duration_sec) says
+     3600 s; the copy that played measured 3645 s (PositionStore's row).
+     MUTATION (run): make ForayPlayer.observedDurationSec in client.js return
+     the catalogue's duration (`return readLastEpisode(storage)?.duration_sec
+     ?? null;`, cp_last_episode holding the same 3600) -> "At 1:02:03"; red.
+     MUTATION 2 (run): `return null;` -> "At 1:02:03"; red. */
+  const pos = (seconds, duration) => JSON.stringify({ seconds, duration, updated_at: "2026-10-01T10:00:00.000Z", source: "local" });
+  const last = JSON.stringify({ id: "ep-1", title: "Ep", show: "Show", audio_url: "https://x.test/a.mp3", duration_sec: 3600 });
+  const mark = { "ep-1": [row(3723, "2026-10-01T09:00:00.000Z", { duration_sec: 3600 })] };
+
+  const client = await realClient({ "cp_pos:ep-1": pos(1800, 3645), cp_last_episode: last });
+  const m = mount({ player: { ...recordingPlayer().api, observedDurationSec: client.observedDurationSec } });
+  m.seed(mark);
+  m.render(ep({ dai_suspected: true }));
+  assert.deepStrictEqual(rowsOf(m.section()).map((r) => [r.title, r.play]), [["Around minute 62", "Play bookmark around minute 62"]]);
+
+  const unmeasured = await realClient({ cp_last_episode: last });
+  const u = mount({ player: { ...recordingPlayer().api, observedDurationSec: unmeasured.observedDurationSec } });
+  u.seed(mark);
+  u.render(ep({ dai_suspected: true }));
+  assert.deepStrictEqual(rowsOf(u.section()).map((r) => r.title), ["At 1:02:03"], "no measured length: the catalogue's is not a reading, no drift is claimed");
 });

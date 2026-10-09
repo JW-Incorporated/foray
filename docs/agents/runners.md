@@ -22,6 +22,7 @@ changes a runner.
 | **foray-classify-shard0–5** | Claude Cloud routines (6) | Every 8h, staggered 40 min apart — see below | Sonnet | Wyatt's account | `runner-prompts/classify-batch.md` | live — **push to `reclassify-<N>`, open NO PR** (see below) |
 | **nightly-watch** | GitHub Actions (`.github/workflows/nightly-watch.yml`) | Daily 21:40 UTC | — (deterministic) | Actions minutes | workflow file → `tools/refresh/watch-nightly.mjs` | off — the workflow is merged and ran daily; disabled 2026-09-30 together with nightly-refresh (HA #46 ruling) so the red runs stop; re-enable it with nightly-refresh when the Spark takes the nightly (Phase 5), steps in `STATE.md` |
 | **merge-audit** | GitHub Actions (`.github/workflows/merge-audit.yml`) | Weekly, Monday 07:17 UTC | — (deterministic) | Actions minutes | workflow file → `tools/audit/merge-audit.mjs` | live — one comment per run on issue #129; a failed run comments too |
+| **shows-pointer-watch** | GitHub Actions (`.github/workflows/shows-pointer-watch.yml`) | Daily 14:23 UTC | — (deterministic) | Actions minutes (free, public repo) | workflow file → `tools/shows/watch-pointer.mjs` | live once merged — red when `data/shows-index-pointer.json` is over 192 h old; standalone, NOT part of the disabled nightly-watch |
 
 > ### `nightly-watch` exists because a green workflow list is not evidence (issue #290)
 >
@@ -172,14 +173,23 @@ classify PRs conflict by construction, because `merge-results.mjs` rewrites
 
 | Routine | Cron (UTC) | Argument |
 |---|---|---|
-| `foray-classify-shard0` | `10 0,8,16 * * *` | `--shard 0/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard1` | `50 0,8,16 * * *` | `--shard 1/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard2` | `10 2,10,18 * * *` | `--shard 2/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard3` | `50 2,10,18 * * *` | `--shard 3/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard4` | `10 4,12,20 * * *` | `--shard 4/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
-| `foray-classify-shard5` | `50 4,12,20 * * *` | `--shard 5/6 --batch-size 60 --mode fresh --progress data/classify-progress.json` |
+| `foray-classify-shard0` | `10 0,8,16 * * *` | `--shard 0/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard1` | `50 0,8,16 * * *` | `--shard 1/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard2` | `10 2,10,18 * * *` | `--shard 2/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard3` | `50 2,10,18 * * *` | `--shard 3/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard4` | `10 4,12,20 * * *` | `--shard 4/6 --batch-size 60 --mode fresh` |
+| `foray-classify-shard5` | `50 4,12,20 * * *` | `--shard 5/6 --batch-size 60 --mode fresh` |
 
-Three things about that table that are easy to get wrong:
+Four things about that table that are easy to get wrong:
+
+- **No `--progress` flag is needed.** Since CH2-13 (docs/roadmap/code-health-2.md)
+  both `prepare-batch.mjs` and `merge-results.mjs` default to the committed
+  `data/classify-progress.json`, the one state file the six shards share through
+  git. The default used to be the gitignored `data-local/` copy, so a run that
+  left the flag off kept private `failed_fetch` cooldowns and `in_flight`
+  reservations the other routines never saw. A routine that still passes
+  `--progress data/classify-progress.json` is passing the default and is
+  unaffected; do not point it anywhere else.
 
 - **`--shard` is 0-indexed. `6/6` is invalid** and, as of this change, exits
   with an error. It used to fail *open* — a malformed value silently ran the

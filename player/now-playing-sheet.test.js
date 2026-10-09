@@ -41,6 +41,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { seekPrecision, EXACT, OWN, FOREIGN } from "./seek-policy.js";
+import { createMediaSession, mediaSessionView, APP_NAME } from "./media-session.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
@@ -421,6 +422,155 @@ test("CH-4: the chapter box sits under the title and show, its buttons are 44px,
   assert.match(btn[0], /min-width:\s*44px/);
   assert.match(CSS_RULES, /\.np-chapter-btn:disabled \{[^}]*opacity/);
   assert.match(CSS_RULES, /\.ep-chapter-row\.is-current \.ep-chapter-title \{[^}]*color:\s*var\(--accent\)/);
+});
+
+/* ==================================================================== */
+/* CH-5 (#1071): THE CHAPTER ON THE LOCK SCREEN, JS LANE                */
+/* ==================================================================== */
+
+/* Run as code, like CH-4 above, and further down the same pipe the OS sees:
+   client.js's own `syncMediaSession` and `mediaViewFields` are lifted out and
+   evaluated in the CH-4 context, handing their view to media-session.js's real
+   `mediaSessionView`, whose metadata goes through the real `createMediaSession`
+   bridge into a nav stub that COUNTS every metadata assignment. So "one write"
+   below is the bridge's dedupe over the strings the OS would really be given.
+
+   The layout is CH-5's PROPOSAL (founder, 2026-10-05, #1071: "see Apple
+   Podcasts for an example how it is done there"): title = the chapter, `~`
+   first when the chapter times are approximate (the CH-4 line's rule), artist =
+   "<episode title> · <show>", album = APP_NAME (#1006). */
+const SYNC_MEDIA_FN = /function syncMediaSession\(\) \{[\s\S]*?\n\}/.exec(CLIENT)[0];
+const VIEW_FIELDS_FN = /function mediaViewFields\(\) \{[\s\S]*?\n\}/.exec(CLIENT)[0];
+
+const EPISODE = { id: "ep1", title: "Fusion, explained", show: "Science Hour", artwork_url: "https://cdn.example/a.jpg" };
+
+function lockScreen({ engineMode = "js", ...opts } = {}) {
+  const s = chapterSheet({ item: EPISODE, ...opts });
+  const writes = [];
+  const ms = { setActionHandler() {}, setPositionState() {} };
+  Object.defineProperty(ms, "metadata", { set(v) { writes.push(v); }, get() { return writes.at(-1) ?? null; } });
+  const bridge = createMediaSession({ nav: { mediaSession: ms } });
+  /* What the two lifted functions read from the rest of client.js. */
+  Object.assign(s.run("globalThis"), {
+    engineMode,
+    media: bridge,
+    mediaSessionView,
+    publishMediaView: (view) => bridge.update(view),
+    restoredPending: null,
+    backend: { rate: 1 },
+    manager: { state: { type: "playing" }, inSeamGap: false },
+    buffering: false,
+    transportIsRunning: () => true,
+    episodeDurationSec: () => 600,
+    forayPosition: () => 0,
+    segmentAtElapsed: () => null,
+    artworkByShow: new Map(),
+  });
+  s.run(`${SYNC_MEDIA_FN}\n${VIEW_FIELDS_FN}`);
+  return Object.assign(s, {
+    writes,
+    tick(sec) { s.at(sec); s.run("syncMediaSession();"); return writes.at(-1) ?? null; },
+  });
+}
+
+/* What the same episode gives with no chapter override at all: the bridge fed
+   `item: EPISODE` directly, exactly as before CH-5. */
+function plainMetadata(item = EPISODE) {
+  return mediaSessionView({ item, forayTitle: "", foray: false, index: 0, total: 0, showArtworkUrl: item.artwork_url }).metadata;
+}
+
+test("CH-5 (a): a clock inside chapter 2 puts chapter 2's title on the lock screen, the episode and show under it", () => {
+  /* MUTATION: `item: chapterMediaItem(current)` -> `item: current` in
+     mediaViewFields -> the title stays the episode's; red. MUTATION: drop the
+     `precision === EXACT ? "" : "~"` choice (always "") -> the stitched show's
+     "~Tokamaks" reads "Tokamaks"; red. */
+  const s = lockScreen();
+  s.open();
+  const meta = s.tick(75);
+  assert.strictEqual(meta.title, "Tokamaks");
+  assert.strictEqual(meta.artist, "Fusion, explained · Science Hour");
+  assert.strictEqual(meta.album, APP_NAME, "the album stays the app's name (#1006)");
+  assert.deepStrictEqual(meta.artwork, plainMetadata().artwork, "the artwork is the episode's, untouched");
+  assert.strictEqual(s.run("current"), EPISODE, "the shallow copy never replaces current");
+  assert.strictEqual(EPISODE.title, "Fusion, explained", "and never writes into it");
+
+  const stitched = lockScreen({ item: { ...EPISODE, dai_suspected: true } });
+  stitched.open();
+  assert.strictEqual(stitched.tick(75).title, "~Tokamaks", "approximate chapter times read ~, as the sheet's line does");
+  assert.strictEqual(stitched.run("chapterMediaItem")(null), null, "nothing loaded is nothing");
+});
+
+test("CH-5 (b): a Foray — loaded, or restored with only its forayId — gets no chapter override", () => {
+  /* MUTATION: drop `foray ||` from chapterMediaItem's guard -> with chapters
+     loaded for the episode and a Foray then live, the clip's title becomes a
+     chapter; red. MUTATION: drop `item.forayId` from the guard -> the restored
+     Foray's segment is retitled; red. */
+  const restored = { ...EPISODE, forayId: "fy1" };
+  const s = lockScreen({ item: restored });
+  s.open();
+  assert.strictEqual(s.run("chapterMediaItem")(restored), restored);
+  /* Chapters loaded for an episode, then a Foray goes live before the next
+     load: the helper itself still refuses. */
+  const e = lockScreen();
+  e.open();
+  e.run("foray = { resolved: { id: \"fy1\" } };");
+  assert.strictEqual(e.run("chapterMediaItem")(EPISODE), EPISODE);
+  const late = lockScreen();
+  late.open();
+  late.run('current = { id: "seg", title: "Clip", show: "S", forayId: "fy1" };');
+  late.at(75);
+  assert.strictEqual(late.run("chapterMediaItem(current)").title, "Clip");
+});
+
+test("CH-5 (c): fewer than two chapters, no window.ForayChapters, or a throwing one leave the metadata byte-identical", () => {
+  /* MUTATION: drop `!sheetChapters ||` from chapterMediaItem's guard -> it
+     reads `.list` of null and the render tick throws; red. MUTATION: drop the
+     `i < 0` return -> before the first chapter the title is undefined and the
+     metadata changes; red (the clock-before-first-chapter case). */
+  const cases = [
+    { chapters: [] },
+    { chapters: [ch(0, "Only")] },
+    { bridge: null },
+    { bridge: {} },
+    { bridge: { forItem() { throw new Error("boom"); }, precision: () => EXACT } },
+  ];
+  for (const opts of cases) {
+    const s = lockScreen(opts);
+    s.open();
+    let meta;
+    assert.doesNotThrow(() => { meta = s.tick(75); });
+    assert.deepStrictEqual(meta, plainMetadata());
+  }
+  const before = lockScreen({ chapters: [ch(30, "Late start"), ch(90, "Second")] });
+  before.open();
+  assert.deepStrictEqual(before.tick(10), plainMetadata(), "before the first chapter: the episode, unchanged");
+});
+
+test("CH-5 (d): forty render ticks inside one chapter are ONE metadata write", () => {
+  /* MUTATION: drop `key !== lastMetaKey` from media-session.js update() (the
+     dedupe this card leans on: on Android every write re-pushes artwork, #1124)
+     -> forty writes; red. MUTATION: `chapterIndexAt(list, episodePositionSec())`
+     -> `chapterIndexAt(list, 0)` in chapterMediaItem -> no write at 121 and the
+     title stuck on the first chapter; red. */
+  const s = lockScreen();
+  s.open();
+  s.tick(61);
+  const first = s.writes.length;
+  for (let k = 1; k < 40; k++) s.tick(61 + k * 0.25);
+  assert.strictEqual(s.writes.length, first, "the 4 Hz tick does not rewrite the lock screen inside a chapter");
+  assert.strictEqual(first, 1, "one write in all");
+  s.tick(121);
+  assert.strictEqual(s.writes.length, 2, "and exactly one more when the chapter changes");
+  assert.strictEqual(s.writes.at(-1).title, "Stellarators");
+});
+
+test("CH-5 (e): native mode makes no metadata write at all", () => {
+  /* MUTATION: drop `if (engineMode === "native") return;` from
+     syncMediaSession -> the JS lane writes over NowPlayingPublisher; red. */
+  const s = lockScreen({ engineMode: "native" });
+  s.open();
+  for (const sec of [10, 75, 130]) s.tick(sec);
+  assert.strictEqual(s.writes.length, 0);
 });
 
 /* ==================================================================== */

@@ -48,6 +48,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PKG, adb, device, num, pidOf, sleep } from "./adb.mjs";
 import {
   CLIPS,
   EPISODE,
@@ -56,20 +57,15 @@ import {
   HELPER_APK,
   HELPER_PKG,
   HELPER_TAG,
-  PKG,
   PRESSES,
   SHOW,
-  adb,
   callState,
   center,
   focusStack,
   foregroundService,
   intLine,
-  killLine,
   mediaControls,
   mediaSessions,
-  pidOf,
-  pngInfo,
   uiNodes,
   wakefulness,
 } from "./android-playback.mjs";
@@ -171,8 +167,6 @@ export function ourSession(sessions, pkg = PKG) {
   const ours = (sessions?.sessions ?? []).filter((s) => s.package === pkg);
   return ours.find((s) => s.state === "PLAYING") ?? ours[0] ?? null;
 }
-
-const num = (n) => typeof n === "number" && Number.isFinite(n);
 
 /** The playhead moved between two reads of the SAME item, in seconds; null when not comparable. */
 export function moved(a, b) {
@@ -377,24 +371,26 @@ export function summaryMarkdown(verdicts) {
 
 /* ─────────────────────────── the live half ─────────────────────────── */
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const shell = (...args) => adb(["shell", ...args]).stdout;
+const isPlaying = (s) => !!s && s.running === true && s.exoPlaying === true && num(s.positionSec) && s.positionSec > 0;
 
-function save(ctx, name, content) {
-  fs.writeFileSync(path.join(ctx.art, name), content);
-  return name;
-}
+/** How the shared device helpers (`adb.mjs`) read THIS lane: the engine's service
+ *  dump, a shade pause by the driver (not a media key), and a press read off the
+ *  engine's own fields. */
+export const NATIVE_LANE = Object.freeze({
+  read: (ctx) => engine(ctx),
+  pauseForShade: (ctx) => drive(ctx, "pause"),
+  isPaused: (s) => s?.running === false,
+  press: Object.freeze({
+    view: (s) => s,
+    resumed: (s) => s.running === true && s.exoPlaying === true,
+    settled: isPlaying,
+    position: (s) => s.positionSec,
+    sameItem: (a, b) => a.item === b?.item,
+  }),
+});
 
-function dumpTo(ctx, name, ...args) {
-  const out = shell(...args);
-  save(ctx, name, out);
-  return out;
-}
-
-function wakeAndUnlock() {
-  shell("input", "keyevent", "KEYCODE_WAKEUP");
-  shell("wm", "dismiss-keyguard");
-}
+const { shell, save, dumpTo, wakeAndUnlock, killReason, waitFor, window2, dumpUi, readShade, helperLog, pressDone } =
+  device({ lane: NATIVE_LANE, gates: GATES, helperTag: HELPER_TAG });
 
 /** The app on screen (a foreground app may start the foreground service), awake and unlocked. */
 async function prepare(ctx) {
@@ -425,18 +421,6 @@ function engine(ctx) {
   return state ? { ...state, at: Date.now() } : null;
 }
 
-async function waitFor(ctx, pred, timeoutMs) {
-  const deadline = Date.now() + timeoutMs;
-  let s = engine(ctx);
-  while (!pred(s) && Date.now() < deadline) {
-    await sleep(500);
-    s = engine(ctx);
-  }
-  return s;
-}
-
-const isPlaying = (s) => !!s && s.running === true && s.exoPlaying === true && num(s.positionSec) && s.positionSec > 0;
-
 /** Load a queue fresh (the app on screen) and wait for it to sound. */
 async function startQueue(ctx, items, index = 0) {
   await prepare(ctx);
@@ -445,19 +429,8 @@ async function startQueue(ctx, items, index = 0) {
   return { drive: d, s };
 }
 
-async function window2(ctx) {
-  const a = engine(ctx);
-  await sleep(GATES.windowMs);
-  const b = engine(ctx);
-  return [a, b];
-}
-
 function services(ctx) {
   return foregroundService(shell("dumpsys", "activity", "services", ctx.pkg), SERVICE);
-}
-
-function killReason(pid, pkg) {
-  return pid ? killLine(adb(["logcat", "-d", "-b", "system"]).stdout, pid, pkg) : null;
 }
 
 /** (a) */
@@ -511,17 +484,6 @@ async function background(ctx) {
   return { ...v, measured: { ...v.measured, started: !!started, curve }, evidence: ["b-dumpsys-power.txt"] };
 }
 
-function pressDone(kind, before) {
-  return (s) => {
-    if (!s) return false;
-    if (kind === "pause") return s.running === false;
-    if (kind === "play") return s.running === true && s.exoPlaying === true;
-    if (kind === "next") return s.index === (before?.index ?? -2) + 1 && isPlaying(s);
-    return s.item === before?.item && num(s.positionSec) && num(before?.positionSec)
-      && s.positionSec <= before.positionSec - GATES.previousMinRewindSec && isPlaying(s);
-  };
-}
-
 async function press(ctx, p) {
   const before = engine(ctx);
   const out = shell(...p.args);
@@ -569,42 +531,6 @@ async function transport(ctx) {
     ...presses.filter((p) => !p.ok).flatMap((p) => p.failures.map((f) => `${p.press}: ${f}`)),
   ];
   return { ok: failures.length === 0, failures, measured: { foregroundControl: control, presses }, evidence: ["c-dumpsys-media_session.txt"] };
-}
-
-async function dumpUi(ctx, name) {
-  const attempts = [];
-  for (let i = 0; i < 2; i += 1) {
-    const r = adb(["shell", "uiautomator", "dump", "/sdcard/window_dump.xml"], { timeoutMs: 45000 });
-    const said = `${r.stdout}${r.stderr}`.trim();
-    attempts.push(said.slice(0, 200));
-    if (/dumped to/i.test(said)) {
-      const xml = shell("cat", "/sdcard/window_dump.xml");
-      save(ctx, name, xml);
-      return { xml, attempts };
-    }
-    await sleep(1000);
-  }
-  return { xml: null, attempts };
-}
-
-/** One shade layout; a playing panel animates and `uiautomator` may refuse it, so the fallback
- *  reads it paused (by the driver, not a media key) and resumes. */
-async function readShade(ctx, how, log) {
-  shell("cmd", "statusbar", how);
-  await sleep(2500);
-  const shot = adb(["exec-out", "screencap", "-p"], { binary: true });
-  if (pngInfo(shot.stdout)) save(ctx, `d-shade-${how}.png`, shot.stdout);
-  let dump = await dumpUi(ctx, `d-window-${how}.xml`);
-  log.push({ how, dump: dump.attempts });
-  let paused = false;
-  if (!dump.xml) {
-    drive(ctx, "pause");
-    await waitFor(ctx, (s) => s?.running === false, GATES.pressTimeoutMs);
-    dump = await dumpUi(ctx, `d-window-${how}-paused.xml`);
-    log.push({ how, pausedDump: dump.attempts });
-    paused = true;
-  }
-  return { how, paused, xml: dump.xml };
 }
 
 /** (d) */
@@ -692,13 +618,6 @@ async function doze(ctx) {
     shell("dumpsys", "battery", "reset");
     shell("am", "set-standby-bucket", ctx.pkg, "active");
   }
-}
-
-function helperLog() {
-  return String(adb(["logcat", "-d", "-s", HELPER_TAG]).stdout)
-    .split(/\r?\n/)
-    .filter((l) => l.includes(HELPER_TAG) && /mode=|focusChange=/.test(l))
-    .map((l) => l.replace(/^.*?A05Focus\s*:\s*/, "").trim());
 }
 
 /** (h) */

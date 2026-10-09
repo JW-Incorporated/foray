@@ -59,10 +59,10 @@ export type NarrationMode = z.infer<typeof NarrationModeSchema>;
  * (`tools/`, no build step) and this backend compiles to CommonJS
  * (backend/tsconfig.build.json), so a runtime `require()` of an .mjs
  * module is not viable from a `tsc`-built CommonJS entry point.
- * `backend/test/narration.test.ts` cross-checks these numbers against
- * `check-narration.mjs`'s exported `MODE_CHAR_BANDS` at test time (a
- * live `import()` of the ESM module works fine under vitest), so the two
- * tables cannot silently drift apart — same discipline `copyRules.js`
+ * `backend/test/actNarration.test.ts` cross-checks every band (keys
+ * lowercased) against `check-narration.mjs`'s exported `MODE_CHAR_BANDS`
+ * at test time (a live `import()` of the ESM module works fine under
+ * vitest), so the two tables cannot silently drift apart — same discipline `copyRules.js`
  * documents for its own single-source-of-truth problem, applied via a
  * cross-file equality test instead of a shared runtime import. */
 export const MODE_CHAR_BANDS: Record<NarrationMode, [number, number]> = {
@@ -80,7 +80,8 @@ export const MODE_CHAR_BANDS: Record<NarrationMode, [number, number]> = {
 
 /** narration-craft.md §2a: the planning rate the whole cost model rests
  * on. Matches `check-narration.mjs`'s `NARRATION_CHARS_PER_SEC` exactly
- * (same cross-check test enforces it). */
+ * (the same `actNarration.test.ts` cross-check enforces it, and that both
+ * sides' `scriptSeconds` agree). */
 export const NARRATION_CHARS_PER_SEC = 17;
 
 export function scriptSeconds(chars: number): number {

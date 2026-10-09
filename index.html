@@ -38,12 +38,13 @@
      plain line and the icon. These tags are inert: no script reads them and the
      CSP above is untouched. og:url and og:image are absolute on the public web
      origin (SH-1), and the image is icon-512.png, which tools/web/prepare-dist.mjs
-     ships. The line is the Play short description (docs/store/play/README.md).
+     ships. The line is the Play short description (docs/store/play/README.md),
+     repeated verbatim in manifest.json; test/listener-copy.test.js pins all four.
      Per-item previews are out of scope. test/link-preview-meta.test.js pins it. -->
-<meta name="description" content="Podcast playlists stitched across shows, plus new episodes picked for you">
+<meta name="description" content="Forays: one subject across many shows, plus new episodes picked for you">
 <meta property="og:site_name" content="4a">
 <meta property="og:title" content="4a">
-<meta property="og:description" content="Podcast playlists stitched across shows, plus new episodes picked for you">
+<meta property="og:description" content="Forays: one subject across many shows, plus new episodes picked for you">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://foray-web-seven.vercel.app/">
 <meta property="og:image" content="https://foray-web-seven.vercel.app/icon-512.png">
@@ -115,6 +116,7 @@
 <link rel="modulepreload" href="player/seek-policy.js">
 <link rel="modulepreload" href="player/segment-strip.js">
 <link rel="modulepreload" href="player/sheet-drag-dismiss.js">
+<link rel="modulepreload" href="player/show-alerts.js">
 <link rel="modulepreload" href="player/strip-scrub-gesture.js">
 <link rel="modulepreload" href="player/tail-fill.js">
 <link rel="modulepreload" href="player/transport-policy.js">
