@@ -782,6 +782,94 @@ final class AVDeckTests: XCTestCase {
         }
     }
 
+    /// A REUSED ITEM TAKES THE NEW LOAD'S `bounded` (CH3-11 review). A
+    /// same-source load keeps the held item (`reuse`), and `coldReason`
+    /// compares the URL and the timing option but not `bounded`, so the reuse
+    /// must set the flag itself: §16's lapse reads it, and a reused item has
+    /// its duration (`progressed` is always true), so the flag alone decides.
+    /// The deck here runs on a real fixture with virtual deadlines; the reuse's
+    /// gate seek completes asynchronously on main, so moving the clock 20 s
+    /// right after the send passes the deadline mid-gate. TO SEE IT FAIL: drop
+    /// the `loadedBounded = bounded` before `reuse(...)` in `load` (the
+    /// clip keeps the episode's `false` and detaches: its retry starts cold).
+    func testAClipThatReusesAnEpisodesItemLapsesAndIsContinued() throws {
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(deadlineSec: AVDeck.defaultLoadDeadlineSec, timers: timers)
+        let url = try fixture("click-cbr", "mp3")
+        // The episode (approximate, unbounded) is held, ready.
+        deck.send(.loadURL(token: 1, url: url, startSec: 0, preciseTiming: false))
+        guard readyEvent(1) != nil else { return }
+        let item = try XCTUnwrap(deck.player.currentItem)
+        var itemAtTheEvent: AVPlayerItem?
+        deck.onEvent = { [unowned self] event in
+            self.events.append(event)
+            if case .deadlineExceeded(2, _, _) = event {
+                itemAtTheEvent = self.deck.player.currentItem
+                // The core's §16 answer, in the same turn.
+                self.deck.send(.loadURL(token: 3, url: url, startSec: 10, preciseTiming: false, bounded: true))
+            }
+        }
+        events.removeAll()
+        diags.removeAll()
+
+        // An approximate (CBR) clip of the same URL keeps the held item.
+        deck.send(.loadURL(token: 2, url: url, startSec: 10, preciseTiming: false, bounded: true))
+        XCTAssertTrue(deck.player.currentItem === item, "the clip did not reuse the held item: \(diags)")
+        XCTAssertFalse(deckRows("reuse").isEmpty, "\(diags)")
+        timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
+
+        XCTAssertTrue(events.contains { if case .deadlineExceeded(2, _, _) = $0 { return true }; return false }, "\(events)")
+        XCTAssertEqual(deckRows("deadline").last?[field: "reuse"], .bool(true))
+        XCTAssertEqual(deckRows("deadline").last?[field: "progressed"], .bool(true))
+        XCTAssertTrue(itemAtTheEvent === item, "the reused clip detached before the event instead of lapsing")
+        XCTAssertTrue(deck.player.currentItem === item, "the retry did not keep the reused item")
+        let row = try XCTUnwrap(deckRows("continue").last, "no deck kind=continue row: \(diags)")
+        XCTAssertEqual(row[field: "token"], .number(3))
+        XCTAssertEqual(row[field: "fromToken"], .number(2))
+        XCTAssertFalse(deckRows("attach").contains { $0[field: "token"] == .number(3) },
+                       "the retry attached cold: \(diags)")
+    }
+
+    /// THE REVERSE: an episode that reuses a clip's item is an episode. A
+    /// whole episode (unbounded) of the same URL keeps the held clip's item,
+    /// and past its deadline it is detached before the event, as M1's path
+    /// always did, so the core's retry is a cold load. TO SEE IT FAIL: drop
+    /// the `loadedBounded = bounded` before `reuse(...)` in `load` (the
+    /// episode keeps the clip's `true` and lapses).
+    func testAnEpisodeThatReusesAClipsItemIsStillDetached() throws {
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(deadlineSec: AVDeck.defaultLoadDeadlineSec, timers: timers)
+        let url = try fixture("click-cbr", "mp3")
+        // The clip (approximate, bounded) is held, ready.
+        deck.send(.loadURL(token: 1, url: url, startSec: 0, preciseTiming: false, bounded: true))
+        guard readyEvent(1) != nil else { return }
+        let item = try XCTUnwrap(deck.player.currentItem)
+        var itemAtTheEvent: AVPlayerItem?
+        deck.onEvent = { [unowned self] event in
+            self.events.append(event)
+            if case .deadlineExceeded(2, _, _) = event {
+                itemAtTheEvent = self.deck.player.currentItem
+                self.deck.send(.loadURL(token: 3, url: url, startSec: 10, preciseTiming: false))
+            }
+        }
+        events.removeAll()
+        diags.removeAll()
+
+        deck.send(.loadURL(token: 2, url: url, startSec: 10, preciseTiming: false))
+        XCTAssertTrue(deck.player.currentItem === item, "the episode did not reuse the held item: \(diags)")
+        XCTAssertFalse(deckRows("reuse").isEmpty, "\(diags)")
+        timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
+
+        XCTAssertTrue(events.contains { if case .deadlineExceeded(2, _, _) = $0 { return true }; return false }, "\(events)")
+        XCTAssertEqual(deckRows("deadline").last?[field: "reuse"], .bool(true))
+        XCTAssertNil(itemAtTheEvent, "an episode is detached before the event, as before")
+        XCTAssertTrue(deckRows("continue").isEmpty, "\(diags)")
+        let attach = try XCTUnwrap(deckRows("attach").last { $0[field: "token"] == .number(3) }, "\(diags)")
+        XCTAssertEqual(attach[field: "cold"], .string("no-item"))
+    }
+
     /// Progress is the duration or a byte, nothing else.
     func testProgressIsTheDurationOrAByte() {
         XCTAssertFalse(AVDeck.progressed(durationKnown: false, bytes: 0))
