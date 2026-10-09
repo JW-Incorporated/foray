@@ -1,5 +1,5 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
-import { loadBreadthCatalog } from "../../backend/src/catalog/breadthCatalog";
+import { showById, searchableShows } from "../_lib/showCatalog";
 import { applyCors } from "../_lib/cors";
 import { firstParam } from "../_lib/params";
 import { appleShowSearch, mergeDirectoryShows } from "../_lib/appleShowSearch";
@@ -41,9 +41,9 @@ import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY
  *     search response this session — so a cold open on `#/show/1234567890`, a
  *     shared link, a reload or a restored tab rendered "Show not found." This
  *     returns the single merged-catalogue row for an id. It is a LOOKUP, not a
- *     scan: `loadBreadthCatalog()` is already resident (module-scope cache) and
- *     an id index is built once beside it. `q` and `id` are mutually
- *     exclusive; neither present is still a 400.
+ *     scan: the catalogue is already resident (module-scope cache) and an
+ *     id index is built once beside it (api/_lib/showCatalog.ts). `q` and
+ *     `id` are mutually exclusive; neither present is still a 400.
  *
  *     WHICH PATH WINS, and the card asks for this to be said rather than
  *     assumed: once S-03's index is on the device it can answer most of these
@@ -120,6 +120,23 @@ import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY
  *         worst band, which cost exactly the chart_rank 101-200 shows that the
  *         client's `<=100` index cut means only this endpoint has.
  *
+ * (5) ONE CATALOGUE, AND ONLY SHOWS WITH A FEED IN THE RESULTS (code-health-2
+ *     CH2-24, B1-02, A1-02). Both modes read `api/_lib/showCatalog.ts`, the
+ *     reader the episode endpoints use, so an id means the same show
+ *     everywhere:
+ *       - `?id=` answers an `in_curated` breadth row's numeric id with its
+ *         curated TWIN (it used to say `show: null` while both episode
+ *         endpoints served that id);
+ *       - `?q=` searches `searchableShows()`, the catalogue without the
+ *         shows that have no `feed_url`, BEFORE the `limit` cut. A feed-less
+ *         breadth show used to be offered here and then 404 on its episode
+ *         list (89 of them on 2026-10-07). `?id=` still answers such a row:
+ *         a link to one renders the show and says what it is. The
+ *         alternative, keeping them in results with an honest "no feed"
+ *         state, is founder question 5 in docs/roadmap/code-health-2.md.
+ *     The catalogue files unavailable is the degraded answer of (3) and the
+ *     catch below, for both modes.
+ *
  * MEASURED, AND THE SOURCE SHOULD NOT MISLEAD THE NEXT READER: the success
  * header below sets `public, max-age=300, stale-while-revalidate=3600`, and the
  * response as received from production carries only `public, max-age=300`.
@@ -145,24 +162,6 @@ interface ApiResponse {
   end(): void;
 }
 
-/** The id -> row index over the merged catalogue, built once per warm
-    instance beside `loadBreadthCatalog`'s own module-scope cache. Rebuilt when
-    the catalogue array identity changes, which is the only way that cache can
-    be invalidated (`FORAY_SKIP_CATALOGUE_CACHE=1` in tests) — keying on
-    identity rather than on a boolean means this can never go stale against a
-    reloaded catalogue without anyone remembering to clear it. */
-let idIndex: Map<string, ReturnType<typeof loadBreadthCatalog>[number]> | null = null;
-let idIndexSource: ReturnType<typeof loadBreadthCatalog> | null = null;
-
-function showByIdFromCatalog(id: string) {
-  const catalog = loadBreadthCatalog();
-  if (idIndex === null || idIndexSource !== catalog) {
-    idIndex = new Map(catalog.map((s) => [s.show_id, s]));
-    idIndexSource = catalog;
-  }
-  return idIndex.get(id) ?? null;
-}
-
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (applyCors(req, res)) return; // OPTIONS preflight already answered
 
@@ -185,7 +184,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   if (id && id.trim()) {
     try {
-      const show = showByIdFromCatalog(id.trim());
+      const show = showById(id.trim());
       /* A genuinely unknown id is a 200 with `show: null`, NOT a 404: "this id
          is not in our catalogue" is a real, renderable answer (app.js's own
          "Show not found." state), and a 404 would make `fetchApiJson` — which
@@ -216,7 +215,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   let results;
   try {
-    results = searchBreadthShows(q, limit);
+    results = searchBreadthShows(q, limit, searchableShows());
   } catch {
     // A missing/corrupt catalogue file degrades to an honest empty result,
     // never a 500 — the client's local catalog-client.json first pass still

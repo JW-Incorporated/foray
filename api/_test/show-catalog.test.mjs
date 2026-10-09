@@ -13,9 +13,10 @@
 //   - the in_curated breadth rows' numeric ids (the curated shows' Apple ids),
 //   - the admitted breadth rows that carry no feed_url.
 //
-// CHARACTERIZATION FIRST: this file pins TODAY's answers, including the two
-// defects, before anything moves. The change commit flips the two defect
-// pins and says so beside each.
+// CHARACTERIZATION FIRST: this file pinned the answers before the one
+// catalogue reader (api/_lib/showCatalog.ts) replaced the three, including
+// the defects; the change commit flipped each defect pin and says beside it
+// what it said before.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -143,26 +144,35 @@ test("every curated show_id resolves to the same feed through all three readers"
   });
 });
 
-test("an in_curated numeric id: TODAY the two episode endpoints resolve it to its own breadth row and shows/search?id= does not know it (A1-02)", async () => {
+test("an in_curated numeric id is an alias: all three readers answer its curated twin (A1-02)", async () => {
+  /* WAS: the two episode endpoints answered 200 on the dropped breadth row's
+     OWN feed (175 of 175; 5 of those feeds are not the twin's) and
+     shows/search?id= answered `show: null` (175 of 175).
+     MUTATION: drop the alias (showCatalog.showById's twin lookup) -> the list
+     404s, the scoped search says unknown, ?id= says null: all three 0. */
   await withFeedStub(async (urls) => {
-    let listOwnFeed = 0;
-    let scopedOwnFeed = 0;
-    let idNull = 0;
+    let listTwin = 0;
+    let scopedTwin = 0;
+    let idTwin = 0;
     for (const row of IN_CURATED) {
       const id = String(row.apple_collection_id);
+      const twin = curatedByAppleId.get(id);
       const list = await listAnswer(id, urls);
-      if (list.status === 200 && list.feed === row.feed_url) listOwnFeed++;
+      if (list.status === 200 && list.feed === twin.feed_url && list.body.show_id === twin.show_id) listTwin++;
       const scoped = await scopedSearchAnswer(id, urls);
-      if (scoped.feed === row.feed_url) scopedOwnFeed++;
-      if ((await showById(id)).show === null) idNull++;
+      if (scoped.feed === twin.feed_url) scopedTwin++;
+      if ((await showById(id)).show?.show_id === twin.show_id) idTwin++;
     }
-    assert.equal(listOwnFeed, 175, "list endpoint: 200 on the breadth row's own feed");
-    assert.equal(scopedOwnFeed, 175, "show-scoped search: the breadth row's own feed");
-    assert.equal(idNull, 175, "shows/search?id=: show null");
+    assert.equal(listTwin, 175, "list endpoint: 200, served as the twin, on the twin's feed");
+    assert.equal(scopedTwin, 175, "show-scoped search: the twin's feed");
+    assert.equal(idTwin, 175, "shows/search?id=: the twin's row");
   });
 });
 
-test("a feed-less breadth show: TODAY show search returns it, and its episode list 404s (B1-02)", async () => {
+test("a feed-less breadth show: show search no longer offers it; its record still answers, its episode list still 404s (B1-02)", async () => {
+  /* WAS: searchable 89 of 89 - offered by show search, then a 404 on tap.
+     MUTATION: search `loadBreadthCatalog()` again instead of
+     `searchableShows()` in api/shows/search.ts -> searchable 89, red. */
   await withFeedStub(async (urls) => {
     let searchable = 0;
     let list404 = 0;
@@ -175,7 +185,7 @@ test("a feed-less breadth show: TODAY show search returns it, and its episode li
       if ((await listAnswer(id, urls)).status === 404) list404++;
       if ((await showById(id)).show?.show_id === id) idAnswers++;
     }
-    assert.equal(searchable, 89, "searchable");
+    assert.equal(searchable, 0, "searchable");
     assert.equal(list404, 89, "episode list 404s");
     assert.equal(idAnswers, 89, "shows/search?id= answers the row");
   });
@@ -218,7 +228,9 @@ function inInstanceWithoutCatalogue(body) {
   `, body);
 }
 
-test("catalogue files missing: TODAY the list says 404 unknown, the searches say degraded", () => {
+test("catalogue files missing: the list says 503, the searches say degraded", () => {
+  /* WAS: the list said 404 `unknown show_id` - a broken deploy dressed as a
+     bad link. The four answers are showCatalog.ts's header's table. */
   const got = inInstanceWithoutCatalogue(`
     const list = unwrap(await import("./shows/[show_id]/episodes.ts"));
     const scoped = unwrap(await import("./episodes/search.ts"));
@@ -229,17 +241,18 @@ test("catalogue files missing: TODAY the list says 404 unknown, the searches say
     const d = res(); await shows({ method: "GET", query: { id: "lex-fridman-podcast" }, headers: {} }, d);
     console.log(JSON.stringify({ list: a.s, scoped: b.s, showsQ: c.s, showsId: d.s }));
   `);
-  assert.deepEqual(got.list, { status: 404, body: { error: "unknown show_id" } });
+  assert.deepEqual(got.list, { status: 503, body: { error: "show metadata catalog files are unavailable" } });
   assert.equal(got.scoped.body.degraded, true);
   assert.equal(got.scoped.body.error, "show metadata catalog files are unavailable");
   assert.deepEqual(got.showsQ.body, { query: "lex", shows: [], degraded: true });
   assert.deepEqual(got.showsId.body, { id: "lex-fridman-podcast", show: null, degraded: true });
 });
 
-test("the episodes/search bundle: TODAY catalog-breadth.json is parsed twice per instance (B1-02)", () => {
-  /* Its two paths each read the pair on their own: the show-scoped search
-     through loadShowMeta, the Apple path through showIdMap's map. One warm
-     instance that serves both pays the 12.5 MB read + parse twice. */
+test("the episodes/search bundle parses catalog-breadth.json once per instance (B1-02)", () => {
+  /* WAS: 2 - the show-scoped search (its own loadShowMeta) and the Apple
+     path (showIdMap's own map) each read the 12.5 MB pair.
+     MUTATION: give showIdMap.ts its own readFileSync of the pair again ->
+     2, red. */
   const got = inFreshInstance(`
     const real = fs.readFileSync;
     globalThis.__breadthReads = 0;
@@ -255,5 +268,5 @@ test("the episodes/search bundle: TODAY catalog-breadth.json is parsed twice per
     console.log(JSON.stringify({ reads: globalThis.__breadthReads, apple: b.s.body.error }));
   `);
   assert.match(got.apple, /Apple search fetch error/, "premise: the Apple path ran (and asked the network, which throws)");
-  assert.equal(got.reads, 2);
+  assert.equal(got.reads, 1);
 });
