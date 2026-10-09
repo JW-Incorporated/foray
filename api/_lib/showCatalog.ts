@@ -55,13 +55,11 @@
 
 import {
   loadCatalogue,
-  _setCatalogRootForTests,
   type Catalogue,
   type CatalogueShowEntry,
 } from "../../backend/src/catalog/breadthCatalog";
 
 export type { CatalogueShowEntry };
-export { _setCatalogRootForTests };
 
 /** What an endpoint needs to read a show's episodes. `showId` is the id the
  *  show is served under: the twin's slug when the caller asked by alias. */

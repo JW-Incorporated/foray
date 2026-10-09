@@ -13,6 +13,7 @@ import { TtlCache } from "../_lib/searchCache.ts";
 import { KeyedBuckets } from "../_lib/keyedBuckets.ts";
 import * as searchModule from "../episodes/search.ts";
 import { episodeSearchCache } from "../_lib/searchCache.ts";
+import { sharedFeedReader, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -100,7 +101,7 @@ test("the show-scoped path stops fetching a show's feed past its per-minute budg
      an evicted or expired entry would be. MUTATION: drop the
      buckets.tryConsume check in feedCache.ts read() — every request
      downloads the feed again. */
-  searchModule.sharedFeedReader.clear();
+  sharedFeedReader.clear();
   searchModule.showScopedResultCache.clear();
   episodeSearchCache.clear();
   let feedFetches = 0;
@@ -108,19 +109,19 @@ test("the show-scoped path stops fetching a show's feed past its per-minute budg
   globalThis.fetch = async () => { feedFetches += 1; return new Response(FEED, { status: 200 }); };
   try {
     const answers = [];
-    for (let i = 0; i < searchModule.FEED_FETCHES_PER_SHOW_PER_MINUTE + 3; i++) {
-      searchModule.sharedFeedReader.cache.clear();
+    for (let i = 0; i < FEED_FETCHES_PER_SHOW_PER_MINUTE + 3; i++) {
+      sharedFeedReader.cache.clear();
       const res = mockRes();
       await handler({ method: "GET", query: { q: `random-${i}`, show: "lex-fridman-podcast" }, headers: {} }, res);
       answers.push(res.body);
     }
-    assert.ok(feedFetches <= searchModule.FEED_FETCHES_PER_SHOW_PER_MINUTE, `fetched the feed ${feedFetches} times`);
+    assert.ok(feedFetches <= FEED_FETCHES_PER_SHOW_PER_MINUTE, `fetched the feed ${feedFetches} times`);
     const last = answers[answers.length - 1];
     assert.equal(last.degraded, true, "a refused fetch is degraded, never an empty success");
-    assert.equal(last.error, searchModule.FEED_FETCH_LIMITED_ERROR);
+    assert.equal(last.error, FEED_FETCH_LIMITED_ERROR);
   } finally {
     globalThis.fetch = originalFetch;
-    searchModule.sharedFeedReader.clear();
+    sharedFeedReader.clear();
     episodeSearchCache.clear();
   }
 });

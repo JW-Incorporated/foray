@@ -66,9 +66,17 @@ import java.util.Set;
  * A broken one appends a {@code !...} token to the op log (never stripped), so the case goes
  * red with the evidence in its diff.
  *
+ * <p>THE MANAGER REMAINDER's episode cases (code-health-3 CH3-17; the Swift driver's NE-39s
+ * shapes, fakes.js's opt-in shapes of the same fakes): {@code setup.backend.slowFirstPlay}
+ * holds the first play's confirmation until the next pause (SlowPlayBackend);
+ * {@code setup.telemetry: ["rate.snapped"]} writes the core's {@code rate kind=snapped} row as
+ * the JS telemetry line {@code telemetry:rate.snapped requested=<JSON> applied=<r>}; the
+ * {@code positionTimer} view is whether the periodic position writer is armed.
+ *
  * <p>The Foray tape's steps and setup (the seam beat's manual clock, the engine target, the
- * page's builds), the synthesiser and the jingle are A-40's and A-41's: a case that asks
- * for one is refused by name, never guessed at.
+ * page's builds, the warming window's {@code backend.prefetch} and {@code coldLoadMs}), the
+ * synthesiser and the jingle are A-40's and A-41's: a case that asks for one is refused by
+ * name, never guessed at.
  */
 public final class EngineScenarioDriver {
     /**
@@ -136,9 +144,13 @@ public final class EngineScenarioDriver {
          * so a case that needs the Foray tape or narration says so.
          */
         static final Set<String> SETUP_KEYS = new HashSet<>(Arrays.asList("target", "positions", "positionEvents", "rate",
-                "backend", "catalogue", "session", "seamGapSec", "view"));
+                "backend", "catalogue", "session", "seamGapSec", "view", "telemetry"));
+        /** The {@code setup.backend} keys of the Foray tape's warming window (A-40), refused by name. */
+        static final Set<String> TAPE_BACKEND_KEYS = new HashSet<>(Arrays.asList("prefetch", "coldLoadMs"));
+        /** runner.js {@code TELEMETRY_EVENTS}: the telemetry lines a scenario may record. */
+        static final Set<String> TELEMETRY_EVENTS = new HashSet<>(Arrays.asList("rate.snapped"));
         /** The view keys an episode scenario may add to its checkpoints (runner.js VIEW_KEYS, the episode ones). */
-        static final Set<String> VIEW_KEYS = new HashSet<>(Arrays.asList("outPoint", "positionSec", "wasPlaying"));
+        static final Set<String> VIEW_KEYS = new HashSet<>(Arrays.asList("outPoint", "positionSec", "wasPlaying", "positionTimer"));
         /** A fixed wall clock (rows are stamped with it) and a monotonic one that moves a second per step. */
         static final double WALL_MS = 1_790_000_000_000.0;
         static final double STEP_MS = 1000;
@@ -168,6 +180,15 @@ public final class EngineScenarioDriver {
         boolean auditionSpeaking = false;
         /** A {@code dispose} in progress: the deck's release is {@code release}, as FakeBackend logs it. */
         boolean disposing = false;
+        /** {@code setup.backend.slowFirstPlay}: the first play's confirmation, held until the next pause. */
+        boolean slowFirstPlay;
+        Integer heldConfirmation;
+        /**
+         * {@code setup.telemetry} and the value the last {@code setRate} was handed, as the page
+         * handed it (a snapped row names the REQUEST, a string included).
+         */
+        final Set<String> telemetry = new HashSet<>();
+        Json lastRateArg = Json.UNDEFINED;
 
         // What the scenario saw.
         final List<String> ops = new ArrayList<>();
@@ -230,7 +251,26 @@ public final class EngineScenarioDriver {
             Double rate = JsArgs.at(setup, "rate").asNumber();
             core = new EngineCore(new EngineConfig("parity", SessionPolicy.HoldPolicy.DEFAULT, rate), positions);
             Json backend = JsArgs.at(setup, "backend");
+            if (backend instanceof Json.Obj backendObj) {
+                for (String key : backendObj.fields().keySet()) {
+                    if (TAPE_BACKEND_KEYS.contains(key)) {
+                        throw new HarnessError("E_BAD_CASE", "setup.backend." + key + " is the Foray tape's warming window (A-40)");
+                    }
+                }
+            }
             holdLoads = JsArgs.isTrue(JsArgs.at(backend, "holdLoads"));
+            slowFirstPlay = JsArgs.isTrue(JsArgs.at(backend, "slowFirstPlay"));
+            Json events = JsArgs.at(setup, "telemetry");
+            if (!JsArgs.isUndefined(events)) {
+                if (events.asList() == null) throw new HarnessError("E_BAD_CASE", "setup.telemetry is a list of event names");
+                for (Json event : events.asList()) {
+                    String text = event.asString();
+                    if (text == null || !TELEMETRY_EVENTS.contains(text)) {
+                        throw new HarnessError("E_BAD_CASE", "setup.telemetry is a list of " + String.join(", ", TELEMETRY_EVENTS));
+                    }
+                    telemetry.add(text);
+                }
+            }
             Double duration = JsArgs.at(backend, "duration").asNumber();
             defaultDuration = duration != null ? duration : 3600;
             if (JsArgs.at(backend, "durationById") instanceof Json.Obj byId) {
@@ -328,7 +368,10 @@ public final class EngineScenarioDriver {
                     feed(new EngineInput.Queue(new EngineInput.QueueInput.Seek(seconds,
                             JsArgs.truthy(JsArgs.at(JsArgs.arg(args, 1), "precise")))));
                 }
-                case "setRate" -> feed(new EngineInput.Queue(new EngineInput.QueueInput.SetRate(JsArgs.arg(args, 0).asNumber())));
+                case "setRate" -> {
+                    lastRateArg = JsArgs.arg(args, 0);
+                    feed(new EngineInput.Queue(new EngineInput.QueueInput.SetRate(lastRateArg.asNumber())));
+                }
                 case "setVoice" -> feed(new EngineInput.Command(new EngineContract.Command.SetVoice(JsArgs.arg(args, 0).asString()), tap));
                 case "setInterludeEnabled" -> {
                     // `on !== false`.
@@ -669,6 +712,16 @@ public final class EngineScenarioDriver {
                         }
                     }
                     case EngineCommand.Diag d -> {
+                        JsonNode sub = d.entry().field("kind");
+                        if (d.entry().kind().equals("rate") && sub != null && "snapped".equals(sub.stringValue())
+                                && telemetry.contains("rate.snapped")) {
+                            // The manager's `rate.snapped requested=<JSON> applied=<r>`.
+                            JsonNode applied = d.entry().field("applied");
+                            Double rate = applied == null ? null : applied.numberValue();
+                            ops.add("telemetry:rate.snapped requested=" + jsonStringify(lastRateArg) + " applied="
+                                    + (rate == null ? "null" : number(rate)));
+                            continue;
+                        }
                         JsonNode cause = d.entry().field("cause");
                         String suffix = cause != null && cause.stringValue() != null ? ":" + cause.stringValue() : "";
                         ops.add("n.diag:" + d.entry().kind() + suffix);
@@ -702,11 +755,21 @@ public final class EngineScenarioDriver {
                     plays.add(deckItemId != null ? deckItemId : "?");
                     trackAudible();
                     ops.add("play");
-                    if (deckToken != null) confirmations.add(deckToken);
+                    if (slowFirstPlay && deckToken != null) {
+                        // SlowPlayBackend: the first play settles only at the next pause.
+                        slowFirstPlay = false;
+                        heldConfirmation = deckToken;
+                    } else if (deckToken != null) {
+                        confirmations.add(deckToken);
+                    }
                 }
                 case DeckCommand.Pause p -> {
                     reading.audible = false;
                     ops.add("pause");
+                    if (heldConfirmation != null) {
+                        confirmations.add(heldConfirmation);
+                        heldConfirmation = null;
+                    }
                 }
                 case DeckCommand.Seek s -> {
                     reading.positionSec = s.toSec();
@@ -800,6 +863,7 @@ public final class EngineScenarioDriver {
                     case "positionSec" -> fields.put(key, Json.num(reading.positionSec != null ? reading.positionSec : 0));
                     case "wasPlaying" -> fields.put(key, state.player instanceof PlayerQueueState.Interrupted i
                             ? Json.bool(i.wasPlaying()) : Json.NULL);
+                    case "positionTimer" -> fields.put(key, Json.bool(state.positionTimerArmed));
                     default -> throw new HarnessError("E_BAD_CASE", "unknown view key " + key);
                 }
             }
@@ -819,6 +883,19 @@ public final class EngineScenarioDriver {
             out.put("checkpoints", new Json.Arr(checkpoints));
             out.put("ops", new Json.Arr(opList));
             return new Json.Obj(out);
+        }
+
+        /** {@code JSON.stringify(value)} for a telemetry line's scalar; a container prints as its tag. */
+        static String jsonStringify(Json value) {
+            return switch (value) {
+                case Json.Undefined u -> "undefined";
+                case Json.Null n -> "null";
+                case Json.Bool b -> b.value() ? "true" : "false";
+                case Json.Num n -> Double.isFinite(n.value()) ? number(n.value()) : "null";
+                case Json.Str s -> JSWriter.quote(s.value());
+                case Json.Arr a -> "[object]";
+                case Json.Obj o -> "[object]";
+            };
         }
 
         /** FakeBackend's {@code r(s) = Math.round(s)}, printed as JS prints a number. */

@@ -27,7 +27,7 @@ test("allows exactly `capacity` calls within one window, then refuses the next",
   // The 21st call in the same instant must be refused — this is the core
   // acceptance criterion: never exceed 20/min under a synthetic burst.
   assert.strictEqual(bucket.tryConsume(), false);
-  assert.strictEqual(bucket.currentCount(), 20);
+  assert.strictEqual(bucket.size(), 20);
 });
 
 test("a burst of 1000 calls in one instant yields exactly 20 successes", () => {
@@ -47,7 +47,7 @@ test("refused calls are not recorded — a refusal never later evicts a real slo
   assert.strictEqual(bucket.tryConsume(), true);
   // Ten refused attempts.
   for (let i = 0; i < 10; i++) assert.strictEqual(bucket.tryConsume(), false);
-  assert.strictEqual(bucket.currentCount(), 2, "refused attempts must not be recorded as consumed slots");
+  assert.strictEqual(bucket.size(), 2, "refused attempts must not be recorded as consumed slots");
 });
 
 test("capacity frees up once the window slides past the oldest calls", () => {
@@ -58,7 +58,7 @@ test("capacity frees up once the window slides past the oldest calls", () => {
 
   // Advance past the window entirely — every old timestamp should be pruned.
   clock.advance(60_001);
-  assert.strictEqual(bucket.currentCount(), 0);
+  assert.strictEqual(bucket.size(), 0);
   for (let i = 0; i < 20; i++) assert.strictEqual(bucket.tryConsume(), true, `post-window call #${i + 1} should be allowed`);
   assert.strictEqual(bucket.tryConsume(), false);
 });

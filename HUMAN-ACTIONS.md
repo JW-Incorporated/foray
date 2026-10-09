@@ -2,9 +2,19 @@
 
 <!-- ha-format: 2 -->
 
-> **33 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **34 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #153 🟡 [DECIDE] Approve the "4a Tactile" lab-build change: label PR #1254 (~2 min)
+<!-- ha filed=2026-10-09 -->
+
+**Why:** The lab-build workflow holds the app-signing setup, so changes to it need a founder's OK. PR #1254 sends Tactile builds to the new 4a Tactile app and names 4a Lab "4a Ambient". Merged before #151 and #152 are done, every Tactile lab build fails on purpose.
+**Steps:**
+1. Finish #151 (Apple) and #152 (Play) first.
+2. github.com/JW-Incorporated/foray/pull/1254 → read the TL;DR at the top.
+3. Labels (right column) → add `founder-approved`. Claude merges it once the checks are green.
+**Worked if:** PR #1254 shows merged, and the next Tactile lab build lands as "4a Tactile" in TestFlight and on Play.
 
 ## #152 🟢 [UPGRADE] Google Play: set up the separate "4a Tactile" Android app (~10 min)
 <!-- ha filed=2026-10-09 -->

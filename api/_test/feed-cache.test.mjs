@@ -5,7 +5,7 @@
 import { test, mock } from "node:test";
 import assert from "node:assert/strict";
 import * as feedCacheModule from "../_lib/feedCache.ts";
-import { createFeedReader, FEED_FRESH_MS, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache.ts";
+import { createFeedReader, sharedFeedReader, FEED_FRESH_MS, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache.ts";
 import * as searchModule from "../episodes/search.ts";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
 import { episodeSearchCache } from "../_lib/searchCache.ts";
@@ -106,7 +106,7 @@ test("the per-show list and show-scoped searches with different queries share ON
   const originalFetch = globalThis.fetch;
   const f = countingFetch();
   globalThis.fetch = f.impl;
-  searchModule.sharedFeedReader.clear();
+  sharedFeedReader.clear();
   episodeSearchCache.clear();
   searchModule.showScopedResultCache.clear();
   try {
@@ -124,7 +124,7 @@ test("the per-show list and show-scoped searches with different queries share ON
   } finally {
     globalThis.fetch = originalFetch;
     if (had) process.env.DATABASE_URL = originalDb;
-    searchModule.sharedFeedReader.clear();
+    sharedFeedReader.clear();
     episodeSearchCache.clear();
   }
 });
@@ -263,7 +263,7 @@ test("PIN: a feed fetch through the reader is abandoned at 15 s, and that failur
 });
 
 function clearSharedState() {
-  searchModule.sharedFeedReader.clear();
+  sharedFeedReader.clear();
   episodeSearchCache.clear();
   searchModule.showScopedResultCache.clear();
 }
@@ -326,7 +326,7 @@ test("a show-scoped search answered from a stale feed copy says stale: true and 
   await withEnv(flaky, async () => {
     const search = pick(searchModule);
     await search({ method: "GET", query: { q: "alpha", show: "lex-fridman-podcast" }, headers: {} }, mockRes());
-    const kept = searchModule.sharedFeedReader.cache.get("lex-fridman-podcast");
+    const kept = sharedFeedReader.cache.get("lex-fridman-podcast");
     kept.checkedAt -= FEED_FRESH_MS + 1; // the kept copy is past its fresh window
 
     mode = "down";

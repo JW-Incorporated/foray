@@ -54,8 +54,9 @@ export class SlidingWindowBucket {
     return true;
   }
 
-  /** Current count within the trailing window, for tests/observability. */
-  currentCount(): number {
+  /** Slots used within the trailing window. Test-only observability, named
+   *  `size()` like KeyedBuckets' and TtlCache's (code-health-2 CH2-40). */
+  size(): number {
     this.prune(this.clock.now());
     return this.timestamps.length;
   }
