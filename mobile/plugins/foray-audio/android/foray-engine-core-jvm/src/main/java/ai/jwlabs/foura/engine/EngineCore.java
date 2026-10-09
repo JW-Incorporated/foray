@@ -1237,6 +1237,12 @@ public final class EngineCore {
      * {@code routeChanged(...)} (corner case #13): a lost route pauses and is not resumable by
      * a later call; a route reappearing resumes only a car this engine has seen before, never
      * headphones being plugged in.
+     *
+     * <p>ONLY A LOSS THAT PAUSED SOMETHING IS NON-RESUMABLE (CH3-02, R2-02; Swift {@code onRoute},
+     * {@code queue-manager.js} {@code routeChanged}): the machine was playing, bridging or loading,
+     * or the loss is why the deck already paused (attributed below). A loss inside an OS
+     * interruption (a car's A2DP -> HFP -> A2DP flap while a call rings) paused nothing; the call
+     * did, and its should-resume decides (code-health-3 founder question 2, default).
      */
     private void onRoute(RouteChange change) {
         if (change.isCarRoute() && change.routeName() != null) state.knownCarRoutes.add(change.routeName());
@@ -1244,12 +1250,17 @@ public final class EngineCore {
                 m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())));
         if (change.oldDeviceUnavailable()) {
             state.lastRouteLostAtMono = now.monoMs();
-            state.pausedByRoute = true;
+            boolean pausesSomething = state.player instanceof PlayerQueueState.Playing
+                    || state.player instanceof PlayerQueueState.Transitioning
+                    || state.player instanceof PlayerQueueState.LoadingItem;
             Double paused = state.lastUncommandedPauseAtMono;
             if (paused != null && now.monoMs() - paused >= 0 && now.monoMs() - paused <= ROUTE_ATTRIBUTION_MS) {
                 // The deck's pause came first and was reconciled as the system's; the route is why.
                 diag("session", m("kind", str("route-attributed")), m("to", str("pause")));
+                pausesSomething = true;
             }
+            // Non-resumable when it paused something: a later call's should-resume must not undo it.
+            if (pausesSomething) state.pausedByRoute = true;
             stopRow(StopCause.ROUTE_CHANGE, null);
             dispatch(new PlayerEvent.RouteChanged(true));
         } else {

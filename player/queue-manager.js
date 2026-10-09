@@ -655,6 +655,13 @@ export class PlayerQueueManager {
         phone speaker in a parked car would start talking. Only a press clears
         it: a route reappearing never resumes on this path (player-core-10). */
     this._pausedByRoute = false;
+    /* The `interrupted` state an element's own unexplained pause made, while
+       the machine still holds it (`reconcileWithBackend("unexplainedPause")`):
+       a pause whose cause nobody has said yet. A route loss landing in it is
+       that cause (`routeChanged`, either order — the native core's
+       `routeAttributionMs`). A frozen reducer state, so any transition out of
+       it retires it with no bookkeeping here. */
+    this._unexplainedPause = null;
     // Two distinct notions of "where we are", conflated in the Swift:
     //   currentIndex  what is actually LOADED — savePosition writes against it
     //   _targetIndex  where a skip is HEADING, before the load resolves
@@ -1335,10 +1342,19 @@ export class PlayerQueueManager {
       auto-resume used to live here, but the only production caller
       (`client.js` `onNativeSession`) reports route LOSS alone, so it never
       ran — and it would have resumed a pause the listener made themselves. The
-      native iOS engine owns route policy (EngineCore's `knownCarRoutes`, pinned
-      by its own XCTests). The `false` arm is parity-only (the parity runner's
-      `routeAvailable` step): production never passes it, but the reducer's
-      `routeChanged(false)` is a token shared with the Swift ports, so it stays. */
+      native iOS engine owns route policy (Swift `EngineCore`'s `RouteResume`
+      over `state.knownRoutes`, pinned by `RouteResumeTests` and the
+      `route-resume` family). The `false` arm is parity-only (the parity
+      runner's `routeAvailable` step): production never passes it, but the
+      reducer's `routeChanged(false)` is a token shared with the Swift ports, so
+      it stays.
+
+      ONLY A LOSS THAT PAUSED SOMETHING IS NON-RESUMABLE (CH3-02, R2-02): the
+      machine was playing, bridging or loading, or it was held by an
+      unexplained pause this loss explains. A loss inside an OS interruption —
+      a car's A2DP -> HFP -> A2DP flap while a call rings — paused nothing; the
+      call did, and its should-resume decides (code-health-3 founder question
+      2, default). Mirrored by `onRoute` in both native cores. */
   async routeChanged({ oldDeviceUnavailable }) {
     // Losing the output device mid-beat is not the beat's business to finish:
     // the next thing that happens is a pause, and a beat that outlived it would
@@ -1346,8 +1362,12 @@ export class PlayerQueueManager {
     // BECOMING available cannot interrupt a beat — that path only acts on an
     // `interrupted` state — so it needs no cut and takes the plain call.
     if (oldDeviceUnavailable) {
-      /* Non-resumable: a later call's should-resume must not undo it. */
-      this._pausedByRoute = true;
+      /* Non-resumable when it paused something: a later call's should-resume
+         must not undo it. */
+      const t = this.state.type;
+      if (t === "playing" || t === "transitioning" || t === "loadingItem" || this.state === this._unexplainedPause) {
+        this._pausedByRoute = true;
+      }
       await this._transport("routeLost", () => this._handle(E.routeChanged(true)));
     } else {
       await this._handle(E.routeChanged(false));
@@ -1517,9 +1537,17 @@ export class PlayerQueueManager {
        visible reconcile finding the element stopped is the #263 case — the
        route vanished while the page was suspended — and corner case #13 says
        that never resumes by itself. A route loss the plugin DID report has
-       already set the flag in `routeChanged`, whatever order the two arrive. */
-    if (!interruption && why !== "unexplainedPause") this._pausedByRoute = true;
-    await this._transport("reconcile", () => this._handle(E.interruptionBegan()));
+       already set the flag in `routeChanged`, whatever order the two arrive:
+       one arriving AFTER this pause finds the state it made in
+       `_unexplainedPause` and claims it (CH3-02). */
+    const unexplained = !interruption && why === "unexplainedPause";
+    if (!interruption && !unexplained) this._pausedByRoute = true;
+    await this._transport("reconcile", () => {
+      const settled = this._handle(E.interruptionBegan());
+      // `_handle` reduces before its first await: this is the state the pause made.
+      this._unexplainedPause = unexplained ? this.state : null;
+      return settled;
+    });
     return true;
   }
 
