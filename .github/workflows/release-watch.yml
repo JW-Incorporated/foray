@@ -80,65 +80,16 @@ jobs:
         with:
           node-version: "24"
 
-      # No `npm ci`: watch-release.mjs has no dependencies and makes no network
-      # calls of its own. Everything it reads is fetched here into a file. A
-      # fetch that fails after its retries fails the JOB — "I could not tell" is
-      # not a verdict and must never reach the issue dressed up as one. The one
-      # exception is the summary job's log, below: it expires, and G2 has a
-      # fallback that does not need it.
+      # Everything the judge reads, fetched into files by the composite both
+      # workflows share (CH2-34a): the release history, the newest release's
+      # jobs and summary log, the waiting commits and the trigger's pulse. A
+      # fetch that fails after its retries fails the JOB, except the summary
+      # log, which expires — the composite's header says why.
       - name: Fetch the release history, the waiting commits and the trigger's pulse
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-
-          retry() {
-            local n=1 max=4 delay=5
-            until "$@"; do
-              if [ $n -ge $max ]; then return 1; fi
-              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
-              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
-            done
-          }
-          fetch() { retry gh api "$1" > "$2"; }
-
-          # No branch filter: a tag-triggered run's head_branch is the tag.
-          fetch "repos/$REPO/actions/workflows/release.yml/runs?per_page=30" runs.json
-
-          # The newest completed run's jobs, and its summary job's log — the
-          # only place the per-store outcome is readable (see parseOutcome()).
-          #
-          # THE LOG IS THE ONE FETCH ALLOWED TO FAIL. Actions keeps logs for 90
-          # days; the run history and jobs list outlive them. After a quiet
-          # stretch (a pause, or only data commits, which never release) the
-          # newest release's log is gone for good, and a fatal fetch would turn
-          # the watchdog red every hour — and then raise WATCHDOG_BROKEN — over a
-          # log that will never come back. An empty log is a reading, not a
-          # guess: divergentGate() falls back to the store jobs' conclusions.
-          echo '{"jobs":[]}' > jobs.json
-          : > summary.log
-          if RUN=$(node tools/release/watch-release.mjs --mode latest-completed --runs runs.json); then
-            fetch "repos/$REPO/actions/runs/$RUN/jobs" jobs.json
-            SUMMARY=$(jq -r '.jobs[] | select(.name == "summary" and .conclusion != "skipped") | .id' jobs.json | head -n1)
-            if [ -n "$SUMMARY" ]; then
-              if ! fetch "repos/$REPO/actions/jobs/$SUMMARY/logs" summary.log; then
-                echo "::warning::the summary job's log (job $SUMMARY) is unreadable — expired past log retention? G2 reads job conclusions instead."
-                : > summary.log
-              fi
-            fi
-          fi
-
-          # What main holds that the stores do not. No successful release on
-          # record leaves this empty, and G3 says so in its own words.
-          : > commits.txt
-          if SHA=$(node tools/release/watch-release.mjs --mode last-success --runs runs.json); then
-            git log --first-parent --diff-merges=first-parent --no-renames --name-only \
-              --format='%x1e%H %cI %s' "$SHA..origin/main" > commits.txt
-          fi
-
-          fetch "repos/$REPO/actions/workflows/release-trigger.yml" peer-workflow.json
-          fetch "repos/$REPO/actions/workflows/release-trigger.yml/runs?event=schedule&status=success&per_page=5" peer-runs.json
+        uses: ./.github/actions/release-facts
+        with:
+          for: watch
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Judge the five gates
         run: |
@@ -177,19 +128,9 @@ jobs:
           # is found by its marker, not its title, so a person retitling it
           # cannot orphan the alarm.
           gh api "repos/$REPO/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100" > issues.json
+          # --apply: watch-release.mjs makes the `gh issue` create/reopen/edit/close
+          # it planned — ONE write path, shared with release-trigger.yml, so the
+          # two can never maintain the sticky issue with different semantics.
+          # Without --apply the same command only prints the plan (a dry run).
           node tools/release/watch-release.mjs --mode issue --verdict "$VERDICT" \
-            --issues issues.json $MAY_CLOSE --action-out action.json --body-out body.md
-
-          ACTION=$(jq -r '.action' action.json)
-          NUM=$(jq -r '.number // empty' action.json)
-          case "$ACTION" in
-            create) gh issue create --repo "$REPO" --title "$(jq -r '.title' action.json)" --body-file body.md ;;
-            reopen) gh issue edit "$NUM" --repo "$REPO" --body-file body.md
-                    gh issue reopen "$NUM" --repo "$REPO" ;;
-            edit)   gh issue edit "$NUM" --repo "$REPO" --body-file body.md ;;
-            # The red body is left as it was: the issue's history should say what
-            # went wrong, and the closing comment says it recovered.
-            close)  gh issue close "$NUM" --repo "$REPO" --comment "$(jq -r '.comment' action.json)" ;;
-            none)   echo "issue unchanged" ;;
-            *)      echo "::error::unknown issue action '$ACTION'"; exit 1 ;;
-          esac
+            --issues issues.json $MAY_CLOSE --apply --repo "$REPO" --body-out body.md

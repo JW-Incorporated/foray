@@ -39,9 +39,9 @@ import {
   watchVerdict, mainState, triggerDecision, triggerVerdict, selfBrokenVerdict, planIssue, renderIssueBody, run,
   GIT_LOG_FORMAT, ISSUE_MARKER, ISSUE_TITLE, GRACE_MINUTES, STALL_HOURS, STUCK_MINUTES,
   RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS, NATIVE_INPUT_FILES,
-  releaseBinaryJobs, deriveNativeInputs,
+  releaseBinaryJobs, deriveNativeInputs, issueCommands,
 } from "./watch-release.mjs";
-import { code, block, step, prose } from "../mobile/workflow-yaml.mjs";
+import { code, block, step, prose, invocationsOf } from "../mobile/workflow-yaml.mjs";
 import { REQUIRED_CHECKS } from "../ci/pr-triage.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -56,6 +56,8 @@ const GIT_LOG = fs.readFileSync(FIX("git-log-37554f6..a5f90c1.txt"), "utf8");
 const COMMITS = parseGitLog(GIT_LOG);
 const WATCH_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-watch.yml"), "utf8");
 const TRIGGER_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-trigger.yml"), "utf8");
+/* CH2-34a: the fetches both workflows make live in one composite. */
+const FACTS_ACTION = fs.readFileSync(path.join(ROOT, ".github/actions/release-facts/action.yml"), "utf8");
 
 /* A small, explicit bundle for the hermetic tests. One test below reads the
  * REAL plan from prepare-webdir.mjs, which is what the workflows use. */
@@ -736,9 +738,16 @@ test("the watchdog's issue step runs after a failure too", () => {
 
 /** The `run: |` body of one workflow step, dedented — the text bash runs. */
 function runBody(wf, nameFragment) {
-  const lines = step(wf, nameFragment).split(/\r?\n/);
+  const text = step(wf, nameFragment);
+  assert.ok(text, `no step named "${nameFragment}"`);
+  return runBlock(text, nameFragment);
+}
+
+/** The first `run: |` block in a piece of YAML, dedented. */
+function runBlock(text, label = "the text") {
+  const lines = text.split(/\r?\n/);
   const at = lines.findIndex((l) => /^\s*run: \|\s*$/.test(l));
-  assert.ok(at >= 0, `step "${nameFragment}" has no run block`);
+  assert.ok(at >= 0, `${label} has no run block`);
   const body = [];
   let indent = null;
   for (const l of lines.slice(at + 1)) {
@@ -759,7 +768,7 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
    * never come back. MUTATION: drop the `if !` guard and this test fails at
    * the execFileSync, with gh's 404 as the reason. */
   const posix = (p) => p.replaceAll("\\", "/");
-  const script = runBody(WATCH_WF, "Fetch the release history")
+  const script = runBlock(FACTS_ACTION, "release-facts")
     .replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
   /* Under the repo, not os.tmpdir(): /tmp is noexec in some sandboxes, and the
    * shims must execute (the same call publish-digest.test.mjs made). */
@@ -804,7 +813,7 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
     shim("sleep", "#!/bin/bash\nexit 0\n");
     const scriptPath = path.join(work, "fetch-step.sh");
     fs.writeFileSync(scriptPath, script);
-    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: "JW-Incorporated/foray" };
+    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: "JW-Incorporated/foray", FOR: "watch" };
     const out = execFileSync("bash", [scriptPath], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     const calls = fs.readFileSync(path.join(fx, "calls.txt"), "utf8");
     assert.ok(calls.includes("/actions/jobs/101513086385/logs"), `the step never asked for the summary log:\n${calls}`);
@@ -926,11 +935,34 @@ const FETCHES = {
 };
 
 test("CH2-34a: each workflow's Fetch step asks for the same facts, in the same order, and leaves the same files", () => {
-  /* The shimmed `git log` prints the format string unquoted; normalise the
-     quoting the step uses so the pin reads as the command. */
+  /* Pinned against each workflow's own inline step before the move; now the
+     composite, run as each workflow calls it, must make exactly those calls.
+     MUTATION (RUN, red, restored): `for: trigger` in release-watch.yml — the
+     watchdog fetches main's state and no summary log. */
   const norm = (r) => ({ ...r, calls: r.calls.map((c) => c.replace(`--format='${GIT_LOG_FORMAT}'`, `--format=${GIT_LOG_FORMAT}`)) });
-  assert.deepEqual(norm(fetchStepCalls(runBody(WATCH_WF, "Fetch the release history"))), FETCHES.watch);
-  assert.deepEqual(norm(fetchStepCalls(runBody(TRIGGER_WF, "Fetch the release history"))), FETCHES.trigger);
+  for (const [wf, name] of [[WATCH_WF, "release-watch"], [TRIGGER_WF, "release-trigger"]]) {
+    const fetchStep = step(wf, "Fetch the release history");
+    assert.match(fetchStep, /uses: \.\/\.github\/actions\/release-facts\s*\n/, `${name}'s Fetch step is the composite`);
+    const role = /\n\s*for: (\w+)/.exec(fetchStep)?.[1];
+    assert.match(fetchStep, /token: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+    const want = name === "release-watch" ? FETCHES.watch : FETCHES.trigger;
+    assert.deepEqual(norm(fetchStepCalls(runBlock(FACTS_ACTION, "release-facts"), { FOR: role })), want, `${name} (for: ${role})`);
+  }
+});
+
+test("CH2-34a: the release workflows carry no fetch helpers and no issue writes of their own — one composite, one --apply path", () => {
+  /* Acceptance: `grep -c 'retry()' .github/workflows/release-*.yml` is 0.
+     MUTATION (RUN, red, restored): put the old `case "$ACTION"` block with a
+     `gh issue edit` back into release-trigger.yml — the issue-edit sequence
+     can no longer change in one workflow and not the other. */
+  for (const [name, wf] of [["release-watch", WATCH_WF], ["release-trigger", TRIGGER_WF]]) {
+    assert.doesNotMatch(wf, /retry\(\)/, `${name} defines its own retry()`);
+    assert.doesNotMatch(code(wf), /\bfetch\(\)|\bgh issue\b|case "\$ACTION"|jq -r '\.action'/, `${name} writes the issue itself`);
+    assert.equal(code(wf).match(/uses: \.\/\.github\/actions\/release-facts/g)?.length, 1, `${name} calls release-facts once`);
+  }
+  assert.equal(code(FACTS_ACTION).match(/^\s*retry\(\) \{/gm)?.length, 1, "the composite carries THE retry()");
+  // The composite refuses a role it does not know rather than fetching half a picture.
+  assert.match(code(FACTS_ACTION), /\*\)\s+echo "::error::release-facts: input 'for' must be watch or trigger/);
 });
 
 /* ═════════════════════════════════ the issue ═════════════════════════════ */
@@ -1002,57 +1034,113 @@ const ISSUE_STATES = [
   ["close", ALL_GREEN, [issue(7, "open", ISSUE_MARKER)], [["issue", "close", "7", "--repo", REPO_SLUG, "--comment", CLOSE_COMMENT]], []],
 ];
 
-/** Runs one workflow's issue step under bash with `gh` and `jq` shimmed, and
- *  returns the `gh issue` calls it made (body files read back as content). */
-function issueStepCalls(wf, stepName, verdict, issues) {
-  const posix = (p) => p.replaceAll("\\", "/");
-  const script = runBody(wf, stepName)
-    .replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
-  const scratch = fs.mkdtempSync(path.join(ROOT, ".scratch-release-issue-"));
+/** A spawnSync stand-in: records every call, reads each --body-file back as
+ *  its content, and never runs anything. `fail` makes the nth call fail. */
+function fakeSpawn({ fail = null } = {}) {
+  const calls = [];
+  const spawn = (cmd, args) => {
+    calls.push([cmd, ...args.map((v, i) => (args[i - 1] === "--body-file" ? { body: fs.readFileSync(v, "utf8") } : v))]);
+    return { status: fail === calls.length ? 1 : 0 };
+  };
+  return { spawn, calls };
+}
+
+/** The `--mode issue` invocation one workflow's issue step makes, as argv, with
+ *  the shell's variables filled in the way the step fills them on a run that
+ *  produced a verdict. Read from the workflow text, so a flag dropped from one
+ *  workflow is a flag dropped here. */
+function issueArgv(wf, stepName, dir) {
+  const calls = invocationsOf(runBody(wf, stepName), "node").filter((l) => l.includes("--mode issue"));
+  assert.equal(calls.length, 1, `${stepName}: one --mode issue call`);
+  return calls[0]
+    .replace(/^node tools\/release\/watch-release\.mjs\s+/, "")
+    .replaceAll('"$VERDICT"', "verdict.json").replaceAll("$MAY_CLOSE", "--may-close")
+    .replaceAll('"$REPO"', REPO_SLUG)
+    .split(/\s+/)
+    .map((a) => (/\.(json|md)$/.test(a) ? path.join(dir, a) : a));
+}
+
+/** The `gh` calls one workflow's issue step makes, through the real CLI and a
+ *  fake spawn. */
+async function issueStepCalls(wf, stepName, verdict, issues) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
   try {
-    const bin = path.join(scratch, "bin");
-    const work = path.join(scratch, "work");
-    for (const d of [bin, work]) fs.mkdirSync(d);
-    fs.writeFileSync(path.join(work, "verdict.json"), JSON.stringify(verdict));
-    const issuesFile = path.join(scratch, "issues.json");
-    fs.writeFileSync(issuesFile, JSON.stringify(issues));
-    const callsFile = path.join(scratch, "calls.jsonl");
-    const shim = (name, lines) => fs.writeFileSync(path.join(bin, name), lines.join("\n") + "\n", { mode: 0o755 });
-    shim("gh", [
-      "#!/usr/bin/env node",
-      'const fs = require("fs");',
-      "const a = process.argv.slice(2);",
-      `if (a[0] === "api" && a[1].includes("/issues?")) { process.stdout.write(fs.readFileSync(${JSON.stringify(posix(issuesFile))}, "utf8")); process.exit(0); }`,
-      'if (a[0] !== "issue") { console.error("gh shim: unexpected " + a.join(" ")); process.exit(2); }',
-      'const rec = a.map((v, i) => (a[i - 1] === "--body-file" ? { body: fs.readFileSync(v, "utf8") } : v));',
-      `fs.appendFileSync(${JSON.stringify(posix(callsFile))}, JSON.stringify(rec) + "\\n");`,
-    ]);
-    // jq: the field reads the case blocks made, nothing else.
-    shim("jq", [
-      "#!/usr/bin/env node",
-      "const [flag, filter, file] = process.argv.slice(2);",
-      "const m = /^\\.(\\w+)( \\/\\/ empty)?$/.exec(filter);",
-      'if (flag !== "-r" || !m) { console.error("jq shim: unexpected " + process.argv.slice(2).join(" ")); process.exit(2); }',
-      'const v = JSON.parse(require("fs").readFileSync(file, "utf8"))[m[1]];',
-      'process.stdout.write(v === undefined || v === null ? (m[2] ? "" : "null\\n") : String(v) + "\\n");',
-    ]);
-    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: REPO_SLUG, GITHUB_RUN_ID: "1" };
-    fs.writeFileSync(path.join(work, "step.sh"), script);
-    execFileSync("bash", ["step.sh"], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-    return fs.existsSync(callsFile)
-      ? fs.readFileSync(callsFile, "utf8").trim().split("\n").map((l) => JSON.parse(l))
-      : [];
+    fs.writeFileSync(path.join(dir, "verdict.json"), JSON.stringify(verdict));
+    fs.writeFileSync(path.join(dir, "issues.json"), JSON.stringify(issues));
+    const { spawn, calls } = fakeSpawn();
+    const res = await run(issueArgv(wf, stepName, dir), {}, { spawnSync: spawn });
+    assert.equal(res.code, 0, res.text);
+    assert.ok(calls.every((c) => c[0] === "gh"), "only gh is spawned");
+    return calls.map((c) => c.slice(1));
   } finally {
-    fs.rmSync(scratch, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
-test("CH2-34a: each planned issue action makes the same `gh issue` calls from both workflows — create, reopen, edit, none, close", () => {
+test("CH2-34a: each planned issue action makes the same `gh issue` calls from both workflows — create, reopen, edit, none, close", async () => {
+  /* Pinned against each workflow's own `case` block (executed under bash)
+     before the move; now each workflow's `--mode issue --apply` call, read
+     from its text, must make exactly those calls.
+     MUTATION (RUN, red, restored): issueCommands' reopen without the edit
+     first — the reopen notifies with last week's body. */
   for (const [state, verdict, issues, watchCalls, triggerCalls] of ISSUE_STATES) {
-    assert.deepEqual(issueStepCalls(WATCH_WF, "Keep the one issue in step", verdict, issues), watchCalls, `release-watch, ${state}`);
-    assert.deepEqual(issueStepCalls(TRIGGER_WF, "Raise the alarm if the watchdog is down", verdict, issues),
+    assert.deepEqual(await issueStepCalls(WATCH_WF, "Keep the one issue in step", verdict, issues), watchCalls, `release-watch, ${state}`);
+    assert.deepEqual(await issueStepCalls(TRIGGER_WF, "Raise the alarm if the watchdog is down", verdict, issues),
       triggerCalls === "same" ? watchCalls : triggerCalls, `release-trigger, ${state}`);
   }
+});
+
+test("CH2-34a: --mode issue is a DRY RUN without --apply — it names the gh calls and makes none", async () => {
+  /* MUTATION (RUN, red, restored): treat a missing --apply as --apply in
+     applyIssue — a hand run of the CLI edits the live alarm. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
+  try {
+    fs.writeFileSync(path.join(dir, "verdict.json"), JSON.stringify(RED));
+    fs.writeFileSync(path.join(dir, "issues.json"), JSON.stringify([issue(12, "closed", ISSUE_MARKER)]));
+    const { spawn, calls } = fakeSpawn();
+    const res = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--may-close", "--repo", REPO_SLUG], {}, { spawnSync: spawn });
+    assert.equal(res.code, 0, res.text);
+    assert.deepEqual(calls, [], "no gh call without --apply");
+    assert.equal(res.plan.action, "reopen");
+    assert.match(res.text, /dry run/);
+    assert.match(res.text, /gh issue edit 12 --repo JW-Incorporated\/foray --body-file <body file>\n\s*gh issue reopen 12/);
+    // --apply with no repo anywhere is refused before any call.
+    const noRepo = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--apply"], {}, { spawnSync: spawn });
+    assert.equal(noRepo.code, 1);
+    assert.deepEqual(calls, []);
+    // GITHUB_REPOSITORY stands in for --repo, and with no --body-out the body
+    // goes through a scratch file that is gone afterwards.
+    const viaEnv = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--apply"], { GITHUB_REPOSITORY: REPO_SLUG }, { spawnSync: spawn });
+    assert.equal(viaEnv.code, 0, viaEnv.text);
+    assert.deepEqual(calls.map((c) => c.slice(1)), ISSUE_STATES.find(([s]) => s === "reopen")[3]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("CH2-34a: a gh call that fails is exit 1 and stops the sequence; a close without --may-close is refused", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
+  try {
+    fs.writeFileSync(path.join(dir, "verdict.json"), JSON.stringify(RED));
+    fs.writeFileSync(path.join(dir, "issues.json"), JSON.stringify([issue(12, "closed", ISSUE_MARKER)]));
+    // The edit fails: the reopen must not follow (the shell's `set -e` did the same).
+    const { spawn, calls } = fakeSpawn({ fail: 1 });
+    const res = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--apply", "--repo", REPO_SLUG], {}, { spawnSync: spawn });
+    assert.equal(res.code, 1);
+    assert.match(res.text, /gh issue edit` failed/);
+    assert.equal(calls.length, 1, "nothing after the failed call");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  /* The trigger's old `case` block refused `close` with an error; planIssue
+     never plans one without mayClose, and issueCommands refuses it anyway. */
+  const plan = { action: "close", number: 7, comment: "x" };
+  assert.throws(() => issueCommands(plan, { repo: REPO_SLUG, bodyFile: "b.md", mayClose: false }), /may not close/);
+  assert.throws(() => issueCommands({ action: "bogus" }, { repo: REPO_SLUG, bodyFile: "b.md", mayClose: true }), /unknown issue action/);
 });
 
 /* ═══════════════════════════════════ the CLI ═════════════════════════════ */
@@ -1142,12 +1230,15 @@ test("both workflows run on a schedule, each in its OWN concurrency group, and w
     assert.match(block(wf, "on"), /schedule:\s*\n\s*- cron: "[^"]+"/);
     assert.match(block(wf, "concurrency"), /cancel-in-progress: false/);
     assert.match(wf, /fetch-depth: 0/, "G3 needs the full history");
-    const formats = [...code(wf).matchAll(/--format='([^']+)'/g)].map((m) => m[1]);
-    assert.deepEqual(formats, [GIT_LOG_FORMAT]);
+    assert.doesNotMatch(code(wf), /--format=/, "the commits walk lives in the release-facts composite");
   }
+  const formats = [...code(FACTS_ACTION).matchAll(/--format='([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(formats, [GIT_LOG_FORMAT]);
   // Each watches the other; the peer names must be the real file names.
-  assert.match(code(WATCH_WF), /workflows\/release-trigger\.yml\/runs\?event=schedule&status=success/);
-  assert.match(code(TRIGGER_WF), /workflows\/release-watch\.yml\/runs\?event=schedule&status=success/);
+  assert.match(code(FACTS_ACTION), /watch\)\s+PEER=release-trigger\.yml ;;/);
+  assert.match(code(FACTS_ACTION), /trigger\)\s+PEER=release-watch\.yml ;;/);
+  assert.match(code(FACTS_ACTION), /workflows\/\$PEER\/runs\?event=schedule&status=success/);
+  assert.ok(fs.existsSync(path.join(ROOT, ".github/workflows/release-watch.yml")));
   assert.ok(fs.existsSync(path.join(ROOT, ".github/workflows/release-trigger.yml")));
 });
 
@@ -1201,7 +1292,7 @@ test("ci-release-6: the required list IS pr-triage's REQUIRED_CHECKS, and the tr
   const all = REQUIRED_CHECKS.map((n) => check(n, "success"));
   assert.equal(mainState(CI_RAN, {}, all).state, "green");
   assert.equal(mainState(CI_RAN, {}, all.slice(1)).state, "building", "every required check is consulted");
-  assert.match(code(TRIGGER_WF), /commits\/\$HEAD_SHA\/check-runs\?per_page=100" main-checks\.json/);
+  assert.match(code(FACTS_ACTION), /commits\/\$HEAD_SHA\/check-runs\?per_page=100" main-checks\.json/);
   assert.match(code(TRIGGER_WF), /--main-checks main-checks\.json/);
 });
 
