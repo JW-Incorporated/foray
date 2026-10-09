@@ -60,6 +60,7 @@ const SHELL = [
   "ui/settings.css", // Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet
   "ui/forays.css", // Redesign 2026 (ambient): the Forays list, two-up ForayCards
   "ui/now-playing.css", // Redesign 2026 (ambient): artwork-lit Now Playing Room
+  "ui/playlist.css", // Redesign 2026 (ambient): Playlist detail and the Playlists list
   "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
   "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite
   "sw.js",

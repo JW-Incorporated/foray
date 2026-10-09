@@ -955,7 +955,9 @@ function todayGlowTo(show) {
   try { agSetGlow(document.documentElement, show); } catch (_) { /* a stub document */ }
 }
 
-function todayFlipToMini(artEl) {
+/* `host` is where the flying clone goes: a node inside an `.ag` page, so `.ag .td-flip` styles it. Today's own page by default; the
+   playlist page (ui/playlist.js) passes its own. */
+function todayFlipToMini(artEl, host) {
   try {
     if (!artEl || typeof artEl.getBoundingClientRect !== "function" || typeof artEl.animate !== "function") return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;   // the art fades in place
@@ -970,7 +972,7 @@ function todayFlipToMini(artEl) {
     clone.style.setProperty("top", `${from.top}px`);
     clone.style.setProperty("width", `${from.width}px`);
     clone.style.setProperty("height", `${from.height}px`);
-    (document.querySelector(".td-today") || document.body).appendChild(clone);
+    (host || document.querySelector(".td-today") || document.body).appendChild(clone);
     const ease = (getComputedStyle(document.documentElement).getPropertyValue("--e-spring") || "").trim() || "cubic-bezier(0.2, 0.9, 0.2, 1.05)";
     const dx = to.left - from.left, dy = to.top - from.top, k = to.width / from.width;
     const anim = clone.animate(
