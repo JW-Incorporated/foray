@@ -243,7 +243,7 @@ test("(b) a breadth episode links to its own page, its id naming its show; a key
 
 test("(b) an episode of a pi: show links to its own page with its show's shard key: the show record's, else the episode's show title's", () => {
   /* pi-episodes-cold-open: the endpoint finds a pi: show only in the shard its
-     row lives in (api/shows/[show_id]/episodes.ts resolvePiShow), so the link
+     row lives in (api/_lib/resolveShow.ts resolvePiShow), so the link
      carries it the way a pi: show link does, and the router hands it back.
      MUTATION: delete the pi: branch (`if (idShow && guid && /^pi:\d+$/ ...`)
      -> the Apple fallback; red. MUTATION 2: drop `showById(idShow) ||` ->
