@@ -5527,23 +5527,27 @@ body.view-home::after { content: ""; position: fixed; z-index: 19; left: 0; righ
    limit beats the 10px rhythm for that one case). */
 .today .today-hero__link { display: -webkit-box; -webkit-box-orient: vertical; -webkit-box-pack: center; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; min-height: var(--tap); }
 .today-hero__band { display: block; min-height: 0; margin-top: var(--s-3); padding: var(--s-1) calc(var(--s-1) * 1.5); border-radius: var(--r-pill); }
-.today-hero__meta { margin-top: calc(var(--s-2) + var(--s-1) / 2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
-/* The key to the band above: each contributing show's disc is ringed in the enamel its
-   bars wear (the same --dial-seg-cN tokens, picked by the same tactileHash index, so the
-   ring IS the segment colour). Ring 3px, then 2px of card, then 30px of artwork: the whole
-   key is exactly the 40px disc it replaced, so the loading skeleton's footprint still
-   holds and seven shows fit one row at 375px. No overlap, because a ring half-hidden by
-   its neighbour is not a key; past seven it wraps rather than shrinks. Not interactive,
-   so no tap target. */
-.today-hero__discs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: calc(var(--s-1) * 0.75); }
-.today-hero__key { --seg: var(--dial-seg-c0); display: inline-flex; padding: calc(var(--s-1) * 1.25); border-radius: 50%; background: var(--seg); }
-.today-hero__key .art-frame { --art-size: calc(var(--art-disc) - var(--s-1) * 2.5); box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--card); }
+.today-hero__meta { margin-top: calc(var(--s-2) + var(--s-1) / 2); min-height: var(--art-disc); display: flex; align-items: center; gap: var(--s-3); }
+/* The key to the band above, kept to the direction's one line: the overlapping artwork
+   discs and the mono readout, no taller than the 40px row they always were (so the loading
+   skeleton's footprint holds). Each disc carries a small pip in the enamel its show's bars
+   wear (the same --dial-seg-cN tokens; the model hands the band and the pip one enamel per
+   show, so no two shows in a foray share a colour). A pip, not a ring: the disc stays the
+   plain artwork it is in the prototype and the colour is a mark on it, like the dot on an
+   avatar. Each disc is a 28px slot that shrinks (to 12px) so seven or eight shows still
+   share the line with the readout; the later disc lies over the earlier, so the pip sits
+   on the disc's left edge where nothing covers it. Not interactive, so no tap target. */
+.today-hero__discs { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; }
+.today-hero__key { --seg: var(--dial-seg-c0); position: relative; display: block; flex: 0 1 calc(var(--art-disc) - var(--s-3)); min-width: var(--s-3); height: var(--art-disc); }
+.today-hero__key--last { flex: none; width: var(--art-disc); }
+.today-hero__key .art-frame { box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--card); }
+.today-hero__pip { position: absolute; left: 0; bottom: 0; width: calc(var(--s-2) + var(--s-1) / 2); height: calc(var(--s-2) + var(--s-1) / 2); border-radius: 50%; background: var(--seg); box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--card); }
 .today-hero__key--c0 { --seg: var(--dial-seg-c0); } .today-hero__key--c1 { --seg: var(--dial-seg-c1); }
 .today-hero__key--c2 { --seg: var(--dial-seg-c2); } .today-hero__key--c3 { --seg: var(--dial-seg-c3); }
 .today-hero__key--c4 { --seg: var(--dial-seg-c4); } .today-hero__key--c5 { --seg: var(--dial-seg-c5); }
 .today-hero__key--c6 { --seg: var(--dial-seg-c6); } .today-hero__key--c7 { --seg: var(--dial-seg-c7); }
 .today-hero__more { color: var(--ink-2); padding-inline: var(--s-1); }
-.today-hero__facts { color: var(--ink-2); }
+.today-hero__facts { color: var(--ink-2); flex: none; }
 .today .today-hero__why { margin-top: var(--s-3); font-size: var(--t-body-lg); line-height: var(--lh-body-lg); font-weight: var(--w-body); }
 .today-hero__keys { margin-top: var(--s-4); display: flex; align-items: center; gap: var(--s-4); }
 .today-hero__keys .keycap--xl .i { width: calc(var(--s-8) + var(--s-1)); height: calc(var(--s-8) + var(--s-1)); }

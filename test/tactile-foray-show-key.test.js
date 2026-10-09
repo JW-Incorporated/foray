@@ -121,13 +121,13 @@ function enamelsByShow(segments, bars) {
   return by;
 }
 
-const keysOf = (html) => [...html.matchAll(/<span class="today-hero__key today-hero__key--c(\d)" role="listitem" aria-label="([^"]*)"/g)]
+const keysOf = (html) => [...html.matchAll(/<span class="today-hero__key today-hero__key--c(\d)(?: today-hero__key--last)?" role="listitem" aria-label="([^"]*)"/g)]
   .map((m) => ({ show: m[2].replace(/&amp;/g, "&").replace(/&#39;/g, "'").replace(/&quot;/g, '"'), enamel: m[1] }));
 
-test("each contributing show's ring on Today's card is the colour of that show's bars", async () => {
-  /* KILLING MUTATION: in todayHeroModel, change `tactileHash(s.showId)` to
-     `tactileHash(s.showId + "x")` (the ring hashes something the band does not) — a
-     ring stops matching its show's bars and this is red. */
+test("each contributing show's pip on Today's card is the colour of that show's bars", async () => {
+  /* KILLING MUTATION: in todayHeroModel, change `enamelOf.set(s.show, s.enamel)` to
+     `enamelOf.set(s.show, (s.enamel + 1) % 8)` (the pip reads something the band does not
+     draw) — a pip stops matching its show's bars and this is red. */
   const { r, doc } = await sevenShowForay();
   const app = loadApp(await realBridge());
   const hero = app.todayHeroModel({ foray: doc, r });
@@ -205,15 +205,67 @@ test("the Foray page's From swatch is the colour of that show's bars", async () 
   }
 });
 
-test("the ring takes the band's own colour tokens, never a hex of its own", () => {
+test("the pip takes the band's own colour tokens, never a hex of its own", () => {
   /* KILLING MUTATION: change `.today-hero__key--c3 { --seg: var(--dial-seg-c3) }` to
-     `var(--dial-seg-c2)` (or a literal #A67A08) — red. */
+     `var(--dial-seg-c2)` (or a literal #A67A08), or `.today-hero__pip`'s
+     `background: var(--seg)` to `var(--ink-3)` — red. */
   for (let n = 0; n < 8; n += 1) {
-    assert.match(rule(`.today-hero__key--c${n}`), new RegExp(`--seg:\\s*var\\(--dial-seg-c${n}\\)`), `ring c${n}`);
+    assert.match(rule(`.today-hero__key--c${n}`), new RegExp(`--seg:\\s*var\\(--dial-seg-c${n}\\)`), `pip c${n}`);
     assert.match(rule(`.t-band__bar--c${n}`), new RegExp(`fill:\\s*var\\(--dial-seg-c${n}\\)`), `bar c${n}`);
   }
-  const base = rule(".today-hero__key");
-  assert.match(base, /background:\s*var\(--seg\)/, "the ring paints the show's colour");
-  assert.doesNotMatch(base + rule(".today-hero__discs"), /#[0-9a-fA-F]{3,8}\b|rgb\(/, "no colour of its own");
-  assert.doesNotMatch(base, /\banimation|transition/, "a static mark: nothing for reduced motion to switch off");
+  const pip = rule(".today-hero__pip");
+  assert.match(pip, /background:\s*var\(--seg\)/, "the pip paints the show's colour");
+  const all = pip + rule(".today-hero__key") + rule(".today-hero__discs");
+  assert.doesNotMatch(all, /#[0-9a-fA-F]{3,8}\b|rgb\(/, "no colour of its own");
+  assert.doesNotMatch(all, /\banimation|transition/, "a static mark: nothing for reduced motion to switch off");
+});
+
+test("no two shows of one foray wear the same enamel, on the band or on the key", async () => {
+  /* The seven-show fixture hashes three of its shows onto one enamel; a key that repeats a
+     colour only tells those apart by code. KILLING MUTATION: in todayHeroModel replace
+     `enamels[showIdOf(s)]` with `tactileHash(showIdOf(s))` (and the same in the pip's map)
+     — the global hash returns and two shows share an enamel, so this is red. */
+  const { r, doc } = await sevenShowForay();
+  const app = loadApp(await realBridge());
+  const hero = app.todayHeroModel({ foray: doc, r });
+  const html = app.todayHeroHtml(hero);
+  const keys = keysOf(html);
+  assert.strictEqual(keys.length, 7);
+  assert.strictEqual(new Set(keys.map((k) => k.enamel)).size, 7, "seven shows, seven enamels on the key");
+  const by = enamelsByShow(hero.segments, barsOf(html));
+  assert.strictEqual(new Set([...by.values()].map((set) => [...set][0])).size, 7, "and seven on the bars");
+  const hashed = new Set(hero.segments.filter((s) => !s.narration).map((s) => app.tactileHash(s.showId)));
+  assert.ok(hashed.size < 7, "fixture: the plain hash DOES collide here, so the test can fail");
+});
+
+test("tactileDistinctEnamels keeps a free show's own hash and walks past a taken one", () => {
+  /* KILLING MUTATION: drop the `used[candidate]` check (always take the hash) — the
+     collision case returns the same enamel twice and this is red. */
+  const app = loadApp({});
+  const ids = Array.from({ length: 40 }, (_, i) => `show-${i}`);
+  const firstTwo = ids.find((id, i) => ids.slice(0, i).some((o) => app.tactileHash(o) === app.tactileHash(id)));
+  assert.ok(firstTwo, "fixture: a colliding pair exists among the ids");
+  const pair = ids.slice(0, ids.indexOf(firstTwo) + 1);
+  const got = app.tactileDistinctEnamels(pair);
+  assert.strictEqual(new Set(Object.values(got)).size, pair.length, "every show distinct");
+  assert.strictEqual(got[pair[0]], app.tactileHash(pair[0]), "the first show keeps its own hash enamel");
+  const eight = app.tactileDistinctEnamels(ids.slice(0, 8));
+  assert.strictEqual(new Set(Object.values(eight)).size, 8, "eight shows use all eight enamels");
+  assert.doesNotThrow(() => app.tactileDistinctEnamels(ids), "past eight it repeats rather than failing");
+  assert.strictEqual(Object.keys(app.tactileDistinctEnamels(["a", "a", "b"])).length, 2, "a repeated id is one show");
+});
+
+test("the key shares ONE line with the readout and adds no new material to the disc", async () => {
+  /* KILLING MUTATION: put `flex-wrap: wrap` back on `.today-hero__meta` (the key and the
+     readout may stack on two lines again), or give `.today-hero__key` a `padding` and
+     `background` (the ring returns) — red. */
+  const { r, doc } = await sevenShowForay();
+  const app = loadApp(await realBridge());
+  const html = app.todayHeroHtml(app.todayHeroModel({ foray: doc, r }));
+  assert.match(html, /<div class="today-hero__meta"><span class="today-hero__discs"[^>]*>(?:(?!<\/div>).)*<\/span><span class="readout today-hero__facts">/s, "discs and readout are siblings in one meta row");
+  const meta = rule(".today-hero__meta");
+  assert.doesNotMatch(meta, /flex-wrap:\s*wrap/, "the row never wraps onto a second line");
+  assert.match(meta, /min-height:\s*var\(--art-disc\)/, "the row is the 40px it always was");
+  const key = rule(".today-hero__key");
+  assert.doesNotMatch(key, /padding|background|border-radius/, "no ring: the disc is the plain artwork");
 });

@@ -549,19 +549,26 @@ function todayHeroModel(pick) {
   const player = window.ForayPlayer;
   const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable, { mergeNarration: true }) : null;
   const items = model && Array.isArray(model.segments) ? model.segments : [];
+  const showIdOf = s => (s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"));
+  /* ONE ENAMEL PER SHOW IN THIS FORAY. The global hash lets two of seven shows share teal,
+     and a key that tells shows apart only by their codes is not a key: so the band is handed
+     each show's enamel here (its own hash colour when free, the next free one when not) and
+     the key below reads the very same map. */
+  const enamels = tactileDistinctEnamels(items.filter(s => s.kind !== "narration").map(showIdOf));
   const segments = items.map(s => ({
-    showId: s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"),
+    showId: showIdOf(s),
     show: s.kind === "narration" ? "" : (s.show || ""),
     duration: s.lengthSec,
     narration: s.kind === "narration",
+    enamel: s.kind === "narration" ? -1 : enamels[showIdOf(s)],
   }));
   const shows = [...new Set(items.filter(s => s.kind !== "narration" && s.show).map(s => s.show))];
   /* THE KEY TO THE BAND. Each contributing show, in first-appearance order, wears the
-     enamel of its own bars: `enamel` is tactileHash of the very `showId` the band
-     above was just handed for that show (not a second guess at its name), so a
-     disc's ring and its show's segments cannot disagree. One show is one ring. */
+     enamel of its own bars: `enamel` is read off the segment the band above was just
+     handed for that show (not a second guess at its name), so a disc's pip and its
+     show's segments cannot disagree. One show is one pip. */
   const enamelOf = new Map();
-  for (const s of segments) if (!s.narration && s.show && !enamelOf.has(s.show)) enamelOf.set(s.show, tactileHash(s.showId));
+  for (const s of segments) if (!s.narration && s.show && !enamelOf.has(s.show)) enamelOf.set(s.show, s.enamel);
   const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
   const facts = joinMeta(
     forayRuntimeLabel(player, tally, r.totalSec),
@@ -598,9 +605,9 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
   if (!hero) return "";
   const { foray } = hero;
   const path = forayRoutePath(foray.id);
-  /* A ring in the show's band enamel (the `t-band__bar--c` index the bars wear), the show's
+  /* A pip in the show's band enamel (the `t-band__bar--c` index the bars wear), the show's
      name as the item's accessible name: the colour is never the only thing that says who. */
-  const keys = hero.discs.map(d => `<span class="today-hero__key today-hero__key--c${Number(d.enamel) || 0}" role="listitem" aria-label="${esc(d.name || "")}">${tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })}</span>`).join("");
+  const keys = hero.discs.map((d, i) => `<span class="today-hero__key today-hero__key--c${Number(d.enamel) || 0}${i === hero.discs.length - 1 ? " today-hero__key--last" : ""}" role="listitem" aria-label="${esc(d.name || "")}">${tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })}<span class="today-hero__pip" aria-hidden="true"></span></span>`).join("");
   const more = hero.moreShows > 0 ? `<span class="readout today-hero__more" role="listitem" aria-label="${esc(countLabel(hero.moreShows, "more show"))}">+${esc(String(hero.moreShows))}</span>` : "";
   const discs = `<span class="today-hero__discs" role="list" aria-label="Shows in this foray">${keys}${more}</span>`;
   const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;
