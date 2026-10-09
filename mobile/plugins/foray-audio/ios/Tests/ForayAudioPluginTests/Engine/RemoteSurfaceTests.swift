@@ -175,6 +175,24 @@ final class RemoteSurfaceTests: XCTestCase {
         }
     }
 
+    /// CH3-10 characterization (R1-03): TODAY the engine lane enables the track
+    /// pair from Up Next alone, whatever the route -- on the built-in speaker
+    /// too, where the lock screen is the only surface and draws ⏭ over the
+    /// founder's 30↻ (docs/DECISIONS.md 2026-09-23, founder question 1: the
+    /// legacy lane already gates it on `trackCommandsAllowed`). This pins
+    /// today's answer; the CH3-10 change flips the speaker row.
+    @MainActor
+    func testTheTrackPairOnTheSpeakerRouteWithUpNext() {
+        for port in ["Speaker", "CarAudio"] {
+            let world = FakeWorld()
+            world.session.route = RoutePort(portType: port, uid: nil)
+            let engine = Self.engine(in: .playing, world: world)
+            XCTAssertEqual(world.remote.enabled[.nextTrack], true, port)
+            XCTAssertEqual(world.remote.enabled[.previousTrack], true, port)
+            withExtendedLifetime(engine) {}
+        }
+    }
+
     /// The one place a verdict becomes MediaPlayer's status.
     /// TO SEE IT FAIL: answer `.success` for every verdict.
     func testTheVerdictIsTheStatus() {
