@@ -52,6 +52,7 @@ const SHELL = [
   "ui/tokens.css", // Redesign 2026 (ambient): the Afterglow design tokens, linked after styles.css
   "ui/primitives.css", // Redesign 2026 (ambient): scoped component primitives and gallery composition
   "ui/dock.css", // Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), linked after primitives.css
+  "ui/library.css", // Redesign 2026 (ambient): Library, a screen on the system
   "ui/today.css", // Redesign 2026 (ambient): Today, the first screen on the system
   "ui/now-playing.css", // Redesign 2026 (ambient): artwork-lit Now Playing Room
   "ui/car.css", // Redesign 2026 (ambient): car posture (Now Playing glance screen)
