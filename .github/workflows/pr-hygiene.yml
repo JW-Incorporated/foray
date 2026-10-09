@@ -21,7 +21,7 @@
 #
 # THE PAIRING: WHY EVERY update-branch IS FOLLOWED BY A CI DISPATCH.
 # Updating a branch changes the PR's head SHA, and `protect-main`'s required
-# checks (`backend`, `data-and-site`) are matched against that SHA. Pushes made
+# checks (`REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`) are matched against that SHA. Pushes made
 # with the automatic GITHUB_TOKEN do not create workflow runs — GitHub's
 # anti-recursion rule — so an auto-updated PR would sit forever at "Expected —
 # waiting for status to be reported". Unpaired, this workflow would have

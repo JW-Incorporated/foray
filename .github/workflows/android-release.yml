@@ -80,8 +80,9 @@
 # above stays true.
 #
 # NO JOB HERE IS A REQUIRED CHECK, and none is named so it could become one by
-# accident — `protect-main` matches required contexts BY NAME (`backend`,
-# `data-and-site`, `path-policy`). A flaky required check is worse than no check;
+# accident — `protect-main` matches required contexts BY NAME (the list is
+# `REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`, which has never held
+# `path-policy`). A flaky required check is worse than no check;
 # this one is deliberately advisory, and the smoke job's verdict is read by a
 # human before a submission, not by a merge gate.
 #
