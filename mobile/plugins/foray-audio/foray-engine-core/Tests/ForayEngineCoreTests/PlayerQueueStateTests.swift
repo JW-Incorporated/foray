@@ -197,6 +197,43 @@ final class PlayerQueueStateTests: XCTestCase {
         XCTAssertEqual(effects, [.emitTelemetry("interruption.began.duringLoad")])
     }
 
+    // CH3-01 (R2-01, docs/roadmap/code-health-3.md): a nav prompt or "Hey
+    // Siri" that lands while the target is still LOADING, and ends with
+    // shouldResume. Mirrors player/queue-state.test.js's test of the same name.
+    func testInterruptionDuringLoad_EndsWithShouldResume() {
+        let loading = PlayerQueueState.loadingItem(target: episodeA, previous: nil)
+        let (interrupted, _) = PlayerQueueState.reduce(state: loading, event: .interruptionBegan)
+        XCTAssertEqual(interrupted, .interrupted(item: episodeA, wasPlaying: false))
+
+        // A stray itemLoaded inside the interruption must not start playback
+        // into the call.
+        let (stray, strayEffects) = PlayerQueueState.reduce(state: interrupted, event: .itemLoaded)
+        XCTAssertEqual(stray, interrupted)
+        guard case .emitTelemetry = strayEffects.first else {
+            return XCTFail("expected itemLoaded to be ignored")
+        }
+
+        let (after, effects) = PlayerQueueState.reduce(state: interrupted, event: .interruptionEnded(shouldResume: true))
+        XCTAssertEqual(after, .interrupted(item: episodeA, wasPlaying: false))
+        XCTAssertEqual(effects, [.emitTelemetry("interruption.ended.staysPaused")])
+    }
+
+    // A lost route is not resumable, and a call that begins and ends inside
+    // the loss does not make it so. Mirrors player/queue-state.test.js.
+    func testRouteLostDuringLoad_ThenACallEndsWithShouldResume_StaysPaused() {
+        let loading = PlayerQueueState.loadingItem(target: episodeA, previous: nil)
+        let (lost, _) = PlayerQueueState.reduce(state: loading, event: .routeChanged(oldDeviceUnavailable: true))
+        XCTAssertEqual(lost, .interrupted(item: episodeA, wasPlaying: false))
+
+        let (ringing, beganEffects) = PlayerQueueState.reduce(state: lost, event: .interruptionBegan)
+        XCTAssertEqual(ringing, lost)
+        XCTAssertEqual(beganEffects, [])
+
+        let (after, effects) = PlayerQueueState.reduce(state: ringing, event: .interruptionEnded(shouldResume: true))
+        XCTAssertEqual(after, .interrupted(item: episodeA, wasPlaying: false))
+        XCTAssertEqual(effects, [.emitTelemetry("interruption.ended.staysPaused")])
+    }
+
     func testInterruptionBeganIsIdempotent() {
         let interrupted = PlayerQueueState.interrupted(item: episodeA, wasPlaying: true)
         let (state, effects) = PlayerQueueState.reduce(state: interrupted, event: .interruptionBegan)
