@@ -60,13 +60,6 @@ export const D1_MIN_EPISODES = 3;
 export const MAX_UNMAPPED_CURATED_FRACTION = 0.05;
 export const D1_MAX_MONTHS_STALE = 24;
 
-/** Where the "already built this version" marker lives — durable, not
-    gitignored, so a second run on a fresh checkout still sees the last
-    build (per the card's "somewhere durable under data/ or
-    tools/shows/state/" instruction). */
-export const STATE_DIR = join(ROOT, "tools", "shows", "state");
-export const STATE_PATH = join(STATE_DIR, "last-build.json");
-
 export const CATALOG_PATH = join(ROOT, "data", "catalog.json");
 export const POINTER_PATH = join(ROOT, "data", "shows-index-pointer.json");
 

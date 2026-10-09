@@ -506,3 +506,15 @@ test("checksumFile streams a sha256 of the dump, and import-dump.mjs hashes --du
   assert.match(src, /await checksumFile\(dumpFileArg\)/);
   assert.doesNotMatch(src, /createReadStream/);
 });
+
+test("CH2-31: no local already-built marker — import-dump.mjs always builds, releaseExists is the one idempotency rule", () => {
+  /* T1-15: state.mjs's "durable" marker file was never committed or
+     cached, so its SKIP branch could fire only on a persistent workstation.
+     It is deleted; this is the honest guard for the deletion.
+     MUTATION: put `import { alreadyBuilt } from "./state.mjs"` (or an
+     alreadyBuilt check) back in import-dump.mjs -> red. Ran it: red. */
+  const src = readFileSync(new URL("./import-dump.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(src, /\balreadyBuilt\b/);
+  assert.doesNotMatch(src, /\.\/state\.mjs/);
+  assert.doesNotMatch(src, /^\s*console\.log\(`SKIP:/m);
+});
