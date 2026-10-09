@@ -727,6 +727,53 @@ public class EngineCoreTest {
         assertEquals(-1, index(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true))), EngineCoreTest::isLoad));
     }
 
+    /** The {@code session} row a refused should-resume writes ({@code interruption ... resumed=false why=...}), or null. */
+    static EngineCommand.DiagEntry refusedResume(List<EngineCommand> commands) {
+        return rows("session", commands).stream()
+                .filter(e -> JsonNode.str("interruption").equals(e.field("kind")) && JsonNode.str("ended").equals(e.field("phase"))
+                        && JsonNode.FALSE.equals(e.field("resumed")))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * CH3-02 (R2-02), the twin of the Swift test: a car's A2DP -> HFP -> A2DP flap while a call
+     * rings lands inside the call's interruption and paused nothing, so the call's should-resume
+     * decides (code-health-3 founder question 2, default): the resume loads, and no
+     * {@code resumed=false why=route-lost} row is written. RED on main: R2-02 ({@code onRoute}
+     * set {@code pausedByRoute} unconditionally). TO SEE IT FAIL: restore the unconditional
+     * {@code state.pausedByRoute = true} in {@code onRoute}.
+     */
+    @Test
+    public void aRouteFlapDuringACallLeavesTheCallsShouldResumeInCharge() {
+        Host host = playing();
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))));
+        assertFalse("the flap paused nothing", host.core.state().pausedByRoute);
+        List<EngineCommand> ended = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertNull(ended.toString(), refusedResume(ended));
+        assertTrue("the call's should-resume resumes: " + ended, index(ended, EngineCoreTest::isLoad) >= 0);
+    }
+
+    /**
+     * CH3-02 characterization, the opposite order (survives the fix): a loss while PLAYING
+     * paused the episode, so it is the route's (corner case #13): a flap back and a later call's
+     * should-resume do not resume it, and the refusal row says why. TO SEE IT FAIL: drop the
+     * {@code Playing} arm from {@code onRoute}'s "the loss paused something" condition.
+     */
+    @Test
+    public void aRouteLostWhilePlayingIsRefusedAfterAFlapAndACall() {
+        Host host = playing();
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))));
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        List<EngineCommand> ended = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertEquals(ended.toString(), -1, index(ended, EngineCoreTest::isLoad));
+        EngineCommand.DiagEntry refusal = refusedResume(ended);
+        assertTrue(ended.toString(), refusal != null);
+        assertEquals(JsonNode.str("route-lost"), refusal.field("why"));
+    }
+
     /** Toggle reads the deck, not only the belief: an audible deck behind a paused machine is paused by the press. */
     @Test
     public void toggleFromNativeTruth() {

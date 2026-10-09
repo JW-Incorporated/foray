@@ -3549,6 +3549,71 @@ test("ROUND 2 review: the element's own unexplained pause (a call on an awake pa
   assert.equal(m.state.type, "playing");
 });
 
+/* ---------- CH3-02 (R2-02): a route loss inside an interruption ----------
+
+   A Bluetooth car, a call arrives, and the output flips A2DP -> HFP -> A2DP
+   while it rings. The flip reports the old device gone. It lands inside the
+   call's interruption, so it paused nothing: the call did. The call's
+   should-resume decides (founder question 2 of docs/roadmap/code-health-3.md,
+   default). A loss that DID pause something stays non-resumable (corner case
+   #13), which the two tests after the first pin, with the ROUND 2 test above
+   (the opposite order). */
+
+test("CH3-02 (R2-02): a route flap DURING a call leaves the call's should-resume in charge", async () => {
+  /* RED on main: R2-02 — `routeChanged` set `_pausedByRoute` whatever the
+     reducer was doing, so the call's end was refused as "routeLost".
+     KILLING MUTATION: restore the unconditional `this._pausedByRoute = true`
+     in `routeChanged` (fixture manager-episode/a-route-flap-during-a-call-still-resumes
+     goes red with it on JS, Swift and the JVM). */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  await m.interruptionBegan();
+  assert.equal(m.state.type, "interrupted");
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  await m.routeChanged({ oldDeviceUnavailable: false });
+  backend.calls.length = 0;
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing", "the call ended with should-resume; the flap paused nothing");
+  assert.ok(backend.calls.includes("play"), `${backend.calls}`);
+});
+
+test("CH3-02 characterization: a route lost while PLAYING stays paused through a flap and a later call", async () => {
+  /* Survives the fix: the loss itself paused the episode, so it is the
+     route's (corner case #13). KILLING MUTATION: drop the `playing` arm from
+     `routeChanged`'s "the loss paused something" condition. */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  await m.routeChanged({ oldDeviceUnavailable: false });
+  await m.interruptionBegan();
+  backend.calls.length = 0;
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "interrupted", "a lost route is not resumed by a call's should-resume");
+  assert.ok(!backend.calls.includes("play"), `${backend.calls}`);
+});
+
+test("CH3-02 characterization: the element's unexplained pause then a route loss is the route's, either order", async () => {
+  /* Headphones out on an awake page: WebKit pauses the element (the
+     `unexplainedPause` reconcile, resumable on its own) and the plugin reports
+     the loss after it. The loss explains that pause, so a later call's
+     should-resume still does not bring it back — the order the native core
+     attributes inside `routeAttributionMs`. Survives the fix. KILLING
+     MUTATION: drop the unexplained-pause arm from `routeChanged`'s condition. */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("unexplainedPause"), true);
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  backend.calls.length = 0;
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "interrupted", "the pause was the route's");
+  assert.ok(!backend.calls.includes("play"), `${backend.calls}`);
+});
+
 /* ---------- audit round 3: every await re-checks who owns the player ---------- */
 
 /** A backend whose load of the named ids waits until the test releases it. */
