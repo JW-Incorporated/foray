@@ -50,7 +50,8 @@ test("guid is read from the string, the CDATA-string and the object form alike; 
   assert.equal(episodeOf({ title: "t", "itunes:summary": "only summary" }).description, "only summary");
 });
 
-/* MUTATION: re-add `feed_capped_suspect` (or any key) to harvestedShow -> red. */
+/* T1-18: `feed_capped_suspect` had no reader anywhere (git grep) and is gone.
+   MUTATION: re-add `feed_capped_suspect` (or any key) to harvestedShow -> red. */
 test("a harvested show row carries exactly these keys", () => {
   const now = new Date("2026-10-09T00:00:00.000Z");
   const episodes = [episodeOf(ITEM)];
@@ -61,7 +62,6 @@ test("a harvested show row carries exactly these keys", () => {
     feed_url: "https://f.example.test/rss",
     chart_rank_overall: 3,
     episode_count_in_feed: 1,
-    feed_capped_suspect: false,
     harvested_at: "2026-10-09T00:00:00.000Z",
     episodes,
   });

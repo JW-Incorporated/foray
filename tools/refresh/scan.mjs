@@ -35,18 +35,14 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { createRequire } from "node:module";
 import { createHash } from "node:crypto";
-import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
-import { decodeEntities } from "./entities.mjs";
+import { feedParser, itemIdentity, itemToPendingRecord } from "./feed-xml.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { fetchFeedCapped, capItems } from "./fetch-limits.mjs";
 import { loadChangeIndex, selectChangedCuratedShows, curationCandidates } from "./candidates.mjs";
 import { retryItems } from "./resolve.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
-const { XMLParser } = backendRequire("fast-xml-parser");
 
 const THROTTLE_MS = 1800;
 const args = process.argv.slice(2);
@@ -68,7 +64,6 @@ async function fetchFeed(url) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
 
 function loadState() {
   try { return JSON.parse(readFileSync(STATE_PATH, "utf8")); } catch (_) { return { seen: {} }; }
@@ -79,7 +74,7 @@ async function main() {
   const discover = JSON.parse(readFileSync(dataPath("discover.json"), "utf8"));
   const knownTitles = new Set(discover.items.map((i) => i.show + "::" + i.title));
   const state = loadState();
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
+  const parser = feedParser();
   const cutoff = Date.now() - WINDOW_H * 3600_000;
 
   const curatedFeedShows = catalog.shows.filter((s) => s.feed_url);
@@ -124,40 +119,18 @@ async function main() {
       const seen = new Set(state.seen[show.apple_collection_id] || []);
 
       for (const it of items.slice(0, 10)) {
-        const guid = text(typeof it.guid === "object" ? it.guid["#text"] ?? it.guid : it.guid) || text(it.enclosure?.["@_url"]);
-        /* Entities decoded HERE, where the title enters data/ ("Vibe Coding
-           &#038; Linux" rendered literally — visual pass 1 review, 2026-09-23). */
-        const title = decodeEntities(text(it.title));
+        const { guid, title, pub } = itemIdentity(it);
         if (!guid || !title || seen.has(guid)) continue;
-        let pub = null;
-        try { const d = new Date(it.pubDate); pub = isNaN(d) ? null : d; } catch (_) {}
         if (!pub || pub.getTime() < cutoff) continue;
         if (knownTitles.has(show.title + "::" + title)) continue;
-        const desc = String(text(it.description) || text(it["itunes:summary"]) || "")
-          .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500);
-        // Audio provenance (issue #21). The enclosure is the authoritative
-        // playable URL and we were already parsing this element for the guid
-        // fallback above — we just weren't keeping it.
-        const audio = audioFieldsFrom(it);
-        if (audio.reason) {
-          withheld.push(`${show.title} :: ${title} :: ${audio.reason}`);
-        }
-        pending.push({
-          show: show.title,
-          show_id: show.show_id || null,
-          apple_collection_id: show.apple_collection_id,
-          artwork_url: show.artwork_url || null,
-          topics: show.taxonomy_node_ids || [],
-          guid, title,
-          release_date: pub.toISOString().slice(0, 10),
-          duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
-          duration_sec: audio.duration_sec,
-          audio_url: audio.audio_url,
-          audio_type: audio.audio_type,
-          audio_bytes: audio.audio_bytes,
-          description: desc,
-          explicit_hint: /yes|true|explicit/i.test(String(text(it["itunes:explicit"]) || "")),
-        });
+        /* The record is built by the one function backfill-show.mjs uses too
+           (tools/refresh/feed-xml.mjs, code-health-2 CH2-29): resolve.mjs reads
+           one shape, whichever script pushed it. */
+        const { record, reason } = itemToPendingRecord(show, it);
+        // Not fatal: the record goes out with no audio_url (issue #24), listed so
+        // a feed that starts withholding enclosures doesn't degrade silently.
+        if (reason) withheld.push(`${show.title} :: ${title} :: ${reason}`);
+        pending.push(record);
         seen.add(guid);
       }
       state.seen[show.apple_collection_id] = [...seen].slice(-60);

@@ -59,9 +59,8 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { createRequire } from "node:module";
-import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
 import { decodeEntities } from "./entities.mjs";
+import { text, feedParser, itemToPendingRecord } from "./feed-xml.mjs";
 import { UA } from "../segments/politeness.mjs";
 import { readResponseCapped } from "./fetch-limits.mjs";
 
@@ -72,8 +71,6 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 export { UA };
 const THROTTLE_MS = 1500;
 export const DEFAULT_NEWEST = 25;
-
-const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
 
 export class BackfillError extends Error {
   constructor(code, message) {
@@ -167,46 +164,11 @@ export function resolveOutPath({ out = null, env = {}, root = ROOT, cwd = proces
   return join(root, "data-local", "backfill-pending.json");
 }
 
-/** One RSS <item> -> one fresh-pending.json record. Field-for-field the shape
-    scan.mjs pushes, because resolve.mjs reads that shape and nothing here is
-    allowed to teach it a second one. `topics` comes from the SHOW's
-    taxonomy_node_ids, which is how a curated show labels its episodes. */
-export function pendingRecord(show, it) {
-  /* `text()` already unwraps the `{ "#text": … }` form fast-xml-parser produces for
-     `<guid isPermaLink="false">`, so there is no ternary here. scan.mjs writes one
-     and it is dead code there too; a mutation test on the copied ternary came back
-     green, which is what found it. */
-  const guid = text(it.guid) || text(it.enclosure?.["@_url"]);
-  /* Entities decoded where the title enters data/ (tools/refresh/entities.mjs). */
-  const title = decodeEntities(text(it.title));
-  let pub = null;
-  try { const d = new Date(it.pubDate); pub = isNaN(d) ? null : d; } catch (_) { /* unparseable */ }
-  if (!guid || !title || !pub) {
-    return { record: null, reason: !guid ? "no guid" : !title ? "no title" : "unparseable pubDate" };
-  }
-  const desc = String(text(it.description) || text(it["itunes:summary"]) || "")
-    .replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 500);
-  const audio = audioFieldsFrom(it);
-  return {
-    record: {
-      show: show.title,
-      show_id: show.show_id || null,
-      apple_collection_id: show.apple_collection_id,
-      artwork_url: show.artwork_url || null,
-      topics: show.taxonomy_node_ids || [],
-      guid, title,
-      release_date: pub.toISOString().slice(0, 10),
-      duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
-      duration_sec: audio.duration_sec,
-      audio_url: audio.audio_url,
-      audio_type: audio.audio_type,
-      audio_bytes: audio.audio_bytes,
-      description: desc,
-      explicit_hint: /yes|true|explicit/i.test(String(text(it["itunes:explicit"]) || "")),
-    },
-    reason: audio.reason,
-  };
-}
+/** One RSS <item> -> one fresh-pending.json record. Not a copy: it IS the function
+    scan.mjs builds its records with (tools/refresh/feed-xml.mjs, code-health-2
+    CH2-29), re-exported under the name this module has always exported, because
+    resolve.mjs reads one shape and nothing here may teach it a second. */
+export const pendingRecord = itemToPendingRecord;
 
 /** Resolves `--show` names against the curated catalogue. Throws rather than
     warning: a typo'd show_id that silently produced zero episodes would look
@@ -293,9 +255,7 @@ async function main() {
   const catalog = JSON.parse(readFileSync(join(ROOT, "data", "catalog.json"), "utf8"));
   const shows = resolveShows(catalog, args.shows);
 
-  const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
-  const { XMLParser } = backendRequire("fast-xml-parser");
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
+  const parser = feedParser();
 
   const episodes = [];
   const withheld = [];

@@ -1,22 +1,21 @@
 /* Full episode archives for the top-N shows. The iTunes API caps episode
    lookups at ~300; the public RSS feed IS the complete catalog (modulo
-   publisher-side feed caps, which we measure and flag per show).
+   publisher-side feed caps: each show row records episode_count_in_feed; the
+   `feed_capped_suspect` guess it once carried had no reader and was removed,
+   code-health-2 T1-18).
 
    Usage: node tools/harvest-episodes.mjs [--top N] [--out path]           */
 
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
 import { UA } from "./segments/politeness.mjs";
 import { durationMinutes } from "./refresh/enclosure.mjs";
 import { fetchFeedCapped } from "./refresh/fetch-limits.mjs";
+import { text, feedParser } from "./refresh/feed-xml.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-// reuse the backend's battle-tested lenient XML parser
-const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
-const { XMLParser } = backendRequire("fast-xml-parser");
 
 const THROTTLE_MS = 2500;
 const args = process.argv.slice(2);
@@ -39,14 +38,12 @@ async function fetchText(url, attempt = 1) {
   }
 }
 
-const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
-
 /** One RSS `<item>` (fast-xml-parser's shape) -> one archive episode. */
 export function episodeOf(it) {
   const enc = it.enclosure || {};
   const desc = text(it.description) || text(it["itunes:summary"]) || "";
   return {
-    guid: text(typeof it.guid === "object" ? it.guid["#text"] ?? it.guid : it.guid),
+    guid: text(it.guid),
     title: text(it.title),
     published_at: (() => {
       // malformed pubDates exist in real feeds — never let one kill a show
@@ -64,8 +61,8 @@ export function episodeOf(it) {
 
 /** A feed's episodes, or null when the document is not RSS. */
 export function parseFeed(xml) {
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
-  const doc = parser.parse(xml);
+  // the backend's lenient XML parser, configured once (refresh/feed-xml.mjs)
+  const doc = feedParser().parse(xml);
   const channel = doc?.rss?.channel;
   if (!channel) return null;
   let items = channel.item || [];
@@ -79,7 +76,6 @@ export function harvestedShow({ id, title, feed_url, rank, episodes, now = new D
     apple_collection_id: id, title, feed_url,
     chart_rank_overall: rank,
     episode_count_in_feed: episodes.length,
-    feed_capped_suspect: episodes.length > 0 && episodes.length <= 105 && /daily|news/i.test(title || "") === false && episodes.length % 50 === 0,
     harvested_at: now.toISOString(),
     episodes,
   };

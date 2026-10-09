@@ -28,16 +28,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { createRequire } from "node:module";
 import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
 import { UA, NIGHTLY_UA } from "../segments/politeness.mjs";
 import { minutesFromSeconds } from "../check-durations.mjs";
 import { prepareSessionPatch } from "./session-patch.mjs";
 import { fetchFeedCapped } from "./fetch-limits.mjs";
+import { text, feedParser } from "./feed-xml.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
-const { XMLParser } = backendRequire("fast-xml-parser");
 
 const THROTTLE_MS = 1500;
 
@@ -47,7 +45,6 @@ const FORCE = args.includes("--force");
 const LIMIT = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) : Infinity;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
 const norm = (s) => (s || "").toLowerCase().replace(/&amp;/g, "&").replace(/[^a-z0-9]+/g, " ").trim();
 
 /* ---------- matching (corner case #3: composite identity) ----------
@@ -141,7 +138,7 @@ for (const t of needsWork) {
   byShow.get(cid).push(t);
 }
 
-const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
+const parser = feedParser();
 const stats = { rss: 0, itunes: 0, unmatched: 0, withheld: 0, feedFail: 0, noFeed: 0, disagree: 0 };
 const unresolved = [];
 
