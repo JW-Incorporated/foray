@@ -1,0 +1,15 @@
+{
+  "seen": { "1001": ["alpha-seen-guid"] },
+  "retry": {
+    "retry-guid-1": {
+      "attempts": 2,
+      "reason": "no iTunes match",
+      "item": { "show": "Alpha Show", "title": "Unresolved Last Night", "apple_collection_id": 1001 }
+    },
+    "retry-guid-2": {
+      "attempts": 1,
+      "reason": "no iTunes match",
+      "item": { "show": "Alpha Show", "title": "Merged Since Last Night", "apple_collection_id": 1001 }
+    }
+  }
+}

@@ -9,6 +9,12 @@
    Env overrides:
      STATE_PATH    seen-guid state    (default data-local/refresh-state.json)
      PENDING_PATH  scan output        (default data-local/fresh-pending.json)
+     FEED_FIXTURE_DIR  an offline world, for tools/refresh/scan.test.mjs only
+                   (code-health-2 CH2-29): catalog.json and discover.json are
+                   read from it instead of data/, each feed URL reads
+                   <dir>/<sha1(url)>.xml instead of the network (a missing file
+                   is a failed feed), and there is no throttle. The nightly
+                   never sets it.
 
    --source index (S-11, 4a-shows-pipeline-plan.md card S-11): instead of
    polling all 220 curated feeds every night, read S-04's published
@@ -30,6 +36,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { createRequire } from "node:module";
+import { createHash } from "node:crypto";
 import { audioFieldsFrom, durationMinutes } from "./enclosure.mjs";
 import { decodeEntities } from "./entities.mjs";
 import { UA } from "../segments/politeness.mjs";
@@ -51,6 +58,15 @@ mkdirSync(join(ROOT, "data-local"), { recursive: true });
 const STATE_PATH = process.env.STATE_PATH || join(ROOT, "data-local", "refresh-state.json");
 const OUT_PATH = process.env.PENDING_PATH || join(ROOT, "data-local", "fresh-pending.json");
 
+const FIXTURE_DIR = process.env.FEED_FIXTURE_DIR || null;
+const dataPath = (file) => (FIXTURE_DIR ? join(FIXTURE_DIR, file) : join(ROOT, "data", file));
+const fixtureFeedFile = (url) => createHash("sha1").update(url).digest("hex") + ".xml";
+async function fetchFeed(url) {
+  if (FIXTURE_DIR) return readFileSync(join(FIXTURE_DIR, fixtureFeedFile(url)), "utf8");
+  await sleep(THROTTLE_MS);
+  return fetchFeedCapped(url, { headers: { "User-Agent": UA } });
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
 
@@ -59,8 +75,8 @@ function loadState() {
 }
 
 async function main() {
-  const catalog = JSON.parse(readFileSync(join(ROOT, "data", "catalog.json"), "utf8"));
-  const discover = JSON.parse(readFileSync(join(ROOT, "data", "discover.json"), "utf8"));
+  const catalog = JSON.parse(readFileSync(dataPath("catalog.json"), "utf8"));
+  const discover = JSON.parse(readFileSync(dataPath("discover.json"), "utf8"));
   const knownTitles = new Set(discover.items.map((i) => i.show + "::" + i.title));
   const state = loadState();
   const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
@@ -99,9 +115,8 @@ async function main() {
   let polled = 0, failed = 0;
 
   for (const show of shows) {
-    await sleep(THROTTLE_MS);
     try {
-      const bodyText = await fetchFeedCapped(show.feed_url, { headers: { "User-Agent": UA } });
+      const bodyText = await fetchFeed(show.feed_url);
       const doc = parser.parse(bodyText);
       let items = doc?.rss?.channel?.item || [];
       if (!Array.isArray(items)) items = [items];
