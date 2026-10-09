@@ -253,7 +253,7 @@
         },
         "mini": {
           "prototype": ".mini",
-          "app": "#foray-player"
+          "app": "#dock-mini"
         },
         "tabBar": {
           "prototype": ".tabbar",
