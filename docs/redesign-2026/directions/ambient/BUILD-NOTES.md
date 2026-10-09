@@ -1888,6 +1888,17 @@ fidelity pair is its Library Up Next section and the menu sheet, `screens.json` 
    Back stays (the page is reached from Library's "All N in Up Next" and by URL; `card-anatomy`, KEEP); the Dock's labelled tabs show
    because the page is not scrolled, the recede is the Dock's scroll behaviour. The two Discover tap-target entries are the Discover
    unit's (`gates --states up-next,library` is clean on this branch).
+10. **Iteration 6 (fourth review of the unit), decided without the owner.** Tests: the one failure this unit caused was
+   `test/ambient-forays-list.test.js`, which still pinned the harness park route as `#/queue`/`#/starred-shows`; it now pins
+   `#/about` plus `parkAway` emptying `#view` and the two places that name the route, each with its mutation. The bundle-cap
+   failure was not this unit: it was the base branch carrying Library twice in the three shell lists after the trunk merge;
+   with one `ui/library.css` entry (and `ui/queue.css` beside it) `tools/mobile` reads 1327 passing, and the 9 left are the
+   CRLF-checkout native/iOS file tests that need LF. Trunk merged in again (Library, Forays list, Playlists landed): Library
+   keeps trunk's Dock-owned cast/fade tests, this unit keeps `libHistorySectionHtml` (the Up Next page ends with History) and
+   the Toast on `--dock-h`. Gates (`up-next,library,returning,player`, 33 screens): new 0. The visual findings repeated from
+   items 7 to 9 and stand as decided there: the cool Glow is the hash-hue fallback for a show outside the palette table (the
+   harness has no artwork), the pushed screen's Back and the quiet "Clear Up Next" are kept, the Dock labels are the
+   un-scrolled state, and the mini player's 2px line is the Dock's, empty at 0% played.
 
 ## 19. Show page (built, `redesign/ambient-show`)
 
