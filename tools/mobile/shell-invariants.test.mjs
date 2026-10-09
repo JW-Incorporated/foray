@@ -1927,6 +1927,7 @@ function swiftCallersOf(code, callee) {
 }
 
 const AUDIO_SWIFT = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift");
+const CORE_MEDIA_MAPPING_SWIFT = path.join(PLUGIN_DIR, "foray-engine-core/Sources/ForayEngineCore/Policy/MediaMapping.swift");
 
 test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two session functions and NOWHERE on the playing path (F11/F13, 2026-09-23)", () => {
   /* Founder device diagnostics (2026-09-08/09): on iOS the play/pause button
@@ -4468,24 +4469,67 @@ test("the iOS track pair follows the ROUTE, and the page's track handlers are no
      enabled only where a track button exists without looking (a headset, a
      Bluetooth stack, a car), re-read on every route change; and WebKit's own
      session — which enables the same commands for every mirrored handler — no
-     longer gets them. MUTATION: drop `&& trackRoutePresent` from either line;
-     drop the route re-apply from handleRouteChange; put UNMIRRORED_ACTIONS back
-     to ["seekto"]. */
+     longer gets them. Since CH3-10 the route rule is the core's
+     (`MediaMapping.trackCommandsAllowed`, port types as raw strings, each held
+     to the SDK's `AVAudioSession.Port` by ForayAudioPluginTests); the legacy
+     lane asks it. MUTATION: drop `&& trackRoutePresent` from either line;
+     drop the route re-apply from handleRouteChange; put `Speaker` into the
+     core's set; put UNMIRRORED_ACTIONS back to ["seekto"]. */
   const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
   const availability = swiftFuncBody(code, "applyCommandAvailability");
   assert.match(availability, /nextTrackCommand\.isEnabled = transportable && payload\.hasNext && trackRoutePresent/);
   assert.match(availability, /previousTrackCommand\.isEnabled = transportable && payload\.hasPrevious && trackRoutePresent/);
-  assert.ok(swiftFuncDecl(code, "trackCommandsAllowed"), "the pure route rule exists for the XCTests");
-  for (const port of ["headphones", "bluetoothA2DP", "bluetoothHFP", "bluetoothLE", "carAudio", "usbAudio", "airPlay"]) {
-    assert.match(code, new RegExp(`AVAudioSession\\.Port\\.${port}\\.rawValue`), `${port} is a route with a track button`);
-  }
-  assert.doesNotMatch(code, /Port\.builtInSpeaker\.rawValue/, "the speaker is never a track route");
+  const mapping = stripSwiftComments(fs.readFileSync(CORE_MEDIA_MAPPING_SWIFT, "utf8"));
+  assert.ok(swiftFuncDecl(mapping, "trackCommandsAllowed"), "the pure route rule is the core's");
+  const ports = mapping.match(/static let trackRoutePortTypes: Set<String> = \[([^\]]*)\]/);
+  assert.ok(ports, "the core spells its track routes as one set");
+  const portTypes = [...ports[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(portTypes, ["AirPlay", "BluetoothA2DPOutput", "BluetoothHFP", "BluetoothLE", "CarAudio", "Headphones", "USBAudio"],
+    "a headset, a Bluetooth stack, a car, USB and AirPlay have a track button; the speaker and the receiver never do");
   const route = swiftFuncBody(code, "handleRouteChange");
-  assert.match(route, /trackRoutePresent = Self\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
+  assert.match(route, /trackRoutePresent = MediaMapping\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
   assert.match(route, /applyCommandAvailability\(self\.lastPayload, force: true\)/, "and re-applied when it moved");
-  assert.match(swiftFuncBody(code, "runLegacyRegistration"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
+  assert.match(swiftFuncBody(code, "runLegacyRegistration"), /trackRoutePresent = MediaMapping\.trackCommandsAllowed/, "and read at load");
   assert.ok(UNMIRRORED_ACTIONS.includes("nexttrack") && UNMIRRORED_ACTIONS.includes("previoustrack"), "WebKit's session gets no track handlers");
   assert.ok(!UNMIRRORED_ACTIONS.includes("seekforward") && !UNMIRRORED_ACTIONS.includes("seekbackward"), "the skip pair is still mirrored");
+});
+
+test("the track-pair rule is defined once, in the core, and both iOS lanes and the Android host hand it a route (CH3-10, R1-03)", () => {
+  /* docs/DECISIONS.md 2026-09-23, founder question 1 ("the track pair only
+     where a track button exists") was held in the legacy lane alone, so the
+     engine lane (the iOS default) drew ⏭ over 30↻ on the speaker. One rule now:
+     `MediaMapping.trackCommandsAllowed` in the Swift core, and
+     `commandAvailability(_, trackRoute:)` in both cores. The engine host reads
+     the route on every publish; the Android host passes true (code-health-3
+     founder question 3, on its default, #1163). MUTATION: keep a private
+     `trackCommandsAllowed` in ForayAudioPlugin.swift -> red; publish with
+     `trackRoute: true` on iOS -> red; drop the Java parameter -> red. */
+  const decls = [];
+  for (const dir of [path.join(PLUGIN_DIR, "ios"), CORE_DIR]) {
+    for (const file of swiftFilesUnder(dir)) {
+      if (/func\s+trackCommandsAllowed\s*\(/.test(stripSwiftComments(fs.readFileSync(file, "utf8")))) {
+        decls.push(path.relative(PLUGIN_DIR, file).split(path.sep).join("/"));
+      }
+    }
+  }
+  assert.deepEqual(decls, ["foray-engine-core/Sources/ForayEngineCore/Policy/MediaMapping.swift"],
+    "trackCommandsAllowed is defined once, in the core");
+  const mapping = stripSwiftComments(fs.readFileSync(CORE_MEDIA_MAPPING_SWIFT, "utf8"));
+  const availability = swiftFuncDecl(mapping, "commandAvailability");
+  assert.match(availability, /trackRoute: Bool\)/, "the Swift rule takes the route");
+  assert.match(availability, /next: snapshot\.canNext && trackRoute/);
+  assert.match(availability, /previous: snapshot\.canPrevious && trackRoute/);
+  const publish = swiftFuncBody(stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8")), "publishSurface");
+  assert.match(publish, /MediaMapping\.trackCommandsAllowed\(portTypes: seams\.session\.currentRoute/, "the engine host reads the route");
+  assert.match(publish, /MediaMapping\.commandAvailability\(core\.commandSnapshot, trackRoute: trackRoute\)/, "and hands it to the rule");
+  const jvm = fs.readFileSync(path.join(PLUGIN_DIR,
+    "android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine/MediaMapping.java"), "utf8");
+  assert.match(jvm, /commandAvailability\(CommandSnapshot snapshot, SeekSteps steps, boolean trackRoute\)/, "the JVM rule takes the route");
+  assert.match(jvm, /surface\.next = snapshot\.canNext\(\) && trackRoute;/);
+  assert.match(jvm, /surface\.previous = snapshot\.canPrevious\(\) && trackRoute;/);
+  const host = fs.readFileSync(path.join(PLUGIN_DIR,
+    "android/src/main/java/ai/jwlabs/foura/audio/engine/ForayEngineHost.java"), "utf8");
+  assert.match(host, /static final boolean TRACK_ROUTE = true;/, "Android: both pairs side by side, so the route is always a track route");
 });
 
 test("one audio-session mode, .spokenAudio, in both iOS plugins; category only at load, setActive untouched (round 2, native-10)", () => {

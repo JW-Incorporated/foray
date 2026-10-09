@@ -16,6 +16,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
@@ -28,6 +29,12 @@ import java.util.function.Function;
  * {@code player/parity/media-actions.js}, because {@code mediaSessionActions} answers with
  * FUNCTIONS no fixture can hold: the adapter installs a recording surface, presses
  * buttons, and returns {@code {installed, calls}}. This runner is that adapter's JVM half.
+ *
+ * <p>The adapter's second call, {@code commandAvailability(snapshot, trackRoute)} (CH3-10),
+ * is authored there from docs/DECISIONS.md 2026-09-23 rather than recorded from a page
+ * module; here it is {@link MediaMapping#commandAvailability} with the default seek steps,
+ * written as the adapter writes it ({@code enabled} in {@code RemoteCommand} order,
+ * {@code clearsNowPlaying}).
  *
  * <p>TRANSLATION, NEVER DECISION:
  * <pre>
@@ -51,11 +58,27 @@ final class MediaEpisodeFamily {
     private static final Outcome TYPE_ERROR = new Threw("TypeError");
 
     /**
-     * {@code installedActions} is injectable for ONE reason: so a test can hand the fixtures
-     * a mutant enablement table ("next is offered with no next") and watch a case go red.
+     * {@code installedActions} and {@code commandAvailability} are injectable for ONE reason:
+     * so a test can hand the fixtures a mutant rule ("next is offered with no next", "the
+     * track route is ignored") and watch a case go red.
      */
+    static FamilyRunner runner(Function<MediaMapping.Surface, List<MediaAction>> installedActions,
+                               BiFunction<MediaMapping.CommandSnapshot, Boolean, MediaMapping.CommandAvailability> commandAvailability) {
+        return new FamilyRunner.MultiModule(FAMILY, List.of(mappingRunner(), actionsRunner(installedActions, commandAvailability)));
+    }
+
     static FamilyRunner runner(Function<MediaMapping.Surface, List<MediaAction>> installedActions) {
-        return new FamilyRunner.MultiModule(FAMILY, List.of(mappingRunner(), actionsRunner(installedActions)));
+        return runner(installedActions, MediaEpisodeFamily::availability);
+    }
+
+    static FamilyRunner runnerWithAvailability(
+            BiFunction<MediaMapping.CommandSnapshot, Boolean, MediaMapping.CommandAvailability> commandAvailability) {
+        return runner(MediaMapping::installedActions, commandAvailability);
+    }
+
+    /** The real rule, with the default steps the adapter's call never overrides. */
+    static MediaMapping.CommandAvailability availability(MediaMapping.CommandSnapshot snapshot, Boolean trackRoute) {
+        return MediaMapping.commandAvailability(snapshot, MediaMapping.SeekSteps.DEFAULT, trackRoute);
     }
 
     static FamilyRunner runner() {
@@ -172,7 +195,8 @@ final class MediaEpisodeFamily {
 
     // ---- media-actions.js (the adapter over mediaSessionActions)
 
-    static FamilyRunner.Pure actionsRunner(Function<MediaMapping.Surface, List<MediaAction>> installedActions) {
+    static FamilyRunner.Pure actionsRunner(Function<MediaMapping.Surface, List<MediaAction>> installedActions,
+            BiFunction<MediaMapping.CommandSnapshot, Boolean, MediaMapping.CommandAvailability> commandAvailability) {
         Map<String, Call> calls = new LinkedHashMap<>();
         calls.put("mediaActions", args -> {
             Json request = arg(args, 0);
@@ -222,7 +246,53 @@ final class MediaEpisodeFamily {
             for (MediaAction a : installed) installedTokens.add(Json.str(a.token));
             return new Returned(obj("installed", new Json.Arr(installedTokens), "calls", new Json.Arr(recorded)));
         });
+        calls.put("commandAvailability", args -> {
+            MediaMapping.CommandSnapshot snapshot = decodeSnapshot(arg(args, 0));
+            if (!(arg(args, 1) instanceof Json.Bool route)) throw new HarnessError("E_BAD_CASE", "trackRoute must be a boolean");
+            MediaMapping.CommandAvailability availability = commandAvailability.apply(snapshot, route.value());
+            List<Json> enabled = new ArrayList<>();
+            for (MediaMapping.RemoteCommand c : MediaMapping.RemoteCommand.values()) {
+                if (availability.isEnabled(c)) enabled.add(Json.str(REMOTE_COMMAND_TOKENS.get(c)));
+            }
+            return new Returned(obj("enabled", new Json.Arr(enabled), "clearsNowPlaying", Json.bool(availability.clearsNowPlaying())));
+        });
         return new FamilyRunner.Pure(FAMILY, ACTIONS_MODULE, Map.of(), calls);
+    }
+
+    /** media-actions.js {@code REMOTE_COMMANDS}: Swift's {@code RemoteCommand} raw values, in declaration order. */
+    static final Map<MediaMapping.RemoteCommand, String> REMOTE_COMMAND_TOKENS = Map.of(
+            MediaMapping.RemoteCommand.PLAY, "play",
+            MediaMapping.RemoteCommand.PAUSE, "pause",
+            MediaMapping.RemoteCommand.TOGGLE_PLAY_PAUSE, "togglePlayPause",
+            MediaMapping.RemoteCommand.NEXT_TRACK, "nextTrack",
+            MediaMapping.RemoteCommand.PREVIOUS_TRACK, "previousTrack",
+            MediaMapping.RemoteCommand.SKIP_BACKWARD, "skipBackward",
+            MediaMapping.RemoteCommand.SKIP_FORWARD, "skipForward",
+            MediaMapping.RemoteCommand.CHANGE_PLAYBACK_POSITION, "changePlaybackPosition",
+            MediaMapping.RemoteCommand.STOP, "stop");
+
+    /**
+     * The adapter's snapshot, as strictly as the adapter reads it: an object, {@code mode} one
+     * of the snapshot modes, every flag a boolean or absent (false). Anything else is a
+     * malformed case there, and here.
+     */
+    static MediaMapping.CommandSnapshot decodeSnapshot(Json value) {
+        if (!(value instanceof Json.Obj)) throw new HarnessError("E_BAD_CASE", "a snapshot is an object");
+        String token = at(value, "mode").asString();
+        MediaMapping.CommandSnapshot.Mode mode = null;
+        for (MediaMapping.CommandSnapshot.Mode m : MediaMapping.CommandSnapshot.Mode.values()) {
+            if (m.token.equals(token)) mode = m;
+        }
+        if (mode == null) throw new HarnessError("E_BAD_CASE", "snapshot.mode " + Json.show(Codec.encode(at(value, "mode"))) + " is not a snapshot mode");
+        return new MediaMapping.CommandSnapshot(mode, flag(value, "ended"), flag(value, "canNext"), flag(value, "canPrevious"),
+                flag(value, "autoAdvance"));
+    }
+
+    private static boolean flag(Json snapshot, String name) {
+        Json v = at(snapshot, name);
+        if (JsArgs.isUndefined(v)) return false;
+        if (v instanceof Json.Bool b) return b.value();
+        throw new HarnessError("E_BAD_CASE", "snapshot." + name + " must be a boolean");
     }
 
     /**

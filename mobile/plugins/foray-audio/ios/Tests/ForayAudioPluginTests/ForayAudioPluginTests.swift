@@ -151,8 +151,8 @@ final class ForayAudioPluginTests: XCTestCase {
         let withoutNext = NowPlayingPayload.from(["state": "playing", "hasNext": false])
         XCTAssertFalse(transportable(withoutNext) && withoutNext.hasNext)
 
-        let headset = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.bluetoothA2DP.rawValue])
-        let speaker = ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue])
+        let headset = MediaMapping.trackCommandsAllowed(portTypes: [AVAudioSession.Port.bluetoothA2DP.rawValue])
+        let speaker = MediaMapping.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue])
         XCTAssertTrue(transportable(withNext) && withNext.hasNext && headset, "a headset route gets ⏭")
         XCTAssertFalse(transportable(withNext) && withNext.hasNext && speaker, "the speaker route -- the lock screen alone -- keeps the skip pair")
     }
@@ -163,15 +163,23 @@ final class ForayAudioPluginTests: XCTestCase {
     /// looking -- a headset, a Bluetooth stack, a car. TO SEE IT FAIL: return
     /// true for an empty route, or drop `carAudio` from the set (CarPlay's
     /// steering wheel goes dead).
+    ///
+    /// Since CH3-10 the rule is the core's (`MediaMapping`, no AVFoundation, so
+    /// its port types are spelled as strings); this is where each string is
+    /// held to the SDK's own `AVAudioSession.Port` constant. TO SEE IT FAIL:
+    /// misspell a raw value in `MediaMapping.trackRoutePortTypes`.
     func testTrackCommandsAllowedOnlyOnARouteWithATrackButton() {
-        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: []))
-        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue]))
-        XCTAssertFalse(ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInReceiver.rawValue]))
+        XCTAssertEqual(MediaMapping.trackRoutePortTypes, Set([
+            AVAudioSession.Port.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .usbAudio, .airPlay,
+        ].map(\.rawValue)), "the core's track routes are the SDK's port types")
+        XCTAssertFalse(MediaMapping.trackCommandsAllowed(portTypes: []))
+        XCTAssertFalse(MediaMapping.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue]))
+        XCTAssertFalse(MediaMapping.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInReceiver.rawValue]))
         for port in [AVAudioSession.Port.headphones, .bluetoothA2DP, .bluetoothHFP, .bluetoothLE, .carAudio, .usbAudio, .airPlay] {
-            XCTAssertTrue(ForayAudioPlugin.trackCommandsAllowed(portTypes: [port.rawValue]), "\(port.rawValue) has a track button")
+            XCTAssertTrue(MediaMapping.trackCommandsAllowed(portTypes: [port.rawValue]), "\(port.rawValue) has a track button")
         }
         XCTAssertTrue(
-            ForayAudioPlugin.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue, AVAudioSession.Port.carAudio.rawValue]),
+            MediaMapping.trackCommandsAllowed(portTypes: [AVAudioSession.Port.builtInSpeaker.rawValue, AVAudioSession.Port.carAudio.rawValue]),
             "any one track route is enough"
         )
     }

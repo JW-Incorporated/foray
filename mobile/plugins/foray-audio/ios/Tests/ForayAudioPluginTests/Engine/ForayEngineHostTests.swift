@@ -350,6 +350,9 @@ final class ForayEngineHostTests: XCTestCase {
     @MainActor
     func testEveryRemoteCommandIsRegisteredAndStopIsDisabled() {
         let world = FakeWorld()
+        // A car route, so the track pair is enabled with the rest (CH3-10:
+        // on the speaker it stays off, RemoteSurfaceTests).
+        world.session.route = RoutePort(portType: "CarAudio", uid: nil)
         let engine = started(world)
         for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(world.remote.liveTargets(for: command), 1, "\(command)")
