@@ -3,11 +3,13 @@
  * No rule decisions live in this file except what counts as "visible" and
  * "interactive". */
 import { SHEET_OPENERS } from "./config.mjs";
+import { SILENCE_SPEECH } from "../silence.mjs";
 
 /** Init script: record CSP violations and (under reduced motion) any motion
  *  that actually runs. Reports through the exposed bindings, so records
  *  survive a navigation. */
 export const INIT_SCRIPT = `(() => {
+  ${SILENCE_SPEECH}
   const sel = (el) => {
     if (!el || !el.tagName) return "?";
     const parts = [];

@@ -24,13 +24,14 @@ import { installStubs } from "./stubs.mjs";
 import { loadFixtures, buildSeed, FIXED_NOW_ISO } from "./seed.mjs";
 import { appStates } from "./states.mjs";
 import { slug } from "./args.mjs";
+import { SILENCE_SPEECH } from "./silence.mjs";
 
 /** Repo root from tools/ui-lab/<script>.mjs's import.meta.url. */
 export function repoRootFrom(importMetaUrl) {
   return path.resolve(path.dirname(fileURLToPath(importMetaUrl)), "..", "..");
 }
 
-function initScript({ seed, css }) {
+export function initScript({ seed, css }) {
   const fixed = Date.parse(FIXED_NOW_ISO);
   return `(() => {
     try {
@@ -49,6 +50,7 @@ function initScript({ seed, css }) {
       window.Audio = function (...a) { const el = new RA(...a); window.__audios.push(el); return el; };
       window.Audio.prototype = RA.prototype;
     } catch (e) { /* determinism is best-effort, never fatal */ }
+    ${SILENCE_SPEECH}
     try {
       if (!sessionStorage.getItem("__uilab_seeded")) {
         const SEED = ${JSON.stringify(seed)};

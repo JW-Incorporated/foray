@@ -289,3 +289,29 @@ test("errors: a non-CSP 'Refused to ...' console error (MIME type) is still an e
   assert.equal(out.length, 1);
   assert.match(out[0].detail, /MIME/);
 });
+
+/* Speech silencing (narration was audible on the owner's PC: Windows SAPI ignores --mute-audio).
+   Evaluates each real init script in a fake window whose speechSynthesis.speak records the utterance.
+   Mutation that fails these: in lib/silence.mjs change `u.volume = 0` to `u.volume = 1` (volume check),
+   or `return real(u)` to `return undefined` (real-speak check). */
+import vm from "node:vm";
+import { initScript } from "./lib/walk.mjs";
+import { INIT_SCRIPT } from "./lib/gates/measure.mjs";
+for (const [name, src] of [["walk initScript", initScript({ seed: {}, css: "" })], ["gates INIT_SCRIPT", INIT_SCRIPT]]) {
+  test(`${name}: speechSynthesis.speak runs at volume 0 and still reaches the real speak`, () => {
+    const spoken = [];
+    const win = { speechSynthesis: { speak(u) { spoken.push({ vol: u.volume }); return "real"; } },
+      Audio: function () {}, performance, document: { addEventListener() {} }, Element: { prototype: {} } };
+    win.window = win;
+    vm.runInNewContext(src, win);
+    const u = { volume: 1 };
+    assert.equal(win.speechSynthesis.speak(u), "real");
+    assert.equal(spoken.length, 1, "the real speak was called exactly once");
+    assert.equal(spoken[0].vol, 0, "volume was zeroed BEFORE the real speak ran");
+  });
+  test(`${name}: no speechSynthesis is not fatal`, () => {
+    const win = { Audio: function () {}, performance, document: { addEventListener() {} }, Element: { prototype: {} } };
+    win.window = win;
+    assert.doesNotThrow(() => vm.runInNewContext(src, win));
+  });
+}
