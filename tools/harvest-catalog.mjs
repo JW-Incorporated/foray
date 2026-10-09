@@ -15,11 +15,9 @@
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { UA } from "./segments/politeness.mjs";
-import { writeMergedHarvest } from "./harvest-merge.mjs";
+import { writeMergedHarvest, politeFetchJson } from "./harvest-merge.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const THROTTLE_MS = 3000;
 const CHART_LIMIT = 200;
 const LOOKUP_BATCH = 150;
 
@@ -40,8 +38,6 @@ if (args.includes("--exclude")) {
   console.log(`excluding ${excludeIds.size} already-harvested ids`);
 }
 
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
 /* Long runs get killed by session limits; checkpoint after every genre and
    every lookup batch so a re-run resumes instead of restarting. */
 const CKPT = outPath + ".checkpoint";
@@ -53,25 +49,10 @@ function loadCkpt() {
 }
 function saveCkpt(c) { writeFileSync(CKPT, JSON.stringify(c)); }
 
-async function fetchJson(url, attempt = 1) {
-  await sleep(THROTTLE_MS);
-  try {
-    const res = await fetch(url, { headers: { "User-Agent": UA } });
-    if (res.status === 429 || res.status >= 500) {
-      if (attempt >= 4) throw new Error(`HTTP ${res.status} after ${attempt} tries: ${url}`);
-      const backoff = THROTTLE_MS * Math.pow(2, attempt);
-      console.warn(`  ${res.status} -> backing off ${backoff}ms`);
-      await sleep(backoff);
-      return fetchJson(url, attempt + 1);
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
-    return await res.json();
-  } catch (e) {
-    if (attempt >= 4) throw e;
-    await sleep(THROTTLE_MS * Math.pow(2, attempt));
-    return fetchJson(url, attempt + 1);
-  }
-}
+/* Every Apple request (genre tree, charts, lookups, the merge's artist
+   backfill) goes through harvest-merge's politeFetchJson: >= 3 s apart,
+   429/5xx/network errors retried with backoff, other 4xx skipped at once. */
+const fetchJson = politeFetchJson({ warn: console.warn });
 
 function flattenGenres(node, out = []) {
   out.push({ id: node.id, name: node.name });

@@ -1460,7 +1460,12 @@ const FLOORS = {
      test/show-index.test.js, pins the same file from the CLIENT side; both are
      needed because the sort order is a contract between two files and either
      side can break it alone. */
-  "tools/harvest-merge.test.mjs": 14, // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack // CH2-15 (docs/roadmap/code-health-2.md): +1 - rankByAppleId, the ONE usable-chart-rank join both builders read (null/0/NaN/-1 out, "12" in as 12); 13 -> 14
+  "tools/harvest-merge.test.mjs": 17, // CH2-32 (T1-19, docs/roadmap/code-health-2.md): +3 - politeFetchJson, the ONE retry policy for the iTunes fetchers: 429/5xx retried with backoff and THROTTLE_MS before every request, 400/404 fail on the first attempt and a persistent 5xx gives up after 4, a thrown fetch retried like a 5xx; 14 -> 17 // 2026-10-07: a breadth re-harvest UNIONS with the file it replaces (#1148 dropped 6,632 off-chart shows) - dropped show kept / its rank nulled + last_charted_at / its topics kept / new show added / still-charting show refreshed, in_curated recomputed, canonical key order, artist_name backfill, the harvester wiring, and a REAL DATA floor; new, zero slack // CH2-15 (docs/roadmap/code-health-2.md): +1 - rankByAppleId, the ONE usable-chart-rank join both builders read (null/0/NaN/-1 out, "12" in as 12); 13 -> 14
+  /* CH2-32 (T1-19, docs/roadmap/code-health-2.md): the harvester obeys harvest-merge's
+     politeFetchJson, driven as a child process with a scripted fake fetch - a 404
+     is requested once, a 503 and a thrown fetch are retried and the run completes,
+     and no private fetcher is left in the file. New, zero slack. */
+  "tools/harvest-catalog.test.mjs": 3,
   "tools/build-show-index.test.mjs": 11, // PKG-11a (docs/roadmap/shows-search.md, 2026-10-04): +1 — a curated row carries its breadth twin's chart_rank joined on apple_collection_id, and null without a twin; 9 -> 10 // CH2-15: +1 — the curated rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 10 -> 11
   "tools/build-catalog-client.test.mjs": 5, // CH2-15: +1 — chart_rank over the shared null/0/"12"/NaN/-1 fixture equals harvest-merge.rankByAppleId; 4 -> 5 // CH-1 (#1071): dai joined on String(apple_collection_id), null when unclassified, and --check flags drift; 2 -> 4 // PKG-11b (P-09): the curated chart_rank breadth join (rank or null) and the committed data/catalog-client.json equals the builder's output
   "tools/popularity-signal-probe.test.mjs": 6, // PKG-12 (P-10, docs/roadmap/shows-search.md): the top.json position probe — the String() join for breadth and curated rows, would_lead_by_top_position, the validator, the pi_id-order flag, one polite GET for top.json alone, the 5xx retry
@@ -1869,6 +1874,11 @@ const FLOORS = {
   "tools/mobile/ios-workflow.test.mjs": 52, // CH2-16 (2026-10-07, docs/roadmap/code-health-2.md T2-01): +2 -- both iOS build paths run the inject sequence through .github/actions/ios-prepare and neither carries an inline copy; ios-prepare carries the PR path's second opinions (splash test -d + json.tool), reads no secret or input, and checks its ART/SPM_DIR contract first; the file stood at 50 against 46, so the floor is set exact: 46 -> 52 // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 50, // NE-36 (2026-09-25): the native phase, its audio base, its page and its Foray; 39 -> 50
+  /* CH2-32 (T1-19, docs/roadmap/code-health-2.md): the curated artwork backfill
+     looks up through harvest-merge's politeFetchJson - a 5xx is retried, a 404
+     fails at once, no private fetcher - and artworkFromLookup is the harvest
+     mapping (a podcast's https artworkUrl600, else null). New, zero slack. */
+  "tools/refresh/backfill-artwork.test.mjs": 4,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
      failure impossible — a backfill that reports success while emitting nothing, or
