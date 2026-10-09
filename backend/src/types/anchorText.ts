@@ -7,10 +7,11 @@
  * here would let the backend accept an anchor the real merge validator
  * would reject. It is a mirror, not a re-import, because that module is
  * an ESM `.mjs` build script and this backend compiles to CommonJS
- * (`backend/tsconfig.build.json`); the ALGORITHM is what has to match.
+ * (`backend/tsconfig.build.json`); the ALGORITHM is what has to match,
+ * and `backend/test/anchorTextParity.test.ts` pins that it does.
  *
  * Lives under `types/` rather than beside `transcriptArchiveLookup.ts`
- * (its original home, which re-exports it) because `types/narration.ts`
+ * (its original home) because `types/narration.ts`
  * needs it too and that module stays free of any dependency on the
  * generation stages that use it. Two callers, one canonicalisation:
  * §4.5 minting a segment's anchors, and §4.7 checking that a Frame's

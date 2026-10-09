@@ -5,7 +5,7 @@
 // Several `api/**` handlers read files under `data/` off disk at runtime via
 // a repo-root-relative `readFileSync`/`path.join()` call (`findRepoRoot()` +
 // `loadShowIndex()` in `api/shows/[show_id]/episodes.ts`; `loadShowMeta()` in
-// `api/episodes/search.ts`; `loadCatalogFallback()`/`tryLoadReleaseIdMap()` in
+// `api/episodes/search.ts`; `loadCatalogFallback()` in
 // `api/_lib/showIdMap.ts`; `readJson()` in
 // `backend/src/catalog/breadthCatalog.ts`, reached transitively from
 // `api/shows/search.ts`). Vercel's bundler does NOT include a file that's
@@ -15,10 +15,11 @@
 //
 // The suite this replaced hardcoded a `TARGETS` list of exactly two files
 // (`api/shows/[show_id]/episodes.ts`, `api/shows/search.ts`) and passed —
-// which is why it never caught that `api/episodes/**` (added later) reads
-// the same catalog files and `data/shows-index-pointer.json` besides, none
-// of it covered by vercel.json's `functions["api/shows/**/*.ts"]` key at
-// all. That's issue #560 item 1: the id-map ends up empty in production,
+// which is why it never caught that `api/episodes/**` (added later) read
+// the same catalog files (and, at the time, `data/shows-index-pointer.json`
+// besides; today only `api/_lib/showsIndexRelease.ts`, reached from
+// `api/shows/**`, reads the pointer), none of it covered by vercel.json's
+// `functions["api/shows/**/*.ts"]` key at all. That's issue #560 item 1: the id-map ends up empty in production,
 // every Apple search hit gets silently dropped, and the endpoint still
 // returns 200 with an innocuous-looking empty result — "fails green".
 //
@@ -301,5 +302,132 @@ test("every api/**/*.ts handler's statically-discovered data/ reads are covered 
     "discovered zero handlers with any data/ read at all — the static extraction (extractDataReads/importClosure) " +
       "is broken, not that no handler reads data/: api/shows/search.ts alone reaches data/catalog.json and " +
       "data/catalog-breadth.json transitively via backend/src/catalog/breadthCatalog.ts."
+  );
+});
+
+// ---------------------------------------------------------------------------
+// CH2-09 (docs/roadmap/code-health-2.md, amendment 3 — the S-02 class): a
+// handler closure may read files off disk at runtime ONLY under data/, the one
+// tree vercel.json's includeFiles ships. A `readFileSync("backend/fixtures/x.json")`
+// or `join(ROOT, "backend", "fixtures", "x.json")` anywhere in the closure would
+// pass the coverage test above (it only looks at data/<file> literals) and then
+// crash every function at module load in production. Anything else a handler
+// needs at runtime (backend/src/feeds/entitiesTable.json, say) is a static
+// `import` that nft bundles. Only string literals are judged: a path built from
+// a variable is the coverage test's business.
+//
+// MUTATION NOTE: add `readFileSync("backend/fixtures/entities.json", "utf8")`
+// (or a `path.join(ROOT, "backend", "fixtures", ...)`) to backend/src/feeds/html.ts
+// -> this test goes red naming the file and the literal.
+// ---------------------------------------------------------------------------
+
+/** The text between the `(` at `open` and its matching `)`, or null. String-literal aware enough for this repo. */
+function callArgs(src, open) {
+  let depth = 0;
+  let quote = null;
+  for (let i = open; i < src.length; i++) {
+    const ch = src[i];
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")" && --depth === 0) return src.slice(open + 1, i);
+  }
+  return null;
+}
+
+/** Splits a call's argument text on its top-level commas. */
+function splitTopLevel(args) {
+  const parts = [];
+  let depth = 0;
+  let quote = null;
+  let start = 0;
+  for (let i = 0; i < args.length; i++) {
+    const ch = args[i];
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") quote = ch;
+    else if (ch === "(" || ch === "[" || ch === "{") depth++;
+    else if (ch === ")" || ch === "]" || ch === "}") depth--;
+    else if (ch === "," && depth === 0) {
+      parts.push(args.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  parts.push(args.slice(start).trim());
+  return parts.filter((p) => p.length > 0);
+}
+
+const STRING_LITERAL_RE = /^(["'`])((?:\\.|(?!\1)[^\\])*)\1$/;
+
+/** The literal path segments of one path-building/reading call, "." and ".." dropped. */
+function literalSegments(args) {
+  return args
+    .map((a) => STRING_LITERAL_RE.exec(a)?.[2])
+    .filter((s) => s !== undefined)
+    .flatMap((s) => s.split("/"))
+    .filter((s) => s !== "" && s !== "." && s !== "..");
+}
+
+/**
+ * Every runtime path literal in one file that does not live under data/:
+ * the first argument of a `readFileSync(...)` when it is a string literal, and
+ * the literal segments of a `path.join(...)` / bare `join(...)` call (an
+ * Array's `.join(",")` is a method on something else and is not a path).
+ */
+function nonDataPathLiterals(source) {
+  const src = stripComments(source);
+  const bad = [];
+  const CALL_RE = /(?:\breadFileSync|\bpath\.join|(?<![\w$.])join)\s*\(/g;
+  let m;
+  while ((m = CALL_RE.exec(src))) {
+    const open = m.index + m[0].length - 1;
+    const args = callArgs(src, open);
+    if (args == null) continue;
+    const parts = splitTopLevel(args);
+    const judged = m[0].startsWith("readFileSync") ? parts.slice(0, 1) : parts;
+    const segments = literalSegments(judged);
+    if (segments.length > 0 && segments[0] !== "data") bad.push(`${m[0].replace(/\s*\($/, "")}(${args.trim()})`);
+  }
+  return bad;
+}
+
+test("nonDataPathLiterals: a data/ read passes, a fixture read and a split fixture join are flagged", () => {
+  assert.deepStrictEqual(nonDataPathLiterals(`fs.readFileSync(path.join(REPO_ROOT, "data", "catalog.json"), "utf8")`), []);
+  assert.deepStrictEqual(nonDataPathLiterals(`readFileSync("data/catalog.json", "utf8"); join(dir, "..", "data", "x.json")`), []);
+  assert.deepStrictEqual(nonDataPathLiterals(`readFileSync(join(ROOT, file), "utf8"); [a, b].join(","); segments.join("/")`), []);
+  assert.deepStrictEqual(nonDataPathLiterals(`// readFileSync("backend/fixtures/x.json")`), []);
+  assert.equal(nonDataPathLiterals(`fs.readFileSync("backend/fixtures/entities.json", "utf8")`).length, 1);
+  assert.equal(nonDataPathLiterals(`path.join(ROOT, "backend", "fixtures", "entities.json")`).length, 1);
+  assert.equal(nonDataPathLiterals(`join(__dirname, "..", "fixtures/x.json")`).length, 1);
+});
+
+test("no api/**/*.ts handler's import closure reads a runtime path literal outside data/ (S-02 class)", () => {
+  const handlers = walkTsFiles(API_DIR).filter((f) => f !== SELF).filter(isHandlerFile);
+  assert.ok(handlers.length > 0, "discovered zero api/**/*.ts handlers — the discovery walk is broken");
+  const offenders = [];
+  let filesJudged = 0;
+  for (const handler of handlers) {
+    for (const file of importClosure(handler)) {
+      filesJudged++;
+      for (const literal of nonDataPathLiterals(fs.readFileSync(file, "utf8"))) {
+        offenders.push(`${path.relative(ROOT, handler).split(path.sep).join("/")} -> ` +
+          `${path.relative(ROOT, file).split(path.sep).join("/")}: ${literal}`);
+      }
+    }
+  }
+  assert.ok(filesJudged > handlers.length, "no handler closure reached past its own file — importClosure is broken");
+  assert.deepStrictEqual(
+    [...new Set(offenders)].sort(),
+    [],
+    "a handler closure reads a file outside data/ at runtime. vercel.json's includeFiles ships only data/, so this " +
+      "file is missing from the deployed function and every request crashes at module load. Import it statically " +
+      "(nft bundles a static import) instead."
   );
 });

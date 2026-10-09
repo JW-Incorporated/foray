@@ -208,6 +208,16 @@ function wordCount(text) {
 const MAX_WHY_LINE_WORDS = 18;
 const MAX_HOOK_WORDS = 16;
 
+// A discover item's tags (data/item-tags.json), as tools/refresh/merge.mjs's
+// preflight enforces them on every nightly edit: 5-12 per item, each one
+// lowercase-hyphenated. They were literals in merge.mjs until CH2-14
+// (docs/roadmap/code-health-2.md T1-14), so a limit changed here reached the
+// CI gate and not the nightly. No `g` flag on TAG_RE: it is shared, and a
+// global regex carries `lastIndex` from one `.test` to the next.
+const MIN_TAGS = 5;
+const MAX_TAGS = 12;
+const TAG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
 // Breadth-catalog classification's Foray-authored display fields (ADR-0006,
 // docs/curation/breadth-classification-methodology-plan.md): a tile header
 // and a 1-2 sentence tile blurb, captured at classification time for a
@@ -417,6 +427,9 @@ module.exports = {
   wordCount,
   MAX_WHY_LINE_WORDS,
   MAX_HOOK_WORDS,
+  MIN_TAGS,
+  MAX_TAGS,
+  TAG_RE,
   MAX_DISPLAY_TITLE_WORDS,
   MAX_BLURB_WORDS
 };

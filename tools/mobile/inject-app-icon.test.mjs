@@ -500,6 +500,8 @@ test("REAL REPO: nothing else in the repo claims to put an icon in the bundle", 
      of these files -> fails. RUN. */
   const files = [
     ".github/workflows/ios-build.yml",
+    // CH2-16: the inject sequence, and the one place APPICONSET is defined.
+    ".github/actions/ios-prepare/action.yml",
     "tools/brand/build-icons.mjs",
     "tools/mobile/prepare-webdir.mjs",
     "mobile/capacitor.config.json",
@@ -513,7 +515,7 @@ test("REAL REPO: nothing else in the repo claims to put an icon in the bundle", 
     for (const line of mentions) {
       assert.match(
         line,
-        /inject-app-icon|APPICONSET:|"\$APPICONSET/,
+        /inject-app-icon|APPICONSET:|"APPICONSET=\$IOS_DIR\/|"\$APPICONSET/,
         `${rel} touches the app icon catalog outside inject-app-icon.mjs: ${line.trim()}`
       );
     }

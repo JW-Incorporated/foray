@@ -34,31 +34,32 @@
      node tools/ops/release-env-check.mjs --repo o/r --env release --json
 
    SIGNING_SECRETS is the list in PR #822's founder checklist, which is every
-   `secrets.*` that .github/workflows/release.yml reads. The test suite
-   re-derives it from the workflow, so a new signing secret there turns the
-   suite red until it is added here. */
+   `secrets.*` that .github/workflows/release.yml reads. It is not typed out
+   here: it is built from the lists the release gates themselves use (the iOS
+   seven from tools/mobile/ios-ci.mjs, the Android keystore trio and the Play
+   key from tools/mobile/release-ci.mjs; CH2-21), so a secret renamed in a gate
+   is renamed here too. Those two, and tools/release/readiness.mjs which both
+   import, are the only non-builtin modules this file loads; none does anything
+   on import but define constants and functions. The test suite still
+   re-derives the set from the workflow, so a new signing secret there turns
+   the suite red until a gate's list carries it. */
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { pathToFileURL } from "node:url";
+
+import { SIGNING_SECRETS as IOS_SIGNING_SECRETS } from "../mobile/ios-ci.mjs";
+import { ANDROID_SECRETS, PLAY_SECRETS } from "../mobile/release-ci.mjs";
 
 const execFileP = promisify(execFile);
 
 export const DEFAULT_REPO = "JW-Incorporated/foray";
 export const DEFAULT_ENV = "release";
 
-export const SIGNING_SECRETS = Object.freeze([
-  "ANDROID_KEYSTORE_B64",
-  "ANDROID_KEYSTORE_PASSWORD",
-  "ANDROID_KEY_ALIAS",
-  "APPLE_TEAM_ID",
-  "APP_STORE_CONNECT_ISSUER_ID",
-  "APP_STORE_CONNECT_KEY_ID",
-  "APP_STORE_CONNECT_PRIVATE_KEY_BASE64",
-  "IOS_DIST_CERT_P12_BASE64",
-  "IOS_DIST_CERT_PASSWORD",
-  "IOS_PROVISIONING_PROFILE_BASE64",
-  "PLAY_SERVICE_ACCOUNT_JSON",
-]);
+/** Every secret the release environment must hold, sorted: the order a
+    missing one is named in the report. */
+export const SIGNING_SECRETS = Object.freeze(
+  [...ANDROID_SECRETS, ...IOS_SIGNING_SECRETS, ...PLAY_SECRETS].sort(),
+);
 
 /** The deployment policies the environment must carry, and nothing else. */
 export const REQUIRED_POLICIES = Object.freeze([

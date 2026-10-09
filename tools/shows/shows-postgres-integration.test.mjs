@@ -1,9 +1,12 @@
 /* tools/shows/shows-postgres-integration.test.mjs — S-09's real-Postgres
-   acceptance suite: applies migrations 0001-0019 against a scratch
-   database, loads a synthetic fixture through load-postgres.mjs's actual
+   acceptance suite: applies every migration (0001-0019, then 0021) against a
+   scratch database, loads a synthetic fixture through load-postgres.mjs's actual
    COPY-staging -> upsert path, runs the golden-query set through
    search-shows.mjs, and checks the rekey (0019) preserves a seeded 0016
-   row. This is the suite CI's new `db` job (backend/package.json's `test`
+   row. It also runs PostgresShowEpisodesStore's own SQL (read out of
+   backend/src/catalog/showEpisodesStore.ts, so the test cannot drift from
+   the store) for the 0021 index and the chapters overwrite (CH2-01).
+   This is the suite CI's new `db` job (backend/package.json's `test`
    already covers the vitest side; this one runs under `node --test` like
    every other tools/shows suite) points a real Postgres service container
    at — see .github/workflows/ci.yml's `db` job.
@@ -393,4 +396,80 @@ test("integration: migration 0019 itself preserves pre-existing 0016 rows (appli
   }
 });
 
+/* CH2-01: PostgresShowEpisodesStore's SQL, read from its source rather than
+   copied, so these cases exercise exactly what the store sends. (The store is
+   TypeScript with parameter properties, which this plain `node --test` suite
+   cannot import.) */
+const STORE_SRC = readFileSync(join(ROOT, "backend", "src", "catalog", "showEpisodesStore.ts"), "utf-8");
 
+function storeListSql() {
+  const m = /this\.client\.query\(\s*`(select legacy_show_id as show_id, guid,[^`]*from catalog_show_episodes[^`]*)`/.exec(STORE_SRC);
+  assert.ok(m, "episodesForShow's query in showEpisodesStore.ts");
+  return m[1];
+}
+
+function storeUpsertSql(rows) {
+  const m = /const sql = `(insert into catalog_show_episodes[^`]*)`;/.exec(STORE_SRC);
+  assert.ok(m, "buildEpisodeUpsert's statement in showEpisodesStore.ts");
+  const tuples = Array.from({ length: rows }, (_, r) =>
+    `(${Array.from({ length: 12 }, (_, c) => "$" + String(r * 12 + c + 1)).join(",")}, now())`);
+  return m[1].replace("${tuples.join(\", \")}", tuples.join(", "));
+}
+
+test("integration: the store's episode list reads through 0021's idx_cse_legacy_show_published, with no sort (CH2-01, B2-09)", { skip: !TEST_DATABASE_URL && "TEST_DATABASE_URL not set" }, async () => {
+  /* MUTATIONS: delete 0021 (only the (legacy_show_id, guid) unique index is
+     left, so the plan names it and sorts) -> red; make 0021's key a plain
+     `published_at desc` (DESC NULLS FIRST cannot give the store's
+     `desc nulls last` order, so a Sort node appears) -> red.
+     A seq scan and an explicit sort are made prohibitively expensive so the
+     plan shows which index CAN serve the query, independent of how few rows
+     the scratch table holds. */
+  const { Client } = await import("pg");
+  const client = new Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
+  try {
+    await applyMigrations(client);
+    await client.query("begin");
+    try {
+      await client.query("set local enable_seqscan = off");
+      await client.query("set local enable_bitmapscan = off");
+      await client.query("set local enable_sort = off");
+      const plan = await client.query(`explain ${storeListSql()}`, ["any-show"]);
+      const text = plan.rows.map((r) => r["QUERY PLAN"]).join("\n");
+      assert.match(text, /Index Scan using idx_cse_legacy_show_published on catalog_show_episodes/, text);
+      assert.doesNotMatch(text, /\bSort\b/, text);
+    } finally {
+      await client.query("rollback");
+    }
+  } finally {
+    await client.end();
+  }
+});
+
+test("integration: a re-ingest whose row has no chapters clears the stored ones, as the in-memory store does (CH2-01, B2-01)", { skip: !TEST_DATABASE_URL && "TEST_DATABASE_URL not set" }, async () => {
+  /* MUTATION: restore `chapters = coalesce(excluded.chapters,
+     catalog_show_episodes.chapters)` in buildEpisodeUpsert -> the second read
+     still has the old marker and this goes red. */
+  const { Client } = await import("pg");
+  const client = new Client({ connectionString: TEST_DATABASE_URL });
+  await client.connect();
+  try {
+    await applyMigrations(client);
+    await client.query("delete from catalog_show_episodes where legacy_show_id = 'ch2-01-show'");
+    const row = (chapters) => [
+      "ch2-01-show", "guid-c", "Chaptered", null, null, "2026-01-02T00:00:00.000Z", 60,
+      "https://audio.example.com/c.mp3", null, null, null, chapters === null ? null : JSON.stringify(chapters),
+    ];
+    const upsert = storeUpsertSql(1);
+    const read = async () =>
+      (await client.query(storeListSql(), ["ch2-01-show"])).rows.map((r) => r.chapters);
+
+    await client.query(upsert, row([{ title: "Intro", start_time_seconds: 0 }]));
+    assert.deepEqual(await read(), [[{ title: "Intro", start_time_seconds: 0 }]]);
+    await client.query(upsert, row(null));
+    assert.deepEqual(await read(), [null], "a feed that dropped its psc:chapters must clear them");
+  } finally {
+    await client.query("delete from catalog_show_episodes where legacy_show_id = 'ch2-01-show'").catch(() => {});
+    await client.end();
+  }
+});

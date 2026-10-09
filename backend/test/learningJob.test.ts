@@ -86,6 +86,67 @@ describe("runLearningJobForUser — end to end over in-memory stores", () => {
     expect(auditRepo.all()).toHaveLength(2);
   });
 
+  /* CH2-05 (B2-17): one run pages to the end, so a user with batchSize + 5
+     unprocessed events is caught up, not left 5 behind until the next run.
+     MUTATION: drop the do/while (read one page) -- red: 10 processed, cursor
+     at row 10, and the second run finds 5. */
+  it("one run reads every page: batchSize + 5 events leave the cursor at the last row", async () => {
+    const batchSize = 10;
+    const ids: string[] = [];
+    for (let i = 0; i < batchSize + 5; i++) {
+      const row = await eventStore.record({
+        user_id: USER,
+        ts: new Date(Date.UTC(2026, 8, 1, 12, 0, i)).toISOString(),
+        type: "saved",
+        payload: { episode_slug: `e${i}`, topics: [FUSION] }
+      });
+      ids.push(row.id);
+    }
+    const first = await runLearningJobForUser(USER, { eventStore, cursorStore, applyDeps }, batchSize);
+    expect(first.eventsProcessed).toBe(batchSize + 5);
+    expect(first.outcomes).toHaveLength(batchSize + 5);
+    expect(first.cursorAdvancedTo?.id).toBe(ids[ids.length - 1]);
+    expect((await cursorStore.get(USER))?.lastEventId).toBe(ids[ids.length - 1]);
+    const second = await runLearningJobForUser(USER, { eventStore, cursorStore, applyDeps }, batchSize);
+    expect(second.eventsProcessed).toBe(0);
+  });
+
+  /* The card's acceptance fixture: 3,500 events at the default page size
+     (1000) are caught up in ONE run, where they used to take four.
+     MUTATION: drop the do/while -- red (1000 processed). */
+  it("a 3,500-event backlog is caught up in one run at the default page size", async () => {
+    for (let i = 0; i < 3500; i++) {
+      await eventStore.record({
+        user_id: USER,
+        ts: new Date(Date.UTC(2026, 8, 1, 12, 0, 0, i)).toISOString(),
+        type: "saved",
+        payload: { episode_slug: `e${i}`, topics: [FUSION] }
+      });
+    }
+    const first = await runLearningJobForUser(USER, { eventStore, cursorStore, applyDeps });
+    expect(first.eventsProcessed).toBe(3500);
+    expect(auditRepo.all()).toHaveLength(3500);
+    expect((await runLearningJobForUser(USER, { eventStore, cursorStore, applyDeps })).eventsProcessed).toBe(0);
+  }, 30_000);
+
+  /* "Card shown 5 times, never picked" split 3 + 2 across a page boundary
+     still fires on the fifth showing: one CardShownStreaks spans the run.
+     MUTATION: call applyEventBatch(page.events, deps.applyDeps) without the
+     run's `streaks` (a fresh tracker per page) -- red: nothing fires. */
+  it("a 5-show card_ignored streak split at the page boundary fires on the fifth showing", async () => {
+    for (let i = 0; i < 5; i++) {
+      await eventStore.record({
+        user_id: USER,
+        ts: new Date(Date.UTC(2026, 8, 1, 12, 0, i)).toISOString(),
+        type: "card_shown",
+        payload: { episode_slug: `e${i}`, topics: [FUSION], archetype: "deep-learn" }
+      });
+    }
+    const result = await runLearningJobForUser(USER, { eventStore, cursorStore, applyDeps }, 3);
+    expect(result.eventsProcessed).toBe(5);
+    expect(result.outcomes.map((o) => o.applied.map((a) => a.reason))).toEqual([[], [], [], [], ["card_ignored_repeatedly"]]);
+  });
+
   it("returns an empty result for a user with no events at all", async () => {
     const result = await runLearningJobForUser("no-such-user-yet", { eventStore, cursorStore, applyDeps });
     expect(result.eventsProcessed).toBe(0);

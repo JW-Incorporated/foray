@@ -164,11 +164,15 @@ describe("createUserInterestsProvider", () => {
     }
   });
 
-  it("throws a clear not-implemented error when DATABASE_URL is set (no PostgresUserInterestsProvider yet)", () => {
+  /* CH2-05 (B2-04): DATABASE_URL belongs to migrate and learn-interests; it
+     used to make this factory throw, so build-session crashed the moment the
+     migrate CLI's variable existed.
+     MUTATION: restore the `throw` when env.databaseUrl is set -- red. */
+  it("still returns the in-memory provider when DATABASE_URL is set (it no longer throws)", () => {
     const original = env.databaseUrl;
     env.databaseUrl = "postgres://example/not-real";
     try {
-      expect(() => createUserInterestsProvider()).toThrow(/PostgresUserInterestsProvider does not exist yet/);
+      expect(createUserInterestsProvider()).toBeInstanceOf(InMemoryUserInterestsProvider);
     } finally {
       env.databaseUrl = original;
     }
