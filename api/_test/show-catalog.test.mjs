@@ -191,6 +191,39 @@ test("a feed-less breadth show: show search no longer offers it; its record stil
   });
 });
 
+test("a feed-less breadth show: the directory pass does not hand it back either (B1-02)", async () => {
+  /* The catalogue pass above leaves the 89 out, but `fallthrough=1` (app.js
+     sends it on every search of SHOW_DIRECTORY_MIN_QUERY_LENGTH or more)
+     appends Apple's rows, and Apple's row for a show IS its collectionId:
+     the same id as the feed-less breadth row. mergeDirectoryShows dedups
+     only against the rows in the reply, where the feed-less row no longer
+     is, so Apple's twin of it came back and 404'd on tap the same way.
+     Apple is stubbed answering all 89 under their real titles plus one
+     show we have never heard of (the premise that the pass ran and merged).
+     WAS: offered 89 of 89.
+     MUTATION: drop the feed-less filter on `apple.shows` in
+     api/shows/search.ts -> offered > 0, red. */
+  const CONTROL = { collectionId: 999000222, collectionName: "Zz Directory Only Control Show", artistName: "Somebody" };
+  const hits = [...FEEDLESS.map((s) => ({ collectionId: s.apple_collection_id, collectionName: s.title })), CONTROL];
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, status: 200, headers: new Headers(), json: async () => ({ results: hits }) });
+  const res = mockRes();
+  try {
+    await showSearchHandler(
+      { method: "GET", query: { q: "zzfeedlessdirectorypin", limit: "100", fallthrough: "1" }, headers: {} },
+      res
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+  assert.equal(res.body.fallthrough.attempted, true, "premise: the directory pass ran");
+  assert.equal(res.body.fallthrough.error, null, "premise: the directory pass succeeded");
+  const ids = new Set(res.body.shows.map((s) => s.show_id));
+  assert.ok(ids.has(String(CONTROL.collectionId)), "premise: a directory row the catalogue does not know is merged");
+  const offered = FEEDLESS.filter((s) => ids.has(String(s.apple_collection_id))).length;
+  assert.equal(offered, 0, "feed-less shows offered by the directory pass");
+});
+
 /** Runs `body` (an ES module source) in a fresh process from api/ — fresh
     module state, so every module-scope cache starts empty — after `prelude`,
     with no database and a network that throws. Returns its JSON on stdout. */

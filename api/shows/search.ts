@@ -128,12 +128,19 @@ import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY
  *         curated TWIN (it used to say `show: null` while both episode
  *         endpoints served that id);
  *       - `?q=` searches `searchableShows()`, the catalogue without the
- *         shows that have no `feed_url`, BEFORE the `limit` cut. A feed-less
- *         breadth show used to be offered here and then 404 on its episode
- *         list (89 of them on 2026-10-07). `?id=` still answers such a row:
- *         a link to one renders the show and says what it is. The
- *         alternative, keeping them in results with an honest "no feed"
+ *         shows that have no `feed_url`, BEFORE the `limit` cut, and the
+ *         `fallthrough=1` directory pass drops Apple's row for such a show
+ *         (same collectionId, so nothing in the reply would dedup it). A
+ *         feed-less breadth show used to be offered here and then 404 on
+ *         its episode list (89 of them on 2026-10-07). `?id=` still answers
+ *         such a row: a link to one renders the show and says what it is.
+ *         The alternative, keeping them in results with an honest "no feed"
  *         state, is founder question 5 in docs/roadmap/code-health-2.md.
+ *         THIS ENDPOINT no longer offers them; the LISTENER still can see
+ *         37 of the 89, because the client paints its own index
+ *         (data/show-index.tsv, built by tools/build-show-index.mjs) first
+ *         and that builder does not apply the feed_url rule yet. That is a
+ *         follow-up outside this card, so B1-02 is not closed by it.
  *     The catalogue files unavailable is the degraded answer of (3) and the
  *     catch below, for both modes.
  *
@@ -253,7 +260,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
        never `[]`. Before P-02 this line read `shows: apple.shows`, which was
        only safe because `results.length === 0` was a precondition; with the
        gate gone that would have dropped the catalogue on every Apple failure. */
-    const shows = mergeDirectoryShows(results, apple.shows);
+    /* NOT A SIDE DOOR FOR A FEED-LESS SHOW (CH2-24, B1-02). Apple's row for a
+       show carries its collectionId as `show_id`, which is the feed-less
+       breadth row's id too. The catalogue pass left that row out, so the
+       merge has nothing to dedup Apple's twin of it against: drop any
+       directory row whose id the catalogue knows but cannot list. */
+    const directory = apple.shows.filter((row) => {
+      const known = showById(row.show_id);
+      return !known || known.feed_url !== null;
+    });
+    const shows = mergeDirectoryShows(results, directory);
     const source: string[] = [];
     if (results.length) source.push("catalogue");
     if (shows.length > results.length) source.push("apple");

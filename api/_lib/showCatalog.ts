@@ -25,11 +25,20 @@
  *
  * A SHOW WITH NO FEED is a show (`showById` answers it: its page can say
  * what it is) but has no `ShowMeta`: nothing can list or search its
- * episodes. `searchableShows()` leaves it out, so show search no longer
- * offers a result whose episode list is a 404 (B1-02, 89 rows on
- * 2026-10-07). The alternative, keeping them with an honest "no feed"
- * state, is founder question 5 of docs/roadmap/code-health-2.md; filtering
- * is its default.
+ * episodes. `searchableShows()` leaves it out, and api/shows/search.ts's
+ * directory pass drops Apple's row for it, so the SERVER's show search no
+ * longer offers a result whose episode list is a 404 (B1-02, 89 rows on
+ * 2026-10-07). The listener can still meet 37 of them: the client paints
+ * its local index (data/show-index.tsv) first, and its builder,
+ * tools/build-show-index.mjs, does not apply this feed_url rule yet (a
+ * follow-up outside this card). The alternative, keeping them with an
+ * honest "no feed" state, is founder question 5 of
+ * docs/roadmap/code-health-2.md; filtering is its default.
+ *
+ * BUNDLING: the two files reach a deployed function only because
+ * vercel.json's `includeFiles` for the api functions glob names them; the
+ * BUNDLING NOTE in backend/src/catalog/breadthCatalog.ts says which glob and
+ * which test pins it.
  *
  * FILES UNAVAILABLE. Either file missing, unreadable or not JSON is one
  * signal, `CatalogFilesUnavailableError`, thrown by every lookup here: the

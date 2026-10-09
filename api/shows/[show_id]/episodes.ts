@@ -42,9 +42,10 @@ import { showMetaById, CatalogFilesUnavailableError, type ShowMeta } from "../..
  */
 
 /* THE SHOW comes from the one catalogue reader, api/_lib/showCatalog.ts
-   (code-health-2 CH2-24), which also says where the two catalogue files come
-   from in a deployed function and what happens when they are missing (503
-   here). An `in_curated` breadth id is answered as its curated twin: the
+   (code-health-2 CH2-24), which also says what happens when the two
+   catalogue files are missing (503 here). How they reach a deployed function
+   at all (vercel.json's `includeFiles` for the api functions glob) is the
+   BUNDLING NOTE in backend/src/catalog/breadthCatalog.ts. An `in_curated` breadth id is answered as its curated twin: the
    response's show_id, the episodes' show_id and the feed are the twin's. A
    `pi:` show (below) answers in the same `ShowMeta` shape. */
 
