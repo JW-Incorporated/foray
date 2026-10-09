@@ -75,6 +75,8 @@ final class EngineOwnershipTests: XCTestCase {
         private(set) var legacyRuns = 0
         /// The session flag's value at the moment the legacy lane registered.
         private(set) var flagAtLegacyRegistration: Bool?
+        /// What each legacy registration was told: `pageless` (CH3-06).
+        private(set) var legacyPageless: [Bool] = []
 
         final class RowSink { var rows: [DiagEntry] = [] }
 
@@ -109,20 +111,29 @@ final class EngineOwnershipTests: XCTestCase {
 
         var modeRows: [DiagEntry] { sink.rows.filter { $0.kind == "mode" } }
 
-        /// Today's registration, as the plugin's `registerCommandHandlers`
-        /// makes it: one target per command, `stop` registered and disabled.
-        func registerLegacy() {
+        /// Today's registration, as the plugin's `runLegacyRegistration`
+        /// makes it: with no page, the engine's entry cleared on the one
+        /// Now Playing centre (`applyNowPlayingInfo(.empty)`, CH3-06); one
+        /// target per command (`registerCommandHandlers`); then every command
+        /// disabled, because nothing is playing at load
+        /// (`applyCommandAvailability(.empty)`). shell-invariants' NE-16 test
+        /// pins that the plugin's registration does exactly this.
+        func registerLegacy(pageless: Bool) {
             legacyRuns += 1
+            legacyPageless.append(pageless)
             flagAtLegacyRegistration = flag.sessionOwnedByEngine
+            if pageless { world.nowPlaying.clear() }
             for command in MediaMapping.RemoteCommand.allCases {
                 _ = legacyRemote.addTarget(command) { _ in .success }
             }
-            legacyRemote.setEnabled(false, for: .stop)
+            for command in MediaMapping.RemoteCommand.allCases {
+                legacyRemote.setEnabled(false, for: command)
+            }
         }
 
         /// The plugin's `load()`.
         func load() {
-            owner.pluginDidLoad(legacyRegistration: { [unowned self] in self.registerLegacy() })
+            owner.pluginDidLoad(legacyRegistration: { [unowned self] pageless in self.registerLegacy(pageless: pageless) })
         }
 
         var engine: ForayEngine? { owner.engine }
@@ -354,6 +365,7 @@ final class EngineOwnershipTests: XCTestCase {
         let launch = Launch(defaults, buildDefault: .js)
         launch.load()
         XCTAssertEqual(launch.legacyRuns, 1)
+        XCTAssertEqual(launch.legacyPageless, [false], "no engine ran: there is no entry of its to clear")
         XCTAssertEqual(launch.legacyRemote.liveTargets, MediaMapping.RemoteCommand.allCases.count)
         for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(launch.legacyRemote.liveTargets(for: command), 1, command.rawValue)
@@ -387,6 +399,8 @@ final class EngineOwnershipTests: XCTestCase {
         engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
         XCTAssertEqual(engine.state.session, .active)
 
+        // A Foray tap comes from a page, and that page said hello first.
+        launch.owner.helloReceived()
         let verdict = launch.owner.relinquish(cap: .foray, source: .tap)
         XCTAssertTrue(verdict.ok, "\(verdict.failures)")
 
@@ -652,6 +666,78 @@ final class EngineOwnershipTests: XCTestCase {
         launch.ownerTiming.fire(afterMs: EngineOwnership.helloWatchdogMs)
         XCTAssertTrue(launch.owner.relinquished)
         XCTAssertEqual(launch.legacyRuns, 1)
+    }
+
+    // MARK: - CH3-06: what the hand-over leaves on the head unit
+
+    /// The engine's paused entry, as a car's wake leaves it: episode "a"
+    /// played from the wheel and paused from it, so the lock screen and the
+    /// head unit show "a, paused".
+    @MainActor
+    private func pausedFromTheCar(_ launch: Launch) throws -> ForayEngine {
+        launch.world.deck.answersReady = true
+        launch.load()
+        let engine = try XCTUnwrap(launch.engine)
+        engine.handle(.queue(.load([Self.item("a")])))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .remote)))
+        engine.handle(.command(.pause, source: .remote))
+        XCTAssertFalse(engine.state.isRunning)
+        XCTAssertNotNil(launch.world.nowPlaying.last, "the engine's paused entry is on the head unit")
+        return engine
+    }
+
+    /// R1-02 (CH3-06). A car's wake cold-boots the engine and leaves
+    /// "Episode a, paused"; the web bundle is broken and never says hello; 15 s
+    /// later the hello watchdog hands the process to the legacy lane, which
+    /// registers with every command disabled (nothing is playing at load). NO
+    /// page will ever send a `setNowPlaying` to write over the engine's entry,
+    /// so before the fix the head unit showed "a, paused" with every button
+    /// dead for the rest of the process. A page-less hand-over clears it.
+    /// TO SEE IT FAIL: pass `pageless: false` from `engineDidTearDown` (the
+    /// plugin's half, `applyNowPlayingInfo(.empty)` in
+    /// `runLegacyRegistration`, is pinned by shell-invariants' NE-16 test).
+    @MainActor
+    func testAPagelessWatchdogHandOverClearsTheEnginesDeadEntry() throws {
+        let (defaults, _) = freshDefaults()
+        let launch = Launch(defaults)
+        _ = try pausedFromTheCar(launch)
+
+        launch.owner.pageDidFinishLoad(foreground: false)
+        launch.ownerTiming.fire(afterMs: EngineOwnership.helloWatchdogMs)
+
+        XCTAssertTrue(launch.owner.relinquished)
+        XCTAssertEqual(launch.legacyRuns, 1)
+        XCTAssertEqual(launch.legacyPageless, [true], "no page of this navigation said hello")
+        XCTAssertEqual(launch.flagAtLegacyRegistration, false)
+        for command in MediaMapping.RemoteCommand.allCases {
+            XCTAssertEqual(launch.legacyRemote.enabled[command], false, "\(command.rawValue): nothing is enabled at load")
+        }
+        // RED on main: R1-02 -- the engine's entry survives the hand-over.
+        XCTAssertNil(launch.world.nowPlaying.last,
+                     "no page will overwrite the engine's entry: the head unit must show none, not a dead \"paused\"")
+    }
+
+    /// The page-initiated hand-over is unchanged: the page that said hello
+    /// writes its own entry over the engine's (`setNowPlaying`), so the
+    /// engine's is left in place until it does, as today.
+    /// TO SEE IT FAIL: clear the entry on every hand-over (drop the
+    /// `pageless` condition in `runLegacyRegistration`, or pass `true`).
+    @MainActor
+    func testAPageInitiatedHandOverLeavesTheEntryForThePage() throws {
+        let (defaults, _) = freshDefaults()
+        let launch = Launch(defaults)
+        _ = try pausedFromTheCar(launch)
+
+        launch.owner.pageDidStartLoad()
+        launch.owner.helloReceived()
+        launch.owner.pageDidFinishLoad(foreground: true)
+        XCTAssertTrue(launch.owner.relinquish(cap: .all, source: .restore).ok)
+
+        XCTAssertTrue(launch.owner.relinquished)
+        XCTAssertEqual(launch.legacyRuns, 1)
+        XCTAssertEqual(launch.legacyPageless, [false], "the page said hello: it writes its own entry")
+        XCTAssertEqual(launch.world.nowPlaying.clears, 0)
+        XCTAssertNotNil(launch.world.nowPlaying.last, "left for the page's setNowPlaying to overwrite")
     }
 
     // MARK: - The flag's real home

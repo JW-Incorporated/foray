@@ -17,7 +17,14 @@ import ForayEngineCore
 //   - legacy: today's registration runs, unchanged, inside `load()`.
 //   - native: that registration is parked; the engine boots and owns the
 //     session flag. A one-way relinquish (the page's, or the hello watchdog's)
-//     tears the engine down and runs the parked registration, once.
+//     tears the engine down and runs the parked registration, once, told
+//     whether a page is there to write its own Now Playing entry (CH3-06).
+//
+// ONE OWNERSHIP TRUTH (CH3-06, R1-06). Whether the legacy lane owns the
+// process is `legacyRegistered` / `relinquished` here, and nothing else: the
+// bridge asks `relinquished` for liveness, and the legacy lane's own session
+// sites need no guard of their own, because they are reachable only through
+// the registration this file runs AFTER it hands the flag back.
 //
 // WHY A SENTINEL AND NOT A LAUNCH COUNTER (plan §4.6, R18). The founder's
 // phone launches 4a in the background every time a car or a headset presses
@@ -212,7 +219,12 @@ final class EngineOwnership {
     private var decision: EngineMode.Decision?
     private(set) var engine: ForayEngine?
     /// Today's registration, parked by a native `load()` until a relinquish.
-    private var legacyRegistration: (() -> Void)?
+    /// Its argument is `pageless` (CH3-06, R1-02): the engine ran, and no page
+    /// of the current navigation said hello, so no `setNowPlaying` will ever
+    /// write over the entry the engine left. The registration clears it then:
+    /// a head unit showing no entry beats one showing "Episode X, paused" with
+    /// every button dead for the rest of the process.
+    private var legacyRegistration: ((_ pageless: Bool) -> Void)?
     private(set) var legacyRegistered = false
     private(set) var relinquished = false
 
@@ -292,9 +304,11 @@ final class EngineOwnership {
     /// The plugin's `load()`. Legacy: today's registration runs NOW, in
     /// `load()`, exactly as before this card. Native: it is parked for a
     /// relinquish, and the engine is booted if the cold path has not already.
-    func pluginDidLoad(legacyRegistration: @escaping () -> Void) {
+    func pluginDidLoad(legacyRegistration: @escaping (_ pageless: Bool) -> Void) {
         if decideOnce().mode == .legacy || relinquished {
-            runLegacy(legacyRegistration)
+            // Legacy from the start: no engine ever wrote an entry. Relinquished
+            // before the plugin loaded: no page can have said hello yet.
+            runLegacy(legacyRegistration, pageless: relinquished && !helloThisNavigation)
             return
         }
         self.legacyRegistration = legacyRegistration
@@ -302,7 +316,7 @@ final class EngineOwnership {
             // Native without an engine cannot happen (`built` is the factory),
             // but if it ever did, a process with no remote surface at all is
             // the one outcome worse than the legacy lane.
-            parkedLegacyTakesOver()
+            parkedLegacyTakesOver(pageless: false)
         }
     }
 
@@ -449,8 +463,9 @@ final class EngineOwnership {
     /// and no notify, the `{mode:"relinquished"}` restore record, `mode
     /// reason=downgrade cap=`); the host tears every registration down when
     /// the core goes terminal; `engineDidTearDown` then flips the flag and
-    /// runs the legacy registration. Now Playing is left for the legacy lane
-    /// to overwrite. A second relinquish is refused.
+    /// runs the legacy registration. Now Playing is left for the page to
+    /// overwrite when a page said hello, and cleared by the legacy
+    /// registration when none did (CH3-06). A second relinquish is refused.
     @discardableResult
     func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) -> EngineVerdict {
         guard let engine, !relinquished else {
@@ -464,25 +479,29 @@ final class EngineOwnership {
     }
 
     /// The engine is gone, whatever took it: the process belongs to the
-    /// legacy lane from here to its end.
+    /// legacy lane from here to its end. The flag is handed back BEFORE the
+    /// registration runs, so the legacy lane's session sites (reachable only
+    /// through that registration) never meet an engine-owned session.
+    /// `pageless` when no page of this navigation said hello: the hello
+    /// watchdog's hand-over, whose broken page will never write an entry.
     private func engineDidTearDown() {
         guard !relinquished else { return }
         relinquished = true
         cancelHelloTimers()
         flag.sessionOwnedByEngine = false
-        parkedLegacyTakesOver()
+        parkedLegacyTakesOver(pageless: !helloThisNavigation)
     }
 
-    private func parkedLegacyTakesOver() {
+    private func parkedLegacyTakesOver(pageless: Bool) {
         guard let registration = legacyRegistration else { return }
         legacyRegistration = nil
-        runLegacy(registration)
+        runLegacy(registration, pageless: pageless)
     }
 
-    private func runLegacy(_ registration: () -> Void) {
+    private func runLegacy(_ registration: (_ pageless: Bool) -> Void, pageless: Bool) {
         guard !legacyRegistered else { return }
         legacyRegistered = true
-        registration()
+        registration(pageless)
     }
 
     // MARK: - Rows
