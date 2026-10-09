@@ -80,7 +80,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { isEntryScript } from "./entry.mjs";
+import { isEntryScript, samePath } from "./entry.mjs";
 import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
 import { POINTER_PATH, DIRECTORY_FILES, deployIdFrom, buildPointer, pointerText, pointerProblems, buildTimestamp } from "./forays-directory.mjs";
 import {
@@ -631,7 +631,7 @@ function main(argv = process.argv.slice(2)) {
     const dir = path.resolve(stampDir);
     /* Stamping the working tree you commit from rewrites a tracked sw.js — the
        exact change `--check` then refuses. CI checkouts are throwaway. */
-    if (!process.env.CI && realOrSelf(dir) === realOrSelf(ROOT)) {
+    if (!process.env.CI && samePath(dir, ROOT)) {
       console.error(
         "FATAL: --stamp would rewrite this checkout's tracked sw.js. Stamp a copy " +
           "(node tools/web/prepare-dist.mjs builds and stamps dist/), or run it where CI=true on a throwaway checkout."

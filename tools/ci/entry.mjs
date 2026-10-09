@@ -45,10 +45,19 @@ function realOrSelf(p) {
   return process.platform === "win32" ? r.toLowerCase() : r;
 }
 
+/** True when `a` and `b` name the same file or directory once both are
+ *  realpathed (case-folded on Windows). Exported for generate-manifest.mjs's
+ *  `--stamp` refusal ("is this directory the checkout I live in?"), which asks
+ *  the same junction-proof question as the guard below and must not grow a
+ *  second spelling of it. */
+export function samePath(a, b) {
+  return realOrSelf(a) === realOrSelf(b);
+}
+
 /** True when the module whose `import.meta.url` is `importMetaUrl` is the
  *  script Node was asked to run (`argv1`, default `process.argv[1]`); false
  *  when it was imported, and when there is no script (`node -e`, a REPL). */
 export function isEntryScript(importMetaUrl, argv1 = process.argv[1]) {
   if (!argv1) return false;
-  return realOrSelf(argv1) === realOrSelf(fileURLToPath(importMetaUrl));
+  return samePath(argv1, fileURLToPath(importMetaUrl));
 }
