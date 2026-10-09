@@ -23,7 +23,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:45.040Z"
     },
     {
       "id": "bfh-griddle-bakestone",
@@ -38,7 +45,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:45.739Z"
     },
     {
       "id": "bfh-medieval-meals-manners",
@@ -53,7 +67,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:46.702Z"
     },
     {
       "id": "bfh-18c-tavern-briggs",
@@ -68,7 +89,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:47.908Z"
     },
     {
       "id": "bbqc-moss-school",
@@ -83,7 +111,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1.0001,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0.4,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0.4,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:48.696Z"
     },
     {
       "id": "bbqc-traeger-history",
@@ -98,7 +133,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:49.625Z"
     },
     {
       "id": "bbqrn-santa-maria-grillzilla",
@@ -113,7 +155,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:50.156Z"
     },
     {
       "id": "bbqrn-argentina-open-fire",
@@ -128,7 +177,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:51.496Z"
     },
     {
       "id": "moreish-jerk-jamaica",
@@ -143,7 +199,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:52.061Z"
     },
     {
       "id": "satay-okay-e01-satay-myth",
@@ -158,7 +221,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-17",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:53.440Z"
     },
     {
       "id": "ss-inlaw-investors",
@@ -174,12 +244,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:54.322Z"
     },
     {
       "id": "yc-how-fundraising-works",
@@ -195,12 +267,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:54.673Z"
     },
     {
       "id": "am-sba-lender-roundtable",
@@ -216,12 +290,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:55.156Z"
     },
     {
       "id": "ftb-89-sbir-grants",
@@ -237,12 +313,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "vbr-toc"
+      "seek_map": "vbr-toc",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:55.668Z"
     },
     {
       "id": "crowdcrux-557-atombeam",
@@ -258,12 +336,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:55.936Z"
     },
     {
       "id": "rtn-venture-debt",
@@ -278,14 +358,16 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "transcript_url": "https://transcript-files.spotifycdn.com/0zQCkklNnVgMD364kCW5SV/5DjC7WKsMnun27MqA7d7c4/transcript.srt",
       "transcript_type": "application/x-subrip",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:56.347Z"
     },
     {
       "id": "tbf-309-funded",
@@ -300,14 +382,16 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "transcript_url": "https://share.transistor.fm/s/79eb6f73/transcription.vtt",
       "transcript_type": "text/vtt",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:57.437Z"
     },
     {
       "id": "tbf-328-tringas",
@@ -322,14 +406,16 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "ad_delta_sec": 0,
-      "ad_delta_probes": 3,
+      "ad_delta_probes": 2,
       "ad_delta_spread_sec": 0,
       "ad_pad_sec": 0,
       "ad_tier": "PADDABLE",
       "transcript_url": "https://share.transistor.fm/s/c54b3c3e/transcription.vtt",
       "transcript_type": "text/vtt",
       "audio_verified_on": "2026-08-16",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:57.971Z"
     },
     {
       "id": "grill-coach-adrian-miller",
@@ -344,7 +430,14 @@
       "dai_suspected": false,
       "ad_free_ratio": 1,
       "audio_verified_on": "2026-08-17",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:58.435Z"
     },
     {
       "id": "causality-engineered-network--11-flint-michigan",
@@ -1077,7 +1170,14 @@
       "duration_sec": 2799,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:35:59.497Z"
     },
     {
       "id": "practical-ai--the-future-of-ai-infrastructure-with-coreweave",
@@ -1091,7 +1191,14 @@
       "duration_sec": 3004,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:00.039Z"
     },
     {
       "id": "practical-ai--federated-learning-in-production-part-2",
@@ -1105,7 +1212,14 @@
       "duration_sec": 2725,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:01.261Z"
     },
     {
       "id": "practical-ai--creating-a-private-ai-assistant-in-thunderbird",
@@ -1119,7 +1233,14 @@
       "duration_sec": 3188,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:02.439Z"
     },
     {
       "id": "practical-ai--the-myth-of-model-wars-open-vs-closed-ai-in-2026",
@@ -1133,7 +1254,14 @@
       "duration_sec": 2542,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:03.628Z"
     },
     {
       "id": "practical-ai--ai-at-the-edge-is-a-different-operating-environment",
@@ -1147,7 +1275,14 @@
       "duration_sec": 2819,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:05.483Z"
     },
     {
       "id": "practical-ai--rebooting-enterprise-ai-with-mcp-and-kubernetes",
@@ -1161,7 +1296,14 @@
       "duration_sec": 2889,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:06.426Z"
     },
     {
       "id": "practical-ai--ai-policy-and-the-battle-for-computing-power",
@@ -1175,7 +1317,14 @@
       "duration_sec": 2934,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:07.804Z"
     },
     {
       "id": "practical-ai--surviving-the-new-economics-of-a-post-agentic-world",
@@ -1189,7 +1338,14 @@
       "duration_sec": 2136,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:08.556Z"
     },
     {
       "id": "practical-ai--educating-a-data-literate-generation",
@@ -1203,7 +1359,14 @@
       "duration_sec": 2681,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:09.586Z"
     },
     {
       "id": "practical-ai--reimagining-actuarial-science-with-ai",
@@ -1217,7 +1380,14 @@
       "duration_sec": 2459,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:10.805Z"
     },
     {
       "id": "practical-ai--breaking-down-the-2026-stanford-ai-index-report",
@@ -1231,7 +1401,14 @@
       "duration_sec": 2833,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:12.030Z"
     },
     {
       "id": "practical-ai--federated-learning-in-production-part-1",
@@ -1245,7 +1422,14 @@
       "duration_sec": 2678,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:13.232Z"
     },
     {
       "id": "practical-ai--model-context-protocol-deep-dive",
@@ -1259,7 +1443,14 @@
       "duration_sec": 2543,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:14.451Z"
     },
     {
       "id": "practical-ai--software-and-hardware-acceleration-with-groq",
@@ -1273,7 +1464,14 @@
       "duration_sec": 2604,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:15.656Z"
     },
     {
       "id": "practical-ai--how-is-ai-shaping-democracy",
@@ -1287,7 +1485,14 @@
       "duration_sec": 2903,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:16.831Z"
     },
     {
       "id": "practical-ai--autonomous-vehicle-research-at-waymo",
@@ -1301,7 +1506,14 @@
       "duration_sec": 3128,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:36:18.024Z"
     },
     {
       "id": "causality-engineered-network--1-bp-texas-city",
@@ -1328,7 +1540,14 @@
       "duration_sec": 2532,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:19.642Z"
     },
     {
       "id": "being-an-engineer--s6e46-rick-james-ansys-engineering-simulation",
@@ -1342,7 +1561,14 @@
       "duration_sec": 3014,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:20.335Z"
     },
     {
       "id": "being-an-engineer--s2e36-shaking-things-up-as-we-get-to-know-aaron-moncur",
@@ -1356,7 +1582,14 @@
       "duration_sec": 2933,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:21.313Z"
     },
     {
       "id": "being-an-engineer--s6s25-andy-thompson-practical-applications-of-gd-t",
@@ -1370,7 +1603,14 @@
       "duration_sec": 2740,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:22.444Z"
     },
     {
       "id": "being-an-engineer--s5e19-krishna-raichur-the-ins-outs-of-engineering-simulation",
@@ -1384,7 +1624,14 @@
       "duration_sec": 2927,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:23.864Z"
     },
     {
       "id": "being-an-engineer--s6e5-keegan-schoch-pro-tips-on-creating-an-engineering-consu",
@@ -1398,7 +1645,14 @@
       "duration_sec": 2947,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:24.844Z"
     },
     {
       "id": "being-an-engineer--ian-mceachern-artificial-hearts-times-square-led-displays-en",
@@ -1412,7 +1666,14 @@
       "duration_sec": 2840,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:26.093Z"
     },
     {
       "id": "being-an-engineer--daniel-servansky-electromechanical-engineering-root-cause-an",
@@ -1426,7 +1687,14 @@
       "duration_sec": 3149,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:27.282Z"
     },
     {
       "id": "being-an-engineer--s4e45-jonathan-macwilliams-career-planning-metallurgy-dealin",
@@ -1440,7 +1708,14 @@
       "duration_sec": 3248,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:28.401Z"
     },
     {
       "id": "being-an-engineer--s5e9-jon-montcrief-medical-device-engineering-leaders-8",
@@ -1454,7 +1729,14 @@
       "duration_sec": 2359,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:29.821Z"
     },
     {
       "id": "being-an-engineer--s6e18-nikolaj-kloch-public-speaking-career-changes-leading-w",
@@ -1468,7 +1750,14 @@
       "duration_sec": 3441,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:30.860Z"
     },
     {
       "id": "being-an-engineer--s1e10-from-engineering-startups-to-established-corporations",
@@ -1482,7 +1771,14 @@
       "duration_sec": 2478,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:31.831Z"
     },
     {
       "id": "being-an-engineer--s4e30-dhruv-bhate-engineering-in-india-biomimicry-using-whit",
@@ -1496,7 +1792,14 @@
       "duration_sec": 2914,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:33.160Z"
     },
     {
       "id": "being-an-engineer--david-oh-nasa-systems-engineering-and-sending-robots-to-spac",
@@ -1510,7 +1813,14 @@
       "duration_sec": 3216,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:34.646Z"
     },
     {
       "id": "being-an-engineer--ray-kampmeier-the-humble-transistor",
@@ -1524,7 +1834,14 @@
       "duration_sec": 3115,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:35.834Z"
     },
     {
       "id": "being-an-engineer--s2e28-test-stands-x-ray-other-instrumentation-william-gabler",
@@ -1538,7 +1855,14 @@
       "duration_sec": 1837,
       "dai_suspected": true,
       "source": "generation-tier-2",
-      "seek_map": "cbr"
+      "seek_map": "cbr",
+      "ad_delta_sec": 0,
+      "ad_delta_probes": 2,
+      "ad_delta_spread_sec": 0,
+      "ad_pad_sec": 0,
+      "ad_tier": "PADDABLE",
+      "ad_pad_method": "ranged-get",
+      "ad_pad_measured_at": "2026-10-09T16:37:37.020Z"
     }
   ]
 }
