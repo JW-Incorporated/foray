@@ -569,6 +569,29 @@ final class EngineBridgeTests: XCTestCase {
         XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
     }
 
+    /// CH3-06: once the owner has relinquished (the hello watchdog's road:
+    /// `restore`, the page's boot), a snapshot read answers the relinquished
+    /// body (session `relinquished`), the hello says
+    /// legacy/downgrade, and the transport is refused `relinquished`.
+    /// TO SEE IT FAIL: let `liveEngine` return a relinquished engine (the
+    /// hello answers native).
+    @MainActor
+    func testASnapshotAfterTheOwnerRelinquishedAnswersTheRelinquishedBody() {
+        let rig = Rig()
+        rig.playing()
+        _ = rig.engine?.handle(.command(.pause, source: .remote))
+        XCTAssertTrue(rig.owner.relinquish(cap: .all, source: .restore).ok)
+
+        let snapshot = rig.bridge.read(Self.json(#"{"what":"snapshot"}"#))
+        accepted(.snapshot, snapshot)
+        XCTAssertEqual(snapshot["session"], .string("relinquished"), JSWriter.stringify(snapshot))
+
+        let hello = rig.bridge.hello(Self.hello)
+        XCTAssertEqual(hello["mode"], .string("legacy"))
+        XCTAssertEqual(hello["reason"], .string("downgrade"))
+        XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
+    }
+
     // MARK: - engineRead
 
     /// Shared rows by prefix, the engine's only; an unowned prefix reads
