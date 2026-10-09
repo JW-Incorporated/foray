@@ -200,7 +200,10 @@ test("showsForCategory returns an empty array for a node id no show carries", ()
 /* 3. renderCategory() — THE A3.2 LANDING PAGE                          */
 /* ==================================================================== */
 
-test("renderCategory renders the category's label as heading and every matching show as a result row", async () => {
+test("renderCategory renders the category's label as heading and every matching show as a ShowTile", async () => {
+  /* REDESIGN 2026 (ambient, screen 15): the ruling that fell is "a category is a list of show-result rows"
+     (test-classification: category-browse, R). The overlap is the same set; it is drawn as ShowTiles now, each a link
+     to the show's own page. test/ambient-category.test.js pins the anatomy. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
   const taxonomy = readJson("data/taxonomy.json");
@@ -212,7 +215,7 @@ test("renderCategory renders the category's label as heading and every matching 
   m.ctx.renderCategory(nodeId);
   const html = m.view();
   assert.ok(html.includes(m.ctx.esc(label)), "must render the category's real label as the heading");
-  assert.strictEqual(rowCount(html), expected.length, "row count must match the exact overlap set");
+  assert.strictEqual((html.match(/class="ag-show-tile"/g) || []).length, expected.length, "tile count must match the exact overlap set");
   for (const show of expected) {
     assert.ok(
       html.includes(`href="#/show/${encodeURIComponent(show.show_id)}"`),
@@ -231,7 +234,7 @@ test("renderCategory on an unknown node id renders the raw id as heading with ze
   assert.doesNotThrow(() => m.ctx.renderCategory("nonexistent/node"));
   const html = m.view();
   assert.ok(html.includes("nonexistent/node"), "unknown node id must still render as its own heading");
-  assert.strictEqual(rowCount(html), 0, "zero shows must render zero result rows");
+  assert.strictEqual((html.match(/ag-show-tile/g) || []).length, 0, "zero shows must render zero tiles");
   assert.ok(html.includes("No shows here yet"), "must render the honest empty-state copy");
 });
 
@@ -239,28 +242,61 @@ test("renderCategory on an unknown node id renders the raw id as heading with ze
 /* 4. renderAllShows() — THE A3.3 ALL-SHOWS INDEX                       */
 /* ==================================================================== */
 
-test("renderAllShows renders every catalogue show, A-Z, as a result row", async () => {
-  /* Scoped to the A-Z list (`.show-index`), not the whole page. Since the Shows
-     page also carries the "Shows we vouch for" editorial row, which reuses the
-     SAME `.show-result` markup, a page-wide row count would read 228 for a
-     220-show catalogue and would go on passing while the index itself lost
-     rows to the sample.
+test("renderAllShows (Discover) draws the five subject groups from the real catalogue, and no A-Z list", async () => {
+  /* REDESIGN 2026 (ambient screen 4) RETIRED THE A-Z INDEX: "renders every catalogue show, A-Z, as a result row"
+     pinned a page whose idle state was 220 rows and a pill wall. Discover's idle state is five heads of SubjectTiles
+     (ui/browse.js discoverGroups), and the listener who does not know what they want gets subjects, not names.
+     The category page above keeps the A-Z template; this page does not use it.
 
-     MUTATION: slice/filter the shows list before rendering (e.g. `.slice(0, 50)`).
-     The row-count assertion fails because it no longer matches the full catalogue. */
+     Over the committed data: each of the five heads is drawn, in the direction's order, each with at least one
+     tile; every tile's count is the number of curated shows with a leaf under that root (counted independently
+     here); no show row and no `show-index` is on the idle page; and no taxonomy id reaches the page's words.
+
+     MUTATION: render `renderShowIndexPage("Discover", "", shows, ...)` again (the A-Z list comes back) -> the
+     first assertion fails. Another: print `tile.id` instead of `tile.name` -> the id assertion fails. */
   const m = await mountBooted();
   const catalog = readJson("data/catalog-client.json");
+  const taxonomy = readJson("data/taxonomy.json");
 
   m.ctx.renderAllShows();
   const page = m.view();
-  const at = page.indexOf('class="show-results show-index"');
-  assert.ok(at !== -1, "the A-Z index list must be distinguishable from the editorial row above it");
-  const html = page.slice(at);
-  assert.strictEqual(rowCount(html), catalog.shows.length, "must render every show in the catalogue");
+  assert.ok(!page.includes("show-index") && !/class="show-result"/.test(page), "no A-Z list and no show rows on the idle page");
 
-  const titles = [...html.matchAll(/class="show-result-title">([^<]*)</g)].map((mm) => mm[1]);
-  const sorted = [...titles].sort((a, b) => a.localeCompare(b));
-  assert.deepStrictEqual(titles, sorted, "rendered order must be alphabetical (A-Z)");
+  const heads = [...page.matchAll(/<h3 class="t-headline">([^<]*)<\/h3>/g)].map((mm) => mm[1].replace(/&amp;/g, "&"));
+  assert.deepStrictEqual(heads, ["Science & nature", "People & society", "Business & work", "Arts & culture", "Making & tech"],
+    "five heads, the direction's own names, in its order");
+
+  const byId = new Map(taxonomy.nodes.map((n) => [n.id, n]));
+  const rootOf = (id) => { let n = byId.get(id); while (n && n.parent) n = byId.get(n.parent); return n && n.id; };
+  const tiles = [...page.matchAll(/<a class="ag-subject-tile raised is-default" href="#\/shows\/q\/([^"]+)">[\s\S]*?<p class="t-caption count">(\d+) shows?<\/p>/g)];
+  assert.ok(tiles.length >= 15, `a page of subjects, not a handful (${tiles.length})`);
+  for (const [, enc, n] of tiles) {
+    const label = decodeURIComponent(enc);
+    const root = taxonomy.nodes.find((x) => x.parent === null && x.label === label);
+    assert.ok(root, `a tile's search is its own label, and that label is a root: ${label}`);
+    const expected = catalog.shows.filter((s) => (s.taxonomy_node_ids || []).some((id) => rootOf(id) === root.id)).length;
+    assert.strictEqual(Number(n), expected, `${label}: the count is the shows with a leaf under the root`);
+    assert.ok(expected >= m.evalIn("DISCOVER_MIN_SHOWS"), `${label}: no tile for a subject with fewer than ${m.evalIn("DISCOVER_MIN_SHOWS")} shows`);
+  }
+  assert.ok(!/(?:science|engineering|true-crime|kids-family)\//.test(page) && !/>\s*(?:true-crime|kids-family|personal-journals)\s*</.test(page),
+    "no taxonomy id in the page's words");
+});
+
+test("every taxonomy root with shows under it has a group, so a new root is never silently missing from Discover", async () => {
+  /* The groups are a fixed map from root id to head (DISCOVER_SUBJECT_GROUPS). A root the taxonomy gains later,
+     with shows under it and no entry in the map, would simply not be drawn. This is the test that says so.
+     MUTATION: delete "architecture" from the Making & tech list -> red, naming it. */
+  const m = await mountBooted();
+  const catalog = readJson("data/catalog-client.json");
+  const taxonomy = readJson("data/taxonomy.json");
+  const byId = new Map(taxonomy.nodes.map((n) => [n.id, n]));
+  const rootOf = (id) => { let n = byId.get(id); while (n && n.parent) n = byId.get(n.parent); return n && n.id; };
+  const withShows = new Set(catalog.shows.flatMap((s) => (s.taxonomy_node_ids || []).map(rootOf)).filter(Boolean));
+  const mapped = new Set(m.evalIn("DISCOVER_SUBJECT_GROUPS").flatMap(([, ids]) => ids));
+  const unmapped = [...withShows].filter((id) => !mapped.has(id));
+  assert.deepStrictEqual(unmapped, [], "a root with shows under it and no group");
+  const unknown = [...mapped].filter((id) => !byId.has(id));
+  assert.deepStrictEqual(unknown, [], "a group names a root the taxonomy does not have");
 });
 
 /* ==================================================================== */
@@ -294,7 +330,7 @@ test("route() dispatches #/shows to renderAllShows, matching the #/playlists pat
 
   m.ctx.location.hash = "#/shows";
   m.ctx.route();
-  assert.ok(m.view().includes("<h2>Discover</h2>"), "route() must dispatch #/shows to renderAllShows");
+  assert.ok(m.view().includes('<h2 class="t-title">Discover</h2>'), "route() must dispatch #/shows to renderAllShows");
 });
 
 /* ==================================================================== */
@@ -349,12 +385,14 @@ test("nothing renders a 'Browse all shows' link any more — the menu replaced i
 /* ==================================================================== */
 
 /* 7.1 — THE DIAGNOSIS, pinned on the real data rather than argued. */
-test("a taxonomy ROOT is not what a show is tagged with — the join the tiles used cannot answer", async () => {
+test("a taxonomy ROOT is not what a show is tagged with — the join a tile's count uses cannot be the category page", async () => {
   /* This is the defect itself, stated structurally so it does not rot into a
      threshold: `science` is a root, real curated shows carry `science/...`
      leaves, and `showsForCategory` matches ids EXACTLY. So the root finds
      nothing while its children find plenty — which is what put "No shows here
-     yet." behind four fifths of the pill row.
+     yet." behind four fifths of the pill row, and why a Discover tile counts the
+     shows with a leaf UNDER its root (discoverGroups) and sends the listener to
+     a search, never to `#/category/<root>`.
 
      MUTATION: teach showsForCategory to expand a root (`id === nodeId ||
      id.startsWith(nodeId + "/")`). The first assertion goes red — which is the
@@ -367,43 +405,48 @@ test("a taxonomy ROOT is not what a show is tagged with — the join the tiles u
   assert.strictEqual(m.ctx.showsForCategory("science").length, 0,
     "the root itself matches nothing, though its children match real shows");
 
-  const roots = m.ctx.taxonomyRootNodes();
-  const empty = roots.filter((r) => m.ctx.showsForCategory(r.id).length === 0);
-  assert.ok(empty.length > roots.length / 2,
-    `most taxonomy roots match no show at all (${empty.length} of ${roots.length}) — a category link cannot be the tiles' destination`);
+  const science = m.ctx.discoverGroups().flatMap((g) => g.tiles).find((t) => t.id === "science");
+  assert.ok(science, "…and the Discover tile for the root exists");
+  assert.strictEqual(science.count, leafTagged.length,
+    "…counting every show with a leaf under it, which is what the join could not do");
 });
 
 /* 7.2 — WHAT THE TILE DOES NOW. */
-test("a browse tile links to the search for its own label, never to a category page", async () => {
-  /* MUTATION: put `roots.map(n => taxonomyChip(n.id))` back into
-     browsePillsHtml. Every href becomes `#/category/:id` and both assertions
-     go red. */
+test("a subject tile links to the search for its own label, never to a category page", async () => {
+  /* MUTATION: build the tile's href from `taxonomyChip` (`#/category/:id`) in
+     agSubjectTile's caller. Every href becomes `#/category/:id` and both
+     assertions go red. */
   const m = await mountBooted();
-  const html = m.ctx.browsePillsHtml();
-  assert.ok(html.includes('class="sh-browse-pills"'), "fixture assumption: the pill row rendered");
-  assert.ok(!/href="#\/category\//.test(html), "no tile may point at a category page any more");
+  const html = m.ctx.discoverGroupsHtml(m.ctx.discoverGroups());
+  assert.ok(html.includes('class="dsc-grid"'), "fixture assumption: the grids rendered");
+  assert.ok(!/href="#\/category\//.test(html), "no tile may point at a category page");
   assert.ok(html.includes('href="#/shows/q/Science"'),
     `each tile must run the ordinary search for its own label: ${html.slice(0, 300)}`);
 });
 
-test("a tile's label is escaped in both the href and the text, and survives the round trip", () => {
+test("a tile's label is escaped in the text, encoded in the href, and survives the round trip", () => {
   /* The labels are not all tidy identifiers — "Craft & making", "Kids &
      Family", "TV & Film". An ampersand has to be percent-encoded in the URL
-     and entity-escaped in the attribute, and it has to decode back to the
-     literal label the search then runs.
+     and entity-escaped in the text, and it has to decode back to the literal
+     label the search then runs. A long word carries a soft hyphen in the TEXT
+     and never in the href: the search is for the label, not for how it breaks.
 
-     MUTATION: drop `encodeURIComponent` from browseTile. The href carries a
-     bare `&`, and the label the search receives is half of the one on the
-     tile. */
+     MUTATION: drop `encodeURIComponent` from agSubjectTile. The href carries a
+     bare `&`, and the label the search receives is half of the one on the tile.
+     MUTATION: pass the soft-hyphenated name as `searchQuery` -> the last
+     assertion goes red. */
   const m = mount();
-  m.state.taxonomy = { nodes: [{ id: "craft", label: "Craft & making", parent: null }] };
-  const html = m.ctx.browseTile("craft");
-  assert.ok(html.includes('href="#/shows/q/Craft%20%26%20making"'), `got: ${html}`);
-  assert.ok(html.includes(">Craft &amp; making<"), `the visible label stays escaped: ${html}`);
+  const craft = m.ctx.discoverTileHtml({ id: "craft", name: "Craft & making", count: 14, arts: [] });
+  assert.ok(craft.includes('href="#/shows/q/Craft%20%26%20making"'), `got: ${craft}`);
+  assert.ok(craft.includes(">Craft &amp; making<"), `the visible label stays escaped: ${craft}`);
 
-  const href = /href="([^"]+)"/.exec(html)[1].replace(/&amp;/g, "&");
+  const href = /href="([^"]+)"/.exec(craft)[1].replace(/&amp;/g, "&");
   const q = /^#\/shows\/q\/(.*)$/.exec(href)[1];
   assert.strictEqual(decodeURIComponent(q), "Craft & making", "the route must decode back to the exact label");
+
+  const rel = m.ctx.discoverTileHtml({ id: "relationships", name: "Relationships", count: 7, arts: [] });
+  assert.ok(rel.includes("Relation" + String.fromCharCode(173) + "ships</h4>"), "the long word carries its soft hyphen in the text");
+  assert.ok(rel.includes('href="#/shows/q/Relationships"'), "…and the search is for the plain label");
 });
 
 test("route() dispatches #/shows/q/:query to the Shows page with that search already run", () => {
@@ -424,13 +467,13 @@ test("route() dispatches #/shows/q/:query to the Shows page with that search alr
   m.ctx.location.hash = "#/shows/q/Science";
   m.ctx.route();
 
-  assert.ok(m.view().includes("<h2>Discover</h2>"), "it is the Shows page, not a new one");
+  assert.ok(m.view().includes('<h2 class="t-title">Discover</h2>'), "it is the Shows page, not a new one");
   assert.strictEqual(m.byId.get("sh-input").value, "Science",
     "the field must hold the query, so it can be edited rather than retyped");
   assert.ok(m.byId.get("sh-results").innerHTML.includes("Science Friday"),
     `the search must already have run: ${m.byId.get("sh-results").innerHTML}`);
   assert.strictEqual(m.byId.get("sh-browse").hidden, true,
-    "and the browse furniture must be out of the way, by the page's own predicate");
+    "and the idle groups must be out of the way, by the page's own predicate");
 });
 
 test("a malformed #/shows/q/ hash lands on the plain Shows page instead of throwing", () => {
@@ -449,7 +492,7 @@ test("a malformed #/shows/q/ hash lands on the plain Shows page instead of throw
 
   m.ctx.location.hash = "#/shows/q/%";
   assert.doesNotThrow(() => m.ctx.route());
-  assert.ok(m.view().includes("<h2>Discover</h2>"), "an undecodable query is not a query — the browse page stands");
+  assert.ok(m.view().includes('<h2 class="t-title">Discover</h2>'), "an undecodable query is not a query — the idle page stands");
 });
 
 /* 7.3 — WHAT WAS NOT DELETED, AND WHY. */

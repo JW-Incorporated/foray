@@ -356,9 +356,17 @@ test("only a list whose order is the point is numbered: a playlist, not Saved, H
 test("a tag says what its section does not: no FORAY under 'Forays'", () => {
   /* Round 2, visual-9 (the Jump back in half of this test went with the rail, 2026-10-07: Today's
      Keep listening row restates nothing, and its section head is its only label).
-     MUTATION: drop `{ inSection: true }` from renderForays' forayListHtml call -> red. */
+     MUTATION: drop `{ inSection }` from forayRowsHtml's published-row check -> red.
+     REDESIGN 2026 (ambient, Forays list): THIS RULING FELL for the Forays page itself. Its list is two-up ForayCards, and a
+     ForayCard's anatomy (BUILD-NOTES 3) carries the eyebrow "Foray" in Lamp on every card, published or not, so the card
+     states what it is where a bare title would not. The rule still holds for the rows that remain: Search's Forays group
+     renders through ui/search.js's discoverForayRow (see below); this test pins the rows that remain. */
   const run = loadApp();
-  assert.match(APP_SRC, /\? forayListHtml\(\{ inSection: true \}\)/, "the Forays page's list sits under its 'Forays' heading");
+  /* The trunk's Discover rebuild moved Search's Forays group onto its own row (ui/search.js discoverForayRow: a Lamp eyebrow
+     and the shared sub-line, no draft tag because only published Forays match), so forayRowsHtml now serves the rows test
+     below and nothing else. MUTATION: rename discoverForayRow, or drop its `draftTag: false` -> red. */
+  assert.match(APP_SRC, /function discoverForayRow\(f, progress\)[\s\S]{0,300}forayListSubLabel\(f, progress, \{ draftTag: false \}\)/, "Search's Forays group renders through its own row, sub-line without a draft tag");
+  assert.doesNotMatch(APP_SRC.slice(APP_SRC.indexOf("function renderForays(")), /forayListHtml\(\{ inSection: true \}\)/, "the Forays page no longer renders rows");
   const pub = { id: "f1", title: "A Foray", status: "published" };
   const draft = { id: "f2", title: "A draft", status: "draft" };
   run(`forayCards = () => ${JSON.stringify([pub, draft])};`);
@@ -412,23 +420,31 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
     assert.doesNotMatch(body(fn), /class="back"/, `${fn} is a tab root`);
   }
   assert.match(body("renderShowIndexPage"), /\$\{tabRoot \? "" : `<a class="back" href="#\/">‹<\/a>`\}/, "the shared template omits it on request");
-  assert.match(body("renderAllShows"), /`, \{ tabRoot: true \}\);/, "Search asks");
+  /* REDESIGN 2026: Discover no longer uses the shared template (it has its own page-head, `page-head disc-head`,
+     and no ‹), so the proof that it is a tab root is that it never draws one. MUTATION: put
+     `<a class="back" href="#/">‹</a>` in renderAllShows's page-head -> red. */
+  assert.doesNotMatch(body("renderAllShows"), /class="back"/, "Discover is a tab root and draws no ‹");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
-  for (const fn of ["renderPlaylists", "renderQueue", "renderForays"]) {
+  for (const fn of ["renderPlaylists", "renderQueue"]) {
     assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
   }
+  /* REDESIGN 2026 (ambient, Forays list): the page draws its own Back chevron, the ordinary history-aware a.back. */
+  assert.match(body("renderForays"), /class="back ag-btn ag-btn-icon fl-back"/, "renderForays is pushed from a tab and keeps its Back");
   /* Tuning, Settings and About (Redesign 2026) share one head, stHeadHtml, whose Back chevron is the history-aware a.back. */
   assert.match(body("renderInterests"), /stPageHtml\(/, "Tuning is a Settings page: it wears the shared head");
   assert.match(body("stHeadHtml"), /<a class="back st-back /, "the shared head keeps its ‹ (a.back, the history-aware one)");
 });
 
-test("search's shows tier wears the eyebrow its Episodes and Playlists tiers do, only while it has rows", () => {
-  /* Round 2, visual-16. MUTATION: delete the `<h3 class="sh-results-head">` or
-     its `:has(+ #sh-results[hidden])` rule -> red. */
-  assert.match(APP_SRC, /<h3 class="sh-results-head">Shows<\/h3>\s*<div id="sh-results" class="show-results" hidden><\/div>/,
+test("search's shows tier wears the head its Episodes and Playlists tiers do, only while it has rows", () => {
+  /* Round 2, visual-16. REDESIGN 2026: the eyebrow became the SectionHead (`--t-headline`, `.t-headline`) for ALL
+     three groups; the Shows head is the one the page emits itself (the others come from agSectionHead), so it is
+     given the same type class and the same hide-with-its-list rule.
+     MUTATION: delete the `<h3 class="sh-results-head t-headline">` or its `:has(+ #sh-results[hidden])` rule -> red. */
+  assert.match(APP_SRC, /<h3 class="sh-results-head t-headline">Shows<\/h3>\s*<div id="sh-results" class="show-results dsc-list" hidden><\/div>/,
     "the label sits directly before the tier it names");
   assert.strictEqual(valueOf(".sh-results-head:has(+ #sh-results[hidden])", "display"), "none", "and hides with it");
-  assert.strictEqual(valueOf(".ep-more h3, .sh-results-head", "text-transform"), "uppercase", "the same eyebrow as Episodes");
+  const css = fs.readFileSync(path.join(ROOT, "ui", "primitives.css"), "utf8").replace(/\r\n/g, "\n");
+  assert.match(css, /\.ag\.disc \.sh-results-head \{[^}]*font: var\(--t-headline\)/, "the same head as the other groups' SectionHead (--t-headline)");
 });
 
 test("a show row's title is two lines at most and the whole name is still on the row", () => {
@@ -455,14 +471,19 @@ test("the Up Next row is one silhouette: every control on it is round", () => {
 /* 3. one pill                                                           */
 /* ==================================================================== */
 
-test("Create's suggestions and Search's browse subjects are the same pill", () => {
-  /* MUTATION: render `class="cr-pill"` in renderCreate again, or add a
-     `.cr-pill {` rule -> red. */
+test("Create's suggestions are the one pill; Discover has no pills (REDESIGN 2026: subjects are tiles)", () => {
+  /* The original claim — Create's suggestions and Search's browse subjects are the same `.fy-chip` — lost its second
+     half: Discover's subjects are SubjectTiles, not a pill wall (BUILD-NOTES 4.4), and the pill row's rules went with
+     it. What is pinned now: Create still renders the one pill, no `.cr-pill` exists, and nothing on Discover emits a
+     `.fy-chip` or the `.sh-browse-pills` row.
+     MUTATION: render `class="cr-pill"` in renderCreate again, or add a `.cr-pill {` rule, or emit
+     `class="sh-browse-pills"` from renderAllShows -> red. */
   assert.match(APP_SRC, /<button type="button" class="fy-chip" data-cr-subject=/, "Create renders .fy-chip");
-  assert.match(APP_SRC, /<a class="fy-chip" href="#\/shows\/q\//, "Search's browse tiles render .fy-chip");
+  assert.doesNotMatch(APP_SRC, /<a class="fy-chip" href="#\/shows\/q\//, "Discover's tiles are not pills");
+  assert.doesNotMatch(APP_SRC, /class="sh-browse-pills"/, "and the pill row is gone");
   assert.doesNotMatch(APP_SRC, /class="cr-pill/, "no renderer emits .cr-pill");
   assert.ok(!hasRule(".cr-pill"), ".cr-pill has no rule left");
-  assert.ok(!hasRule("body.ui-v2 .sh-browse-pills .fy-chip"), "Search does not restyle the pill's geometry on its own");
+  assert.ok(!hasRule("body.ui-v2 .sh-browse-pills"), "the pill row's own rule is deleted, not orphaned");
   assert.strictEqual(valueOf(".fy-chip", "border-radius"), "var(--radius-pill)", "a pill is a capsule");
   assert.strictEqual(valueOf(".fy-chip", "font-family"), "var(--font-body)");
   assert.ok(hasRule(".fy-chip:hover, .fy-chip:active"), "touch feedback beside hover");
@@ -579,8 +600,12 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
   /* `.note { margin: 0 }` and `.page` has no gap, so the Forays index's intro
      and the show page's Follow note bottomed out 0-5px above the first card —
      tighter than the 8px between the cards themselves.
-     MUTATION: delete `.fy-about { margin: 0 0 20px }` -> red. */
-  assert.strictEqual(valueOf(".fy-about", "margin"), "0 0 20px", "the Forays intro");
+     MUTATION: delete `.fy-about { margin: 0 0 20px }` -> red.
+     REDESIGN 2026 (ambient, Forays list): the intro is `.fl-about` over a two-column grid that opens a section (24px) below
+     it (ui/forays.css). MUTATION: set `.ag .fl-grid { margin-top: 0 }` -> red; rename the intro's class in renderForays -> red. */
+  const foraysCss = fs.readFileSync(path.join(ROOT, "ui/forays.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(foraysCss, /\.ag \.fl-grid \{[^}]*margin-top: var\(--s-6\)/, "the Forays intro sits a section above the first card");
+  assert.match(foraysCss, /\.ag \.fl-about \{[^}]*margin-top: var\(--s-2\)/, "and a step under the title");
   /* REDESIGN 2026 (ambient, show page): the show page's art + Follow + note block is the Room (ui/show.css); the legacy
      `.show-hero` rules went with it. Its rhythm is now the Room's own: the note sits 12px under Follow, which sits 16px
      under the count. MUTATION: set `.ag .sh-note { margin-top: 0 }` -> red. */
@@ -591,5 +616,5 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
   assert.strictEqual(valueOf(".ep-actions", "justify-content"), "center", "the episode page's actions centre under its art the same way");
   assert.match(APP_SRC, /<div class="sh-art">\$\{agArtwork\([^)]*\)\}<\/div>[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="t-caption sh-note show-follow-note">[\s\S]*?<\/section>/,
     "renderShow's Room wraps art, Follow and the note");
-  assert.match(APP_SRC, /<p class="note fy-about">/, "renderForays' intro carries the class the margin hangs on");
+  assert.match(APP_SRC, /<p class="t-body fl-about">/, "renderForays' intro carries the class the margin hangs on");
 });

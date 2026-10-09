@@ -56,7 +56,9 @@ function agSkipButton({ direction = "forward", size = 56, state = "default" } = 
   return agButton({ label: forward ? "Forward 30 seconds" : "Back 15 seconds", variant: "icon", icon: forward ? "fwd30" : "back15", size: px === 56 ? 36 : 24, controlSize: px, state });
 }
 
-function agArtwork({ name = "Artwork", src = "", size = 72, tone = "amber", state = "default", badge = "" } = {}) {
+/* `decorative: true` is for artwork inside a row or tile whose own text already names it: the frame
+   is hidden from assistive technology instead of announcing the name twice. */
+function agArtwork({ name = "Artwork", src = "", size = 72, tone = "amber", state = "default", badge = "", decorative = false } = {}) {
   const px = agChoice(Number(size), AG_ART_SIZES, 72);
   const colour = agChoice(tone, AG_TONES, "amber");
   const artState = agChoice(state, ["default", "dim", "lit"], "default");
@@ -65,15 +67,19 @@ function agArtwork({ name = "Artwork", src = "", size = 72, tone = "amber", stat
     : `<span class="ag-art-mono" aria-hidden="true">${esc(String(name || "?").trim().charAt(0).toUpperCase() || "?")}</span>`;
   const badgeMarkup = badge ? `<span class="ag-art-badge">${agIcon(badge, 20)}</span>` : "";
   const lit = artState === "lit" || px >= 104;
-  return `<span class="ag-art ag-art-${esc(px)} ag-tone-${esc(colour)} is-${esc(artState)}${lit ? ` lit-art lit-${px >= 280 ? "96" : px >= 160 ? "64" : "40"}` : ""}" role="img" aria-label="${esc(name)}">${image}${badgeMarkup}</span>`;
+  const aria = decorative ? 'aria-hidden="true"' : `role="img" aria-label="${esc(name)}"`;
+  return `<span class="ag-art ag-art-${esc(px)} ag-tone-${esc(colour)} is-${esc(artState)}${lit ? ` lit-art lit-${px >= 280 ? "96" : px >= 160 ? "64" : "40"}` : ""}" ${aria}>${image}${badgeMarkup}</span>`;
 }
 
-function agCollage(items = [], { size = 120, tone = "amber" } = {}) {
+/* `lit: false` for a collage that sits inside another material (a SubjectTile's 56): Lit art is for
+   artwork of 104px or more, and a 56 collage casting a glow would light the tile's own face. */
+function agCollage(items = [], { size = 120, tone = "amber", lit = true } = {}) {
   const safeItems = items.slice(0, 4);
   const count = Math.max(1, safeItems.length);
   const cells = (safeItems.length ? safeItems : [{ name: "Artwork", tone }])
     .map((item) => agArtwork({ ...item, size: agChoice(Number(size), AG_ART_SIZES, 120) })).join("");
-  return `<span class="ag-collage ag-collage-${esc(size)} c${esc(count)} lit-art lit-${Number(size) >= 160 ? "64" : "40"}">${cells}</span>`;
+  const glow = lit ? ` lit-art lit-${Number(size) >= 160 ? "64" : "40"}` : "";
+  return `<span class="ag-collage ag-collage-${esc(size)} c${esc(count)}${glow}">${cells}</span>`;
 }
 
 function agPill(label, icon = "") {
@@ -84,8 +90,11 @@ function agChip(label, { selected = false, disabled = false } = {}) {
   return `<button class="ag-chip${selected ? " is-selected" : ""}" type="button" aria-pressed="${esc(selected ? "true" : "false")}"${disabled ? ' aria-disabled="true" disabled' : ""}>${esc(label)}</button>`;
 }
 
-function agSectionHead(title, count = "", explainer = "") {
-  return `<header class="ag-section-head"><div><h3 class="t-headline">${esc(title)}</h3>${explainer ? `<p>${esc(explainer)}</p>` : ""}</div>${count ? `<span class="count">${esc(count)}</span>` : ""}</header>`;
+/* `level` is the heading's rank: 3 under a page title, 2 when the head IS the page's title (a subject page,
+   whose lead is a SectionHead beside the subject's collage). Anything else is 3. */
+function agSectionHead(title, count = "", explainer = "", { level = 3 } = {}) {
+  const h = level === 2 ? "h2" : "h3";
+  return `<header class="ag-section-head"><div><${h} class="t-headline">${esc(title)}</${h}>${explainer ? `<p>${esc(explainer)}</p>` : ""}</div>${count ? `<span class="count">${esc(count)}</span>` : ""}</header>`;
 }
 
 function agEpisodeRow({
@@ -196,12 +205,30 @@ function agHeroPick() {
   ], { size: 160 })}<div class="ag-hero-copy"><span class="eyebrow lamp">Today's pick</span><h4 class="t-title clamp4">${esc("The hidden systems shaping an ordinary glass of water")}</h4><p class="t-caption">4 shows · 42 min</p>${agPlayButton({ size: 56 })}</div><p class="t-why">${esc("A clear route from local choices to the systems moving water around them.")}</p></article>`;
 }
 
-function agShowTile({ followed = false } = {}) {
-  return `<article class="ag-show-tile">${agArtwork({ name: "Unexplainable", size: 104, tone: "blue", badge: followed ? "check-circle-fill" : "" })}<h4 class="t-caption clamp3">${esc("Unexplainable questions from science")}</h4></article>`;
+/* ShowTile: art 104, the name under it (three lines, `.clamp3`, never broken mid-word). Called with no
+   `name` it is the gallery's plate. Given `name` (and `src`, `tone`) it is a real show; given `showId` as well
+   it is the link a subject page draws (the tile IS the show's page, `#/show/<id>`). `followed` draws the Ember badge and,
+   with it, the word: a state is never only a mark, so the link's name says "following" and the badge stays
+   decorative. The badge is drawn only where the state varies (subject pages); Library never passes it. */
+function agShowTile({ followed = false, name = "", src = "", tone = "blue", showId = "" } = {}) {
+  const real = typeof name === "string" && name !== "";
+  const title = real ? name : "Unexplainable questions from science";
+  const art = agArtwork({ name: real ? name : "Unexplainable", src, size: 104, tone, badge: followed ? "check-circle-fill" : "", decorative: real });
+  const inner = `${art}<h4 class="t-caption clamp3">${esc(title)}</h4>`;
+  if (!showId) return `<article class="ag-show-tile">${inner}</article>`;
+  const label = followed ? ` aria-label="${esc(`${title}, following`)}"` : "";
+  return `<a class="ag-show-tile" href="#/show/${encodeURIComponent(showId)}" title="${esc(title)}"${label}>${inner}</a>`;
 }
 
-function agSubjectTile({ state } = {}) {
-  return `<article class="ag-subject-tile raised is-${esc(state === "pressed" ? "pressed" : "default")}">${agCollage([{ name: "S", tone: "teal" }, { name: "P", tone: "coral" }, { name: "O", tone: "blue" }, { name: "H", tone: "gold" }], { size: 56 })}<div><h4 class="t-label">Science &amp; nature</h4><p class="t-caption">5 shows</p></div></article>`;
+/* SubjectTile: a 56 2x2 collage of the subject's first shows, its name and "<n> shows". Called with no
+   arguments it is the gallery's plate. Given `name`, `count` and `items` ([{ name, src, tone }]) it is
+   a real subject; given `searchQuery` as well it is the link a Discover grid uses: a tile runs the
+   search for its own label (founder, #684), so the route is the "#/shows/q/" literal plus that text. */
+function agSubjectTile({ state, name = "Science & nature", count = 5, items = null, searchQuery = "" } = {}) {
+  const arts = items || [{ name: "S", tone: "teal" }, { name: "P", tone: "coral" }, { name: "O", tone: "blue" }, { name: "H", tone: "gold" }];
+  const cls = `ag-subject-tile raised is-${esc(state === "pressed" ? "pressed" : "default")}`;
+  const inner = `${agCollage(arts, { size: 56, lit: false })}<div><h4 class="t-label clamp2">${esc(name)}</h4><p class="t-caption count">${esc(`${Number(count) || 0} ${Number(count) === 1 ? "show" : "shows"}`)}</p></div>`;
+  return searchQuery ? `<a class="${cls}" href="#/shows/q/${esc(encodeURIComponent(searchQuery))}">${inner}</a>` : `<article class="${cls}">${inner}</article>`;
 }
 
 function agPlaylistTile() {
@@ -248,6 +275,23 @@ function agSkeleton(kind = "row") {
   return `<span class="ag-skeleton ag-skeleton-${esc(agChoice(kind, ["row", "art", "text"], "row"))}" role="status"><span class="sr-only">Loading</span></span>`;
 }
 
-function agEmptyState() {
-  return `<section class="ag-empty"><p>${esc("Nothing followed yet.")}</p>${agButton({ label: "Find shows", variant: "secondary" })}</section>`;
+/* EmptyState: one line (or two), optional pre-built `extra` markup under them (a SubjectTile), and
+   at most one button. With no arguments it is the gallery's plate. `extra` is markup the caller built
+   from the other primitives, so it is NOT escaped here; every `lines` entry is. */
+function agEmptyState({ lines = ["Nothing followed yet."], extra = "", action = { label: "Find shows" }, heading = false } = {}) {
+  /* `heading` names the page: a not-found page has no page head, and landOnPage (app.js) takes focus and the
+     document title from `[data-page-heading]`. `action.route` makes the button a link ("/" is Today). The "#"
+     is written in the literal so no interpolated value can start an href (test/app-security.test.js). */
+  const first = heading ? " data-page-heading" : "";
+  const button = !action ? ""
+    : action.route
+      ? `<a class="ag-btn ag-btn-secondary ag-btn-size-44" href="#${esc(String(action.route).replace(/^#/, ""))}"><span>${esc(action.label)}</span></a>`
+      : agButton({ label: action.label, variant: "secondary" });
+  return `<section class="ag-empty">${lines.map((line, i) => `<p${i === 0 ? first : ""}>${esc(line)}</p>`).join("")}${extra}${button}</section>`;
+}
+
+/* NotFoundPage: the one page behind a playlist or an episode that is gone (a stale link, a queued id whose snapshot is
+   left behind). EmptyState centred, one line, one Secondary button to Today; the Dock is already on screen. */
+function agNotFoundPage() {
+  return `<div class="ag ag-not-found">${agEmptyState({ lines: ["Nothing here any more."], action: { label: "Today", route: "/" }, heading: true })}</div>`;
 }

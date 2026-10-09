@@ -43,6 +43,107 @@ function showResultRow(show) {
   </a>`;
 }
 
+/* ---------- DISCOVER'S RESULT ROWS (Redesign 2026, ambient, screen 4) ----------
+
+   Four row kinds, one anatomy: a RAISED row, the art at 56 on the left, a `--t-label` name
+   (two lines, never an ellipsis cut mid-word), one `--t-caption` meta line, nothing else. No
+   why-line on an episode (BUILD-NOTES 4.4: the product's main copy lives on Today, and a search
+   result is an answer, not a pick). Each is built from the Phase-3 primitives' markup
+   (`agArtwork`, `agCollage`) so a result and a gallery plate cannot drift.
+
+   `showResultRow` above is NOT this: it is the plain row the category and show pages still use,
+   and it stays until those screens are built. */
+
+/** What a SHOW's caption says: "<n> episodes" when the catalogue knows the count (176 of the 229
+    curated shows do; a directory or shard row never does), else the byline when the row carries
+    one, else the word for what it is. Every result row has art and ONE meta line (DIRECTION.md,
+    Discover): a title-only row is shorter, its title centres, and the list loses its shared
+    baseline. A followed show says so in words as well as in the badge (a state is never only a
+    mark). */
+const DISCOVER_SHOW_KIND = "Podcast";
+function discoverShowMeta(show, followed) {
+  const n = Number(show?.episode_count);
+  const by = typeof show?.artist_name === "string" ? show.artist_name.trim() : "";
+  return joinMeta(followed ? "Following" : "", n > 0 ? esc(countLabel(n, "episode")) : esc(by || DISCOVER_SHOW_KIND));
+}
+
+/** One matched show. The followed badge (`i-check-circle-fill`, Ember, 20, the art's bottom-right)
+    is drawn HERE and in "Where this came from" only: it marks state that varies, and in Library
+    every tile is followed so a mark would say nothing (BUILD-NOTES 10.7). */
+function discoverShowRow(show) {
+  const followed = !!starredShowsMap()[show.show_id];
+  const meta = discoverShowMeta(show, followed);
+  return `<a class="dsc-row dsc-show raised" href="#/show/${encodeURIComponent(show.show_id)}" title="${esc(show.title)}">
+    ${agArtwork({ name: show.title, src: showArtworkUrl(show) || "", size: 56, decorative: true, badge: followed ? "check-circle-fill" : "" })}
+    <span class="dsc-copy"><span class="t-label clamp2">${esc(show.title)}</span>${meta ? `<span class="t-caption dsc-meta">${meta}</span>` : ""}</span>
+  </a>`;
+}
+
+/** One matched episode, COMPACT: art, title, "<show> · <min> · <date>", and the one play control.
+    The row is a link to the episode page and the play button is its SIBLING (a button inside an
+    anchor is two controls on one target, test/card-anatomy.test.js). The star and the Up Next
+    button the old row carried are not drawn: the episode page has both, and a result row is for
+    deciding, not for filing. */
+function discoverEpisodeRow(item, ctx) {
+  const play = playBtn(item, ctx) || notPlayableNote();
+  const art = item.artwork_url || showArtworkUrl(showById(item.show_id)) || "";
+  const meta = joinMeta(esc(item.show || ""), fmtDur(episodeMinutes(item)), esc(fmtDate(item.release_date)));
+  return `<article class="dsc-row dsc-ep raised">
+    <a class="dsc-row-link" href="#/episode/${esc(encodeURIComponent(item.id))}">
+      ${agArtwork({ name: item.show || item.title, src: art, size: 56, decorative: true })}
+      <span class="dsc-copy"><span class="t-label clamp2">${esc(item.title)}${explicitBadge(item.explicit)}</span>${meta ? `<span class="t-caption dsc-meta">${meta}</span>` : ""}</span>
+    </a>
+    ${play}
+  </article>`;
+}
+
+/** The first four distinct covers in a playlist's parts, for its 2x2 collage. A part the live pool
+    no longer carries still names its show, so it still contributes a cover when it has one. */
+function discoverPlaylistArts(p) {
+  const arts = [];
+  const seen = new Set();
+  for (const part of resolveParts(p)) {
+    const item = part.item || {};
+    const src = item.artwork_url || showArtworkUrl(showById(item.show_id)) || "";
+    if (!src || seen.has(src)) continue;
+    seen.add(src);
+    arts.push({ name: item.show || item.title || p.title, src, tone: AG_TONES[arts.length % AG_TONES.length], decorative: true });
+    if (arts.length === 4) break;
+  }
+  return arts.length ? arts : [{ name: p.title, tone: "amber", decorative: true }];
+}
+
+/** One matched playlist: the listener's own, or one 4a generated for them (said in Lamp, the colour
+    of what 4a authored). */
+function discoverPlaylistRow(p, generated) {
+  const meta = joinMeta(esc(playlistLengthLabel(p)), generated ? `<span class="dsc-gen">Generated for you</span>` : "");
+  return `<a class="dsc-row dsc-pl raised" href="#/${esc(playlistRoute(p))}">
+    ${agCollage(discoverPlaylistArts(p), { size: 56, lit: false })}
+    <span class="dsc-copy"><span class="t-label clamp2">${esc(p.title)}</span><span class="t-caption dsc-meta">${meta}</span></span>
+  </a>`;
+}
+
+/** One matched Foray (a Foray 4a made on the subject, p-foray-4): a Lamp eyebrow, the title and the
+    list's own length/progress line. It carries no cover: a Foray's running order is not resolved
+    for a search row, and a letter in a gold tile says so rather than inventing one. */
+function discoverForayRow(f, progress) {
+  const sub = forayListSubLabel(f, progress, { draftTag: false });
+  return `<a class="dsc-row dsc-foray raised" href="#${esc(forayRoutePath(f.id))}">
+    ${agArtwork({ name: f.title, size: 56, tone: "gold", decorative: true })}
+    <span class="dsc-copy">${f.status === "published" ? "" : `<span class="eyebrow lamp">Draft</span>`}<span class="t-label clamp2">${esc(f.title)}</span>${sub ? `<span class="t-caption dsc-meta">${esc(sub)}</span>` : ""}</span>
+  </a>`;
+}
+
+/** A results group: a SectionHead and its rows. `aside` is a caption under the rows (the episode
+    group's "Showing 7 of 10" and its attribution), already escaped. */
+function discoverGroupHtml(cls, title, rows, aside = "") {
+  return `<section class="dsc-group ${cls}">
+    ${agSectionHead(title)}
+    <div class="dsc-list">${rows}</div>
+    ${aside ? `<p class="t-caption dsc-aside">${aside}</p>` : ""}
+  </section>`;
+}
+
 /* A3.5: "Shows we vouch for" — a show-level editorial row (requirements audit
    note: 220/220 catalog.json shows already carry `editorial_note`, unused as a
    browse surface until now — only the four topic-based subject cards
@@ -203,7 +304,11 @@ let showSearchPainted = { token: -1, query: "", rows: [] };
    moments: `clearTimeout` stops work that has not started, the token drops
    work that has already started. */
 let showSearchDebounceTimer = null;
-const SHOW_SEARCH_DEBOUNCE_MS = 250;
+/* 150 ms (was 250, Redesign 2026): the direction's number (BUILD-NOTES 4.4, "debounced 150ms"). The
+   keystroke pass is local and immediate either way; this is only how long the costly passes wait
+   for the listener to stop. A tick that fires on a pause the listener did not mean costs two endpoint
+   calls, which the hot-query caches absorb on a retype. */
+const SHOW_SEARCH_DEBOUNCE_MS = 150;
 /* The keystroke pass's answer the pending tick will build on, kept beside the
    timer so a return key pressed inside the debounce can run that tick NOW with
    the rows it was going to use — rather than bump the token and paint the local
@@ -827,7 +932,8 @@ function clearShowSearchResults() {
   if (note) { note.textContent = ""; note.hidden = true; }
   if (eps) { eps.innerHTML = ""; eps.hidden = true; }
   if (pls) { pls.innerHTML = ""; pls.hidden = true; }
-  paintShowSearchEmptyOffer(null);
+  hideDiscoverEmpty();
+  paintMakePlaylist("");
   for (const id of ["#sh-partial-note", "#fy-search-results"]) {
     const el = $(id);
     if (el) { el.innerHTML = ""; el.hidden = true; }
@@ -896,6 +1002,14 @@ function paintShowSearchPartialNote(query, myToken) {
     list, each true, together contradictory (audit round 2, search-12). */
 function paintShowResults(query, shows, myToken) {
   if (myToken !== showSearchToken) return; // a newer query already superseded this one
+  /* A SUBJECT'S WHOLE NAME IS ITS PAGE, AND ITS PAGE IS THE SUBJECT'S SHOWS, not whatever the text search found
+     (round-1 review). The lead above says "<n> shows" from discoverGroups; the free-text pass (localShowMatches,
+     directory and index rows) is a different set: History's lead said 19 while the search found 11, Nature's said
+     13 over 0 hits and the empty page. So for a subject the search's rows are replaced by the subject's own shows,
+     ordered by subjectShowOrder, before anything below reads them: the tiles, the "Show more" reveal, the painted
+     record that `answerDone` asks "is this page empty?" of, and the merges that append later passes. */
+  const subjectTile = discoverSubjectExact(query);
+  if (subjectTile) shows = subjectTile.shows;
   const note = $("#sh-note");
   const results = $("#sh-results");
   const offlineNote = $("#sh-offline-note");
@@ -925,16 +1039,18 @@ function paintShowResults(query, shows, myToken) {
        instruction is "don't blame it on 4a", and that trailing clause was
        doing exactly that; a search that found nothing says so, and nothing
        about whose catalogue fell short. */
-    const settled = showSearchSettled.token === myToken;
-    note.textContent = !settled ? `Searching for ${quoteQuery(query)}…`
-      : offline ? `You're offline — no shows found for ${quoteQuery(query)}.`
-      : `No shows found for ${quoteQuery(query)}.`;
-    note.hidden = false;
-    paintShowSearchEmptyOffer(settled ? { query } : null);
+    /* REDESIGN 2026: the "No shows found" line is gone. Once EVERY group has answered and every
+       one was empty, the page says so in the EmptyState (paintDiscoverEmpty); before that this
+       is a searching page and says only that. A search whose Shows group is empty but whose
+       Episodes or Playlists are not paints nothing here: those rows are the answer, and a line
+       about shows above them denied it. */
+    const answered = showSearchAnswered.token === myToken;
+    if (answered) { note.textContent = ""; note.hidden = true; }
+    else { note.textContent = `Searching for ${quoteQuery(query)}…`; note.hidden = false; }
     return;
   }
   note.hidden = true;
-  paintShowSearchEmptyOffer(null);
+  hideDiscoverEmpty();
   /* A PAGE OF ROWS AT A TIME (app-2-2). The cap belongs to this token and
      query, so a later pass appending beneath keeps whatever the listener
      already revealed, and a new query starts from one step again. The painted
@@ -945,8 +1061,13 @@ function paintShowResults(query, shows, myToken) {
   }
   const cap = showSearchPaintCap.n;
   const more = shows.length - cap;
-  results.innerHTML = shows.slice(0, cap).map(showResultRow).join("")
-    + (more > 0 ? `<button type="button" class="fy-script-more" data-sh-more>Show more shows</button>` : "");
+  /* A SUBJECT'S WHOLE NAME IS ITS PAGE (Redesign 2026, screen 15): "History" in the field paints the subject
+     lead (ui/browse.js `paintSubjectLead`) and the shows as ShowTiles, three across, the page a category link
+     opens. Any other query is a search, and its shows stay Raised rows. */
+  const asTiles = !!subjectTile;
+  if (results.classList) results.classList.toggle("dsc-tiles", asTiles);
+  results.innerHTML = shows.slice(0, cap).map(asTiles ? subjectShowTile : discoverShowRow).join("")
+    + (more > 0 ? `<button type="button" class="ag-btn ag-btn-quiet dsc-more" data-sh-more>Show more shows</button>` : "");
   results.hidden = false;
   const moreBtn = more > 0 && typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null;
   if (moreBtn) {
@@ -959,7 +1080,9 @@ function paintShowResults(query, shows, myToken) {
          button, and focus fell to <body>: a keyboard or VoiceOver user was
          sent back to the top of the document. The first new row takes it, or
          the next "Show more shows" when there is no row to take it. */
-      const painted = typeof results.querySelectorAll === "function" ? results.querySelectorAll(".show-result") : [];
+      const rowsPainted = typeof results.querySelectorAll === "function" ? results.querySelectorAll(".dsc-show") : [];
+      /* A subject's shows are ShowTiles, not rows (see `asTiles` above); the first revealed tile takes focus the same way. */
+      const painted = rowsPainted.length ? rowsPainted : (typeof results.querySelectorAll === "function" ? results.querySelectorAll(".ag-show-tile") : []);
       const target = painted[cap] || (typeof results.querySelector === "function" ? results.querySelector("[data-sh-more]") : null);
       if (target && typeof target.focus === "function") target.focus();
     });
@@ -992,38 +1115,97 @@ function cacheShowRow(kind, row) {
   }
 }
 
-/** WHAT A SETTLED, EMPTY SHOWS SEARCH OFFERS INSTEAD OF A DEAD END (audit
-    2026-09-22, the unconditional half of the browse-pill finding): a QUERY
-    THAT IS A SUBJECT'S OWN NAME (a browse pill lands here with its label) gets
-    that subject's narrower categories that DO hold shows, as chips. The pill
-    stays an ordinary search for its own text (founder, #684); this is only
-    what the empty answer offers next, and every chip leads to a page with at
-    least one show on it.
+/* ---------- THE EMPTY PAGE, AND "MAKE A PLAYLIST" (Redesign 2026, ambient, screen 4) ----------
 
-    The "a pass that failed says so, with Try again" half that used to live
-    here moved to `paintShowSearchPartialNote`, which paints it over a full list
-    as well as an empty one (states-7).
+   NOTHING IS "NOTHING" UNTIL EVERY GROUP HAS ANSWERED. The shows passes, the
+   episode endpoint and the playlist scan answer on their own schedules, and an
+   empty Shows list over a still-owed Episodes list is a SEARCHING page, not an
+   empty one (audit 2026-09-22, theme G). `showSearchAnswered` is the token whose
+   three halves have all reported; `runShowSearchCostly` writes it and only then
+   asks whether the page is empty. The line it paints is the EmptyState
+   primitive's: "Nothing named <q>." and, when the text is part of a subject's
+   name, "<Subject> is a subject, <n> shows." with that subject's own tile under
+   it, so the message can never contradict what the idle page offers. It replaces
+   "No shows found for <q>." (which named one group of four) and the chips of
+   "Shows filed under X" (a tile is the better door to the same place). */
+let showSearchAnswered = { token: -1 };
 
-    `null` clears it — every non-empty paint and every cleared query. */
-function paintShowSearchEmptyOffer(opts) {
-  const box = $("#sh-empty-offer");
+function hideDiscoverEmpty() {
+  const box = $("#sh-empty");
+  if (box) { box.innerHTML = ""; box.hidden = true; }
+}
+
+function paintDiscoverEmpty(query, myToken) {
+  if (myToken !== showSearchToken) return;
+  const box = $("#sh-empty");
   if (!box) return;
-  if (!opts) { box.innerHTML = ""; box.hidden = true; return; }
-  const { query } = opts;
-  const parts = [];
-  const wanted = String(query || "").trim().toLowerCase();
-  const node = (state.taxonomy?.nodes || []).find(n => String(n.label || "").toLowerCase() === wanted);
-  if (node) {
-    const within = (state.taxonomy?.nodes || [])
-      .filter(n => (n.id === node.id || String(n.id).startsWith(`${node.id}/`)) && showsForCategory(n.id).length > 0)
-      .slice(0, 8);
-    if (within.length) {
-      parts.push(`<p class="note">Shows filed under ${esc(node.label)}:</p>
-        <div class="fy-chips">${within.map(n => taxonomyChip(n.id)).join("")}</div>`);
-    }
-  }
-  box.innerHTML = parts.join("");
-  box.hidden = parts.length === 0;
+  /* A subject's whole name is never empty: paintShowResults paints its own shows (a subject has at least
+     DISCOVER_MIN_SHOWS), so "Nothing named" over its lead would contradict the page. */
+  if (discoverSubjectExact(query)) { hideDiscoverEmpty(); return; }
+  const subject = discoverSubjectMatch(query);
+  const lines = [`Nothing named ${quoteQuery(query)}.`];
+  /* Offline, the answer is "nothing on this device", and saying only the first half would be a
+     claim about 4a's catalogue made by a phone with no signal. */
+  if (isOfflineForShardSearch()) lines.push("You're offline, so only names already on this device were checked.");
+  if (subject) lines.push(`${quoteQuery(subject.name)} is a subject, ${countLabel(subject.count, "show")}.`);
+  box.innerHTML = agEmptyState({
+    lines,
+    extra: subject ? `<div class="dsc-empty-tile">${discoverTileHtml(subject)}</div>` : "",
+    action: null,
+  });
+  box.hidden = false;
+}
+
+/* THE CREATE PATH, ON DISCOVER. Create folded into this page's one field
+   (DIRECTION.md, "Information architecture"): the field both searches and builds a
+   playlist from a subject, so once the text is three characters long a Primary
+   button at the bottom of the results offers to MAKE a playlist from it, whether
+   the results are a list or the empty page.
+
+   Three characters, because that is where the topic scorer starts to mean
+   something and where the directory pass starts too (SHOW_DIRECTORY_MIN_QUERY_
+   LENGTH). It is offered whatever the results are, which overturns audit round 2,
+   search-2 ("offered only when the tap yields a playlist"): that gate cost a
+   1.3-8 s relaxation scan on the debounce tick and it withheld the button on the
+   very page (nothing found) where the direction wants it. The honest half of the
+   old rule survives at the other end: a build that cannot make a playlist says why
+   under the button (`createFailureNote`, in `#sh-make-note`) and moves nothing.
+
+   It is the ONE build (`buildPlaylistFromDiscover`, ui/create.js): same flag, same
+   buildPlaylist(), same local `playlist_built` event. Nothing here writes to a
+   server, so a lab build has nothing to gate; test/discover-page.test.js pins that
+   the path reaches no fetch. */
+const MAKE_PLAYLIST_MIN_CHARS = 3;
+
+function paintMakePlaylist(text) {
+  const box = $("#sh-make");
+  if (!box) return;
+  const q = String(text || "").trim();
+  if (q.length < MAKE_PLAYLIST_MIN_CHARS) { box.innerHTML = ""; box.hidden = true; return; }
+  const painted = box.hidden ? null : box.querySelector("[data-make-playlist]");
+  /* The same text is already on the button: leave it, and the pending state and the note under
+     it, exactly as they are. */
+  if (painted && painted.getAttribute("data-make-playlist") === q) return;
+  box.innerHTML = `<button type="button" class="ag-btn ag-btn-primary dsc-make-btn" data-make-playlist="${esc(q)}">${agIcon("sparkle", 20)}<span>${esc(`Make a playlist from ${quoteQuery(q)}`)}</span></button>
+    <p id="sh-make-note" class="note" role="status" hidden></p>`;
+  box.hidden = false;
+  const btn = box.querySelector("[data-make-playlist]");
+  if (btn) btn.addEventListener("click", () => buildPlaylistFromDiscover(q, btn));
+  paintMakePending(createBuildPending);
+}
+
+/** The pending state, painted from the flag onto whatever button is on screen (the same rule
+    paintCreatePending follows): the build waits for the search documents and a cold start can take
+    seconds, so a tap that looks like nothing is the failure to prevent. */
+function paintMakePending(pending, button) {
+  const btn = button || $("#sh-make [data-make-playlist]");
+  if (!btn) return;
+  const q = btn.getAttribute("data-make-playlist") || "";
+  btn.disabled = !!pending;
+  if (pending) btn.setAttribute("aria-busy", "true"); else btn.removeAttribute("aria-busy");
+  btn.classList.toggle("is-loading", !!pending);
+  const label = btn.querySelector("span") || btn; // the span keeps the sparkle icon; a bare button is its own label
+  setStatusText(label, pending ? "Building…" : `Make a playlist from ${quoteQuery(q)}`);
 }
 
 /** The rows on screen for `query` under `myToken`, or `fallback` when the
@@ -1236,6 +1418,7 @@ function paintShowSearchLocal(query, myToken) {
   /* A fresh search starts with nothing failed: the record and its line belong
      to the token that is about to paint. */
   showSearchFailure = { token: myToken, shows: false, episodes: false };
+  hideDiscoverEmpty();
   paintShowSearchPartialNote(query, myToken);
   paintForaySearchResults(query, myToken);
   const localShows = localShowMatches(query);
@@ -1374,6 +1557,24 @@ function runShowSearchCostly(query, myToken, local) {
     if (showPassFailed) noteShowSearchFailure(query, myToken, "shows");
     const rows = paintedShowRows(query, myToken, local.localShows);
     if (!rows.length) paintShowResults(query, rows, myToken);
+    answerDone();
+  };
+
+  /* THE THREE HALVES THAT DECIDE "NOTHING" (Redesign 2026): the shows passes above, the episode
+     endpoint and the playlist group each report exactly once on every exit path. When the last
+     of them is in, this token is ANSWERED, and only then can the page be empty for real: a
+     Shows group with no rows over an Episodes group still owed is a searching page. The empty
+     page is painted by paintDiscoverEmpty; the "Searching..." line goes with it. */
+  let answersOwed = 3;
+  const answerDone = () => {
+    if (--answersOwed > 0) return;
+    if (myToken !== showSearchToken) return; // superseded: the newer query owns the page
+    showSearchAnswered = { token: myToken };
+    const empty = (sel) => { const el = $(sel); return !el || el.hidden; };
+    const rows = paintedShowRows(query, myToken, local.localShows);
+    if (rows.length || !empty("#ep-search-results") || !empty("#pl-search-results") || !empty("#fy-search-results")) return;
+    paintShowResults(query, rows, myToken);   // drops the "Searching..." line
+    paintDiscoverEmpty(query, myToken);
   };
 
   /* THE SCAN PASS, GATED ON COST RATHER THAN ON HOW MANY ROWS THE DEVICE
@@ -1631,8 +1832,8 @@ function runShowSearchCostly(query, myToken, local) {
     }); // fetchShardRows never throws/rejects (see its own header) — no .catch needed
   }
 
-  renderEpisodeSearchResults(query, myToken, (epMs, epHits) => settle({ epMs, epHits }), local.localEpisodes);
-  renderPlaylistSearchResults(query, myToken, (ctaMs) => settle({ ctaMs }));
+  renderEpisodeSearchResults(query, myToken, (epMs, epHits) => { settle({ epMs, epHits }); answerDone(); }, local.localEpisodes);
+  renderPlaylistSearchResults(query, myToken, (ctaMs) => { settle({ ctaMs }); answerDone(); });
 }
 
 /** Every keystroke. Local pass now; everything expensive on a 250 ms trailing
@@ -1693,8 +1894,8 @@ function renderShowSearchResults(query) {
   runShowSearchCostly(query, myToken, local);
 }
 
-/* U-05 (docs/ui-transition-plan.md D7): the Playlists section under Shows
-   and Episodes results. Unlike renderEpisodeSearchResults this is entirely
+/* U-05 (docs/ui-transition-plan.md D7): the Playlists group under Shows and
+   Episodes results. Unlike renderEpisodeSearchResults this is entirely
    LOCAL/SYNCHRONOUS -- both sources (cp_playlists, cardSlots) are already
    in memory, so there is no fetch to guard against staleness beyond the
    same `myToken` check every section here shares (a fast retype still must
@@ -1702,32 +1903,20 @@ function renderShowSearchResults(query) {
    though nothing here awaits anything itself).
 
    ORDER (the card's own "own playlists first, then generated" rule): the
-   listener's own matching playlists lead, each exactly as renderPlaylists
-   already renders one row (`.pl-row`, same fields, same #/playlist/:id
-   link) so a playlist opened from Search is indistinguishable from one
-   opened from the Playlists page. Generated candidates follow, visibly
-   badged "Generated for you" (D5's own wording, reused verbatim rather than
-   inventing new copy for the same concept) -- the reader must be able to
-   tell the two apart before tapping, same principle as U-03's Home badge.
+   listener's own matching playlists lead, each linking to the same
+   #/playlist/:id page the Playlists page opens. Generated candidates follow,
+   visibly marked "Generated for you" (D5's own wording, reused verbatim) -- the
+   reader must be able to tell the two apart before tapping, same principle as
+   U-03's Home badge.
 
-   THE CTA (the card's own #135 retarget, D8): "Create a playlist about X"
-   appears when no own/generated playlist matched AND the topic scorer CAN
-   build one — see createPlaylistCtaHtml for why the gate is that way round.
-   The CTA is presentation only: tapping it hands off to the Create page's
-   own #cr-form flow (through `location.hash` + prefilling the input) rather
-   than calling buildPlaylist() here, so this card adds no second path that
-   can create a playlist -- there remains exactly one (bindCreateFormSubmit),
-   matching D8's "the Foray half is not built, Playlist creation stays
-   today's flow" scope. */
-/* The Playlists section while the topic scan behind the CTA is still owed —
-   see "AND IT SAYS SO WHILE IT IS OWED" below. A status line, not a claim:
-   it names the work, not an outcome. */
-const CTA_PENDING_HTML = `<p class="note" role="status" data-cta-pending>Still looking for playlists…</p>`;
-
-/** The playlists a query matches: the listener's own first, then generated
-    ones. A matched generated playlist the listener has saved, unchanged, is
-    already listed as their own copy (currentCopyOf): not a second, identical
-    result beside it. */
+   THE CREATE CTA IS NOT HERE ANY MORE (Redesign 2026). It was this section's
+   fallback when nothing matched and the topic scorer could build one, and it
+   cost a 1.3-8 s scan scheduled when idle ("Still looking for playlists...").
+   Create folded into Discover's field: the "Make a playlist from <q>" button
+   (paintMakePlaylist) belongs to the PAGE, shows under every kind of result
+   once the text is three characters long, and builds in place. So this group is
+   only ever a list, or nothing, and `reportCtaMs(null)` answers at once: the
+   diagnostics record keeps its `ctaMs` field and says "this half did not run". */
 function playlistSearchMatches(query) {
   const own = playlists().filter(p => playlistMatchesQuery(p, query));
   const ownIds = new Set(own.map(p => p.id));
@@ -1741,135 +1930,20 @@ function renderPlaylistSearchResults(query, myToken, reportCtaMs = () => {}) {
   if (myToken !== showSearchToken) { reportCtaMs(null); return; } // superseded before this ran
 
   const { own, generated } = playlistSearchMatches(query);
-
   if (!own.length && !generated.length) {
-    /* THE DEFER IS LOAD-BEARING (review finding, fresh-context Opus pass):
-       createPlaylistCtaHtml() calls topicSearchStatus(), which runs the
-       exact same SearchEngine.searchWithRelaxation() scan buildPlaylist()
-       does -- 1.3-8s on a cold cache per that function's own documented
-       measurement (see buildPlaylist's SEARCH_CACHE_MAX comment). Calling
-       it synchronously from here, on every show-name search that matches
-       no playlist (the COMMON case -- e.g. "fridman"), would freeze the
-       whole Shows page.
-
-       `setTimeout(…, 0)` WAS NOT ENOUGH, and that is finding 2 of the
-       2026-09-12 client audit. A zero timeout buys one paint turn and then
-       runs on the very next task — so the listener saw their results paint
-       and then watched the page stop responding for seconds, on the COMMON
-       path (a show-name query matching no playlist). `whenIdle` waits for a
-       frame with room in it and keeps a deadline, which is what `init()`'s
-       vocabulary priming has done since the H bug; the fallback for a host
-       without `requestIdleCallback` is the old zero timeout.
-
-       AND IT IS TIMED. The scan is now the `ctaMs` field of the one `search`
-       diagnostics entry, so the next time it grows nobody has to guess: it
-       was invisible before precisely because the record was written from the
-       local pass and closed before this ran.
-
-       AND IT SAYS SO WHILE IT IS OWED (persona audit #28, 2026-09-22). The
-       defer only chose WHEN the scan blocks; the results still painted, the
-       page looked finished, and then taps went nowhere for seconds before a
-       section grew at the bottom. Loading claims nothing, but it does not
-       hide either: the section holds CTA_PENDING_HTML - the one line that
-       says work is still going - from this synchronous paint (so the frame
-       whenIdle waits for shows it) until the scan answers, and then becomes
-       the CTA or goes away. A shorter lock needs the scan off the main
-       thread (a Worker over search-engine.js), which is a separate change.
-
-       Guard with `myToken` so a fast retype's OLD deferred computation can
-       never clobber a newer query's freshly-painted own/generated section
-       (a newer query, or a cleared field, owns the container outright). */
-    container.innerHTML = CTA_PENDING_HTML;
-    container.hidden = false;
-    whenIdle(() => searchDataSettled().then(() => {
-      if (myToken !== showSearchToken) { reportCtaMs(null); return; } // a newer query already superseded this one
-      /* Belt to the router's supersede (app-2-3): a section no longer in the
-         document is nobody's, so the multi-second scan is not run for it. */
-      if (container.isConnected === false) { reportCtaMs(null); return; }
-      const ctaStart = nowMs();
-      /* A scan that throws must not leave "Still looking" up for good: the
-         pending line is a promise that this callback always ends it. */
-      let cta = "";
-      try { cta = createPlaylistCtaHtml(query); } catch (err) { console.warn("[search] playlist CTA scan failed", err); }
-      reportCtaMs(nowMs() - ctaStart);
-      if (!cta) { container.innerHTML = ""; container.hidden = true; return; } // answered: nothing to offer
-      container.innerHTML = cta;
-      container.hidden = false;
-      bindCreatePlaylistCta(container);
-    }));
+    container.innerHTML = "";
+    container.hidden = true;
+    reportCtaMs(null);
     return;
   }
-
-  const row = (p, generated) => `
-    <a class="pl-row" href="#/${esc(playlistRoute(p))}">
-      <div class="info">
-        <div class="t">${esc(p.title)}${generated ? ` <span class="fy-badge fy-badge-generated">Generated for you</span>` : ""}</div>
-        <div class="s">${playlistLengthLabel(p)}</div>
-      </div>
-      <span class="chev">\u203a</span>
-    </a>`;
-
-  container.innerHTML = `<section class="ep-more fy-playlist-search">
-    <h3>Playlists</h3>
-    <div class="show-results">
-      ${own.map(p => row(p, false)).join("")}
-      ${generated.map(p => row(p, true)).join("")}
-    </div>
-  </section>`;
+  container.innerHTML = discoverGroupHtml(
+    "fy-playlist-search",
+    "Playlists",
+    own.map(p => discoverPlaylistRow(p, false)).join("") + generated.map(p => discoverPlaylistRow(p, true)).join(""),
+  );
   container.hidden = false;
-  reportCtaMs(null); // the scan never ran: a playlist already matched
+  reportCtaMs(null); // the scan never ran: a playlist already matched, or there is nothing to offer
 }
-
-/* U-05 (#135, D7/D8): appears in place of a Playlists section when no
-   own/generated playlist matched the query and the topic scorer CAN build
-   one. `topicSearchStatus` runs the exact same scorer buildPlaylist() would,
-   read-only (see its own header for why this must not itself create a
-   playlist). Retargeted from Foray to Playlist per D8: the mockup's
-   SearchScreen CTA offers "Create a Foray about X"; Foray generation stays
-   out of the UI (D8), so this offers a Playlist instead, handed to Create's
-   own form rather than a new creation path.
-
-   THE GATE IS INVERTED FROM WHAT SHIPPED (audit round 2, search-2). U-05
-   carried the mockup's condition — offer the CTA when the query has no strong
-   result — over from a Foray, which can be made about anything, to a Playlist,
-   which is built by the very scorer that just said "empty". So the page's one
-   primary button was offered on "joe rogan", "npr" and "knitting", where the
-   build was certain to fail a second later on another page with "Not much on
-   … yet", and withheld on "fusion energy", where one tap would have built a
-   real playlist. Offered only when the tap yields a playlist: `ok` or `sparse`
-   (a sparse playlist is a real, disclosed one — see buildPlaylist). On
-   `empty`, nothing: the Shows and Episodes sections are the answer. */
-function createPlaylistCtaHtml(query) {
-  const status = topicSearchStatus(query).status;
-  if (status !== "ok" && status !== "sparse") return "";
-  return `<div class="sh-create-cta">
-    <button type="button" class="fy-btn fy-main" data-create-playlist="${esc(query)}">
-      Create a playlist about ${quoteQuery(esc(query))}
-    </button>
-  </div>`;
-}
-
-/* The button builds in place (buildPlaylistFromDiscover, ui/create.js): the
-   Create tab folded into Discover's field (Redesign 2026, ambient, the Dock), so
-   there is no Create page to hand off to any more. It is still the one
-   creation path - the same buildPlaylist() the Create form calls, not a second
-   builder (see createPlaylistCtaHtml's header).
-
-   `pendingCreateQuery` is the old hand-off (audit round 3, app-2-11): the query
-   waited in module state for renderCreate to consume it, instead of riding a
-   setTimeout(0) the hashchange render might lose. Nothing sets it today; the
-   Create page's own consumer is kept because the page's suite pins it, and goes
-   with the page when Discover's screen unit retires renderCreate. */
-let pendingCreateQuery = null;
-
-function bindCreatePlaylistCta(scope) {
-  const btn = scope.querySelector("[data-create-playlist]");
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    buildPlaylistFromDiscover(btn.dataset.createPlaylist || "", btn);
-  });
-}
-
 
 /* Episodes section under Shows search (S-07, kanban t_6baccaa0): a separate
    result block below the show list, backed by api/episodes/search.ts. Same
@@ -2167,7 +2241,7 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
         duration_sec: ep.duration_seconds ?? null,
         topics: [],
       });
-      return epRow(item, i, ctx, -1);
+      return discoverEpisodeRow(item, ctx);
     }
     const id = `apple:${ep.show_id}:${ep.guid || (ep.title + "--" + i)}`;
     /* THE SAME SNAPSHOT THE SHOW PAGE WOULD HAVE MADE (audit round 2,
@@ -2194,7 +2268,7 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
       artwork_url: ep.artwork_url || showArtworkUrl(showById(ep.show_id)) || null,
       topics: [],
     });
-    return epRow(item, i, ctx, -1);
+    return discoverEpisodeRow(item, ctx);
   };
   const localRows = local.map((ep, i) => rowFor(ep, i));
   const remoteRows = remote.map((ep, i) => rowFor(ep, local.length + i));
@@ -2213,19 +2287,22 @@ function paintEpisodeSearchResults(query, data, container, localEpisodes) {
      saved (audit round 2 review). */
   const total = Number(data?.total);
   const heldBack = Number.isFinite(total) && total > endpointShown && remote.length > 0;
-  const countNote = heldBack ? `<span class="note">Showing ${endpointShown} of ${total}${data?.capped ? "+" : ""}</span>` : "";
-  const appleNote = fromApple ? `<span class="note">from Apple's index</span>` : "";
-  const notes = [countNote, appleNote].filter(Boolean).join(" ");
-  container.innerHTML = `<section class="ep-more fy-episode-search">
-    <h3>Episodes${!local.length && notes ? ` ${notes}` : ""}</h3>
-    ${localRows.join("")}
-    ${local.length && notes ? `<div class="note fy-episode-search-more">${notes}</div>` : ""}
-    ${remoteRows.join("")}
-  </section>`;
+  /* `notes` is already markup-safe: the two numbers go through esc() and the rest is a literal of
+     this file (an apostrophe in element text needs no entity, and a test reads it as written). */
+  const countNote = heldBack ? `Showing ${esc(endpointShown)} of ${esc(total)}${data?.capped ? "+" : ""}` : "";
+  const appleNote = fromApple ? "from Apple's index" : "";
+  const notes = [countNote, appleNote].filter(Boolean).join(" · ");
+  /* The attribution stays where its rule put it (see `fromApple`): under the group when there is
+     no local tier, and as a divider ABOVE the endpoint's rows when there is one. */
+  container.innerHTML = discoverGroupHtml(
+    "fy-episode-search",
+    "Episodes",
+    `${localRows.join("")}${local.length && notes ? `<p class="t-caption dsc-aside fy-episode-search-more">${notes}</p>` : ""}${remoteRows.join("")}`,
+    !local.length ? notes : "",
+  );
   container.hidden = false;
-  bindPickLogging(container);
-  bindStars(container);
-  bindUpNext(container);
+  /* The compact row has a play control and a link: no star, no Up Next button, so nothing else to
+     bind (the episode page carries both). */
   bindPlay(container);
   return local.length + remote.length;
 }
@@ -2270,10 +2347,8 @@ function paintForaySearchResults(query, myToken) {
     container.hidden = true;
     return [];
   }
-  container.innerHTML = `<section class="ep-more fy-foray-search">
-    <h3>Forays</h3>
-    ${forayRowsHtml(hits, { inSection: true })}
-  </section>`;
+  const progress = forayProgressLabels();
+  container.innerHTML = discoverGroupHtml("fy-foray-search", "Forays", hits.map((f) => discoverForayRow(f, progress)).join(""));
   container.hidden = false;
   return hits;
 }

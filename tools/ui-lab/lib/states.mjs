@@ -18,6 +18,12 @@ import { forayDetailPicks } from "./seed.mjs";
 
 const wait = (page, ms) => page.waitForTimeout(ms);
 
+/* The page the Dawn and unavailable helpers park on while the scheme flips: a LEGACY page, because a page that wears `.ag`
+   crossfades its colours for 200ms when the scheme changes and the reduced-motion gate reads that as a violation. The Forays
+   list used to be that page; it is Afterglow now (Redesign 2026). When Followed shows is re-skinned, park on whichever
+   legacy page is left. */
+const PARK_ROUTE = "#/starred-shows";
+
 /** Start playback of a seeded item through the real player, then pin it: seek to
     a fixed offset and pause, so the mini bar and sheet show a deterministic
     position. (The audio is the silent 60 s fixture, so the bar's time reads
@@ -85,7 +91,7 @@ const forayRoute = (foray) => "#/foray/" + encodeURIComponent(foray.id);
 async function openUnavailableForay(page, foray) {
   /* Off the Afterglow page while the scheme goes back to dark (the Dawn step before this one left it light), so no
      drawn page crossfades; the Foray is then painted new. */
-  await page.evaluate(() => { location.hash = "#/forays"; });
+  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
   await wait(page, 400);
   await page.emulateMedia({ colorScheme: "dark" });
   await wait(page, 400);
@@ -101,7 +107,7 @@ async function openUnavailableForay(page, foray) {
 async function goDawn(page) {
   /* Leave the Afterglow page first and come back after the flip, so the scheme change is not a live colour change on a page
      that is already drawn (every .ag element would crossfade for 200ms): the page is painted new, in Dawn. */
-  const hash = await page.evaluate(() => { const h = location.hash; location.hash = "#/forays"; return h; });
+  const hash = await page.evaluate((r) => { const h = location.hash; location.hash = r; return h; }, PARK_ROUTE);
   await wait(page, 500);
   await page.emulateMedia({ colorScheme: "light" });
   await wait(page, 500);
@@ -110,10 +116,54 @@ async function goDawn(page) {
   await wait(page, 700);
 }
 
+/* The Forays list in Dawn: leave the Afterglow page, flip the scheme the way a phone does, and come back, so the page is
+   painted new in the light palette rather than crossfading a drawn one. (Each state gets a fresh context, so the scheme
+   returns to dark for the next state.) */
+async function goDawnForays(page) {
+  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
+  await wait(page, 500);
+  await page.emulateMedia({ colorScheme: "light" });
+  await wait(page, 500);
+  await page.evaluate(() => { location.hash = "#/forays"; });
+  await page.waitForSelector(".fl-card", { timeout: 15000 });
+  await wait(page, 700);
+}
+
 async function typeSearch(page, text) {
   await page.waitForSelector("#sh-input", { timeout: 15000 });
   await page.fill("#sh-input", text);
   await wait(page, 1800);
+}
+
+/** Steps of one state share ONE page and a step whose route is the current hash does not navigate, so
+    a step that wants the IDLE Discover after a typed one leaves the page and comes back: the router
+    re-renders `#/shows` with an empty field and drops `kb-open` (setBodyClass writes the class list
+    whole); the `--kb-inset` a previous step wrote on <html> is cleared by hand. */
+async function freshDiscover(page) {
+  await page.evaluate(() => {
+    document.documentElement.style.removeProperty("--kb-inset");
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    location.hash = "#/library";
+  });
+  await wait(page, 500);
+  await page.evaluate(() => { location.hash = "#/shows"; });
+  await page.waitForSelector("#sh-input", { timeout: 15000 });
+  await wait(page, 500);
+}
+
+/** Discover with the field focused over a keyboard. A headless browser has no soft keyboard, so the
+    inset a real one would leave is written the way installKeyboardChrome writes it (`--kb-inset` on
+    <html>, `kb-open` on <body>) once the field has focus: the field rides 300px up, the bars yield. */
+async function focusSearchOverKeyboard(page) {
+  await freshDiscover(page);
+  await page.waitForSelector("#sh-input", { timeout: 15000 });
+  await page.focus("#sh-input");
+  await wait(page, 300);
+  await page.evaluate(() => {
+    document.documentElement.style.setProperty("--kb-inset", "300px");
+    document.body.classList.add("kb-open");
+  });
+  await wait(page, 300);
 }
 
 async function showGalleryTarget(page, selector) {
@@ -322,6 +372,17 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
+        /* Appended (Forays list): the page with something playing, so the Dock's cast is up. */
+        { label: "mini-player-forays", route: "#/forays", ready: ".fl-card" },
+      ],
+    },
+    {
+      id: "forays-list",
+      description: "The Forays list: two-up ForayCards with one part-played (strip fill) and one finished (check), then the Dawn scheme.",
+      seed: "forays-progress",
+      steps: [
+        { label: "forays-list", route: "#/forays", ready: ".fl-card" },
+        { label: "forays-list-dawn", route: "#/forays", run: (page) => goDawnForays(page), ready: ".fl-card" },
       ],
     },
     {
@@ -370,6 +431,20 @@ export function appStates(fx) {
         { label: "episode-token", route: "#/episode/uilab-stress-2" },
         { label: "mini-player", route: "#/library", run: (page) => startPlayback(page, "uilab-stress-1") },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
+      ],
+    },
+    {
+      id: "discover",
+      description: "Discover (ambient): typing, a settled result list, the empty page with and without a subject, the field focused over a keyboard, and the idle page under a mini player.",
+      seed: "returning",
+      steps: [
+        { label: "discover-typing", route: "#/shows", run: (page) => typeSearch(page, "ma") },
+        { label: "discover-results", route: "#/shows", run: (page) => typeSearch(page, "money") },
+        { label: "discover-no-results", route: "#/shows", run: (page) => typeSearch(page, "zzqxjv") },
+        { label: "discover-no-results-subject", route: "#/shows", run: (page) => typeSearch(page, "craft & ma") },
+        { label: "discover-mini", route: "#/shows", run: async (page) => { await freshDiscover(page); await startPlayback(page, ep0); } },
+        { label: "discover-kb", route: "#/shows", run: (page) => focusSearchOverKeyboard(page) },
+        { label: "discover-results-groups", route: "#/shows", run: (page) => typeSearch(page, "history") },
       ],
     },
     {

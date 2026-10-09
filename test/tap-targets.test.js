@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/library.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/library.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/browse.css", "ui/forays.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -197,7 +197,8 @@ function renderedButtons() {
 const BUTTONS = {
   "#menu-btn": { rule: ".topbar button" },
   "#refresh-btn": { rule: ".topbar button" },
-  "#sh-dismiss": { size: ["#sh-dismiss"] },
+  /* "#sh-dismiss" left this list with Discover (Redesign 2026): the x is an `.ag-btn-icon` now, keyed `.ag-btn` below, whose
+     44x44 is `.ag .ag-btn-icon`. MUTATION: set `.ag .ag-btn-icon { width: 40px }` -> red. */
   "#shell-notice-reload": { rule: ".shell-notice button" },
   "#shell-notice-dismiss": { rule: ".shell-notice button" },
   ".cr-toggle-btn": { tall: ".cr-toggle-btn", why: "flex: 1 — half of Create's toggle row" },

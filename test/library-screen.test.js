@@ -522,7 +522,8 @@ test("the tab bar names #/shows once, and nothing else in the shell names it", (
      Discover's screen (it says "Search" until that branch lands, "Discover" after), so it is pinned to either, never
      to a third name. MUTATION: rename the tab to "Explore" -> the next assertion fails. */
   assert.strictEqual(tabName, "Discover", "the Dock's second tab");
-  assert.match(APP_SRC, /renderShowIndexPage\("(Search|Discover)", /, "and the page's own heading is one of the two names, never a third");
+  /* MUTATION 2: change the heading to "Search" in renderAllShows -> this assertion fails. */
+  assert.match(APP_SRC, /<h2 class="t-title">Discover<\/h2>/, "and the page's own heading is the direction's: Discover");
 });
 
 /* ==================================================================== */
