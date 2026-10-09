@@ -78,42 +78,15 @@ jobs:
         with:
           node-version: "24"
 
+      # Everything the decision reads, fetched into files by the composite both
+      # workflows share (CH2-34a): the release history, what is waiting, main's
+      # runs, status and REQUIRED check runs at the commit a dispatch would
+      # build (ci-release-6), and the watchdog's pulse.
       - name: Fetch the release history, what is waiting, main's state and the watchdog's pulse
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-
-          retry() {
-            local n=1 max=4 delay=5
-            until "$@"; do
-              if [ $n -ge $max ]; then return 1; fi
-              echo "attempt $n/$max failed, retrying in ${delay}s..." >&2
-              sleep $delay; n=$((n + 1)); delay=$((delay * 3))
-            done
-          }
-          fetch() { retry gh api "$1" > "$2"; }
-
-          fetch "repos/$REPO/actions/workflows/release.yml/runs?per_page=30" runs.json
-
-          : > commits.txt
-          if SHA=$(node tools/release/watch-release.mjs --mode last-success --runs runs.json); then
-            git log --first-parent --diff-merges=first-parent --no-renames --name-only \
-              --format='%x1e%H %cI %s' "$SHA..origin/main" > commits.txt
-          fi
-
-          # main's own state, at the commit a dispatch would build.
-          HEAD_SHA=$(git rev-parse origin/main)
-          fetch "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=50" main-runs.json
-          fetch "repos/$REPO/commits/$HEAD_SHA/status" main-status.json
-          # ci-release-6: ci.yml is judged by protect-main's REQUIRED checks on
-          # this SHA, not by its whole-run conclusion (an advisory ios-kit or
-          # playwright failure turns the run red and used to hold every release).
-          fetch "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" main-checks.json
-
-          fetch "repos/$REPO/actions/workflows/release-watch.yml" peer-workflow.json
-          fetch "repos/$REPO/actions/workflows/release-watch.yml/runs?event=schedule&status=success&per_page=5" peer-runs.json
+        uses: ./.github/actions/release-facts
+        with:
+          for: trigger
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Decide
         id: decide
@@ -146,16 +119,7 @@ jobs:
           set -euo pipefail
           gh api "repos/$REPO/issues?state=all&creator=github-actions%5Bbot%5D&per_page=100" > issues.json
           # No --may-close: this job never calls the release gates green.
+          # --apply: watch-release.mjs makes the `gh issue` calls it planned, the
+          # ONE write path release-watch.yml uses too (CH2-34a).
           node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
-            --issues issues.json --action-out action.json --body-out body.md
-
-          ACTION=$(jq -r '.action' action.json)
-          NUM=$(jq -r '.number // empty' action.json)
-          case "$ACTION" in
-            create) gh issue create --repo "$REPO" --title "$(jq -r '.title' action.json)" --body-file body.md ;;
-            reopen) gh issue edit "$NUM" --repo "$REPO" --body-file body.md
-                    gh issue reopen "$NUM" --repo "$REPO" ;;
-            edit)   gh issue edit "$NUM" --repo "$REPO" --body-file body.md ;;
-            none)   echo "issue unchanged" ;;
-            *)      echo "::error::unexpected issue action '$ACTION' from a job that may not close"; exit 1 ;;
-          esac
+            --issues issues.json --apply --repo "$REPO" --body-out body.md
