@@ -41,6 +41,16 @@ export const REPO_ROOT = path.resolve(HERE, "..", "..");
 
 export const LAB_APP_ID = "ai.jwlabs.foura.lab";
 export const LAB_APP_NAME = "4a Lab";
+/** The Tactile direction is its OWN app so both directions install together. */
+export const TACTILE_APP_ID = "ai.jwlabs.foura.lab.tactile";
+export const TACTILE_APP_NAME = "4a Tactile";
+export const AMBIENT_APP_NAME = "4a Ambient";
+/** Every identity a lab build may take. The app id must be one of these ids;
+ *  the display name is checked by `isLabName` (never the real app's bare "4a"). */
+export const LAB_APP_IDS = [LAB_APP_ID, TACTILE_APP_ID];
+/** A display name: "4a " plus a plain word or two (letters/digits/spaces, at most
+ *  20 chars after the prefix). */
+export const isLabName = (n) => typeof n === "string" && /^4a [A-Za-z0-9][A-Za-z0-9 ]{0,19}$/.test(n);
 /** What the real app is, so `labConfig` can refuse to run on something else. */
 export const REAL_APP_ID = "ai.jwlabs.foura";
 
@@ -59,7 +69,17 @@ export class LabError extends Error {}
 
 /** `capacitor.config.json`'s source text with the lab identity, everything else
  *  byte-for-byte (the `//` comment keys and their order survive). */
-export function labConfigText(src) {
+export function labConfigText(src, identity = {}) {
+  const appId = identity.appId ?? LAB_APP_ID;
+  const appName = identity.appName ?? LAB_APP_NAME;
+  /* The real app's identity can never be produced: the id must be a lab id and
+     the name a "4a <Word>" lab name, whatever the caller passes. */
+  if (!LAB_APP_IDS.includes(appId)) {
+    throw new LabError(`${JSON.stringify(appId)} is not a lab app id (allowed: ${LAB_APP_IDS.join(", ")})`);
+  }
+  if (!isLabName(appName)) {
+    throw new LabError(`${JSON.stringify(appName)} is not a lab display name (expected "4a <Word>")`);
+  }
   let doc;
   try {
     doc = JSON.parse(src);
@@ -69,24 +89,26 @@ export function labConfigText(src) {
   if (!doc || typeof doc !== "object" || Array.isArray(doc)) {
     throw new LabError("capacitor.config.json is not a JSON object");
   }
-  if (doc.appId === LAB_APP_ID) return src; // idempotent
+  if (doc.appId === appId && doc.appName === appName) return src; // idempotent
   if (doc.appId !== REAL_APP_ID) {
     throw new LabError(
       `capacitor.config.json appId is ${JSON.stringify(doc.appId)}, not the real app's ` +
         `${REAL_APP_ID}. Refusing to guess which app this is.`
     );
   }
-  doc.appId = LAB_APP_ID;
-  doc.appName = LAB_APP_NAME;
+  doc.appId = appId;
+  doc.appName = appName;
   return JSON.stringify(doc, null, 2) + "\n";
 }
 
-export function applyLabConfig(file) {
+export function applyLabConfig(file, identity = {}) {
+  const appId = identity.appId ?? LAB_APP_ID;
+  const appName = identity.appName ?? LAB_APP_NAME;
   const src = fs.readFileSync(file, "utf8");
-  const out = labConfigText(src);
+  const out = labConfigText(src, { appId, appName });
   if (out !== src) fs.writeFileSync(file, out);
   const back = JSON.parse(fs.readFileSync(file, "utf8"));
-  if (back.appId !== LAB_APP_ID || back.appName !== LAB_APP_NAME) {
+  if (back.appId !== appId || back.appName !== appName) {
     throw new LabError(`${file} does not carry the lab identity after the write`);
   }
   return { changed: out !== src, appId: back.appId, appName: back.appName };
@@ -180,7 +202,7 @@ export function writeLabIcon(out, source = path.join(REPO_ROOT, "icon-1024.png")
 /* -------------------------------------------------------------------- CLI */
 
 const USAGE =
-  "Usage: node tools/mobile/lab-variant.mjs apply-config [capacitor.config.json]\n" +
+  "Usage: node tools/mobile/lab-variant.mjs apply-config [capacitor.config.json] [--app-id <lab id>] [--app-name \"4a <Word>\"]\n" +
   "       node tools/mobile/lab-variant.mjs icon <out.png> [--source icon-1024.png]";
 
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
@@ -188,8 +210,17 @@ if (isMain) {
   const [cmd, ...rest] = process.argv.slice(2);
   try {
     if (cmd === "apply-config") {
-      const file = rest[0] || path.join(REPO_ROOT, "mobile", "capacitor.config.json");
-      const r = applyLabConfig(file);
+      let file = null, appId, appName;
+      for (let i = 0; i < rest.length; i++) {
+        if (rest[i] === "--app-id") appId = rest[++i];
+        else if (rest[i] === "--app-name") appName = rest[++i];
+        else if (!rest[i].startsWith("-") && file === null) file = rest[i];
+        else { console.error(`Unknown argument: ${rest[i]}\n${USAGE}`); process.exit(2); }
+      }
+      file = file || path.join(REPO_ROOT, "mobile", "capacitor.config.json");
+      /* Absent flags mean the plain "4a Lab"; an EMPTY value (an unset env var) is
+         not nullish, so it reaches the validation and is refused. */
+      const r = applyLabConfig(file, { appId, appName });
       console.log(`${file}: appId ${r.appId}, appName ${JSON.stringify(r.appName)}${r.changed ? "" : " (already)"}`);
     } else if (cmd === "icon") {
       let out = null, source;

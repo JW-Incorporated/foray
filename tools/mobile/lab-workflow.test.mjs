@@ -73,14 +73,14 @@ function scratch() {
   return dir;
 }
 
-function runConsistency(action, { lab, appId }) {
+function runConsistency(action, { lab, appId, appName = "4a Lab" }) {
   const dir = scratch();
   const script = path.join(dir, "step.sh");
   fs.writeFileSync(script, runOf(step(action, CONSISTENCY)));
   const r = spawnSync(BASH, ["step.sh"], {
     cwd: dir,
     encoding: "utf8",
-    env: { ...process.env, LAB: lab, APP_ID_IN: appId, GITHUB_ENV: path.join(dir, "GITHUB_ENV").replace(/\\/g, "/") },
+    env: { ...process.env, LAB: lab, APP_ID_IN: appId, APP_NAME_IN: appName, GITHUB_ENV: path.join(dir, "GITHUB_ENV").replace(/\\/g, "/") },
   });
   return {
     status: r.status,
@@ -97,6 +97,8 @@ for (const [label, action, labSteps] of [["ios-archive", IOS, 3], ["android-bund
     const inputs = block(code(action), "inputs", 0);
     assert.match(inputs, /^ {2}lab:[\s\S]*?default: "false"/m);
     assert.match(inputs, /^ {2}app_id:[\s\S]*?default: "ai\.jwlabs\.foura"/m);
+    /* MUTATION: app_name default "4a Lab" -> "4a Tactile" -> an old caller that passes no name gets Tactile (red). */
+    assert.match(inputs, /^ {2}app_name:[\s\S]*?default: "4a Lab"/m);
     const rel = fs.readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8");
     assert.ok(!/\blab:|app_id:/.test(code(rel)), "release.yml passes a lab input; the real build must not know about the lab");
   });
@@ -118,9 +120,14 @@ for (const [label, action, labSteps] of [["ios-archive", IOS, 3], ["android-bund
   test(`${label}: the consistency step REFUSES a lab/app_id mismatch and runs before anything is built`, needBash, () => {
     /* MUTATION: delete either `!=` comparison in the step -> the matching row below goes red. */
     const real = "ai.jwlabs.foura", lab = "ai.jwlabs.foura.lab";
-    for (const [l, id] of [["true", real], ["false", lab], ["true", ""], ["maybe", lab], ["", real]]) {
-      const r = runConsistency(action, { lab: l, appId: id });
-      assert.notEqual(r.status, 0, `lab=${JSON.stringify(l)} app_id=${JSON.stringify(id)} was accepted`);
+    const tactile = "ai.jwlabs.foura.lab.tactile";
+    /* MUTATION (names): delete the `lab=false takes no app_name` check -> the
+       ["false", real, "4a Tactile"] row is accepted; replace the lab-id `case`
+       with `*) ;;` -> the ".lab.other" row is accepted. */
+    for (const [l, id, nm] of [["true", real], ["false", lab], ["true", ""], ["maybe", lab], ["", real],
+      ["true", `${lab}.other`], ["true", lab, "4a"], ["true", tactile, ""], ["true", lab, "Real App"], ["false", real, "4a Tactile"]]) {
+      const r = runConsistency(action, { lab: l, appId: id, appName: nm });
+      assert.notEqual(r.status, 0, `lab=${JSON.stringify(l)} app_id=${JSON.stringify(id)} app_name=${JSON.stringify(nm)} was accepted`);
       assert.equal(r.config.appId, real, "a refused run still edited the config");
       assert.equal(r.env, "", "a refused run still set FORAY_LAB");
     }
@@ -136,6 +143,17 @@ for (const [label, action, labSteps] of [["ios-archive", IOS, 3], ["android-bund
     assert.equal(on.config.appId, "ai.jwlabs.foura.lab");
     assert.equal(on.config.appName, "4a Lab");
     assert.match(on.env, /^FORAY_LAB=1$/m);
+    /* The per-direction apps: Tactile gets its own id, Ambient keeps the lab id under its own name.
+       MUTATION: drop `--app-id "$APP_ID_IN" --app-name "$APP_NAME_IN"` from the apply-config call
+       -> Tactile and Ambient both build as plain "4a Lab" (red). */
+    const tac = runConsistency(action, { lab: "true", appId: "ai.jwlabs.foura.lab.tactile", appName: "4a Tactile" });
+    assert.equal(tac.status, 0, tac.out);
+    assert.equal(tac.config.appId, "ai.jwlabs.foura.lab.tactile");
+    assert.equal(tac.config.appName, "4a Tactile");
+    const amb = runConsistency(action, { lab: "true", appId: "ai.jwlabs.foura.lab", appName: "4a Ambient" });
+    assert.equal(amb.status, 0, amb.out);
+    assert.equal(amb.config.appId, "ai.jwlabs.foura.lab");
+    assert.equal(amb.config.appName, "4a Ambient");
     const off = runConsistency(action, { lab: "false", appId: "ai.jwlabs.foura" });
     assert.equal(off.status, 0, off.out);
     assert.equal(off.config.appId, "ai.jwlabs.foura");
@@ -147,17 +165,21 @@ for (const [label, action, labSteps] of [["ios-archive", IOS, 3], ["android-bund
 test("ios-archive: the lab reads the bundle id, display name and flag back out of the generated project", () => {
   const s = step(IOS, "Lab variant - read the identity back");
   assert.ok(s);
-  assert.match(s, /PRODUCT_BUNDLE_IDENTIFIER = ai\.jwlabs\.foura\.lab;/);
+  /* MUTATION: hard-code `ai.jwlabs.foura.lab` back into the grep -> a Tactile build is
+     "verified" against the wrong id and fails (or, worse, an Ambient id passes Tactile). */
+  assert.match(s, /PRODUCT_BUNDLE_IDENTIFIER = \$APP_ID_IN;/);
   assert.match(s, /PRODUCT_BUNDLE_IDENTIFIER = ai\.jwlabs\.foura;/, "the real id must be asserted ABSENT");
   assert.match(s, /CFBundleDisplayName/);
-  assert.match(s, /"4a Lab"/);
+  assert.match(s, /"\$DISPLAY_NAME" = "\$APP_NAME_IN"/);
+  assert.match(s, /APP_ID_IN: \$\{\{ inputs\.app_id \}\}/);
+  assert.match(s, /APP_NAME_IN: \$\{\{ inputs\.app_name \}\}/);
   assert.match(s, /foray-lab\.js/);
   assert.ok(IOS.indexOf("Lab variant - read the identity back") > IOS.indexOf("Build the webDir and generate the iOS project"));
 });
 
 /** A generated Android project as `npx cap add android` leaves it: ONE build file
  *  (Groovy build.gradle today), strings.xml, and the copied web bundle. */
-function runAndroidReadBack({ appId = "ai.jwlabs.foura.lab", name = "4a Lab", kts = false, flag = true } = {}) {
+function runAndroidReadBack({ appId = "ai.jwlabs.foura.lab", name = "4a Lab", kts = false, flag = true, wantId = "ai.jwlabs.foura.lab", wantName = "4a Lab" } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lab-readback-"));
   const put = (rel, body) => {
     fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
@@ -168,7 +190,7 @@ function runAndroidReadBack({ appId = "ai.jwlabs.foura.lab", name = "4a Lab", kt
   put("mobile/android/app/src/main/assets/public/foray-lab.js", flag ? "window.__FORAY_LAB__ = true;\n" : "\n");
   put("mobile/android/app/src/main/assets/public/index.html", '<script src="foray-lab.js"></script>\n');
   fs.writeFileSync(path.join(dir, "step.sh"), runOf(step(AND, "Lab variant - read the identity back")));
-  const r = spawnSync(BASH, ["step.sh"], { cwd: dir, encoding: "utf8" });
+  const r = spawnSync(BASH, ["step.sh"], { cwd: dir, encoding: "utf8", env: { ...process.env, APP_ID_IN: wantId, APP_NAME_IN: wantName } });
   return { status: r.status, out: (r.stdout || "") + (r.stderr || "") };
 }
 
@@ -183,7 +205,16 @@ test("android-bundle: the identity read-back RUNS clean on a generated project a
   assert.equal(okKts.status, 0, okKts.out);
   /* MUTATION: delete the "still declares the REAL applicationId" if-block AND the
      lab-id grep -> the real-id row is accepted (red). */
-  for (const [label, opts] of [["real application id", { appId: "ai.jwlabs.foura" }], ["real app name", { name: "4a" }], ["no lab flag", { flag: false }]]) {
+  /* MUTATION: hard-code `ai.jwlabs.foura.lab` / '4a Lab' back into the two greps -> the
+     tactile row below is refused (red), and the "id of the other direction" row is accepted. */
+  const tac = runAndroidReadBack({ appId: "ai.jwlabs.foura.lab.tactile", name: "4a Tactile", wantId: "ai.jwlabs.foura.lab.tactile", wantName: "4a Tactile" });
+  assert.equal(tac.status, 0, tac.out);
+  const amb = runAndroidReadBack({ name: "4a Ambient", wantName: "4a Ambient" });
+  assert.equal(amb.status, 0, amb.out);
+  for (const [label, opts] of [["real application id", { appId: "ai.jwlabs.foura" }], ["real app name", { name: "4a" }], ["no lab flag", { flag: false }],
+    ["project has the plain lab id but Tactile was asked", { wantId: "ai.jwlabs.foura.lab.tactile", wantName: "4a Tactile", name: "4a Tactile" }],
+    ["project has the Tactile id but plain lab was asked", { appId: "ai.jwlabs.foura.lab.tactile" }],
+    ["project name is Lab but Ambient was asked", { wantName: "4a Ambient" }]]) {
     const r = runAndroidReadBack(opts);
     assert.equal(r.status, 1, `${label} was accepted: ${r.out}`);
     assert.match(r.out, /::error::/, `${label} failed without saying why`);
@@ -209,9 +240,10 @@ test("android-bundle: the lab reads applicationId, name and flag back; the icon 
      -> the lab's AAB goes to the REAL app's Play listing (red). */
   const s = step(AND, "Lab variant - read the identity back");
   assert.ok(s);
-  assert.match(s, /applicationId\[ =\]\+"ai\\\.jwlabs\\\.foura\\\.lab"/);
+  assert.match(s, /applicationId\[ =\]\+\\"\$\{APP_ID_IN\/\/\.\/\\\\\.\}\\"/);
   assert.match(s, /still declares the REAL applicationId/);
-  assert.match(s, /app_name">4a Lab</);
+  assert.match(s, /app_name\\">\$APP_NAME_IN</);
+  assert.match(s, /APP_ID_IN: \$\{\{ inputs\.app_id \}\}/);
   assert.match(s, /foray-lab\.js/);
   const icon = step(AND, "Lab variant - replace the launcher icon");
   assert.match(icon, /inject-splash\.mjs android [^\n]*--icon "\$RUNNER_TEMP\/lab-icon-1024\.png"/);
