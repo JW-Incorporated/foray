@@ -89,3 +89,9 @@ Calls made without the owner or the art director in the loop (2026-10-09). The h
 2. **Detail actions and notes were 6px high** (the ruling's remaining gap): the peek eyebrow was an inline span taking the sheet line-height as its strut, 6px taller than a caption line. `display: block` on it; fidelity now reads actions 0 and notes 0.
 3. **The detail step shoots a 4a-added peek** (prototype: 4a pick over Up Next (5)); the app calls a pick 4a's only from the tail, which needs an empty queue, so the harness stands the tail source in for the queue's next item (restored by resetAmbientNowPlaying).
 4. now-playing.css stays under its 15 KB budget (orchestrator ruling of 2026-10-08).
+
+## Iteration 8 (workflow 20)
+
+- Fidelity re-shot on 5 rows (now-playing, episode, paused, segchange, detail): every region delta 0 px, including the detail row's actions and notes (the 6px gap closed in iteration 7). `ui/now-playing.css` is within its 15 KB per-file budget (orchestrator ruling 2026-10-08); the total bundle budget is untouched.
+- Room backdrop: the blurred layer is now inset `calc(-12% - 64px)`, past its own blur radius, so the blur fade can never land inside the viewport. With the sleeve hidden the Room already rendered as one smooth diagonal light (no edge visible); the colour "bands" in the full screen are that light seen in the 38px gutters beside the sleeve, so this is a belt-and-braces change, pinned in `test/ambient-now-playing.test.js` (mutation named there).
+- Strip current bar: re-checked, no change needed. The bar keeps one rounded silhouette (20 tall inside 16-tall neighbours, `overflow: hidden`) with the lighter fill advancing inside it; the "square stub" in the finding was the pre-iteration-2 rendering.

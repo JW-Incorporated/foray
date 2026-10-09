@@ -176,6 +176,10 @@ test("a Foray's Room is its blurred collage, the sleeve casts ONE tone of light,
   assert.match(ui, /for \(const layer of ui\.roomLayers\) if \(layer\.dataset\.artless === "1"\) agNpFillRoomCollage\(layer, sources\);/, "a collage that arrives after setRoom still reaches the layer that is on");
   assert.match(ui, /for \(const layer of ui\.roomLayers\) if \(layer\.dataset\.artless === "1"\) layer\.replaceChildren\(\);/, "an episode never inherits a Foray's collage");
   assert.match(css, /\.ag-np-room-collage \{[^}]*position: absolute;[^}]*height: 66%;[^}]*display: grid;/s);
+  /* The blurred layer is inset past its own blur radius (64px) so the blur's fade never lands inside the viewport; with a bare -12% the
+     layer edge sat 47px out on a 393 wide sheet and a colour band could read down each screen edge.
+     MUTATION: put `inset: -12%;` back on `.ag-np-room-layer` (drop the `- 64px`) -> red. */
+  assert.match(css, /\.ag-np-room-layer \{[^}]*inset: calc\(-12% - 64px\);[^}]*filter: blur\(64px\)/s, "the Room layer bleeds past the viewport by at least its blur radius");
   assert.match(css, /\.ag-np-room-tile \{[^}]*background: var\(--c, transparent\)/);
   assert.match(ui, /ui\.artSwap\.style\.setProperty\("--art-glow", glow\);/, "the glow colour lives on the art box so the collage and an episode sleeve both cast it, in ONE tone");
   assert.doesNotMatch(ui, /halo/i, "no second blurred copy of the collage: its tones spilled as a purple/teal/orange ring");

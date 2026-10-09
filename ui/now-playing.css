@@ -12,7 +12,7 @@
 /* The Room is lit from above: a Glow wash (55% at 50% / 18%) sits under the blurred art, as the prototype's .room-bg::before does, so the top
    zone is a warm light and not a flat grey wherever the artwork is dull; it is the first child of the layers, so it paints under them. */
 .ag-np.fp-sheet .ag-np-room-layers::before { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 55% at 50% 18%, color-mix(in oklab, var(--glow) 55%, transparent), transparent 75%); }
-.ag-np.fp-sheet .ag-np-room-layer { position: absolute; inset: -12%; opacity: 0; background: var(--room-art, none) center/cover; filter: blur(64px) saturate(130%); transform: scale(1.4); transition: opacity var(--m-room) var(--e-out); }
+.ag-np.fp-sheet .ag-np-room-layer { position: absolute; inset: calc(-12% - 64px); opacity: 0; background: var(--room-art, none) center/cover; filter: blur(64px) saturate(130%); transform: scale(1.4); transition: opacity var(--m-room) var(--e-out); }
 .ag-np.fp-sheet .ag-np-room-layer.is-on { opacity: var(--room-art-opacity); }
 .ag-np.is-paused .ag-np-room-layer.is-on { opacity: .7; }
 /* A Foray's Room is its collage, blurred with the layer: the tones of every sleeve in the wall. The grid fills the top two thirds
