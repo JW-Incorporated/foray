@@ -2944,7 +2944,7 @@ const BACKEND_FLOORS = {
          new literal appears anywhere in src/;
        generateForaysArgs — the --budget-usd flag and what it actually moves. */
   "test/checkpoint.test.ts": 14,
-  "test/generateForaysArgs.test.ts": 13, // round-3 L6 (2026-09-25): backend-rest-7: report.json merged across re-runs, publish records kept; 10 -> 13
+  "test/generateForaysArgs.test.ts": 18, // CH2-25 (2026-10-09): +5 -- both generation CLIs default to DEFAULT_AUTHOR_ID, both read --author-id, --author kept one release with a deprecation line, --author-id wins, and no-flag runs of both record into BudgetGuard under one userId; 13 -> 18 // round-3 L6 (2026-09-25): backend-rest-7: report.json merged across re-runs, publish records kept; 10 -> 13
   "test/models.test.ts": 7,
   "test/researchTopicFilter.test.ts": 17,
   /* F-59 (docs/curation/generation-run-2026-09-09.md): the topic resolver's

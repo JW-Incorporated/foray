@@ -35,18 +35,9 @@ import {
  * (`finalizeForay.ts`) — the Foray-level fields (id/title/topic/summary/
  * slots/runtimeSec) plus `items: ForayItem[]`, i.e. exactly
  * `stitchForay()`'s own `StitchForayResult.items` (§4.8's output) with
- * §4.9's few additional fields §4.8 has no reason to own. This is a real,
- * honest seam: §4.0-4.8 are wired stage-to-stage as in-memory function
- * calls (see `stitchForay.ts`), but nothing yet drives the WHOLE chain
- * end to end from one CLI entry point — `generateForay.ts` (§4.0-4.1's
- * own CLI) stops at "understood", because §4.2 (research) is the next
- * unbuilt stage in that chain, not because of anything §4.9 does. A
- * founder or a future orchestrating script runs the pipeline's stages
- * and hands this CLI their `stitchForay()` result as JSON; wiring one
- * top-to-bottom `npm run generate-foray-full` command is explicitly
- * out of scope for this stage's own task brief (§4.9 is "finalize AND
- * PUBLISH", not "orchestrate 4.0-4.8") and is honestly flagged as a gap
- * in `docs/curation/generation-pipeline-status.md`.
+ * §4.9's few additional fields §4.8 has no reason to own. The candidate
+ * files `npm run generate-forays` (`generateForays.ts`) writes are in
+ * exactly this shape.
  *
  * WHAT THIS DOES, IN ORDER:
  *   0. `git fetch origin main` and refuse, before anything else, if the
