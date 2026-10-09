@@ -2524,6 +2524,7 @@ const BACKEND_FLOORS = {
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
   "test/property/interestWeight.property.test.ts": 3,
+  "test/readme.test.ts": 4, // CH2-37 (B2-19, docs/roadmap/code-health-2.md): new -- backend/README.md's CLI table equals package.json's tsx scripts (name and source file), it sends the reader to src/config/models.ts / modelFor("haiku") and writes no literal model id, it names every backend/src file a tools/ script imports or reads next to that script, and it states no test count
   "test/redirect.test.ts": 8, // CH2-26 (2026-10-07): resolveRedirectChain sends DEFAULT_FEED_USER_AGENT by default and the caller's userAgent when passed (no config/env import); 6 -> 8
   "test/scoring.test.ts": 17,
   "test/sessionBuilder.test.ts": 23, // #72 R17 provenance: signals name real matched taxonomy nodes, persona only when it weighted a match, recency/depth/fatigue follow the score log, stretch = wildcard + bridge, builder stamped; 15 -> 23 // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
