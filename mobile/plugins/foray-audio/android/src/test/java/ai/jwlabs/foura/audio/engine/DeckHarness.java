@@ -27,6 +27,12 @@ import java.util.function.Consumer;
  * deck's deadline, its settle and its watchdog all run in virtual time), with a
  * {@link CapturingAudioRenderer} as the only renderer. Every event the deck emits and every
  * row it writes is kept, in order.
+ *
+ * <p>The one thing in the rig that is NOT virtual is the loader thread reading the fixture, and
+ * {@link RealIoHold} keeps virtual time still while it does: without that, how far the deck's
+ * deadline and the player's buffer got during a load depended on how fast the runner read a file
+ * (the android-shell flake; the class's header has the evidence). Every data source the deck
+ * builds goes through {@link #ioHold}.
  */
 @OptIn(markerClass = UnstableApi.class)
 final class DeckHarness implements AutoCloseable {
@@ -34,6 +40,7 @@ final class DeckHarness implements AutoCloseable {
     final FakeClock clock = new FakeClock(/* isAutoAdvancing= */ true);
     final CapturingAudioRenderer renderer = new CapturingAudioRenderer();
     final ExoPlayer player;
+    final RealIoHold ioHold;
     final ExoDeck deck;
     final List<DeckEvent> events = new ArrayList<>();
     /** The player's position (seconds) at the moment each event was delivered, index for index. */
@@ -54,8 +61,9 @@ final class DeckHarness implements AutoCloseable {
     /** {@code dataSources} null: the default source (file URIs). */
     DeckHarness(DataSource.Factory dataSources, Consumer<ExoDeck.Config> tweak) {
         player = new TestExoPlayerBuilder(context).setClock(clock).setRenderers(renderer).build();
+        ioHold = new RealIoHold(player.getPlaybackLooper());
         ExoDeck.Config config = new ExoDeck.Config();
-        config.mediaSources = ExoDeck.progressive(dataSources != null ? dataSources : new DefaultDataSource.Factory(context));
+        config.mediaSources = ExoDeck.progressive(ioHold.wrap(dataSources != null ? dataSources : new DefaultDataSource.Factory(context)));
         config.diag = rows::add;
         config.writeRow = logRows::add;
         config.debugFault = faults::add;
@@ -71,10 +79,11 @@ final class DeckHarness implements AutoCloseable {
     }
 
     /**
-     * The wall-time bound on a wait. The clock the player runs on is fake, but the bound is real:
-     * RobolectricUtil's 10 s default timed three of these cases out on a busy runner while the
-     * same cases passed on the runs either side (android-build run 36650414482, attempt 1). A
-     * minute only costs anything when the condition never holds.
+     * The wall-time bound on a wait: a backstop against a condition that can never hold, not a
+     * tuning knob. The clock the player runs on is fake, but the bound is real. It was raised from
+     * RobolectricUtil's 10 s default when the first android-shell timeouts appeared (run
+     * 36650414482); those were the {@link RealIoHold} race, which no bound fixes, and a minute
+     * only costs anything when the condition never holds.
      */
     static final long WAIT_MS = 60_000;
 
@@ -154,6 +163,8 @@ final class DeckHarness implements AutoCloseable {
     @Override
     public void close() {
         deck.invalidate();
+        // The hold first: a release must never wait on a loader thread, and nothing is measured now.
+        ioHold.close();
         player.release();
     }
 }

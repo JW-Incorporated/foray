@@ -545,7 +545,11 @@ used (docs/ios-native-engine-measurements.md), so the two platforms can be compa
 The numbers are therefore Media3 1.11.0's own logic: the extractors and their seek maps, the
 playback loop's 10 ms work cadence, positioned-message delivery, and the deck's timers. They are
 in VIRTUAL time, over a local file. They are not a device's audio latency and not a CDN's. The
-emulator's native leg (A-26, A-30) and the device pass after A-42 measure those.
+emulator's native leg (A-26, A-30) and the device pass after A-42 measure those. The one real
+thread in the rig, the loader reading the file, is held OUT of virtual time by the harness
+(`RealIoHold`): until it was, the virtual time a load took to READY depended on how fast the
+runner read a file (`readyVirtualMs` ran 0..15 s in one run), and the deck's 20 s load deadline
+fired first on busy runners, the android-shell flake.
 
 **How an in-point is judged.** Media3 labels every sample with a media time; after a seek, that
 label comes from the file's seek map. The first sample the listener hears is located IN THE FILE by
