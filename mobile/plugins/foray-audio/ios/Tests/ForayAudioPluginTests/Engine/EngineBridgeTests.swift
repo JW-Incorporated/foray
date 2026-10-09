@@ -90,7 +90,8 @@ final class EngineBridgeTests: XCTestCase {
         let owner: FakeOwner
         let bridge: EngineBridge
 
-        init(native: Bool = true, capabilities: [String]? = ["episode", "continuation"], preview: Bool = false) {
+        init(native: Bool = true, capabilities: [String]? = ["episode", "continuation"], preview: Bool = false,
+             config: EngineConfig = EngineConfig(build: "test")) {
             let world = FakeWorld()
             // NE-47: the voice preview's own deck, logging as `preview.*`.
             if preview { world.preview = FakeDeck(log: world.log, name: "preview") }
@@ -98,7 +99,7 @@ final class EngineBridgeTests: XCTestCase {
             let clock = FakeTiming(log: SeamLog())
             var engine: ForayEngine?
             if native {
-                let built = ForayEngine(seams: world.seams, config: EngineConfig(build: "test"))
+                let built = ForayEngine(seams: world.seams, config: config)
                 built.start()
                 engine = built
             }
@@ -730,6 +731,46 @@ final class EngineBridgeTests: XCTestCase {
         XCTAssertEqual(rig.events.count, 0)
         let snapshot = rig.bridge.read(Self.json(#"{"what":"snapshot"}"#))
         XCTAssertEqual(snapshot["lastError"], .string("chain-start"))
+    }
+
+    /// CH3-12 (R1-17): `lastError` means the CURRENT item, because the page
+    /// settles a downloaded copy's failure from it when it comes back
+    /// (client.js `settleEngineLocalLoad`). A refused start and an input that
+    /// starts nothing leave it; every accepted start ends it (a Foray, a
+    /// restored bar, the page's play), and so does a load the core began by
+    /// itself (a remote ▶, an auto-advance).
+    /// RED on main: R1-17 (cleared on a successful `playEpisode` alone).
+    /// TO SEE IT FAIL: clear `lastError` on `playEpisode` alone (the Foray
+    /// and the restored bar keep it), or drop the newer-load rule in
+    /// `transitioned()` (the remote start keeps it).
+    @MainActor
+    func testLastErrorEndsWithEveryAcceptedStart() {
+        let rig = Rig(capabilities: ["episode", "continuation", "foray"],
+                      config: EngineConfig(build: "test", forayTapeEnabled: true))
+        _ = rig.bridge.hello(Self.hello)
+        func lastError() -> JSONNode? { rig.bridge.read(Self.json(#"{"what":"snapshot"}"#))["lastError"] }
+
+        rig.engine?.onEmit?(.error(code: "load", message: "file not found"))
+        XCTAssertEqual(lastError(), .string("load"))
+        XCTAssertEqual(rig.send("play")["ok"], .bool(false), "fixture premise: nothing to play")
+        XCTAssertEqual(lastError(), .string("load"), "a refused start leaves it")
+        rig.send("setPageVisible", #"{"visible":false}"#)
+        XCTAssertEqual(lastError(), .string("load"), "an input that starts nothing leaves it")
+
+        let foray = rig.send("playForay", #"{"forayId":"f1","title":"A Foray","items":["#
+            + #"{"id":"f1#0","kind":"tts","type":"narration","script":"a line","audio_url":null,"duration_sec":4},"#
+            + #"{"id":"f1#1","kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"duration_sec":3600}"#
+            + #"],"buildReport":{},"isLocalFile":false,"allowAdPad":false,"voiceId":null}"#)
+        XCTAssertEqual(foray["ok"], .bool(true), JSWriter.stringify(foray))
+        XCTAssertEqual(lastError(), .null, "a Foray is a new current item")
+
+        rig.engine?.onEmit?(.error(code: "load", message: "file not found"))
+        XCTAssertEqual(rig.send("restoreBar")["ok"], .bool(true))
+        XCTAssertEqual(lastError(), .null, "a restored bar is a new current item")
+
+        rig.engine?.onEmit?(.error(code: "load", message: "file not found"))
+        rig.engine?.handle(.queue(.playIndex(1, startSec: nil, source: .remote)))
+        XCTAssertEqual(lastError(), .null, "a load the core began by itself names a new current item")
     }
 
     /// Capacitor's options become the core's JSON with booleans kept apart

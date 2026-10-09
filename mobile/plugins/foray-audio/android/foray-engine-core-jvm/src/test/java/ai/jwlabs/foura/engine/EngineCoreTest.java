@@ -446,6 +446,99 @@ public class EngineCoreTest {
         assertTrue(failed.toString(), failed.contains(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("chain-start", "404"))));
     }
 
+    // ---- CH3-12 (R4-03): a downloaded file that will not open streams instead (Swift's EngineCoreTests twins)
+
+    /**
+     * An episode as the page sends a downloaded one (download-store.js {@code localPlayable}):
+     * the file in {@code audio_url}, the stream kept as {@code source_audio_url}.
+     */
+    static EngineItem downloaded(String id, String file) {
+        return EngineItem.of(obj("id", JsonNode.str(id), "kind", JsonNode.str("episode"),
+                "audio_url", JsonNode.str(file != null ? file : "file:///data/foray-downloads/" + id + ".mp3"),
+                "source_audio_url", JsonNode.str("https://cdn.example/" + id + ".mp3")));
+    }
+
+    static List<String> loadUrls(List<EngineCommand> commands) {
+        List<String> urls = new ArrayList<>();
+        for (EngineCommand c : commands) {
+            if (c instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Load load) urls.add(String.valueOf(load.url()));
+        }
+        return urls;
+    }
+
+    static boolean anyStopRow(List<EngineCommand> commands) {
+        return index(commands, c -> c instanceof EngineCommand.Diag d && d.entry().kind().equals("stop")) >= 0;
+    }
+
+    static List<EngineCommand> fail(Host host, String message) {
+        return host.send(new EngineInput.Deck(new DeckEvent.Failed(host.lastLoad, message)));
+    }
+
+    /**
+     * A cold-restored downloaded episode whose file is gone loads its stream instead, at the
+     * same second, with no stop row; the page still hears {@code error} code {@code load}. A
+     * failure of the fallback stops as today. RED on main: R4-03. TO SEE IT FAIL: drop
+     * {@code fallBackToStream} from {@code onLoadFailure}, or let it retry on its own stream.
+     */
+    @Test
+    public void aDownloadThatWillNotOpenFallsBackToItsStreamOnce() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(downloaded("a", null)))));
+        List<EngineCommand> first = host.send(new EngineInput.Queue(new QueueInput.PlayIndex(0, 42.0, Source.TAP)));
+        assertEquals(List.of("file:///data/foray-downloads/a.mp3"), loadUrls(first));
+        List<EngineCommand> failed = fail(host, "file not found");
+        assertEquals("one load, on the stream: " + failed, List.of("https://cdn.example/a.mp3"), loadUrls(failed));
+        assertFalse("a fallback is not a stop: " + failed, anyStopRow(failed));
+        assertTrue("the page marks the download missing: " + failed,
+                failed.contains(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", "file not found"))));
+        assertEquals("the same second", 42.0, host.core.state().pendingLoad.startSec(), 0);
+        assertEquals("the listener's play is still on", "loadingItem", host.core.state().stateType());
+        assertTrue("the deck row names the fallback: " + failed, index(failed, c -> c instanceof EngineCommand.Diag d
+                && d.entry().kind().equals("deck") && JsonNode.str("stream-fallback").equals(d.entry().field("kind"))) >= 0);
+
+        List<EngineCommand> again = fail(host, "offline");
+        assertEquals("once: the stream failing too is today's stop", List.of(), loadUrls(again));
+        assertCauseFirst(Vocabulary.StopCause.ERROR, again);
+        assertTrue(again.contains(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", "offline"))));
+        assertEquals("idle", host.core.state().stateType());
+    }
+
+    /** The fallback lands and plays like any load. */
+    @Test
+    public void aStreamFallbackThatLandsPlays() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(downloaded("a", null)))));
+        host.send(playIndex(0));
+        host.send(new EngineInput.Deck(new DeckEvent.DeadlineExceeded(host.lastLoad, 20000)));
+        List<EngineCommand> landed = host.land();
+        assertTrue(landed.toString(), index(landed, EngineCoreTest::isPlay) >= 0);
+        assertEquals("a", host.core.state().loadedId);
+    }
+
+    /** Only a FILE falls back. TO SEE IT FAIL: drop the {@code file:} check in {@code fallBackToStream}. */
+    @Test
+    public void aStreamThatWillNotOpenIsNotRetried() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(downloaded("a", "https://mirror.example/a.mp3")))));
+        host.send(playIndex(0));
+        List<EngineCommand> failed = fail(host, "http-404");
+        assertEquals(failed.toString(), List.of(), loadUrls(failed));
+        assertCauseFirst(Vocabulary.StopCause.ERROR, failed);
+        assertEquals("idle", host.core.state().stateType());
+    }
+
+    /** A file with no stream to fall back on is today's stop. */
+    @Test
+    public void aFileWithNoSourceIsNotRetried() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(EngineItem.of(obj("id", JsonNode.str("a"),
+                "kind", JsonNode.str("episode"), "audio_url", JsonNode.str("file:///x/a.mp3")))))));
+        host.send(playIndex(0));
+        List<EngineCommand> failed = fail(host, "file not found");
+        assertEquals(failed.toString(), List.of(), loadUrls(failed));
+        assertCauseFirst(Vocabulary.StopCause.ERROR, failed);
+    }
+
     // ---- the tokens are the generated ones
 
     @Test

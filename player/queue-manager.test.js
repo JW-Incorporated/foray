@@ -574,6 +574,26 @@ test("previous after a failed load reloads the clip, and never ends the queue (p
   m.dispose();
 });
 
+test("CH3-12: a downloaded copy that will not load lands idle after one load — the JS lane's stream fallback is the page's", async () => {
+  /* Characterization (docs/roadmap/code-health-3.md CH3-12, R4-03). The
+     native engine streams a downloaded file that will not open by itself
+     (EngineCore `fallBackToStream`, pinned on both cores by
+     testADownloadThatWillNotOpenFallsBackToItsStreamOnce); in the JS lane the
+     fallback stays the page's (client.js `degradeLocalPlay`, test/
+     downloads.test.js), which reads exactly this idle landing. So the
+     manager itself never retries: one load, idle, nothing audible.
+     MUTATION: have `_loadItem` retry a failed load on `item.source_audio_url`
+     -> a second load and a playing state, red. */
+  const { m, backend } = make({ backend: { failLoadFor: ["a"] } });
+  m.setQueueFromPick(ep("a", { audio_url: "file:///files/a.mp3", source_audio_url: "https://cdn/a.mp3", isLocalFile: true }));
+  await m.play(0).catch(() => {});
+  await tick();
+  assert.equal(m.state.type, "idle");
+  assert.deepStrictEqual(backend.loads(), ["load:a"], `one load, no stream retry: ${backend.calls}`);
+  assert.ok(!backend.calls.includes("play"), `nothing audible: ${backend.calls}`);
+  m.dispose();
+});
+
 test("ROUND 2 review: a play settling mid-skip-back does not wipe the skip's armed restart offset", async () => {
   /* `_transport`'s finally used to clear `_forceNextOffset` whatever action
      armed it. A play still awaiting `backend.play()` can settle while a

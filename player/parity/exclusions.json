@@ -944,6 +944,10 @@
     "CH-37: the manager asks the backend `audible`, and only `true` counts": {
       "reason": "js-module-shape",
       "why": "The JS manager's `elementIsAudible` getter taking the injected backend's `audible` answer (CH-37): which object composes \"is sound coming out\" from an element's flags. In native mode the page reads the engine's snapshot through NativeManagerFacade.elementIsAudible (native-facades.test.js), and the engine reads its own deck rather than a JS backend's answer, so nothing here is a rule the engine reimplements; what the drift guards DO with the answer is fixtured (manager-episode/pause-silences-an-audible-element, manager-remainder/stop-is-silence-behind-a-paused-machine)."
+    },
+    "CH3-12: a downloaded copy that will not load lands idle after one load — the JS lane's stream fallback is the page's": {
+      "reason": "webview-only",
+      "why": "In the JS lane a downloaded file that will not load is streamed by the PAGE (client.js degradeLocalPlay reads this idle landing; test/downloads.test.js). The native engine streams it by itself, because the page may be asleep when the file fails (CH3-12, R4-03): EngineCore's fallBackToStream, pinned by identically named unit tests on both cores (EngineCoreTests.testADownloadThatWillNotOpenFallsBackToItsStreamOnce, EngineCoreTest.aDownloadThatWillNotOpenFallsBackToItsStreamOnce), so the manager's no-retry is a web-lane arrangement the engine deliberately does not copy."
     }
   },
   "queue-state": {
