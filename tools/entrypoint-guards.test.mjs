@@ -38,7 +38,9 @@
  * `isEntryScript(import.meta.url)` from `tools/ci/entry.mjs`. CH2-41a made it
  * the only form allowed under `tools/ci`, `tools/release`, `tools/mobile` and
  * `tools/ops`; CH2-41b swept the rest of `tools/`, so it is now the only form
- * allowed for every CLI under `tools/`, and no file anywhere in the repo may
+ * allowed for every CLI under `tools/` except the two governed files named in
+ * GOVERNED_GUARD_EXEMPT below (on DENIED_PREFIXES, left for a founder-merged
+ * follow-up), and no file anywhere in the repo may
  * compare `import.meta.url` by hand (the `pathToFileURL` form the first rule
  * below used to bless included).
  *
@@ -446,6 +448,24 @@ export function guardOffences(rel, code) {
   return out;
 }
 
+/* GOVERNED, NOT YET SWEPT: the two tools/ CLIs that sit on DENIED_PREFIXES in
+   tools/ci/path-policy.mjs, so an agent PR may not change them unread. The card
+   (code-health-2.md CH2-41b, "Governed: none (the agent stops if the grep lists
+   a DENIED path)") stops there, so their legacy guards stay until a
+   founder-merged follow-up swaps them. Named here, with the reason, so the rule
+   below stays an honest claim about every OTHER CLI rather than quietly skipping
+   these two. The rule asserts each entry is still denied AND still offends, so
+   the list cannot outlive the swap. */
+export const GOVERNED_GUARD_EXEMPT = {
+  // The founder's R2 write-token uploader. tools/ci/path-policy.test.mjs pins
+  // "the uploader imports only node: builtins", so the swap must also amend
+  // that pin: importing ../ci/entry.mjs adds a non-builtin module to the
+  // credential path.
+  "tools/narration/upload-narration.mjs": "DENIED_PREFIXES: holds the founder's R2 write token; path-policy.test.mjs pins node:-only imports",
+  // The denied icon builder (imported by the denied injectors' pipeline).
+  "tools/brand/build-icons.mjs": "DENIED_PREFIXES: the denied icon builder (with tools/brand/png.mjs)",
+};
+
 test("CH2-41a/41b rule: every CLI under tools/ guards with isEntryScript from tools/ci/entry.mjs and no other form", () => {
   /* Every non-test .mjs under tools/ that defines main() imports isEntryScript
      from tools/ci/entry.mjs, and NO file there carries another guard form
@@ -458,22 +478,55 @@ test("CH2-41a/41b rule: every CLI under tools/ guards with isEntryScript from to
      MUTATION (run, CH2-41b): put tools/refresh/nightly-runner.mjs's basename
      guard back (`process.argv[1].replace(/\\/g, "/").endsWith(...)`) -> named
      here; and drop the guard from tools/refresh/scan.mjs (a bare `main()`) ->
-     named here as a main() with no isEntryScript. */
+     named here as a main() with no isEntryScript.
+     The two governed files in GOVERNED_GUARD_EXEMPT are held out by name.
+     MUTATION (run): delete the upload-narration.mjs entry from
+     GOVERNED_GUARD_EXEMPT -> its path.resolve guard is named here.
+     MUTATION (run): swap upload-narration.mjs's guard to isEntryScript without
+     dropping the exemption -> the exempt-but-clean assertion is red. */
   const offenders = [];
+  const exemptStillOffending = [];
   let scanned = 0;
   for (const rel of TRACKED) {
     if (!isToolsCli(rel)) continue;
     const abs = path.join(ROOT, rel);
     if (!fs.existsSync(abs)) continue;
     scanned++;
-    offenders.push(...guardOffences(rel, stripComments(fs.readFileSync(abs, "utf8"))));
+    const found = guardOffences(rel, stripComments(fs.readFileSync(abs, "utf8")));
+    if (Object.hasOwn(GOVERNED_GUARD_EXEMPT, rel)) {
+      if (found.length) exemptStillOffending.push(rel);
+      continue;
+    }
+    offenders.push(...found);
   }
   assert.ok(scanned >= 200, `premise: tools/ holds at least 200 non-test .mjs files, scanned ${scanned}`);
+  assert.deepStrictEqual(
+    exemptStillOffending.sort(),
+    Object.keys(GOVERNED_GUARD_EXEMPT).sort(),
+    "an exempt file no longer carries a legacy guard (or is gone): drop it from GOVERNED_GUARD_EXEMPT"
+  );
   assert.deepStrictEqual(
     offenders,
     [],
     "these CLIs are silent no-ops from a junction or symlinked checkout:\n" + offenders.join("\n")
   );
+});
+
+test("CH2-41b: the guard exemption holds only governed (DENIED_PREFIXES) paths, each with a reason", async () => {
+  /* The exemption exists because an agent PR may not touch these files unread;
+     an ungoverned file has no such excuse and must be swept instead.
+     MUTATION (run): add "tools/refresh/scan.mjs" to GOVERNED_GUARD_EXEMPT ->
+     path-policy does not deny it -> red. */
+  const { pathPolicy } = await import(pathToFileURL(path.join(ROOT, "tools", "ci", "path-policy.mjs")).href);
+  for (const [rel, why] of Object.entries(GOVERNED_GUARD_EXEMPT)) {
+    assert.ok(isToolsCli(rel), `${rel} is not a non-test tools/ .mjs`);
+    assert.match(why, /DENIED_PREFIXES/, `${rel}: the reason names the governing list`);
+    assert.deepStrictEqual(
+      pathPolicy([rel]).denied.map((d) => d.file),
+      [rel],
+      `${rel} is exempt from the entry-guard rule but tools/ci/path-policy.mjs does not deny it: sweep it instead`
+    );
+  }
 });
 
 test("CH2-41a/41b rule: the offence detector names each legacy form and accepts the helper", () => {

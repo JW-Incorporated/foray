@@ -18,7 +18,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isEntryScript } from "../ci/entry.mjs";
 import { decode, encode } from "./png.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -171,7 +170,7 @@ export function loadMaster() {
   return decode(fs.readFileSync(MASTER));
 }
 
-if (isEntryScript(import.meta.url)) {
+if (process.argv[1] && process.argv[1].endsWith("build-icons.mjs")) {
   const master = loadMaster();
   console.log(`master ${path.relative(ROOT, MASTER)}: ${master.width}x${master.height}`);
   for (const { file, px } of SIZES) {
