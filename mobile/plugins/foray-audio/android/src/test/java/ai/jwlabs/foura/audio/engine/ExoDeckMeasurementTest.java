@@ -233,7 +233,8 @@ public class ExoDeckMeasurementTest {
     public static void writeReport() throws IOException, JSONException {
         JSONObject report = new JSONObject()
                 .put("card", "A-25")
-                .put("clock", "media3-test-utils FakeClock (virtual time), Robolectric, local files")
+                .put("clock", "media3-test-utils FakeClock (virtual time), Robolectric, local files; "
+                        + "the file reads are held out of virtual time (RealIoHold)")
                 .put("inPoint", new JSONArray(IN_TRIALS))
                 .put("outPoint", new JSONArray(OUT_TRIALS));
         String art = System.getenv("ART");
