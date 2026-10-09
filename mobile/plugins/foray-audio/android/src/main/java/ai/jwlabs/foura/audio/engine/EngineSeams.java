@@ -43,7 +43,12 @@ public final class EngineSeams {
      * ({@code session-failed:other}), and a call in progress (CH3-08, R5-02: the audio mode is
      * {@code MODE_IN_CALL} or {@code MODE_IN_COMMUNICATION}; token {@code insufficient-priority},
      * what iOS's {@code setActive(true)} fails with on a call, admitted as
-     * {@code session-failed:other}). It CANNOT refuse for focus itself. There is no way to ask
+     * {@code session-failed:other}). The call check is a PRESS's only: the core's own resume when
+     * an interruption ends answers Media3's AUDIOFOCUS_GAIN, which the system sends only once the
+     * call has given focus up, so it is granted without reading the audio mode, even when the mode
+     * still says {@code MODE_IN_CALL} (Telecom resets it after abandoning the call's focus;
+     * {@code ForayPlaybackServiceTest.aResumeWhoseFocusReturnsBeforeTheModeSaysNormalIsStillGranted}).
+     * It CANNOT refuse for focus itself. There is no way to ask
      * for focus without taking it from Media3's own request, and Media3 1.11 asks on its playback
      * thread after the press's turn is over
      * ({@code FocusIntegrationTest.aPlayRefusedFocusReadsAsPlayingInItsTurnAndArrivesLaterAsAPermanentLoss}).

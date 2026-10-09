@@ -13,6 +13,7 @@ import ai.jwlabs.foura.engine.EngineContract;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.MediaMapping;
+import ai.jwlabs.foura.engine.PlayerQueueState;
 import ai.jwlabs.foura.engine.Vocabulary;
 import android.media.AudioManager;
 import android.os.Bundle;
@@ -217,6 +218,83 @@ public class ForayPlaybackServiceTest {
         assertNull(ForayPlaybackService.callInProgress(AudioManager.MODE_NORMAL));
         assertNull("a ringing phone is not yet a call: Media3's own focus request answers for it",
                 ForayPlaybackService.callInProgress(AudioManager.MODE_RINGTONE));
+    }
+
+    private static List<String> rowsOfKind(ForayPlaybackService s, String kind) {
+        List<String> out = new ArrayList<>();
+        for (String row : s.rows()) if (row.contains("\"kind\":\"" + kind + "\"")) out.add(row);
+        return out;
+    }
+
+    /**
+     * The core is resuming: it reloads the item in place to play it once the deck is ready (a
+     * Robolectric deck never turns ready on a network URL, so the core's state is the read; a
+     * refused resume leaves it interrupted, not playing).
+     */
+    private static void assertResuming(ForayPlaybackService s) {
+        assertTrue("the core resumes the item: " + s.host().state().player,
+                s.host().state().player instanceof PlayerQueueState.LoadingItem);
+    }
+
+    /** Listening, then a call: Media3's transient loss, as the focus mapping reports it. */
+    private static void listeningThenACall(ForayPlaybackService s) {
+        s.handle(new EngineInput.Queue(new EngineInput.QueueInput.Load(ForayPlaybackService.items(QUEUE))));
+        audioMode(AudioManager.MODE_NORMAL);
+        assertTrue(s.handle(tap(0)).ok());
+        s.handle(new EngineInput.Session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        assertEquals("the call paused the deck", false, s.exoPlayer().getPlayWhenReady());
+    }
+
+    @Test
+    public void theResumeAfterTheCallStillActivatesAndPlays() {
+        /* The other caller of activate(): the core's own resume when the call ends
+           (SessionPolicy INTERRUPTION_ENDED, shouldResume && wasPlaying -> ACTIVATE). It was
+           granted unconditionally before CH3-08 and must stay granted, even after the seam has
+           refused a press during that same call.
+           MUTATION: activate() caches the call state (refuses whenever a call was seen earlier in
+           the session) -> red: the resume is refused, a second activate-refused row is written
+           and the core stays interrupted. */
+        ForayPlaybackService s = create();
+        listeningThenACall(s);
+        audioMode(AudioManager.MODE_IN_CALL);
+        assertEquals("a press during the call is refused", "commandFailed", ForayEngineHost.statusToken(
+                s.host().remote(new EngineInput.RemotePress(MediaMapping.RemoteCommand.PLAY))));
+        assertEquals(1, refusedRows(s).size());
+
+        audioMode(AudioManager.MODE_NORMAL);
+        ForayEngineHost.Verdict end = s.handle(new EngineInput.Session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertTrue("the resume is granted: " + end.failures(), end.ok());
+        assertEquals("no refusal for the resume: " + refusedRows(s), 1, refusedRows(s).size());
+        assertEquals("the item is kept", 1, s.exoPlayer().getMediaItemCount());
+        assertResuming(s);
+        List<String> activations = rowsOfKind(s, "activate");
+        assertTrue("the resume's activation row says ok: " + activations,
+                activations.get(activations.size() - 1).contains("\"ok\":true"));
+    }
+
+    @Test
+    public void aResumeWhoseFocusReturnsBeforeTheModeSaysNormalIsStillGranted() {
+        /* THE RACE (CH3-08 review): the end of a call reaches 4a as Media3's AUDIOFOCUS_GAIN, and
+           Telecom resets the audio mode around the same moment (it abandons the call's focus,
+           then sets MODE_NORMAL, and AudioService applies a mode change on its own thread). So
+           the resume's activate() can read MODE_IN_CALL. The gain is the authoritative fact (the
+           system returns focus only once the call has given it up), so the resume does not ask
+           the audio mode: it activates and plays, with no refusal row. Without this the driver
+           hears nothing after the call, which is R5-02's own failure.
+           MUTATION: activate() reads the audio mode for an interruption's resume too (drop the
+           resume check) -> red: session-failed:other, an activate-refused row, the core stays interrupted. */
+        ForayPlaybackService s = create();
+        listeningThenACall(s);
+        audioMode(AudioManager.MODE_IN_CALL);
+
+        ForayEngineHost.Verdict end = s.handle(new EngineInput.Session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertTrue("the resume is granted: " + end.failures(), end.ok());
+        assertTrue("no refusal row: " + refusedRows(s), refusedRows(s).isEmpty());
+        assertEquals("the item is kept", 1, s.exoPlayer().getMediaItemCount());
+        assertResuming(s);
+        /* The exemption is the resume's only: a press during the call (a Resume intent, not an
+           interruption's) is still refused, which
+           aRemotePlayDuringACallThatInterruptedTheListenIsCommandFailed pins. */
     }
 
     @Test

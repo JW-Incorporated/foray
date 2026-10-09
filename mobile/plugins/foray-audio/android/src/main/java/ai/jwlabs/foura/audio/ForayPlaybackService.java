@@ -350,9 +350,9 @@ public class ForayPlaybackService extends MediaSessionService {
 
     /**
      * The core's audio session on Android. Focus is Media3's (see {@link EngineSeams.Session}),
-     * so activation answers whether the session that owns the lock screen is alive and whether a
-     * call holds the audio (CH3-08); the rest are rows, because Android has no category to
-     * re-apply and no session to rebuild.
+     * so activation answers whether the session that owns the lock screen is alive and, for a
+     * press, whether a call holds the audio (CH3-08); the rest are rows, because Android has no
+     * category to re-apply and no session to rebuild.
      */
     private final class SessionSeam implements EngineSeams.Session {
         @Override
@@ -363,6 +363,12 @@ public class ForayPlaybackService extends MediaSessionService {
                setActive(true) fails in the press's turn, insufficient-priority for a call, which
                the core answers commandFailed(session-failed:other). Android reads the same fact
                up front from the audio mode: no permission, no focus request of its own. */
+            /* An interruption's resume is not a press: it is the core answering Media3's
+               AUDIOFOCUS_GAIN, which the system sends only once the call has given focus up. The
+               audio mode can still say IN_CALL at that moment (Telecom abandons the call's focus,
+               then resets the mode, which AudioService applies on its own thread), so the resume
+               does not ask it: refusing would be R5-02's "nothing resumes after the call". */
+            if (resumingAnInterruption()) return EngineSeams.Activation.granted();
             String call = callInProgress(audioMode());
             if (call == null) return EngineSeams.Activation.granted();
             String token = "insufficient-priority";
@@ -387,6 +393,16 @@ public class ForayPlaybackService extends MediaSessionService {
         public void rebuild() {
             log.diag(new EngineCommand.DiagEntry("session", kind("rebuild-noop")));
         }
+    }
+
+    /**
+     * Whether the activation the core is asking for is an interruption's resume (its parked
+     * intent, {@code onInterruptionEnded}'s or the begin it falls back to), not a listener's press.
+     */
+    private boolean resumingAnInterruption() {
+        ForayEngineHost engine = host;
+        EngineState.PendingActivation parked = engine == null ? null : engine.state().pendingActivation;
+        return parked != null && parked.intent() instanceof EngineState.DeferredIntent.InterruptionResume;
     }
 
     /** The audio mode now, or {@code MODE_NORMAL} when there is no AudioManager to ask. */
