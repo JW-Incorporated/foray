@@ -409,8 +409,10 @@ test("'Starred Shows' left the menu without leaving the app — Library carries 
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.strictEqual(m.ctx.location.hash, "#/library", "#/starred-shows folds into Library (ROUTE_ALIASES)");
-  assert.ok(m.view().includes("Show A"), "…and Library's grid paints the followed show");
+  /* REDESIGN 2026 (ambient Library): the Dock folded #/starred-shows into #/library (ROUTE_ALIASES), and Library's grid
+     has no "Followed shows" head, so the page still routing means the followed show is a ShowTile on the Library grid.
+     MUTATION: delete the "#/starred-shows" entry from ROUTE_ALIASES -> the route falls through to Today, no `lb-show` tile. */
+  assert.ok(/class="lb-tile lb-show"[^>]*>[^]*Show A/.test(m.view()), "#/starred-shows must still land on the followed shows (Library's grid)");
 });
 
 test("with nothing followed, Discover draws no 'Followed shows ›' row — a fresh install's first tappable row was a dead end", () => {

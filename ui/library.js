@@ -63,9 +63,10 @@
    followed shows are never pushed out; the in-place "Show all" opens every one. */
 const LIB_GRID_MAX = 9;
 const LIB_FORAYS_MAX = 6;
-/* A strip holds this many bars at most: at 3px wide and 2px apart, sixteen are 78px, which fits the narrowest tile's
-   art (96 at 375, less 6 either side). A foray of fifty clips would otherwise run its bars out of the tile. */
-const LIB_STRIP_BARS_MAX = 16;
+/* A strip holds this many bars at most. Iteration 5: sixteen read as thin pips at 96px and the prototype draws chunky bars. The
+   narrowest strip is 84px (a 96px tile at 375, less 6 either side); eleven bars, at most five of them the narrator's 4px dots with
+   2px gaps, leave the six show bars 6px wide each. A foray of fifty clips would otherwise run its bars out of the tile. */
+const LIB_STRIP_BARS_MAX = 11;
 const LIB_SAVED_MAX = 5;
 const LIB_PLAYLISTS_MAX = 5;
 const LIB_UPNEXT_MAX = 10;
@@ -248,7 +249,7 @@ function libForayList() {
 }
 
 /** A ForayTile (BUILD-NOTES 3, the prototype's .ftile): the collage with the Lamp "Foray" pill at its top-left and the
-    strip along its bottom edge, then the name (three lines at most) and nothing else. NO status badge: the lit bars
+    strip along its bottom edge, then the name (two lines at most) and nothing else. NO status badge: the lit bars
     say how far the listener got, and the screen-reader line says it in words; DIRECTION keeps a badge for the places
     where the state varies, and every foray here is one the listener opened. The facts the iteration-2 build printed
     under the name are not drawn (the prototype has none; the Forays page and the foray's own room carry them), but
@@ -260,7 +261,7 @@ function libForayTileHtml(t) {
   const bars = t.bars.map((b) => `<i class="lb-bar${b.narr ? " lb-narr" : ""}${b.lit ? " is-lit" : ""}" data-grow="${esc(b.grow)}" data-hue="${esc(Math.round(Number(b.hue) || 0))}"></i>`).join("");
   return `<a class="lb-tile lb-foray" href="#${esc(forayRoutePath(t.id))}" data-ev="picked" data-ctx="library-foray" data-glow-show="${esc(t.glowShow)}">
     <span class="lb-art">${agCollage(arts, { size: 104 })}<span class="ag-pill lb-pill">Foray</span>${bars ? `<span class="lb-strip" aria-hidden="true">${bars}</span>` : ""}</span>
-    <span class="t-caption lb-name clamp3">${esc(t.title)}</span>
+    <span class="t-caption lb-name clamp2">${esc(t.title)}</span>
     ${t.sub ? `<span class="sr-only lb-sub">${esc(t.sub)}</span>` : ""}
   </a>`;
 }
@@ -268,7 +269,7 @@ function libForayTileHtml(t) {
 function libShowTileHtml(s) {
   return `<a class="lb-tile lb-show" href="#${esc(showRoutePath(s.id))}" data-glow-show="${esc(s.title)}">
     <span class="lb-art" aria-hidden="true">${agArtwork({ name: s.title || "Show", src: s.src || "", size: 104, tone: libTone(s.title) })}</span>
-    <span class="t-caption lb-name clamp3">${esc(s.title)}</span>
+    <span class="t-caption lb-name clamp2">${esc(s.title)}</span>
   </a>`;
 }
 
@@ -291,7 +292,7 @@ function libGridHtml() {
   const label = 'aria-label="Forays and followed shows"';
   if (!forays.known) {
     /* The player module has not arrived: say nothing about forays, offer the way in. */
-    return `<section class="lb-section lb-grid-section" data-lb-section="grid" ${label} aria-busy="true"><div class="lb-more-row">${libQuietLink("All forays", "/forays")}</div></section>`;
+    return `<section class="lb-section lb-grid-section" data-lb-section="grid" ${label} aria-busy="true"><div class="lb-more-row">${libQuietLink("All", "/forays", "All forays")}</div></section>`;
   }
   if (!forays.tiles.length && !shows.length) {
     return `<section class="lb-section lb-grid-section" data-lb-section="grid" ${label}>${libEmptyHtml("grid")}</section>`;
@@ -302,7 +303,7 @@ function libGridHtml() {
   const shown = libUi.gridOpen ? cellsAll : cellsAll.slice(0, LIB_GRID_MAX);
   const links = [];
   if (overflow) links.push(`<button type="button" class="ag-btn ag-btn-quiet lb-more" data-lb-grid-toggle aria-expanded="${libUi.gridOpen ? "true" : "false"}">${libUi.gridOpen ? "Show fewer" : "Show all"}</button>`);
-  if (forays.tiles.length) links.push(libQuietLink("All forays", "/forays"));
+  if (forays.tiles.length) links.push(libQuietLink("All", "/forays", "All forays"));
   return `<section class="lb-section lb-grid-section" data-lb-section="grid" ${label}><div class="lb-grid">${shown.join("")}</div>${links.length ? `<div class="lb-more-row">${links.join("")}</div>` : ""}</section>`;
 }
 
@@ -675,13 +676,13 @@ function libSyncCast() {
   if (!on) return;
   /* The page's Glow is the playing item's: the cast and the playing row's ground (--glow-row) both read it. */
   const item = cur ? (state.itemIndex[cur] || storedEpisode(cur)) : null;
-  if (item && item.show && typeof agSetGlow === "function") {
-    agSetGlow(page, item.show, "--glow");
-    /* ...and so is the Dock's: the mini player and its cast live outside the page and read the ROOT's Glow, which only a
-       pick on Today used to move. Without this a track started anywhere else lit the playing row in the show's hue over a
-       mini player in the default warm one (iteration 3: two surfaces, two light sources). One Glow, set both places. */
-    try { agSetGlow(document.documentElement, item.show, "--glow"); } catch (_) { /* a stub document */ }
-  } else if (page.style && typeof page.style.removeProperty === "function") page.style.removeProperty("--glow");
+  if (item && item.show && typeof agSetGlow === "function") agSetGlow(page, item.show, "--glow");
+  else if (page.style && typeof page.style.removeProperty === "function") page.style.removeProperty("--glow");
+  /* The Dock (tab bar and mini player) is on <body>, outside the page, so it reads the root's Glow: write it there too, and the
+     Veil is tinted by the playing item's art and not by whatever the last page left. */
+  try {
+    if (item && item.show && typeof agSetGlow === "function") agSetGlow(document.documentElement, item.show);
+  } catch (_) { /* a stub document */ }
 }
 
 /** A strip bar's colour: its show's artwork hue at the strip's lightness (the Glow's lightness, 0.04 up in Dusk and

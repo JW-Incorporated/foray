@@ -4787,7 +4787,7 @@ function route() {
    heading's text WITHOUT its explicit badge (`headingName`). */
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
-  /* `.lb-head` is Library's own title row (Redesign 2026, ambient): the same landing, a different class. */
+  /* `.lb-head` is Library's own title row and `.sh-head` is the Redesign 2026 show page's heading (it has no `.page-head`: its Room is not a sticky bar). */
   const box = view.querySelector(".page-head") || view.querySelector(".lb-head") || view.querySelector(".st-head") || view.querySelector(".sh-head");
   /* A legacy page head titles itself with an h2 (the top bar owns the h1); a Settings page head IS the page's h1. A page that draws
      its own header (the ambient Foray detail) names itself with `data-page-heading` on its title. */

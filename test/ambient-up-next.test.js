@@ -585,5 +585,5 @@ test("the playing row and the Dock share one Glow: libSyncCast sets the page's A
     document.querySelector = (s) => (s === "#view" ? { querySelector: () => __page } : null);`);
   m.evalIn("libSyncCast()");
   assert.deepStrictEqual(calls.map((c) => c[0]).sort(), ["page", "root"], "both elements take the playing show's Glow");
-  assert.ok(calls.every((c) => c[1] === "A Show Outside The Palette" && c[2] === "--glow"));
+  assert.ok(calls.every((c) => c[1] === "A Show Outside The Palette" && (c[2] === undefined || c[2] === "--glow")), "the property is --glow (agSetGlow's default when none is passed)");
 });

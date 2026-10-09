@@ -271,13 +271,13 @@ export const SHELL_FILES = [
   "ui/tokens.css",
   "ui/primitives.css",
   "ui/dock.css", // Redesign 2026 (ambient): the Dock's own styles; minified like styles.css
+  "ui/library.css",
   "ui/today.css",
   "ui/onboarding.css",
   "ui/show.css",
   "ui/browse.css",
   "ui/foray-detail.css",
   "ui/settings.css",
-  "ui/library.css",
   "ui/queue.css",
   "ui/forays.css",
   "ui/playlist.css",
@@ -736,13 +736,16 @@ export function shellOnlyPlan(root = REPO_ROOT) {
 
 /** How many items of each show the bundle carries. THE ONE KNOB, and its units are
  *  worth stating: one unit costs 213 items and ~245 KB today, because there are 213
- *  shows. Three is the shipped value — 622 items, ~680 KB, 40% of the catalogue,
- *  and six times `app.js`'s `SEEN_WINDOW` of 100 so a listener refreshing all day
- *  does not walk off the end of the pool.
+ *  shows. Two is the shipped value since the Redesign 2026 Library pass (2026-10-08;
+ *  docs/DECISIONS.md): ~415 items, ~435 KB, about four times `app.js`'s `SEEN_WINDOW`
+ *  of 100, so a listener refreshing all day still does not walk off the end of the
+ *  pool. It was three (622 items, ~680 KB, six times the window) until the redesigned
+ *  screens' CSS and JS ate the bundle's headroom under the 3 MB cap; this knob is the
+ *  designed way to give it back, and the cap was not touched.
  *
  *  Lower it and the bundle shrinks proportionally with no code change; the guards
  *  below hold at every value, including 1. */
-export const BUNDLED_ITEMS_PER_SHOW = 3;
+export const BUNDLED_ITEMS_PER_SHOW = 2;
 
 const topicsOf = (item) =>
   (Array.isArray(item?.topics) ? item.topics : []).filter((t) => typeof t === "string" && t !== "");

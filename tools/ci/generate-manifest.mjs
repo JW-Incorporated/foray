@@ -164,6 +164,8 @@ const SHELL = [
   "ui/primitives.css",
   /* Redesign 2026 (ambient): the Dock (tabs, mini player, Discover's field), a stylesheet index.html links after primitives.css. */
   "ui/dock.css",
+  /* Redesign 2026 (ambient): Library, a screen on the system. A stylesheet, so listed by name. */
+  "ui/library.css",
   /* Redesign 2026 (ambient): Today, the first screen on the system. A stylesheet, so listed by name. */
   "ui/today.css",
   /* Redesign 2026 (ambient): the first-run Room. A stylesheet, so listed by name. */
@@ -176,8 +178,6 @@ const SHELL = [
   "ui/foray-detail.css",
   /* Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet. */
   "ui/settings.css",
-  /* Redesign 2026 (ambient): Library, a screen on the system. A stylesheet, so listed by name. */
-  "ui/library.css",
   /* Redesign 2026 (ambient): the Up Next page, Library's Up Next section given the screen. A stylesheet, so listed by name. */
   "ui/queue.css",
   /* Redesign 2026 (ambient): the Forays list, two-up ForayCards. A stylesheet, so listed by name. */

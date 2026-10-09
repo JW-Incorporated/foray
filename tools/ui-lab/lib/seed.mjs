@@ -137,17 +137,6 @@ export function buildSeed(kind, fx) {
     ? [LONG_TITLE, "Short one", LONG_TOKEN]
     : ["The fusion reactor tour", "Short histories for a long drive", "How things get built"];
 
-  /* midlisten (Today's "Keep listening"): the returning profile, and the first episode part-played: the durable
-     pointer the ribbon restores from (cp_last_episode) and its stored position (cp_pos:<id>), 40 minutes in. */
-  const mid = items[0];
-  const midlisten = kind === "midlisten" ? {
-    cp_last_episode: {
-      id: mid.id, title: mid.title, show: mid.show, artwork_url: mid.artwork_url, audio_url: mid.audio_url,
-      duration_min: mid.duration_min, duration_sec: mid.duration_sec || mid.duration_min * 60, updated_at: new Date(FIXED_NOW - 3600000).toISOString(),
-    },
-    ["cp_pos:" + mid.id]: { seconds: 2400, duration: mid.duration_sec || mid.duration_min * 60, updated_at: new Date(FIXED_NOW - 3600000).toISOString(), source: "local" },
-  } : {};
-
   /* library (Redesign 2026, ambient): the returning profile, plus a foray part-played and a foray finished, so the
      grid's ForayTiles (the strip's fill, the finished check) have something to draw. Library lists the forays the
      listener has opened; the plain returning profile has opened none. */
@@ -162,6 +151,18 @@ export function buildSeed(kind, fx) {
       };
     });
   }
+
+  /* midlisten (Today's "Keep listening"): the returning profile, and the first episode part-played: the durable
+     pointer the ribbon restores from (cp_last_episode) and its stored position (cp_pos:<id>), 40 minutes in. */
+  const mid = items[0];
+  const midlisten = kind === "midlisten" ? {
+    cp_last_episode: {
+      id: mid.id, title: mid.title, show: mid.show, artwork_url: mid.artwork_url, audio_url: mid.audio_url,
+      duration_min: mid.duration_min, duration_sec: mid.duration_sec || mid.duration_min * 60, updated_at: new Date(FIXED_NOW - 3600000).toISOString(),
+    },
+    ["cp_pos:" + mid.id]: { seconds: 2400, duration: mid.duration_sec || mid.duration_min * 60, updated_at: new Date(FIXED_NOW - 3600000).toISOString(), source: "local" },
+  } : {};
+
   /* playlist-started (Playlist detail, the Playlists list): the returning profile with the first playlist's first two parts
      finished (a stored position inside the last 30 seconds is the player's "played") and its third part half heard, so the
      header reads "2 of 4 played", the next part is marked and the tile carries the same line. */
@@ -177,6 +178,7 @@ export function buildSeed(kind, fx) {
 
   return {
     ...base,
+    ...forayRows,
     ...midlisten,
     ...forayRows,
     ...playlistStarted,

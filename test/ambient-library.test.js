@@ -7,7 +7,7 @@
  *     all; "Show all" opens the rest in place, "All forays" is a link; a foray nobody opened is not a tile.
  *  2. A ForayTile's anatomy: the Lamp "Foray" pill inside the art's top-left corner, the strip along the bottom edge
  *     (8 tall, the narrator's bars short and Lamp, the reached bars lit, coloured from each show's artwork hue, muted,
- *     never the seg-c rainbow, never more than sixteen bars), the name three lines (never cut mid-word) and nothing
+ *     never the seg-c rainbow, never more than eleven bars), the name three lines (never cut mid-word) and nothing
  *     else under it: no check, no progress bar, no facts (a screen reader still hears them, once).
  *  3. The sections come in the order grid, Saved, Playlists, Up Next, (Downloads), History; a count only when there
  *     is something to count; Saved is five rows of the same QueueRow as Up Next and "All saved"; History has no menu.
@@ -167,7 +167,7 @@ const PUBLISHED = () => FROZEN_FORAYS().filter((f) => f.status === "published");
 const playable = () => readJson("data/discover.json").items.filter((it) => it.audio_url);
 const queue = (m) => [...m.ctx.queueIds()];
 /** The cells of the grid, in order, as [kind, title] read from the markup. */
-const cells = (html) => [...html.matchAll(/<a class="lb-tile lb-(foray|show)"[^>]*>[\s\S]*?<span class="t-caption lb-name clamp3">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
+const cells = (html) => [...html.matchAll(/<a class="lb-tile lb-(foray|show)"[^>]*>[\s\S]*?<span class="t-caption lb-name clamp2">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
 const sectionHeads = (html) => [...html.matchAll(/<h3 class="t-headline">([^<]*)<\/h3>/g)].map((m) => m[1]);
 const sectionOf = (html, name) => {
   const at = html.indexOf(`data-lb-section="${name}"`);
@@ -227,8 +227,8 @@ test("nine cells at most, six of them forays; Show all opens the rest in place; 
   assert.deepStrictEqual(cells(grid).map((c) => c[0]), ["foray", "foray", "show", "show", "show", "show", "show", "show", "show"], "two forays, seven shows");
   assert.match(grid, /<button type="button" class="ag-btn ag-btn-quiet lb-more" data-lb-grid-toggle aria-expanded="false">Show all<\/button>/, "an in-place Show all");
   assert.ok(!/href="#\/starred-shows"/.test(m.view()), "no link to the page the Dock folded into this one");
-  assert.match(grid, /<a class="ag-btn ag-btn-quiet lb-more" href="#\/forays">All forays<\/a>/, "All forays opens the list of every foray");
-  assert.match(grid, /<div class="lb-more-row">[\s\S]*data-lb-grid-toggle[\s\S]*All forays<\/a><\/div>/, "both quiet links share one row");
+  assert.match(grid, /<a class="ag-btn ag-btn-quiet lb-more" href="#\/forays" aria-label="All forays">All<\/a>/, "the trailer says All (the prototype's word), is named All forays, and opens the list of every foray");
+  assert.match(grid, /<div class="lb-more-row">[\s\S]*data-lb-grid-toggle[\s\S]*>All<\/a><\/div>/, "both quiet links share one row");
   m.evalIn("libUi.gridOpen = true");
   m.ctx.renderLibrary();
   grid = sectionOf(m.view(), "grid");
@@ -280,7 +280,7 @@ test("a strip holds the narrator's short Lamp bars between the shows' bars, and 
      assertion is red.
      MUTATION 2: drop the fold loop (the `while (bars.length > LIB_STRIP_BARS_MAX)` block) -> fifty runs draw fifty bars
      and the cap assertion is red.
-     MUTATION 3: LIB_STRIP_BARS_MAX 16 -> 40 -> the width arithmetic assertion is red (40 bars are 198px).
+     MUTATION 3: LIB_STRIP_BARS_MAX 11 -> 40 -> the width arithmetic assertion is red (40 bars are 198px).
      MUTATION 4: in the fold, drop `grow: a.grow + b.grow` for `grow: big.grow` -> the runtime is no longer conserved
      and the sum assertion is red.
      The model is faked ONLY in which runs it answers: the bars are built by the real libForayBars. */
@@ -309,6 +309,13 @@ test("a strip holds the narrator's short Lamp bars between the shows' bars, and 
   assert.strictEqual(crowded.reduce((t, b) => t + b.grow, 0), runs.reduce((t, r) => t + r.lengthSec, 0), "folding conserves the runtime");
   /* 3px a bar and 2px between: the cap must fit a 96px tile's art less the strip's 6px either side. */
   assert.ok(max * 3 + (max - 1) * 2 <= 96 - 12, `${max} bars fit the narrowest tile (${max * 3 + (max - 1) * 2}px of 84)`);
+  /* Iteration 5: a crowded strip's SHOW bars are chunky (judges: thin alternating pips). The strip is 84px at the narrowest tile; the
+     narrator's bars are 4px and every gap 2px (library.css `.lb-bar.lb-narr`, `.lb-strip`); what is left is shared by the show bars.
+     MUTATION 5: LIB_STRIP_BARS_MAX 11 -> 16 -> the show bars fall to 3.5px and this assertion is red. */
+  const dots = crowded.filter((b) => b.narr).length;
+  const shows = crowded.length - dots;
+  const showW = (84 - dots * 4 - (crowded.length - 1) * 2) / shows;
+  assert.ok(showW >= 5, `a show bar in a crowded strip is at least 5px wide (${showW.toFixed(1)}px)`);
 });
 
 test("a strip bar is coloured from its show's artwork hue, muted, never the seg-c rainbow", async () => {
@@ -338,8 +345,10 @@ test("a strip bar is coloured from its show's artwork hue, muted, never the seg-
   assert.ok(vm.runInContext("LIB_BAR_CHROMA", sandbox) <= 0.12, "muted: well under the Glow's own 0.14");
 });
 
-test("grid names are three-line clamps, tiles top-aligned, art 96 / 104 / 112, rows at least 16 apart", () => {
-  /* MUTATION 1: `clamp3` -> `clamp2` in libShowTileHtml -> the markup assertion is red.
+test("grid names are two-line clamps, tiles top-aligned, art 96 / 104 / 112, rows at least 16 apart", () => {
+  /* Iteration 5 (judges: a foray title ran to three lines, so row 1 was taller than rows 2 and 3): the prototype's names clamp
+     to two lines with an ellipsis, so every row of the grid has one height.
+     MUTATION 1: `clamp2` -> `clamp3` in libShowTileHtml -> the markup assertion is red.
      MUTATION 2: drop `align-items: start` from `.lb-grid` -> the CSS assertion is red.
      MUTATION 3: gap `var(--s-4) var(--s-3)` -> `var(--s-2) var(--s-3)` -> the 16px assertion is red.
      MUTATION 4: 96px -> 100px in the max-width: 392px query -> the size assertion is red. */
@@ -354,8 +363,8 @@ test("grid names are three-line clamps, tiles top-aligned, art 96 / 104 / 112, r
   assert.match(LIB_CSS, /@media \(min-width: 412px\) \{ \.ag\.lb-page \{ --lb-art: 112px; \} \}/, "112 at 412");
   assert.match(LIB_CSS, /\.ag \.lb-name \{[^}]*overflow-wrap: normal;[^}]*word-break: normal;/, "a name is never cut mid-word");
   const src = read("ui/library.js");
-  assert.strictEqual((src.match(/lb-name clamp3/g) || []).length, 2, "both tile kinds clamp their name to three lines");
-  assert.ok(!/lb-name clamp[12]\b/.test(src));
+  assert.strictEqual((src.match(/lb-name clamp2/g) || []).length, 2, "both tile kinds clamp their name to two lines");
+  assert.ok(!/lb-name clamp[134]\b/.test(src));
 });
 
 /* ==================================================================== */
@@ -607,7 +616,7 @@ test("before the player can list forays the grid claims nothing and offers the w
   const grid = sectionOf(m.view(), "grid");
   assert.ok(!/Nothing followed yet/.test(grid), "an unknown list is not an empty one");
   assert.match(grid, /aria-busy="true"/);
-  assert.match(grid, /href="#\/forays">All forays</);
+  assert.match(grid, /href="#\/forays" aria-label="All forays">All</);
   assert.ok(!/lb-tile/.test(grid), "and no tile is claimed");
 });
 
@@ -637,20 +646,50 @@ test("every tile casts its own palette colour: --art-glow is written from the ti
   assert.match(read("ui/tokens.css"), /\.lit-art \{\s*box-shadow: var\(--shadow-1\), 0 0 var\(--lit-r, 40px\)[^;]*var\(--art-glow, var\(--glow\)\)/, "and the token paints that colour, not a black shadow");
 });
 
-test("the page draws neither a cast nor a fade: the Dock owns both, on every page", async () => {
-  /* The Dock (ui/tabbar.js: #dock-cast, .dock-fade) paints the upward light and the fade behind itself. Library's
-     stopgap copies (`.lb-cast`, `.lb-fade`) would paint a second one.
-     MUTATION 1: put a `<div class="lb-fade">` back into renderLibrary's markup -> red.
-     MUTATION 2: put an `.ag .lb-cast` or `.ag .lb-fade` rule back into library.css -> red.
-     MUTATION 3: take `dock-fade` out of ui/tabbar.js -> the Dock assertion is red. */
+test("Library draws no Dock of its own: the Dock owns the Veil, the fade and the cast, and Library hands it the page colour and the Glow", async () => {
+  /* Iteration 3: the stopgap Dock (a floating Veil on .tab-bar and #foray-player, a body::after fade, an .lb-cast element) is
+     retired now that `redesign/ambient-dock` has merged; ui/dock.css owns all of it, and the stopgap's cool Veil and back-15
+     text glyph were the findings against it.
+     MUTATION 1: put a `lb-cast` element back into renderLibrary -> the no-element assertion is red.
+     MUTATION 2: re-add any `body.view-library .tab-bar` or `#foray-player` rule to library.css -> the no-override assertion is red.
+     MUTATION 3: delete `--dock-page-bg: var(--bg0)` from `body.view-library` -> the Dock would fade to the legacy page colour; red.
+     MUTATION 4: delete the root-Glow write in libSyncCast -> the Dock keeps the last page's tint; the script assertion is red.
+     MUTATION 5: move ui/library.css above ui/dock.css in index.html -> the order assertion is red. */
   const m = await mount({ bridge: realBridge() });
   m.ctx.renderLibrary();
-  assert.ok(!/lb-cast|lb-fade|dock-cast|dock-fade/.test(m.view()), "no cast or fade in the page's own markup");
-  assert.ok(!/lb-cast|lb-fade/.test(LIB_CSS), "and no rule for them");
-  const dock = read("ui/tabbar.js");
-  assert.match(dock, /dockEl\("div", "dock-cast", "dock-cast"\)/, "the Dock draws the cast");
-  assert.match(dock, /dockEl\("div", "dock-fade"\)/, "and the fade");
-  assert.match(read("ui/tokens.css"), /\.dock-cast\[data-state="idle"\][^{]*\{[^}]*display: none/, "hidden when nothing plays");
+  assert.ok(!/lb-cast|lb-fade|dock-cast/.test(m.view()), "the page draws no cast or fade element: the Dock's layer owns them");
+  const css = LIB_CSS.replace(/\/\*[\s\S]*?\*\//g, "");
+  assert.ok(!/\.tab-bar|#foray-player|\.lb-cast|\.dock-cast|body\.view-library::after/.test(css), "and no rule for the tab bar, the mini, a cast or a body fade");
+  assert.match(css, /body\.view-library \{[^}]*--dock-page-bg: var\(--bg0\);/, "the Dock fades to this page's own ground");
+});
+
+test("Library writes the playing item's Glow where the Dock reads it, and its stylesheet loads after the Dock's", () => {
+  /* MUTATION 4: delete the root-Glow write in libSyncCast -> the script assertion is red.
+     MUTATION 5: move ui/library.css above ui/dock.css in index.html -> the order assertion is red. */
+  assert.match(read("ui/library.js"), /agSetGlow\(document\.documentElement, item\.show\)/, "the playing item's Glow is written on the root, where the Dock reads it");
+  const links = [...read("index.html").matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map((x) => x[1]);
+  assert.ok(links.indexOf("ui/dock.css") >= 0 && links.indexOf("ui/dock.css") < links.indexOf("ui/library.css"), "dock.css is linked before library.css");
+});
+
+test("the foray strip is small-radius bars of one height on a dark sill, the pill is the small one, and every quiet link sits on the gutter", () => {
+  /* Iteration 5 (judges: bars sat on the coloured art without a sill, the second tile's strip read as alternating tall and
+     short pips, the pill was larger than the prototype's, and "All" is indented in the prototype).
+     MUTATION 1: take `--lb-on-art-sill` back to `--lb-on-art-soft` (0.55) on the floor -> the sill-strength assertion is red.
+     MUTATION 2: give `.lb-bar` `border-radius: var(--r-round)` again -> the rectangle assertion is red (ovals read as beads).
+     MUTATION 3: let `.lb-narr` flex (drop `flex: none`) or give it its own `height` again -> the uniform-bar assertion is red.
+     MUTATION 4: pill `min-height: var(--s-5)` -> the 16px assertion is red.
+     MUTATION 5: bring back `.ag .lb-more-row .lb-more { padding-inline-start: 28px }` -> the gutter assertion is red.
+     MUTATION 6: put `font: var(--t-headline)` on `.lb-saved .lb-ep-title` -> the label-face assertion is red (and the tap-target gate fails). */
+  const sill = /--lb-on-art-sill:\s*rgb\(\d+ \d+ \d+ \/ ([\d.]+)\)/.exec(LIB_CSS);
+  assert.ok(sill && Number(sill[1]) >= 0.7, "the sill behind the bars is at least 0.7 dark, so a bright collage cannot wash them out");
+  assert.match(LIB_CSS, /\.ag \.lb-foray \.lb-art::after \{[^}]*linear-gradient\(transparent, var\(--lb-on-art-sill\)\)/, "the strip's floor is the sill");
+  assert.match(LIB_CSS, /\.ag \.lb-bar \{[^}]*height: var\(--s-2\);[^}]*border-radius: var\(--r-xs\)/, "every bar is a small-radius rectangle of the strip's one height");
+  assert.match(LIB_CSS, /\.ag \.lb-bar\.lb-narr \{[^}]*flex: none;[^}]*width: var\(--s-1\);/, "the narrator's run is a 4px wide bar, never a stretched pip");
+  assert.doesNotMatch(/\.ag \.lb-bar\.lb-narr \{([^}]*)\}/.exec(LIB_CSS)[1], /height:/, "and it takes the strip's height, not its own");
+  assert.doesNotMatch(LIB_CSS, /\.lb-saved \.lb-ep-title \{[^}]*font:/, "Saved's title keeps the label face: the headline fails the 44px tap-target gate");
+  assert.match(/\.ag \.lb-pill \{([^}]*)\}/.exec(LIB_CSS)[1], /min-height: var\(--s-4\);/, "the pill is 16 tall");
+  assert.doesNotMatch(LIB_CSS, /\.lb-more-row \.lb-more \{/, "the grid trailer has no indent of its own: it sits on the gutter with the other quiet links");
+  assert.match(LIB_CSS, /\.ag \.lb-more \{[^}]*padding-inline-start: 0;/, "a quiet link starts at the content edge");
 });
 
 /* ==================================================================== */
@@ -705,7 +744,7 @@ test("the Foray pill sits inside its tile and is legible on any art; the strip's
   const pill = /\.ag \.lb-pill \{([^}]*)\}/.exec(LIB_CSS);
   assert.ok(pill, "a pill rule");
   assert.match(pill[1], /position: absolute; left: var\(--s-1\); top: var\(--s-1\);/, "inside the art's top-left corner");
-  assert.ok(!/calc\(var\(--s-\d\) \* -1\)/.test(LIB_CSS.replace(/\.lb-menu-head[^}]*\}/, "")), "no tile child is positioned outside its tile with a negative inset");
+  assert.ok(!/calc\(var\(--s-\d\) \* -1\)/.test(LIB_CSS.replace(/\.lb-menu-head[^}]*\}/, "").replace(/outline-offset:[^;]*;/g, "")), "no tile child is positioned outside its tile with a negative inset");
   assert.match(pill[1], /background: var\(--lb-on-art-ink\); color: var\(--lb-on-art\)/, "the fixed on-art inks, not the scheme's");
   /* WCAG AA over the worst art there is: white. */
   const ink = /--lb-on-art-ink:\s*rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/.exec(LIB_CSS);
@@ -718,7 +757,7 @@ test("the Foray pill sits inside its tile and is legible on any art; the strip's
   const text = [0, 2, 4].map((i) => parseInt(face[1].slice(i, i + 2), 16));
   const ratio = (lum(text) + 0.05) / (lum(ground) + 0.05);
   assert.ok(ratio >= 4.5, `the pill's label reads at least 4.5:1 over white art (${ratio.toFixed(1)}:1)`);
-  assert.match(LIB_CSS, /\.ag \.lb-foray \.lb-art::after \{[^}]*background: linear-gradient\(transparent, var\(--lb-on-art-soft\)\)/, "the strip's floor is the fixed on-art shade");
+  assert.match(LIB_CSS, /\.ag \.lb-foray \.lb-art::after \{[^}]*background: linear-gradient\(transparent, var\(--lb-on-art-sill\)\)/, "the strip's floor is the fixed on-art sill");
   assert.ok(!/\.lb-strip[^}]*scrim|lb-art::after[^}]*scrim/.test(LIB_CSS), "not a scrim that follows the scheme");
   assert.match(LIB_CSS, /\.ag \.lb-bar\.lb-narr \{[^}]*background: var\(--lamp\)/, "the narrator's bar is the Lamp (what 4a authored)");
 });
@@ -739,7 +778,7 @@ test("the screen is registered: linked in index.html, in every shell list, palet
   assert.match(read("app.js"), /\(h === "#\/library" \|\| h === "#\/queue"\) && typeof repaintLibraryUpNext === "function"/, "a queue write repaints Library's Up Next, and the Up Next page's");
 });
 
-test("a quiet link under a grid or list starts at the content edge, and a foray tile's screen-reader line is the whole Foray line", async () => {
+test("a quiet link under a list starts at the content edge, and a foray tile's screen-reader line is the whole Foray line", async () => {
   /* Iteration 3 (judges of iteration 2: "All forays" sat indented off the grid; porting foray-surfaces found the tile
      had lost the draft tag and the facts from what a screen reader hears).
      MUTATION 1: drop `padding-inline-start: 0` (and `justify-content: flex-start`) from `.ag .lb-more` in library.css ->

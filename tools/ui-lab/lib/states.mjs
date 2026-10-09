@@ -145,11 +145,11 @@ async function typeSearch(page, text) {
     re-renders `#/shows` with an empty field and drops `kb-open` (setBodyClass writes the class list
     whole); the `--kb-inset` a previous step wrote on <html> is cleared by hand. */
 async function freshDiscover(page) {
-  await page.evaluate(() => {
+  await page.evaluate((r) => {
     document.documentElement.style.removeProperty("--kb-inset");
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    location.hash = "#/library";
-  });
+    location.hash = r;
+  }, PARK_ROUTE);
   await wait(page, 500);
   await page.evaluate(() => { location.hash = "#/shows"; });
   await page.waitForSelector("#sh-input", { timeout: 15000 });
@@ -228,6 +228,24 @@ function galleryCaptureSteps(theme) {
   ];
 }
 
+/* Library (Redesign 2026, ambient): the page scrolled so the Up Next heading sits 24px from the top (the prototype's
+   ?scroll=1330 puts its own Up Next heading there), and the first Up Next row's menu open. The page scrolls as a
+   document. */
+async function scrollLibrary(page) {
+  await page.evaluate(() => {
+    const section = document.querySelector('[data-lb-section="upnext"]');
+    if (section) window.scrollTo(0, Math.max(0, section.getBoundingClientRect().top + window.scrollY - 24));
+  });
+  await wait(page, 500);
+}
+
+async function openLibraryMenu(page) {
+  await scrollLibrary(page);
+  await page.locator("[data-lb-menu]").first().click();
+  await page.waitForSelector(".lb-panel", { state: "visible", timeout: 10000 });
+  await wait(page, 700);
+}
+
 /* Today (Redesign 2026, ambient): the boot held open. The discover document never answers, so init()
    never reaches route() and the page stays on the screen it painted before its first await: on Home,
    Today's skeletons with the lamp sweep. The route is registered AFTER the harness stubs, and a later
@@ -281,24 +299,6 @@ function settingsSteps() {
     { label: "about", route: "#/about", ready: ".st-page[data-st-page=about]" },
     { label: "settings-dawn-chosen", route: "#/settings", run: (page) => chooseDawn(page), ready: ".st-page[data-st-page=settings]" },
   ];
-}
-
-/* Library (Redesign 2026, ambient): the page scrolled so the Up Next heading sits 24px from the top (the prototype's
-   ?scroll=1330 puts its own Up Next heading there), and the first Up Next row's menu open. The page scrolls as a
-   document. */
-async function scrollLibrary(page) {
-  await page.evaluate(() => {
-    const section = document.querySelector('[data-lb-section="upnext"]');
-    if (section) window.scrollTo(0, Math.max(0, section.getBoundingClientRect().top + window.scrollY - 24));
-  });
-  await wait(page, 500);
-}
-
-async function openLibraryMenu(page) {
-  await scrollLibrary(page);
-  await page.locator("[data-lb-menu]").first().click();
-  await page.waitForSelector(".lb-panel", { state: "visible", timeout: 10000 });
-  await wait(page, 700);
 }
 
 /* The Up Next page (Redesign 2026, ambient): `#/queue` is Library's Up Next section given the screen. Playback starts on
@@ -495,6 +495,19 @@ export function appStates(fx) {
         { label: "dock-discover", route: "#/shows", run: (page) => startPlayback(page, ep0) },
         { label: "dock-receded", route: "#/", run: (page) => scrollPage(page, 120) },
         { label: "dock-playing", route: "#/", run: (page) => keepPlaying(page) },
+      ],
+    },
+    {
+      id: "library",
+      description: "Library with forays opened and an episode playing: the top of the page (the Dock's cast under the grid), scrolled to Up Next and History, then an Up Next row's menu open.",
+      seed: "library",
+      steps: [
+        /* Playback starts on another page and Library is then opened fresh, as a listener would: Library never
+           redraws under a play that starts while it is showing, which under Reduce Motion is a colour crossfade
+           the motion gate (rightly) reads as motion. */
+        { label: "library", route: "#/library", run: async (page) => { await page.evaluate(() => { location.hash = "#/forays"; }); await wait(page, 500); await startPlayback(page, ep0); await page.evaluate(() => { location.hash = "#/library"; }); await wait(page, 700); } },
+        { label: "library-lower", route: "#/library", run: (page) => scrollLibrary(page) },
+        { label: "library-up-next-menu", route: "#/library", run: (page) => openLibraryMenu(page), ready: "[data-lb-menu]" },
       ],
     },
     {

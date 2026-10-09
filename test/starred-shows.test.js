@@ -341,11 +341,13 @@ test("route() sends #/starred-shows to Library, where the followed shows now liv
   m.state.session = { session_id: "s-1", builder: "test", episodes: {}, cards: [] };
   m.state.cardSlots = [];
   m.state.ready = true;
+  m.ctx.localStorage.setItem("cp_starred_shows", JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }));
 
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.strictEqual(m.ctx.location.hash, "#/library", "the folded route is rewritten to Library's");
-  assert.ok(m.view().includes('data-lb-section="grid"') && m.view().includes("Show A"), "and Library's grid paints the followed show");
+  /* REDESIGN 2026 (ambient Library): the route is aliased to #/library, whose grid has no "Followed shows" head; the
+     followed show is a ShowTile there. MUTATION: delete the "#/starred-shows" ROUTE_ALIASES entry -> Today renders, no tile. */
+  assert.ok(/class="lb-tile lb-show"[^>]*>[^]*Show A/.test(m.view()), "route() must send #/starred-shows to the followed shows (Library's grid)");
 });
 
 /* ==================================================================== */
@@ -389,9 +391,11 @@ test("the followed shows are on Library whole (Redesign 2026: #/starred-shows fo
   const many = {};
   for (let i = 0; i < 6; i++) many[`show-${i}`] = { show_id: `show-${i}`, title: `Show ${i}`, starred_at: `2026-09-0${i + 1}T00:00:00Z` };
   m.ctx.localStorage.setItem("cp_starred_shows", JSON.stringify(many));
+  /* REDESIGN 2026 (ambient Library): the grid is ShowTiles (nine cells at most, then the quiet row), not show rows.
+     MUTATION: drop followed shows from libGridHtml's cells (libFollowedShows() -> []) -> no tile is drawn, the assertions fail. */
   const followedHtml = m.ctx.libGridHtml();
-  assert.ok(followedHtml.includes("lb-grid"), "Library draws the followed shows in its grid");
-  for (let i = 0; i < 6; i++) assert.ok(followedHtml.includes(`Show ${i}`), `Library lists followed show ${i}: all six, past the five-row cap other sections keep`);
+  assert.strictEqual((followedHtml.match(/class="lb-tile lb-show"/g) || []).length, 6, "Library draws the followed shows as ShowTiles");
+  for (let i = 0; i < 6; i++) assert.ok(followedHtml.includes(`Show ${i}`), `Library lists followed show ${i}: all six fit under the nine-cell cap`);
   assert.ok(!followedHtml.includes('href="#/starred-shows"'), "and has no overflow link to a page it has folded in");
   m.ctx.renderAllShows();
   assert.ok(!m.view().includes('href="#/starred-shows"'), "…and Discover must not");
