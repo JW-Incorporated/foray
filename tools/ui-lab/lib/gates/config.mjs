@@ -15,14 +15,29 @@ export const TAP_EXEMPTIONS = {
    *  AND that has sibling text in its parent (measured in the page as
    *  `inlineInText`). A lone inline link in a flex row does not qualify. */
   inlineTextLinks: true,
-  /** Selector-keyed exemptions. Empty on purpose; add `{ id, reason }` only with
-   *  a reason a reviewer can challenge. `id` is the selector gates.mjs prints. */
-  selectors: [],
+  /** Selector-keyed exemptions. Add `{ id, reason }` only with a reason a
+   *  reviewer can challenge. `id` is the selector gates.mjs prints. */
+  selectors: [
+    {
+      id: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button",
+      reason: "A proportional Foray timeline may contain dozens of bars; the direction explicitly requires 44px height rather than 44px width.",
+    },
+    {
+      id: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button.is-current",
+      reason: "Current is the same 44px-tall proportional Foray seek target.",
+    },
+    {
+      id: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button.is-past",
+      reason: "Past is the same 44px-tall proportional Foray seek target.",
+    },
+  ],
 };
 
 /** Motion shorter than this counts as "instant". The common reduced-motion
  *  reset is `0.01ms !important`, which is a duration > 0 that nobody can see. */
 export const MIN_MOTION_MS = 1;
+/** The direction's reduced-motion mode permits colour/opacity crossfades only. */
+export const MAX_REDUCED_CROSSFADE_MS = 200;
 
 /** Same-origin requests that are expected to fail in the harness. Matched
  *  against the URL path. */

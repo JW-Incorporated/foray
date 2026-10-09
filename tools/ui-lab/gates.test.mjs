@@ -71,6 +71,8 @@ test("tap target: only an <a> inside running text is exempt (WCAG 2.5.8 inline)"
     el({ selector: "inline-button", tag: "button", inlineInText: true, ...small }),
   ];
   assert.deepEqual(evaluateTapTargets("s/a", els).map((x) => x.id.split(" ")[0]).sort(), ["inline-button", "lone-link"]);
+  const dense = el({ selector: "div.ag-np-progress > div.ag-np-strip > button.ag-np-strip-button", tag: "button", w: 12, h: 44, hits: grid(20) });
+  assert.equal(evaluateTapTargets("s/a", [dense]).length, 0, "the direction's explicitly 44px-tall proportional timeline is exempt by selector");
   /* and the exemption is switchable, so it is a decision, not an accident */
   assert.equal(evaluateTapTargets("s/a", els, { exemptions: { ...TAP_EXEMPTIONS, inlineTextLinks: false } }).length, 3);
 });
@@ -111,16 +113,25 @@ test("overflow: scrollWidth stays as a backstop when no element is to blame", ()
 });
 
 
-/* MUTATION: in evaluateReducedMotion change `!(r.duration > minMs)` to `!(r.duration > 0)` -> the 0.01ms reset
-   is flagged and the "instant" assert fails; change it to `r.duration < 0` -> nothing is flagged at all. */
-test("reduced motion: > 1ms fails, the 0.01ms reset idiom and 0 pass", () => {
+/* MUTATION: remove the crossfade property allow-list -> the 200ms transform passes; widen it with transform ->
+   the transform assertion fails. The 0.01ms reset idiom and 0 remain instant. */
+test("reduced motion: only opacity and colour may crossfade for 200ms", () => {
   const recs = [
     { kind: "transition", name: "transform", selector: "div.sheet", duration: 300 },
     { kind: "animation", name: "spin", selector: "div.spin", duration: 2000 },
+    { kind: "transition", name: "transform", selector: "div.short-move", duration: 200 },
+    { kind: "transition", name: "opacity", selector: "div.crossfade", duration: 200 },
+    { kind: "transition", name: "background-color", selector: "div.tint", duration: 200 },
+    { kind: "transition", name: "opacity", selector: "div.slow-crossfade", duration: 201 },
     { kind: "transition", name: "opacity", selector: "div.reset", duration: 0.01 },
     { kind: "transition", name: "color", selector: "div.zero", duration: 0 },
   ];
-  assert.deepEqual(evaluateReducedMotion("s/a", recs).map((x) => x.id), ["transition:transform:div.sheet", "animation:spin:div.spin"]);
+  assert.deepEqual(evaluateReducedMotion("s/a", recs).map((x) => x.id), [
+    "transition:transform:div.sheet",
+    "animation:spin:div.spin",
+    "transition:transform:div.short-move",
+    "transition:opacity:div.slow-crossfade",
+  ]);
 });
 
 /* MUTATION: in evaluateSheetFocus delete the `tabs.filter(...)` branch -> tab-escapes never reported. */

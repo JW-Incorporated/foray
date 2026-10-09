@@ -1,0 +1,95 @@
+/* Afterglow car posture (Redesign 2026, ambient; BUILD-NOTES 4.2). `<html data-posture="car">`, set by ui/car.js, makes Now
+   Playing a glance screen: the Dock steps out, the artwork is 240 (200 under 700px tall), Play is 112, the skips 72, the
+   secondary row, the why-line, the More handle, the show notes and the chapters are not rendered (the dots stay, as in
+   the prototype: they balance the chip and are the way out to them), and display, headline
+   and label grow x1.25 (the tokens do that: ui/tokens.css `[data-posture="car"]`, with unitless leading so the line
+   height grows with the size). Every rule starts from `[data-posture="car"] .ag-np.fp-sheet` so neither styles.css's
+   body.ui-v2 rules nor ui/now-playing.css can win. No transition or animation lives here, so the one reduced-motion
+   block in ui/tokens.css has nothing of this file to name. */
+
+/* The Dock hides in car posture (ui/tokens.css also names .dock, .dock-fade and .dock-cast); today's tab bar, which the
+   Dock replaces, goes with it. */
+[data-posture="car"] #tab-bar { display: none; }
+/* A held mini row would otherwise raise the system callout on top of the sheet it just opened. */
+.fp-bar { -webkit-touch-callout: none; }
+
+/* Sizes. The artwork is 240 (200 under 700px tall), and a three-line title steps it down to 180 at EVERY height
+   (DIRECTION: "artwork drops to 180px under a three-line title"; iteration 4 of the art director's call, reversing
+   iteration 1's "240 whatever the title does", which kept the full sleeve and squeezed the gaps above and below it, so the
+   rhythm changed with the title's length instead of the sleeve stepping). The title is the copy the posture exists to
+   read and is never cut short. The is-long-title rule is restated here because the plain car selector would otherwise
+   lose to now-playing.css's is-long-title clamp on tall screens (this selector is one class heavier). */
+[data-posture="car"] .ag-np { --np-art: 240px; }
+[data-posture="car"] .ag-np.is-long-title { --np-art: 180px; }
+@media (max-height: 699.98px) {
+  [data-posture="car"] .ag-np { --np-art: 200px; }
+  [data-posture="car"] .ag-np.is-long-title { --np-art: 180px; }
+}
+[data-posture="car"] .ag-np.fp-sheet .ag-np-play.fp-big { width: 112px; height: 112px; min-width: 112px; min-height: 112px; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-play .icon { --icon-size: 52px; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-skip { width: 72px; height: 72px; min-width: 72px; min-height: 72px; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-skip .icon { --icon-size: 48px; }
+
+/* Not rendered: the detail posture (actions, chapters, sources, show notes, Up next, the legacy action row), the handle
+   that opens it, and the why-line. The dots are NOT in this list (iteration 2): the prototype keeps its trailing
+   overflow control in the car so the head is balanced and the detail actions keep an entry point. Tapping them in the
+   car leaves the posture and opens the detail (ui/now-playing.js openDetail), since the detail is not drawn inside it. */
+[data-posture="car"] .ag-np.fp-sheet .ag-np-detail,
+[data-posture="car"] .ag-np.fp-sheet .ag-np-detail-handle,
+[data-posture="car"] .ag-np.fp-sheet .fp-s-why { display: none; }
+
+/* A glance screen holds its size: the paused 0.94 shrink would turn the 240 step into ~226, a size no step names (the
+   iteration 1 render measured 224 at 393x852). */
+[data-posture="car"] .ag-np.is-paused.fp-sheet .ag-np-art-swap > img:not(.ag-np-art-out):not(.ag-np-art-in),
+[data-posture="car"] .ag-np.is-paused.fp-sheet .ag-np-collage,
+[data-posture="car"] .ag-np.is-paused.fp-sheet .ag-np-halo { transform: none; }
+
+/* Lit art in the car is a wash, not an outline: the prototype's single soft ring (radius --lit-r, spread -1/4, the art's
+   own colour at --lit-mix) instead of now-playing.css's tight 0.6r ring at mix + 25% beside a 1.6r one, whose bright
+   edge read as a neon rim at 240. Hue is data and unchanged; only intensity and hardness move. The two accessibility
+   drops are restated because this selector outranks the ones in now-playing.css. */
+[data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: 0 0 var(--lit-r) calc(var(--lit-r) / -4) color-mix(in oklab, var(--art-glow, var(--glow)) var(--lit-mix), transparent); }
+@media (prefers-reduced-transparency: reduce) { [data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: none; } }
+@media (forced-colors: active) { [data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: none; } }
+
+/* Iteration 3 (fidelity): the 240 sleeve carries NO dark shadow. tokens.css's --shadow-1 is a black 1px/2px drop that
+   drew a thin dark rim under the art, against DIRECTION Materials ("104px or more casts its own colour, never a black
+   shadow"); the cast above is the art's colour only, and reduced transparency drops it to nothing rather than to the black
+   rim. The grabber is lifted from text-3 at 70% to text-2 at full strength: on the Glow-tinted top of the Room it sat
+   a few percent off the backdrop, so the dismiss affordance the prototype shows plainly was nearly invisible; it also sits at
+   the prototype's -6px of the head, not 0. The rim the first iteration-3 render still showed was not a shadow: styles.css gives
+   `.fp-s-art` a 1px `--line` border, and the sleeve is that element, so a 2-device-pixel dark edge ran round it. A lit sleeve
+   has no edge at all (DIRECTION Materials). */
+[data-posture="car"] .ag-np.fp-sheet .ag-np-head .fy-grab { top: -6px; background: var(--text-2); opacity: 1; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-art-swap > .lit-art { border: 0; }
+
+/* The title clamps to three lines at every height: the car posture exists to read it, so a short screen gives up artwork
+   height (180 under a three-line title, above) rather than ending the title in an ellipsis on line two (critique round 3
+   did it at 393x852; iteration 2 at 375x667). */
+[data-posture="car"] .ag-np.fp-sheet .fp-s-title { -webkit-line-clamp: 3; line-clamp: 3; }
+/* ...and it is cut on the third line's boundary, not ellipsised. A `-webkit-box` clamp centres the third line at its full,
+   untruncated width and only then swaps its tail for the ellipsis, so the visible run sat about 30px right of the centre of
+   lines one and two (iteration 2 review, measured in Chromium). A block box clipped to exactly three lines keeps every line
+   on the one centre axis; the full title stays the heading a screen reader reads and the episode page prints it whole. */
+[data-posture="car"] .ag-np.fp-sheet .fp-s-title { display: block; max-height: 3lh; overflow: hidden; }
+
+/* Play's bottom edge stays 24px or more above the viewport bottom: the handle that used to hold that margin is gone, so
+   the first screen pads its own foot (round 1 clipped Play at 375x667). */
+[data-posture="car"] .ag-np.fp-sheet .ag-np-first { padding-bottom: calc(var(--safe-bottom) + var(--s-8)); }
+[data-posture="car"] .ag-np.fp-sheet .fp-row.ag-np-transport { margin-top: var(--s-3); }
+
+/* The car chip: the one control that says posture is on and ends it. Hidden outside the car. As in the prototype it sits
+   in the middle of the head between the close chevron and the dots, as a bg2 pill: the head becomes a
+   1fr / auto / 1fr grid, and the grabber (absolutely placed) takes no cell. The pill is drawn 36 tall inside a 44 tall
+   hit box, so the target meets the tap floor without a heavy pill. Its label is --t-label, so it grows x1.25 with the rest. */
+.ag-np-car-chip { display: none; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-head { display: grid; grid-template-columns: 1fr auto 1fr; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-head .fp-close { justify-self: start; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-head .ag-np-car-chip + .ag-np-icon-btn { justify-self: end; }
+[data-posture="car"] .ag-np.fp-sheet .ag-np-car-chip {
+  position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: 2px;
+  min-height: var(--tap); padding: 0 14px; border: 0; background: transparent; color: var(--text);
+}
+[data-posture="car"] .ag-np.fp-sheet .ag-np-car-chip::before {
+  content: ""; position: absolute; inset: 4px 0; z-index: -1; border-radius: var(--r-pill); background: var(--bg2);
+}

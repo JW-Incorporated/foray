@@ -44,7 +44,7 @@ import {
   REPO_ROOT, DEFAULT_OUT, MAX_BYTES, SHELL_FILES, EXCLUDED_FROM_BUNDLE,
   MIN_DERIVED_DATA_FILES, runtimeDataFiles, playerFiles, buildPlan, prepare,
   SHELL_ONLY_FILES, shellOnlyPlan, shellScriptTags, injectShellScripts,
-  assertShellScriptsPresent, WebDirError,
+  assertShellScriptsPresent, WebDirError, stripHtmlComments,
   BUNDLED_ITEMS_PER_SHOW, PROJECTED_DATA, COPIED_WHOLE, discoverSlice,
   assertDiscoverSliceComplete, serializeSlice, sliceBytes, assertSlicesOnDisk, projectData,
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
@@ -107,6 +107,10 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/today.css", maxBytes: 8 * 1024 },
   { rel: "ui/palette.js", maxBytes: 2 * 1024 },
   { rel: "ui/home.js", maxBytes: 32 * 1024 },
+  { rel: "ui/now-playing.css", maxBytes: 14 * 1024 }, // 12.7 KB minified
+  { rel: "ui/now-playing.js", maxBytes: 18 * 1024 }, // 16.1 KB minified
+  { rel: "ui/car.css", maxBytes: 3 * 1024 }, // 2.6 KB minified after iterations 2-3 (car posture: sizes, hidden set, chip, lit sleeve); was 2 KB at 1.6 KB
+  { rel: "ui/car.js", maxBytes: 4 * 1024 }, // 3.1 KB minified (hold gesture, posture attribute, chip)
   /* Phase 4, Foray detail: the screen's stylesheet, the Glow palette, and ui/foray.js itself, which the screen rewrote (the
      page's markup, the show tiles, the strip's colours and thumbnails, share). foray.js is budgeted here, not in the legacy
      line, for the reason the primitives are: the legacy alarm is not to be re-baselined an eighth time, and this is a
@@ -646,6 +650,22 @@ function withRealBundle(fn, opts = {}) {
     fs.rmSync(path.join(ROOT, "mobile", ".bundle-under-test"), { recursive: true, force: true });
   }
 }
+
+test("the bundle's index.html ships without its comments, and stripping keeps every tag (Redesign 2026: 5.4 KB of comments took the bundle past the 3 MB cap)", () => {
+  /* MUTATION: make stripHtmlComments return its input unchanged -> the first two assertions go red.
+     MUTATION: make the second replace greedy (`<!--[\s\S]*-->`) -> the tag-survives assertion goes red. */
+  assert.equal(stripHtmlComments("a\n  <!-- x\n y -->\nb"), "a\nb", "a comment alone on its lines leaves no blank line");
+  assert.equal(stripHtmlComments('<link href="a"><!-- c --><script src="b"></script>'), '<link href="a"><script src="b"></script>', "an inline comment goes, the tags beside it stay");
+  assert.equal(stripHtmlComments("x <!-- never closed"), "x <!-- never closed", "an unclosed comment is left alone, not allowed to eat the document");
+  assert.equal(stripHtmlComments(stripHtmlComments("<!-- a -->\n<p>b</p>\n<!-- c -->\n")), "<p>b</p>\n", "idempotent");
+  withRealBundle((r, absOut) => {
+    const html = fs.readFileSync(path.join(absOut, "index.html"), "utf8");
+    assert.ok(!html.includes("<!--"), "the shipped index.html carries no comment");
+    const src = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+    const tags = (h) => [...h.matchAll(/<(?:script|link)\b[^>]*>/g)].map((m) => m[0]);
+    for (const t of tags(src)) assert.ok(tags(html).includes(t), `stripping must not lose ${t}`);
+  });
+});
 
 test("REAL REPO: DEFAULT_OUT is the webDir capacitor.config.json declares", () => {
   /* The two would otherwise drift into "the script writes one directory and
@@ -2430,7 +2450,7 @@ function makeFakeRepo({
   );
   /* The shell-only sources live outside the site's own tree, so they are not
      covered by the SHELL_FILES loop above. */
-  for (const f of SHELL_ONLY_FILES) write(f.src, "/* the shell's foreground-service bridge */\n");
+  for (const f of SHELL_ONLY_FILES) write(f.src, f.dest.endsWith(".json") ? '{"shell":"document"}' : "/* the shell's foreground-service bridge */\n");
   write("sw.js", 'const CACHE = "foray-v4";');
   write("player/client.js", 'import { x } from "./queue-manager.js";');
   write("player/queue-manager.js", "export const x = 1;");
@@ -2999,6 +3019,19 @@ test("K-01: the probe passage ships into the shell and is not a script tag", () 
   assert.ok(!shellScriptTags().some((t) => t.includes("kokoro-probe-passage")), "a JSON file is not a script");
   const bytes = fs.statSync(path.join(ROOT, entry.src)).size;
   assert.ok(bytes < 48 * 1024, `the passage is ${bytes} B — if it grew past 48 KB something other than four phonemized lines got in`);
+});
+
+test("the shell-only probe passage ships compact and parses to the source (Redesign 2026: 21 KB of indentation kept the bundle over the 3 MB cap)", () => {
+  /* MUTATION: change the shell-only branch in prepare() back to copy(src, f.dest) -> the compactness assertion goes red.
+     MUTATION: serialise something other than the parsed source (e.g. {}) -> the deepEqual goes red. */
+  const entry = SHELL_ONLY_FILES.find((f) => f.src.endsWith("kokoro-probe-passage.json"));
+  const source = fs.readFileSync(path.join(ROOT, entry.src), "utf8");
+  withRealBundle((r, absOut) => {
+    const shipped = fs.readFileSync(path.join(absOut, entry.dest), "utf8");
+    assert.deepEqual(JSON.parse(shipped), JSON.parse(source), "compacting must not change one value");
+    assert.equal(shipped, JSON.stringify(JSON.parse(source)), "the shipped passage is the compact serialisation");
+    assert.ok(shipped.length < source.length * 0.6, `shipped ${shipped.length} B of ${source.length} B — indentation is back`);
+  });
 });
 
 test("K-01: the page's two passage URLs match where the file actually lands", () => {

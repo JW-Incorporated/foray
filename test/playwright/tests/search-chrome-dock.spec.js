@@ -130,16 +130,18 @@ test("focusing the field takes the tab bar away and its height with it", async (
   await openSearchPage(page);
 
   await expect(page.locator("#tab-bar")).toBeVisible();
-  /* The tab row RECEDES on arriving at Discover (64 -> 36, 280ms), so measure after it has settled. */
+  /* The tab row RECEDES on arriving at Discover (64 -> 44, 280ms), so measure after it has settled. 44, not the 36 this
+     said until the CI fix of 2026-10-09: `--dock-tab-receded` is 44px (ui/dock.css) so each tab stays its own 44px
+     target; the old number was BUILD-NOTES 3's first draft. MUTATION: set `--dock-tab-receded: 36px` -> red here. */
   await expect.poll(() => page.evaluate(() =>
-    Math.round(document.querySelector("#tab-bar").getBoundingClientRect().height))).toBe(36);
+    Math.round(document.querySelector("#tab-bar").getBoundingClientRect().height))).toBe(44);
   const idleGap = await pillGap(page);
   const tabBarH = await page.evaluate(() =>
     Math.round(document.querySelector("#tab-bar").getBoundingClientRect().height));
   /* Idle, the field row clears the tab row: the field's gap is the tab row's own height plus the Dock's float.
      Asserted so the focused case below is a comparison against something known, not against whatever the
      sheet happens to produce. (The tab row is receded - 36 - on Discover, always.) */
-  expect(tabBarH).toBe(36);
+  expect(tabBarH).toBe(44);
   expect(idleGap).toBeGreaterThanOrEqual(tabBarH);
 
   await page.locator("#sh-input").focus();
@@ -166,7 +168,12 @@ test("no Go button is rendered inside the pill", async ({ page }) => {
      this is the one place the SHIPPED markup and the SHIPPED stylesheet meet:
      a rule left behind could still paint something at that position. */
   await openSearchPage(page);
-  await expect(page.locator("#sh-form button")).toHaveCount(0);
+  /* The only button the pill may hold is the clear "x" (`#sh-dismiss`, which the ambient Discover moved INTO the pill and
+     which is hidden while the field is empty). Anything else - a submit pill, a "Go" - is the deleted control coming back.
+     MUTATION: add `<button type="submit">Go</button>` to the form in ui/browse.js -> the first count goes to 1 and this
+     is red; remove `hidden` from `#sh-dismiss` -> the second assertion is red. */
+  await expect(page.locator("#sh-form button:not(#sh-dismiss)")).toHaveCount(0);
+  await expect(page.locator("#sh-dismiss")).toBeHidden();
   await expect(page.locator("#sh-compose")).not.toContainText("Go");
 });
 

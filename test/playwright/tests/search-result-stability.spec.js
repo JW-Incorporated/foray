@@ -126,7 +126,10 @@ async function stubSearch(page, { net = [], directory = [] } = {}) {
 async function openShowsPage(page) {
   await page.goto(site.baseUrl + "#/shows");
   await page.waitForFunction(() => !!document.querySelector("#sh-input"), null, { timeout: 60_000 });
-  await page.waitForFunction(() => document.querySelectorAll("#view .show-result").length > 0, null, { timeout: 60_000 });
+  /* Discover at rest (the ambient page) lists SUBJECT TILES, not show rows: `#sh-results` is hidden until a query is typed.
+     The old wait here was for `.show-result` rows and so timed out at 60 s on a page that was working. A tile is the idle
+     page's content, so a painted tile is "the catalogue loaded and the groups drew". */
+  await page.waitForFunction(() => document.querySelectorAll("#view .dsc-grid .ag-subject-tile").length > 0, null, { timeout: 60_000 });
   await page.evaluate(() => { document.querySelector("#onboarding-room")?.remove(); });
 }
 
@@ -147,8 +150,8 @@ async function openShowsPage(page) {
     order they answer, each repaint must be an EXTENSION of the one before it. */
 async function recordRepaints(page) {
   await page.evaluate(() => {
-    const grab = () => [...document.querySelectorAll("#sh-results .show-result")].map((a) => ({
-      title: a.querySelector(".show-result-title").textContent,
+    const grab = () => [...document.querySelectorAll("#sh-results .dsc-show")].map((a) => ({
+      title: a.querySelector(".t-label").textContent,
       y: Math.round(a.getBoundingClientRect().y + window.scrollY),
     }));
     window.__repaints = [];
@@ -162,17 +165,17 @@ async function recordRepaints(page) {
 
 test("a row that has been painted never moves again, however late the next pass lands", async ({ page }) => {
   const { directoryAnswered } = await stubSearch(page, {
-    net: [row("net-1", "Science Matters Daily", "catalog")],
+    net: [row("net-1", "Radio Matters Daily", "catalog")],
     /* An EXACT title match for the query. Under a whole-list re-rank it sorts
        to the top, above the curated rows already on screen — which is what
        made the list jump. */
-    directory: [row("dir-exact", "Science", "apple"), row("dir-2", "Science Weekly", "apple")],
+    directory: [row("dir-exact", "Radio", "apple"), row("dir-2", "Radio Weekly", "apple")],
   });
   await openShowsPage(page);
   await recordRepaints(page);
 
   await page.click("#sh-input");
-  await page.fill("#sh-input", "science");
+  await page.fill("#sh-input", "radio");
   /* SUBMIT FROM THE KEYBOARD, NOT FROM A BUTTON.
      This line clicked `#sh-form button[type=submit]` — the "Go" pill — until
      2026-09-14, when #696 deleted it at the founder's request ("since the
@@ -192,19 +195,19 @@ test("a row that has been painted never moves again, however late the next pass 
   await page.press("#sh-input", "Enter");
 
   /* A PAGE OF ROWS AT A TIME (audit round 3, app-2-2). The list paints 50
-     rows and a "Show more shows" button. Over the committed data "science"
-     has 20 local rows and the index scan adds 92, so the list is past 50
+     rows and a "Show more shows" button. Over the committed data a broad
+     query like "radio" has dozens of local rows and the index scan adds more, so the list is past 50
      before the directory answers, and the late rows are appended BELOW the
      first page, where nothing on screen moves for them. They are revealed
      only when the listener asks for more. Once the directory pass has answered, reveal
      page by page until its exact match is on screen. Each reveal is a
      repaint too, and it must also extend the list.
      MUTATION: with this loop removed, the wait below times out at 30 s,
-     because "Science" sits behind the button. */
+     because "Radio" sits behind the button. */
   await directoryAnswered;
   for (let i = 0; i < 40; i++) {
     const shown = await page.evaluate(() =>
-      [...document.querySelectorAll("#sh-results .show-result-title")].some((t) => t.textContent === "Science"));
+      [...document.querySelectorAll("#sh-results .dsc-show .t-label")].some((t) => t.textContent === "Radio"));
     if (shown) break;
     const more = page.locator("#sh-results [data-sh-more]");
     if (await more.count()) await more.click();
@@ -213,7 +216,7 @@ test("a row that has been painted never moves again, however late the next pass 
 
   /* Both endpoints have answered and the last merge has painted. */
   await page.waitForFunction(
-    () => [...document.querySelectorAll("#sh-results .show-result-title")].some((t) => t.textContent === "Science"),
+    () => [...document.querySelectorAll("#sh-results .dsc-show .t-label")].some((t) => t.textContent === "Radio"),
     null, { timeout: 30_000 });
   await page.waitForTimeout(250);
 
@@ -237,8 +240,8 @@ test("a row that has been painted never moves again, however late the next pass 
   /* And the late rows really were the ones that would have jumped the queue,
      so the loop above is not passing on an empty merge. */
   const last = repaints[repaints.length - 1].map((r) => r.title);
-  expect(last).toContain("Science");
-  expect(last.indexOf("Science")).toBeGreaterThan(0);
+  expect(last).toContain("Radio");
+  expect(last.indexOf("Radio")).toBeGreaterThan(0);
 });
 
 test("a browse tile runs the ordinary search for its own label", async ({ page }) => {
@@ -249,7 +252,9 @@ test("a browse tile runs the ordinary search for its own label", async ({ page }
   await stubSearch(page, { directory: [row("dir-1", "Science Vs Everything", "apple")] });
   await openShowsPage(page);
 
-  const tile = page.locator('#sh-browse .fy-chip', { hasText: /^Science$/ });
+  /* The subject tile is an `a.ag-subject-tile` in Discover's groups (it was a `.fy-chip` in `#sh-browse`); its label is the
+     tile's `h4`, so match on that, not on the whole link (which also carries the "N shows" count). */
+  const tile = page.locator("#view .dsc-grid a.ag-subject-tile", { has: page.locator("h4", { hasText: /^Science$/ }) });
   await expect(tile).toHaveCount(1);
   await tile.click();
 
@@ -258,6 +263,9 @@ test("a browse tile runs the ordinary search for its own label", async ({ page }
      the tab that opens it (the tab became Discover with the Dock). */
   await expect(page.locator("#view h2")).toHaveText("Discover");
   await expect(page.locator("#sh-input")).toHaveValue("Science");
-  await page.waitForFunction(() => document.querySelectorAll("#sh-results .show-result").length > 0, null, { timeout: 30_000 });
+  /* A subject whose NAME is the query lists its own shows as .ag-show-tile cards under the subject's lead (an ordinary
+     query paints .dsc-show rows, as the first test here asserts); either way the results list is non-empty. MUTATION:
+     point the tile back at #/category/science -> the field is empty and this goes red. */
+  await page.waitForFunction(() => document.querySelectorAll("#sh-results .ag-show-tile, #sh-results .dsc-show").length > 0, null, { timeout: 30_000 });
   await expect(page.locator("#view")).not.toContainText("No shows here yet.");
 });
