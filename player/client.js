@@ -1301,10 +1301,13 @@ function buildUI() {
   const rateBtn = el("button", "fp-rate", "1×");
   rateBtn.type = "button";
   rateBtn.setAttribute("aria-label", "Playback speed");
-  /* It opens the speed picker, a dialog (#349) — say so, or a voice-control
-     user told "next speed" expects a cycle (audit round 2, player-9). The
-     Foray page's `#fy-rate` is the same control and needs the same attribute. */
-  rateBtn.setAttribute("aria-haspopup", "dialog");
+  /* Without the Dial view it opens the speed picker, a dialog (#349) — say so,
+     or a voice-control user told "next speed" expects a cycle (audit round 2,
+     player-9). The Foray page's `#fy-rate` is the same control and needs the
+     same attribute. WITH the Dial view the chip opens an inline radiogroup in
+     the dock, not a dialog: `dialBuildNowPlaying` gives it aria-expanded and
+     aria-controls instead, and a false "dialog" must not be announced. */
+  if (!window.DialNowPlaying) rateBtn.setAttribute("aria-haspopup", "dialog");
   const openLink = el("a", "fp-openep", "Episode");
   /* The bar already survives navigation — it lives on <body>, not inside
      #view — but until now there was no way BACK. Leaving the foray page to look
@@ -2962,6 +2965,7 @@ function paintRate(rate = currentRate()) {
   if (!ui) return;
   paintControl(ui.rateBtn, rateLabel(rate), rateAriaLabel(rate));
   window.DialNowPlaying?.paintRate?.(ui.rateBtn, rate);
+  window.DialNowPlaying?.syncRotary?.(ui, "rate", normalizeRate(rate));
 }
 
 /* ---------- the sleep timer (Tactile Now Playing, BUILD-NOTES 4.2) ----------
@@ -2985,9 +2989,36 @@ function setSleepTimer(minutes) {
          reset to Off and the audio kept playing. */
       if (transportIsRunning()) setRunning(false, "sleep");
       window.DialNowPlaying?.paintSleep?.(ui?.sleepBtn, 0);
+      window.DialNowPlaying?.syncRotary?.(ui, "sleep", 0);
     }, sleepMinutes * 60 * 1000);
   }
   window.DialNowPlaying?.paintSleep?.(ui?.sleepBtn, sleepMinutes);
+}
+
+/* The speed and sleep chips open the rotary (BUILD-NOTES 3.14): a detent strip
+   that takes the secondary row's place in the dock, with -/+ keys and Done.
+   Speed's ticks are the app's own ladder (RATES), so a tick is always a speed
+   `normalizeRate` keeps; the prototype's 0.1x ticks would be snapped back to
+   it (docs/redesign-2026/directions/tactile/BUILD-NOTES.md 3.14 note). Without
+   the Dial view, speed falls back to the list picker below. */
+function openRotary(kind) {
+  const dial = window.DialNowPlaying;
+  if (kind === "rate") {
+    if (!dial?.openRotary || !ui?.rotaryHost) { openRatePicker(); return; }
+    dial.openRotary(ui, {
+      kind, label: "Playback speed", lessLabel: "Slower", moreLabel: "Faster", opener: ui.rateBtn,
+      stops: RATES.map((r) => ({ value: r, text: rateLabel(r), label: `${r} times` })),
+      value: normalizeRate(currentRate()),
+      onChange: (value) => { applyRate(value); },
+    });
+    return;
+  }
+  if (!dial?.openRotary || !ui?.rotaryHost) return;
+  dial.openRotary(ui, {
+    kind, label: "Sleep timer", lessLabel: "Shorter", moreLabel: "Longer", opener: ui.sleepBtn,
+    stops: dial.sleepStops(), value: sleepMinutes,
+    onChange: (value) => { setSleepTimer(value); },
+  });
 }
 
 /* ---------- V-01: the listener's chosen narration voice ----------
@@ -4175,6 +4206,9 @@ function bind() {
        `inert` off the bar and hands focus back to the button that opened
        the sheet, which must not be inert when it receives focus. */
     if (!open && owner) owner.closeSheet(ui.sheet);
+    /* A dial left open would still be there, with the secondary row hidden, the
+       next time the sheet opens. */
+    if (!open) window.DialNowPlaying?.closeRotary?.(ui, false);
     ui.sheet.hidden = !open;
     document.body.classList.toggle("fp-expanded", open);
     paintInfoLabel();
@@ -4443,13 +4477,8 @@ function bind() {
     else render();
   }));
 
-  ui.rateBtn.addEventListener("click", () => openRatePicker());
-  if (ui.sleepBtn) {
-    ui.sleepBtn.addEventListener("click", () => {
-      window.DialNowPlaying?.haptic?.("selection");
-      setSleepTimer(window.DialNowPlaying?.nextSleepStop?.(sleepMinutes) ?? 0);
-    });
-  }
+  ui.rateBtn.addEventListener("click", () => openRotary("rate"));
+  if (ui.sleepBtn) ui.sleepBtn.addEventListener("click", () => openRotary("sleep"));
 
   document.addEventListener("visibilitychange", () => {
     /* Native mode: tell the engine (it gates its events on this, §5.4), and on

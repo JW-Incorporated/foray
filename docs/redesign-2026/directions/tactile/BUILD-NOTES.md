@@ -440,6 +440,12 @@ Playing) inside a well.
   with `x`/`width` proportional to its runtime over the total. Gap between
   rects 2 units (never below 1px rendered). Minimum rendered width per
   segment 3px; if narrower, merge visually but keep the data.
+  **Build (Now Playing iteration 3, supersedes the 2-unit gap):** the gap is
+  3px rendered (2px on `mini` and `line`), converted to units from the render
+  width, floored at 2 units and capped so gaps take at most a quarter of the
+  band; corners are 3px (1px on `mini`), converted separately for x and y
+  because the viewBox is stretched non-uniformly. Two units was 0.7px at 345px
+  and read as one slab with seams, not the prototype's separate enamel blocks.
   **Build (Phase 3 primitives, review follow-up):** a bar under its minimum
   is pinned at it and the other bars share the remaining width in runtime
   proportion (repeated until stable), so bars never overlap, the last one
@@ -651,6 +657,19 @@ Tap opens a 56px-tall horizontal detent strip in a well (the "dial") with
 ticks every 0.1x / 5 min; drag across it with selection haptics; a tap on a
 tick also works (every tick is 44px wide). Buttons "−" and "+" (44px) sit at
 the strip's ends for keyboard and switch users.
+
+**As built (Now Playing, 2026-10-07 review fix).** The dial replaces the
+secondary row in the dock (the prototype's own dock swap), with a persimmon
+Done key after the "+". It is not a modal, so the sheet's focus trap stands:
+focus goes to the selected tick on open and back to the chip on Done or Escape
+(Escape is stopped at the dial so it does not collapse the sheet). Ticks are a
+2×14px mark over a mono label; the selected one is 3×22px persimmon. Two
+calls: (1) **speed ticks are the app's own ladder** (0.75, 1, 1.25, 1.5, 1.75,
+2: `player/playback-rate.js` `RATES`), not 0.1× steps, because `normalizeRate`
+snaps anything off the ladder and the 0.25 ladder is ADR-governed (#224); a
+finer ladder is a product decision for the owner, not a build detail. (2) Sleep
+ticks are Off, 5, 10, 15, 20, 30, 45, 60 (the prototype's list). The "−" key
+needed a `ph-minus` symbol, added to the sprite (42 symbols now).
 
 ### 3.15 Skeleton (`.skel`)
 Band-shaped and row-shaped placeholders with a 1.2s shimmer (opacity only,

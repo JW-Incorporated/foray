@@ -644,7 +644,9 @@ test("Tactile Up Next is an artwork-led card whose URL passes through safeUrl", 
 });
 
 test("Tactile open uses a shared artwork transition with reduced-motion and WAAPI fallback", () => {
-  /* MUTATION: delete `target.animate` from the fallback -> red. */
+  /* The source-text half. It cannot see whether the fallback RUNS: deleting the `target.animate(...)`
+     call left this test green (review, 2026-10-07). "the WAAPI fallback animates the hero from the
+     mini's rect" below executes the function and watches `animate()` being called. */
   assert.match(CSS_RULES, /view-transition-name:\s*np-art/);
   assert.match(NP_TEXT, /document\.startViewTransition/);
   assert.match(NP_TEXT, /typeof target\.animate !== "function"/);
@@ -658,21 +660,73 @@ test("Tactile open uses a shared artwork transition with reduced-motion and WAAP
 
 import vm from "node:vm";
 
-function loadDial({ ink = "#201a17", paper = "#f7f0e4", dark = false, haptics = null } = {}) {
+/** A DOM element with only what ui/now-playing.js touches, and honest about it:
+    attributes, classes, children, listeners and focus are real state here, not
+    stubs that answer "yes". Layout is the one thing it cannot do, so a test that
+    needs it sets `offsetLeft` / `offsetWidth` / `clientWidth` itself. */
+class FakeEl {
+  constructor(tag, doc) {
+    this.tagName = String(tag).toUpperCase();
+    this.doc = doc;
+    this.children = [];
+    this.attrs = {};
+    this.dataset = {};
+    this.listeners = {};
+    this.className = "";
+    this.hidden = false;
+    this.disabled = false;
+    this.tabIndex = 0;
+    this.scrollLeft = 0;
+    this.clientWidth = 0;
+    this.offsetLeft = 0;
+    this.offsetWidth = 0;
+    this.innerHTML = "";
+    this.classList = {
+      add: (...names) => { names.forEach((n) => { if (!this.classList.contains(n)) this.className = (this.className + " " + n).trim(); }); },
+      remove: (...names) => { this.className = this.className.split(/\s+/).filter((n) => n && !names.includes(n)).join(" "); },
+      contains: (n) => this.className.split(/\s+/).includes(n),
+      toggle: (n, force) => { if (force === undefined ? !this.classList.contains(n) : force) this.classList.add(n); else this.classList.remove(n); },
+    };
+  }
+  append(...nodes) { nodes.forEach((n) => { if (typeof n !== "string") n.parent = this; this.children.push(n); }); }
+  replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
+  setAttribute(name, value) { this.attrs[name] = String(value); }
+  getAttribute(name) { return name in this.attrs ? this.attrs[name] : null; }
+  addEventListener(type, fn) { (this.listeners[type] ||= []).push(fn); }
+  /** Deliver an event to this element's listeners and return it. */
+  fire(type, init = {}) {
+    const event = { type, target: this, defaultPrevented: false, stopped: false, preventDefault() { this.defaultPrevented = true; }, stopPropagation() { this.stopped = true; }, ...init };
+    (this.listeners[type] || []).forEach((fn) => fn(event));
+    return event;
+  }
+  /** A click on a disabled button does nothing, as in a browser. */
+  click() { if (!this.disabled) this.fire("click"); }
+  focus() { this.doc.activeElement = this; }
+  getBoundingClientRect() { return { left: 0, top: 0, width: this.clientWidth, height: 0 }; }
+  setPointerCapture() { this.captured = true; }
+  releasePointerCapture() { this.captured = false; }
+}
+
+function loadDial({ ink = "#201a17", paper = "#f7f0e4", dark = false, haptics = null, extra = {} } = {}) {
   const calls = [];
   const window = { Capacitor: haptics ? { Plugins: { Haptics: haptics(calls) } } : undefined };
   const root = { dataset: {} };
+  const doc = { documentElement: root, activeElement: null, createElement: (tag) => new FakeEl(tag, doc) };
   const context = {
     window,
-    document: { documentElement: root, createElement() { throw new Error("no DOM in this harness"); } },
+    document: doc,
     getComputedStyle: () => ({ getPropertyValue: (name) => (name === "--ink" ? ink : name === "--paper" ? paper : "") }),
     matchMedia: () => ({ matches: dark }),
     Date,
+    setTimeout,
+    setStatusText: (node, text) => { if (node && node.textContent !== text) node.textContent = text; },
+    setControlLabel: (node, text) => { node.textContent = text; },
     Math,
+    ...extra,
   };
   vm.createContext(context);
   vm.runInContext(NOW_PLAYING, context, { filename: "ui/now-playing.js" });
-  return { dial: window.DialNowPlaying, calls };
+  return { dial: window.DialNowPlaying, calls, doc };
 }
 
 function fakeSheet() {
@@ -729,13 +783,324 @@ test("narration keeps the previous show's enamel; an opening narration borrows t
   assert.equal(dial.currentStation({ segments: [show("AA", 1), show("BB", 2)], currentIndex: 1 }).code, "BB");
 });
 
-test("the sleep chip steps Off, 15, 30, 45, 60 and back to Off", () => {
-  /* MUTATION: drop 60 from DIAL_SLEEP_STOPS -> the walk ends early and fails. */
+test("the sleep dial's ticks are Off then 5 to 60 minutes, each named in words", () => {
+  /* MUTATION: drop 60 from DIAL_SLEEP_TICKS -> the last assertion fails; change
+     the tick label from `m ? String(m) : "Off"` to `String(m)` -> "0" for Off, red. */
   const { dial } = loadDial();
-  const walk = [0];
-  for (let i = 0; i < 5; i += 1) walk.push(dial.nextSleepStop(walk[walk.length - 1]));
-  assert.deepEqual(walk, [0, 15, 30, 45, 60, 0]);
-  assert.equal(dial.nextSleepStop(7), 0, "an unknown value falls back to Off rather than sticking");
+  const stops = dial.sleepStops();
+  assert.deepEqual(Array.from(stops, (s) => s.value), [0, 5, 10, 15, 20, 30, 45, 60]);
+  assert.deepEqual(Array.from(stops, (s) => s.text), ["Off", "5", "10", "15", "20", "30", "45", "60"], "a tick shows bare minutes");
+  assert.equal(stops[3].label, "15 minutes", "its accessible name says what the number is");
+  assert.equal(stops[0].label, "Off");
+  assert.equal(dial.sleepText(60), "60 min");
+  assert.equal(dial.sleepText(0), "Off");
+});
+
+/* ==================================================================== */
+/* THE ROTARY: a detent strip in the dock, not a cycling chip            */
+/* (BUILD-NOTES 3.14). Run on a fake DOM that keeps real state.         */
+/* ==================================================================== */
+
+/** The sleep dial as the dock builds it: 8 ticks of 44px in a 176px strip (so it scrolls), selected 0. */
+function sleepRotary(overrides = {}) {
+  const loaded = loadDial({
+    haptics: (log) => ({ selectionChanged: () => log.push("sel") }),
+    ...overrides.load,
+    /* The real tactileIcon lives in ui/primitives.js; this one just names the symbol it was asked for. */
+    extra: { tactileIcon: (id) => `<icon ${id}>`, ...overrides.load?.extra },
+  });
+  const changes = [];
+  let done = 0;
+  const rotary = loaded.dial.rotary({
+    kind: "sleep", label: "Sleep timer", lessLabel: "Shorter", moreLabel: "Longer",
+    stops: loaded.dial.sleepStops(), value: 0,
+    onChange: (value) => changes.push(value),
+    onDone: () => { done += 1; },
+    ...overrides.opts,
+  });
+  rotary.track.clientWidth = 176;
+  rotary.ticks.forEach((tick, i) => { tick.offsetLeft = i * 44; tick.offsetWidth = 44; });
+  return { ...loaded, rotary, changes, done: () => done };
+}
+
+const checkedOf = (rotary) => Array.from(rotary.ticks, (t) => t.getAttribute("aria-checked"));
+
+test("the rotary is a radiogroup of 44px ticks between a - key and a + key, one tab stop", () => {
+  /* MUTATIONS: drop the `role="radio"` line -> red; make the selected tick's tabIndex
+     `-1` as well -> the roving-tab-stop assertion goes red; give the - key the
+     "ph-plus" icon -> the icon assertions go red. */
+  const { rotary } = sleepRotary();
+  assert.equal(rotary.root.getAttribute("role"), "group");
+  assert.equal(rotary.track.getAttribute("role"), "radiogroup");
+  assert.equal(rotary.ticks.length, 8);
+  assert.ok(rotary.ticks.every((t) => t.getAttribute("role") === "radio" && t.tagName === "BUTTON"));
+  assert.deepEqual(checkedOf(rotary), ["true", "false", "false", "false", "false", "false", "false", "false"]);
+  assert.deepEqual(Array.from(rotary.ticks, (t) => t.tabIndex), [0, -1, -1, -1, -1, -1, -1, -1], "only the selected tick is a tab stop");
+  assert.equal(rotary.less.innerHTML, "<icon ph-minus>", "the - key draws the sprite's minus, not a text glyph");
+  assert.equal(rotary.more.innerHTML, "<icon ph-plus>");
+  assert.equal(rotary.done.innerHTML, "<icon ph-check>");
+  assert.equal(rotary.less.getAttribute("aria-label"), "Shorter");
+  assert.equal(rotary.more.getAttribute("aria-label"), "Longer");
+  assert.equal(rotary.less.disabled, true, "nothing below Off");
+  assert.equal(rotary.more.disabled, false);
+  assert.deepEqual(Array.from(rotary.root.children, (c) => c.className.split(" ")[0]), ["keycap", "well", "keycap", "keycap"], "- key, strip, + key, Done");
+});
+
+test("a tap on a tick selects it, reports it once, and a tap on the selected tick reports nothing", () => {
+  /* MUTATION: delete the tick's click listener -> the first assertion is red; drop
+     the `changed &&` guard in select() -> the repeat tap reports a second change. */
+  const { rotary, changes } = sleepRotary();
+  rotary.ticks[3].click();
+  assert.deepEqual(changes, [15]);
+  assert.equal(rotary.value(), 15);
+  assert.deepEqual(checkedOf(rotary), ["false", "false", "false", "true", "false", "false", "false", "false"]);
+  rotary.ticks[3].click();
+  assert.deepEqual(changes, [15], "no change, no report");
+  assert.equal(rotary.less.disabled, false, "the - key wakes once there is room below");
+});
+
+test("the - and + keys step one tick, stop at the ends, and do not drop focus when they disable", () => {
+  /* MUTATIONS: remove the `Math.max(0, Math.min(...))` clamp in select() -> the end
+     assertions go red; delete the `pair[0].disabled && ticks[index]` focus line ->
+     the focus assertion is red (a disabled button cannot hold it). */
+  const { rotary, changes, doc } = sleepRotary();
+  rotary.more.click();
+  rotary.more.click();
+  assert.deepEqual(changes, [5, 10]);
+  rotary.less.click();
+  assert.deepEqual(changes, [5, 10, 5]);
+  rotary.less.click();
+  assert.equal(rotary.value(), 0);
+  assert.equal(rotary.less.disabled, true, "at the bottom the - key is disabled");
+  assert.equal(doc.activeElement, rotary.ticks[0], "and focus moved to the selected tick instead of vanishing with it");
+  rotary.less.click();
+  assert.equal(rotary.value(), 0, "a disabled key does nothing");
+  for (let i = 0; i < 12; i += 1) rotary.more.click();
+  assert.equal(rotary.value(), 60);
+  assert.equal(rotary.more.disabled, true);
+  assert.equal(doc.activeElement, rotary.ticks[7]);
+});
+
+test("a drag across the strip selects the tick under the finger, with a selection haptic per detent", () => {
+  /* MUTATIONS: change `dialRotaryIndexAt`'s `Math.floor` to `Math.ceil` -> the index
+     assertions are off by one; delete the `select(...)` call in the pointermove
+     listener -> nothing moves (red); delete the `dialHaptic("selection")` in select()
+     -> the haptic count is 0 (red). Each pointermove is 150ms apart so the 100ms
+     throttle (its own test) lets every detent through. */
+  let clock = 1_000_000;
+  const { rotary, changes, calls } = sleepRotary({ load: { extra: { Date: { now: () => clock } } } });
+  rotary.track.fire("pointerdown", { clientX: 10, pointerId: 7, pointerType: "touch" });
+  const move = (x) => { clock += 150; rotary.track.fire("pointermove", { clientX: x, pointerId: 7 }); };
+  move(14);
+  assert.deepEqual(changes, [], "x=14 is still inside tick 0 (0-44): nothing changed");
+  assert.equal(rotary.track.captured, true, "past the 4px threshold the strip owns the pointer");
+  move(100);
+  assert.equal(rotary.value(), 10, "x=100 is inside tick 2 (88-132)");
+  move(175);
+  assert.equal(rotary.value(), 15, "x=175 is inside tick 3 (132-176)");
+  move(-30);
+  assert.equal(rotary.value(), 0, "dragging past the left end holds the first tick");
+  assert.deepEqual(changes, [10, 15, 0]);
+  assert.equal(calls.filter((c) => c === "sel").length, 3, "one selection haptic per detent that changed");
+  rotary.track.fire("pointerup", { clientX: -30, pointerId: 7 });
+  assert.equal(rotary.track.captured, false);
+});
+
+test("a press that barely moves is a tap, not a drag; and the click that ends a real drag is swallowed", () => {
+  /* MUTATIONS: change `< DIAL_ROTARY_DRAG_PX` to `< 0` -> the 3px wobble drags (red);
+     delete `api.suppressClick = true` -> the click after the drag re-selects the tick
+     it ended on (red). */
+  const { rotary, changes } = sleepRotary();
+  rotary.track.fire("pointerdown", { clientX: 50, pointerId: 1, pointerType: "touch" });
+  rotary.track.fire("pointermove", { clientX: 53, pointerId: 1 });
+  rotary.track.fire("pointerup", { clientX: 53, pointerId: 1 });
+  assert.deepEqual(changes, [], "3px is a wobble");
+  assert.notEqual(rotary.track.captured, true);
+  rotary.ticks[1].click();
+  assert.deepEqual(changes, [5], "and the tap that follows still lands");
+  rotary.track.fire("pointerdown", { clientX: 10, pointerId: 2, pointerType: "touch" });
+  rotary.track.fire("pointermove", { clientX: 140, pointerId: 2 });
+  rotary.track.fire("pointerup", { clientX: 140, pointerId: 2 });
+  assert.equal(rotary.value(), 15, "x=140 is inside tick 3");
+  rotary.ticks[0].click();
+  assert.equal(rotary.value(), 15, "the click that ends the drag does not undo it");
+});
+
+test("the speed chip reads every rung of the ladder truthfully: 0.75x is 0.75x, not 0.8x", () => {
+  /* Found driving the dial in a real browser: the chip said "1.8x" for 1.75 and "0.8x" for 0.75.
+     MUTATION: put `value.toFixed(1)` back in dialRateText -> "1.8×" and "0.8×" (red). */
+  const { dial } = loadDial();
+  assert.deepEqual(Array.from([0.75, 1, 1.25, 1.5, 1.75, 2], dial.rateText), ["0.75×", "1.0×", "1.25×", "1.5×", "1.75×", "2.0×"]);
+  assert.equal(dial.rateText(undefined), "1.0×", "an unusable rate reads as normal speed");
+  assert.equal(dial.rateText(-3), "1.0×");
+  const button = { innerHTML: "" };
+  const painted = loadDial({ extra: { esc: (s) => String(s) } });
+  painted.dial.paintRate(button, 1.75);
+  assert.match(button.innerHTML, /1\.75×/, "and the chip is painted with it");
+});
+
+test("after a drag ends, focus is on the tick it ended on", () => {
+  /* MUTATION: delete the `ticks[index].focus(...)` line in release() -> focus stays where the
+     press began (red); the next arrow key would then move from the wrong tick. */
+  const { rotary, doc } = sleepRotary();
+  rotary.ticks[1].focus();
+  rotary.track.fire("pointerdown", { clientX: 60, pointerId: 3, pointerType: "touch" });
+  rotary.track.fire("pointermove", { clientX: 160, pointerId: 3 });
+  rotary.track.fire("pointerup", { clientX: 160, pointerId: 3 });
+  assert.equal(rotary.value(), 15);
+  assert.equal(doc.activeElement, rotary.ticks[3]);
+});
+
+test("the built view hands the dock everything the rotary needs, so the client can open it", () => {
+  /* Found driving it in a real browser: the dial did nothing because the view's returned parts had no
+     `row2` (the client's own parts object does not carry it either). `openRotary` is given the
+     build's return value alone here, as the client's `ui` is.
+     MUTATION: drop `row2: parts.row2` from dialBuildNowPlaying's return -> openRotary returns null (red). */
+  const { dial, doc } = loadDial({ extra: { esc: (s) => String(s), tactileIcon: (id) => `<icon ${id}>`, safeUrl: (u) => u } });
+  const el = (tag) => doc.createElement(tag);
+  const names = ["sheet", "grabZone", "closeBtn", "scroll", "sArt", "sTitle", "sShow", "sWhy", "scrub", "times", "tNow", "tLeft", "row", "backBtn", "bigPlay", "fwdBtn", "clips", "row2", "rateBtn", "openLink", "forayLink", "stopBtn", "nextBtn", "saveBtn", "bookmarkBtn", "queueLink", "note", "sErr", "sDesc"];
+  const parts = Object.fromEntries(names.map((n) => [n, el("div")]));
+  const built = dial.build(parts);
+  assert.ok(built.rotaryHost && built.row2 && built.dock, "the build returns the host, the row it replaces and the dock");
+  assert.equal(built.rotaryHost.hidden, true, "closed until opened");
+  assert.equal(built.dock.children[2], built.rotaryHost, "the host sits in the dock after the two rows");
+  const rotary = dial.openRotary(built, { kind: "rate", label: "Playback speed", stops: [{ value: 1, text: "1×" }, { value: 2, text: "2×" }], value: 1, opener: built.sleepBtn });
+  assert.ok(rotary, "opens from the build's return alone");
+  assert.equal(built.row2.hidden, true);
+  assert.equal(built.rotaryHost.hidden, false);
+});
+
+test("arrow keys, Home and End move the selection and keep focus on the selected tick", () => {
+  /* MUTATION: delete `event.preventDefault()` in the strip's keydown -> the arrow
+     scrolls the page as well (red); swap the ArrowLeft/ArrowRight deltas -> red. */
+  const { rotary, changes, doc } = sleepRotary();
+  const key = (k) => rotary.track.fire("keydown", { key: k });
+  const right = key("ArrowRight");
+  assert.equal(right.defaultPrevented, true);
+  assert.deepEqual(changes, [5]);
+  assert.equal(doc.activeElement, rotary.ticks[1]);
+  key("ArrowLeft");
+  assert.equal(rotary.value(), 0);
+  key("End");
+  assert.equal(rotary.value(), 60);
+  key("Home");
+  assert.equal(rotary.value(), 0);
+  key("ArrowLeft");
+  assert.equal(rotary.value(), 0, "ArrowLeft on the first tick holds it (MUTATION: drop select()'s clamp -> index -1, red)");
+  assert.equal(rotary.ticks[0].getAttribute("aria-checked"), "true");
+  key("End");
+  key("ArrowRight");
+  assert.equal(rotary.value(), 60, "and ArrowRight on the last tick holds it");
+  key("Home");
+  const other = key("a");
+  assert.equal(other.defaultPrevented, false, "other keys are left alone");
+});
+
+test("selecting a tick off the visible strip scrolls it into view, and reveal() centres the selection", () => {
+  /* MUTATION: delete the `track.scrollLeft = right - track.clientWidth` branch in paint()
+     -> the last tick is selected and invisible (red). */
+  const { rotary } = sleepRotary();
+  rotary.ticks[7].click();
+  assert.equal(rotary.track.scrollLeft, 8 * 44 - 176, "the strip scrolls just far enough to show the last tick");
+  rotary.ticks[0].click();
+  assert.equal(rotary.track.scrollLeft, 0);
+  rotary.ticks[5].click();
+  rotary.track.scrollLeft = 0;
+  rotary.reveal();
+  assert.equal(rotary.track.scrollLeft, 5 * 44 - (176 - 44) / 2, "reveal centres the selected tick");
+});
+
+test("Escape closes the dial and is stopped before it can collapse the sheet; Done closes it too", () => {
+  /* MUTATION: delete `event.stopPropagation()` in the root's keydown -> the sheet owner's
+     document listener would also see Escape (red); drop the `done` click listener -> red. */
+  const { rotary, done } = sleepRotary();
+  const esc = rotary.root.fire("keydown", { key: "Escape" });
+  assert.equal(done(), 1);
+  assert.equal(esc.stopped, true);
+  assert.equal(esc.defaultPrevented, true);
+  rotary.done.click();
+  assert.equal(done(), 2);
+  assert.equal(rotary.done.getAttribute("aria-label"), "Done");
+});
+
+test("openRotary swaps the secondary row for the strip, focuses the selected tick, and Done puts the row back and focuses the chip", () => {
+  /* MUTATIONS: delete `parts.row2.hidden = true` -> two rows of controls stack (red);
+     delete the `rotary.opener.focus` line -> focus is lost to <body> (red);
+     remove BOTH the leading `dialCloseRotary(parts, false)` and swap `replaceChildren(rotary.root)`
+     for `append(rotary.root)` -> a second open stacks a second strip (the double-open assertion
+     goes red; either change alone is covered by the other, so one alone survives). */
+  const { dial, doc } = loadDial();
+  const el = (tag) => doc.createElement(tag);
+  const parts = { rotaryHost: el("div"), row2: el("div"), dock: el("div") };
+  parts.rotaryHost.hidden = true;
+  const chip = el("button");
+  const changes = [];
+  const open = () => dial.openRotary(parts, { kind: "sleep", label: "Sleep timer", stops: dial.sleepStops(), value: 15, opener: chip, onChange: (v) => changes.push(v) });
+  const rotary = open();
+  assert.equal(parts.row2.hidden, true);
+  assert.equal(parts.rotaryHost.hidden, false);
+  assert.ok(parts.dock.classList.contains("np__dock--dial"));
+  assert.equal(parts.rotaryHost.children[0], rotary.root);
+  assert.equal(doc.activeElement, rotary.ticks[3], "focus lands on the selected tick (15 min)");
+  const again = open();
+  assert.notEqual(again, rotary, "opening again builds a fresh strip");
+  assert.equal(parts.rotaryHost.children.length, 1, "and replaces the old one rather than stacking");
+  /* sync from outside (the timer ran out) moves the strip without reporting a change */
+  dial.syncRotary(parts, "sleep", 0);
+  assert.equal(again.value(), 0);
+  assert.deepEqual(changes, [], "a sync is not a user change");
+  dial.syncRotary(parts, "rate", 1.5);
+  assert.equal(again.value(), 0, "a sync for the other kind is ignored");
+  again.done.click();
+  assert.equal(parts.row2.hidden, false);
+  assert.equal(parts.rotaryHost.hidden, true);
+  assert.equal(parts.rotaryHost.children.length, 0);
+  assert.ok(!parts.dock.classList.contains("np__dock--dial"));
+  assert.equal(doc.activeElement, chip, "focus returns to the chip that opened the dial");
+  assert.equal(parts.rotary, null);
+  assert.equal(dial.closeRotary(parts, true), false, "closing nothing says so");
+});
+
+test("rotaryIndexAt clamps to the strip and survives a strip with no width", () => {
+  /* MUTATION: drop the `Math.min(count - 1, ...)` -> a drag past the right end indexes a tick that does not exist. */
+  const { dial } = loadDial();
+  assert.equal(dial.rotaryIndexAt(0, 44, 8), 0);
+  assert.equal(dial.rotaryIndexAt(43.9, 44, 8), 0);
+  assert.equal(dial.rotaryIndexAt(44, 44, 8), 1);
+  assert.equal(dial.rotaryIndexAt(9999, 44, 8), 7);
+  assert.equal(dial.rotaryIndexAt(-50, 44, 8), 0);
+  assert.equal(dial.rotaryIndexAt(100, 0, 8), 0, "a strip that has not been laid out selects the first tick");
+  assert.equal(dial.rotaryIndexAt(100, 44, 0), 0);
+});
+
+test("the speed and sleep chips open the rotary; the list picker is only the no-Dial fallback", () => {
+  /* The client cannot load under node, so this pins the wiring as text (the
+     suite's header names that limit). MUTATION: put `openRatePicker()` back in
+     the rateBtn click listener -> red (the chip opens the modal list again);
+     put the `setSleepTimer(window.DialNowPlaying?.nextSleepStop` cycle back -> red. */
+  assert.match(FLAT_TEXT, /ui\.rateBtn\.addEventListener\("click", \(\) => openRotary\("rate"\)\)/);
+  assert.match(FLAT_TEXT, /ui\.sleepBtn\.addEventListener\("click", \(\) => openRotary\("sleep"\)\)/);
+  assert.doesNotMatch(FLAT_TEXT, /nextSleepStop/);
+  assert.match(FLAT_TEXT, /if \(!dial\?\.openRotary \|\| !ui\?\.rotaryHost\) \{ openRatePicker\(\); return; \}/, "the list picker survives only when the Dial view is absent");
+  assert.match(FLAT_TEXT, /stops: RATES\.map\(\(r\) => \(\{ value: r, text: rateLabel\(r\)/, "speed ticks are the app's own ladder");
+  assert.match(FLAT_TEXT, /onChange: \(value\) => \{ applyRate\(value\); \}/);
+  assert.match(FLAT_TEXT, /onChange: \(value\) => \{ setSleepTimer\(value\); \}/);
+  assert.match(FLAT_TEXT, /if \(!open\) window\.DialNowPlaying\?\.closeRotary\?\.\(ui, false\)/, "collapsing the sheet closes the dial");
+  assert.match(FLAT_TEXT, /syncRotary\?\.\(ui, "rate", normalizeRate\(rate\)\)/);
+  assert.match(FLAT_TEXT, /syncRotary\?\.\(ui, "sleep", 0\)/);
+});
+
+test("the rotary keeps its measurements: 56px well, 44px ticks and keys, 2px tick marks, the row it replaces really hides", () => {
+  /* MUTATIONS: change `.np-rotary .rotary__track`'s height from var(--key-lg) -> red; the
+     tick's width from var(--tap) -> red; delete `.np .fp-row2.second[hidden]` -> red (the
+     row's own display:flex would beat the hidden attribute and both rows would show). */
+  assert.match(CSS_RULES, /\.np-rotary \.rotary__track \{[^}]*height:\s*var\(--key-lg\)/);
+  assert.match(CSS_RULES, /\.np-rotary \.rotary__tick \{[^}]*flex:\s*0 0 var\(--tap\)[^}]*width:\s*var\(--tap\)[^}]*min-width:\s*var\(--tap\)/);
+  assert.match(CSS_RULES, /\.np__dial \.keycap--sm \{[^}]*min-width:\s*var\(--tap\)[^}]*min-height:\s*var\(--tap\)/);
+  assert.match(CSS_RULES, /\.np-rotary \.rotary__tick::before \{[^}]*width:\s*2px[^}]*height:\s*14px/);
+  assert.match(CSS_RULES, /\.np \.fp-row2\.second\[hidden\], \.np__dial\[hidden\] \{ display: none; \}/);
+  assert.match(CSS_RULES, /\.np-rotary \.rotary__track \{[^}]*touch-action:\s*pan-y/);
+  assert.match(NP_FLAT_TEXT, /dock\.append\(parts\.row, parts\.row2, rotaryHost\)/);
 });
 
 test("the band's station codes are HTML spans under the bars, and the SVG's own squeezed codes are hidden", () => {
@@ -745,6 +1110,56 @@ test("the band's station codes are HTML spans under the bars, and the SVG's own 
   assert.match(NP_FLAT_TEXT, /span\.style\.setProperty\("--x"/);
   assert.match(CSS_RULES, /\.np__band-svg \.t-band__code, \.np__band-svg \.needle \{ display: none; \}/);
   assert.match(CSS_RULES, /\.np:not\(\.np--foray\) \.np__codes \{ display: none; \}/, "an episode has one bar and no codes");
+});
+
+test("a crowded code row drops the narrowest run's code instead of cramming it, and never the current run's", () => {
+  /* Iteration 3 (fidelity): nine codes on one 345px line, the first four about 20px apart, read as a caption, not
+     as dial labels. Codes now sit a DIAL_CODE_GAP of air apart; a code that cannot get it within DIAL_CODE_SHIFT of its
+     own bar loses its label, the narrowest run first. The fixture is the shipped foray's nine runs.
+     MUTATIONS: make dialFitCodes return all-true -> the "some are dropped" assertion fails (the row is cramped again);
+     drop the `!current[...]` filter from the pool -> the current-run assertion fails; take the widest run as the victim
+     (`<` -> `>` in the reduce) -> the narrow-end assertion fails. */
+  const { dial } = loadDial();
+  const size = 14;
+  const centres = [15, 34, 58, 86, 126, 171, 231, 301, 340];
+  const runPx = [16, 18, 12, 16, 22, 24, 40, 30, 14];
+  const none = centres.map(() => false);
+  const kept = dial.fitCodes(centres, centres.map(() => size), runPx, none, 345);
+  assert.ok(kept.some((k) => !k), "fixture premise: nine codes cannot all get their air, so some are dropped");
+  const shown = centres.filter((c, i) => kept[i]);
+  const placed = dial.spreadCodes(shown, shown.map(() => size), 345);
+  for (let i = 1; i < placed.length; i += 1) assert.ok(placed[i] - placed[i - 1] >= size + dial.codeGap - 0.01, `kept codes ${i - 1} and ${i} have their air`);
+  placed.forEach((x, i) => assert.ok(Math.abs(x - shown[i]) <= dial.codeShift + 0.01, `code ${i} stays within ${dial.codeShift}px of its bar`));
+  const droppedWidths = runPx.filter((w, i) => !kept[i]);
+  assert.ok(droppedWidths.every((w) => w <= 22), "what is dropped is a narrow run, never the 40px one");
+  assert.strictEqual(kept[6], true, "the widest run keeps its code");
+  /* Three codes jammed together, widths 30 / 10 / 20: the 10px run is the one that goes (the fixture above drops
+     only from a pool that never holds the widest run, so it cannot tell narrowest-first from widest-first). */
+  assert.deepStrictEqual(dial.fitCodes([100, 110, 120], [size, size, size], [30, 10, 20], [false, false, false], 345), [true, false, true]);
+  /* The current run keeps its code even when it is the narrowest of the crowd. */
+  const current = centres.map((c, i) => i === 2);
+  const keptCurrent = dial.fitCodes(centres, centres.map(() => size), runPx, current, 345);
+  assert.strictEqual(keptCurrent[2], true, "the current run's code is never the one dropped");
+  /* An uncrowded row loses nothing (the prototype's five codes). */
+  const sparse = [60, 140, 220, 300];
+  assert.deepStrictEqual(dial.fitCodes(sparse, sparse.map(() => size), [50, 50, 50, 50], sparse.map(() => false), 345), [true, true, true, true]);
+});
+
+test("the code row's computed spread is DRAWN: the JS sets --dx and .np__code translates by it", () => {
+  /* The spread (dialSpreadCodes) was computed and written to --dx, but nothing read --dx, so every kept code sat at its
+     raw --x and the planned gap was never on screen; the arithmetic test above stayed green throughout.
+     MUTATIONS: drop `var(--dx` from the .np__code transform in styles.css -> the CSS assertion fails; delete the
+     `span.style.setProperty("--dx"` line in ui/now-playing.js -> the JS assertion fails. */
+  assert.match(NP_FLAT_TEXT, /span\.style\.setProperty\("--dx"/, "the spread offset is written per code");
+  assert.match(CSS_RULES, /\.np__code \{[^}]*transform:\s*translateX\(calc\(-50% \+ var\(--dx, 0px\)\)\)/, ".np__code reads --dx, so the spread is drawn");
+  /* The offset written is placed - centre: on the shipped fixture the first two kept codes are 19px apart raw (5px
+     of air for 14px glyphs), and the offsets must restore the planned gap. */
+  const { dial } = loadDial();
+  const raw = [15, 34];
+  const placed = dial.spreadCodes(raw, [14, 14], 345);
+  const drawn = placed.map((x, i) => x);
+  assert.ok(drawn[1] - drawn[0] >= 14 + dial.codeGap - 0.01, "offset centres have the planned gap");
+  assert.ok(placed[1] - raw[1] > 0 || placed[0] - raw[0] < 0, "at least one code is actually shifted, so --dx is non-zero");
 });
 
 test("the needle has a 44px-wide hit area, a 2px stroke, and its buffering pulse runs on the buffer token", () => {
@@ -760,6 +1175,96 @@ test("the foray detail list is headed Clips, not the pipeline word", () => {
      MUTATION: put "Segments" back in the heading -> red. */
   assert.match(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Clips"\)/);
   assert.doesNotMatch(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Segments"\)/);
+});
+
+/* ==================================================================== */
+/* The open transition's WAAPI fallback, run — and the tint, run         */
+/* ==================================================================== */
+
+/** Elements for the transition: the mini's artwork (a fixed rect) and the hero's (a rect that is only real once `commit` has put the sheet on screen). */
+function transitionFixture({ reduce = false, heroRect = { left: 40, top: 120, width: 280, height: 280 } } = {}) {
+  const state = { committed: false, animations: [], frames: 0 };
+  const miniArt = { getBoundingClientRect: () => ({ left: 16, top: 700, width: 44, height: 44 }) };
+  const heroArt = {
+    getBoundingClientRect: () => (state.committed ? heroRect : { left: 0, top: 0, width: 0, height: 0 }),
+    animate: (frames, options) => { state.animations.push({ frames, options, committedAtCall: state.committed }); },
+  };
+  const loaded = loadDial({
+    extra: {
+      matchMedia: (query) => ({ matches: reduce && /prefers-reduced-motion/.test(query) }),
+      requestAnimationFrame: (fn) => { state.frames += 1; fn(); },
+    },
+  });
+  const commit = () => { state.committed = true; };
+  return { ...loaded, state, miniArt, heroArt, commit };
+}
+
+test("the WAAPI fallback animates the hero from the mini's rect, after the sheet is committed", () => {
+  /* MUTATIONS (each run and seen red): replace `target.animate([...], {...})` with a no-op
+     expression -> `animations.length` is 0; run the animate BEFORE `commit()` -> the hero's
+     rect is still zero-sized and the guard bails (0 animations, and `committedAtCall` would
+     be false); swap `first.left - last.left` for `last.left - first.left` -> the translate
+     is +24px instead of -24px; change `duration: 480` -> red. The source-text half of this
+     (`typeof target.animate !== "function"`) is in the test above and could not catch the first. */
+  const { dial, state, miniArt, heroArt, commit } = transitionFixture();
+  dial.transition(true, miniArt, heroArt, commit);
+  assert.equal(state.committed, true, "the open is committed (never awaited on the animation)");
+  assert.equal(state.animations.length, 1, "animate() was called once on the hero artwork");
+  const [{ frames, options, committedAtCall }] = state.animations;
+  assert.equal(committedAtCall, true, "measured and animated after the sheet is on screen");
+  assert.equal(frames.length, 2);
+  assert.match(frames[0].transform, /^translate\(-24px,580px\) scale\(0\.157\d*,0\.157\d*\)$/, "starts where the mini's art is: 16-40 = -24 across, 700-120 = 580 down, 44/280 of the size");
+  assert.equal(frames[0].transformOrigin, "top left");
+  assert.equal(frames[1].transform, "none", "and ends at rest");
+  assert.equal(options.duration, 480);
+  assert.equal(options.fill, "both");
+  assert.equal(state.frames, 1, "one animation frame between commit and measure");
+});
+
+test("the WAAPI fallback does nothing under reduced motion, and nothing for an element that has no box", () => {
+  /* MUTATIONS: delete the `if (reduce) { commit(); return; }` line -> the reduced-motion
+     case animates (red); delete the zero-size guard (`!last.width || ...`) -> the
+     no-box case calls animate with NaN scales (red). */
+  const reduced = transitionFixture({ reduce: true });
+  reduced.dial.transition(true, reduced.miniArt, reduced.heroArt, reduced.commit);
+  assert.equal(reduced.state.committed, true, "reduced motion still commits");
+  assert.equal(reduced.state.animations.length, 0, "and moves nothing");
+  const boxless = transitionFixture({ heroRect: { left: 0, top: 0, width: 0, height: 0 } });
+  boxless.dial.transition(true, boxless.miniArt, boxless.heroArt, boxless.commit);
+  assert.equal(boxless.state.committed, true);
+  assert.equal(boxless.state.animations.length, 0, "an unmeasurable hero is not animated into NaN");
+});
+
+test("Speed and Sleep are disclosures of the inline dial, not dialogs: aria-expanded and aria-controls, never aria-haspopup", () => {
+  /* The chips open a group holding a radiogroup in the dock (dialOpenRotary), not a role=dialog, so
+     aria-haspopup="dialog" told assistive technology something false (review, 2026-10-07).
+     MUTATIONS: put `aria-haspopup` back on the sleep chip in dialBuildNowPlaying -> the first block is
+     red; delete `dialSetDisclosed(parts, spec.opener)` from dialOpenRotary -> the open assertions are
+     red; delete `dialSetDisclosed(parts, null)` from dialCloseRotary -> the closed-again assertion is
+     red; drop `rotaryHost.id = "np-dial"` -> aria-controls points at nothing (red); drop the
+     `if (!window.DialNowPlaying)` guard in player/client.js -> the source assertion is red. */
+  const { dial, doc } = loadDial({ extra: { esc: (s) => String(s), tactileIcon: (id) => `<icon ${id}>`, safeUrl: (u) => u } });
+  const el = (tag) => doc.createElement(tag);
+  const names = ["sheet", "grabZone", "closeBtn", "scroll", "sArt", "sTitle", "sShow", "sWhy", "scrub", "times", "tNow", "tLeft", "row", "backBtn", "bigPlay", "fwdBtn", "clips", "row2", "rateBtn", "openLink", "forayLink", "stopBtn", "nextBtn", "saveBtn", "bookmarkBtn", "queueLink", "note", "sErr", "sDesc"];
+  const parts = Object.fromEntries(names.map((n) => [n, el("div")]));
+  const built = dial.build(parts);
+  const chips = { rate: parts.rateBtn, sleep: built.sleepBtn };
+  const expanded = () => [chips.rate.getAttribute("aria-expanded"), chips.sleep.getAttribute("aria-expanded")];
+  for (const [name, chip] of Object.entries(chips)) {
+    assert.equal(chip.getAttribute("aria-haspopup"), null, `${name} chip: no false dialog role`);
+    assert.equal(chip.getAttribute("aria-controls"), "np-dial", `${name} chip points at the dial host`);
+  }
+  assert.equal(built.rotaryHost.id, "np-dial", "and that id exists");
+  assert.deepEqual(expanded(), ["false", "false"], "collapsed until opened");
+  const spec = (kind, opener) => ({ kind, label: kind, stops: [{ value: 1, text: "1" }, { value: 2, text: "2" }], value: 1, opener });
+  const ui = { ...built, rateBtn: chips.rate };
+  dial.openRotary(ui, spec("sleep", chips.sleep));
+  assert.deepEqual(expanded(), ["false", "true"], "opening sleep expands only the sleep chip");
+  dial.openRotary(ui, spec("rate", chips.rate));
+  assert.deepEqual(expanded(), ["true", "false"], "switching to speed moves the expanded state with it");
+  dial.closeRotary(ui, true);
+  assert.deepEqual(expanded(), ["false", "false"], "closing collapses both");
+  assert.match(CLIENT, /if \(!window\.DialNowPlaying\) rateBtn\.setAttribute\("aria-haspopup", "dialog"\);/, "client.js keeps the dialog role only for the list-picker fallback");
 });
 
 test("the sampled artwork tint is cached in memory for the session and never written to storage", async () => {

@@ -19,7 +19,7 @@ const segments = [
 
 function baseBars(html) {
   const first = /<g class="t-band__base">([\s\S]*?)<\/g>/.exec(html)[1];
-  return [...first.matchAll(/data-segment-index="(\d+)" x="([\d.]+)" y="8" width="([\d.]+)"/g)]
+  return [...first.matchAll(/data-segment-index="(\d+)" x="([\d.]+)" y="[\d.]+" width="([\d.]+)"/g)]
     .map((m) => ({ index: Number(m[1]), x: Number(m[2]), width: Number(m[3]) }));
 }
 
@@ -197,6 +197,24 @@ test("narration is hatched outside mini mode and mini has no station labels", ()
   assert.match(detail, /t-band__bar--narration" fill="url\(#hatched-hatch\)"/);
   assert.doesNotMatch(mini, /t-band__code/);
   assert.match(rule(".band--mini"), /height:\s*var\(--s-2\)/);
+});
+
+test("the narration hatch is drawn in screen pixels, 45 degrees, ultramarine on its soft tint", () => {
+  /* The 0-1000 viewBox is stretched to the band's width and height, so a pattern in raw units skews: the old 12-unit
+     pattern drew 4px-wide steep slivers at 345px. The pattern now counter-scales by the render width and the stage
+     height, then rotates, so 3px lines and 3px gaps stay 45 degrees at any width, over a soft ultramarine ground.
+     MUTATIONS: drop the `scale(...)` from patternTransform -> the scale assertion fails; remove the
+     `t-band__hatch-bg` rect -> the ground assertion fails; delete the `.t-band__hatch-bg` CSS rule -> the token
+     assertion fails. */
+  for (const [kind, stage] of [["detail", 60], ["scrub", 56]]) {
+    const html = p.tactileBand({ id: "hatch-" + kind, kind, segments, renderWidth: 400 });
+    const m = /<pattern id="hatch-[a-z]+-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="scale\(([\d.]+) ([\d.]+)\) rotate\(45\)">/.exec(html);
+    assert.ok(m, `${kind}: a 6px pattern, scaled then rotated 45 degrees`);
+    assert.ok(Math.abs(Number(m[1]) * 400 / 1000 - 1) < 0.001, `${kind}: x is counter-scaled by the 400px render width`);
+    assert.ok(Math.abs(Number(m[2]) * stage / 60 - 1) < 0.001, `${kind}: y is counter-scaled by the ${stage}px stage`);
+    assert.match(html, /<rect width="6" height="6" class="t-band__hatch-bg"><\/rect><rect width="3" height="6" class="t-band__hatch"><\/rect>/, `${kind}: 3px line over a full ground`);
+  }
+  assert.match(rule(".t-band__hatch-bg"), /fill:\s*var\(--ultramarine-soft\)/);
 });
 
 test("the mini band and the mini player's line draw narration as a solid tick, not a hatch", () => {

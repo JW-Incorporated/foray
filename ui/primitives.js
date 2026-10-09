@@ -451,7 +451,7 @@ function tactileBand(data) {
     ? ' tabindex="0" aria-valuemin="0" aria-valuemax="' + Math.round(Number(d.totalSeconds) || total) + '" aria-valuenow="' + Math.round(progress * (Number(d.totalSeconds) || total)) + '" aria-valuetext="' + esc(valueText) + '"'
     : ' aria-label="' + esc(d.label || (plain ? "Episode progress" : "Foray band with " + codes.size + " stations")) + '"';
   return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '"' + (line ? "" : ' data-draw="true" role="' + role + '"') + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
-    '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
+    '<defs><pattern id="' + esc(id) + '-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="scale(' + (1000 / renderWidth).toFixed(4) + " " + (60 / stagePx).toFixed(4) + ') rotate(45)"><rect width="6" height="6" class="t-band__hatch-bg"></rect><rect width="3" height="6" class="t-band__hatch"></rect></pattern>' +
     '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + progressX.toFixed(2) + '" height="60"></rect></clipPath></defs>' +
     '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + ticks + labels +
     (line || (mini && !progress) ? "" : mini
