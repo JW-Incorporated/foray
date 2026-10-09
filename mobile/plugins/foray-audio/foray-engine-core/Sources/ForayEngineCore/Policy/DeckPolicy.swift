@@ -3,14 +3,34 @@ import Foundation
 /// The episode deck's decisions: the Swift port of `player/deck-policy.js`
 /// (card NE-14s; the rules moved out of `HtmlAudioBackend` in NE-14j).
 ///
-/// WHY THESE ARE THE CORE'S AND NOT AVDECK'S. AVDeck (NE-15) is an adapter: it
-/// runs commands against AVFoundation and reports what it saw. Every choice a
-/// deck makes that the web deck also makes (when the out-point's fine watch
-/// arms and for how long, what a fine wake does, how long a load may take,
-/// when the next item is a seek in the buffer rather than a refetch, what the
-/// handover's recovery may still do after a stop) is made HERE, once, and
-/// pinned by the `deck-episode` fixtures that JS records. A rule changed in
-/// one runtime and not the other is a red parity case, not a car test.
+/// WHAT THE NATIVE DECK ASKS HERE. AVDeck (NE-15) is an adapter: it runs
+/// commands against AVFoundation and reports what it saw. The choices it and
+/// DeckPair (NE-32) take from this enum are made HERE, once, and pinned by the
+/// fixtures JS records: `sameSourceIsSeek` (a same-URL load is a seek in the
+/// buffer, `deck-episode`), `outPointStep` and its watchdog
+/// (DeckPolicyOutPoint.swift, `outpoint`), `prefetchWindowDelayMs` and the
+/// warm/handover set (`warmOffset`, `prefetchDecision`, `warmPromotion`,
+/// `warmSettled`, `handoverSteps`, `discardFreesBuffer`,
+/// `unexplainedPauseAction`; DeckPolicyReadings.swift, `deck-pair`), plus
+/// `warmsAcross`, which the core asks. A rule changed in one runtime and not
+/// the other is a red parity case, not a car test.
+///
+/// WHAT IS PORTED FOR PARITY ONLY. The web deck (html-audio-backend.js) asks
+/// the rest, and no native code calls them: `loadDeadlineMs` (with
+/// `loadSettleTimeoutMs` / `loadSettleTimeoutHiddenMs`), `recoveryLoadedOps`,
+/// `recoveryFailedOps`, `fineWakeAction`, `fineWatchDelayMs`, `outPointArmed`,
+/// `settledNear`, and in DeckPolicyReadings.swift `playRefusalAction`,
+/// `prefetchWindowOpens`, `deckSeekTarget`, `deckVolume`, `deckDuration` and
+/// `deckReportedRate`. Their fixtures hold Swift equal to JS; a change to one
+/// moves nothing a listener hears in the native lane.
+///
+/// THE NATIVE LOAD DEADLINE IS NOT HERE. Its one native spelling is
+/// `AVDeck.defaultLoadDeadlineSec` (P-13, the clip class, 20 s) and
+/// `AVDeck.defaultLineLoadDeadlineSec` (the line class, 8 s); EngineBoot hands
+/// the same two numbers to the core as `EngineConfig.loadDeadlineMs` for the
+/// late-timer row only. No parity fixture pins either, so moving one moves no
+/// `deck-episode` case (AVDeck's 20 s and its MEASURE tag are pinned by
+/// tools/mobile/shell-invariants.test.mjs instead).
 ///
 /// JS IS THE REFERENCE (plan §6). A change is a JS PR that re-records the
 /// family, then a Swift PR that makes it pass; the numbers and

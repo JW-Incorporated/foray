@@ -158,8 +158,13 @@ public final class ExoDeck implements DeckDriving {
     private static final String TAG = "ForayEngine.ExoDeck";
 
     /**
-     * P-13: how long a load may take to reach READY before the deck gives up. PROVISIONAL,
-     * and the same number as AVDeck's: NE-38 sets both from the field's time-to-ready rows.
+     * P-13: how long a load may take to reach READY before the deck gives up. PROVISIONAL.
+     * 20 s is AVDeck's CLIP class ({@code AVDeck.defaultLoadDeadlineSec}) and this deck's only
+     * one: AVDeck also has an 8 s LINE class ({@code defaultLineLoadDeadlineSec}) and the §16
+     * lapse (a load that is getting somewhere keeps its item past the deadline for the core's
+     * same-source retry), and this deck has neither; {@code deadlineFired} always detaches.
+     * Both are owed at A-40/A-60 (docs/plans/android-assessment.md). NE-38 sets the numbers
+     * from the field's time-to-ready rows.
      */
     public static final double DEFAULT_LOAD_DEADLINE_SEC = 20; // MEASURE: NE-38 (OQ-4, DV-5).
 
