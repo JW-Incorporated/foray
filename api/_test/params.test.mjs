@@ -10,7 +10,8 @@
 //
 // These tests drive each REAL handler with a repeated parameter, so they pin
 // the behaviour a caller sees, not the helper in isolation:
-//   - the three single-value endpoints answer the FIRST value;
+//   - the three single-value endpoints answer the FIRST value (the per-show
+//     list's `show_id` too, since code-health-2 CH2-40);
 //   - CORS reads the FIRST Origin header value;
 //   - the catch-all shard route keeps EVERY path segment (its helper is
 //     `allParams`, a different rule with a different name).
@@ -33,6 +34,7 @@ import * as showSearchModule from "../shows/search.ts";
 import * as showEpisodesModule from "../shows/[show_id]/episodes.ts";
 import * as indexModule from "../shows/index/[...path].ts";
 import { encodeCursor } from "../_lib/episodeCursor.ts";
+import { _setPointerPathForTests } from "../_lib/showsIndexRelease.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
 import { appleCallerBuckets, QUERY_MAX_CHARS, QUERY_TOO_LONG_ERROR } from "../_lib/clientLimit.ts";
 
@@ -107,7 +109,7 @@ test("firstParam: a string is itself, an array is its first value, absent is nul
 
 test("GET /api/episodes/search?q=a&q=b answers the first q", async () => {
   episodeSearchModule.showScopedResultCache.clear();
-  episodeSearchModule.sharedFeedReader.clear();
+  sharedFeedReader.clear();
   appleCallerBuckets.clear();
   const first = `ch17-first-${Date.now()}`;
   const req = { method: "GET", query: { q: [first, `ch17-second-${Date.now()}`] }, headers: {} };
@@ -166,7 +168,7 @@ test("CORS reads the first Origin value of a repeated header", () => {
 
 test("GET /api/shows/index/shards/fr.json keeps EVERY catch-all segment (allParams, not firstParam)", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ch17-pointer-"));
-  indexModule._setPointerPathForTests(path.join(dir, "does-not-exist.json"));
+  _setPointerPathForTests(path.join(dir, "does-not-exist.json"));
   try {
     const res = mockRes();
     await withFetch(async (url) => assert.fail(`no pointer, no fetch: ${url}`),
@@ -185,7 +187,7 @@ test("GET /api/shows/index/shards/fr.json keeps EVERY catch-all segment (allPara
     await showsIndex({ method: "GET", query: {}, headers: {} }, none);
     assert.strictEqual(none.statusCode, 400);
   } finally {
-    indexModule._setPointerPathForTests();
+    _setPointerPathForTests();
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -304,14 +306,32 @@ test("Node lowercases a capitalised Origin header, so applyCors only ever needs 
   assert.strictEqual(seen.acao, "https://jwlabs.ai");
 });
 
-/* THE PER-SHOW LIST'S `show_id` (CH2-40, A1-10). Read with a private
+/* THE PER-SHOW LIST'S `show_id` (CH2-40, A1-10). It was read with a private
    `typeof === "string"` check rather than firstParam, so a repeated show_id
-   was refused while every other single-value parameter in this API answers
-   its first value. */
-test("GET /api/shows/:id/episodes with a repeated show_id is refused today (not firstParam)", async () => {
-  const res = mockRes();
-  await withFetch(async (url) => assert.fail(`no network: ${url}`),
-    () => showEpisodes({ method: "GET", query: { show_id: [REAL_SHOW_ID, "definitely-not-a-show"] }, headers: {} }, res));
-  assert.strictEqual(res.statusCode, 400);
-  assert.deepStrictEqual(res.body, { error: "show_id is required" });
+   was refused with `400 show_id is required` while every other single-value
+   parameter in this API answers its first value. It reads firstParam now.
+   MUTATION: restore the `typeof` check and this is the old 400: red. */
+test("GET /api/shows/:id/episodes?show_id=a&show_id=b answers the first show_id", async () => {
+  await withoutDatabaseUrl(() =>
+    withFetch(
+      async () => new Response(FEED_TWO_EPS, { status: 200, headers: { "content-type": "application/rss+xml" } }),
+      async () => {
+        sharedFeedReader.clear();
+        const res = mockRes();
+        await showEpisodes({ method: "GET", query: { show_id: [REAL_SHOW_ID, "definitely-not-a-show"] }, headers: {} }, res);
+        assert.strictEqual(res.statusCode, 200);
+        assert.strictEqual(res.body.show_id, REAL_SHOW_ID);
+        assert.deepStrictEqual(res.body.episodes.map((e) => e.title), ["Episode Two", "Episode One"]);
+      }
+    )
+  );
+});
+
+test("GET /api/shows/:id/episodes with no show_id (or an empty first value) is still the 400", async () => {
+  for (const query of [{}, { show_id: "" }, { show_id: [] }]) {
+    const res = mockRes();
+    await withFetch(async (url) => assert.fail(`no network: ${url}`), () => showEpisodes({ method: "GET", query, headers: {} }, res));
+    assert.strictEqual(res.statusCode, 400, JSON.stringify(query));
+    assert.deepStrictEqual(res.body, { error: "show_id is required" });
+  }
 });

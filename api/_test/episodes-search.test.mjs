@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
 import { loadShowIdMap } from "../_lib/showIdMap.ts";
 import { appleCallerBuckets } from "../_lib/clientLimit.ts";
+import { sharedFeedReader } from "../_lib/feedCache.ts";
 import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
@@ -38,7 +39,7 @@ function resetSharedState() {
      remembered by one test answer a later one. The show-scoped answers are
      module scope too. Cleared here rather than per-test for the same reason
      the id-map cache is. */
-  searchModule.sharedFeedReader.clear();
+  sharedFeedReader.clear();
   searchModule.showScopedResultCache.clear();
   /* security-10: the per-client Apple budget is module scope; these requests
      carry no x-forwarded-for, so they all share the "unknown" client. */

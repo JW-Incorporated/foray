@@ -35,7 +35,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as searchModule from "../episodes/search.ts";
-import { _setCatalogRootForTests } from "../_lib/showCatalog.ts";
+import { _setCatalogRootForTests } from "../../backend/src/catalog/breadthCatalog.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 

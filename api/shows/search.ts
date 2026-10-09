@@ -1,9 +1,9 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
 import { showById, searchableShows } from "../_lib/showCatalog";
 import { applyCors } from "../_lib/cors";
-import { firstParam } from "../_lib/params";
+import { firstParam, parseLimit, requireQuery, type ApiRequest, type ApiResponse } from "../_lib/params";
 import { appleShowSearch, mergeDirectoryShows } from "../_lib/appleShowSearch";
-import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR } from "../_lib/clientLimit";
+import { clientKey, normalizeSearchText, QUERY_MIN_CHARS, QUERY_TOO_SHORT_ERROR } from "../_lib/clientLimit";
 
 /**
  * GET /api/shows/search?q=<query>&limit=<n> — the backend half of A3.1/Q3
@@ -157,18 +157,6 @@ import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY
  * against it without re-measuring.
  */
 
-interface ApiRequest {
-  method?: string;
-  query: Record<string, string | string[] | undefined>;
-  headers: Record<string, string | string[] | undefined>;
-}
-interface ApiResponse {
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-  setHeader(name: string, value: string): void;
-  end(): void;
-}
-
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (applyCors(req, res)) return; // OPTIONS preflight already answered
 
@@ -177,14 +165,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const q = firstParam(req.query.q);
   const id = firstParam(req.query.id);
 
   /* MUTUALLY EXCLUSIVE, and rejected rather than silently preferred. Answering
      one and ignoring the other would make a caller's bug look like a working
      request returning the wrong thing — the hardest kind to notice from the
      client side. */
-  if (q && id) {
+  if (firstParam(req.query.q) && id) {
     res.status(400).json({ error: "q and id are mutually exclusive" });
     return;
   }
@@ -206,18 +193,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  if (!q || !q.trim()) {
-    res.status(400).json({ error: "q or id is required" });
-    return;
-  }
-  if (q.length > QUERY_MAX_CHARS) {
-    res.status(400).json({ error: QUERY_TOO_LONG_ERROR });
-    return;
-  }
+  const q = requireQuery(req, res, { missing: "q or id is required" });
+  if (q === null) return; // the 400 is already answered
 
-  const limitParam = firstParam(req.query.limit);
-  const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : NaN;
-  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 25;
+  const limit = parseLimit(req.query.limit);
   const fallthroughAsked = firstParam(req.query.fallthrough) === "1";
 
   let results;

@@ -87,7 +87,7 @@ export class TtlCache<T> {
   }
 
   /** Drops every entry. Test-only: module-scope caches outlive a single test
-   *  (the same reason showCatalog.ts ships `_setCatalogRootForTests`), and
+   *  (the same reason breadthCatalog.ts ships `_setCatalogRootForTests`), and
    *  a failure remembered from an earlier test would answer a later one. */
   clear(): void {
     this.store.clear();
