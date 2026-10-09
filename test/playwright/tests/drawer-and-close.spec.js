@@ -292,7 +292,10 @@ test("closing the expanded sheet collapses to a mini bar that keeps playing, and
   /* 5. Stop — the separately labelled control — is what ends it. */
   await page.locator(".fp-info").click();
   await expect(page.locator(".fp-sheet")).toBeVisible();
-  await page.locator(".fp-stop").click();
+  /* Ambient Now Playing: Stop's visible face is the dots menu ("More player options"), which forwards the click to the legacy
+     `.fp-stop` button (display:none in the sheet). MUTATION: drop the Stop spec from `menuSpecs` in ui/now-playing.js -> no menuitem, red. */
+  await page.getByRole("button", { name: "More player options" }).click();
+  await page.getByRole("menuitem", { name: "Stop" }).click();
 
   await expect(page.locator("#dock-mini")).toBeHidden();
   await expect(page.locator("body.fp-open")).toHaveCount(0);

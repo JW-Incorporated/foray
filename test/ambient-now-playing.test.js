@@ -264,3 +264,20 @@ test("iteration 5 (fidelity round 4): the title group sits 12px under the art an
   assert.equal(mixes.length, 2, "both glow rings read --lit-mix");
   mixes.forEach((m) => assert.equal(m[1], "-", "a ring above --lit-mix is the neon edge-light the fidelity round removed"));
 });
+
+test("iteration 6 (fidelity round 5): Play and the scrubber block sit where the prototype puts them, the strip spotlights a segment change, notes use body type, the Up Next card centres its art", () => {
+  /* MUTATION 1: delete `.ag-np-detail-handle { margin-top: var(--s-3); }` from the (min-height: 701px) block -> red (Play 12px above the prototype's 708).
+     MUTATION 2: change the block's `margin-block: -2px` to -6px -> red (the scrubber block 8px short of the prototype's 58).
+     MUTATION 3: delete the `:has(.ag-np-eyebrow.is-lit)` rule -> red (the light no longer moves to the new show; every bar stays at full colour).
+     MUTATION 4: delete `font: var(--t-body)` from `.ep-description-text` -> red (notes at 14.4px/21.6, the block 9.6px short).
+     MUTATION 5: delete `align-items: center` from `.ag-np-up-next-row` -> red (72px art top-aligned against a four-line block). */
+  const block = css.match(/@media \(min-height: 701px\) \{([^@]*?)\n\}/)?.[1] || "";
+  assert.match(block, /\.ag-np-progress \{ margin-top: var\(--s-4\); \}/);
+  assert.match(block, /margin-block: -2px;/);
+  assert.match(block, /\.ag-np-strip \{ height: 40px; \}/);
+  assert.match(block, /\.ag-np-detail-handle \{ margin-top: var\(--s-3\); \}/);
+  assert.match(css, /:has\(\.ag-np-eyebrow\.is-lit\) \.ag-np-strip-button:not\(\.is-current\) \.ag-np-strip-bar:not\(\.is-narration\) \{ opacity: var\(--seg-dim\); \}/);
+  assert.match(css, /:has\(\.ag-np-eyebrow\.is-lit\) \.fp-s-show \{ color: var\(--text-3\); \}/);
+  assert.match(css, /\.ep-description-text \{[^}]*font: var\(--t-body\);/s);
+  assert.match(css, /\.ag-np-up-next-row \{[^}]*align-items: center;/s);
+});
