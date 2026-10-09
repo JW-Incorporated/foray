@@ -552,7 +552,7 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
     func pause() -> Bool {
         guard lineId != nil, !held else { return false }
         held = true
-        if attached { player.pause() }
+        if attached { player.pause(); engine.pause() }
         return true
     }
 
@@ -569,7 +569,6 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
     /// two lines.
     func stop() {
         silence()
-        if attached { engine.stop() }
     }
 
     /// Media services were reset (CH3-03): the engine and its player node
@@ -638,7 +637,6 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         guard id == lineId else { return }
         lineId = nil
         utterance = nil
-        idle()
         onEnd?(id, end)
     }
 
@@ -652,7 +650,6 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         held = false
         if speech.isSpeaking { speech.stopSpeaking(at: .immediate) }
         if attached { player.stop() }
-        idle()
     }
 
     /// No line in flight: pause the engine, so it renders nothing until the
