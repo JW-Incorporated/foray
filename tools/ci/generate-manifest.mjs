@@ -52,14 +52,19 @@
  * `manifest.json` is the PWA web-app manifest `index.html` links. This file is
  * `deploy-manifest.json` specifically to avoid clobbering it.
  *
- * WHICH FILES ARE LISTED
- * Exactly what sw.js needs for one complete generation: the app shell (also
- * `tools/web/prepare-dist.mjs`'s SHELL — this SHELL additionally covers
- * `manifest.json`), the brand faces, every player module the client loads (the
- * import closure of `player/client.js`, `playerSources()`), and
- * the runtime `data/*.json` app.js's `init()` fetches (kept in sync with
- * prepare-dist's RUNTIME_DATA by design), plus the pointer. The manifest never
- * lists itself (circular) and never feeds the pointer into `deploy_id`.
+ * WHICH FILES ARE LISTED — AND WHO ELSE READS THE LISTS (CH2-18)
+ * Exactly what sw.js needs for one complete generation: the app shell (`SHELL`),
+ * the brand faces (`fontSources()`), every player module the client loads (the
+ * import closure of `player/client.js`, `playerSources()`), and the runtime
+ * `data/*` files (`runtimeData()`: `RUNTIME_DATA` plus anything app.js
+ * `fetchJson`s that it lacks), plus the pointer. The manifest never lists itself
+ * (circular) and never feeds the pointer into `deploy_id`.
+ *
+ * This module is the one owner of "what the app ships". `tools/web/prepare-dist.mjs`
+ * copies these lists (plus `sw.js` and the unpinned show index) instead of
+ * keeping its own; `tools/mobile/prepare-webdir.mjs` scans app.js with this
+ * module's `runtimeDataFiles` and keeps three explicit font names as its bundle
+ * budget guard. `tools/ci/ship-lists.test.mjs` pins all three equal.
  *
  * USAGE
  *   node tools/ci/generate-manifest.mjs --check        # CI: nothing generated is committed
@@ -149,9 +154,11 @@ export const STAMP_MODULE_FILES = [
   "tools/ci/crlf-guard.mjs",
 ];
 
-/* The app shell sw.js precaches on install. Kept explicit, same reasoning as
-   prepare-dist.mjs's SHELL: a new root-level file must be added here
-   deliberately. */
+/* The app shell sw.js precaches on install. Kept explicit so a new root-level
+   file has to be added here deliberately rather than riding along. The web
+   deploy (tools/web/prepare-dist.mjs) ships this plus `sw.js`; the native
+   bundle (tools/mobile/prepare-webdir.mjs's SHELL_FILES) ships this plus the
+   fonts — tools/ci/ship-lists.test.mjs pins both. */
 const SHELL = [
   "index.html",
   "app.js",
@@ -162,9 +169,20 @@ const SHELL = [
   "icon-512.png",
 ];
 
-/* Exactly what app.js fetches at runtime — kept in sync with
-   tools/web/prepare-dist.mjs's RUNTIME_DATA by design (same derivation
-   concern; see that script's header). */
+/* The runtime data every web deploy ships and the deploy id hashes: the
+   explicit FLOOR under the app.js scan (`runtimeData()` below). Kept written
+   down for two reasons: tools/ci/catalogue-directory.test.mjs asserts the
+   frozen catalogue files are in it, and a scan whose pattern stopped matching
+   must not quietly ship an empty data set. Every file app.js `fetchJson`s is
+   here (tools/ci/ship-lists.test.mjs goes red the day one is not), plus two
+   app.js does not fetch, which that test names as the only allowed difference:
+   `ladders.json` (the backend curation path; small, and the client may read it
+   later) and `dai-classification.json` (joined into catalog-client.json at
+   build time by tools/build-catalog-client.mjs).
+
+   NOT here: `show-index.tsv` (S-03), served but deliberately neither precached
+   nor pinned — tools/web/prepare-dist.mjs adds it to dist, and
+   tools/build-show-index.mjs's design comment says why. */
 const RUNTIME_DATA = [
   "session.json",
   "taxonomy.json",
@@ -257,13 +275,44 @@ function fontSources(root = ROOT) {
     .map((f) => path.join("fonts", f));
 }
 
+/** Every `data/*.json` path `app.js` actually fetches, in source order.
+
+    Matches `fetchJson("data/x.json")` and the double/single/backtick variants.
+    Deliberately NOT a general "any string starting with data/" scan: `app.js`
+    mentions `data/app-links.json` in a comment and `data/forays.json` in the
+    `state` declaration, and neither is a fetch. Anchoring on the call is what
+    keeps prose out of the ship lists. The native bundle's data list IS this
+    scan (tools/mobile/prepare-webdir.mjs imports it; it lived there until
+    CH2-18); the web's is `runtimeData()` below. */
+function runtimeDataFiles(appSrc) {
+  const re = /fetchJson\(\s*(["'`])(data\/[^"'`]+\.json)\1\s*\)/g;
+  const out = [];
+  for (const m of appSrc.matchAll(re)) if (!out.includes(m[2])) out.push(m[2]);
+  return out;
+}
+
+/** The runtime data the web deploys ship from `root`, as names under `data/`:
+    `RUNTIME_DATA`, then anything `root`'s app.js `fetchJson`s that it lacks
+    (CH2-18, T2-03). Derived so a new fetch reaches the deploy id, the SW's
+    precache and prepare-dist's copy the moment app.js makes it; before, the
+    native bundle picked it up by this scan while the web 404'd it. A tree with
+    no app.js adds nothing (`listedFiles` then throws on the missing shell file,
+    as before). */
+function runtimeData(root = ROOT) {
+  const appAbs = path.join(root, "app.js");
+  const fetched = existsSync(appAbs)
+    ? runtimeDataFiles(readFileSync(appAbs, "utf8")).map((rel) => rel.slice("data/".length))
+    : [];
+  return [...new Set([...RUNTIME_DATA, ...fetched])];
+}
+
 /** Every file whose hash feeds `deploy_id`, OS-separated, relative to `root`. */
 function listedFiles(root = ROOT) {
   const files = [
     ...SHELL,
     ...fontSources(root),
     ...playerSources(root),
-    ...RUNTIME_DATA.map((f) => path.join("data", f)),
+    ...runtimeData(root).map((f) => path.join("data", f)),
   ];
   return [...new Set(files)].sort();
 }
@@ -556,17 +605,6 @@ function argAfter(argv, flag) {
 }
 
 function main(argv = process.argv.slice(2)) {
-  if (argv.includes("--write")) {
-    console.error(
-      "generate-manifest.mjs --write no longer exists (issue #701). deploy-manifest.json, " +
-        "data/forays-directory.json, data/catalogue-directory.json and sw.js's BUILD_ID are build outputs now, never committed:\n" +
-        "  - for a local site build:   node tools/web/prepare-dist.mjs   (stamps dist/)\n" +
-        "  - to stamp a throwaway tree: node tools/ci/generate-manifest.mjs --stamp <dir>\n" +
-        "There is nothing to regenerate in the working tree and nothing to commit."
-    );
-    process.exit(2);
-  }
-
   if (argv.includes("--check")) {
     const problems = sourceProblems(ROOT);
     if (problems.length) {
@@ -634,7 +672,12 @@ function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  console.error("usage: generate-manifest.mjs --check | --stamp <dir> | --verify <dir>");
+  /* Anything else, the retired `--write` included, is a usage error (exit 2). */
+  console.error(
+    "usage: generate-manifest.mjs --check | --stamp <dir> | --verify <dir>\n" +
+      "(--write no longer exists (issue #701): the stamp is a build output, never committed; " +
+      "node tools/web/prepare-dist.mjs builds and stamps dist/)"
+  );
   process.exit(2);
 }
 
@@ -667,6 +710,8 @@ export {
   moduleImports,
   playerSources,
   fontSources,
+  runtimeDataFiles,
+  runtimeData,
   isEntryScript,
   stampBuild,
   stampedProblems,

@@ -2,6 +2,7 @@ import { fetchFeedConditional } from "../../backend/src/feeds/conditionalGet";
 import { parseFeed, type ParsedFeed } from "../../backend/src/feeds/parser";
 import { TtlCache, realClock, type Clock } from "./searchCache";
 import { KeyedBuckets } from "./keyedBuckets";
+import { guardFeedFetch, systemLookup, type LookupAll } from "./feedGuard";
 
 /**
  * ONE PARSED FEED PER SHOW, SHARED BY BOTH LIVE ENDPOINTS (round-3 audit,
@@ -65,7 +66,8 @@ export function createFeedReader({
   clock = realClock,
   maxShows = FEED_CACHE_MAX_SHOWS,
   fetchesPerShowPerMinute = FEED_FETCHES_PER_SHOW_PER_MINUTE,
-}: { clock?: Clock; maxShows?: number; fetchesPerShowPerMinute?: number } = {}) {
+  lookup = systemLookup,
+}: { clock?: Clock; maxShows?: number; fetchesPerShowPerMinute?: number; lookup?: LookupAll } = {}) {
   const cache = new TtlCache<CachedFeed>(FEED_RETAIN_MS, clock, maxShows);
   const buckets = new KeyedBuckets(fetchesPerShowPerMinute, 60_000, clock);
 
@@ -82,7 +84,9 @@ export function createFeedReader({
     const result = await fetchFeedConditional(
       feedUrl,
       { etag: kept?.etag ?? null, lastModified: kept?.lastModified ?? null },
-      { fetchImpl: opts.fetchImpl, userAgent: opts.userAgent }
+      /* Every feed fetch goes through the destination guard (feedGuard.ts,
+         SEC-01): the url and each redirect must name a public address. */
+      { fetchImpl: guardFeedFetch(opts.fetchImpl, { lookup }), userAgent: opts.userAgent }
     );
     if (result.notModified && kept) {
       cache.set(showId, { ...kept, checkedAt: clock.now() });

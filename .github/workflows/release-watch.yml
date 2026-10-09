@@ -22,8 +22,10 @@
 #   G3 a release-relevant commit has waited over 6h to reach the stores;
 #   G4 a release run has been queued or running for over an hour;
 #   L  release-trigger.yml is disabled, or has not completed a scheduled run
-#      in 6h — the two workflows watch each other, because HUMAN-ACTIONS #46
-#      was a scheduled watchdog that silently stopped firing.
+#      in 8h (TRIGGER_STALE_HOURS: GitHub skipped most slots of both schedules
+#      on their first day, measured in watch-release.mjs) — the two workflows
+#      watch each other, because HUMAN-ACTIONS #46 was a scheduled watchdog
+#      that silently stopped firing.
 #
 # WHAT THE RUN COLOUR MEANS
 # Green = the watchdog evaluated and the issue says what it found. Red = the
