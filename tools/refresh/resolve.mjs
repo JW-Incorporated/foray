@@ -59,8 +59,9 @@ export const FUZZY_DATE_WINDOW_DAYS = 1;
 
 /** The slug normaliser for ids. ASCII on purpose: it builds the committed
     `<show>--<slug>` ids, and changing it would change ids. Matching uses
-    `matchKey` below instead. */
-const norm = (s) =>
+    `matchKey` below instead. backfill-audio.mjs's catalogue-to-feed title
+    join uses this one too (code-health-2 T1-11). */
+export const norm = (s) =>
   (s || "").toLowerCase().replace(/&amp;/g, "&").replace(/[^a-z0-9]+/g, " ").trim();
 export const slugify = (s) => norm(s).split(" ").filter(Boolean).slice(0, 6).join("-");
 
@@ -157,9 +158,12 @@ export function matchTrack(eps, ep) {
 
 /** One show's recent episodes from the iTunes lookup. A lookup that never
     got a usable answer is `{ ok:false, error }`, NOT an empty list: an outage
-    is not evidence that the episode does not exist. */
-export async function lookupEpisodes(collectionId, { fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), attempts = 3 } = {}) {
-  const url = `https://itunes.apple.com/lookup?id=${collectionId}&entity=podcastEpisode&limit=25`;
+    is not evidence that the episode does not exist. `limit` is how many of
+    the newest episodes iTunes returns: 25 for the nightly, 200 for
+    backfill-audio.mjs's back-catalogue fallback (code-health-2 T1-11, the one
+    lookup both share). */
+export async function lookupEpisodes(collectionId, { fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), attempts = 3, limit = 25 } = {}) {
+  const url = `https://itunes.apple.com/lookup?id=${collectionId}&entity=podcastEpisode&limit=${limit}`;
   let error = null;
   for (let attempt = 0; attempt < attempts; attempt++) {
     try {

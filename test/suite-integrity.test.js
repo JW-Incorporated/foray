@@ -1925,11 +1925,16 @@ const FLOORS = {
      before backfill-audio / classify-dai write any file, with replacer
      functions so a `$&` in an audio URL stays literal. Zero slack. */
   "tools/refresh/session-patch.test.mjs": 4,
+  /* CH2-36 (docs/roadmap/code-health-2.md, T1-02 + T1-11): --force never
+     targets a session episode that already has audio (the patch would refuse
+     the run), and an iTunes outage is a lookup failure through resolve.mjs's
+     lookupEpisodes at limit=200, not "no match". New, zero slack. */
+  "tools/refresh/backfill-audio.test.mjs": 7,
   /* Audit round 3 (L8, data-tools-2/-15): the nightly resolve matches on guid,
      enclosure URL, exact title, and fuzzy only on the same release date; a
      failed lookup or a not-yet-indexed episode is carried in the scan state
      rather than dropped. Zero slack. */
-  "tools/refresh/resolve.test.mjs": 16, // CH2-10 (T1-01, docs/roadmap/code-health-2.md): explicit is a tri-state -- Explicit -> true and Clean -> false (characterization), no rating + the feed's explicit_hint -> true, no rating and no hint -> null (unrated); the suite already stood at 13 against 9, so the floor is set exact: 9 -> 16
+  "tools/refresh/resolve.test.mjs": 17, // CH2-36 (T1-11, docs/roadmap/code-health-2.md): lookupEpisodes takes a `limit` (25 by default, 200 for backfill-audio's fallback); 16 -> 17 // CH2-10 (T1-01, docs/roadmap/code-health-2.md): explicit is a tri-state -- Explicit -> true and Clean -> false (characterization), no rating + the feed's explicit_hint -> true, no rating and no hint -> null (unrated); the suite already stood at 13 against 9, so the floor is set exact: 9 -> 16
   /* Android on a runner (#245). ZERO SLACK, deliberately, and for a reason the iOS
      entry above does not have. Two of these 26 tests are the ONLY thing in the repo
      that notices if the Android job stops checking that `cap sync` still wires
@@ -2001,7 +2006,7 @@ const FLOORS = {
   "tools/mobile/android-playback.test.mjs": 40, // CH2-20 (+5): the device helpers both lanes share (tools/mobile/adb.mjs) pinned with a fake adb -- dumpUi's two attempts a second apart, helperLog's filter, wakeAndUnlock's two shell calls and killReason's pid guard, waitFor's 500 ms poll and window2 over a sync or async lane read, readShade's paused fallback through the lane; 35 -> 40 // A-05 (+14): the interlude jingle is taken out of a seam before the A-15 line (run 36562447644), the four A-05 fixture Forays resolve through the join with rendered lines at a05/, the focus stack reads run 36551857323's real dumpsys audio, the button route / call state / focused window parsers, seam statistics count a never-audible seam as the worst (D-A4), and each verdict (f)-(l) fails on what it gates and only that, the ring read and the speech instrument run in a fake page. A-04 (docs/plans/android-assessment.md): the playback scenarios' fixture resolves through the player's own join, the dumpsys parsers read A-03's real API 34 output, and each verdict (a)-(e) fails on each thing the card names, a dead process carries ActivityManager's reason, a known product defect excuses only the failure it names, and the real API 34 shade dump reads as A04-F2; new
   "tools/mobile/android-native-playback.test.mjs": 14, // CH2-20 (+2): one press predicate judged through both lanes' views on one table, and neither runner declares its own copy of an adb.mjs helper; 12 -> 14 // A-26 (docs/plans/android-assessment.md): the native-mode leg's runner -- the names it uses are the Java's (service, receiver, dump prefix), the queues are the APK's click tracks as assets, the dump and am-broadcast parsers read what the platform prints (escaped or not), and each verdict (a)-(d), (g), (h), (i) fails on what it gates; new
   "tools/mobile/android-playback-workflow.test.mjs": 14, // A-26 (+1): a third, native-engine leg runs (a)-(d), (g), (h), (i) through android-native-playback.mjs, every one gated, and none of the JS lane's; 13 -> 14 // A-05 (+2): the narration fixtures are made at the render profile's encode under the runner's names and checked in the APK, and the focus helper is built from its committed source without Gradle into the evidence directory. A-06 (+2): two matrix legs, API 34 (the smoke image, fast) and API 36, each proving its device is its API level and uploading under its own name. A-04: android-playback.yml is advisory, secretless and store-free, its boot is android-smoke.yml's step for step plus the click tracks, and every scenario is its own unsilenceable step, and gms.persistent's first-boot restart is waited out before the install; 9 -> 13
-  "tools/mobile/android-workflow.test.mjs": 72, // CH2-17 (docs/roadmap/code-health-2.md): android-release.yml builds through the android-bundle composite, so the by-hand .aab injects the real splash and launcher icon (--check), takes its version pair from version.mjs in a secret-free version job, and hands the composite an empty Play credential that play-gate reads as absent; 69 -> 72 // A-22: the JVM parity step reads the report and requires a flipped fixture value to turn the runner red; the suite already stood at 68 against 67, so this closes that slack too; 67 -> 69 // A-02 (docs/plans/android-assessment.md): the emulator smoke moved to android-smoke.yml on android-build.yml's path set plus the release pipeline's four; android-release.yml calls it on a dispatch only with no secrets; it reads no secret and never uploads to a store; its concurrency group is not its caller's; 62 -> 67
+  "tools/mobile/android-workflow.test.mjs": 74, // CH2-33 (docs/roadmap/code-health-2.md): android-smoke.yml and android-playback.yml boot through one .github/actions/android-emulator composite (sdk, boot, launch) with no emulator step of their own, and the composite refuses an unknown stage or a later stage without sdk; 72 -> 74 // CH2-17 (docs/roadmap/code-health-2.md): android-release.yml builds through the android-bundle composite, so the by-hand .aab injects the real splash and launcher icon (--check), takes its version pair from version.mjs in a secret-free version job, and hands the composite an empty Play credential that play-gate reads as absent; 69 -> 72 // A-22: the JVM parity step reads the report and requires a flipped fixture value to turn the runner red; the suite already stood at 68 against 67, so this closes that slack too; 67 -> 69 // A-02 (docs/plans/android-assessment.md): the emulator smoke moved to android-smoke.yml on android-build.yml's path set plus the release pipeline's four; android-release.yml calls it on a dispatch only with no secrets; it reads no secret and never uploads to a store; its concurrency group is not its caller's; 62 -> 67
   /* Wiring the signing config into a project nobody commits. ZERO SLACK.
      `mobile/android/` is regenerated on every build, so the only evidence the
      release signing config ever reaches Gradle is that this script ran and its
@@ -2504,7 +2509,7 @@ const BACKEND_FLOORS = {
   "test/parserItemIsolation.test.ts": 1, // round-3 L6 (2026-09-25): backend-rest-1 — a throwing item is a warning, the feed still parses
   "test/personas.test.ts": 6,
   "test/podcastIndex.test.ts": 3,
-  "test/politeness.test.ts": 9,
+  "test/politeness.test.ts": 12, // CH2-26 (2026-10-07): hostSuggestsDai reads tools/refresh/dai-hosts.json -- omny.fm flagged, every JSON host and its subdomains flagged, a lookalike refused; 9 -> 12
   "test/poolIntegrity.test.ts": 6,
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §9.4's ruling
      ("prompts are discarded") enforced structurally — this suite scans the
@@ -2519,7 +2524,7 @@ const BACKEND_FLOORS = {
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
   "test/property/interestWeight.property.test.ts": 3,
-  "test/redirect.test.ts": 6,
+  "test/redirect.test.ts": 8, // CH2-26 (2026-10-07): resolveRedirectChain sends DEFAULT_FEED_USER_AGENT by default and the caller's userAgent when passed (no config/env import); 6 -> 8
   "test/scoring.test.ts": 17,
   "test/sessionBuilder.test.ts": 23, // #72 R17 provenance: signals name real matched taxonomy nodes, persona only when it weighted a match, recency/depth/fatigue follow the score log, stretch = wildcard + bridge, builder stamped; 15 -> 23 // round-3 L6 (2026-09-25): backend-rest-15/-16: the dedup log names the survivor; an unparseable date is neutral; 12 -> 15
   /* #72 (R17): the REAL data/session.json parsed with SessionDocSchema — a card
@@ -2944,7 +2949,7 @@ const BACKEND_FLOORS = {
          new literal appears anywhere in src/;
        generateForaysArgs — the --budget-usd flag and what it actually moves. */
   "test/checkpoint.test.ts": 14,
-  "test/generateForaysArgs.test.ts": 13, // round-3 L6 (2026-09-25): backend-rest-7: report.json merged across re-runs, publish records kept; 10 -> 13
+  "test/generateForaysArgs.test.ts": 18, // CH2-25 (2026-10-09): +5 -- both generation CLIs default to DEFAULT_AUTHOR_ID, both read --author-id, --author kept one release with a deprecation line, --author-id wins, and no-flag runs of both record into BudgetGuard under one userId; 13 -> 18 // round-3 L6 (2026-09-25): backend-rest-7: report.json merged across re-runs, publish records kept; 10 -> 13
   "test/models.test.ts": 7,
   "test/researchTopicFilter.test.ts": 17,
   /* F-59 (docs/curation/generation-run-2026-09-09.md): the topic resolver's
@@ -3034,6 +3039,13 @@ const BACKEND_FLOORS = {
      are compared on apostrophe variants, punctuation, NFKC and whitespace, and
      today's canonical form is pinned on both. */
   "test/anchorTextParity.test.ts": 2,
+  /* CH2-28 (B1-04, T1-10): backend/src/feeds/conditionalGet.ts and
+     tools/poll/fetch-feed.mjs run against one loopback server -- identical
+     results for 200/304/500/declared-oversize/endless, the same request
+     headers, BOTH cancel a non-2xx body (the TS did not), the same default
+     cap and 15 s timeout, and fetch-feed's BOM decode equal to fetch-limits'
+     reader (the TS keeping the BOM is pinned as a named divergence). */
+  "test/fetchFeedParity.test.ts": 7,
   /* F-82 (generation run 6): a connective page cites the adjacent tape it
      restates. A page holds the windows of BOTH segments beside it in play
      order (across slot edges), the prefetch stage keys on them so the hit

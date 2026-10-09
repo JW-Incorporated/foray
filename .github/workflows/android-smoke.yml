@@ -63,9 +63,11 @@
 # on any PR, fork or not, and what makes widening its trigger safe; the test
 # file pins both halves.
 #
-# No third-party actions: every `uses:` is `actions/*`, and the emulator is
-# driven with `sdkmanager`, `avdmanager`, `emulator` and `adb` directly, for the
-# reason `android-release.yml` gives at length.
+# No third-party actions: every `uses:` is `actions/*` or this repo's own
+# `.github/actions/android-emulator` (the bring-up android-playback.yml shares,
+# CH2-33), and the emulator is driven with `sdkmanager`, `avdmanager`,
+# `emulator` and `adb` directly, for the reason `android-release.yml` gives at
+# length.
 #
 # ── WHAT THIS STILL DOES NOT PROVE ───────────────────────────────────────────
 #
@@ -101,6 +103,9 @@ on:
       - "search-engine.js"
       - "styles.css"
       - ".github/workflows/android-smoke.yml"
+      # The emulator bring-up this job runs (CH2-33): a change to it changes
+      # the launch, so it gets the launch check.
+      - ".github/actions/android-emulator/**"
       - ".github/workflows/android-release.yml"
       - "mobile/gradle/**"
       - "tools/mobile/wire-signing.mjs"
@@ -143,36 +148,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
-      SDK_PLATFORM: platforms;android-36
-      SDK_BUILD_TOOLS: build-tools;36.0.0
-      # ── API 34 WHILE THE APP TARGETS 36. DELIBERATE. ────────────────────
-      #
-      # Asked and answered here because a reader will wonder, and because the
-      # honest version has a cost attached.
-      #
-      # WHY NOT 36: `docs/research/mp1-background-audio.md` §6.2 is a measurement,
-      # not a preference — a cold API-36 x86_64 image did not reach a usable
-      # framework in ~35 minutes under WHPX, across three attempts, and §6.3's
-      # "practical note for #38 (the CI-runner work)" says in so many words to
-      # pin an older API level. A runner with KVM is a different machine from that
-      # laptop, but the measurement is the only data this project has and it points
-      # one way.
-      #
-      # WHY 34 IS A REASONABLE ANSWER: minSdk is 24 and targetSdk is 36, so 34 is
-      # inside the range this app claims to support, and it is nearer the installed
-      # base a real listener has than the newest image is. Testing on an older API
-      # than you target is what users do.
-      #
-      # WHAT IT THEREFORE DOES NOT EXERCISE, said plainly: every behaviour change
-      # that lands BECAUSE targetSdk is 36. Android 15's edge-to-edge enforcement,
-      # its foreground-service and `mediaPlayback` tightening, and anything Android
-      # 16 adds are all gated on the platform the app runs ON, and this job never
-      # runs on one. So "the app launches" from this job means "on API 34". If a
-      # launch crash ever appears only on a current phone, this is the first place
-      # to look, and the fix is a second matrix entry rather than a change here —
-      # `HUMAN-ACTIONS.md` #11's device pass is the cheaper instrument for it.
-      EMULATOR_IMAGE: system-images;android-34;google_apis;x86_64
-      AVD_NAME: foray-ci
       PKG: ai.jwlabs.foura
 
     steps:
@@ -197,72 +172,46 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Enable KVM, or the emulator falls back to software and never boots
-        # WITHOUT THIS THE JOB DOES NOT MERELY GET SLOWER. GitHub's Linux runners
-        # expose /dev/kvm but with permissions that do not include the runner
-        # user, and an emulator that cannot open it falls back to an interpreter
-        # — which is the regime MP1 §6.2 measured at "not booted after 35
-        # minutes". One udev rule is the difference between a ~2 minute boot and a
-        # timeout.
-        run: |
-          set -euo pipefail
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          # `udevadm trigger` only QUEUES the re-evaluation of the rule; it returns
-          # before the kernel has necessarily finished applying the new device
-          # mode. The version that shipped here tested `-w /dev/kvm` in the very
-          # next line — 0.03s later, measured on the run that failed (2026-08-30,
-          # run 33325261993) — which raced the udev worker rather than genuinely
-          # finding a runner without a device. `udevadm settle` blocks until the
-          # queued event has been processed, so the check below reflects the
-          # post-trigger state instead of a coin flip on scheduler timing.
-          sudo udevadm settle --timeout=30 || true
-          # BELT AND BRACES, NOT A REPLACEMENT FOR THE RULE ABOVE: if the device
-          # node exists but `settle` still raced, or the udev worker on this image
-          # is slow, retry a direct permission change rather than failing the job
-          # for a race that has nothing to do with the app. This does not paper
-          # over a genuinely missing device — the `-c` check below still fails the
-          # job when `/dev/kvm` was never created at all.
-          for i in 1 2 3 4 5; do
-            if [ -w /dev/kvm ]; then break; fi
-            sudo chmod 0666 /dev/kvm 2>/dev/null || true
-            sleep 1
-          done
-          ls -l /dev/kvm || true
-          test -c /dev/kvm || { echo "/dev/kvm does not exist on this runner at all — this runner class has no KVM device, not a permissions problem"; exit 1; }
-          test -w /dev/kvm || { echo "/dev/kvm is still not writable after udevadm settle and a direct permission change — this runner cannot accelerate an emulator"; exit 1; }
-
-      - name: The Android SDK, plus the emulator and one system image
-        run: |
-          set -euo pipefail
-          echo "ART=$RUNNER_TEMP/android-smoke" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/android-smoke"
-          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
-            echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
-            exit 1
-          fi
-          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
-          if [ -z "$SDKMANAGER" ]; then
-            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
-          fi
-          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
-            echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
-            exit 1
-          fi
-          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS" "platform-tools" "emulator" "$EMULATOR_IMAGE"
-          # `avdmanager` LIVES BESIDE THE RESOLVED `sdkmanager`, not at a guessed
-          # path. The image may carry a versioned `cmdline-tools/<rev>/` rather
-          # than one called `latest`, which is why sdkmanager is searched for
-          # above; assuming avdmanager is on PATH would reintroduce exactly that
-          # assumption one step later.
-          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
-          echo "$SDK/emulator" >> "$GITHUB_PATH"
-          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+      - name: KVM, the Android SDK, the emulator and its system image
+        # The emulator bring-up is `.github/actions/android-emulator`, which
+        # android-playback.yml runs too (CH2-33): read that file for why each
+        # step is shaped the way it is (the KVM race, the AVD that was never
+        # created, the dead emulator noticed in seconds). This job calls it
+        # three times, `sdk`, `boot` and `launch`, because the APK is built
+        # between the first two.
+        uses: ./.github/actions/android-emulator
+        with:
+          stage: sdk
+          # ── API 34 WHILE THE APP TARGETS 36. DELIBERATE. ──────────────────
+          #
+          # Asked and answered here because a reader will wonder, and because
+          # the honest version has a cost attached.
+          #
+          # WHY NOT 36: `docs/research/mp1-background-audio.md` §6.2 is a
+          # measurement, not a preference — a cold API-36 x86_64 image did not
+          # reach a usable framework in ~35 minutes under WHPX, across three
+          # attempts, and §6.3's "practical note for #38 (the CI-runner work)"
+          # says in so many words to pin an older API level. A runner with KVM
+          # is a different machine from that laptop, but the measurement is the
+          # only data this project has and it points one way.
+          #
+          # WHY 34 IS A REASONABLE ANSWER: minSdk is 24 and targetSdk is 36, so
+          # 34 is inside the range this app claims to support, and it is nearer
+          # the installed base a real listener has than the newest image is.
+          # Testing on an older API than you target is what users do.
+          #
+          # WHAT IT THEREFORE DOES NOT EXERCISE, said plainly: every behaviour
+          # change that lands BECAUSE targetSdk is 36. Android 15's edge-to-edge
+          # enforcement, its foreground-service and `mediaPlayback` tightening,
+          # and anything Android 16 adds are all gated on the platform the app
+          # runs ON, and this job never runs on one. So "the app launches" from
+          # this job means "on API 34". If a launch crash ever appears only on a
+          # current phone, this is the first place to look, and the fix is a
+          # second matrix entry rather than a change here — `HUMAN-ACTIONS.md`
+          # #11's device pass is the cheaper instrument for it. (The API 36
+          # emulator leg A-06 later added lives in android-playback.yml.)
+          api-level: 34
+          art-dir: ${{ runner.temp }}/android-smoke
 
       - name: Build the webDir, generate the project, and build the debug APK
         working-directory: mobile
@@ -310,162 +259,18 @@ jobs:
           grep -qE '^[[:space:]]*minifyEnabled[[:space:]]+false' app/build.gradle \
             || { echo "no minifyEnabled line in the generated app/build.gradle — Capacitor's template changed; re-read this step's argument before trusting the smoke result"; exit 1; }
 
-      - name: Create the AVD, and prove it exists before launching anything
-        # THIS STEP IS A SEPARATE STEP BECAUSE IT HAS ITS OWN VERDICT.
-        #
-        # WHAT WENT WRONG THE FIRST TIME, and it is the more useful half of this
-        # comment. `echo no | avdmanager create avd …` printed its interactive
-        # "Do you wish to create a custom hardware profile? [no]" prompt, exited
-        # ZERO, and created no AVD. Nothing checked. `emulator -avd foray-ci`
-        # then died instantly with `Unknown AVD name [foray-ci]`, and
-        # `timeout 600 adb wait-for-device` spent TEN MINUTES waiting for a device
-        # that could never appear — twelve minutes of runner time to report a
-        # fault that was knowable in one second.
-        #
-        # THE PROMPT WAS THE TRIGGER; THE DEFECT WAS THE MISSING CHECK. `set -euo
-        # pipefail` was in force the whole time and did not help, because the
-        # command it would have caught did not fail. This is the fifth
-        # "step that cannot fail when its precondition is unmet" found in this
-        # repo in three days, and the fourth in this PR — the other three were a
-        # keystore-outside-$ART test that compared strings for inequality, a
-        # fingerprint test that asserted its ingredients and not the comparison,
-        # and an ordering assertion that passed when the thing being ordered was
-        # deleted. A job whose whole purpose is to catch problems is not exempt.
-        #
-        # SO: THREE CHANGES, AND THE LAST IS THE ONE THAT MATTERS.
-        run: |
-          set -euo pipefail
-          # 1. ONE AVD LOCATION, DECLARED, FOR BOTH TOOLS. The observed failure
-          #    was the emulator reporting "HOME is defined but there is no file
-          #    foray-ci.ini in $HOME/.android/avd" — which is a statement about
-          #    where the EMULATOR looked, not about where avdmanager wrote. Those
-          #    two resolve their AVD root through different variables
-          #    (ANDROID_AVD_HOME, ANDROID_SDK_HOME, ANDROID_USER_HOME, HOME) and a
-          #    runner image is free to set any of them. Pinning it removes a whole
-          #    class of "created it, could not find it" from the diagnosis.
-          export ANDROID_AVD_HOME="$HOME/.android/avd"
-          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
-          mkdir -p "$ANDROID_AVD_HOME"
-          # 2. `-d`, SO THE PROMPT NEVER HAPPENS. `avdmanager` asks about a custom
-          #    hardware profile only when no device is given; with `-d` it does not
-          #    ask, so there is no stdin to satisfy and nothing for `echo no` to
-          #    get wrong. `pixel_6` was verified to be a real device id in this
-          #    SDK's `avdmanager list device` (66 profiles, `id: 28 or "pixel_6"`)
-          #    rather than assumed. Stdin is closed as well, which prevents a HANG
-          #    but is NOT what makes this safe: the original `echo no |` already
-          #    gave avdmanager EOF, and it still exited 0 having created nothing.
-          #    Only check 3 turns that into a failure.
-          #
-          #    THE EXIT CODE IS CAPTURED DIRECTLY. Not `avdmanager … | tee`: a
-          #    local probe of this very command through `| head` reported exit 0
-          #    for a run that exited 1, which is the same defect this step is
-          #    being fixed for, one layer up.
-          set +e
-          avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" -d pixel_6 --force \
-            < /dev/null > "$ART/avdmanager.log" 2>&1
-          AVDMANAGER_STATUS=$?
-          set -e
-          cat "$ART/avdmanager.log"
-          if [ "$AVDMANAGER_STATUS" -ne 0 ]; then
-            echo "avdmanager exited $AVDMANAGER_STATUS — no AVD was created"
-            exit 1
-          fi
-          # 3. THE PRECONDITION IS ASSERTED WITH THE TOOL THAT WILL CONSUME IT.
-          #    The failure being fixed here was the emulator saying `Unknown AVD
-          #    name [foray-ci], use -list-avds to see valid list`, so the check is
-          #    that exact list and passing it makes that exact error unreachable.
-          #    NOT MORE THAN THAT: `-list-avds` enumerates the `.ini` files under
-          #    the AVD root, so it would still list an AVD whose system image had
-          #    gone missing. It proves the NAME RESOLVES, which is what was broken.
-          #
-          #    NOT `avdmanager list avd | grep`, AND THIS WAS MEASURED, NOT
-          #    GUESSED: on a real machine that command prints unusable AVDs too,
-          #    under a heading reading "The following Android Virtual Devices could
-          #    not be loaded" — two of them, on the founder's own box, missing
-          #    their system images. A grep for the name over that output is
-          #    satisfied by an AVD the emulator cannot start, which would have
-          #    shipped this same bug wearing a check.
-          emulator -list-avds > "$ART/emulator-list-avds.txt" 2>&1 || true
-          cat "$ART/emulator-list-avds.txt"
-          if ! grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"; then
-            echo "the emulator does not list an AVD called $AVD_NAME, so launching it would fail with Unknown AVD name."
-            echo "--- avdmanager's own view, including AVDs it considers broken:"
-            avdmanager list avd || true
-            echo "--- $ANDROID_AVD_HOME:"
-            ls -la "$ANDROID_AVD_HOME" || true
-            exit 1
-          fi
-          test -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" \
-            || { echo "no $AVD_NAME.ini in $ANDROID_AVD_HOME — the emulator listed it but its config is not where both tools agree it should be"; exit 1; }
-          echo "AVD $AVD_NAME exists and the emulator can see it"
-
-      - name: Boot it
-        run: |
-          set -euo pipefail
-          adb start-server
-          # `-no-snapshot` because a saved snapshot is a second thing that can be
-          # stale, and this job is a cold-start check by nature.
-          nohup emulator -avd "$AVD_NAME" \
-            -no-window -no-audio -no-boot-anim -no-snapshot \
-            -gpu swiftshader_indirect -camera-back none -camera-front none \
-            -accel on -memory 4096 -partition-size 4096 \
-            > "$ART/emulator.log" 2>&1 &
-          EMU_PID=$!
-          # ONE LOOP, WATCHING BOTH THE DEVICE AND THE PROCESS, and the process
-          # half is the fix for "twelve minutes to report a one-second fault".
-          # `adb wait-for-device` waits for something to appear and has no opinion
-          # about whether anything is still trying: an emulator that exits during
-          # startup — a bad flag, no KVM, a corrupt image, an AVD that vanished —
-          # leaves it blocking for the full timeout with the answer already in the
-          # log. `kill -0` on the pid it started turns every one of those into a
-          # failure in seconds, with the log printed.
-          #
-          # `sys.boot_completed` IS THE PROPERTY WAITED ON, not `state: device`,
-          # and MP1 §6.2 is why: that run reached `state: device` with
-          # `ro.build.version.sdk=36` while the package service still answered
-          # "Can't find service: package". Visible and usable are different events.
-          DEADLINE=$(( $(date +%s) + 900 ))
-          # `timeout 30` ON THE ADB CALL, because both guards below live in the LOOP
-          # BODY and a hung `adb shell` never reaches either one. The old code was
-          # bounded by `timeout 600 adb wait-for-device`; replacing that with a poll
-          # and no bound would have re-opened the same "hold the runner until the
-          # job timeout" hole one level down. On timeout adb exits 124, the test is
-          # false, and the loop falls through to the pid check and the deadline.
-          until [ "$(timeout 30 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
-            if ! kill -0 "$EMU_PID" 2>/dev/null; then
-              echo "the emulator process exited before the device finished booting"
-              tail -80 "$ART/emulator.log"
-              exit 1
-            fi
-            if [ "$(date +%s)" -ge "$DEADLINE" ]; then
-              echo "the emulator did not finish booting in 15 minutes"
-              tail -80 "$ART/emulator.log"
-              exit 1
-            fi
-            sleep 5
-          done
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-          adb shell getprop ro.build.version.sdk | tee "$ART/device-sdk.txt"
+      - name: Create the AVD and boot it
+        uses: ./.github/actions/android-emulator
+        with:
+          stage: boot
 
       - name: Install the app and start it
         id: launch
-        run: |
-          set -euo pipefail
-          adb logcat -c
-          # `|| true` ON BOTH PIPELINES, for the same reason as the `pidof` lines
-          # below: `adb install` exits non-zero on failure and `adb shell`
-          # forwards `am start`'s status, so under `pipefail` the step would abort
-          # before the grep that carries the readable message. The greps are the
-          # verdict; the pipelines only have to deliver the text.
-          adb install -r -g "$APK" 2>&1 | tee "$ART/adb-install.txt" || true
-          grep -q '^Success' "$ART/adb-install.txt" || { echo "the APK did not install"; exit 1; }
-          # `-W` waits for the launch to complete and prints a Status line, so a
-          # missing or non-exported activity is a failure HERE with a readable
-          # message rather than a mystery further down.
-          adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee "$ART/am-start.txt" || true
-          grep -q '^Status: ok' "$ART/am-start.txt" || { echo "am start did not report Status: ok"; exit 1; }
+        uses: ./.github/actions/android-emulator
+        with:
+          stage: launch
+          apk: ${{ env.APK }}
+          package: ${{ env.PKG }}
 
       - name: The WebView is running OUR app, and the native bridge answers
         # THE FOUR THINGS NOTHING ELSE IN THIS REPO CAN SEE. `mobile/android/` is
