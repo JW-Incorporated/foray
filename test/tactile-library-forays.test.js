@@ -150,7 +150,7 @@ test("a card is an article; the title link and the Play key are siblings, neithe
   const card = cardFor(html, PUBLISHED);
   assert.match(card, /^<article class="card yours-foray"/, "an <article>, not a link");
   assert.equal((card.match(/<a /g) || []).length, 1, "exactly one link in the card: the title");
-  assert.match(card, /<h3 class="yours-foray__title"><a class="yours-foray__link" href="#\/foray\/capital-types-1">[^<]+<\/a><\/h3>/);
+  assert.match(card, /<h3 class="yours-foray__title"><a class="yours-foray__link" href="#\/foray\/capital-types-1"><span class="yours-foray__text">[^<]+<\/span><\/a><\/h3>/);
   const link = /<a [\s\S]*?<\/a>/.exec(card)[0];
   assert.ok(!link.includes("<button"), "Play is not inside the link");
   const foot = /<div class="yours-foray__foot">([\s\S]*?)<\/div>\s*<\/article>/.exec(card);
@@ -264,7 +264,16 @@ test("sheet rules: title 700 at the 17px step clamped to two lines, 44px link an
   };
   assert.match(rule(".yours-foray__title"), /font: 700 var\(--t-body-lg\)\/var\(--lh-body-lg\)/);
   const link = rule(".yours-foray__link");
-  assert.match(link, /-webkit-line-clamp: 2/);
+  const text = rule(".yours-foray__text");
+  assert.match(text, /-webkit-line-clamp: 2/);
+  assert.match(text, /overflow: hidden/);
+  /* MUTATION 5: move the clamp + overflow back onto `.yours-foray__link` (or add padding to
+     `.yours-foray__text`) - red. overflow clips at the PADDING box, so with ~11px of padding the
+     top of line 3 of a 3+ line title paints under the ellipsis line (seen in Chromium 151 on the
+     real 59-char title "The chain reaction: how engineering disasters really happen" at 280px). */
+  assert.ok(!/overflow|line-clamp/.test(link), "the clamp is not on the padded link");
+  assert.ok(!/padding|margin/.test(text), "the clamped box carries no padding, so nothing of line 3 sits inside it");
+  assert.match(link, /display: block/);
   assert.match(link, /padding-block: calc\(\(var\(--tap\) - var\(--lh-body-lg\)\) \/ 2\)/, "the link is a 44px target by padding...");
   assert.match(link, /margin-block: calc\(\(var\(--tap\) - var\(--lh-body-lg\)\) \/ -2\)/, "...paid back by an equal negative margin, so the band sits one gap under the title's last line");
   assert.ok(!/min-height/.test(link), "no reserved-height slot under a one-line title");

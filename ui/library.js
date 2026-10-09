@@ -114,7 +114,7 @@ function yoursForayCardHtml(f, place) {
     ? tactileKeycap({ size: "sm", variant: "persimmon", round: true, icon: "ph-play-fill", label: `${part ? "Resume" : "Play"} ${title}`, data: { "home-play": f.id } })
     : "";
   return `<article class="card yours-foray${part ? " is-part" : ""}">
-    <h3 class="yours-foray__title"><a class="yours-foray__link" href="${esc(safeUrl("#" + forayRoutePath(f.id)))}">${esc(title)}</a></h3>
+    <h3 class="yours-foray__title"><a class="yours-foray__link" href="${esc(safeUrl("#" + forayRoutePath(f.id)))}"><span class="yours-foray__text">${esc(title)}</span></a></h3>
     ${band}
     <div class="yours-foray__foot"><span class="readout yours-foray__readout">${esc(readout)}</span>${key}</div>
   </article>`;

@@ -5443,7 +5443,8 @@ body.fp-open:not(.mini-dismissed) .yours-toast { bottom: calc(var(--safe-b) + va
 .yours-forays { display: flex; flex-direction: column; gap: var(--s-3); }
 .yours-foray { display: flex; flex-direction: column; gap: var(--s-3); }
 .yours-foray__title { margin: 0; font: 700 var(--t-body-lg)/var(--lh-body-lg) var(--font-text); }
-.yours-foray__link { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; padding-block: calc((var(--tap) - var(--lh-body-lg)) / 2); margin-block: calc((var(--tap) - var(--lh-body-lg)) / -2); color: var(--ink); text-decoration: none; border-radius: var(--r-sm); }
+.yours-foray__link { display: block; padding-block: calc((var(--tap) - var(--lh-body-lg)) / 2); margin-block: calc((var(--tap) - var(--lh-body-lg)) / -2); color: var(--ink); text-decoration: none; border-radius: var(--r-sm); }
+.yours-foray__text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }   /* the clamp lives on this unpadded inner box: on the padded link, overflow clips at the padding box and the top of line 3 paints under the ellipsis */
 .yours-foray__link:focus-visible { outline: calc(var(--s-1) / 2) solid var(--ultramarine); outline-offset: calc(var(--s-1) / 2); }
 .yours-foray__band { display: block; min-height: 0; padding: var(--s-1) calc(var(--s-1) * 1.5); border-radius: var(--r-pill); }
 .yours-foray:not(.is-part) .t-band__base { opacity: 1; }   /* not started, or finished: full enamel and no progress layer; part-played keeps the primitive's 40% for what is left */

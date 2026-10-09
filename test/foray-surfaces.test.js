@@ -125,7 +125,7 @@ function loadApp(bridge, { showDrafts = true, created = [] } = {}) {
     by Tactile `library-forays`: the five-row summary (`.t` / `.s`) became cards whose title
     is the link and whose readout is the mono line, "about 22 min · 4 shows · 12 min left". */
 function libraryRows(html) {
-  return [...html.matchAll(/<a class="yours-foray__link"[^>]*>([^<]*)<\/a>[\s\S]*?<span class="readout yours-foray__readout">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
+  return [...html.matchAll(/<a class="yours-foray__link"[^>]*><span class="yours-foray__text">([^<]*)<\/span><\/a>[\s\S]*?<span class="readout yours-foray__readout">([^<]*)<\/span>/g)].map((m) => [m[1], m[2]]);
 }
 
 const FROZEN_IDS = readFrozen("forays.json").forays.map((f) => f.id);
