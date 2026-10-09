@@ -50,6 +50,8 @@ public class FocusIntegrationTest {
     private ExoPlayer player;
     private final FocusMapping focus = new FocusMapping();
     private final List<EngineInput.SessionEvent> events = new ArrayList<>();
+    /** Every play-when-ready change the main thread was told of, as {@code "<pwr>/<reason>"}. */
+    private final List<String> playWhenReadyChanges = new ArrayList<>();
 
     @Before
     public void setUp() throws Exception {
@@ -61,6 +63,7 @@ public class FocusIntegrationTest {
         player.addListener(new Player.Listener() {
             @Override
             public void onPlayWhenReadyChanged(boolean playWhenReady, int reason) {
+                playWhenReadyChanges.add(playWhenReady + "/" + reason);
                 events.addAll(focus.onPlayWhenReadyChanged(playWhenReady, reason));
             }
 
@@ -163,6 +166,44 @@ public class FocusIntegrationTest {
         assertFalse("the permanent loss closed the transient span", focus.transientOpen());
         assertFalse("no end was mapped: nothing resumes over the app that took focus",
                 events.stream().anyMatch(e -> e instanceof EngineInput.SessionEvent.InterruptionEnded));
+    }
+
+    @Test
+    public void aPlayRefusedFocusReadsAsPlayingInItsTurnAndArrivesLaterAsAPermanentLoss() throws Exception {
+        /* CH3-08 / R5-02, CHARACTERIZATION (today's behaviour, the card's premise checked): the
+           driver is on a call and presses play. Focus was given up for good earlier (another
+           app's playback: Media3 abandoned its request), so the play asks afresh and the system
+           answers AUDIOFOCUS_REQUEST_FAILED.
+
+           What it pins: Media3 1.11 asks for focus on the PLAYBACK thread (AudioFocusManager
+           lives in ExoPlayerImplInternal; ExoPlayerImpl has none), so getPlayWhenReady() read in
+           the same main-thread turn as play() is the masked TRUE: a read-back there sees no
+           refusal. The refusal reaches the main thread a turn later as play-when-ready false
+           with reason AUDIO_FOCUS_LOSS, the same signal as a permanent loss, and the mapping
+           makes it an interruption: R5-02's "success + an interruption" instead of iOS's
+           commandFailed. MUTATION: drop the AUDIO_FOCUS_LOSS case from
+           FocusMapping.onPlayWhenReadyChanged and this times out awaiting the interruption. */
+        AudioManager am = context.getSystemService(AudioManager.class);
+        ShadowAudioManager.AudioFocusRequest held = request();
+        held.listener.onAudioFocusChange(AudioManager.AUDIOFOCUS_LOSS);
+        await(EngineInput.SessionEvent.InterruptionBegan.class);
+        until(() -> !player.getPlayWhenReady());
+        events.clear();
+        playWhenReadyChanges.clear();
+
+        shadowOf(am).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED);
+        player.play();
+        assertTrue("in the play's own turn the refusal is not visible: Media3 masks play-when-ready true",
+                player.getPlayWhenReady());
+
+        await(EngineInput.SessionEvent.InterruptionBegan.class);
+        assertFalse("Media3 would not play without focus", player.getPlayWhenReady());
+        assertTrue("the play asked for focus afresh", shadowOf(am).getLastAudioFocusRequest() != held);
+        assertEquals("the refusal arrives as a permanent focus loss, after the masked true",
+                List.of("true/" + Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST,
+                        "false/" + Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_FOCUS_LOSS),
+                playWhenReadyChanges);
+        assertFalse("nothing sounds", player.isPlaying());
     }
 
     @Test
