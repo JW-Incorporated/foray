@@ -415,6 +415,9 @@ export class ReferenceEngine {
       canPrevious: Boolean(item),
       autoAdvance: this.continuation ? this.continuation.autoAdvance : true,
       lastError: this.lastError,
+      // The manager's own answer (null until a line has spoken), as
+      // EngineSnapshot.body writes the core's `lastVoiceFallback`.
+      voiceFallback: m.lastVoiceFallback,
       skippedSegments: 0,
       pendingAdvances: this.advanceLog.length,
       pendingEvents: this.pendingEvents.length,

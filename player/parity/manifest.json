@@ -110,7 +110,7 @@
     },
     "contract": {
       "files": {
-        "player/parity/fixtures/contract/contract.json": "e2d988902254b0508b983187b70e7bdd5b45bbfef5db3214e115d16c9e6c554f"
+        "player/parity/fixtures/contract/contract.json": "3e693f765df018caa54f503906e8c63501d9f0de3e68ef2c895e072cf8cf5d89"
       },
       "ids": [
         "contract/bridge-methods",
@@ -2118,7 +2118,7 @@
     },
     "snapshot": {
       "files": {
-        "player/parity/fixtures/snapshot/snapshot.json": "980da72f8c0d86fc8c1a1e726055d277d98b07f0e8328836fe218b3f46488f82"
+        "player/parity/fixtures/snapshot/snapshot.json": "c970a5346b4fe26980a79ac1024ba5dab0de4e2e9babe3c89097be2b486d50c3"
       },
       "ids": [
         "snapshot/snapshot-modes",
@@ -2127,6 +2127,7 @@
         "snapshot/snapshot-valid-playing",
         "snapshot/snapshot-valid-idle",
         "snapshot/snapshot-valid-foray-narration",
+        "snapshot/snapshot-valid-foray-voice-fallback",
         "snapshot/snapshot-valid-interrupted",
         "snapshot/snapshot-invalid-missing-session",
         "snapshot/snapshot-invalid-unknown-state",

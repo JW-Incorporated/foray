@@ -124,7 +124,7 @@ public final class EngineConstants {
         /** {@code ENGINE_PLATFORMS} */
         public static final List<String> ENGINE_PLATFORMS = Collections.unmodifiableList(Arrays.asList("ios", "android"));
         /** {@code EVENTS} */
-        public static final List<String> EVENTS = Collections.unmodifiableList(Arrays.asList("snapshot", "advanced", "skipped", "error", "voiceFallback", "diag", "modeChanged"));
+        public static final List<String> EVENTS = Collections.unmodifiableList(Arrays.asList("snapshot", "advanced", "skipped", "error", "diag", "modeChanged"));
         /** {@code HANDSHAKE_REASONS} */
         public static final List<String> HANDSHAKE_REASONS = Collections.unmodifiableList(Arrays.asList("native", "not-ios", "no-method", "no-hello", "bad-hello", "engine-legacy", "protocol-mismatch"));
         /** {@code HELLO_PLATFORMS} */
