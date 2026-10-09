@@ -310,11 +310,13 @@ test("every token a colour-scheme query redefines is re-owned on the ui-v2 scope
 
 test("the JS-written tokens the ownership check trusts are really written by JS", () => {
   /* Keeps clause (c) above from becoming a blanket excuse: a name only passes
-     as "js" when a setProperty for it exists. Pinned positively for the four
-     known writers so deleting one surfaces here by name as well.
+     as "js" when a setProperty for it exists. Pinned positively for the two
+     known writers so deleting one surfaces here by name as well. (`--zoom-origin` and
+     `--zoom-scale` were the other two: the Foray page's press-and-hold zoom-to-scrub wrote
+     them, and went with the strip, Tactile `foray`.)
      MUTATION: rename `setProperty("--kb-inset"` in app.js -> red. */
   const { verdicts } = tokenOwnership();
-  for (const name of ["--kb-inset", "--fp-sheet-dy", "--zoom-origin", "--zoom-scale"]) {
+  for (const name of ["--kb-inset", "--fp-sheet-dy"]) {
     assert.strictEqual(verdicts.get(name), "js", `${name} is read by CSS but nothing in app.js/player/ writes it`);
   }
 });
@@ -563,7 +565,7 @@ test("the two heading kinds: eyebrows are the text face, section titles the disp
     assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-xs)", `${sel} at the caption step`);
     assert.strictEqual(lastOn(sel, "text-transform"), "uppercase", `${sel} is small caps`);
   }
-  for (const sel of ["body.ui-v2 .hv2-title", ".fy-slot h3", ".page-head h2"]) {
+  for (const sel of [".fy-slot h3", ".page-head h2"]) {
     assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", `${sel} is a title: display face`);
     assert.notStrictEqual(lastOn(sel, "text-transform"), "uppercase", `${sel} is sentence case`);
   }
@@ -574,12 +576,12 @@ test("the two heading kinds: eyebrows are the text face, section titles the disp
   }
 });
 
-test("the wordmark is one mark: the topbar and the greeting both draw Fraunces italic", () => {
+test("the wordmark is one mark: the topbar draws Fraunces italic (Today's greeting, its second copy, is gone)", () => {
   /* qa row 47. MUTATION: drop `class="wordmark"` from index.html's <h1><a>,
      or `font-style: italic` from `.topbar h1 a` -> red. */
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   assert.match(html, /<h1><a class="wordmark" href="#\/">4a<\/a>/);
-  for (const sel of [".topbar h1 a", "body.ui-v2 .hv2-greeting-brand"]) {
+  for (const sel of [".topbar h1 a"]) {
     assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", sel);
     assert.strictEqual(lastOn(sel, "font-style"), "italic", sel);
   }
@@ -665,8 +667,8 @@ test("every row and card title is the display face: a show's name in a search ro
      the first-run value-prop headings inherited it. MUTATION: `body.ui-v2
      .show-result-title { font-family: var(--font-body) }` -> red. */
   const titles = [
-    "body.ui-v2 .show-result-title", ".ep-row .t", ".mc-info h3", ".fy-home-title", ".ft-value-prop h4",
-    ".fy-src-show", "body.ui-v2 .hv2-jbi-title", ".b-title",
+    "body.ui-v2 .show-result-title", ".ep-row .t", ".fy-home-title", ".ft-value-prop h4",
+    ".fy-src-show", ".b-title",
   ].filter((s) => s !== ".b-title" || RULES.some((r) => r.selectors.includes(".b-title")));
   for (const sel of titles) {
     assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", `${sel} names something: display face`);
@@ -718,8 +720,10 @@ test("one text field: every field reads the one element rule, and only the float
   if (/<input\b[^>]*\bdata-show-ep-search-input\b[^>]*type="text"/.test(APP_JS)) fields.add(".show-ep-search input");
   for (const m of APP_JS.matchAll(/ddEl\("input", "([^"]+)"\)|\.className = "([^"]+-input)"/g)) fields.add(`.${m[1] || m[2]}`);
   /* Six since round 2's p-first-6 took the second playlist builder (#pl-input)
-     off #/playlists: Create's #cr-input is the one builder field left. */
-  assert.ok(fields.size >= 6, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
+     off #/playlists: Create's #cr-input is the one builder field left. Five since
+     the Tactile onboarding took the Preferences step's typed-subject field with
+     it. */
+  assert.ok(fields.size >= 5, `fixture assumption: the census finds the app's text fields (${[...fields]})`);
   const OWN = ["border-radius", "min-height", "height", "font-size", "padding"];
   const bad = [];
   for (const r of RULES) {
@@ -736,7 +740,7 @@ test("section titles are one step: the display face at --fs-xl, 600, wherever a 
   /* Round 2, visual-12: Home's were --fs-xl, a Foray's running order --fs-lg
      (under a comment claiming the section step), Interests' --fs-lg at 700.
      MUTATION: `.fy-slot h3 { font-size: var(--fs-lg) }` -> red. */
-  for (const sel of ["body.ui-v2 .hv2-title", ".fy-slot h3", ".interest-group-label"]) {
+  for (const sel of [".fy-slot h3", ".interest-group-label"]) {
     assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-xl)", `${sel}: the section-title step`);
     assert.strictEqual(lastOn(sel, "font-weight"), "600", `${sel}: 600`);
     assert.strictEqual(lastOn(sel, "font-family"), "var(--font-display)", `${sel}: the display face`);
@@ -747,8 +751,8 @@ test("row titles are 600, and the display face at 700 is only a page title or th
   /* Round 2, visual-15: the same Foray was 700 on the Forays page and 600 on
      its Home card. MUTATION: `.fy-home-title { font-weight: 700 }` -> red,
      naming it. */
-  const ROWS = [".ep-row .t", ".show-result-title", ".mc-info h3", ".fy-home-title", ".fy-src-show", ".interest-row-name",
-    ".show-forays-title", "body.ui-v2 .hv2-jbi-title", ".ft-value-prop h4"];
+  const ROWS = [".ep-row .t", ".show-result-title", ".fy-home-title", ".fy-src-show", ".interest-row-name",
+    ".show-forays-title", ".ft-value-prop h4"];
   for (const sel of ROWS) {
     assert.strictEqual(lastOn(sel, "font-weight"), "600", `${sel} is a row title: 600`);
     assert.strictEqual(lastOn(sel, "font-size"), "var(--fs-lg)", `${sel} at the row-title step`);
@@ -765,16 +769,17 @@ test("row titles are 600, and the display face at 700 is only a page title or th
   assert.deepStrictEqual(bold, [], "a display-face 700 outside the page titles");
 });
 
-test("one gutter: pages, Home, Now Playing and the sheets all inset by --gutter", () => {
+test("one gutter: pages, Today, Now Playing and the sheets all inset by --gutter", () => {
   /* Round 2, visual-13: 12 / 14 / 16 / 18. MUTATION: `.fy-panel { padding: 8px
      18px … }` -> red. */
   assert.strictEqual(ROOT_DECLS.get("--gutter"), "16px");
   const inline = (v) => { const p = String(v || "").trim().split(/\s+(?![^(]*\))/); return p.length === 1 ? p[0] : p[1]; };
-  for (const sel of [".page", ".fp-sheet-scroll", ".fy-panel", "body.ui-v2 .hv2-greeting", "body.ui-v2 .hv2-title",
-    "body.ui-v2 .hv2-hscroll", "body.ui-v2 .hv2-cards"]) {
+  for (const sel of [".page", ".fp-sheet-scroll", ".fy-panel"]) {
     assert.strictEqual(inline(lastOn(sel, "padding")), "var(--gutter)", `${sel} insets by the gutter`);
   }
-  assert.strictEqual(lastOn("body.ui-v2 .hv2-hscroll", "scroll-padding-inline"), "var(--gutter)");
+  /* Today's column (the Dial section, which RULES leaves out) insets by the same
+     token. MUTATION: write `padding: ... 14px ...` into `.today` -> red. */
+  assert.match(CSS, /\n\.today \{[^}]*padding:[^;}]*var\(--gutter\)/, "Today insets by the gutter too");
 });
 
 test("rows in a list sit flat; the shadow is for cards and fields", () => {
@@ -790,10 +795,9 @@ test("rows in a list sit flat; the shadow is for cards and fields", () => {
     if (sh && sh.value !== "none") lifted.push(`${r.selectors.join(", ")} { box-shadow: ${sh.value} }`);
   }
   assert.deepStrictEqual(lifted, [], "a list row carrying an elevation");
-  assert.strictEqual(lastOn(".mini-card", "box-shadow"), "var(--shadow)", "a card on Home's grid is still lifted");
 });
 
-test("the Home card's branch dot is gone, with the ten raw v1 hexes that coloured it", () => {
+test("the branch dot is gone, with the ten raw v1 hexes that coloured it (and the card that wore it)", () => {
   /* Round 2, visual-3: 29 of 39 branches fell to violet, so the dot said
      nothing and read as the Stretch tag's bullet. MUTATION: restore
      `.mc-kicker::before { … background: var(--branch-color) }` -> red. */
@@ -807,7 +811,7 @@ test("the one focus ring reaches the search field: the capsule draws it; no bare
      either `:not(:focus-visible)`-qualified, or an ANCESTOR draws the ring on
      `:focus-within`. MUTATIONS: delete the `:focus-within` ring -> red; add
      `.fy-chip:focus { outline: none }` anywhere -> red. */
-  const LANDINGS = new Set(['.page-head h2[tabindex="-1"]:focus', '.hv2-greeting[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']);
+  const LANDINGS = new Set(['.page-head h2[tabindex="-1"]:focus', '.today-title[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']);
   const ANCESTOR_RING = { "#sh-compose #sh-form #sh-input:focus": "#sh-compose #sh-form:focus-within" };
   const bare = [];
   for (const r of RULES) {
@@ -848,55 +852,10 @@ test("Reduce Motion is one block and it names every transition in the sheet", ()
   assert.ok(covered.has(".fp-sheet:not(.fp-sheet-dragging)"), "fixture assumption: the sheet's release is among them");
 });
 
-test("'N min left' is amber and bold on Home's card, as on the Forays page and the Foray page", () => {
-  /* Round 2, honesty-8. MUTATION: delete `body.ui-v2 .hv2-jbi-left { … }` -> red. */
-  assert.strictEqual(lastOn("body.ui-v2 .hv2-jbi-left", "color"), "var(--amber)");
-  assert.strictEqual(lastOn("body.ui-v2 .hv2-jbi-left", "font-weight"), "700");
-  assert.strictEqual(lastOn("body.ui-v2 .fy-jbi-left", "color"), "var(--amber)", "the Forays page's, for comparison");
+test("'N min left' is amber and bold on the Forays page and the Foray page (Home's Resume card is Dial: readout, not amber)", () => {
+  /* Round 2, honesty-8. MUTATION: delete `body.ui-v2 .fy-jbi-left { … }` -> red. */
+  assert.strictEqual(lastOn("body.ui-v2 .fy-jbi-left", "color"), "var(--amber)", "the Forays page's");
   assert.strictEqual(lastOn(".fy-jbi-left", "font-weight"), "700");
-});
-
-test("Home shows the wordmark once: the greeting has it, the bar keeps only its tagline there", () => {
-  /* Round 2, p-first-8: two identical italic "4a" marks ~50px apart. MUTATION:
-     delete `body.view-home .topbar h1 .wordmark { display: none }` -> red. */
-  assert.strictEqual(lastOn("body.view-home .topbar h1 .wordmark", "display"), "none");
-  assert.ok(!RULES.some((r) => r.selectors.some((s) => /view-home .*topbar-tag/.test(s)) && r.decls.some((d) => d.value === "none")),
-    "the tagline — what this app is — stays on Home");
-  assert.match(APP_JS, /class="hv2-greeting-brand"/, "fixture assumption: the greeting carries the brand");
-  assert.match(APP_JS, /setBodyClass\("view-home"\)/, "fixture assumption: Home's body class is view-home");
-});
-
-test("ROUND 2 review (p-first-8): at 360px and below Home's bar is never EMPTY — the tagline's narrow-screen hide leaves the mark", () => {
-  /* The tagline is hidden under (max-width: 360px), and the Home rule hid the
-     mark at every width, so on 360dp phones the <h1> showed nothing. The rule
-     above only looks for a view-home-scoped tagline hide. MUTATION: delete the
-     (max-width: 360px) wordmark rule -> both children hidden at 360; red. */
-  const appliesAt = (r, w) => r.atRules.every((a) => {
-    if (!a.startsWith("@media")) return true;
-    const max = /max-width:\s*(\d+)px/.exec(a);
-    const min = /min-width:\s*(\d+)px/.exec(a);
-    if (/prefers-|hover|pointer|print/.test(a) && !max && !min) return false;
-    return (!max || w <= Number(max[1])) && (!min || w >= Number(min[1]));
-  });
-  /* Last declaration wins among the rules that apply at `w` whose selector is
-     one of `sels` (source order; the two selectors here are equally specific
-     within their own pair). */
-  const displayAt = (sels, w) => {
-    let v = null;
-    for (const r of RULES) {
-      if (!appliesAt(r, w) || !r.selectors.some((s) => sels.includes(s))) continue;
-      for (const d of r.decls) if (d.prop === "display") v = d.value;
-    }
-    return v;
-  };
-  const MARK = [".topbar h1 .wordmark", "body.view-home .topbar h1 .wordmark"];
-  const TAG = [".topbar-tag", "body.view-home .topbar-tag"];
-  for (const w of [320, 360]) {
-    const shown = [displayAt(MARK, w), displayAt(TAG, w)].filter((v) => v !== "none");
-    assert.ok(shown.length >= 1, `Home's h1 is empty at ${w}px`);
-  }
-  assert.strictEqual(displayAt(MARK, 400), "none", "wider, the greeting keeps the only mark");
-  assert.notStrictEqual(displayAt(TAG, 400), "none", "and the bar its tagline");
 });
 
 test("the episode page's head is two lines at most, at the size Now Playing gives the same title", () => {
@@ -939,15 +898,15 @@ test("the Up Next row the bar is on is drawn as the one that is on", () => {
   assert.strictEqual(lastOn("body.ui-v2 .up-next-row.is-current", "background"), "var(--surface2)");
 });
 
-test("a route's focus landing never paints the ring — Home's greeting included", () => {
+test("a route's focus landing never paints the ring — Today's title included", () => {
   /* Founder, 2026-09-27: "Sometimes the top '4a' title bar block has a yellow
      outline, as if I somehow selected it." landOnPage focuses Home's greeting,
      which had no rule, and WebKit judges a script's post-render focus() as
      :focus-visible, so a :not(:focus-visible)-only guard does not hold on a
-     phone. MUTATIONS: drop `.hv2-greeting` from the rule -> red; re-qualify
+     phone. MUTATIONS: drop `.today-title` from the rule -> red; re-qualify
      any landing with :not(:focus-visible) -> red. */
-  for (const sel of ['.page-head h2[tabindex="-1"]:focus', '.hv2-greeting[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']) {
+  for (const sel of ['.page-head h2[tabindex="-1"]:focus', '.today-title[tabindex="-1"]:focus', '#view[tabindex="-1"]:focus']) {
     assert.strictEqual(lastOn(sel, "outline"), "none", `${sel} has no ring`);
   }
-  assert.match(APP_JS, /querySelector\("\.hv2-greeting"\)/, "fixture assumption: landOnPage still lands on the greeting");
+  assert.match(APP_JS, /querySelector\("\.today-title"\)/, "fixture assumption: landOnPage still lands on Today's title");
 });

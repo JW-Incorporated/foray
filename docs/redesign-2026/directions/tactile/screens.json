@@ -14,19 +14,19 @@
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": ".topbar"
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".today-hero"
         },
         "primary": {
           "prototype": ".hero__keys .keycap",
-          "app": ".hv2-play"
+          "app": ".today-hero__keys .keycap"
         },
         "rows": {
           "prototype": ".row",
-          "app": ".mini-card",
+          "app": ".today .row-episode",
           "mode": "all"
         },
         "tabBar": {
@@ -47,19 +47,19 @@
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": ".topbar"
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".today-hero"
         },
         "primary": {
           "prototype": ".hero__keys .keycap",
-          "app": ".hv2-play"
+          "app": ".today-hero__keys .keycap"
         },
         "rows": {
           "prototype": ".row",
-          "app": ".mini-card",
+          "app": ".today .row-episode",
           "mode": "all"
         },
         "mini": {
@@ -124,7 +124,7 @@
         },
         "rows": {
           "prototype": "#results .tile, #results .row",
-          "app": ".show-result",
+          "app": ".mosaic .tile, #sh-results .show-result",
           "mode": "all"
         },
         "tabBar": {
@@ -149,7 +149,7 @@
         },
         "rows": {
           "prototype": ".row",
-          "app": ".ep-row",
+          "app": ".row-queue",
           "mode": "all"
         },
         "mini": {
@@ -174,7 +174,147 @@
       "regions": {
         "header": {
           "prototype": ".fdet__bar",
-          "app": ".page-head"
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-progress": {
+      "title": "Foray detail, in progress",
+      "prototype": {
+        "route": "#/foray/progress"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-progress"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-done": {
+      "title": "Foray detail, finished",
+      "prototype": {
+        "route": "#/foray/done"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-done"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-unnarrated": {
+      "title": "Foray detail, no narration",
+      "prototype": {
+        "route": "#/foray/unnarrated"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-unnarrated"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".pin .keycap",
+          "app": ".fdet-pin .keycap"
+        },
+        "rows": {
+          "prototype": ".fdet .row--show, .fdet .segrow",
+          "app": ".fdet-from, .fdet-seg__row",
+          "mode": "all"
+        },
+        "tabBar": {
+          "prototype": "#tabs",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "foray-unavailable": {
+      "title": "Foray detail, unavailable",
+      "prototype": {
+        "route": "#/foray/unavailable"
+      },
+      "app": {
+        "state": "returning",
+        "step": "foray-unavailable"
+      },
+      "regions": {
+        "header": {
+          "prototype": ".fdet__bar",
+          "app": ".fdet-bar"
+        },
+        "band": {
+          "prototype": ".fdet .band-wrap",
+          "app": ".fdet-well"
+        },
+        "primary": {
+          "prototype": ".hero__keys .keycap--persimmon",
+          "app": ".fdet-keys .keycap--persimmon"
         },
         "tabBar": {
           "prototype": "#tabs",
@@ -194,11 +334,47 @@
       "regions": {
         "sheet": {
           "prototype": ".onb__card",
-          "app": "#first-time-sheet"
+          "app": "#first-time-sheet .onb__card"
+        },
+        "title": {
+          "prototype": ".onb__copy .display",
+          "app": "#first-time-sheet-title"
         },
         "primary": {
           "prototype": ".onb__actions button, .onb__actions a",
-          "app": "#first-time-sheet button"
+          "app": "#first-time-sheet-go"
+        },
+        "skip": {
+          "prototype": ".onb__actions .textbtn",
+          "app": "#first-time-sheet-skip"
+        }
+      }
+    },
+    "onboarding-return": {
+      "title": "Onboarding, returning after skip",
+      "prototype": {
+        "route": "#/onboarding/return"
+      },
+      "app": {
+        "state": "first-run",
+        "step": "onboarding-return"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".onb__card",
+          "app": "#first-time-sheet .onb__card"
+        },
+        "title": {
+          "prototype": ".onb__copy .display",
+          "app": "#first-time-sheet-title"
+        },
+        "primary": {
+          "prototype": ".onb__actions button, .onb__actions a",
+          "app": "#first-time-sheet-go"
+        },
+        "skip": {
+          "prototype": ".onb__actions .textbtn",
+          "app": "#first-time-sheet-skip"
         }
       }
     },
@@ -214,20 +390,24 @@
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": ".topbar"
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": ".hv2-jbi-card"
+          "app": ".today-hero"
         },
         "primary": {
           "prototype": ".hero__keys .keycap",
-          "app": ".hv2-play"
+          "app": ".today-hero__keys .keycap"
         },
         "rows": {
           "prototype": ".row",
-          "app": ".mini-card",
+          "app": ".today .row-episode",
           "mode": "all"
+        },
+        "bridge": {
+          "prototype": ".bridge",
+          "app": ".today .bridge"
         },
         "tabBar": {
           "prototype": "#tabs",
@@ -240,28 +420,31 @@
       "prototype": {
         "route": "#/home/offline"
       },
-      "app": null,
+      "app": {
+        "state": "offline",
+        "step": "home"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": null
+          "app": ".today-hero"
         },
         "primary": {
           "prototype": ".hero__keys .keycap",
-          "app": null
+          "app": ".today-hero__keys .keycap"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".today .row-episode",
           "mode": "all"
         },
         "tabBar": {
           "prototype": "#tabs",
-          "app": null
+          "app": "#tab-bar"
         }
       }
     },
@@ -270,28 +453,31 @@
       "prototype": {
         "route": "#/home/loading"
       },
-      "app": null,
+      "app": {
+        "state": "loading",
+        "step": "home-loading"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
+          "app": ".today-top"
         },
         "hero": {
           "prototype": ".hero",
-          "app": null
-        },
-        "primary": {
-          "prototype": ".hero__keys .keycap",
-          "app": null
+          "app": ".today--loading .skel--hero"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".today--loading .skel--row",
           "mode": "all"
+        },
+        "bridge": {
+          "prototype": ".bridge",
+          "app": ".today--loading .skel--bridge"
         },
         "tabBar": {
           "prototype": "#tabs",
-          "app": null
+          "app": "#tab-bar"
         }
       }
     },
@@ -309,14 +495,17 @@
           "prototype": ".top",
           "app": ".page-head"
         },
-        "rows": {
-          "prototype": ".row",
-          "app": ".ep-row",
-          "mode": "all"
+        "empty": {
+          "prototype": ".empty",
+          "app": ".empty"
         },
-        "mini": {
-          "prototype": "#mini",
-          "app": "#foray-player"
+        "mark": {
+          "prototype": ".empty svg",
+          "app": ".empty svg"
+        },
+        "primary": {
+          "prototype": ".empty .keycap",
+          "app": ".empty .keycap"
         },
         "tabBar": {
           "prototype": "#tabs",
@@ -331,21 +520,35 @@
       },
       "app": {
         "state": "returning",
-        "step": "starred-shows"
+        "step": "yours-shows"
       },
       "regions": {
         "header": {
           "prototype": ".top",
           "app": ".page-head"
         },
-        "rows": {
-          "prototype": ".row",
-          "app": ".ep-row",
+        "primary": {
+          "prototype": ".top .keycap",
+          "app": "#yours-knob"
+        },
+        "chips": {
+          "prototype": ".strip[role=\"tablist\"] .chip",
+          "app": "#yours-chips .chip",
           "mode": "all"
         },
-        "mini": {
-          "prototype": "#mini",
-          "app": "#foray-player"
+        "grid": {
+          "prototype": ".agrid",
+          "app": ".shows-grid"
+        },
+        "tiles": {
+          "prototype": ".agrid__item",
+          "app": ".shows-tile",
+          "mode": "all"
+        },
+        "names": {
+          "prototype": ".agrid__item .label",
+          "app": ".shows-tile__name",
+          "mode": "all"
         },
         "tabBar": {
           "prototype": "#tabs",
@@ -389,28 +592,28 @@
       },
       "app": {
         "state": "player",
-        "step": "now-playing"
+        "step": "now-playing-paused"
       },
       "regions": {
         "art": {
           "prototype": ".np__art",
-          "app": ".fp-s-art"
+          "app": ".np__art"
         },
         "title": {
           "prototype": ".np__text",
-          "app": ".fp-s-title"
+          "app": ".np__text"
         },
         "scrub": {
           "prototype": ".band--scrub",
-          "app": ".fp-scrub"
+          "app": ".np__band-well"
         },
         "primary": {
-          "prototype": ".transport .keycap",
-          "app": "#foray-player .fp-play"
+          "prototype": ".transport .keycap--persimmon",
+          "app": ".np .fp-big"
         },
         "close": {
           "prototype": ".np__collapse",
-          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+          "app": ".np__collapse"
         }
       }
     },
@@ -421,28 +624,40 @@
       },
       "app": {
         "state": "player",
-        "step": "now-playing"
+        "step": "now-playing-episode"
       },
       "regions": {
         "art": {
           "prototype": ".np__art",
-          "app": ".fp-s-art"
+          "app": ".np__art"
         },
         "title": {
           "prototype": ".np__text",
-          "app": ".fp-s-title"
+          "app": ".np__text"
         },
         "scrub": {
           "prototype": ".band--scrub",
-          "app": ".fp-scrub"
+          "app": ".np__band-well"
         },
         "primary": {
-          "prototype": ".transport .keycap",
-          "app": "#foray-player .fp-play"
+          "prototype": ".transport .keycap--persimmon",
+          "app": ".np .fp-big"
+        },
+        "readout": {
+          "prototype": ".np__read",
+          "app": ".np__read"
+        },
+        "skipBack": {
+          "prototype": ".transport .keycap--rubber",
+          "app": ".np .transport .keycap--rubber"
+        },
+        "upNext": {
+          "prototype": "#sec-upnext .heading",
+          "app": ".np__up-next > .heading"
         },
         "close": {
           "prototype": ".np__collapse",
-          "app": ".fp-sheet .fp-close, #foray-player .fp-close"
+          "app": ".np__collapse"
         }
       }
     },
@@ -453,7 +668,7 @@
       },
       "app": {
         "state": "search",
-        "step": "search-results-history"
+        "step": "search-results-typing"
       },
       "regions": {
         "header": {
@@ -465,9 +680,13 @@
           "app": "#sh-compose"
         },
         "rows": {
-          "prototype": "#results .tile, #results .row",
-          "app": ".show-result",
+          "prototype": "#results .row",
+          "app": "#sh-results .row-show, #ep-search-results .row-episode",
           "mode": "all"
+        },
+        "primary": {
+          "prototype": "#results .keycap--ultramarine",
+          "app": ".sh-create-cta .keycap"
         },
         "tabBar": {
           "prototype": "#tabs",
@@ -482,7 +701,7 @@
       },
       "app": {
         "state": "search",
-        "step": "search-no-results"
+        "step": "search-no-results-subject"
       },
       "regions": {
         "header": {
@@ -493,10 +712,22 @@
           "prototype": "#field",
           "app": "#sh-compose"
         },
+        "heading": {
+          "prototype": "#results .heading",
+          "app": "#sh-note"
+        },
+        "sentence": {
+          "prototype": "#results .body-lg",
+          "app": ".find-none__line"
+        },
         "rows": {
-          "prototype": "#results .tile, #results .row",
-          "app": ".show-result",
+          "prototype": "#results .tile",
+          "app": "#sh-empty-offer .tile",
           "mode": "all"
+        },
+        "primary": {
+          "prototype": "#results .keycap--ultramarine",
+          "app": ".find-none__key .keycap"
         },
         "tabBar": {
           "prototype": "#tabs",
@@ -509,28 +740,44 @@
       "prototype": {
         "route": "#/settings"
       },
-      "app": null,
+      "app": {
+        "state": "returning",
+        "step": "settings-sheet"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
-        },
-        "hero": {
-          "prototype": ".hero",
-          "app": null
-        },
-        "primary": {
-          "prototype": ".hero__keys .keycap",
-          "app": null
+          "app": ".today-top"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".today .row-episode",
           "mode": "all"
         },
-        "tabBar": {
-          "prototype": "#tabs",
-          "app": null
+        "sheet": {
+          "prototype": "#sheet",
+          "app": "#settings-sheet"
+        },
+        "sheetHeader": {
+          "prototype": "#sheet .sect__head",
+          "app": "#settings-sheet > header"
+        },
+        "sheetTitle": {
+          "prototype": "#sheet .title",
+          "app": "#settings-sheet .title"
+        },
+        "appearance": {
+          "prototype": "#sheet .seg",
+          "app": "#settings-sheet .settings-seg"
+        },
+        "dials": {
+          "prototype": "#sheet .knobtrack",
+          "app": "#settings-sheet .knobtrack",
+          "mode": "all"
+        },
+        "caption": {
+          "prototype": "#sheet .dialrow > .micro",
+          "app": "#settings-sheet .settings-floor"
         }
       }
     },
@@ -539,24 +786,39 @@
       "prototype": {
         "route": "#/toast"
       },
-      "app": null,
+      "app": {
+        "state": "player",
+        "step": "up-next-remove-toast"
+      },
       "regions": {
         "header": {
           "prototype": ".top",
-          "app": null
+          "app": ".page-head"
         },
         "rows": {
           "prototype": ".row",
-          "app": null,
+          "app": ".row-queue",
           "mode": "all"
+        },
+        "toast": {
+          "prototype": "#toast",
+          "app": "#yours-toast .toast"
+        },
+        "toastText": {
+          "prototype": "#toast span",
+          "app": "#yours-toast .toast span"
+        },
+        "undo": {
+          "prototype": "#toast .textbtn",
+          "app": "#yours-toast .textbtn"
         },
         "mini": {
           "prototype": "#mini",
-          "app": null
+          "app": "#foray-player"
         },
         "tabBar": {
           "prototype": "#tabs",
-          "app": null
+          "app": "#tab-bar"
         }
       }
     }

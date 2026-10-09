@@ -299,243 +299,228 @@ let firstRunParked = false;
    result. `deleteMyData` sets it around its `route()` and clears it after. */
 let onboardingHeld = false;
 
-function showFirstTimeExplainerOnce() {
-  if (!isGenuineFirstTimeUser()) return false;
-  if (lsGet("cp_intro_dismissed", false)) return false;
-  if ($("#first-time-sheet") || firstRunParked) return true;   // already on screen, or parked, this visit
+/* ---------- THE TACTILE ONBOARDING SCREEN (Redesign 2026, group F) ----------
 
-  const wrap = ddEl("div", "fy-sheet");
+   docs/redesign-2026/directions/tactile/BUILD-NOTES.md 4.7, prototype `#/onboarding`.
+   The screen is still `#first-time-sheet` and still opens through the sheet
+   owner (`openSheet`), so focus moves in, Tab stays in, Escape parks it, the
+   page behind is `inert`, and focus goes back where it came from. What changed
+   is what it IS: a full-screen page on --paper (the sheet's scrim is the
+   paper), no deck, a card carrying a live demo of TODAY's real foray, the
+   founders' tagline, and two exits.
+
+   RULINGS THAT FELL (this change, per build-loop.md section 4 step 2):
+   - The two-step Welcome -> "What are you into?" sheet is gone. The prototype
+     has one screen and two exits, and DIRECTION.md's "state observed, never
+     declared" is the reason there is no picks step: Today's first run says
+     "4a starts with wide bets. Each listen narrows the dial." The write path
+     (`applyOnboardingPicks`, `applyPersonaPick`, `redealAfterOnboardingPicks`)
+     stays below, tested, for the surface that asks for it next.
+   - "Get started" (-> picks) is now "Play today's foray" (-> playback).
+
+   TWO MODES, ONE SCREEN. First: the band draws in (`--d-draw`) and a needle
+   travels it at 8% of the foray per second with a mono counter under the band.
+   Returning (`#/onboarding/return`, a listener who skipped and wants it
+   again): the same screen with nothing moving and the key says "Play". Under
+   reduced motion the first mode is the still one: the draw-in is in the one
+   reduced-motion block and the needle loop does not start.
+
+   NO NETWORK WRITE. Nothing here signs up, refreshes a token or POSTs an
+   event; playing goes through `playHomeTarget`, the same path as Today's key,
+   whose events stay local in a lab build (test/lab-flag.test.js). */
+const ONB_HEADLINE = "Podcasts, lined up around you.";
+const ONB_SUB = "4a picks real shows each day and lines up the best parts into one listen.";
+const ONB_PLAY = "Play today’s foray";
+const ONB_PLAY_AGAIN = "Play";
+const ONB_SKIP = "Just show me";
+const ONB_START = 0.31;      // where the demo needle starts, as a fraction of the foray
+const ONB_RATE = 0.08;       // its travel: 8% of the foray per second
+const ONB_TICK_MS = 100;
+const ONB_ROUTE = /^#\/onboarding(\/return)?$/;
+
+/** "8:52", or "1:02:09" past the hour: the colon clock is for the counter only. */
+function onbClock(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const pad = (n) => String(n).padStart(2, "0");
+  const h = Math.floor(s / 3600);
+  return h ? `${h}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}` : `${Math.floor(s / 60)}:${pad(s % 60)}`;
+}
+
+/** Today's foray, the very one Today's hero shows, as the demo: its band, the
+    shows it draws on and its length. Null when no Foray resolves (offline, a
+    catalogue that has not loaded), and the screen then has no band and no Play
+    key rather than a demo of nothing. */
+function onboardingModel() {
+  try {
+    const pick = todayForayPick({ forays: foraysForYouPicks() }, null);
+    if (!pick) return null;
+    const hero = todayHeroModel(pick);
+    if (!hero.segments.length) return null;
+    const shows = [...new Set(hero.segments.filter(s => !s.narration && s.show).map(s => s.show))];
+    const sum = hero.segments.reduce((t, s) => t + (Number(s.duration) || 0), 0);
+    const total = sum > 0 ? sum : Number(pick.r.totalSec) || 0;
+    return total > 0 ? { pick, hero, shows, total } : null;
+  } catch (_) { return null; }
+}
+
+/** The show artwork as a 2 x 2 grid of the prototype's collage, one cell per
+    show (a foray of two or three shows repeats from the first), the live image
+    through tactileArtFrame -> safeUrl, the station code where a show has none. */
+function onboardingCollageHtml(shows) {
+  const n = shows.length;
+  if (!n) return "";
+  const cell = (name) => tactileArtFrame({ size: "hero", url: showArtworkUrl({ title: name }), initials: tactileStationCode(name) });
+  const names = n === 1 ? [shows[0]] : Array.from({ length: 4 }, (_, i) => shows[i % n]);
+  return `<span class="onb__collage${n === 1 ? " onb__collage--one" : ""}">${names.map(cell).join("")}</span>`;
+}
+
+/** The band's rendered width in the onboarding well: Today's hero width less the
+    well's 10px side padding against the hero well's 6px (2 x 4px). Only the bars'
+    minimum-width arithmetic and the needle's 2px (2000 / width units) read it. */
+function onboardingBandWidth() { return todayBandWidth() - 8; }
+
+/** The card's inside: the brand alone in the top row (a counter top-right reads
+    as a fake status bar), then the artwork, the band and its readout row. */
+function onboardingCardHtml(model, still) {
+  const brand = `<div class="onb__wm"><span class="heading onb__brand">${tactileIcon("band")}4a</span></div>`;
+  if (!model) {
+    return `${brand}<div class="onb__stage"><div class="onb__art">${tactileArtFrame({ size: "hero", initials: "4a", round: true })}</div></div>`;
+  }
+  const { hero, shows, total } = model;
+  const start = still ? 0 : ONB_START;
+  return `${brand}<div class="onb__stage">
+    <div class="onb__art">${onboardingCollageHtml(shows)}</div>
+    <div class="well onb__well">${tactileBand({ kind: "detail", id: "onb-band", segments: hero.segments, renderWidth: onboardingBandWidth(), label: hero.bandLabel, progress: start })}</div>
+    <div class="onb__meta" aria-hidden="true"><span class="readout"><span class="onb__now" data-onb-clock>${esc(onbClock(total * start))}</span><span class="onb__total"> / ${esc(onbClock(total))} · ${esc(countLabel(shows.length, "show"))}</span></span></div>
+  </div>`;
+}
+
+/** The needle's loop and the counter that rides it. Never started under reduced
+    motion, nor for the still mode, nor where there is no band to move; it stops
+    itself the first tick after the sheet leaves the document. */
+function startOnboardingLoop(wrap, model) {
+  if (!model || typeof setInterval !== "function" || reducedMotion()) return;
+  const needle = wrap.querySelector(".onb__well .needle");
+  const clip = wrap.querySelector(".onb__well .band__progress");
+  if (!needle || !clip) return;
+  const clock = wrap.querySelector("[data-onb-clock]");
+  const boxes = tactileBandLayout(tactileBandSegments(model.hero.segments), onboardingBandWidth(), "detail");
+  const step = ONB_RATE * ONB_TICK_MS / 1000;
+  let at = ONB_START;
+  const timer = setInterval(() => {
+    if (wrap.isConnected === false) { clearInterval(timer); return; }
+    at += step;
+    if (at >= 1) at = 0;
+    const x = tactileBandX(boxes, at).toFixed(2);
+    needle.setAttribute("transform", `translate(${x} 0)`);
+    clip.setAttribute("width", x);
+    if (clock) setStatusText(clock, onbClock(model.total * at));
+  }, ONB_TICK_MS);
+}
+
+/** `#/onboarding` and `#/onboarding/return`: Today underneath, the screen over
+    it. Today's own offer is held for the render so the two cannot both mount. */
+function renderOnboardingRoute(returning) {
+  onboardingHeld = true;
+  try { renderHome(); } finally { onboardingHeld = false; }
+  showFirstTimeExplainerOnce({ returning, forced: true });
+}
+
+function showFirstTimeExplainerOnce({ returning = false, forced = false } = {}) {
+  if (!forced) {
+    if (!isGenuineFirstTimeUser()) return false;
+    if (lsGet("cp_intro_dismissed", false)) return false;
+    if ($("#first-time-sheet") || firstRunParked) return true;   // already on screen, or parked, this visit
+  } else {
+    /* The address asked for it: whichever mode is already up gives way. */
+    const stale = $("#first-time-sheet");
+    if (stale) closeSheet(stale, { removeIfOwned: true });
+  }
+
+  const still = returning;
+  const model = onboardingModel();
+
+  const wrap = ddEl("div", "fy-sheet onb-sheet");
   wrap.id = "first-time-sheet";
 
   const scrim = ddEl("div", "fy-scrim");
-  const panel = ddEl("div", "fy-panel");
+  const panel = ddEl("div", still ? "fy-panel onb onb--still" : "fy-panel onb");
   panel.setAttribute("role", "dialog");
-  /* NOT aria-modal (audit round 2 review of p-first-5): `aria-modal="true"`
-     keeps VoiceOver's cursor inside the dialog, so the player this sheet keeps
+  /* NOT aria-modal (audit round 2, p-first-5): `aria-modal="true"` keeps
+     VoiceOver's cursor inside the dialog, so the player this sheet keeps
      reachable (ONBOARDING_KEEPS_REACHABLE) was reachable only by Tab. The
      modality is `inert` on everything else, which `openSheet` applies. */
   panel.setAttribute("aria-modal", "false");
+  panel.setAttribute("aria-labelledby", "first-time-sheet-title");
 
-  const grab = ddEl("div", "fy-grab");
-  grab.setAttribute("aria-hidden", "true");
-  panel.append(grab);
+  const card = ddEl("section", "onb__card");
+  card.setAttribute("aria-label", model ? `Today's foray, ${model.hero.facts}` : "4a");
+  card.innerHTML = onboardingCardHtml(model, still);
 
-  const body = ddEl("div", "ft-step-body");
-  panel.append(body);
+  const copy = ddEl("div", "onb__copy");
+  const title = ddEl("h2", "display", ONB_HEADLINE);
+  title.id = "first-time-sheet-title";
+  copy.append(title, ddEl("p", "onb__sub", ONB_SUB));
 
+  /* The keys are built here, as DOM, so the ids the rest of the app and its
+     tests look for exist the moment the panel does. Their inside is the
+     primitives' (tactileIcon, the keycap label span). */
+  const actions = ddEl("div", "onb__actions");
+  const skip = ddEl("button", model ? "textbtn" : "keycap keycap--paper keycap--lg keycap--wide", ONB_SKIP);
+  skip.type = "button";
+  skip.id = "first-time-sheet-skip";
+  if (model) {
+    const label = still ? ONB_PLAY_AGAIN : ONB_PLAY;
+    const go = ddEl("button", "keycap keycap--persimmon keycap--lg keycap--wide");
+    go.type = "button";
+    go.id = "first-time-sheet-go";
+    go.setAttribute("aria-label", label);
+    go.innerHTML = `${tactileIcon("ph-play-fill")}<span class="keycap__label">${esc(label)}</span>`;
+    actions.append(go);
+    go.addEventListener("click", () => {
+      const foray = model.pick.foray;
+      dismiss();
+      /* Resolved at the press, as Today's key does: a draft that has since
+         left the list is not started from a stale card. */
+      const r = resolveListedForay(foray.id);
+      if (r && Array.isArray(r.playable) && r.playable.length) Promise.resolve(playHomeTarget({ kind: "foray", r }, null)).catch(() => {});
+    });
+  } else {
+    skip.innerHTML = `<span class="keycap__label">${esc(ONB_SKIP)}</span>`;
+  }
+  actions.append(skip);
+
+  panel.append(card, copy, actions);
   wrap.append(scrim, panel);
 
+  /* On the address that asked for the screen, leaving it leaves the address. Only
+     while the address is still the one it was opened on: a navigation closes the
+     sheet through `park` AFTER the hash has changed, and when the new hash is
+     itself an onboarding address (the harness walks from "#/" to
+     "#/onboarding/return") rewriting it would undo the navigation. */
+  const openedOn = currentHash();
+  const leave = () => { if (ONB_ROUTE.test(openedOn) && currentHash() === openedOn) replaceHash("#/"); };
   const dismiss = () => {
     lsSet("cp_intro_dismissed", true);
     closeSheet(wrap, { removeIfOwned: true });
+    leave();
   };
   const park = () => {
     firstRunParked = true;
     closeSheet(wrap, { removeIfOwned: true });
+    leave();
   };
   /* The player stays reachable (audit round 2, p-first-5): Home defers this
      sheet while a Foray is sounding (`offerHomeOnboarding`), but a paused or
-     restored bar can still sit under it, and the mini bar's ▶ and ↺15 must not
+     restored bar can still sit under it, and the mini bar's play and back-15 must not
      go inert with the page. Reachable means ABOVE the scrim as well as out of
      `inert`: `body.fy-sheet-keeps-player` lifts #foray-player over the z-70
      sheet and lifts the panel off the bar (styles.css), or a tap on the bar
      landed on the scrim and only parked the sheet. */
   openSheet(wrap, { panel, onRequestClose: park, keepReachable: ONBOARDING_KEEPS_REACHABLE });
   scrim.addEventListener("click", park);
-
-  /* Live SegmentStrip illustration for the second value prop — reads off
-     window.ForayPlayer exactly as forayCards()/renderForay() do (app.js is a
-     classic script and cannot import player/segment-strip.js). Absent
-     module, absent forays, or a Foray with no segments all degrade to no
-     strip, never an error. */
-  function welcomeStripHtml() {
-    const player = window.ForayPlayer;
-    if (!player || typeof player.resolve !== "function" || typeof player.segmentStripHtml !== "function") return "";
-    if (!state.forays) return "";
-    const first = forayCards()[0];
-    if (!first) return "";
-    try {
-      const r = resolveListedForay(first.id);
-      if (!r) return "";
-      /* mergeNarration: a card is 210px of content box and a generated Foray
-         is now ~56 items, 40 of them bridges — one bar each overflows the card
-         and paints over its neighbour. Merging each run of back-to-back
-         bridges into one violet bar (sized by the run's real total) is the fix;
-         it is safe HERE and only here because nothing scrubs a card's strip.
-         See collapseNarrationRuns in player/segment-strip.js. */
-      return player.segmentStripHtml(r.playable, { size: "sm", mergeNarration: true }) || "";
-    } catch (_) {
-      // Malformed segments/sources data must not break the first-run Home
-      // render — "degrades to nothing" (this function's own contract) has to
-      // hold even when the player module throws, not just when it's absent.
-      return "";
-    }
-  }
-
-  function renderWelcome() {
-    body.innerHTML = "";
-    const title = ddEl("h3", null, "4a picks podcast episodes for you");
-    title.id = "first-time-sheet-title";
-    panel.setAttribute("aria-labelledby", "first-time-sheet-title");
-    const sub = ddEl("p", "fy-sheet-sub", "A podcast app that listens to you first. Two things make it different:");
-
-    const propLearn = ddEl("div", "ft-value-prop");
-    propLearn.append(
-      ddEl("h4", null, "Suggestions that actually learn"),
-      ddEl("p", "fy-sheet-sub",
-        "Episode picks tuned to your subjects and the voices you trust — sharper every time you listen.")
-    );
-
-    const propForay = ddEl("div", "ft-value-prop");
-    propForay.append(
-      ddEl("h4", null, "Forays: one subject, many shows"),
-      ddEl("p", "fy-sheet-sub", forayAbout())
-    );
-    const stripHtml = welcomeStripHtml();
-    if (stripHtml) {
-      const stripWrap = ddEl("div", "ft-strip-wrap");
-      stripWrap.innerHTML = stripHtml;
-      propForay.append(stripWrap);
-    }
-
-    const props = ddEl("div", "ft-value-props");
-    props.append(propLearn, propForay);
-
-    const actions = ddEl("div", "fy-sheet-actions");
-    const skip = ddEl("button", "fy-sheet-cancel", "Skip for now");
-    skip.type = "button";
-    skip.id = "first-time-sheet-skip";
-    const go = ddEl("button", "fy-sheet-go", "Get started");
-    go.type = "button";
-    go.id = "first-time-sheet-go";
-    actions.append(skip, go);
-
-    body.append(title, sub, props, actions);
-    if (stripHtml) applyStripGrowIfBridged(propForay);
-
-    skip.addEventListener("click", dismiss);
-    go.addEventListener("click", () => { renderPreferences(); landOnStep(); });
-  }
-
-  /* A STEP SWAP LANDS FOCUS ON THE NEW STEP'S TITLE (audit round 2, a11y-5).
-     "Get started" empties the dialog's body, which destroys the focused button:
-     focus fell to <body> inside an open modal, and the new `aria-labelledby`
-     is a name change, which nothing announces. The qa 64 rule — every action
-     that destroys the element just activated puts focus somewhere that
-     survived — applied here. The title is the programmatic target
-     (tabindex=-1, the same way `landOnPage` treats a page heading), so the
-     step is read and Tab continues from its top. Not on the FIRST render: the
-     owner has just focused the panel, which announces the dialog with its
-     name, and that is the right first thing to hear. */
-  function landOnStep() {
-    const title = $("#first-time-sheet-title");
-    if (!title) return;
-    if (typeof title.getAttribute !== "function" || title.getAttribute("tabindex") == null) title.setAttribute("tabindex", "-1");
-    focusQuietly(title);
-  }
-
-  function applyStripGrowIfBridged(scope) {
-    if (window.ForayPlayer && typeof window.ForayPlayer.applyStripGrow === "function") {
-      window.ForayPlayer.applyStripGrow(scope);
-    }
-  }
-
-  function renderPreferences() {
-    body.innerHTML = "";
-    const picked = new Set();
-
-    const title = ddEl("h3", null, "What are you into?");
-    title.id = "first-time-sheet-title";
-    panel.setAttribute("aria-labelledby", "first-time-sheet-title");
-    const sub = ddEl("p", "fy-sheet-sub", "This is how 4a tunes your suggestions. Pick a few, or skip — 4a learns either way, from what you play.");
-
-    const chips = ddEl("div", "fy-chips");
-    chips.id = "first-time-sheet-chips";
-    PREFS_CHIP_IDS.forEach(id => {
-      const node = nodeById(id);
-      if (!node) return; // taxonomy drift: never render a chip for a node that no longer exists
-      const chip = ddEl("button", "fy-chip", node.label);
-      chip.type = "button";
-      chip.dataset.chip = id;
-      chip.setAttribute("aria-pressed", "false");
-      chip.addEventListener("click", () => {
-        if (picked.has(id)) { picked.delete(id); chip.classList.remove("on"); chip.setAttribute("aria-pressed", "false"); }
-        else { picked.add(id); chip.classList.add("on"); chip.setAttribute("aria-pressed", "true"); }
-      });
-      chips.append(chip);
-    });
-
-    const typedWrap = ddEl("div", "ft-typed-wrap");
-    const typedInput = ddEl("input");
-    typedInput.type = "text";
-    typedInput.id = "first-time-sheet-typed";
-    typedInput.className = "ft-typed-input";
-    typedInput.placeholder = "Or type a subject yourself…";
-    typedInput.setAttribute("aria-label", "Type a subject yourself");
-    /* A TYPED MISS IS SAID, AND THE SHEET STAYS (audit round 2, p-first-3). A
-       word nothing in the taxonomy answers to used to close the sheet exactly
-       as a match did, so the newcomer's first typed act was a silent no-op. */
-    const typedNote = ddEl("p", "ft-typed-note", "");
-    typedNote.id = "first-time-sheet-typed-note";
-    typedNote.setAttribute("role", "status");
-    /* NEVER `hidden` (audit round 2 review): a live region outside the
-       accessibility tree when its text changes, which then appears with the
-       text already in place, is usually not read (VoiceOver in WKWebView in
-       particular), so a VoiceOver newcomer pressing "Show my picks" heard
-       nothing. It stays in the tree, empty when there is nothing to say. */
-    typedInput.addEventListener("input", () => { setStatusText(typedNote, ""); });
-    typedWrap.append(typedInput, typedNote);
-
-    const actions = ddEl("div", "fy-sheet-actions");
-    const skip = ddEl("button", "fy-sheet-cancel", "Skip");
-    skip.type = "button";
-    skip.id = "first-time-sheet-prefs-skip";
-    const go = ddEl("button", "fy-sheet-go", "Show my picks");
-    go.type = "button";
-    go.id = "first-time-sheet-prefs-go";
-    actions.append(skip, go);
-
-    body.append(title, sub, chips, typedWrap, actions);
-
-    skip.addEventListener("click", dismiss);
-    go.addEventListener("click", () => {
-      const typed = typedInput.value.trim();
-      if (typed) {
-        const node = resolveTypedSubject(typed);
-        if (!node) {
-          /* Cleared, then said on the next frame — announce()'s idiom — so the
-             region sees a change even when the same word misses twice (the
-             helper skips identical text, and an unchanged node says nothing). */
-          const said = `No subject called ${quoteQuery(typed)} yet. Try one of the chips above.`;
-          setStatusText(typedNote, "");
-          const say = () => setStatusText(typedNote, said);
-          if (typeof requestAnimationFrame === "function") requestAnimationFrame(say); else say();
-          return;
-        }
-        /* The word resolved: its subject's chip lights, so the pick is shown
-           as the same thing a tap would have made it. */
-        const rootId = node.parent || node.id;
-        const chip = chips.querySelector(`[data-chip="${rootId}"]`);
-        if (chip && !picked.has(rootId)) { picked.add(rootId); chip.classList.add("on"); chip.setAttribute("aria-pressed", "true"); }
-      }
-      const applied = applyOnboardingPicks([...picked], typed);
-      dismiss();
-      /* Only when something was actually written: an empty form is a Skip in
-         all but name, and the Home already under the sheet is the right Home
-         for it. Otherwise re-deal and repaint, so the FIRST Home the listener
-         lands on ranks by their picks (U-09's acceptance line; see
-         redealAfterOnboardingPicks), with the picked subjects in the top-tier
-         slots (p-first-1). renderCurrentPage(), not route(): nothing about
-         the location changed, and route() is the back-stack's entry point
-         (#488). */
-      if (applied) {
-        redealAfterOnboardingPicks(applied);
-        renderCurrentPage();
-      }
-    });
-  }
-
-  renderWelcome();
+  skip.addEventListener("click", dismiss);
+  if (!still) startOnboardingLoop(wrap, model);
   return true;
 }
 
@@ -582,14 +567,12 @@ function showIntroPopupOnce() {
        describes the Home that ships, and it is where a listener who skipped
        the first-run sheet learns what a foray is.
        Review 2026-09-23: no "stitch clips" (the 2026-08-11 playback ruling —
-       see forayAbout), and only what Home renders: the stretch pick is in
-       Forays for you and Suggested (pickWithStretchFloor, the cardSlots
-       stretch role), not in Playlists, which are mostly the listener's own.
-       Audit round 2 (p-first-11): the Forays row has a stretch pick only when
-       the listed Forays span more than one subject, and with one published
-       Foray it cannot. The sentence asks the SAME pick Home renders
-       (foraysForYouPicks) instead of assuming. */
-    `A foray plays moments from several shows, straight from each show's own feed, one after another. Below them are your playlists and episodes picked for you. The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick outside your usual subjects, on purpose.`);
+       see forayAbout), and only what Home renders. Today (Redesign 2026) draws
+       one Foray first, then "Also today": the picks, one of them the Stretch
+       bridge (the cardSlots stretch role), then the listener's playlists, which
+       are mostly their own and carry no stretch pick. So the sentence names Also
+       today and nothing else as the place the outside pick is. */
+    `A foray plays moments from several shows, straight from each show's own feed, one after another. Today's foray comes first, then Also today and your playlists. Also today includes one pick outside your usual subjects, on purpose.`);
 
   const actions = ddEl("div", "fy-sheet-actions");
   const ok = ddEl("button", "fy-sheet-go", "Got it");

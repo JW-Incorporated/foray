@@ -129,7 +129,7 @@ test("opening the sheet resets its scroller, and does so AFTER the unhide", () =
 test("the redesigned sheet starts with the artwork hero, then the title block", () => {
   /* REWRITE-ON-PURPOSE, Tactile Now Playing: the hero wrapper is the shared
      element. MUTATION: append `copy` before `hero` -> red. */
-  assert.match(NP_FLAT, /artWrap\.append\(parts\.sArt, collage\); hero\.append\(artWrap\);/);
+  assert.match(NP_FLAT, /artWrap\.append\(parts\.sArt, collage, downloadedBadge\); hero\.append\(artWrap\);/);
   assert.match(NP_FLAT, /copy\.append\(parts\.sTitle, parts\.sShow, chips, parts\.sWhy\);/);
   assert.match(NP_FLAT, /top\.append\(hero, copy, bandSection\);/);
   assert.match(NP_FLAT, /parts\.scroll\.replaceChildren\(top, more\);/);
@@ -573,10 +573,9 @@ test("Tactile hero and transport preserve the ruled phone geometry", () => {
   assert.match(CSS_RULES, /\.np\.np--three-title \.np__art \{ width: 160px; height: 160px; \}/);
   assert.match(CSS_RULES, /\.np \.transport \{[^}]*gap:\s*var\(--s-6\)/);
   assert.match(CSS_RULES, /\.np \.transport \.fp-big \{[^}]*width:\s*var\(--key-xl\)[^}]*height:\s*var\(--key-xl\)/);
-  /* Iteration 2 (fidelity): the 15/30 keys are the prototype's rendered 68 x 56 pill, not a 56 circle.
-     MUTATION: change `--np-skip-w: 68px` to `var(--key-lg)` -> red (the step from Play to the skips steepens again). */
-  assert.match(CSS_RULES, /\.np \{ --np-skip-w: 68px; \}/);
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*var\(--np-skip-w\)[^}]*height:\s*var\(--key-lg\)/);
+  /* The skip keys are 68 wide (key-lg + s-3), 56 tall. MUTATION: change the width back to
+     `var(--key-lg)` (or drop the `+ var(--s-3)`) -> red; change the height from var(--key-lg) -> red. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*\swidth:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*height:\s*var\(--key-lg\)/);
   assert.match(NP_FLAT_TEXT, /parts\.row\.classList\.add\("transport"\)/);
 });
 
@@ -602,22 +601,20 @@ test("Tactile Foray provenance shows the station or narration under the needle, 
 
 test("Tactile detail scrolls beneath a bottom-pinned dock and keeps seekable 56 and 48px rows", () => {
   /* MUTATION: change `.np__dock` from `position: absolute` to `position: sticky` -> red and Play returns to the scroll flow.
+     MUTATION: change the dock fade stop (36px, `.np__dock::before`) to 28px -> red.
+     MUTATION: change the 189px in `.np__top` min-height (here and in styles.css) back to 176px -> red.
      The dock sits at safe-b + 16 (--s-4) per the acceptance criterion. */
   assert.match(NP_FLAT, /sheet\.replaceChildren\(bg, parts\.grabZone, parts\.scroll, dock\)/);
-  /* 190px puts the "Up next" heading 54px under the counter, as drawn, so its first card peeks out
-     above the dock's fade (176 left a 67px gap and no card). MUTATION: put 176px back -> red. */
-  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 190px - var\(--safe-b\)\)/);
-  assert.match(CSS_RULES, /\.np__up-next-card \{[^}]*align-items:\s*start/, "the card's art and title start at its top, so they are what peeks under the heading");
-  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*inset:\s*-22px 0/, "the fade starts 36px above the keys (the dock box is 14px above the transport row)");
+  assert.match(CSS_RULES, /\.np__top \{[^}]*min-height:\s*calc\(100% - 189px - var\(--safe-b\)\)/);
   assert.match(CSS_RULES, /\.np__dock \{[^}]*position:\s*absolute[^}]*bottom:\s*calc\(var\(--safe-b\) \+ var\(--s-4\)\)/);
-  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 28px\)/);
+  assert.match(CSS_RULES, /\.np__dock::before \{[^}]*linear-gradient\(to bottom, transparent, var\(--paper\) 36px\)/);
   assert.match(CSS_RULES, /\.np \.segrow \{[^}]*min-height:\s*56px/);
   assert.match(CSS_RULES, /\.np__chapter \{[^}]*min-height:\s*48px/);
 });
 
 test("Tactile transport uses circular 56/80/56 keys with an attached darker lip and custom skip marks", () => {
-  /* MUTATION: remove the explicit `width: var(--key-lg)` override -> red and legacy padding squashes the skip keys. */
-  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*var\(--np-skip-w\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
+  /* MUTATION: remove the explicit `width: calc(var(--key-lg) + var(--s-3))` override -> red and legacy padding squashes the skip keys. */
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{\s*box-sizing:\s*border-box;\s*width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*height:\s*var\(--key-lg\)[^}]*padding:\s*0/);
   /* The lip is a hard shadow in the key's own shape (the primitive's flat ::after bar is switched off).
      MUTATION: delete the `box-shadow: 0 var(--lip) 0 var(--k-lip)` rule -> red and the keys lose their lip. */
   assert.match(CSS_RULES, /\.np \.transport \.keycap::after,\s*\.np \.second \.keycap::after \{ content: none; \}/);
@@ -721,8 +718,10 @@ function loadDial({ ink = "#201a17", paper = "#f7f0e4", dark = false, haptics = 
     getComputedStyle: () => ({ getPropertyValue: (name) => (name === "--ink" ? ink : name === "--paper" ? paper : "") }),
     matchMedia: () => ({ matches: dark }),
     Date,
-    Math,
     setTimeout,
+    setStatusText: (node, text) => { if (node && node.textContent !== text) node.textContent = text; },
+    setControlLabel: (node, text) => { node.textContent = text; },
+    Math,
     ...extra,
   };
   vm.createContext(context);
@@ -1113,36 +1112,6 @@ test("the band's station codes are HTML spans under the bars, and the SVG's own 
   assert.match(CSS_RULES, /\.np:not\(\.np--foray\) \.np__codes \{ display: none; \}/, "an episode has one bar and no codes");
 });
 
-test("every run on the band gets a code, narrow ones included, and no two codes overlap", () => {
-  /* Iteration 2 (fidelity): the first purple run was 14px wide, under the primitive's 24px gate, so colour alone
-     carried it ("one code per run, so colour is never alone").
-     MUTATIONS: drop `codeEveryRun: true` from the tactileBand call -> the narrow runs lose their code (the
-     source check fails); make dialSpreadCodes return its input -> the overlap assertion fails; drop the
-     right-to-left pass -> the clamp case fails. */
-  assert.match(NP_FLAT_TEXT, /valueText: d\.valueText, codeEveryRun: true/);
-  assert.match(CSS_RULES, /\.np__code \{[^}]*left:\s*calc\(var\(--x, 0\) \* 100% \+ var\(--dx, 0px\)\)/);
-  const { dial } = loadDial();
-  const size = 14;
-  const gap = dial.codeGap;
-  /* The real case: bar centres 7px apart on a 345px band (adjacent 14px runs at the left edge). */
-  const crowded = [7, 21, 35, 52, 140, 200];
-  const placed = dial.spreadCodes(crowded, crowded.map(() => size), 345);
-  for (let i = 1; i < placed.length; i += 1) assert.ok(placed[i] - placed[i - 1] >= size + gap - 1e-9, `codes ${i - 1} and ${i} are ${placed[i] - placed[i - 1]}px apart (a ${size}px code plus its ${gap}px of air)`);
-  assert.ok(placed[0] >= size / 2, "the first code stays inside the band's left edge");
-  assert.ok(placed[2] <= 7 + 2 * (size + gap) + 1e-9, "a code is moved only as far as its neighbours force: the third sits two pitches from the first");
-  assert.strictEqual(placed[5], 200, "an uncrowded code does not move");
-  /* Crowding at the right edge pushes back in, not out of the box. */
-  const edge = dial.spreadCodes([330, 338, 344], [size, size, size], 345);
-  assert.ok(edge[2] <= 345 - size / 2, `the last code stays inside the right edge (${edge[2]})`);
-  for (let i = 1; i < edge.length; i += 1) assert.ok(edge[i] - edge[i - 1] >= size + gap - 1e-9, "and they still keep their air");
-  /* More codes than fit (30 x 14px on 345px): they stay ordered and inside the box rather than running off it.
-     MUTATION: drop the final clamp loop -> the last code lands past the right edge. */
-  const many = Array.from({ length: 30 }, (_, i) => 7 + i * 11);
-  const squeezed = dial.spreadCodes(many, many.map(() => size), 345);
-  assert.ok(squeezed[0] >= size / 2 && squeezed[29] <= 345 - size / 2, `inside the box (${squeezed[0]}..${squeezed[29]})`);
-  for (let i = 1; i < squeezed.length; i += 1) assert.ok(squeezed[i] >= squeezed[i - 1], "and still in order");
-});
-
 test("a crowded code row drops the narrowest run's code instead of cramming it, and never the current run's", () => {
   /* Iteration 3 (fidelity): nine codes on one 345px line, the first four about 20px apart, read as a caption, not
      as dial labels. Codes now sit a DIAL_CODE_GAP of air apart; a code that cannot get it within DIAL_CODE_SHIFT of its
@@ -1249,109 +1218,6 @@ test("the WAAPI fallback does nothing under reduced motion, and nothing for an e
   assert.equal(boxless.state.animations.length, 0, "an unmeasurable hero is not animated into NaN");
 });
 
-test("artwork is averaged in linear light, not in encoded bytes", () => {
-  /* BUILD-NOTES 7: "average in linear light". The first build summed the sRGB bytes and
-     converted once at the end, which darkens every mixed colour.
-     Half-white, half-black: linear light averages to 0.5; the bytes' average (127.5) is
-     0.214 in linear light. MUTATION: sum `pixels[i]` instead of `dialSrgbToLinear(pixels[i])`
-     in dialAverageLinear -> 0.2140 comes back and the first assertion is red. */
-  const { dial } = loadDial();
-  const px = (r, g, b, a = 255) => [r, g, b, a];
-  const flat = (...pixels) => Uint8ClampedArray.from(pixels.flat());
-  const grey = dial.averageLinear(flat(px(255, 255, 255), px(0, 0, 0)));
-  grey.forEach((channel) => assert.ok(Math.abs(channel - 0.5) < 1e-9, `linear mean of white and black is 0.5, got ${channel}`));
-  assert.ok(Math.abs(0.5 - 0.2140) > 0.28, "premise: the encoded mean would read 0.214, far from 0.5");
-  const withClear = dial.averageLinear(flat(px(255, 255, 255), px(0, 0, 0, 0)));
-  assert.deepEqual(Array.from(withClear), [1, 1, 1], "a transparent pixel does not dilute the mean");
-  assert.equal(dial.averageLinear(flat(px(10, 20, 30, 0))), null, "nothing opaque to average");
-  assert.equal(dial.tintFromPixels(flat(px(10, 20, 30, 0)), "ENAMEL"), "ENAMEL", "and the tint is then the show's enamel");
-});
-
-test("the extraction path turns a half-red, half-black cover into a mid-lightness red, not a muddy dark one", async () => {
-  /* The whole path, run: Image load -> 32x32 canvas -> getImageData -> tint. Half pure red,
-     half black: in linear light the red channel is 0.5, OKLCH lightness 0.498, inside the
-     0.45-0.6 clamp, so it comes out at 0.498. Averaged in bytes it would be 0.375, which the
-     clamp would pull up to a flat 0.450.
-     MUTATION: in dialAverageLinear sum the raw bytes (no dialSrgbToLinear) -> the lightness
-     below is 0.450 and the first assertion is red. */
-  const data = new Uint8ClampedArray(32 * 32 * 4);
-  for (let i = 0; i < 32 * 32; i += 1) {
-    data[i * 4] = i < 512 ? 255 : 0;
-    data[i * 4 + 3] = 255;
-  }
-  const reads = [];
-  const canvas = { width: 0, height: 0, getContext: () => ({ drawImage: (img, x, y, w, h) => reads.push(["draw", w, h]), getImageData: (x, y, w, h) => { reads.push(["read", w, h]); return { data }; } }) };
-  class FakeImage {
-    set src(value) { this.loaded = value; Promise.resolve().then(() => this.onload()); }
-  }
-  const { dial, doc } = loadDial({ extra: { Image: FakeImage, safeUrl: (url) => url } });
-  const create = doc.createElement;
-  doc.createElement = (tag) => (tag === "canvas" ? canvas : create(tag));
-  const tint = await dial.extractArtworkTint("https://example.test/cover.jpg", "show-1", "ENAMEL");
-  assert.deepEqual(reads, [["draw", 32, 32], ["read", 32, 32]], "sampled at 32 x 32");
-  const lightness = Number(/^oklch\(([\d.]+) /.exec(tint)?.[1]);
-  assert.ok(lightness > 0.49 && lightness < 0.51, `linear-light lightness (0.498), not the clamped byte average (0.450): ${tint}`);
-  assert.match(tint, /^oklch\(0\.\d{3} 0\.\d{3} \d+\.\d\)$/);
-  const fallback = await dial.extractArtworkTint("", "show-1", "ENAMEL");
-  assert.equal(fallback, "ENAMEL", "no usable URL is the show's enamel");
-});
-
-/* An independent OKLCH -> linear sRGB, written out here so the test does not lean on the code it checks. */
-function testOklchLinear(L, C, hDeg) {
-  const h = (hDeg * Math.PI) / 180;
-  const a = C * Math.cos(h), b = C * Math.sin(h);
-  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
-  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
-  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
-  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
-}
-const parseTint = (tint) => { const m = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)$/.exec(tint); return m ? m.slice(1).map(Number) : null; };
-
-test("a saturated cover's tint is walked down to the sRGB edge, so the contrast maths and the browser see the same colour", async () => {
-  /* BUILD-NOTES 7: floor chroma at .10 "and walk it down only as far as sRGB gamut needs". Pure green
-     averages to OKLCH L .866 C .295 h 142; the lightness clamp (.6) leaves that chroma well outside
-     sRGB, so the browser maps the colour one way while dialHexRgb clips each channel another and the
-     4.5:1 check judges a surface nobody sees. The whole extraction path is run on four saturated covers.
-     MUTATIONS: in dialNormalizeArtworkTint pass `Math.max(.1, oklch.c)` straight to toFixed (no
-     dialFitChroma) -> green comes back at chroma .295, out of gamut, and the channel assertion is red;
-     make dialFitChroma return `Math.min(C, 0.1)` -> the chroma is no longer "only as far as the gamut
-     needs" and the edge assertion is red; make dialInSrgbGamut always true -> the same red as the first. */
-  const fixture = async (rgb) => {
-    const data = new Uint8ClampedArray(32 * 32 * 4);
-    for (let i = 0; i < 32 * 32; i += 1) { data[i * 4] = rgb[0]; data[i * 4 + 1] = rgb[1]; data[i * 4 + 2] = rgb[2]; data[i * 4 + 3] = 255; }
-    const canvas = { width: 0, height: 0, getContext: () => ({ drawImage() {}, getImageData: () => ({ data }) }) };
-    class FakeImage { set src(value) { this.loaded = value; Promise.resolve().then(() => this.onload()); } }
-    const { dial, doc } = loadDial({ extra: { Image: FakeImage, safeUrl: (url) => url } });
-    const create = doc.createElement;
-    doc.createElement = (tag) => (tag === "canvas" ? canvas : create(tag));
-    return { dial, tint: await dial.extractArtworkTint("https://example.test/" + rgb.join("-") + ".jpg", "show-" + rgb.join("-"), "ENAMEL") };
-  };
-  for (const rgb of [[0, 255, 0], [0, 0, 255], [255, 0, 0], [0, 255, 255]]) {
-    const { tint } = await fixture(rgb);
-    const parts = parseTint(tint);
-    assert.ok(parts, `a tint, not the enamel, for ${rgb}: ${tint}`);
-    const [L, C, h] = parts;
-    assert.ok(L >= 0.45 && L <= 0.6, `lightness stays clamped: ${tint}`);
-    testOklchLinear(L, C, h).forEach((v) => assert.ok(v >= -0.0005 && v <= 1.0005, `${rgb} -> ${tint}: channel ${v} is outside sRGB`));
-  }
-  const green = parseTint((await fixture([0, 255, 0])).tint);
-  assert.ok(green[1] < 0.25, `the walk-down reduced green's chroma from .295: ${green}`);
-  assert.ok(green[1] >= 0.1, "and not below the .10 floor, because green has room above it at L .6");
-  /* "only as far as the gamut needs": a little more chroma would leave the gamut. */
-  assert.ok(testOklchLinear(green[0], green[1] + 0.005, green[2]).some((v) => v < -0.0005 || v > 1.0005), "it stopped at the edge, not short of it");
-});
-
-test("dialFitChroma leaves an in-gamut chroma alone and finds the edge for one that is not", () => {
-  /* MUTATION: drop the leading `if (dialInSrgbGamut(L, C, hueDeg)) return C;` -> the in-gamut chroma is
-     floored to 3 decimals by the walk and 0.1234 comes back as 0.123 (red). */
-  const { dial } = loadDial();
-  assert.equal(dial.fitChroma(0.5, 0.1234, 40), 0.1234, "inside the gamut: returned untouched");
-  const edge = dial.fitChroma(0.6, 0.4, 142);
-  assert.ok(edge > 0.15 && edge < 0.25, `green at L .6 ends near .20: ${edge}`);
-  assert.ok(testOklchLinear(0.6, edge, 142).every((v) => v >= -0.0005 && v <= 1.0005));
-  assert.equal(dial.fitChroma(0.6, 0, 142), 0);
-});
-
 test("Speed and Sleep are disclosures of the inline dial, not dialogs: aria-expanded and aria-controls, never aria-haspopup", () => {
   /* The chips open a group holding a radiogroup in the dock (dialOpenRotary), not a role=dialog, so
      aria-haspopup="dialog" told assistive technology something false (review, 2026-10-07).
@@ -1382,4 +1248,410 @@ test("Speed and Sleep are disclosures of the inline dial, not dialogs: aria-expa
   dial.closeRotary(ui, true);
   assert.deepEqual(expanded(), ["false", "false"], "closing collapses both");
   assert.match(CLIENT, /if \(!window\.DialNowPlaying\) rateBtn\.setAttribute\("aria-haspopup", "dialog"\);/, "client.js keeps the dialog role only for the list-picker fallback");
+});
+
+test("the sampled artwork tint is cached in memory for the session and never written to storage", async () => {
+  /* Review fix (Redesign 2026, search review 0f70a7fc): a `cp_art_tint:<show>`
+     row per show played would need a privacy-policy row and a data-deletion
+     count for a colour the page can recompute. The harness answers like the
+     real thing: the Image loads asynchronously, the canvas returns real
+     pixels, and storage is a spy on every route (lsSet/lsGet and the
+     localStorage object itself).
+     MUTATION: add `lsSet("cp_art_tint:" + key, JSON.stringify({ hash: hash, tint: tint }));`
+     after `DIAL_ART_TINT_CACHE[key] = ...` in dialExtractArtworkTint -> the
+     storage assertion goes red; delete the `DIAL_ART_TINT_CACHE[key] = ...`
+     line -> the second call builds a second Image and the count goes red. */
+  const writes = [];
+  let images = 0;
+  class FakeImage {
+    set src(value) { images += 1; this._src = value; Promise.resolve().then(() => this.onload && this.onload()); }
+  }
+  const pixels = new Uint8ClampedArray(32 * 32 * 4);
+  for (let i = 0; i < pixels.length; i += 4) { pixels[i] = 200; pixels[i + 1] = 40; pixels[i + 2] = 30; pixels[i + 3] = 255; }
+  const canvas = { getContext: () => ({ drawImage() {}, getImageData: () => ({ data: pixels }) }) };
+  const window = {};
+  const context = {
+    window,
+    Image: FakeImage,
+    safeUrl: (url) => url,
+    lsSet: (...args) => { writes.push(["lsSet", ...args]); return true; },
+    lsGet: (...args) => { writes.push(["lsGet", ...args]); return null; },
+    localStorage: { setItem: (...args) => writes.push(["setItem", ...args]), getItem: (...args) => { writes.push(["getItem", ...args]); return null; } },
+    document: { documentElement: { dataset: {} }, createElement: (tag) => (tag === "canvas" ? canvas : {}) },
+    Math,
+    Date,
+  };
+  vm.createContext(context);
+  vm.runInContext(NOW_PLAYING, context, { filename: "ui/now-playing.js" });
+  const first = await window.DialNowPlaying.extractArtworkTint("https://example.test/a.jpg", "show-1", "ENAMEL");
+  assert.match(first, /^oklch\(/, "a saturated sample produces a tint, not the fallback");
+  const second = await window.DialNowPlaying.extractArtworkTint("https://example.test/a.jpg", "show-1", "ENAMEL");
+  assert.equal(second, first, "the same show and artwork is served from memory");
+  assert.equal(images, 1, "the image was sampled once, not once per call");
+  assert.deepEqual(writes, [], "no storage route was touched: no cp_art_tint key exists");
+  assert.doesNotMatch(NOW_PLAYING, /cp_art_tint/, "and the key is not named in the view at all");
+});
+
+test("sleep expiry pauses through the transport authority, so a stale reducer cannot leave audio playing", () => {
+  /* MUTATION: change `transportIsRunning()` back to `isRunning()` in setSleepTimer's callback (client.js) ->
+     the belief says "paused" while the element is audible, setRunning(false) is never called and the
+     pause assertion fails (the timer reset to Off and the audio kept going). */
+  const m = /^let sleepMinutes = 0;\nlet sleepTimer = null;\nfunction setSleepTimer\(minutes\) \{[\s\S]*?\n\}/m.exec(CLIENT);
+  assert.ok(m, "client.js still declares the sleep timer at top level");
+  const run = ({ believed, audible }) => {
+    const timers = [];
+    const calls = [];
+    const painted = [];
+    const context = {
+      setTimeout: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
+      clearTimeout: () => {},
+      Math, Number,
+      isRunning: () => believed,
+      transportIsRunning: () => believed || audible,
+      setRunning: (want, source) => { calls.push([want, source]); },
+      ui: { sleepBtn: {} },
+      window: { DialNowPlaying: { paintSleep: (_btn, minutes) => painted.push(minutes) } },
+    };
+    vm.createContext(context);
+    vm.runInContext(m[0] + "\nvar __set = setSleepTimer;", context, { filename: "player/client.js (setSleepTimer)" });
+    context.__set(15);
+    assert.equal(timers.length, 1);
+    assert.equal(timers[0].ms, 15 * 60 * 1000);
+    timers[0].fn();
+    return { calls, painted };
+  };
+  const stale = run({ believed: false, audible: true });
+  assert.deepEqual(stale.calls, [[false, "sleep"]], "audible while the reducer says paused: expiry still pauses");
+  assert.deepEqual(stale.painted, [15, 0], "and the chip returns to Off");
+  const quiet = run({ believed: false, audible: false });
+  assert.deepEqual(quiet.calls, [], "nothing audible: expiry has nothing to pause");
+  assert.deepEqual(quiet.painted, [15, 0]);
+  const live = run({ believed: true, audible: true });
+  assert.deepEqual(live.calls, [[false, "sleep"]]);
+});
+
+/* ==================================================================== */
+/* NOW PLAYING, EPISODE (Tactile group A): tint, chips, detail, session  */
+/* ==================================================================== */
+
+/** ui/now-playing.js in a context that also holds the REAL primitives (tactileTag,
+    esc, safeUrl, all lifted from the shipping files by the helper), so a tag
+    is the one the app draws and not a stand-in. */
+function loadDialWithPrimitives(extra = {}) {
+  const { load } = __cr(import.meta.url)("../test/helpers/tactile-primitives.js");
+  const window = {};
+  const context = load({ window, document: { documentElement: { dataset: {} } }, Date, ...extra });
+  vm.runInContext(NOW_PLAYING, context, { filename: "ui/now-playing.js" });
+  return { dial: window.DialNowPlaying, context };
+}
+
+const px = (...rgba) => {
+  const out = new Uint8ClampedArray(rgba.length * 4);
+  rgba.forEach((p, i) => out.set(p.length === 3 ? [...p, 255] : p, i * 4));
+  return out;
+};
+const oklchParts = (text) => {
+  const m = /^oklch\(([\d.]+) ([\d.]+) ([\d.]+)\)$/.exec(text);
+  return m ? { l: Number(m[1]), c: Number(m[2]), h: Number(m[3]) } : null;
+};
+/** An independent OKLCH -> linear sRGB, so the gamut check is not the code under test's own. */
+const oklchToLinear = ({ l, c, h }) => {
+  const a = c * Math.cos(h * Math.PI / 180), b = c * Math.sin(h * Math.PI / 180);
+  const L = (l + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const M = (l - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const S = (l - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+  return [4.0767416621 * L - 3.3077115913 * M + 0.2309699292 * S, -1.2684380046 * L + 2.6097574011 * M - 0.3413193965 * S, -0.0041960863 * L - 0.7034186147 * M + 1.7076147010 * S];
+};
+
+test("the artwork tint averages in LINEAR light: a half-red, half-black cover reads L 0.498, not the muddy 0.45 floor", () => {
+  /* BUILD-NOTES 7: "average in linear light". Averaging the encoded bytes (127.5
+     red) and converting after reads L .376, which the clamp lifts to .450.
+     The samples go through the real extraction function, not a pre-built colour.
+     The two colours are the extremes of each channel (0 and 255), so only the ORDER of
+     averaging and linearising can move the answer: summing raw bytes (`sum[i] += pixels[i]`) and
+     linearising once after the divide (`dialSrgbToLinear(v / count)`), the first build's defect, reads
+     0.450 here and this fails (run). Substituting a different transfer curve is NOT caught by this
+     test, and is not claimed to be. */
+  const { dial } = loadDial();
+  const half = new Uint8ClampedArray(32 * 32 * 4);
+  for (let i = 0; i < 32 * 32; i += 1) half.set(i % 2 ? [255, 0, 0, 255] : [0, 0, 0, 255], i * 4);
+  const tint = oklchParts(dial.tintFromPixels(half, "ENAMEL"));
+  assert.ok(tint, "a saturated cover produces a tint, not the enamel");
+  assert.equal(tint.l, 0.498, "linear-light average of red and black");
+});
+
+test("a grey cover (chroma under 0.07) and a cover with no opaque pixel both fall back to the show's enamel", () => {
+  /* MUTATION: change the `.07` threshold in dialNormalizeArtworkTint to `.0` -> the grey cover is tinted
+     grey and the first assertion fails; remove the `linear ?` guard in dialTintFromPixels -> an all-transparent
+     cover throws instead of returning the enamel. */
+  const { dial } = loadDial();
+  assert.equal(dial.tintFromPixels(px([128, 128, 128], [130, 128, 126]), "ENAMEL"), "ENAMEL", "grey average");
+  assert.equal(dial.tintFromPixels(px([200, 30, 30, 0], [30, 30, 200, 100]), "ENAMEL"), "ENAMEL", "every pixel under half alpha");
+  assert.equal(dial.tintFromPixels(new Uint8ClampedArray(0), "ENAMEL"), "ENAMEL", "no pixels at all");
+});
+
+test("chroma 0.05 at hue 320 is the enamel and chroma 0.08 is exactly 0.10; lightness stays inside 0.45-0.6", () => {
+  /* The acceptance pair, through the same normaliser the extractor uses.
+     MUTATION: change `.07` to `.04` (the prototype's old floor) -> the 0.05 case is tinted and fails; change
+     `Math.max(.1, oklch.c)` to `Math.max(.07, oklch.c)` -> 0.08 stays 0.080 and fails. */
+  const { dial } = loadDial();
+  assert.equal(dial.normalizeArtworkTint({ l: 0.5, c: 0.05, h: 320 }, "ENAMEL"), "ENAMEL");
+  assert.equal(dial.normalizeArtworkTint({ l: 0.5, c: 0.08, h: 320 }, "ENAMEL"), "oklch(0.500 0.100 320.0)");
+  assert.equal(dial.normalizeArtworkTint({ l: 0.95, c: 0.12, h: 320 }, "ENAMEL"), "oklch(0.600 0.120 320.0)", "light is clamped down");
+  assert.equal(dial.normalizeArtworkTint({ l: 0.1, c: 0.12, h: 320 }, "ENAMEL"), "oklch(0.450 0.120 320.0)", "dark is clamped up");
+});
+
+test("a saturated cover's chroma is walked down only as far as sRGB needs, and the WRITTEN colour is inside the gamut", () => {
+  /* BUILD-NOTES 7. rgb(63,111,255) wants chroma .221 at L .594, which is 1.004 in the blue channel: out of
+     gamut once serialised. The check reads the string that is written (three decimals), with an
+     independent conversion.
+     MUTATIONS: make dialFitChroma return `C` unchanged -> the written blue channel is 1.0039 and the
+     gamut assertion fails; floor to 2 decimals instead of 3 -> the "only as far as needed" assertion
+     (the tint must use at least 99% of the in-gamut chroma) fails; return `Math.round` instead of floor -> the rounded
+     chroma crosses the edge on a case here and the gamut assertion fails. */
+  const { dial } = loadDial();
+  for (const rgb of [[63, 111, 255], [0, 255, 0], [255, 0, 0], [255, 0, 255], [0, 200, 255], [255, 140, 0]]) {
+    const cover = new Uint8ClampedArray(32 * 32 * 4);
+    for (let i = 0; i < 32 * 32; i += 1) cover.set([...rgb, 255], i * 4);
+    const text = dial.tintFromPixels(cover, "ENAMEL");
+    const tint = oklchParts(text);
+    assert.ok(tint, `${rgb}: a saturated cover is a tint (${text})`);
+    assert.ok(tint.l >= 0.45 && tint.l <= 0.6, `${rgb}: lightness ${tint.l} is clamped`);
+    for (const channel of oklchToLinear(tint)) {
+      assert.ok(channel >= -2e-4 && channel <= 1 + 2e-4, `${rgb}: ${text} has a channel at ${channel}, outside sRGB`);
+    }
+    /* "Only as far as needed": a hair more chroma (0.003) would be outside the gamut. */
+    const more = oklchToLinear({ ...tint, c: tint.c + 0.003 });
+    assert.ok(more.some((channel) => channel < -2e-4 || channel > 1 + 2e-4) || tint.c >= 0.1 && tint.c <= 0.1001, `${rgb}: ${text} left chroma on the table`);
+  }
+});
+
+test("a cover that cannot be read (CORS or a broken image) uses the enamel, asks anonymously, and a cached colour is not re-fetched", async () => {
+  /* The harness answers like the browser: the image loads or errors asynchronously, a tainted canvas
+     THROWS from getImageData, and crossOrigin is read off the instance.
+     MUTATIONS: remove `image.crossOrigin = "anonymous"` -> the first assertion fails; change the catch's
+     `resolve(fallback)` to `resolve("oklch(0.5 0.2 30)")` -> the tainted case fails; remove the `onerror` line
+     -> the broken-image promise never settles (the test times out); cache the fallback by deleting the
+     `if (cached` guard's hash check -> the changed-artwork assertion fails. */
+  const make = ({ taint = false, fail = false, pixels = null } = {}) => {
+    const created = [];
+    class FakeImage {
+      set src(value) { created.push(this); this._src = value; Promise.resolve().then(() => (fail ? this.onerror() : this.onload())); }
+    }
+    const data = pixels || (() => { const p = new Uint8ClampedArray(32 * 32 * 4); for (let i = 0; i < p.length; i += 4) p.set([40, 90, 200, 255], i); return p; })();
+    const canvas = { getContext: () => ({ drawImage() {}, getImageData() { if (taint) throw new DOMException("tainted", "SecurityError"); return { data }; } }) };
+    const window = {};
+    const context = {
+      window, Image: FakeImage, safeUrl: (url) => (/^https:/.test(url) ? url : "#"), DOMException,
+      document: { documentElement: { dataset: {} }, createElement: (tag) => (tag === "canvas" ? canvas : {}) }, Math, Date,
+    };
+    vm.createContext(context);
+    vm.runInContext(NOW_PLAYING, context, { filename: "ui/now-playing.js" });
+    return { dial: window.DialNowPlaying, created };
+  };
+  const ok = make();
+  const tint = await ok.dial.extractArtworkTint("https://example.test/a.jpg", "show-a", "ENAMEL");
+  assert.match(tint, /^oklch\(/);
+  assert.equal(ok.created[0].crossOrigin, "anonymous", "the image is requested with CORS, or the canvas could never be read");
+  assert.equal(await ok.dial.extractArtworkTint("https://example.test/a.jpg", "show-a", "ENAMEL"), tint, "cached by show and artwork");
+  assert.equal(ok.created.length, 1);
+  await ok.dial.extractArtworkTint("https://example.test/b.jpg", "show-a", "ENAMEL");
+  assert.equal(ok.created.length, 2, "new artwork for the same show is sampled again (the URL hash differs)");
+  assert.equal(await make({ taint: true }).dial.extractArtworkTint("https://example.test/a.jpg", "s", "ENAMEL"), "ENAMEL", "tainted canvas");
+  assert.equal(await make({ fail: true }).dial.extractArtworkTint("https://example.test/a.jpg", "s", "ENAMEL"), "ENAMEL", "image error");
+  assert.equal(await make().dial.extractArtworkTint("http://example.test/a.jpg", "s", "ENAMEL"), "ENAMEL", "an unsafe URL never reaches the image");
+});
+
+test("a plain episode's chip row carries the Downloaded and Played tags only, written when they change", () => {
+  /* BUILD-NOTES 4.2: "for an episode, the downloaded/played tags only". The tags are the real tactileTag markup.
+     MUTATIONS: drop the `!model.foray` branch at the top of dialPaintChip -> an episode gets no tags (and a
+     station chip path that throws on it); write the chip row on every call (remove the `chipsKey` early
+     return) -> the write count is 4, not 2; swap the Played tag's text for "Done" -> the markup assertion fails. */
+  const { dial } = loadDialWithPrimitives();
+  const writes = [];
+  const parts = { chips: { set innerHTML(v) { writes.push(v); }, replaceChildren() { writes.push("foray-reset"); } } };
+  const episode = { foray: false, downloaded: true, played: false };
+  dial.paintChip(parts, episode);
+  dial.paintChip(parts, episode);
+  dial.paintChip(parts, { ...episode, played: true });
+  dial.paintChip(parts, { ...episode, played: true });
+  assert.equal(writes.length, 2, "an unchanged pair is not rewritten");
+  assert.match(writes[0], /^<span class="tag tag--downloaded"[^>]*>.*<span>Downloaded<\/span><\/span>$/);
+  assert.doesNotMatch(writes[0], /Played|station|narration/);
+  assert.match(writes[1], /tag--downloaded[\s\S]*<span class="tag tag--played"[^>]*>.*<span>Played<\/span><\/span>$/);
+  const none = { chips: { set innerHTML(v) { writes.push("none:" + v); } } };
+  dial.paintChip(none, { foray: false });
+  assert.equal(writes[2], "none:", "neither tag: an empty row, no station chip");
+});
+
+test("a plain episode's detail posture is Up next, Chapters and Show notes, with no Clips and no Where this came from", () => {
+  /* Source-text pins, the way this file pins view wiring it cannot mount.
+     MUTATIONS: change `parts.segments.hidden = !model.foray` to `= false` -> the Clips list shows on an episode;
+     change `parts.origin.hidden = !model.foray` likewise -> "Where this came from" shows; change
+     `parts.chapters.hidden = model.foray` to `= false` -> a foray gets a Chapters list; delete the `.np--episode
+     .np__why` rule -> the sentence sits under the title again and pushes the band 14px down. */
+  assert.match(NP_FLAT_TEXT, /parts\.segments\.hidden = !model\.foray;/);
+  assert.match(NP_FLAT_TEXT, /parts\.origin\.hidden = !model\.foray;/);
+  assert.match(NP_FLAT_TEXT, /parts\.chapters\.hidden = model\.foray;/);
+  assert.match(NP_FLAT_TEXT, /parts\.notes\.hidden = model\.foray \|\| \(!hasDetails && !hookText\);/);
+  assert.match(NP_FLAT_TEXT, /\["Up next"|dialNpEl\("h2", "heading", "Up next"\)/);
+  assert.match(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Chapters"\)/);
+  assert.match(NP_FLAT_TEXT, /dialNpEl\("h2", "heading", "Show notes"\)/);
+  assert.match(CSS_RULES, /\.np--episode \.np__why \{ display: none; \}/);
+  assert.match(NP_FLAT_TEXT, /parts\.sheet\.classList\.toggle\("np--episode", !d\.foray\)/);
+});
+
+test("the episode band is handed its chapters as fractions of the runtime, ascending and strictly inside it", () => {
+  /* MUTATION: drop the `f > 0 && f < 1` filter -> the 0 and past-the-end marks come back; drop the `.sort`
+     -> a feed that lists chapters out of order draws ticks out of order; drop the `seen` filter -> two chapters
+     a hair apart draw two ticks. */
+  const { dial } = loadDial();
+  const chapter = (start) => ({ start });
+  const marks = (model) => [...dial.chapterFractions(model)];   // out of the vm's realm, so deepEqual compares plain arrays
+  assert.deepEqual(marks({ duration: 1000, chapters: [chapter(500), chapter(0), chapter(250), chapter(1000), chapter(1500), chapter(250.001)] }), [0.25, 0.5]);
+  assert.deepEqual(marks({ duration: 0, chapters: [chapter(10)] }), [], "no runtime yet, no ticks");
+  assert.deepEqual(marks({ duration: 100, chapters: null }), []);
+});
+
+test("chapterStartSec reads the catalogue's start_time_seconds and drops a chapter with no known start", () => {
+  /* The catalogue stores `start_time_seconds` (ui/episode.js reads it). The model read only start_sec / startTime /
+     start, so a real episode's chapters never reached the sheet.
+     MUTATIONS: remove "start_time_seconds" from the key list -> the first assertion is null; change
+     `value == null || value === ""` to `value == null` -> an empty string reads as 0 and the third fails; drop
+     `seconds >= 0` -> a negative start is kept. */
+  const m = /^function chapterStartSec\(chapter\) \{[\s\S]*?\n\}/m.exec(CLIENT);
+  assert.ok(m, "client.js declares chapterStartSec at top level");
+  const context = { Number };
+  vm.createContext(context);
+  vm.runInContext(m[0] + "\nvar __start = chapterStartSec;", context, { filename: "player/client.js (chapterStartSec)" });
+  assert.equal(context.__start({ title: "A", start_time_seconds: 324 }), 324);
+  assert.equal(context.__start({ startTime: "12.5" }), 12.5);
+  assert.equal(context.__start({ start_time_seconds: "" }), null, "an empty start is unknown, not 0");
+  assert.equal(context.__start({ start_time_seconds: null, start_sec: 9 }), 9, "the next spelling is tried");
+  assert.equal(context.__start({ start_time_seconds: -4 }), null);
+  assert.equal(context.__start({ title: "no start" }), null);
+  assert.equal(context.__start(null), null);
+  assert.match(FLAT, /\.map\(chapterStartSec\)/, "the arrow-key chapter jump reads starts through the same function");
+  assert.match(FLAT, /const start = chapterStartSec\(chapter\); if \(start == null\) continue;/, "and so does the sheet's model");
+});
+
+test("the page answers the sheet's Up next card and its two tags from its own records (sheetFacts)", () => {
+  /* app.js EPISODE_NAVIGATION.sheetFacts: next = the pick the skip makes (planAfterEnded), downloaded = a `done`
+     row in cp_downloads, played = the player's own progress state. It runs here against fakes that answer like
+     the page's functions, including a missing downloads store.
+     MUTATIONS: compare the status to "queued" instead of "done" -> downloaded is false for a finished download;
+     read `planAfterEnded(id)` as `planAfterEnded(nextId)` -> the next card is wrong; change the played test to
+     `!== "unplayed"` -> a part-played episode is tagged Played. */
+  const APP_TEXT = read("app.js");
+  const m = /  sheetFacts\(id\) \{[\s\S]*?\n  \},/.exec(APP_TEXT);
+  assert.ok(m, "app.js declares sheetFacts on EPISODE_NAVIGATION");
+  const build = ({ nextId = null, items = {}, progress = { state: "unplayed" }, downloads = { items: {} }, throwDownloads = false } = {}) => {
+    const context = {
+      planAfterEnded: (id) => { context.asked = id; return { nextId }; },
+      liveEpisode: (id) => items[id] || null,
+      downloadsValue: () => { if (throwDownloads) throw new ReferenceError("no downloads module"); return downloads; },
+      rowProgress: () => progress,
+      itemDurationSec: (item) => (item.duration_min ? item.duration_min * 60 : null),
+    };
+    vm.createContext(context);
+    vm.runInContext("var nav = {" + m[0].replace(/,\s*$/, "") + "};", context, { filename: "app.js (sheetFacts)" });
+    return context;
+  };
+  const next = { id: "n1", title: "Next one", show: "Show N", show_id: "sn", artwork_url: "https://a/n.jpg", duration_min: 45, hook: "Why." };
+  const full = build({ nextId: "n1", items: { n1: next }, progress: { state: "played" }, downloads: { items: { cur: { status: "done" } } } });
+  const facts = full.nav.sheetFacts("cur");
+  assert.equal(full.asked, "cur", "the plan is asked about the CURRENT episode");
+  assert.deepEqual(JSON.parse(JSON.stringify(facts)), {
+    next: { id: "n1", title: "Next one", show: "Show N", show_id: "sn", artwork_url: "https://a/n.jpg", duration_sec: 2700, why: "Why." },
+    downloaded: true, played: true,
+  });
+  const idle = build({ downloads: { items: { cur: { status: "downloading" } } }, progress: { state: "partial" } }).nav.sheetFacts("cur");
+  assert.deepEqual(JSON.parse(JSON.stringify(idle)), { next: null, downloaded: false, played: false }, "nothing queued, only a download under way, only part played");
+  const noModule = build({ throwDownloads: true }).nav.sheetFacts("cur");
+  assert.equal(noModule.downloaded, false, "no downloads module is an honest absence, not an error");
+  assert.equal(build({ nextId: "gone", items: {} }).nav.sheetFacts("cur").next, null, "a next id that no longer resolves is no card");
+});
+
+test("the model hands the sheet the page's facts for a plain episode only, held two seconds per episode", () => {
+  /* MUTATIONS: remove the `episodeFactsId === id &&` cache test -> sheetFacts is read on every tick (the call
+     count below is 4, not 2); ask for a foray's id (drop `!current?.forayId`) -> source assertion fails; drop the
+     `try` -> a throwing page answer breaks the paint instead of reading as no facts. */
+  const m = /\/\*\* What the page knows about the episode on the sheet[\s\S]*?\n  return episodeFactsValue;\n\}/m.exec(CLIENT);
+  assert.ok(m, "client.js declares dialEpisodeFacts");
+  let calls = 0;
+  let now = 1000;
+  const context = {
+    Date: { now: () => now }, Object, Number,
+    episodeNavigation: { sheetFacts: (id) => { calls += 1; if (id === "boom") throw new Error("page broke"); return { next: { id: "n", title: "T" }, downloaded: true, played: 1 }; } },
+  };
+  vm.createContext(context);
+  vm.runInContext(m[0] + "\nvar __facts = dialEpisodeFacts;", context, { filename: "player/client.js (dialEpisodeFacts)" });
+  const first = context.__facts("ep-1");
+  assert.equal(first.downloaded, true);
+  assert.equal(first.played, false, "only a literal true reads as played");
+  assert.equal(first.next.id, "n");
+  context.__facts("ep-1");
+  assert.equal(calls, 1, "a second read inside two seconds is the held answer");
+  now += 2500;
+  context.__facts("ep-1");
+  assert.equal(calls, 2, "after two seconds it asks again");
+  context.__facts("ep-2");
+  assert.equal(calls, 3, "another episode is never served the first one's answer");
+  assert.deepEqual(JSON.parse(JSON.stringify(context.__facts("boom"))), { next: null, downloaded: false, played: false }, "a page that throws is no facts");
+  assert.deepEqual(JSON.parse(JSON.stringify(context.__facts(null))), { next: null, downloaded: false, played: false }, "no episode id (a foray) is no facts");
+  assert.match(FLAT, /const facts = dialEpisodeFacts\(!current\?\.forayId \? current\?\.id : null\);/);
+});
+
+test("the lock-screen artwork of a plain episode goes through the page's safeUrl first, and a refusal is no artwork", () => {
+  /* The real safeUrl is lifted from app.js (tactile-primitives helper's GUARDS) and answers "#" for what it
+     refuses; "#" is not a picture, so it must come out as null (the app icon then stands in).
+     MUTATIONS: return `safe` unconditionally (drop `safe !== "#"`) -> "javascript:" comes out as "#" and the
+     third assertion fails; read `url` instead of `safeUrl(url)` -> the javascript: URL is passed through and
+     the same assertion fails; replace `current.artwork_url` in mediaViewFields by the raw field -> the source
+     assertion fails. */
+  const m = /^function safeArtworkUrl\(url\) \{[\s\S]*?\n\}/m.exec(CLIENT);
+  assert.ok(m, "client.js declares safeArtworkUrl at top level");
+  const { context } = loadDialWithPrimitives();   // carries the real esc / safeUrl lifted from app.js
+  vm.runInContext(m[0] + "\nvar __art = safeArtworkUrl;", context, { filename: "player/client.js (safeArtworkUrl)" });
+  assert.equal(context.__art("https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg"), "https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg");
+  assert.equal(context.__art(""), null);
+  assert.equal(context.__art("javascript:alert(1)"), null, "a refusal is null, never the '#' safeUrl answers with");
+  assert.equal(context.__art(null), null);
+  assert.match(FLAT, /showArtworkUrl: safeArtworkUrl\(current\.artwork_url\)/);
+});
+
+test("the web lock screen names a plain episode's why-line as its album, and the show as its artist", () => {
+  /* client.js hands `why: currentWhy` on the episode branch of mediaViewFields only; mediaMetadata does the rest
+     (player/media-session.test.js). MUTATIONS: delete `why: currentWhy` -> the album falls back to "4a"; set
+     `currentWhy` from the Foray's segment line too (move the assignment out of setNowPlaying's why/hook line) ->
+     the next assertion on the single write fails. */
+  assert.match(FLAT, /showArtworkUrl: safeArtworkUrl\(current\.artwork_url\), [^}]*why: currentWhy,/);
+  assert.match(FLAT, /ui\.sWhy\.textContent = why \|\| item\.hook \|\| ""; ui\.sWhy\.hidden = !ui\.sWhy\.textContent; currentWhy = ui\.sWhy\.textContent;/);
+  assert.equal((FLAT.match(/why: currentWhy/g) || []).length, 1, "only the episode branch carries it; a foray's album stays its title and counter");
+});
+
+test("the plain-episode sheet matches the prototype's geometry: a 44px well, 68px skip keys, a peeking Up next, 17px show name", () => {
+  /* Each assertion names the one-line mutation that turns it red (all run):
+     - `.np--episode .np__band { --np-band-h: 44px; }` -> 64px: the well is a third taller than the prototype's
+       and the band sits against its top edge; also change NP_EPISODE_STAGE_PX away from 44 -> the stage
+       assertion fails (the CSS and the drawing move together);
+     - the shared `.np .transport .keycap--lg` width calc(var(--key-lg) + var(--s-3)) -> var(--key-lg): the
+       side keys are circles of 56 and the row loses its 68/80/68 rhythm;
+     - the episode `.np__top` min-height 189px -> 176px: "Up next" lands 13px low and the first row card
+       slides under the dock's paper (nothing peeks), and the 147px short-screen twin -> 142px likewise;
+     - the episode `.np__dock::before { top: -22px }` -> delete it: the paper starts 14px higher than the
+       prototype's and is opaque over the whole first card;
+     - the episode `.np__show` font body-lg -> body (or the rule moved back to plain `.np`, which also moves the foray's band 1px): the show name is a step below the title-to-show step the prototype draws. */
+  assert.match(CSS_RULES, /\.np--episode \.np__band \{ --np-band-h: 44px; \}/);
+  assert.match(NP_FLAT_TEXT, /var NP_EPISODE_STAGE_PX = 44;/);
+  assert.match(NP_FLAT_TEXT, /stagePx: d\.foray \? 0 : NP_EPISODE_STAGE_PX/);
+  assert.match(CSS_RULES, /\.np--episode \.np__needle \{ height: 42px; \}/);
+  assert.match(CSS_RULES, /\.np \.transport \.keycap--lg \{[^}]*width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*min-width:\s*calc\(var\(--key-lg\) \+ var\(--s-3\)\)[^}]*padding:\s*0/);
+  assert.match(CSS_RULES, /\.np--episode \.np__top \{ min-height: calc\(100% - 189px - var\(--safe-b\)\); \}/);
+  assert.match(CSS_RULES, /@media \(max-height: 740px\)[\s\S]*?\.np--episode \.np__top \{ min-height: calc\(100% - 147px - var\(--safe-b\)\); \}/);
+  assert.match(CSS_RULES, /\.np--episode \.np__dock::before \{ top: -22px; \}/);
+  assert.match(CSS_RULES, /\.np--episode \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body-lg\)\/var\(--lh-body-lg\)/);
+  assert.match(CSS_RULES, /\.np \.np__text \.np__show \{[^}]*font:\s*500 var\(--t-body\)\/var\(--lh-body\)/);
+  /* The 68px skip key is shared with the foray sheet (trunk, now-playing-paused), so no episode-only override exists. */
+  assert.doesNotMatch(CSS_RULES, /\.np--episode \.transport \.keycap--lg/);
 });

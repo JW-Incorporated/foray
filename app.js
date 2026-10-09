@@ -104,9 +104,14 @@ function esc(s) {
    pins that this list and the sprite agree). The one same-document reference
    safeUrl lets through is "#" + one of these, exactly: an icon's sprite href
    goes through safeUrl like every other href, and a fragment can carry no
-   scheme. Every other fragment ("#/library", "#ep-1", "#ph-nope") still
-   answers "#". Callers that need a fetchable URL test for http(s) themselves
-   (ui/downloads.js) rather than reading "#" as the only refusal. */
+   scheme. The other same-document reference it lets through is an in-app
+   ROUTE: "#/" followed by path characters only (the regex in safeUrl). A route can carry
+   no scheme, quote, angle bracket or space, and a "%" must open a real
+   percent-escape, so an id that was not encoded cannot smuggle an attribute
+   or a second fragment into the href: it answers "#". Every other fragment
+   ("#ep-1", "#ph-nope", "#/a b") still answers "#". Callers that need a
+   fetchable URL test for http(s) themselves (ui/downloads.js) rather than
+   reading "#" as the only refusal. */
 const SPRITE_IDS = new Set([
   "ph-play", "ph-pause", "ph-sun-horizon", "ph-magnifying-glass", "ph-bookmarks",
   "ph-caret-down", "ph-arrow-left", "ph-dots-three", "ph-plus", "ph-minus", "ph-check",
@@ -120,7 +125,8 @@ const SPRITE_IDS = new Set([
 ]);
 
 function safeUrl(u) {
-  if (typeof u === "string" && u.charAt(0) === "#" && SPRITE_IDS.has(u.slice(1))) return u;
+  /* The route pattern is inline so the function stands alone for the suites that lift it. */
+  if (typeof u === "string" && u.charAt(0) === "#" && (SPRITE_IDS.has(u.slice(1)) || /^#\/(?:[A-Za-z0-9\-._~!$&'()*+,;=:@\/?]|%[0-9A-Fa-f]{2})*$/.test(u))) return u;
   try {
     const p = new URL(u);
     if (p.protocol === "https:" || p.protocol === "http:") return u;
@@ -1361,12 +1367,12 @@ function reloadNoteHtml(note) {
 }
 
 function statusPageHtml({ title = "", note, back = "#/", retry = false, reload = false }) {
-  /* `back` is always one of our own routes; the "#" is written in the literal so
-     no interpolated value can ever start an href (test/app-security.test.js). */
+  /* `back` is always one of our own routes; the href still goes through safeUrl
+     like every other (a route passes, anything else answers "#"). */
   const route = String(back).replace(/^#/, "");
   return `<div class="page">
     <div class="page-head">
-      <a class="back" href="#${esc(route)}">‹</a>
+      <a class="back" href="${esc(safeUrl("#" + route))}">‹</a>
       <div>${title ? `<h2>${esc(title)}</h2>` : ""}</div>
     </div>
     ${reload ? reloadNoteHtml(note) : retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
@@ -1679,7 +1685,10 @@ function interestScore(item) {
    test harness without this file, and this file must run without it. */
 function setControlLabel(btn, text, label) {
   if (!btn) return;
-  if (text != null && btn.textContent !== text) btn.textContent = text;
+  /* A control that draws its own state (data-ctl-icons: sprite icons and sibling
+     spans chosen by CSS from `on` / data-playing) is never written text; only its
+     name changes. The same guard is in player/client.js's paintControl. */
+  if (text != null && !(btn.hasAttribute && btn.hasAttribute("data-ctl-icons")) && btn.textContent !== text) btn.textContent = text;
   if (label && label !== text) btn.setAttribute("aria-label", label);
   else btn.removeAttribute("aria-label");
 }
@@ -1891,7 +1900,7 @@ function starredShowRow(entry) {
      shows harvested without one. Fall back through the live show record so a
      starred show is never blanker than the same show is on any other surface. */
   const art = entry.artwork_url || showArtworkUrl(showById(entry.show_id));
-  return `<a class="show-result" href="#/show/${encodeURIComponent(entry.show_id)}" title="${esc(entry.title)}">
+  return `<a class="show-result" href="${esc(safeUrl("#/show/" + encodeURIComponent(entry.show_id)))}" title="${esc(entry.title)}">
     ${art ? rowArtImg(art) : `<span class="show-result-art show-result-art-blank"></span>`}
     <span class="show-result-title">${esc(entry.title)}</span>
   </a>`;
@@ -2810,8 +2819,8 @@ function savePlaylistControlHtml(p) {
   const { text, attr } = toggleMarkup(on, SAVE_PLAYLIST_TOGGLE);
   return `<div class="pl-save-wrap">
         <button type="button" class="pl-save${on ? " on" : ""}" id="pl-save"${attr}${on || pending ? ` aria-disabled="true"` : ""}>${text}</button>
-        <a class="pl-save-open" id="pl-save-open" href="#/${on ? esc(playlistRoute(copy)) : "playlists"}"${on ? "" : " hidden"}>Open your copy</a>
-        ${earlier ? `<p class="note">You saved an earlier version of this playlist. <a href="#/${esc(playlistRoute(earlier))}">Open that copy</a></p>` : ""}
+        <a class="pl-save-open" id="pl-save-open" href="${esc(safeUrl("#/" + (on ? playlistRoute(copy) : "playlists")))}"${on ? "" : " hidden"}>Open your copy</a>
+        ${earlier ? `<p class="note">You saved an earlier version of this playlist. <a href="${esc(safeUrl("#/" + playlistRoute(earlier)))}">Open that copy</a></p>` : ""}
         <p class="note pl-save-note" id="pl-save-note" role="status">${pending ? esc(SAVE_PLAYLIST_NOTES.pending) : ""}</p>
       </div>`;
 }
@@ -2889,6 +2898,8 @@ function saveQueueIds(ids) {
     : lsSet("cp_queue", ids);
   refreshEpisodeNavigation();
   repaintQueuePage();
+  /* The deck's Yours badge counts Up Next (ui/tabbar.js); it follows every write. */
+  if (typeof paintTabBadge === "function") paintTabBadge();
   return ok;
 }
 
@@ -2899,6 +2910,12 @@ function saveQueueIds(ids) {
     content and would otherwise land the listener at the top. Best-effort on
     `scrollY`/`scrollTo`, which the test harness does not have. */
 function repaintQueuePage() {
+  /* Yours (#/library) lists Up Next as its own panel (ui/library.js), repainted
+     in place: the strip's badge, the readout and the rows follow the write. */
+  if (currentHash() === "#/library") {
+    if (typeof repaintYoursQueue === "function") repaintYoursQueue();
+    return;
+  }
   if (currentHash() !== "#/queue") return;
   const y = typeof window.scrollY === "number" ? window.scrollY : null;
   const held = queueFocusBefore();
@@ -3479,6 +3496,27 @@ const EPISODE_NAVIGATION = {
      sleep timer parked). Read by player/client.js's row2 paint; the page owns
      Up Next and the stars, the player owns the sheet. */
   get upNextCount() { return queueIds().length; },
+  /* What the Now Playing sheet shows for a plain episode and the player cannot
+     know (Tactile BUILD-NOTES 4.2): the episode that plays after this one (the
+     SAME pick the skip makes, `planAfterEnded`, which writes nothing), and the
+     two state tags, Downloaded and Played. All observed from the page's own
+     records, never declared. `next` is null when nothing plays after it. */
+  sheetFacts(id) {
+    const nextId = id ? planAfterEnded(id).nextId : null;
+    const it = nextId ? liveEpisode(nextId) : null;
+    let downloaded = false;
+    let played = false;
+    try { downloaded = downloadsValue().items?.[id]?.status === "done"; } catch (_) { downloaded = false; }
+    try { played = rowProgress({ id })?.state === "played"; } catch (_) { played = false; }
+    return {
+      next: it ? {
+        id: it.id, title: it.title || "", show: it.show || "", show_id: it.show_id || "",
+        artwork_url: it.artwork_url || "", duration_sec: itemDurationSec(it) || 0, why: it.hook || "",
+      } : null,
+      downloaded,
+      played,
+    };
+  },
   isSaved(id) { return isSaved(id); },
   toggleSaved(id) { toggleStar(id); return isSaved(id); },
   /* Bookmarks inside episodes (#30, PQ-13). The sheet's Bookmark hands over
@@ -4036,7 +4074,7 @@ function showNameLink(showName, showId = null) {
   const id = showId || showIdForShowName(showName);
   /* Through showRoutePath (showRouteHash without its #), which encodes (audit round 3, app-1-16): the router
      decodes the segment, so an id carrying `%`, `/` or `#` misrouted from here. */
-  return id ? `<a class="show-link" href="#${esc(showRoutePath(id))}">${label}</a>` : label;
+  return id ? `<a class="show-link" href="${esc(safeUrl("#" + showRoutePath(id)))}">${label}</a>` : label;
 }
 
 /* Through editPlaylists, as a pure edit: a stamp made before hydration lands
@@ -4379,12 +4417,38 @@ function bindStars(scope) {
   });
 }
 
+/* THE TWO SECONDS OF "QUEUED" (Tactile rows, BUILD-NOTES 3.9). A Dial "+ Up
+   Next" control (data-ctl-icons) says "Queued" in --good for two seconds after
+   the tap and then settles to the quiet "In Up Next". The state itself is the
+   queue's (`on`); `is-fresh` is only how long the confirmation is shown, and a
+   second tap restarts it. Legacy text controls have no such state and are left
+   alone. */
+const QUEUED_FRESH_MS = 2000;
+function markQueuedFresh(btn) {
+  if (!btn || !btn.hasAttribute || !btn.hasAttribute("data-ctl-icons")) return;
+  btn.classList.add("is-fresh");
+  clearTimeout(btn._freshTimer);
+  btn._freshTimer = setTimeout(() => { btn.classList.remove("is-fresh"); }, QUEUED_FRESH_MS);
+}
+
 /* Toggling here is deliberately different from toggleStar: tapping "+ Up Next"
    a second time does NOT remove the episode (plan §1 Q3 — the control adds;
    removal lives on the #/queue page, not on every row it can appear on, to
    keep browsing rows at their control-density ceiling). It just re-confirms
    membership, which is why addToQueue is already idempotent rather than a
    toggle. */
+/* Repaints one "Up Next" control from the queue. A text control ("+ Up Next" /
+   "✓ Up Next") goes through setToggleLabel; one drawn with an icon (Find's rows:
+   a Phosphor plus or check ahead of the fixed words "Up Next") swaps the icon's
+   sprite reference and writes the accessible name, and never rewrites its text,
+   which would flatten the icon. The icon form says so with data-upnext-icon. */
+function paintUpNext(btn, on) {
+  const use = btn.dataset.upnextIcon ? btn.querySelector("use") : null;
+  if (!use) { setToggleLabel(btn, on, UP_NEXT_TOGGLE); return; }
+  use.setAttribute("href", on ? "#ph-check" : "#ph-plus");
+  btn.setAttribute("aria-label", on ? UP_NEXT_TOGGLE.onLabel : UP_NEXT_TOGGLE.offLabel);
+}
+
 function bindUpNext(scope) {
   scope.querySelectorAll("[data-upnext]").forEach(btn => {
     if (btn._bound) return;
@@ -4398,8 +4462,9 @@ function bindUpNext(scope) {
          "✓ Up Next" over an unchanged cp_queue was a false success. */
       const on = isQueued(id);
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
-        setToggleLabel(b, on, UP_NEXT_TOGGLE);
+        paintUpNext(b, on);
         b.classList.toggle("on", on);
+        if (on) markQueuedFresh(b);
       });
     });
   });
@@ -4416,7 +4481,7 @@ function bindUpNext(scope) {
       if (playNextInQueue(id)) announce("Plays next.");
       const on = isQueued(id);
       scope.querySelectorAll(`[data-upnext="${CSS.escape(id)}"]`).forEach(b => {
-        setToggleLabel(b, on, UP_NEXT_TOGGLE);
+        paintUpNext(b, on);
         b.classList.toggle("on", on);
       });
     });
@@ -4683,6 +4748,7 @@ function renderCurrentPage() {
   else if (h === "#/starred-shows") renderStarredShows();
   else if (h === "#/interests") renderInterests();
   else if (h === "#/gallery" && galleryEnabled()) renderGallery();
+  else if ((m = ONB_ROUTE.exec(h))) renderOnboardingRoute(Boolean(m[1]));
   else renderHome();
   publishRenderedPageHead();
   /* Called AFTER the page paints, not before: renderTabBar() reads
@@ -4807,7 +4873,9 @@ function route() {
 function pageHeading(view) {
   if (!view || typeof view.querySelector !== "function") return null;
   const box = view.querySelector(".page-head");
-  return (box && box.querySelector("h2")) || null;
+  /* The Foray page (Tactile `foray`) has no `.page-head`: its h1 is the title under the two keys. It
+     names the document and takes focus on a navigation like any other page's heading. */
+  return (box && box.querySelector("h2")) || view.querySelector("h1.fdet-title") || null;
 }
 
 /* A NAVIGATION WHOSE NAME HAS NOT BEEN SAID YET (audit round 2, races-6). A
@@ -4836,7 +4904,7 @@ function landOnPage({ navigated = false } = {}) {
   const lost = !active || active === document.body || active.isConnected === false
     || !!(typeof active.closest === "function" && active.closest("#drawer"));
   if (lost) {
-    const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".hv2-greeting") : null;
+    const greeting = home && view && typeof view.querySelector === "function" ? view.querySelector(".today-title") : null;
     const target = head || greeting || view;
     if (!target || typeof target.focus !== "function") return;
     if (typeof target.hasAttribute !== "function" || !target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
@@ -4979,6 +5047,9 @@ function rememberRouteForRelaunch(hash) {
      successful deletion put a cp_ key back, the exact thing it already avoids
      buildCards() for. The next real navigation records the route again. */
   if (ddBusy || dataDeletionInProgress) return;
+  /* The onboarding screen is an address for the harness and for a listener who
+     asks for it again, not a place to reopen on the next launch. */
+  if (ONB_ROUTE.test(hash)) return;
   if (lsGet(LAST_ROUTE_KEY, null) !== hash) lsSet(LAST_ROUTE_KEY, hash);
 }
 
@@ -6086,6 +6157,68 @@ const BOOT_FAILED_NOTE = "4a couldn't start.";
 /** What `#view` holds between app.js starting and the first `route()`. */
 const BOOT_LOADING_HTML = `<div class="page" data-boot-loading><p class="note">Loading 4a…</p></div>`;
 
+/** What the first paint is. Today's address gets Today's own skeleton
+    (ui/home.js todayLoadingHtml: the title row, then the hero, rows and playlist
+    cards as shapes at their loaded sizes, Tactile `home-loading`); every other
+    address, and any environment without the Today module, keeps the plain line
+    above. The skeleton root carries `data-boot-loading` too, which is what the
+    webview probe and the boot tests read. */
+function bootLoadingHtml() {
+  try {
+    const onToday = currentHash() === "#/" && (!isNativeShell() || relaunchRoute() === "#/");
+    if (onToday && typeof todayLoadingHtml === "function" && typeof tactileSkeleton === "function") return todayLoadingHtml();
+  } catch (_) { /* a stub environment, or a half-built page: the plain line */ }
+  return BOOT_LOADING_HTML;
+}
+
+/** Paint the boot screen into `#view`. Today's skeleton also takes Today's body
+    class (the title row replaces the legacy top bar) and puts the tab row up
+    now, so neither jumps in when the first route lands: the tabs are plain links,
+    and a tap on one before `state.ready` only changes the address that the first
+    route() then reads. */
+let bootChromeUndo = null;
+/** The knob on the boot skeleton is a real key, but the sheet it opens is bound
+    only after the first route (it reads the taxonomy, and its Done hands over
+    to the drawer). A press before then is remembered here and answered by
+    settleBootKnob() once the drawer is wired, never dropped. */
+let bootKnobPressed = false;
+function paintBootLoading(view) {
+  const html = bootLoadingHtml();
+  view.innerHTML = html;
+  if (html === BOOT_LOADING_HTML) return;
+  try {
+    bootChromeUndo = { tabBar: !$("#tab-bar") };
+    const knob = typeof view.querySelector === "function" ? view.querySelector("#today-knob") : null;
+    if (knob) knob.addEventListener("click", () => { bootKnobPressed = true; });
+    setBodyClass("view-home");
+    if (typeof renderTabBar === "function") renderTabBar();
+  } catch (_) { /* the skeleton alone is still the honest screen */ }
+}
+
+/** Answer a knob press made on the boot skeleton: called once, right after the
+    drawer's handlers are bound. The loaded Today has its own knob by then, and
+    it is the one focus goes back to. */
+function settleBootKnob() {
+  if (!bootKnobPressed) return;
+  bootKnobPressed = false;
+  try { openSettingsSheet($("#today-knob")); } catch (_) { /* a stub document: nothing to open */ }
+}
+
+/** A boot that FAILED leaves the skeleton's chrome behind it: the failure note
+    is a plain page, and it needs the legacy top bar (and the safe-area padding
+    `.today` would have supplied) back, with no tab row whose links do nothing
+    until `state.ready`. Called from both failure paints in init(). */
+function endBootLoadingChrome() {
+  const undo = bootChromeUndo;
+  bootChromeUndo = null;
+  if (!undo) return;
+  try {
+    document.body.classList.remove("view-home");   /* index.html's body is only `ui-v2`; setBodyClass is the one writer of the class list */
+    const bar = $("#tab-bar");
+    if (undo.tabBar && bar) bar.remove();
+  } catch (_) { /* a stub document */ }
+}
+
 async function init() {
   /* EVERY BOOT REQUEST STARTS BEFORE THE FIRST AWAIT (round-2 audit, perf-1).
      The seven documents used to wait for `storageReady()` — which on the web
@@ -6106,11 +6239,14 @@ async function init() {
      executed, and the probe separately refuses a view still holding it
      (`data-boot-loading`), so a boot that hangs is not certified either. */
   const view = $("#view");
-  if (view && !view.firstElementChild) view.innerHTML = BOOT_LOADING_HTML;
+  if (view && !view.firstElementChild) paintBootLoading(view);
   /* Belt for index.html's `<body class="ui-v2">` (p-first-2): a cached older
      index.html without it still gets the dark design from this line on. */
   try { document.body.classList.add("ui-v2"); } catch (_) { /* a stub document */ }
   setBootChrome(false);
+  /* The listener's Appearance choice (ui/settings.js, `cp_theme`) is on <html>
+     before anything below paints, and again once the durable tier has landed. */
+  if (typeof applyStoredTheme === "function") applyStoredTheme();
   const storageP = storageReady();
   const sessionP = fetchJson("data/session.json");
   /* Every one of these may come back null (fetchJson swallows a 404 and a
@@ -6149,6 +6285,7 @@ async function init() {
     /* A failure offers "Try again", wired to the same boot (theme G). Safe to
        re-run: nothing above this line binds a listener or starts the directory,
        so a second init() starts from exactly where the first one stopped. */
+    endBootLoadingChrome();
     $("#view").innerHTML = `<div class="page">${failedNoteHtml("Couldn't load 4a — check your connection.")}</div>`;
     bindRetry($("#view"), () => {
       $("#view").innerHTML = BOOT_LOADING_HTML;
@@ -6220,6 +6357,7 @@ async function init() {
 
   /* The one wait on hydration, bounded at five seconds (see storageReady). */
   await storageP;
+  if (typeof applyStoredTheme === "function") applyStoredTheme();
   loadInterests();
   /* Hydration that overran the bound re-seeds every weight this session has
      not moved, so Home's next deal ranks by the listener's own profile rather
@@ -6227,6 +6365,7 @@ async function init() {
   if (storageWaiting()) {
     afterStorageSettles(() => {
       loadInterests();
+      if (typeof applyStoredTheme === "function") applyStoredTheme();
       state._interestsGen = (state._interestsGen || 0) + 1;
     });
   }
@@ -6271,6 +6410,7 @@ async function init() {
   trySyncEvents();   // waits for storage to settle itself — see trySyncEvents
   } catch (err) {
     console.error("boot failed", err);
+    endBootLoadingChrome();
     const failed = $("#view");
     if (failed) {
       failed.innerHTML = `<div class="page">${failedNoteHtml(BOOT_FAILED_NOTE)}</div>`;
@@ -6290,7 +6430,7 @@ async function init() {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) return;
     refreshForayDirectory("foreground");
-    refreshGreeting();
+    refreshTodayDate();
   });
 
   /* Warm the concept-vocabulary DF caches now, while the app is idle between
@@ -6330,6 +6470,7 @@ async function init() {
   });
 
   bindDrawerChrome();
+  settleBootKnob();
   /* Android's back button, ordered like every other overlay close — see
      `handleBack`. A no-op on the web and on iOS. */
   bindHardwareBack();

@@ -31,6 +31,15 @@
  *  6. Citations (F-103) render when an item carries them and are INVISIBLE when
  *     it does not — which is the state of all eight committed Forays.
  *
+ * REWRITTEN ON PURPOSE (Redesign 2026, Tactile `foray`, BUILD-PLAN 2.17): the page's
+ * clip rows are now row-wide play buttons (tap a row, start the Foray THERE), so a show
+ * credit link can no longer sit on every row. The founder's ask ("navigate to the show's
+ * page ... for anything in the foray") is answered by the page's "From" section, one row
+ * per show the Foray draws on, each a link when the show has a page. Sections 1 and 3
+ * below now read those rows; the rule they keep is the same one (a real anchor, the
+ * identifier join first and the title join second, plain text when neither answers, the
+ * link never inside the play button). Sections 2 and 4 are unchanged.
+ *
  * Every test names the mutation that turns it red, per CLAUDE.md.
  *
  * Harness: the node:vm DOM stub from test/show-page.test.js, trimmed to what a
@@ -178,35 +187,43 @@ function insideButton(html) {
   return html.slice(html.indexOf(">", open) + 1, html.indexOf("</button>", open));
 }
 
+
+/** The "From" rows the page builds for a list of beats, as html strings. */
+function fromRows(ctx, entries) {
+  const shows = ctx.forayDetailShows({ entries });
+  const codes = ctx.forayStationCodes(shows);
+  return shows.map((show) => ctx.forayFromRowHtml(show, codes));
+}
+
 /* ==================================================================== */
-/* 1. EVERY BEAT REACHES ITS SHOW PAGE                                   */
+/* 1. EVERY SHOW REACHES ITS PAGE (the From section)                     */
 /* ==================================================================== */
 
-test("a beat whose source id names a catalogue show renders a real anchor to that show page", () => {
-  /* THE FOUNDER'S FIRST ASK. The row already showed the show's NAME; what it
-     did not do was let anyone go there, for any beat but the one playing.
+test("a show whose source id names a catalogue show gets a From row that is a real anchor to its page", () => {
+  /* THE FOUNDER'S FIRST ASK. The row used to show the show's NAME; what it did not
+     do was let anyone go there, for any beat but the one playing. Now the From
+     section carries one row per show, and every clip of that show is reachable
+     through it.
 
-     A real <a href>, deliberately, rather than a button wired through JS — the
-     reasoning is written against `taxonomyChip`: right-click, long-press and
-     open-in-new-tab are browser behaviours no click handler can fake.
+     A real <a href>, deliberately, rather than a button wired through JS: right-click,
+     long-press and open-in-new-tab are browser behaviours no click handler can fake.
 
-     MUTATION: make forayCreditHtml always return the `<span class="fy-credit">`
-     branch. The anchor assertion fails. MUTATION 2: drop the `<a>` in favour of
-     a `<button data-show>` wired through a handler — the href assertion fails,
-     and so does open-in-new-tab, which is the point. */
+     MUTATION: make forayDetailShows always set `showId: null`. The anchor assertion
+     fails. MUTATION 2: drop the `<a>` in favour of a `<button data-show>` wired through
+     a handler: the href assertion fails, and so does open-in-new-tab, which is the point. */
   const { ctx } = mount();
-  const html = ctx.forayRow(beat());
-  assert.ok(html.includes('href="#/show/being-an-engineer"'),
-    `the row must link to the show page, got: ${html}`);
-  assert.ok(/<a class="fy-credit show-link" href="#\/show\/being-an-engineer">Being an Engineer<\/a>/.test(html),
+  const [html] = fromRows(ctx, [beat()]);
+  assert.ok(html.includes('href="#/show/being-an-engineer"'), `the From row must link to the show page, got: ${html}`);
+  assert.ok(/<a class="row__link" href="#\/show\/being-an-engineer">Being an Engineer<\/a>/.test(html),
     `the show NAME must be the link text, got: ${html}`);
+  assert.ok(html.includes("1 clip"), "and it says how many clips of the show the Foray plays");
 });
 
 test("the identifier join is asked before the title join, and a stale title cannot break the link", () => {
   /* WHY THERE ARE TWO JOINS AND WHY THIS ORDER. On the committed data they
-     nearly coincide — 76 source rows join by `--` prefix, 78 by title, the
-     first set inside the second — so the reason to prefer the identifier is
-     not reach — on today's data the identifier join adds no linkable row the
+     nearly coincide: 76 source rows join by `--` prefix, 78 by title, the
+     first set inside the second. So the reason to prefer the identifier is
+     not reach: on today's data the identifier join adds no linkable row the
      title join would have missed. It is that a publisher can rename a show and
      cannot rename the id we harvested it under. This beat's title is the
      renamed one, which is the ONLY case in this suite that separates the two
@@ -214,18 +231,14 @@ test("the identifier join is asked before the title join, and a stale title cann
      yet.
 
      MUTATION: delete the `entry.show_id && showById(...)` line from
-     forayShowId. This is the only test in the repo that goes red for it —
-     verified, not assumed: the coverage test over the real Forays stays green,
-     because every show they draw on happens to join by title as well. */
+     forayShowId. This is the only test in the repo that goes red for it. */
   const { ctx } = mount();
-  const html = ctx.forayRow(beat({ show: "Being an Engineer (re-branded 2026)" }));
-  assert.ok(html.includes('href="#/show/being-an-engineer"'),
-    `a reworded title must not cost the link, got: ${html}`);
-  assert.ok(html.includes("Being an Engineer (re-branded 2026)"),
-    "the row must still print the show's CURRENT name, not the catalogue's");
+  const [html] = fromRows(ctx, [beat({ show: "Being an Engineer (re-branded 2026)" })]);
+  assert.ok(html.includes('href="#/show/being-an-engineer"'), `a reworded title must not cost the link, got: ${html}`);
+  assert.ok(html.includes("Being an Engineer (re-branded 2026)"), "the row must still print the show's CURRENT name, not the catalogue's");
 });
 
-test("a beat with no usable source id still links when its title joins the catalogue", () => {
+test("a show with no usable source id still links when its title joins the catalogue", () => {
   /* The fallback, and it is not hypothetical: 22 of the 98 committed source
      rows are hand-curated ids with no `--` at all, and `The BBQ Central Show`
      is one whose title does join. Without this branch those rows lose a link
@@ -233,79 +246,78 @@ test("a beat with no usable source id still links when its title joins the catal
      MUTATION: `return null` instead of `showIdForShowName(entry.show)` in
      forayShowId. Red. */
   const { ctx } = mount();
-  const html = ctx.forayRow(beat({
-    show: "The BBQ Central Show", show_id: null, source_id: "bbq-central-brisket",
-  }));
-  assert.ok(html.includes('href="#/show/the-bbq-central-show"'),
-    `the title join must still answer, got: ${html}`);
+  const [html] = fromRows(ctx, [beat({ show: "The BBQ Central Show", show_id: null, source_id: "bbq-central-brisket" })]);
+  assert.ok(html.includes('href="#/show/the-bbq-central-show"'), `the title join must still answer, got: ${html}`);
 });
 
-test("a beat whose show joins neither way degrades to exactly plain text, never a dead link", () => {
+test("a show that joins neither way degrades to plain text, never a dead link", () => {
   /* THE RULE THAT PROTECTS THE LISTENER. 55 of the 131 committed tape beats
      are small independent shows that were never in the curated 220. A link for
-     them would land on "Show not found." — strictly worse than the plain text
-     the row has always shown.
+     them would land on "Show not found." — strictly worse than plain text.
 
      MUTATION: in forayShowId, `return entry.show_id` without the
      `showById(...)` check. `satay-okay` is not a catalogue show, an anchor
      appears, and this is red — which is exactly the dead link the check exists
      to prevent. */
   const { ctx } = mount();
-  const html = ctx.forayRow(beat({
-    show: "Satay? Okay!", show_id: "satay-okay", source_id: "satay-okay--e01",
-  }));
+  const [html] = fromRows(ctx, [beat({ show: "Satay? Okay!", show_id: "satay-okay", source_id: "satay-okay--e01" })]);
   assert.ok(!html.includes("<a "), `an unjoinable show must not be a link, got: ${html}`);
   assert.ok(html.includes("Satay? Okay!"), "the show name must still be printed as plain text");
-  /* `data-credit-show` (audit round 2, p-foray-2) is what lets the page relink
-     it in place if the show index, loaded after paint, knows the show. */
-  assert.ok(html.includes("<span class=\"fy-credit\" data-credit-show=\"Satay? Okay!\">Satay? Okay!</span>"),
-    "plain text lives in the same slot the link would have, so the line does not move");
+  /* `data-credit-show` (audit round 2, p-foray-2) is what lets the page relink it in
+     place if the show index, loaded after paint, knows the show. */
+  assert.ok(html.includes('data-credit-show="Satay? Okay!"'),
+    "plain text carries the hook the late show-index join relinks through");
 });
 
-test("an unplayable row links its show too", () => {
+test("an unplayable clip still counts toward its show's From row, and says it cannot play in plain words", () => {
   /* The founder said "anything in the foray", and a beat that could not be
-     resolved is still a beat whose publisher a listener may want to find — it
+     resolved is still a beat whose publisher a listener may want to find: it
      is the one they were promised and did not get.
-     MUTATION: drop `${metaHtml}` from the `is-out` branch of forayRow (or
-     restore the old `esc(meta)`). Red. */
+     MUTATION: skip unplayable entries in forayDetailShows -> the From row is
+     gone for a show whose only clip will not play; red. */
   const { ctx } = mount();
-  const html = ctx.forayRow(beat({ playable: false, queueIndex: null, reason: "no audio url" }));
-  assert.ok(html.includes('class="fy-row is-out"'), "still the unplayable row");
-  assert.ok(html.includes('href="#/show/being-an-engineer"'),
-    `an unplayable beat must link its show, got: ${html}`);
+  const gone = beat({ playable: false, queueIndex: null, reason: "no audio url" });
+  const [from] = fromRows(ctx, [gone]);
+  assert.ok(from.includes('href="#/show/being-an-engineer"'), `an unplayable beat must link its show, got: ${from}`);
+  const html = ctx.forayRow(gone);
+  assert.ok(html.includes('class="fdet-seg is-out"'), "still the unplayable row");
   /* It says so in the listener's words; the raw reason is kept on the row for
      a field report and never shown (audit 2026-09-22, persona row 62). */
   assert.ok(html.includes("This clip isn't available right now."), "and must still say it cannot play");
   assert.ok(html.includes('data-reason="no audio url"'), "with the raw reason kept off-screen");
   assert.ok(!html.includes("Can't play: no audio url"), "and never the raw reason as copy");
+  assert.ok(!html.includes("<button"), "an unplayable row is not a button that does nothing");
 });
 
-test("the show link is a SIBLING of the play button, never inside it", () => {
-  /* THE STRUCTURAL RULE, and the reason the credit line had to move at all.
-     An interactive element inside a <button> is invalid HTML and its click
-     never survives the parent's handler — the same rule that already put the
-     thumbs outside the button. A link nested in there would navigate on some
-     browsers, play the segment on others, and be untestable on all of them.
+test("no link sits inside a clip row's play button, and the row carries none at all", () => {
+  /* THE STRUCTURAL RULE, and the reason the show link left the row. An interactive
+     element inside a <button> is invalid HTML and its click never survives the
+     parent's handler (the same rule that put the thumbs outside the button). A link
+     nested in there would navigate on some browsers, play the clip on others, and
+     be untestable on all of them. The row is the button; the link is the From row.
 
-     MUTATION: put `<div class="fy-meta">` back inside `<button class="fy-jump">`
-     where it used to live. The "not inside the button" assertion fails. */
+     MUTATION: put `${forayCreditHtml(entry)}` (an anchor) back inside the `.segrow`
+     button in forayRow. Both assertions fail. */
   const { ctx } = mount();
   const html = ctx.forayRow(beat());
-  assert.ok(!insideButton(html).includes("<a "),
-    `the anchor must not be a descendant of the play button, got: ${insideButton(html)}`);
-  assert.ok(html.indexOf('class="fy-meta"') < html.indexOf("<button"),
-    "the credit line must precede the play button in the markup, as it reads on screen");
+  assert.ok(html.includes("<button"), "fixture assumption: a playable row is a button");
+  assert.ok(!insideButton(html).includes("<a "), `the anchor must not be a descendant of the play button, got: ${insideButton(html)}`);
+  assert.ok(!html.includes("<a "), `the row itself carries no show link; the From section does: ${html}`);
 });
 
-test("a show name carrying HTML-significant characters is escaped in both the link and the plain-text degrade", () => {
-  /* The credit is now interpolated as HTML rather than as escaped text, which
-     is exactly the shape that lets an unescaped field become an injection.
-     MUTATION: drop either `esc()` around `entry.show` in forayCreditHtml. Red. */
+test("a show name carrying HTML-significant characters is escaped in the From row, the clip row and the plain-text degrade", () => {
+  /* The credit is interpolated as HTML rather than as escaped text, which is
+     exactly the shape that lets an unescaped field become an injection.
+     MUTATION: drop any `esc()` around the show name in forayFromRowHtml or forayRow. Red. */
   const { ctx } = mount();
   const nasty = `Quote" & <script>alert(1)</script>`;
-  const plain = ctx.forayRow(beat({ show: nasty, show_id: null, source_id: "x" }));
-  assert.ok(!plain.includes("<script>"), `unescaped show name reached the markup: ${plain}`);
-  assert.ok(plain.includes("&lt;script&gt;"), "the show name must be escaped");
+  const entry = beat({ show: nasty, show_id: null, source_id: "x" });
+  const [from] = fromRows(ctx, [entry]);
+  const row = ctx.forayRow(entry);
+  for (const html of [from, row]) {
+    assert.ok(!html.includes("<script>"), `unescaped show name reached the markup: ${html}`);
+    assert.ok(html.includes("&lt;script&gt;"), "the show name must be escaped");
+  }
 });
 
 /* ==================================================================== */
@@ -372,26 +384,23 @@ test("the thumbs are named by the show too, so one beat is never called two thin
 /* 3. THE NARRATION ROW: "AI NARRATOR" AND THE TRANSCRIPT                */
 /* ==================================================================== */
 
-test("a narration beat is credited by the narrator's one name in the slot a show credit occupies, and is not a link", () => {
+test("a narration beat is named by the narrator's one name in the row's title slot, and is not a link", () => {
   /* The founder asked for this "instead of the show name for that beat", in
      the same slot and the same visual weight, so the two row kinds read as
      siblings: one credits a podcast, one credits us.
 
      NOT a link, deliberately. There is no 4a show page to send anyone to, and
-     a control that navigates nowhere is worse than a label — the same rule
-     thumbsHtml keeps by not rendering thumbs with nowhere to land.
+     a control that navigates nowhere is worse than a label.
 
-     MUTATION: drop the isForayNarration branch of forayCreditHtml so narration
-     falls through. The credit disappears (a narration entry has no `show`) and
-     the row reads as a bare duration again. MUTATION 2: wrap the credit in
-     an <a>. The "not a link" assertion fails. */
+     MUTATION: drop the isForayNarration branch of `name` in forayRow so narration
+     falls through to `entry.show` (a narration entry has none: the row reads "This
+     clip"). MUTATION 2: wrap the name in an <a>. The "not a link" assertion fails. */
   const { ctx } = mount();
   const html = ctx.forayRow(narration("Short bridge."));
-  const credit = `<span class="fy-credit is-narrator">${NARRATOR.replace("'", "&#39;")}</span>`;
-  assert.ok(html.includes(credit), `the narration credit is missing, got: ${html}`);
-  assert.ok(!html.includes("<a "), `the narrator credit must not be a link, got: ${html}`);
-  assert.ok(html.indexOf(credit) < html.indexOf("<button"),
-    "it must sit where a show credit sits — above the play row, not inside it");
+  const name = `<span class="row__title">${NARRATOR.replace("'", "&#39;")}</span>`;
+  assert.ok(html.includes(name), `the narration name is missing, got: ${html}`);
+  assert.ok(!html.includes("<a "), `the narrator name must not be a link, got: ${html}`);
+  assert.ok(html.includes("fdet-sw--narration"), "and its swatch is the hatched narration enamel, not a show's");
 });
 
 test("the narrator has ONE name on the row, in the accessible name, and in the player's own strip (p-foray-12)", () => {
@@ -409,17 +418,23 @@ test("the narrator has ONE name on the row, in the accessible name, and in the p
   assert.ok(!/4a's narrator/.test(strip), "the strip speaks the constant, not a literal of its own");
 });
 
-test("a clip row names the EPISODE it came from, beside the show; a narration row names none (p-foray-5)", () => {
+test("the episode a clip came from is named on its row when the row has no why-line, and in the sources block always (p-foray-5)", () => {
   /* The episode lived only in the credits block at the foot of the page, so a
-     caption leaning on it had nothing on the row. MUTATION (killed): drop
-     `episode` from forayRow's meta line — red. */
+     caption leaning on it had nothing on the row. The Dial row has two lines, a
+     show name and a why-line, so the episode takes the second line only where
+     there is no why-line; the "Where this came from" block names every episode
+     with its clip count either way.
+     MUTATION (killed): drop `entry.episode_title` from the `sub` expression in
+     forayRow -> the bare row loses its episode; red. */
   const { ctx } = mount();
-  const html = ctx.forayRow(beat());
-  const meta = /<div class="fy-meta">([\s\S]*?)<\/div>/.exec(html)[1];
-  assert.match(meta, /Being an Engineer<\/a> · <span class="fy-ep">S7E17<\/span> · 240s$/, `the meta line: ${meta}`);
-  assert.ok(!insideButton(html).includes("S7E17"), "on the meta line, not inside the play button");
+  const withWhy = ctx.forayRow(beat());
+  assert.ok(withWhy.includes("The bit where the ladder stops being about skill."), "a row with a why-line shows it");
+  assert.ok(!withWhy.includes("S7E17"), "and not the episode beside it: two lines, one sub");
+  const bare = ctx.forayRow(beat({ why: "" }));
+  assert.match(bare, /<span class="label fdet-seg__sub">S7E17<\/span>/, `a bare row names its episode: ${bare}`);
+  assert.ok(!insideButton(withWhy).includes("<a "), "and never as a link inside the button");
   const nar = ctx.forayRow(narration("Short bridge.", { episode_title: "never shown" }));
-  assert.ok(!nar.includes("fy-ep"), "a narration beat has no episode");
+  assert.ok(!nar.includes("never shown"), "a narration beat has no episode");
 });
 
 test("a long transcript renders clamped with an expander wired to it by id; a short one renders whole", () => {
@@ -454,22 +469,22 @@ test("a long transcript renders clamped with an expander wired to it by id; a sh
 
 test("the expander is a sibling of the play button, so reading a transcript cannot start playback", () => {
   /* Two reasons, and they are different. STRUCTURAL: a button inside a button
-     is invalid HTML whose inner click never survives — the thumbs' rule again.
+     is invalid HTML whose inner click never survives (the thumbs' rule again).
      BEHAVIOURAL: the transcript text is outside the play button too, so a drag
      to select a sentence, or a tap while reading, cannot start the audio. The
-     play affordance stays the button, which keeps a floor height (`is-bare`)
-     precisely because a narration beat has no `why` to fill it.
+     play affordance stays the button, a 56px row whether or not the beat has a
+     why-line to fill it.
 
-     MUTATION: nest the `.fy-script-wrap` inside `.fy-jump`. Both assertions
-     fail. MUTATION 2: drop the `is-bare` class — the narration row's play
-     button collapses to a zero-height strip with nothing to aim at. */
+     MUTATION: nest the `.fy-script-wrap` inside `.segrow`. Both assertions
+     fail. MUTATION 2: drop `segrow--narration` -> the narration row loses the
+     hook its swatch and transcript indent hang on; red. */
   const { ctx } = mount();
   const html = ctx.forayRow(narration("y".repeat(400)));
   const inner = insideButton(html);
   assert.ok(!inner.includes("fy-script"), `the transcript must be outside the play button, got: ${inner}`);
   assert.ok(!inner.includes("<button"), "and the expander with it");
-  assert.ok(html.includes('class="fy-jump is-bare"'),
-    `a narration row's play button needs its own floor height, got: ${html}`);
+  assert.ok(html.includes('class="segrow segrow--narration"'),
+    `a narration row's play button is the Dial row, flagged as narration, got: ${html}`);
 });
 
 test("the clamp threshold falls in an empty band of the committed transcript lengths", () => {
@@ -585,35 +600,30 @@ test("a narration beat with no citations renders exactly as it does today — no
 /* 5. AGAINST THE COMMITTED DATA                                         */
 /* ==================================================================== */
 
-test("every tape beat of every generated Foray links to a show page", async () => {
+test("every show of every generated Foray gets a From row that links to its page", async () => {
   /* THE COVERAGE CLAIM, measured rather than asserted in a comment, and the
-     place the two joins are separated — because ON TODAY'S DATA THEY DO NOT
-     SEPARATE THEMSELVES. Every generated Foray draws on Being an Engineer,
-     Practical AI, Causality and Geology Bites, and those are four of the five
-     shows whose titles ALSO match the catalogue, so either join alone would
-     link all 48 beats and neither is load-bearing for the count. Asserting
-     only the count would therefore have let the identifier join be deleted
-     silently. So this asserts the identifier join answered for each beat as
-     well, which is the claim that actually decays if it stops working.
+     place the two joins are separated: ON TODAY'S DATA THEY DO NOT SEPARATE
+     THEMSELVES. Every generated Foray draws on Being an Engineer, Practical AI,
+     Causality and Geology Bites, and those are four of the five shows whose titles
+     ALSO match the catalogue, so either join alone would link them all. So this
+     asserts the identifier join answered for each show as well, which is the claim
+     that actually decays if it stops working.
 
      The hand-curated Forays are a different story and not a bug: their small
-     independent shows were never in the curated 220, so they are floored
-     rather than required to be whole.
+     independent shows were never in the curated 220, so they are floored rather than
+     required to be whole.
 
-     MEASURED, not assumed: deleting the identifier branch from forayShowId
-     leaves THIS test green, because the title join answers identically for all
-     four of these shows. That is a fact about the committed data, not a hole —
-     the branch is guarded by "the identifier join is asked before the title
-     join" above, which is red for exactly that mutation and is synthetic
-     precisely because the real data cannot separate them yet. Said here so the
-     next reader does not mistake this test for the one that covers it.
+     MEASURED, not assumed: deleting the identifier branch from forayShowId leaves
+     THIS test green, because the title join answers identically for these shows. That
+     is a fact about the committed data, not a hole: the branch is guarded by "the
+     identifier join is asked before the title join" above, which is synthetic
+     precisely because the real data cannot separate them yet.
 
-     MUTATION: `return null` from forayShowId — every count falls to zero.
-     MUTATION 2: change showIdFromSourceId's separator to a single "-" — the
-     derived ids stop being catalogue ids, `byIdentifier` collapses and the
-     per-beat assertion fails (five suites go red together).
-     MUTATION 3: drop the `showById(...)` verification so a candidate id is
-     trusted unchecked — green here, red in the dead-link test above. */
+     MUTATION: `return null` from forayShowId: every count falls to zero.
+     MUTATION 2: change showIdFromSourceId's separator to a single "-": the derived ids
+     stop being catalogue ids, `byIdentifier` collapses and the per-show assertion fails.
+     MUTATION 3: drop the `showById(...)` verification so a candidate id is trusted
+     unchecked: green here, red in the dead-link test above. */
   const { ctx, state } = mount();
   state.catalog = readJson("data/catalog.json");
   const resolve = await import("../player/foray-resolve.js");
@@ -622,42 +632,32 @@ test("every tape beat of every generated Foray links to a show page", async () =
     const segments = resolve.indexSegments(set.segmentsDoc);
     const sources = resolve.indexSources(set.sourcesDoc);
     for (const foray of set.forays) {
-      for (const entry of resolve.hydrateForayItems(foray, { segments, sources }).items) {
-        if (entry.type !== "segment") continue;
-        const linked = ctx.forayRow({ ...entry, playable: true, queueIndex: 0 }).includes('href="#/show/');
-        /* THE SCALE-FREE INVARIANT, asserted on every beat of every Foray: a row
-           links exactly when the join answers, and never otherwise. This is the
-           assertion that cannot be broken by new data — only by a code
-           regression — and it is why the counts below are floors rather than
-           equalities. This suite is in `REAL_DATA_SUITES` and runs inside the
-           publish gate; a publish that adds a Foray drawing on a show outside
-           the curated 220 must NOT be refused, because plain text is the
+      const entries = resolve.hydrateForayItems(foray, { segments, sources }).items
+        .map((e) => ({ ...e, playable: true, queueIndex: 0 }));
+      const shows = ctx.forayDetailShows({ entries });
+      const codes = ctx.forayStationCodes(shows);
+      for (const show of shows) {
+        const linked = ctx.forayFromRowHtml(show, codes).includes('href="#/show/');
+        /* THE SCALE-FREE INVARIANT, asserted on every show of every Foray: a row links
+           exactly when the join answers, and never otherwise. It cannot be broken by new
+           data, only by a code regression, which is why the counts below are floors. This
+           suite runs inside the publish gate; a publish that adds a Foray drawing on a
+           show outside the curated 220 must NOT be refused, because plain text is the
            designed degrade, not a defect. */
-        assert.equal(linked, ctx.forayShowId(entry) !== null,
-          `${set.where}:${foray.id}/${entry.ord} (${entry.source_id}): rendered link=${linked} but the join says ` +
-          `${ctx.forayShowId(entry)}`);
+        assert.equal(linked, show.showId !== null, `${set.where}:${foray.id} (${show.name}): rendered link=${linked} but the join says ${show.showId}`);
         if (!foray.generated) { curated++; if (linked) curatedLinked++; continue; }
         generated++;
         if (linked) generatedLinked++;
-        if (entry.show_id && ctx.showById(entry.show_id)) byIdentifier++;
+        const entry = entries.find((e) => e.show === show.name);
+        if (entry && entry.show_id && ctx.showById(entry.show_id)) byIdentifier++;
       }
     }
   }
-  /* The floors were "48 when this landed" and "9 did when this landed", over
-     data/ alone, so retiring a Foray tripped them (#236). They are now "> 0"
-     over both sets: the frozen set's generated Foray and curated orders make
-     each non-vacuous for good, and the per-beat assertions above and below are
-     what actually carry the claim. */
-  assert.ok(generated > 0, "no generated tape beat anywhere, so this proved nothing");
-  assert.equal(generatedLinked, generated,
-    `${generated - generatedLinked} generated-Foray beats lost their show link`);
-  assert.ok(byIdentifier > 0,
-    `none of ${generated} generated beats resolved a show by IDENTIFIER — the join this test exists to watch`);
-  assert.ok(curatedLinked > 0,
-    `none of ${curated} hand-curated beats link — the title join has stopped answering for the curated shows`);
+  assert.ok(generated > 0, "no show of a generated Foray anywhere, so this proved nothing");
+  assert.equal(generatedLinked, generated, `${generated - generatedLinked} generated-Foray shows lost their link`);
+  assert.ok(byIdentifier > 0, `none of ${generated} generated shows resolved by IDENTIFIER, the join this test exists to watch`);
+  assert.ok(curatedLinked > 0, `none of ${curated} hand-curated shows link: the title join has stopped answering for the curated shows`);
 });
-
-
 
 test("no committed Foray renders a curation code or an empty gutter", async () => {
   /* The end-to-end proof, over every authored item on main (289 when this

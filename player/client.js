@@ -1081,7 +1081,10 @@ function paintControl(btn, text, label) {
     if (name && btn.getAttribute("aria-label") !== name) btn.setAttribute("aria-label", name);
     return;
   }
-  if (text != null && btn.textContent !== text) btn.textContent = text;
+  /* data-ctl-icons: the control draws its own state with sprite icons that CSS
+     swaps on data-playing, so no text glyph is ever written into it; only its
+     name changes. The same guard is in app.js's setControlLabel. */
+  if (text != null && !(btn.hasAttribute && btn.hasAttribute("data-ctl-icons")) && btn.textContent !== text) btn.textContent = text;
   /* Compared before it is written, like the text (audit round 2, perf-7): this
      runs for every `[data-play]` button on the page at 4 Hz, and an attribute
      rewritten to its own value is still a mutation some screen readers
@@ -1145,9 +1148,14 @@ function buildUI() {
      name and the one that matters in a car. One control, not two, so a 390px
      bar keeps its title line. Inside a Foray it nudges on the Foray clock
      (`nudgeBy`), never previous clip — see persona 58 in the sheet below. */
-  const skipBtn = el("button", "fp-skip", `↺ ${SEEK_BACK}`);
+  /* REDESIGN 2026, Tactile `mini` (BUILD-PLAN 2.4): the mini's second control is
+     the 30-FORWARD keycap, not back 15 (the Dial mini: Play 48 + 30-forward 44,
+     ui/mini.js arranges and re-icons them). The glyph and label are written
+     here as well, so the bar still says what its click does when ui/mini.js
+     has not decorated it; the handler below is `nudgeBy(SEEK_FWD)`. */
+  const skipBtn = el("button", "fp-skip", `${SEEK_FWD} ↻`);
   skipBtn.type = "button";
-  skipBtn.setAttribute("aria-label", `Back ${SEEK_BACK} seconds`);
+  skipBtn.setAttribute("aria-label", `Forward ${SEEK_FWD} seconds`);
 
   /* U-13 (founder feedback F18): this ✕ used to call `stopAndClose()`, and its
      label said so. Closing the Now Playing screen to go and use the app therefore
@@ -1488,6 +1496,9 @@ function setSheetDragOffset(px) {
 /* ---------- state -> DOM ---------- */
 
 let current = null;
+/* The sentence the sheet shows under the show (the why-line, or the episode's
+   hook), kept so the OS view can name it as the album (`mediaViewFields`). */
+let currentWhy = "";
 /* The downloaded copy this play is trying (PQ-19, #29): `{ item, opts }` — the
    ORIGINAL item and the caller's options — while the play that chose the local
    file is loading (or was refused by autoplay), else null: a load that settles
@@ -1834,24 +1845,56 @@ function dialQueueCount() {
   catch (_) { return 0; }
 }
 
-/** One station code per show in a foray (BUILD-NOTES 3.6): a collision takes
-    the first letter of the show's last word as its second letter, the band's
-    own rule, so the chip, the swatches and the band agree on the key. */
-function dialForayCodes(shows) {
-  const codes = new Map();
-  const used = new Set();
-  for (const [showId, show] of shows) {
-    if (codes.has(showId)) continue;
-    let code = dialStationCodeFor(show);
-    const words = String(show).replace(/^The\s+/i, "").trim().split(/\s+/);
-    if (used.has(code)) code = (code[0] + ((words[words.length - 1] || "")[0] || code[1])).toUpperCase();
-    /* Past the documented rule (the last word starts like the second): the
-       first word's first two letters, so a key never names two shows. */
-    if (used.has(code)) code = (words[0] || code).slice(0, 2).toUpperCase();
-    used.add(code);
-    codes.set(showId, code);
+/** Where a chapter starts, in seconds, or null when the feed gave none. The
+    catalogue stores `start_time_seconds` (ui/episode.js reads it); the other
+    spellings are what a feed parser may hand over. A chapter with no known
+    start is dropped rather than read as 0, which would draw a tick and a row
+    that seek confidently to the beginning (the episode page's own rule). */
+function chapterStartSec(chapter) {
+  for (const key of ["start_time_seconds", "start_sec", "startTime", "start"]) {
+    const value = chapter?.[key];
+    if (value == null || value === "") continue;
+    const seconds = Number(value);
+    if (Number.isFinite(seconds) && seconds >= 0) return seconds;
   }
-  return codes;
+  return null;
+}
+
+/** What the page knows about the episode on the sheet and the player does not:
+    the episode that plays after it, and whether it is downloaded or played. The
+    page answers (`episodeNavigation.sheetFacts`, app.js); this holds the answer
+    for two seconds per episode, because the model is built on every playback
+    tick and the answer reads storage. Observed, never declared: nothing here is
+    a setting. */
+const NO_EPISODE_FACTS = Object.freeze({ next: null, downloaded: false, played: false });
+let episodeFactsId = null;
+let episodeFactsAt = 0;
+let episodeFactsValue = NO_EPISODE_FACTS;
+
+function dialEpisodeFacts(id) {
+  const nav = episodeNavigation;
+  if (!id || typeof nav?.sheetFacts !== "function") return NO_EPISODE_FACTS;
+  const now = Date.now();
+  if (episodeFactsId === id && now - episodeFactsAt < 2000) return episodeFactsValue;
+  let facts = null;
+  try { facts = nav.sheetFacts(id); } catch (_) { facts = null; }
+  episodeFactsId = id;
+  episodeFactsAt = now;
+  episodeFactsValue = facts && typeof facts === "object"
+    ? { next: facts.next && typeof facts.next === "object" ? facts.next : null, downloaded: facts.downloaded === true, played: facts.played === true }
+    : NO_EPISODE_FACTS;
+  return episodeFactsValue;
+}
+
+/** One station code per show in a foray (BUILD-NOTES 3.6). The collision rule
+    is `tactileStationCodes` in ui/primitives.js, the SAME function the band
+    draws its labels from, so the chip, the swatches and the band cannot
+    disagree on a key (they did past two shows: DA / DD / DA against DA / DD / DD). */
+function dialForayCodes(shows) {
+  const entries = [];
+  for (const [showId, show] of shows) entries.push({ id: showId, name: show });
+  if (typeof tactileStationCodes === "function") return tactileStationCodes(entries);
+  return new Map(entries.map((entry) => [entry.id, dialStationCodeFor(entry.name)]));
 }
 
 function dialForaySegments(resolved, currentIndex) {
@@ -1887,24 +1930,39 @@ function dialForaySegments(resolved, currentIndex) {
   });
 }
 
+/* `buffering` here is what the sheet DRAWS as a stall: the needle pulses and
+   the elapsed readout reads an ellipsis. It is the first load (`loading`, the
+   tap to the first audio) OR a stall mid-play (`buffering`, the element's
+   `waiting`); it used to be the load alone, so a stall mid-episode painted the
+   "Buffering..." line and nothing else (Tactile BUILD-PLAN 2.2). */
 function dialNowPlayingModel(pos, dur, running, loading) {
   const queueCount = dialQueueCount();
   const resolvedForay = foray?.resolved || restoredPending?.foray?.resolved || null;
   if (!resolvedForay) {
     const show = current?.show || "Show";
     const showId = current?.show_id || show;
-    const chapters = Array.isArray(current?.chapters) ? current.chapters.map((chapter) => ({
-      title: chapter?.title || "Chapter",
-      start: Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start) || 0,
-      clock: formatTimestamp(Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start) || 0, EXACT),
-    })) : [];
+    const chapters = [];
+    for (const chapter of Array.isArray(current?.chapters) ? current.chapters : []) {
+      const start = chapterStartSec(chapter);
+      if (start == null) continue;
+      chapters.push({ title: chapter?.title || "Chapter", start, clock: formatTimestamp(start, EXACT) });
+    }
+    /* A plain episode's two tags and its Up next card come from the page. */
+    const facts = dialEpisodeFacts(!current?.forayId ? current?.id : null);
+    const upNext = facts.next;
+    const next = upNext ? {
+      title: upNext.title || upNext.show || "", show: upNext.show || "", why: upNext.why || "",
+      duration: upNext.duration_sec > 0 ? fmtSpan(upNext.duration_sec) : "", artwork: upNext.artwork_url || "",
+      code: dialStationCodeFor(upNext.show), colorIndex: dialStationIndex(upNext.show_id || upNext.show),
+    } : null;
     return {
-      foray: false, currentIndex: 0, position: pos, duration: dur, running, buffering: loading,
-      artwork: current?.artwork_url || "", showId, show, queueCount, chapters,
+      foray: false, currentIndex: 0, position: pos, duration: dur, running, buffering: loading || buffering,
+      artwork: current?.artwork_url || "", showId, show, queueCount, chapters, next,
+      downloaded: facts.downloaded, played: facts.played, hook: current?.hook || "",
       segments: [{ showId, show, code: dialStationCodeFor(show), colorIndex: dialStationIndex(showId), duration: dur, start: 0 }],
       subtitle: show,
       valueText: `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${show}`,
-      detailKey: `episode:${current?.id || ""}:${chapters.length}`,
+      detailKey: `episode:${current?.id || ""}:${chapters.length}:${upNext?.id || ""}:${current?.hook ? 1 : 0}${current?.description ? 1 : 0}`,
     };
   }
   const resolved = resolvedForay;
@@ -1934,7 +1992,7 @@ function dialNowPlayingModel(pos, dur, running, loading) {
     });
   }
   return {
-    foray: true, currentIndex, position: pos, duration: dur, running, buffering: loading,
+    foray: true, currentIndex, position: pos, duration: dur, running, buffering: loading || buffering,
     artwork: current?.artwork_url || "", showId: here.showId, show: here.show, queueCount, segments, slots, origins,
     subtitle: `4a foray · ${origins.length} ${origins.length === 1 ? "show" : "shows"}`,
     collage: origins.slice(0, 4).map((origin) => ({ show: origin.name, code: origin.code, colorIndex: origin.colorIndex, artwork: origin.artwork })),
@@ -2408,6 +2466,10 @@ function paintPage(running) {
      VoiceOver user parked on "Seek" heard a running clock talk over their own
      swipes — the same rule the status line already keeps, written only when it
      is theirs to hear). */
+  /* ONE MODEL, built before the clocks so the slider's spoken value comes
+     from the SAME string `ui/now-playing.js` writes when it rebuilds the band.
+     Two writers composing their own text overwrote each other. */
+  const dialModel = window.DialMiniPlayer || window.DialNowPlaying ? dialNowPlayingModel(pos, dur, running, loading) : null;
   if (!scrubbing) {
     const frac = dur ? Math.min(1, Math.max(0, pos / dur)) : 0;
     ui.fill.style.width = `${frac * 100}%`;
@@ -2418,14 +2480,20 @@ function paintPage(running) {
       ui.scrub.value = String(live);
       scrubShownValue = live;
     }
-    paintClocks(pos, dur, !held && !window.DialNowPlaying);
+    /* `!held` alone: with Now Playing loaded this tick is the slider's only
+       per-tick writer of aria-valuetext (the band rebuild runs only when its
+       key changes), so gating on DialNowPlaying left the spoken value stale
+       after every nudge (WCAG 4.1.2). */
+    paintClocks(pos, dur, !held, window.DialNowPlaying ? dialModel?.valueText : null, Boolean(window.DialNowPlaying) && Boolean(dialModel?.buffering));
   }
   syncCardButtons(loading);
   paintEpisodeSurface();
+  /* One model for both Dial surfaces: the mini's 3px line draws the same
+     segments the Now Playing scrub band does. */
   if (window.DialMiniPlayer) window.DialMiniPlayer.paint(ui, {
-    title: ui.title.textContent, show: ui.show.textContent, running,
+    title: ui.title.textContent, show: ui.show.textContent, running, model: dialModel,
   });
-  if (window.DialNowPlaying) window.DialNowPlaying.paint(ui, dialNowPlayingModel(pos, dur, running, loading));
+  if (window.DialNowPlaying) window.DialNowPlaying.paint(ui, dialModel);
 }
 
 /**
@@ -2438,12 +2506,17 @@ function paintPage(running) {
  * countdown rounded separately made 13 + 48 = 61 out of 12.5 s into 60. Both
  * clocks go through the same formatter's rule first, so they add up.
  */
-function paintClocks(pos, dur, valuetext = true) {
+function paintClocks(pos, dur, valuetext = true, spoken = null, stalled = false) {
   /* One rounding rule for both clocks (audit round 3, arch-drift-10): the
      elapsed text is floored everywhere now, so its countdown is too. */
   const whole = Math.floor;
   const now = foray ? fmtClock(pos) : formatTimestamp(pos, EXACT);
-  if (ui.tNow.textContent !== now) ui.tNow.textContent = now;
+  /* Tactile Now Playing, buffering (BUILD-PLAN 2.2): while the element waits
+     for data the elapsed readout shows an ellipsis, not a number it is not
+     advancing. Only the readout: `spoken`, the slider and the countdown below
+     keep the real position, and a paused sheet (not stalled) keeps its value. */
+  const shownNow = stalled ? "…" : now;
+  if (ui.tNow.textContent !== shownNow) ui.tNow.textContent = shownNow;
   const left = dur ? remainingClock(whole(dur) - whole(pos)) : "--:--";
   if (ui.tLeft.textContent !== left) ui.tLeft.textContent = left;
   if (!valuetext) return;
@@ -2453,7 +2526,10 @@ function paintClocks(pos, dur, valuetext = true) {
   const show = foray
     ? (foray.resolved.playable[foray.index]?.show || (foray.resolved.playable[foray.index]?.kind === TTS ? "4a narration" : ""))
     : (current?.show || "");
-  const text = window.DialNowPlaying && dur
+  /* `spoken` is the Now Playing model's valueText for this same tick, so the
+     two writers cannot disagree; a drag preview has no model and composes the
+     same shape from the thumb. */
+  const text = spoken && dur ? spoken : window.DialNowPlaying && dur
     ? `${dialSpokenClock(pos)} of ${dialSpokenClock(dur)}, ${show}`
     : dur
       ? `${now} of ${foray ? `${foray.resolved.estimated === true ? "about " : ""}${fmtClock(dur)}` : formatTimestamp(dur, EXACT)}`
@@ -2489,9 +2565,11 @@ function paintScrubPreview() {
   scrubbing = true;
   const dur = foray ? foray.resolved.totalSec : episodeDurationSec();
   const at = (Number(ui.scrub.value) / 1000) * (dur || 0);
-  /* The thumb moving IS a change of the slider's value, so its spoken value
-     follows it (player-6); what never happens is a rewrite per playback tick
-     (paintPage passes `false` under the Dial view, a11y-7). */
+  /* The slider's spoken value follows the thumb too: a range input whose
+     aria-valuetext lags its value tells a screen reader the wrong time (audit
+     round 2, player-6, "and the slider says it too"). The earlier "do not
+     flood assistive technology mid-drag" idea was never measured. No ruling
+     fell here; this restores the pinned behaviour. */
   paintClocks(at, dur);
   if (window.DialNowPlaying) {
     const item = foray ? segmentAtElapsed(foray.resolved.playable, at) : null;
@@ -2546,8 +2624,22 @@ function syncCardButtons(loading = false) {
     /* The row's own title, stamped by app.js's playBtn: `current` is a
        different episode on every row but one. */
     const title = b.dataset.title || "this episode";
-    paintControl(b, on ? "❚❚" : "▶", `${on ? "Pause" : "Play"} ${title}`);
+    paintCardControl(b, on, `${on ? "Pause" : "Play"} ${title}`);
   });
+}
+
+/* A row's play control, repainted. A glyph button (the legacy `.play-btn`) is its
+   text, so the text is what changes. A KEYCAP (Tactile rows: the Find results
+   carry one) holds a sprite icon and no text, and writing `textContent` over it
+   would delete the icon and leave a bare "▶" in a key made for a drawn one; its
+   `<use>` href swaps between the two Phosphor fills instead and its name follows
+   in the same write. Both are compared before they are written (perf-7). */
+function paintCardControl(btn, playing, label) {
+  const use = typeof btn.querySelector === "function" ? btn.querySelector("use") : null;
+  if (!use) { paintControl(btn, playing ? "❚❚" : "▶", label); return; }
+  const href = playing ? "#ph-pause-fill" : "#ph-play-fill";
+  if (use.getAttribute("href") !== href) use.setAttribute("href", href);
+  if (btn.getAttribute("aria-label") !== label) btn.setAttribute("aria-label", label);
 }
 
 function setNowPlaying(item, why) {
@@ -2572,6 +2664,7 @@ function setNowPlaying(item, why) {
      Foray, which never has a hook. `sDesc` below always did it this way. */
   ui.sWhy.textContent = why || item.hook || "";
   ui.sWhy.hidden = !ui.sWhy.textContent;
+  currentWhy = ui.sWhy.textContent;
   const artworkUrl = item.artwork_url && typeof safeUrl === "function" ? safeUrl(item.artwork_url) : "#";
   if (artworkUrl && artworkUrl !== "#") {
     ui.art.src = artworkUrl;
@@ -2890,7 +2983,11 @@ function setSleepTimer(minutes) {
     sleepTimer = setTimeout(() => {
       sleepTimer = null;
       sleepMinutes = 0;
-      if (isRunning()) setRunning(false, "sleep");
+      /* `transportIsRunning()`, the path every transport surface asks (#689):
+         `isRunning()` is only the app's belief, and with the reducer stale
+         while the element is still audible it said "not running", so the timer
+         reset to Off and the audio kept playing. */
+      if (transportIsRunning()) setRunning(false, "sleep");
       window.DialNowPlaying?.paintSleep?.(ui?.sleepBtn, 0);
       window.DialNowPlaying?.syncRotary?.(ui, "sleep", 0);
     }, sleepMinutes * 60 * 1000);
@@ -3541,6 +3638,13 @@ function syncMediaSession() {
   publishMediaView(mediaSessionView(mediaViewFields()));
 }
 
+/** An artwork URL the page's gate accepts, or null: `safeUrl` answers "#" for
+    anything it refuses, which is not a URL to hand the OS. */
+function safeArtworkUrl(url) {
+  const safe = url && typeof safeUrl === "function" ? safeUrl(url) : "";
+  return safe && safe !== "#" ? safe : null;
+}
+
 /** The live values the OS view is built from. One function for the three
     shapes the bar can be in — a Foray, a RESTORED Foray, an episode — so no
     field is gathered twice. */
@@ -3604,7 +3708,14 @@ function mediaViewFields() {
     foray: false,
     index: 0,
     total: 0,
-    showArtworkUrl: current.artwork_url ?? null,
+    /* The lock-screen square goes through the page's own URL gate first, the one
+       the bar's and the sheet's artwork go through (`setNowPlaying`), and then
+       through the module's own (`artworkUrl`): "#" is safeUrl's refusal, never a
+       picture. */
+    showArtworkUrl: safeArtworkUrl(current.artwork_url),
+    /* The album of a plain episode is its why-line when it has one (Tactile
+       BUILD-NOTES 7); with none, `mediaMetadata` falls back to "4a" (#1006). */
+    why: currentWhy,
     /* THE BAR'S OWN READINGS (audit 2026-09-22, qa row 161). These read the
        element directly, which on a RESTORED bar holds nothing: the lock screen
        and the car were told 0:00 while the bar said 30:00, and a feed with no
@@ -4274,7 +4385,7 @@ function bind() {
      `.fp-clips` row. */
   ui.backBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
   ui.fwdBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
-  ui.skipBtn.addEventListener("click", () => nudgeBy(-SEEK_BACK));
+  ui.skipBtn.addEventListener("click", () => nudgeBy(SEEK_FWD));
   /* BUILD-NOTES 6: a skip ticks a light impact. A listener of its own, so the
      nudge wiring above stays the one line the transport suites pin. */
   for (const button of [ui.backBtn, ui.fwdBtn, ui.skipBtn]) {
@@ -4303,8 +4414,8 @@ function bind() {
         : (starts[Math.max(0, at - 1)] ?? 0);
     } else {
       const chapters = Array.isArray(current?.chapters) ? current.chapters
-        .map((chapter) => Number(chapter?.start_sec ?? chapter?.startTime ?? chapter?.start))
-        .filter(Number.isFinite) : [];
+        .map(chapterStartSec)
+        .filter((start) => start != null) : [];
       const ordered = [0, ...chapters, dur].sort((a, b) => a - b);
       target = event.key === "ArrowUp"
         ? (ordered.find((value) => value > now + .5) ?? dur)
@@ -5307,6 +5418,17 @@ const ForayPlayer = {
    */
   async togglePlayback() {
     await setRunning(!transportIsRunning());
+  },
+
+  /**
+   * Close the player: the sheet's Stop, reachable from the page. The Tactile
+   * mini's swipe-down dismiss (ui/mini.js) commits through this once its undo
+   * toast runs out, so a gesture and the button can never stop differently;
+   * the resume point is kept, as it is for every stop but data deletion.
+   */
+  async stop() {
+    if (!current && !restoredPending) return;
+    await stopAndClose();
   },
 
   /**

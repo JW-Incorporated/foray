@@ -189,20 +189,24 @@ test("app-1-16: show links go through showRouteHash, and the prefetch parses the
   assert.deepStrictEqual(prefetched, ["lex"], "the /q/ tail is the show page's search, not part of the id");
 
   /* And no producer is left that only HTML-escapes a show id into a route
-     (forayCreditHtml and the credit upgrade included). */
+     (forayFromRowHtml and the credit upgrade included). */
   assert.ok(!/#\/show\/\$\{esc\(/.test(SRC), "every `#/show/` link goes through showRouteHash or encodeURIComponent");
 });
 
 test("app-2-13: Foray links go through forayRouteHash, which encodes", () => {
-  /* forayCardV2Html, the show page's Forays rows and the Forays page rows built
-     `#/foray/${esc(id)}` while Library and the router encode: an id carrying
-     `/`, `#`, `?` or `%` broke routing from those surfaces only.
-     MUTATION: restore `href="#/foray/${esc(foray.id)}"` in forayCardV2Html — the
-     card assertion goes red; restore any other producer — the source guard does. */
+  /* Home's Foray card (now Today's hero and Resume card), the show page's Forays
+     rows and the Forays page rows built `#/foray/${esc(id)}` while Library and
+     the router encode: an id carrying `/`, `#`, `?` or `%` broke routing from
+     those surfaces only.
+     MUTATION: restore `href="#/foray/${esc(foray.id)}"` in todayHeroHtml or
+     todayResumeHtml — the card assertions go red; restore any other producer — the
+     source guard does. */
   const m = loadApp();
   assert.strictEqual(m.ctx.forayRouteHash(ODD_ID), `#/foray/${ODD_HASH}`);
-  const card = m.ctx.forayCardV2Html({ id: ODD_ID, title: "Odd Foray", topic: "science" });
-  assert.ok(card.includes(`href="#/foray/${ODD_HASH}"`), card.slice(0, 300));
+  const hero = m.ctx.todayHeroHtml({ foray: { id: ODD_ID, title: "Odd Foray", topic: "science" }, discs: [], segments: [], facts: "", why: "", bandLabel: "" });
+  assert.ok(hero.includes(`href="#/foray/${ODD_HASH}"`), hero.slice(0, 300));
+  const resume = m.ctx.todayResumeHtml({ kind: "foray", id: ODD_ID, title: "Odd Foray", percent: 40, left: "9 min left" });
+  assert.ok(resume.includes(`href="#/foray/${ODD_HASH}"`), resume.slice(0, 300));
   assert.ok(!/#\/foray\/\$\{esc\(/.test(SRC), "every `#/foray/` link goes through forayRouteHash");
 });
 
@@ -384,19 +388,21 @@ test("app-2-1: lastEpisodeCard seeds the player's pointer only when the index ha
 
 /* ---------- app-2-12: Home computes each rail's picks once per render --------- */
 
-test("app-2-12: renderHomeV2 computes every rail's picks once, for the button and the rails alike", () => {
+test("app-2-12: renderHomeV2 computes every source's picks once, for Resume, the hero and the playlists alike", () => {
   /* homePlayHtml -> homePlayTarget -> homePlayRails computed every rail, and then
-     jumpBackInV2Html, foraysForYouHtml and playlistsForYouHtml computed each one
-     again — generatedPlaylists' full-pool scan and sort included.
-     MUTATION: call homePlayHtml() / the rail renderers without `picks` in
-     renderHomeV2 — the counts go to 2, red. */
+     the rail renderers computed each one again — generatedPlaylists' full-pool
+     scan and sort included. Today's Resume, hero and playlists all read the one
+     `picks` renderHomeV2 computes.
+     MUTATION: call jumpBackInEntries() / foraysForYouPicks() /
+     playlistsForYouPicks() again from todayResumeEntry, todayForayPick or
+     todayIsFirstRun — the counts go to 2, red. */
   const m = loadApp();
   const calls = { jbi: 0, forays: 0, playlists: 0 };
   m.ctx.jumpBackInEntries = () => { calls.jbi += 1; return []; };
   m.ctx.foraysForYouPicks = () => { calls.forays += 1; return null; };
   m.ctx.playlistsForYouPicks = () => { calls.playlists += 1; return { own: [], generated: [] }; };
-  for (const name of ["homeGreeting", "testTrackNoticeHtml", "suggestedHtml"]) m.ctx[name] = () => "";
-  for (const name of ["offerHomeOnboarding", "sizeProgressBars", "bindPickLogging", "bindStars", "bindUpNext", "bindPlay", "bindHomePlay", "buildCards"]) m.ctx[name] = () => {};
+  for (const name of ["todayHeaderHtml", "testTrackNoticeHtml", "todayAlsoHtml"]) m.ctx[name] = () => "";
+  for (const name of ["offerHomeOnboarding", "sizeProgressBars", "bindTodayKnob", "bindUpNext", "bindPlay", "bindHomePlay", "buildCards"]) m.ctx[name] = () => {};
   m.run("state.cardSlots = [];");
   m.ctx.renderHomeV2();
   assert.deepStrictEqual(calls, { jbi: 1, forays: 1, playlists: 1 }, "each rail's picks are computed once per render");
@@ -572,9 +578,13 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
      MUTATIONS: have startOrResume read the bind-time `resume` again — red; drop
      the live->cold refreshForayResume() — red. */
   const m = loadApp();
-  for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
-  const at = makeEl("span");
-  m.els["#fy-resume .fy-resume-at"] = at;
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): the banner's "Jump back in at 30:00" line is the
+     pinned key's readout now ("Resume 30:00"), so the fake key has the two spans the page
+     writes into. */
+  for (const sel of ["#fy-play", "#fy-list"]) m.els[sel] = makeEl("button");
+  const keyWord = makeEl("span");
+  const keyRead = makeEl("span");
+  m.els["#fy-play"].querySelector = (sel) => (sel === ".keycap__label" ? keyWord : sel === ".keycap__readout" ? keyRead : null);
   const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }, { id: "s3" }], totalSec: 3600, foray: {} };
   let stored = { elapsedSec: 600, index: 0, label: "50 min left" }; // "Jump back in at 10:00" at render
   const starts = [];
@@ -596,7 +606,8 @@ test("app-3-1: play, advance, close the bar, press Play: the Foray resumes from 
   /* Close the mini bar: the player sends index -1. */
   m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
   assert.strictEqual(m.run("state.forayResume.elapsedSec"), 1800, "the cold page holds the stored point");
-  assert.strictEqual(at.textContent, "Jump back in at 30:00", "and the banner says so");
+  assert.strictEqual(keyWord.textContent, "Resume", "and the key offers to resume");
+  assert.strictEqual(keyRead.textContent, "30:00", "from the stored clock, not the render-time 10:00");
 
   m.els["#fy-play"].dispatch("click");
   await flush();
@@ -683,26 +694,18 @@ test("app-2-2: each local pass hands over at most SHOW_PASS_LIMIT rows, and the 
   assert.ok(m.run(`state.breadthShowCache["${100000 + max + 24}"]`), "the newest stay");
 });
 
-test("round-3 review (L2): played to the end and closed, the Foray page drops 'Jump back in' for 'Played'", async () => {
+test("round-3 review (L2): played to the end and closed, the Foray page's key says Start over, not Resume at 10:00", async () => {
   /* refreshForayResume nulled state.forayResume when the point read finished
      but left the rendered "Jump back in at 10:00" banner up over a 0:00 clock
-     and a Play from the top. MUTATION: drop the finished branch -- the banner
-     still says "Jump back in at 10:00". */
+     and a Play from the top. REWRITTEN ON PURPOSE (Tactile `foray`): the banner is the
+     pinned key now, so the contradiction to avoid is a key still saying "Resume 10:00"
+     after the Foray was played out. MUTATION: drop the finished branch of
+     refreshForayResume (`state.forayFinished = ...`) -- the key still says Resume. */
   const m = loadApp();
-  for (const sel of ["#fy-play", "#fy-next", "#fy-prev", "#fy-back", "#fy-fwd", "#fy-now", "#fy-strip", "#fy-list"]) m.els[sel] = makeEl("button");
-  const banner = makeEl("div");
-  let removed = 0;
-  const at = makeEl("span");
-  at.remove = () => { removed += 1; };
-  const left = makeEl("span");
-  const restart = makeEl("button");
-  at.textContent = "Jump back in at 10:00";
-  left.textContent = "50 min left";
-  restart.textContent = "Start over";
-  m.els["#fy-resume"] = banner;
-  m.els["#fy-resume .fy-resume-at"] = at;
-  m.els["#fy-resume .fy-resume-left"] = left;
-  m.els["#fy-restart"] = restart;
+  for (const sel of ["#fy-play", "#fy-list"]) m.els[sel] = makeEl("button");
+  const keyWord = makeEl("span");
+  const keyRead = makeEl("span");
+  m.els["#fy-play"].querySelector = (sel) => (sel === ".keycap__label" ? keyWord : sel === ".keycap__readout" ? keyRead : null);
   const r = { id: "f1", title: "A Foray", playable: [{ id: "s1" }, { id: "s2" }], totalSec: 3600, foray: {} };
   let stored = { elapsedSec: 600, index: 0, label: "50 min left" };
   const player = {
@@ -715,11 +718,11 @@ test("round-3 review (L2): played to the end and closed, the Foray page drops 'J
   m.run(`state.foray = ${JSON.stringify(r)}; state.forayResume = ${JSON.stringify(stored)};`);
   m.ctx.bindForayTransport(m.run("state.foray"), player, stored);
   m.ctx.paintForay({ forayId: "f1", index: 1, playing: true, running: true, elapsedSec: 3500 });
+  assert.strictEqual(keyWord.textContent, "Pause", "premise: live, the key is Pause");
   stored = { elapsedSec: 3600, index: 1, label: "Played", finished: true };   // it ran to the end
   m.ctx.paintForay({ forayId: "f1", index: -1, playing: false, running: false, elapsedSec: 0 });
   assert.strictEqual(m.run("state.forayResume"), null, "premise: no resume point");
-  assert.strictEqual(removed, 1, "the 'Jump back in at' line is gone");
-  assert.ok(banner.classList.contains("fy-played"), "the banner is the Played variant");
-  assert.strictEqual(left.textContent, "Played");
-  assert.strictEqual(restart.textContent, "Play again");
+  assert.strictEqual(m.run("state.forayFinished"), true, "the page knows it was played out");
+  assert.strictEqual(keyWord.textContent, "Start over", "the key starts it from the top");
+  assert.strictEqual(keyRead.hidden, true, "with no readout beside it");
 });

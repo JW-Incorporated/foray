@@ -161,35 +161,30 @@ const JBI = {
 /* 1. no <button> inside an <a>                                          */
 /* ==================================================================== */
 
-test("the subject card is a card: the title is the link, the star is a sibling above it", () => {
-  /* MUTATION: put `<a class="mini-card" …>` back around the whole card ->
-     the star is inside an anchor again and the first assertion names it. */
+test("Today's cards are cards: the title is the one link, every control is a sibling lifted above it", () => {
+  /* The rule qa row 78 made for the subject card and the Jump back in card
+     (both gone with Home's rails) holds for what replaced them: Also today's
+     rows and bridge, and the Resume card. MUTATION: wrap a row in an <a> (so its
+     keycap opens inside it) -> the first assertion names the button; delete
+     `.row__link::after`'s `inset: 0` -> the stretch assertion fails; drop
+     `z-index: 1` from the control rule -> the lift assertion fails. */
   const run = loadApp();
-  const html = run(`miniCard(${JSON.stringify(SLOT)})`);
-  assert.deepStrictEqual(buttonsInsideAnchors(html), [], "a <button> opened inside an <a>");
-  assert.match(html, /^<div class="mini-card" data-branch="science">/, "the card is a <div> (first-time-onboarding's dealt-roots regex reads this attribute order)");
-  assert.match(html, /<h3><a class="mc-link" href="#\/[^"]+">[^<]+<\/a><\/h3>/, "the subject title is the one real link");
-  assert.match(html, /<button class="star[^>]*>[\s\S]*<\/div>$/, "the star is a child of the card, after the text block");
-  assert.strictEqual(valueOf(".mini-card", "position"), "relative", "the card is the link's containing block");
-  assert.strictEqual(valueOf(".mc-link::after", "inset"), "0", "the link stretches over the card");
-  assert.strictEqual(valueOf(".mini-card > button.star", "z-index"), "1", "the star sits above the stretched link");
-  /* And the stretch card's bridge line still lands inside the card. */
-  const stretch = run(`miniCardV2(${JSON.stringify({ ...SLOT, role: "stretch" })})`);
-  assert.match(stretch, /<p class="hv2-bridge">[^<]+<\/p><\/div>$/, "miniCardV2 appends the bridge before the card's closing tag");
-});
-
-test("the Jump back in card is a card: the title is the link, play is a sibling above it", () => {
-  /* MUTATION: `<a class="hv2-jbi-card" …>` back around the card -> red. */
-  const run = loadApp();
-  const html = run(`jumpBackInCardHtml(${JSON.stringify(JBI)})`);
-  assert.deepStrictEqual(buttonsInsideAnchors(html), [], "a <button> opened inside an <a>");
-  assert.match(html, /<div class="hv2-jbi-card">/);
-  assert.match(html, /<a class="hv2-jbi-title hv2-jbi-link" href="#\/episode\/e1" data-ev="picked" data-ep="e1" data-ctx="jbi-episode">Dennis Whyte: Nuclear Fusion<\/a>/,
-    "the title link carries the `picked` logging attributes bindPickLogging binds");
-  assert.match(html, /<button class="play-btn" data-play="e1"/, "the card still carries its play button");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-card, body.ui-v2 .hv2-foray-card, body.ui-v2 .hv2-playlist-card", "position"), "relative");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-link::after", "inset"), "0");
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-card > .play-btn", "z-index"), "1");
+  const row = run(`tactileEpisodeRow(${JSON.stringify({ id: "e1", link: "episode", title: "An episode", show: "A Show", duration: "30 min", why: "Why.", ctx: "also-today" })})`);
+  const bridge = run(`tactileBridgeCard(${JSON.stringify({ id: "e2", link: "episode", title: "A stretch", show: "A Show", duration: "30 min", sentence: "Outside your usual subjects: from A into B, on purpose." })})`);
+  const resume = run(`todayResumeHtml(${JSON.stringify({ ...JBI, title: "Dennis Whyte" })})`);
+  for (const [name, html] of [["row", row], ["bridge", bridge], ["resume", resume]]) {
+    assert.deepStrictEqual(buttonsInsideAnchors(html), [], `${name}: a <button> opened inside an <a>`);
+  }
+  assert.match(row, /<h3 class="row__title"><a class="row__link" href="#\/episode\/e1">An episode<\/a><\/h3>/, "the row's title is the one real link");
+  assert.match(row, /<button type="button" class="keycap [^"]*"[^>]*data-play="e1"/, "the row's Play key is a sibling button");
+  assert.match(bridge, /<strong class="bridge__title"><a class="row__link" href="#\/episode\/e2">A stretch<\/a><\/strong>/);
+  assert.match(resume, /<a class="today-resume__link" href="#\/episode\/e1">Dennis Whyte<\/a>/);
+  assert.strictEqual(valueOf(".row__link::after", "inset"), "0", "the row link stretches over the card");
+  assert.strictEqual(valueOf(".today-resume__link::after", "inset"), "0", "and so does Resume's");
+  assert.strictEqual(valueOf(".today .row-episode", "position"), "relative", "the row is the link's containing block");
+  assert.strictEqual(valueOf(".today .bridge", "position"), "relative");
+  assert.strictEqual(valueOf(".today .row-episode .keycap, .today .bridge .keycap, .today .row__queue", "z-index"), "1", "the controls sit above the stretched link");
+  assert.strictEqual(valueOf(".today-resume__key", "z-index"), "1");
 });
 
 test("the Continue banner is gone: no renderer, no rule, no test on unreachable markup", () => {
@@ -334,16 +329,14 @@ test("only a list whose order is the point is numbered: a playlist, not Saved, H
   assert.doesNotMatch(APP_SRC, /<div class="ep-row gone"><span class="q-num">/, "the History fallback row is not numbered");
 });
 
-test("a tag says what its section does not: no JUMP BACK IN under 'Jump back in', no FORAY under 'Forays'", () => {
-  /* Round 2, visual-9. MUTATION: drop `{ inSection: true }` from Home's rail
-     (or from renderForays' forayListHtml call) -> red. */
+test("a tag says what its section does not: no FORAY under 'Forays' (and no 'Also today' tag on a row under that heading)", () => {
+  /* Round 2, visual-9. MUTATION: drop `{ inSection: true }` from renderForays'
+     forayListHtml call -> red. MUTATION 2: tag a plain Also today row "Also
+     today" -> the row assertion fails. (The Jump back in kicker, the other half
+     of this rule, went with the rail.) */
   const run = loadApp();
-  assert.match(run(`jumpBackInCardHtml(${JSON.stringify(JBI)})`), /<span class="hv2-jbi-kicker">Jump back in<\/span>/,
-    "on a mixed surface the tag stays — it is the one place it says something");
-  assert.doesNotMatch(run(`jumpBackInCardHtml(${JSON.stringify(JBI)}, { inSection: true })`), /hv2-jbi-kicker/,
-    "under its own heading it goes");
-  assert.match(APP_SRC, /<h2 class="hv2-title">Jump back in<\/h2>\s*<div class="hv2-hscroll">\$\{cards\.map\(c => jumpBackInCardHtml\(c, \{ inSection: true \}\)\)/,
-    "Home's rail renders its cards as in-section");
+  const row = run(`tactileEpisodeRow(${JSON.stringify({ id: "e1", link: "episode", title: "An episode", show: "A Show", duration: "30 min" })})`);
+  assert.doesNotMatch(row, /class="tag /, "a plain row under Also today wears no tag; only the Stretch bridge does");
   assert.match(APP_SRC, /\? forayListHtml\(\{ inSection: true \}\)/, "the Forays page's list sits under its 'Forays' heading");
   const pub = { id: "f1", title: "A Foray", status: "published" };
   const draft = { id: "f2", title: "A draft", status: "draft" };
@@ -399,7 +392,7 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
     assert.doesNotMatch(body(fn), /class="back"/, `${fn} is a tab root`);
   }
   assert.match(body("renderShowIndexPage"), /\$\{tabRoot \? "" : `<a class="back" href="#\/">‹<\/a>`\}/, "the shared template omits it on request");
-  assert.match(body("renderAllShows"), /`, \{ tabRoot: true \}\);/, "Search asks");
+  assert.match(body("renderAllShows"), /`, \{ tabRoot: true, find: true, hint: "[^"]+" \}\);/, "Find asks");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
   for (const fn of ["renderPlaylists", "renderQueue", "renderForays", "renderInterests"]) {
     assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
@@ -409,7 +402,10 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
 test("search's shows tier wears the eyebrow its Episodes and Playlists tiers do, only while it has rows", () => {
   /* Round 2, visual-16. MUTATION: delete the `<h3 class="sh-results-head">` or
      its `:has(+ #sh-results[hidden])` rule -> red. */
-  assert.match(APP_SRC, /<h3 class="sh-results-head">Shows<\/h3>\s*<div id="sh-results" class="show-results" hidden><\/div>/,
+  /* TACTILE `search-typing`: the label gains its count readout and the pair gains
+     a wrapper (`.sh-tier`, so the heading-to-rows gap is 12 and not the page's
+     32); the label still sits directly before the tier it names. */
+  assert.match(APP_SRC, /<h3 class="sh-results-head">Shows<span class="readout find-count" id="sh-results-count"><\/span><\/h3>\s*<div id="sh-results" class="show-results" hidden><\/div>/,
     "the label sits directly before the tier it names");
   assert.strictEqual(valueOf(".sh-results-head:has(+ #sh-results[hidden])", "display"), "none", "and hides with it");
   assert.strictEqual(valueOf(".ep-more h3, .sh-results-head", "text-transform"), "uppercase", "the same eyebrow as Episodes");
@@ -443,7 +439,7 @@ test("Create's suggestions and Search's browse subjects are the same pill", () =
   /* MUTATION: render `class="cr-pill"` in renderCreate again, or add a
      `.cr-pill {` rule -> red. */
   assert.match(APP_SRC, /<button type="button" class="fy-chip" data-cr-subject=/, "Create renders .fy-chip");
-  assert.match(APP_SRC, /<a class="fy-chip" href="#\/shows\/q\//, "Search's browse tiles render .fy-chip");
+  assert.match(APP_SRC, /<a class="fy-chip" href="\$\{esc\(safeUrl\("#\/shows\/q\/"/, "Search's browse tiles render .fy-chip");
   assert.doesNotMatch(APP_SRC, /class="cr-pill/, "no renderer emits .cr-pill");
   assert.ok(!hasRule(".cr-pill"), ".cr-pill has no rule left");
   assert.ok(!hasRule("body.ui-v2 .sh-browse-pills .fy-chip"), "Search does not restyle the pill's geometry on its own");
@@ -489,17 +485,14 @@ test("the show page, the episode page and Now Playing share one square-artwork t
 /* 5. one tag shape                                                      */
 /* ==================================================================== */
 
-test("Home's tags, Search's Generated badge and both kickers are one shape on one tint", () => {
+test("Search's Generated badge and the kickers are one shape on one tint (Home's tags are Dial's now)", () => {
   /* The family was three shapes: plain violet text ("foray" on the Forays
      index, at the eyebrow's 0.08em tracking), plain amber text ("Jump back
      in"), and boxed tags at 15/18/22% tints. One box, one tracking, one mix.
      MUTATION: `body.ui-v2 .fy-badge { border-radius: var(--radius-md) }`,
      or `.fy-home-kicker { letter-spacing: 0.08em }` with no background, or
      `.fy-badge-generated` back at 22% -> red, naming the selector. */
-  const tags = [
-    "body.ui-v2 .hv2-stretch-tag", "body.ui-v2 .hv2-draft-tag", "body.ui-v2 .hv2-generated-badge",
-    "body.ui-v2 .fy-badge", ".mc-stretch", ".fy-home-kicker", "body.ui-v2 .hv2-jbi-kicker",
-  ];
+  const tags = ["body.ui-v2 .fy-badge", ".fy-home-kicker"];
   for (const sel of tags) {
     assert.strictEqual(valueOf(sel, "border-radius"), "var(--radius-xs)", `${sel} radius`);
     assert.strictEqual(valueOf(sel, "font-size"), "var(--fs-2xs)", `${sel} size`);
@@ -515,11 +508,10 @@ test("Home's tags, Search's Generated badge and both kickers are one shape on on
       /^color-mix\(in srgb, (currentColor|var\(--violet\)|var\(--amber\)) 18%, transparent\)$/, `${sel} tint`);
   }
   /* The kickers sit in flex columns: the box is the word's width, not the row's. */
-  for (const sel of [".fy-home-kicker", "body.ui-v2 .hv2-jbi-kicker"]) {
+  for (const sel of [".fy-home-kicker"]) {
     assert.strictEqual(valueOf(sel, "align-self"), "flex-start", `${sel} hugs its text`);
   }
   /* Amber only where it marks the listener's own material. */
-  assert.strictEqual(valueOf("body.ui-v2 .hv2-jbi-kicker", "color"), "var(--amber)");
   assert.strictEqual(valueOf("body.ui-v2 .fy-jbi-row .fy-home-kicker", "color"), "var(--amber)");
   assert.strictEqual(valueOf("body.ui-v2 .fy-home-kicker", "color"), "var(--violet)");
 });

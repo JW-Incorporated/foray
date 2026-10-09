@@ -191,7 +191,9 @@ test("a successful episode search renders one ep-row per result under an Episode
   const html = m.container().innerHTML;
   assert.ok(html.includes("Episodes"), "must render an Episodes heading");
   assert.ok(html.includes("Ep One") && html.includes("Ep Two"), "must render both episode titles");
-  assert.strictEqual((html.match(/class="ep-row/g) || []).length, 2, "must render exactly one ep-row per result");
+  /* TACTILE `search-typing`: a search result is a `.row-episode` now (the Find
+     results' own row, ui/search.js searchEpisodeRow); the count is unchanged. */
+  assert.strictEqual((html.match(/class="row-episode/g) || []).length, 2, "must render exactly one episode row per result");
   assert.strictEqual(m.container().hidden, false);
 });
 
@@ -296,7 +298,9 @@ test("an episode result is playable exactly like a curated row (audio_url reache
   vm.runInContext("renderShowSearchResults('play')", m.ctx);
   await flush();
   const html = m.container().innerHTML;
-  assert.ok(html.includes('class="play-btn"'), "a result with audio_url must render an in-app play button");
+  /* The in-app play control is a Play keycap now: still `data-play`, so bindPlay
+     and syncCardButtons drive it exactly as they drive every other row's. */
+  assert.ok(/<button type="button" class="keycap keycap--sm keycap--persimmon row-play" data-play="apple:s:g1"/.test(html), `a result with audio_url must render an in-app play key: ${html}`);
 });
 
 /* ====================================================================
@@ -392,7 +396,7 @@ test("the endpoint's copy of an already-saved episode is merged, not duplicated"
      naive /Sleep Toolkit/g count reads 2 for a correctly-deduped list. */
   assert.strictEqual((html.match(/>Sleep Toolkit</g) || []).length, 1, "the shared episode must render exactly one row");
   assert.ok(html.includes(">Focus Toolkit<"), "the endpoint's other row must still be merged beneath");
-  assert.strictEqual((html.match(/class="ep-row/g) || []).length, 2, "two distinct episodes, two rows");
+  assert.strictEqual((html.match(/class="row-episode/g) || []).length, 2, "two distinct episodes, two rows");
   assert.ok(
     html.indexOf("Sleep Toolkit") < html.indexOf("Focus Toolkit"),
     "the listener's own episode leads; the endpoint's rows are merged BENEATH, never interleaved"
@@ -736,12 +740,17 @@ test("search-8 / p-switcher-7: a remote row's snapshot carries show_id, the publ
   assert.strictEqual(snap.release_date, "2026-09-12T00:00:00Z", "published_at becomes release_date, as the show page maps it");
   assert.strictEqual(snap.artwork_url, "https://art.test/huberman600.jpg", "Apple's artwork rides on the snapshot the player reads");
 
+  /* TACTILE `search-typing` (BUILD-NOTES 3.9, the row/card anatomy ruling of
+     2026-09-23 falls for the Find results): the row's meta line is the show's
+     display name as plain text, the length and "+ Up Next", so the show-name
+     link and the date this test used to read off the row are gone from it. What
+     the test was for stands: the snapshot above carries show_id and the date, and
+     the row names the right show. The show is one tap away on the episode page
+     the title opens. */
   const html = m.container().innerHTML;
-  assert.ok(html.includes('<a class="show-link" href="#/show/1545953110">Huberman Lab</a>'),
-    `the show name links by id, not by a title lookup that only knows the curated 220: ${html}`);
-  /* "Sep 12" with no year: a date in the current year omits it (copy-15,
-     test/format-helpers.test.js), and 2026-09-12 is this year until January. */
-  assert.ok(/Sep 12|12 Sep/.test(html), "and the date is on the row");
+  assert.ok(html.includes('<span class="row__show">Huberman Lab</span>'), `the row names the show: ${html}`);
+  assert.ok(html.includes('href="#/episode/apple%3A1545953110%3Ag-sleep"'), "and its title opens the episode page, which links the show");
+  assert.ok(!html.includes('class="show-link"'), "the show's name is not a second link on the row");
 });
 
 test("search-8: with no artwork from the endpoint, the row takes the show record the show passes already cached", async () => {

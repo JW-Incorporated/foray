@@ -203,7 +203,7 @@ test("`.home` renders the v2 layout (U-11 cutover retired the flag-off four-card
   };
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "renderHome() must always render Home v2 post-cutover");
+  assert.ok(html.includes('<div class="today">'), "renderHome() must always render Today post-cutover");
   assert.ok(!html.includes('class="cards4"'), "the retired flag-off four-card grid must never render");
 });
 
@@ -257,7 +257,7 @@ test("the show search renders on #/shows and not on Home", () => {
   assert.ok(m.view().includes('id="sh-form"'), "the Shows page must render the show search");
 });
 
-test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
+test("'Shows 4a vouches for' renders on neither Home nor Find", () => {
   /* Founder item 1: "move the 'shows we recommend' row to the Shows page."
      (He calls it "shows we recommend"; the shipped heading says "Shows we
      vouch for" and is left as it is — he asked for a move, not a rename.)
@@ -275,8 +275,16 @@ test("'Shows 4a vouches for' renders on #/shows and not on Home", () => {
   m.ctx.renderHome();
   assert.ok(!m.view().includes("Shows 4a vouches for"), "Home must not render the editorial show row");
 
+  /* RULING THAT FELL (tactile `search`, 2026-10-07): the editorial row left the
+     Shows page. The Find screen is a followed strip, a fixed mosaic of subjects
+     and the "More subjects" key, and the direction ends the page on that key
+     (BUILD-PLAN 2.9), so a row of eight shows after it is not on the screen the
+     art director drew. vouchForHtml and showsWeVouchFor stay (show-page.test.js
+     pins their content); no surface renders the row until one adopts it.
+     MUTATION: put `${vouchForHtml()}` back into renderAllShows's #sh-browse
+     block. The assertion below goes red. */
   m.ctx.renderAllShows();
-  assert.ok(m.view().includes("Shows 4a vouches for"), "the Shows page must render the editorial show row");
+  assert.ok(!m.view().includes("Shows 4a vouches for"), "Find must not render the editorial show row");
 });
 
 /* CUTOVER (U-11, founder override, 2026-09-06, kanban card t_a3f01c8a): the
@@ -314,10 +322,11 @@ test("the menu lists exactly the five named destinations, in the founder's order
     .map((m) => [m[2], m[1]]);
   assert.deepStrictEqual(items, [
     ["Home", "#/"],
-    /* "Search", not "Shows", since 2026-09-22: one name per destination, and
-       the tab bar's name wins (audit personas 36 and 76). Same page, same
-       place in the founder's order. */
-    ["Search", "#/shows"],
+    /* "Find", not "Search" or "Shows": one name per destination (audit personas
+       36 and 76), and Tactile's name for it (tactile `search`, 2026-10-07; the
+       tab bar and the page heading say the same). Same page, same place in the
+       founder's order. */
+    ["Find", "#/shows"],
     ["Playlists", "#/playlists"],
     ["Forays", "#/forays"],
     ["Up Next", "#/queue"],
@@ -371,7 +380,7 @@ test("'Up Next' is a page over real cp_queue state, not a slot filled to match t
   });
 });
 
-test("'Starred Shows' left the menu without leaving the app — the Shows page carries it", () => {
+test("'Starred Shows' left the menu without leaving the app — the Find page carries it", () => {
   /* The founder named five destinations and Starred Shows is a sixth, so it
      came off the menu. It is working functionality, so it did not come out of
      the app: a show-shaped surface belongs on the Shows page, which is where
@@ -380,9 +389,12 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
      FLAGGED FOR JOEY in the PR, as product: dropping a top-level entry is his
      call, not this change's.
 
-     MUTATION: delete the `page-link-row` anchor from renderAllShows's `above`
-     block. The link assertion fails and #/starred-shows becomes reachable
-     only by typing the URL. RUN: failed as named.
+     Iteration 2 of tactile `search`: the prototype's Followed shows heading has
+     no "See all" beside it, so the link left the heading row. What is asserted
+     now is that each followed show still links to its own page and that
+     #/starred-shows still routes (Yours lists every followed show).
+     MUTATION: drop the strip item's `href` in findFollowedHtml -> the first
+     assertion fails.
 
      WITH A SHOW FOLLOWED, because since audit round 2 (p-first-12) the row is
      drawn only when there is something behind it — the test below pins the
@@ -391,18 +403,19 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
 
   m.ctx.renderAllShows();
   assert.ok(
-    m.view().includes('href="#/starred-shows"'),
-    "the Shows page must link to the starred-shows page"
+    m.view().includes('class="find-strip__item" href="#/show/show-a"'),
+    "the Find page must link each followed show to its own page"
   );
-  /* ABOVE the browse cloud (review of visual pass 1, 2026-09-23): below it,
-     the page's only non-chip action landed exactly under the floating search
-     pill at scroll 0 once the pills grew a row. MUTATION: move the anchor back
-     under ${browsePillsHtml()} -> red. */
+  /* FIRST in the browse container, above the subject mosaic: the followed strip
+     is the top of Find (tactile `search`; it was above the pill cloud before,
+     review of visual pass 1, 2026-09-23). MUTATION: render findSubjectsHtml()
+     before findFollowedHtml() in renderAllShows -> red. */
   const html = m.view();
-  const link = html.indexOf('class="page-link-row" href="#/starred-shows"');
-  const pills = html.indexOf('class="sh-browse-pills"');
-  assert.ok(link > 0, "the link renders");
-  assert.ok(pills < 0 || link < pills, "Followed shows sits above the browse pills, under the page head");
+  const link = html.indexOf('class="find-strip__item" href="#/show/show-a"');
+  const browse = html.indexOf('id="sh-browse"');
+  const mosaic = html.indexOf('class="mosaic"');
+  assert.ok(link > browse && browse > 0, "the link renders inside the browse container");
+  assert.ok(mosaic < 0 || link < mosaic, "Followed shows sits above the subject mosaic, under the page head");
 
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";
@@ -410,7 +423,7 @@ test("'Starred Shows' left the menu without leaving the app — the Shows page c
   assert.ok(m.view().includes("Followed shows"), "#/starred-shows must still route to its own page");
 });
 
-test("with nothing followed, the Search page draws no 'Followed shows ›' row — a fresh install's first tappable row was a dead end", () => {
+test("with nothing followed, the Find page draws no 'Followed shows' strip — a fresh install's first tappable row was a dead end", () => {
   /* Audit round 2, p-first-12: the shortcut was emitted unconditionally, so a
      newcomer's first tap on the discovery page opened "0 shows you follow".
      Apple hides an empty Library shortcut. Library still lists the section with
@@ -438,8 +451,11 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
 
      MUTATION: change renderForay's back link to href="#/". This fails. RUN:
      failed as named. */
-  const forayPage = APP_SRC.slice(APP_SRC.indexOf('<div class="page foray">'));
-  const back = /<a class="back" href="([^"]+)">/.exec(forayPage);
+  /* REWRITTEN ON PURPOSE (Tactile `foray`): the back link is a paper keycap now, in
+     `forayBarHtml`, and its href goes through safeUrl like every other. Same question:
+     where does it land. MUTATION: change `safeUrl("#/forays")` there to `"#/"` -> red. */
+  const forayPage = APP_SRC.slice(APP_SRC.indexOf("function forayBarHtml("));
+  const back = /<a class="keycap keycap--sm keycap--paper back" href="\$\{esc\(safeUrl\("([^"]+)"\)\)\}"/.exec(forayPage);
   assert.ok(back, "the Foray page must still render a back link");
   assert.strictEqual(
     back[1], "#/forays",
@@ -470,6 +486,6 @@ test("with cp_ui_v2 on, Home renders the v2 layout instead of the four-card grid
 
   m.ctx.renderHome();
   const html = m.view();
-  assert.ok(html.includes('class="home hv2-home"'), "cp_ui_v2 on must render Home v2");
+  assert.ok(html.includes('<div class="today">'), "cp_ui_v2 on must render Today");
   assert.ok(!html.includes('class="cards4"'), "cp_ui_v2 on must not also render the flag-off four-card grid");
 });

@@ -307,14 +307,19 @@ function thumbsHtml(entry) {
      the same reason it is gone: a screen reader was being handed a string from
      the spreadsheet a producer built the Foray in. `forayBeatName` is the one
      place that decides what a beat is called out loud, so the play button and
-     the thumbs cannot name the same beat two different ways. */
+     the thumbs cannot name the same beat two different ways.
+
+     DRAWN, NOT TYPED (Tactile `foray`, BUILD-PLAN 2.17). The two votes were the
+     emoji 👍 and 👎, which the Dial family bans (no text glyph standing in for an
+     icon) and which drew a different picture on every platform. They are the
+     sprite's check (more like this) and x (less like this), 44px targets. */
   const named = forayBeatName(entry);
-  const one = (dir, glyph, label) =>
+  const one = (dir, icon, label) =>
     `<button type="button" class="fy-thumb ${vote === dir ? "on" : ""}" data-thumb="${dir}"
         data-seg-id="${esc(entry.segment_id)}" aria-pressed="${vote === dir}"
-        aria-label="${esc(label)} ${esc(named)}">${glyph}</button>`;
+        aria-label="${esc(label)} ${esc(named)}">${tactileIcon(icon, "sm")}</button>`;
   return `<div class="fy-fb">
-    ${one("up", "👍", "More like")}${one("down", "👎", "Less like")}
+    ${one("up", "ph-check", "More like")}${one("down", "ph-x", "Less like")}
   </div>`;
 }
 
@@ -372,32 +377,6 @@ function forayShowId(entry) {
    bridge, so the fallback is a plain noun, not a second spelling. */
 function narratorName() {
   return window.ForayPlayer?.narratorName || "the narrator";
-}
-
-/* The credit that leads a row's meta line: a link to the show, the show's name
-   as plain text when it does not join, or the narrator's name for a beat we
-   wrote.
-
-   The narrator's credit is deliberately NOT a link. There is no 4a show page to send
-   anyone to, and a control that navigates nowhere is worse than a label — the
-   same rule `thumbsHtml` keeps. It carries the same class and sits in the same
-   slot as a show credit so the two row kinds read as siblings: one credits a
-   podcast, one credits us. */
-function forayCreditHtml(entry) {
-  if (isForayNarration(entry)) {
-    return `<span class="fy-credit is-narrator">${esc(narratorName())}</span>`;
-  }
-  if (!entry.show) return "";
-  const showId = forayShowId(entry);
-  /* A real <a href>, not a button wired through JS, for the reason written
-     against `taxonomyChip`: right-click, long-press and open-in-new-tab are
-     browser behaviours a handler cannot fake. And a SIBLING of the play button
-     rather than inside it, for the reason written against `thumbsHtml`: an
-     interactive element inside a button is invalid HTML whose click never
-     survives the parent's handler. */
-  return showId
-    ? `<a class="fy-credit show-link" href="#${esc(showRoutePath(showId))}">${esc(entry.show)}</a>`
-    : `<span class="fy-credit" data-credit-show="${esc(entry.show)}">${esc(entry.show)}</span>`;
 }
 
 /** What a beat is called when it is spoken aloud — for the play button's
@@ -484,7 +463,7 @@ function citesHtml(entry) {
     if (c.kind === "tape") {
       const showId = c.show_id && showById(c.show_id) ? c.show_id : showIdForShowName(c.show);
       const name = showId
-        ? `<a class="show-link" href="#${esc(showRoutePath(showId))}">${esc(c.show)}</a>`
+        ? `<a class="show-link" href="${esc(safeUrl("#" + showRoutePath(showId)))}">${esc(c.show)}</a>`
         : esc(c.show);
       return `<li>${name}${c.episode_title ? ` — ${esc(c.episode_title)}` : ""}</li>`;
     }
@@ -529,60 +508,180 @@ function onForayScriptClick(e) {
   text.classList.toggle("is-clamped", open);
 }
 
-function forayRow(entry) {
-  const dur = window.ForayPlayer ? window.ForayPlayer.fmtSpan(entry.duration_sec) : "";
-  /* HTML, not text, and named so — the credit is a link when the show joins.
-     The duration stays escaped text and is joined on afterwards so a credit
-     that comes back empty (a beat with no show at all) does not leave a
-     dangling separator. */
-  const credit = forayCreditHtml(entry);
-  /* WHICH EPISODE (audit round 2, p-foray-5). The row said the show and the
-     length, and the episode a clip came from lived only in the credits block
-     at the foot of the page, so a caption about "his" shares or "Kahl" had
-     nothing on the row to hang on. A narration beat has no episode. */
-  const episode = !isForayNarration(entry) && entry.episode_title
-    ? `<span class="fy-ep">${esc(entry.episode_title)}</span>` : "";
-  const metaHtml = [credit, episode, dur ? esc(dur) : ""].filter(Boolean).join(" · ");
-  /* The credit line is hoisted OUT of the play button, because a link inside a
-     button is invalid HTML whose click never survives the parent's handler —
-     the same rule that put the thumbs outside it. It reads in the same place it
-     always did: the 52px curation-code gutter that used to indent this line is
-     gone, so the hoisted line lands flush left where the indented one used to
-     start. */
-  /* THE LISTENER GETS A SENTENCE; THE REASON STAYS FOR US. It printed
-     `Can't play: ${entry.reason}`, and the reasons are foray-resolve's own —
-     "segment X is not in data/segments.json" — so the showcase page named a
-     JSON file on our server to a listener (audit 2026-09-22, persona row 62).
-     The raw reason rides on `data-reason`, where a field report can read it off
-     the page and nobody reads it aloud. */
+/* ---------- the Foray detail page, Dial (Tactile `foray`) ----------
+
+   Redesign 2026, docs/redesign-2026/directions/tactile/BUILD-PLAN.md 2.17 and
+   BUILD-NOTES 4.6. The page is a back key and a share key, the Foray's tag and
+   title, the band in a well, a readout, the summary and why-line, the shows it
+   draws on, its clips grouped by slot, and ONE extended Play key pinned over the
+   deck. Everything the old page carried that this drops (the transport row,
+   speed, the scrubbable strip, the resume banner) lives in the Now Playing
+   sheet and the mini player now; the engine hooks the page keeps are `#fy-play`,
+   `[data-fy]`, the thumbs, the reason sheet, the sources and `#fy-error`.
+
+   WORDS. The prototype says "segments"; the copy rules call `segment` pipeline
+   vocabulary, and Now Playing already renamed its heading "Clips" for it
+   (PROGRESS.md, `now-playing` iteration 3), so this page says clips.
+
+   EVERY STRING a listener's data can reach (a title, a show, a why-line, a
+   transcript) goes through esc(); every href through safeUrl(). */
+
+/** A clip's runtime as the mono readout: m:ss through the player's own clock. */
+function forayClipClock(sec) {
+  const player = window.ForayPlayer;
+  if (!(Number(sec) > 0) || typeof player?.fmtClock !== "function") return "";
+  return player.fmtClock(Number(sec));
+}
+
+/** The shows a Foray draws on, in first-appearance order, with the clips each
+    contributes: `{ name, showId, clips }`. One list for the "From" rows, the
+    station codes and the swatches, so none can disagree about who is there. */
+function forayDetailShows(r) {
+  const order = [];
+  const by = new Map();
+  for (const e of r.entries) {
+    if (isForayNarration(e) || !e.show) continue;
+    if (!by.has(e.show)) {
+      const row = { name: e.show, showId: forayShowId(e), clips: 0 };
+      by.set(e.show, row);
+      order.push(row);
+    }
+    by.get(e.show).clips += 1;
+  }
+  return order;
+}
+
+/** Show name -> two-letter station code, by the band's own resolver, so the
+    codes under the bars, in the swatches and in the "From" rows are the same. */
+function forayStationCodes(shows) {
+  return tactileStationCodes(shows.map(s => ({ id: s.name, name: s.name })));
+}
+
+/** The enamel class a show wears on the band (and on its swatch). */
+function forayEnamelClass(showName) {
+  return `t-band__bar--c${tactileHash(showName)}`;
+}
+
+/** The band's bars: the strip model with each run of back-to-back narration drawn
+    as ONE hatched tick (the same merge Today's hero uses), as `tactileBand` input,
+    plus the model itself so the live paint can map playable items to bars. */
+function forayBandModel(r, player) {
+  const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable, { mergeNarration: true }) : null;
+  const items = model && Array.isArray(model.segments) ? model.segments : [];
+  const segments = items.map(s => ({
+    showId: s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"),
+    show: s.kind === "narration" ? "" : (s.show || ""),
+    duration: s.lengthSec,
+    narration: s.kind === "narration",
+  }));
+  return { items, segments };
+}
+
+/** The drawn band's width in CSS px, for the bars' minimum-width arithmetic and
+    the station-code cut-off only: the viewport less the page gutters and the
+    well's own padding. */
+function forayBandWidth() {
+  const vw = Math.max(280, Math.min(Number(window.innerWidth) || 393, 680));
+  return vw - 2 * 16 - 2 * 10;
+}
+
+/** The index of the band bar drawing playable item `index` (a merged narration
+    run draws several items as one bar), or -1. */
+function forayBandBarOf(items, index) {
+  return items.findIndex(b => index >= b.index && index < b.index + (b.itemCount || 1));
+}
+
+/** The band for a Foray that exists, in its well. `progress` is 0-1 along the
+    runtime; `current` is the playable item the needle is in.
+
+    THE BARS ARE THE PRIMITIVE'S; THE CODES AND THE NEEDLE ARE HTML OVER THEM.
+    The band's SVG is drawn in a 1000x60 box stretched to the well with
+    `preserveAspectRatio="none"`, so a glyph in it is squeezed to a third of its
+    width (the codes read as faint condensed ticks) and a needle's cap is an
+    ellipse. Now Playing hit the same wall and sets both as HTML (ui/now-playing.js
+    `dialPaintBandCodes`); this does the same. The runs, the 24px cut-off and the
+    current run are still the primitive's own: the codes are read back out of its
+    markup rather than worked out a second time. Positions are `--x` custom
+    properties written by `paintForayBand` (a style attribute would break the CSP). */
+function forayBandHtml(band, { progress = 0, current = 0, label = "" } = {}) {
+  const bar = Math.max(0, forayBandBarOf(band.items, current));
+  const svg = tactileBand({
+    id: "fdet-band", kind: "detail", segments: band.segments, renderWidth: forayBandWidth(),
+    progress, currentIndex: bar, label,
+  });
+  const codes = [];
+  const re = /<text class="t-band__code(?: is-current)?" data-run-start="(\d+)" data-run-end="(\d+)"(?: x="([\d.]+)" y="[\d.]+"| x="0" y="0" transform="translate\(([\d.]+) [\d.]+\)[^"]*") text-anchor="middle">([^<]*)<\/text>/g;
+  let m;
+  while ((m = re.exec(svg)) !== null) {
+    /* `m[5]` is the primitive's already-escaped code text; the rest is digits. The detail band
+       (Tactile onboarding, group F) writes its centre as a translate(), the others as `x`. */
+    codes.push(`<span class="fdet-code" data-run-start="${m[1]}" data-run-end="${m[2]}" data-x="${(Number(m[3] ?? m[4]) / 1000).toFixed(4)}">${m[5]}</span>`);
+  }
+  return `<div class="well fdet-well"><div class="fdet-stage">${svg}<div class="fdet-codes" aria-hidden="true">${codes.join("")}</div><span class="fdet-needle" aria-hidden="true"></span></div></div>`;
+}
+
+/** The unavailable Foray's well: no bars, no station labels (a code under
+    nothing reads as a legend for a chart that failed to load), and the needle
+    lifted off its slot. Drawn in HTML because a rotation of the primitive's
+    SVG needle is stretched by its non-uniform viewBox scale. */
+function forayEmptyWellHtml() {
+  return `<div class="well fdet-well fdet-well--empty"><div class="fdet-stage"><div class="band band--detail band--empty" role="img" aria-label="No band: this foray isn't available right now"></div><span class="fdet-needle" aria-hidden="true"></span></div></div>`;
+}
+
+/** Back and share, the page's two keys. Back is a link (`a.back` is what the
+    router's delegated handler steps history on, falling back to the Forays
+    list on a cold open); share is a key, absent when there is nothing to share. */
+function forayBarHtml({ share }) {
+  return `<div class="fdet-bar">
+    <a class="keycap keycap--sm keycap--paper back" href="${esc(safeUrl("#/forays"))}" aria-label="Back">${tactileIcon("ph-arrow-left")}</a>
+    ${share ? tactileKeycap({ size: "sm", variant: "paper", icon: "ph-share-network", label: "Share this foray", id: "fdet-share" }) : ""}
+  </div>`;
+}
+
+/** The "From" rows: a station swatch, the show's artwork, its name and how many
+    clips it contributes. A row is a link when the show has a page of its own and
+    plain text when it does not (a link to nothing is worse than a label). */
+function forayFromRowHtml(show, codes = new Map()) {
+  const art = tactileArtFrame({ size: "mini", url: showArtworkUrl({ title: show.name }), initials: tactileStationCode(show.name) });
+  const swatch = `<span class="fdet-sw ${forayEnamelClass(show.name)}" aria-hidden="true">${esc(codes.get(show.name) || "")}</span>`;
+  /* The plain-text branch carries `data-credit-show`: the show index loads after the
+     first paint, and `relinkForayCredits` turns a name it now knows into the link. */
+  const name = show.showId
+    ? `<a class="row__link" href="${esc(safeUrl("#" + showRoutePath(show.showId)))}">${esc(show.name)}</a>`
+    : `<span data-credit-show="${esc(show.name)}">${esc(show.name)}</span>`;
+  return `<div class="row-show fdet-from">${swatch}${art}<div class="row__body"><h3 class="row__title">${name}</h3><p class="row__meta"><span class="readout">${esc(countLabel(show.clips, "clip"))}</span></p></div></div>`;
+}
+
+/** One beat of the running order. A playable beat is a row-wide button that
+    starts the Foray THERE, with its two votes beside it (siblings, never inside:
+    a button in a button never survives the parent's handler). A beat that will
+    not play is a plain row that says so. Narration keeps its transcript. */
+function forayRow(entry, codes = new Map()) {
+  const narration = isForayNarration(entry);
+  const name = narration ? narratorName() : (entry.show || "This clip");
+  const swatch = narration
+    ? `<span class="fdet-sw fdet-sw--narration" aria-hidden="true"></span>`
+    : `<span class="fdet-sw ${forayEnamelClass(entry.show)}" aria-hidden="true">${esc(codes.get(entry.show) || "")}</span>`;
+  const sub = entry.why || (!narration && entry.episode_title) || "";
+  const text = `<span class="fdet-seg__text"><span class="row__title">${esc(name)}</span>${sub ? `<span class="label fdet-seg__sub">${esc(sub)}</span>` : ""}</span>`;
+  /* THE LISTENER GETS A SENTENCE; THE REASON STAYS FOR US. The resolver's reason
+     is a path into our data files; it rides on `data-reason`, where a field
+     report can read it off the page and nobody reads it aloud. */
   if (!entry.playable) {
-    return `<div class="fy-row is-out">
-      <div class="fy-meta">${metaHtml}</div>
-      <div class="fy-play-row">
-        <div class="fy-jump">
-          <div class="fy-body">
-            <p class="fy-why">${esc(entry.why)}</p>
-            <p class="fy-out" data-reason="${esc(entry.reason || "unresolved")}">This clip isn't available right now.</p>
-          </div>
-        </div>
-      </div>
+    return `<div class="fdet-seg is-out">
+      <div class="fdet-seg__row">${swatch}${text}</div>
+      <p class="label fdet-seg__out fy-out" data-reason="${esc(entry.reason || "unresolved")}">This clip isn't available right now.</p>
       ${narrationScriptHtml(entry)}
     </div>`;
   }
-  /* The row used to BE the button. It cannot be any more: a thumb inside a
-     button is invalid HTML and its click never survives the parent's handler.
-     So the row is a container, the play affordance is the button inside it, and
-     `data-fy` — which paintForay and the transport both key on — moves with the
-     button, not with the container. */
-  return `<div class="fy-row">
-    <div class="fy-meta">${metaHtml}</div>
-    <div class="fy-play-row">
-      <button type="button" class="fy-jump${entry.why ? "" : " is-bare"}" data-fy="${esc(String(entry.queueIndex))}"
+  const dur = forayClipClock(entry.duration_sec);
+  return `<div class="fdet-seg">
+    <div class="fdet-seg__row">
+      <button type="button" class="segrow${narration ? " segrow--narration" : ""}" data-fy="${esc(String(entry.queueIndex))}"
           data-fy-name="${esc(forayBeatName(entry))}" aria-label="${esc(forayJumpLabel(forayBeatName(entry), ""))}">
-        <div class="fy-body">
-          <p class="fy-why">${esc(entry.why)}</p>
-        </div>
-        <span class="fy-state" aria-hidden="true"></span>
+        ${swatch}${text}
+        <span class="fdet-state" aria-hidden="true">${tactileIcon("needle", "sm")}</span>
+        ${dur ? `<span class="readout fdet-seg__len">${esc(dur)}</span>` : ""}
       </button>
       ${thumbsHtml(entry)}
     </div>
@@ -590,28 +689,28 @@ function forayRow(entry) {
   </div>`;
 }
 
-/** A clip row's accessible name, by where the listener is. The ▶ / ✓ that shows
-    it on screen is a CSS glyph in an aria-hidden span, so for a screen reader
-    the row's state lived nowhere: twelve identical "Play …" buttons, with no way
-    to tell the one sounding now or the nine already heard (audit 2026-09-22).
-    paintForay writes this beside the classes, from the same comparison. */
+/** A row's accessible name, by where the listener is. The needle that shows it
+    on screen is an aria-hidden icon, so for a screen reader the row's state
+    lived nowhere: twelve identical "Play …" buttons, with no way to tell the one
+    sounding now or the ones already heard. paintForay writes this beside the
+    classes, from the same comparison. */
 function forayJumpLabel(name, where) {
   if (where === "playing") return `Now playing: ${name}`;
   if (where === "played") return `Played. Play again: ${name}`;
   return `Play ${name}`;
 }
 
-function foraySlotHtml(slot) {
+function foraySlotHtml(slot, codes = new Map()) {
   if (!slot.entries.length) {
-    return `<section class="fy-slot">
-      <h3>${esc(slot.title)}</h3>
-      <p class="note">Nothing in this part yet.</p>
-    </section>`;
+    return `<div class="fdet-slot">
+      <h3 class="h17">${esc(slot.title)}</h3>
+      <p class="label fdet-muted">Nothing in this part yet.</p>
+    </div>`;
   }
-  return `<section class="fy-slot">
-    <h3>${esc(slot.title)}</h3>
-    ${slot.entries.map(forayRow).join("")}
-  </section>`;
+  return `<div class="fdet-slot">
+    <h3 class="h17">${esc(slot.title)}</h3>
+    ${slot.entries.map(e => forayRow(e, codes)).join("")}
+  </div>`;
 }
 
 /* ---------- the feedback sheet ---------- */
@@ -786,10 +885,10 @@ function joinForayCreditsToShowIndex(r, player) {
 function relinkForayCredits(r, player) {
   const view = $("#view");
   if (!view) return;
-  view.querySelectorAll(".fy-credit[data-credit-show]").forEach((span) => {
+  view.querySelectorAll("[data-credit-show]").forEach((span) => {
     const show = span.dataset.creditShow;
     const id = showIdForShowName(show);
-    if (id) span.outerHTML = `<a class="fy-credit show-link" href="#${esc(showRoutePath(id))}">${esc(show)}</a>`;
+    if (id) span.outerHTML = `<a class="row__link" href="${esc(safeUrl("#" + showRoutePath(id)))}">${esc(show)}</a>`;
   });
   const src = view.querySelector(".fy-sources");
   if (src) {
@@ -845,23 +944,144 @@ function forayFactsLabel(r, player) {
   );
 }
 
-function forayHeadSub(r, player) {
-  const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
-  const parts = [];
-  if (tally) {
-    /* THE STRIP'S OWN WORDS (integration, 2026-09-22). L4 made every piece of a
-       Foray a "clip" — the strip's label, the mini bar's "clip N of M", ‹‹/››
-       — with the narrator's clips counted as the narrator's. L5's header
-       counted tape only and said "with narration", so over a narrated Foray
-       the header said "11 clips" and the strip beneath it "56 clips". One
-       count now: the same total, split the same way the strip splits it. */
-    const from = tally.shows ? ` from ${countLabel(tally.shows, "show")}` : "";
-    parts.push(tally.bridges
-      ? `${countLabel(tally.clips + tally.bridges, "clip")}: ${tally.clips}${from} and ${tally.bridges} from ${narratorName()}`
-      : `${countLabel(tally.clips, "clip")}${from}`);
+/* ---------- Foray detail: state, pin, share, why ---------- */
+
+/** What the pinned key says, from where the listener is. ONE function for the
+    first paint and for every tick, so the two cannot word a state differently.
+
+      running                   Pause            elapsed clock (the total, before a few seconds)
+      loading                   Loading…         nothing
+      finished (played to end)  Start over       nothing
+      paused mid-way / stored   Resume           elapsed clock
+      never started             Play             the runtime
+
+    `name` is the accessible name only where the visible words are not enough
+    (the key's text is its name otherwise, so a voice-control "Resume" matches). */
+function forayPinState({ running = false, loading = false, ended = false, started = false, elapsed = 0, totalSec = 0 } = {}) {
+  const player = window.ForayPlayer;
+  const clock = (sec) => (typeof player?.fmtClock === "function" ? player.fmtClock(sec) : "");
+  const span = typeof player?.fmtSpan === "function" ? player.fmtSpan(totalSec) : "";
+  const at = elapsed > 3 ? clock(elapsed) : span;
+  if (running) return { word: "Pause", read: at, name: "Pause", running: true };
+  if (loading) return { word: "Loading…", read: "", name: "Loading, please wait", running: false };
+  if (ended) return { word: "Start over", read: "", name: "Start over", running: false };
+  if (started) return { word: "Resume", read: clock(elapsed), name: "", running: false };
+  return { word: "Play", read: span, name: "", running: false };
+}
+
+/** The pinned key: one extended persimmon keycap, play glyph + word + mono
+    readout. `data-ctl-icons` makes the play and pause glyphs sprite icons chosen
+    by CSS from `data-playing`, so no engine ever writes a text glyph into it. */
+function forayPinHtml(pin) {
+  return `<div class="fdet-pin">
+    <button type="button" class="keycap keycap--persimmon keycap--lg keycap--round keycap--pin" id="fy-play" data-ctl-icons${pin.running ? ' data-playing="1"' : ""}${pin.name ? ` aria-label="${esc(pin.name)}"` : ""}>
+      ${tactileIcon("ph-play-fill")}${tactileIcon("ph-pause-fill", "", "i--swap")}
+      <span class="keycap__label">${esc(pin.word)}</span>
+      <span class="readout keycap__readout"${pin.read ? "" : " hidden"}>${esc(pin.read)}</span>
+    </button>
+  </div>`;
+}
+
+/** The page's `data-foray-state`, which the stylesheet reads: `progress` shows the
+    needle and dims what is ahead, `done` shows every bar, `fresh` is the browsing
+    shape of the Foray. */
+function forayStateName({ started, finished }) {
+  return finished ? "done" : started ? "progress" : "fresh";
+}
+
+/** The address a share carries. A published Foray is its hash route on the public
+    site; a draft is the `?foray=` address that unlocks it. */
+const FORAY_SHARE_BASE = "https://jw-incorporated.github.io/foray/";
+function forayShareUrl(r) {
+  return r.foray.status === "published"
+    ? `${FORAY_SHARE_BASE}#${forayRoutePath(r.id)}`
+    : `${FORAY_SHARE_BASE}?foray=${encodeURIComponent(r.id)}`;
+}
+
+/** Share the Foray: the shell's own share sheet when it has one, the browser's
+    Web Share when it does, else the link on the clipboard with a spoken line. A
+    dismissed sheet is not an error. No network write, so nothing for the lab flag
+    to hold back. */
+async function shareForay(r) {
+  const url = forayShareUrl(r);
+  const title = r.title;
+  try {
+    const native = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Share;
+    if (native && typeof native.share === "function") {
+      await native.share({ title, text: title, url, dialogTitle: "Share this foray" });
+      return;
+    }
+    if (typeof navigator.share === "function") {
+      await navigator.share({ title, url });
+      return;
+    }
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      await navigator.clipboard.writeText(url);
+      announce("Link copied.");
+    }
+  } catch (err) {
+    if (err && err.name === "AbortError") return;   // the sheet was dismissed
+    console.warn("[foray] share failed", err);
   }
-  parts.push(forayRuntimeLabel(player, tally, r.totalSec));
-  return joinMeta(...parts);
+}
+
+function bindForayShare(r) {
+  const btn = $("#fdet-share");
+  if (btn) btn.addEventListener("click", () => shareForay(r));
+}
+
+/** "Why today": a reason only when one is OBSERVED, never invented (product
+    principle 2). A first run says what 4a does on a first run; the stretch pick
+    says it is outside the listener's usual subjects, on purpose; a subject the
+    listener has moved up says so; anything else prints no why at all. Each is
+    held to the 18-word ceiling. */
+function forayWhyToday(r) {
+  try {
+    const branch = String(r.foray.topic || "").split("/")[0];
+    let line = "";
+    if (typeof todayIsFirstRun === "function" && todayIsFirstRun({ jumpBackIn: jumpBackInEntries(Infinity) })) {
+      line = TODAY_FIRST_RUN_LINE;
+    } else if (branch) {
+      const picks = foraysForYouPicks();
+      const stretch = picks && picks.stretchIndex >= 0 ? picks.picks[picks.stretchIndex] : null;
+      if (stretch && stretch.id === r.id) line = stretchBridgeText(subjectLabel(branch));
+      else if (interestScore({ topics: [branch] }) > 0.5) line = `A pick for your interest in ${subjectLabel(branch)}.`;
+    }
+    return line && wordCount(line) <= 18 ? line : "";
+  } catch (_) {
+    return "";   // a reason we cannot work out is no reason, not a broken page
+  }
+}
+
+/** The next Foray the listener can open, for "Try another foray": the first listed
+    one that is not this id and resolves, else the Forays list. */
+function nextAvailableForayHref(skipId) {
+  try {
+    const next = forayCards().find(f => f.id !== skipId && resolveListedForay(f.id));
+    if (next) return "#" + forayRoutePath(next.id);
+  } catch (_) { /* the list is the fallback */ }
+  return "#/forays";
+}
+
+/** A Foray that is not there, or not published and not unlocked (the same answer
+    for both: a client that tells them apart announces unpublished work). The
+    well is empty, the needle lifted, the way out is the next Foray or Yours. */
+function renderForayUnavailable(id) {
+  state.foray = null;
+  $("#view").innerHTML = `
+    <div class="page foray fdet fdet--unavailable" data-foray-state="unavailable">
+      ${forayBarHtml({ share: false })}
+      <header class="fdet-head">
+        <div class="fdet-tags">${tactileTag({ kind: "narration", text: "Foray" })}</div>
+        <h1 class="display fdet-title">This foray isn't available right now.</h1>
+      </header>
+      ${forayEmptyWellHtml()}
+      <div class="fdet-keys">
+        <a class="keycap keycap--md keycap--persimmon" href="${esc(safeUrl(nextAvailableForayHref(id)))}"><span class="keycap__label">Try another foray</span></a>
+        <a class="keycap keycap--md keycap--paper" href="${esc(safeUrl("#/library"))}"><span class="keycap__label">Yours</span></a>
+      </div>
+    </div>`;
+  pageDidPaint();
 }
 
 /* The back link on this page goes to `#/forays`, not `#/`. enterForayFromQuery's
@@ -870,7 +1090,7 @@ function forayHeadSub(r, player) {
    reviewing it. That list moved off Home to `#/forays` on 2026-09-03, so this
    link moved with it. */
 async function renderForay(id) {
-  setBodyClass("view-page");
+  setBodyClass("view-page view-foray");
   /* Every status this page can stop on has a ‹ back to the list, and each
      failure offers "Try again" wired to the thing that failed (audit
      2026-09-22, theme G). "Reload the page" was browser advice inside a native
@@ -911,12 +1131,10 @@ async function renderForay(id) {
   });
   // Same answer for "no such Foray" and "not published": a client that
   // distinguishes them announces the existence of unpublished work.
-  if (!r) {
-    $("#view").innerHTML = statusPageHtml({ title: "Foray", note: "That foray isn't available.", back: "#/forays" });
-    return;
-  }
+  if (!r) return renderForayUnavailable(id);
   state.foray = r;
   state.forayPainted = null;   // fresh DOM: the paint guard must not skip it
+  state.forayBandPainted = null;
 
   const draft = r.foray.status !== "published";
   /* Which door the draft came through decides what the page says about it:
@@ -927,39 +1145,27 @@ async function renderForay(id) {
     : "Draft — not published. Shown because \"Show draft Forays\" is on in Settings; nobody else sees it.";
   /* TWO POPULATIONS, AND ONLY ONE OF THEM IS "BELOW" (audit 2026-09-22).
      `r.unplayable` is the union of the entries that resolved but will not play
-     — which ARE rows in the running order below, marked "Can't play" — and the
-     items hydration dropped (a segment id missing from data/segments.json),
-     which never become entries and so are listed nowhere. "3 can't play —
-     listed below" over a running order listing none of them pointed at rows
-     that do not exist. Each is now counted and said separately. */
+     — which ARE rows in the running order below, marked "isn't available" — and
+     the items hydration dropped (a segment id missing from data/segments.json),
+     which never become entries and so are listed nowhere. Each is counted and
+     said separately. */
   const shownOut = r.entries.filter(e => !e.playable).length;
   const missing = Math.max(0, r.unplayable.length - shownOut);
   /* Read the resume point BEFORE anything is wired up: it decides the clock the
-     page opens on, which rows are already ticked off, and what the main button
+     page opens on, which rows are already ticked off, and what the pinned key
      says. Against the LIVE runtime AND the live segment count, so a repaired
      data file cannot leave someone resuming past the end of a Foray that got
      shorter, or paint a running order that is entirely behind them.
 
-     Still guarded, for a narrower reason than the one that used to be written
-     here. The service worker no longer refreshes app.js and the ES module on
-     separate schedules — since #233 both are revalidated on every load and a
-     page that falls back to the cache is pinned to it — but the module is loaded
-     from a deferred module script tag, and the native shells run with no worker
-     at all. An older or not-yet-evaluated module costs the resume offer, which
-     is a missing banner rather than a page stuck on "Loading…". */
-  /* `resolved` is the freshness half of #40, and it is about STORED state rather
-     than about the worker: a `cp_` position written days ago can name a segment
-     that a later `data/forays.json` moved or dropped, however fresh both the code
-     and the data are. With the resolved Foray in hand the player looks the stored
-     SEGMENT up in the live order instead of trusting the stored index — so a
-     segment that moved resumes to the same audio, and one that is gone degrades
-     to a clamped clock with no row marked current, rather than seeking somewhere
-     wrong. */
-  /* `includeFinished` (audit round 2, honesty-2): a finished Foray used to open
-     exactly like one never touched, no banner, no mark. It now says "Played"
-     with a "Play again" beside it, the finished episode's word. Split here so
-     `resume` keeps meaning "a place to start from", which a finished Foray is
-     not: its main button starts from the top, as before. */
+     Still guarded: the module is loaded from a deferred script tag, and the
+     native shells run with no worker at all. An older or not-yet-evaluated
+     module costs the resume offer, which is a missing "Resume" rather than a
+     page stuck on "Loading…". `resolved` is the freshness half of #40: a stored
+     position is looked up in the live order by SEGMENT, so a clip that moved
+     resumes to the same audio and one that is gone degrades to a clamped clock.
+     `includeFinished` (audit round 2, honesty-2): a finished Foray says
+     "Played" and its key says "Start over"; `resume` keeps meaning "a place to
+     start from", which a finished Foray is not. */
   const point = typeof player.forayResume === "function"
     ? player.forayResume(r.id, { totalSec: r.totalSec, itemCount: r.playable.length, resolved: r, includeFinished: true })
     : null;
@@ -977,97 +1183,66 @@ async function renderForay(id) {
       elapsed_sec: Math.round(resume.elapsedSec), index: resume.index,
     });
   }
-  const nudge = forayNudgeSteps(player);
+
+  const shows = forayDetailShows(r);
+  const codes = forayStationCodes(shows);
+  const band = forayBandModel(r, player);
+  state.forayBand = { ...band, boxes: tactileBandLayout(tactileBandSegments(band.segments), forayBandWidth(), "detail") };
+  state.forayFinished = Boolean(played);
+  const tally = typeof player.stripTally === "function" ? player.stripTally(r.playable) : null;
+  const narrated = tally ? tally.bridges > 0 : r.entries.some(isForayNarration);
+  const clips = tally ? tally.clips : r.entries.filter(e => !isForayNarration(e)).length;
+  const facts = joinMeta(
+    forayRuntimeLabel(player, tally, r.totalSec),
+    countLabel(tally ? tally.shows : shows.length, "show"),
+    countLabel(clips, "clip"),
+  );
+  const started = Boolean(resume);
+  const mark = resume ? resume.index : -1;
+  const progress = resume && r.totalSec > 0 ? Math.min(1, resume.elapsedSec / r.totalSec) : (played ? 1 : 0);
+  const bandLabel = tally
+    ? `Foray band: ${countLabel(tally.clips + tally.bridges, "clip")} from ${countLabel(tally.shows, "show")}${tally.bridges ? ", with 4a narration between them" : ""}`
+    : "Foray band";
+  const pin = forayPinState({ ended: Boolean(played), started, elapsed: resume ? resume.elapsedSec : 0, totalSec: r.totalSec });
+  const why = forayWhyToday(r);
+  const summary = String(r.foray.summary || "").trim();
 
   $("#view").innerHTML = `
-    <div class="page foray">
-      <div class="page-head">
-        <a class="back" href="#/forays">‹</a>
-        <div>
-          <h2>${esc(r.title)}</h2>
-          <p class="sub">${esc(forayHeadSub(r, player))}</p>
-        </div>
-      </div>
-      ${draft ? `<p class="fy-draft">${draftNote}</p>` : ""}
-      ${r.foray.summary ? `<p class="fy-summary">${esc(r.foray.summary)}</p>` : ""}
-      <div class="fy-transport">
-        ${resume ? `<div class="fy-resume" id="fy-resume">
-          <div class="fy-bar"><span class="fy-bar-fill" id="fy-bar-fill"></span></div>
-          <p class="fy-resume-line">
-            <span class="fy-resume-at">Jump back in at ${esc(player.fmtClock(resume.elapsedSec))}</span>
-            <span class="fy-resume-left">${esc(resume.label)}</span>
-          </p>
-          <button type="button" class="fy-restart" id="fy-restart">Start over</button>
-        </div>` : ""}
-        ${played ? `<div class="fy-resume fy-played" id="fy-resume">
-          <div class="fy-bar"><span class="fy-bar-fill" data-pct="100"></span></div>
-          <p class="fy-resume-line">
-            <span class="fy-resume-left">${esc(played.label)}</span>
-          </p>
-          <button type="button" class="fy-restart" id="fy-restart">Play again</button>
-        </div>` : ""}
-        <!-- Plain bars, replaced wholesale by the SegmentStrip component in
-             mountForayStrip below (#128). They stay in the markup as the
-             fallback for a page paired with an older cached module, and are the
-             only reason this element is never empty. -->
-        <div class="fy-strip" id="fy-strip">${r.playable.map((_, i) =>
-          `<span class="fy-seg" data-seg="${i}"><i class="fy-seg-fill"></i></span>`).join("")}</div>
-        <div class="fy-times"><span id="fy-now">0:00</span><span id="fy-total"></span></div>
-        <!-- THE SEEK PAIR STAYS THE SEEK PAIR (audit 2026-09-22, persona 58).
-             The two buttons beside Play were previous/next clip, so the
-             gesture every other player has taught — missed a sentence, tap
-             back — threw the listener to the top of an eleven-minute clip.
-             ↺15 / 30↻ nudge on the Foray's own clock here, as they do in the
-             Now Playing sheet; previous/next clip have their own row below,
-             labelled in words. The numbers come from the player bridge so this
-             page and the sheet cannot disagree about a step. -->
-        <div class="fy-controls">
-          <button type="button" class="fy-btn" id="fy-back" aria-label="Back ${nudge.back} seconds">↺ ${nudge.back}</button>
-          <button type="button" class="fy-btn fy-main" id="fy-play"${controlLabelAttr("▶ Play", "Play")}>▶ Play</button>
-          <button type="button" class="fy-btn" id="fy-fwd" aria-label="Forward ${nudge.fwd} seconds">${nudge.fwd} ↻</button>
-          <!-- Playback speed (#242). On the transport row rather than in a settings
-               screen, because this is the surface a listener is looking at when
-               they decide a segment is slow — and its current value is the label,
-               so it is legible without opening anything. The label and the
-               accessible name both come from the player bridge, so this button and
-               the mini-player's cannot word the same speed two ways. It opens the
-               speed menu (a dialog, openRateMenu), and says so the way the
-               sheet's button does (audit round 2, player-9): VoiceOver reads
-               "pop-up button" before the tap, not a surprise after it. -->
-          <button type="button" class="fy-btn fy-rate" id="fy-rate" aria-label="Playback speed" aria-haspopup="dialog">1×</button>
-        </div>
-        <!-- The guillemets are decoration: the accessible name is the words
-             alone, or VoiceOver opens with "single left-pointing angle
-             quotation mark" (visual pass 1 review, 2026-09-23). -->
-        <div class="fy-clips">
-          <button type="button" class="fy-clip" id="fy-prev" aria-label="Previous clip">‹ Previous clip</button>
-          <button type="button" class="fy-clip" id="fy-next" aria-label="Next clip">Next clip ›</button>
-        </div>
+    <div class="page foray fdet" data-foray-state="${forayStateName({ started, finished: Boolean(played) })}">
+      ${forayBarHtml({ share: true })}
+      <header class="fdet-head">
+        <div class="fdet-tags">${tactileTag({ kind: "narration", text: "Foray" })}${played ? tactileTag({ kind: "played", text: "Played" }) : ""}</div>
+        <h1 class="display-xl fdet-title">${esc(r.title)}</h1>
+      </header>
+      ${forayBandHtml(band, { progress, current: Math.max(0, mark), label: bandLabel })}
+      <div class="fdet-lead">
+        <p class="readout fdet-facts">${esc(facts)}</p>
+        ${narrated ? "" : `<p class="label fdet-muted">No narration yet on this one.</p>`}
+        ${draft ? `<p class="label fdet-muted fy-draft">${esc(draftNote)}</p>` : ""}
+        ${summary ? `<p class="fdet-summary">${esc(summary)}</p>` : ""}
+        ${why ? `<div class="fdet-why"><span class="label fdet-muted">Why today</span><p class="fdet-why__line">${esc(why)}</p></div>` : ""}
         <!-- A start that failed says so HERE, and a screen reader hears it
-             without moving focus off the button that was just pressed. -->
-        <p class="fy-error" id="fy-error" role="status" aria-live="polite" hidden></p>
+             without moving focus off the key that was just pressed. -->
+        <p class="label fdet-notice" id="fy-error" role="status" aria-live="polite" hidden></p>
+        ${shownOut ? `<p class="label fdet-muted">${esc(countLabel(shownOut, "clip"))} can't play — marked below.</p>` : ""}
+        ${missing ? `<p class="label fdet-muted">${esc(countLabel(missing, "clip"))} from this foray couldn't be found, so ${missing === 1 ? "it's" : "they're"} left out.</p>` : ""}
       </div>
-      ${shownOut ? `<p class="note">${countLabel(shownOut, "clip")} can't play — marked below.</p>` : ""}
-      ${missing ? `<p class="note">${countLabel(missing, "clip")} from this foray couldn't be found, so ${missing === 1 ? "it's" : "they're"} left out.</p>` : ""}
-      ${r.slots.map(foraySlotHtml).join("")}
+      ${shows.length ? `<section class="fdet-sect">
+        <h2 class="heading">From</h2>
+        <div class="fdet-rows">${shows.map(s => forayFromRowHtml(s, codes)).join("")}</div>
+      </section>` : ""}
+      <section class="fdet-sect" id="fdet-clips">
+        <h2 class="heading">Clips</h2>
+        ${r.slots.map(slot => foraySlotHtml(slot, codes)).join("")}
+      </section>
       ${foraySourcesHtml(r, player)}
       ${feedbackSheetHtml()}
+      ${forayPinHtml(pin)}
     </div>`;
 
-  /* The clock beside the scrubber keeps its clock shape — it sits opposite a
-     ticking one — but an estimate carries a "~" so it cannot pass for a
-     measurement (same `stripTally` flag as the header above). */
-  const tally = typeof player.stripTally === "function" ? player.stripTally(r.playable) : null;
-  $("#fy-total").textContent = `${tally && tally.estimated ? "~" : ""}${player.fmtClock(r.totalSec)}`;
-  mountForayStrip(r, player);
-  // Optional-chained deliberately. This runs BEFORE every binder, so if the
-  // markup and this line ever disagree the throw would take the whole transport
-  // down with it — an unfilled progress bar is a far better failure. CI catches
-  // the disagreement itself: the hook is pinned in player/foray-playback.test.js.
-  if (resume) { const fill = $("#fy-bar-fill"); if (fill) fill.style.width = `${resume.percent}%`; }
-  if (played) sizeProgressBars($("#view"));
   bindFeedback(r);
   bindSourceLinks(r);
+  bindForayShare(r);
   bindForayTransport(r, player, resume);
   pageDidPaint();   // the real page is up: a clamped back-step restore can land now
   joinForayCreditsToShowIndex(r, player);

@@ -182,7 +182,7 @@
        ONE NAME PER DESTINATION (2026-09-22): #/shows is "Search" here because
        that is the tab bar's name for it; the tab bar's names win. -->
   <a class="drawer-section" href="#/">Home</a>
-  <a class="drawer-section" href="#/shows">Search</a>
+  <a class="drawer-section" href="#/shows">Find</a>
   <a class="drawer-section" href="#/playlists">Playlists</a>
   <a class="drawer-section" href="#/forays">Forays</a>
   <a class="drawer-section" href="#/queue">Up Next</a>
@@ -194,37 +194,38 @@
 
 <main id="view"></main>
 
-<script src="search-engine.js"></script>
-<script src="app.js"></script>
-<!-- app.js is the core (state, storage, data, routing, playback glue). The ui/ scripts are classic scripts that share its globals; ui/boot.js must stay last because it starts init(). Order and rationale: docs/redesign-2026/split-notes.md -->
-<script src="ui/browse.js"></script>
-<script src="ui/create.js"></script>
-<script src="ui/delete-data.js"></script>
-<script src="ui/diagnostics.js"></script>
-<script src="ui/downloads.js"></script>
-<script src="ui/drawer-dev.js"></script>
-<script src="ui/drawer.js"></script>
-<script src="ui/episode.js"></script>
-<script src="ui/foray-player.js"></script>
-<script src="ui/foray.js"></script>
-<script src="ui/forays.js"></script>
-<script src="ui/primitives.js"></script>
-<script src="ui/gallery.js"></script>
-<script src="ui/home.js"></script>
-<script src="ui/interests.js"></script>
-<script src="ui/library.js"></script>
-<script src="ui/onboarding.js"></script>
-<script src="ui/mini.js"></script>
-<script src="ui/now-playing.js"></script>
-<script src="ui/playlist.js"></script>
-<script src="ui/queue.js"></script>
-<script src="ui/rows.js"></script>
-<script src="ui/search.js"></script>
-<script src="ui/sheets.js"></script>
-<script src="ui/show.js"></script>
-<script src="ui/tabbar.js"></script>
-<script src="ui/voice-sheet.js"></script>
-<script src="ui/boot.js"></script>
+<script defer src="search-engine.js"></script>
+<script defer src="app.js"></script>
+<!-- app.js is the core (state, storage, data, routing, playback glue). The ui/ scripts are classic scripts that share its globals; ui/boot.js must stay last because it starts init(). Order and rationale: docs/redesign-2026/split-notes.md. Every classic script is `defer`: a plain classic script is fetched only after the one before it finishes (about one round trip each; 30 of them cost ~5.7 s of LCP on a slow link, QA perf finding), while deferred ones download in parallel and still run in document order, before DOMContentLoaded. test/boot-path.test.js pins this. -->
+<script defer src="ui/browse.js"></script>
+<script defer src="ui/create.js"></script>
+<script defer src="ui/delete-data.js"></script>
+<script defer src="ui/diagnostics.js"></script>
+<script defer src="ui/downloads.js"></script>
+<script defer src="ui/drawer-dev.js"></script>
+<script defer src="ui/drawer.js"></script>
+<script defer src="ui/episode.js"></script>
+<script defer src="ui/foray-player.js"></script>
+<script defer src="ui/foray.js"></script>
+<script defer src="ui/forays.js"></script>
+<script defer src="ui/primitives.js"></script>
+<script defer src="ui/gallery.js"></script>
+<script defer src="ui/home.js"></script>
+<script defer src="ui/interests.js"></script>
+<script defer src="ui/library.js"></script>
+<script defer src="ui/onboarding.js"></script>
+<script defer src="ui/mini.js"></script>
+<script defer src="ui/now-playing.js"></script>
+<script defer src="ui/playlist.js"></script>
+<script defer src="ui/queue.js"></script>
+<script defer src="ui/rows.js"></script>
+<script defer src="ui/search.js"></script>
+<script defer src="ui/settings.js"></script>
+<script defer src="ui/sheets.js"></script>
+<script defer src="ui/show.js"></script>
+<script defer src="ui/tabbar.js"></script>
+<script defer src="ui/voice-sheet.js"></script>
+<script defer src="ui/boot.js"></script>
 <!-- ES module; deferred by spec, so app.js checks window.ForayPlayer lazily on click. -->
 <script type="module" src="player/client.js"></script>
 </body>

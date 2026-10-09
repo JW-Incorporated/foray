@@ -1558,17 +1558,18 @@ test("ROUND 2 review (p-foray-4 / visual-9 / p-foray-8): a Foray found in Search
 test("copy-8: every quoted query goes through the one typographic pair — no straight-quoted interpolation is left in a listener string", () => {
   /* The CTA used curly quotes and every other quoted query used straight ones,
      side by side on the empty-search screen. MUTATION: put `"${query}"`
-     back in any of the five sites — the count goes to 1, red. */
+     back in any of the five sites — the count goes to 1, red. ("Starts with" was a
+     sixth site on Home's subject card; that card went with the Today redesign.) */
   const straight = [...APP_SRC.matchAll(/[A-Za-z] "\$\{[^}]*\}"/g)].map((x) => x[0]);
   assert.deepStrictEqual(straight, [], `a listener string quotes an interpolation with straight quotes: ${JSON.stringify(straight)}`);
   assert.match(APP_SRC, /function quoteQuery\(text\) \{\s*return `\\u201c\$\{text\}\\u201d`;/, "the helper is the one place the pair lives");
   for (const site of [
-    "No shows found for ${quoteQuery(query)}.",
+    "You're offline — no shows found for ${quoteQuery(query)}.",
+    "No shows match ${quoteKeyQuery(query)}.",
     "Searching for ${quoteQuery(query)}…",
     "No episodes match ${quoteQuery(esc(searchQuery.trim()))}.",
     "Not much on ${quoteQuery(query)} yet",
-    "Create a playlist about ${quoteQuery(esc(query))}",
-    "Starts with ${quoteQuery(",
+    "Make a playlist about ${quoteKeyQuery(esc(query))}",
   ]) assert.ok(APP_SRC.includes(site), `site must use the helper: ${site}`);
   const m = mount();
   assert.strictEqual(m.evalIn("quoteQuery")("x"), "\u201cx\u201d");

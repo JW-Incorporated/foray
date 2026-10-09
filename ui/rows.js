@@ -108,7 +108,7 @@ function epRow(item, idx, ctx, nextIdx) {
   return `<div class="ep-row">
     ${orderedRowCtx(ctx) ? `<span class="q-num ${idx === nextIdx ? "next" : ""}">${idx + 1}</span>` : ""}
     <div class="info">
-      <div class="t"><a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
+      <div class="t"><a class="ep-title-link" href="${esc(safeUrl("#/episode/" + encodeURIComponent(item.id)))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}</div>
       ${snippet ? `<p class="ep-hook">${esc(snippet)}</p>` : ""}
       <div class="s">${joinMeta(showNameLink(item.show, item.show_id), fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</div>
     </div>
@@ -167,7 +167,7 @@ function archivedRow(item, idx, ctx) {
   return `<div class="ep-row gone">
     ${orderedRowCtx(ctx) ? `<span class="q-num">${idx + 1}</span>` : ""}
     <div class="info">
-      <div class="t">${named ? `<a class="ep-title-link" href="#/episode/${esc(encodeURIComponent(item.id))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Episode no longer in the catalogue"}</div>
+      <div class="t">${named ? `<a class="ep-title-link" href="${esc(safeUrl("#/episode/" + encodeURIComponent(item.id)))}">${esc(item.title)}</a>${explicitBadge(item.explicit)}` : "Episode no longer in the catalogue"}</div>
       <div class="s">${named
         ? joinMeta(showNameLink(item.show, item.show_id), fmtDur(episodeMinutes(item)), esc(dateStr))
         : "Saved before 4a kept episode details"}</div>

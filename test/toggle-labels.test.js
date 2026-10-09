@@ -207,6 +207,7 @@ function clientCtx(extra) {
   const ctx = { ...extra };
   vm.createContext(ctx);
   vm.runInContext(clientFn("paintControl"), ctx);
+  vm.runInContext(clientFn("paintCardControl"), ctx);
   return ctx;
 }
 
@@ -273,23 +274,39 @@ test("the scrub slider announces a time, not a 0-1000 fraction", () => {
 /* The Foray page                                                      */
 /* ------------------------------------------------------------------ */
 
-/* The states of the main button, read straight out of paintForay's decision
-   so another cannot be added with a two-state name. FIVE since integration:
-   L2 added "Start over" for a finished Foray.
-   MUTATION: restore `playBtn.setAttribute("aria-label", running ? "Pause" : "Play")`. */
-test("the Foray main button's name has every state its text has", () => {
-  const body = APP_SRC.slice(APP_SRC.indexOf("const playBtn = $(\"#fy-play\");"), APP_SRC.indexOf("setControlLabel(playBtn, text, name);") + 40);
-  const pairs = [...body.matchAll(/\["([^"]+)", "([^"]+)"\]/g)].map((m) => [m[1], m[2]]);
-  assert.deepStrictEqual(pairs, [
-    ["❚❚ Pause", "Pause"],
-    ["Loading…", "Loading, please wait"],
-    ["▶ Start over", "Start over"],
-    ["▶ Resume", "Resume"],
-    ["▶ Play", "Play"],
-  ]);
-  for (const [text, name] of pairs) {
-    assert.ok(text.includes(name.split(",")[0]), `the name "${name}" must contain the visible word of "${text}" (WCAG 2.5.3)`);
+/* The states of the pinned key, read from `forayPinState`, the one function the first
+   paint and every tick take them from, so another cannot be added with a two-state
+   name. FIVE since integration (L2 added "Start over" for a finished Foray).
+   REWRITTEN ON PURPOSE (Tactile `foray`): this read the `["❚❚ Pause", "Pause"]` pairs out
+   of paintForay's source; the key is an icon, a word and a readout now, so the pairs come
+   from calling the state function. The rule it holds is unchanged: the accessible name
+   carries every state the key's words do, and where it differs it still contains the
+   visible word (WCAG 2.5.3).
+   MUTATION: return `name: "Play"` from the `running` branch of forayPinState (the old
+   two-state name) -> the first state's name no longer says Pause; red. MUTATION 2: swap
+   the `loading` and `running` checks -> a running Foray reads "Loading…"; red. */
+test("the Foray pinned key's name has every state its words have", () => {
+  const { ctx } = mountApp();
+  const at = { totalSec: 3000 };
+  const states = [
+    [{ running: true, started: true, elapsed: 120 }, "Pause", "Pause"],
+    [{ loading: true }, "Loading…", "Loading, please wait"],
+    [{ ended: true, elapsed: 3000 }, "Start over", "Start over"],
+    [{ started: true, elapsed: 760 }, "Resume", ""],
+    [{}, "Play", ""],
+  ];
+  for (const [input, word, name] of states) {
+    const pin = ctx.forayPinState({ ...at, ...input });
+    assert.strictEqual(pin.word, word, `${JSON.stringify(input)} says ${word}`);
+    assert.strictEqual(pin.name, name, `${word}: the accessible name`);
+    if (pin.name) assert.ok(pin.word.includes(pin.name.split(",")[0]), `the name "${pin.name}" must contain the visible word "${pin.word}" (WCAG 2.5.3)`);
   }
+  /* A key whose words are its name carries no aria-label at all: setControlLabel(btn, null, null) removes it. */
+  assert.match(APP_SRC, /setControlLabel\(btn, null, pin\.name \|\| null\);/, "paintForayPin writes the name through the one helper");
+  /* The precedence is the old one: running beats loading beats finished beats a stored place. */
+  assert.strictEqual(ctx.forayPinState({ ...at, running: true, loading: true }).word, "Pause");
+  assert.strictEqual(ctx.forayPinState({ ...at, loading: true, ended: true }).word, "Loading…");
+  assert.strictEqual(ctx.forayPinState({ ...at, ended: true, started: true, elapsed: 700 }).word, "Start over");
 });
 
 /* MUTATION: drop the aria-current / label writes in paintForay's row loop. */
@@ -349,6 +366,11 @@ const NOT_CONTROLS = {
     "pct", "el", "note", "$(\"#fy-total\")", "$(\"#fy-sheet-sub\")", "now", "ui.status", "ui.notice", "ddUi.status", "n",
     "link", // a drawer <a> with fixed text, written once
     "region", // L3's announce(): the sr-only live region, a status line (integration)
+    /* ui/now-playing.js (Tactile Now Playing). Each is `x.textContent = ""`, which empties a
+       container before its children are rebuilt: a chip host, the Up Next card host, the
+       segment-group list and the origin-row list. None is a button, and the rows put back
+       are built by dialNpEl, whose text for a button goes through setControlLabel. */
+    "parts.chips", "nextHost", "groups", "origins",
   ]),
   "player/client.js": new Set([
     "n", "ui.tNow", "ui.tLeft", "ui.title", "ui.show", "ui.sTitle", "ui.sShow", "ui.sWhy", "ui.sDesc", "ui.note",

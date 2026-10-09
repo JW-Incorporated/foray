@@ -18,7 +18,7 @@ function renderDrawer() {
     .sort((a, b) => (b.last_played_at || b.created || "").localeCompare(a.last_played_at || a.created || ""))
     .slice(0, 5);
   $("#drawer-playlists").innerHTML = recent.map(p =>
-    `<a class="drawer-item" href="#/${esc(playlistRoute(p))}">${esc(p.title)}</a>`).join("")
+    `<a class="drawer-item" href="${esc(safeUrl("#/" + playlistRoute(p)))}">${esc(p.title)}</a>`).join("")
     || `<p class="drawer-empty">No playlists yet</p>`;
   /* Every switch's label, from the one registry `drawerToggle` fills. This was
      five ad-hoc lines — three unguarded, two guarded, each spelling its own
@@ -68,10 +68,22 @@ function drawerIsOpen() {
   return !!(drawer && !drawer.hidden);
 }
 
+/** The control that opens the drawer, and gets focus back from it. Today's knob
+    (`#today-knob`, Tactile) IS the menu button while Home is on screen, and the
+    Yours knob (`#yours-knob`) is while Yours is: the topbar's ☰ is hidden on
+    both, and focus handed to a hidden control is lost (Escape on the drawer,
+    opened from Settings > More settings, left focus on <body>; the watcher in
+    ui/library.js could not repair it because the drawer link still held focus
+    when it ran). Every other page keeps the ☰. */
+function menuOpener() {
+  const knob = $("#today-knob") || $("#yours-knob");
+  return knob || $("#menu-btn");
+}
+
 function openDrawer(open, { toMenu = false } = {}) {
   const drawer = $("#drawer");
   const overlay = $("#drawer-overlay");
-  const menu = $("#menu-btn");
+  const menu = menuOpener();
   const was = !!(drawer && !drawer.hidden);
   drawer.hidden = !open;
   overlay.hidden = !open;

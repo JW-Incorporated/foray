@@ -202,7 +202,9 @@ const BUTTONS = {
   ".iconbtn": { size: [".iconbtn"] },
   ".tile": { size: [".tile"] },
   ".mini__body": { tall: ".mini__body", why: "flex: 1 — the mini player's whole artwork and title body" },
+  ".row-queue__main": { tall: ".row-queue__main", why: "flex: 1 — the Yours queue row's whole artwork and title body, between the position and the 44px ⋯" },
   ".tab": { size: [".tab"] },
+  ".settings-seg__opt": { size: [".settings-seg__opt"] },   // Tactile settings: Cream / Bakelite / Auto, 44 tall and a third of the well wide
   ".rotary__tick": { size: [".rotary__tick"] },
   "#menu-btn": { rule: ".topbar button" },
   "#refresh-btn": { rule: ".topbar button" },
@@ -224,17 +226,14 @@ const BUTTONS = {
   ".fp-rate": { rule: ".fp-rate" },
   ".fp-skip": { size: [".fp-skip"] },
   ".fp-stop": { rule: ".fp-stop" },
-  ".fy-btn": { size: [".fy-btn"] },
+  ".fy-btn": { size: [".fy-btn"] },   // the load-failure Try again / Reload keys (app.js loadRetryHtml); the Foray page's transport row that shared it is gone
   ".fy-chip": { rule: ".fy-chip" },
-  ".fy-clip": { size: [".fy-clip"] },
-  ".fy-jump": { tall: ".fy-jump", why: "flex: 1 — the clip card's whole play band" },
-  ".fy-restart": { tall: ".fy-restart", why: "a labelled text button (\"Start over\") with 8px side padding" },
   ".fy-script-more": { rule: ".fy-script-more" },
   ".fy-sheet-cancel": { rule: ".fy-sheet-cancel" },
   ".fy-sheet-go": { rule: ".fy-sheet-go" },
   ".fy-thumb": { rule: ".fy-thumb" },
+  ".segrow": { tall: ".fdet-seg .segrow", why: "flex: 1 — the Foray page's clip row, its whole play band (Tactile `foray`; replaces .fy-jump, .fy-btn, .fy-clip and .fy-restart, which that page no longer renders)" },
   ".interest-reset": { rule: ".interest-reset" },
-  ".hv2-play": { tall: "body.ui-v2 .hv2-play", why: "Home's one play button (founder, 2026-09-24): a labelled capsule, \"▶ Play <title>\", 48px tall with 16/20px side padding" },
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
@@ -460,12 +459,12 @@ test("a held in-app link opens no web preview and no callout, in the shell or th
   assert.strictEqual(valueOf('a[href^="#/"]', "-webkit-user-select"), "none");
   /* Every stretched link really is an in-app route, so the rule reaches it. */
   const app = readAppSource();
-  for (const cls of ["mc-link", "ep-title-link", "hv2-jbi-link"]) {
-    assert.match(app, new RegExp(`<a class="[^"]*\\b${cls}\\b[^"]*" href="#/`), `.${cls} is an <a href="#/…">`);
+  for (const cls of ["ep-title-link", "row__link", "today-resume__link"]) {
+    /* The href is \`${esc(safeUrl("#/…" + id))}\`: an in-app route through safeUrl, which passes it. */
+    assert.match(app, new RegExp(`<a class="[^"]*\\b${cls}\\b[^"]*" href="\\$\\{esc\\(safeUrl\\("#/`), `.${cls} is an <a href="#/…">`);
   }
   /* The flash goes only where the card authors its own press. */
   const PRESS = {
-    ".mc-link": ".mini-card:active",
     ".ep-row .ep-title-link": ".ep-row:has(.ep-title-link:active)",
     ".pl-row": ".pl-row:active",
     ".page-link-row": ".page-link-row:active",

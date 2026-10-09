@@ -1439,32 +1439,19 @@ test("the card's strip clips to one line, and the player's strip does not", () =
      `.fy-strip` so both strips clip (the last one does). */
 });
 
-test("the clip is load-bearing: even merged, a generated Foray of the shipped shape does not fit the card", () => {
-  /* The numbers off the committed stylesheet rather than remembered: a card is
-     240px wide with 14px of padding and a 1px border each side, and at `sm` a
-     bar is floored at `--seg-min` with a 1px hairline between bars and a
-     `--seam` before every capsule but the first. Chrome measures 293px of bars
-     in a 210px card for this Foray; this reproduces that from the CSS. */
-  const card = declarationsFor(".hv2-foray-card", { contains: "body.ui-v2" });
-  const content = px(card, "width") - 2 * px(card, "padding") - 2 * px(card, "border");
-
+test("the small strip's bar floor is at least the whole break beside it, so a bar never reads as a gap", () => {
+  /* WHAT THIS TEST WAS. It measured Home's 240px Foray card (210px of content)
+     and asserted that even a merged, generated Foray's strip overflowed it, so
+     the `.fy-strip--static` clip was load-bearing. That card is gone with Home's
+     rails (Redesign 2026, Today: the hero draws a band, not a strip), and the one
+     small static strip left (the first-run sheet's welcome strip) sits in a
+     343px panel where the same Foray fits. The clip claim is retired with the
+     card; the half of this test that was never about the card stays. */
   const strip = declarationsFor(".fy-strip");
   const sm = declarationsFor(".fy-strip--sm");
   const gap = px(strip, "gap");
   const segMin = px(sm, "--seg-min");
   const seam = px(sm, "--seam");
-
-  const merged = stripModel(generated().playable, { mergeNarration: true }).segments;
-  const capsules = merged.filter((s) => s.runStart).length;
-  // `.fy-seg:first-child { margin-left: 0 }`, so the first capsule pays no seam.
-  const floor = merged.length * segMin + (merged.length - 1) * gap + (capsules - 1) * seam;
-
-  assert.equal(content, 210, "the card's content box moved — re-measure before trusting the rest");
-  assert.ok(
-    floor > content,
-    `the merged row is ${floor}px inside a ${content}px card — it fits now, so the clip is no ` +
-    "longer what keeps the strip inside the card, and this test wants rewriting, not deleting"
-  );
 
   /* AND THE FLOOR IS NOT WHERE THE FIT GETS PAID FOR. `--seg-min`'s own comment
      states the rule: a bar narrower than the whole break (`gap` + `--seam`)
@@ -1475,8 +1462,8 @@ test("the clip is load-bearing: even merged, a generated Foray of the shipped sh
     `--seg-min is ${segMin}px against a ${gap + seam}px break — a bar that thin reads as a gap`
   );
   /* MUTATION (killed): `.fy-strip--sm { --seg-min: 5px }` -> `3px`, the change
-     that makes the worst Foray very nearly fit. The last assertion fails,
-     naming both numbers. */
+     that makes the worst Foray very nearly fit. The assertion fails, naming
+     both numbers. */
 });
 
 /* ==================================================================== */

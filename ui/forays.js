@@ -151,7 +151,7 @@ function forayRowsHtml(list, { inSection = false } = {}) {
   return `<div class="fy-home">${list.map(f => {
     const sub = forayListSubLabel(f, progress, { draftTag: false });
     return `
-    <a class="fy-home-row" href="#${esc(forayRoutePath(f.id))}">
+    <a class="fy-home-row" href="${esc(safeUrl("#" + forayRoutePath(f.id)))}">
       ${inSection && f.status === "published" ? "" : `<span class="fy-home-kicker">foray${f.status === "published" ? "" : " · draft"}</span>`}
       <span class="fy-home-title">${esc(f.title)}</span>
       ${sub ? `<span class="fy-home-sub">${esc(sub)}</span>` : ""}
@@ -281,7 +281,7 @@ function forayResumeRows({ limit = 3, includeFinished = false } = {}) {
 function jumpBackInHtml(rows) {
   if (!rows.length) return "";
   return `<div class="fy-home fy-jbi">${rows.map(p => `
-    <a class="fy-home-row fy-jbi-row" href="#${esc(forayRoutePath(p.id))}">
+    <a class="fy-home-row fy-jbi-row" href="${esc(safeUrl("#" + forayRoutePath(p.id)))}">
       <span class="fy-home-kicker">Jump back in</span>
       <span class="fy-home-title">${esc(p.title || p.id)}</span>
       <span class="fy-bar"><span class="fy-bar-fill" data-pct="${esc(String(p.percent))}"></span></span>
@@ -292,8 +292,10 @@ function jumpBackInHtml(rows) {
 /** Bar widths are a DOM property, never a style attribute — the page CSP is
     `style-src 'self'` and test/app-security.test.js gates it. */
 function sizeProgressBars(scope) {
-  scope.querySelectorAll(".fy-bar-fill[data-pct]").forEach(fill => {
-    const pct = Math.max(0, Math.min(100, Number(fill.dataset.pct) || 0));
-    fill.style.width = `${pct}%`;
-  });
+  for (const selector of [".fy-bar-fill[data-pct]", ".today-prog__fill[data-pct]"]) {
+    scope.querySelectorAll(selector).forEach(fill => {
+      const pct = Math.max(0, Math.min(100, Number(fill.dataset.pct) || 0));
+      fill.style.width = `${pct}%`;
+    });
+  }
 }

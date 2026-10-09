@@ -725,9 +725,14 @@ export function shellOnlyPlan(root = REPO_ROOT) {
  *  and six times `app.js`'s `SEEN_WINDOW` of 100 so a listener refreshing all day
  *  does not walk off the end of the pool.
  *
+ *  LOWERED 3 -> 2 on 2026-10-08 (Redesign 2026 QA): the tactile branch's shipped
+ *  code (CSS, ui/*.js, the icon sprite) grew the bundle past the 3 MB cap, and this
+ *  is the lever this paragraph names. Two is ~426 items and ~463 KB, still four
+ *  times `SEEN_WINDOW`. See the 2.95 MB note in prepare-webdir.test.mjs.
+ *
  *  Lower it and the bundle shrinks proportionally with no code change; the guards
  *  below hold at every value, including 1. */
-export const BUNDLED_ITEMS_PER_SHOW = 3;
+export const BUNDLED_ITEMS_PER_SHOW = 2;
 
 const topicsOf = (item) =>
   (Array.isArray(item?.topics) ? item.topics : []).filter((t) => typeof t === "string" && t !== "");

@@ -73,19 +73,7 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
-    "a scrub past either end of the strip clamps instead of leaving the Foray": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "a snapshot from an OLDER player module leaves the label alone rather than blanking it": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
     "a source credit is bound, so the outbound click is measured": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "a speed changed in the mini-player's sheet reaches the page's button": {
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
@@ -94,10 +82,6 @@
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
     "a start that fails puts the page back to cold, so the next tap is a real retry": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "a stored position makes the cold press a resume, and Start over clears it": {
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
@@ -129,14 +113,6 @@
       "reason": "webview-only",
       "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225), so the page must reach the element with nothing awaited first. The native engine starts AVPlayer from a bridge command with an active session; there is no gesture to spend."
     },
-    "changing the speed does NOT start playback": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "clicking a quarter of the way along the strip seeks to a quarter of the Foray": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
     "client.js only ever reports an error that describes the attempt in front of it": {
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
@@ -165,10 +141,6 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
-    "next, previous, a row and the strip each reach the player": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
     "pause comes back through the same callback and the label flips": {
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
@@ -181,31 +153,7 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
-    "scrubbing a Foray that has not started begins it AT that position, not at the top": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "tapping the speed button opens a picker instead of cycling directly": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "the 2px gaps between the bars are live scrubber, not dead zones": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "the Foray page carries a speed button, labelled from the player": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "the bar the listener is inside fills as it plays; the ones behind it are full": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
     "the clock a failed start leaves behind is the place the button goes": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "the live bar keeps moving between segment changes — it is painted above the paint guard": {
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
@@ -217,17 +165,33 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
-    "the speed button says its value to a screen reader AT NORMAL SPEED too": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
-    "the speed button survives a Foray with nothing playable": {
-      "reason": "dom-only",
-      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
-    },
     "the tap reaches playForay with nothing awaited in front of it": {
       "reason": "webview-only",
       "why": "WebKit lifts an <audio> element's autoplay restriction only for a play() made inside a user gesture's task (#225), so the page must reach the element with nothing awaited first. The native engine starts AVPlayer from a bridge command with an active session; there is no gesture to spend."
+    },
+    "a row starts the Foray AT that clip when cold, and jumps inside it when live": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the band's needle and filled part follow the clock, and it is painted above the paint guard": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a stored position makes the cold press a resume": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a finished Foray's key starts over: it forgets the position, logs a restart and starts from the top": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "the Foray page neither draws a speed control nor asks the player for the speed ladder": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
+    },
+    "a Foray with nothing playable disables the key and says why": {
+      "reason": "dom-only",
+      "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     }
   },
   "html-audio-backend": {
@@ -430,6 +394,10 @@
     "mediaArtworkLadder declares the one chosen square at each of the six sizes": {
       "reason": "webview-only",
       "why": "The six-size artwork ladder is applied only where the web page assigns navigator.mediaSession.metadata (Tactile BUILD-NOTES 7); the native plugins build their own artwork from mediaArtworkList, which stays one entry and is fixtured."
+    },
+    "a plain episode's album is its why-line, and '4a' when it has none (Tactile BUILD-NOTES 7; #1006)": {
+      "reason": "webview-only",
+      "why": "The why-line is a page-side string (client.js currentWhy, the sentence the sheet shows) that the web page hands mediaMetadata as `why`; the native engine is never given it and keeps the fixtured album ('4a' for a plain episode, #1006), so there is no rule here for Swift to reimplement."
     },
     "EVERY playForay call site in app.js passes the artwork document": {
       "reason": "js-module-shape",
@@ -933,6 +901,10 @@
     }
   },
   "transport-reconcile": {
+    "REDESIGN a11y: with Now Playing loaded, every render tick keeps the slider's aria-valuetext on its value (WCAG 4.1.2)": {
+      "reason": "webview-only",
+      "why": "The web page's own slider: client.js paintPage writes the range input's aria-valuetext on every tick. Native mode has no <input type=range> from this module (the lock screen and the native player name their own positions), so the engine has no rule here."
+    },
     "a RESTORED ribbon is current but not loaded, so a caller's own start path takes a press on it (round-3 review, L2)": {
       "reason": "webview-only",
       "why": "A page-side predicate app.js reads before a stamp tap (restoredPending plus the manager's state type). In native mode client.js answers it from the same restoredPending and the facades' snapshot state; the engine has no rule here, it only plays what the page's start path sends."
@@ -1077,9 +1049,9 @@
       "reason": "dom-only",
       "why": "The previous/next clip row's label and visibility. Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
-    "VISUAL PASS: the mini bar's ↺15 is the same nudge, for an episode and for a Foray": {
+    "VISUAL PASS: the mini bar's 30-forward is the same nudge, for an episode and for a Foray": {
       "reason": "dom-only",
-      "why": "The mini bar reusing the sheet's ↺15 handler is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
+      "why": "The mini bar reusing the sheet's 30↻ handler is page wiring; the nudge itself is a seekBy the engine performs (manager-foray / transport families). Page painting that client.js does identically in both modes from what the manager surface answers (in native mode, the facades); the engine never draws the page, so there is nothing here for Swift to reimplement."
     },
     "a transition in flight is not a lie: reconciling mid-effect cannot stop a start": {
       "reason": "js-module-shape",
@@ -1116,14 +1088,6 @@
     "PERSONA: an episode played AFTER the Foray keeps the bar": {
       "reason": "dom-only",
       "why": "lastPlayedForay() is the page choosing which bar to paint at boot, by comparing the updated_at stamps of the cp_foray and cp_last_episode rows. In native mode the page makes the same choice over the rows the engine writes in the same format (the rows family, cp-foray.json); the engine never decides what the page's bar shows."
-    },
-    "a RESTORED ribbon is current but not loaded, so a caller's own start path takes a press on it (round-3 review, L2)": {
-      "reason": "webview-only",
-      "why": "A page-side predicate app.js reads before a stamp tap (restoredPending plus the manager's state type). In native mode client.js answers it from the same restoredPending and the facades' snapshot state; the engine has no rule here, it only plays what the page's start path sends."
-    },
-    "a voice Preview never cuts off the narrator's line, playing or paused (round-3 review, L3)": {
-      "reason": "webview-only",
-      "why": "The web player's own guard in client.js auditionVoice: with no engine, a preview and narration share the page's one synthesiser, so the page refuses a preview while a line is loaded. In native mode the preview is an audition command and the engine already refuses it while it plays (NE-22, engine-busy), so this page branch never runs there."
     },
     "a Next clip tap that throws leaves the index where the audio is, and repaints (audit round 3, player-rest-5)": {
       "reason": "dom-only",

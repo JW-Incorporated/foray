@@ -578,12 +578,12 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      failed first, then the policy check, until privacy-policy.md §1 got the
      row.
 
-     33 -> 34 on 2026-10-07 (Redesign 2026, Tactile Now Playing):
-     `cp_art_tint:<show>`, the tint the sheet derives from a show's artwork
-     (ui/now-playing.js, BUILD-NOTES 7), stored with a hash of the artwork URL
-     so it is recomputed only when the image changes. Derived on the device,
-     never sent. Same mechanism: this count failed first, then the policy
-     check, until privacy-policy.md §1 got the row. */
+     33 -> 34 on 2026-10-08 (Redesign 2026, Tactile `settings`): `cp_theme`,
+     the Appearance choice (System, Cream or Bakelite) the Settings sheet writes
+     through the storage shim and ui/settings.js paints on <html data-theme> at
+     boot. A local per-device preference, absent means System, never sent. Same
+     mechanism: this count failed first, then the policy check, until
+     privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
     families.length, 34,

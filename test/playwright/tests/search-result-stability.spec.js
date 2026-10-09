@@ -126,7 +126,9 @@ async function stubSearch(page, { net = [], directory = [] } = {}) {
 async function openShowsPage(page) {
   await page.goto(site.baseUrl + "#/shows");
   await page.waitForFunction(() => !!document.querySelector("#sh-input"), null, { timeout: 60_000 });
-  await page.waitForFunction(() => document.querySelectorAll("#view .show-result").length > 0, null, { timeout: 60_000 });
+  /* The page is ready when the catalogue has painted its subject mosaic (tactile
+     `search`: it replaced the A-Z list this used to wait on). */
+  await page.waitForFunction(() => document.querySelectorAll("#sh-browse .mosaic .tile").length > 0, null, { timeout: 60_000 });
   await page.evaluate(() => { document.querySelector("#first-time-sheet")?.remove(); });
 }
 
@@ -241,23 +243,24 @@ test("a row that has been painted never moves again, however late the next pass 
   expect(last.indexOf("Science")).toBeGreaterThan(0);
 });
 
-test("a browse tile runs the ordinary search for its own label", async ({ page }) => {
-  /* Report 1, end to end. `Science` is the tile whose category page holds
-     nothing at all over the committed catalogue (32 of the 41 do — see
-     test/category-browse.test.js), so a tile still linking to `#/category/` is
-     visible here as an empty page rather than as a different href. */
+test("a subject tile runs the ordinary search for its own label", async ({ page }) => {
+  /* Report 1, end to end. A tile that linked to `#/category/` would be an empty
+     page for most subjects over the committed catalogue (see
+     test/category-browse.test.js), so it is visible here as a field that does
+     not hold the tile's name rather than as a different href. The mosaic is
+     drawn from the day's seed, so the FIRST tile is taken, whichever it is. */
   await stubSearch(page, { directory: [row("dir-1", "Science Vs Everything", "apple")] });
   await openShowsPage(page);
 
-  const tile = page.locator('#sh-browse .fy-chip', { hasText: /^Science$/ });
-  await expect(tile).toHaveCount(1);
+  const tile = page.locator("#sh-browse .mosaic a.tile").first();
+  await expect(tile).toBeVisible();
+  const label = (await tile.locator(".tile__name").innerText()).trim();
   await tile.click();
 
-  /* "Search", not "Shows": the audit (theme K / R6, 2026-09-23) gave each
-     destination one name, and the tab bar's wins, so the page is titled for
-     the tab that opens it. */
-  await expect(page.locator("#view h2")).toHaveText("Search");
-  await expect(page.locator("#sh-input")).toHaveValue("Science");
+  /* "Find": one name for the destination (audit theme K / R6, 2026-09-23; the
+     name became Find with tactile `search`), the tab bar's and the heading's. */
+  await expect(page.locator("#view h2")).toHaveText("Find");
+  await expect(page.locator("#sh-input")).toHaveValue(label);
   await page.waitForFunction(() => document.querySelectorAll("#sh-results .show-result").length > 0, null, { timeout: 30_000 });
   await expect(page.locator("#view")).not.toContainText("No shows here yet.");
 });

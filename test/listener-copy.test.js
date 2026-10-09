@@ -248,7 +248,7 @@ function mountApp() {
     document: {
       body: el("body"), documentElement: el("html"), readyState: "complete",
       addEventListener() {}, createElement: () => el(`x${els.size}`),
-      querySelector: (sel) => (String(sel).startsWith("#") ? el(String(sel).slice(1)) : (sel === ".hv2-greeting-word" ? el("greeting") : null)),
+      querySelector: (sel) => (String(sel).startsWith("#") ? el(String(sel).slice(1)) : (sel === "[data-today-date]" ? el("date") : null)),
       querySelectorAll: () => [],
     },
     navigator: { userAgent: "node" }, addEventListener() {}, removeEventListener() {},
@@ -268,40 +268,18 @@ function mountApp() {
   return { ctx, el, state };
 }
 
-/* qa row 136: 210 of the pool's titles end in ? ! or ., and the card appended a
-   full stop regardless ("…Save The World?."). MUTATION: always append ".". */
-test("'Starts with' closes its sentence once, whatever the title ends with", () => {
-  /* Typographic quotes since audit round 2 (copy-8): one `quoteQuery` helper
-     for every quoted listener string. */
-  const { ctx } = mountApp();
-  assert.strictEqual(ctx.startsWithLine("Can Fusion Save The World?"), "Starts with “Can Fusion Save The World?”");
-  assert.strictEqual(ctx.startsWithLine("Gearboxes, alive!"), "Starts with “Gearboxes, alive!”");
-  assert.strictEqual(ctx.startsWithLine("The Fed"), "Starts with “The Fed.”");
-});
-
-/* qa row 148: on a short screen the hook clamps to one line, so the title — the
-   one concrete fact on the card — must come first. MUTATION: put the blurb
-   back in front of startsWithLine in miniCard's hook. */
-test("the subject card's hook leads with the episode it starts with", () => {
-  /* Up to the function's end, not a fixed width: L5 added a comment above the
-     count at integration, which pushed the hook past a 900-character window. */
-  const at = APP_SRC.indexOf("function miniCard(slot)");
-  const body = APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
-  /* The Stretch reason may follow, as visible text (audit round 2, a11y-11). */
-  assert.match(body, /<p class="mc-hook">\$\{startsWithLine\(item\.title\)\} \$\{esc\(subjectBlurb\(slot\)\)\}/);
-});
-
-/* qa row 193: the greeting was computed once per render. MUTATION: drop the
-   refreshGreeting() call from init()'s foreground hook, or make it recompute
-   nothing. */
-test("the greeting is recomputed when the app returns to the foreground", () => {
+/* qa row 193: the greeting was computed once per render, and the date line that
+   replaced it on Today has the same defect if nothing refreshes it.
+   MUTATION: drop the refreshTodayDate() call from init()'s foreground hook, or
+   make it recompute nothing. */
+test("Today's date line is recomputed when the app returns to the foreground", () => {
   const { ctx, el } = mountApp();
-  ctx.refreshGreeting(new Date(2026, 8, 22, 7, 0));
-  assert.strictEqual(el("greeting").textContent, "Good morning");
-  ctx.refreshGreeting(new Date(2026, 8, 22, 21, 0));
-  assert.strictEqual(el("greeting").textContent, "Good evening");
+  ctx.refreshTodayDate(new Date(2026, 8, 22, 7, 0));
+  assert.strictEqual(el("date").textContent, "Tue 22 Sep");
+  ctx.refreshTodayDate(new Date(2026, 8, 23, 7, 0));
+  assert.strictEqual(el("date").textContent, "Wed 23 Sep", "a page left open overnight does not keep yesterday");
   const hook = APP_SRC.slice(APP_SRC.indexOf('refreshForayDirectory("foreground");'), APP_SRC.indexOf('refreshForayDirectory("foreground");') + 80);
-  assert.match(hook, /refreshGreeting\(\);/, "the foreground hook must refresh it");
+  assert.match(hook, /refreshTodayDate\(\);/, "the foreground hook must refresh it");
 });
 
 /* qa row 103: clearing the search left "Showing shows available offline" up.
@@ -355,7 +333,6 @@ test("every text field has a name that survives typing, and search notes are liv
      left with the builder; Create's is the one playlist field. */
   assert.ok(inputs.length >= 4, `expected the app's text inputs, found ${inputs.length}`);
   for (const i of inputs) assert.match(i, /aria-label="[^"]+"/, `a text field named only by its placeholder: ${i}`);
-  assert.match(APP_SRC, /typedInput\.setAttribute\("aria-label", /);
   assert.match(APP_SRC, /<p id="sh-note" class="note" role="status" aria-live="polite" hidden><\/p>/);
   assert.match(APP_SRC, /data-show-ep-search-note role="status" aria-live="polite" hidden/);
   assert.match(APP_SRC, /<form id="sh-form" role="search"/);
@@ -394,29 +371,26 @@ test("REVIEW: the returning-listener popup claims a stretch pick only where Home
     return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
   };
   const hasStretch = {
-    forays: /pickWithStretchFloor/.test(body("foraysForYouPicks")),
-    playlists: /pickWithStretchFloor|stretch/.test(body("playlistsForYouHtml")),
-    episodes: /miniCardV2/.test(body("suggestedHtml")) && /role !== "stretch"/.test(body("miniCardV2")),
+    playlists: /pickWithStretchFloor|stretch/.test(body("todayPlaylistsHtml")),
+    episodes: /role === "stretch"/.test(body("todayAlsoSlots")) && /tactileBridgeCard/.test(body("todayAlsoHtml")),
+    hero: /stretch/i.test(body("todayHeroHtml")),
   };
-  assert.deepStrictEqual(hasStretch, { forays: true, playlists: false, episodes: true }, "fixture: where the stretch picks live");
+  assert.deepStrictEqual(hasStretch, { playlists: false, episodes: true, hero: false }, "fixture: where the stretch picks live (Also today's bridge, and nowhere else on Today)");
   /* The popup is the literal that makes the per-section claim ("include one
      pick"), not merely the first one with the phrase: the Tactile gauge
      primitive (ui/primitives.js, loaded before ui/onboarding.js) carries the
      direction's own "About a third of today sits outside your usual subjects",
      which is the exploration-floor readout, not this claim. */
-  const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t) && /include one pick/.test(t));
+  const popup = literals(APP_SRC).map((l) => l.text).find((t) => /outside your usual subjects/.test(t) && /Also today includes one pick/.test(t));
   assert.ok(popup, "the popup sentence exists");
   const claim = popup.split(/(?<=\.)\s+/).find((sentence) => /outside your usual subjects/.test(sentence));
-  /* Audit round 2 (p-first-11): the Forays row has a stretch pick only when the
-     listed Forays span more than one subject, so the popup names forays only
-     when `foraysForYouPicks()` found one; that branch is exercised in
-     test/foray-surfaces.test.js. Here: the Forays half of the claim is
-     CONDITIONED on the same pick Home renders, never stated outright. */
-  assert.ok(APP_SRC.includes('The episodes ${foraysForYouPicks()?.stretchIndex >= 0 ? "and the forays each " : ""}include one pick'),
-    "the Forays half of the stretch claim asks Home's own pick");
+  /* Today (Redesign 2026): the Forays half of the old claim is gone with the
+     "Forays for you" rail (the hero is one Foray, not a pick set), so the popup
+     names only the one place the outside pick is: Also today. */
+  assert.match(claim, /^Also today includes one pick/, "the claim names the section that has it");
   for (const [section, has] of Object.entries(hasStretch)) {
-    if (section === "forays") continue;
-    const named = new RegExp(`\\b${section}\\b`, "i").test(claim);
+    if (section === "episodes") continue;
+    const named = new RegExp(`\\b${section === "hero" ? "foray" : section}\\b`, "i").test(claim);
     assert.strictEqual(named, has, `the stretch claim ${has ? "must" : "must not"} name ${section}: "${claim}"`);
   }
 });
@@ -447,7 +421,7 @@ test("the app speaks as 4a, never as 'we', 'us' or 'our'", () => {
   /* The scanner can see: the rewritten strings are listener prose it finds. */
   const all = listenerProse("app.js").map((l) => l.text).join("\n");
   assert.ok(all.includes("Shows 4a vouches for"), "the editorial row's heading");
-  assert.ok(all.includes("This is how 4a tunes your suggestions."), "the first-run sheet");
+  assert.ok(all.includes("4a picks real shows each day and lines up the best parts into one listen."), "the onboarding screen's sub line");
 });
 
 /* copy-7. MUTATION: restore "Not into this topic". */
@@ -488,11 +462,11 @@ test("the explicit badge is a named image, and no explanation lives only in a to
   assert.doesNotMatch(ctx.notPlayableNote(), /title=/);
   state.taxonomy = { nodes: [{ id: "history", parent: null, label: "History" }] };
   const item = { id: "a", title: "A title", show: "S", duration_min: 30 };
-  const card = ctx.miniCard({ branch: "history", role: "stretch", item, items: [item] });
-  assert.doesNotMatch(card, /title="/, card);
-  assert.match(card, /<p class="mc-hook">[^<]*Outside your usual subjects, on purpose\.<\/p>/, "the reason is visible text");
-  const plain = ctx.miniCard({ branch: "history", role: "top", item, items: [item] });
-  assert.doesNotMatch(plain, /on purpose/, "only a stretch card says it");
+  const bridge = ctx.tactileBridgeCard({ id: "a", link: "episode", title: item.title, show: item.show, duration: "30 min", sentence: ctx.stretchBridgeSentence("Engineering", "History") });
+  assert.doesNotMatch(bridge, /stitle="/, bridge);
+  assert.match(bridge, /<p class="bridge__sentence">Outside your usual subjects: from Engineering into History, on purpose\.<\/p>/, "the reason is visible text");
+  const plain = ctx.tactileEpisodeRow({ id: "a", link: "episode", title: item.title, show: item.show, duration: "30 min" });
+  assert.doesNotMatch(plain, /on purpose/, "only the Stretch bridge says it");
   /* The not-playable chip's explanation moved to the episode page, as text.
      MUTATION: drop the NOT_PLAYABLE_WHY note from renderEpisode. */
   state.discover = { items: [{ id: "silent", title: "No audio here", show: "S", duration_min: 30, topics: [] }] };
