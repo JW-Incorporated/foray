@@ -99,13 +99,13 @@ test("episode search: a query too long is a 400, one too short spends no slot", 
     assert.equal(long.statusCode, 400);
     assert.equal(long.body.error, QUERY_TOO_LONG_ERROR);
 
-    const before = appleSearchBucket.currentCount();
+    const before = appleSearchBucket.size();
     const short = mockRes();
     await episodes({ method: "GET", query: { q: "?!" }, headers: {} }, short);
     assert.equal(short.body.degraded, true);
     assert.equal(short.body.error, QUERY_TOO_SHORT_ERROR);
     assert.equal(calls.apple, 0);
-    assert.equal(appleSearchBucket.currentCount(), before, "no shared slot was spent");
+    assert.equal(appleSearchBucket.size(), before, "no shared slot was spent");
   });
 });
 

@@ -2,7 +2,7 @@ import { Client } from "pg";
 import { ingestShowFeed, toCatalogEpisode } from "../../../backend/src/catalog/ingestShowFeed";
 import { PostgresShowEpisodesStore, type CatalogShowEpisode } from "../../../backend/src/catalog/showEpisodesStore";
 import { applyCors } from "../../_lib/cors";
-import { firstParam } from "../../_lib/params";
+import { firstParam, type ApiRequest, type ApiResponse } from "../../_lib/params";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
 import { sharedFeedReader } from "../../_lib/feedCache";
 import { type ShowMeta } from "../../_lib/showCatalog";
@@ -55,26 +55,6 @@ import { resolveShow } from "../../_lib/resolveShow";
    no-store; a release that could not be read 502, no-store; a deploy
    without the catalogue pair 503, no-store (the client's Try again). */
 
-/**
- * Minimal structural types for the Vercel Node runtime request/response —
- * avoids adding `@vercel/node` as a new dependency to a root that is
- * deliberately dependency-free by design (root package.json's own
- * description). The runtime object shape (query, method, status().json())
- * is standard across Vercel's Node functions regardless of the SDK type
- * package being installed.
- */
-interface ApiRequest {
-  method?: string;
-  query: Record<string, string | string[] | undefined>;
-  headers: Record<string, string | string[] | undefined>;
-}
-interface ApiResponse {
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-  setHeader(name: string, value: string): void;
-  end(): void;
-}
-
 const PAGE_SIZE = 100;
 
 /**
@@ -119,7 +99,10 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const showId = typeof req.query.show_id === "string" ? req.query.show_id : null;
+  /* The first value, like every single-value parameter in this API
+     (_lib/params.ts); a repeated show_id was refused with this 400 before
+     code-health-2 CH2-40. */
+  const showId = firstParam(req.query.show_id);
   if (!showId) {
     res.status(400).json({ error: "show_id is required" });
     return;

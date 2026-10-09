@@ -64,6 +64,14 @@ import java.util.Objects;
 public final class EngineCore {
     /** Plan §4.3: an uncommanded pause within this long of a route going away (either order) is the route's. */
     public static final double ROUTE_ATTRIBUTION_MS = 500;
+    /**
+     * P-14, the stall display (plan §4.3; #866): the surface shows {@code buffering} from the
+     * moment the deck reports waiting (a {@code deck kind=time-control status=waiting} row) until
+     * it reports playing again, with no debounce. PROVISIONAL (card NE-38), and Swift's
+     * {@code EngineCore.bufferingWhileWaiting} knob, which this mirrors so a verdict that flips
+     * one platform flips both (code-health-3 R3-07); false would show a stall as playing.
+     */
+    public static final boolean BUFFERING_WHILE_WAITING = true; // MEASURE: verdict=rate-latch (NE-38e). Rows: deck kind=time-control status=waiting reason=, nowplaying via=rate.
     /** {@code REMOTE_DUPLICATE_WINDOW_MS}: a second press of the same command inside it is recorded as {@code dupCandidate}. */
     public static final double REMOTE_DUPLICATE_WINDOW_MS = 500;
     /** The {@code pendingEvents} log is bounded (plan §5.5): a page that never attaches must not grow it without limit. */
@@ -481,6 +489,14 @@ public final class EngineCore {
         suppressSave = !persist;
         dispatch(PlayerEvent.STOP);
         suppressSave = false;
+        // THE POSTCONDITION OF STOP IS SILENCE TOO (audit round 3, player-core-7; Swift
+        // `stop(persist:)`, code-health-3 R3-02): from `interrupted` or `loadingItem` the
+        // reducer's stop emits no pause, because it believes nothing is audible, and in the #689
+        // drift the deck is. `pause()`'s rule, by the deck's own word, never the reverse.
+        if (audibleNow()) {
+            diag("pause", m("kind", str("forced")), m("why", str("the deck was audible while the machine said stopped")));
+            deckCommand(DeckCommand.PAUSE);
+        }
         applySession(SessionPolicy.transition(state.session,
                 new SessionPolicy.Input.Simple(persist ? SessionPolicy.InputKind.CLOSE : SessionPolicy.InputKind.DATA_DELETION),
                 state.holdPolicy));
@@ -653,13 +669,12 @@ public final class EngineCore {
 
     /**
      * Which grace span an intent opens, if any (plan §4.4): a remote play, a tap while
-     * backgrounded, an interruption resume, a route resume, a cold play, and a continuation
-     * hop loading in the background.
+     * backgrounded, an interruption resume, a cold play, and a continuation hop loading in the
+     * background. (Swift's route resume is A-61's to port, with {@code RouteResume}.)
      */
     private GraceReason graceReason(DeferredIntent intent, Source source) {
         return switch (intent) {
             case DeferredIntent.InterruptionResume i -> GraceReason.INTERRUPTION_RESUME;
-            case DeferredIntent.RouteResume i -> GraceReason.ROUTE_RESUME;
             case DeferredIntent.ColdPlay i -> GraceReason.COLD_PLAY;
             case DeferredIntent.Audition i -> null;
             case DeferredIntent.WalkHop i when source == Source.AUTOADVANCE -> state.backgrounded ? GraceReason.AUTO_ADVANCE : null;
@@ -686,8 +701,6 @@ public final class EngineCore {
         JsonNode item = current == null ? JsonNode.NULL : str(current.id);
         if (intent instanceof DeferredIntent.InterruptionResume) {
             diag("resume", concat(Arrays.asList(m("kind", str("interruption")), m("item", item)), graceFields()));
-        } else if (intent instanceof DeferredIntent.RouteResume) {
-            diag("resume", concat(Arrays.asList(m("kind", str("route")), m("item", item)), graceFields()));
         } else if (intent instanceof DeferredIntent.ColdPlay) {
             diag("cold-play", concat(Arrays.asList(m("item", item), m("index", num(state.currentIndex))), graceFields()));
         }
@@ -795,12 +808,6 @@ public final class EngineCore {
                 }
             }
             case DeferredIntent.InterruptionResume i -> dispatch(new PlayerEvent.InterruptionEnded(true), LoadOffsets.rewinding(true));
-            case DeferredIntent.RouteResume r -> {
-                EngineItem item = state.currentItem();
-                if (item == null) return;
-                state.pausedByRoute = false;
-                dispatch(new PlayerEvent.Play(item.ref()));
-            }
             case DeferredIntent.ColdPlay c -> {
                 EngineItem item = state.currentItem();
                 if (item == null) {
@@ -1149,7 +1156,9 @@ public final class EngineCore {
                 state.buffering = false;
                 if (state.grace != null) endGrace(GraceOutcome.PLAYING);
             }
-            case WAITING -> state.buffering = true;
+            case WAITING -> {
+                if (BUFFERING_WHILE_WAITING) state.buffering = true;
+            }
             case PAUSED -> {}
         }
     }
@@ -1277,8 +1286,12 @@ public final class EngineCore {
 
     /**
      * {@code routeChanged(...)} (corner case #13): a lost route pauses and is not resumable by
-     * a later call; a route reappearing resumes only a car this engine has seen before, never
-     * headphones being plugged in.
+     * a later call; a route reappearing resumes NOTHING, the JS rule ({@code queue-manager.js}
+     * {@code routeChanged}). Swift's route policy is {@code RouteResume} (the {@code route-resume}
+     * family and RouteResumeTests: a known route resumes only what the route itself paused,
+     * never the listener's own pause); the JVM has none until A-61 ports it. The known-car
+     * resume this core carried, with no listener-pause guard, was the rule DECISIONS 2026-09-25
+     * Q5 deleted (code-health-3 R3-01).
      *
      * <p>ONLY A LOSS THAT PAUSED SOMETHING IS NON-RESUMABLE (CH3-02, R2-02; Swift {@code onRoute},
      * {@code queue-manager.js} {@code routeChanged}): the machine was playing, bridging or loading,
@@ -1287,7 +1300,6 @@ public final class EngineCore {
      * did, and its should-resume decides (code-health-3 founder question 2, default).
      */
     private void onRoute(RouteChange change) {
-        if (change.isCarRoute() && change.routeName() != null) state.knownCarRoutes.add(change.routeName());
         diag("session", m("kind", str("route")), m("oldDeviceUnavailable", JsonNode.bool(change.oldDeviceUnavailable())),
                 m("port", change.portType() == null ? JsonNode.NULL : str(change.portType())));
         if (change.oldDeviceUnavailable()) {
@@ -1308,13 +1320,6 @@ public final class EngineCore {
         } else {
             dispatch(new PlayerEvent.RouteChanged(false));
         }
-        if (change.oldDeviceUnavailable() || change.routeName() == null || !state.knownCarRoutes.contains(change.routeName())
-                || state.currentItem() == null) {
-            return;
-        }
-        if (!(state.player instanceof PlayerQueueState.Interrupted i) || !i.wasPlaying()) return;
-        diag("session", m("kind", str("route-resume")), m("knownCar", JsonNode.TRUE));
-        begin(DeferredIntent.ROUTE_RESUME, Source.AUTORESUME);
     }
 
     /**
@@ -1372,8 +1377,8 @@ public final class EngineCore {
                 if (state.grace == null) return;
                 // The deterministic outcome (plan §4.4): end the span, say so, and pause, as the
                 // listener's own pause would.
-                endGrace(GraceOutcome.EXPIRED);
                 stopRow(StopCause.GRACE_EXPIRED, null);
+                endGrace(GraceOutcome.EXPIRED);
                 state.pausedByListener = true;
                 dispatch(PlayerEvent.INTERRUPTION_BEGAN);
                 applySession(SessionPolicy.transition(state.session, new SessionPolicy.Input.Simple(SessionPolicy.InputKind.PAUSE),
@@ -1651,6 +1656,9 @@ public final class EngineCore {
      * the core answers nothing more. The reducer's state is left as it was.
      */
     private void teardown() {
+        // D-5 (NE-40; Swift `teardown()`, code-health-3 R3-04): the engine going away while it
+        // plays is the audio handed back, so the cause is `relinquish`, written first.
+        stopRow(StopCause.RELINQUISH, null);
         state.pendingLoad = null;
         state.pendingActivation = null;
         deckCommand(DeckCommand.UNLOAD);

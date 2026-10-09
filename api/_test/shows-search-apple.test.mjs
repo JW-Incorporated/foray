@@ -565,7 +565,7 @@ test("a cached query does not re-call Apple, and does not consume a bucket slot"
      common one for the queries that reach this path at all.
 
      MUTATION: move the `bucket.tryConsume()` above the cache read. The
-     `currentCount` assertion reads 2 and this goes red. */
+     `size()` assertion reads 2 and this goes red. */
   const bucket = new SlidingWindowBucket(APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS);
   const cache = new TtlCache();
   let calls = 0;
@@ -577,7 +577,7 @@ test("a cached query does not re-call Apple, and does not consume a bucket slot"
   assert.equal(first.cached, false);
   assert.equal(second.cached, true);
   assert.deepEqual(second.shows, []);
-  assert.equal(bucket.currentCount(), 1, "a cache hit must not spend a slot");
+  assert.equal(bucket.size(), 1, "a cache hit must not spend a slot");
   assert.equal(appleShowCacheKey("Radiolab", 25), appleShowCacheKey("  radiolab ", 25));
 });
 
@@ -616,9 +616,9 @@ test("the show fall-through has its OWN bucket, so it cannot exhaust episode sea
   const { appleSearchBucket } = await import("../_lib/appleBucket.ts");
   const { appleShowBucket } = await import("../_lib/appleShowSearch.ts");
   assert.notEqual(appleShowBucket, appleSearchBucket, "two instances, not one");
-  const before = appleSearchBucket.currentCount();
+  const before = appleSearchBucket.size();
   appleShowBucket.tryConsume();
-  assert.equal(appleSearchBucket.currentCount(), before,
+  assert.equal(appleSearchBucket.size(), before,
     "spending a show-search slot must not spend an episode-search one");
   assert.equal(APPLE_BUCKET_CAPACITY, 20, "the CONSTANT is shared, so 20/min means one thing in this repo");
 });

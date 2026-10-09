@@ -1,15 +1,10 @@
 import { applyCors } from "../../_lib/cors";
-import { fetchIndexAsset, INDEX_CACHE_CONTROL } from "../../_lib/showsIndexRelease";
-
+import { type ApiRequest, type ApiResponse } from "../../_lib/params";
 /* The allowlist, the pointer, the bounded fetch and the gunzip live in
-   api/_lib/showsIndexRelease.ts, shared with the episodes endpoint's `pi:`
-   lookup (pi-episodes-cold-open). Re-exported so this endpoint's own suites
-   keep reaching them through it. */
-export {
-  resolveUpstreamAsset, isGzippedAsset, shardKeyFromRequestPath, resolveShardRelease, IndexPathError,
-  UPSTREAM_TIMEOUT_MS, MAX_UPSTREAM_BYTES, MAX_DECOMPRESSED_BYTES, INDEX_CACHE_CONTROL,
-  _setUpstreamTimeoutMsForTests, _setPointerPathForTests,
-} from "../../_lib/showsIndexRelease";
+   api/_lib/showsIndexRelease.ts, shared with the per-show resolver's `pi:`
+   lookup (pi-episodes-cold-open); this endpoint's suites import them from
+   there. */
+import { fetchIndexAsset, INDEX_CACHE_CONTROL } from "../../_lib/showsIndexRelease";
 
 /**
  * GET /api/shows/index/<manifest.json|top.json|id-map.json|changed.json|shards/<pp>.json>
@@ -75,18 +70,6 @@ export {
  * and this file's route pattern use to distinguish a shard request from
  * the four top-level files; only the UPSTREAM asset name drops it.
  */
-
-interface ApiRequest {
-  method?: string;
-  query: Record<string, string | string[] | undefined>;
-  headers: Record<string, string | string[] | undefined>;
-}
-interface ApiResponse {
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-  setHeader(name: string, value: string): void;
-  end(): void;
-}
 
 /** Every value of a catch-all parameter: Vercel hands `[...path]` over as the
  * path segments. Deliberately NOT `_lib/params.ts`'s `firstParam`, which

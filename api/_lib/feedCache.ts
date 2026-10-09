@@ -159,7 +159,6 @@ export function createFeedReader({
   return {
     read,
     cache,
-    buckets,
     /** Test-only: module-scope state outlives a single test. */
     clear(): void {
       cache.clear();
