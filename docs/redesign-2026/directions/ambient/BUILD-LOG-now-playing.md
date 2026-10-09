@@ -82,3 +82,10 @@ Calls made without the owner or the art director in the loop (2026-10-09). The h
 3. **`REAL_DATA_SUITES`** gained `test/ambient-foray-detail.test.js`, `test/ambient-forays-list.test.js` and `test/ambient-library.test.js` (other units' suites that read the real `data/forays.json`; the anti-rot test in `backend/test/publishSuites.test.ts` was red for exactly them).
 4. **Detail** still reads -7px on actions and notes (the scroll offset of the first posture, call 3 of iteration 4) and notes height -9.6 (the seeded description wraps to fewer lines than the prototype's): fixture and scroll, not layout.
 5. **Test:** `iteration 5` in `test/ambient-now-playing.test.js`, three mutations named in its comment; mutations 1 and 2 run and red.
+
+## Iteration 7 (merge with the trunk, detail row on the prototype)
+
+1. **Merged feature/redesign-2026-ambient** (car posture, ForayNav follow store, Up Next provenance by pick source). Kept: later iterations of this screen for the markup and CSS, the trunk for car.js/car.css wiring, the follow store, `nextItem.source`; app.js `nextItem` also falls back to the stored snapshot so a queued episode outside the session still gets a peek. The dots stay the player menu in car posture (the car suite now pins the More handle, not the dots, as the way into the detail).
+2. **Detail actions and notes were 6px high** (the ruling's remaining gap): the peek eyebrow was an inline span taking the sheet line-height as its strut, 6px taller than a caption line. `display: block` on it; fidelity now reads actions 0 and notes 0.
+3. **The detail step shoots a 4a-added peek** (prototype: 4a pick over Up Next (5)); the app calls a pick 4a's only from the tail, which needs an empty queue, so the harness stands the tail source in for the queue's next item (restored by resetAmbientNowPlaying).
+4. now-playing.css stays under its 15 KB budget (orchestrator ruling of 2026-10-08).
