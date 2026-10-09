@@ -19,6 +19,7 @@ if (!dir || !fs.existsSync(path.join(dir, 'journal.jsonl'))) { console.log('WATC
 const opt = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? Number(process.argv[i + 1]) : d }
 const MIN_FREE = opt('min-free-gb', 8), MAX_TURNS = opt('max-turns', 160), MAX_UNIT = opt('max-unit-agents', 30)
 const STALL_MIN = opt('stall-min', 45), MAX_CR_H = opt('max-cache-read-m-per-h', 125)
+const STARTED = Date.now()
 const offsets = new Map(), turns = new Map(), seen = new Set() // one transcript line per content block repeats a message's usage: count each message id once
 const burn = [] // [timeMs, cumulative cache-read]
 let cacheRead = 0
@@ -44,7 +45,7 @@ function check() {
   const freeGB = (() => { const s = fs.statfsSync('C:/'); return s.bavail * s.bsize / 1e9 })()
   if (freeGB < MIN_FREE) fire(`DISK ${freeGB.toFixed(1)} GB free on C: (< ${MIN_FREE})`)
   const jp = path.join(dir, 'journal.jsonl')
-  const idleMin = (Date.now() - fs.statSync(jp).mtimeMs) / 60000
+  const idleMin = (Date.now() - Math.max(fs.statSync(jp).mtimeMs, STARTED)) / 60000 // from the watchdog's own start too: a resumed run's journal is old until its first new agent
   if (idleMin > STALL_MIN) fire(`STALL journal idle ${idleMin.toFixed(0)} min (run finished or hung)`)
   const J = fs.readFileSync(jp, 'utf8').trim().split('\n').map(l => { try { return JSON.parse(l) } catch { return {} } })
   const lastResults = J.filter(e => e.type === 'result' || e.type === 'error').slice(-6)
