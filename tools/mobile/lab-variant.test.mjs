@@ -24,6 +24,7 @@ import { spawnSync } from "node:child_process";
 import { decode, header } from "../brand/png.mjs";
 import {
   REPO_ROOT, LAB_APP_ID, LAB_APP_NAME, REAL_APP_ID, LAB_FLAG_TAG, LAB_FLAG_SOURCE,
+  TACTILE_APP_ID, TACTILE_APP_NAME, AMBIENT_APP_NAME,
   labConfigText, applyLabConfig, injectLabFlag, assertLabFlagPresent,
   badgeImage, labIconBytes, BAND_TOP, BAND_BOTTOM, BAND_RGB, LabError,
 } from "./lab-variant.mjs";
@@ -67,6 +68,45 @@ test("labConfigText is idempotent and refuses a config that is not the real app'
   assert.throws(() => labConfigText(JSON.stringify({ appId: "com.example.other", appName: "x" })), LabError);
   assert.throws(() => labConfigText("{not json"), /not valid JSON/);
   assert.throws(() => labConfigText("[]"), /not a JSON object/);
+});
+
+test("labConfigText takes the Tactile and Ambient identities, and can never produce the real app", () => {
+  /* MUTATION A: drop `doc.appId = appId` (hard-code LAB_APP_ID) -> Tactile builds
+     as ai.jwlabs.foura.lab and replaces the other direction on the phone (red).
+     MUTATION B: delete the `LAB_APP_IDS.includes(appId)` refusal -> the real id
+     is accepted as a "lab" id (red on the REAL_APP_ID row).
+     MUTATION C: delete the `isLabName` refusal -> the real name "4a" is accepted. */
+  const src = fs.readFileSync(REAL_CONFIG, "utf8");
+  const t = JSON.parse(labConfigText(src, { appId: TACTILE_APP_ID, appName: TACTILE_APP_NAME }));
+  assert.equal(t.appId, "ai.jwlabs.foura.lab.tactile");
+  assert.equal(t.appName, "4a Tactile");
+  const a = JSON.parse(labConfigText(src, { appId: LAB_APP_ID, appName: AMBIENT_APP_NAME }));
+  assert.equal(a.appId, "ai.jwlabs.foura.lab");
+  assert.equal(a.appName, "4a Ambient");
+  for (const bad of [{ appId: REAL_APP_ID }, { appId: "" }, { appId: "ai.jwlabs.foura.lab.other" }, { appId: LAB_APP_ID, appName: "4a" }, { appId: LAB_APP_ID, appName: "" }, { appId: LAB_APP_ID, appName: "Not 4a" }]) {
+    assert.throws(() => labConfigText(src, bad), LabError, JSON.stringify(bad));
+  }
+  /* idempotent per identity, but one lab identity is never rewritten into another */
+  const once = labConfigText(src, { appId: TACTILE_APP_ID, appName: TACTILE_APP_NAME });
+  assert.equal(labConfigText(once, { appId: TACTILE_APP_ID, appName: TACTILE_APP_NAME }), once);
+  assert.throws(() => labConfigText(once), LabError, "a Tactile config was re-labelled as plain Lab");
+});
+
+test("CLI apply-config --app-id/--app-name applies a non-default identity and refuses the real one", () => {
+  /* MUTATION: ignore `--app-id` in the CLI parser -> the Tactile build is plain Lab (red). */
+  const dir = tmp();
+  const cfg = path.join(dir, "capacitor.config.json");
+  fs.copyFileSync(REAL_CONFIG, cfg);
+  const run = (...a) => spawnSync(process.execPath, [path.join(HERE, "lab-variant.mjs"), "apply-config", cfg, ...a], { encoding: "utf8" });
+  assert.equal(run("--app-id", REAL_APP_ID, "--app-name", "4a Lab").status, 1);
+  assert.equal(run("--app-id", "", "--app-name", "4a Tactile").status, 1, "an empty id must not fall back to the default");
+  assert.equal(run("--bogus").status, 2);
+  assert.equal(JSON.parse(fs.readFileSync(cfg, "utf8")).appId, REAL_APP_ID, "a refused run edited the config");
+  const ok = run("--app-id", TACTILE_APP_ID, "--app-name", TACTILE_APP_NAME);
+  assert.equal(ok.status, 0, ok.stderr);
+  const c = JSON.parse(fs.readFileSync(cfg, "utf8"));
+  assert.equal(c.appId, "ai.jwlabs.foura.lab.tactile");
+  assert.equal(c.appName, "4a Tactile");
 });
 
 test("applyLabConfig rewrites a COPY on disk and reads it back; the repo's config is untouched", () => {
