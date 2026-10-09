@@ -1572,8 +1572,12 @@ function runShowSearchCostly(query, myToken, local) {
     showSearchAnswered = { token: myToken };
     const empty = (sel) => { const el = $(sel); return !el || el.hidden; };
     const rows = paintedShowRows(query, myToken, local.localShows);
+    /* ANSWERED, SO THE "Searching..." LINE GOES whether or not another group has rows: a query that matches only
+       Episodes, Playlists or Forays has an empty Shows group, and that group's note stayed on "Searching for X..."
+       for good because this returned before repainting it (Phase 5 QA). Repainting an empty list is what clears it;
+       a non-empty one needs nothing, its note is already hidden. */
+    if (!rows.length) paintShowResults(query, rows, myToken);
     if (rows.length || !empty("#ep-search-results") || !empty("#pl-search-results") || !empty("#fy-search-results")) return;
-    paintShowResults(query, rows, myToken);   // drops the "Searching..." line
     paintDiscoverEmpty(query, myToken);
   };
 
