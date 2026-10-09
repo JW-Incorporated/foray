@@ -346,7 +346,7 @@ describe("security regression: GHSA-8r6m-32jq-jx6q (fast-xml-parser DOCTYPE/enti
 
 
 /* CH2-03: the parsed shape is exactly what callers read (feedCache slim(),
-   the episodes and search handlers, liveEpisodeId, ingestShowFeed). */
+   the episodes and search handlers, episodeIdentity, ingestShowFeed). */
 describe("ParsedFeed / ParsedEpisode shape (CH2-03)", () => {
   it("returns only the fields something reads: no Tier-1 transcriptUrl and none of the nine unread fields (B1-11)", () => {
     /* CH2-03 (B1-06, B1-11). MUTATION: put `transcriptUrl` (or `explicit`,
