@@ -36,10 +36,28 @@ public final class EngineSeams {
      * <p>ON ANDROID THE SESSION IS NOT WHERE FOCUS IS REQUESTED. The deck's ExoPlayer is built
      * with {@code handleAudioFocus} on (the card), so Media3 requests AUDIOFOCUS_GAIN when the
      * deck plays and refuses to sound without it; what the host hears back is
-     * {@link FocusMapping}'s interruptions. So {@code activate()} answers whether the Media3
-     * session that owns the lock screen is alive, and the audible-start invariant holds twice
-     * over: the core will not command a play without this answer, and Media3 will not start
-     * one without focus.
+     * {@link FocusMapping}'s interruptions.
+     *
+     * <p>WHAT ANDROID CAN AND CANNOT REFUSE. {@code activate()} refuses twice, each a
+     * {@code commandFailed} and no deck command, as on iOS: a dead Media3 session
+     * ({@code session-failed:other}), and a call in progress (CH3-08, R5-02: the audio mode is
+     * {@code MODE_IN_CALL} or {@code MODE_IN_COMMUNICATION}; token {@code insufficient-priority},
+     * what iOS's {@code setActive(true)} fails with on a call, admitted as
+     * {@code session-failed:other}). The call check is a PRESS's only: the core's own resume when
+     * an interruption ends answers Media3's AUDIOFOCUS_GAIN, which the system sends only once the
+     * call has given focus up, so it is granted without reading the audio mode, even when the mode
+     * still says {@code MODE_IN_CALL} (Telecom resets it after abandoning the call's focus;
+     * {@code ForayPlaybackServiceTest.aResumeWhoseFocusReturnsBeforeTheModeSaysNormalIsStillGranted}).
+     * It CANNOT refuse for focus itself. There is no way to ask
+     * for focus without taking it from Media3's own request, and Media3 1.11 asks on its playback
+     * thread after the press's turn is over
+     * ({@code FocusIntegrationTest.aPlayRefusedFocusReadsAsPlayingInItsTurnAndArrivesLaterAsAPermanentLoss}).
+     * So a refusal the audio mode does not foretell still answers {@code success}, and a turn
+     * later Media3 drops play-when-ready with reason AUDIO_FOCUS_LOSS and the mapping reports an
+     * interruption. The same holds for a play that needs no activation (the core does not
+     * re-activate an active session per press). What holds on both platforms: nothing sounds
+     * without focus, because the core will not command a play without this answer and Media3
+     * will not start one without focus.
      */
     public interface Session {
         Activation activate();
