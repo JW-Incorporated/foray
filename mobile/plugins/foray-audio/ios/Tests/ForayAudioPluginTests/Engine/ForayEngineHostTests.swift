@@ -223,6 +223,60 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(world.log.entries.count, seen)
     }
 
+    // MARK: - A media-services reset (CH3-03, R2-03)
+
+    /// Media services were reset mid-episode (mediaserverd restarted; CarPlay
+    /// and Bluetooth stacks are known triggers). Every AVFoundation object
+    /// died with it, so the shell makes its players again: the session owner
+    /// forgets its activation, then BOTH decks (the main one and the voice
+    /// preview's), the narration voice and the jingle are rebuilt, all before
+    /// the core's `.unload` detaches the item. The next press then activates,
+    /// loads and plays on the rebuilt deck. Before this, only the session was
+    /// "rebuilt": the decks kept their dead `AVPlayer`, and every later load
+    /// ran to the 20 s deadline (`stop cause=load-deadline`) until the app was
+    /// killed.
+    /// TO SEE IT FAIL: drop `seams.deck.rebuild()` (or any of the three
+    /// beside it) from the host's `.sessionRebuild` case.
+    @MainActor
+    func testAMediaServicesResetRebuildsTheShellsPlayers() throws {
+        let world = FakeWorld()
+        let jingle = FakeInterlude(log: world.log)
+        world.interlude = jingle
+        world.preview = FakeDeck(log: world.log, name: "preview")
+        let engine = playing(world)
+        world.log.clear()
+
+        world.session.post(.mediaServicesReset)
+
+        let log = world.log.entries
+        // Survives on main: the session is rebuilt and the core detaches the item.
+        let rebuilt = try XCTUnwrap(world.log.index(of: "session.rebuild"), "\(log)")
+        let unload = try XCTUnwrap(world.log.index(of: "deck.unload"), "\(log)")
+        XCTAssertLessThan(rebuilt, unload, "\(log)")
+        // RED on main: R2-03 (the host rebuilds nothing but the session).
+        let deck = world.log.index(of: "deck.rebuild")
+        XCTAssertNotNil(deck, "the deck kept its dead AVPlayer: \(log)")
+        if let deck {
+            XCTAssertLessThan(rebuilt, deck, "the session first, then the players: \(log)")
+            XCTAssertLessThan(deck, unload, "the players are rebuilt before the core's unload: \(log)")
+        }
+        XCTAssertEqual(world.log.count("deck.rebuild"), 1, "\(log)")
+        XCTAssertEqual(world.log.count("preview.rebuild"), 1, "the voice preview's deck died too: \(log)")
+        XCTAssertEqual(world.log.count("speaker.rebuild"), 1, "the narration voice's engine died too: \(log)")
+        XCTAssertEqual(jingle.releases, 1, "the jingle's cached player died too: \(log)")
+
+        // The next press plays, on the rebuilt deck, from a fresh activation.
+        world.log.clear()
+        XCTAssertEqual(world.remote.press(.play), .success)
+        let after = world.log.entries
+        let activate = try XCTUnwrap(world.log.index(of: "session.activate"), "\(after)")
+        let load = try XCTUnwrap(world.log.index(of: "deck.load"), "\(after)")
+        let play = try XCTUnwrap(world.log.index(of: "deck.play"), "\(after)")
+        XCTAssertLessThan(activate, load, "\(after)")
+        XCTAssertLessThan(load, play, "\(after)")
+        XCTAssertEqual(engine.state.stateType, "playing")
+    }
+
     // MARK: - BackgroundGrace
 
     /// The system takes the grace time back while the engine is still

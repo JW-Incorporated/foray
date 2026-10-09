@@ -48,6 +48,30 @@ final class EngineBridgeRulesTests: XCTestCase {
         XCTAssertEqual(refusal(.snapshot, failed), "accepted")
     }
 
+    /// CH3-09 (R4-06): the snapshot carries the core's own `lastVoiceFallback`
+    /// as a boolean (V-01's "spoken in a different voice" notice), null until a
+    /// line has spoken, and the contract takes it (the `snapshot` family's
+    /// `foray-voice-fallback` example). Before CH3-09 the body never wrote it.
+    /// TO SEE IT FAIL: drop the `voiceFallback` member from
+    /// `EngineSnapshot.body`, or write it as a string.
+    func testTheSnapshotCarriesTheCoresVoiceFallbackAsABoolean() {
+        var stamper = SnapshotStamper()
+        let idle = stamped(EngineSnapshot.body(core: EngineCore(), deck: .idle, lastError: nil), seq: &stamper)
+        XCTAssertEqual(idle["voiceFallback"], .null, "no line has spoken")
+
+        var host = EngineCoreTests.Host(config: NarrationOverlayTests.tape)
+        host.send(.queue(.loadForay([NarrationOverlayTests.line(0, "one")], isLocalFile: false, allowAdPad: false)))
+        let out = host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        guard let seq = NarrationOverlayTests.spokenSeq(out) else { return XCTFail("no line was spoken: \(out)") }
+        host.send(.narrator(.started(seq: seq, voiceFallback: true)), after: 0)
+        XCTAssertEqual(host.core.state.lastVoiceFallback, true)
+        let fell = stamped(EngineSnapshot.body(core: host.core, deck: host.reading, lastError: nil), seq: &stamper)
+        XCTAssertEqual(fell["voiceFallback"], .bool(true))
+        XCTAssertEqual(fell["isNarrationPlayhead"], .bool(true))
+        XCTAssertEqual(refusal(.snapshot, fell), "accepted")
+        XCTAssertEqual(try EngineContract.Snapshot(contract: fell).voiceFallback, true)
+    }
+
     /// `seq` moves exactly when the content moved, never for the capture
     /// time alone (reference-engine.js `snapshot()`).
     /// TO SEE IT FAIL: bump `seq` on every stamp, or fold the capture stamps

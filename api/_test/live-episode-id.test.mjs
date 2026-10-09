@@ -7,9 +7,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as searchModule from "../episodes/search.ts";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
-import { episodeSearchCache, episodeFeedFailureCache } from "../_lib/searchCache.ts";
-import { liveEpisodeGuid } from "../_lib/liveEpisodeId.ts";
-import { episodeIdentity as dbEpisodeIdentity } from "../../backend/src/catalog/ingestShowFeed.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
+import { episodeIdentity } from "../../backend/src/feeds/episodeIdentity.ts";
+import { toCatalogEpisode } from "../../backend/src/catalog/ingestShowFeed.ts";
 
 const pick = (m) => (typeof m.default === "function" ? m.default : m.default.default);
 const search = pick(searchModule);
@@ -42,7 +42,7 @@ async function withFeed(run) {
   delete process.env.DATABASE_URL;
   globalThis.fetch = async () => new Response(FEED, { status: 200 });
   episodeSearchCache.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   searchModule.sharedFeedReader.clear();
   try {
     return await run();
@@ -71,10 +71,18 @@ test("a show-scoped search hit carries the same id the per-show list serves that
   });
 });
 
-test("liveEpisodeGuid: a real guid wins, an empty one falls back, and the feed position breaks a missing date", () => {
-  assert.equal(liveEpisodeGuid({ guid: "g", title: "T", publishedAt: null }, 3), "g");
-  assert.equal(liveEpisodeGuid({ guid: "", title: "T", publishedAt: null }, 3), "noguid:T:3");
-  assert.equal(liveEpisodeGuid({ guid: null, title: "T", publishedAt: "2026-01-01T00:00:00.000Z" }, 3), "noguid:T:2026-01-01T00:00:00.000Z");
+/* THE ONE IDENTITY RULE (code-health-2 CH2-35, B1-07, A1-13): both
+   endpoints and the DB ingest call backend/src/feeds/episodeIdentity.ts; the
+   api/ pass-through and its feed-position argument are gone, because every
+   caller drops an item with no enclosure before minting, so the position
+   branch could never run. MUTATION: give episodeIdentity a second `position`
+   parameter again (the old last-resort branch) -> `length` is 2; red (and
+   tsc, since no caller may pass one). */
+test("episodeIdentity: a real guid wins, an empty one falls back, a date beats the enclosure URL, and no feed position is taken", () => {
+  assert.equal(episodeIdentity.length, 1, "one argument: no feed position");
+  assert.equal(episodeIdentity({ guid: "g", title: "T", publishedAt: null, enclosureUrl: "https://cdn.example.com/t.mp3" }), "g");
+  assert.equal(episodeIdentity({ guid: "", title: "T", publishedAt: null, enclosureUrl: "https://cdn.example.com/t.mp3" }), "noguid:T:https://cdn.example.com/t.mp3");
+  assert.equal(episodeIdentity({ guid: null, title: "T", publishedAt: "2026-01-01T00:00:00.000Z", enclosureUrl: "https://cdn.example.com/t.mp3" }), "noguid:T:2026-01-01T00:00:00.000Z");
 });
 
 /* Round-3 review (L6): the DB ingest keyed a guid-less episode as
@@ -82,15 +90,25 @@ test("liveEpisodeGuid: a real guid wins, an empty one falls back, and the feed p
    noguid:<title>:<date>, so with DATABASE_URL set the list and search served
    different ids, and every stored guid-less row was duplicated on the next
    ingest (and again whenever the enclosure URL rotated).
-   MUTATION: put the enclosure URL back into the DB key -- the ids differ. */
+   MUTATION: put the enclosure URL back into the dated key -- the rotated URL
+   changes the id; red. MUTATION 2: mint the search's id any other way
+   (`ep.guid ?? null`) -- the list/search comparison goes red. */
 test("the DB ingest and the live paths mint one id for a guid-less episode, and a rotated URL keeps it", () => {
+  const parsed = (ep) => ({ descriptionHtml: "", descriptionText: "", duration: { seconds: null }, seasonNumber: null, episodeNumber: null, chaptersUrl: null, inlineChapters: null, ...ep });
   const dated = { guid: null, title: "Talk One", publishedAt: "2026-01-01T00:00:00.000Z", enclosureUrl: "https://cdn.example.com/1.mp3" };
-  assert.equal(dbEpisodeIdentity(dated), liveEpisodeGuid(dated, 0));
-  assert.equal(dbEpisodeIdentity(dated), "noguid:Talk One:2026-01-01T00:00:00.000Z", "the key rows were already stored under");
-  assert.equal(dbEpisodeIdentity({ ...dated, enclosureUrl: "https://dts.podtrac.com/redirect.mp3/cdn.example.com/1.mp3" }), dbEpisodeIdentity(dated));
+  /* The list and the DB ingest mint through toCatalogEpisode; the search
+     through mapLiveEpisode. All three are this one rule. */
+  assert.equal(toCatalogEpisode("s", parsed(dated)).guid, episodeIdentity(dated));
+  assert.equal(searchModule.mapLiveEpisode("s", null, parsed(dated)).guid, episodeIdentity(dated));
+  assert.equal(episodeIdentity(dated), "noguid:Talk One:2026-01-01T00:00:00.000Z", "the key rows were already stored under");
+  assert.equal(episodeIdentity({ ...dated, enclosureUrl: "https://dts.podtrac.com/redirect.mp3/cdn.example.com/1.mp3" }), episodeIdentity(dated));
   const undated = { guid: "", title: "Talk Two", publishedAt: null, enclosureUrl: "https://cdn.example.com/2.mp3" };
-  assert.equal(dbEpisodeIdentity(undated), liveEpisodeGuid(undated, 7));
-  assert.equal(liveEpisodeGuid(undated, 7), liveEpisodeGuid(undated, 8), "a prepended episode does not move an undated one's id");
+  assert.equal(toCatalogEpisode("s", parsed(undated)).guid, searchModule.mapLiveEpisode("s", null, parsed(undated)).guid);
+  assert.equal(episodeIdentity(undated), "noguid:Talk Two:https://cdn.example.com/2.mp3", "an undated one is keyed by its enclosure, not where it sits in the feed");
+  /* An item with no enclosure is dropped by both mappers before an id is
+     minted: that is why the rule needs no position. */
+  assert.equal(toCatalogEpisode("s", parsed({ ...undated, enclosureUrl: null })), null);
+  assert.equal(searchModule.mapLiveEpisode("s", null, parsed({ ...undated, enclosureUrl: null })), null);
 });
 
 /* Round-3 review (L4): the show-scoped cache key folded punctuation
@@ -110,7 +128,7 @@ test("show-scoped queries that match different titles never share a cached answe
   delete process.env.DATABASE_URL;
   globalThis.fetch = async () => new Response(feed, { status: 200 });
   episodeSearchCache.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   searchModule.sharedFeedReader.clear();
   try {
     const ask = async (q) => {

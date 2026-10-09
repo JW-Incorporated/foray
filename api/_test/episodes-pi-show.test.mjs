@@ -12,11 +12,15 @@ import * as path from "node:path";
 import * as os from "node:os";
 import * as zlib from "node:zlib";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
+import * as searchModule from "../episodes/search.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
 import { _setPointerPathForTests, isShardKey } from "../_lib/showsIndexRelease.ts";
+import { PI_SHOW_CACHE_MAX, _resetPiShowCacheForTests, _piShowCacheSizeForTests } from "../_lib/resolveShow.ts";
 
 const handler = typeof episodesModule.default === "function" ? episodesModule.default : episodesModule.default.default;
-const { LIST_RESPONSE_KEYS, PI_SHOW_CACHE_MAX, _resetPiShowCacheForTests, _piShowCacheSizeForTests } = episodesModule;
+const searchHandler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
+const { LIST_RESPONSE_KEYS } = episodesModule;
 
 const SHARDS_A = "https://github.com/JW-Incorporated/foray/releases/download/shows-index-x-shards-1";
 const SHARDS_B = "https://github.com/JW-Incorporated/foray/releases/download/shows-index-x-shards-2";
@@ -67,6 +71,8 @@ async function withRelease(opts, run) {
   _setPointerPathForTests(pointer ? file : path.join(dir, "missing.json"));
   _resetPiShowCacheForTests();
   sharedFeedReader.clear();
+  episodeSearchCache.clear();
+  searchModule.showScopedResultCache.clear();
   const calls = [];
   const original = globalThis.fetch;
   const hadDb = "DATABASE_URL" in process.env;
@@ -100,8 +106,8 @@ async function get(query) {
 }
 
 test("a pi: show named with its shard key is served from that shard's row: catalogue shape, the row's title and art, its feed's episodes", async () => {
-  /* MUTATION: drop the `if (!meta && showId.startsWith("pi:"))` branch from
-     the handler -> 404 "unknown show_id", the pre-change answer; red.
+  /* MUTATION: drop the `if (isPiShowId(showId)) return resolvePiShow(...)`
+     line from resolveShow -> 404 "unknown show_id", the pre-#690 answer; red.
      MUTATION 2: read the shard from pointer.asset_base_url instead of the
      key's shard release (fetchIndexAsset's resolveShardRelease) -> the shard
      URL is wrong; red. */
@@ -230,11 +236,100 @@ test("the resolved rows a warm instance keeps are bounded", async () => {
 });
 
 test("a catalogue show is untouched by the pi: path: no shard is read for it", async () => {
-  /* MUTATION: route every id through resolvePiShow -> a catalogue show
+  /* MUTATION: route every id through resolvePiShow (resolveShow.ts) -> a catalogue show
      without a key 404s; red. */
   await withRelease({ shards: { ti: [row(42)] } }, async (calls) => {
     const res = await get({ show_id: "lex-fridman-podcast" });
     assert.strictEqual(res.statusCode, 200);
     assert.ok(calls.every((u) => !u.endsWith(".json.gz")));
+  });
+});
+
+/* ─── THE SHOW-SCOPED SEARCH RESOLVES A pi: SHOW THE SAME WAY (code-health-2
+   CH2-35, A1-03 server half). The list above resolved `pi:<n>` through its
+   shard and `?k=`; the in-show search box asked only the catalogue, so every
+   search on a shard-index show (most of the directory) answered degraded
+   `unknown show_id: pi:<n>` after a round trip. Both endpoints now ask ONE
+   resolver (api/_lib/resolveShow.ts): the catalogue, then the shard named by
+   `k`. The client passing `k` to search is the UI-freeze half (founder Q6). */
+
+async function search(query) {
+  const res = mockRes();
+  await searchHandler({ method: "GET", query, headers: {} }, res);
+  return res;
+}
+
+test("show-scoped search: a pi: show named with its shard key is searched from that shard's feed (RED before CH2-35)", async () => {
+  /* MUTATION: answer the search's show from showMetaById alone (the pre-CH2-35
+     searchWithinShow) -> degraded `unknown show_id: pi:42`; red. */
+  await withRelease({ shards: { ti: [row(42)] } }, async (calls) => {
+    const res = await search({ q: "tiny", show: "pi:42", k: "ti" });
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.degraded, false, JSON.stringify(res.body));
+    assert.strictEqual(res.body.error, null);
+    assert.deepStrictEqual(res.body.episodes.map((e) => [e.show_id, e.title, e.guid]), [["pi:42", "Tiny One", "t-1"]]);
+    assert.strictEqual(res.body.episodes[0].show_title, "Tiny Show");
+    assert.deepStrictEqual(calls, [`${SHARDS_B}/ti.json.gz`, "https://feeds.example.com/42.xml"]);
+  });
+});
+
+test("show-scoped search: a pi: show without a usable key is the honest unknown-id answer, with no request", async () => {
+  /* Characterization (unchanged by CH2-35): the search's one shape, degraded,
+     no-store. MUTATION: resolve a pi: id with a missing key from the shard
+     anyway -> a shard request is made; red. */
+  await withRelease({ shards: { ti: [row(42)] } }, async (calls) => {
+    for (const query of [{ q: "tiny", show: "pi:42" }, { q: "tiny", show: "pi:42", k: "../x" }, { q: "tiny", show: "pi:abc", k: "ti" }]) {
+      const res = await search(query);
+      assert.strictEqual(res.statusCode, 200, JSON.stringify(query));
+      assert.strictEqual(res.body.degraded, true, JSON.stringify(query));
+      assert.strictEqual(res.body.error, `unknown show_id: ${query.show}`, JSON.stringify(query));
+      assert.deepStrictEqual(res.body.episodes, []);
+      assert.strictEqual(res.headers["Cache-Control"], "no-store");
+    }
+    assert.deepStrictEqual(calls, []);
+  });
+});
+
+test("show-scoped search: an unreadable release is degraded with its own error, and is not remembered", async () => {
+  /* MUTATION: map the resolver's 502 to `unknown show_id` in search -> the
+     error names the wrong failure; red. MUTATION 2: mark it feedFailed (so the
+     90 s feed-failure memory keeps it) -> the second request is answered from
+     memory, the shard is read once; red. */
+  const opts = { shards: { ti: [row(42)] }, shardStatus: 500 };
+  await withRelease(opts, async (calls) => {
+    const first = await search({ q: "tiny", show: "pi:42", k: "ti" });
+    assert.strictEqual(first.body.degraded, true);
+    assert.match(first.body.error, /^shows index unavailable: upstream responded 500/);
+    assert.strictEqual(first.headers["Cache-Control"], "no-store");
+    opts.shardStatus = 200;
+    const second = await search({ q: "tiny-again", show: "pi:42", k: "ti" });
+    assert.strictEqual(second.body.degraded, false, JSON.stringify(second.body));
+    assert.strictEqual(calls.filter((u) => u.endsWith(".json.gz")).length, 2);
+  });
+});
+
+test("show-scoped search: a pi: answer kept under one key is never served to a request with another key or none", async () => {
+  /* The list's rule ("the answer never depends on an earlier request") holds
+     for search's result cache too. MUTATION: key the show-scoped cache on
+     `show` alone -> the keyless request is answered from the k=ti hit; red. */
+  await withRelease({ shards: { ti: [row(42)] } }, async () => {
+    assert.strictEqual((await search({ q: "tiny", show: "pi:42", k: "ti" })).body.episodes.length, 1);
+    for (const query of [{ q: "tiny", show: "pi:42" }, { q: "tiny", show: "pi:42", k: "sh" }]) {
+      const res = await search(query);
+      assert.strictEqual(res.body.degraded, true, JSON.stringify(query));
+      assert.deepStrictEqual(res.body.episodes, [], JSON.stringify(query));
+    }
+  });
+});
+
+test("one resolver: the list and the search box agree on a pi: show's id, title and episode ids", async () => {
+  /* MUTATION: give either endpoint its own resolver that disagrees (e.g. the
+     search reads `row.a` as the title) -> the comparison below goes red. */
+  await withRelease({ shards: { ti: [row(42)] } }, async () => {
+    const list = await get({ show_id: "pi:42", k: "ti" });
+    const hits = await search({ q: "tiny", show: "pi:42", k: "ti" });
+    assert.strictEqual(hits.body.episodes[0].show_id, list.body.show_id);
+    assert.strictEqual(hits.body.episodes[0].show_title, list.body.show.title);
+    assert.deepStrictEqual(hits.body.episodes.map((e) => e.guid), list.body.episodes.map((e) => e.guid));
   });
 });

@@ -267,6 +267,12 @@ final class FakeDeck: DeckDriving {
         log.add("\(name).invalidate")
     }
 
+    /// Media services were reset (CH3-03): the real deck makes a new
+    /// AVPlayer. The fake only records it.
+    func rebuild() {
+        log.add("\(name).rebuild")
+    }
+
     /// The deck reports something (on main, as AVDeck does).
     func report(_ event: DeckEvent) {
         onEvent?(event)
@@ -323,6 +329,10 @@ final class FakeSpeaker: Speaking {
         narrated.append(command)
         log.add("speaker.narrate")
     }
+
+    /// Media services were reset (CH3-03): the real narrator makes a new
+    /// audio engine. The fake only records it.
+    func rebuild() { log.add("speaker.rebuild") }
 
     /// The synthesizer reports on a line of narration (on main, as
     /// SpeechNarrator delivers it).

@@ -38,7 +38,10 @@ extension AVDeck: PairableDeck {}
 ///     `.prepared(hit: true)` and `.ready` at once. Anything else is a MISS:
 ///     the warm load is forgotten (its buffer kept, `discardFreesBuffer`),
 ///     `.prepared(hit: false)` names the stages it reached, and the load runs
-///     as an ordinary load on the deck that holds the player role.
+///     as an ordinary load on the deck that holds the player role. The one
+///     exception to keeping the buffer: a warm load still IN FLIGHT for the
+///     same source (`.notReady`) is unloaded before that cold load, so the
+///     two decks never fetch one file at once (CH3-13, R2-07).
 ///   - everything else goes to the deck that holds the player role; a rate
 ///     goes to BOTH (the standby primes at the listener's rate, and the
 ///     handover carries it again).
@@ -194,6 +197,20 @@ final class DeckPair: DeckDriving {
         assetCache?.removeAll()
     }
 
+    /// Media services were reset (CH3-03): BOTH decks make their players
+    /// again (each drops what it held), and the warm state goes with them:
+    /// the warm load, and the shared assets, which died with the media
+    /// server too and would otherwise be handed to the next load of the same
+    /// source. The roles and a stand-down stay as they were; the core's
+    /// `.unload` follows.
+    func rebuild() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !invalidated else { return }
+        warmLoad = nil
+        for deck in decks { deck.rebuild() }
+        assetCache?.removeAll()
+    }
+
     // MARK: - Prepare
 
     private func prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass,
@@ -241,7 +258,8 @@ final class DeckPair: DeckDriving {
             return
         }
         // At a boundary the warm load is spent either way: promoted, or
-        // forgotten with its buffer kept (`discardFreesBuffer("boundary")`).
+        // forgotten with its buffer kept (`discardFreesBuffer("boundary")`),
+        // except a not-ready miss of the same source, unloaded below.
         warmLoad = nil
         let standby = decks[standbyIndex]
         let promotion = DeckPolicy.warmPromotion(
@@ -263,6 +281,13 @@ final class DeckPair: DeckDriving {
         // somewhere else was never a prepare to miss.
         if held.warm.url == url {
             emit(.prepared(token: token, hit: false, stages: held.stages))
+            // R2-07 (CH3-13): still in flight, the warm load is fetching the
+            // very file the player deck is about to load cold. Let the standby
+            // go first, so one URL is never fetched by two items on a slow car
+            // link; the shared asset is not cancelled (`cancelsAssetLoading`
+            // is off in the pair), so the cold load of the same item can still
+            // reuse it from the `AssetCache`.
+            if promotion == .notReady { standby.send(.unload) }
         }
         decks[activeIndex].send(command)
     }

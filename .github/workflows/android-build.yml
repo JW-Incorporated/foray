@@ -73,8 +73,9 @@
 # runner is free.
 #
 # NOT A REQUIRED CHECK, and the job name is chosen so it cannot become one by
-# accident — `protect-main` matches required contexts BY NAME (`backend`,
-# `data-and-site`, `path-policy`). A 20-minute Gradle build gating every nightly
+# accident — `protect-main` matches required contexts BY NAME (the list is
+# `REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`). A 20-minute Gradle build
+# gating every nightly
 # content PR would be a self-inflicted wound.
 #
 # ── NO THIRD-PARTY ACTIONS, which is a deviation worth naming ────────────────

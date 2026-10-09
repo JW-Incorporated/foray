@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 import ai.jwlabs.foura.audio.engine.EnginePlayer;
 import ai.jwlabs.foura.audio.engine.ForayEngineHost;
+import ai.jwlabs.foura.engine.EngineContract;
 import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.MediaMapping;
@@ -31,6 +32,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
 import org.robolectric.android.controller.ServiceController;
 import org.robolectric.annotation.Config;
 
@@ -227,6 +229,38 @@ public class ForayPlaybackServiceTest {
         assertTrue(text, text.contains("\"engine\":\"android-native\""));
         assertTrue(text, text.contains("\"hosting\":true"));
         assertTrue(text, text.contains("\"state\":\"idle\""));
+    }
+
+    /**
+     * CH3-07 (R5-01, R5-05): a CORE relinquish (the page's {@code relinquish}, A-29) is the end of
+     * this service's session, not just of its engine. Android has two media sessions where iOS has
+     * one Now Playing centre, so "leave it for the legacy lane" means release ours: today the
+     * engine tears down and the Media3 session stays published, frozen on its last surface, beside
+     * the legacy one (two "4a" sessions in the car, the wheel bound to the dead one, every press
+     * {@code relinquished}).
+     * MUTATION: drop {@code release()} from the host's {@code onTornDown} callback in
+     * {@code attach}: red here (the session is still held).
+     */
+    @Test
+    public void aCoreRelinquishReleasesTheSessionAndStopsHosting() {
+        ForayPlaybackService s = create();
+        assertNotNull(s.handle(new EngineInput.Queue(new EngineInput.QueueInput.Load(
+                ForayPlaybackService.items("[{\"id\":\"a\",\"kind\":\"episode\",\"audio_url\":\"https://cdn.example/a.mp3\"}]")))));
+        ai.jwlabs.foura.audio.engine.ForayEngineHost engine = s.host();
+        assertNotNull(engine);
+        ai.jwlabs.foura.audio.engine.ForayEngineHost.Verdict v = s.handle(new EngineInput.Command(
+                new EngineContract.Command.Relinquish(EngineContract.RelinquishCap.ALL), Vocabulary.Source.TAP));
+        assertNotNull(v);
+        assertTrue("the relinquish is accepted: " + v.failures(), v.ok());
+        assertTrue("the core relinquished and the host tore down", engine.isTornDown());
+        assertFalse("nothing hosts: ForayAudioPlugin.start may start the legacy service", ForayPlaybackService.isHosting());
+        assertNull("the Media3 session is released, not left frozen beside the legacy one", s.session());
+        assertNull("the engine is let go", s.host());
+        assertNull("and the deck's player with it", s.exoPlayer());
+        assertNull("no live service: a later input finds none", ForayPlaybackService.current());
+        assertTrue("the service stops itself", Shadows.shadowOf(s).isStoppedBySelf());
+        assertNull("a later input finds no engine", s.handle(new EngineInput.Queue(new EngineInput.QueueInput.Load(
+                ForayPlaybackService.items("[]")))));
     }
 
     @Test

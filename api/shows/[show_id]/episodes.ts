@@ -4,10 +4,9 @@ import { PostgresShowEpisodesStore, type CatalogShowEpisode } from "../../../bac
 import { applyCors } from "../../_lib/cors";
 import { firstParam } from "../../_lib/params";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
-import { liveEpisodeGuid } from "../../_lib/liveEpisodeId";
 import { sharedFeedReader } from "../../_lib/feedCache";
-import { fetchIndexAsset, isShardKey } from "../../_lib/showsIndexRelease";
-import { showMetaById, CatalogFilesUnavailableError, type ShowMeta } from "../../_lib/showCatalog";
+import { type ShowMeta } from "../../_lib/showCatalog";
+import { resolveShow } from "../../_lib/resolveShow";
 
 /**
  * Fetch-on-demand per-show episode list (Stage 3b, kanban t_567b570f,
@@ -34,93 +33,27 @@ import { showMetaById, CatalogFilesUnavailableError, type ShowMeta } from "../..
  * episodeCursor.ts). The parsed feed is kept per show in the warm instance
  * for a few minutes and then revalidated with the etag/last-modified it holds
  * (api/_lib/feedCache.ts, shared with the show-scoped search; round-3 audit,
- * search-api-css-3), so the pages of one show cost one fetch, not one each.
+ * search-api-css-3), so the pages of one show cost one fetch, not one each,
+ * and a feed that just failed is not fetched again for 90 s (CH2-38).
  * The CDN edge cache (`s-maxage=3600`) still saves repeat URLs.
  *
  * DB mode (when DATABASE_URL IS set — currently dormant in production) is
  * unchanged from Stage 3b's original behavior.
  */
 
-/* THE SHOW comes from the one catalogue reader, api/_lib/showCatalog.ts
-   (code-health-2 CH2-24), which also says what happens when the two
-   catalogue files are missing (503 here). How they reach a deployed function
-   at all (vercel.json's `includeFiles` for the api functions glob) is the
-   BUNDLING NOTE in backend/src/catalog/breadthCatalog.ts. An `in_curated` breadth id is answered as its curated twin: the
-   response's show_id, the episodes' show_id and the feed are the twin's. A
-   `pi:` show (below) answers in the same `ShowMeta` shape. */
-
-/* A `pi:<n>` SHOW (pi-episodes-cold-open, #690; follows SH-COLD #1141).
-
-   A show found through the shard index has a raw PodcastIndex row id,
-   `pi:<n>` (app.js mapShardRow), and is in neither catalogue file, so
-   the catalogue never knew it: its episodes answered 404 and a shared link
-   to one of them could not open. The row (`{ id, t, a, i, u, img, n, c }`,
-   tools/shows/shard-build.mjs toShardRow) carries the feed url, but the
-   shards are filed by title/author token prefix, not by id, and there is no
-   id -> row map to ask. So the caller names the shard: `?k=<key>`, the same
-   key a shared show link already carries as `/k/<key>` (app.js shareLinkFor).
-   ONE shard is read, through the same release reader the shard proxy uses
-   (api/_lib/showsIndexRelease.ts: the committed pointer, bounded fetch,
-   gunzip), and the row with that id gives the feed. No new secret, service
-   or store: the pointer is already bundled (vercel.json includeFiles).
-
-   Answers: a malformed id or key, or a shard without the row, is the same 404
-   `unknown show_id` an unknown catalogue id gets (no request for the first
-   two). A release that could not be read is a 502, so the client offers Try
-   again rather than "not found". Both are no-store: a pointer bump or a
-   recovered upstream must be seen at once. A resolved row is kept per warm
-   instance (bounded), keyed by id AND key, so the answer for one request
-   never depends on what another one asked before it, and the pages of one
-   show read their shard once. The response shape is the catalogue one. */
-const PI_SHOW_RE = /^pi:(\d{1,15})$/;
-export const PI_SHOW_CACHE_MAX = 500;
-const piShowMeta = new Map<string, ShowMeta>();
-
-type PiShowLookup =
-  | { meta: ShowMeta }
-  | { meta: null; status: 404 | 502; error: string };
-
-async function resolvePiShow(showId: string, key: string | null): Promise<PiShowLookup> {
-  const id = PI_SHOW_RE.exec(showId)?.[1];
-  if (!id || !isShardKey(key)) return { meta: null, status: 404, error: "unknown show_id" };
-  const cacheKey = `${showId} ${key}`;
-  const kept = piShowMeta.get(cacheKey);
-  if (kept) return { meta: kept };
-
-  const got = await fetchIndexAsset(`shards/${key}.json`);
-  if (!got.ok) {
-    return got.status === 502
-      ? { meta: null, status: 502, error: `shows index unavailable: ${got.error}` }
-      : { meta: null, status: 404, error: "unknown show_id" };
-  }
-  const rows: unknown[] = Array.isArray(got.body) ? got.body : [];
-  const row = rows.find((r): r is Record<string, unknown> =>
-    !!r && typeof r === "object" && String((r as Record<string, unknown>).id) === id);
-  /* Only an http(s) feed is fetched: the url comes from our own release, but
-     this function fetches whatever it names. */
-  const feedUrl = row && typeof row.u === "string" && /^https?:\/\//i.test(row.u) ? row.u : null;
-  if (!row || !feedUrl) return { meta: null, status: 404, error: "unknown show_id" };
-
-  const meta: ShowMeta = {
-    showId,
-    feedUrl,
-    title: typeof row.t === "string" ? row.t : null,
-    image: typeof row.img === "string" ? row.img : null,
-  };
-  if (piShowMeta.size >= PI_SHOW_CACHE_MAX) piShowMeta.delete(piShowMeta.keys().next().value as string);
-  piShowMeta.set(cacheKey, meta);
-  return { meta };
-}
-
-/** Test-only: forget every resolved `pi:` show. */
-export function _resetPiShowCacheForTests(): void {
-  piShowMeta.clear();
-}
-
-/** Test-only: how many resolved `pi:` shows this instance keeps. */
-export function _piShowCacheSizeForTests(): number {
-  return piShowMeta.size;
-}
+/* THE SHOW comes from the one show resolver, api/_lib/resolveShow.ts
+   (code-health-2 CH2-35), which the show-scoped search shares: the one
+   catalogue reader (api/_lib/showCatalog.ts, CH2-24), then, for a `pi:<n>`
+   shard-index show, the shard row the caller names with `?k=<key>`
+   (pi-episodes-cold-open, #690; the resolver's header has the whole rule).
+   How the catalogue files reach a deployed function at all (vercel.json's
+   `includeFiles` for the api functions glob) is the BUNDLING NOTE in
+   backend/src/catalog/breadthCatalog.ts. An `in_curated` breadth id is
+   answered as its curated twin: the response's show_id, the episodes'
+   show_id and the feed are the twin's. Answers when there is no show: an
+   unknown catalogue id 404 `unknown show_id`; a `pi:` miss the same 404,
+   no-store; a release that could not be read 502, no-store; a deploy
+   without the catalogue pair 503, no-store (the client's Try again). */
 
 /**
  * Minimal structural types for the Vercel Node runtime request/response —
@@ -192,33 +125,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  let meta: ShowMeta | null = null;
-  try {
-    meta = showMetaById(showId);
-  } catch (err) {
-    if (!(err instanceof CatalogFilesUnavailableError)) throw err;
-    /* A deploy without the catalogue pair, not an unknown show: 503, so the
-       client offers Try again rather than "not found", and never edge-cached.
-       A `pi:` show never came from the catalogue; its shard still answers. */
-    if (!showId.startsWith("pi:")) {
-      res.setHeader("Cache-Control", "no-store");
-      res.status(503).json({ error: err.message });
-      return;
-    }
-  }
-  if (!meta && showId.startsWith("pi:")) {
-    const pi = await resolvePiShow(showId, firstParam(req.query.k));
-    if (!pi.meta) {
-      res.setHeader("Cache-Control", "no-store");
-      res.status(pi.status).json({ error: pi.error });
-      return;
-    }
-    meta = pi.meta;
-  }
-  if (!meta) {
-    res.status(404).json({ error: "unknown show_id" });
+  const lookup = await resolveShow(showId, firstParam(req.query.k));
+  if (!lookup.meta) {
+    if (lookup.noStore) res.setHeader("Cache-Control", "no-store");
+    res.status(lookup.status).json({ error: lookup.error });
     return;
   }
+  const meta = lookup.meta;
   const servedId = meta.showId; // the twin's slug when asked by alias, else the id asked for
 
   const showHeader = { title: meta.title, description: null as string | null, image: meta.image };
@@ -301,7 +214,10 @@ async function serveLive(
     // Never a 500, never blank (repo convention — see ingestShowFeed.ts's
     // own degrade rule): 200 with an empty list and the error surfaced.
     // Cache-Control: no-store so a transient feed hiccup is never pinned
-    // at the edge for the next hour of visitors to that show.
+    // at the edge for the next hour of visitors to that show. A feed whose
+    // fetch just failed is answered from the reader's 90 s failure memory
+    // rather than fetched again for every visitor, the same memory the
+    // show-scoped search answers from (feedCache.ts, code-health-2 CH2-38).
     res.setHeader("Cache-Control", "no-store");
     res.status(200).json(listBody({
       show_id: showId,
@@ -318,7 +234,7 @@ async function serveLive(
 
   const parsed = feed.parsed;
   const episodes = parsed.episodes
-    .map((ep, idx) => toCatalogEpisode(showId, ep, liveEpisodeGuid(ep, idx)))
+    .map((ep) => toCatalogEpisode(showId, ep))
     .filter((ep): ep is CatalogShowEpisode => ep !== null);
 
   const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);

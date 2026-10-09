@@ -13,9 +13,9 @@ import * as zlib from "zlib";
  *   - `api/shows/index/[...path].ts`, the same-origin proxy the client's
  *     shard search fetches through (its header has the CORS, gzip and
  *     flat-asset-name reasoning); and
- *   - `api/shows/[show_id]/episodes.ts`, which reads ONE shard to find a
- *     `pi:<n>` show's feed (a shared episode of a shard show cold-opening on
- *     a fresh device).
+ *   - `api/_lib/resolveShow.ts`, which reads ONE shard to find a `pi:<n>`
+ *     show's feed for the per-show list and its search box (a shared
+ *     episode of a shard show cold-opening on a fresh device).
  * It lived inside the proxy until the second caller arrived; it moved here
  * rather than being copied, so the two cannot drift apart.
  */

@@ -206,6 +206,7 @@ const viaOf = (source) => (source === "remote" ? "remote" : source === "autoresu
  * @param {OpLog} [opts.log]              the shared op log
  * @param {object} [opts.backend]         FakeBackend options (failLoadFor, durationById, ...)
  * @param {object} [opts.preview]         the preview deck's options (fakes.js fakePreview: failUrls)
+ * @param {object} [opts.tts]             the synthesiser's options (fakes.js fakeTts: voiceFallback, refuse, ...)
  */
 export class ReferenceEngine {
   constructor({
@@ -213,7 +214,7 @@ export class ReferenceEngine {
     mode = "native", reason = "build-default", protocol = PROTOCOL,
     scheduler = realScheduler(), now = () => Date.now(),
     activation = () => ({ ok: true }),
-    catalogue = {}, log = new OpLog(), backend = {}, preview = {},
+    catalogue = {}, log = new OpLog(), backend = {}, preview = {}, tts = {},
     holdPolicy = DEFAULT_HOLD_POLICY, seamGapSec,
   } = {}) {
     this.log = log;
@@ -231,7 +232,7 @@ export class ReferenceEngine {
     /** Owned rows (cp_pos:, cp_foray:, cp_last_episode), exactly as stored. */
     this.storage = new MemoryStore();
     this.backend = new WarmingBackend({ log, ...backend });
-    this.tts = fakeTts({ log });
+    this.tts = fakeTts({ log, ...tts });
     /** NE-47: the deck a rendered voice preview plays on, apart from the main
         deck, so a preview never touches the item a paused Foray holds. */
     this.preview = fakePreview({ log, ...preview });
@@ -414,6 +415,9 @@ export class ReferenceEngine {
       canPrevious: Boolean(item),
       autoAdvance: this.continuation ? this.continuation.autoAdvance : true,
       lastError: this.lastError,
+      // The manager's own answer (null until a line has spoken), as
+      // EngineSnapshot.body writes the core's `lastVoiceFallback`.
+      voiceFallback: m.lastVoiceFallback,
       skippedSegments: 0,
       pendingAdvances: this.advanceLog.length,
       pendingEvents: this.pendingEvents.length,

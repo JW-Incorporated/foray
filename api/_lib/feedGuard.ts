@@ -6,7 +6,7 @@ import { isIP } from "node:net";
  *
  * The two live endpoints fetch a show's RSS feed server-side, and the feed URL
  * is not ours: a `pi:<n>` show's url is a PodcastIndex row (anyone can submit a
- * feed there; api/shows/[show_id]/episodes.ts resolvePiShow), and every feed,
+ * feed there; api/_lib/resolveShow.ts resolvePiShow), and every feed,
  * catalogue ones included, is whatever its publisher's server says it is,
  * redirects and all. Before this the only check was "starts with http(s)", and
  * `fetch` followed up to 20 redirects anywhere. So a submitted feed whose url,

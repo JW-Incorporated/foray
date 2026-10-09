@@ -49,25 +49,17 @@ export function failureBackoffMs(consecutiveFailures: number, ttlMs: number): nu
 }
 
 /**
- * Stable per-episode identity: the ONE rule in feeds/episodeIdentity.ts, also
- * used by the live list and search, so both paths mint the same id. No
- * positional index here: the enclosure URL is always present on this path
- * (toCatalogEpisode drops items without one), so an undated guid-less episode
- * is keyed by it rather than by a feed position that shifts on every prepend.
- */
-export { episodeIdentity };
-
-/**
  * THE one ParsedEpisode -> CatalogShowEpisode mapping, used by this ingest
  * (DB mode) and by the live per-show list (api/shows/[show_id]/episodes.ts),
  * so the two branches of one endpoint cannot serve the same feed differently
  * (CH2-01, B1-01: the DB copy hardcoded `chapters: null` while the live one
  * served the feed's chapters).
  *
- * `guid` is the caller's: both mint it with episodeIdentity (feeds/
- * episodeIdentity.ts); the live list passes the item's feed position too,
- * which only an item with neither a date nor an enclosure URL uses, and
- * such an item is dropped here anyway.
+ * `guid` is minted HERE, after the drop below, with THE identity rule
+ * (feeds/episodeIdentity.ts) the show-scoped search also uses, so the list,
+ * the search and the DB store serve one id for one episode. Minting it after
+ * the drop is what lets that rule need no feed position: every item that
+ * reaches it has an enclosure URL (code-health-2 CH2-35, B1-07).
  *
  * `chapters` carries the chapters the feed published INLINE (Podlove Simple
  * Chapters, `psc:chapters` — parser.ts `inlineChapters`), sorted by start, or
@@ -76,17 +68,18 @@ export { episodeIdentity };
  * body is fetched separately per episode (#1071). A missing enclosure never
  * fabricates an audio_url: the item is dropped.
  */
-export function toCatalogEpisode(showId: string, ep: ParsedEpisode, guid: string): CatalogShowEpisode | null {
-  if (!ep.enclosureUrl) return null; // no real audio_url -> not a playable episode, drop it (never a fabricated pointer)
+export function toCatalogEpisode(showId: string, ep: ParsedEpisode): CatalogShowEpisode | null {
+  const enclosureUrl = ep.enclosureUrl;
+  if (!enclosureUrl) return null; // no real audio_url -> not a playable episode, drop it (never a fabricated pointer)
   return {
     show_id: showId,
-    guid,
+    guid: episodeIdentity({ guid: ep.guid, title: ep.title, publishedAt: ep.publishedAt, enclosureUrl }),
     title: ep.title,
     description_html: ep.descriptionHtml,
     description_text: ep.descriptionText || null,
     published_at: ep.publishedAt,
     duration_seconds: ep.duration.seconds,
-    audio_url: ep.enclosureUrl,
+    audio_url: enclosureUrl,
     season_number: ep.seasonNumber,
     episode_number: ep.episodeNumber,
     chapters_url: ep.chaptersUrl,
@@ -211,7 +204,7 @@ async function ingestShowFeedUnsafe(
   try {
     parsed = parseFeed(fetchResult.body);
     episodes = parsed.episodes
-      .map((ep) => toCatalogEpisode(showId, ep, episodeIdentity(ep)))
+      .map((ep) => toCatalogEpisode(showId, ep))
       .filter((ep): ep is CatalogShowEpisode => ep !== null);
     await store.upsertEpisodes(episodes);
   } catch (err) {

@@ -72,8 +72,8 @@
 #
 # So it is designed for infrequency: manual dispatch, plus a path filter narrow
 # enough that ordinary data/docs/backend PRs never trigger it. It is NOT in the
-# `protect-main` ruleset and must not become required — `backend` and
-# `data-and-site` are the required checks, and adding a 15-minute macOS job to
+# `protect-main` ruleset and must not become required — the required checks
+# are `REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`, and adding a 15-minute macOS job to
 # that set would put every content PR behind an iOS build.
 #
 # It also does not touch `ci.yml`. `ios-kit` (`swift test --package-path
