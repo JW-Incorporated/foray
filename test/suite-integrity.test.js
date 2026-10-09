@@ -1365,6 +1365,7 @@ const FLOORS = {
      version and built_at and leaves the manifest alone; --verify and --check go
      red by name). Zero slack; every named mutation was run and killed. */
   "tools/ci/catalogue-directory.test.mjs": 17, // code-health CH2-22 (T2-06): +2 characterization pins of the catalogue pointer text and every problem line, byte for byte, now that it shares makeDirectoryPointer with the Foray pointer; 15 -> 17
+  "tools/ci/ship-lists.test.mjs": 6, // CH2-18 (T2-03): new -- what the app ships has one owner: the real dist is exactly generate-manifest's lists (+ sw.js, show index, site association, stamp), the native font literals and shell equal fontSources()/SHELL, app.js's fetchJson scan sits inside RUNTIME_DATA with only ladders + dai-classification shipped unfetched, a new fetchJson joins the deploy id with RUNTIME_DATA as the floor, and prepare-webdir uses generate-manifest's scanner
   "tools/ci/forays-directory.test.mjs": 37, // PR #795 review finding 1 (2026-09-24): the seed never outranks the live pointer (mobile-only HEAD, shallow clone, every input is a Vercel path); 32 -> 35. Code-health CH2-22 (T2-06): +2 characterization pins of the Foray pointer text and every problem line from the one makeDirectoryPointer; 35 -> 37
   /* +12 (machinery audit, 2026-09-12): the checks-missing self-heal had three
      holes — sweep-only, keyed on `pr.updatedAt` (which this workflow's own label
