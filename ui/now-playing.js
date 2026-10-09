@@ -297,6 +297,9 @@ function agNpAdopt(ui) {
     if (!menu.hidden && !menu.contains(event.target) && !moreMenuBtn.contains(event.target)) closeMenu(false);
   });
   ui.closeBtn.addEventListener("click", () => closeMenu(false));
+  /* The sheet also collapses without touching closeBtn (Android back, a navigation, a lock-screen Stop all go through
+     player/client.js's setExpanded(false) / stopAndClose), so the owner of those paths calls this to drop an open menu. */
+  ui.closeMenu = closeMenu;
   ui.sheet.append(menu);
   /* Sleep cycles off, 15, 30, 60, off. The timer itself belongs to player/client.js (it owns playback): it is
      handed the minutes through ui.requestSleep and calls ui.resetSleep when it fires. */

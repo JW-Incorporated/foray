@@ -3211,6 +3211,8 @@ async function stopAndClose({ persist = true } = {}) {
       && ui.root.contains(active) && typeof active.blur === "function") active.blur();
   const owner = sheetOwner();
   if (owner) owner.closeSheet(ui.sheet);
+  /* A lock-screen Stop collapses the sheet without setExpanded(false): drop the Now Playing dots menu with it. */
+  ui.closeMenu?.(false);
   /* Opening the sheet made the bar inert + aria-hidden and the topbar inert (setExpanded(true)); the owner's
      closeSheet lifts only what IT recorded, and the topbar is on its keepReachable list, not its inert list. Stop
      from the open sheet never reaches setExpanded(false), so without this the gear stays inert and the next play's
@@ -4014,6 +4016,9 @@ function bind() {
          button below, which the posture's chrome rules must not be hiding when it lands. */
       window.AfterglowCar?.leave(document);
       releaseBarAndTopbar();
+      /* The Now Playing dots menu is built for the state it opened in; Android back / a navigation collapse the sheet
+         through here and never reach closeBtn, so a menu left open would reappear stale (Save/Next) on the next open. */
+      ui.closeMenu?.(false);
     }
     /* Closing: the owner first, while the sheet is still shown — it lifts
        `inert` off the bar and hands focus back to the button that opened

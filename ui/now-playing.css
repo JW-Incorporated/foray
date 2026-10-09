@@ -66,7 +66,7 @@
 .ag-np.fp-sheet .fp-scrub::-webkit-slider-runnable-track { height: 4px; border-radius: var(--r-xs); background: var(--track); }
 .ag-np.fp-sheet .fp-scrub::-webkit-slider-thumb { width: 16px; height: 16px; margin-top: -6px; border: 0; border-radius: var(--r-round); background: var(--lamp); -webkit-appearance: none; }
 .ag-np.fp-sheet .ag-np-times { display: flex; justify-content: space-between; margin-top: 0; color: var(--text-2); font-variant-numeric: tabular-nums; }
-.ag-np.fp-sheet .ag-np-strip-caption { flex: 1; text-align: center; color: var(--text-2); }
+.ag-np.fp-sheet .ag-np-strip-caption { flex: 1; text-align: center; }
 .ag-np.fp-sheet .ag-np-strip { display: flex; align-items: center; gap: 2px; height: 32px; }
 .ag-np.fp-sheet .ag-np-strip-button { flex: var(--grow) 1 0; min-width: 6px; height: 44px; margin: -6px 0; padding: 0; border: 0; display: flex; align-items: center; background: transparent; }
 .ag-np.fp-sheet .ag-np-strip-button[data-join-prev] { margin-left: -2px; --rl: 0; }
@@ -76,11 +76,10 @@
 /* The current bar is taller, so it and the bars beside it step apart (the strip's 2px gap) even inside one show's run: touching, it reads as a nub on a long bar. */
 .ag-np.fp-sheet .ag-np-strip-button[data-join-prev][data-gap-prev="1"] { margin-left: 0; --rl: var(--r-xs); }
 .ag-np.fp-sheet .ag-np-strip-button[data-join-next][data-gap-next="1"] { --rr: var(--r-xs); }
-.ag-np.fp-sheet .ag-np-strip-bar { position: relative; display: block; width: 100%; height: 16px; overflow: hidden; border-radius: var(--rl, var(--r-xs)) var(--rr, var(--r-xs)) var(--rr, var(--r-xs)) var(--rl, var(--r-xs)); background: var(--c); }
+.ag-np.fp-sheet .ag-np-strip-bar { position: relative; display: block; width: 100%; height: 16px; overflow: hidden; border-radius: var(--rl, var(--r-xs)) var(--rr, var(--r-xs)) var(--rr, var(--r-xs)) var(--rl, var(--r-xs)); background: var(--c); transition: opacity var(--m-ui) var(--e-out); }
 .ag-np.fp-sheet .ag-np-strip-fill { position: absolute; inset: 0; transform: scaleX(var(--fill, 0)); transform-origin: left; background: color-mix(in oklab, var(--c) 78%, var(--lamp)); transition: transform var(--m-micro) linear; }
 .ag-np.fp-sheet .ag-np-strip-button.is-current .ag-np-strip-bar { height: 20px; }
 /* The spotlight is a moment, not a state: while the eyebrow names the new show (3s) every bar but the current one steps back to the dim the prototype keeps, then the map returns to full colour (a resting strip stays readable ahead of the playhead). */
-.ag-np.fp-sheet .ag-np-strip-bar { transition: opacity var(--m-ui) var(--e-out); }
 .ag-np.fp-sheet .ag-np-first:has(.ag-np-eyebrow.is-lit) .ag-np-strip-button:not(.is-current) .ag-np-strip-bar:not(.is-narration) { opacity: var(--seg-dim); }
 .ag-np.fp-sheet .ag-np-strip-bar.is-narration, .ag-np.fp-sheet .ag-np-strip-button.is-current .ag-np-strip-bar.is-narration { height: 4px; background: var(--lamp); }
 .ag-np.fp-sheet .fp-row.ag-np-transport { flex: none; display: flex; align-items: center; justify-content: center; gap: var(--s-6); margin: var(--s-4) 0 0; }
@@ -111,7 +110,7 @@
 .ag-np.fp-sheet .ag-np-up-next .fp-upnext { min-height: 44px; display: inline-flex; align-items: center; color: var(--ember); }
 .ag-np.fp-sheet .fp-s-desc summary::after { content: none; }
 .ag-np.fp-sheet .ag-np-up-next-copy .eyebrow { display: block; text-transform: none; letter-spacing: 0; }
-.ag-np.fp-sheet .ag-np-up-next-row { min-height: 64px; padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3); display: flex; align-items: center; gap: var(--s-3); }
+.ag-np.fp-sheet .ag-np-up-next-row { min-height: 64px; padding: var(--s-2); padding-left: var(--s-3); display: flex; align-items: center; gap: var(--s-3); }
 .ag-np.fp-sheet .ag-np-up-next-art { width: 72px; height: 72px; flex: none; object-fit: cover; border-radius: var(--r-md); }
 .ag-np.fp-sheet .ag-np-up-next-copy { min-width: 0; }
 .ag-np.fp-sheet .ag-np-up-next-copy > * { margin: 0; }
