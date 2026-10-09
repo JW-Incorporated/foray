@@ -92,9 +92,10 @@ export interface FeedRead {
   source: "cache" | "revalidated" | "fetched" | "stale" | "none";
 }
 
+/* No User-Agent option (code-health-2 CH2-39, B1-12): every feed fetch sends
+   the product's one identity, which fetchFeedConditional sets itself. */
 export interface FeedReadOptions {
   fetchImpl?: typeof fetch;
-  userAgent?: string;
 }
 
 function slim(parsed: ParsedFeed): ParsedFeed {
@@ -134,7 +135,7 @@ export function createFeedReader({
       { etag: kept?.etag ?? null, lastModified: kept?.lastModified ?? null },
       /* Every feed fetch goes through the destination guard (feedGuard.ts,
          SEC-01): the url and each redirect must name a public address. */
-      { fetchImpl: guardFeedFetch(opts.fetchImpl, { lookup }), userAgent: opts.userAgent }
+      { fetchImpl: guardFeedFetch(opts.fetchImpl, { lookup }) }
     );
     if (result.notModified && kept) {
       cache.set(showId, { ...kept, checkedAt: clock.now() });

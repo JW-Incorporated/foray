@@ -1,7 +1,7 @@
 // api/episodes/search.ts end-to-end tests (S-07, kanban t_6baccaa0):
 // general Apple-backed search, show-scoped live search, id-map dropping,
 // rate limiting, and caching.
-import { test } from "node:test";
+import { test, mock } from "node:test";
 import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
 import { loadShowIdMap } from "../_lib/showIdMap.ts";
 import { appleCallerBuckets } from "../_lib/clientLimit.ts";
+import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -705,6 +706,92 @@ test("general search: when Apple fills its over-fetch the total is a floor and t
   assert.strictEqual(res.body.episodes[0].artwork_url, null, "no artwork from Apple, an honest null — the client falls back to the show record");
 });
 
+
+/* CH2-39 (code-health-2, A1-07): THE EPISODE CALLER'S WIRE CONTRACT WITH APPLE.
+   Episode search and show search used to hand-roll two Apple clients with the
+   same URL, headers and error strings; they now share api/_lib/appleClient.ts
+   and differ only in the entity and the timeout each passes. These pins were
+   written against the hand-rolled client first and survive the unification:
+   the URL (entity, limit, term), the headers, the two error strings and the
+   8 s abort are what this caller sends and says today. 8 s and not the show
+   directory's 2 s is a founder question (docs/roadmap/code-health-2.md §1,
+   question 3; default: keep 8 s until an episode-entity measurement exists),
+   so a change to it must be a ruling, not a drift.
+
+   MUTATION: pass `timeoutMs: 2_000` from search.ts — the 8 s abort pin goes
+   red (the signal aborts at 2 s). MUTATION: change the User-Agent or Accept
+   header in appleClient.ts — the header pin goes red here and in the show
+   caller's twin (api/_test/shows-search-apple.test.mjs). */
+function appleHang() {
+  /* A fetch that never answers until its signal aborts, and says when it was
+     asked and with what. */
+  let seen;
+  const asked = new Promise((resolve) => { seen = resolve; });
+  const fetchImpl = (url, init) => {
+    seen({ url: String(url), init });
+    return new Promise((_, reject) => {
+      init.signal.addEventListener("abort", () => reject(init.signal.reason));
+    });
+  };
+  return { fetchImpl, asked };
+}
+
+test("CH2-39: the episode Apple call sends entity=podcastEpisode, the over-fetch and the term, with the product's User-Agent, and aborts at 8 s", async () => {
+  resetSharedState();
+  const { fetchImpl, asked } = appleHang();
+  const q = `hang check ${Date.now()}`;
+  const req = { method: "GET", query: { q, limit: "10" }, headers: {} };
+  const res = mockRes();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    const pending = handler(req, res);
+    const { url, init } = await asked;
+    assert.strictEqual(url, `https://itunes.apple.com/search?entity=podcastEpisode&limit=50&term=${encodeURIComponent(q)}`);
+    assert.deepStrictEqual(init.headers, {
+      "User-Agent": DEFAULT_FEED_USER_AGENT,
+      Accept: "application/json",
+    });
+    mock.timers.tick(7_999);
+    assert.strictEqual(init.signal.aborted, false, "still waiting 1 ms before the episode caller's 8 s");
+    mock.timers.tick(1);
+    assert.strictEqual(init.signal.aborted, true, "aborted at exactly 8 s");
+    await pending;
+  } finally {
+    mock.timers.reset();
+    globalThis.fetch = originalFetch;
+  }
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.degraded, true);
+  assert.strictEqual(res.body.error, "Apple search fetch error: This operation was aborted");
+  assert.strictEqual(res.headers["Cache-Control"], "no-store");
+});
+
+test("CH2-39: the episode Apple call's two error strings — an HTTP failure and a transport failure", async () => {
+  resetSharedState();
+  const originalFetch = globalThis.fetch;
+  const bodies = [];
+  try {
+    for (const fetchImpl of [
+      async () => new Response("nope", { status: 503 }),
+      async () => { throw new Error("socket hang up"); },
+    ]) {
+      globalThis.fetch = fetchImpl;
+      const res = mockRes();
+      await handler({ method: "GET", query: { q: `error strings ${bodies.length} ${Date.now()}` }, headers: {} }, res);
+      bodies.push(res.body);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.strictEqual(bodies[0].error, "Apple search HTTP 503");
+  assert.strictEqual(bodies[1].error, "Apple search fetch error: socket hang up");
+  for (const body of bodies) {
+    assert.strictEqual(body.degraded, true);
+    assert.deepStrictEqual(body.episodes, []);
+  }
+});
 
 /* THIS TEST MUST STAY LAST IN THE FILE. It deliberately drains
    appleBucket.ts's 20/min bucket, which is module state shared by every test
