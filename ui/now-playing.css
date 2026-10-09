@@ -72,6 +72,10 @@
 .ag-np.fp-sheet .ag-np-strip-button[data-narration] { min-width: 2px; }
 .ag-np.fp-sheet .ag-np-strip-button[data-join-prev] .ag-np-strip-bar { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .ag-np.fp-sheet .ag-np-strip-button[data-join-next] .ag-np-strip-bar { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+/* The current bar is taller, so it and the bars beside it step apart (the strip's 2px gap) even inside one show's run: touching, it reads as a nub on a long bar. */
+.ag-np.fp-sheet .ag-np-strip-button[data-join-prev][data-gap-prev="1"] { margin-left: 0; }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-prev][data-gap-prev="1"] .ag-np-strip-bar { border-top-left-radius: var(--r-xs); border-bottom-left-radius: var(--r-xs); }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-next][data-gap-next="1"] .ag-np-strip-bar { border-top-right-radius: var(--r-xs); border-bottom-right-radius: var(--r-xs); }
 .ag-np.fp-sheet .ag-np-strip-bar { position: relative; display: block; width: 100%; height: 16px; overflow: hidden; border-radius: var(--r-xs); background: var(--c); }
 .ag-np.fp-sheet .ag-np-strip-fill { position: absolute; inset: 0; transform: scaleX(var(--fill, 0)); transform-origin: left; background: color-mix(in oklab, var(--c) 78%, var(--lamp)); transition: transform var(--m-micro) linear; }
 .ag-np.fp-sheet .ag-np-strip-button.is-past .ag-np-strip-bar { background: var(--c); }
@@ -102,6 +106,10 @@
 .ag-np.fp-sheet .fp-s-desc .ep-description-text { display: -webkit-box; margin: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; }
 .ag-np.fp-sheet .fp-s-desc.is-expanded .ep-description-text { -webkit-line-clamp: initial; line-clamp: initial; }
 .ag-np.fp-sheet .fp-s-desc summary { order: 2; min-height: 44px; display: flex; align-items: center; color: var(--ember); cursor: pointer; }
+/* The listener's own marks and the links they act on are Ember, never violet (body.ui-v2 .fp-openep paints Up Next violet); the notes toggle's disclosure chevron is not in the prototype either. */
+.ag-np.fp-sheet .ag-np-up-next .fp-upnext { min-height: 44px; display: inline-flex; align-items: center; color: var(--ember); }
+.ag-np.fp-sheet .fp-s-desc summary::after { content: none; }
+.ag-np.fp-sheet .ag-np-up-next-copy .eyebrow { text-transform: none; letter-spacing: 0; }
 .ag-np.fp-sheet .ag-np-up-next-row { min-height: 96px; padding: var(--s-3); display: flex; gap: var(--s-3); border-radius: var(--r-lg); background: linear-gradient(var(--overlay), var(--overlay)) rgb(29 25 22 / .72); box-shadow: inset 0 1px 0 var(--rim); }
 .ag-np.fp-sheet .ag-np-up-next-art { width: 72px; height: 72px; flex: none; object-fit: cover; border-radius: var(--r-md); }
 .ag-np.fp-sheet .ag-np-up-next-copy { min-width: 0; }
@@ -109,10 +117,16 @@
 .ag-np.fp-sheet .ag-np-up-next-copy .t-caption { color: var(--text-2); }
 .ag-np.fp-sheet .ag-np-up-next-copy .t-why { margin-top: var(--s-1); color: var(--lamp-text); }
 .ag-np.fp-sheet .fp-clips { display: none; }
-/* What is left of the legacy second row once Speed, Bookmark and Up Next moved out: Stop, Next, Save, Episode, Back to this Foray.
-   Quiet text buttons at the foot of the detail posture, so no control the sheet always had is lost. */
-.ag-np.fp-sheet .ag-np-legacy-actions { margin-top: var(--s-8); display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2) var(--s-4); }
-.ag-np.fp-sheet .ag-np-legacy-actions > * { min-width: var(--tap); min-height: var(--tap); padding: 0 var(--s-2); display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; box-shadow: none; font: var(--t-label); color: var(--text-2); }
+/* The legacy second row (Stop, Next, Save, Episode, Back to this Foray) is not in the prototype's detail posture: it read as a
+   second control row, with a Unicode skip glyph and a violet "Saved". Its buttons stay in the DOM (player/client.js owns their
+   behaviour and paint) and the dots menu below is their one visible face, forwarding a click to each. */
+.ag-np.fp-sheet .ag-np-legacy-actions { display: none; }
+/* The dots menu: a raised card (opaque base, 6% Lamp overlay, top rim, warm shadow), no glass and no hairline. */
+.ag-np.fp-sheet .ag-np-menu { position: absolute; z-index: 5; top: calc(var(--safe-top) + 12px + 44px); right: var(--gutter); min-width: 220px; padding: var(--s-2); display: flex; flex-direction: column; border-radius: var(--r-lg); background: linear-gradient(var(--overlay), var(--overlay)) rgb(29 25 22 / .97); box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2); }
+.ag-np.fp-sheet .ag-np-menu[hidden] { display: none; }
+.ag-np.fp-sheet .ag-np-menu-item { min-height: var(--tap); padding: 0 var(--s-3); display: flex; align-items: center; gap: var(--s-3); border: 0; border-radius: var(--r-md); background: transparent; box-shadow: none; color: var(--text); text-align: left; }
+.ag-np.fp-sheet .ag-np-menu-item.is-saved { color: var(--ember); }
+.ag-np.fp-sheet .ag-np-menu-icon { display: inline-flex; flex: none; }
 
 ::view-transition-group(np-art) { animation-duration: var(--m-sheet); animation-timing-function: var(--e-spring-soft); }
 ::view-transition-old(np-art), ::view-transition-new(np-art) { animation: none; mix-blend-mode: normal; height: 100%; object-fit: cover; }

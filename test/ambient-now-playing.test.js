@@ -109,15 +109,53 @@ test("secondary buttons keep their icon: paintControl writes Speed's rate and Bo
   assert.match(ui, /"t-caption ag-np-action-caption"/);
 });
 
-test("no control in the sheet is decoration: the dots open the detail, Sleep really pauses, and the legacy second row stays reachable", () => {
-  /* MUTATION 1: delete `moreMenuBtn.addEventListener("click", openDetail)` -> red (the dots were a dead 44px button).
+test("no control in the sheet is decoration: the dots open the player menu, Sleep really pauses, and the legacy second row lives on as that menu", () => {
+  /* RULING THAT FELL (iteration 2, fidelity): build-log call 7 kept the legacy row (Stop, Next, Save, Episode, Back to this Foray)
+     visible at the foot of the detail posture. The prototype has no such row; it read as a second control row, with a Unicode skip
+     glyph and a violet "Saved". Its buttons are now display:none and the dots menu forwards a click to each, so nothing is lost.
+     MUTATION 1: delete `spec.source.click();` in the menu item handler -> red (every menu item would be a dead button).
      MUTATION 2: change `minutes * 60000` to `minutes * 6000` in player/client.js -> red (the timer would fire 10x early).
-     MUTATION 3: put `display: none` back on `.ag-np-legacy-actions` -> red (Stop, Next, Save, Episode and Back to this Foray vanished with it). */
-  assert.match(ui, /moreMenuBtn\.addEventListener\("click", openDetail\)/);
+     MUTATION 3: set `.ag-np-legacy-actions` back to `display: flex` -> red (the second row returns beside the menu).
+     MUTATION 4: delete the `if (!spec.source || spec.source.hidden) continue;` line -> red (Next offered at the end of the queue, Save inside a Foray).
+     MUTATION 5: change `.ag-np-menu-item.is-saved { color: var(--ember); }` to `var(--violet)` -> red (Saved is the listener's own mark: Ember). */
+  assert.match(ui, /moreMenuBtn\.addEventListener\("click", \(\) => \(menu\.hidden \? openMenu\(\) : closeMenu\(true\)\)\);/);
+  assert.match(ui, /item\.addEventListener\("click", \(\) => \{\s*closeMenu\(false\);\s*spec\.source\.click\(\);\s*\}\);/);
+  for (const source of ["ui.saveBtn", "ui.nextBtn", "ui.openLink", "ui.forayLink", "ui.stopBtn"]) {
+    assert.ok(ui.includes(`{ source: ${source},`), `${source} has a menu item`);
+  }
+  assert.match(ui, /if \(!spec\.source \|\| spec\.source\.hidden\) continue;/, "an item the page hides is not offered");
+  assert.match(ui, /event\.stopPropagation\(\);\s*closeMenu\(true\);/, "Escape closes the menu, not the whole player");
   assert.match(ui, /ui\.requestSleep\?\.\(sleepMinutes\)/);
   assert.match(client, /ui\.requestSleep = \(minutes\) => \{[\s\S]*?if \(isRunning\(\)\) setRunning\(false, "sleep"\);[\s\S]*?\}, minutes \* 60000\);/);
-  assert.match(css, /\.ag-np-legacy-actions \{[^}]*display: flex/);
-  assert.doesNotMatch(css, /\.ag-np-legacy-actions[^{]*\{[^}]*display:\s*none/);
+  assert.match(css, /\.ag-np-legacy-actions \{ display: none; \}/);
+  assert.match(css, /\.ag-np-menu-item\.is-saved \{ color: var\(--ember\); \}/);
+  assert.doesNotMatch(css, /\.ag-np-menu[^{]*\{[^}]*backdrop-filter/, "the Dock is the only glass");
+  /* No Unicode glyph in the menu: every icon is a sprite symbol, in the sprite and in the local allow-list (an unknown name falls back to the play glyph). */
+  const menuBlock = /const menuSpecs = \[[\s\S]*?\n  \];/.exec(ui)[0];
+  const icons = [...menuBlock.matchAll(/"([a-z]+(?:-[a-z]+)*)"/g)].map((m) => m[1]).filter((n) => /^(check-circle|check-circle-fill|skip-next|books|sparkle|x)$/.test(n));
+  assert.ok(icons.length >= 6, "all five items name their sprite icon (Save names two)");
+  const sprite = read("ui/icons.svg");
+  const allow = /const AG_NP_ICONS = new Set\(\[[^\]]*\]\)/.exec(ui)[0];
+  for (const name of icons) {
+    assert.ok(sprite.includes(`id="i-${name}"`), `${name} is a sprite symbol`);
+    assert.ok(allow.includes(`"${name}"`), `${name} is in AG_NP_ICONS`);
+  }
+  assert.doesNotMatch(menuBlock, /[⏭✓✔]/, "no Unicode skip glyph or checkmark");
+});
+
+test("iteration 2 (strip + queue): the current bar steps apart from its neighbours, and Up Next's peek reads queued episodes outside the session", () => {
+  /* MUTATION 1: delete the `data-gap-prev` rule's `margin-left: 0` -> red (a same-show neighbour touches the taller current bar again: the nub).
+     MUTATION 2: in ui/now-playing.js change `current || nearCurrent(ui.strip.children[order - 1])` to `current` -> red (the bar before the current one stays welded to it).
+     MUTATION 3: in app.js drop `|| state.itemIndex[id] || storedEpisode(id)` from `nextItem` -> red (a queued episode outside today's session gave a null
+       peek, and the Up Next section vanished from the detail posture exactly when a listener had an Up Next). */
+  assert.match(ui, /button\.dataset\.gapPrev = current \|\| nearCurrent\(ui\.strip\.children\[order - 1\]\) \? "1" : "0";/);
+  assert.match(ui, /button\.dataset\.gapNext = current \|\| nearCurrent\(ui\.strip\.children\[order \+ 1\]\) \? "1" : "0";/);
+  assert.match(css, /\[data-join-prev\]\[data-gap-prev="1"\] \{ margin-left: 0; \}/);
+  assert.match(css, /\[data-join-next\]\[data-gap-next="1"\] \.ag-np-strip-bar \{ border-top-right-radius: var\(--r-xs\)/);
+  /* MUTATION 4: delete the `.fp-upnext` rule's `color: var(--ember)` -> red (body.ui-v2 .fp-openep paints the Up Next link violet, which the direction overturned). */
+  assert.match(css, /\.ag-np-up-next \.fp-upnext \{[^}]*color: var\(--ember\)/);
+  assert.match(css, /\.fp-s-desc summary::after \{ content: none; \}/);
+  assert.match(read("app.js"), /const item = id \? \(episode\(id\) \|\| state\.itemIndex\[id\] \|\| storedEpisode\(id\)\) : null;/);
 });
 
 test("a Foray with no artwork URLs still draws its collage, from the strip's own colours", () => {
@@ -194,7 +232,7 @@ test("round 2: the Foray's 'Now: <show>' caption does not follow the listener in
   assert.match(paint, /clearTimeout\(ui\.captionTimer\)/);
   const states = read("tools/ui-lab/lib/states.mjs");
   const detail = /label: "now-playing-detail",[\s\S]*?ready: "\.ag-np-detail"/.exec(states)[0];
-  assert.match(detail, /startEpisodePlayback\(page, ep0\)/);
+  assert.match(detail, /startEpisodePlayback\(page, ep0, \{\s*description:/, "the detail step plays an episode WITH notes, so Show notes is on screen to be judged");
   assert.match(detail, /scrollTop = scroller\.scrollHeight/);
   assert.match(states, /label: "now-playing-detail-foray"/);
 });

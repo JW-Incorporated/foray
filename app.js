@@ -3493,7 +3493,11 @@ const EPISODE_NAVIGATION = {
   get nextItem() {
     const cur = window.ForayPlayer?.currentEpisodeId?.();
     const id = cur ? planAfterEnded(cur).nextId : queueIds()[0];
-    const item = id ? episode(id) : null;
+    /* A queued or saved episode is usually not in today's session document, so the session alone answered null
+       and the sheet's Up Next peek vanished for exactly the listener who has an Up Next. The stored snapshot is
+       what Up Next itself plays from (liveEpisode). MUTATION: drop the `||` tail and a queued episode outside the
+       session gives null. */
+    const item = id ? (episode(id) || state.itemIndex[id] || storedEpisode(id)) : null;
     return item ? { ...item, why: whyFor(id, item) || item.hook || "" } : null;
   },
   isSaved(id) { return isSaved(id); },

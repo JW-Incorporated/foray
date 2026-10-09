@@ -28,16 +28,16 @@ const PARK_ROUTE = "#/starred-shows";
     a fixed offset and pause, so the mini bar and sheet show a deterministic
     position. (The audio is the silent 60 s fixture, so the bar's time reads
     against that, not the episode's real length.) */
-async function startPlayback(page, itemId) {
-  await page.evaluate(async (id) => {
+async function startPlayback(page, itemId, extra = {}) {
+  await page.evaluate(async ({ id, extra }) => {
     const saved = JSON.parse(localStorage.getItem("cp_saved") || "{}");
     const it = saved[id];
     if (!it) throw new Error("uilab: seeded item missing: " + id);
     await window.ForayPlayer.play(
-      { ...it, duration_sec: it.duration_sec || (it.duration_min || 60) * 60 },
+      { ...it, ...extra, duration_sec: it.duration_sec || (it.duration_min || 60) * 60 },
       { why: "uilab fixture" }
     );
-  }, itemId);
+  }, { id: itemId, extra });
   await page.waitForFunction(() => (window.__audios || []).some((a) => a.src && !a.paused && a.currentTime > 0), null, { timeout: 20000 });
   await page.evaluate(() => {
     for (const a of window.__audios || []) if (a.src) { try { a.currentTime = 21; a.pause(); } catch (_) { /* ignore */ } }
@@ -113,9 +113,9 @@ async function startForayPlayback(page, seekSeconds = 21) {
   await page.waitForSelector(".ag-np-strip-button", { state: "visible", timeout: 10000 });
 }
 
-async function startEpisodePlayback(page, itemId) {
+async function startEpisodePlayback(page, itemId, extra = {}) {
   await resetAmbientNowPlaying(page);
-  await startPlayback(page, itemId);
+  await startPlayback(page, itemId, extra);
   await openNowPlaying(page);
 }
 
@@ -560,7 +560,11 @@ export function appStates(fx) {
           label: "now-playing-detail",
           route: "#/library",
           run: async (page) => {
-            await startEpisodePlayback(page, ep0);
+            /* The seeded episodes carry no publisher notes, so the detail posture had no Show notes section to look at. The
+               prototype's scrolled view shows one (a four-line clamp, "More"); this step plays ep0 with notes of its own. */
+            await startEpisodePlayback(page, ep0, {
+              description: "A conversation about how a small team turns a rough idea into something people pay for, and what it gave up on the way. The publisher's notes run here in full, with the guest's links and timestamps that seek to the moment they name. Nothing is rehosted: the audio plays from the show's own feed.",
+            });
             await page.evaluate(() => {
               const scroller = document.querySelector(".ag-np .fp-sheet-scroll") || document.querySelector(".ag-np");
               scroller.scrollTop = scroller.scrollHeight;
@@ -618,6 +622,18 @@ export function appStates(fx) {
           route: "#/foray/" + encodeURIComponent(forayNarrated),
           run: (page) => startForayPlayback(page, 900),
           ready: ".ag-np.is-foray",
+        },
+        {
+          /* The dots menu (Save, Next, Episode page, Stop): the visible home of the legacy second row. Last in the state so the
+             open menu is never carried into another step. */
+          label: "now-playing-menu",
+          route: "#/library",
+          run: async (page) => {
+            await startEpisodePlayback(page, ep0);
+            await page.locator('.ag-np [aria-label="More player options"]').click();
+            await wait(page, 300);
+          },
+          ready: ".ag-np-menu:not([hidden])",
         },
       ],
     },
