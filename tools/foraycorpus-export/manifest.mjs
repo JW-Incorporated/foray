@@ -20,6 +20,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve as resolvePath, sep } from "node:path";
 
 import { writeJsonAtomic } from "../segments/sweep-transcripts.mjs";
+import { instant } from "./time.mjs";
 
 export const INSERT_WINDOW_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -42,12 +43,6 @@ export function hashFile(path) {
       .on("data", (chunk) => hash.update(chunk))
       .on("end", () => resolveHash(hash.digest("hex")));
   });
-}
-
-function instant(value) {
-  if (value == null) return null;
-  const t = value instanceof Date ? value.getTime() : Date.parse(value);
-  return Number.isNaN(t) ? null : t;
 }
 
 /**
