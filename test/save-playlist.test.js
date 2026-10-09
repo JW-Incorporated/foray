@@ -485,7 +485,7 @@ test("the copy is listed in Library and on the Playlists page, and drawn as own 
 
   m.ctx.renderPlaylists();
   assert.ok(m.view().includes(`href="#/playlist/${copy.id}"`), "the Playlists page lists the copy");
-  assert.match(m.view(), /<p class="sub">1 playlist<\/p>/, "the count no longer calls every playlist 'built'");
+  assert.match(m.view(), /<p class="t-caption num pl-count">1 playlist<\/p>/, "the count no longer calls every playlist 'built'");
 
   m.ctx.renderHome();
   const page = m.view();
@@ -516,7 +516,7 @@ test("the copy's own page is an own playlist's page: remove, no Save, and no 'ge
   assert.ok(!html.includes('id="pl-save"'), "a saved copy is not saved again");
   assert.ok(html.includes('id="pl-remove"'));
   assert.ok(!/generated for you/i.test(html));
-  assert.match(html, /4 episodes · playlist/);
+  assert.match(html, /class="t-caption num pl-meta"><span class="pl-nb">4 episodes/);
 });
 
 /* ==================================================================== */
@@ -561,10 +561,10 @@ test("a copy saved with Family Mode OFF neither lists nor plays an explicit epis
   m.store.set("cp_family", "true");
   m.ctx.renderPlaylistDetail(copy.id);
   const html = m.view();
-  assert.ok(!html.includes('data-play="st-explicit"'), "no play button for it");
+  assert.ok(!html.includes('data-pl-play="st-explicit"'), "no play button for it");
   assert.ok(!html.includes("Episode st-explicit"), "nor its title");
   assert.ok(html.includes("Hidden by Family Mode"), "its row says what holds it back");
-  assert.strictEqual((html.match(/class="ep-row/g) || []).length, 5, "and keeps its place, so the count stays true");
+  assert.strictEqual((html.match(/data-pl-(?:ep|gone)="/g) || []).length, 5, "and keeps its place, so the count stays true");
 
   /* Today's Keep listening starts a playlist through homePlayable (the hero never is one). */
   const t = m.ctx.homePlayable({ kind: "playlist", playlist: m.ctx.playlistById(copy.id) });
@@ -593,13 +593,13 @@ test("after the catalogue moves, a saved item with an audio_url snapshot still p
 
   m.ctx.renderPlaylistDetail(copy.id);
   const html = m.view();
-  assert.strictEqual((html.match(/class="ep-row/g) || []).length, 4, "every saved item keeps its row");
-  assert.ok(html.includes('data-play="st4"'), "st4 has a stored audio_url snapshot: it plays");
-  assert.ok(!html.includes('data-play="st3"'), "st3 has none: no play button");
-  assert.strictEqual((html.match(/class="ep-row gone"/g) || []).length, 1, "st3 stays listed, labelled");
+  assert.strictEqual((html.match(/data-pl-(?:ep|gone)="/g) || []).length, 4, "every saved item keeps its row");
+  assert.ok(html.includes('data-pl-play="st4"'), "st4 has a stored audio_url snapshot: it plays");
+  assert.ok(!html.includes('data-pl-play="st3"'), "st3 has none: no play button");
+  assert.strictEqual((html.match(/data-pl-gone="/g) || []).length, 1, "st3 stays listed, labelled");
 
   m.ctx.renderPlaylistDetail(copy.id);   // the second render (#276's lesson)
-  assert.ok(m.view().includes('data-play="st4"') && !m.view().includes('data-play="st3"'));
+  assert.ok(m.view().includes('data-pl-play="st4"') && !m.view().includes('data-pl-play="st3"'));
 });
 
 /* ==================================================================== */

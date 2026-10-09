@@ -180,7 +180,8 @@ test("a one-episode playlist reads '1 episode' on the Playlists page, in Library
   onePartPlaylist(m);
 
   m.ctx.renderPlaylists();
-  assert.match(m.view(), />1 episode · played /, "Playlists page row");
+  assert.match(m.view(), /pl-nb">1 episode<\/span>/, "Playlists page tile");
+  assert.match(m.view(), />played Sep 21, 2019</, "and the day it was last played, on its own line");
   assert.ok(!/\b1 parts?\b/.test(m.view()), `Playlists page must not say "parts": ${m.view()}`);
 
   m.ctx.renderLibrary();
