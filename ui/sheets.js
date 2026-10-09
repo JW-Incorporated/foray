@@ -276,6 +276,15 @@ function onSheetKeydown(e) {
   }
 }
 
+/** A control a page hides with CSS (`display: none` on the topbar for Forays, Foray detail, Settings, Category,
+    car posture, the Today sheet) has no client rects, and `focus()` on it does nothing: a trap that cycles to it
+    has already cancelled Tab's default and stalls on the last control. DOM stubs without `getClientRects` are
+    taken as rendered. */
+function isRendered(el) {
+  if (!el || typeof el.getClientRects !== "function") return true;
+  try { return el.getClientRects().length > 0; } catch (_) { return true; }
+}
+
 /** The focusable controls inside the chrome a sheet keeps reachable
     (`keepReachable`), in the order given — the ☰ first, then an open drawer's
     links. A closed drawer is `hidden`, so it contributes nothing. */
@@ -286,7 +295,7 @@ function keptFocusables(entry) {
     try { roots = typeof document.querySelectorAll === "function" ? [...document.querySelectorAll(sel)] : []; } catch (_) { roots = []; }
     for (const root of roots) {
       if (root.hidden) continue;
-      for (const el of sheetFocusables(root)) if (!out.includes(el)) out.push(el);
+      for (const el of sheetFocusables(root)) if (isRendered(el) && !out.includes(el)) out.push(el);
     }
   }
   return out;

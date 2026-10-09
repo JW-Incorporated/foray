@@ -14,7 +14,7 @@ function renderPlaylistDetail(id) {
      Playlists list, so landing here with no ‹ at all would be a dead end
      for whoever tapped a now-stale link (e.g. from the drawer). */
   if (!p) {
-    $("#view").innerHTML = statusPageHtml({ title: "Playlist", note: "Playlist not found.", back: "#/playlists" });
+    $("#view").innerHTML = agNotFoundPage();
     return;
   }
   fullPool(); // populate itemIndex

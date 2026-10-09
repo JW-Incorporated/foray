@@ -113,6 +113,28 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   { rel: "ui/episode.css", maxBytes: 8 * 1024 },
   /* ui/episode.js, which the screen rewrote (the Room, the actions row, the notes, the chapters; 7.8 KB before, 19.1 KB minified now, 2026-10-08). Budgeted here for the reason home.js and foray.js are: the 2.85 MB legacy line is not to be re-baselined, and this is a bounded feature step that put the legacy bundle 1.9 KB over it. Ceiling 24 KB keeps the 0.75 floor (18 KB) readable. */
   { rel: "ui/episode.js", maxBytes: 24 * 1024 },
+  /* QA fix (Phase 5, 2026-10-08): the rest of what the redesign ADDED to the bundle and nothing but the redesign owns —
+     the token sheet, the icon sprite and its licence notice, the sprite's loader, and the per-screen stylesheets that
+     no earlier unit listed. They were counted against the legacy line by omission, which is how the line (2.85 MB, not
+     to be raised) went red with 3.5 KB to spare on an LF checkout while 134 KB of the redesign was already budgeted
+     apart. Same rule as every entry above: a ceiling ~10-15% over the measured LF size, and the 0.75 floor below keeps
+     the ceiling honest. Measured 2026-10-08 (LF; minified for css/js, verbatim for svg/txt): tokens.css 11.3 KB,
+     icons.svg 15.7 KB, icons-LICENSES.txt 5.7 KB, icons.js 1.4 KB, onboarding.css 4.0 KB, show.css 1.8 KB,
+     browse.css 1.9 KB, settings.css 5.2 KB, forays.css 5.6 KB. JS that is the SPLIT of legacy app.js (ui/search.js,
+     ui/show.js, ...) is NOT listed: that is the old code in new files, and it belongs to the legacy line.
+     MUTATION (run red, 2026-10-08): delete these nine entries -> "the legacy bundle is 2.86 MB after 134.1 KB of
+     separately-budgeted Ambient foundation assets", the unchanged 2.85 MB alarm in "REAL REPO: the sliced bundle".
+     WHAT THIS DOES NOT BUY: the complete bundle is unchanged, 14-16 KB under the 3 MB cap. Reclassifying bytes
+     moves the alarm that names them, not the cap; the cap is the one that stops a native build. */
+  { rel: "ui/tokens.css", maxBytes: 13 * 1024 },
+  { rel: "ui/icons.svg", maxBytes: 18 * 1024 },
+  { rel: "ui/icons-LICENSES.txt", maxBytes: 6.5 * 1024 },
+  { rel: "ui/icons.js", maxBytes: 1.75 * 1024 },
+  { rel: "ui/onboarding.css", maxBytes: 4.5 * 1024 },
+  { rel: "ui/show.css", maxBytes: 2 * 1024 },
+  { rel: "ui/browse.css", maxBytes: 2.25 * 1024 },
+  { rel: "ui/settings.css", maxBytes: 6 * 1024 },
+  { rel: "ui/forays.css", maxBytes: 6.5 * 1024 },
 ]);
 
 /* ───────────────────────────── the derivation ───────────────────────────── */

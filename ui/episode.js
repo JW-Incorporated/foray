@@ -746,7 +746,7 @@ function renderEpisode(id, { t = null } = {}) {
     /* With a ‹ (audit 2026-09-22): this page is reached through stale links —
        a queued id whose snapshot is gone, a search row from an earlier session —
        and a sentence with no way back was a dead end. */
-    $("#view").innerHTML = statusPageHtml({ title: "Episode", note: "Episode not found." });
+    $("#view").innerHTML = agNotFoundPage();
     return;
   }
   // populate itemIndex/poolIds so "more from this show" rows can play in-app;
