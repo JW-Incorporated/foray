@@ -332,7 +332,9 @@ function pluginSwift() {
 /** Apple's Required Reason API list, as call-site patterns. */
 const CATEGORY_PATTERNS = {
   NSPrivacyAccessedAPICategoryUserDefaults: /\bUserDefaults\b|NSUserDefaults/,
-  NSPrivacyAccessedAPICategorySystemBootTime: /\bsystemUptime\b|\bmach_absolute_time\b/,
+  /* `DispatchTime.uptimeNanoseconds` is mach_absolute_time read through
+     Dispatch: since CH3-16 it is the only boot-time clock the plugins read. */
+  NSPrivacyAccessedAPICategorySystemBootTime: /\bsystemUptime\b|\bmach_absolute_time\b|\buptimeNanoseconds\b/,
   NSPrivacyAccessedAPICategoryFileTimestamp:
     /\bcreationDate\b|\bmodificationDate\b|contentModificationDateKey|creationDateKey|NSFileCreationDate|NSFileModificationDate|\bfileModificationDate\b|attributesOfItem|\bgetattrlist\b|\b[fl]?stat\s*\(|\bfstatat\b/,
   NSPrivacyAccessedAPICategoryDiskSpace:
@@ -347,7 +349,8 @@ test("REAL REPO: no plugin Swift uses a Required Reason API the manifest does no
   /* The tripwire this file exists for: a new `UserDefaults`, `systemUptime` or
      file-timestamp read lands in a plugin, and the manifest has not been
      revisited. MUTATION: delete the SystemBootTime row from ACCESSED_API_TYPES
-     -> NowPlayingPublisher.swift is named here. RUN. */
+     -> AVDeck.swift, AudioSessionOwner.swift and MainQueueTiming.swift are
+     named here. RUN. */
   const declared = new Set(ACCESSED_API_TYPES.map((a) => a.category));
   const files = pluginSwift();
   assert.ok(files.length > 20, `found only ${files.length} plugin Swift files; the walk is wrong`);
@@ -363,7 +366,7 @@ test("REAL REPO: no plugin Swift uses a Required Reason API the manifest does no
   }
   assert.deepEqual(undeclared, []);
   assert.ok(used.has("NSPrivacyAccessedAPICategoryUserDefaults"), "UserDefaults use not found: the scan is broken");
-  assert.ok(used.has("NSPrivacyAccessedAPICategorySystemBootTime"), "systemUptime use not found: the scan is broken");
+  assert.ok(used.has("NSPrivacyAccessedAPICategorySystemBootTime"), "boot-time clock use not found: the scan is broken");
 });
 
 test("REAL REPO: every declared category's evidence is still where the module says", () => {

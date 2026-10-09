@@ -27,11 +27,13 @@
  *     reinstall check, and `@capacitor/preferences`, which is pure
  *     `UserDefaults.standard` and SHIPS NO MANIFEST OF ITS OWN. All of it is
  *     data only this app reads: CA92.1, not an app-group reason.
- *   System boot time (35F9.1) — `NowPlayingPublisher.swift`'s
- *     `ProcessInfo.processInfo.systemUptime`, plus the monotonic
+ *   System boot time (35F9.1) — the monotonic
  *     `DispatchTime.now().uptimeNanoseconds` intervals in AVDeck,
- *     AudioSessionOwner and MainQueueTiming. Elapsed time between in-app
- *     events only: 35F9.1.
+ *     AudioSessionOwner and MainQueueTiming (the engine's clock, which the
+ *     lock-screen entry's timing reads too). Elapsed time between in-app
+ *     events only: 35F9.1. `NowPlayingPublisher.swift`'s
+ *     `ProcessInfo.processInfo.systemUptime` was the other call site until
+ *     CH3-16 removed the publisher's second clock (2026-10-09).
  *   File timestamp (C617.1) — NO LONGER DECLARED (CH-20, issue #1076). It was
  *     declared for the statically linked ONNX Runtime 1.20.0 that foray-tts
  *     pinned for the on-device Kokoro probe (`_stat`/`_fstat`, sizing the
@@ -125,7 +127,7 @@ export const ACCESSED_API_TYPES = Object.freeze([
     reasons: Object.freeze(["35F9.1"]),
     why: "Measures time elapsed between events inside the app (lock-screen elapsed time, monotonic deck and session timing).",
     evidence: Object.freeze([
-      { file: "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/NowPlayingPublisher.swift", pattern: /ProcessInfo\.processInfo\.systemUptime/ },
+      { file: "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/AVDeck.swift", pattern: /DispatchTime\.now\(\)\.uptimeNanoseconds/ },
       { file: "mobile/plugins/foray-audio/ios/Sources/ForayAudioPlugin/Engine/MainQueueTiming.swift", pattern: /uptimeNanoseconds/ },
     ]),
   }),
