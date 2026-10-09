@@ -19,9 +19,11 @@ import Foundation
 // asks the same functions. NE-32 ported the rest of the pair's decisions
 // (`warmSettled`, `handoverSteps`, `discardFreesBuffer`, `playRefusalAction`,
 // `unexplainedPauseAction`, `prefetchWindowOpens`) and registered the
-// `deck-pair` fixtures that pin them case by case. DeckPair asks the first
-// four; `playRefusalAction` and `prefetchWindowOpens` are parity-only (AVDeck
-// asks `prefetchWindowDelayMs`, which shares `windowBoundarySec` with it).
+// `deck-pair` fixtures that pin them case by case. DeckPair asks
+// `warmSettled`, `handoverSteps`, `discardFreesBuffer` and
+// `unexplainedPauseAction`; `playRefusalAction` and `prefetchWindowOpens` are
+// parity-only (AVDeck asks `prefetchWindowDelayMs`, which shares
+// `windowBoundarySec` with it).
 extension DeckPolicy {
 
     // MARK: readings (deck-readings)
