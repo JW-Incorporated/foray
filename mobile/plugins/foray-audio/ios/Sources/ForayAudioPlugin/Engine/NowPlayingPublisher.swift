@@ -131,7 +131,8 @@ final class NowPlayingPublisher: NowPlayingWriting {
         return listenRate.isFinite && listenRate > 0 ? listenRate : 1
     }
 
-    /// The dictionary, at the playhead the view carries.
+    /// The dictionary, at the playhead the view carries (clamped to the
+    /// duration, as before).
     static func info(for view: MediaMapping.SessionView, artwork picture: MPMediaItemArtwork?,
                      listenRate: Double) -> [String: Any] {
         let rate = NowPlayingRate.of(view)
@@ -145,7 +146,7 @@ final class NowPlayingPublisher: NowPlayingWriting {
         ]
         if let position = view.positionState {
             info[MPMediaItemPropertyPlaybackDuration] = NSNumber(value: position.duration)
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = NSNumber(value: position.position)
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = NSNumber(value: Swift.min(position.position, position.duration))
         }
         if let picture {
             info[MPMediaItemPropertyArtwork] = picture
