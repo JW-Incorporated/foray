@@ -370,9 +370,14 @@ test("detectFormat falls back to the declared type when the body is unrecognisab
    in tools/ (tools/refresh/entities.mjs), not a private third copy. The copy
    knew seven names, so a transcript's `&rsquo;` survived into the cue text.
    MUTATION: restore the local seven-name decoder -- the apostrophe stays an
-   entity. */
+   entity.
+   CH2-09 (docs/roadmap/code-health-2.md): a reference that is not a Unicode
+   scalar value now becomes U+FFFD instead of being left as written -- the one
+   code-point rule entities.mjs shares with backend/src/feeds/html.ts.
+   MUTATION: put back the leave-as-written rule in entities.mjs's
+   fromCodePoint -- `&#99999999;` survives into the cue text. */
 test("cue text entities go through the shared decoder", () => {
   const body = "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nit&rsquo;s &#8220;fine&#8221; &amp; &#99999999; ok\n";
   const r = normalize(body, "text/vtt");
-  assert.equal(r.cues[0].text, "it\u2019s \u201cfine\u201d & &#99999999; ok");
+  assert.equal(r.cues[0].text, "it\u2019s \u201cfine\u201d & \ufffd ok");
 });
