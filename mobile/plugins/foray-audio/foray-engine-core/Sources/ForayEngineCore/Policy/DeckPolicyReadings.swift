@@ -5,8 +5,12 @@ import Foundation
 // The first half is the `deck-readings` fixtures NE-30j recorded from
 // player/deck-policy.js: what the deck does with a value it is HANDED (a
 // seek target, a duck) and what it REPORTS (the duration, the rate) before
-// anything acts on it. html-audio-backend.js asks these; AVDeck is handed the
-// same values over the bridge and must refuse and clamp them the same way.
+// anything acts on it. html-audio-backend.js asks these; NO NATIVE CODE DOES:
+// AVDeck takes no volume or duck command and its seek targets come typed from
+// the core, so `deckSeekTarget`, `deckVolume`, `deckDuration` and
+// `deckReportedRate` are ported for parity only (the `deck-readings` runner
+// holds them equal to JS). DeckPolicy.swift's header lists, for the whole
+// enum, what the native deck asks and what it does not.
 //
 // The second half is the warm handover's decisions the engine's seams depend
 // on (`warmOffset`, `prefetchDecision`, `warmPromotion`). They live in the
@@ -15,7 +19,9 @@ import Foundation
 // asks the same functions. NE-32 ported the rest of the pair's decisions
 // (`warmSettled`, `handoverSteps`, `discardFreesBuffer`, `playRefusalAction`,
 // `unexplainedPauseAction`, `prefetchWindowOpens`) and registered the
-// `deck-pair` fixtures that pin them case by case.
+// `deck-pair` fixtures that pin them case by case. DeckPair asks the first
+// four; `playRefusalAction` and `prefetchWindowOpens` are parity-only (AVDeck
+// asks `prefetchWindowDelayMs`, which shares `windowBoundarySec` with it).
 extension DeckPolicy {
 
     // MARK: readings (deck-readings)
