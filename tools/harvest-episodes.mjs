@@ -5,7 +5,7 @@
    Usage: node tools/harvest-episodes.mjs [--top N] [--out path]           */
 
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
@@ -41,32 +41,48 @@ async function fetchText(url, attempt = 1) {
 
 const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
 
-function parseFeed(xml) {
+/** One RSS `<item>` (fast-xml-parser's shape) -> one archive episode. */
+export function episodeOf(it) {
+  const enc = it.enclosure || {};
+  const desc = text(it.description) || text(it["itunes:summary"]) || "";
+  return {
+    guid: text(typeof it.guid === "object" ? it.guid["#text"] ?? it.guid : it.guid),
+    title: text(it.title),
+    published_at: (() => {
+      // malformed pubDates exist in real feeds — never let one kill a show
+      try { const d = new Date(it.pubDate); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
+      catch (_) { return null; }
+    })(),
+    duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
+    enclosure_url: enc["@_url"] ?? null,
+    link: text(it.link),
+    episode: it["itunes:episode"] ?? null,
+    season: it["itunes:season"] ?? null,
+    description: String(desc).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 280),
+  };
+}
+
+/** A feed's episodes, or null when the document is not RSS. */
+export function parseFeed(xml) {
   const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
   const doc = parser.parse(xml);
   const channel = doc?.rss?.channel;
   if (!channel) return null;
   let items = channel.item || [];
   if (!Array.isArray(items)) items = [items];
-  return items.map(it => {
-    const enc = it.enclosure || {};
-    const desc = text(it.description) || text(it["itunes:summary"]) || "";
-    return {
-      guid: text(typeof it.guid === "object" ? it.guid["#text"] ?? it.guid : it.guid),
-      title: text(it.title),
-      published_at: (() => {
-        // malformed pubDates exist in real feeds — never let one kill a show
-        try { const d = new Date(it.pubDate); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
-        catch (_) { return null; }
-      })(),
-      duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
-      enclosure_url: enc["@_url"] ?? null,
-      link: text(it.link),
-      episode: it["itunes:episode"] ?? null,
-      season: it["itunes:season"] ?? null,
-      description: String(desc).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 280),
-    };
-  }).filter(e => e.title);
+  return items.map(episodeOf).filter(e => e.title);
+}
+
+/** One harvested show's archive row. */
+export function harvestedShow({ id, title, feed_url, rank, episodes, now = new Date() }) {
+  return {
+    apple_collection_id: id, title, feed_url,
+    chart_rank_overall: rank,
+    episode_count_in_feed: episodes.length,
+    feed_capped_suspect: episodes.length > 0 && episodes.length <= 105 && /daily|news/i.test(title || "") === false && episodes.length % 50 === 0,
+    harvested_at: now.toISOString(),
+    episodes,
+  };
 }
 
 function loadCkpt() {
@@ -107,14 +123,7 @@ async function main() {
       const xml = await fetchText(feed_url);
       const episodes = parseFeed(xml);
       if (!episodes) throw new Error("unparseable feed");
-      ckpt.shows.push({
-        apple_collection_id: id, title, feed_url,
-        chart_rank_overall: topIds.indexOf(id) + 1,
-        episode_count_in_feed: episodes.length,
-        feed_capped_suspect: episodes.length > 0 && episodes.length <= 105 && /daily|news/i.test(title || "") === false && episodes.length % 50 === 0,
-        harvested_at: new Date().toISOString(),
-        episodes,
-      });
+      ckpt.shows.push(harvestedShow({ id, title, feed_url, rank: topIds.indexOf(id) + 1, episodes }));
       console.log(`   ${i + 1}/${topIds.length} ${title}: ${episodes.length} episodes`);
     } catch (e) {
       ckpt.shows.push({ apple_collection_id: id, title, feed_url, error: e.message, harvested_at: new Date().toISOString(), episodes: [] });
@@ -137,4 +146,6 @@ async function main() {
   console.log("ARCHIVE_COMPLETE");
 }
 
-main().catch(e => { console.error("FATAL:", e); process.exit(1); });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(e => { console.error("FATAL:", e); process.exit(1); });
+}
