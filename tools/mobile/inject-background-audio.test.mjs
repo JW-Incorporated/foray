@@ -798,8 +798,9 @@ function run(args) {
 }
 
 test("the CI invocations write the engine default and --check prints ForayEngineDefault=native", () => {
-  /* ios-build.yml and ios-archive/action.yml run exactly these lines (pinned by
-     ios-workflow.test.mjs and release-workflow.test.mjs), so the write needs no
+  /* .github/actions/ios-prepare runs exactly these lines for both ios-build.yml
+     and ios-archive (pinned by ios-workflow.test.mjs and
+     release-workflow.test.mjs), so the write needs no
      .github edit, and the ios-build log carries the evidence line.
      MUTATION: drop the injectEngineDefault call from the CLI -> the --check
      below exits 1; drop the check's assertEngineDefault -> the tampered plist

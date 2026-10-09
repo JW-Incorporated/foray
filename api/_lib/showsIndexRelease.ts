@@ -148,10 +148,12 @@ interface Pointer {
   shards_published?: boolean;
 }
 
-/** Reads the committed pointer file. Returns null (never throws) when it is
- *  missing or unreadable — that is the honest "no release published yet"
- *  state while S-04a/b's `SHARD_TOO_LARGE` bug is open, not an operational
- *  failure of the caller. */
+/** Reads the committed pointer file (written by
+ *  `tools/shows/run-and-publish.mjs`; on `main` since 2026-09-15, #720,
+ *  re-pointed 2026-10-05, #1012). Returns null (never throws) when it is
+ *  missing or unreadable, which callers answer as a 404, not a 500. With a
+ *  pointer committed that is no longer the expected state: it means the
+ *  pointer was removed. */
 function loadPointer(): Pointer | null {
   try {
     const raw = fs.readFileSync(pointerPath, "utf8");

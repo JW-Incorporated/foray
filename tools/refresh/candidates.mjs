@@ -58,7 +58,8 @@ import { POINTER_PATH } from "../shows/config.mjs";
     if nothing refreshes them" bug this card exists to fix. A pointer with
     no parseable `published_at` degrades to stale (fail open), never
     trusted by default. */
-export async function loadChangeIndex({ pointerPath = POINTER_PATH, fetchImpl = fetch, maxAgeHours = 24 * 9, now = Date.now() } = {}) {
+export const MAX_INDEX_AGE_HOURS = 24 * 9; // exported for tools/shows/watch-pointer.mjs, whose alarm must stay below it (CH2-14)
+export async function loadChangeIndex({ pointerPath = POINTER_PATH, fetchImpl = fetch, maxAgeHours = MAX_INDEX_AGE_HOURS, now = Date.now() } = {}) {
   let pointer;
   try {
     pointer = JSON.parse(readFileSync(pointerPath, "utf8"));

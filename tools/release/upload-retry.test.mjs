@@ -16,6 +16,11 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import {
   classifyUploadFailure, shouldRetry, backoffFor,
@@ -201,4 +206,45 @@ test("no permanent marker is a substring of a transient one, or the order would 
       assert.ok(!t.includes(p), `transient "${t}" contains permanent "${p}"`);
     }
   }
+});
+
+/* ---------- the CLI the ios-archive composite actually runs ------------- */
+
+const UPLOAD_RETRY = path.join(path.dirname(fileURLToPath(import.meta.url)), "upload-retry.mjs");
+
+/** `node tools/release/upload-retry.mjs classify <file> <attempt>`, the exact
+ *  call `.github/actions/ios-archive/action.yml` evals. */
+function classifyCli(output, attempt) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "upload-retry-"));
+  try {
+    const args = ["classify", path.join(dir, "upload.log"), String(attempt)];
+    if (output !== null) fs.writeFileSync(args[1], output);
+    const r = spawnSync(process.execPath, [UPLOAD_RETRY, ...args], { encoding: "utf8" });
+    assert.equal(r.status, 0, r.stderr);
+    return r.stdout.trim();
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("CLI classify: one eval-able line per attempt, and no retry once the attempt budget is spent (CH2-21 characterization)", () => {
+  /* The composite's loop reads RETRY from this line, not from shouldRetry(); so
+     the line is pinned, including at attempt MAX_ATTEMPTS where a retryable
+     verdict must still say RETRY=0.
+     MUTATION (CH2-21): change shouldRetry's attempt rule to `attempt <=
+     maxAttempts` -> attempt 3 below prints RETRY=1 and goes red, because main()
+     now asks shouldRetry() instead of keeping its own copy of the rule. */
+  assert.equal(MAX_ATTEMPTS, 3);
+  assert.equal(classifyCli(APPLE_500, 1), "RETRY=1 REASON=transient SLEEP=60 MARKER='unexpected_error'");
+  assert.equal(classifyCli(APPLE_500, 2), "RETRY=1 REASON=transient SLEEP=180 MARKER='unexpected_error'");
+  assert.equal(classifyCli(APPLE_500, MAX_ATTEMPTS), "RETRY=0 REASON=transient SLEEP=180 MARKER='unexpected_error'");
+  assert.equal(shouldRetry(APPLE_500, MAX_ATTEMPTS), false);
+  assert.equal(
+    classifyCli("ERROR: Redundant Binary Upload. You've already uploaded a build", 1),
+    "RETRY=0 REASON=permanent SLEEP=60 MARKER='redundant binary upload'",
+  );
+  /* An unreadable log is the unrecognised case, retried; a junk attempt is 1. */
+  assert.equal(classifyCli(null, 1), "RETRY=1 REASON=unrecognised SLEEP=60 MARKER=''");
+  assert.equal(classifyCli("exit 71", "junk"), "RETRY=1 REASON=unrecognised SLEEP=60 MARKER=''");
+  assert.equal(classifyCli("exit 71", 3), "RETRY=0 REASON=unrecognised SLEEP=180 MARKER=''");
 });

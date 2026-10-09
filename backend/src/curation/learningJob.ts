@@ -1,11 +1,12 @@
-import type { EventStore, InvalidEventRow } from "./eventStore";
+import type { EventPage, EventStore, InvalidEventRow } from "./eventStore";
 import type { LearningCursorStore } from "./learningCursor";
-import { applyEventBatch, type ApplyDeps, type ApplyEventOutcome } from "./interestLearning";
+import { applyEventBatch, CardShownStreaks, type ApplyDeps, type ApplyEventOutcome } from "./interestLearning";
 
 /**
  * Ties eventStore + learning_cursor + interestLearning together into one
- * resumable per-user run: fetch events since the cursor, apply them in
- * order, advance the cursor to the last event processed. Mirrors how
+ * resumable per-user run: page through every event since the cursor, apply
+ * them in order, advance the cursor past each page. One run catches a user
+ * up however many pages they are behind (CH2-05, B2-17). Mirrors how
  * `curation/sessionBuilder.ts` wraps `scoring.ts`/`archetypes.ts` — this
  * module is the orchestration layer; `interestLearning.ts` stays pure.
  */
@@ -21,8 +22,8 @@ export interface LearningJobResult {
 
 /**
  * Runs `fn` atomically. The Postgres CLI passes BEGIN/COMMIT/ROLLBACK on the
- * one shared client, so a user's weight writes, audit rows and cursor move
- * land together or not at all: a throw part-way through used to leave the
+ * one shared client, so a user's weight writes, audit rows and cursor moves,
+ * across every page of the run, land together or not at all: a throw part-way through used to leave the
  * early events applied and the cursor unmoved, so the next run applied them
  * twice (backend-rest-3). In-memory callers can omit it.
  */
@@ -43,25 +44,31 @@ export async function runLearningJobForUser(
   const transaction = deps.transaction ?? runDirectly;
   return transaction(async () => {
     const cursor = await deps.cursorStore.get(userId);
-    const page = await deps.eventStore.fetchPage(userId, cursor?.lastEventTs ?? null, cursor?.lastEventId ?? null, batchSize);
+    let after: { ts: string; id: string } | null = cursor ? { ts: cursor.lastEventTs, id: cursor.lastEventId } : null;
+    let eventsProcessed = 0;
+    const outcomes: ApplyEventOutcome[] = [];
+    const invalidEvents: InvalidEventRow[] = [];
+    let cursorAdvancedTo: { ts: string; id: string } | null = null;
+    // One streak tracker for the whole run, so a card_shown streak split at
+    // a page boundary still fires.
+    const streaks = new CardShownStreaks();
 
-    if (page.last === null) {
-      return { userId, eventsProcessed: 0, outcomes: [], invalidEvents: [], cursorAdvancedTo: null };
-    }
+    let page: EventPage;
+    do {
+      page = await deps.eventStore.fetchPage(userId, after?.ts ?? null, after?.id ?? null, batchSize);
+      if (page.last === null) break;
 
-    const outcomes = await applyEventBatch(page.events, deps.applyDeps);
+      outcomes.push(...(await applyEventBatch(page.events, deps.applyDeps, streaks)));
+      eventsProcessed += page.events.length;
+      invalidEvents.push(...page.invalid);
 
-    // The cursor moves past the last row FETCHED, valid or not, so a
-    // malformed row is skipped once rather than re-read on every run.
-    await deps.cursorStore.set(userId, { lastEventTs: page.last.ts, lastEventId: page.last.id });
+      // The cursor moves past the last row FETCHED, valid or not, so a
+      // malformed row is skipped once rather than re-read on every run.
+      await deps.cursorStore.set(userId, { lastEventTs: page.last.ts, lastEventId: page.last.id });
+      after = cursorAdvancedTo = { ts: page.last.ts, id: page.last.id };
+    } while (page.events.length + page.invalid.length === batchSize);
 
-    return {
-      userId,
-      eventsProcessed: page.events.length,
-      outcomes,
-      invalidEvents: page.invalid,
-      cursorAdvancedTo: { ts: page.last.ts, id: page.last.id }
-    };
+    return { userId, eventsProcessed, outcomes, invalidEvents, cursorAdvancedTo };
   });
 }
 

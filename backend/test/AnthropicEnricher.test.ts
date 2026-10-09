@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { AnthropicEnricher } from "../src/enrich/AnthropicEnricher";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
+import { costFor } from "../src/config/models";
 import { makeFakeAnthropicClient, textBlock, toolUseBlock } from "./helpers/fakeAnthropicClient";
 
 /**
@@ -182,4 +183,138 @@ describe("AnthropicEnricher", () => {
     // reaches the recorded event's estimatedUsd.
     expect(recordedCall.estimatedUsd).toBeLessThan(0.01);
   });
+});
+
+/**
+ * CH2-08 (B2-18, docs/roadmap/code-health-2.md): the re-ask is ONE private
+ * helper shared by classifyTier1 and generateWhyLine. These pins were written
+ * against the two hand-copied closures first (characterization) and must stay
+ * green after the unification, for BOTH methods:
+ *  (a) a first reply that fails zod triggers exactly one re-ask whose messages
+ *      are [user prompt, assistant bad text, user re-ask line];
+ *  (b) the re-ask's checkAndRecord carries the method's operation, the re-ask
+ *      call keeps the method's max_tokens (512/128), and its estimate counts
+ *      prompt + bad reply + re-ask line at ~4 chars/token plus the method's
+ *      output-token estimate (300/60);
+ *  (c) a re-ask whose reply has no text block throws, naming the method.
+ * Mutations killed: (a) drop the assistant turn from the re-ask messages;
+ * (b) leave the assistant turn out of the re-ask's roughTokenEstimate for one
+ * method only (pin (b) for that method goes red), or swap a method's
+ * 300/60 output estimate or 512/128 max_tokens; (c) return "" instead of
+ * throwing when the re-ask reply has no text block.
+ */
+describe("AnthropicEnricher re-ask (CH2-08 characterization, both methods)", () => {
+  const ctx = { userId: "u1", sessionId: "s1" };
+  const REASK_LINE = "Your previous reply was not valid JSON; reply with the JSON object only.";
+  const haiku = costFor("haiku");
+  const validClassification = JSON.stringify({
+    topics: ["engineering/energy-fusion"],
+    format: "interview",
+    depth: "medium",
+    evergreen: true,
+    gist: "gist",
+    guests: [],
+    sourceConfidence: 0.8
+  });
+
+  const cases = [
+    {
+      method: "classifyTier1" as const,
+      label: "classification",
+      operation: "tier1_classify",
+      maxTokens: 512,
+      outTokenEstimate: 300,
+      valid: validClassification,
+      run: (e: AnthropicEnricher) =>
+        e.classifyTier1(
+          { episodeId: "ep1", showTitle: "Show", title: "Title", descriptionText: "A description", durationSeconds: 1800 },
+          ctx
+        )
+    },
+    {
+      method: "generateWhyLine" as const,
+      label: "why-line",
+      operation: "why_line",
+      maxTokens: 128,
+      outTokenEstimate: 60,
+      valid: JSON.stringify({ whyLine: "why" }),
+      run: (e: AnthropicEnricher) =>
+        e.generateWhyLine(
+          {
+            episodeId: "ep1",
+            showTitle: "Show",
+            title: "Title",
+            gist: "gist",
+            archetype: "deep-learn" as const,
+            userContext: ["likes fusion"]
+          },
+          ctx
+        )
+    }
+  ];
+
+  const BAD = "not json at all, sorry";
+
+  for (const c of cases) {
+    it(`${c.method}: (a) a zod-failing first reply triggers exactly one re-ask of [user prompt, assistant bad reply, user re-ask line]`, async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValueOnce({ content: [textBlock(BAD)] }).mockResolvedValueOnce({ content: [textBlock(c.valid)] });
+      const enricher = new AnthropicEnricher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+
+      const result = await c.run(enricher);
+
+      expect(result).toEqual(JSON.parse(c.valid));
+      expect(create).toHaveBeenCalledTimes(2);
+      const first = create.mock.calls[0]![0];
+      const second = create.mock.calls[1]![0];
+      expect(first.messages).toHaveLength(1);
+      expect(first.messages[0].role).toBe("user");
+      const prompt = first.messages[0].content as string;
+      expect(second.messages).toEqual([
+        { role: "user", content: prompt },
+        { role: "assistant", content: BAD },
+        { role: "user", content: REASK_LINE }
+      ]);
+      expect(second.model).toBe(first.model);
+    });
+
+    it(`${c.method}: (b) both calls are metered as ${c.operation} with max_tokens ${c.maxTokens} and a ${c.outTokenEstimate}-token output estimate; the re-ask counts prompt + bad reply + re-ask line`, async () => {
+      const guard = new BudgetGuard(new InMemoryCostEventSink(), 100);
+      const spy = vi.spyOn(guard, "checkAndRecord");
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValueOnce({ content: [textBlock(BAD)] }).mockResolvedValueOnce({ content: [textBlock(c.valid)] });
+      const enricher = new AnthropicEnricher(guard, client);
+
+      await c.run(enricher);
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(create.mock.calls.map((call) => call[0].max_tokens)).toEqual([c.maxTokens, c.maxTokens]);
+      const prompt = create.mock.calls[0]![0].messages[0].content as string;
+      const estimate = (text: string) =>
+        Math.ceil(text.length / 4) * haiku.usdPerInputToken + c.outTokenEstimate * haiku.usdPerOutputToken;
+      const base = { userId: "u1", sessionId: "s1", operation: c.operation, provider: "anthropic", episodeId: "ep1", model: create.mock.calls[0]![0].model };
+      expect(spy.mock.calls[0]![0]).toEqual({ ...base, estimatedUsd: estimate(prompt) });
+      expect(spy.mock.calls[1]![0]).toEqual({ ...base, estimatedUsd: estimate(prompt + BAD + REASK_LINE) });
+    });
+
+    it(`${c.method}: (c) a re-ask reply with no text block throws, naming the ${c.label} re-ask`, async () => {
+      const { client, create } = makeFakeAnthropicClient([]);
+      create.mockResolvedValueOnce({ content: [textBlock(BAD)] }).mockResolvedValueOnce({ content: [toolUseBlock()] });
+      const enricher = new AnthropicEnricher(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+
+      const err = await c.run(enricher).then(
+        () => {
+          throw new Error(`expected ${c.method} to reject`);
+        },
+        (e: Error) => e
+      );
+      expect(
+        err.message.startsWith(
+          `Anthropic ${c.label} output failed schema validation (re-ask attempt itself failed: Anthropic ${c.label} re-ask response had no text block)`
+        )
+      ).toBe(true);
+      expect((err.cause as Error).message).toBe(`Anthropic ${c.label} re-ask response had no text block`);
+      expect(create).toHaveBeenCalledTimes(2);
+    });
+  }
 });

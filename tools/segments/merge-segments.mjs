@@ -142,6 +142,11 @@ const APOSTROPHES = /['‘’ʼʹ′`´]/gu;
  * Forgives how text was written down; never forgives a rewrite. See the header
  * for the full rule and the reasoning behind the two odd bits (punctuation
  * becomes a space, apostrophes become nothing).
+ *
+ * The backend mints anchors with a CommonJS mirror of this function
+ * (`backend/src/types/anchorText.ts` `canonicalizeForAnchorMatch`);
+ * `backend/test/anchorTextParity.test.ts` pins the two together, so a change
+ * here lands with the same change there.
  */
 export function canonical(text) {
   return String(text == null ? "" : text)

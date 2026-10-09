@@ -23,6 +23,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { recoveryBranch } from "./watch-nightly.mjs";
+import { MERGE_SUMMARY } from "./merge.mjs";
 import {
   EXIT,
   MERGE_SCRIPT,
@@ -83,11 +84,13 @@ function fakeExec(script = () => ({})) {
 const is = (call, cmd, ...prefix) => call.cmd === cmd && prefix.every((p, i) => call.args[i] === p);
 
 /** The happy-path script for `finish`: merge adds N, vitest is green, git stages
- *  exactly the two files, gh prints a URL. */
+ *  exactly the two files, gh prints a URL. Merge's stdout is built with merge's
+ *  OWN formatter (MERGE_SUMMARY, CH2-14) rather than retyped here: a hand-written
+ *  `ADDED N items.` fake agreed with merge.mjs only by coincidence. */
 function happyFinish({ added = 17, staged = NIGHTLY_FILES, url = "https://github.com/JW-Incorporated/foray/pull/999" } = {}) {
   return (cmd, args) => {
     if (cmd === process.execPath && args[0] === MERGE_SCRIPT) {
-      return { stdout: `MERGE: ok\nADDED ${added} items. built_at=2026-09-15T09:41:00.000Z\n` };
+      return { stdout: `${MERGE_SUMMARY.added(added, "2026-09-15T09:41:00.000Z")}\nSHOWS: Show A\n` };
     }
     if (cmd === "git" && args[0] === "diff") return { stdout: staged.join("\n") + "\n" };
     if (cmd === "gh") return { stdout: url + "\n" };
@@ -283,11 +286,12 @@ test("finish: the commit message counts what merge.mjs reported", () => {
 });
 
 test("finish: `MERGE: 0 items added` exits 4 NOTHING_ADDED and runs no git", () => {
-  // Mutation: `/^MERGE: 0 items added/m` -> `/^ADDED 0 items/m`: merge's real
-  // nothing-to-do line (merge.mjs:158) is not matched, the ADDED regex fails,
-  // and the run dies as MERGE_UNPARSED instead of a clean "nothing to do".
+  // Mutation: `if (added === 0)` -> `if (added === -1)` in finish, or dropping
+  // the nothing-line check from merge.mjs's MERGE_SUMMARY.parseAdded: merge's
+  // real nothing-to-do line is not recognised and the run dies as
+  // MERGE_UNPARSED instead of a clean "nothing to do".
   const exec = fakeExec((cmd, args) =>
-    cmd === process.execPath && args[0] === MERGE_SCRIPT ? { stdout: "MERGE: 0 items added (nothing to merge).\n" } : {},
+    cmd === process.execPath && args[0] === MERGE_SCRIPT ? { stdout: MERGE_SUMMARY.nothing + "\n" } : {},
   );
   const r = finish({ date: DIGEST_DATE, exec, fs: fakeFs(), env: {}, cwd: CWD });
   assert.equal(r.code, EXIT.NOTHING);
@@ -299,7 +303,7 @@ test("finish: red vitest exits 6 before the branch exists", () => {
   // Mutation: move the `git switch` above the vitest exec: a red pool-integrity
   // run leaves the checkout on a half-made nightly/<date> branch.
   const exec = fakeExec((cmd, args) => {
-    if (cmd === process.execPath) return { stdout: "ADDED 17 items. built_at=x\n" };
+    if (cmd === process.execPath) return { stdout: MERGE_SUMMARY.added(17, "x") + "\n" };
     if (cmd === "npx") return { status: 1, stdout: "FAIL test/poolIntegrity.test.ts > duplicate ids\n" };
     return {};
   });
@@ -308,6 +312,36 @@ test("finish: red vitest exits 6 before the branch exists", () => {
   assert.match(r.text, /duplicate ids/);
   assert.match(r.text, /TESTS_FAILED exit=1$/m);
   assert.deepEqual(exec.calls.map((c) => c.cmd), [process.execPath, "npx"]);
+});
+
+test("finish: merge's summary round-trips — the count merge.mjs's formatter writes is the count the PR states", () => {
+  /* CH2-14 (T1-22). The line is BUILT with merge.mjs's own MERGE_SUMMARY.added
+   * and PARSED by finish, so the two files cannot agree only by string any more.
+   * Mutation: reword `added` in merge.mjs's MERGE_SUMMARY (e.g. `Added ${n}
+   * items.`) without its parser -> every count below comes back MERGE_UNPARSED
+   * (exit 5) after a successful merge, the silent night of #290. */
+  for (const n of [1, 9, 240]) {
+    const exec = fakeExec(happyFinish({ added: n }));
+    const r = finish({ date: DIGEST_DATE, exec, fs: fakeFs(), env: {}, cwd: CWD });
+    assert.equal(r.code, EXIT.OK, r.text);
+    assert.equal(r.added, n);
+    const commit = exec.calls.find((c) => c.cmd === "git" && c.args[0] === "commit");
+    assert.equal(commit.args[2], `Nightly refresh: +${n} episodes (${DIGEST_DATE})`);
+  }
+});
+
+test("finish: a merge that exits 0 without either summary line is MERGE_UNPARSED (exit 5), before any git", () => {
+  /* The verdict a reworded merge line used to produce, kept as the defined answer
+   * to output merge.mjs does not write.
+   * Mutation: `if (added === null)` -> `if (added === undefined)` in finish: the
+   * run goes on to vitest and a PR titled "+null episodes". */
+  const exec = fakeExec((cmd, args) =>
+    cmd === process.execPath && args[0] === MERGE_SCRIPT ? { stdout: "Merged 3 items.\n" } : {},
+  );
+  const r = finish({ date: DIGEST_DATE, exec, fs: fakeFs(), env: {}, cwd: CWD });
+  assert.equal(r.code, EXIT.MERGE_FAILED);
+  assert.match(r.text, /MERGE_UNPARSED/);
+  assert.equal(exec.calls.length, 1);
 });
 
 test("finish: --suffix names the recovery branch the watchdog is looking for, and --trailer lines reach the commit", () => {

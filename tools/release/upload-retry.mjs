@@ -207,7 +207,9 @@ async function main(argv) {
     output = "";
   }
   const verdict = classifyUploadFailure(output);
-  const retry = verdict.retry && attempt < MAX_ATTEMPTS;
+  /* shouldRetry() is the rule, not a copy of it: the tested function is the
+     one the composite's loop runs (CH2-21, T2-14). */
+  const retry = shouldRetry(output, attempt);
   const marker = (verdict.marker ?? "").replace(/'/g, "");
   console.log(
     `RETRY=${retry ? 1 : 0} REASON=${verdict.reason} ` +

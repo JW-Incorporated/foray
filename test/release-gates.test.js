@@ -603,7 +603,7 @@ test("K-06: the app-size ceiling is below Apple's cellular cap, with the reason 
   assert.ok(deck.includes("200 MB"), "the deck must state the cellular cap the ceiling is derived from");
 });
 
-test("CH-20: neither shell app carries model bytes, and the measured app without them is far under the ceiling", async () => {
+test("CH-20: the measured apps, which carry no model, are far under the ceiling", () => {
   /* WHAT THIS TEST WAS. Until CH-20 it decomposed a measured universal APK
      WITH the q8f16 model and one voice (137,468,845 B, android-shell run
      34737888251) into the pinned weights plus ~42.8 MiB of ONNX Runtime's
@@ -616,13 +616,11 @@ test("CH-20: neither shell app carries model bytes, and the measured app without
        iOS App.app                                    8.3 MB
          (deck §2, measured, simulator, before any model)
 
-     MUTATION: put a platform back in any pin's `bundle` — the bundled bytes
-     stop being zero and this goes red before a 300 MB TestFlight build does. */
-  const { bundledBytes } = await loadModelPins();
+     That neither app carries weights is held by the build-path scan below
+     (CH2-23 deleted the `bundle` lists and `bundledBytes`, which could only
+     ever answer zero).
+     MUTATION: raise IOS_APP_MB past the cellular cap — red. */
   const MiB = 1024 * 1024;
-  assert.equal(bundledBytes("android"), 0, "the APK carries no Kokoro weights (CH-20)");
-  assert.equal(bundledBytes("ios"), 0, "the iOS app carries no Kokoro weights (CH-20)");
-
   const APK_WITHOUT_MODEL_BYTES = 6_070_267;
   const IOS_APP_MB = 8.3;
   assert.ok(APK_WITHOUT_MODEL_BYTES / MiB < APP_SIZE_CEILING_MB, "the APK fits under the ceiling");
@@ -631,27 +629,35 @@ test("CH-20: neither shell app carries model bytes, and the measured app without
     "with no fp32 model the iOS app is back under the cellular cap, so it needs no TestFlight-only budget of its own");
 });
 
-/* CH-20 (docs/roadmap/code-health.md, N1-03): what a shell build copies into
-   each app is whatever `fetch-models.mjs --bundled <platform>` prints, so the
-   CLI's own answer is the thing to pin, not only the in-process table. */
-const bundledByCli = (platform) => {
-  const r = require("node:child_process").spawnSync(process.execPath,
-    [path.join(ROOT, "tools/mobile/fetch-models.mjs"), "--bundled", platform], { encoding: "utf8" });
-  assert.equal(r.status, 0, r.stderr);
-  return r.stdout.split("\n").filter(Boolean);
+/* Every BUILD PATH: each composite action under `.github/actions/` (read off
+   the directory, so a composite added later, such as CH2-16's `ios-prepare`
+   or CH2-33's `android-emulator`, is scanned without editing this file) and
+   the two build workflows. CH2-23 replaced a literal list of four that could
+   not see a new composite. */
+const BUILD_WORKFLOWS = [".github/workflows/ios-build.yml", ".github/workflows/android-build.yml"];
+const buildPaths = () => {
+  const actions = fs.readdirSync(path.join(ROOT, ".github/actions"), { withFileTypes: true })
+    .filter((e) => e.isDirectory())
+    .flatMap((e) => ["action.yml", "action.yaml"].map((f) => `.github/actions/${e.name}/${f}`))
+    .filter((rel) => fs.existsSync(path.join(ROOT, rel)));
+  return [...actions.sort(), ...BUILD_WORKFLOWS];
 };
 
-test("CH-20: `--bundled ios` and `--bundled android` are empty, and no build path fetches or injects weights", () => {
+test("CH-20: no build path fetches or injects model weights", () => {
   /* Founder ruling on issue #1076 (2026-10-05): stop bundling the model
      files. Before CH-20 iOS copied fp32, af_heart and the 34 Core ML stage
-     files, and Android q8f16 and af_heart.
-     MUTATION: re-add "ios" or "android" to a pin's `bundle` — the CLI prints
-     a name and this goes red. MUTATION: put the "Fetch the Kokoro weights"
-     step back in any of the four build paths — red. */
-  assert.deepEqual(bundledByCli("ios"), []);
-  assert.deepEqual(bundledByCli("android"), []);
-  for (const rel of [".github/workflows/ios-build.yml", ".github/actions/ios-archive/action.yml",
-    ".github/workflows/android-build.yml", ".github/actions/android-bundle/action.yml"]) {
+     files, and Android q8f16 and af_heart; the `--bundled` CLI that said so
+     (empty since) was deleted by CH2-23.
+     MUTATION (RUN, red, restored): put a "node tools/mobile/fetch-models.mjs
+     --fetch" step in any composite or build workflow — red. MUTATION (RUN,
+     red, restored): add a NEW composite `.github/actions/<x>/action.yml`
+     that runs fetch-models.mjs — red (the old literal list could not see it). */
+  const scanned = buildPaths();
+  for (const want of [".github/actions/android-bundle/action.yml", ".github/actions/ios-archive/action.yml",
+    ...BUILD_WORKFLOWS]) {
+    assert.ok(scanned.includes(want), `the scan reads ${want}`);
+  }
+  for (const rel of scanned) {
     const src = read(rel);
     assert.ok(!src.includes("fetch-models.mjs"), `${rel} fetches no model`);
     assert.ok(!src.includes("inject-models"), `${rel} injects no model`);

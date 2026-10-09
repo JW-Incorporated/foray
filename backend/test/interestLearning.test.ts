@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
 import {
   deriveInterestDeltas,
   dampedDelta,
@@ -9,6 +11,7 @@ import {
   applyEventBatch,
   CardShownStreaks,
   IGNORED_CARD_SHOWN_THRESHOLD,
+  INTEREST_REASONS,
   STRETCH_NEGATIVE_DAMPING,
   type ApplyDeps
 } from "../src/curation/interestLearning";
@@ -397,5 +400,64 @@ describe("thumbs: a changed or withdrawn vote undoes the one it replaces (app-2-
     expect(flip.map((x) => [x.reason, Math.sign(x.delta)])).toEqual([["more_like_this", -1], ["thumbs_down_named_node", -1]]);
     expect(deriveInterestDeltas(thumbs({ direction: "cleared", replaces: { direction: "down", reasons: ["Bad audio quality"] } }))).toEqual([]);
     expect(deriveInterestDeltas(thumbs({ direction: "cleared" }))).toEqual([]);
+  });
+});
+
+/* CH2-05 (docs/roadmap/code-health-2.md, B2-15): the reasons and taxonomy
+   sources TS writes are enumerated again in the SQL CHECKs, with nothing
+   pinning the two. A reason added to the TS list without a migration fails
+   the job's INSERT, rolls the user's transaction back and stalls their
+   cursor. The effective CHECK is the LAST migration that defines it (0006
+   then 0014 for reasons; 0005 then 0014 for sources), read the way
+   test/listener-copy.test.js reads TOPIC_DOWNVOTE_REASONS: a regex over
+   the source.
+   MUTATIONS: add a reason to INTEREST_REASONS (no migration) -- red; add a
+   second reason to 0014's CHECK only -- red; add a source to the
+   UserTaxonomyRow.source union only -- red. */
+describe("TS reason/source lists match the SQL CHECKs", () => {
+  const MIGRATIONS = path.resolve(__dirname, "..", "migrations");
+
+  function lastCheckList(table: string, column: string): string[] {
+    let found: string[] | null = null;
+    const files = fs
+      .readdirSync(MIGRATIONS)
+      .filter((f) => /^\d{4}_.*\.sql$/.test(f))
+      .sort();
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(MIGRATIONS, file), "utf8").replace(/--[^\n]*/g, "");
+      for (const statement of sql.split(";")) {
+        // eslint-disable-next-line security/detect-unsafe-regex -- anchored, bounded, test-only.
+        const target = /^\s*(?:create\s+table(?:\s+if\s+not\s+exists)?|alter\s+table)\s+(\w+)/i.exec(statement);
+        if (!target || target[1] !== table) continue;
+        const check = new RegExp(`check\\s*\\(\\s*${column}\\s+in\\s*\\(([^)]*)\\)`, "i").exec(statement);
+        if (check) found = [...check[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+      }
+    }
+    if (!found) throw new Error(`no CHECK on ${table}.${column} in backend/migrations`);
+    return found;
+  }
+
+  const sorted = (xs: Iterable<string>) => [...new Set(xs)].sort();
+  const minus = (a: Iterable<string>, b: Iterable<string>) => {
+    const drop = new Set(b);
+    return sorted([...a].filter((x) => !drop.has(x)));
+  };
+
+  it("user_interests.reason: every TS reason is allowed, and the only SQL-only reason is persona_seed", () => {
+    const sql = lastCheckList("user_interests", "reason");
+    expect(minus(INTEREST_REASONS, sql)).toEqual([]);
+    /* Named expected diff: 0014 allows a reason no TS writer produces;
+       dropped by the 0022 migration bundled with the B2-08 ruling
+       (code-health-2.md amendment 5). */
+    expect(minus(sql, INTEREST_REASONS)).toEqual(["persona_seed"]);
+  });
+
+  it("taxonomy_nodes.source equals UserTaxonomyRow.source", () => {
+    const ts = fs.readFileSync(path.resolve(__dirname, "..", "src", "curation", "userInterests.ts"), "utf8");
+    const union = /interface UserTaxonomyRow \{[^}]*?\bsource:\s*([^;]+);/.exec(ts);
+    expect(union, "userInterests.ts declares UserTaxonomyRow.source as a string-literal union").not.toBeNull();
+    const tsSources = [...union![1]!.matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
+    expect(tsSources.length).toBeGreaterThan(0);
+    expect(sorted(lastCheckList("taxonomy_nodes", "source"))).toEqual(sorted(tsSources));
   });
 });

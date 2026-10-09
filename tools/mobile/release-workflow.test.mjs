@@ -18,6 +18,10 @@ const WORKFLOW_REL = ".github/workflows/release.yml";
 const WF = fs.readFileSync(path.join(ROOT, WORKFLOW_REL), "utf8");
 const IOS_ACTION = fs.readFileSync(path.join(ROOT, ".github/actions/ios-archive/action.yml"), "utf8");
 const ANDROID_ACTION = fs.readFileSync(path.join(ROOT, ".github/actions/android-bundle/action.yml"), "utf8");
+/* CH2-16: the iOS inject sequence (the project edits, the container detection,
+   the MinimumOSVersion patch) is a composite of its own that IOS_ACTION and
+   ios-build.yml both run, so the pins on those steps read it here. */
+const IOS_PREPARE = fs.readFileSync(path.join(ROOT, ".github/actions/ios-prepare/action.yml"), "utf8");
 
 /** Like workflow-yaml.mjs's `step()`, but for a COMPOSITE action file, whose
  *  steps sit at 4-space indent (`runs: using: composite / steps:`) rather
@@ -258,14 +262,22 @@ test("the summary prints a version/build/iOS/Android table", () => {
  * artifact, so the fix has to be asserted here in its own right; a step that
  * exists only in ios-build.yml is the exact gap that let this ship. */
 
-test("the ios composite PATCHES the ONNX Runtime plist before it archives — MUTATION: delete the step; the release path regains the 90360 rejection while ios-build.yml stays green", () => {
-  const patch = actionStep(IOS_ACTION, "Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "";
+test("the ios composite PATCHES the ONNX Runtime plist before it archives — MUTATION: delete the step, or the ios-prepare use; the release path regains the 90360 rejection while ios-build.yml stays green", () => {
+  /* CH2-16: the patch is ios-prepare's, and the archive composite runs
+     ios-prepare (with nothing passed to it: it holds no secret) before the
+     signing gate and the archive. */
+  const patch = actionStep(IOS_PREPARE, "Give the embedded ONNX Runtime framework the MinimumOSVersion") ?? "";
   assert.ok(patch, "the release path does not patch the framework plist at all");
   assert.match(patch, /ios-embedded-frameworks\.mjs patch "\$SPM_DIR" --min-os "\$MIN_OS"/);
   assert.match(patch, /IPHONEOS_DEPLOYMENT_TARGET/, "the deployment target is hardcoded rather than read off the project");
+  const use = actionStep(IOS_ACTION, "uses: ./.github/actions/ios-prepare") ?? "";
+  assert.ok(use, "the release composite no longer runs ios-prepare");
+  assert.doesNotMatch(use, /^\s*with:/m, "ios-prepare takes no input, and above all no signing secret");
   const archiveAt = IOS_ACTION.indexOf("- name: Archive and sign (certificate and profile; no App Store Connect key)");
-  const patchAt = IOS_ACTION.indexOf("- name: Give the embedded ONNX Runtime framework");
-  assert.ok(patchAt > 0 && patchAt < archiveAt, "the patch runs after the archive, when the bundle is already signed");
+  const patchAt = IOS_ACTION.indexOf("uses: ./.github/actions/ios-prepare");
+  assert.ok(patchAt > IOS_ACTION.indexOf("npm run add:ios"), "the patch runs before the project exists");
+  assert.ok(patchAt > 0 && patchAt < IOS_ACTION.indexOf("- name: Is signing configured?") && patchAt < archiveAt,
+    "the patch runs after the archive, when the bundle is already signed");
 });
 
 test("the archive resolves its packages from the PATCHED tree — MUTATION: drop -clonedSourcePackagesDirPath and xcodebuild fetches its own unpatched xcframework into DerivedData", () => {
@@ -295,9 +307,13 @@ test("the ARCHIVE is read back for embedded-framework keys before it is exported
 });
 
 test("both iOS build paths run the SAME script, not two copies of the rule — MUTATION: inline the plist edit here and the two paths start disagreeing", () => {
+  /* CH2-16: the patch is ONE step in ios-prepare, which both paths use; each
+     path verifies its own built bundle after its own build. */
   const shell = fs.readFileSync(path.join(ROOT, ".github/workflows/ios-build.yml"), "utf8");
+  assert.match(IOS_PREPARE, /node tools\/mobile\/ios-embedded-frameworks\.mjs patch/);
   for (const src of [IOS_ACTION, shell]) {
-    assert.match(src, /node tools\/mobile\/ios-embedded-frameworks\.mjs patch/);
+    assert.match(code(src), /uses: \.\/\.github\/actions\/ios-prepare/);
+    assert.doesNotMatch(code(src), /node tools\/mobile\/ios-embedded-frameworks\.mjs patch/, "a second copy of the patch is back");
     assert.match(src, /node tools\/mobile\/ios-embedded-frameworks\.mjs verify/);
   }
 });
@@ -378,13 +394,18 @@ test("NE-17: the release archive runs the plist injector bare and then --check, 
      reaches the founder's phone must say the same engine default as the
      ios-build that tested it. No .github edit carries it, so these two lines
      are what does.
-     MUTATION: drop either line from ios-archive/action.yml, or add
+     CH2-16: the step is ios-prepare's, which the archive composite runs.
+     MUTATION: drop either line from ios-prepare/action.yml, or add
      `--engine-default` to it -> red. */
-  const s = code(actionStep(IOS_ACTION, "Add UIBackgroundModes") ?? "");
-  assert.ok(s, "the ios-archive plist step is gone");
-  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs mobile\/ios\/App\/App\/Info\.plist\s*$/m, "the bare write is gone");
-  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs mobile\/ios\/App\/App\/Info\.plist --check\s*$/m, "the read-back is gone");
-  assert.doesNotMatch(code(IOS_ACTION), /--engine-default/, "the archive must read the committed mobile/ENGINE_DEFAULT.json");
+  const s = code(actionStep(IOS_PREPARE, "Add UIBackgroundModes") ?? "");
+  assert.ok(s, "the ios-prepare plist step is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST"\s*$/m, "the bare write is gone");
+  assert.match(s, /^\s*node tools\/mobile\/inject-background-audio\.mjs "\$INFO_PLIST" --check\s*$/m, "the read-back is gone");
+  assert.match(IOS_PREPARE, /echo "INFO_PLIST=\$IOS_DIR\/App\/App\/Info\.plist"/, "INFO_PLIST is not the generated shell's plist");
+  assert.match(IOS_ACTION, /uses: \.\/\.github\/actions\/ios-prepare/, "the archive no longer runs the plist step");
+  for (const src of [IOS_ACTION, IOS_PREPARE]) {
+    assert.doesNotMatch(code(src), /--engine-default/, "the archive must read the committed mobile/ENGINE_DEFAULT.json");
+  }
 });
 
 test("ci-release-13: the release composite keeps its logs as an artifact, always, and only the logs directory", () => {
@@ -405,7 +426,8 @@ test("ci-release-13: nothing secret is ever written under $ART, the directory th
      $RUNNER_TEMP/ios-release. MUTATION: write the .p12, the keychain, the
      profile or the .p8 under "$ART/..." -> it would ship in a downloadable
      artifact. */
-  const lines = IOS_ACTION.split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#"));
+  // ios-prepare runs in the same job and writes its evidence into the same $ART (CH2-16).
+  const lines = [IOS_ACTION, IOS_PREPARE].join("\n").split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#"));
   const writesUnderArt = lines.filter((l) => /\$ART\/|\/ios-release\//.test(l));
   const secretish = writesUnderArt.filter((l) => /\.p12|\.p8|keychain|mobileprovision|ExportOptions|PRIVATE_KEY|CERT_P12|PASSWORD/i.test(l));
   assert.deepEqual(secretish, []);

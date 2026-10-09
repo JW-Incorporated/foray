@@ -84,13 +84,15 @@
 #
 # `ios` and `android` both `actions/checkout@v4` with no `ref:` override — the
 # default is the SHA that triggered the run, so "one run, one SHA" is a
-# property of the trigger, not something either job has to assert. Both call
-# a composite action (`.github/actions/ios-archive`, `.github/actions/android-
-# bundle`) that factors out the ~700 lines `ios-build.yml` / `android-
-# release.yml` already have, rather than copying them a second time — see
-# each composite's own header for what it reuses and what it deliberately
-# does not (neither runs release.yml's slow verification jobs: no simulator
-# probes, no emulator smoke test — those stay CI-time concerns).
+# property of the trigger, not something either job has to assert. Each job
+# calls a composite action: `android` calls `.github/actions/android-bundle`,
+# and `ios` calls `.github/actions/ios-archive`, which runs the iOS inject
+# sequence through `.github/actions/ios-prepare` — the SAME composite
+# `ios-build.yml` runs on every PR, so the TestFlight archive and the PR-time
+# build edit the generated project with one copy of the steps, not two
+# (CH2-16). See each composite's own header for what it does and what it
+# deliberately does not (neither runs the slow verification steps: no
+# simulator probes, no emulator smoke test — those stay CI-time concerns).
 #
 # ── THE SUMMARY, AND WHAT COUNTS AS A FAILURE ────────────────────────────────
 #

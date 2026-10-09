@@ -7,14 +7,6 @@ import type { InterestReason } from "./interestLearning";
  * log, 0006_user_interests.sql). Pluggable-sink pattern, matching
  * `src/cost/costEvents.ts` / `src/curation/eventStore.ts`.
  *
- * NOTE (coordination, 2026-07-24): a sibling task ("per-user weights /
- * personas") also writes `taxonomy_nodes`/`user_interests`, for a different
- * operation (persona-seed rows at onboarding, reason='onboarding'). This
- * module is intentionally a separate, independent repository for the
- * learning job's own writes (reason set drawn from the observed-signal
- * table, never 'onboarding') — unifying the two write paths is deferred to
- * a follow-up once both land.
- *
  * `user_interests.episode_id` (uuid FK) is left null for the same reason as
  * `events.episode_id` — see docs/DECISIONS.md — episode identity here is a
  * catalogue slug, not a row in the `episodes` table.

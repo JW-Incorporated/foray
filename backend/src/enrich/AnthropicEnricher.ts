@@ -81,20 +81,58 @@ export class AnthropicEnricher implements Enricher {
   }
 
   async classifyTier1(input: ClassificationInput, ctx: EnrichContext): Promise<ClassificationResult> {
-    const prompt = buildClassificationPrompt(input);
-    const estimatedInputTokens = roughTokenEstimate(prompt);
+    // corner case 32: schema-validated JSON, retry once on failure, then throw
+    // (caller is responsible for dead-lettering — this module only guarantees
+    // "never return malformed data").
+    return this.askJson(
+      ClassificationSchema,
+      buildClassificationPrompt(input),
+      { operation: "tier1_classify", label: "classification", maxTokens: 512, outTokenEstimate: 300, episodeId: input.episodeId },
+      ctx
+    );
+  }
+
+  async generateWhyLine(input: WhyLineInput, ctx: EnrichContext): Promise<WhyLineResult> {
+    return this.askJson(
+      WhyLineSchema,
+      buildWhyLinePrompt(input),
+      { operation: "why_line", label: "why-line", maxTokens: 128, outTokenEstimate: 60, episodeId: input.episodeId },
+      ctx
+    );
+  }
+
+  /**
+   * The one metered ask both methods make (CH2-08, B2-18 — these steps used
+   * to be copied verbatim into each method, re-ask included, so a change to
+   * the re-ask's metering could land in one copy only). One prompt, a
+   * pre-call budget check, the call, then `parseWithRetry` with exactly one
+   * re-ask that re-sends [prompt, bad reply, re-ask line] as its own metered
+   * call. `label` names the method in every error ("classification",
+   * "why-line"); `outTokenEstimate` is the output side of both estimates.
+   */
+  private async askJson<T>(
+    schema: z.ZodType<T>,
+    prompt: string,
+    opts: { operation: string; label: string; maxTokens: number; outTokenEstimate: number; episodeId: string },
+    ctx: EnrichContext
+  ): Promise<T> {
+    // The spend row for a call that sends `inputText`. Both calls below pass
+    // it to this.budgetGuard.checkAndRecord themselves, so each `reask`
+    // closure meters its own spend in plain sight (parseWithRetry.test.ts).
+    const spend = (inputText: string) => ({
+      userId: ctx.userId,
+      operation: opts.operation,
+      provider: this.providerName,
+      model: MODEL,
+      estimatedUsd: roughTokenEstimate(inputText) * USD_PER_INPUT_TOKEN + opts.outTokenEstimate * USD_PER_OUTPUT_TOKEN,
+      episodeId: opts.episodeId,
+      sessionId: ctx.sessionId
+    });
+
     // pre-call budget check with a conservative estimate; keeps the guard
     // structurally impossible to bypass even though it can't know the real
     // cost until the response comes back.
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "tier1_classify",
-      provider: this.providerName,
-      model: MODEL,
-      estimatedUsd: estimatedInputTokens * USD_PER_INPUT_TOKEN + 300 * USD_PER_OUTPUT_TOKEN,
-      episodeId: input.episodeId,
-      sessionId: ctx.sessionId
-    });
+    await this.budgetGuard.checkAndRecord(spend(prompt));
 
     // Note: this build's pinned @anthropic-ai/sdk version predates
     // `output_config.format` (server-enforced structured outputs) in its
@@ -105,32 +143,23 @@ export class AnthropicEnricher implements Enricher {
     // note in backend/README.md.
     const response = await this.client.messages.create({
       model: MODEL,
-      max_tokens: 512,
+      max_tokens: opts.maxTokens,
       messages: [{ role: "user", content: prompt }]
     });
 
     const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
-    if (!textBlock) throw new Error("Anthropic classification response had no text block");
+    if (!textBlock) throw new Error(`Anthropic ${opts.label} response had no text block`);
 
     const reask = async (): Promise<string> => {
       const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
       // The re-ask is its own real API call — it re-sends the whole prompt
       // plus the bad reply, so it is its own metered spend, gated the same
       // way as the original call (see parseWithRetry.ts's BUDGET note).
-      const reaskEstimatedInputTokens = roughTokenEstimate(prompt + textBlock.text + reaskLine);
-      await this.budgetGuard.checkAndRecord({
-        userId: ctx.userId,
-        operation: "tier1_classify",
-        provider: this.providerName,
-        model: MODEL,
-        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + 300 * USD_PER_OUTPUT_TOKEN,
-        episodeId: input.episodeId,
-        sessionId: ctx.sessionId
-      });
+      await this.budgetGuard.checkAndRecord(spend(prompt + textBlock.text + reaskLine));
 
       const retryResponse = await this.client.messages.create({
         model: MODEL,
-        max_tokens: 512,
+        max_tokens: opts.maxTokens,
         messages: [
           { role: "user", content: prompt },
           { role: "assistant", content: textBlock.text },
@@ -138,70 +167,11 @@ export class AnthropicEnricher implements Enricher {
         ]
       });
       const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
-      if (!retryTextBlock) throw new Error("Anthropic classification re-ask response had no text block");
+      if (!retryTextBlock) throw new Error(`Anthropic ${opts.label} re-ask response had no text block`);
       return retryTextBlock.text;
     };
 
-    // corner case 32: schema-validated JSON, retry once on failure, then throw
-    // (caller is responsible for dead-lettering — this module only guarantees
-    // "never return malformed data").
-    const parsed = await parseWithRetry(ClassificationSchema, textBlock.text, "Anthropic classification output", reask);
-    return parsed;
-  }
-
-  async generateWhyLine(input: WhyLineInput, ctx: EnrichContext): Promise<WhyLineResult> {
-    const prompt = buildWhyLinePrompt(input);
-    const estimatedInputTokens = roughTokenEstimate(prompt);
-    await this.budgetGuard.checkAndRecord({
-      userId: ctx.userId,
-      operation: "why_line",
-      provider: this.providerName,
-      model: MODEL,
-      estimatedUsd: estimatedInputTokens * USD_PER_INPUT_TOKEN + 60 * USD_PER_OUTPUT_TOKEN,
-      episodeId: input.episodeId,
-      sessionId: ctx.sessionId
-    });
-
-    const response = await this.client.messages.create({
-      model: MODEL,
-      max_tokens: 128,
-      messages: [{ role: "user", content: prompt }]
-    });
-
-    const textBlock = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
-    if (!textBlock) throw new Error("Anthropic why-line response had no text block");
-
-    const reask = async (): Promise<string> => {
-      const reaskLine = "Your previous reply was not valid JSON; reply with the JSON object only.";
-      // The re-ask is its own real API call — it re-sends the whole prompt
-      // plus the bad reply, so it is its own metered spend, gated the same
-      // way as the original call (see parseWithRetry.ts's BUDGET note).
-      const reaskEstimatedInputTokens = roughTokenEstimate(prompt + textBlock.text + reaskLine);
-      await this.budgetGuard.checkAndRecord({
-        userId: ctx.userId,
-        operation: "why_line",
-        provider: this.providerName,
-        model: MODEL,
-        estimatedUsd: reaskEstimatedInputTokens * USD_PER_INPUT_TOKEN + 60 * USD_PER_OUTPUT_TOKEN,
-        episodeId: input.episodeId,
-        sessionId: ctx.sessionId
-      });
-
-      const retryResponse = await this.client.messages.create({
-        model: MODEL,
-        max_tokens: 128,
-        messages: [
-          { role: "user", content: prompt },
-          { role: "assistant", content: textBlock.text },
-          { role: "user", content: reaskLine }
-        ]
-      });
-      const retryTextBlock = retryResponse.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text");
-      if (!retryTextBlock) throw new Error("Anthropic why-line re-ask response had no text block");
-      return retryTextBlock.text;
-    };
-
-    return await parseWithRetry(WhyLineSchema, textBlock.text, "Anthropic why-line output", reask);
+    return await parseWithRetry(schema, textBlock.text, `Anthropic ${opts.label} output`, reask);
   }
 }
 
