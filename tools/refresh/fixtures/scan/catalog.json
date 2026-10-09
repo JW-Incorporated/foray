@@ -1,0 +1,28 @@
+{
+  "shows": [
+    {
+      "show_id": "alpha-show",
+      "title": "Alpha Show",
+      "apple_collection_id": 1001,
+      "feed_url": "https://feeds.example.test/alpha.xml",
+      "artwork_url": "https://img.example.test/alpha.jpg",
+      "taxonomy_node_ids": ["technology", "science"]
+    },
+    {
+      "title": "Beta Show",
+      "apple_collection_id": 1002,
+      "feed_url": "https://feeds.example.test/beta.xml"
+    },
+    {
+      "show_id": "gamma-show",
+      "title": "Gamma Show",
+      "apple_collection_id": 1003,
+      "feed_url": "https://feeds.example.test/gamma.xml"
+    },
+    {
+      "show_id": "delta-show",
+      "title": "Delta Show (no feed)",
+      "apple_collection_id": 1004
+    }
+  ]
+}

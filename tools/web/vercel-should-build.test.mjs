@@ -18,7 +18,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import path from "node:path";
+
 import { decide, pathMatters, IGNORED_PREFIXES, IGNORED_PATTERNS, EXCEPTIONS, STAMP_MODULES } from "./vercel-should-build.mjs";
+import { listedFiles } from "../ci/generate-manifest.mjs";
 
 const BUILD = 1;
 const SKIP = 0;
@@ -26,16 +29,22 @@ const SKIP = 0;
 /* ---------- the deployed surface builds --------------------------------- */
 
 test("every file prepare-dist.mjs actually deploys forces a build", () => {
-  /* Read off `prepare-dist.mjs`'s own SHELL/RUNTIME_DATA/EXTRAS lists. If that
-     file starts deploying something new, the new path is not on the deny-list
-     and therefore builds by default — which is the whole reason this is a
-     deny-list. MUTATION: add "app.js" to IGNORED_PREFIXES. */
-  for (const p of [
-    "index.html", "app.js", "search-engine.js", "styles.css", "sw.js",
-    "manifest.json", "icon-180.png", "icon-512.png",
-    "data/session.json", "data/forays.json", "data/catalog-client.json",
-    "vercel.json",
-  ]) {
+  /* prepare-dist keeps no lists of its own since CH2-18: it ships
+     generate-manifest's (`listedFiles()`: the shell, fonts, player closure and
+     runtime data) plus sw.js, the unpinned show index and the site association
+     (tools/ci/ship-lists.test.mjs pins the built dist to exactly that). So the
+     paths are read off that one owner, and a file it starts shipping is checked
+     here with no edit. If one is on the deny-list it would deploy only by
+     luck, which is the whole reason this is a deny-list.
+     MUTATION: add "app.js" (or "fonts/") to IGNORED_PREFIXES. */
+  const shipped = [
+    ...listedFiles().map((p) => p.split(path.sep).join("/")),
+    "sw.js",
+    "data/show-index.tsv",
+    ".well-known/apple-app-site-association",
+  ];
+  assert.ok(shipped.includes("app.js") && shipped.some((p) => p.startsWith("fonts/")), "premise: the real ship list");
+  for (const p of [...shipped, "vercel.json"]) {
     assert.equal(pathMatters(p), true, `${p} is served and must build`);
   }
 });
@@ -74,7 +83,7 @@ test("the build script itself builds, but its test does not", () => {
 });
 
 test("nothing under docs/ deploys, the UX prototype included (security-11)", () => {
-  /* The prototype left prepare-dist's EXTRAS (round-3 audit, security-11): it
+  /* The prototype left prepare-dist's dist (round-3 audit, security-11): it
      shared the app's origin with no CSP. So a change to it cannot change what
      Vercel serves, and it no longer forces a build. */
   assert.equal(pathMatters("docs/ux/foray-m3-prototype.html"), false);

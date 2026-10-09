@@ -1,9 +1,10 @@
-/* Loaded for its side effect only: `env.ts` is what calls `dotenv.config()`
-   on the repo-root `.env`, and this module reads `process.env` at import
-   time. Importing it here means a `FORAY_MODEL_*` override in `.env` works
-   the same way `ANTHROPIC_API_KEY` does, regardless of which module the
-   process happened to import first. */
-import "./env";
+/* `env.ts` is what calls `dotenv.config()` on the repo-root `.env`, and this
+   module reads `process.env` at import time. Importing it here means a
+   `FORAY_MODEL_*` override in `.env` works the same way `ANTHROPIC_API_KEY`
+   does, regardless of which module the process happened to import first —
+   and the overrides are read by env's own `readString` rule (trimmed; empty
+   means unset), not a private copy of it. */
+import { readString } from "./env";
 
 /**
  * The ONE place a Claude model id is written down (generation run 2026-09-09,
@@ -87,15 +88,8 @@ const ENV_ID_VAR: Record<ModelTier, string> = {
   haiku: "FORAY_MODEL_HAIKU"
 };
 
-function readNonEmpty(source: NodeJS.ProcessEnv, name: string): string | undefined {
-  const raw = source[name];
-  if (raw === undefined) return undefined;
-  const trimmed = raw.trim();
-  return trimmed.length === 0 ? undefined : trimmed;
-}
-
 function readPositiveNumber(source: NodeJS.ProcessEnv, name: string, fallback: number): number {
-  const raw = readNonEmpty(source, name);
+  const raw = readString(name, source);
   if (raw === undefined) return fallback;
   const n = Number(raw);
   /* A malformed price falls back rather than throwing: a bad rate makes the
@@ -107,7 +101,7 @@ function readPositiveNumber(source: NodeJS.ProcessEnv, name: string, fallback: n
 
 /** Pure resolver, exported so a test can drive it without mutating the process. */
 export function resolveModelId(tier: ModelTier, source: NodeJS.ProcessEnv = process.env): string {
-  return readNonEmpty(source, ENV_ID_VAR[tier]) ?? DEFAULT_MODEL_IDS[tier];
+  return readString(ENV_ID_VAR[tier], source) ?? DEFAULT_MODEL_IDS[tier];
 }
 
 /** Pure resolver, exported for the same reason as `resolveModelId`. */

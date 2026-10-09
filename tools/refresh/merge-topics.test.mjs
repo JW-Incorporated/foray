@@ -357,38 +357,37 @@ test("a bad topic id is refused by the SAME preflight as the copy rules, naming 
 });
 
 test("scan.mjs seeds topics from the SHOW and from nothing else, so the nightly needs no matching change", () => {
-  /* A SOURCE-TEXT assertion, and it is here under protest — `scan.mjs` is a main
-     script with no exported record builder, so there is nothing to call. The
-     alternative was worse: a review round caught the test below claiming to pin
-     "both pipelines" while every record in it came from `backfill-show.mjs`.
-     Mutating scan.mjs left the whole suite green, which is #211/#219/#249's exact
-     shape — "both sides agree" asserted, one side pinned.
+  /* A SOURCE-TEXT assertion, kept narrow on purpose. Since CH2-29
+     (docs/roadmap/code-health-2.md) scan.mjs and backfill-show.mjs build their
+     records with ONE function, `itemToPendingRecord` in feed-xml.mjs, so the
+     topic seed lives in exactly one place. The nightly's record is pinned
+     behaviourally by tools/refresh/scan.test.mjs (fixture run against
+     fixtures/scan/expected-pending.json, which carries the show's topics); what
+     THIS test holds is the structural claim that there is still one seam:
+       - feed-xml.mjs seeds `topics` from the show, once, and
+       - scan.mjs builds through that function and neither re-keys `topics:` in
+         an object literal nor assigns to a `.topics` property afterwards.
+     WHAT IT DOES NOT CATCH, said plainly: a third spelling (`Object.assign`, a
+     computed key) would slip past the scan.mjs half — that is the honest limit
+     of reading source text, and scan.test.mjs's fixture is the behavioural net.
 
-     What it holds: the nightly emits `topics` (the field merge.mjs overrides),
-     seeded from the show. If that ever becomes a per-episode assignment inside
-     scan.mjs, there are two topic seams again and this goes red.
-     WHAT IT DOES NOT CATCH, said plainly so the next reader does not over-trust
-     it: the first match below sees OBJECT-LITERAL PROPERTIES ONLY — a `topics:`
-     key inside a `{ … }`. A review round
-     probed it with a statement-form seam — `pending[pending.length - 1].topics =
-     ["culture/books"];` — and the suite stayed green, which is the exact defect
-     the test exists for. Hence the second assertion: no assignment TO a `.topics`
-     property anywhere in the file. Between them the two cover both spellings a
-     second seam can take. A third spelling (`Object.assign`, a computed key)
-     would still slip past, and that is the honest limit of reading source text.
+     KILLED BY: changing `topics: show.taxonomy_node_ids || []` in feed-xml.mjs to
+     a different field or anything episode-derived; adding a `topics:` key or a
+     `rec.topics = ...` assignment anywhere in scan.mjs; or scan.mjs building its
+     record without `itemToPendingRecord`. */
+  const builder = readFileSync(join(HERE, "feed-xml.mjs"), "utf8");
+  /* The value match tolerates a trailing `// comment`, because a comment-only
+     edit must not red the nightly — a false alarm is how a real alarm gets ignored. */
+  const seeds = [...builder.matchAll(/^\s*topics:\s*(.+?),\s*(?:\/\/.*)?$/gm)].map((m) => m[1].trim());
+  assert.deepEqual(seeds, ["show.taxonomy_node_ids || []"],
+    "feed-xml.mjs's itemToPendingRecord must seed topics from the show, exactly once");
 
-     KILLED BY: changing `topics: show.taxonomy_node_ids || []` in scan.mjs — to a
-     different field name, or to anything episode-derived — or by adding
-     `rec.topics = …` anywhere in it. */
-  const src = readFileSync(join(HERE, "scan.mjs"), "utf8");
-  /* The value match tolerates a trailing `// comment`, because it must not red
-     the nightly over a comment: the probe round found `topics: show.taxonomy_node_ids || [],  // seed`
-     went red under the stricter `,\s*$`, and a false alarm on a comment-only edit
-     is how a real alarm gets ignored. */
-  const assignments = [...src.matchAll(/^\s*topics:\s*(.+?),\s*(?:\/\/.*)?$/gm)].map((m) => m[1].trim());
-  assert.deepEqual(assignments, ["show.taxonomy_node_ids || []"],
-    "scan.mjs must seed topics from the show and must not gain a second topic seam");
-  assert.ok(!/\.topics\s*=[^=]/.test(src),
+  const scan = readFileSync(join(HERE, "scan.mjs"), "utf8");
+  assert.match(scan, /\bitemToPendingRecord\(\s*show\s*,/,
+    "scan.mjs must build its pending record with feed-xml.mjs's itemToPendingRecord");
+  assert.deepEqual([...scan.matchAll(/^\s*topics:/gm)].length, 0,
+    "scan.mjs keys `topics:` itself — that is a second topic seam beside itemToPendingRecord");
+  assert.ok(!/\.topics\s*=[^=]/.test(scan),
     "scan.mjs assigns to a .topics property — that is a second, per-episode topic seam");
 });
 

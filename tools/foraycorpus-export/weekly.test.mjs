@@ -25,7 +25,7 @@ import { gunzipSync } from "node:zlib";
 
 import { versionDirName } from "./export.mjs";
 import { corpusTagFor } from "./publish-release.mjs";
-import { ADAPTER_SCRIPT, COMMIT_TRAILERS, pointerRelPath, runWeekly } from "./weekly.mjs";
+import { ADAPTER_SCRIPT, commitTrailers, pointerRelPath, runWeekly, TRAILERS_ENV } from "./weekly.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = join(HERE, "fixtures", "synthetic");
@@ -93,6 +93,7 @@ const opts = (fx, fake, iso, extra = {}) => ({
   warn: quiet,
   sleep: async () => {},
   pauseMs: 0,
+  env: {},
   ...extra,
 });
 const kinds = (calls) => calls.map((c) => (c.cmd === "node" || c.cmd === "sh" ? c.cmd : `${c.cmd} ${c.args[0] === "release" ? c.args[1] : c.args[0]}`));
@@ -203,6 +204,9 @@ test("--dry-run: no gh, git or sh call, no pointer, nothing under the out root, 
 // `-- <pointer>` pathspec from the commit) -> the argv checks go red.
 // Mutation: delete the staged-set check -> with a stray file staged a commit,
 // a push and the PR happen, and the second half goes red.
+// Mutation (CH2-30, T1-23): hardcode a Co-Authored-By / Claude-Session
+// trailer in commitMessage again -> with no FORAY_COMMIT_TRAILERS the
+// message no longer ends with the body line: red.
 test("only the pointer path is ever added or committed; any other staged set is refused before the commit", async () => {
   const fx = fixture();
   try {
@@ -215,7 +219,8 @@ test("only the pointer path is ever added or committed; any other staged set is 
     assert.deepEqual(commit.args.slice(-2), ["--", rel]);
     const message = commit.args[commit.args.indexOf("-m") + 1];
     assert.match(message, new RegExp(`^data\\(corpus\\): point ${rel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} at ${corpusTagFor(T1)}\\n`));
-    for (const trailer of COMMIT_TRAILERS) assert.ok(message.endsWith(trailer) || message.includes(`${trailer}\n`), trailer);
+    assert.doesNotMatch(message, /Co-Authored-By|Claude-Session/i, "no env -> no attribution trailer");
+    assert.match(message, /\(HUMAN-ACTIONS #139\)\.$/, "no env -> the message ends with the body line");
 
     const fx2 = fixture();
     try {
@@ -247,6 +252,32 @@ test("a failed export publishes nothing: no adapter, no gh, no git, no pointer",
     assert.deepEqual(fake.calls, []);
     assert.ok(!existsSync(fx.pointerPath));
     assert.ok(!existsSync(join(fx.outRoot, versionDirName(T2))));
+  } finally {
+    rmSync(fx.root, { recursive: true, force: true });
+  }
+});
+
+// CH2-30 (T1-23): the pointer commit's trailers come from
+// FORAY_COMMIT_TRAILERS (newline-separated), never from the source.
+// Mutation: drop `trailers: commitTrailers(env)` from runWeekly's
+// openPointerPr call -> the env's trailers never reach the commit: red.
+// Mutation: drop the blank-line `.filter` in commitTrailers -> the
+// whitespace-only and blank-line cases read [""] / ["A: 1", "", "B: 2"]: red.
+test("FORAY_COMMIT_TRAILERS: exactly the env's trailers end the commit message; blank means none", async () => {
+  assert.deepEqual(commitTrailers({}), []);
+  assert.deepEqual(commitTrailers({ [TRAILERS_ENV]: "  \n" }), []);
+  assert.deepEqual(commitTrailers({ [TRAILERS_ENV]: " A: 1 \r\n\nB: 2\n" }), ["A: 1", "B: 2"]);
+
+  const fx = fixture();
+  try {
+    const rel = pointerRelPath(fx.pointerPath);
+    const fake = fakeExec({ staged: `${rel}\n` });
+    const env = { [TRAILERS_ENV]: "Co-Authored-By: Someone <someone@example.com>\nRun-Id: weekly-1" };
+    await runWeekly(opts(fx, fake, T1, { env }));
+    const commit = fake.calls.find((c) => c.cmd === "git" && c.args[0] === "commit");
+    const message = commit.args[commit.args.indexOf("-m") + 1];
+    assert.ok(message.endsWith("(HUMAN-ACTIONS #139).\n\nCo-Authored-By: Someone <someone@example.com>\nRun-Id: weekly-1"), message);
+    assert.doesNotMatch(message, /Claude-Session/);
   } finally {
     rmSync(fx.root, { recursive: true, force: true });
   }

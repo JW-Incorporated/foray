@@ -1,0 +1,134 @@
+{
+  "generated_at": "<generated_at>",
+  "state_path": "<state_path>",
+  "window_hours": 1000000,
+  "source": "full",
+  "scanned_count": 3,
+  "episodes": [
+    {
+      "show": "Alpha Show",
+      "title": "Unresolved Last Night",
+      "apple_collection_id": 1001,
+      "guid": "retry-guid-1",
+      "_retry_attempts": 2
+    },
+    {
+      "show": "Alpha Show",
+      "show_id": "alpha-show",
+      "apple_collection_id": 1001,
+      "artwork_url": "https://img.example.test/alpha.jpg",
+      "topics": [
+        "technology",
+        "science"
+      ],
+      "guid": "alpha-cdata-guid",
+      "title": "Vibe Coding & Linux",
+      "release_date": "2026-10-05",
+      "duration_min": 62,
+      "duration_sec": 3723,
+      "audio_url": "https://cdn.example.test/alpha/ep1.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 12345678,
+      "description": "Show notes with HTML .",
+      "explicit_hint": true
+    },
+    {
+      "show": "Alpha Show",
+      "show_id": "alpha-show",
+      "apple_collection_id": 1001,
+      "artwork_url": "https://img.example.test/alpha.jpg",
+      "topics": [
+        "technology",
+        "science"
+      ],
+      "guid": "alpha-object-guid",
+      "title": "Object Guid",
+      "release_date": "2026-10-04",
+      "duration_min": 31,
+      "duration_sec": 1834,
+      "audio_url": "https://cdn.example.test/alpha/ep2.m4a?utm=1",
+      "audio_type": "audio/x-m4a",
+      "audio_bytes": 999,
+      "description": "Summary only, no description.",
+      "explicit_hint": false
+    },
+    {
+      "show": "Alpha Show",
+      "show_id": "alpha-show",
+      "apple_collection_id": 1001,
+      "artwork_url": "https://img.example.test/alpha.jpg",
+      "topics": [
+        "technology",
+        "science"
+      ],
+      "guid": "https://cdn.example.test/alpha/ep3.mp3",
+      "title": "No Guid At All",
+      "release_date": "2026-10-03",
+      "duration_min": null,
+      "duration_sec": null,
+      "audio_url": "https://cdn.example.test/alpha/ep3.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "description": "",
+      "explicit_hint": true
+    },
+    {
+      "show": "Alpha Show",
+      "show_id": "alpha-show",
+      "apple_collection_id": 1001,
+      "artwork_url": "https://img.example.test/alpha.jpg",
+      "topics": [
+        "technology",
+        "science"
+      ],
+      "guid": "alpha-video",
+      "title": "Video Only",
+      "release_date": "2026-09-30",
+      "duration_min": null,
+      "duration_sec": null,
+      "audio_url": null,
+      "audio_type": "video/mp4",
+      "audio_bytes": 5000,
+      "description": "A video episode.",
+      "explicit_hint": false
+    },
+    {
+      "show": "Alpha Show",
+      "show_id": "alpha-show",
+      "apple_collection_id": 1001,
+      "artwork_url": "https://img.example.test/alpha.jpg",
+      "topics": [
+        "technology",
+        "science"
+      ],
+      "guid": "https://alpha.example.test/ep10",
+      "title": "Tenth Item, Explicit Word",
+      "release_date": "2026-09-27",
+      "duration_min": null,
+      "duration_sec": null,
+      "audio_url": "https://cdn.example.test/alpha/ep10.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": null,
+      "description": "Ten.",
+      "explicit_hint": true
+    },
+    {
+      "show": "Beta Show",
+      "show_id": null,
+      "apple_collection_id": 1002,
+      "artwork_url": null,
+      "topics": [],
+      "guid": "beta-1",
+      "title": "The Only Beta Episode",
+      "release_date": "2026-10-06",
+      "duration_min": 45,
+      "duration_sec": 2710,
+      "audio_url": "https://cdn.example.test/beta/1.mp3",
+      "audio_type": "audio/mpeg",
+      "audio_bytes": 42,
+      "description": "Single-item feeds collapse to one object.",
+      "explicit_hint": false
+    }
+  ],
+  "candidates": []
+}

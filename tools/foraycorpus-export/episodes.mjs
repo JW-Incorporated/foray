@@ -24,6 +24,7 @@ import { resolve as resolvePath, sep } from "node:path";
 import { normalizeMimeType } from "../segments/sweep-transcripts.mjs";
 import { safeKey } from "./config.mjs";
 import { classifyTranscriptMime } from "./mimes.mjs";
+import { toIsoOrNull } from "./time.mjs";
 
 /** Timed formats in preference order; any other timed mime ranks after
     these, in input order. */
@@ -75,12 +76,6 @@ export function pickTranscriptAsset(assets) {
     row; does not import catalogue.mjs. */
 export function showKeyOf(showRow) {
   return showRow?.foray_show_id ?? showRow?.corpus_podcast_id ?? null;
-}
-
-function toIsoOrNull(value) {
-  if (value == null) return null;
-  const t = Date.parse(value);
-  return Number.isNaN(t) ? null : new Date(t).toISOString();
 }
 
 function isAudioAlternate(a) {

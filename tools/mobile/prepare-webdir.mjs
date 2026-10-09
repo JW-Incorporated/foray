@@ -222,7 +222,7 @@ import { BUILD_STAMP_FILE, buildStampDoc } from "../../player/build-stamp.js";
    deploy id the live site ships this commit under, and the Foray directory
    pointer it serves. Neither is a committed file any more — see
    `tools/ci/generate-manifest.mjs`'s header. */
-import { sourceStamp } from "../ci/generate-manifest.mjs";
+import { playerSources, runtimeDataFiles, sourceStamp } from "../ci/generate-manifest.mjs";
 
 /* search-engine.js is deliberately NOT imported here (#279 review), unlike the two
    joins above. This file runs inside the release jobs that hold the iOS and Android
@@ -484,19 +484,13 @@ export function assertShellScriptsPresent(html, files = SHELL_ONLY_FILES) {
 
 /* --------------------------------------------------------------- derivation */
 
-/** Every `data/*.json` path `app.js` actually fetches, in source order.
- *
- *  Matches `fetchJson("data/x.json")` and the double/single/backtick variants.
- *  Deliberately NOT a general "any string starting with data/" scan: `app.js`
- *  mentions `data/app-links.json` in a comment and `data/forays.json` in the
- *  `state` declaration, and neither is a fetch. Anchoring on the call is what
- *  keeps prose out of the bundle plan. */
-export function runtimeDataFiles(appSrc) {
-  const re = /fetchJson\(\s*(["'`])(data\/[^"'`]+\.json)\1\s*\)/g;
-  const out = [];
-  for (const m of appSrc.matchAll(re)) if (!out.includes(m[2])) out.push(m[2]);
-  return out;
-}
+/* `runtimeDataFiles(appSrc)`: every `data/*.json` path `app.js` actually fetches,
+ * in source order — `fetchJson("data/x.json")` calls only, never prose. It lives
+ * in tools/ci/generate-manifest.mjs (CH2-18), which also derives the web deploy's
+ * data list from it, so the bundle and the web read app.js with ONE scanner;
+ * re-exported here for this file's callers. tools/ci/ship-lists.test.mjs pins
+ * the scan inside the web's RUNTIME_DATA. */
+export { runtimeDataFiles };
 
 /* A floor on the derivation itself. If `fetchJson` is renamed or the call shape
  * changes, `runtimeDataFiles` returns [] or something tiny, and a bundle with no
@@ -507,23 +501,35 @@ export function runtimeDataFiles(appSrc) {
  * this deliberately and say why in the PR. */
 export const MIN_DERIVED_DATA_FILES = 6;
 
-/** Runtime modules under `player/`, excluding test suites. The player is a flat
- *  directory of ES modules that only import each other (every `import` in a
- *  runtime `player/*.js` is a `./` sibling, which tools/ci/generate-manifest.mjs
- *  enforces), so no bundler is needed. "Every non-test .js" is a SUPERSET of the
- *  graph, not the graph: modules nothing imports (parity references, unwired
- *  rules) ride along here, while the web's preload, precache and dist list only
- *  player/client.js's import closure (`playerSources`, CH-07). The shell copies
- *  the superset so a module is never missing; it costs bytes, not a fetch, since
- *  index.html preloads only the closure. `player/package.json` is not copied: it
- *  exists to mark the directory as ESM for Node, and module-ness in the browser
- *  comes from `<script type="module">`. */
+/** The runtime modules under `player/` the bundle carries: EXACTLY the web's
+ *  list, `playerSources` from tools/ci/generate-manifest.mjs — the static and
+ *  literal-dynamic import closure of `player/client.js`, plus any `player/*.js`
+ *  index.html loads with its own `<script>` tag. The same list decides
+ *  index.html's modulepreload lines (test/boot-path.test.js perf-1), the SW's
+ *  precache and tools/web/prepare-dist.mjs's dist, so the shell and the web now
+ *  ship one module set from one owner.
+ *
+ *  IT WAS "EVERY NON-TEST .js" until perf/bundle-trim-1 (2026-10-09,
+ *  docs/research/bundle-budget-2026-10.md item 1): a SUPERSET that carried the
+ *  modules nothing imports — parity references and unwired rules
+ *  (alert-open, catalogue-directory, foray-structure, locate-window,
+ *  route-resume: 12,647 B minified on the day) — into a WebView that never
+ *  requests them, since index.html preloads only the closure and no shipped
+ *  script imports anything outside it. A module joins the bundle the way it
+ *  joins the web: by being imported. The native parity harness reads the
+ *  repo's `player/`, never this bundle, so a reference module loses nothing.
+ *
+ *  `playerSources` throws on a non-sibling specifier and on a missing module,
+ *  which is the guard this list needs: a closure that silently lost a module
+ *  would be an app whose first import 404s. `prepare-webdir.test.mjs` re-walks
+ *  the plan's own imports ("the plan is closed under the player's own
+ *  imports"). `player/package.json` is not copied: it marks the directory as
+ *  ESM for Node, and module-ness in the browser comes from
+ *  `<script type="module">`. Returned as repo-relative POSIX paths, sorted. */
 export function playerFiles(root = REPO_ROOT) {
-  return fs
-    .readdirSync(path.join(root, "player"))
-    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
-    .sort()
-    .map((f) => path.posix.join("player", f));
+  return playerSources(root)
+    .map((rel) => rel.split(path.sep).join("/"))
+    .sort();
 }
 
 /** The full copy plan as repo-relative POSIX paths. Throws if the plan is not
@@ -537,7 +543,7 @@ export function buildPlan(root = REPO_ROOT) {
       `Derived only ${data.length} runtime data file(s) from app.js, expected at least ` +
         `${MIN_DERIVED_DATA_FILES}. The fetchJson() call shape in app.js has probably ` +
         `changed, and a bundle with no data would otherwise build and look fine. ` +
-        `Fix runtimeDataFiles() in tools/mobile/prepare-webdir.mjs.`
+        `Fix runtimeDataFiles() in tools/ci/generate-manifest.mjs.`
     );
   }
 

@@ -266,7 +266,7 @@ describe("PrefetchingEvidenceGatherer — the fan-out, and what narration finds 
   it("gen-5: a budget refusal during the fan-out stops the run instead of being counted as a failed page", async () => {
     const inner = new CountingGatherer();
     inner.gather = async (): Promise<EvidencePack> => {
-      throw new BudgetExceededError(1, 9.9, 0.2, 10);
+      throw new BudgetExceededError(9.9, 0.2, 10);
     };
     const evidence = new PrefetchingEvidenceGatherer(inner);
     await expect(evidence.prefetch([MIXED_ACT], ctx, { concurrency: 2 })).rejects.toBeInstanceOf(BudgetExceededError);

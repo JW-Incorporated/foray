@@ -1,7 +1,7 @@
 // COPIED (card NE-02, docs/native-engine-plan.md §4.1) from
 //   ios/ForayKit/Tests/ForayKitTests/PlayerQueueStateTests.swift @ adde5e12
 // with the import changed to name this package's module instead of
-// ForayKit, and (since NE-07s) one expectation, explained below.
+// ForayKit, and (since NE-07s and CH3-01) two expectations, explained below.
 // The ios/ copy is FROZEN REFERENCE; this is the suite that guards the
 // engine's reducer (Sources/ForayEngineCore/Reducer/PlayerQueueState.swift)
 // on every host `swift test` of foray-engine-core (ci.yml's ios-kit on macOS,
@@ -15,9 +15,10 @@
 // the names against the ios/ original, and test/suite-integrity.test.js
 // floors the count). NE-07s ADDS cases as the reducer reaches JS parity; it
 // never rewrites these, because they are the proof the extension kept the
-// behaviour the scaffold already had. The one exception is a behaviour JS
-// changed ON PURPOSE before the port (testSkipToNextWithNoTargetEndsQueue,
-// #111), whose expectation follows the reference and says so in place.
+// behaviour the scaffold already had. The exceptions are behaviours JS
+// changed ON PURPOSE (testSkipToNextWithNoTargetEndsQueue, #111, before the
+// port; testInterruptionBeganDuringLoadDoesNotPauseOrSavePosition, CH3-01),
+// whose expectations follow the reference and say so in place.
 
 import XCTest
 import ForayEngineCore
@@ -191,10 +192,55 @@ final class PlayerQueueStateTests: XCTestCase {
 
     func testInterruptionBeganDuringLoadDoesNotPauseOrSavePosition() {
         // Nothing audible yet; no position exists to save, nothing to pause.
+        // CHANGED ON PURPOSE (CH3-01, R2-01, player/queue-state.test.js's test
+        // of the same name): the scaffold recorded `wasPlaying: false`; it is
+        // `true` now, because the listener's intent was to play, so a prompt
+        // during a load that ends with shouldResume resumes the load.
         let loading = PlayerQueueState.loadingItem(target: episodeA, previous: nil)
         let (state, effects) = PlayerQueueState.reduce(state: loading, event: .interruptionBegan)
-        XCTAssertEqual(state, .interrupted(item: episodeA, wasPlaying: false))
+        XCTAssertEqual(state, .interrupted(item: episodeA, wasPlaying: true))
         XCTAssertEqual(effects, [.emitTelemetry("interruption.began.duringLoad")])
+    }
+
+    // CH3-01 (R2-01, docs/roadmap/code-health-3.md): a nav prompt or "Hey
+    // Siri" that lands while the target is still LOADING, and ends with
+    // shouldResume, resumes the load. Mirrors player/queue-state.test.js's test
+    // of the same name. KILLING MUTATION: the load arm's `wasPlaying: true`
+    // reverted to `false`.
+    func testInterruptionDuringLoad_EndsWithShouldResume() {
+        let loading = PlayerQueueState.loadingItem(target: episodeA, previous: nil)
+        let (interrupted, _) = PlayerQueueState.reduce(state: loading, event: .interruptionBegan)
+        XCTAssertEqual(interrupted, .interrupted(item: episodeA, wasPlaying: true))
+
+        // A stray itemLoaded inside the interruption must not start playback
+        // into the call.
+        let (stray, strayEffects) = PlayerQueueState.reduce(state: interrupted, event: .itemLoaded)
+        XCTAssertEqual(stray, interrupted)
+        guard case .emitTelemetry = strayEffects.first else {
+            return XCTFail("expected itemLoaded to be ignored")
+        }
+
+        let (resumed, effects) = PlayerQueueState.reduce(state: interrupted, event: .interruptionEnded(shouldResume: true))
+        XCTAssertEqual(resumed, .loadingItem(target: episodeA, previous: episodeA))
+        XCTAssertEqual(effects, [.loadItem(episodeA), .emitTelemetry("interruption.ended.resumed")])
+    }
+
+    // A lost route is not resumable, and a call that begins and ends inside
+    // the loss does not make it so. Mirrors player/queue-state.test.js.
+    // KILLING MUTATION: the route arm's `wasPlaying: false` during a load
+    // flipped to `true`.
+    func testRouteLostDuringLoad_ThenACallEndsWithShouldResume_StaysPaused() {
+        let loading = PlayerQueueState.loadingItem(target: episodeA, previous: nil)
+        let (lost, _) = PlayerQueueState.reduce(state: loading, event: .routeChanged(oldDeviceUnavailable: true))
+        XCTAssertEqual(lost, .interrupted(item: episodeA, wasPlaying: false))
+
+        let (ringing, beganEffects) = PlayerQueueState.reduce(state: lost, event: .interruptionBegan)
+        XCTAssertEqual(ringing, lost)
+        XCTAssertEqual(beganEffects, [])
+
+        let (after, effects) = PlayerQueueState.reduce(state: ringing, event: .interruptionEnded(shouldResume: true))
+        XCTAssertEqual(after, .interrupted(item: episodeA, wasPlaying: false))
+        XCTAssertEqual(effects, [.emitTelemetry("interruption.ended.staysPaused")])
     }
 
     func testInterruptionBeganIsIdempotent() {
