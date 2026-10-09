@@ -356,7 +356,7 @@ measurable first step.
   generation host reads it (`backend/.env` on the host, or the host's secret
   store — never in chat, never in the repo). **The founder's PC is the interim
   host until D2 names the production host; the key moves with the host.** The
-  driver already honours `DAILY_BUDGET_USD` / `EPISODE_BUDGET_USD`; defaults are
+  driver already honours `RUN_BUDGET_USD` (was `DAILY_BUDGET_USD`) / `EPISODE_BUDGET_USD`; defaults are
   now **$25/day and $10/Foray** (`backend/src/config/env.ts:106`; requirements
   §4.1 — F-04's $2 default was raised on the branch). Wyatt sets the production
   caps from the cost estimate in §7. Note the brand-new key's rate tier is
@@ -1120,7 +1120,7 @@ $0.30–1.00 (30–100 searches). **≈ $1–2 per attempt on the measured count
 billed them, so they are absent from every measured token figure. Retries
 (G-20's checkpoint/resume) multiply this; G-42a's bench is two Forays per run
 (≈ $2–8), so it runs on a schedule, not on every PR. The defaults
-`DAILY_BUDGET_USD` $25 / `EPISODE_BUDGET_USD` $10 fit with room; D1 sets the
+`RUN_BUDGET_USD` $25 / `EPISODE_BUDGET_USD` $10 fit with room; D1 sets the
 production caps from the measured figure, not this one. G-37a's caching cuts
 the billed input, which is where 40–60 % of the Sonnet cost sits.
 
@@ -1167,7 +1167,7 @@ home (G-01), the exporter (G-10…G-16) and the run service (G-30).
 | # | Decision | Blocks | Owner |
 |---|---|---|---|
 | D2 | Where the exporter and the generation service run (foray-db box / hermes-vm / Actions + Tailscale) — **this host is also the API key's home**; the store; the Omny egress rate and crawler coordination; retention/takedown; a dedicated export role | G-01 (production home), G-10…G-16, G-30(f) | Wyatt + Joey |
-| D1 | **Anthropic API key + `DAILY_BUDGET_USD` / `EPISODE_BUDGET_USD` caps** (defaults $25 / $10; §7 for the estimate) — interim on the founder's PC | G-01, G-20, all of Phase 3 | Wyatt |
+| D1 | **Anthropic API key + `RUN_BUDGET_USD` / `EPISODE_BUDGET_USD` caps** (defaults $25 / $10; §7 for the estimate) — interim on the founder's PC | G-01, G-20, all of Phase 3 | Wyatt |
 | D10 | **Rights posture for storing transcript bodies in a shared store.** 4a's standing policy was "bodies are never fetched or stored" (#104), relaxed to `data-local` only (#255); a shared store is a policy change whatever its ACL. 2,929 crawled feeds carry `itunes:block`, 3,823 `podcast:locked`, 853 CC-licensed assets; bulk `api.omny.fm` fetching has ToS exposure | G-11 (must precede the publish) | Wyatt |
 | D3 | Corpus asks to Joey (§8, ask 6 first) | G-12 for 90 % of episodes; G-40's coverage | Joey |
 | D0 | **Confirm or change the three *proposed* targets in §1.2** (full-run clock, published-with-no-human, tape share and the ≥ 3-shows half pending G-18) | G-42 (the acceptance table), G-20 prompt 2 | Wyatt |

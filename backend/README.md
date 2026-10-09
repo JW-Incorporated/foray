@@ -27,7 +27,9 @@ npm install
 Environment is read from the **repo-root** `.env` (one level up from
 `backend/`), which already exists in this repo (see `.env.example` for the
 documented keys: `ANTHROPIC_API_KEY`, `PODCASTINDEX_API_KEY`,
-`PODCASTINDEX_API_SECRET`, `RUN_BUDGET_USD`, `EPISODE_BUDGET_USD`). Every key is optional —
+`PODCASTINDEX_API_SECRET`, `RUN_BUDGET_USD`, `EPISODE_BUDGET_USD`; the old
+`DAILY_BUDGET_USD` is a deprecated alias of `RUN_BUDGET_USD`, read with a
+startup warning). Every key is optional —
 absence is handled explicitly everywhere (`src/config/env.ts`), not treated
 as a startup error. An optional `backend/.env.local` can override the
 repo-root file for local-only experimentation (gitignored).

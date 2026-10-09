@@ -94,7 +94,8 @@ const MAX_BUDGET_USD = 1000;
  * THIS PROCESS may spend. The cost sink is in memory and nothing persists it,
  * so there is no day window to reset and no second process to share with: a
  * re-run in a fresh process starts at $0 again. The variable used to be called
- * `DAILY_BUDGET_USD`, which promised a per-day cap the code never had.
+ * `DAILY_BUDGET_USD`, which promised a per-day cap the code never had; that
+ * name is still read as a deprecated alias (see `readRunBudget`).
  */
 const DEFAULT_RUN_BUDGET_USD = 25.0;
 const DEFAULT_EPISODE_BUDGET_USD = 10.0;
@@ -110,17 +111,48 @@ function budgetSchema(name: string): z.ZodNumber {
 }
 
 /**
- * The variable `RUN_BUDGET_USD` replaced. Set, it fails startup naming the
- * rename instead of being ignored: an operator who wrote a per-day number in
- * their .env must learn that it never was one, not have it silently dropped.
+ * The variable `RUN_BUDGET_USD` replaced, kept as a DEPRECATED ALIAS so an
+ * operator's existing `.env` keeps working (CH2-04, docs/DECISIONS.md
+ * 2026-10-07):
+ *
+ *   - only `DAILY_BUDGET_USD` set  -> its value is the run cap, read through
+ *     the same bounded schema (a malformed value fails startup naming
+ *     `DAILY_BUDGET_USD`), and ONE deprecation warning names `RUN_BUDGET_USD`;
+ *   - both set to the same number -> that number, and the same one warning;
+ *   - both set and they differ     -> startup fails naming both variables,
+ *     because there is no safe way to guess which cap the operator meant;
+ *   - only `RUN_BUDGET_USD` set, or neither -> the alias plays no part.
+ *
+ * "The same number" compares the parsed values, so `25` and `25.0` agree. The
+ * warning and the error name variables only, never a value (this file's
+ * never-log-values convention). The warning is printed once because this
+ * module is evaluated once per process.
  */
-function refuseRenamedDailyBudget(): void {
-  if (process.env.DAILY_BUDGET_USD !== undefined) {
-    throw new Error(
-      "DAILY_BUDGET_USD was renamed to RUN_BUDGET_USD: the cap is what one process may spend, not a per-day budget " +
-        "(docs/DECISIONS.md 2026-10-07). Rename it in your .env."
-    );
+const LEGACY_RUN_BUDGET_VAR = "DAILY_BUDGET_USD";
+
+export const RUN_BUDGET_DEPRECATION_WARNING =
+  `${LEGACY_RUN_BUDGET_VAR} is deprecated: rename it to RUN_BUDGET_USD in your .env. ` +
+  "The cap is what one process may spend, not a per-day budget (docs/DECISIONS.md 2026-10-07).";
+
+function readRunBudget(): number {
+  const schema = budgetSchema("RUN_BUDGET_USD");
+  const legacySet = process.env[LEGACY_RUN_BUDGET_VAR] !== undefined;
+  if (!legacySet) return readBoundedNumber("RUN_BUDGET_USD", DEFAULT_RUN_BUDGET_USD, schema);
+
+  const legacy = readBoundedNumber(LEGACY_RUN_BUDGET_VAR, DEFAULT_RUN_BUDGET_USD, budgetSchema(LEGACY_RUN_BUDGET_VAR));
+  if (process.env.RUN_BUDGET_USD !== undefined) {
+    const current = readBoundedNumber("RUN_BUDGET_USD", DEFAULT_RUN_BUDGET_USD, schema);
+    if (current !== legacy) {
+      throw new Error(
+        `RUN_BUDGET_USD and ${LEGACY_RUN_BUDGET_VAR} are both set and differ. ${LEGACY_RUN_BUDGET_VAR} is the ` +
+          "deprecated name of RUN_BUDGET_USD: delete it from your .env and keep the cap you mean in RUN_BUDGET_USD."
+      );
+    }
+    console.warn(RUN_BUDGET_DEPRECATION_WARNING);
+    return current;
   }
+  console.warn(RUN_BUDGET_DEPRECATION_WARNING);
+  return legacy;
 }
 
 /**
@@ -170,13 +202,11 @@ export interface Env {
   readonly podcastIndexDryRun: boolean;
 }
 
-refuseRenamedDailyBudget();
-
 export const env: Env = {
   anthropicApiKey: readString("ANTHROPIC_API_KEY"),
   podcastIndexApiKey: readString("PODCASTINDEX_API_KEY"),
   podcastIndexApiSecret: readString("PODCASTINDEX_API_SECRET"),
-  runBudgetUsd: readBoundedNumber("RUN_BUDGET_USD", DEFAULT_RUN_BUDGET_USD, budgetSchema("RUN_BUDGET_USD")),
+  runBudgetUsd: readRunBudget(),
   episodeBudgetUsd: readBoundedNumber("EPISODE_BUDGET_USD", DEFAULT_EPISODE_BUDGET_USD, budgetSchema("EPISODE_BUDGET_USD")),
   databaseUrl: readString("DATABASE_URL"),
   userAgent: "Foray/0.1 (personal podcast client; contact wjduvall@gmail.com)",

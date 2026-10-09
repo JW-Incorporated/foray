@@ -182,26 +182,86 @@ describe("EPISODE_BUDGET_USD parsing", () => {
   });
 });
 
-describe("the DAILY_BUDGET_USD -> RUN_BUDGET_USD rename (CH2-04)", () => {
+/* CH2-04: DAILY_BUDGET_USD is the deprecated alias of RUN_BUDGET_USD — an
+   operator's existing .env keeps working, with one warning, unless it
+   contradicts the new name. Every case spies console.warn so the warning is
+   counted, not just tolerated. */
+describe("the DAILY_BUDGET_USD -> RUN_BUDGET_USD deprecated alias (CH2-04)", () => {
+  let warn: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV };
+    warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   });
 
   afterEach(() => {
+    warn.mockRestore();
     process.env = { ...ORIGINAL_ENV };
   });
 
-  it("fails startup when the old name is set, naming RUN_BUDGET_USD and never the value", async () => {
-    /* MUTATION THAT KILLS THIS: delete the `refuseRenamedDailyBudget()` call
-       in env.ts — the old variable is silently ignored and the import loads. */
-    await expect(loadEnvWithVars({ DAILY_BUDGET_USD: "123.45" })).rejects.toThrow(/DAILY_BUDGET_USD was renamed to RUN_BUDGET_USD/);
+  /** Every console.warn line that mentions a budget variable. */
+  function budgetWarnings(): string[] {
+    return warn.mock.calls.map((c) => String(c[0])).filter((m) => /BUDGET_USD/.test(m));
+  }
+
+  it("only the old name set: its value is the run cap, with ONE warning naming RUN_BUDGET_USD and never the value", async () => {
+    /* MUTATION THAT KILLS THIS (run): `readRunBudget` ignores DAILY_BUDGET_USD
+       (return the RUN read unconditionally) — the cap loads as the 25 default.
+       MUTATION (run): delete the `console.warn` on the alias path — zero warnings.
+       MUTATION (run): warn with the value appended — the not.toContain fails. */
+    const { env } = await loadEnvWithVars({ DAILY_BUDGET_USD: "123.45" });
+    expect(env.runBudgetUsd).toBe(123.45);
+    const lines = budgetWarnings();
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toContain("DAILY_BUDGET_USD is deprecated");
+    expect(lines[0]).toContain("RUN_BUDGET_USD");
+    expect(lines[0]).not.toContain("123.45");
+  });
+
+  it("only the old name set and malformed: startup fails naming DAILY_BUDGET_USD, never the value", async () => {
+    /* MUTATION THAT KILLS THIS (run): read the alias leniently
+       (`Number(raw)` with the default on NaN) — "-5" loads as -5. */
+    await expect(loadEnvWithVars({ DAILY_BUDGET_USD: "-5" })).rejects.toThrow(
+      /Invalid value for environment variable DAILY_BUDGET_USD/
+    );
+    await expect(loadEnvWithVars({ DAILY_BUDGET_USD: "1O" })).rejects.toThrow(/DAILY_BUDGET_USD/);
+  });
+
+  it("both set and different: startup fails naming both variables and neither value", async () => {
+    /* MUTATION THAT KILLS THIS (run): delete the `current !== legacy` throw —
+       the import loads with RUN_BUDGET_USD's 30 and the contradiction is
+       silently resolved. */
     try {
       await loadEnvWithVars({ DAILY_BUDGET_USD: "123.45", RUN_BUDGET_USD: "30" });
-      throw new Error("expected the old name to fail startup even beside the new one");
+      throw new Error("expected contradicting budget variables to fail startup");
     } catch (err) {
-      expect((err as Error).message).toContain("DAILY_BUDGET_USD was renamed to RUN_BUDGET_USD");
-      expect((err as Error).message).not.toContain("123.45");
+      const message = (err as Error).message;
+      expect(message).toContain("RUN_BUDGET_USD and DAILY_BUDGET_USD are both set and differ");
+      expect(message).not.toContain("123.45");
+      expect(message).not.toContain("30");
     }
+  });
+
+  it("both set to the same number (25 and 25.0): loads, RUN_BUDGET_USD's value, one warning", async () => {
+    /* MUTATION THAT KILLS THIS (run): compare the raw strings instead of the
+       parsed numbers — "25" vs "25.0" is reported as a conflict. */
+    const { env } = await loadEnvWithVars({ DAILY_BUDGET_USD: "25", RUN_BUDGET_USD: "25.0" });
+    expect(env.runBudgetUsd).toBe(25);
+    expect(budgetWarnings()).toHaveLength(1);
+  });
+
+  it("the new name wins: RUN_BUDGET_USD alone is used, and nothing is warned", async () => {
+    /* MUTATION THAT KILLS THIS (run): warn unconditionally at the top of
+       `readRunBudget` — a clean .env gets a deprecation line it never earned. */
+    const { env } = await loadEnvWithVars({ RUN_BUDGET_USD: "40" });
+    expect(env.runBudgetUsd).toBe(40);
+    expect(budgetWarnings()).toHaveLength(0);
+  });
+
+  it("neither set: the default, and nothing is warned", async () => {
+    const { env } = await loadEnvWithVars({});
+    expect(env.runBudgetUsd).toBe(25.0);
+    expect(budgetWarnings()).toHaveLength(0);
   });
 });
 

@@ -2460,8 +2460,8 @@ const BACKEND_FLOORS = {
   /* RUN_BUDGET_USD (was DAILY_BUDGET_USD) and EPISODE_BUDGET_USD env parsing
      (L5, CH2-04): rejects negative / NaN / empty / over-cap values at startup
      instead of silently substituting the default, leaves a genuinely unset
-     variable on its fallback, and refuses the old DAILY name. */
-  "test/env.test.ts": 24, // 11 -> 13 // CH2-04: EPISODE_BUDGET_USD lenient-parse characterization (-1 kept, 1O -> default); 13 -> 24 // CH2-04: EPISODE mirrors the bounded RUN cases (the two pins flip), DAILY rename refused, envPresenceSummary carries the episode cap
+     variable on its fallback, and reads the old DAILY name as a deprecated alias. */
+  "test/env.test.ts": 29, // 11 -> 13 // CH2-04: EPISODE_BUDGET_USD lenient-parse characterization (-1 kept, 1O -> default); 13 -> 24 // CH2-04: EPISODE mirrors the bounded RUN cases (the two pins flip), DAILY rename refused, envPresenceSummary carries the episode cap; 24 -> 29 // CH2-04 review: DAILY_BUDGET_USD becomes a deprecated alias (the one refusal case becomes six: alias value + one warning, malformed alias, conflict fails, equal 25/25.0 loads, new name alone warns nothing, neither set warns nothing)
   "test/eventStore.test.ts": 5, // CH2-05 (docs/roadmap/code-health-2.md, B2-12): in-memory fetchPage includes rows at exactly afterTs with a null afterId (Postgres's rule, live-DB half in the db job) and minted ids sort in insertion order; new
   "test/events.test.ts": 17, // round-3 completeness sweep: app-2-6 thumbs accepts "cleared" and keeps `replaces`; 15 -> 17
   "test/html.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-1/-9/-11: range-checked, NUL-dropping, prototype-safe decodeEntities; 8 -> 12

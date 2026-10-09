@@ -25,10 +25,12 @@ open there, and this entry records what the code does until it is answered.
   recorded, across users. There is no day window and no midnight sleep: a
   run-cap stop in `npm run generate-forays` ends the batch with a line naming
   `RUN_BUDGET_USD` and the number of prompts not attempted.
-- Setting the old `DAILY_BUDGET_USD` fails startup with a message naming the
-  rename (never the value). No workflow, routine or tool set it; `.env.example`
-  and the teaching docs now say `RUN_BUDGET_USD`. An operator's own `.env` that
-  still sets it fails loudly instead of being silently ignored.
+- The old `DAILY_BUDGET_USD` is a deprecated alias, so an operator's existing
+  `.env` keeps working: when `RUN_BUDGET_USD` is unset its value is the run cap
+  (same bounded schema) and startup prints one warning naming `RUN_BUDGET_USD`
+  (never the value); set beside a `RUN_BUDGET_USD` with a different value it
+  fails startup naming both. No workflow, routine or tool set it;
+  `.env.example` and the teaching docs now say `RUN_BUDGET_USD`.
 - `EPISODE_BUDGET_USD` (per Foray) is read through the same bounded schema; a
   negative or malformed value fails startup instead of being kept or replaced
   by the default (B2-03).
