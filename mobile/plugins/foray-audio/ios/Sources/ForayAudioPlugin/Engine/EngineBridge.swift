@@ -225,7 +225,7 @@ final class EngineBridge {
             if case let .setPageVisible(visible) = command {
                 apply(coalescer.setVisible(visible))
             }
-            if verdict.ok, EngineBridge.startsAnItem(command), errorsEmitted == errorsBefore { lastError = nil }
+            if case .playEpisode = command, verdict.ok { lastError = nil } // MUTATION
             return EngineBridgeRules.refusal(for: verdict.failures)
         }
 
