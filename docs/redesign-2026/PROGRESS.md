@@ -159,3 +159,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-08 — tactile: Phase 4 screens 18/19 merged; escalated: none
 - 2026-10-08 — tactile: Phase 5 QA 2 high-severity issues, fixes merged; final lab build dispatched
 - 2026-10-08 — ambient: Phase 4 screens 10/16 merged; escalated: forays-list
+- 2026-10-08 — ambient: Phase 5 QA 5 high-severity issues, fixes merged; final lab build dispatched
