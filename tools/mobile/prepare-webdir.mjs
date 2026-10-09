@@ -279,6 +279,7 @@ export const SHELL_FILES = [
   "ui/settings.css",
   "ui/forays.css",
   "ui/episode.css",
+  "ui/playlist.css",
   /* Redesign 2026 (ambient): the icon sprite. An SVG: not JS or CSS, so copy() ships it byte for byte
      (the dispatch falls through to copy for anything else). */
   "ui/icons.svg",
@@ -734,13 +735,16 @@ export function shellOnlyPlan(root = REPO_ROOT) {
 
 /** How many items of each show the bundle carries. THE ONE KNOB, and its units are
  *  worth stating: one unit costs 213 items and ~245 KB today, because there are 213
- *  shows. Three is the shipped value — 622 items, ~680 KB, 40% of the catalogue,
+ *  shows. Two is the shipped value since 2026-10-08 (Redesign 2026 ambient, Episode page merged
+ *  onto Playlists: the redesign's own screens took the bundle to 3.03 MB at three per show; two
+ *  restores ~160 KB of headroom for the remaining screens, and the cap is untouched). Three was
+ *  the shipped value — 622 items, ~680 KB, 40% of the catalogue,
  *  and six times `app.js`'s `SEEN_WINDOW` of 100 so a listener refreshing all day
  *  does not walk off the end of the pool.
  *
  *  Lower it and the bundle shrinks proportionally with no code change; the guards
  *  below hold at every value, including 1. */
-export const BUNDLED_ITEMS_PER_SHOW = 3;
+export const BUNDLED_ITEMS_PER_SHOW = 2;
 
 const topicsOf = (item) =>
   (Array.isArray(item?.topics) ? item.topics : []).filter((t) => typeof t === "string" && t !== "");

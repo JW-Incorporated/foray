@@ -1,4 +1,4 @@
-/* ui/library.js — Library (#/library) and the Playlists list (#/playlists).
+/* ui/library.js — Library (#/library). The Playlists list (#/playlists) lives in ui/playlist.js.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so
@@ -194,28 +194,5 @@ function renderLibrary() {
   }
 }
 
-/* THE LIST, AND ONE DOOR TO THE BUILDER (audit round 2, p-first-6; founder
-   question 4, default taken): the `#pl-form` builder that lived here is gone —
-   see the removal note above `bindPickLogging`. The empty state says the same
-   sentence Library's does, and both point at Discover. */
-function renderPlaylists() {
-  setBodyClass("view-page");
-  const all = playlists();
-  $("#view").innerHTML = `
-    <div class="page">
-      <div class="page-head">
-        <a class="back" href="#/">‹</a>
-        <div><h2>Playlists</h2>${all.length ? `<p class="sub">${countLabel(all.length, "playlist")}</p>` : ""}</div>
-      </div>
-      <a class="page-link-row" href="#/shows">Build a playlist ›</a>
-      ${all.length ? all.map(p => `
-        <a class="pl-row" href="#/${esc(playlistRoute(p))}">
-          <div class="info">
-            <div class="t">${esc(p.title)}</div>
-            <div class="s">${joinMeta(playlistLengthLabel(p), playedOnLabel(p.last_played_at))}</div>
-          </div>
-          <span class="chev">›</span>
-        </a>`).join("")
-      : `<p class="note">No playlists yet — <a href="#/shows">build one from Discover</a>.</p>`}
-    </div>`;
-}
+/* The Playlists list (#/playlists) is ui/playlist.js's renderPlaylists: it moved there with the detail page when both were redesigned together
+   (Redesign 2026, ambient). */
