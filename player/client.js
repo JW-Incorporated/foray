@@ -4788,11 +4788,11 @@ function localSourceFor(item, opts) {
     the bar says why, the earcon sounds, and `onMissing(id, { offline: true })`
     has app.js mark the record and move Up Next on (`advanceQueueOnEnded`, the
     natural end's own rule) — returns `false`: this item did not start, and
-    nothing is owed for it. Both lanes come here, by different roads: the JS
-    manager fails a load INSIDE `play()` (it rejects, or lands `idle`), and
-    `play()` or `reportPlayFailure` calls this; the native engine fails it
-    AFTER `play()` has returned (its `error` event, code "load"), and
-    `settleEngineLocalLoad` calls this over the ticket `play()` held for it.
+    nothing is owed for it. The JS manager fails a load INSIDE `play()` (it
+    rejects, or lands `idle`), and `play()` or `reportPlayFailure` calls
+    this. The native engine fails it AFTER `play()` has returned and streams
+    it by itself (CH3-12), so its lane comes here only OFFLINE, for the drop
+    (`engineFileMissing`, over the ticket `play()` held for it).
     Null when there is no ticket — the retry already ran, or the current play
     never chose a file — so nothing here can call itself twice. */
 function degradeLocalPlay() {
