@@ -712,7 +712,7 @@ export function m1Exit(parsed) {
  *   deck ready    token= reuse=y|n elapsedMs= marks={…} class=
  *   deck deadline token= afterMs= step= class= reuse= …the access fields
  *   deck access|stalled|failed token= … wwan=<media requests over cellular>
- *   nowplaying    … via=metadata|state|rate|seek|drift|clear state= rate= elapsedSec= buffering= engineState= listenRate= refreshes=<quiet 1 s rewrites since the last row>
+ *   nowplaying    … via=metadata|state|rate|seek|artwork|drift|clear state= rate= elapsedSec= buffering= engineState= listenRate= refreshes=<quiet 1 s rewrites since the last row>
  *   deck time-control token= status=playing|waiting|paused reason= positionSec=  (#866)
  *   grace begin   reason= low=y|n bgRemainingMs=
  *   grace end|expired outcome= reason= heldMs=

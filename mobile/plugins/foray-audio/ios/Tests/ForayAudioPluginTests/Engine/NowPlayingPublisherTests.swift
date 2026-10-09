@@ -651,18 +651,38 @@ final class NowPlayingPublisherTests: XCTestCase {
     /// `publishSurface`, at the deck's own playhead (no extrapolation from a
     /// second clock), carrying the square from the cache (no second fetch),
     /// and on record as `via=artwork`.
+    /// Every write the square outlives (the `via=rate` write when sound
+    /// starts, the 1 s refresh of the running entry) goes out without it and
+    /// does not join the load: the landing is still ONE write and ONE row.
     /// TO SEE IT FAIL: let the publisher write the centre itself when the
     /// artwork lands (two writes, the first at an extrapolated playhead),
-    /// never set the hook in `start()`, or force the write as a seek
+    /// never set the hook in `start()`, force the write as a seek
     /// (`via=seek`, which engine-report's rate-latch reads as the listener's
-    /// jump).
+    /// jump), or drop the `isLoading` guard in `write()`'s `.missing` arm
+    /// (each write while loading adds a landing: a write and a row each).
     @MainActor
     func testAnArtworkLandingIsOneHostWriteAtTheDecksPlayhead() throws {
         let world = FakeWorld()
         let fetches = HeldFetches()
-        let (engine, _, center, _) = playingThroughThePublisher(world, fetches)
+        let (engine, _, center, cache) = playingThroughThePublisher(world, fetches)
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork], "the entry goes out without the square")
         func rows() -> [DiagEntry] { world.output.diags.filter { $0.kind == "nowplaying" } }
+
+        // Sound starts (a `via=rate` write) and the running entry is
+        // refreshed three times, all while the square is on its way.
+        world.deck.reading.audible = true
+        engine.handle(.queue(.setRate(1.5)))
+        XCTAssertTrue(engine.isRefreshingNowPlaying, "a running entry arms the 1 s refresh")
+        let start = world.deck.reading.positionSec ?? 0
+        let refreshMs = ForayEngine.nowPlayingRefreshSec * 1000
+        for second in 1...3 {
+            let before = center.sets
+            world.deck.reading.positionSec = start + 1.5 * Double(second)
+            world.timing.fire(afterMs: refreshMs)
+            XCTAssertEqual(center.sets, before + 1, "refresh \(second) wrote the entry")
+            XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
+        }
+        XCTAssertTrue(cache.isLoading(Self.showSquare), "the square is still on its way")
         let rowsBefore = rows().count
         let sets = center.sets
 

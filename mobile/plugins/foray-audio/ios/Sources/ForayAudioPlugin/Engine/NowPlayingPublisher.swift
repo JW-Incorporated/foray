@@ -92,9 +92,16 @@ final class NowPlayingPublisher: NowPlayingWriting {
             case .failed:
                 picture = nil
             case .missing:
-                artwork.load(src) { [weak self] landed in
-                    guard landed != nil else { return }
-                    self?.onArtworkLanded?(src)
+                // One landing hook per load (CH3-16): a write while the square
+                // is still on its way (the 1 s refresh, the `via=rate` write
+                // when sound starts) posts the entry without it and does not
+                // join the load, so one landing is one host rewrite and one
+                // `via=artwork` row, however many writes it outlived.
+                if !artwork.isLoading(src) {
+                    artwork.load(src) { [weak self] landed in
+                        guard landed != nil else { return }
+                        self?.onArtworkLanded?(src)
+                    }
                 }
             }
         }
