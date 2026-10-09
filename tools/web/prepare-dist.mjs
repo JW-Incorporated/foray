@@ -57,8 +57,11 @@ const SHELL = [
   "ui/car.css", // Redesign 2026 (ambient): car posture (Now Playing glance screen)
   "ui/onboarding.css", // Redesign 2026 (ambient): the first-run Room
   "ui/show.css", // Redesign 2026 (ambient): the show page, the Room and its EpisodeRows
+  "ui/browse.css", // Redesign 2026 (ambient): the subject page, the collage lead and ShowTiles
   "ui/foray-detail.css", // Redesign 2026 (ambient): Foray detail, the second screen on the system
   "ui/settings.css", // Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet
+  "ui/forays.css", // Redesign 2026 (ambient): the Forays list, two-up ForayCards
+  "ui/playlist.css", // Redesign 2026 (ambient): Playlist detail and the Playlists list
   "ui/icons.svg", // Redesign 2026 (ambient): the icon sprite every `<use href>` fetches
   "ui/icons-LICENSES.txt", // complete MIT/OFL notices for the paths shipped in the sprite
   "sw.js",

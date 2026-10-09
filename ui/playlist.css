@@ -1,0 +1,180 @@
+/* ui/playlist.css — Playlist detail (#/playlist/<id>) and the Playlists list (#/playlists), Redesign 2026, ambient
+   direction ("Afterglow"), phase 4.
+
+   The prototype draws no playlist page, so the numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md §3 (the
+   PlaylistTile, EpisodeRow, EmptyState and Collage rows of the component inventory) and §4.1's tile widths, with the wash
+   borrowed from Today (§10.3) so the page is lit by its first show's art. Everything is scoped under `.ag` (the markup
+   wears `.ag.pl-page`), so it can reach no other screen; every class is `pl-*`, a new name. The EpisodeRow itself is
+   Today's `.ag .td-row` (ui/today.css): one treatment, one stylesheet. Values come from ui/tokens.css.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and everything under
+   it, so the tile's and the row's colour transition fall under it. A second block would be a second owner
+   (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The page. The legacy top bar steps aside (the page draws its own Back), and the page paints the scheme's bg0 rather
+   than the legacy plum. */
+body.view-playlist { background: var(--bg0); }
+body.view-playlist .topbar { display: none; }
+body.view-playlist #view { padding-top: 0; }
+
+.ag.pl-page {
+  position: relative; isolation: isolate;
+  max-width: 680px; margin-inline: auto;
+  padding: calc(var(--safe-top) + var(--s-2)) var(--gutter) calc(var(--chrome-bottom-mini) + var(--s-8));
+  /* The wash's hot spot is centred on the cover: x = gutter + half the art, y = the head (44) plus the hero's top margin plus half the art. */
+  --pl-hot-x: calc(var(--gutter) + var(--art-foray) / 2);
+  --pl-hot-y: calc(var(--safe-top) + var(--s-2) + var(--tap) + var(--s-5) + var(--art-foray) / 2);
+}
+/* :where() keeps the reset at the specificity of `.ag.pl-page` alone, so every later `.ag .pl-*` margin wins. */
+.ag.pl-page :where(h1, h2, h3, p) { margin: 0; }
+
+/* The wash: the detail page is lit by its first show, the way Today is lit by its hero. Same three layers (the hot spot on
+   the art, the radial, the fade into bg0), shorter, because the page has no hero as tall as Today's. */
+.ag .pl-wash {
+  position: absolute; left: 0; right: 0; top: 0; height: 40vh; z-index: -1; pointer-events: none;
+  --glow-wash: color-mix(in oklab, var(--bg0), var(--glow) var(--mix-wash));
+  background:
+    radial-gradient(60% 40% at var(--pl-hot-x) var(--pl-hot-y), color-mix(in oklab, var(--glow) 40%, transparent) 0%, transparent 100%),
+    radial-gradient(120% 70% at 22% 20%, var(--glow-wash) 0%, transparent 70%),
+    linear-gradient(var(--glow-wash), var(--bg0));
+}
+@supports not (color: color-mix(in oklab, red, blue)) {
+  .ag .pl-wash { background: linear-gradient(var(--glow-wash), var(--bg0)); }
+}
+
+/* Head: Back (44) on the left, an optional control on the right. The row sits 8px inside the gutter so the glyphs, not
+   the 44px targets, align with the text column. */
+.ag .pl-top { display: flex; align-items: center; justify-content: space-between; min-height: var(--tap); margin-inline: calc(var(--s-2) * -1); }
+.ag .pl-top a.ag-btn { color: var(--text); text-decoration: none; }
+
+/* Detail: the cover (120, whole squares) beside the name, the length, "3 of 6 played" and the Play. */
+.ag .pl-hero { display: grid; grid-template-columns: var(--art-foray) minmax(0, 1fr); column-gap: var(--s-4); margin-top: var(--s-5); align-items: start; }
+.ag .pl-cover { width: var(--art-foray); height: var(--art-foray); }
+.ag .pl-cover .ag-collage { width: 100%; height: 100%; gap: 0; }
+/* At least as tall as the cover, so the Play sits at its foot whatever the name. */
+.ag .pl-copy { min-width: 0; min-height: var(--art-foray); display: flex; flex-direction: column; gap: var(--s-1); }
+/* A name is the listener's own words: it wraps in full (a long unbroken run breaks anywhere) rather than being cut. */
+.ag .pl-title { overflow-wrap: anywhere; color: var(--text); }
+.ag .pl-title:focus, .ag .pl-heading:focus { outline: none; }
+.ag .pl-meta { color: var(--on-wash-2); }
+/* The cover's and the tile's four squares abut (gap 0 on their collages, above and in the tile rule): the Room lights them, the
+   primitive's 1px gap would draw a dark seam, a hairline. */
+
+/* The one primary button, as the Foray detail has it: full width, 48, Ember (the primitive), a word. */
+.ag .pl-cta { display: flex; width: 100%; margin-top: var(--s-4); text-decoration: none; }
+
+/* Notes (a sparse playlist, a shortfall) and the keep control that a generated playlist or subject queue carries. */
+.ag .pl-note, .ag.pl-page .note { margin-top: var(--s-4); color: var(--text-2); font: var(--t-body); }
+.ag .pl-save-wrap { margin-top: var(--s-5); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); }
+.ag .pl-save-wrap .pl-save {
+  min-height: var(--tap); padding-inline: var(--s-4); border-radius: var(--r-pill); color: var(--text); font: var(--t-label);
+}
+.ag .pl-save-wrap .pl-save.on { color: var(--ember); }
+.ag .pl-save-wrap .pl-save[aria-disabled="true"] { cursor: default; }
+.ag .pl-save-wrap .pl-save-open { display: inline-flex; align-items: center; min-height: var(--tap); color: var(--ember); font: var(--t-label); }
+.ag .pl-save-wrap .note { flex: 1 1 100%; margin: 0; }
+
+/* The eyebrow: what the playlist is, then its subject, in Lamp. */
+.ag .pl-eyebrow { overflow-wrap: break-word; }
+
+/* The strip on its sill (the Foray detail's, iteration 2): a row of lanterns, one bar per episode, wide as the episode is
+   long, in its show's colour. A 10/12 sill, a 28px bar row (24 tall bars on its floor, the one playing 4px taller and growing
+   upward only), a 6px gap and the 20px thumbs row. A map, not a control: no bar is a button (see playlistStripEntries).
+   No transitions on purpose: nothing here moves, so nothing joins the reduced-motion block. */
+.ag .pl-sill { margin-top: var(--s-4); padding: 10px var(--s-3); border-radius: var(--r-lg); background: var(--sill); }
+/* position: relative makes the strip the offsetParent of its bars, so the thumbnails (measured from offsetLeft) sit under the
+   bar they belong to and not offset by the page gutter and the sill's padding. */
+.ag .pl-strip { position: relative; display: flex; align-items: flex-end; gap: calc(var(--s-1) / 2); height: calc(var(--s-6) + var(--s-1)); }
+.ag .pl-bar { flex: var(--w, 1) 1 0; min-width: calc(var(--s-1) + var(--s-1) / 2); height: var(--s-6); border-radius: var(--r-xs); background: var(--seg-tone, var(--text-3)); }
+/* Progress is Ember's and nothing else's (iteration 3): every bar keeps its show's colour at full light - dimming a lantern is
+   this direction's "unavailable", so two of four going out read as two shows gone. A played bar carries a 2px Ember mark on the
+   sill beneath it (a shadow, so it adds no layout and sits in the 6px gap above the thumbnails), the one playing
+  is taller, as before. */
+.ag .pl-strip.is-started .pl-bar.is-played { box-shadow: 0 calc(var(--s-1) / 2) 0 var(--ember); }
+.ag .pl-bar.is-here { height: calc(var(--s-6) + var(--s-1)); }
+.ag .pl-thumbs { position: relative; height: var(--s-5); margin-top: 6px; pointer-events: none; }
+.ag .pl-thumbs:empty { display: none; }
+.ag .pl-thumb { position: absolute; top: 0; left: var(--x, 0); width: var(--s-5); height: var(--s-5); overflow: hidden; border-radius: var(--r-xs); background: var(--tone, var(--bg2)); }
+.ag .pl-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ag .pl-thumb-mono { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ember-ink); font: var(--t-caption); }
+
+/* Un-narrated: no ivory lights, one caption. */
+.ag .pl-unnarrated { margin-top: var(--s-2); color: var(--text-2); }
+
+/* Why 4a made this: the headline, then the why-line in Lamp italic (only on a playlist 4a built). */
+.ag .pl-why { margin-top: var(--s-6); }
+.ag .pl-why h2, .ag .pl-came h2, .ag .pl-list-section h2 { color: var(--text); }
+.ag .pl-why .t-why { margin-top: var(--s-1); color: var(--lamp-text); }
+
+/* Where this came from: artwork rows, one per show. A 56 artwork, the name whole beside it (it wraps, never clamped), the count
+   of its episodes here, and Following where the listener follows it. The row is at least 64 tall: a 44 target with room. */
+.ag .pl-came { margin-top: var(--s-6); }
+.ag .pl-shows { list-style: none; margin: var(--s-2) 0 0; padding: 0; }
+.ag .pl-show { min-width: 0; }
+.ag .pl-show-face { display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); column-gap: var(--s-3); align-items: center; min-height: calc(var(--art-queue) + var(--s-2)); padding-block: var(--s-1); min-width: 0; color: inherit; text-decoration: none; }
+.ag .pl-show-face:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
+.ag .pl-show-art { display: block; width: var(--art-queue); height: var(--art-queue); }
+.ag .pl-show-art .ag-art { width: 100%; height: 100%; border-radius: var(--r-sm); }
+.ag .pl-show-words { display: flex; flex-direction: column; gap: calc(var(--s-1) / 2); min-width: 0; }
+.ag .pl-show-name { color: var(--text); overflow-wrap: break-word; }
+.ag .pl-show-sub { color: var(--text-2); }
+.ag .pl-following { color: var(--lamp-text); }
+
+/* The rows: Today's EpisodeRow, with the playlist's own bits. The next part is marked in Lamp; a part that is not
+   in the catalogue reads as Unavailable and carries no Play. The title and the why-line are never clamped (a vertical
+   list is where a title never cuts), so the row grows with its words from the 96 floor `.td-row` sets; the meta line
+   wraps instead of cutting the show. Play is a bare glyph: no ring, no fill. */
+.ag .pl-list-section { margin-top: var(--s-6); }
+.ag .pl-list-section .td-stack { margin-top: var(--s-3); }
+.ag .pl-ep .td-row-title { grid-column: 2 / 4; min-height: 0; overflow-wrap: break-word; }
+/* Play moves down beside the meta line, so the title runs the full width of the text column (245 at 393, not 189). */
+.ag .pl-ep > .pl-row-play { grid-column: 3; grid-row: 2; align-self: center; }
+.ag .pl-ep .td-row-why { overflow-wrap: break-word; }
+.ag .pl-ep .td-row-meta { grid-column: 2; align-self: center; flex-wrap: wrap; white-space: normal; column-gap: 6px; row-gap: 0; }
+.ag .pl-ep .td-row-meta > .pl-show-line { flex: 0 1 auto; min-width: 0; overflow-wrap: break-word; }
+.ag .pl-ep .td-row-meta > .pl-facts { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ag .pl-ep .td-row-meta > .pl-show-line:not(:last-child)::after { content: ""; display: inline-block; width: 3px; height: 3px; margin-left: 6px; border-radius: var(--r-round); background: currentColor; vertical-align: middle; }
+.ag .pl-ep .pl-row-play { background: none; box-shadow: none; color: var(--text); }
+.ag .pl-ep.is-unavailable .td-row-title, .ag .pl-ep.is-unavailable .td-row-why { color: var(--text-2); }
+.ag .pl-next { font-weight: 600; }
+
+/* Remove: a Secondary button at the foot of the page, away from the rows. */
+.ag .pl-remove { margin-top: var(--s-10); }
+
+/* The list: the title, the count, and the tiles 3-up (iteration 2: the direction's art grids are 3-up so a name never cuts;
+   round 1 shipped 2-up and cut "Short histories for a long..."). Column gap 20 gives 104 wide at 393 (the notes' tile), 111
+   at 412 and 101 at 375. Each tile is art and words, no card: the name is a caption that wraps in full. */
+.ag .pl-heading { margin-top: var(--s-2); }
+.ag .pl-count { margin-top: var(--s-1); color: var(--text-2); }
+.ag .pl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: var(--s-5); row-gap: var(--s-6); align-items: start; margin-top: var(--s-5); }
+.ag .pl-tile { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; color: var(--text); text-decoration: none; }
+.ag .pl-tile:active .pl-tile-cover { opacity: .8; }
+.ag .pl-tile:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-md); }
+.ag .pl-tile-cover { display: block; margin-bottom: var(--s-1); }
+.ag .pl-tile-cover .ag-collage { width: 100%; height: auto; aspect-ratio: 1; gap: 0; }
+.ag .pl-tile-name { color: var(--text); overflow-wrap: break-word; }
+.ag .pl-tile-meta { color: var(--text-2); }
+.ag .pl-tile-last { color: var(--text-3); }
+
+/* EmptyState: one line, one button, centred in the page. */
+.ag .pl-empty { margin-top: var(--s-8); }
+.ag .pl-empty .ag-btn { text-decoration: none; }
+
+/* Secondary here is a Raised surface (iteration 3), not the primitive's stroked ring: "no hairline borders anywhere". The same
+   6% Lamp overlay, 1px top rim and warm shadow as .raised (tokens.css), pill-shaped, so it is the Ember Play pill's sibling and
+   not a different material. The primitive's :active and :focus-visible shadows are re-stated over it (this sheet loads later and
+   would otherwise win with the Raised shadow and drop the focus ring). */
+.ag .pl-empty .ag-btn, .ag .pl-remove, .ag .pl-save-wrap .pl-save {
+  background: linear-gradient(var(--overlay), var(--overlay)) var(--bg1);
+  box-shadow: inset 0 1px 0 var(--rim), var(--shadow-1), var(--shadow-2);
+}
+.ag .pl-empty .ag-btn:active, .ag .pl-save-wrap .pl-save:active { box-shadow: inset 0 0 0 var(--s-1) var(--overlay), var(--shadow-1); }
+.ag .pl-empty .ag-btn:focus-visible, .ag .pl-save-wrap .pl-save:focus-visible {
+  box-shadow: 0 0 0 calc(var(--s-1) / 2) var(--bg0), 0 0 0 var(--s-1) var(--lamp-text);
+}
+@media (prefers-contrast: more) {
+  .ag .pl-empty .ag-btn, .ag .pl-remove, .ag .pl-save-wrap .pl-save { box-shadow: inset 0 0 0 1px var(--text-3); }
+}
+
+/* The length line wraps at its comma only. */
+.ag .pl-nb { white-space: nowrap; }

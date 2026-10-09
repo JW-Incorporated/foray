@@ -356,9 +356,17 @@ test("only a list whose order is the point is numbered: a playlist, not Saved, H
 test("a tag says what its section does not: no FORAY under 'Forays'", () => {
   /* Round 2, visual-9 (the Jump back in half of this test went with the rail, 2026-10-07: Today's
      Keep listening row restates nothing, and its section head is its only label).
-     MUTATION: drop `{ inSection: true }` from renderForays' forayListHtml call -> red. */
+     MUTATION: drop `{ inSection }` from forayRowsHtml's published-row check -> red.
+     REDESIGN 2026 (ambient, Forays list): THIS RULING FELL for the Forays page itself. Its list is two-up ForayCards, and a
+     ForayCard's anatomy (BUILD-NOTES 3) carries the eyebrow "Foray" in Lamp on every card, published or not, so the card
+     states what it is where a bare title would not. The rule still holds for the rows that remain: Search's Forays group
+     renders through ui/search.js's discoverForayRow (see below); this test pins the rows that remain. */
   const run = loadApp();
-  assert.match(APP_SRC, /\? forayListHtml\(\{ inSection: true \}\)/, "the Forays page's list sits under its 'Forays' heading");
+  /* The trunk's Discover rebuild moved Search's Forays group onto its own row (ui/search.js discoverForayRow: a Lamp eyebrow
+     and the shared sub-line, no draft tag because only published Forays match), so forayRowsHtml now serves the rows test
+     below and nothing else. MUTATION: rename discoverForayRow, or drop its `draftTag: false` -> red. */
+  assert.match(APP_SRC, /function discoverForayRow\(f, progress\)[\s\S]{0,300}forayListSubLabel\(f, progress, \{ draftTag: false \}\)/, "Search's Forays group renders through its own row, sub-line without a draft tag");
+  assert.doesNotMatch(APP_SRC.slice(APP_SRC.indexOf("function renderForays(")), /forayListHtml\(\{ inSection: true \}\)/, "the Forays page no longer renders rows");
   const pub = { id: "f1", title: "A Foray", status: "published" };
   const draft = { id: "f2", title: "A draft", status: "draft" };
   run(`forayCards = () => ${JSON.stringify([pub, draft])};`);
@@ -417,9 +425,15 @@ test("a tab's root page has no ‹; a page you were sent to keeps one", () => {
      `<a class="back" href="#/">‹</a>` in renderAllShows's page-head -> red. */
   assert.doesNotMatch(body("renderAllShows"), /class="back"/, "Discover is a tab root and draws no ‹");
   assert.doesNotMatch(body("renderCategory"), /tabRoot/, "a category page is pushed: it keeps its ‹");
-  for (const fn of ["renderPlaylists", "renderQueue", "renderForays"]) {
+  for (const fn of ["renderQueue"]) {
     assert.match(body(fn), /class="back"/, `${fn} is pushed from a tab and keeps its ‹`);
   }
+  /* REDESIGN 2026 (ambient, Forays list): the page draws its own Back chevron, the ordinary history-aware a.back. */
+  assert.match(body("renderForays"), /class="back ag-btn ag-btn-icon fl-back"/, "renderForays is pushed from a tab and keeps its Back");
+  /* The Playlists list (Redesign 2026 ambient) draws its head through playlistTopHtml, whose Back is the history-aware a.back.
+     MUTATION: drop the `playlistTopHtml(` call from renderPlaylists, or the `class="back` from the helper -> red. */
+  assert.match(body("renderPlaylists"), /playlistTopHtml\("library"/, "the Playlists list is pushed from Library and keeps its back");
+  assert.match(body("playlistTopHtml"), /<a class="back ag-btn/, "and the shared head's back is the a.back");
   /* Tuning, Settings and About (Redesign 2026) share one head, stHeadHtml, whose Back chevron is the history-aware a.back. */
   assert.match(body("renderInterests"), /stPageHtml\(/, "Tuning is a Settings page: it wears the shared head");
   assert.match(body("stHeadHtml"), /<a class="back st-back /, "the shared head keeps its ‹ (a.back, the history-aware one)");
@@ -590,8 +604,12 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
   /* `.note { margin: 0 }` and `.page` has no gap, so the Forays index's intro
      and the show page's Follow note bottomed out 0-5px above the first card —
      tighter than the 8px between the cards themselves.
-     MUTATION: delete `.fy-about { margin: 0 0 20px }` -> red. */
-  assert.strictEqual(valueOf(".fy-about", "margin"), "0 0 20px", "the Forays intro");
+     MUTATION: delete `.fy-about { margin: 0 0 20px }` -> red.
+     REDESIGN 2026 (ambient, Forays list): the intro is `.fl-about` over a two-column grid that opens a section (24px) below
+     it (ui/forays.css). MUTATION: set `.ag .fl-grid { margin-top: 0 }` -> red; rename the intro's class in renderForays -> red. */
+  const foraysCss = fs.readFileSync(path.join(ROOT, "ui/forays.css"), "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, " ");
+  assert.match(foraysCss, /\.ag \.fl-grid \{[^}]*margin-top: var\(--s-6\)/, "the Forays intro sits a section above the first card");
+  assert.match(foraysCss, /\.ag \.fl-about \{[^}]*margin-top: var\(--s-2\)/, "and a step under the title");
   /* REDESIGN 2026 (ambient, show page): the show page's art + Follow + note block is the Room (ui/show.css); the legacy
      `.show-hero` rules went with it. Its rhythm is now the Room's own: the note sits 12px under Follow, which sits 16px
      under the count. MUTATION: set `.ag .sh-note { margin-top: 0 }` -> red. */
@@ -602,5 +620,5 @@ test("an intro paragraph sits a section (20px) above the first card, not the row
   assert.strictEqual(valueOf(".ep-actions", "justify-content"), "center", "the episode page's actions centre under its art the same way");
   assert.match(APP_SRC, /<div class="sh-art">\$\{agArtwork\([^)]*\)\}<\/div>[\s\S]*?\$\{showStarBtn\(show\.show_id\)\}\s*<p class="t-caption sh-note show-follow-note">[\s\S]*?<\/section>/,
     "renderShow's Room wraps art, Follow and the note");
-  assert.match(APP_SRC, /<p class="note fy-about">/, "renderForays' intro carries the class the margin hangs on");
+  assert.match(APP_SRC, /<p class="t-body fl-about">/, "renderForays' intro carries the class the margin hangs on");
 });

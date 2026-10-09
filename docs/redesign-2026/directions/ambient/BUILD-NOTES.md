@@ -1420,3 +1420,94 @@ Screen 10 of the screen list: `ui/show.js` (`showRoomHtml`, `showEpisodeRowHtml`
 5. **Rulings that fell** (named as the build-loop asks): (a) **Save and Up Next on every show-page row**: an EpisodeRow carries neither, they are the episode page's actions, one tap further (`up-next-queue` rewritten to pin the link and that the episode page offers Up Next); (b) the **"+ Follow" / "✓ Followed"** vocabulary (`starred-shows`, `toggle-labels` rewritten). The owner may overturn (a) by adding an `i-queue` icon to the row, which breaks the row's 3-column grid.
 6. **Retired:** `.show-hero`, `.show-art`, `button.show-star` and their hit-area entries in `styles.css`. Harness: the `show` app state (a fresh profile on the show page, Follow off); `returning/show` is the followed state.
 7. **Not done here, on purpose.** Judge and reviewer passes (no agent could be spawned from this run). The search field, description, subject chips, similar shows and Forays rail on this page keep their legacy markup; their screens re-skin them.
+
+## 18. Forays list (built, `redesign/ambient-forays-list`)
+
+`#/forays`, `ui/forays.js` + `ui/forays.css` (every rule under `.ag`, classes `fl-*`). No prototype route exists for this page, so the measurements below are this build's, from section 3's ForayCard row, and the only comparison is the is-it-better pair against today's page.
+
+1. **The page.** Its own header (Back 44 to `#/library`, the title `--t-title` as the page's `data-page-heading`), the one-sentence "what a Foray is" line in `--t-body` `--text-2` (the same `forayAbout()` string), then the grid. The legacy top bar steps aside on `body.view-forays`.
+2. **The grid.** Two columns at every width (`repeat(2, minmax(0, 1fr))`, gap 12, no breakpoint raises the count): cards 165.5 / 170.5 / 180 wide at 375 / 393 / 412. Cards in a row share a height; the strip sits on the bottom edge.
+3. **The card.** `.raised`, padding 12: the collage at 120 (`agCollage`, first show first, Lit art in that show's own Glow), the eyebrow "Foray" in Lamp ("Foray · draft" for a draft the test-track switch admits), the title `--t-headline` three lines (the one real link, its `::after` stretched over the card), "<n> shows, <m> min" `--t-caption` (the strip's own tally, "about" when estimated), the strip.
+4. **The strip.** 12 tall, bars 8, the bar the listener is inside 12, 2px between bars, minimum bar 3px. One bar per run of tape from one source (the strip's own capsules), widths in seconds; narration time is folded into the tape run before it so the bars add up to the whole Foray (11 to 16 bars on the fixtures, never more than the card holds). Each bar is a dim track (`--seg-dim`) with its lit part laid over it.
+5. **State is shape.** In progress: heard bars lit in full, the current bar part-lit and tall, the rest dim; finished: all lit and the Fill check (`i-check-circle-fill`, Ember, 20) on the collage's bottom-right; not opened: lit throughout, no check. The words for a screen reader ("18 min left", "Played") follow the meta line from the same resume row Library reads.
+6. **The Dock.** The tab bar and the mini take the Veil here as on Foray detail (the Dock unit supersedes both), and the page carries `.dock-cast` (the token's Glow rising 24px under the Dock's top edge): shown while `body.fp-open`, absent otherwise, live (a cold start restores the mini bar after the first paint, so the class, not a paint-time attribute, is the switch). The page's first card sets the root's Glow. The mini's title reads `--ag-text`: `--text` outside `.ag` is the legacy light token and would be white on Dawn's paper Veil (Foray detail has the same slip; the Dock unit fixes both).
+7. **Rulings that fell.** (a) "A published row under Forays carries no FORAY tag" (`card-anatomy`): a ForayCard's anatomy carries the eyebrow on every card; the rule still holds for Search's Forays group (`forayRowsHtml`), where the test now pins it. (b) The "Jump back in" rows above the list: gone, the strip carries the progress (Today's "Keep listening" is the resume surface).
+8. **Harness.** A `forays-list` app state on the `forays-progress` seed (the first published Foray 55% played, the second finished), steps `forays-list` and `forays-list-dawn`; a `mini-player-forays` step appended to the `player` state for the cast. No `screens.json` row: `fidelity.mjs` needs a prototype route.
+9. **Not done here, on purpose.** Judge and reviewer passes (no agent could be spawned from this run); the orchestrator owns them.
+
+## 19. As built: phase 4, Playlists (`redesign/ambient-playlist-detail-and-playlists`, `ui/playlist.js`, `ui/playlist.css`)
+
+Three pages from one file, no prototype route (so no fidelity pairing: the is-it-better pair is the acceptance, and §3's
+PlaylistTile, EpisodeRow, EmptyState and Collage rows are the measurements). `renderPlaylists` moved here from `ui/library.js`
+(Library's own branch must drop its copy when it merges: two declarations of one function fail `app-split`).
+
+- **Detail** (`#/playlist/<id>`, `#/subject/<branch>`): Back 44; a 120 Collage (`ag-collage-120`, decorative, aria-hidden)
+  beside the name (`t-headline`, wraps in full, `overflow-wrap: anywhere`), "`<n>` episodes, `<h>` hr `<m>` min" (a comma; the
+  count alone when any part has no length; two `nowrap` halves so a narrow column wraps at the comma), "3 of 6 played" in Ember
+  (`.ag-progress-copy`) once one has finished (never a zero), an Ember Play 56 (pauses what the playlist is playing, else plays the
+  next part). Then the EpisodeRows. The page is lit by the first show (`.pl-wash`, Today's three layers at 40vh, hot spot on
+  the cover). A generated playlist or subject queue carries a Lamp eyebrow ("Picked for you" / "Generated for you") and the app's
+  own keep control (restyled `.pl-save*`); a listener's own playlist ends in a Secondary "Remove this playlist".
+- **Rows** are Today's EpisodeRow, not a copy: `todayArt`, `todayMetaHtml`, `todayPlayButton`, `todayRowState` and the `.ag .td-row`
+  styles. What is the playlist's: Play carries `data-pl-play`, the title link logs a pick under `playlist-<id>`, and a press
+  calls `startEpisodePlay(…, { ctx: "playlist-<id>", list })` with the page's rows as the continuous-play list (which stamps
+  `last_played_at`). A part not in the catalogue is an unavailable row (art 50%, the Unavailable state line, no Play, its stored
+  publish date in the why slot); Family-hidden and unnameable parts keep their place and count. "Next" is the Lamp word on the first
+  live part the listener has not opened (`hasOpened`, as before), shown once one has finished; `data-pl-next` carries its id always.
+- **List** (`#/playlists`): 2-up PlaylistTiles, `grid-template-columns: repeat(2, minmax(0, 1fr))`, gap 20 = the gutter from 393:
+  166.5 wide at 393 (the notes say 164), 176 at 412, 161.5 at 375. Tile: the cover fills the tile, name (`t-headline`, 2 lines),
+  length line, then ONE played line: "2 of 4 played" in Ember when one has finished, else "played Sep 21, 2019" (`fmtDate`, nothing
+  for a date that does not parse). A plus in the head opens Create; Back goes to Library.
+- **Not found / empty**: an EmptyState, one line and one link-button (Secondary pill, 44): "That playlist isn’t here any more." →
+  "All playlists"; "No playlists yet." → "Build a playlist" (`#/create`). The not-found page keeps Back and a visually hidden h1
+  ("Playlist not found") so the router can name it.
+- **"Played" is the player's verdict**, not "opened": `playlistRowPlayed` reads `rowProgress` (state `played`) and falls back to
+  the history ring only while the player has not arrived. This is what the rows say, so the count cannot disagree with them
+  (audit round 2, honesty-6, kept). Today's PlaylistTile still counts `hasOpened` (its own comment says why: Keep listening's
+  bar); **the same playlist can therefore read "3 of 6 played" on Today and "1 of 6 played" here. Left for the orchestrator**:
+  move `todayPlaylistCard` onto `playlistPlayedLine` (one line; `jump-back-in-kinds` still passes through the history fallback).
+- **Rulings overturned, by name** (test-classification §0): "Card/row anatomy" on playlist pages (the numbered three-control row
+  becomes the one-control EpisodeRow; "numbers mean order" goes with it). The row's Save and + Up Next leave the list; both are one tap
+  further on the episode page the title opens, which is also how an archived part is still recoverable (the page seeds its
+  snapshot, so Save works there; `playlist-durability` now pins that loop through the link, not a row star).
+- **Gates**: `gates.mjs --states playlist-started,returning,empty,stress --allow …`: new 0 (the old playlist screens' known debt,
+  the legacy top bar's 24px wordmark, is gone from these pages: 48 stale entries, which the orchestrator's `--write-allow` prunes).
+  axe: only the app-wide `meta-viewport` (the no-zoom ruling); `heading-order` closed by a visually hidden h2 "Episodes".
+- **Harness**: `playlist-started` seed (the first playlist's first two parts finished, the third half heard) and state, steps
+  `playlist-started` and `playlists-started`; the pages' other shots are the existing `returning` / `empty` / `stress` steps.
+- **Collision found by looking**: the first build named the row `pl-row`, which `styles.css` already styles (the legacy dark
+  playlist row), so every Dawn row was a dark slab with dark text. Renamed `pl-ep`; a test now reads every `pl-` class the page
+  emits against `styles.css`.
+- **Not done / open**: `tabForHash` lights Discover for `#/playlists` and `#/playlist/`, `#/subject/` (Today's call, pinned by
+  `tab-bar`); Library owns Playlists, so Library may be the better tab. Independent judges (three Opus, both orders) were not
+  runnable from inside this agent; the is-it-better and reviewer passes are the orchestrator's.
+
+### 19.1 Iteration 2 (2026-10-08, judges' findings)
+
+Four findings, four calls. **Superseded above:** the 2-up list, the `clamp2` title and why-line, the outlined row Play, and the
+detail's "hero plus a plain list".
+
+- **List is 3-up** (DIRECTION: "art grids are 3-up everywhere, so show names never cut"): `repeat(3, minmax(0, 1fr))`, column
+  gap 20 (104 at 393, 111 at 412, 101 at 375), row gap 24. A tile is the 104 cover, the name as a caption (13/18, never clamped,
+  `overflow-wrap: break-word`), the length line (wraps at its comma), then the played line. No card: a 3-up tile is art and words.
+- **Rows never cut their copy.** No `clamp` on the title or the why-line, the show name wraps (it gives up its ellipsis), the meta
+  line is `flex-wrap`, Play moved from the title's row to the meta line's so the title runs the whole 245px column (it was 189).
+  **The 96 is a floor, not a height, and cannot be met without cutting:** a 2-line title (48) + meta (18) + a 2-line why (48) +
+  24 of padding is 138, and §3 itself says "96 min height (grows with text)". The finding asked for both 96 and no cuts; copy wins.
+  Realistic titles run four to five lines. If a judge still wants a shorter row, that is a direction defect (the prototype's
+  `.ep-row` is the same grid and clamps), not a build one.
+- **Row Play is a bare glyph**: `.ag .pl-ep .pl-row-play` removes the primitive's inset ring and fill, 24px Phosphor play/pause in a
+  44 target. Scoped to this page: **Today's rows still wear the ring** (`.ag .ag-btn-play.ag-btn-size-44`, ui/primitives.css, a
+  shared file). The one-line follow-up for the orchestrator is to drop that `box-shadow` in the primitive, which changes Today,
+  Library and Queue rows and the gallery; this loop did not.
+- **The Foray-detail structure**, adapted for a list of episodes (a playlist is not stitched): the Lamp eyebrow names the kind and
+  the subject ("Playlist · Science"; a subject queue's name is the subject, so it is not said twice); the strip on its sill
+  (`.pl-sill`: one bar per episode that has a length, `flex-grow` = minutes through `--w`, tinted by the show via `forayTones`,
+  played bars whole and the rest dim once started, the playing one 4px taller, a 20px thumb row under bars of 12px or more with
+  the Foray detail's own rule). **A map, not a control**: bars are not buttons (a 4px target would fail the 44 gate; the rows
+  are the way in), so the sill is one `role="img"` sentence ("4 episodes from 3 shows, drawn by length"). "Why 4a made this" only
+  on the two playlists 4a built, one line each saying what the builder did (a listener's own playlist was not made by 4a, so it
+  has none: state observed, never declared); "Where this came from" is the distinct shows as 3-up artwork tiles, the name whole,
+  a link only where the show has a page (`showIdForShowName`); then "Episodes, in order". Order is the direction's.
+- **Not done**: the thumbs row is measured once at render (no resize observer: a phone does not resize; a rotation re-renders on
+  the next route). No fidelity pairing (no prototype route); `screens.json` still has no playlist row.
