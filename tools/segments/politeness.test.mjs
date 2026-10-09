@@ -453,51 +453,35 @@ test("no file under api/ spells out a User-Agent (arch-drift-14)", () => {
   );
 });
 
-/* MUTATION: change the literal in `backend/src/config/env.ts` to `Foray/0.2 (...)`.
-   Verified failing. Second mutation: add
+/* MUTATION: change the literal in `backend/src/feeds/userAgent.ts` to
+   `Foray/0.2 (...)` — red on the first assertion (the backend has drifted from
+   the tools). Second mutation: put a literal back in `backend/src/config/env.ts`
+   (`userAgent: "Foray/0.1 (...)"`) or add
    `headers: { "User-Agent": "Foray/0.1 (...)" }` to
-   `backend/src/clients/itunes.ts`, bypassing `env.userAgent` — verified failing
-   on the second assertion, which is the one the reviewer asked for.
+   `backend/src/clients/itunes.ts`, bypassing `env.userAgent` — red on the
+   second assertion, naming that file.
 
    WHY A TEXT PIN RATHER THAN AN IMPORT. `backend/` is a separately built
-   TypeScript service; making its config import a `.mjs` out of `tools/` would
-   couple its build to the dev-tooling tree for the sake of one string. It is also
-   on `DENIED_PREFIXES` in `tools/ci/path-policy.mjs`, so an agent cannot edit it
+   TypeScript service; making it import a `.mjs` out of `tools/` would couple its
+   build to the dev-tooling tree for the sake of one string. It is also on
+   `DENIED_PREFIXES` in `tools/ci/path-policy.mjs`, so an agent cannot edit it
    without a founder — which is exactly why it needs pinning FROM THIS SIDE: it is
-   the copy least likely to be updated alongside the others. Internally the
-   backend is already consolidated on `env.userAgent`, read by all four outbound
-   clients (itunes, podcastIndex, conditionalGet, redirect); this asserts both
-   that its one declaration still agrees with ours AND that no fifth caller has
-   quietly started spelling its own.
+   the copy least likely to be updated alongside the others.
 
-   `backend/src/feeds/userAgent.ts` (S-02, kanban t_4bd3c0a3) is a DELIBERATE,
-   NAMED exception, not drift: `conditionalGet.ts` used to import `config/env`
-   directly, and that import closure (dotenv+fs, undeclared in
-   `api/package.json`) is exactly what crashed
-   `api/shows/[show_id]/episodes.ts` in production with
-   FUNCTION_INVOCATION_FAILED — see that file's own header. `userAgent.ts`
-   exists so `conditionalGet.ts` can default its User-Agent WITHOUT importing
-   `config/env`, at the cost of a second literal that must stay pinned to the
-   first. It is asserted equal to `env.ts`'s value below, by name, rather than
-   silently added to `MAY_SPELL_IT_OUT` — an unasserted exception is exactly how
-   the ORIGINAL #316 drift happened. */
+   ONE BACKEND LITERAL (CH2-27, B2-13). `backend/src/feeds/userAgent.ts` holds
+   the backend's only spelling, `DEFAULT_FEED_USER_AGENT`, with zero imports so
+   `api/**` can reach it without the `config/env` closure (dotenv+fs, undeclared
+   in `api/package.json`) that crashed `api/shows/[show_id]/episodes.ts` in
+   production with FUNCTION_INVOCATION_FAILED (S-02, kanban t_4bd3c0a3 — see
+   that file's own header). `config/env.ts` used to restate the literal and this
+   test regex-matched both copies; it now IMPORTS the constant
+   (`userAgent: DEFAULT_FEED_USER_AGENT`), so `env.userAgent` follows a bump by
+   construction and its regex half is gone. Every backend outbound client
+   (itunes, podcastIndex, conditionalGet, redirect) reads `env.userAgent` or the
+   constant itself; this asserts that the one declaration agrees with ours AND
+   that no other backend file — `env.ts` included — has quietly started spelling
+   its own. */
 test("the backend service sends the same User-Agent as the tools (#316 follow-up)", () => {
-  const ENV = "backend/src/config/env.ts";
-  const src = readFileSync(join(REPO, ENV), "utf8");
-  const m = src.match(/userAgent:\s*"([^"]*)"/);
-  assert.ok(m, `${ENV} still declares a userAgent literal`);
-  assert.equal(
-    m[1],
-    UA,
-    `${ENV} has drifted from tools/segments/politeness.mjs. It is a DENIED path, ` +
-      "so fixing it needs a founder — but shipping two identities does not become " +
-      "acceptable because one of them is harder to edit."
-  );
-
-  /* The one NAMED, asserted exception (S-02, kanban t_4bd3c0a3) — see this
-     test's own header comment for why it exists. Checked for its OWN
-     agreement with UA here, rather than merely excluded, so a drift in this
-     file is caught exactly like every other copy. */
   const USER_AGENT_TS = "backend/src/feeds/userAgent.ts";
   const uaTsSrc = readFileSync(join(REPO, USER_AGENT_TS), "utf8");
   const uaTsMatch = uaTsSrc.match(/DEFAULT_FEED_USER_AGENT\s*=\s*"([^"]*)"/);
@@ -505,20 +489,21 @@ test("the backend service sends the same User-Agent as the tools (#316 follow-up
   assert.equal(
     uaTsMatch[1],
     UA,
-    `${USER_AGENT_TS} has drifted from tools/segments/politeness.mjs's UA — it is a ` +
-      "deliberate second copy (see this test's header) and must be updated in the " +
-      "same change as every other copy, never independently."
+    `${USER_AGENT_TS} has drifted from tools/segments/politeness.mjs's UA. It is a ` +
+      "DENIED path, so fixing it needs a founder — but shipping two identities does " +
+      "not become acceptable because one of them is harder to edit."
   );
 
-  /* `env.ts` and `userAgent.ts` are the backend's only two sanctioned sources;
-     nothing else there may spell one. */
+  /* `userAgent.ts` is the backend's only sanctioned source; nothing else there
+     (config/env.ts included) may spell one. */
   const others = tracked("backend/src/").filter(
-    (f) => f !== ENV && f !== USER_AGENT_TS && UA_MENTION.test(readFileSync(join(REPO, f), "utf8"))
+    (f) => f !== USER_AGENT_TS && UA_MENTION.test(readFileSync(join(REPO, f), "utf8"))
   );
   assert.deepEqual(
     others,
     [],
-    `these backend files spell out a User-Agent instead of reading env.userAgent: ${others.join(", ")}`
+    `these backend files spell out a User-Agent instead of reading env.userAgent or ` +
+      `DEFAULT_FEED_USER_AGENT: ${others.join(", ")}`
   );
 });
 

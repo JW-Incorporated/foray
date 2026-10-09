@@ -223,6 +223,7 @@ test("every feed and transcript fetcher in tools/ reads bodies through fetch-lim
     "tools/segments/sweep-transcripts.mjs": "readResponseCapped",
     "tools/segments/backfill-audio-bytes.mjs": "readResponseCapped",
     "tools/segments/fetch-transcripts.mjs": "readBodyCapped",
+    "tools/poll/fetch-feed.mjs": "readBodyCapped", // CH2-28 (T1-10): its private copy is gone
   };
   for (const [file, fn] of Object.entries(FETCHERS)) {
     const src = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");

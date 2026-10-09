@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { resolveRedirectChain } from "../src/feeds/redirect";
+import { DEFAULT_FEED_USER_AGENT } from "../src/feeds/userAgent";
 
 function mockResponse(status: number, headers: Record<string, string> = {}) {
   return {
@@ -72,5 +73,39 @@ describe("resolveRedirectChain", () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toMatch(/ECONNRESET/);
+  });
+
+  // Pins today's wire header: with no userAgent passed, every hop sends the
+  // one default Foray UA (CH2-26 keeps this when the env import goes).
+  it("sends the default Foray User-Agent on every hop when none is passed", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(mockResponse(302, { location: "https://real-cdn.example.com/y.mp3" }))
+      .mockResolvedValueOnce(mockResponse(206));
+
+    await resolveRedirectChain("https://podtrac.com/a", { fetchImpl });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    for (const [, init] of fetchImpl.mock.calls) {
+      expect((init as RequestInit).headers).toMatchObject({
+        "User-Agent": DEFAULT_FEED_USER_AGENT,
+        Range: "bytes=0-0"
+      });
+    }
+  });
+
+  // MUTATION: `"User-Agent": env.userAgent` (redirect.ts importing config/env
+  // again, B1-10) -> red: the caller's UA is ignored.
+  it("sends the caller's userAgent when one is passed (no config/env import)", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(mockResponse(301, { location: "https://real-cdn.example.com/y.mp3" }))
+      .mockResolvedValueOnce(mockResponse(200));
+
+    await resolveRedirectChain("https://podtrac.com/a", { fetchImpl, userAgent: "IngestWorker/1 (test)" });
+
+    for (const [, init] of fetchImpl.mock.calls) {
+      expect((init as RequestInit).headers).toMatchObject({ "User-Agent": "IngestWorker/1 (test)" });
+    }
   });
 });
