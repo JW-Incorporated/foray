@@ -1686,6 +1686,11 @@ public struct EngineCore {
         cutSeamGap("interruption")
         // A call or Siri clears a loss's eligibility (route-resume.js).
         routeResumeStep(.interruption)
+        // ...and explains the deck's uncommanded pause (CH3-02 review): the
+        // call paused it, so a route loss after this (an A2DP -> HFP flap
+        // inside `routeAttributionMs`) lands inside the interruption and is
+        // not attributed that pause; the call's should-resume decides.
+        state.lastUncommandedPauseAtMono = nil
         applySession(transition)
         dispatch(.interruptionBegan)
         releaseSeamGap()

@@ -1192,6 +1192,10 @@ public final class EngineCore {
             return;
         }
         stopRow(StopCause.INTERRUPTION, null);
+        // The call explains the deck's uncommanded pause (CH3-02 review; Swift onInterruptionBegan):
+        // a route loss after this (an A2DP -> HFP flap inside ROUTE_ATTRIBUTION_MS) lands inside the
+        // interruption and is not attributed that pause; the call's should-resume decides.
+        state.lastUncommandedPauseAtMono = null;
         applySession(transition);
         dispatch(PlayerEvent.INTERRUPTION_BEGAN);
     }

@@ -660,7 +660,9 @@ export class PlayerQueueManager {
        a pause whose cause nobody has said yet. A route loss landing in it is
        that cause (`routeChanged`, either order — the native core's
        `routeAttributionMs`). A frozen reducer state, so any transition out of
-       it retires it with no bookkeeping here. */
+       it retires it with no bookkeeping here; an OS interruption, which names
+       the cause itself, retires it explicitly (`interruptionBegan`, and
+       `reconcileWithBackend` with `{ interruption: true }`). */
     this._unexplainedPause = null;
     // Two distinct notions of "where we are", conflated in the Swift:
     //   currentIndex  what is actually LOADED — savePosition writes against it
@@ -1298,6 +1300,11 @@ export class PlayerQueueManager {
   /* ---------- interruptions and routes ---------- */
 
   async interruptionBegan() {
+    /* The OS has said why the element paused: a call, not a route (CH3-02). A
+       loss after this lands inside the interruption, whose should-resume
+       decides; `_unexplainedPause` would otherwise survive, because the reducer
+       hands back the same frozen `interrupted` state. */
+    this._unexplainedPause = null;
     return this._transport("interruption", () => this._handle(E.interruptionBegan()));
   }
 
@@ -1351,7 +1358,8 @@ export class PlayerQueueManager {
 
       ONLY A LOSS THAT PAUSED SOMETHING IS NON-RESUMABLE (CH3-02, R2-02): the
       machine was playing, bridging or loading, or it was held by an
-      unexplained pause this loss explains. A loss inside an OS interruption —
+      unexplained pause this loss explains (and no OS interruption has
+      explained since). A loss inside an OS interruption —
       a car's A2DP -> HFP -> A2DP flap while a call rings — paused nothing; the
       call did, and its should-resume decides (code-health-3 founder question
       2, default). Mirrored by `onRoute` in both native cores. */
@@ -1490,6 +1498,15 @@ export class PlayerQueueManager {
    */
   async reconcileWithBackend(why = "visible", { interruption = false } = {}) {
     if (this._disposed) return false;
+    /* An OS interruption explains any pause still waiting for its cause
+       (CH3-02 review): the call's element pause comes first on an awake page,
+       then this reconcile — which, finding `interrupted`, takes the early
+       return below and would leave the claim standing for a later A2DP -> HFP
+       flap to take. Retired here, before every return, the loss lands inside
+       the interruption and its should-resume decides. The JS lane's bound on
+       the claim: the native cores bound it by `routeAttributionMs`, but a
+       page's clock is no measure of a plugin event that may be handled late. */
+    if (interruption) this._unexplainedPause = null;
     /* THE OTHER DIRECTION (2026-09-22, founder report 1). This used to return
        for anything but `playing`, so an element resumed from outside the
        reducer stayed `interrupted` for the whole ride — and `interrupted` is
