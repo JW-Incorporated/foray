@@ -675,13 +675,14 @@ public class EngineCoreTest {
     }
 
     /**
-     * An interruption's resume, a KNOWN car coming back and a cold play each open their grace
-     * span. Headphones plugged back in (a route never seen as a car) resume nothing (corner
-     * case #13): no fixture drives a route coming back, so this is the only thing that
-     * notices a core resuming on any route.
+     * An interruption's resume and a cold play each open their grace span. A route coming
+     * back resumes nothing (corner case #13; the JS rule, until A-61 ports Swift's
+     * {@code RouteResume}): not headphones plugged back in, and not a car, known or not (R3-01,
+     * code-health-3 CH3-17). No JVM fixture drives a route coming back, so this is the only
+     * thing that notices a core resuming on any route.
      */
     @Test
-    public void resumesAndColdPlaysOpenGraceAndOnlyAKnownCarResumes() {
+    public void resumesAndColdPlaysOpenGraceAndNoRouteResumes() {
         Host host = playing();
         host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
         assertTrue(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)))
@@ -689,9 +690,10 @@ public class EngineCoreTest {
 
         Host car = playing();
         car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
-        assertTrue(back.toString(), back.contains(new EngineCommand.GraceBegin(GraceReason.ROUTE_RESUME)));
-        assertTrue("the known car resumes: " + back, index(back, EngineCoreTest::isLoad) >= 0);
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", true))));
+        assertEquals("a car coming back never resumes on the JVM: " + back, -1, index(back, EngineCoreTest::isLoad));
+        assertEquals(-1, index(back, c -> c instanceof EngineCommand.GraceBegin));
+        assertEquals("interrupted", car.core.state().stateType());
 
         Host phones = playing();
         phones.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "AirPods", false))));
@@ -741,7 +743,7 @@ public class EngineCoreTest {
     }
 
     /**
-     * Each resume writes one {@code resume} row (interruption or route) and a cold play one
+     * Each resume writes one {@code resume} row (an interruption's; no route resumes on the JVM) and a cold play one
      * {@code cold-play} row, as its span opens and before the activation it waits on.
      */
     @Test
@@ -765,12 +767,8 @@ public class EngineCoreTest {
         Host car = playing();
         car.bgRemainingMs = 12_000.0;
         car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
-        EngineCommand.DiagEntry route = rows("resume", back).get(0);
-        assertEquals(JsonNode.str("route"), route.field("kind"));
-        assertEquals(JsonNode.str("y"), route.field("grace"));
-        assertEquals(JsonNode.str("route-resume"), route.field("graceReason"));
-        assertEquals(JsonNode.num(12_000), route.field("bgRemainingMs"));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", true))));
+        assertTrue("a car coming back is no resume: " + back, rows("resume", back).isEmpty());
 
         Host cold = new Host();
         cold.bgRemainingMs = 25_000.0;
@@ -1012,5 +1010,87 @@ public class EngineCoreTest {
         assertTrue("silent before released", pause < release);
         List<EngineCommand> again = host.send(EngineContract.Command.PLAY);
         assertEquals(again.toString(), 1, again.stream().filter(c -> c instanceof EngineCommand.SessionActivate).count());
+    }
+
+    // ---- CH3-17: the JVM core matches Swift on the episode path (code-health-3 R3-01, R3-02, R3-04, R3-07)
+
+    /**
+     * R3-01: the listener pauses on the wheel, parks, and next morning the car reconnects: 4a
+     * stays paused. The JVM learned a car from any route event naming one and resumed when it
+     * came back, with no listener-pause guard: the rule DECISIONS 2026-09-25 Q5 deleted. A
+     * reconnect never resumes (the JS rule) until A-61 ports Swift's {@code RouteResume}.
+     * RED on main: R3-01.
+     */
+    @Test
+    public void aKnownCarReturningAfterTheListenersPause() {
+        Host car = playing();
+        car.send(EngineContract.Command.PAUSE);
+        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", true))));
+        assertEquals("the listener's pause survives the car coming back: " + back, -1, index(back, EngineCoreTest::isLoad));
+        assertEquals(-1, index(back, c -> c instanceof EngineCommand.SessionActivate));
+        assertEquals("interrupted", car.core.state().stateType());
+    }
+
+    /**
+     * R3-02: STOP IS SILENCE (player-core-7; Swift {@code stop(persist:)}). From
+     * {@code interrupted} the reducer's stop emits no pause, so a deck audible behind a paused
+     * machine (Media3 resumed after a transient loss) must be paused by the deck's own word.
+     * RED on main: R3-02 (the JVM {@code stop()} never read the deck).
+     */
+    @Test
+    public void stopIsSilenceBehindAPausedMachine() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.reading.audible = true;
+        List<EngineCommand> out = host.send(new EngineContract.Command.Stop(true));
+        int row = stopRow(Vocabulary.StopCause.CLOSE, out);
+        int pause = index(out, EngineCoreTest::isPause);
+        assertTrue("the deck audible behind a paused machine is paused by the stop: " + out, pause >= 0);
+        assertTrue("the cause row first", row >= 0 && row < pause);
+        EngineCommand.DiagEntry forced = rows("pause", out).get(0);
+        assertEquals(JsonNode.str("forced"), forced.field("kind"));
+        assertFalse("silent afterwards", host.reading.audible);
+    }
+
+    /** R3-04: grace expiry writes its stop row, then ends the span, in Swift's order. RED on main: R3-04 (span first). */
+    @Test
+    public void graceExpiryRowOrder() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.send(remote(MediaMapping.RemoteCommand.PLAY));
+        List<EngineCommand> out = host.send(new EngineInput.Timer(EngineTimer.GRACE_EXPIRED));
+        int row = stopRow(Vocabulary.StopCause.GRACE_EXPIRED, out);
+        int end = out.indexOf(new EngineCommand.GraceEnd(GraceOutcome.EXPIRED));
+        assertTrue(out.toString(), row >= 0 && end >= 0);
+        assertTrue("the row first, as Swift: " + out, row < end);
+    }
+
+    /**
+     * R3-04: the page's {@code dispose()} while playing is the audio handed back: the turn opens
+     * with {@code stop cause=relinquish}, as Swift's {@code teardown()}. RED on main: R3-04 (no row).
+     */
+    @Test
+    public void teardownWhilePlayingStopRow() {
+        Host host = playing();
+        List<EngineCommand> out = host.send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()));
+        assertEquals("the relinquish row opens the turn: " + out, 0, stopRow(Vocabulary.StopCause.RELINQUISH, out));
+        assertCauseFirst(Vocabulary.StopCause.RELINQUISH, out);
+        assertEquals("a teardown of nothing writes no row", -1, stopRow(Vocabulary.StopCause.RELINQUISH,
+                new Host().send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()))));
+    }
+
+    /**
+     * R3-07: "waiting is buffering" (P-14, the stall display) is Swift's provisional
+     * {@code bufferingWhileWaiting} knob; the JVM must read the same knob, not hard-code it.
+     */
+    @Test
+    public void waitingIsBufferingWhileTheKnobSaysSo() {
+        Host host = playing();
+        host.send(new EngineInput.Deck(new DeckEvent.TimeControl(host.lastLoad, DeckEvent.TimeControlStatus.WAITING, null)));
+        assertTrue("the knob is Swift's verdict (rate-latch)", EngineCore.BUFFERING_WHILE_WAITING);
+        assertEquals("a waiting deck shows buffering by the knob", EngineCore.BUFFERING_WHILE_WAITING, host.core.state().buffering);
+        host.confirm();
+        assertFalse("playing again clears it", host.core.state().buffering);
     }
 }

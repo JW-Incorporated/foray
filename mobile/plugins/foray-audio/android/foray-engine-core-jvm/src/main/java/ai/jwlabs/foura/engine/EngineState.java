@@ -2,10 +2,8 @@ package ai.jwlabs.foura.engine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The engine's composite state (docs/native-engine-plan.md §4.2): the six reducer states
@@ -62,10 +60,8 @@ public final class EngineState {
 
     /** {@code _pausedByListener}: the last pause was a press or a stop, so an OS should-resume must not bring it back. */
     public boolean pausedByListener = false;
-    /** {@code _pausedByRoute}: a route went away (corner case #13); only a press or a known car route clears it. */
+    /** {@code _pausedByRoute}: a route went away (corner case #13); only a new play clears it (the listener's, or a continuation hop). */
     public boolean pausedByRoute = false;
-    /** {@code _knownCarRoutes}. */
-    public Set<String> knownCarRoutes = new HashSet<>();
     /** For the 500 ms route attribution of an uncommanded pause (plan §4.3). */
     public Double lastRouteLostAtMono;
     public Double lastUncommandedPauseAtMono;
@@ -178,7 +174,7 @@ public final class EngineState {
 
     /** What runs once the session is active. */
     public sealed interface DeferredIntent permits DeferredIntent.PlayIndex, DeferredIntent.Resume, DeferredIntent.SkipNext,
-            DeferredIntent.SkipPrevious, DeferredIntent.InterruptionResume, DeferredIntent.RouteResume, DeferredIntent.ColdPlay,
+            DeferredIntent.SkipPrevious, DeferredIntent.InterruptionResume, DeferredIntent.ColdPlay,
             DeferredIntent.WalkHop, DeferredIntent.Audition {
         record PlayIndex(int index, Double startSec) implements DeferredIntent {}
 
@@ -190,8 +186,6 @@ public final class EngineState {
 
         record InterruptionResume() implements DeferredIntent {}
 
-        record RouteResume() implements DeferredIntent {}
-
         record ColdPlay() implements DeferredIntent {}
 
         record WalkHop(EngineContract.Hop hop) implements DeferredIntent {}
@@ -202,7 +196,6 @@ public final class EngineState {
         DeferredIntent SKIP_NEXT = new SkipNext();
         DeferredIntent SKIP_PREVIOUS = new SkipPrevious();
         DeferredIntent INTERRUPTION_RESUME = new InterruptionResume();
-        DeferredIntent ROUTE_RESUME = new RouteResume();
         DeferredIntent COLD_PLAY = new ColdPlay();
     }
 

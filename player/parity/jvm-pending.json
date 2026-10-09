@@ -1,6 +1,21 @@
 {
   "//": "The JVM parity runner's burn-down books (card A-22, docs/plans/android-assessment.md §5.4; the rules are in player/parity/jvm-pending.js). runs: the families the JVM has a runner for (JvmFamilies.ALL). families: a whole fixture family the JVM does not run yet -> the Android card that ports it. cases: one case owed inside a family the JVM does run -> its card. Every recorded family that is not jsOnly is in exactly one of runs and families (record.mjs --check). The JVM runner (foray-engine-core-jvm ParitySuite, android-build.yml) fails when a case not owed fails, when an owed case passes (stale: delete the entry), when a manifest id is neither run nor owed, and when runs disagrees with its runners. record.mjs --jvm-card hands a case new or changed in a family the JVM runs, or a family it neither runs nor owes, to a card. jsOnly families are never owed. These books stay after NE-39s retired the Swift ones (swift-pending.json, unported.json): A-63 retires them. A porting card moves its family from families to runs in the same change as its runner.",
-  "cases": {},
+  "cases": {
+    "manager-remainder/a-rendered-line-failing-while-sounding-warms-the-clip-as-speech-takes-over": "A-40",
+    "manager-remainder/a-rendered-line-is-warmed-across-its-seam": "A-40",
+    "manager-remainder/a-spoken-line-has-no-file-to-warm": "A-40",
+    "manager-remainder/a-warmed-seam-is-the-beat": "A-40",
+    "manager-remainder/a-window-while-paused-warms-nothing": "A-40",
+    "manager-remainder/an-episode-left-to-its-natural-end-warms-the-item-after-it": "A-40",
+    "manager-remainder/an-unwarmed-seam-is-the-load": "A-40",
+    "manager-remainder/during-a-rendered-line-the-window-warms-the-clip-after-it": "A-40",
+    "manager-remainder/each-window-warms-what-its-boundary-advances-to": "A-40",
+    "manager-remainder/losing-the-race-costs-the-load-and-never-the-segment": "A-40",
+    "manager-remainder/the-clip-after-a-spoken-line-is-warmed-when-the-line-starts": "A-40",
+    "manager-remainder/the-last-item-warms-nothing": "A-40",
+    "manager-remainder/the-window-warms-the-next-segment-at-its-in-point": "A-40",
+    "manager-remainder/with-no-beat-the-next-clip-is-still-warmed": "A-40"
+  },
   "families": {
     "contract": "A-28",
     "default-voice": "A-41",
@@ -13,7 +28,6 @@
     "interlude": "A-41",
     "lexicon": "A-41",
     "manager-foray": "A-40",
-    "manager-remainder": "A-40",
     "media": "A-40",
     "prepare": "A-40",
     "prepare-narration": "A-62",
@@ -28,6 +42,7 @@
     "deck",
     "deck-episode",
     "manager-episode",
+    "manager-remainder",
     "media-episode",
     "number-format",
     "outpoint",
