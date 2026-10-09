@@ -150,8 +150,8 @@ test("iteration 2 (strip + queue): the current bar steps apart from its neighbou
        peek, and the Up Next section vanished from the detail posture exactly when a listener had an Up Next). */
   assert.match(ui, /button\.dataset\.gapPrev = current \|\| nearCurrent\(ui\.strip\.children\[order - 1\]\) \? "1" : "0";/);
   assert.match(ui, /button\.dataset\.gapNext = current \|\| nearCurrent\(ui\.strip\.children\[order \+ 1\]\) \? "1" : "0";/);
-  assert.match(css, /\[data-join-prev\]\[data-gap-prev="1"\] \{ margin-left: 0; \}/);
-  assert.match(css, /\[data-join-next\]\[data-gap-next="1"\] \.ag-np-strip-bar \{ border-top-right-radius: var\(--r-xs\)/);
+  assert.match(css, /\[data-join-prev\]\[data-gap-prev="1"\] \{ margin-left: 0; --rl: var\(--r-xs\); \}/);
+  assert.match(css, /\[data-join-next\]\[data-gap-next="1"\] \{ --rr: var\(--r-xs\); \}/);
   /* MUTATION 4: delete the `.fp-upnext` rule's `color: var(--ember)` -> red (body.ui-v2 .fp-openep paints the Up Next link violet, which the direction overturned). */
   assert.match(css, /\.ag-np-up-next \.fp-upnext \{[^}]*color: var\(--ember\)/);
   assert.match(css, /\.fp-s-desc summary::after \{ content: none; \}/);
@@ -183,8 +183,11 @@ test("a Foray's Room is its blurred collage, the sleeve casts ONE tone of light,
   assert.match(css, /\.ag-np-art-swap > \.lit-art \{ box-shadow: var\(--shadow-1\), 0 0 calc\(var\(--lit-r\) \* \.6\)[^;]*var\(--art-glow, var\(--glow\)\)/);
   assert.match(ui, /if \(runOf\(order - 1\)\) button\.dataset\.joinPrev = "1";/);
   assert.match(ui, /if \(runOf\(order \+ 1\)\) button\.dataset\.joinNext = "1";/, "a data attribute, not a class: gates.mjs keys its tap-target exemption on the class list, so a new class would void it");
-  assert.match(css, /\.ag-np-strip-button\[data-join-prev\] \{ margin-left: -2px; \}/);
-  assert.match(css, /\[data-join-prev\] \.ag-np-strip-bar \{ border-top-left-radius: 0; border-bottom-left-radius: 0; \}/);
+  assert.match(css, /\.ag-np-strip-button\[data-join-prev\] \{ margin-left: -2px; --rl: 0; \}/);
+  assert.match(css, /\.ag-np-strip-button\[data-join-next\] \{ --rr: 0; \}/);
+  /* The squared corners travel as --rl / --rr (one rule per side, not four radius rules: now-playing.css was 200 bytes over its 14 KB budget).
+     MUTATION 5: take `var(--rl, var(--r-xs))` out of `.ag-np-strip-bar`'s border-radius -> red (joined cuts keep rounded corners). */
+  assert.match(css, /\.ag-np-strip-bar \{[^}]*border-radius: var\(--rl, var\(--r-xs\)\) var\(--rr, var\(--r-xs\)\) var\(--rr, var\(--r-xs\)\) var\(--rl, var\(--r-xs\)\);/);
 });
 
 test("iteration 3: every show bar is at full art colour, the current bar's fill is the lighter tint, narration is a thin shrinkable light, an un-narrated Foray carries one caption", () => {

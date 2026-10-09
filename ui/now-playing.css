@@ -67,16 +67,14 @@
 .ag-np.fp-sheet .ag-np-strip-caption { flex: 1; text-align: center; color: var(--text-2); }
 .ag-np.fp-sheet .ag-np-strip { display: flex; align-items: center; gap: 2px; height: 32px; }
 .ag-np.fp-sheet .ag-np-strip-button { flex: var(--grow) 1 0; min-width: 6px; height: 44px; margin: -6px 0; padding: 0; border: 0; display: flex; align-items: center; background: transparent; }
-.ag-np.fp-sheet .ag-np-strip-button[data-join-prev] { margin-left: -2px; }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-prev] { margin-left: -2px; --rl: 0; }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-next] { --rr: 0; }
 /* A narration light is thin by design: it shrinks to 2px so a Foray that interleaves a bridge with every cut (40 of 51 items) still fits the strip instead of running off the right edge. */
 .ag-np.fp-sheet .ag-np-strip-button[data-narration] { min-width: 2px; }
-.ag-np.fp-sheet .ag-np-strip-button[data-join-prev] .ag-np-strip-bar { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-.ag-np.fp-sheet .ag-np-strip-button[data-join-next] .ag-np-strip-bar { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 /* The current bar is taller, so it and the bars beside it step apart (the strip's 2px gap) even inside one show's run: touching, it reads as a nub on a long bar. */
-.ag-np.fp-sheet .ag-np-strip-button[data-join-prev][data-gap-prev="1"] { margin-left: 0; }
-.ag-np.fp-sheet .ag-np-strip-button[data-join-prev][data-gap-prev="1"] .ag-np-strip-bar { border-top-left-radius: var(--r-xs); border-bottom-left-radius: var(--r-xs); }
-.ag-np.fp-sheet .ag-np-strip-button[data-join-next][data-gap-next="1"] .ag-np-strip-bar { border-top-right-radius: var(--r-xs); border-bottom-right-radius: var(--r-xs); }
-.ag-np.fp-sheet .ag-np-strip-bar { position: relative; display: block; width: 100%; height: 16px; overflow: hidden; border-radius: var(--r-xs); background: var(--c); }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-prev][data-gap-prev="1"] { margin-left: 0; --rl: var(--r-xs); }
+.ag-np.fp-sheet .ag-np-strip-button[data-join-next][data-gap-next="1"] { --rr: var(--r-xs); }
+.ag-np.fp-sheet .ag-np-strip-bar { position: relative; display: block; width: 100%; height: 16px; overflow: hidden; border-radius: var(--rl, var(--r-xs)) var(--rr, var(--r-xs)) var(--rr, var(--r-xs)) var(--rl, var(--r-xs)); background: var(--c); }
 .ag-np.fp-sheet .ag-np-strip-fill { position: absolute; inset: 0; transform: scaleX(var(--fill, 0)); transform-origin: left; background: color-mix(in oklab, var(--c) 78%, var(--lamp)); transition: transform var(--m-micro) linear; }
 .ag-np.fp-sheet .ag-np-strip-button.is-past .ag-np-strip-bar { background: var(--c); }
 .ag-np.fp-sheet .ag-np-strip-button.is-current .ag-np-strip-bar { height: 20px; background: var(--c); }
