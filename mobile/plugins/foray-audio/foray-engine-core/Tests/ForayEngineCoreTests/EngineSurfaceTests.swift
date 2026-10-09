@@ -40,7 +40,7 @@ final class EngineSurfaceTests: XCTestCase {
         host.send(.command(.stop(persist: true), source: .tap))
         XCTAssertTrue(host.core.state.closed)
         XCTAssertEqual(host.core.commandSnapshot.mode, .unloaded)
-        XCTAssertTrue(MediaMapping.commandAvailability(host.core.commandSnapshot).clearsNowPlaying)
+        XCTAssertTrue(MediaMapping.commandAvailability(host.core.commandSnapshot, trackRoute: true).clearsNowPlaying)
         XCTAssertNil(host.core.mediaView(deck: host.reading))
 
         host.send(.command(.audition(text: "Hello", voiceId: nil), source: .tap))

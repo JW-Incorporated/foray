@@ -439,14 +439,19 @@ public final class MediaMapping {
     }
 
     /**
-     * {@code commandAvailability(snapshot)}: NP-5. The episode surface is the page's:
-     * play, pause, the seek pair and a scrub always; next / previous exactly when the
-     * engine has a neighbour. It goes through {@link #installedActions}, the SAME table the
-     * fixtures pin. Stop is registered and ALWAYS disabled (a remote stop is a pause).
+     * {@code commandAvailability(snapshot, trackRoute)}: NP-5. The episode surface is the
+     * page's: play, pause, the seek pair and a scrub always; next / previous exactly when the
+     * engine has a neighbour AND the route has a track button ({@code trackRoute}: the
+     * 2026-09-23 ruling, "the track pair only where a track button exists", held in the core
+     * for both platforms since CH3-10). The Android host passes true: its notification and
+     * Android Auto draw both pairs side by side (code-health-3 founder question 3, on its
+     * default; #1163). It goes through {@link #installedActions}, the SAME table the fixtures
+     * pin, and the {@code media-episode} family's {@code availability-*} cases pin this
+     * function itself. Stop is registered and ALWAYS disabled (a remote stop is a pause).
      * Toggle works exactly when play and pause both do. Everything is disabled and Now
      * Playing cleared ONLY when nothing is loaded or a Foray has finished.
      */
-    public static CommandAvailability commandAvailability(CommandSnapshot snapshot, SeekSteps steps) {
+    public static CommandAvailability commandAvailability(CommandSnapshot snapshot, SeekSteps steps, boolean trackRoute) {
         boolean finished = snapshot.mode() == CommandSnapshot.Mode.UNLOADED
                 || (snapshot.mode() == CommandSnapshot.Mode.FORAY && snapshot.ended());
         if (finished) {
@@ -455,8 +460,8 @@ public final class MediaMapping {
         Surface surface = new Surface();
         surface.play = true;
         surface.pause = true;
-        surface.next = snapshot.canNext();
-        surface.previous = snapshot.canPrevious();
+        surface.next = snapshot.canNext() && trackRoute;
+        surface.previous = snapshot.canPrevious() && trackRoute;
         surface.seekBy = true;
         surface.seekTo = true;
         List<MediaAction> installed = installedActions(surface);

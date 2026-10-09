@@ -1,7 +1,7 @@
 {
   "family": "media-episode",
   "module": "player/parity/media-actions.js",
-  "note": "The remote-command half of the mapping: mediaSessionActions (player/media-session.js), asked through the harness adapter player/parity/media-actions.js because its answer is a list of functions. Each case names which surface methods exist and which buttons are pressed, and records which OS commands are enabled and what the surface received. NE-12s ports it as MediaMapping's command enablement and remote-press table.",
+  "note": "The remote-command half of the mapping: mediaSessionActions (player/media-session.js), asked through the harness adapter player/parity/media-actions.js because its answer is a list of functions. Each case names which surface methods exist and which buttons are pressed, and records which OS commands are enabled and what the surface received. NE-12s ports it as MediaMapping's command enablement and remote-press table. CH3-10 adds a second call, commandAvailability (snapshot x trackRoute -> the enabled remote commands and clearsNowPlaying): the engine's NP-5 rule with the 2026-09-23 track-route gate, authored from docs/DECISIONS.md 2026-09-23 section 1 (no page module holds it), answered by both cores through their media-episode runners.",
   "cases": [
     {
       "id": "media-episode/actions-complete-surface",
@@ -423,6 +423,188 @@
           "installed": ["stop"]
         }
       }
+    },
+    {
+      "id": "media-episode/availability-speaker-keeps-the-skip-pair-with-up-next",
+      "covers": [],
+      "authored": true,
+      "note": "DECISIONS 2026-09-23, founder question 1: on the built-in speaker the lock screen is the only surface, so the track pair stays off whatever Up Next holds and the right-hand button stays 30 (R1-03: the native lane drew the next-track glyph).",
+      "call": "commandAvailability",
+      "args": [{ "mode": "episode", "canNext": true, "canPrevious": true }, false],
+      "expect": {
+        "return": {
+          "enabled": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "skipBackward",
+            "skipForward",
+            "changePlaybackPosition"
+          ],
+          "clearsNowPlaying": false
+        }
+      }
+    },
+    {
+      "id": "media-episode/availability-car-route-gets-the-track-pair",
+      "covers": [],
+      "authored": true,
+      "note": "A headset, a Bluetooth stack or a car has a track button without looking: next and previous follow the neighbours.",
+      "call": "commandAvailability",
+      "args": [{ "mode": "episode", "canNext": true, "canPrevious": true }, true],
+      "expect": {
+        "return": {
+          "enabled": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "nextTrack",
+            "previousTrack",
+            "skipBackward",
+            "skipForward",
+            "changePlaybackPosition"
+          ],
+          "clearsNowPlaying": false
+        }
+      }
+    },
+    {
+      "id": "media-episode/availability-track-route-no-next-offers-previous-only",
+      "covers": [],
+      "authored": true,
+      "note": "Up Next drained: no next, and previous is always installed for an episode (restart, else the row before).",
+      "call": "commandAvailability",
+      "args": [{ "mode": "episode", "canNext": false, "canPrevious": true }, true],
+      "expect": {
+        "return": {
+          "enabled": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "previousTrack",
+            "skipBackward",
+            "skipForward",
+            "changePlaybackPosition"
+          ],
+          "clearsNowPlaying": false
+        }
+      }
+    },
+    {
+      "id": "media-episode/availability-next-ignores-auto-advance",
+      "covers": [],
+      "authored": true,
+      "note": "canNext is the chain being non-empty regardless of autoAdvance (plan section 5.5): continuous playback off does not grey out the wheel's skip.",
+      "call": "commandAvailability",
+      "args": [
+        {
+          "mode": "episode",
+          "canNext": true,
+          "canPrevious": true,
+          "autoAdvance": false
+        },
+        true
+      ],
+      "expect": {
+        "return": {
+          "enabled": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "nextTrack",
+            "previousTrack",
+            "skipBackward",
+            "skipForward",
+            "changePlaybackPosition"
+          ],
+          "clearsNowPlaying": false
+        }
+      }
+    },
+    {
+      "id": "media-episode/availability-ended-episode-keeps-its-targets",
+      "covers": [],
+      "authored": true,
+      "note": "An ended EPISODE keeps every target and its Now Playing entry (p-car-6); only a finished Foray clears.",
+      "call": "commandAvailability",
+      "args": [{ "mode": "episode", "ended": true, "canNext": true, "canPrevious": true }, true],
+      "expect": {
+        "return": {
+          "enabled": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "nextTrack",
+            "previousTrack",
+            "skipBackward",
+            "skipForward",
+            "changePlaybackPosition"
+          ],
+          "clearsNowPlaying": false
+        }
+      }
+    },
+    {
+      "id": "media-episode/availability-foray-on-speaker-keeps-the-skip-pair",
+      "covers": [],
+      "authored": true,
+      "note": "The rule is the route's, not the kind's: a Foray on the speaker keeps the skip pair too.",
+      "call": "commandAvailability",
+      "args": [{ "mode": "foray", "canNext": true, "canPrevious": true }, false],
+      "expect": {
+        "return": {
+          "enabled": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "skipBackward",
+            "skipForward",
+            "changePlaybackPosition"
+          ],
+          "clearsNowPlaying": false
+        }
+      }
+    },
+    {
+      "id": "media-episode/availability-foray-on-track-route-gets-the-track-pair",
+      "covers": [],
+      "authored": true,
+      "note": "The next clip and the previous clip / restart, on a route with a track button.",
+      "call": "commandAvailability",
+      "args": [{ "mode": "foray", "canNext": true, "canPrevious": true }, true],
+      "expect": {
+        "return": {
+          "enabled": [
+            "play",
+            "pause",
+            "togglePlayPause",
+            "nextTrack",
+            "previousTrack",
+            "skipBackward",
+            "skipForward",
+            "changePlaybackPosition"
+          ],
+          "clearsNowPlaying": false
+        }
+      }
+    },
+    {
+      "id": "media-episode/availability-finished-foray-enables-nothing-and-clears",
+      "covers": [],
+      "authored": true,
+      "note": "A finished Foray: every transport command off and Now Playing cleared, whatever the route.",
+      "call": "commandAvailability",
+      "args": [{ "mode": "foray", "ended": true, "canNext": true, "canPrevious": true }, true],
+      "expect": { "return": { "enabled": [], "clearsNowPlaying": true } }
+    },
+    {
+      "id": "media-episode/availability-nothing-loaded-enables-nothing-and-clears",
+      "covers": [],
+      "authored": true,
+      "note": "Nothing loaded (a close, a data deletion): nothing enabled, Now Playing cleared, whatever the route.",
+      "call": "commandAvailability",
+      "args": [{ "mode": "none", "canNext": true, "canPrevious": true }, true],
+      "expect": { "return": { "enabled": [], "clearsNowPlaying": true } }
     }
   ]
 }

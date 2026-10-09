@@ -674,7 +674,13 @@ final class ForayEngine {
     /// overwrite (plan §4.6).
     private func publishSurface() {
         guard !isTornDown else { return }
-        let availability = MediaMapping.commandAvailability(core.commandSnapshot)
+        // THE TRACK PAIR ONLY WHERE A TRACK BUTTON EXISTS (docs/DECISIONS.md
+        // 2026-09-23, founder question 1; CH3-10): the route is read here, on
+        // every publish, so a headset or car arriving or leaving (a session
+        // `route` input, which ends in this call) re-lays the pair at once,
+        // and so does the next turn or 1 s refresh after any other route move.
+        let trackRoute = MediaMapping.trackCommandsAllowed(portTypes: seams.session.currentRoute.map { [$0.portType] } ?? [])
+        let availability = MediaMapping.commandAvailability(core.commandSnapshot, trackRoute: trackRoute)
         applyEnablement(availability.enabled)
         let move = surfaceMove
         surfaceMove = nil

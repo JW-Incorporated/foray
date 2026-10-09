@@ -1135,7 +1135,7 @@
     },
     "media-episode": {
       "files": {
-        "player/parity/fixtures/media-episode/media-actions.json": "334f3d62f2e5f8f67f87d3f6c0915e512e6bce29baf07261f0e5295b1836967b",
+        "player/parity/fixtures/media-episode/media-actions.json": "02e5949b5185d14cac7cd04aa416ab6869e23b12eba98d7b787f80cbb3dff234",
         "player/parity/fixtures/media-episode/media-mapping.json": "5d254e32b9c0e040a594b03be24a81bf43b26af0414e79a61afc09a45ea8a0a5"
       },
       "ids": [
@@ -1157,6 +1157,15 @@
         "media-episode/actions-seekto-unusable-time-does-nothing",
         "media-episode/actions-seekto-zero-is-honoured",
         "media-episode/actions-stop-carries-only-close",
+        "media-episode/availability-speaker-keeps-the-skip-pair-with-up-next",
+        "media-episode/availability-car-route-gets-the-track-pair",
+        "media-episode/availability-track-route-no-next-offers-previous-only",
+        "media-episode/availability-next-ignores-auto-advance",
+        "media-episode/availability-ended-episode-keeps-its-targets",
+        "media-episode/availability-foray-on-speaker-keeps-the-skip-pair",
+        "media-episode/availability-foray-on-track-route-gets-the-track-pair",
+        "media-episode/availability-finished-foray-enables-nothing-and-clears",
+        "media-episode/availability-nothing-loaded-enables-nothing-and-clears",
         "media-episode/artwork-url-https-apple",
         "media-episode/artwork-url-https-query-fragment",
         "media-episode/artwork-url-data-image",

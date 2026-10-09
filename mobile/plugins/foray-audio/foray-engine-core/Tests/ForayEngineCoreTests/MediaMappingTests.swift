@@ -7,10 +7,13 @@ import ForayEngineParity
 /// and run through `ParityFamilyTests.testMediaEpisodeFamily`; this file holds
 /// the two things no fixture can:
 ///
-/// 1. `commandAvailability(snapshot)` (NP-5), which has no JavaScript twin:
-///    the page expresses it as `episodeMediaSurface` plus
-///    `EPISODE_NAVIGATION`, and native mode replaces that wiring. So its truth
-///    table is written out here, every snapshot the M1 engine can be in.
+/// 1. `commandAvailability(snapshot, trackRoute:)` (NP-5), which has no page
+///    twin: the page expresses it as `episodeMediaSurface` plus
+///    `EPISODE_NAVIGATION`, and native mode replaces that wiring. Since CH3-10
+///    the fixtures pin it too (the `availability-*` cases, authored in the
+///    harness from docs/DECISIONS.md 2026-09-23); its full truth table, every
+///    snapshot the engine can be in on either kind of route, is written out
+///    here, and so is the route rule (`trackCommandsAllowed`).
 /// 2. Proof the fixtures would CATCH the card's mutation ("enable next when
 ///    canNext is false"): a mutant enablement table is handed to the real
 ///    fixture run and a named case must go red.
@@ -34,15 +37,16 @@ final class MediaMappingTests: XCTestCase {
         let steps = MediaMapping.SeekSteps()
         XCTAssertEqual(MediaMapping.intent(for: .seekBackward, steps: steps), .seekBy(-EngineConstants.MediaSession.seekBackwardSec))
         XCTAssertEqual(MediaMapping.intent(for: .seekForward, steps: steps), .seekBy(EngineConstants.MediaSession.seekForwardSec))
-        let availability = MediaMapping.commandAvailability(Snapshot(mode: .episode))
+        let availability = MediaMapping.commandAvailability(Snapshot(mode: .episode), trackRoute: true)
         XCTAssertEqual(availability.skipBackwardIntervalSec, EngineConstants.MediaSession.seekBackwardSec)
         XCTAssertEqual(availability.skipForwardIntervalSec, EngineConstants.MediaSession.seekForwardSec)
     }
 
     // MARK: - commandAvailability (NP-5)
 
-    /// Every mode x ended x canNext x canPrevious x autoAdvance, against the
-    /// rule as the card states it, written independently of the port.
+    /// Every mode x ended x canNext x canPrevious x autoAdvance x trackRoute,
+    /// against the rule as the card states it, written independently of the
+    /// port. TO SEE IT FAIL: drop `&& trackRoute` from either track term.
     func testCommandAvailabilityTruthTable() {
         let modes: [Snapshot.Mode] = [.unloaded, .episode, .foray]
         for mode in modes {
@@ -50,20 +54,23 @@ final class MediaMappingTests: XCTestCase {
                 for canNext in [false, true] {
                     for canPrevious in [false, true] {
                         for autoAdvance in [false, true] {
-                            let snapshot = Snapshot(mode: mode, ended: ended, canNext: canNext,
-                                                    canPrevious: canPrevious, autoAdvance: autoAdvance)
-                            let got = MediaMapping.commandAvailability(snapshot)
-                            let finished = mode == .unloaded || (mode == .foray && ended)
-                            var want: Set<Command> = []
-                            if !finished {
-                                want = [.play, .pause, .togglePlayPause, .skipBackward, .skipForward,
-                                        .changePlaybackPosition]
-                                if canNext { want.insert(.nextTrack) }
-                                if canPrevious { want.insert(.previousTrack) }
+                            for trackRoute in [false, true] {
+                                let snapshot = Snapshot(mode: mode, ended: ended, canNext: canNext,
+                                                        canPrevious: canPrevious, autoAdvance: autoAdvance)
+                                let got = MediaMapping.commandAvailability(snapshot, trackRoute: trackRoute)
+                                let finished = mode == .unloaded || (mode == .foray && ended)
+                                var want: Set<Command> = []
+                                if !finished {
+                                    want = [.play, .pause, .togglePlayPause, .skipBackward, .skipForward,
+                                            .changePlaybackPosition]
+                                    if canNext && trackRoute { want.insert(.nextTrack) }
+                                    if canPrevious && trackRoute { want.insert(.previousTrack) }
+                                }
+                                let label = "\(snapshot) trackRoute=\(trackRoute)"
+                                XCTAssertEqual(got.enabled, want, label)
+                                XCTAssertEqual(got.clearsNowPlaying, finished, label)
+                                XCTAssertFalse(got.isEnabled(.stop), "stop is registered and never enabled (T-7): \(label)")
                             }
-                            XCTAssertEqual(got.enabled, want, "\(snapshot)")
-                            XCTAssertEqual(got.clearsNowPlaying, finished, "\(snapshot)")
-                            XCTAssertFalse(got.isEnabled(.stop), "stop is registered and never enabled (T-7): \(snapshot)")
                         }
                     }
                 }
@@ -71,17 +78,53 @@ final class MediaMappingTests: XCTestCase {
         }
     }
 
+    /// CH3-10 (R1-03): the 2026-09-23 ruling, "the track pair only where a
+    /// track button exists", now lives in the core for both lanes. On the
+    /// speaker (the lock screen alone) Up Next does not turn ⏭ on; on a car or
+    /// A2DP route it does. TO SEE IT FAIL: ignore `trackRoute` in
+    /// `commandAvailability`, or put `Speaker` into `trackRoutePortTypes`.
+    func testTheTrackPairNeedsATrackRoute() {
+        let upNext = Snapshot(mode: .episode, canNext: true, canPrevious: true)
+        let speaker = MediaMapping.commandAvailability(
+            upNext, trackRoute: MediaMapping.trackCommandsAllowed(portTypes: ["Speaker"]))
+        XCTAssertFalse(speaker.isEnabled(.nextTrack), "the speaker keeps 30↻ whatever Up Next holds")
+        XCTAssertFalse(speaker.isEnabled(.previousTrack))
+        XCTAssertTrue(speaker.isEnabled(.skipForward) && speaker.isEnabled(.skipBackward))
+        for port in ["CarAudio", "BluetoothA2DPOutput"] {
+            let car = MediaMapping.commandAvailability(upNext, trackRoute: MediaMapping.trackCommandsAllowed(portTypes: [port]))
+            XCTAssertTrue(car.isEnabled(.nextTrack), port)
+            XCTAssertTrue(car.isEnabled(.previousTrack), port)
+        }
+    }
+
+    /// The route rule: any one output with a track button is enough; none, the
+    /// speaker or the receiver alone is not. The raw values are held to
+    /// `AVAudioSession.Port` by `ForayAudioPluginTests` (this package has no
+    /// AVFoundation). TO SEE IT FAIL: return true for an empty route, or drop
+    /// `CarAudio` (CarPlay's steering wheel goes dead).
+    func testTrackCommandsAllowedOnlyOnARouteWithATrackButton() {
+        XCTAssertFalse(MediaMapping.trackCommandsAllowed(portTypes: []))
+        XCTAssertFalse(MediaMapping.trackCommandsAllowed(portTypes: ["Speaker"]))
+        XCTAssertFalse(MediaMapping.trackCommandsAllowed(portTypes: ["Receiver"]))
+        for port in ["Headphones", "BluetoothA2DPOutput", "BluetoothHFP", "BluetoothLE", "CarAudio", "USBAudio", "AirPlay"] {
+            XCTAssertTrue(MediaMapping.trackCommandsAllowed(portTypes: [port]), "\(port) has a track button")
+        }
+        XCTAssertTrue(MediaMapping.trackCommandsAllowed(portTypes: ["Speaker", "CarAudio"]), "any one track route is enough")
+    }
+
     /// The card's named mutation: next is the chain being non-empty, and
     /// continuous playback being off does not grey out the wheel's skip.
     func testNextFollowsCanNextAndNeverAutoAdvance() {
-        let noChain = MediaMapping.commandAvailability(Snapshot(mode: .episode, canNext: false, autoAdvance: true))
+        let noChain = MediaMapping.commandAvailability(Snapshot(mode: .episode, canNext: false, autoAdvance: true),
+                                                       trackRoute: true)
         XCTAssertFalse(noChain.isEnabled(.nextTrack), "next enabled with no next: a button that does nothing")
-        let chainButOff = MediaMapping.commandAvailability(Snapshot(mode: .episode, canNext: true, autoAdvance: false))
+        let chainButOff = MediaMapping.commandAvailability(Snapshot(mode: .episode, canNext: true, autoAdvance: false),
+                                                           trackRoute: true)
         XCTAssertTrue(chainButOff.isEnabled(.nextTrack), "next must follow the chain regardless of autoAdvance")
     }
 
     func testAnEndedEpisodeKeepsItsTargetsAndItsNowPlaying() {
-        let ended = MediaMapping.commandAvailability(Snapshot(mode: .episode, ended: true, canNext: true))
+        let ended = MediaMapping.commandAvailability(Snapshot(mode: .episode, ended: true, canNext: true), trackRoute: true)
         XCTAssertFalse(ended.clearsNowPlaying)
         XCTAssertTrue(ended.isEnabled(.play))
         XCTAssertTrue(ended.isEnabled(.nextTrack))
@@ -90,11 +133,11 @@ final class MediaMappingTests: XCTestCase {
     func testOnlyNothingLoadedOrAFinishedForayClearsNowPlaying() {
         for snapshot in [Snapshot(mode: .unloaded), Snapshot(mode: .unloaded, canNext: true),
                          Snapshot(mode: .foray, ended: true, canNext: true, canPrevious: true)] {
-            let got = MediaMapping.commandAvailability(snapshot)
+            let got = MediaMapping.commandAvailability(snapshot, trackRoute: true)
             XCTAssertTrue(got.clearsNowPlaying, "\(snapshot)")
             XCTAssertEqual(got.enabled, [], "\(snapshot)")
         }
-        XCTAssertFalse(MediaMapping.commandAvailability(Snapshot(mode: .foray, ended: false)).clearsNowPlaying)
+        XCTAssertFalse(MediaMapping.commandAvailability(Snapshot(mode: .foray, ended: false), trackRoute: true).clearsNowPlaying)
     }
 
     // MARK: - the fixtures catch the mutation
@@ -117,6 +160,22 @@ final class MediaMappingTests: XCTestCase {
         // And the real table passes the same cases, so the red is the mutant's.
         let real = ParitySuite(data: try ParityData.load(parityDir: dir), runners: [MediaEpisodeFamily.runner]).run()
         XCTAssertEqual(real.results(for: "media-episode").filter { $0.outcome.isFailure }.map(\.id), [])
+    }
+
+    /// CH3-10's mutation: an availability that ignores the track route (the
+    /// native lane before CH3-10). The fixture run must mark the speaker cases
+    /// FAILED.
+    func testTheFixturesCatchTheTrackRouteIgnored() throws {
+        let mutant = MediaEpisodeFamily.makeRunner(commandAvailability: { snapshot, _ in
+            MediaMapping.commandAvailability(snapshot, trackRoute: true)
+        })
+        let dir = try ParityLocator.locate()
+        let report = ParitySuite(data: try ParityData.load(parityDir: dir), runners: [mutant]).run()
+        let results = Dictionary(uniqueKeysWithValues: report.results(for: "media-episode").map { ($0.id, $0.outcome) })
+        for id in ["media-episode/availability-speaker-keeps-the-skip-pair-with-up-next",
+                   "media-episode/availability-foray-on-speaker-keeps-the-skip-pair"] {
+            XCTAssertEqual(results[id], .failed, "\(id) did not catch the track route ignored")
+        }
     }
 
     // MARK: - presses

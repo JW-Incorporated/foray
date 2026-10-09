@@ -47,7 +47,8 @@ public class EnginePlayerTest {
     static ForayEngineHost.Surface idle() {
         MediaMapping.CommandSnapshot snap = new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.UNLOADED,
                 false, false, false, false);
-        return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT), null, false, 0);
+        return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT, ForayEngineHost.TRACK_ROUTE),
+                null, false, 0);
     }
 
     static ForayEngineHost.Surface episode(boolean playing, boolean canNext, boolean buffering) {
@@ -61,7 +62,7 @@ public class EnginePlayerTest {
         v.playbackRate = 1.0;
         v.playing = playing;
         v.buffering = buffering;
-        return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT),
+        return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT, ForayEngineHost.TRACK_ROUTE),
                 MediaMapping.sessionView(v), buffering, 1);
     }
 

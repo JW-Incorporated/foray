@@ -4,12 +4,13 @@ import Foundation
 //
 // The two readings the host's surface needs from the core after every turn:
 // which remote commands work (`commandSnapshot`, fed to
-// `MediaMapping.commandAvailability`) and what Now Playing says
-// (`mediaView`, fed to `MediaMapping.sessionView`). Both are READ from the
-// state; neither decides anything `MediaMapping` does not already decide, so
-// there is one enablement rule and one metadata rule, fixture-pinned by the
-// `media-episode` family, and the host's NowPlayingPublisher and RemoteSurface
-// only carry the answers to MediaPlayer.
+// `MediaMapping.commandAvailability` with the host's track-route reading)
+// and what Now Playing says (`mediaView`, fed to `MediaMapping.sessionView`).
+// Both are READ from the state; neither decides anything `MediaMapping` does
+// not already decide, so there is one enablement rule and one metadata rule,
+// fixture-pinned by the `media-episode` family (the enablement by its
+// `availability-*` cases, CH3-10), and the host's NowPlayingPublisher and
+// RemoteSurface only carry the answers to MediaPlayer.
 //
 // Here and not in the host because NE-20's snapshot needs the same `mode`
 // (`none` after a close is the snapshot's word too), and a pure reading runs

@@ -267,7 +267,9 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// comes from WITHOUT LOOKING -- a headset, a Bluetooth stack, a car (the
     /// platform contract, `docs/DECISIONS.md` 2026-09-23; audit round 2,
     /// p-impatient-3). Read from `AVAudioSession.currentRoute` at load and on
-    /// every route change, on `stateQueue`. See `applyCommandAvailability`.
+    /// every route change, on `stateQueue`, through the core's
+    /// `MediaMapping.trackCommandsAllowed(portTypes:)` -- the ONE rule the
+    /// engine lane asks too (CH3-10). See `applyCommandAvailability`.
     private var trackRoutePresent = false
 
     /// Whether today's registration has run in this process: at `load()` in
@@ -353,7 +355,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // player that has not loaded anything. `.empty` is the payload the
         // page has not sent yet, so the first real `setNowPlaying` is a
         // change the command centre can see.
-        trackRoutePresent = Self.trackCommandsAllowed(
+        trackRoutePresent = MediaMapping.trackCommandsAllowed(
             portTypes: AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }
         )
         applyCommandAvailability(.empty)
@@ -542,7 +544,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                back to the skip pair. `force`, because the payload did not
                change and the write is what matters. */
             let hadTrackRoute = self.trackRoutePresent
-            self.trackRoutePresent = Self.trackCommandsAllowed(portTypes: outputs)
+            self.trackRoutePresent = MediaMapping.trackCommandsAllowed(portTypes: outputs)
             if hadTrackRoute != self.trackRoutePresent {
                 self.applyCommandAvailability(self.lastPayload, force: true)
             }
@@ -1546,32 +1548,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// nothing, which leaves the OS its default rather than inventing one.
     static func preferredIntervals(ms: Int64) -> [NSNumber] {
         ms > 0 ? [NSNumber(value: Double(ms) / 1000.0)] : []
-    }
-
-    /// The output port types on which a next/previous press exists WITHOUT
-    /// LOOKING: wired and Bluetooth headsets, a car (CarPlay's `carAudio`, a
-    /// Bluetooth head unit's A2DP/HFP), USB and AirPlay receivers with their
-    /// own transport. The built-in speaker and receiver are not on it: there
-    /// the only surface is the lock screen, which draws ⏮/⏭ over the founder's
-    /// ↺15/30↻ the moment the track pair is enabled (founder question 1, audit
-    /// round 2). `AVAudioSession.Port` raw values, so the XCTests can table
-    /// them without a live session.
-    static let trackRoutePortTypes: Set<String> = [
-        AVAudioSession.Port.headphones.rawValue,
-        AVAudioSession.Port.bluetoothA2DP.rawValue,
-        AVAudioSession.Port.bluetoothHFP.rawValue,
-        AVAudioSession.Port.bluetoothLE.rawValue,
-        AVAudioSession.Port.carAudio.rawValue,
-        AVAudioSession.Port.usbAudio.rawValue,
-        AVAudioSession.Port.airPlay.rawValue,
-    ]
-
-    /// Whether `nextTrackCommand`/`previousTrackCommand` may be enabled on
-    /// this route (the platform contract, `docs/DECISIONS.md` 2026-09-23):
-    /// true when ANY output is a port from `trackRoutePortTypes`. Pure, so
-    /// `ForayAudioPluginTests` pins it.
-    static func trackCommandsAllowed(portTypes: [String]) -> Bool {
-        portTypes.contains { trackRoutePortTypes.contains($0) }
     }
 
     /// Enable/disable each command from the `can*`/`has*` flags -- exactly

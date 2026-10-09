@@ -364,9 +364,17 @@ public final class ForayEngineHost {
 
     // ---- the surface
 
+    /**
+     * The track route, always present on Android: the notification and Android Auto draw the
+     * skip pair and the track pair side by side, so the iOS lock screen's "one control per
+     * side" problem the 2026-09-23 ruling solves does not arise here (code-health-3 founder
+     * question 3, on its default; queued on #1163).
+     */
+    static final boolean TRACK_ROUTE = true;
+
     private Surface computeSurface(int seq) {
         MediaMapping.CommandAvailability availability =
-                MediaMapping.commandAvailability(core.commandSnapshot(), MediaMapping.SeekSteps.DEFAULT);
+                MediaMapping.commandAvailability(core.commandSnapshot(), MediaMapping.SeekSteps.DEFAULT, TRACK_ROUTE);
         MediaMapping.SessionView view = null;
         if (!availability.clearsNowPlaying()) {
             MediaMapping.View mv = core.mediaView(seams.deck.reading());
@@ -383,7 +391,7 @@ public final class ForayEngineHost {
     private static Surface clearedSurface(int seq) {
         MediaMapping.CommandSnapshot none = new MediaMapping.CommandSnapshot(
                 MediaMapping.CommandSnapshot.Mode.UNLOADED, false, false, false, false);
-        return new Surface(MediaMapping.commandAvailability(none, MediaMapping.SeekSteps.DEFAULT), null, false, seq);
+        return new Surface(MediaMapping.commandAvailability(none, MediaMapping.SeekSteps.DEFAULT, TRACK_ROUTE), null, false, seq);
     }
 
     private void publishSurface() {

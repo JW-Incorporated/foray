@@ -61,7 +61,7 @@ public class PolicyPortTest {
     public void commandAvailabilityFollowsTheSnapshot() {
         MediaMapping.CommandAvailability episode = MediaMapping.commandAvailability(
                 new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.EPISODE, true, false, true, false),
-                MediaMapping.SeekSteps.DEFAULT);
+                MediaMapping.SeekSteps.DEFAULT, true);
         assertFalse(episode.clearsNowPlaying());
         assertEquals(EnumSet.of(MediaMapping.RemoteCommand.PLAY, MediaMapping.RemoteCommand.PAUSE, MediaMapping.RemoteCommand.TOGGLE_PLAY_PAUSE,
                 MediaMapping.RemoteCommand.PREVIOUS_TRACK, MediaMapping.RemoteCommand.SKIP_BACKWARD, MediaMapping.RemoteCommand.SKIP_FORWARD,
@@ -71,17 +71,36 @@ public class PolicyPortTest {
 
         MediaMapping.CommandAvailability foray = MediaMapping.commandAvailability(
                 new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.FORAY, false, true, false, true),
-                MediaMapping.SeekSteps.DEFAULT);
+                MediaMapping.SeekSteps.DEFAULT, true);
         assertTrue(foray.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK));
         assertFalse(foray.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK));
 
         for (MediaMapping.CommandSnapshot done : new MediaMapping.CommandSnapshot[] {
             new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.FORAY, true, true, true, true),
             new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.UNLOADED, false, false, false, false)}) {
-            MediaMapping.CommandAvailability a = MediaMapping.commandAvailability(done, MediaMapping.SeekSteps.DEFAULT);
+            MediaMapping.CommandAvailability a = MediaMapping.commandAvailability(done, MediaMapping.SeekSteps.DEFAULT, true);
             assertTrue(a.clearsNowPlaying());
             assertTrue(a.enabled().isEmpty());
         }
+    }
+
+    /**
+     * CH3-10 (R1-03): the track pair only where a track button exists, in the core. With a
+     * neighbour on both sides, no track route enables the skip pair and NOT the track pair; a
+     * track route enables both. TO SEE IT FAIL: drop {@code && trackRoute} from either term.
+     */
+    @Test
+    public void theTrackPairNeedsATrackRoute() {
+        MediaMapping.CommandSnapshot upNext =
+                new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.EPISODE, false, true, true, true);
+        MediaMapping.CommandAvailability speaker = MediaMapping.commandAvailability(upNext, MediaMapping.SeekSteps.DEFAULT, false);
+        assertFalse(speaker.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK));
+        assertFalse(speaker.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK));
+        assertTrue(speaker.isEnabled(MediaMapping.RemoteCommand.SKIP_FORWARD));
+        assertTrue(speaker.isEnabled(MediaMapping.RemoteCommand.SKIP_BACKWARD));
+        MediaMapping.CommandAvailability car = MediaMapping.commandAvailability(upNext, MediaMapping.SeekSteps.DEFAULT, true);
+        assertTrue(car.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK));
+        assertTrue(car.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK));
     }
 
     /** {@code setRate}'s decision: snapped onto the ladder, and it SAYS it snapped. */
