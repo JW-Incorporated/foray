@@ -27,9 +27,8 @@
      - engine-contract.js keeps its `isObj` and `isFiniteNum`: its only import
        is the vocabulary (its own header), so the bridge contract can be read,
        ported and checked on its own.
-     - locate-window.js keeps its `isNum`: the native webdir copies it as a
-       dependency-free reference (its header), and locate-window.test.js pins
-       that it loads nothing.
+     - locate-window.js keeps its `isNum`: it is a dependency-free reference
+       (its header), and locate-window.test.js pins that it loads nothing.
    (player/parity/'s codec.js and compare.js are the parity harness, not the
    player, and keep their own `isPlainObject`.)
 

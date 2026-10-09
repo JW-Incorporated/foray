@@ -212,7 +212,8 @@ const RUNTIME_DATA = [
    (test/boot-path.test.js perf-1 pins them equal), the manifest the SW
    precaches, and tools/web/prepare-dist.mjs's dist, which imports it. A module
    joins by being imported, and nothing else. The native webdir
-   (tools/mobile/prepare-webdir.mjs) still copies every non-test player/*.js.
+   (tools/mobile/prepare-webdir.mjs `playerFiles`) ships this same list since
+   perf/bundle-trim-1; it used to copy every non-test player/*.js.
 
    The edges are read from the source with a pattern, not a parser: a static
    `import … from "./x.js"`, `import "./x.js"` or `export … from "./x.js"`
