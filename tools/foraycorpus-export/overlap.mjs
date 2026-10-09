@@ -30,6 +30,7 @@ import { parseArgs } from "node:util";
 
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { ROOT } from "./config.mjs";
+import { idKey, JsonlError, readJsonl } from "./rows.mjs";
 
 export const DEFAULT_BREADTH_PATH = join(ROOT, "data", "catalog-breadth.json");
 
@@ -40,13 +41,6 @@ export class OverlapError extends Error {
     this.code = code;
     this.detail = detail ?? null;
   }
-}
-
-/** An id as a comparable string, or null when absent / blank. */
-function idKey(value) {
-  if (value == null) return null;
-  const s = String(value).trim();
-  return s === "" ? null : s;
 }
 
 /**
@@ -86,19 +80,15 @@ export function computeOverlap(showRows, breadthDoc) {
   };
 }
 
-/** Parses a shows.jsonl file (blank lines skipped). */
+/** Parses a shows.jsonl file (rows.mjs readJsonl: blank lines skipped); a
+    malformed line throws OverlapError MALFORMED_ROW naming `<path>:<line>`. */
 export function readShowsJsonl(path) {
-  const rows = [];
-  const lines = readFileSync(path, "utf8").split(/\r?\n/);
-  lines.forEach((line, i) => {
-    if (line.trim() === "") return;
-    try {
-      rows.push(JSON.parse(line));
-    } catch {
-      throw new OverlapError("MALFORMED_ROW", `${path}:${i + 1}`);
-    }
-  });
-  return rows;
+  try {
+    return readJsonl(path);
+  } catch (e) {
+    if (e instanceof JsonlError) throw new OverlapError(e.code, e.detail);
+    throw e;
+  }
 }
 
 function main(argv) {

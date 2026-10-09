@@ -64,6 +64,14 @@ Add one paragraph per module as it lands.
   `counts.json` (13 assets, 8 episodes, 4 English timed, 3 timed + audio);
   its README records which column lists are brief §1 and which are ASSUMED
   until PKG-03 confirms them.
+- **`time.mjs`, `rows.mjs`** (CH2-30): the package's one copy of its small
+  helpers; no module keeps a private one. `time.mjs` `instant(value)` is a
+  timestamp in ms (or null) from an ISO string or a pg `Date` (read with
+  `getTime()`, so the milliseconds survive; `Date.parse` of a `Date` drops
+  them), and `toIsoOrNull` its ISO string. `rows.mjs` has `rowsOf(doc)` (an
+  array, or a catalogue's `shows` array, else `[]`), `idKey` (an id as a
+  trimmed string, or null) and `readJsonl(path)` (blank lines skipped,
+  `JsonlError MALFORMED_ROW` with `path:line`).
 - **`catalogue.mjs`** (PKG-04): `buildShows(source, { catalog })` streams the
   corpus tables once each and returns `{ rows, stats, chosenFeedByPodcast }`:
   one `shows.jsonl` row per English podcast (`english_candidate_status ===
@@ -332,8 +340,8 @@ Add one paragraph per module as it lands.
   `git fetch origin main`, `git switch --no-track -c corpus-pointer/<tag>
   origin/main`, `git add -- data/corpus-catalogue-pointer.json` (nothing else
   is ever added), a check that the staged set is exactly that path (anything
-  else, or nothing, is refused before the commit), `git commit` with the
-  attribution trailers (`COMMIT_TRAILERS`), `git push -u origin <branch>`, and
+  else, or nothing, is refused before the commit), `git commit` (trailers only
+  from `FORAY_COMMIT_TRAILERS`, see below), `git push -u origin <branch>`, and
   publishCorpus's own PR command through `sh -c`. It then switches back to the
   branch the run started on, even after a failure, so next week's `git pull
   --ff-only` runs on main. A failed export publishes nothing. `--dry-run`
@@ -400,6 +408,20 @@ write on this repo only, and `gh auth setup-git`. The crontab line (Mondays
 ```
 0 6 * * 1 cd ~/foray && git pull --ff-only && npm ci --prefix tools/foraycorpus-export && set -a && . ~/.foray/foraycorpus.env && set +a && node tools/foraycorpus-export/weekly.mjs >> ~/.foray/corpus-export.log 2>&1
 ```
+
+The pointer commit carries no attribution trailer by default: the cron is
+not a Claude session and no model co-authors it, so `weekly.mjs` bakes none
+in (CH2-30). To add trailers, set `FORAY_COMMIT_TRAILERS` in
+`~/.foray/foraycorpus.env`, one trailer per line; a newline inside double
+quotes survives the `.` the crontab line sources the file with, and `set -a`
+exports it:
+
+```
+FORAY_COMMIT_TRAILERS="Run-By: hermes-vm weekly cron
+Another-Trailer: value"
+```
+
+Unset or blank means no trailers.
 
 Cron runs with a minimal `PATH` (`/usr/bin:/bin` on most systems): if
 `command -v node npm gh` shows any of them elsewhere (nvm, `/usr/local/bin`),

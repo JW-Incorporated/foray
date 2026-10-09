@@ -124,8 +124,8 @@ which also holds ~62 MB of pipeline inputs in `data/`
 (`breadth-classification.json` 16 MB, `catalog-breadth.json` 12 MB, and 13.1 MB
 and 12.2 MB `.gz` archives). The client fetches **2.1 MB** of it.
 
-`tools/mobile/prepare-webdir.mjs` copies the shell, every non-test module in
-`player/`, and only the data the client fetches, into `mobile/www` — one of those
+`tools/mobile/prepare-webdir.mjs` copies the shell, the `player/` modules the page loads (the import
+closure of `player/client.js`, the web's own list), and only the data the client fetches, into `mobile/www` — one of those
 data files as a bounded slice rather than a copy, for the reason §3 measures. It has
 exactly one dependency — esbuild, pinned in `tools/mobile/package.json` and used
 only to strip comments and whitespace from the copies (§3.4) — and it **fails**

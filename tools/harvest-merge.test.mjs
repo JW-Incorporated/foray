@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ROW_KEYS, LOOKUP_BATCH, canonicalRow, mergeBreadthHarvest, rowsMissingArtist,
-  backfillArtistNames, writeMergedHarvest, rankByAppleId,
+  backfillArtistNames, writeMergedHarvest, rankByAppleId, politeFetchJson, THROTTLE_MS,
 } from "./harvest-merge.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -264,4 +264,80 @@ test("REAL DATA: the committed breadth file kept the shows #1148 dropped, each d
     if (s.chart_rank === null) assert.ok(s.last_charted_at, `off-chart row ${s.apple_collection_id} has no last_charted_at`);
     assert.ok("artist_name" in s, `row ${s.apple_collection_id} has no artist_name key`);
   }
+});
+
+/* ==========================================================================
+   politeFetchJson — THE ONE retry policy for Apple's iTunes `lookup` calls
+   (CH2-32, docs/roadmap/code-health-2.md T1-19). tools/harvest-catalog.mjs,
+   tools/refresh/backfill-artwork.mjs and this file's --backfill-artist all
+   call it; their suites only prove they do. The policy: THROTTLE_MS before
+   every request; 429, 5xx and a thrown fetch (DNS blip, reset) are retried up
+   to 4 attempts with THROTTLE_MS * 2^attempt backoff; any other 4xx (a
+   malformed id batch is Apple 400) fails on the first attempt.
+   ========================================================================== */
+
+/* Replays `script` (one entry per fetch: a status number, or an Error to
+   throw) against globalThis.fetch for the length of `fn`. */
+async function withFakeFetch(script, fn) {
+  const real = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url, init });
+    const step = script[Math.min(calls.length - 1, script.length - 1)];
+    if (step instanceof Error) throw step;
+    return { status: step, ok: step >= 200 && step < 300, json: async () => ({ results: [{ n: calls.length }] }) };
+  };
+  try { return await fn(calls); } finally { globalThis.fetch = real; }
+}
+
+test("politeFetchJson: 429 and 5xx are retried with backoff, THROTTLE_MS before every request", async () => {
+  /* MUTATION: retry only 429 (drop `>= 500`) -> the 503 throws.
+     MUTATION: drop the backoff sleep -> the sleep log loses 6000 and 12000. */
+  await withFakeFetch([429, 503, 200], async (calls) => {
+    const sleeps = [];
+    const starts = [];
+    const fetchJson = politeFetchJson({ sleep: async (ms) => { sleeps.push(ms); }, log: starts });
+    const body = await fetchJson("https://itunes.apple.com/lookup?id=1&entity=podcast");
+    assert.deepStrictEqual(body, { results: [{ n: 3 }] });
+    assert.strictEqual(calls.length, 3);
+    assert.strictEqual(starts.length, 3, "one start time per request");
+    assert.deepStrictEqual(sleeps, [THROTTLE_MS, THROTTLE_MS * 2, THROTTLE_MS, THROTTLE_MS * 4, THROTTLE_MS]);
+    assert.match(calls[0].init.headers["User-Agent"], /\S/, "the polite User-Agent is sent");
+  });
+});
+
+test("politeFetchJson: 400 and 404 fail on the FIRST attempt; a persistent 5xx gives up after 4", async () => {
+  /* MUTATION: retry every !res.ok (harvest-catalog's old rule retried any
+     failure) -> a malformed id batch costs 4 requests and 3+6+12+24 s.
+     MUTATION: `attempt < 5` -> a dead endpoint is hit 5 times. */
+  for (const status of [400, 404]) {
+    await withFakeFetch([status, 200], async (calls) => {
+      const fetchJson = politeFetchJson({ sleep: async () => {} });
+      await assert.rejects(fetchJson("https://x/lookup"), new RegExp(`HTTP ${status}`));
+      assert.strictEqual(calls.length, 1, `${status} is not retried`);
+    });
+  }
+  await withFakeFetch([503], async (calls) => {
+    const fetchJson = politeFetchJson({ sleep: async () => {} });
+    await assert.rejects(fetchJson("https://x/lookup"), /HTTP 503/);
+    assert.strictEqual(calls.length, 4);
+  });
+});
+
+test("politeFetchJson: a thrown fetch is retried like a 5xx, and rethrown after 4 attempts", async () => {
+  /* RED before CH2-32: a DNS blip during the harvest-merge CLI's artist
+     backfill threw out of the whole run on the first attempt.
+     MUTATION: let a thrown fetch escape -> calls = 1 and the first case throws. */
+  await withFakeFetch([new TypeError("fetch failed"), 200], async (calls) => {
+    const sleeps = [];
+    const fetchJson = politeFetchJson({ sleep: async (ms) => { sleeps.push(ms); } });
+    assert.deepStrictEqual(await fetchJson("https://x/lookup"), { results: [{ n: 2 }] });
+    assert.strictEqual(calls.length, 2);
+    assert.deepStrictEqual(sleeps, [THROTTLE_MS, THROTTLE_MS * 2, THROTTLE_MS]);
+  });
+  await withFakeFetch([new TypeError("fetch failed")], async (calls) => {
+    const fetchJson = politeFetchJson({ sleep: async () => {} });
+    await assert.rejects(fetchJson("https://x/lookup"), /fetch failed/);
+    assert.strictEqual(calls.length, 4);
+  });
 });

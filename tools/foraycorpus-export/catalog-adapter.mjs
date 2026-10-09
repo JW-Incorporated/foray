@@ -78,6 +78,7 @@ import { ROW_KEYS } from "../harvest-merge.mjs";
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { EXPORT_OUT_DIR, ROOT } from "./config.mjs";
 import { readShowsJsonl } from "./overlap.mjs";
+import { rowsOf } from "./rows.mjs";
 
 /** The committed data/catalog-breadth.json's 20 row keys, in the file's order:
     the harvester's ROW_KEYS, then the topics tools/refresh/fold-breadth-topics.mjs
@@ -93,8 +94,6 @@ export class AdapterError extends Error {
     this.code = code;
   }
 }
-
-const rowsOf = (doc) => (Array.isArray(doc) ? doc : Array.isArray(doc?.shows) ? doc.shows : []);
 
 /** A positive decimal integer id as a number, else null. */
 function appleIdOf(value) {

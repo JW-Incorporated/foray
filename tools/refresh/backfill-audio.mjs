@@ -4,8 +4,16 @@
    Usage:
      node tools/refresh/backfill-audio.mjs --dry-run    # report, write nothing
      node tools/refresh/backfill-audio.mjs              # write data files
-     node tools/refresh/backfill-audio.mjs --force      # re-resolve everything
+     node tools/refresh/backfill-audio.mjs --force      # re-resolve discover items
      node tools/refresh/backfill-audio.mjs --limit 10   # first N shows only
+
+   --force re-resolves DISCOVER items only. session.json is text-patched, and
+   the patch fills a block only when its audio fields are empty (see
+   session-patch.mjs; a block that already carries audio_url is left alone and
+   the verify step then refuses the run, deliberately). So a session episode
+   that already has audio is never a target, with or without --force: forcing
+   it used to abort the whole run, discover refresh included, on the first
+   session URL that had moved (code-health-2 T1-02, CH2-36).
 
    STRATEGY — RSS primary, iTunes fallback. This is the inverse of what the
    issue originally proposed, and the reason is measured (see the review on
@@ -26,29 +34,25 @@
    feeds; corner case #8 wants per-host politeness, hence the throttle.        */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
-import { createRequire } from "node:module";
 import { audioFieldsFrom, hostOf, normalizeAudioUrl } from "./enclosure.mjs";
-import { UA, NIGHTLY_UA } from "../segments/politeness.mjs";
+import { UA } from "../segments/politeness.mjs";
 import { minutesFromSeconds } from "../check-durations.mjs";
 import { prepareSessionPatch } from "./session-patch.mjs";
 import { fetchFeedCapped } from "./fetch-limits.mjs";
+import { text, feedParser } from "./feed-xml.mjs";
+import { lookupEpisodes, norm } from "./resolve.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
-const { XMLParser } = backendRequire("fast-xml-parser");
 
 const THROTTLE_MS = 1500;
 
-const args = process.argv.slice(2);
-const DRY = args.includes("--dry-run");
-const FORCE = args.includes("--force");
-const LIMIT = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) : Infinity;
+/** How far back the iTunes fallback reaches: resolve.mjs's lookup at 200
+    (it uses 25), because this script exists for the back catalogue. */
+const ITUNES_LIMIT = 200;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
-const norm = (s) => (s || "").toLowerCase().replace(/&amp;/g, "&").replace(/[^a-z0-9]+/g, " ").trim();
 
 /* ---------- matching (corner case #3: composite identity) ----------
    GUIDs are unstable across republishes and we don't have them for existing
@@ -92,136 +96,146 @@ function bestMatch(item, entries) {
   return bestScore >= 0.75 ? best : null;
 }
 
-/* ---------- iTunes fallback ---------- */
+/* ---------- targets ---------- */
 
-const itunesCache = new Map();
-async function itunesEpisodes(collectionId) {
-  if (itunesCache.has(collectionId)) return itunesCache.get(collectionId);
-  const url = `https://itunes.apple.com/lookup?id=${collectionId}&entity=podcastEpisode&limit=200`;
-  let eps = [];
-  for (let attempt = 0; attempt < 3; attempt++) {
+/** The items this run resolves. Every target sits in one list so discover
+    items and session episodes take the identical code path (a divergence
+    there is how the flagship session ends up unplayable while the counters
+    look fine). Without --force: whatever lacks audio_url. With --force: every
+    discover item, and still only the session episodes that lack audio_url --
+    the session patch never overwrites a filled block (see the header). */
+export function workTargets(discover, session, { force = false } = {}) {
+  const targets = [
+    ...discover.items.map((i) => ({ ref: i, where: "discover" })),
+    ...Object.entries(session.episodes).map(([id, e]) => ({ ref: { id, ...e }, node: e, where: "session" })),
+  ];
+  return targets.filter((t) => (force && t.where === "discover") || !t.ref.audio_url);
+}
+
+/** One show's feed as match entries: title, ISO date and audio fields. */
+async function feedEntries(feedUrl, parser) {
+  // Capped and timed (code-health-2 T1-05): one hung or endless publisher
+  // must not hang or OOM a 220-feed run that holds every resolution in memory.
+  const doc = parser.parse(await fetchFeedCapped(feedUrl, { headers: { "User-Agent": UA } }));
+  let raw = doc?.rss?.channel?.item || [];
+  if (!Array.isArray(raw)) raw = [raw];
+  return raw.map((it) => {
+    const a = audioFieldsFrom(it);
+    let date = null;
+    try { const d = new Date(it.pubDate); date = Number.isNaN(+d) ? null : d.toISOString().slice(0, 10); } catch (_) {}
+    return { title: text(it.title) || "", date, ...a };
+  });
+}
+
+/* ---------- resolve ---------- */
+
+/** Resolves `needsWork` show by show: RSS first, iTunes for the leftovers.
+    Mutates each resolved target in place (see `apply`) and returns the
+    counters and the UNRESOLVED list. The network sits behind `entriesFor`
+    (show -> feed entries) and `lookup` (collection id -> resolve.mjs's
+    `lookupEpisodes` answer), so a test drives it offline. */
+export async function resolveAudio(needsWork, {
+  feedByCollection,
+  limit = Infinity,
+  entriesFor,
+  lookup = (cid) => lookupEpisodes(cid, { limit: ITUNES_LIMIT }),
+  pause = sleep,
+  log = console.log,
+} = {}) {
+  if (!entriesFor) {
+    const parser = feedParser();
+    entriesFor = (show) => feedEntries(show.feed_url, parser);
+  }
+  const byShow = new Map();
+  for (const t of needsWork) {
+    const cid = t.ref.apple_collection_id;
+    if (!cid) continue;
+    if (!byShow.has(cid)) byShow.set(cid, []);
+    byShow.get(cid).push(t);
+  }
+
+  const stats = { rss: 0, itunes: 0, unmatched: 0, withheld: 0, feedFail: 0, lookupFail: 0, noFeed: 0, disagree: 0 };
+  const unresolved = [];
+
+  const shows = [...byShow.entries()].slice(0, limit);
+  log(`${needsWork.length} item(s) need audio across ${byShow.size} show(s); processing ${shows.length}\n`);
+
+  let n = 0;
+  for (const [cid, items] of shows) {
+    n++;
+    const show = feedByCollection.get(cid);
+    const label = show?.title || `collection ${cid}`;
+    if (!show) {
+      stats.noFeed += items.length;
+      items.forEach((t) => unresolved.push({ id: t.ref.id, show: label, reason: "no feed_url in catalog" }));
+      continue;
+    }
+
+    await pause(THROTTLE_MS);
+    let entries = [];
+    let feedError = null;
     try {
-      const res = await fetch(url, { headers: { "User-Agent": NIGHTLY_UA } });
-      if (res.ok) {
-        const data = await res.json();
-        eps = (data.results || []).filter((r) => r.wrapperType === "podcastEpisode");
-        break;
-      }
-    } catch (_) { /* retry */ }
-    await sleep(800);
-  }
-  itunesCache.set(collectionId, eps);
-  return eps;
-}
-
-/* ---------- main ---------- */
-
-const catalog = JSON.parse(readFileSync(join(ROOT, "data", "catalog.json"), "utf8"));
-const discover = JSON.parse(readFileSync(join(ROOT, "data", "discover.json"), "utf8"));
-const session = JSON.parse(readFileSync(join(ROOT, "data", "session.json"), "utf8"));
-
-const feedByCollection = new Map(
-  (catalog.shows || []).filter((s) => s.feed_url).map((s) => [s.apple_collection_id, s])
-);
-
-// Every target in one list so discover items and session episodes take the
-// identical code path — a divergence here is exactly how the flagship session
-// ends up unplayable while the counters look fine.
-const targets = [
-  ...discover.items.map((i) => ({ ref: i, where: "discover" })),
-  ...Object.entries(session.episodes).map(([id, e]) => ({ ref: { id, ...e }, node: e, where: "session" })),
-];
-
-const needsWork = targets.filter((t) => FORCE || !t.ref.audio_url);
-const byShow = new Map();
-for (const t of needsWork) {
-  const cid = t.ref.apple_collection_id;
-  if (!cid) continue;
-  if (!byShow.has(cid)) byShow.set(cid, []);
-  byShow.get(cid).push(t);
-}
-
-const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
-const stats = { rss: 0, itunes: 0, unmatched: 0, withheld: 0, feedFail: 0, noFeed: 0, disagree: 0 };
-const unresolved = [];
-
-const shows = [...byShow.entries()].slice(0, LIMIT);
-console.log(`${needsWork.length} item(s) need audio across ${byShow.size} show(s); processing ${shows.length}\n`);
-
-let n = 0;
-for (const [cid, items] of shows) {
-  n++;
-  const show = feedByCollection.get(cid);
-  const label = show?.title || `collection ${cid}`;
-  if (!show) {
-    stats.noFeed += items.length;
-    items.forEach((t) => unresolved.push({ id: t.ref.id, show: label, reason: "no feed_url in catalog" }));
-    continue;
-  }
-
-  await sleep(THROTTLE_MS);
-  let entries = [];
-  let feedError = null;
-  try {
-    // Capped and timed (code-health-2 T1-05): one hung or endless publisher
-    // must not hang or OOM a 220-feed run that holds every resolution in memory.
-    const doc = parser.parse(await fetchFeedCapped(show.feed_url, { headers: { "User-Agent": UA } }));
-    let raw = doc?.rss?.channel?.item || [];
-    if (!Array.isArray(raw)) raw = [raw];
-    entries = raw.map((it) => {
-      const a = audioFieldsFrom(it);
-      let date = null;
-      try { const d = new Date(it.pubDate); date = Number.isNaN(+d) ? null : d.toISOString().slice(0, 10); } catch (_) {}
-      return { title: text(it.title) || "", date, ...a };
-    });
-  } catch (e) {
-    // Do NOT give up on the show — fall through with no entries so every item
-    // still gets the iTunes fallback below. `omega tau` fails chronically and
-    // its episodes are recent enough that iTunes can often rescue them.
-    feedError = e.message;
-    console.log(`[${n}/${shows.length}] ${label}: FEED ERROR ${e.message} — falling back to iTunes`);
-  }
-
-  let hit = 0, missItems = [];
-  for (const t of items) {
-    const m = bestMatch(t.ref, entries);
-    if (m && m.audio_url) {
-      apply(t, { audio_url: m.audio_url, audio_type: m.audio_type, audio_bytes: m.audio_bytes, duration_sec: m.duration_sec });
-      stats.rss++; hit++;
-    } else if (m && m.reason) {
-      stats.withheld++;
-      unresolved.push({ id: t.ref.id, show: label, reason: m.reason });
-    } else {
-      missItems.push(t);
+      entries = await entriesFor(show);
+    } catch (e) {
+      // Do NOT give up on the show — fall through with no entries so every item
+      // still gets the iTunes fallback below. `omega tau` fails chronically and
+      // its episodes are recent enough that iTunes can often rescue them.
+      feedError = e.message;
+      log(`[${n}/${shows.length}] ${label}: FEED ERROR ${e.message} — falling back to iTunes`);
     }
-  }
 
-  // Only the leftovers pay for an iTunes call.
-  if (missItems.length) {
-    const eps = await itunesEpisodes(cid);
-    for (const t of missItems) {
-      const ep = eps.find((e) => e.trackId === t.ref.apple_track_id);
-      const itunesUrl = ep ? normalizeAudioUrl(ep.episodeUrl).url : null;
-      if (itunesUrl) {
-        apply(t, {
-          audio_url: itunesUrl,
-          audio_type: ep.episodeFileExtension ? `audio/${ep.episodeFileExtension}` : null,
-          audio_bytes: null,
-          duration_sec: ep.trackTimeMillis ? Math.round(ep.trackTimeMillis / 1000) : null,
-        });
-        stats.itunes++; hit++;
+    let hit = 0, missItems = [];
+    for (const t of items) {
+      const m = bestMatch(t.ref, entries);
+      if (m && m.audio_url) {
+        apply(t, { audio_url: m.audio_url, audio_type: m.audio_type, audio_bytes: m.audio_bytes, duration_sec: m.duration_sec });
+        stats.rss++; hit++;
+      } else if (m && m.reason) {
+        stats.withheld++;
+        unresolved.push({ id: t.ref.id, show: label, reason: m.reason });
       } else {
-        if (feedError) stats.feedFail++; else stats.unmatched++;
-        unresolved.push({
-          id: t.ref.id, show: label,
-          reason: feedError ? `feed error (${feedError}) + no iTunes match` : "no RSS or iTunes match",
-        });
+        missItems.push(t);
       }
     }
+
+    // Only the leftovers pay for an iTunes call. A lookup that never got an
+    // answer is reported as the failure it is (resolve.mjs's semantics), not
+    // as "no match": an outage is not evidence the episode is missing
+    // (code-health-2 T1-11).
+    if (missItems.length) {
+      const look = await lookup(cid);
+      const feedPart = feedError ? `feed error (${feedError}) + ` : "";
+      for (const t of missItems) {
+        if (!look.ok) {
+          stats.lookupFail++;
+          unresolved.push({ id: t.ref.id, show: label, reason: `${feedPart}iTunes lookup failed (${look.error})` });
+          continue;
+        }
+        const ep = look.eps.find((e) => e.trackId === t.ref.apple_track_id);
+        const itunesUrl = ep ? normalizeAudioUrl(ep.episodeUrl).url : null;
+        if (itunesUrl) {
+          apply(t, {
+            audio_url: itunesUrl,
+            audio_type: ep.episodeFileExtension ? `audio/${ep.episodeFileExtension}` : null,
+            audio_bytes: null,
+            duration_sec: ep.trackTimeMillis ? Math.round(ep.trackTimeMillis / 1000) : null,
+          });
+          stats.itunes++; hit++;
+        } else {
+          if (feedError) stats.feedFail++; else stats.unmatched++;
+          unresolved.push({
+            id: t.ref.id, show: label,
+            reason: feedError ? `feed error (${feedError}) + no iTunes match` : "no RSS or iTunes match",
+          });
+        }
+      }
+    }
+
+    if (!feedError) log(`[${n}/${shows.length}] ${label}: ${hit}/${items.length} resolved (${entries.length} feed items)`);
+    else log(`    ${label}: ${hit}/${items.length} rescued via iTunes`);
   }
 
-  if (!feedError) console.log(`[${n}/${shows.length}] ${label}: ${hit}/${items.length} resolved (${entries.length} feed items)`);
-  else console.log(`    ${label}: ${hit}/${items.length} rescued via iTunes`);
+  return { stats, unresolved };
 }
 
 function apply(t, fields) {
@@ -255,59 +269,83 @@ function coverage(list, label) {
   return { recent: { ok: ok(recent), n: recent.length }, older: { ok: ok(older), n: older.length } };
 }
 
-console.log(`\n${"=".repeat(60)}`);
-console.log(`resolved: ${stats.rss} from RSS, ${stats.itunes} from iTunes fallback`);
-console.log(`failed  : ${stats.unmatched} unmatched, ${stats.withheld} withheld, ${stats.feedFail} feed errors, ${stats.noFeed} no feed_url`);
+/* ---------- main ---------- */
 
-// Coverage is reported SEPARATELY for recent vs back catalogue. A single
-// blended number is what hid this problem in the first place: 83% of the
-// catalogue is 2026 content, so an iTunes-only run scores ~83% while leaving
-// every older item — including most of the flagship session — unplayable.
-coverage(discover.items, "discover.json");
-const sessionEps = Object.values(session.episodes);
-coverage(sessionEps, "session.json");
+async function main() {
+  const args = process.argv.slice(2);
+  const DRY = args.includes("--dry-run");
+  const FORCE = args.includes("--force");
+  const LIMIT = args.includes("--limit") ? Number(args[args.indexOf("--limit") + 1]) : Infinity;
 
-const sessionOk = sessionEps.filter((e) => e.audio_url).length;
-if (sessionOk < sessionEps.length) {
-  console.log(`\n!! session.json is ${sessionOk}/${sessionEps.length} — the acceptance bar for #21 is 100%.`);
+  const catalog = JSON.parse(readFileSync(join(ROOT, "data", "catalog.json"), "utf8"));
+  const discover = JSON.parse(readFileSync(join(ROOT, "data", "discover.json"), "utf8"));
+  const session = JSON.parse(readFileSync(join(ROOT, "data", "session.json"), "utf8"));
+
+  const feedByCollection = new Map(
+    (catalog.shows || []).filter((s) => s.feed_url).map((s) => [s.apple_collection_id, s])
+  );
+
+  const needsWork = workTargets(discover, session, { force: FORCE });
+  const { stats, unresolved } = await resolveAudio(needsWork, { feedByCollection, limit: LIMIT });
+
+  console.log(`\n${"=".repeat(60)}`);
+  console.log(`resolved: ${stats.rss} from RSS, ${stats.itunes} from iTunes fallback`);
+  console.log(`failed  : ${stats.unmatched} unmatched, ${stats.withheld} withheld, ${stats.feedFail} feed errors, ${stats.lookupFail} iTunes lookup failures, ${stats.noFeed} no feed_url`);
+
+  // Coverage is reported SEPARATELY for recent vs back catalogue. A single
+  // blended number is what hid this problem in the first place: 83% of the
+  // catalogue is 2026 content, so an iTunes-only run scores ~83% while leaving
+  // every older item — including most of the flagship session — unplayable.
+  coverage(discover.items, "discover.json");
+  const sessionEps = Object.values(session.episodes);
+  coverage(sessionEps, "session.json");
+
+  const sessionOk = sessionEps.filter((e) => e.audio_url).length;
+  if (sessionOk < sessionEps.length) {
+    console.log(`\n!! session.json is ${sessionOk}/${sessionEps.length} — the acceptance bar for #21 is 100%.`);
+  }
+
+  if (unresolved.length) {
+    console.log(`\nUNRESOLVED (${unresolved.length}):`);
+    for (const u of unresolved.slice(0, 40)) console.log(`  ${u.show} :: ${u.id} :: ${u.reason}`);
+    if (unresolved.length > 40) console.log(`  … and ${unresolved.length - 40} more`);
+  }
+
+  /* ---------- writing ----------
+
+     discover.json is machine-owned: merge.mjs already rewrites it wholesale with
+     the same 2-space stringify, so a full re-serialise is consistent with how the
+     nightly maintains it.
+
+     session.json is NOT. It is hand-authored ("builder": "hand-architect-v1"),
+     every episode block is deliberately kept on one line, and the founders read
+     it. A blind JSON.stringify reformats all 27 blocks and turns 27 real edits
+     into a ~670-line diff — unreviewable, and it destroys formatting somebody
+     chose on purpose. So we patch its TEXT in place instead, inserting the four
+     fields after `"duration_min": N` and leaving every other byte alone.        */
+
+  /* The patch itself lives in ./session-patch.mjs, shared with classify-dai. */
+
+  if (DRY) {
+    console.log("\n--dry-run: no files written.");
+  } else {
+    // Never write a session.json we cannot prove is both valid and correct: it
+    // is the document the whole client boots from. And prove it BEFORE writing
+    // discover.json (audit round 3, data-tools-11): a verification that threw
+    // after discover.json was rewritten left the two documents disagreeing.
+    const sessionPath = join(ROOT, "data", "session.json");
+    const original = readFileSync(sessionPath, "utf8");
+    const { txt, missed } = prepareSessionPatch(original, session.episodes, { kind: "audio" });
+
+    discover.built_at = new Date().toISOString();
+    writeFileSync(join(ROOT, "data", "discover.json"), JSON.stringify(discover, null, 2) + "\n");
+    if (missed.length) console.log(`WARN could not patch ${missed.length} session episode(s): ${missed.join(", ")}`);
+    writeFileSync(sessionPath, txt);
+
+    console.log("\nwrote data/discover.json (re-serialised) + data/session.json (text-patched, formatting preserved)");
+  }
 }
 
-if (unresolved.length) {
-  console.log(`\nUNRESOLVED (${unresolved.length}):`);
-  for (const u of unresolved.slice(0, 40)) console.log(`  ${u.show} :: ${u.id} :: ${u.reason}`);
-  if (unresolved.length > 40) console.log(`  … and ${unresolved.length - 40} more`);
-}
-
-/* ---------- writing ----------
-
-   discover.json is machine-owned: merge.mjs already rewrites it wholesale with
-   the same 2-space stringify, so a full re-serialise is consistent with how the
-   nightly maintains it.
-
-   session.json is NOT. It is hand-authored ("builder": "hand-architect-v1"),
-   every episode block is deliberately kept on one line, and the founders read
-   it. A blind JSON.stringify reformats all 27 blocks and turns 27 real edits
-   into a ~670-line diff — unreviewable, and it destroys formatting somebody
-   chose on purpose. So we patch its TEXT in place instead, inserting the four
-   fields after `"duration_min": N` and leaving every other byte alone.        */
-
-/* The patch itself lives in ./session-patch.mjs, shared with classify-dai. */
-
-if (DRY) {
-  console.log("\n--dry-run: no files written.");
-} else {
-  // Never write a session.json we cannot prove is both valid and correct: it
-  // is the document the whole client boots from. And prove it BEFORE writing
-  // discover.json (audit round 3, data-tools-11): a verification that threw
-  // after discover.json was rewritten left the two documents disagreeing.
-  const sessionPath = join(ROOT, "data", "session.json");
-  const original = readFileSync(sessionPath, "utf8");
-  const { txt, missed } = prepareSessionPatch(original, session.episodes, { kind: "audio" });
-
-  discover.built_at = new Date().toISOString();
-  writeFileSync(join(ROOT, "data", "discover.json"), JSON.stringify(discover, null, 2) + "\n");
-  if (missed.length) console.log(`WARN could not patch ${missed.length} session episode(s): ${missed.join(", ")}`);
-  writeFileSync(sessionPath, txt);
-
-  console.log("\nwrote data/discover.json (re-serialised) + data/session.json (text-patched, formatting preserved)");
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => { console.error("FATAL:", e); process.exit(1); });
 }

@@ -1,15 +1,18 @@
 // api/_lib/showIdMap.ts — the Apple collectionId -> 4a show_id map behind
 // api/episodes/search.ts's Apple fallback (code-health-2 CH2-02, A1-01).
 //
-// The two committed catalogue files are the map's only source. These pins
-// are about the source, not the merge rule: the curated-first merge and the
-// in_curated skip are pinned in episodes-search.test.mjs.
+// The two committed catalogue files are the map's only source, read through
+// api/_lib/showCatalog.ts (code-health-2 CH2-24). These pins are about the
+// source and its agreement with the show lookup, not the merge rule: the
+// curated-first merge and the in_curated skip are pinned in
+// episodes-search.test.mjs.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadShowIdMap, _resetShowIdMapCacheForTests } from "../_lib/showIdMap.ts";
+import { loadShowIdMap } from "../_lib/showIdMap.ts";
+import { showById } from "../_lib/showCatalog.ts";
 import { buildIdMap } from "../../tools/shows/shard-build.mjs";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -27,12 +30,10 @@ async function withThrowingFetch(run) {
     calls.push(String(url));
     throw new Error("showIdMap must not touch the network");
   };
-  _resetShowIdMapCacheForTests();
   try {
     return await run(calls);
   } finally {
     globalThis.fetch = realFetch;
-    _resetShowIdMapCacheForTests();
   }
 }
 
@@ -62,16 +63,26 @@ test("the map is built from the two committed catalogue files", async () => {
 test("loading the map makes no network call, and a throwing fetch cannot fail it", async () => {
   /* MUTATION: re-add a fetch of the pointer's id-map URL to loadShowIdMap
      (`await fetch(pointer.<id-map url>)`) — the stub records the call and
-     throws, and this goes red. The first call hands the same stub in as
-     `fetchImpl`, the way api/episodes/search.ts passes `fetch`; the second
-     passes nothing, so either way of reaching the network is recorded. */
+     throws, and this goes red. */
   await withThrowingFetch(async (calls) => {
-    const first = await loadShowIdMap({ fetchImpl: globalThis.fetch });
+    const first = await loadShowIdMap();
     const again = await loadShowIdMap();
     assert.ok(first.byCollectionId.size > 0);
-    assert.equal(again, first, "memoised per warm instance");
+    assert.equal(again.byCollectionId, first.byCollectionId, "memoised per warm instance (by showCatalog.ts)");
     assert.deepEqual(calls, []);
   });
+});
+
+test("every show_id the map hands out is one the show lookup answers (CH2-24)", async () => {
+  /* The map and the show lookup are one catalogue now, so an Apple hit links
+     to the id its show page is served under. MUTATION: in breadthCatalog.ts
+     map every breadth row to its own number, `in_curated` too
+     (`showIdByAppleId.set(id, id)` above the `in_curated` skip) -> 175 Apple
+     hits link to a numeric id the lookup answers as a DIFFERENT id (the
+     twin's slug), and this is red. */
+  const map = await loadShowIdMap();
+  const dead = [...map.byCollectionId].filter(([, showId]) => showById(showId)?.show_id !== showId);
+  assert.deepEqual(dead.slice(0, 5), [], `${dead.length} mapped show_ids resolve to nothing`);
 });
 
 test("the released id-map.json is slug -> pi_id, not an Apple collectionId -> show_id map", () => {

@@ -127,6 +127,14 @@ export async function fetchFeedConditional(
     const lastModified = res.headers.get("last-modified");
 
     if (!res.ok) {
+      // Free the socket now rather than leaving a (possibly large or endless)
+      // error body for GC to reclaim (code-health-2 B1-04; fetch-feed.mjs
+      // already did this, and fetchFeedParity.test.ts pins both).
+      try {
+        await res.body?.cancel?.();
+      } catch {
+        // best-effort: the result below does not depend on the body
+      }
       return {
         status: res.status,
         notModified: false,

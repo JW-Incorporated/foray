@@ -27,8 +27,8 @@
    file wires nothing. Not on the boot path (CH-07): it is a JS reference
    nothing in the page imports, so the web neither modulepreloads, precaches
    nor deploys it until a caller imports it (tools/ci/generate-manifest.mjs
-   lists only player/client.js's import closure); the native webdir still
-   copies it, so it stays dependency-free and small. */
+   lists only player/client.js's import closure), and the native webdir ships
+   the same list. It stays dependency-free and small. */
 
 /** How much shorter than authored a located span may be (anchor-match jitter). */
 export const LOCATED_SPAN_TOLERANCE_SEC = 2;

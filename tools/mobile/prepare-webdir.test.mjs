@@ -56,7 +56,7 @@ import {
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
 import { isGeneratedDraft } from "../../player/foray-resolve.js";
-import { sourceStamp, computeManifest } from "../ci/generate-manifest.mjs";
+import { sourceStamp, computeManifest, playerSources } from "../ci/generate-manifest.mjs";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -159,7 +159,7 @@ test("no pipeline input is in the plan", () => {
 });
 
 test("the plan is closed under the player's own imports", () => {
-  /* The anti-fork test. `playerFiles` takes "every non-test .js in player/",
+  /* The anti-fork test. `playerFiles` is player/client.js's import closure,
      which is correct only while the player is a flat directory of siblings. The
      day a module moves into `player/backends/`, this fails instead of shipping an
      app whose very first import 404s. */
@@ -174,6 +174,34 @@ test("the plan is closed under the player's own imports", () => {
     }
   }
   assert.deepEqual(missing, []);
+});
+
+test("the bundle ships the web's player module list, not the directory (perf/bundle-trim-1)", () => {
+  /* `playerFiles` is `playerSources` — player/client.js's import closure, the list
+     index.html preloads and the web deploys — and no longer "every non-test .js".
+     KILLING MUTATION: restore the directory walk in `playerFiles`
+     (`fs.readdirSync(path.join(root, "player")).filter((f) => f.endsWith(".js") &&
+     !f.endsWith(".test.js"))`) — the fixture's orphan is copied into the bundle and
+     the real tree's five unimported modules reappear in the plan. */
+  const fake = makeFakeRepo();
+  fs.writeFileSync(path.join(fake, "player", "orphan.js"), "export const nobodyImportsThis = 1;\n");
+  prepare({ root: fake, out: "www" });
+  assert.ok(fs.existsSync(path.join(fake, "www", "player", "queue-manager.js")),
+    "a module client.js imports must ship");
+  assert.equal(fs.existsSync(path.join(fake, "www", "player", "orphan.js")), false,
+    "a module nothing imports must not ship");
+
+  /* On the real tree: exactly the web's list, and the difference is not vacuous —
+     there ARE runtime modules nothing imports, so this assertion is about something. */
+  const web = playerSources(ROOT).map((rel) => rel.split(path.sep).join("/")).sort();
+  const planned = buildPlan(ROOT).filter((rel) => rel.startsWith("player/"));
+  assert.deepEqual(planned, web);
+  const orphans = fs.readdirSync(path.join(ROOT, "player"))
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+    .map((f) => `player/${f}`)
+    .filter((rel) => !web.includes(rel));
+  assert.ok(orphans.length > 0, "no unimported player module exists, so this test no longer proves the trim");
+  for (const rel of orphans) assert.ok(!planned.includes(rel), `${rel} is imported by nothing and must not ship`);
 });
 
 test("index.html's own script and style references are all bundled", () => {
