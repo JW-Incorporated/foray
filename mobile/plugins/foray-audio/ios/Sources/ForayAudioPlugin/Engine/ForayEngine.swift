@@ -842,7 +842,7 @@ final class ForayEngine {
     private func interpretPreview(_ command: DeckCommand) {
         if let preview = seams.preview {
             preview.send(command)
-        } else if case let .load(token, _, _, _, _, _) = command {
+        } else if case let .load(token, _, _, _, _, _, _) = command {
             handle(.preview(.failed(token: token, message: "no preview deck")))
         }
     }

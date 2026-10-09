@@ -497,7 +497,7 @@ final class AVDeck: DeckDriving {
         dispatchPrecondition(condition: .onQueue(.main))
         guard !invalidated else { return }
         switch command {
-        case let .load(token, _, url, startSec, preciseTiming, deadlineClass):
+        case let .load(token, _, url, startSec, preciseTiming, deadlineClass, _):
             load(token: token, url: url, startSec: startSec, preciseTiming: preciseTiming, deadlineClass: deadlineClass)
         case .play:
             play()

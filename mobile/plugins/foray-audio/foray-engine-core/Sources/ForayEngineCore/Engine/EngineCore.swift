@@ -1151,7 +1151,7 @@ public struct EngineCore {
         state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec, attempt: attempt, url: opened)
         deckCommand(.load(token: token, itemId: item.id, url: opened, startSec: startSec,
                           preciseTiming: item.preciseTiming(approximateCBR: config.approximateCBRClips),
-                          deadlineClass: DeckDeadlineClass(item)))
+                          deadlineClass: DeckDeadlineClass(item), bounded: bounds != nil))
     }
 
     /// `_savedPositionFor(item)`: where a COLD start begins, through the one
@@ -2344,7 +2344,7 @@ public struct EngineCore {
     private mutating func deckCommand(_ command: DeckCommand) {
         out.append(.deck(command))
         switch command {
-        case let .load(_, _, _, startSec, _, deadlineClass):
+        case let .load(_, _, _, startSec, _, deadlineClass, _):
             state.lastLoadClass = deadlineClass
             state.lastLoadWallMs = now.wallMs
             deck.positionSec = startSec
@@ -2564,7 +2564,8 @@ public struct EngineCore {
         state.preparedItemId = next.item.id
         deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0,
                              deadlineClass: DeckDeadlineClass(next.item),
-                             preciseTiming: next.item.preciseTiming(approximateCBR: config.approximateCBRClips)))
+                             preciseTiming: next.item.preciseTiming(approximateCBR: config.approximateCBRClips),
+                             bounded: next.item.bounds != nil))
     }
 
     /// A seam that touches a Foray SEGMENT (a bounded slice): a Foray's line

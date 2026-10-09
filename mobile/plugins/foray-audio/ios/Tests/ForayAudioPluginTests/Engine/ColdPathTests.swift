@@ -103,7 +103,7 @@ final class ColdPathTests: XCTestCase {
         XCTAssertLessThan(grace, activate, "\(log)")
         XCTAssertLessThan(activate, load, "\(log)")
         XCTAssertLessThan(load, play, "\(log)")
-        guard case let .load(_, itemId, _, startSec, _, _)? = world.deck.sent.first(where: { $0.logName == "load" }) else {
+        guard case let .load(_, itemId, _, startSec, _, _, _)? = world.deck.sent.first(where: { $0.logName == "load" }) else {
             return XCTFail("no load: \(world.deck.sent)")
         }
         XCTAssertEqual(itemId, "a")
