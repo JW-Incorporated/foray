@@ -796,7 +796,7 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
       '  console.error("jq shim: unexpected invocation " + process.argv.slice(2).join(" ")); process.exit(2);',
       "}",
       'for (const j of JSON.parse(require("fs").readFileSync(file, "utf8")).jobs) {',
-      '  if (j.name === "summary" && j.conclusion !== "skipped") console.log(j.id);',
+      '  if (j.name === "summary" && j.conclusion !== "skipped") process.stdout.write(String(j.id) + "\\n");',
       "}",
       "",
     ].join("\n"));
@@ -826,6 +826,111 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
+});
+
+/** Runs a Fetch step's bash under shims and returns every `gh api` endpoint and
+ *  `git` call it made, in order, plus the files it left behind. */
+function fetchStepCalls(script, extraEnv = {}) {
+  const posix = (p) => p.replaceAll("\\", "/");
+  script = script.replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
+  const scratch = fs.mkdtempSync(path.join(ROOT, ".scratch-release-facts-"));
+  try {
+    const bin = path.join(scratch, "bin");
+    const work = path.join(scratch, "work");
+    const fx = path.join(scratch, "fx");
+    for (const d of [bin, work, fx]) fs.mkdirSync(d);
+    fs.writeFileSync(path.join(fx, "runs.json"), JSON.stringify({ workflow_runs: RUNS }));
+    fs.writeFileSync(path.join(fx, "jobs.json"), JSON.stringify({ jobs: JOBS_0906 }));
+    const shim = (name, body) => fs.writeFileSync(path.join(bin, name), body, { mode: 0o755 });
+    shim("gh", [
+      "#!/bin/bash",
+      '[ "$1" = "api" ] || { echo "mock gh: $*" >&2; exit 2; }',
+      `echo "gh $2" >> "${posix(fx)}/calls.txt"`,
+      'case "$2" in',
+      `  */workflows/release.yml/runs*) cat "${posix(fx)}/runs.json" ;;`,
+      `  */actions/runs/*/jobs) cat "${posix(fx)}/jobs.json" ;;`,
+      "  */actions/jobs/*/logs) echo 'the summary log' ;;",
+      `  */runs\\?event=schedule*) echo '{"workflow_runs":[]}' ;;`,
+      `  */actions/workflows/*.yml) echo '{"state":"active"}' ;;`,
+      `  */actions/runs\\?head_sha=*) echo '{"workflow_runs":[]}' ;;`,
+      `  */commits/*/status) echo '{"state":"success"}' ;;`,
+      `  */commits/*/check-runs*) echo '{"check_runs":[]}' ;;`,
+      '  *) echo "mock gh: unexpected endpoint $2" >&2; exit 2 ;;',
+      "esac",
+      "",
+    ].join("\n"));
+    shim("jq", [
+      "#!/usr/bin/env node",
+      "const [flag, filter, file] = process.argv.slice(2);",
+      'if (flag !== "-r" || !filter.includes(\'select(.name == "summary" and .conclusion != "skipped") | .id\')) {',
+      '  console.error("jq shim: unexpected invocation " + process.argv.slice(2).join(" ")); process.exit(2);',
+      "}",
+      'for (const j of JSON.parse(require("fs").readFileSync(file, "utf8")).jobs) {',
+      '  if (j.name === "summary" && j.conclusion !== "skipped") process.stdout.write(String(j.id) + "\\n");',
+      "}",
+      "",
+    ].join("\n"));
+    shim("git", [
+      "#!/bin/bash",
+      `echo "git $*" >> "${posix(fx)}/calls.txt"`,
+      '[ "$1" = "rev-parse" ] && echo "headsha0"',
+      '[ "$1" = "log" ] && printf \'\\036abc 2026-09-22T00:00:00Z a commit\\n\\nplayer/client.js\\n\'',
+      "exit 0",
+      "",
+    ].join("\n"));
+    shim("sleep", "#!/bin/bash\nexit 0\n");
+    fs.writeFileSync(path.join(work, "step.sh"), script);
+    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: REPO_SLUG, ...extraEnv };
+    execFileSync("bash", ["step.sh"], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    return {
+      calls: fs.readFileSync(path.join(fx, "calls.txt"), "utf8").trim().split("\n"),
+      files: fs.readdirSync(work).filter((f) => f !== "step.sh").sort(),
+    };
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+const REPO_SLUG = "JW-Incorporated/foray";
+const LAST_SHIPPED = "a5f90c124098086fc2358d67c0e72045c3d33f65";
+const GIT_WALK = `git log --first-parent --diff-merges=first-parent --no-renames --name-only --format=${GIT_LOG_FORMAT} ${LAST_SHIPPED}..origin/main`;
+/* What each workflow's Fetch step asks GitHub and git for, in order — the
+ * shared half (release history, the waiting commits, the peer's pulse) and each
+ * side's own (the watchdog: the newest run's jobs and summary log; the trigger:
+ * main's runs, status and check runs at the head a dispatch would build). */
+const FETCHES = {
+  watch: {
+    calls: [
+      `gh repos/${REPO_SLUG}/actions/workflows/release.yml/runs?per_page=30`,
+      `gh repos/${REPO_SLUG}/actions/runs/35813248277/jobs`,
+      `gh repos/${REPO_SLUG}/actions/jobs/101513086385/logs`,
+      GIT_WALK,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-trigger.yml`,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-trigger.yml/runs?event=schedule&status=success&per_page=5`,
+    ],
+    files: ["commits.txt", "jobs.json", "peer-runs.json", "peer-workflow.json", "runs.json", "summary.log"],
+  },
+  trigger: {
+    calls: [
+      `gh repos/${REPO_SLUG}/actions/workflows/release.yml/runs?per_page=30`,
+      GIT_WALK,
+      "git rev-parse origin/main",
+      `gh repos/${REPO_SLUG}/actions/runs?head_sha=headsha0&per_page=50`,
+      `gh repos/${REPO_SLUG}/commits/headsha0/status`,
+      `gh repos/${REPO_SLUG}/commits/headsha0/check-runs?per_page=100`,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-watch.yml`,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-watch.yml/runs?event=schedule&status=success&per_page=5`,
+    ],
+    files: ["commits.txt", "main-checks.json", "main-runs.json", "main-status.json", "peer-runs.json", "peer-workflow.json", "runs.json"],
+  },
+};
+
+test("CH2-34a: each workflow's Fetch step asks for the same facts, in the same order, and leaves the same files", () => {
+  /* The shimmed `git log` prints the format string unquoted; normalise the
+     quoting the step uses so the pin reads as the command. */
+  const norm = (r) => ({ ...r, calls: r.calls.map((c) => c.replace(`--format='${GIT_LOG_FORMAT}'`, `--format=${GIT_LOG_FORMAT}`)) });
+  assert.deepEqual(norm(fetchStepCalls(runBody(WATCH_WF, "Fetch the release history"))), FETCHES.watch);
+  assert.deepEqual(norm(fetchStepCalls(runBody(TRIGGER_WF, "Fetch the release history"))), FETCHES.trigger);
 });
 
 /* ═════════════════════════════════ the issue ═════════════════════════════ */
@@ -872,6 +977,82 @@ test("the issue body says what to do, and never tells anyone to re-run", () => {
   assert.match(body, /gh workflow run release\.yml --ref main -f bump=none/);
   assert.match(body, /Never "Re-run failed jobs"/);
   assert.doesNotMatch(body.replace(/Never "Re-run failed jobs"/, ""), /re-?run/i);
+});
+
+/* ═════════════ CH2-34a: the `gh` writes each planned action makes ═════════════
+ *
+ * docs/roadmap/code-health-2.md, card CH2-34a (T2-21). The planner above names
+ * ONE action; until this card each workflow turned it into `gh issue ...` calls
+ * with its own hand-kept `case` block. This table is what those blocks did,
+ * pinned per state, so moving the writes into one `--apply` path preserves
+ * every call: edit-then-reopen on a closed alarm (reopening notifies, and the
+ * body must be current when it does), close WITH the comment, and nothing at all
+ * for `none`. The body file's CONTENT is compared, not its path. */
+const CLOSE_COMMENT = "Every release gate is green again. Closing; this issue reopens itself if one goes red.";
+const ISSUE_STATES = [
+  // [state, verdict, issues, the watchdog's calls, the trigger's calls]
+  ["create", RED, [], [["issue", "create", "--repo", REPO_SLUG, "--title", ISSUE_TITLE, "--body-file", { body: renderIssueBody(RED) }]], "same"],
+  ["reopen", RED, [issue(12, "closed", ISSUE_MARKER)], [
+    ["issue", "edit", "12", "--repo", REPO_SLUG, "--body-file", { body: renderIssueBody(RED) }],
+    ["issue", "reopen", "12", "--repo", REPO_SLUG],
+  ], "same"],
+  ["edit", RED, [issue(7, "open", `${ISSUE_MARKER}\nold`)], [["issue", "edit", "7", "--repo", REPO_SLUG, "--body-file", { body: renderIssueBody(RED) }]], "same"],
+  ["none", RED, [issue(7, "open", renderIssueBody(RED))], [], "same"],
+  // Green with the alarm open: the watchdog closes it; the trigger may not.
+  ["close", ALL_GREEN, [issue(7, "open", ISSUE_MARKER)], [["issue", "close", "7", "--repo", REPO_SLUG, "--comment", CLOSE_COMMENT]], []],
+];
+
+/** Runs one workflow's issue step under bash with `gh` and `jq` shimmed, and
+ *  returns the `gh issue` calls it made (body files read back as content). */
+function issueStepCalls(wf, stepName, verdict, issues) {
+  const posix = (p) => p.replaceAll("\\", "/");
+  const script = runBody(wf, stepName)
+    .replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
+  const scratch = fs.mkdtempSync(path.join(ROOT, ".scratch-release-issue-"));
+  try {
+    const bin = path.join(scratch, "bin");
+    const work = path.join(scratch, "work");
+    for (const d of [bin, work]) fs.mkdirSync(d);
+    fs.writeFileSync(path.join(work, "verdict.json"), JSON.stringify(verdict));
+    const issuesFile = path.join(scratch, "issues.json");
+    fs.writeFileSync(issuesFile, JSON.stringify(issues));
+    const callsFile = path.join(scratch, "calls.jsonl");
+    const shim = (name, lines) => fs.writeFileSync(path.join(bin, name), lines.join("\n") + "\n", { mode: 0o755 });
+    shim("gh", [
+      "#!/usr/bin/env node",
+      'const fs = require("fs");',
+      "const a = process.argv.slice(2);",
+      `if (a[0] === "api" && a[1].includes("/issues?")) { process.stdout.write(fs.readFileSync(${JSON.stringify(posix(issuesFile))}, "utf8")); process.exit(0); }`,
+      'if (a[0] !== "issue") { console.error("gh shim: unexpected " + a.join(" ")); process.exit(2); }',
+      'const rec = a.map((v, i) => (a[i - 1] === "--body-file" ? { body: fs.readFileSync(v, "utf8") } : v));',
+      `fs.appendFileSync(${JSON.stringify(posix(callsFile))}, JSON.stringify(rec) + "\\n");`,
+    ]);
+    // jq: the field reads the case blocks made, nothing else.
+    shim("jq", [
+      "#!/usr/bin/env node",
+      "const [flag, filter, file] = process.argv.slice(2);",
+      "const m = /^\\.(\\w+)( \\/\\/ empty)?$/.exec(filter);",
+      'if (flag !== "-r" || !m) { console.error("jq shim: unexpected " + process.argv.slice(2).join(" ")); process.exit(2); }',
+      'const v = JSON.parse(require("fs").readFileSync(file, "utf8"))[m[1]];',
+      'process.stdout.write(v === undefined || v === null ? (m[2] ? "" : "null\\n") : String(v) + "\\n");',
+    ]);
+    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: REPO_SLUG, GITHUB_RUN_ID: "1" };
+    fs.writeFileSync(path.join(work, "step.sh"), script);
+    execFileSync("bash", ["step.sh"], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    return fs.existsSync(callsFile)
+      ? fs.readFileSync(callsFile, "utf8").trim().split("\n").map((l) => JSON.parse(l))
+      : [];
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+test("CH2-34a: each planned issue action makes the same `gh issue` calls from both workflows — create, reopen, edit, none, close", () => {
+  for (const [state, verdict, issues, watchCalls, triggerCalls] of ISSUE_STATES) {
+    assert.deepEqual(issueStepCalls(WATCH_WF, "Keep the one issue in step", verdict, issues), watchCalls, `release-watch, ${state}`);
+    assert.deepEqual(issueStepCalls(TRIGGER_WF, "Raise the alarm if the watchdog is down", verdict, issues),
+      triggerCalls === "same" ? watchCalls : triggerCalls, `release-trigger, ${state}`);
+  }
 });
 
 /* ═══════════════════════════════════ the CLI ═════════════════════════════ */
