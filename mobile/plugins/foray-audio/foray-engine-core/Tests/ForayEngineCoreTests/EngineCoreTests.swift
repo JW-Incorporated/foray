@@ -487,6 +487,73 @@ final class EngineCoreTests: XCTestCase {
         XCTAssertNil(index(host.send(.session(.interruptionEnded(shouldResume: true))), isLoad))
     }
 
+    /// The `session` row a refused should-resume writes
+    /// (`interruption ... resumed=false why=...`), if the turn wrote one.
+    func refusedResume(_ commands: [EngineCommand]) -> DiagEntry? {
+        rows("session", in: commands).first {
+            $0[field: "kind"] == .string("interruption") && $0[field: "phase"] == .string("ended")
+                && $0[field: "resumed"] == .bool(false)
+        }
+    }
+
+    /// CH3-02 (R2-02): a Bluetooth car, a call arrives, and the output flips
+    /// A2DP -> HFP -> A2DP while it rings. The loss lands inside the call's
+    /// interruption and paused nothing, so the call's should-resume decides
+    /// (code-health-3 founder question 2, default): the resume loads, and no
+    /// `resumed=false why=route-lost` row is written.
+    /// RED on main: R2-02 (`onRoute` set `pausedByRoute` unconditionally).
+    /// TO SEE IT FAIL: restore the unconditional `state.pausedByRoute = true`
+    /// in `onRoute`.
+    func testARouteFlapDuringACallLeavesTheCallsShouldResumeInCharge() {
+        var host = playing()
+        host.send(.session(.interruptionBegan(reason: "default")))
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: true))))
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: false))))
+        XCTAssertFalse(host.core.state.pausedByRoute, "the flap paused nothing")
+        let ended = host.send(.session(.interruptionEnded(shouldResume: true)))
+        XCTAssertNil(refusedResume(ended), "\(ended)")
+        XCTAssertNotNil(index(ended, isLoad), "the call's should-resume resumes: \(ended)")
+    }
+
+    /// CH3-02 review: the call pauses the deck first (an uncommanded pause,
+    /// reconciled as the system's), then iOS reports the interruption, then
+    /// the A2DP -> HFP flap lands inside `routeAttributionMs`. The interruption
+    /// explained that pause, so the flap is not attributed it: the call's
+    /// should-resume resumes, and no `route-attributed` row is written.
+    /// TO SEE IT FAIL: drop `state.lastUncommandedPauseAtMono = nil` from
+    /// `onInterruptionBegan`.
+    func testACallsPauseThenAFlapInsideTheWindowLeavesTheCallsShouldResumeInCharge() {
+        var host = playing()
+        host.reading.audible = false
+        host.send(.deck(.pausedUncommanded(token: host.lastLoad!, atSec: 3)))
+        host.send(.session(.interruptionBegan(reason: "default")), after: 50)
+        let lost = host.send(.session(.route(RouteChange(oldDeviceUnavailable: true))), after: 150)
+        XCTAssertFalse(lost.contains { if case let .diag(entry) = $0 { return entry.kind == "session" && entry[field: "kind"] == .string("route-attributed") }; return false },
+                       "\(lost)")
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: false))))
+        XCTAssertFalse(host.core.state.pausedByRoute, "the flap paused nothing")
+        let ended = host.send(.session(.interruptionEnded(shouldResume: true)))
+        XCTAssertNil(refusedResume(ended), "\(ended)")
+        XCTAssertNotNil(index(ended, isLoad), "the call's should-resume resumes: \(ended)")
+    }
+
+    /// CH3-02 characterization, the opposite order (survives the fix): a loss
+    /// while PLAYING paused the episode, so it is the route's (corner case
+    /// #13): a flap back and a later call's should-resume do not resume it,
+    /// and the refusal row says why.
+    /// TO SEE IT FAIL: drop the `.playing` arm from `onRoute`'s "the loss
+    /// paused something" condition.
+    func testARouteLostWhilePlayingIsRefusedAfterAFlapAndACall() throws {
+        var host = playing()
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: true))))
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: false))))
+        host.send(.session(.interruptionBegan(reason: "default")))
+        let ended = host.send(.session(.interruptionEnded(shouldResume: true)))
+        XCTAssertNil(index(ended, isLoad), "\(ended)")
+        let refusal = try XCTUnwrap(refusedResume(ended), "\(ended)")
+        XCTAssertEqual(refusal[field: "why"], .string("route-lost"))
+    }
+
     // MARK: - Transport
 
     /// Toggle reads the deck, not only the belief: an audible deck behind a

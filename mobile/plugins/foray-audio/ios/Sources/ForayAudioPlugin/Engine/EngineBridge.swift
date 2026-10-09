@@ -2,14 +2,19 @@ import Foundation
 import ForayEngineCore
 
 /// What the bridge needs of the process's owner (`EngineOwnership`, NE-17):
-/// the lane, the engine, and the three things only the owner may do (stand
-/// the hello watchdog down, write the Developer override, run the one-way
-/// relinquish with the legacy hand-over). A protocol so the bridge's tests
-/// run over a fake owner and the NE-15h recording seams.
+/// the lane, the engine, whether the engine has given the process back, and
+/// the three things only the owner may do (stand the hello watchdog down,
+/// write the Developer override, run the one-way relinquish with the legacy
+/// hand-over). A protocol so the bridge's tests run over a fake owner and the
+/// NE-15h recording seams.
 @MainActor
 protocol EngineBridgeOwner: AnyObject {
     @discardableResult func decideOnce() -> EngineMode.Decision
     var engine: ForayEngine? { get }
+    /// The one answer to "does the engine still own this process?" (CH3-06,
+    /// R1-06): set once, when the engine's teardown hands the process to the
+    /// legacy lane, and never cleared.
+    var relinquished: Bool { get }
     func helloReceived()
     func setModeOverride(_ mode: EngineMode.Override)
     @discardableResult func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) -> EngineVerdict
@@ -183,7 +188,7 @@ final class EngineBridge {
                     records.purge()
                     return nil
                 }
-                return owner.engine?.isTornDown == true ? .relinquished : .capabilityOff
+                return owner.relinquished ? .relinquished : .capabilityOff
             }
             if let needed = EngineBridgeRules.requiredCapability(command), !capabilities.contains(needed) {
                 return .capabilityOff
@@ -248,9 +253,10 @@ final class EngineBridge {
 
     // MARK: - The engine
 
-    /// The engine playing this process, while it still does.
+    /// The engine playing this process, while it still does: the owner's
+    /// answer, not the engine's own flag (CH3-06, R1-06).
     private var liveEngine: ForayEngine? {
-        guard owner.decideOnce().mode == .native, let engine = owner.engine, !engine.isTornDown else { return nil }
+        guard owner.decideOnce().mode == .native, !owner.relinquished, let engine = owner.engine else { return nil }
         return engine
     }
 
@@ -290,7 +296,7 @@ final class EngineBridge {
         if let engine = owner.engine, owner.decideOnce().mode == .native {
             // A torn-down engine still answers (its session reads
             // `relinquished`), but its deck is gone: nothing is loaded.
-            let deck = engine.isTornDown ? DeckReading.idle : engine.seams.deck.reading
+            let deck = owner.relinquished ? DeckReading.idle : engine.seams.deck.reading
             body = EngineSnapshot.body(core: engine.coreValue, deck: deck, lastError: lastError, monoMs: timing.monoMs)
         } else {
             body = EngineSnapshot.body(core: EngineCore(), deck: .idle, lastError: nil)
@@ -306,7 +312,7 @@ final class EngineBridge {
 
     /// After every input the engine handled, and at its teardown.
     private func transitioned() {
-        if let engine = owner.engine, engine.isTornDown, !handBackAnnounced {
+        if owner.relinquished, !handBackAnnounced {
             handBackAnnounced = true
             if coalescer.visible { deliver(EngineBridgeRules.modeChangedEvent(reason: .downgrade)) }
         }

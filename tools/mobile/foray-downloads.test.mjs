@@ -47,12 +47,24 @@ const policy = () => code(read(SWIFT_DIR, "DownloadPolicy.swift"));
 const allSource = () => [plugin(), store(), policy()].join("\n");
 const xctests = () => read(PLUGIN, "ios", "Tests", "ForayDownloadsPluginTests", "DownloadPolicyTests.swift");
 
-/** The method set the web half exposes: every function on a bridge built
-    over a fake Capacitor, the `handles` array aside. */
-function bridgeMethods() {
-  const fake = { nativePromise: async () => ({}), addListener: () => ({ remove() {} }) };
-  const bridge = createDownloadBridge({ bridge: fake, onEvent: () => {} });
-  return Object.keys(bridge).filter((k) => typeof bridge[k] === "function").sort();
+/** The native calls the web half makes: every function on a bridge built over
+    a recording fake Capacitor is called, and the methods that reach
+    `nativePromise` are the answer. `webSrc` (and app.js's `fileSrc({path})`
+    spelling of it) rewrites a string and asks the phone nothing (CH3-05,
+    R4-10), so it is not one of them. No listener, so no boot reconcile. */
+async function bridgeNativeCalls() {
+  const asked = new Set();
+  const fake = { nativePromise: async (_plugin, method) => { asked.add(method); return {}; }, addListener: () => ({ remove() {} }) };
+  const bridge = createDownloadBridge({ bridge: fake });
+  await Promise.all(Object.keys(bridge).filter((k) => typeof bridge[k] === "function").map((k) => bridge[k]({ id: "x", path: "/x" })));
+  return [...asked].sort();
+}
+
+/** The plugin's method set: the web half's native calls plus `fileSrc`, which
+    the plugin answers (`{ path, exists }`) and the page never calls — the
+    page takes today's paths from `list()` (CH3-05). */
+async function pluginMethods() {
+  return [...(await bridgeNativeCalls()), "fileSrc"].sort();
 }
 
 test("the web half and the iOS plugin agree on the plugin name", () => {
@@ -64,10 +76,13 @@ test("the web half and the iOS plugin agree on the plugin name", () => {
   assert.match(policy(), /public static let pluginName = "ForayDownloads"/);
 });
 
-test("iOS exposes exactly the seven calls download-bridge.js makes, each with its @objc handler", () => {
-  /* MUTATION: drop the `fileSrc` CAPPluginMethod line -> the set differs. RUN. */
-  const web = bridgeMethods();
-  assert.deepEqual(web, ["cancel", "enqueue", "fileSrc", "list", "remove", "removeAll", "usage"]);
+test("iOS exposes the six calls download-bridge.js makes plus fileSrc, each with its @objc handler", async () => {
+  /* MUTATION: drop the `fileSrc` CAPPluginMethod line -> the set differs. RUN.
+     CH3-05 (R4-10): the page's `fileSrc` was a string rewrite named like the
+     plugin's call; it is `webSrc` now, and the six native calls are pinned
+     by what reaches `nativePromise`. */
+  assert.deepEqual(await bridgeNativeCalls(), ["cancel", "enqueue", "list", "remove", "removeAll", "usage"]);
+  const web = await pluginMethods();
   const names = [...plugin().matchAll(/CAPPluginMethod\(name: "([a-zA-Z]+)"/g)].map((m) => m[1]).sort();
   assert.deepEqual(names, web);
   for (const m of web) {
@@ -258,14 +273,14 @@ const jStore = () => code(read(JAVA_DIR, "DownloadStore.java"));
 const jRules = () => code(read(JAVA_DIR, "DownloadRules.java"));
 const allJava = () => [jPlugin(), jStore(), jRules()].join("\n");
 
-test("Android: the plugin is ForayDownloads with exactly download-bridge.js's seven calls", () => {
+test("Android: the plugin is ForayDownloads with download-bridge.js's six calls plus fileSrc", async () => {
   /* MUTATION: `@CapacitorPlugin(name = "ForayDownload")` -> every call from the
      page lands on no plugin on Android. RUN.
      MUTATION: delete the `@PluginMethod` above `fileSrc` -> the set differs. RUN. */
   assert.match(jPlugin(), /@CapacitorPlugin\(name = "ForayDownloads"\)\s*public class ForayDownloadsPlugin extends Plugin/);
   assert.match(jRules(), /static final String PLUGIN_NAME = "ForayDownloads";/);
   const names = [...jPlugin().matchAll(/@PluginMethod\s+public void (\w+)\(PluginCall call\)/g)].map((m) => m[1]).sort();
-  assert.deepEqual(names, bridgeMethods());
+  assert.deepEqual(names, await pluginMethods());
 });
 
 test("Android: the three events are download-bridge.js's, each emitted through notifyListeners", () => {

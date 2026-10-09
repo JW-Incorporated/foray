@@ -78,6 +78,10 @@ import java.util.concurrent.atomic.AtomicReference;
  *       {@code ForayAudioPlugin.start} refuses to start the legacy service, and its
  *       {@code onCreate} stops one that is running. The legacy service stays, unchanged, for
  *       the JS lane.</li>
+ *   <li>A core relinquish (the page's {@code relinquish}, A-29) ends the session with the
+ *       engine (CH3-07): the host's torn-down hook releases the session, the facade and the
+ *       deck's player and stops the service, so the legacy lane's session is the only one a car
+ *       sees, and {@code ForayAudioPlugin.start} may start the legacy service again.</li>
  * </ul>
  *
  * <h2>WHO STARTS IT</h2>
@@ -114,7 +118,11 @@ public class ForayPlaybackService extends MediaSessionService {
 
     @Nullable private ExoPlayer exo;
     @Nullable private ExoDeck deck;
-    /** Volatile: {@link #isHosting()} is read by the plugin's bridge thread; every other use is on main. */
+    /**
+     * Volatile: {@link #isHosting()} is read by the plugin's bridge thread; every other use is on
+     * main. Null from the moment the engine tears down (its hook releases everything) or the
+     * service is destroyed, so non-null IS "hosting" and the bridge thread never asks the host.
+     */
     @Nullable private volatile ForayEngineHost host;
     @Nullable private EnginePlayer player;
     @Nullable private MediaSession session;
@@ -128,10 +136,14 @@ public class ForayPlaybackService extends MediaSessionService {
         return current;
     }
 
-    /** Native mode owns playback: this service is alive and its engine is not torn down. */
+    /**
+     * Native mode owns playback: this service is alive and holds its engine. Called on the
+     * plugin's bridge thread, so it reads the two volatiles and nothing else (CH3-07, R5-05):
+     * the host's own {@code tornDown} is main-thread state, and a torn-down host is never held.
+     */
     static boolean isHosting() {
         ForayPlaybackService s = current;
-        return s != null && s.host != null && !s.host.isTornDown();
+        return s != null && s.host != null;
     }
 
     @Override
@@ -179,6 +191,7 @@ public class ForayPlaybackService extends MediaSessionService {
         EngineSeams seams = new EngineSeams(deck, new SessionSeam(), new HandlerTiming(Looper.getMainLooper()), log);
         ForayEngineHost engine = new ForayEngineHost(seams, new EngineConfig(buildName(this)));
         host = engine;
+        engine.setOnTornDown(() -> engineTornDown(engine));
         EnginePlayer facade = new EnginePlayer(Looper.getMainLooper(), new EnginePlayer.Engine() {
             @Override
             public ForayEngineHost.Surface surface() {
@@ -236,6 +249,20 @@ public class ForayPlaybackService extends MediaSessionService {
         super.onDestroy();
     }
 
+    /**
+     * The host's torn-down hook. A core relinquish leaves playback to the legacy lane, and on
+     * Android that lane publishes its own session ({@code PlaybackKeepAliveService}), so ours
+     * goes: released (with the facade and the deck's player), no longer current, and stopped.
+     * The host has already handed the facade a cleared surface. When {@link #release()} is what
+     * tore the engine down ({@code onDestroy}), {@code host} is already null and this is a no-op.
+     */
+    private void engineTornDown(ForayEngineHost engine) {
+        if (host != engine) return;
+        if (current == this) current = null;
+        release();
+        stopSelf();
+    }
+
     private void release() {
         ForayEngineHost engine = host;
         host = null;
@@ -243,7 +270,11 @@ public class ForayPlaybackService extends MediaSessionService {
         MediaSession s = session;
         session = null;
         try {
-            if (s != null) s.release();
+            if (s != null) {
+                // The notification goes with the session: a session left added would keep it.
+                if (isSessionAdded(s)) removeSession(s);
+                s.release();
+            }
         } catch (RuntimeException e) {
             Log.w(TAG, "releasing the session failed", e);
         }

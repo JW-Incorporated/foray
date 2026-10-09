@@ -33,7 +33,10 @@
  *                   last failures have not used up the retry budget.
  *
  *   --mode issue    turns a verdict and the repo's issue list into ONE action
- *                   (create / reopen / edit / close / none) for the shell.
+ *                   (create / reopen / edit / close / none), and with --apply
+ *                   makes the `gh issue` calls that carry it out. Both workflows
+ *                   write the sticky issue through this one path (CH2-34a);
+ *                   without --apply it only prints what it would do.
  *
  *   --mode self-broken    after the watchdog's OWN run failed: is this the
  *                   second failure in a row? (selfBrokenVerdict says why.)
@@ -75,10 +78,14 @@
  * ── NO NETWORK, NO DEPENDENCIES ──────────────────────────────────────────────
  *
  * Same posture as tools/refresh/watch-nightly.mjs, which this is modelled on:
- * every input is a file the workflow fetched with `gh`, so every verdict is a
- * pure function of fixtures and can be shown to fire without waiting a day for
- * it to. The one import outside node: is prepare-webdir.mjs's own bundle plan,
- * loaded lazily by the CLI, because "which files reach a store build" has an
+ * every input is a file the workflow fetched with `gh` (the fetches live in
+ * .github/actions/release-facts, which both workflows call), so every verdict
+ * is a pure function of fixtures and can be shown to fire without waiting a day
+ * for it to. The one outbound call is the sticky issue's write, and only under
+ * `--mode issue --apply`: it spawns `gh issue ...` (issueCommands() names
+ * each call), so the plan it carries out is the plan the tests read. The one
+ * import outside node: is prepare-webdir.mjs's own bundle plan, loaded lazily
+ * by the CLI, because "which files reach a store build" has an
  * executable answer and a hand-kept copy of it would drift. For the same reason
  * the native half of that answer is READ at module load from the three files
  * that build and sign the binary (NATIVE_INPUT_FILES below): files in the
@@ -102,7 +109,8 @@
  *        --peer-workflow watch-workflow.json --peer-runs watch-runs.json \
  *        --verdict-out verdict.json
  *   node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
- *        --issues issues.json [--may-close] --action-out action.json --body-out body.md
+ *        --issues issues.json [--may-close] [--apply --repo owner/name] \
+ *        [--action-out action.json] [--body-out body.md]
  *   node tools/release/watch-release.mjs --mode self-broken --runs own-runs.json \
  *        --current "$GITHUB_RUN_ID" --verdict-out self.json
  *   Common: --now <ISO> (tests), --plan <json array of bundle paths> (tests).
@@ -114,6 +122,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 /* protect-main's required contexts. ONE list, owned by the merge machinery: the
  * release trigger must call main "red" for exactly the checks that can block a
@@ -974,6 +984,39 @@ export function planIssue({ issues, verdict, mayClose }) {
   return { action: "none", number: sticky ? sticky.number : null, body };
 }
 
+/** The `gh` calls that carry out one planned action — the ONE write path for
+ *  the sticky issue (CH2-34a). Until it, each workflow turned the plan into
+ *  `gh issue` calls with its own `case` block, and a change to one block would
+ *  have left the two maintaining the same issue with different semantics.
+ *
+ *  `reopen` writes the body FIRST: reopening is what notifies, and the person
+ *  it notifies should read the current verdict, not last week's. `close` leaves
+ *  the red body as it was — the issue's history should say what went wrong — and
+ *  says in its comment that it recovered. `close` without `mayClose` is refused:
+ *  planIssue never plans it, and a job with no standing to call the gates green
+ *  must not be able to close the alarm by any other route either. */
+export function issueCommands(plan, { repo, bodyFile, mayClose }) {
+  const n = plan.number == null ? null : String(plan.number);
+  switch (plan.action) {
+    case "create":
+      return [["issue", "create", "--repo", repo, "--title", plan.title, "--body-file", bodyFile]];
+    case "reopen":
+      return [
+        ["issue", "edit", n, "--repo", repo, "--body-file", bodyFile],
+        ["issue", "reopen", n, "--repo", repo],
+      ];
+    case "edit":
+      return [["issue", "edit", n, "--repo", repo, "--body-file", bodyFile]];
+    case "close":
+      if (!mayClose) throw new Error("refusing to close the sticky issue from a job that may not close it");
+      return [["issue", "close", n, "--repo", repo, "--comment", plan.comment]];
+    case "none":
+      return [];
+    default:
+      throw new Error(`unknown issue action '${plan.action}'`);
+  }
+}
+
 /* ─────────────────────────────────── report ──────────────────────────────── */
 
 export function renderReport(verdict) {
@@ -1026,7 +1069,9 @@ function writeOutput(env, line) {
   }
 }
 
-export async function run(argv, env = process.env) {
+/** `deps.spawnSync` is the seam the suite uses to see the `gh` calls without
+ *  making them; the workflows get node's own. */
+export async function run(argv, env = process.env, { spawnSync: spawn = spawnSync } = {}) {
   const mode = arg(argv, "--mode");
   const now = arg(argv, "--now", new Date().toISOString());
   if (!["last-success", "latest-completed", "watch", "trigger", "issue", "self-broken"].includes(mode)) {
@@ -1054,12 +1099,14 @@ export async function run(argv, env = process.env) {
 
     if (mode === "issue") {
       const verdict = readJson(arg(argv, "--verdict"));
-      const plan = planIssue({ issues: readJson(arg(argv, "--issues")), verdict, mayClose: argv.includes("--may-close") });
+      const mayClose = argv.includes("--may-close");
+      const plan = planIssue({ issues: readJson(arg(argv, "--issues")), verdict, mayClose });
       const bodyOut = arg(argv, "--body-out");
       if (bodyOut) fs.writeFileSync(bodyOut, plan.body);
       const actionOut = arg(argv, "--action-out");
       if (actionOut) fs.writeFileSync(actionOut, JSON.stringify(plan, null, 2) + "\n");
-      return { code: 0, text: `issue: ${plan.action}${plan.number ? ` #${plan.number}` : ""}\n`, plan };
+      const head = `issue: ${plan.action}${plan.number ? ` #${plan.number}` : ""}`;
+      return applyIssue(plan, { argv, env, mayClose, bodyOut, head, spawn });
     }
 
     const bundle = await loadBundle(argv);
@@ -1107,6 +1154,43 @@ export async function run(argv, env = process.env) {
      * not spelled like one: exit 1, touch no issue, and let the peer's liveness
      * check notice if it keeps happening. */
     return { code: 1, text: `watch-release: could not read its inputs: ${err.message}\n` };
+  }
+}
+
+/** `--mode issue`'s second half. DRY RUN BY DEFAULT: without `--apply` it names
+ *  the `gh` calls and makes none, so a person running the CLI by hand (or a
+ *  test) can never edit the live alarm by accident; the workflows pass
+ *  `--apply` explicitly. A `gh` call that fails is exit 1 — the step goes red,
+ *  as the shell's `set -e` made it before — and names the call. */
+function applyIssue(plan, { argv, env, mayClose, bodyOut, head, spawn }) {
+  const repo = arg(argv, "--repo", env.GITHUB_REPOSITORY || null);
+  if (!argv.includes("--apply")) {
+    const cmds = issueCommands(plan, { repo: repo || "<owner/name>", bodyFile: bodyOut || "<body file>", mayClose });
+    const said = cmds.length ? cmds.map((c) => `  gh ${c.join(" ")}`).join("\n") : "  (no gh call)";
+    return { code: 0, text: `${head} (dry run: pass --apply to make these calls)\n${said}\n`, plan, commands: cmds };
+  }
+  if (!repo) return { code: 1, text: "watch-release: --apply needs --repo owner/name (or GITHUB_REPOSITORY)\n", plan };
+  let bodyFile = bodyOut;
+  let scratch = null;
+  if (!bodyFile) {
+    scratch = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
+    bodyFile = path.join(scratch, "body.md");
+    fs.writeFileSync(bodyFile, plan.body);
+  }
+  try {
+    const cmds = issueCommands(plan, { repo, bodyFile, mayClose });
+    for (const c of cmds) {
+      const r = spawn("gh", c, { stdio: "inherit" });
+      if (r.error || r.status !== 0) {
+        const why = r.error ? r.error.message : `exit ${r.status}`;
+        return { code: 1, text: `watch-release: \`gh ${c.slice(0, 2).join(" ")}\` failed (${why}); the issue action '${plan.action}' is incomplete\n`, plan };
+      }
+    }
+    return { code: 0, text: `${head} (applied: ${cmds.length} gh call${cmds.length === 1 ? "" : "s"})\n`, plan, commands: cmds };
+  } catch (err) {
+    return { code: 1, text: `watch-release: ${err.message}\n`, plan };
+  } finally {
+    if (scratch) fs.rmSync(scratch, { recursive: true, force: true });
   }
 }
 
