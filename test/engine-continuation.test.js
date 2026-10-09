@@ -596,11 +596,15 @@ const planHop = (planSeq, hopSeq, finishedId, item) => ({
 });
 
 /** app.js's `onDownloadEvent` for one plugin event, through the published store. */
-function downloadEvent(win, name, payload) {
+async function downloadEvent(win, name, payload) {
   const rules = win.forayDownloads.store;
   const report = rules.reportFromEvent(name, payload, { now: Date.now() });
   rules.writeDownloads(win.forayStorage, rules.applyProgress(rules.readDownloads(win.forayStorage), report));
+  await settle();
 }
+
+/** Let the engine client's serial send reach the wire. */
+const settle = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r)); };
 
 const FILE_B = "/var/mobile/Containers/Data/Application/X/Library/Application Support/downloads/b.mp3";
 
@@ -658,21 +662,22 @@ test("CH3-04: a download that finishes or is removed for a hop re-sends the plan
   assert.strictEqual(plans.length, 1);
   assert.strictEqual(plans[0].chain[1].item.audio_url, "https://cdn/b.mp3", "fixture premise: b is still downloading");
 
-  downloadEvent(win, "downloadProgress", { id: "q", bytes: 5, total: 10 });
-  downloadEvent(win, "downloadProgress", { id: "b", bytes: 5, total: 10 });
+  await downloadEvent(win, "downloadProgress", { id: "q", bytes: 5, total: 10 });
+  await downloadEvent(win, "downloadProgress", { id: "b", bytes: 5, total: 10 });
   assert.strictEqual(plans.length, 1, "a tick that moves no hop's source sends nothing");
 
-  downloadEvent(win, "downloadDone", { id: "b", path: FILE_B, bytes: 10 });
+  await downloadEvent(win, "downloadDone", { id: "b", path: FILE_B, bytes: 10 });
   assert.strictEqual(plans.length, 2, "b's file landed: the plan is re-sent");
   assert.strictEqual(plans[1].planSeq, 9, "the same plan, not a new one");
   assert.ok(plans[1].chain[1].item.audio_url.startsWith("file://"), "now the engine walks to the file");
   assert.deepStrictEqual(plans[1].chain[0], plans[0].chain[0], "the other hop is unchanged");
 
-  downloadEvent(win, "downloadDone", { id: "q", path: "/x/q.mp3", bytes: 10 });
+  await downloadEvent(win, "downloadDone", { id: "q", path: "/x/q.mp3", bytes: 10 });
   assert.strictEqual(plans.length, 2, "a download for an episode in no hop sends nothing");
 
   const rules = win.forayDownloads.store;
   rules.writeDownloads(win.forayStorage, rules.removeRow(rules.readDownloads(win.forayStorage), "b"));
+  await settle();
   assert.strictEqual(plans.length, 3, "b's file removed: the plan is re-sent");
   assert.strictEqual(plans[2].chain[1].item.audio_url, "https://cdn/b.mp3", "and the engine streams b again");
   assert.strictEqual(plans[2].chain[1].item.source_audio_url, undefined);

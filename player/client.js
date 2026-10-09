@@ -342,6 +342,10 @@ let pendingPlan = null;
 /** item id -> item, from the plans the page sent: the bar can name the episode
     the engine advanced to while the page slept. */
 let chainItems = new Map();
+/** The last plan sent to the engine and the sources it went out with, so a
+    download that lands or leaves for one of its hops re-sends it (CH3-04). */
+let lastPlan = null;
+let lastPlanSources = null;
 /** A page-started play whose reply has not arrived: an attach must not paint
     the engine's previous item over the one the listener just tapped. */
 let playsInFlight = 0;
@@ -987,9 +991,22 @@ window.forayQueueSwipe = queueSwipe;
    (CH-02): `play()` fires it where a local load SUCCEEDED.
    `userAgent` starts as `USER_AGENT` (`4a/dev`) and becomes the real build
    once `recordBuildStamp` hears it; `platform` is that same answer's
-   "ios" | "android" | null, for `playSource`. */
+   "ios" | "android" | null, for `playSource`.
+   `store` is download-store.js's rules as they are, except that its one
+   writer, `writeDownloads` (app.js's `saveDownloads`: a file landed, was
+   removed, evicted or found missing), also hands the native engine its plan
+   again when that moved a hop onto or off a file (CH3-04,
+   `resendPlanIfSourcesMoved`). */
+const downloadRecordRules = Object.freeze({
+  ...downloadStore,
+  writeDownloads(storageArea, value) {
+    const wrote = downloadStore.writeDownloads(storageArea, value);
+    try { resendPlanIfSourcesMoved(); } catch (_) { /* the record is written; the plan is re-sent at the next change */ }
+    return wrote;
+  },
+});
 window.forayDownloads = {
-  store: downloadStore,
+  store: downloadRecordRules,
   createBridge: createDownloadBridge,
   USER_AGENT,
   userAgentFor,
@@ -3962,6 +3979,24 @@ async function applyEnginePending() {
   }
 }
 
+/** A hop as the engine must walk it (CH3-04, R4-01): its item through
+    `localSourceFor`, the rule a page-started play uses — a downloaded episode
+    goes out with the file in `audio_url` and the stream as
+    `source_audio_url` — because the engine walks the chain by itself
+    (Continuous playback at an end, the wheel's next/previous) with the page
+    asleep, and a hop that streamed went silent on an offline drive. Only the
+    ITEM: `lastEpisodeRow` stays continuation.js's, built from the original, so
+    the pointer the engine stores names the episode, not a file that may be
+    evicted (the rule `play()` keeps for its own pointer). A hop with no
+    download is the same object. */
+function localHop(hop) {
+  const item = hop?.item ? localSourceFor(hop.item) : null;
+  return item && item !== hop.item ? { ...hop, item } : hop;
+}
+
+/** What the engine would play for each hop of `args`, as one comparable string. */
+const planSources = (args) => JSON.stringify([...args.chain, args.previous].map((hop) => hop?.item?.audio_url ?? null));
+
 /** Send a continuation plan (§5.5), remembering the items it names. */
 function sendEnginePlan(plan) {
   const chain = Array.isArray(plan.chain) ? plan.chain : [];
@@ -3969,10 +4004,24 @@ function sendEnginePlan(plan) {
   if (current?.id && chainItems.has(current.id)) keep.set(current.id, chainItems.get(current.id));
   for (const hop of chain) if (hop?.item?.id) keep.set(hop.item.id, hop.item);
   chainItems = keep;
-  const args = { planSeq: plan.planSeq, autoAdvance: plan.autoAdvance !== false, chain };
-  if (plan.previous !== undefined) args.previous = plan.previous;
+  const args = { planSeq: plan.planSeq, autoAdvance: plan.autoAdvance !== false, chain: chain.map(localHop) };
+  if (plan.previous !== undefined) args.previous = plan.previous && localHop(plan.previous);
+  lastPlan = plan;
+  lastPlanSources = planSources(args);
   engineWalksAtEnd = args.autoAdvance;
   return engine.send("setContinuation", args, { source: "restore" }).then((r) => r.ok === true);
+}
+
+/** The downloads record changed (`cp_downloads`, written through the store
+    published on `window.forayDownloads`): re-send the current plan when that
+    moved what the engine would play for a hop — a file landed or left — and
+    send nothing for a progress tick or an episode in no hop. Native lane only:
+    the JS lane asks EPISODE_NAVIGATION when it needs the answer. */
+function resendPlanIfSourcesMoved() {
+  if (engineMode !== "native" || !lastPlan) return;
+  const chain = Array.isArray(lastPlan.chain) ? lastPlan.chain : [];
+  const args = { chain: chain.map(localHop), previous: lastPlan.previous && localHop(lastPlan.previous) };
+  if (planSources(args) !== lastPlanSources) sendEnginePlan(lastPlan).catch(() => {});
 }
 
 /** The voice preview as an engine command: `{ok: true, voiceFallback}` or
