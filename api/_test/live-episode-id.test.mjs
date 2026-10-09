@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as searchModule from "../episodes/search.ts";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
-import { episodeSearchCache, episodeFeedFailureCache } from "../_lib/searchCache.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
 import { episodeIdentity } from "../../backend/src/feeds/episodeIdentity.ts";
 import { toCatalogEpisode } from "../../backend/src/catalog/ingestShowFeed.ts";
 
@@ -42,7 +42,7 @@ async function withFeed(run) {
   delete process.env.DATABASE_URL;
   globalThis.fetch = async () => new Response(FEED, { status: 200 });
   episodeSearchCache.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   searchModule.sharedFeedReader.clear();
   try {
     return await run();
@@ -128,7 +128,7 @@ test("show-scoped queries that match different titles never share a cached answe
   delete process.env.DATABASE_URL;
   globalThis.fetch = async () => new Response(feed, { status: 200 });
   episodeSearchCache.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   searchModule.sharedFeedReader.clear();
   try {
     const ask = async (q) => {

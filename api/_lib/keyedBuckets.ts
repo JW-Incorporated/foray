@@ -1,4 +1,5 @@
-import { SlidingWindowBucket, realClock, type Clock } from "./appleBucket";
+import { SlidingWindowBucket } from "./appleBucket";
+import { realClock, type Clock } from "./clock";
 
 /**
  * One sliding-window bucket per key (round-3 audit, search-api-css-4 and

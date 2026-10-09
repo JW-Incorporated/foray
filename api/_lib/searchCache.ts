@@ -1,19 +1,28 @@
 /**
- * 1h TTL, in-memory, per-instance cache for `api/episodes/search.ts`'s
- * Apple fallback (S-07). Keyed by normalized query + scope (`show=`
- * value, if any) so a scoped and unscoped search for the same text don't
- * collide. Same per-warm-instance caveat as appleBucket.ts/showIdMap.ts —
- * this is a hit-rate optimization, not a correctness guarantee, and a
- * cold start or a different concurrent instance simply misses and
- * refetches.
+ * The in-memory, per-instance result caches for `api/episodes/search.ts`.
+ * Same per-warm-instance caveat as appleBucket.ts/showIdMap.ts: this is a
+ * hit-rate optimization, not a correctness guarantee, and a cold start or a
+ * different concurrent instance simply misses and refetches.
+ *
+ * TWO LIFETIMES, ONE CLASS (code-health-2 CH2-38, A1-05):
+ *   - `episodeSearchCache`, 1 h: the general search's Apple answers (S-07),
+ *     keyed by the folded query (`normalizeQueryKey`).
+ *   - the SHOW-SCOPED results (`showScopedResultCache` in search.ts, keyed by
+ *     `showScopedQueryKey`) live no longer than the feed they were read from
+ *     is fresh (feedCache.ts's FEED_FRESH_MS), and an answer read from a stale
+ *     feed copy is never kept at all. They used to share the 1 h cache, so an
+ *     answer read while a refresh was refused was replayed for an hour as a
+ *     clean success, and a new episode stayed unfindable by that query for as
+ *     long. That cache is declared in search.ts because feedCache.ts imports
+ *     TtlCache from here.
+ *
+ * A FEED THAT FAILED is not remembered here any more: the 90 s failure memory
+ * (P-05 piece 3) moved into feedCache.ts, so the per-show list and the
+ * show-scoped search answer one dead feed the same way (CH2-38, A1-06).
  */
 
 import { normalizeSearchText } from "./clientLimit";
-
-export interface Clock {
-  now(): number;
-}
-export const realClock: Clock = { now: () => Date.now() };
+import { realClock, type Clock } from "./clock";
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -103,35 +112,3 @@ export function showScopedQueryKey(q: string, show: string, limit: number): stri
 }
 
 export const episodeSearchCache = new TtlCache<unknown>();
-
-/* P-05 piece 3 (docs/search-parity-plan.md §4, 2026-09-12) — THE SHOW PAGE.
-   A SHORT, SEPARATE MEMORY FOR FEEDS THAT DID NOT ANSWER.
-
-   `episodeSearchCache` above deliberately stores successes only, which is
-   right, and left a hole: the show-scoped path sets `Cache-Control: no-store`
-   on an error and skips the `set`, so a show whose feed Vercel cannot reach
-   pays the full fetch on EVERY query, forever. Measured 2026-09-12 against the
-   live endpoint: `omega-tau` burns 387 / 467 / 756 ms per query and returns
-   `degraded: true, n=0` every time. The listener's answer never improves; only
-   the bill does.
-
-   KEYED BY SHOW, NOT BY QUERY, because it is the FEED that failed and the feed
-   is what the next query would refetch. That is the whole saving: retyping
-   inside the box must not re-pay the round trip the last keystroke already
-   proved would fail.
-
-   DISTINCT FROM CACHING AN EMPTY SUCCESS, and the distinction is the product
-   one. A remembered failure is replayed as `degraded: true` with the original
-   error string, which is what the client branches on (`searchShowEpisodesScoped`
-   returns `{episodes: null}` on degraded, and the show page falls back to
-   `filterLoadedEpisodes`). Replaying it as an empty success would tell the
-   listener their query matched nothing, which is a lie.
-
-   90 SECONDS, AND SHORT ON PURPOSE. A cached failure means a feed that comes
-   back stays dark until the entry expires, so this window is the cost of the
-   saving and it is deliberately smaller than one listening session. Anything
-   on the hour scale would turn one bad minute at the feed's origin into a
-   visibly broken show page. Per warm instance, like every other cache in this
-   directory — a cold start or a different lambda simply refetches. */
-export const FEED_FAILURE_TTL_MS = 90 * 1000;
-export const episodeFeedFailureCache = new TtlCache<string>(FEED_FAILURE_TTL_MS);
