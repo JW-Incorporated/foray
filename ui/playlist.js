@@ -530,11 +530,7 @@ function renderPlaylistDetail(id) {
      for a screen reader (focus lands on it, and it is what is announced); the page SHOWS an EmptyState, one line and one
      button. */
   if (!p) {
-    $("#view").innerHTML = `<div class="ag pl-page pl-gone">
-      ${playlistTopHtml("playlists")}
-      <h1 class="sr-only" data-page-heading>Playlist not found</h1>
-      ${playlistEmptyHtml("That playlist isn’t here any more.", "All playlists", "playlists")}
-    </div>`;
+    $("#view").innerHTML = agNotFoundPage();
     return;
   }
   fullPool(); // populate itemIndex

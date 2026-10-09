@@ -346,7 +346,7 @@ test("route() dispatches #/forays to renderForays, matching the #/playlists patt
 
   m.ctx.location.hash = "#/forays";
   m.ctx.route();
-  assert.ok(m.view().includes("<h2>Forays</h2>"), "route() must dispatch #/forays to renderForays");
+  assert.ok(m.view().includes('data-page-heading tabindex="-1">Forays</h1>'), "route() must dispatch #/forays to renderForays");
 });
 
 /* ==================================================================== */

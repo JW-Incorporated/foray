@@ -97,7 +97,7 @@
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },
-    "a stored position makes the cold press a resume, and Start over clears it": {
+    "a stored position makes the cold press a resume, and a clip row starts from where it is named": {
       "reason": "dom-only",
       "why": "app.js's Foray page (renderForay) mounted in a stub DOM against a fake player bridge: markup, bindings, labels and what the page paints. In native mode the page is unchanged and reads the engine through the facades (NE-35 wires native Forays); nothing here is a rule the engine reimplements."
     },

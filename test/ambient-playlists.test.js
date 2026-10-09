@@ -392,25 +392,25 @@ const BANNED = /\b(fascinating|deep dive|delves?|explores?|beat|segment|act|runn
 const FIRST_PERSON = /\b(we|us|our|ours|we're|we've|we'll)\b/i;
 
 test("not found is an EmptyState: one line, one button, and the line passes the copy rules", () => {
-  /* BUILD-NOTES 3 EmptyState: one line, one button (outlined, pill, 44). The page still has its Back and a heading for the
-     router and a screen reader (visually hidden: the page shows the one line).
+  /* The missing-playlist page is the app's shared not-found page (agNotFoundPage, ambient not-found unit): ONE EmptyState,
+     one line (the page's heading), one Secondary pill link to Today (44), the Dock is the rest of the way out.
      MUTATIONS: add a second control (a Retry button) -> red. Write two sentences -> red. Say "we" -> red. Use "topic" or
-     "explore" -> red. Drop the heading -> red (the route cannot name the page). Drop `ag-btn-secondary` -> red. */
+     "explore" -> red. Drop the data-page-heading -> red (the route cannot name the page). Drop `ag-btn-secondary` -> red.
+     Revert the not-found branch of renderPlaylistDetail to a bare note -> red. */
   const w = world({ items: FOUR, lists: [{ id: "q1", title: "T", items: FOUR }] });
   w.ctx.renderPlaylistDetail("does-not-exist");
   const html = w.html();
-  assert.match(html, /<h1 class="sr-only" data-page-heading>Playlist not found<\/h1>/);
-  assert.match(html, /<a class="back ag-btn ag-btn-icon" href="#\/playlists" aria-label="Back">/);
-  const line = one(html, /<section class="ag-empty pl-empty"><p class="t-body">([^<]*)<\/p>/);
-  assert.ok(line, "the one line");
-  assert.strictEqual((line.match(/[.!?](?=\s|$)/g) || []).length, 1, `one sentence: ${line}`);
-  assert.ok(line.split(/\s+/).length <= 18, "and short");
+  assert.match(html, /<section class="ag-empty">/, "an EmptyState");
+  const line = one(html, /<p data-page-heading>([^<]*)<\/p>/);
+  assert.ok(line, "the one line, which is also the page's heading");
+  assert.strictEqual((line.match(/[.!?](?=s|$)/g) || []).length, 1, `one sentence: ${line}`);
+  assert.ok(line.split(/s+/).length <= 18, "and short");
   assert.doesNotMatch(line, BANNED, "no banned word");
   assert.doesNotMatch(line, FIRST_PERSON, "no we/us/our");
   assert.doesNotMatch(line, /!/, "no exclamation");
-  const buttons = [...html.matchAll(/<(?:a|button)\b[^>]*class="[^"]*ag-btn[^"]*"[^>]*>/g)].map((m) => m[0]).filter((t) => !/ag-btn-icon/.test(t));
-  assert.strictEqual(buttons.length, 1, `exactly one button besides Back: ${buttons}`);
-  assert.match(buttons[0], /class="ag-btn ag-btn-secondary ag-btn-size-44" href="#\/playlists"/);
+  const buttons = [...html.matchAll(/<(?:a|button)\b[^>]*class="[^"]*ag-btn[^"]*"[^>]*>/g)].map((m) => m[0]);
+  assert.strictEqual(buttons.length, 1, `exactly one button: ${buttons}`);
+  assert.match(buttons[0], /class="ag-btn ag-btn-secondary ag-btn-size-44" href="#\/"/);
   assert.doesNotMatch(html, /<button\b/, "and it is a link to one of our own routes");
 });
 

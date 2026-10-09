@@ -56,7 +56,7 @@ body.ui-v2 {
      not slide the light). The cast (#dock-cast) and the fade's own copy of it (.dock-fade::before) both read it, so
      the light is one radial whichever of the two paints it. */
   --cast-centre: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-rest-h) - var(--s-6));
-  padding-bottom: var(--dock-reserve);
+  padding-bottom: calc(var(--dock-reserve) + var(--kb-inset, 0px));   /* the Dock rides the keyboard (--kb-inset, 0 when none), so the page scrolls its last row above the field, not under it */
 }
 body.ui-v2.fp-open { --dock-mini-h: var(--mini); }
 body.ui-v2.sh-compose { --dock-field-h: var(--dock-field-row); --dock-tab-h: var(--dock-tab-receded); --dock-tab-rest: var(--dock-tab-receded); }
@@ -149,7 +149,7 @@ body.ui-v2:not(.fp-open) #dock-cast { display: none; }
   background: var(--overlay);
   -webkit-backdrop-filter: none; backdrop-filter: none;     /* the Dock is the only blurred surface */
 }
-.dock-layer #sh-compose #sh-input { min-height: var(--tap); color: var(--text); font: var(--t-body); }
+.dock-layer #sh-compose #sh-input { min-height: var(--tap); color: var(--text); font: var(--t-body); background: transparent; }
 .dock-layer #sh-compose #sh-input::placeholder { color: var(--text-2); opacity: 1; }
 .dock-layer #sh-compose .sh-glyph { stroke: var(--text-2); }
 .dock-layer #sh-compose #sh-form:focus-within { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
@@ -251,11 +251,15 @@ body.ui-v2 .hv2-play { color: var(--bg); }   /* the legacy page colour: dark in 
       Dock is the field row alone, riding the keyboard's top edge (the mini row and the tab bar are
       `display: none` - an author rule, never `hidden`, for the cascade reason in the header).
    --------------------------------------------------------------------------- */
-body.ui-v2.kb-open .dock-layer .dock { bottom: calc(var(--kb-inset, 0px) + var(--s-2)); }
-body.ui-v2.kb-open .dock-layer .dock-mini, body.ui-v2.kb-open .dock-layer .tab-bar,
+body.ui-v2.kb-open .dock-layer .dock { bottom: calc(var(--kb-inset, 0px) + var(--s-2)); }body.ui-v2.kb-open .dock-layer .dock-mini, body.ui-v2.kb-open .dock-layer .tab-bar,
 body.ui-v2.sh-searching .dock-layer .dock-mini, body.ui-v2.sh-searching .dock-layer .tab-bar { display: none; }
 body.ui-v2.kb-open .dock-layer .dock-fade, body.ui-v2.sh-searching .dock-layer .dock-fade,
 body.ui-v2.kb-open #dock-cast, body.ui-v2.sh-searching #dock-cast { opacity: 0; }
+/* With the keyboard up the field row floats mid-screen, so the last results must be able to scroll clear of it: #view
+   reserves the keyboard and the row (section 1 zeroed it for the resting Dock), and scroll-padding makes a result scrolled
+   into view (a tap, a focus move, scrollIntoView) land in the strip above the row instead of centred under it. */
+body.ui-v2.sh-compose.kb-open #view { padding-bottom: calc(var(--kb-inset, 0px) + var(--dock-field-row) + var(--s-8)); }
+html:has(body.ui-v2.kb-open) { scroll-padding-bottom: calc(var(--kb-inset, 0px) + var(--dock-field-row) + var(--s-8)); }
 
 /* ---------------------------------------------------------------------------
    8. MOTION - declared ONLY for a listener who has not asked for less of it. The Dock is not an `.ag` subtree

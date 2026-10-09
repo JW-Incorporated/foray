@@ -386,12 +386,13 @@ test("a FOLLOWED pi: show resolves from its follow record, even if never re-rend
   assert.strictEqual(m.ctx.showById("pi:77")?.title, "Followed Tiny");
 });
 
-test("every not-found page has a page head and a ‹", () => {
-  /* qa 125. MUTATION: revert renderEpisode to the one-line note. */
+test("every not-found page is a way out: a ‹ page head, or for episodes the Today button", () => {
+  /* qa 125. Ruling that fell (Redesign 2026, ambient not-found): the episode page's ‹ went; its EmptyState's Secondary
+     button to Today is the way out. MUTATION: revert renderEpisode to the one-line note. */
   const m = boot(new Map());
   m.ctx.renderEpisode("no-such-episode");
-  assert.ok(m.view().includes("Episode not found."));
-  assert.ok(m.view().includes('class="back"'), "a stale link must not be a dead end");
+  assert.ok(m.view().includes("Nothing here any more."));
+  assert.ok(m.view().includes('href="#/"'), "a stale link must not be a dead end");
   m.ctx.renderShow("pi:999999");
   assert.ok(m.view().includes("Show not found."));
   assert.ok(m.view().includes('class="back"'));

@@ -18,6 +18,12 @@ import { forayDetailPicks } from "./seed.mjs";
 
 const wait = (page, ms) => page.waitForTimeout(ms);
 
+/* The page the Dawn and unavailable helpers park on while the scheme flips: a LEGACY page, because a page that wears `.ag`
+   crossfades its colours for 200ms when the scheme changes and the reduced-motion gate reads that as a violation. The Forays
+   list used to be that page; it is Afterglow now (Redesign 2026). When Followed shows is re-skinned, park on whichever
+   legacy page is left. */
+const PARK_ROUTE = "#/starred-shows";
+
 /** Start playback of a seeded item through the real player, then pin it: seek to
     a fixed offset and pause, so the mini bar and sheet show a deterministic
     position. (The audio is the silent 60 s fixture, so the bar's time reads
@@ -85,7 +91,7 @@ const forayRoute = (foray) => "#/foray/" + encodeURIComponent(foray.id);
 async function openUnavailableForay(page, foray) {
   /* Off the Afterglow page while the scheme goes back to dark (the Dawn step before this one left it light), so no
      drawn page crossfades; the Foray is then painted new. */
-  await page.evaluate(() => { location.hash = "#/forays"; });
+  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
   await wait(page, 400);
   await page.emulateMedia({ colorScheme: "dark" });
   await wait(page, 400);
@@ -101,12 +107,25 @@ async function openUnavailableForay(page, foray) {
 async function goDawn(page) {
   /* Leave the Afterglow page first and come back after the flip, so the scheme change is not a live colour change on a page
      that is already drawn (every .ag element would crossfade for 200ms): the page is painted new, in Dawn. */
-  const hash = await page.evaluate(() => { const h = location.hash; location.hash = "#/forays"; return h; });
+  const hash = await page.evaluate((r) => { const h = location.hash; location.hash = r; return h; }, PARK_ROUTE);
   await wait(page, 500);
   await page.emulateMedia({ colorScheme: "light" });
   await wait(page, 500);
   await page.evaluate((h) => { location.hash = h; }, hash);
   await page.waitForSelector(".fd .fd-title", { timeout: 15000 });
+  await wait(page, 700);
+}
+
+/* The Forays list in Dawn: leave the Afterglow page, flip the scheme the way a phone does, and come back, so the page is
+   painted new in the light palette rather than crossfading a drawn one. (Each state gets a fresh context, so the scheme
+   returns to dark for the next state.) */
+async function goDawnForays(page) {
+  await page.evaluate((r) => { location.hash = r; }, PARK_ROUTE);
+  await wait(page, 500);
+  await page.emulateMedia({ colorScheme: "light" });
+  await wait(page, 500);
+  await page.evaluate(() => { location.hash = "#/forays"; });
+  await page.waitForSelector(".fl-card", { timeout: 15000 });
   await wait(page, 700);
 }
 
@@ -335,6 +354,17 @@ export function appStates(fx) {
         { label: "mini-player-up-next", route: "#/queue" },
         { label: "now-playing", route: "#/library", run: (page) => openNowPlaying(page) },
         { label: "now-playing-closed", route: "#/library", run: (page) => closeNowPlaying(page) },
+        /* Appended (Forays list): the page with something playing, so the Dock's cast is up. */
+        { label: "mini-player-forays", route: "#/forays", ready: ".fl-card" },
+      ],
+    },
+    {
+      id: "forays-list",
+      description: "The Forays list: two-up ForayCards with one part-played (strip fill) and one finished (check), then the Dawn scheme.",
+      seed: "forays-progress",
+      steps: [
+        { label: "forays-list", route: "#/forays", ready: ".fl-card" },
+        { label: "forays-list-dawn", route: "#/forays", run: (page) => goDawnForays(page), ready: ".fl-card" },
       ],
     },
     {

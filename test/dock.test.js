@@ -472,3 +472,15 @@ test("round 3: a Dusk page under the Dock takes the warm neutrals, has no hairli
   assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose .topbar", "display"), "none", "Discover has no header bar");
   assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose", "--topbar-h"), "0px", "and what the bar reserved goes back to every rule that read it");
 });
+
+test("QA fix: the Dock's search field paints no UA background, so Dawn's ink never sits on Chrome's dark form fill", () => {
+  /* The Dock is not an .ag subtree, so it keeps index.html's `color-scheme: dark`; an <input> with no
+     background of its own is painted with the dark form-control fill (#3b3b3b), and Dawn's near-black
+     ink on it is 1.54:1 (axe color-contrast on #sh-input, 17 screens). The pill (#sh-form) already
+     carries the surface, so the input must be transparent over it.
+     MUTATION: delete `background: transparent` from `.dock-layer #sh-compose #sh-input` in ui/dock.css
+     -> this fails. tools/ui-lab/a11y.mjs --scheme light measures the same thing in a browser. */
+  const sel = ".dock-layer #sh-compose #sh-input";
+  assert.strictEqual(dockCss.declOf("ui/dock.css", sel, "background"), "transparent", "the field has no fill of its own");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", sel, "color"), "var(--text)", "and its ink is the page's text token");
+});
