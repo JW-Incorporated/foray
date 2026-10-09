@@ -243,7 +243,10 @@ function onSheetKeydown(e) {
   if (e.key !== "Tab") return;
   /* The trap is belt and braces behind `inert`: a WebView without `inert`
      support still keeps Tab inside the dialog. */
-  const items = sheetFocusables(top.panel);
+  /* Only the controls the sheet actually draws are Tab stops. Car posture (ui/car.css) leaves the detail handle, the
+     secondary row and the detail posture in the DOM at display:none; taken as the trap's "last" control, one of those
+     is never focused, so Tab from the last visible control was not wrapped and left the sheet for the page. */
+  const items = sheetFocusables(top.panel).filter(isRendered);
   const active = document.activeElement;
   const inside = !!(active && typeof top.panel.contains === "function" && top.panel.contains(active));
   /* WHAT THE SHEET KEEPS REACHABLE IS INSIDE THE TRAP (review 2026-09-23).

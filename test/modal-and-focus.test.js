@@ -415,6 +415,29 @@ test("QA fix: a kept topbar the page hides with display:none is not a Tab stop -
   assert.strictEqual(m.doc.activeElement, m.menu, "a laid-out ☰ is still reached");
 });
 
+test("a control the sheet hides with display:none is not its last Tab stop - the trap wraps over the visible ones (car posture)", () => {
+  /* Car posture (ui/car.css) leaves the detail handle and the secondary row in the sheet's DOM at display:none.
+     The trap took the last of them as the sheet's last control, so Tab from the last VISIBLE control was not
+     wrapped and focus left the sheet (ui-lab gate sheet-focus, tab-escapes, player/now-playing-car: 1 of 10 Tabs
+     landed on body). A hidden element has no client rects. MUTATION: drop `.filter(isRendered)` from `items` in
+     onSheetKeydown (ui/sheets.js) -> the first assertion fails (focus stays on the last visible control). */
+  const m = mount();
+  const s = sheet(m);
+  const hidden = m.doc.createElement("button");
+  s.panel.appendChild(hidden);                     // after the last visible control, like .ag-np-detail-handle
+  hidden.getClientRects = () => [];
+  m.ctx.openSheet(s.wrap, {});
+  s.b.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, s.a, "Tab from the last visible control wraps to the first");
+  m.doc.key("Tab", { shiftKey: true });
+  assert.strictEqual(m.doc.activeElement, s.b, "Shift+Tab from the first wraps to the last visible control, not the hidden one");
+  hidden.getClientRects = () => [{ width: 44, height: 44 }];
+  s.a.focus();
+  m.doc.key("Tab", { shiftKey: true });
+  assert.strictEqual(m.doc.activeElement, hidden, "once laid out, the same control is the last stop again");
+});
+
 test("the modal lock is derived from what is open: kept across a render, dropped when the sheet's DOM is gone", () => {
   /* THE BACK-GESTURE BUG. The feedback sheet lives inside #view; a navigation
      replaced #view and `fy-sheet-open` was carried forward because it was
