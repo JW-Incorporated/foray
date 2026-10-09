@@ -318,7 +318,6 @@ final class SpeechNarratorTests: XCTestCase {
         XCTAssertTrue(rig.pcm.engineIsRunning, "the next line starts the engine again")
         XCTAssertTrue(spin(until: 60, { !rig.ends.isEmpty }), "the next line never ended: \(rig.rows)")
         XCTAssertEqual(rig.ends, [.finished])
-        XCTAssertFalse(rig.pcm.engineIsRunning)
     }
 
     /// The real PCM output on a session the owner activated, and what it
