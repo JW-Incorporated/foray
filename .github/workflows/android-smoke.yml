@@ -51,7 +51,7 @@
 # measured a cold API-36 image not booting in ~35 minutes; that is why the
 # image below is API 34 with KVM enabled explicitly). A flaky required check is
 # worse than no check. `protect-main` matches required contexts BY NAME
-# (`backend`, `data-and-site`, `path-policy`) and `android-smoke` is none of
+# (`REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`) and `android-smoke` is none of
 # them; `tools/mobile/android-workflow.test.mjs` pins that it stays so.
 #
 # ── NEVER UPLOADS, READS NO SECRET ───────────────────────────────────────────

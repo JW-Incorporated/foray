@@ -39,8 +39,9 @@
 # ENFORCEMENT IS ON. `PATH_POLICY_ENFORCE=1` was set 2026-08-16, so UNAPPROVED is
 # RED today and the "until then" below has already passed. What is still open is
 # only step 2 of HUMAN-ACTIONS.md #1: marking the check REQUIRED on `main`. So a
-# governed-path PR goes red and loudly, and still merges, because `backend` and
-# `data-and-site` are the required checks. Three agents and a coordinator read
+# governed-path PR goes red and loudly, and still merges, because `path-policy`
+# is not among the required checks (`REQUIRED_CHECKS` in
+# `tools/ci/path-policy.mjs`). Three agents and a coordinator read
 # the paragraph below as a statement about today and were wrong: a default is not
 # a setting, and an open ticket is not a state. Read the repo variable.
 #
