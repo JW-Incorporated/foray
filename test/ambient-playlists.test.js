@@ -733,6 +733,36 @@ test("Where this came from: artwork rows, one per distinct show, the name whole 
   assert.deepStrictEqual(Array.from(w.ctx.playlistShows(rows), (s) => s.name), ["<b>Beta</b>"]);
 });
 
+test("Resume resumes the half-heard part, not the one after it; the Next marker and the hero agree", async () => {
+  /* Review finding: `nextRow` was the first part not `hasOpened`, and a stored position counts as opened, so with part 2 at 50% the
+     hero said Resume and started part 3 from 0, leaving part 2 behind. The lab's playlist-started state (1-2 finished, 3 at 50%) is
+     this case. The fixtures above only ever used DONE, so nothing covered an in-progress part.
+     MUTATION: make `nextRow` the bare `unopenedRow` (drop `partialRow`/`currentRow` in renderPlaylistDetail) -> data-pl-next is
+     show-3--ep-3 and play calls are ["show-3--ep-3"], red. Drop `unfinished` -> the finished-but-current part is picked, the
+     last assertion goes red. */
+  const HALF = { state: "in-progress", percent: 50, label: "10 min left" };
+  const lists = [{ id: "q1", title: "T", items: FOUR }];
+  const w = world({ items: FOUR, lists, progress: { [FOUR[0].id]: DONE, [FOUR[1].id]: HALF } });
+  w.ctx.renderPlaylistDetail("q1");
+  assert.match(w.html(), /data-pl-next="show-2--ep-2"/, "the half-heard part is the target, not part 3");
+  assert.match(w.html(), /<button[^>]*data-pl-playall[^>]*data-label="Resume"/);
+  w.ctx.bindPlaylistPlay(w.view.querySelector(".pl-detail"));
+  w.view.querySelector("[data-pl-playall]").click();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(w.calls.play, ["show-2--ep-2"], "Resume starts the half-heard part");
+  /* The lab's own state: parts 1-2 finished, part 3 half heard -> part 3, not 4. */
+  const lab = world({ items: FOUR, lists, progress: { [FOUR[0].id]: DONE, [FOUR[1].id]: DONE, [FOUR[2].id]: HALF } });
+  lab.ctx.renderPlaylistDetail("q1");
+  assert.match(lab.html(), /data-pl-next="show-3--ep-3"/);
+  /* The player's current item, when it is one of these and unfinished, wins over an earlier half-heard one; a finished current part does not. */
+  const cur = world({ items: FOUR, lists, progress: { [FOUR[1].id]: HALF }, playing: FOUR[3].id });
+  cur.ctx.renderPlaylistDetail("q1");
+  assert.match(cur.html(), /data-pl-next="show-4--ep-4"/, "where the listener is");
+  const fin = world({ items: FOUR, lists, progress: { [FOUR[0].id]: DONE, [FOUR[3].id]: DONE }, playing: FOUR[3].id });
+  fin.ctx.renderPlaylistDetail("q1");
+  assert.match(fin.html(), /data-pl-next="show-2--ep-2"/, "a finished current part is not a place to resume");
+});
+
 test("the primary button is a word: Play, Resume or Play again, full width, and Pause while it plays", () => {
   /* DIRECTION.md Foray detail: "Button: Play, Resume or Play again". Iteration 1 drew the Today hero's icon-only circle, which cannot say any of the three.
      MUTATIONS: always write "Play" -> the Resume and Play again assertions go red. Test `nextRow` instead of `opened` for Play -> a started playlist reads

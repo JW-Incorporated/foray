@@ -554,7 +554,16 @@ function renderPlaylistDetail(id) {
      stored position), so it cannot regress when the 200-entry history ring rotates (audit 2026-09-22). That is wider
      than "played" on purpose: next is where a fresh start goes, played is a count. With every part opened there is no
      "next", and the hero Play starts from the top. */
-  const nextRow = rows.find(r => r.state === "live" && !hasOpened(r.item.id, history));
+  const unopenedRow = rows.find(r => r.state === "live" && !hasOpened(r.item.id, history));
+  /* ...but a part left half-heard comes BEFORE any unopened one: Resume must resume it, not skip to the part after (a part
+     at 50% is "opened", so the unopened test alone walked past it). The player's own current item, when it belongs here and
+     is not finished, is the same thing: it is where the listener is. */
+  const livePlayer = window.ForayPlayer;
+  const unfinished = (r) => { const pr = rowProgress(r.item); return !pr || pr.state !== "played"; };
+  const currentRow = livePlayer && typeof livePlayer.isCurrent === "function"
+    ? rows.find(r => r.state === "live" && unfinished(r) && livePlayer.isCurrent(r.item.id)) : null;
+  const partialRow = rows.find(r => r.state === "live" && (rowProgress(r.item) || {}).state === "in-progress");
+  const nextRow = currentRow || partialRow || unopenedRow;
   const nextId = nextRow ? nextRow.item.id : "";
   const ctx = playlistCtx(p);
   /* A generated playlist or a subject queue can be kept (savePlaylistCopy);

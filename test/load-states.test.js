@@ -904,7 +904,7 @@ test("'played' counts history OR a stored position, so it cannot fall as the his
      (audit round 2, honesty-6): "N played" means finished, the same word the
      rows use, so it reads the player's own verdict per row. */
   const body = /function renderPlaylistDetail\(id\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
-  assert.match(body, /const nextRow = rows\.find\(r => r\.state === "live" && !hasOpened\(r\.item\.id, history\)\);/);
+  assert.match(body, /const unopenedRow = rows\.find\(r => r\.state === "live" && !hasOpened\(r\.item\.id, history\)\);/);
   assert.match(body, /const played = playlistPlayedCount\(rows, history\);/);
   const counted = /function playlistRowPlayed\(r, history\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
   assert.match(counted, /progress \? progress\.state === "played" : history\.has\(item\.id\)/, "the count is the player's verdict (the history ring only while the player has not arrived)");

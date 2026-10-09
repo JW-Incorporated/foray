@@ -1437,7 +1437,8 @@ test("a playlist's 'N played' counts FINISHED episodes only — the rows' own wo
   /* The half-way row still says how far in it is: the player's progress is the row's Ember rim (the label is the
      player's own and reaches the row through the same reading). */
   assert.match(html, /data-pl-ep="show-2--episode-2"[\s\S]*?td-rim-fill" data-pct="50"/, "the half-way row draws its progress rim at 50%");
-  /* The next-up marker still reads "opened": it skips everything the listener
-     has touched, so it lands on episode 4. */
-  assert.deepStrictEqual(nextMarkers(html), ["4"]);
+  /* The next-up marker lands on the first half-heard part (episode 2, 50%), not past it: Resume must resume what was left
+     half-heard (review fix; the old "skip everything touched" rule landed on 4 and left episode 2 behind). A sampled part
+     (3) is touched but not resumable, so it is still skipped when no part is half-heard. */
+  assert.deepStrictEqual(nextMarkers(html), ["2"]);
 });
