@@ -1,16 +1,15 @@
 import { applyCors } from "../_lib/cors";
-import { firstParam } from "../_lib/params";
+import { firstParam, parseLimit, requireQuery, type ApiRequest, type ApiResponse } from "../_lib/params";
 import { type ParsedEpisode } from "../../backend/src/feeds/parser";
 import { appleSearchBucket } from "../_lib/appleBucket";
 import { appleSearch } from "../_lib/appleClient";
 import { loadShowIdMap } from "../_lib/showIdMap";
 import { resolveShow, isPiShowId, UNKNOWN_SHOW_ID } from "../_lib/resolveShow";
 import { TtlCache, episodeSearchCache, normalizeQueryKey, showScopedQueryKey } from "../_lib/searchCache";
-import { sharedFeedReader, FEED_FRESH_MS, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
+import { sharedFeedReader, FEED_FRESH_MS } from "../_lib/feedCache";
 import { episodeIdentity } from "../../backend/src/feeds/episodeIdentity";
 import {
-  appleCallerBuckets, clientKey, normalizeSearchText, CLIENT_LIMITED_ERROR,
-  QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR,
+  appleCallerBuckets, clientKey, normalizeSearchText, CLIENT_LIMITED_ERROR, QUERY_MIN_CHARS, QUERY_TOO_SHORT_ERROR,
 } from "../_lib/clientLimit";
 
 /**
@@ -76,17 +75,13 @@ import {
    drops to 2 s is founder question 3 (docs/roadmap/code-health-2.md §1;
    default: keep 8 s until an episode-entity measurement exists). */
 export const APPLE_EPISODE_TIMEOUT_MS = 8_000;
-const MAX_RESULTS = 25;
 
 /* OUTBOUND FEED FETCHES ARE LIMITED PER SHOW (round-3 audit, search-api-css-4),
    and the parsed feed is kept per show (search-api-css-3): both live in
    api/_lib/feedCache.ts, shared with the per-show list. A script looping
    `?show=<id>&q=<random>` used to download a multi-MB third-party feed per
    request; now a new `q` reads the kept parse, and a refetch past the per-show
-   budget is refused (degraded, never an empty success). Re-exported for tests. */
-export { FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR };
-export const feedFetchBuckets = sharedFeedReader.buckets;
-export { sharedFeedReader };
+   budget is refused (degraded, never an empty success). */
 
 /* SHOW-SCOPED ANSWERS ARE KEPT NO LONGER THAN THEIR FEED IS FRESH
    (code-health-2 CH2-38, A1-05). They shared the Apple path's 1 h cache over a
@@ -145,18 +140,6 @@ const APPLE_OVERFETCH_MAX = 200; // Apple's own documented ceiling for `limit`
 /** How many rows to ask Apple for when the caller wants `limit` of them. */
 export function appleEpisodeAsk(limit: number): number {
   return Math.min(APPLE_OVERFETCH_MAX, Math.max(APPLE_OVERFETCH_MIN, limit * APPLE_OVERFETCH_FACTOR));
-}
-
-interface ApiRequest {
-  method?: string;
-  query: Record<string, string | string[] | undefined>;
-  headers: Record<string, string | string[] | undefined>;
-}
-interface ApiResponse {
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-  setHeader(name: string, value: string): void;
-  end(): void;
 }
 
 export interface EpisodeSearchResult {
@@ -310,15 +293,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const q = firstParam(req.query.q);
-  if (!q || !q.trim()) {
-    res.status(400).json({ error: "q is required" });
-    return;
-  }
-  if (q.length > QUERY_MAX_CHARS) {
-    res.status(400).json({ error: QUERY_TOO_LONG_ERROR });
-    return;
-  }
+  const q = requireQuery(req, res);
+  if (q === null) return; // the 400 is already answered
 
   const showScope = firstParam(req.query.show);
   /* A `pi:` show is found only in the shard `k` names (resolveShow.ts). Its
@@ -327,9 +303,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
      only an earlier request's key could resolve. */
   const shardKey = showScope && isPiShowId(showScope) ? firstParam(req.query.k) : null;
   const scopeKey = showScope && isPiShowId(showScope) ? `${showScope} ${shardKey ?? ""}` : showScope;
-  const limitParam = firstParam(req.query.limit);
-  const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : NaN;
-  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : MAX_RESULTS;
+  const limit = parseLimit(req.query.limit);
 
   /* The show-scoped matcher compares raw lowercased text, so its key must too
      (showScopedQueryKey); the Apple path keys on the folded text. Each path
