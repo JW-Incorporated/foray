@@ -36,10 +36,21 @@ public final class EngineSeams {
      * <p>ON ANDROID THE SESSION IS NOT WHERE FOCUS IS REQUESTED. The deck's ExoPlayer is built
      * with {@code handleAudioFocus} on (the card), so Media3 requests AUDIOFOCUS_GAIN when the
      * deck plays and refuses to sound without it; what the host hears back is
-     * {@link FocusMapping}'s interruptions. So {@code activate()} answers whether the Media3
-     * session that owns the lock screen is alive, and the audible-start invariant holds twice
-     * over: the core will not command a play without this answer, and Media3 will not start
-     * one without focus.
+     * {@link FocusMapping}'s interruptions.
+     *
+     * <p>WHAT ANDROID CAN AND CANNOT REFUSE. {@code activate()} answers whether the Media3
+     * session that owns the lock screen is alive, and that is the only refusal it can give: a
+     * dead session is {@code commandFailed(session-failed:other)} and no deck command, as on iOS.
+     * It CANNOT refuse for focus. There is no way to ask for focus without taking it from
+     * Media3's own request, and Media3 1.11 asks on its playback thread after the press's turn
+     * is over ({@code FocusIntegrationTest.aPlayRefusedFocusReadsAsPlayingInItsTurnAndArrivesLaterAsAPermanentLoss}).
+     * So a play the system refuses focus for (the driver is on a call) answers {@code success};
+     * a turn later Media3 drops play-when-ready with reason AUDIO_FOCUS_LOSS and the mapping
+     * reports an interruption that never ends. iOS refuses that same press as
+     * {@code commandFailed}, because {@code setActive(true)} fails in its turn. That drift is
+     * R5-02 (docs/roadmap/code-health-3.md, CH3-08), still open. What holds on both: nothing
+     * sounds without focus, because the core will not command a play without this answer and
+     * Media3 will not start one without focus.
      */
     public interface Session {
         Activation activate();
