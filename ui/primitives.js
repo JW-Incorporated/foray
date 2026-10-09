@@ -376,7 +376,13 @@ function tactileBand(data) {
   var segments = tactileBandSegments(d.segments);
   /* The mini player's 3px line (BUILD-NOTES 3.12) carries the foray's colours,
      or one persimmon bar for a single episode, which has no segments. */
-  var episode = kind === "line" && !segments.length;
+  /* A plain episode (Tactile Now Playing, episode) is one persimmon bar, never a
+     station per show: no codes, no hatch, and a 1px --ink-3 tick at each chapter
+     start when the feed publishes chapters (`chapters` is their fractions of the
+     runtime, 0 < f < 1). Only the scrub and detail bands carry it; the mini and
+     the line already draw a plain episode as one bar. */
+  var plain = Boolean(d.episode) && (kind === "scrub" || kind === "detail");
+  var episode = (kind === "line" && !segments.length) || plain;
   if (episode) segments = [{ showId: "episode", show: "Episode", duration: 1, narration: false }];
   var line = kind === "line";
   /* Narration is hatched where it is wide enough to read (detail, scrub); in
@@ -399,8 +405,19 @@ function tactileBand(data) {
   var mini = kind === "mini";
   var barY = mini ? 0 : 8;
   var barH = mini ? 60 : 28;
+  var stagePx = kind === "detail" ? TACTILE_DETAIL_PX : kind === "scrub" ? 56 : 8;
+  /* A plain episode has no code row under the bar, so its stage is only the bar
+     and an even 6px of well above and below it (the prototype's
+     `.band--episode` stage: 44px, bar 32px at 6px). `stagePx` says how many
+     rendered px the 60-unit viewBox is stretched over; the bar is then 6px in
+     and 32px tall on any stage, centred. */
+  if (plain && Number(d.stagePx) > 0) {
+    stagePx = Number(d.stagePx);
+    barY = +(60 * 6 / stagePx).toFixed(3);
+    barH = +(60 * (stagePx - 12) / stagePx).toFixed(3);
+  }
   var rx = 2000 / renderWidth;
-  var ry = 2 * 60 / (kind === "detail" ? TACTILE_DETAIL_PX : kind === "scrub" ? 56 : 8);
+  var ry = 2 * 60 / stagePx;
   var bars = widths.map(function (box, index) {
     var segment = segments[index];
     var cls = episode ? "t-band__bar t-band__bar--episode"
@@ -410,7 +427,7 @@ function tactileBand(data) {
       : '" y="' + barY + '" width="' + box.width.toFixed(2) + '" height="' + barH + '" rx="' + rx.toFixed(2) + '" ry="' + ry.toFixed(2) + '"';
     return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";
   }).join("");
-  var labels = kind === "mini" || kind === "line" ? "" : tactileBandLabelRuns(tactileBandRuns(segments, widths), renderWidth).map(function (run) {
+  var labels = kind === "mini" || kind === "line" || plain ? "" : tactileBandLabelRuns(tactileBandRuns(segments, widths), renderWidth).map(function (run) {
     var isCurrent = current >= run.start && current <= run.end;
     var centre = ((run.x + run.right) / 2).toFixed(2);
     /* Detail codes are counter-scaled on x so a glyph is 13px wide and 13px tall, not
@@ -420,17 +437,23 @@ function tactileBand(data) {
       : ' x="' + centre + '" y="53"';
     return '<text class="t-band__code' + (isCurrent ? " is-current" : "") + '" data-run-start="' + run.start + '" data-run-end="' + run.end + '"' + place + ' text-anchor="middle">' + esc(codes.get(run.showId)) + "</text>";
   }).join("");
+  var ticks = !plain ? "" : '<g class="t-band__ticks" aria-hidden="true">' + (Array.isArray(d.chapters) ? d.chapters : [])
+    .map(Number).filter(function (f) { return f > 0 && f < 1; })
+    .map(function (f) {
+      var x = (f * 1000).toFixed(2);
+      return '<line class="t-band__tick" x1="' + x + '" x2="' + x + '" y1="' + barY + '" y2="' + (barY + barH) + '" vector-effect="non-scaling-stroke"></line>';
+    }).join("") + "</g>";
   var role = kind === "scrub" ? "slider" : "img";
   var valueText = d.valueText || Math.round(progress * (Number(d.totalSeconds) || total)) + " seconds of " + Math.round(Number(d.totalSeconds) || total) + " seconds, " + (segments[current] ? segments[current].show : "4a");
   /* The line is decoration on the mini player, whose region label names what
      is playing; it is hidden from assistive tech, as in the prototype. */
   var aria = line ? ' aria-hidden="true" focusable="false"' : role === "slider"
     ? ' tabindex="0" aria-valuemin="0" aria-valuemax="' + Math.round(Number(d.totalSeconds) || total) + '" aria-valuenow="' + Math.round(progress * (Number(d.totalSeconds) || total)) + '" aria-valuetext="' + esc(valueText) + '"'
-    : ' aria-label="' + esc(d.label || "Foray band with " + codes.size + " stations") + '"';
+    : ' aria-label="' + esc(d.label || (plain ? "Episode progress" : "Foray band with " + codes.size + " stations")) + '"';
   return '<svg class="band band--' + esc(kind) + (d.buffering ? " band--buffering" : "") + '"' + (line ? "" : ' data-draw="true" role="' + role + '"') + aria + ' viewBox="0 0 1000 60" preserveAspectRatio="none">' +
     '<defs><pattern id="' + esc(id) + '-hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="12" class="t-band__hatch"></rect></pattern>' +
     '<clipPath id="' + esc(id) + '-progress"><rect class="band__progress" x="0" y="0" width="' + progressX.toFixed(2) + '" height="60"></rect></clipPath></defs>' +
-    '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + labels +
+    '<g class="' + (line ? "band__layers" : "band__draw") + '"><g class="t-band__base">' + bars + '</g><g class="t-band__fill" clip-path="url(#' + esc(id) + '-progress)">' + bars + "</g>" + ticks + labels +
     (line || (mini && !progress) ? "" : mini
       ? '<g class="needle" transform="translate(' + progressX.toFixed(2) + ' 0)"><rect x="' + (-1000 / renderWidth).toFixed(2) + '" y="-30" width="' + (2000 / renderWidth).toFixed(2) + '" height="120" rx="0"></rect></g>'
       : kind === "detail"

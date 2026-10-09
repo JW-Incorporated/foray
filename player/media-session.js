@@ -330,6 +330,23 @@ export function mediaArtworkList({ showArtworkUrl = null, appArtworkUrl = APP_AR
   return app ? [app] : [];
 }
 
+/* The sizes the web Media Session is offered (Tactile BUILD-NOTES 7). */
+export const MEDIA_ARTWORK_LADDER = [96, 128, 192, 256, 384, 512];
+
+/**
+ * The web write's artwork: the one chosen square (see mediaArtworkList)
+ * declared at each size of the ladder, so the OS never scales a 512 icon by
+ * guesswork. It is applied only where the web assigns `navigator.mediaSession.
+ * metadata`: mediaArtworkList is the contract the native plugins mirror and
+ * the parity fixtures pin, and stays one entry. Still one source, never a mix,
+ * and still through `artworkUrl`'s gate: the list it reads was built by it.
+ */
+export function mediaArtworkLadder(list) {
+  const first = Array.isArray(list) ? list[0] : null;
+  if (!first || !first.src) return [];
+  return MEDIA_ARTWORK_LADDER.map((size) => ({ ...first, sizes: `${size}x${size}` }));
+}
+
 /* ---------- metadata ---------- */
 
 /** The app's own name. Exported so a test can assert where it may and may not
@@ -385,11 +402,15 @@ export function narrationCredit({ forayTitle = "", nextItem = null } = {}) {
  *   the part counter
  * @param {string} [view.showArtworkUrl]
  * @param {string} [view.appArtworkUrl]
+ * @param {string} [view.why] the why-line an ordinary episode was played for
+ *   (Tactile BUILD-NOTES 7: "album = the why-line"). It names the album of a
+ *   single episode only; a Foray keeps its own title and counter, and an
+ *   episode with no why-line keeps "4a" (issue #1006).
  * @returns {{ title: string, artist: string, album: string, artwork: object[] }}
  */
 export function mediaMetadata({
   item = null, nextItem = null, forayTitle = "", index = 0, total = 0,
-  showArtworkUrl = null, appArtworkUrl = APP_ARTWORK_URL,
+  showArtworkUrl = null, appArtworkUrl = APP_ARTWORK_URL, why = "",
 } = {}) {
   const foray = clean(forayTitle);
   /* F-89 (2026-09-11): the first generated Foray to carry a jingle item reached
@@ -420,10 +441,14 @@ export function mediaMetadata({
     artist = clean(item?.show);
   }
 
+  /* A plain episode (no Foray title, no counter, not a line we wrote) is
+     described by the sentence it was played for; anything else keeps albumOf. */
+  const episodeWhy = !foray && !narration && !(Number.isInteger(total) && total > 0) ? clean(why) : "";
+
   return {
     title,
     artist,
-    album: albumOf(foray, index, total),
+    album: episodeWhy || albumOf(foray, index, total),
     artwork: mediaArtworkList({
       // A narration line is ours; a publisher's square does not belong on it.
       showArtworkUrl: narration ? null : showArtworkUrl,
@@ -721,7 +746,8 @@ export function createMediaSession({ nav = null, MediaMetadata = null, onWrite =
           let writeOk = true;
           let writeError = "";
           try {
-            ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(metadata) : { ...metadata };
+            const written = { ...metadata, artwork: mediaArtworkLadder(metadata.artwork) };
+            ms.metadata = typeof MediaMetadata === "function" ? new MediaMetadata(written) : written;
           } catch (e) {
             writeOk = false;
             writeError = String((e && (e.message || e.name)) || e);
