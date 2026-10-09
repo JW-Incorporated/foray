@@ -38,9 +38,11 @@ import {
   parseOutcome, failedGate, divergentGate, stalledGate, stuckGate, livenessGate,
   watchVerdict, mainState, triggerDecision, triggerVerdict, selfBrokenVerdict, planIssue, renderIssueBody, run,
   GIT_LOG_FORMAT, ISSUE_MARKER, ISSUE_TITLE, GRACE_MINUTES, STALL_HOURS, STUCK_MINUTES,
-  RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS,
+  RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS, NATIVE_INPUT_FILES,
+  releaseBinaryJobs, deriveNativeInputs,
 } from "./watch-release.mjs";
-import { code, block, step } from "../mobile/workflow-yaml.mjs";
+import { code, block, step, prose } from "../mobile/workflow-yaml.mjs";
+import { REQUIRED_CHECKS } from "../ci/pr-triage.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -156,6 +158,9 @@ test("the allow-list: the bundle and the native inputs trigger, the bot-rewritte
     ".github/actions/ios-prepare/action.yml": "release",
     "tools/mobile/inject-splash.mjs": "release",
     "tools/mobile/prepare-webdir.mjs": "release",
+    // CH2-19: ios-archive runs it (xcode-container, signing-gate). It was
+    // pinned null here while the composite executed it every release.
+    "tools/mobile/ios-ci.mjs": "release",
     // What the manifest-autofix bot rewrites on nearly every PR (plan §3).
     "sw.js": null,
     "deploy-manifest.json": null,
@@ -171,11 +176,275 @@ test("the allow-list: the bundle and the native inputs trigger, the bot-rewritte
     "api/shows/[show_id]/episodes.ts": null,
     "vercel.json": null,
     ".github/workflows/ci.yml": null,
-    "tools/mobile/ios-ci.mjs": null,
+    "tools/mobile/android-playback.mjs": null,
   };
   for (const [file, tier] of Object.entries(cases)) {
     assert.equal(releaseTier(file, BUNDLE), tier, file);
   }
+});
+
+/* ═══════════ CH2-19 (T2-05): the native half is what the release RUNS ═══════════ */
+
+/* The three files that build, sign and upload the binary. This suite scans them
+ * ITSELF, more crudely than the module does (only `node tools/...` lines and
+ * their relative static imports), so the module's derivation is checked against
+ * an independent reading, not against its own output. */
+const RELEASE_RUNNER_FILES = [
+  ".github/workflows/release.yml",
+  ".github/actions/android-bundle/action.yml",
+  ".github/actions/ios-archive/action.yml",
+  ".github/actions/ios-prepare/action.yml",
+];
+
+/* release.yml's jobs that only decide WHETHER to ship, pinned by hand here so
+ * the module's structural reading (releaseBinaryJobs) is checked against an
+ * independent one (PR #1202 review). */
+const RELEASE_GATE_JOBS = ["guard", "ios-checks", "summary"];
+
+const releaseYml = () => code(fs.readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8"));
+
+/** The job ids under release.yml's `jobs:`, read crudely. */
+function releaseJobIds(text) {
+  return [...block(text, "jobs", 0).matchAll(/^ {2}([\w-]+):\s*$/gm)].map((m) => m[1]);
+}
+
+/** release.yml's job text with `gates` left out (every job when `gates` is []). */
+function releaseJobsText(gates = RELEASE_GATE_JOBS) {
+  const text = releaseYml();
+  return releaseJobIds(text).filter((id) => !gates.includes(id)).map((id) => block(text, id, 2)).join("\n");
+}
+
+function nodeScripts(text) {
+  return [...text.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)\b/g)].map((m) => m[1]);
+}
+
+function independentlyScannedReleaseScripts() {
+  const found = new Set();
+  for (const f of RELEASE_RUNNER_FILES) {
+    const text = f.endsWith("release.yml") ? releaseJobsText() : code(fs.readFileSync(path.join(ROOT, f), "utf8"));
+    for (const script of nodeScripts(text)) found.add(script);
+  }
+  const queue = [...found];
+  while (queue.length) {
+    const f = queue.shift();
+    const src = fs.readFileSync(path.join(ROOT, f), "utf8");
+    for (const m of src.matchAll(/^\s*import\s[^;]*?from\s*["'](\.{1,2}\/[^"']+)["']/gm)) {
+      const dep = path.posix.normalize(path.posix.join(path.posix.dirname(f), m[1]));
+      if (!found.has(dep)) {
+        found.add(dep);
+        queue.push(dep);
+      }
+    }
+  }
+  return [...found].sort();
+}
+
+test("CH2-19: every script the release composites execute, and its static import closure, triggers a release", () => {
+  /* T2-05. The hand-kept list named five files; the composites run a dozen more,
+     so a fix to the Android signing include (wire-signing.mjs) or a regenerated
+     App Store icon never triggered a release, release-trigger said
+     NOTHING_TO_RELEASE and G3 never alarmed.
+     MUTATION: drop any derived file from NATIVE_INPUT_FILES (e.g. filter out
+     "tools/mobile/wire-signing.mjs") -> named here. */
+  const scanned = independentlyScannedReleaseScripts();
+  for (const must of [
+    "tools/mobile/wire-signing.mjs",
+    "tools/mobile/ios-ci.mjs",
+    "tools/mobile/release-ci.mjs",
+    "tools/mobile/version.mjs",
+    "tools/release/build-number.mjs",
+    "tools/release/upload-retry.mjs",
+    "tools/brand/png.mjs",
+    "tools/brand/build-icons.mjs",
+  ]) {
+    assert.ok(scanned.includes(must), `the independent scan no longer sees ${must}: it has gone blind`);
+  }
+  const missed = scanned.filter((f) => releaseTier(f, BUNDLE) !== "release");
+  assert.deepEqual(missed, [], "executed by a release composite, but not a release trigger");
+  // Read by path, not imported: inject-app-icon.mjs's DEFAULT_SOURCE.
+  assert.equal(releaseTier("icon-1024.png", BUNDLE), "release");
+});
+
+/* ═══════ PR #1202 review: a script only a GATE job runs ships nothing ═══════ */
+
+test("release.yml's binary jobs are read from its structure: ios and android use a composite, version feeds them; guard, ios-checks and summary are gates", () => {
+  /* MUTATION (run): drop releaseBinaryJobs' `needs.<id>.outputs` walk -> version
+     is no longer a binary job (and version.mjs / build-number.mjs drop out).
+     MUTATION (run): stop skipping `if:` lines -> version's
+     `if: needs.guard.outputs.allowed` pulls guard in. */
+  const text = releaseYml();
+  const { binary, jobs } = releaseBinaryJobs(text);
+  assert.deepEqual(binary, ["android", "ios", "version"]);
+  assert.deepEqual([...jobs.keys()].filter((id) => !binary.includes(id)).sort(), [...RELEASE_GATE_JOBS].sort());
+  assert.deepEqual([...jobs.keys()].sort(), releaseJobIds(text).sort(), "the module and this suite see the same jobs");
+  const composite = code(fs.readFileSync(path.join(ROOT, ".github/actions/ios-archive/action.yml"), "utf8"));
+  assert.equal(releaseBinaryJobs(composite), null, "a composite has no jobs: it is read whole");
+});
+
+test("a script only a gate job runs is not a release trigger: engine-ci.mjs (ios-checks), and a commit touching only it dispatches nothing", () => {
+  /* The trigger list was built from EVERY job, so an edit to a CI-gate script
+     spent a TestFlight and a Play upload on an identical app.
+     MUTATION (run): walk the whole workflow instead of the binary jobs
+     (`walked = code`) -> engine-ci.mjs is a native input -> red. */
+  const binaryJobScripts = nodeScripts(releaseJobsText());
+  const compositeScripts = RELEASE_RUNNER_FILES.slice(1)
+    .flatMap((a) => nodeScripts(code(fs.readFileSync(path.join(ROOT, a), "utf8"))));
+  const gateOnly = nodeScripts(releaseJobsText([]))
+    .filter((f) => !binaryJobScripts.includes(f) && !compositeScripts.includes(f));
+  assert.ok(gateOnly.includes("tools/ci/engine-ci.mjs"), `the gate jobs no longer run engine-ci.mjs: ${gateOnly}`);
+  for (const f of gateOnly) {
+    assert.ok(!NATIVE_INPUT_FILES.includes(f), `${f} runs only in a gate job but is a native input`);
+    assert.equal(releaseTier(f, BUNDLE), null, f);
+  }
+  const ciOnly = [{ sha: "c".repeat(40), committedAt: "2026-10-08T00:00:00Z", subject: "ci: release-checks wording",
+    files: ["tools/ci/engine-ci.mjs", "tools/ci/engine-ci.test.mjs"] }];
+  assert.deepEqual(pendingWork(ciOnly, BUNDLE).release, []);
+  const d = triggerDecision({ runs: [{ id: 1, run_number: 1, status: "completed", conclusion: "success", head_sha: "e".repeat(40),
+    created_at: "2026-10-07T00:00:00Z", updated_at: "2026-10-07T00:05:00Z" }], commits: ciOnly, bundle: BUNDLE,
+  mainRuns: [], mainStatus: { total_count: 1, state: "success" } });
+  assert.notEqual(d.code, "DISPATCH", d.reason);
+});
+
+test("binary inputs stay triggers: icons, plists, inject scripts, the version job's scripts, and what prepare-webdir imports", () => {
+  /* A gate job running a file does not take it off the list when a binary job
+     reaches it too: release-ci.mjs runs in `guard` AND in android-bundle's
+     play-gate. generate-manifest.mjs and the stamp modules it imports are in
+     prepare-webdir.mjs's import closure: they decide the bundle's data list,
+     build stamp and seed pointer, so they put bytes in the binary.
+     MUTATION (run): drop the feeder walk -> version.mjs and build-number.mjs
+     are null -> red. MUTATION (run): stop the import closure at tools/mobile/
+     -> generate-manifest.mjs is null -> red. */
+  for (const f of [
+    "icon-1024.png",
+    "tools/brand/4a-logo.png",
+    "mobile/ios/App/App/Info.plist",
+    "mobile/ios/App/App/PrivacyInfo.xcprivacy",
+    "tools/mobile/inject-app-icon.mjs",
+    "tools/mobile/inject-background-audio.mjs",
+    "tools/mobile/inject-privacy-manifest.mjs",
+    "tools/mobile/inject-splash.mjs",
+    "tools/mobile/inject-interlude.mjs",
+    "tools/mobile/release-ci.mjs",
+    "tools/mobile/version.mjs",
+    "tools/release/build-number.mjs",
+    "tools/ci/generate-manifest.mjs",
+    "tools/ci/forays-directory.mjs",
+    "tools/ci/catalogue-directory.mjs",
+    "tools/ci/crlf-guard.mjs",
+  ]) {
+    assert.equal(releaseTier(f, BUNDLE), "release", f);
+  }
+});
+
+test("the derivation on a synthetic workflow: a gate job's script is out, a feeder job's is in, a script both reach is in", () => {
+  /* MUTATION (run): walk every job -> tools/x/gate.mjs and report.mjs appear.
+     MUTATION (run): drop the feeder walk -> tools/x/ver.mjs disappears.
+     MUTATION (run): do not skip `if:` lines -> the gate job joins and gate.mjs
+     appears. */
+  const files = {
+    ".github/workflows/rel.yml": [
+      "on: workflow_dispatch",
+      "jobs:",
+      "  gate:",
+      "    runs-on: ubuntu-latest",
+      "    steps:",
+      "      - run: node tools/x/gate.mjs",
+      "      - run: node tools/x/shared.mjs check",
+      "  ver:",
+      "    needs: gate",
+      "    if: needs.gate.outputs.ok == 'true'",
+      "    steps:",
+      "      - run: node tools/x/ver.mjs",
+      "  build:",
+      "    needs: [ver, gate]",
+      "    steps:",
+      "      - uses: ./.github/actions/b",
+      "        with:",
+      "          v: ${{ needs.ver.outputs.v }}",
+      "  report:",
+      "    needs: [build]",
+      "    steps:",
+      "      - run: node tools/x/report.mjs \"${{ needs.build.outputs.state }}\"",
+    ].join("\n"),
+    ".github/actions/b/action.yml": "runs:\n  using: composite\n  steps:\n    - run: node tools/x/build.mjs\n      shell: bash\n",
+    "tools/x/gate.mjs": "export const g = 1;\n",
+    "tools/x/shared.mjs": "export const s = 1;\n",
+    "tools/x/ver.mjs": "export const v = 1;\n",
+    "tools/x/report.mjs": "export const r = 1;\n",
+    "tools/x/build.mjs": 'import { s } from "./shared.mjs";\n',
+  };
+  const read = (f) => files[f] ?? null;
+  assert.deepEqual(deriveNativeInputs(read, [".github/workflows/rel.yml"]), [
+    ".github/actions/b/action.yml",
+    ".github/workflows/rel.yml",
+    "tools/x/build.mjs",
+    "tools/x/shared.mjs",
+    "tools/x/ver.mjs",
+  ]);
+});
+
+test("a workflow runner with no job that makes the binary throws, never derives an empty list", () => {
+  /* A renamed composite or a restructured release.yml must fail this suite,
+     not quietly drop every native trigger.
+     MUTATION (run): delete the no-binary-job throw -> the list is just the
+     workflow file and this goes red. */
+  const read = (f) => (f === "w.yml" ? "jobs:\n  only-gate:\n    steps:\n      - run: node tools/x/gate.mjs\n" : null);
+  assert.throws(() => deriveNativeInputs(read, ["w.yml"]), /w\.yml has no job that makes the binary/);
+});
+
+test("CH2-19: fetch-models.mjs is NOT a native input — no build path runs it (release-gates.test.js pins that)", () => {
+  /* It was on the hand list from before CH-20. A change to it now ships
+     nothing, so it must not spend macOS minutes.
+     MUTATION: add "tools/mobile/fetch-models.mjs" back to the list -> red. */
+  assert.ok(!NATIVE_INPUT_FILES.includes("tools/mobile/fetch-models.mjs"));
+  assert.equal(releaseTier("tools/mobile/fetch-models.mjs", BUNDLE), null);
+});
+
+test("CH2-19 acceptance: a commit touching only wire-signing.mjs is release-relevant and the trigger dispatches it", () => {
+  const signingFix = [{ sha: "a".repeat(40), committedAt: "2026-10-07T00:00:00Z", subject: "fix(android): signing include",
+    files: ["tools/mobile/wire-signing.mjs"] }];
+  assert.deepEqual(pendingWork(signingFix, BUNDLE).release.map((c) => c.files), [["tools/mobile/wire-signing.mjs"]]);
+  const d = triggerDecision({ runs: [{ id: 1, run_number: 1, status: "completed", conclusion: "success", head_sha: "e".repeat(40),
+    created_at: "2026-10-06T00:00:00Z", updated_at: "2026-10-06T00:05:00Z" }], commits: signingFix, bundle: BUNDLE,
+  mainRuns: [], mainStatus: { total_count: 1, state: "success" } });
+  assert.equal(d.code, "DISPATCH", d.reason);
+});
+
+test("CH2-19: the derived list only ADDS — every file the old hand list named is still reached, through `npm run` and `npm ci --prefix`", () => {
+  /* release.yml is the walk's own root; prepare-webdir.mjs is reached only by
+     following mobile/package.json's `add:ios` -> `prepare:webdir`; minify.mjs is
+     its import; tools/mobile/package-lock.json pins the esbuild that minifies
+     the bundle (`deps:webdir` is `npm ci --prefix ../tools/mobile`).
+     MUTATION: stop following `npm run` in the derivation -> prepare-webdir.mjs
+     and minify.mjs are missing here. */
+  for (const f of [
+    ".github/workflows/release.yml",
+    "tools/mobile/prepare-webdir.mjs",
+    "tools/mobile/minify.mjs",
+    "tools/mobile/ios-embedded-frameworks.mjs",
+    "tools/mobile/package-lock.json",
+  ]) {
+    assert.ok(NATIVE_INPUT_FILES.includes(f), `${f} is no longer a native input`);
+  }
+});
+
+test("CH2-19 (T2-09): the headers tell ci-release-4's build-number story and the liveness threshold the code uses", () => {
+  /* The trigger's header said the build number came from `run_number`, which
+     ci-release-4 retired for tools/release/build-number.mjs; the watchdog's
+     header said 6h while TRIGGER_STALE_HOURS is 8.
+     MUTATION: put the run_number paragraph back in either header, or change
+     TRIGGER_STALE_HOURS without the header -> red. */
+  const flat = (text) => text.replace(/\r?\n[ \t]*(?:\*|#)?[ \t]?/g, " ").replace(/\s+/g, " ");
+  const sources = {
+    "watch-release.mjs": flat(fs.readFileSync(path.join(HERE, "watch-release.mjs"), "utf8").split("*/")[0]),
+    "release-trigger.yml": flat(prose(TRIGGER_WF)),
+  };
+  for (const [name, text] of Object.entries(sources)) {
+    assert.doesNotMatch(text, /build number from (?:the workflow's )?(?:lifetime )?`(?:github\.)?run_number`/, name);
+    assert.doesNotMatch(text, /gets a new `?run_number`?, (?:therefore|so) a new build number/, name);
+    assert.match(text, /tools\/release\/build-number\.mjs/, name);
+  }
+  assert.match(flat(prose(WATCH_WF)), new RegExp(`in ${TRIGGER_STALE_HOURS}h\\b`), "release-watch.yml's header states L's threshold");
 });
 
 test("every local composite release.yml reaches, nested ones included, is a release trigger", () => {
@@ -767,4 +1036,42 @@ test("ci-release-6: a BOT-MERGED head (no ci.yml run, so no required checks at a
   assert.equal(mainState([pages], {}, []).state, "green");
   // ...and once ci.yml DOES run on the head, a missing required check is building again.
   assert.equal(mainState([...CI_RAN, pages], {}, []).state, "building");
+});
+
+/* ═════════════ CH2-19 (T2-15): ONE definition of a red conclusion ═════════════ */
+
+test("CH2-19: a cancelled run on main's head and a cancelled required check are judged the same — red", () => {
+  /* T2-15. There were three definitions: RED_RUN (no `cancelled`), RED_JOB
+     (with it) and an ad-hoc `|| cancelled` for check runs. So a manually
+     cancelled pages.yml run on main's head read as "main green" while the same
+     cancel on a check run was "main red".
+     MUTATION: leave `cancelled` out of RED and add it back for check runs only
+     -> the run half is green here. */
+  const pagesCancelled = { name: "pages", event: "push", status: "completed", conclusion: "cancelled", path: ".github/workflows/pages.yml" };
+  assert.equal(mainState([pagesCancelled], {}).state, "red", "a cancelled run shipped nothing, so it is not green");
+  const checks = REQUIRED_CHECKS.map((n) => check(n, "success"));
+  checks[0] = check(checks[0].name, "cancelled");
+  assert.equal(mainState(CI_RAN, {}, checks).state, "red");
+});
+
+test("CH2-19: a workflow run, a required check run and a store job agree on every conclusion GitHub reports", () => {
+  /* One isRed(): whatever the conclusion, the three readers must not disagree.
+     MUTATION: add a conclusion to the check-run path only (or drop one from the
+     job path) -> the row for it differs. */
+  const conclusions = ["success", "failure", "cancelled", "timed_out", "startup_failure", "action_required", "neutral", "skipped", "stale"];
+  const runVerdict = (c) => mainState([{ name: "pages", event: "push", status: "completed", conclusion: c, path: ".github/workflows/pages.yml" }], {}).state === "red";
+  const checkVerdict = (c) => mainState(CI_RAN, {}, REQUIRED_CHECKS.map((n, i) => check(n, i === 0 ? c : "success"))).state === "red";
+  const jobVerdict = (c) => {
+    // iOS uploaded (job green), Android's job ended `c`: red means "the stores diverged".
+    const latest = { id: 1, run_number: 1, status: "completed", conclusion: "failure", created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:05:00Z" };
+    const g = divergentGate([latest], [{ name: "ios", conclusion: "success" }, { name: "android", conclusion: c }], null, "2026-10-02T00:00:00Z");
+    return g.code === "STORES_DIVERGED";
+  };
+  const table = conclusions.map((c) => [c, runVerdict(c), checkVerdict(c), jobVerdict(c)]);
+  for (const [c, byRun, byCheck, byJob] of table) {
+    assert.equal(byRun, byCheck, `${c}: run says red=${byRun}, check run says red=${byCheck}`);
+    assert.equal(byRun, byJob, `${c}: run says red=${byRun}, store job says red=${byJob}`);
+  }
+  assert.deepEqual(table.filter(([, red]) => red).map(([c]) => c).sort(),
+    ["action_required", "cancelled", "failure", "startup_failure", "timed_out"]);
 });
