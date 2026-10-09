@@ -181,20 +181,14 @@ test("a feed-less breadth show: TODAY show search returns it, and its episode li
   });
 });
 
-/** Runs `body` (an ES module source) in a fresh process from api/, where
-    every fs.readFileSync of data/catalog*.json throws ENOENT — a deploy that
-    shipped without the two catalogue files. Returns its JSON on stdout. */
-function inInstanceWithoutCatalogue(body) {
+/** Runs `body` (an ES module source) in a fresh process from api/ — fresh
+    module state, so every module-scope cache starts empty — after `prelude`,
+    with no database and a network that throws. Returns its JSON on stdout. */
+function inFreshInstance(prelude, body) {
   const script = `
     import fs from "node:fs";
     import { syncBuiltinESMExports } from "node:module";
-    const real = fs.readFileSync;
-    fs.readFileSync = function (file, ...rest) {
-      if (/data[\\\\/]catalog(-breadth)?\\.json$/.test(String(file))) {
-        const err = new Error("ENOENT: " + file); err.code = "ENOENT"; throw err;
-      }
-      return real.call(this, file, ...rest);
-    };
+    ${prelude}
     syncBuiltinESMExports();
     delete process.env.DATABASE_URL;
     globalThis.fetch = async () => { throw new Error("no network"); };
@@ -208,6 +202,20 @@ function inInstanceWithoutCatalogue(body) {
   });
   assert.equal(out.status, 0, out.stderr);
   return JSON.parse(out.stdout);
+}
+
+/** inFreshInstance, where every fs.readFileSync of data/catalog*.json throws
+    ENOENT — a deploy that shipped without the two catalogue files. */
+function inInstanceWithoutCatalogue(body) {
+  return inFreshInstance(`
+    const real = fs.readFileSync;
+    fs.readFileSync = function (file, ...rest) {
+      if (/data[\\\\/]catalog(-breadth)?\\.json$/.test(String(file))) {
+        const err = new Error("ENOENT: " + file); err.code = "ENOENT"; throw err;
+      }
+      return real.call(this, file, ...rest);
+    };
+  `, body);
 }
 
 test("catalogue files missing: TODAY the list says 404 unknown, the searches say degraded", () => {
@@ -226,4 +234,26 @@ test("catalogue files missing: TODAY the list says 404 unknown, the searches say
   assert.equal(got.scoped.body.error, "show metadata catalog files are unavailable");
   assert.deepEqual(got.showsQ.body, { query: "lex", shows: [], degraded: true });
   assert.deepEqual(got.showsId.body, { id: "lex-fridman-podcast", show: null, degraded: true });
+});
+
+test("the episodes/search bundle: TODAY catalog-breadth.json is parsed twice per instance (B1-02)", () => {
+  /* Its two paths each read the pair on their own: the show-scoped search
+     through loadShowMeta, the Apple path through showIdMap's map. One warm
+     instance that serves both pays the 12.5 MB read + parse twice. */
+  const got = inFreshInstance(`
+    const real = fs.readFileSync;
+    globalThis.__breadthReads = 0;
+    fs.readFileSync = function (file, ...rest) {
+      if (/data[\\\\/]catalog-breadth\\.json$/.test(String(file))) globalThis.__breadthReads++;
+      return real.call(this, file, ...rest);
+    };
+  `, `
+    const search = unwrap(await import("./episodes/search.ts"));
+    const a = res(); await search({ method: "GET", query: { q: "zz", show: "lex-fridman-podcast" }, headers: {} }, a);
+    const b = res(); await search({ method: "GET", query: { q: "history" }, headers: {} }, b);
+    const c = res(); await search({ method: "GET", query: { q: "zz", show: "the-daily" }, headers: {} }, c);
+    console.log(JSON.stringify({ reads: globalThis.__breadthReads, apple: b.s.body.error }));
+  `);
+  assert.match(got.apple, /Apple search fetch error/, "premise: the Apple path ran (and asked the network, which throws)");
+  assert.equal(got.reads, 2);
 });
