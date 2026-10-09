@@ -22,6 +22,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { openMigrated } from "./db.mjs";
 import { parseDossierFile, loadManifest, repointSourceUrl } from "./manifest.mjs";
 import { createFetcher } from "./fetcher.mjs";
@@ -429,7 +430,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(`corpus: ${err.message}`);
-  process.exitCode = 1;
-});
+if (isEntryScript(import.meta.url)) {
+  main().catch((err) => {
+    console.error(`corpus: ${err.message}`);
+    process.exitCode = 1;
+  });
+}

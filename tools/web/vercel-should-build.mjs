@@ -43,6 +43,7 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { isEntryScript } from "../ci/entry.mjs";
 
 /** BUILD. Named so the call sites read as decisions rather than as exit codes. */
 const BUILD = 1;
@@ -259,13 +260,12 @@ async function main() {
   return verdict;
 }
 
-/* Entrypoint guard. Compares BASENAMES rather than building a file:// URL from
-   `process.argv[1]`: on Windows that path uses backslashes and needs escaping,
-   and when this module is imported by a test or by `node -e` there is no argv[1]
-   at all -- the first draft threw a TypeError on exactly that, which would have
-   made the module unimportable. A name comparison has neither problem. */
-const invokedAs = String(process.argv[1] || "").split(String.fromCharCode(92)).join("/");
-if (invokedAs.endsWith("/vercel-should-build.mjs") || invokedAs.endsWith("vercel-should-build.mjs")) {
+/* Entrypoint guard: tools/ci/entry.mjs (CH2-41b). It answers false, not a
+   TypeError, when a test or `node -e` imports this module with no argv[1] (the
+   first draft of this file threw on exactly that), and unlike the basename
+   comparison it replaced it does not fire when some other script with the same
+   name imports this one. */
+if (isEntryScript(import.meta.url)) {
   /* Async because the label read is a fetch. A throw anywhere in main is a
      preview we could not reason about (production returned before any await),
      so it skips rather than builds. */

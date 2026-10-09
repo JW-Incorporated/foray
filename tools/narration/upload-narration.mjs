@@ -54,6 +54,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const PROFILE_PATH = path.join(HERE, "render-profile.json");
@@ -270,7 +271,7 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
   return 0;
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isMain = isEntryScript(import.meta.url);
 if (isMain) {
   main().then(
     (code) => process.exit(code),

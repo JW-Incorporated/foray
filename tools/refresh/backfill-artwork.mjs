@@ -28,8 +28,9 @@
      node tools/refresh/backfill-artwork.mjs --dry-run  # fetch + report only */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { politeFetchJson } from "../harvest-merge.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -104,6 +105,6 @@ async function main() {
   console.log("wrote data/catalog.json; now run: node tools/build-catalog-client.mjs");
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => { console.error(e.message); process.exit(1); });
 }

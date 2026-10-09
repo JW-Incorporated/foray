@@ -96,8 +96,9 @@
 */
 
 import { readFileSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { probeGrid } from "../transcribe/decode-compare.mjs";
 import { probeTargets } from "./measure-suspects.mjs";
@@ -912,7 +913,7 @@ async function main() {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().then(
     (code) => process.exit(code || 0),
     (e) => {

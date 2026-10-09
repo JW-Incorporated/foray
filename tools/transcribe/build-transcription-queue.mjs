@@ -90,6 +90,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -879,7 +880,7 @@ export function buildDocument({ merged, funnel, sel, nowIso, queueVersion, previ
   };
 }
 
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   main(process.argv.slice(2)).catch((e) => {
     console.error(e);

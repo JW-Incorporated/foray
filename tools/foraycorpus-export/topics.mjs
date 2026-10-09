@@ -65,9 +65,9 @@
         [--archive <file.json.gz>] [--out <file>] */
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { gunzipSync } from "node:zlib";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { writeJsonAtomic } from "../segments/sweep-transcripts.mjs";
 import { ROOT } from "./config.mjs";
@@ -450,7 +450,7 @@ export function main(argv, { provisional = C.PROVISIONAL, root = ROOT, log = con
   return { written: true, taxonomy_nodes_changed: changed };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   try {
     main(process.argv.slice(2));
   } catch (e) {

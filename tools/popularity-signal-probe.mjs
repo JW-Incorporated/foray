@@ -66,7 +66,8 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "./ci/entry.mjs";
 import { POINTER_PATH } from "./shows/config.mjs";
 import { UA, awaitHostSlot, waitBeforeRetry, discardBody } from "./segments/politeness.mjs";
 
@@ -414,9 +415,10 @@ async function main() {
   }
 }
 
-/* `pathToFileURL`, never a `file://${argv[1]}` template — see
-   tools/entrypoint-guards.test.mjs for why the template is false on Windows. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+/* tools/ci/entry.mjs's guard, never a `file://${argv[1]}` template — see
+   tools/entrypoint-guards.test.mjs for why the template is false on Windows and
+   a pathToFileURL comparison false through a junction. */
+if (isEntryScript(import.meta.url)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

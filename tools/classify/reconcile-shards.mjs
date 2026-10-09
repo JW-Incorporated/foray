@@ -146,6 +146,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 /* The shard key comes from labels.mjs rather than a local copy ON PURPOSE: two
    implementations of the key that decides who owns which show is exactly the
    drift that would silently re-partition the fleet and re-do merged work.
@@ -696,4 +697,4 @@ function main() {
   console.log(`wrote ${CLASSIFICATION_PATH}`);
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolvePath(process.argv[1])) main();
+if (isEntryScript(import.meta.url)) main();

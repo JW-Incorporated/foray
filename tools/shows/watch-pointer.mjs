@@ -47,6 +47,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { MAX_INDEX_AGE_HOURS } from "../refresh/candidates.mjs";
 
@@ -107,8 +108,7 @@ export function run(argv) {
   return { code: verdict.ok ? 0 : 1, line: verdict.line };
 }
 
-const invokedDirectly =
-  process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/shows/watch-pointer.mjs");
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   const { code, line } = run(process.argv.slice(2));
   (code === 0 ? process.stdout : process.stderr).write(line.replace(/\s+/g, " ") + "\n");

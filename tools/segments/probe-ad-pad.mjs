@@ -42,7 +42,8 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { probeEpisode, rangedGetTrusted } from "../transcribe/ad-inflation.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -218,7 +219,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error("FATAL:", e);
     process.exit(1);

@@ -91,6 +91,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { encode } from "../brand/png.mjs";
 import { loadMaster, background, inkBox, resizeArea, SNAP } from "../brand/build-icons.mjs";
 
@@ -231,7 +232,7 @@ export function renderPlayIcon(master) {
   return encode({ width: SIZE, height: SIZE, data: canvas }, { rgb: false });
 }
 
-if (process.argv[1] && process.argv[1].endsWith("build-play-icon.mjs")) {
+if (isEntryScript(import.meta.url)) {
   const png = renderPlayIcon(loadMaster());
   const out = path.join(ROOT, OUTPUT);
   fs.mkdirSync(path.dirname(out), { recursive: true });

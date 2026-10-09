@@ -61,9 +61,10 @@
        rarely needed outside tests. */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
 import { randomUUID } from "node:crypto";
+import { isEntryScript } from "../ci/entry.mjs";
 import {
   parseShard,
   transcriptLabelsFromXml,
@@ -463,7 +464,7 @@ async function main() {
 
 /* Only run when invoked as a script, so the selection and label helpers above
    can be imported by tools/classify/*.test.mjs. */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error("FATAL:", e);
     process.exit(1);

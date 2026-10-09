@@ -65,7 +65,8 @@ import * as fsp from "node:fs/promises";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { dirname, join, resolve, sep } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 /* `ACCEPT_LANGUAGE` alongside `UA` because Node's fetch otherwise sends
    `accept-language: *`, and Captivate's edge answers THAT with
    `404 Missing redirect URL` on every `episodes.captivate.fm/episode/<guid>.mp3`
@@ -884,7 +885,7 @@ async function main(argv) {
   console.log(`\nfiles are in ${report.dir} — call cleanup(episodeId) after transcription; this is not an archive.`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv).catch((e) => {
     console.error(`${e.name || "Error"}${e.code ? ` [${e.code}]` : ""}: ${e.message}`);
     process.exit(1);

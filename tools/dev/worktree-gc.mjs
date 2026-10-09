@@ -79,7 +79,7 @@
 import nodeFs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 export const DEFAULT_REPO = "JW-Incorporated/foray";
 export const PR_LIST_LIMIT = 1000;
@@ -512,7 +512,7 @@ export function run(argv = [], { exec = defaultExec, fs = nodeFs, cwd = process.
   return { code: anySkipped ? 1 : 0, out, err };
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   const { code, out, err } = run(process.argv.slice(2), { progress: (s) => process.stderr.write(s) });
   process.stdout.write(out);
   process.stderr.write(err);

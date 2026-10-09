@@ -71,8 +71,8 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { locateWindow, windowBytes } from "../../player/locate-window.js";
 import {
@@ -609,9 +609,7 @@ export function main(argv = process.argv.slice(2), out = console) {
   return 0;
 }
 
-const invoked =
-  process.argv[1] &&
-  pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+const invoked = isEntryScript(import.meta.url);
 if (invoked) {
   try {
     process.exitCode = main();

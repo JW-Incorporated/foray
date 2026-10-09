@@ -65,8 +65,8 @@ import { execFile } from "node:child_process";
 import * as nodeFs from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, resolve as resolvePath } from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs, promisify } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { DEFAULT_OUT as DEFAULT_CATALOGUE } from "./catalog-adapter.mjs";
 import { EXPORT_OUT_DIR, POINTER_PATH, ROOT } from "./config.mjs";
@@ -248,7 +248,7 @@ async function main(argv) {
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).catch((e) => {
     console.error("FATAL:", e?.message ?? e);
     process.exit(1);

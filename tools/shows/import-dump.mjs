@@ -30,9 +30,9 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { createGzip, gunzipSync } from "node:zlib";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import {
   BUILD_OUT_DIR, DOWNLOAD_DIR, DUMP_UA, DUMP_URL,
@@ -475,7 +475,7 @@ async function main() {
   console.log(`BUILD_COMPLETE: ${BUILD_OUT_DIR} (export_version ${exportVersion})`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error("FATAL:", e instanceof ImportError ? `${e.code}: ${e.message}` : e);
     process.exit(1);

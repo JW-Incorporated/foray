@@ -17,6 +17,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { isEntryScript } from "./ci/entry.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -51,7 +52,7 @@ export function committedItems(root = ROOT) {
   ];
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (isEntryScript(import.meta.url)) {
   const drift = durationDrift(committedItems());
   if (drift.length) {
     console.error(`${drift.length} item(s) carry two lengths a minute or more apart:`);

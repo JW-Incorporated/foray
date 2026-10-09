@@ -63,6 +63,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { stableJson } from "./record.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -670,6 +671,6 @@ export async function main(argv, { root = REPO_ROOT, log = console.log, err = co
   return 0;
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   process.exitCode = await main(process.argv.slice(2));
 }

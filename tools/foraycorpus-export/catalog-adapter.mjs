@@ -71,8 +71,8 @@
    genre_count, shows}, one line + "\n"), and prints the report. */
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, isAbsolute } from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { ROW_KEYS } from "../harvest-merge.mjs";
 import { normalizeFeedUrl } from "../shows/identity.mjs";
@@ -260,7 +260,7 @@ function main(argv) {
   console.log(JSON.stringify({ out, ...report }, null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   try {
     main(process.argv.slice(2));
   } catch (e) {

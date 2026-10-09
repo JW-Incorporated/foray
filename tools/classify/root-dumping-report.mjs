@@ -30,8 +30,9 @@
  * DISCOVER_PATH */
 
 import { readFileSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -232,7 +233,7 @@ function main() {
   console.log(formatMarkdown(report, baseline));
 }
 
-/* Repo convention (tools/ci/run-suites.mjs): compare as file URLs, not as raw
-   strings — string path comparison is case- and symlink-sensitive on Windows,
-   and a mismatch would make this tool print nothing and exit 0. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();
+/* Repo convention (tools/ci/entry.mjs): realpath both sides rather than compare
+   raw strings or URLs — those are case- and symlink-sensitive on Windows, and a
+   mismatch would make this tool print nothing and exit 0. */
+if (isEntryScript(import.meta.url)) main();

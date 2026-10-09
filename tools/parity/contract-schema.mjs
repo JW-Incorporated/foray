@@ -16,7 +16,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { stableJson } from "./record.mjs";
 import { contractSchemaDocument } from "../../player/engine-contract.js";
 
@@ -35,7 +36,7 @@ export function isStale(root = REPO_ROOT) {
   return !fs.existsSync(file) || fs.readFileSync(file, "utf8") !== renderContractSchema();
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   const mode = process.argv[2];
   if (mode === "--write") {
     fs.writeFileSync(path.join(REPO_ROOT, SCHEMA_FILE), renderContractSchema());

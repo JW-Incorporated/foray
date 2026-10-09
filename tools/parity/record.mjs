@@ -50,6 +50,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import {
   REPO_ROOT, PARITY_DIR, loadFixtures, validateFixtures, runCase,
 } from "../../player/parity/runner.js";
@@ -480,6 +481,6 @@ export async function main(argv, { root = REPO_ROOT, log = console.log, err = co
   return 0;
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   process.exitCode = await main(process.argv.slice(2));
 }

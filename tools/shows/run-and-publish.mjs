@@ -25,7 +25,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { BUILD_OUT_DIR, POINTER_PATH } from "./config.mjs";
 import {
   assetBaseUrlFor, buildPointer, listReleaseAssets, publishRelease, publishShardReleases,
@@ -248,7 +248,7 @@ async function main() {
   await runAndPublish(process.argv.slice(2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     for (const line of describeExecError(e)) console.error(line);
     process.exit(1);

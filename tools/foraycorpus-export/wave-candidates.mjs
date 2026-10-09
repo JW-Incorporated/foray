@@ -42,8 +42,8 @@
    Reads data/ only when the CLI runs. No network. */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { EXPORT_OUT_DIR, ROOT } from "./config.mjs";
@@ -362,7 +362,7 @@ function main(argv) {
   console.log(JSON.stringify({ matched: rows.length, curated: rows.filter((r) => r.in_curated).length, out, md }, null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   try {
     main(process.argv.slice(2));
   } catch (e) {

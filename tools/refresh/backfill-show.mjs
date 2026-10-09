@@ -57,8 +57,9 @@
      PENDING_PATH   output (default data-local/backfill-pending.json)          */
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import { decodeEntities } from "./entities.mjs";
 import { text, feedParser, itemToPendingRecord } from "./feed-xml.mjs";
 import { UA } from "../segments/politeness.mjs";
@@ -293,7 +294,7 @@ async function main() {
   console.log("BACKFILL_COMPLETE");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error(`${e.code ? e.code + ": " : ""}${e.message}`);
     process.exit(1);
