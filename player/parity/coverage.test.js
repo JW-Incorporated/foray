@@ -646,7 +646,7 @@ test("every family a fixture, an unported entry or a pending id uses is charged 
   assert.deepStrictEqual(loose, [], "a family no capability names can hold owed work that no gate reads");
 });
 
-test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await is JS only; the JVM owes manager-remainder whole to A-40", () => {
+test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await is JS only; the JVM runs its episode cases and owes its warming cases to A-40", () => {
   /* NE-39j recorded the queue-manager remainder (22 cases) pending for NE-39s.
      NE-39s ported 20 through the Swift ManagerRemainderFamily runner (the
      Foray tape on), one of them (the unknown ref) moved onto the interruption
@@ -657,10 +657,14 @@ test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await 
      manager-remainder id is a Swift case (nothing can be owed, and a family
      is jsOnly whole or not at all), the floor is the count, and both XCTest
      wrappers REQUIRE the runner.
+     CODE-HEALTH-3 CH3-17 (R3-02): the JVM runs the family through its episode
+     driver, so stop-is-silence-behind-a-paused-machine and the other
+     transport.json cases are held on Android too; only warming.json, the Foray
+     tape's warming window, is owed, case by case, to A-40.
      MUTATION: mark a manager-remainder file jsOnly -> red; unregister
-     ManagerRemainderFamily.runner or drop a wrapper's requirement -> red; move
-     manager-remainder into jvm-pending runs -> red; put it back under a
-     `remainder` capability -> red. */
+     ManagerRemainderFamily.runner or drop a wrapper's requirement -> red; owe
+     manager-remainder whole again, or owe a transport case -> red; put it back
+     under a `remainder` capability -> red. */
   const files = FIXTURES.filter((f) => f.family === "manager-remainder");
   const cases = files.flatMap((f) => f.doc.cases);
   assert.equal(cases.length, 20, `manager-remainder holds the ported remainder (${cases.length} cases)`);
@@ -695,8 +699,15 @@ test("NE-39s: manager-remainder runs in Swift whole, under foray; manager-await 
   }
 
   const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
-  assert.equal(jvm.families["manager-remainder"], "A-40");
-  assert.ok(!jvm.runs.includes("manager-remainder"));
+  assert.equal(jvm.families["manager-remainder"], undefined, "the JVM runs manager-remainder (CH3-17)");
+  assert.ok(jvm.runs.includes("manager-remainder"));
+  for (const f of files) {
+    const warming = f.file.endsWith("/warming.json");
+    for (const c of f.doc.cases) {
+      assert.equal(jvm.cases[c.id], warming ? "A-40" : undefined,
+        `${c.id}: ${warming ? "the Foray tape's warming window is A-40's" : "an episode case the JVM runs"}`);
+    }
+  }
   assert.equal(jvm.families["manager-await"], undefined, "a jsOnly family is owed to nobody");
   assert.ok(DATA.capabilities.foray.includes("manager-remainder") && DATA.capabilities.foray.includes("manager-await"));
 });
