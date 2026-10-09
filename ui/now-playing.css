@@ -110,7 +110,7 @@
 /* The listener's own marks and the links they act on are Ember, never violet (body.ui-v2 .fp-openep paints Up Next violet); the notes toggle's disclosure chevron is not in the prototype either. */
 .ag-np.fp-sheet .ag-np-up-next .fp-upnext { min-height: 44px; display: inline-flex; align-items: center; color: var(--ember); }
 .ag-np.fp-sheet .fp-s-desc summary::after { content: none; }
-.ag-np.fp-sheet .ag-np-up-next-copy .eyebrow { text-transform: none; letter-spacing: 0; }
+.ag-np.fp-sheet .ag-np-up-next-copy .eyebrow { display: block; text-transform: none; letter-spacing: 0; }
 .ag-np.fp-sheet .ag-np-up-next-row { min-height: 64px; padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3); display: flex; align-items: center; gap: var(--s-3); }
 .ag-np.fp-sheet .ag-np-up-next-art { width: 72px; height: 72px; flex: none; object-fit: cover; border-radius: var(--r-md); }
 .ag-np.fp-sheet .ag-np-up-next-copy { min-width: 0; }

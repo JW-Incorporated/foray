@@ -118,6 +118,8 @@ async function resetAmbientNowPlaying(page) {
   await page.evaluate(() => {
     document.documentElement.classList.remove("ag-np-textscale");
     document.documentElement.style.removeProperty("font-size");
+    /* The detail step stands in a 4a pick for the queue's next episode; every other step reads the real one. */
+    if (window.__npRealNextItem) { Object.defineProperty(EPISODE_NAVIGATION, "nextItem", window.__npRealNextItem); window.__npRealNextItem = null; }
     const ui = window.__afterglowNowPlayingUi;
     ui?.artSwap?.classList.remove("is-frozen-ending");
     ui?.artSwap?.querySelector(".ag-np-art-out")?.remove();
@@ -682,7 +684,22 @@ export function appStates(fx) {
             await startEpisodePlayback(page, epShort, { ...npWhy,
               description: "A conversation about how a small team turns a rough idea into something people pay for, and what it gave up on the way. The publisher's notes run here in full, with the guest's links and timestamps that seek to the moment they name. Nothing is rehosted: the audio plays from the show's own feed.",
             });
+            /* The prototype's peek is a 4a pick ("4a added" with a why-line) over a queue count of 5. The app only calls a pick 4a's
+               when it came from the tail, which needs an EMPTY queue (and then the count link is gone), so that combination is not
+               reachable by playing. The step paints the real peek with the queue's own next episode marked as a tail pick, so the
+               fidelity report measures the card's four rows against the prototype's. The peek is painted last, after the layout settles. */
             await page.evaluate(() => {
+              const ui = window.__afterglowNowPlayingUi;
+              const nav = EPISODE_NAVIGATION;
+              const real = Object.getOwnPropertyDescriptor(nav, "nextItem");
+              if (real && !window.__npRealNextItem) {
+                window.__npRealNextItem = real;
+                Object.defineProperty(nav, "nextItem", { configurable: true, enumerable: real.enumerable, get() {
+                  const n = real.get.call(this);
+                  return n && { ...n, source: "tail", why: "Founders on cooling devices and wholesale, the same practical vein as this one." };
+                } });
+              }
+              if (ui && nav.nextItem) window.AfterglowNowPlaying.paintUpNext(ui, nav.nextItem, nav.upNextCount);
               const scroller = document.querySelector(".ag-np .fp-sheet-scroll") || document.querySelector(".ag-np");
               scroller.scrollTop = scroller.scrollHeight;
             });

@@ -283,3 +283,12 @@ test("iteration 6 (fidelity round 5): Play and the scrubber block sit where the 
   assert.match(css, /\.ep-description-text \{[^}]*font: var\(--t-body\);/s);
   assert.match(css, /\.ag-np-up-next-row \{[^}]*align-items: center;/s);
 });
+
+test("iteration 7: the Up Next peek's '4a added' eyebrow is a block line, so the card is 137.5px tall like the prototype's", () => {
+  /* An inline span in the copy div took the sheet body's line-height as its strut, so the eyebrow line was 6px taller than a
+     caption line and the whole detail block sat 6px high in the fidelity report (actions -6, notes -6).
+     MUTATION: delete `display: block;` from the `.ag-np-up-next-copy .eyebrow` rule -> red (eyebrow inline again, card +6px).
+     MUTATION: paint the eyebrow with another class than `eyebrow` -> red (the rule no longer reaches it). */
+  assert.match(css, /\.ag-np-up-next-copy \.eyebrow \{ display: block;/);
+  assert.match(ui, /agNpEl\("span", reason \? "eyebrow lamp" : "eyebrow", eyebrow\)/);
+});
