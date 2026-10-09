@@ -70,9 +70,12 @@ later without a schema change). Implemented pieces:
 - `shows.consecutive_failures`, `shows.next_poll_due_at`,
   `shows.last_polled_at` (migration 0002) give the not-yet-built scheduler
   the state it needs to decide "is this show due."
-- `hostSuggestsDai()` seeds `shows.dai_suspected` from a known-host list
-  (Megaphone, Acast, Art19) as a day-one heuristic, refined later by actual
-  duration-variance-across-fetches once ingest is live (see corner case 2).
+- `hostSuggestsDai()` seeds `shows.dai_suspected` from the known-host list
+  in `tools/refresh/dai-hosts.json` (suffix match; the same file
+  `tools/refresh/dai.mjs` classifies the catalogue with, so the two cannot
+  disagree about a host). The host list is the load-bearing signal: the
+  duration-variance-across-fetches probe this ADR once planned was measured
+  and dropped (see `dai.mjs`'s header and issue #22).
 
 Cadence tiering itself (turning "this show published weekly for the last 8
 episodes" into a `polling_tier` value) is a small statistics job on top of
