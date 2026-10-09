@@ -75,6 +75,8 @@ final class EngineOwnershipTests: XCTestCase {
         private(set) var legacyRuns = 0
         /// The session flag's value at the moment the legacy lane registered.
         private(set) var flagAtLegacyRegistration: Bool?
+        /// What each legacy registration was told: `pageless` (CH3-06).
+        private(set) var legacyPageless: [Bool] = []
 
         final class RowSink { var rows: [DiagEntry] = [] }
 
@@ -110,12 +112,17 @@ final class EngineOwnershipTests: XCTestCase {
         var modeRows: [DiagEntry] { sink.rows.filter { $0.kind == "mode" } }
 
         /// Today's registration, as the plugin's `runLegacyRegistration`
-        /// makes it: one target per command (`registerCommandHandlers`), then
-        /// every command disabled, because nothing is playing at load
-        /// (`applyCommandAvailability(.empty)`).
-        func registerLegacy() {
+        /// makes it: with no page, the engine's entry cleared on the one
+        /// Now Playing centre (`applyNowPlayingInfo(.empty)`, CH3-06); one
+        /// target per command (`registerCommandHandlers`); then every command
+        /// disabled, because nothing is playing at load
+        /// (`applyCommandAvailability(.empty)`). shell-invariants' NE-16 test
+        /// pins that the plugin's registration does exactly this.
+        func registerLegacy(pageless: Bool) {
             legacyRuns += 1
+            legacyPageless.append(pageless)
             flagAtLegacyRegistration = flag.sessionOwnedByEngine
+            if pageless { world.nowPlaying.clear() }
             for command in MediaMapping.RemoteCommand.allCases {
                 _ = legacyRemote.addTarget(command) { _ in .success }
             }
@@ -126,7 +133,7 @@ final class EngineOwnershipTests: XCTestCase {
 
         /// The plugin's `load()`.
         func load() {
-            owner.pluginDidLoad(legacyRegistration: { [unowned self] in self.registerLegacy() })
+            owner.pluginDidLoad(legacyRegistration: { [unowned self] pageless in self.registerLegacy(pageless: pageless) })
         }
 
         var engine: ForayEngine? { owner.engine }
@@ -358,6 +365,7 @@ final class EngineOwnershipTests: XCTestCase {
         let launch = Launch(defaults, buildDefault: .js)
         launch.load()
         XCTAssertEqual(launch.legacyRuns, 1)
+        XCTAssertEqual(launch.legacyPageless, [false], "no engine ran: there is no entry of its to clear")
         XCTAssertEqual(launch.legacyRemote.liveTargets, MediaMapping.RemoteCommand.allCases.count)
         for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(launch.legacyRemote.liveTargets(for: command), 1, command.rawValue)
@@ -699,6 +707,7 @@ final class EngineOwnershipTests: XCTestCase {
 
         XCTAssertTrue(launch.owner.relinquished)
         XCTAssertEqual(launch.legacyRuns, 1)
+        XCTAssertEqual(launch.legacyPageless, [true], "no page of this navigation said hello")
         XCTAssertEqual(launch.flagAtLegacyRegistration, false)
         for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(launch.legacyRemote.enabled[command], false, "\(command.rawValue): nothing is enabled at load")
@@ -726,6 +735,7 @@ final class EngineOwnershipTests: XCTestCase {
 
         XCTAssertTrue(launch.owner.relinquished)
         XCTAssertEqual(launch.legacyRuns, 1)
+        XCTAssertEqual(launch.legacyPageless, [false], "the page said hello: it writes its own entry")
         XCTAssertEqual(launch.world.nowPlaying.clears, 0)
         XCTAssertNotNil(launch.world.nowPlaying.last, "left for the page's setNowPlaying to overwrite")
     }
