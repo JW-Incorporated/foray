@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **fix pass** (`wf_4cfe618f-f9c`, from 2026-10-08 23:20 PDT) | tactile 19/19 screens; ambient 13/16 (library, up-next, forays-list merged ESCALATED); fix pass: ambient now-playing, episode, now-playing-car, CI fixes both, ambient QA follow-up |
+| 3–5 | **tactile DONE (CI green, run 37929469109); ambient: last 2 screens** (`wf_f3947608-7cd`, from 2026-10-09 06:55 PDT) | tactile 19/19 + CI fixes; ambient 14/16 + CI fixes + QA fix; left: ambient now-playing, episode; ESCALATED for the owner: ambient library, up-next, forays-list |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -172,3 +172,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-08 — tactile: Phase 3 foundation 4/4 merged into feature/redesign-2026-tactile
 - 2026-10-09 — tactile: Phase 4 screens 2/2 merged; escalated: none
 - 2026-10-09 — ambient: Phase 4 screens 3/5 merged; escalated: none
+- 2026-10-09 06:55 PDT — Fix pass `wf_4cfe618f-f9c` (79 agents, 0 errors): tactile p5-ci-fixes merged -> **tactile CI green on all jobs (run 37929469109): Tactile done** (19/19 screens, QA + CI fixes). Ambient now-playing-car, p5-ci-fixes (05:50) and p5-qa-fixes-2 (Discover search settles, 06:38) merged. Ambient now-playing and episode failed their 3rd iteration again only on repo-wide checks inherited from the branch (the CI-fix unit ran after the screens; sequencing fault, check rule fixed in 5aef97a6: pre-existing failures do not fail a unit). Ambient CI dispatched (run 37939917784); last two screens relaunched as `wf_f3947608-7cd` with the watchdog.
