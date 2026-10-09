@@ -68,6 +68,7 @@ function scratchScriptTree() {
     "tools/web/prepare-dist.mjs",
     "tools/web/out-dir.mjs",
     "tools/ci/generate-manifest.mjs",
+    "tools/ci/entry.mjs",
     "tools/ci/forays-directory.mjs",
     "tools/ci/catalogue-directory.mjs",
     "tools/ci/crlf-guard.mjs",

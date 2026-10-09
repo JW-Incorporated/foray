@@ -59,6 +59,8 @@
  * altool output this was written against.
  */
 
+import { isEntryScript } from "../ci/entry.mjs";
+
 /** How many attempts in total, including the first. */
 export const MAX_ATTEMPTS = 3;
 
@@ -218,7 +220,6 @@ async function main(argv) {
   return 0;
 }
 
-const invokedAs = String(process.argv[1] || "").split(String.fromCharCode(92)).join("/");
-if (invokedAs.endsWith("/upload-retry.mjs")) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).then((code) => process.exit(code));
 }

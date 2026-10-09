@@ -125,6 +125,7 @@ import process from "node:process";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 /* protect-main's required contexts. ONE list, owned by the merge machinery: the
  * release trigger must call main "red" for exactly the checks that can block a
  * merge, and no others (ci-release-6). */
@@ -1194,9 +1195,7 @@ function applyIssue(plan, { argv, env, mayClose, bodyOut, head, spawn }) {
   }
 }
 
-const invokedDirectly =
-  process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/release/watch-release.mjs");
-if (invokedDirectly) {
+if (isEntryScript(import.meta.url)) {
   const { code, text } = await run(process.argv.slice(2));
   process.stdout.write(text);
   process.exit(code);

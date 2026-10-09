@@ -64,7 +64,7 @@
 
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "./entry.mjs";
 import { APPROVAL_LABEL, automergeDecision, disarmDecision, FOUNDER_QUEUE_LABEL } from "./path-policy.mjs";
 
 export const CONFLICT_LABEL = "merge-conflict";
@@ -1015,6 +1015,6 @@ export function runCli(argv, io = {}) {
   return 0;
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   process.exit(runCli(process.argv.slice(2)));
 }

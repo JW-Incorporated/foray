@@ -52,6 +52,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { decode, encode, header } from "../brand/png.mjs";
 import { MASTER, background, inkBox, resizeArea } from "../brand/build-icons.mjs";
 
@@ -345,7 +346,7 @@ export function injectAndroid(res, { logo = DEFAULT_LOGO, icon = DEFAULT_ICON, c
 const USAGE =
   "Usage: node tools/mobile/inject-splash.mjs ios <Splash.imageset> [--check]\n" +
   "       node tools/mobile/inject-splash.mjs android <app/src/main/res> [--check]";
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 if (isMain) {
   const argv = process.argv.slice(2);
   let platform = null, dir = null, checkOnly = false;

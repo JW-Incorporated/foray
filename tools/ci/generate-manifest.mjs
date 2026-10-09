@@ -75,11 +75,12 @@
  * the hashes must describe the LF bytes the deploys serve.
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, realpathSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { isEntryScript } from "./entry.mjs";
 import { crlfOffenders, crlfFatalMessage } from "./crlf-guard.mjs";
 import { POINTER_PATH, DIRECTORY_FILES, deployIdFrom, buildPointer, pointerText, pointerProblems, buildTimestamp } from "./forays-directory.mjs";
 import {
@@ -682,27 +683,12 @@ function main(argv = process.argv.slice(2)) {
   process.exit(2);
 }
 
-function realOrSelf(p) {
-  let r;
-  try { r = realpathSync(p); } catch (_) { r = path.resolve(p); }
-  return process.platform === "win32" ? r.toLowerCase() : r;
-}
-
 /* Run only as a script, so a suite can import the helpers without triggering
-   the CLI.
-
-   REALPATH ON BOTH SIDES, CASE-FOLDED ON WINDOWS (round-2 review). Node
-   realpaths the main module before it builds `import.meta.url`, but
-   `process.argv[1]` is only made absolute — so from a symlinked checkout, a
-   Windows junction, or a shell whose drive letter is cased differently, the
-   two never matched and `--check` exited 0 WITHOUT CHECKING, letting a bad
-   tree pass a local gate. */
-function isEntryScript(argv1 = process.argv[1], metaUrl = import.meta.url) {
-  if (!argv1) return false;
-  return realOrSelf(argv1) === realOrSelf(fileURLToPath(metaUrl));
-}
-
-if (isEntryScript()) main();
+   the CLI. The guard realpaths both sides (tools/ci/entry.mjs): from a
+   symlinked checkout or a Windows junction the old path.resolve form never
+   matched and `--check` exited 0 WITHOUT CHECKING (round-2 review; CH2-41a
+   moved that fix into the one helper every tools/ CLI now shares). */
+if (isEntryScript(import.meta.url)) main();
 
 export {
   computeManifest,
@@ -713,7 +699,6 @@ export {
   fontSources,
   runtimeDataFiles,
   runtimeData,
-  isEntryScript,
   stampBuild,
   stampedProblems,
   sourceProblems,
