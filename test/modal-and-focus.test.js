@@ -533,95 +533,119 @@ test("every sheet panel rides on the soft keyboard instead of sitting behind it"
 /* 2. UP NEXT: FOCUS, POSITION AND THE THUMB SURVIVE THE REBUILD          */
 /* ==================================================================== */
 
-/** #view as renderQueue would leave it: one row of buttons per id. */
-function queueView(m, ids, tops) {
+/** #view as the Up Next page leaves it (Redesign 2026, ambient: Library's QueueRow, ui/queue.js): per id a drag handle
+    and the row's menu button, at the given tops. */
+function queueView(m, ids, tops, { handles = true } = {}) {
   m.view.children = [];
   ids.forEach((id, i) => {
-    const up = m.doc.createElement("button");
-    up.setAttribute("data-reorder-up", id);
-    up.disabled = i === 0;
-    up.top = tops[i];
-    const down = m.doc.createElement("button");
-    down.setAttribute("data-reorder-down", id);
-    down.disabled = i === ids.length - 1;
-    down.top = tops[i];
-    const rm = m.doc.createElement("button");
-    rm.setAttribute("data-dequeue", id);
-    m.view.append(up, down, rm);
+    if (handles) {
+      const h = m.doc.createElement("button");
+      h.setAttribute("data-drag-handle", id);
+      h.dataset.dragHandle = id;
+      h.top = tops[i];
+      m.view.append(h);
+    }
+    const menu = m.doc.createElement("button");
+    menu.setAttribute("data-lb-menu", id);
+    menu.dataset.lbMenu = id;
+    menu.top = tops[i];
+    m.view.append(menu);
   });
 }
 
-test("after ↑, focus is on the same episode's ↑ in its new row, the page follows the thumb, and the position is said", () => {
+test("after a drag, focus is on the same episode's handle in its new row, the page follows the thumb, and the position is said", () => {
   /* MUTATION: delete `focusQuietly(target)` from afterQueueMove -> red.
-     MUTATION: delete the scrollBy -> red (the next tap hits a different
-     episode). MUTATION: delete the announce -> red. */
+     MUTATION: delete the scrollBy -> red (the next press hits a different
+     episode). MUTATION: delete the announce -> red.
+     PORTED (Redesign 2026, ambient): the control that moved under the thumb is the row's handle, not the ↑ arrow. */
   const m = mount();
   m.store.set("cp_queue", JSON.stringify(["a", "c", "b"]));  // after moving c up from position 3
   queueView(m, ["a", "c", "b"], [100, 180, 260]);
-  m.ctx.afterQueueMove("c", -1, 260);                         // its ↑ WAS at 260
-  const up = m.view.querySelectorAll("[data-reorder-up]").find((b) => b.getAttribute("data-reorder-up") === "c");
-  assert.strictEqual(m.doc.activeElement, up);
-  assert.deepStrictEqual(m.scrolls, [180 - 260], "scroll by exactly how far the button moved");
+  m.ctx.afterQueueMove("c", -1, 260);                         // its handle WAS at 260
+  const handle = m.view.querySelectorAll("[data-drag-handle]").find((b) => b.getAttribute("data-drag-handle") === "c");
+  assert.strictEqual(m.doc.activeElement, handle);
+  assert.deepStrictEqual(m.scrolls, [180 - 260], "scroll by exactly how far the handle moved");
   m.flushFrames();
   assert.strictEqual(m.doc.body.querySelector("#a11y-status").textContent, "Moved to position 2 of 3.");
 });
 
-test("at the top of the list, focus goes to the other arrow (its own is disabled)", () => {
+test("a row with no handle (the playing row) gets focus on its menu instead", () => {
+  /* MUTATION: drop `|| queueButtonFor("data-lb-menu", id)` from afterQueueMove -> focus is lost to <body>. */
   const m = mount();
   m.store.set("cp_queue", JSON.stringify(["c", "a", "b"]));
-  queueView(m, ["c", "a", "b"], [100, 180, 260]);
+  queueView(m, ["c", "a", "b"], [100, 180, 260], { handles: false });
   m.ctx.afterQueueMove("c", -1, 180);
-  assert.strictEqual(m.doc.activeElement.getAttribute("data-reorder-down"), "c");
+  assert.strictEqual(m.doc.activeElement.getAttribute("data-lb-menu"), "c");
 });
 
 test("ROUND 2 review: the live Up Next repaint (a ▶ tap, an episode chaining) keeps focus on the same control", () => {
-  /* repaintQueuePage replaced #view and focus fell to <body>. MUTATION: drop
-     `queueFocusAfter(held)` from repaintQueuePage -> red. */
+  /* The page repaints its SECTION in place (app.js repaintQueuePage -> ui/library.js repaintLibraryUpNext), so nothing
+     the listener pressed is destroyed unless the row itself left. MUTATION: drop the `held` refocus from
+     repaintLibraryUpNext -> focus falls to <body> and the first assertion is red. MUTATION 2: look for the same
+     episode only, with no fallback to the control that took its place -> the second assertion is red. */
   const m = mount();
   m.ctx.location.hash = "#/queue";
   let rows = ["a", "b", "c"];
+  const section = m.doc.createElement("section");
+  section.setAttribute("data-lb-section", "upnext");
+  section.dataset.lbSection = "upnext";
+  section.dataset.lbPage = "queue";
+  m.view.appendChild(section);
   const paint = () => {
-    queueView(m, rows, rows.map((_, i) => 100 + i * 80));
+    section.children.forEach((c) => { c.parentElement = null; });
+    section.children = [];
     for (const id of rows) {
-      const play = m.doc.createElement("button");
-      play.setAttribute("data-play", id);
-      m.view.appendChild(play);
+      const menu = m.doc.createElement("button");
+      menu.setAttribute("data-lb-menu", id);
+      menu.dataset.lbMenu = id;
+      section.appendChild(menu);
     }
   };
-  m.ctx.renderQueue = paint;   // what renderQueue does to #view, as nodes
+  /* The section's innerHTML is a string in the page; here the write redraws its children, as the real DOM would. */
+  Object.defineProperty(section, "innerHTML", { configurable: true, get: () => "", set: () => paint() });
   paint();
-  const playB = m.view.querySelectorAll("[data-play]").find((b) => b.getAttribute("data-play") === "b");
-  playB.focus();
+  const menuB = section.querySelectorAll("[data-lb-menu]").find((b) => b.getAttribute("data-lb-menu") === "b");
+  menuB.focus();
   m.ctx.repaintQueuePage();
   const now = m.doc.activeElement;
-  assert.notStrictEqual(now, playB, "precondition: the old node was replaced");
-  assert.strictEqual(now && now.getAttribute("data-play"), "b", "focus is on b's ▶ again");
+  assert.notStrictEqual(now, menuB, "precondition: the old node was replaced");
+  assert.strictEqual(now && now.getAttribute("data-lb-menu"), "b", "focus is on b's menu again");
 
   rows = ["a", "c"];            // b left (played from Up Next, then chained on)
   m.ctx.repaintQueuePage();
-  assert.strictEqual(m.doc.activeElement && m.doc.activeElement.getAttribute("data-play"), "c",
+  assert.strictEqual(m.doc.activeElement && m.doc.activeElement.getAttribute("data-lb-menu"), "c",
     "the row that took its place");
 });
 
-test("after ✕, focus is on the ✕ of the row that took its place, and the removal is said", () => {
+test("after a swipe removal, focus is on the menu of the row that took its place; an emptied list says so", () => {
+  /* MUTATION: delete `focusQuietly(...)` from afterQueueRemove -> red. MUTATION 2: drop the `!left.length` announcement
+     -> the empty-list assertion is red. ("Removed from Up Next." itself is libRemoveRow's, pinned in
+     test/ambient-up-next.test.js and test/up-next-gestures.test.js.) */
   const m = mount();
   m.store.set("cp_queue", JSON.stringify(["a", "c"]));
   queueView(m, ["a", "c"], [100, 180]);
   m.ctx.afterQueueRemove(1);                                  // removed the old #2
-  assert.strictEqual(m.doc.activeElement.getAttribute("data-dequeue"), "c");
+  assert.strictEqual(m.doc.activeElement.getAttribute("data-lb-menu"), "c");
+  queueView(m, [], []);
+  m.ctx.afterQueueRemove(0);
   m.flushFrames();
-  assert.strictEqual(m.doc.body.querySelector("#a11y-status").textContent, "Removed from Up Next.");
+  assert.strictEqual(m.doc.body.querySelector("#a11y-status").textContent, "Up Next is empty.");
 });
 
-test("the Up Next binders run the after-steps (the helpers are not orphans)", () => {
-  /* MUTATION: drop `afterQueueMove(id, -1, top);` from the ↑ binder -> red.
-     The repaint sits in `saveQueueIds` since audit round 2 (the page is a live
-     view of the list), so the binders write and then run the after-step. */
-  const binder = /function bindUpNextReorder\(scope\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
-  assert.match(binder, /moveQueueItem\(id, -1\);\s*afterQueueMove\(id, -1, top\);/);
-  assert.match(binder, /moveQueueItem\(id, 1\);\s*afterQueueMove\(id, 1, top\);/);
-  assert.match(binder, /removeFromQueue\(btn\.dataset\.dequeue\);\s*afterQueueRemove\(/);
-  assert.doesNotMatch(binder, /renderQueue\(\)/, "the binders do not paint a second time");
+test("the Up Next gesture binders run the after-steps (the helpers are not orphans)", () => {
+  /* MUTATION: drop `afterQueueMove(id, to < r.from ? -1 : 1, top);` from the drag's pointerup -> red; drop
+     `afterQueueRemove(` from the swipe's -> red. The repaint sits in `saveQueueIds` since audit round 2 (the page is a
+     live view of the list), so the binders write and then run the after-step. */
+  const bodyOf = (name) => {
+    const at = APP_SRC.indexOf(`function ${name}(`);
+    assert.ok(at >= 0, `${name} exists`);
+    return APP_SRC.slice(at, APP_SRC.indexOf("\n}\n", at));
+  };
+  const drag = bodyOf("bindUpNextDrag");
+  assert.match(drag, /saveQueueIds\([^;]*\);\s*afterQueueMove\(id, to < r\.from \? -1 : 1, top\);/);
+  const swipe = bodyOf("bindUpNextSwipe");
+  assert.match(swipe, /libRemoveRow\(id\);\s*afterQueueRemove\(/);
+  for (const [name, src] of [["drag", drag], ["swipe", swipe]]) assert.doesNotMatch(src, /renderQueue\(\)/, `the ${name} binder does not paint a second time`);
 });
 
 /* ==================================================================== */

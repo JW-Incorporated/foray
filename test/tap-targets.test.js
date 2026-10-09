@@ -43,7 +43,7 @@ const path = require("node:path");
 const { readAppSource } = require("./helpers/app-source.js");
 
 const ROOT = path.join(__dirname, "..");
-const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/library.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/browse.css", "ui/forays.css", "ui/playlist.css"]
+const CSS = ["styles.css", "ui/tokens.css", "ui/primitives.css", "ui/dock.css", "ui/library.css", "ui/queue.css", "ui/today.css", "ui/onboarding.css", "ui/foray-detail.css", "ui/settings.css", "ui/show.css", "ui/browse.css", "ui/forays.css", "ui/playlist.css"]
   .map((rel) => fs.readFileSync(path.join(ROOT, rel), "utf8").replace(/\r\n/g, "\n"))
   .join("\n");
 
@@ -236,11 +236,12 @@ const BUTTONS = {
   ".play-btn": { rule: ".play-btn" },
   ".pl-save": { tall: "button.pl-save", why: "a labelled capsule (\"Save to my playlists\" / \"✓ Saved\") with 16px side padding" },
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
-  ".reorder": { rule: "button.reorder" },
   ".star": { rule: "button.star" },
   ".up-next": { rule: "button.up-next" },
-  ".up-next-remove": { rule: "button.up-next-remove" },
-  ".up-next-clear": { rule: "button.up-next-clear" }, // PQ-02 (#762): the Up Next page head's Clear
+  /* The Up Next page (Redesign 2026, ambient): the row is Library's QueueRow, so the arrows, the ✕ and Next are the row's
+     menu (`.lb-dots`, an `.ag-btn`), Clear is an `.ag-btn-quiet`, and the drag is a hold on the row's own cover
+     (`.lb-cover`, above), so the page adds no button. The legacy `.reorder`, `.up-next-remove`, `.up-next-clear`
+     entries went with the markup that rendered them, and the `.qp-handle` entry with the handle (iteration 2). */
   ".voice-row-audition": { rule: ".voice-row-audition" },
   /* #pl-form's Go went with the #/playlists builder (round-3 audit,
      search-api-css-10); Create's Build is the one submit button left. */
