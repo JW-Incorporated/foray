@@ -6,10 +6,13 @@
 // request.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { TtlCache } from "../_lib/searchCache.ts";
 import { KeyedBuckets } from "../_lib/keyedBuckets.ts";
 import * as searchModule from "../episodes/search.ts";
-import { episodeFeedFailureCache, episodeSearchCache } from "../_lib/searchCache.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -50,6 +53,20 @@ test("TtlCache: re-setting a key refreshes its place, so it is not evicted as th
   assert.equal(cache.get("b"), undefined);
 });
 
+test("ONE Clock: `interface Clock` and `realClock` are declared once under api/_lib, in clock.ts", () => {
+  /* code-health-2 CH2-38 (A1-09). appleBucket.ts and searchCache.ts each
+     declared their own Clock and realClock, and feedCache.ts handed one
+     module's clock to the other's class: harmless until either copy gains a
+     method. MUTATION: declare `interface Clock` (or `const realClock`) in any
+     second file under api/_lib: the count below is 2. */
+  const libDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "_lib");
+  const declaring = (re) => fs.readdirSync(libDir)
+    .filter((f) => f.endsWith(".ts"))
+    .filter((f) => re.test(fs.readFileSync(path.join(libDir, f), "utf8")));
+  assert.deepEqual(declaring(/\binterface Clock\b/), ["clock.ts"]);
+  assert.deepEqual(declaring(/\bconst realClock\b/), ["clock.ts"]);
+});
+
 test("KeyedBuckets limits each key on its own and caps how many keys it remembers", () => {
   const buckets = new KeyedBuckets(2, 60_000, manualClock(), 3);
   assert.equal(buckets.tryConsume("x"), true);
@@ -84,7 +101,7 @@ test("the show-scoped path stops fetching a show's feed past its per-minute budg
      buckets.tryConsume check in feedCache.ts read() — every request
      downloads the feed again. */
   searchModule.sharedFeedReader.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   episodeSearchCache.clear();
   let feedFetches = 0;
   const originalFetch = globalThis.fetch;

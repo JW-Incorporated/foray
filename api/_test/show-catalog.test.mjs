@@ -27,7 +27,7 @@ import * as episodesModule from "../shows/[show_id]/episodes.ts";
 import * as episodeSearchModule from "../episodes/search.ts";
 import * as showSearchModule from "../shows/search.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
-import { episodeSearchCache, episodeFeedFailureCache } from "../_lib/searchCache.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
 
 const unwrap = (m) => (typeof m.default === "function" ? m.default : m.default.default);
 const listHandler = unwrap(episodesModule);
@@ -88,7 +88,7 @@ async function withFeedStub(fn) {
 function freshCaches() {
   sharedFeedReader.clear();
   episodeSearchCache.clear();
-  episodeFeedFailureCache.clear();
+  episodeSearchModule.showScopedResultCache.clear();
 }
 
 /** What the list endpoint does with `id`: its status and the feed it fetched. */

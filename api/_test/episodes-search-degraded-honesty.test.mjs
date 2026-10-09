@@ -55,8 +55,11 @@ function mockRes() {
 
 /* `total` and `capped` joined the healthy show-scoped payload in audit round 2
    (honesty-11: "Showing 10 of 38"); the unavailable case carries them too, so
-   the shape is still one shape. */
-const RESPONSE_KEYS = ["query", "show", "episodes", "source", "total", "capped", "degraded", "error"].sort();
+   the shape is still one shape. `stale` joined every path in code-health-2
+   CH2-38 (A1-05): a show-scoped answer read from a kept feed copy says so, as
+   the per-show list does. MUTATION: drop `stale` from the unavailable answer
+   in api/episodes/search.ts: the key sets differ. */
+const RESPONSE_KEYS = ["query", "show", "episodes", "source", "total", "capped", "degraded", "stale", "error"].sort();
 
 test("show-scoped search: both catalog files unreadable reports an honest degraded failure, never a false-empty success", async (t) => {
   const emptyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "foray-showmeta-missing-"));
