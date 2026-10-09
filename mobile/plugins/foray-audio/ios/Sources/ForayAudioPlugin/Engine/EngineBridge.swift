@@ -243,7 +243,7 @@ final class EngineBridge {
     /// (CH3-12, R1-17): the last item's `lastError` is not this one's.
     private static func startsAnItem(_ command: EngineContract.Command) -> Bool {
         switch command {
-        case .playEpisode, .playForay, .restoreBar, .play: return true
+        case .playEpisode: return true
         default: return false
         }
     }

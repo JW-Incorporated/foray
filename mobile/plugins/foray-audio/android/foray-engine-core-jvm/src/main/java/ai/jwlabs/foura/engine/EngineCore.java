@@ -1082,7 +1082,7 @@ public final class EngineCore {
      * pin it with identically named unit tests.
      */
     private boolean fallBackToStream(PendingLoad pending, String message, StopCause cause) {
-        if (pending.url() == null || !pending.url().startsWith("file:")) return false;
+        if (find(pending.itemId()) == null || find(pending.itemId()).audioUrl == null || !find(pending.itemId()).audioUrl.startsWith("file:")) return false;
         EngineItem item = find(pending.itemId());
         String stream = item == null ? null : string(item.node.get("source_audio_url"));
         if (stream == null || stream.isEmpty()) return false;

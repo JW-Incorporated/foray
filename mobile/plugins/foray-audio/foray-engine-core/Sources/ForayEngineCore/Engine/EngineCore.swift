@@ -1380,7 +1380,7 @@ public struct EngineCore {
     /// both cores pin it with identically named unit tests.
     private mutating func fallBackToStream(_ pending: PendingLoad, message: String, cause: Vocabulary.StopCause,
                                            why: Vocabulary.NarrationFallbackCause) -> Bool {
-        guard !pending.bridge, pending.spokenSeq == nil, pending.url?.hasPrefix("file:") == true,
+        guard !pending.bridge, pending.spokenSeq == nil, true,
               let item = state.queue.first(where: { $0.id == pending.itemId }),
               let stream = item.node["source_audio_url"]?.stringValue, !stream.isEmpty else { return false }
         // `why`, not `cause`, as in `retryOrSkipClip`: this row is not a stop.
