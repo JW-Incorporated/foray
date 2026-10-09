@@ -94,6 +94,10 @@ const review = (d, work, what) => {
 // taste=false (foundation): the current app must stay pixel-identical, so only
 // hard checks apply; judging it against today would always tie.
 async function buildUnit(d, unit, kind, phaseName, taste = true) {
+  // args.rulings["<dir>/<unit id>"]: a binding orchestrator decision for this unit (e.g. a raised
+  // budget). Builders, fixers and the reviewer all see it, so nobody re-litigates it.
+  const ruling = (args && args.rulings && args.rulings[`${d}/${unit.id}`]) || ''
+  if (ruling) unit = { ...unit, acceptance: [...unit.acceptance, `ORCHESTRATOR RULING (binding): ${ruling}`] }
   const work = `redesign/${d}-${unit.id}`
   const tag = `${d}:${unit.id}`
   let impl = await chunked(work)(`${COMMON}\nFIRST: git fetch origin; if \`git log origin/${dirBranch(d)} --merges --oneline --grep "Merge ${work} into ${dirBranch(d)}"\` prints anything (a merge of this branch into ANOTHER work branch does not count: on 2026-10-08 that false match skipped tactile now-playing and library), this unit is already merged: do nothing else and return ok=true, alreadyMerged=true, summary "already merged".\n${inWorktree(d, work)}\nDirection: ${d} (docs/redesign-2026/directions/${d}/DIRECTION.md, prototype in prototype/, screens.json). Build ${kind} "${unit.name}" per build-loop.md. Acceptance criteria:\n- ${unit.acceptance.join('\n- ')}\nRun the targeted tests and gates yourself before pushing. Return branch and sha.`, { label: `build:${tag}`, phase: phaseName, schema: STATUS, model: 'sonnet', effort: 'high', isolation: 'worktree' })
@@ -122,6 +126,7 @@ async function buildUnit(d, unit, kind, phaseName, taste = true) {
     if (chk.hardPass && faithful && beatsToday) break
     if (it === MAX_ITERS) break
     const feedback = [
+      ruling && `Orchestrator ruling (binding): ${ruling}`,
       !chk.testsPass && 'Tests fail: ' + chk.summary,
       !chk.gatesPass && 'New gate debt: ' + (chk.newDebt || []).join('; '),
       (chk.baselineRegressions || []).length && 'Baseline regressions outside this screen: ' + chk.baselineRegressions.join('; '),
@@ -133,7 +138,7 @@ async function buildUnit(d, unit, kind, phaseName, taste = true) {
   if (!last || !last.hardPass) return { id: unit.id, merged: false, reason: 'hard checks failing after ' + MAX_ITERS + ' iterations', detail: last && last.chk && last.chk.summary }
   // Up to 3 Codex reviews with an Opus fix between each (overnight, one fix round left 4 of 8
   // foundation units blocked on items a second fix would have closed).
-  let rv = await review(d, work, `It builds ${kind} "${unit.name}" for direction ${d}`)
+  let rv = await review(d, work, `It builds ${kind} "${unit.name}" for direction ${d}${ruling ? `. Orchestrator ruling that applies (binding, not a finding): ${ruling}` : ''}`)
   for (let round = 2; round <= 3 && rv && rv.verdict === 'fix'; round++) {
     await chunked(work)(`${COMMON}\nYou are in an isolated git worktree. git fetch origin && git checkout -B ${work} origin/${work} . Fix these blocking review items (each one, with a test that fails without the fix), re-run the targeted tests and gates, commit, push ${work}:\n- ${rv.blocking.join('\n- ')}`, { label: `fix:${tag}:review${round - 1}`, phase: phaseName, schema: STATUS, model: 'sonnet', effort: 'high', isolation: 'worktree' })
     rv = await review(d, work, `Review round ${round}, after fixes for: ${rv.blocking.join(' | ').slice(0, 1500)}. It builds ${kind} "${unit.name}" for direction ${d}`)
@@ -212,6 +217,15 @@ const results = await pipeline(DIRS,
       }
     }
     await parallel(Array.from({ length: SCREEN_CONC }, () => worker))
+    // args.extraUnits: [{direction, id, name, acceptance[], taste?}] - targeted fix sets (CI, QA
+    // follow-ups) built after the screens, one at a time, with the same loop and review.
+    for (const x of ((args && args.extraUnits) || []).filter(x => x.direction === d)) {
+      if (LOW_DISK || dead >= 3) break
+      const r = await buildUnit(d, x, x.kind || 'the fix set', 'Screens', !!x.taste)
+      screens.push(r)
+      log(`${d}/${x.id}: ${r.merged ? 'merged' : 'NOT merged (' + r.reason + ')'}`)
+      if (!r.skipped) await cleanup()
+    }
     if (dead >= 3) log(`${d}: stopped after 3 implementer deaths in a row; ${queue.length} screens not started: ${queue.map(s => s.id).join(', ')}`)
     await progress(`${d}: Phase 4 screens ${screens.filter(r => r.merged).length}/${screens.length} merged; escalated: ${screens.filter(r => r.escalated).map(r => r.id).join(', ') || 'none'}`)
     return { ...prev, screens, stopped: dead >= 3 || LOW_DISK, notStarted: queue.map(s => s.id) }
@@ -220,6 +234,10 @@ const results = await pipeline(DIRS,
   // direction, with agents that cannot run, reports a vacuous "0 issues")
   async (prev, d) => {
     if (!prev) return null
+    if (args && args.skipQA && !prev.stopped) {
+      await agent(`Dispatch a lab build of ${dirBranch(d)}: gh workflow run lab-build.yml --repo JW-Incorporated/foray --ref main -f ref=${dirBranch(d)} -f platforms=both . Return the run URL. Do not wait for it.`, { label: `lab:${d}:final`, phase: 'Lab', schema: STATUS, model: 'sonnet', effort: 'low' })
+      return { direction: d, branch: dirBranch(d), foundation: prev.found, screens: prev.screens, qa: 'skipped (args.skipQA)' }
+    }
     if (prev.stopped) { log(`${d}: QA and final lab build skipped, screens stopped early`); return { direction: d, branch: dirBranch(d), foundation: prev.found, screens: prev.screens, stopped: true, notStarted: prev.notStarted, qa: null } }
     const lenses = ['security and CSP (esc/safeUrl, inline style, javascript:, cp_ keys)', 'accessibility (focus in sheets, 44px, reduced motion, contrast, screen reader labels)', 'behaviour parity with the current app (playback, queue, offline, onboarding, search) and the product principles', 'performance budget per build-loop.md (bundle size, first paint, long tasks on a mid-range phone profile)']
     const found = await parallel(lenses.map((lens, i) => () => agent(`${COMMON}\nAdversarial QA of origin/${dirBranch(d)} through the lens: ${lens}. Read-only (scratch in C:\\Users\\Fourtys\\.claude\\jobs). Use the harness (tools/ui-lab) and the test suites. Report only issues you reproduced, with repro steps.`, { label: `qa:${d}:${i}`, phase: 'QA', schema: QA, model: 'opus', effort: 'high' })))
