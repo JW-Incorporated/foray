@@ -3614,6 +3614,50 @@ test("CH3-02 characterization: the element's unexplained pause then a route loss
   assert.ok(!backend.calls.includes("play"), `${backend.calls}`);
 });
 
+test("CH3-02 review: a call on an awake page — the element's pause, the OS's interruption, then the flap — still resumes", async () => {
+  /* The production order on the JS lane (client.js `onNativeSession`): the
+     call pauses the element first (the `unexplainedPause` reconcile), then the
+     plugin's interruptionBegan arrives as a reconcile `{ interruption: true }`.
+     That explains the pause: it was the call's, not a route's, so the A2DP ->
+     HFP -> A2DP flap after it lands inside the interruption and paused
+     nothing. KILLING MUTATION: drop the `if (interruption)
+     this._unexplainedPause = null` retirement at the top of
+     `reconcileWithBackend` (the flap claims the pause; `routeLost`). */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("unexplainedPause"), true);
+  await m.reconcileWithBackend("session:interruptionBegan", { interruption: true });
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  await m.routeChanged({ oldDeviceUnavailable: false });
+  backend.calls.length = 0;
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing", "the call ended with should-resume; the flap paused nothing");
+  assert.ok(backend.calls.includes("play"), `${backend.calls}`);
+});
+
+test("CH3-02 review: an element's pause then a direct interruptionBegan is the interruption's, not a later flap's", async () => {
+  /* The same order through the manager's own `interruptionBegan()` (the
+     reducer returns the same frozen `interrupted` state, so state identity
+     alone would let the flap claim the pause). KILLING MUTATION: drop the
+     `this._unexplainedPause = null` in `interruptionBegan()`. */
+  const { m, backend } = make();
+  m.loadQueue([ep("a")]);
+  await m.play(0);
+  backend.paused = true;
+  backend.ended = false;
+  assert.equal(await m.reconcileWithBackend("unexplainedPause"), true);
+  await m.interruptionBegan();
+  await m.routeChanged({ oldDeviceUnavailable: true });
+  await m.routeChanged({ oldDeviceUnavailable: false });
+  backend.calls.length = 0;
+  await m.interruptionEnded(true);
+  assert.equal(m.state.type, "playing", "the interruption's should-resume decides");
+  assert.ok(backend.calls.includes("play"), `${backend.calls}`);
+});
+
 /* ---------- audit round 3: every await re-checks who owns the player ---------- */
 
 /** A backend whose load of the named ids waits until the test releases it. */

@@ -21,7 +21,9 @@
     "§16: a clip that lands between two that will not load resets the run": "xctest:ClipLoadRetryTests/testAClipThatLandsBetweenTwoFailuresResetsTheRun",
     "§16: the Foray clip's silence bound is the attempts times the hidden-page deadline": "xctest:AVDeckTests/testTheClipSilenceBoundIsTheAttemptsTimesTheClipDeadline",
     "CH3-02 characterization: a route lost while PLAYING stays paused through a flap and a later call": "xctest:EngineCoreTests/testARouteLostWhilePlayingIsRefusedAfterAFlapAndACall",
-    "CH3-02 characterization: the element's unexplained pause then a route loss is the route's, either order": "xctest:EngineCoreTests/testAnUncommandedPauseThenARouteLossIsTheRoutes"
+    "CH3-02 characterization: the element's unexplained pause then a route loss is the route's, either order": "xctest:EngineCoreTests/testAnUncommandedPauseThenARouteLossIsTheRoutes",
+    "CH3-02 review: a call on an awake page — the element's pause, the OS's interruption, then the flap — still resumes": "xctest:EngineCoreTests/testACallsPauseThenAFlapInsideTheWindowLeavesTheCallsShouldResumeInCharge",
+    "CH3-02 review: an element's pause then a direct interruptionBegan is the interruption's, not a later flap's": "xctest:EngineCoreTests/testACallsPauseThenAFlapInsideTheWindowLeavesTheCallsShouldResumeInCharge"
   },
   "html-audio-backend": {
     "CH-21 characterization: a load at 600 resolves on the canplay that finds the playhead at 600, and not on the one for the head": "xctest:AVDeckTests/testOffsetLandsOnTheCbrMp3AndTheWav",

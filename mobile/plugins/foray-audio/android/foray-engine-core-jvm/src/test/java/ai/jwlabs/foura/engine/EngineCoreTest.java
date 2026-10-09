@@ -756,6 +756,30 @@ public class EngineCoreTest {
     }
 
     /**
+     * CH3-02 review, the twin of the Swift test: the call pauses the deck first (an uncommanded
+     * pause, reconciled as the system's), then the interruption is reported, then the A2DP -> HFP
+     * flap lands inside {@code ROUTE_ATTRIBUTION_MS}. The interruption explained that pause, so the
+     * flap is not attributed it: the call's should-resume resumes. TO SEE IT FAIL: drop
+     * {@code state.lastUncommandedPauseAtMono = null} from {@code onInterruptionBegan}.
+     */
+    @Test
+    public void aCallsPauseThenAFlapInsideTheWindowLeavesTheCallsShouldResumeInCharge() {
+        Host host = playing();
+        host.reading.audible = false;
+        host.send(new EngineInput.Deck(new DeckEvent.PausedUncommanded(host.lastLoad, 3)));
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")), 50);
+        List<EngineCommand> lost = host.send(
+                session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))), 150);
+        assertTrue(lost.toString(),
+                rows("session", lost).stream().noneMatch(e -> JsonNode.str("route-attributed").equals(e.field("kind"))));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))));
+        assertFalse("the flap paused nothing", host.core.state().pausedByRoute);
+        List<EngineCommand> ended = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertNull(ended.toString(), refusedResume(ended));
+        assertTrue("the call's should-resume resumes: " + ended, index(ended, EngineCoreTest::isLoad) >= 0);
+    }
+
+    /**
      * CH3-02 characterization, the opposite order (survives the fix): a loss while PLAYING
      * paused the episode, so it is the route's (corner case #13): a flap back and a later call's
      * should-resume do not resume it, and the refusal row says why. TO SEE IT FAIL: drop the
