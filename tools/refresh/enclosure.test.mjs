@@ -114,7 +114,8 @@ test("decimal seconds parse and out-of-range components refuse, in seconds and m
 });
 
 test("no tool keeps a private itunes:duration parser", () => {
-  for (const f of ["tools/refresh/scan.mjs", "tools/refresh/backfill-show.mjs", "tools/harvest-episodes.mjs"]) {
+  // scan.mjs and backfill-show.mjs build their records through feed-xml.mjs (code-health-2 CH2-29).
+  for (const f of ["tools/refresh/feed-xml.mjs", "tools/harvest-episodes.mjs"]) {
     const src = readFileSync(new URL("../../" + f, import.meta.url), "utf8");
     assert.doesNotMatch(src, /function normDuration/, f + " parses itunes:duration itself");
     assert.match(src, /durationMinutes\(it\["itunes:duration"\]\)/, f + " does not derive duration_min from the one parser");

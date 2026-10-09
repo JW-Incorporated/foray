@@ -264,7 +264,7 @@ export const DEFAULT_NARRATION_ACT_CONCURRENCY = 4;
  * The act-concurrency cap in force: `raw` (defaults to the env var) as a
  * positive integer, or the default when the variable is unset. A variable
  * that is PRESENT but not a positive integer throws, the way
- * `DAILY_BUDGET_USD` does — a typo here silently becoming "4" is precisely
+ * the budget variables in `env.ts` do — a typo here silently becoming "4" is precisely
  * the rate-limit surprise the operator was setting it to avoid. The message
  * names the variable, never its value (`env.ts`'s convention).
  */

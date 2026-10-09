@@ -18,6 +18,8 @@
    mime list. */
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { isTimedMime } from "./mimes.mjs";
+import { rowsOf } from "./rows.mjs";
+import { instant, toIsoOrNull } from "./time.mjs";
 
 const TRUTHY_RAW = new Set(["yes", "true", "1"]);
 
@@ -27,11 +29,6 @@ const TRUTHY_RAW = new Set(["yes", "true", "1"]);
 function rawFlag(value) {
   if (value == null) return false;
   return TRUTHY_RAW.has(String(value).trim().toLowerCase());
-}
-
-function timeOf(iso) {
-  if (iso == null) return Number.NaN;
-  return Date.parse(iso);
 }
 
 /** `podcast_feeds.categories` is json (brief §4): an array of
@@ -72,17 +69,10 @@ function piCategories(extra) {
   return out;
 }
 
-function toIsoOrNull(value) {
-  if (value == null) return null;
-  const t = Date.parse(value);
-  return Number.isNaN(t) ? null : new Date(t).toISOString();
-}
-
 /** The catalogue's `foray_show_id` lookup: normalised feed URL → show_id. */
 function catalogIndex(catalog) {
-  const shows = Array.isArray(catalog) ? catalog : Array.isArray(catalog?.shows) ? catalog.shows : [];
   const byFeed = new Map();
-  for (const show of shows) {
+  for (const show of rowsOf(catalog)) {
     const norm = normalizeFeedUrl(show?.feed_url);
     if (norm && show?.show_id != null && !byFeed.has(norm)) byFeed.set(norm, String(show.show_id));
   }
@@ -117,7 +107,7 @@ export async function buildShows(source, { catalog } = {}) {
       link: null,
       record: null,
       episodesTotal: 0,
-      newestPublishedMs: Number.NaN,
+      newestPublishedMs: null,
       timed: new Set(),
       audio: new Set(),
     });
@@ -131,9 +121,9 @@ export async function buildShows(source, { catalog } = {}) {
       entry.feed = f;
       continue;
     }
-    const cur = timeOf(entry.feed.last_success_at);
-    const next = timeOf(f.last_success_at);
-    if (!Number.isNaN(next) && (Number.isNaN(cur) || next > cur)) entry.feed = f;
+    const cur = instant(entry.feed.last_success_at);
+    const next = instant(f.last_success_at);
+    if (next !== null && (cur === null || next > cur)) entry.feed = f;
   }
 
   // 3. Source links → source records. A link on the chosen feed wins over
@@ -163,8 +153,8 @@ export async function buildShows(source, { catalog } = {}) {
     if (!entry) continue;
     podcastOfEpisode.set(e.id, e.podcast_id);
     entry.episodesTotal += 1;
-    const t = timeOf(e.source_published_at);
-    if (!Number.isNaN(t) && (Number.isNaN(entry.newestPublishedMs) || t > entry.newestPublishedMs)) {
+    const t = instant(e.source_published_at);
+    if (t !== null && (entry.newestPublishedMs === null || t > entry.newestPublishedMs)) {
       entry.newestPublishedMs = t;
     }
   }
@@ -218,7 +208,7 @@ export async function buildShows(source, { catalog } = {}) {
       episodes_total: entry.episodesTotal,
       timed_transcript_episodes: entry.timed.size,
       audio_episodes: entry.audio.size,
-      newest_published_at: Number.isNaN(entry.newestPublishedMs) ? null : new Date(entry.newestPublishedMs).toISOString(),
+      newest_published_at: entry.newestPublishedMs === null ? null : new Date(entry.newestPublishedMs).toISOString(),
       foray_show_id: forayShowId,
     });
     if (itunesId != null) stats.with_itunes_id += 1;

@@ -1,11 +1,10 @@
-import * as fs from "fs";
-import * as path from "path";
 import { applyCors } from "../_lib/cors";
 import { firstParam } from "../_lib/params";
 import { type ParsedEpisode } from "../../backend/src/feeds/parser";
 import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { appleSearchBucket } from "../_lib/appleBucket";
 import { loadShowIdMap } from "../_lib/showIdMap";
+import { showMetaById, CatalogFilesUnavailableError, type ShowMeta } from "../_lib/showCatalog";
 import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey, showScopedQueryKey } from "../_lib/searchCache";
 import { sharedFeedReader, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
 import { liveEpisodeGuid } from "../_lib/liveEpisodeId";
@@ -31,7 +30,7 @@ import {
  *      the card's own explicit rule. Since P-05 that map spans BOTH
  *      catalogue files (19.9k ids, not 220), so the rule fires on genuine
  *      strangers rather than on 73 % of every answer — see showIdMap.ts's
- *      loadCatalogFallback() for the measurement.
+ *      header for the measurement.
  *
  *   2. SHOW-SCOPED SEARCH (`show=<show_id>`): no Apple call at all. Fetches
  *      that show's live feed (through api/_lib/feedCache.ts, the parsed feed
@@ -178,7 +177,7 @@ interface AppleEpisodeHit {
  *  three quarters of every answer and five of eight probe queries returned
  *  nothing at all with `degraded:false`. If this ever starts dropping most hits
  *  again, the id-map is broken, not the query. */
-function mapAppleHit(hit: AppleEpisodeHit, idMap: Map<number, string>): EpisodeSearchResult | null {
+function mapAppleHit(hit: AppleEpisodeHit, idMap: ReadonlyMap<number, string>): EpisodeSearchResult | null {
   if (typeof hit.collectionId !== "number") return null;
   const show_id = idMap.get(hit.collectionId);
   if (!show_id) return null; // genuinely outside our catalogue — see this function's header
@@ -256,106 +255,37 @@ async function searchWithinShow(
   query: string,
   fetchImpl: typeof fetch
 ): Promise<{ results: EpisodeSearchResult[]; error: string | null; feedFailed: boolean }> {
-  // Find the show's feed URL. This is a pure local lookup (data/catalog.json,
-  // no network) — the show/collectionId id-map (showIdMap.ts) is a different
-  // join (Apple collectionId -> show_id) not needed here, so it's not loaded
-  // in this path. Loading it unconditionally would trigger a network fetch
-  // of S-04's release id-map on every show-scoped query once that release
-  // exists, for no benefit to this path.
+  /* The show's feed, from the one catalogue reader (api/_lib/showCatalog.ts,
+     code-health-2 CH2-24): a local lookup, no network. An `in_curated`
+     breadth id is answered as its curated twin, so the rows carry the twin's
+     show_id and the feed is the one the twin's episode list reads. */
   let meta: ShowMeta | null;
   try {
-    meta = await loadShowMeta(showId);
+    meta = showMetaById(showId);
   } catch (err) {
-    if (err instanceof ShowMetaFilesUnavailableError) {
-      // Distinct from "unknown show_id" below: the catalog files this
-      // lookup depends on could not be read at all (e.g. missing from the
-      // deployed bundle — see vercel.json's includeFiles / api/_test/
-      // vercel-bundle.test.mjs), not merely "this id isn't in them". A
-      // caller can't fix a bad show_id, but this IS an operational
-      // failure worth surfacing honestly rather than as a false-empty
-      // "no results" — see this file's degraded-honesty test.
+    if (err instanceof CatalogFilesUnavailableError) {
+      // Distinct from "unknown show_id" below: the catalogue files could not
+      // be read at all (e.g. missing from the deployed bundle — see
+      // vercel.json's includeFiles / api/_test/vercel-bundle.test.mjs), not
+      // merely "this id isn't in them". A caller can't fix a bad show_id,
+      // but this IS an operational failure worth surfacing honestly rather
+      // than as a false-empty "no results" — see this file's degraded-honesty
+      // test.
       return { results: [], error: err.message, feedFailed: false };
     }
     throw err;
   }
   if (!meta) return { results: [], error: `unknown show_id: ${showId}`, feedFailed: false };
 
-  const feed = await sharedFeedReader.read(showId, meta.feedUrl, { fetchImpl, userAgent: EPISODE_USER_AGENT });
+  const feed = await sharedFeedReader.read(meta.showId, meta.feedUrl, { fetchImpl, userAgent: EPISODE_USER_AGENT });
   if (!feed.parsed) return { results: [], error: feed.error ?? "feed unavailable", feedFailed: feed.feedFailed };
 
   const parsed = feed.parsed;
   const q = query.trim().toLowerCase();
   const results = parsed.episodes
-    .map((ep, idx) => (ep.title.toLowerCase().includes(q) ? mapLiveEpisode(showId, meta.title, ep, idx) : null))
+    .map((ep, idx) => (ep.title.toLowerCase().includes(q) ? mapLiveEpisode(meta.showId, meta.title, ep, idx) : null))
     .filter((ep): ep is EpisodeSearchResult => ep !== null);
   return { results, error: null, feedFailed: false };
-}
-
-interface ShowMeta {
-  feedUrl: string;
-  title: string | null;
-}
-
-/** Thrown by loadShowMeta() when NEITHER required catalog file could be read
- * at all (as opposed to being readable but simply not listing this show_id).
- * Kept distinct from "unknown show_id" so the handler can report an honest
- * `degraded: true` + a real error string instead of a false-empty result —
- * see this file's BUNDLING-adjacent degraded-honesty test. */
-export class ShowMetaFilesUnavailableError extends Error {
-  constructor() {
-    super("show metadata catalog files are unavailable");
-    this.name = "ShowMetaFilesUnavailableError";
-  }
-}
-
-const SHOW_META_FILES = ["data/catalog.json", "data/catalog-breadth.json"];
-
-let showMetaRoot = path.resolve(__dirname, "..", "..");
-let showMetaIndex: Map<string, ShowMeta> | null = null;
-let showMetaFilesUnavailable = false;
-
-async function loadShowMeta(showId: string): Promise<ShowMeta | null> {
-  if (!showMetaIndex) {
-    const index = new Map<string, ShowMeta>();
-    let readableFiles = 0;
-    for (const file of SHOW_META_FILES) {
-      try {
-        const raw = fs.readFileSync(path.join(showMetaRoot, file), "utf8");
-        const parsed = JSON.parse(raw) as {
-          shows: Array<{ show_id?: string; apple_collection_id?: number; feed_url: string | null; title?: string | null }>;
-        };
-        for (const show of parsed.shows ?? []) {
-          const id = show.show_id ?? (show.apple_collection_id !== undefined ? String(show.apple_collection_id) : null);
-          if (id && show.feed_url && !index.has(id)) {
-            index.set(id, { feedUrl: show.feed_url, title: show.title ?? null });
-          }
-        }
-        readableFiles++; // only counted once this file was actually read AND parsed
-      } catch {
-        // this one file is missing/unreadable/corrupt — the other may still be fine
-      }
-    }
-    showMetaIndex = index;
-    // Both required files failed: that's a bundling/deploy gap (or a corrupt
-    // pair), never a legitimate "zero shows" catalog — distinct from a
-    // successfully-read-but-empty-or-non-matching index below.
-    showMetaFilesUnavailable = readableFiles === 0;
-  }
-  if (!showMetaIndex.has(showId) && showMetaFilesUnavailable) {
-    throw new ShowMetaFilesUnavailableError();
-  }
-  return showMetaIndex.get(showId) ?? null;
-}
-
-/** Test-only: point loadShowMeta() at a different root directory (to
- * simulate the catalog files being absent from the deployed bundle without
- * touching the real data/ directory) and clear its cache. Pass no argument
- * to restore the real repo root. Mirrors showIdMap.ts's
- * _resetShowIdMapCacheForTests() convention. */
-export function _setShowMetaRootForTests(root?: string): void {
-  showMetaRoot = root ?? path.resolve(__dirname, "..", "..");
-  showMetaIndex = null;
-  showMetaFilesUnavailable = false;
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
@@ -458,7 +388,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const idMap = await loadShowIdMap({ fetchImpl: fetch });
+  const idMap = await loadShowIdMap();
   const { hits, error } = await searchApple(q, limit, fetch);
   const mapped = hits
     .map((hit) => mapAppleHit(hit, idMap.byCollectionId))
