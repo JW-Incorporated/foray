@@ -58,10 +58,9 @@ body.view-episode #view { padding-top: 0; }
 /* Actions: the Primary Play (48, Ember), then Save and Add to Up Next as 44 round targets. */
 .ag .ep-actions { display: flex; align-items: center; justify-content: stretch; gap: var(--s-3); margin-top: var(--s-5); }
 .ag .ep-play { flex: 1 1 auto; min-width: 0; }
-.ag .ep-tool { flex: none; background: var(--bg2); color: var(--text); }
+.ag .ep-tool { flex: none; background: var(--bg2); color: var(--text); }   /* Save, Add to Up Next and Play next: three filled circles beside the Ember pill */
 .ag .ep-tool.is-on { color: var(--ember); }
-.ag .ep-next { margin-top: var(--s-2); }
-.ag .ep-next, .ag .ep-notes-more { color: var(--lamp-text); }   /* a control, not a listener's mark: Lamp reads AA over the Room in Dusk and Dawn */
+.ag .ep-notes-more { color: var(--lamp-text); }   /* a control, not a listener's mark: Lamp reads AA over the Room in Dusk and Dawn */
 .ag .not-playable { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; min-height: calc(var(--tap) + var(--s-1)); color: var(--text-2); font: var(--t-label); }
 .ag .ep-note { margin-top: var(--s-3); color: var(--text-2); text-align: left; }
 .ag .ep-play-from { margin-top: var(--s-4); }
@@ -119,10 +118,10 @@ body.view-episode #view { padding-top: 0; }
 .ag .ep-more-rows > * + * { margin-top: var(--s-2); }
 /* styles.css still styles every `.ep-more h3` as an uppercase eyebrow (the legacy section label); a row's title is an h3 inside
    this section, so it takes its own type back. */
-.ag .ep-more-rows .td-row-title { font: 500 1rem/1.2 var(--font-display); letter-spacing: normal; text-transform: none; color: var(--text); }
-/* A vertical list never cuts a title (DIRECTION.md, Rows: rails are the one place that trade-off is accepted): the clamp the row
-   inherits from `.clamp2` is off here and the title runs as many lines as it needs, at 16px so a long one takes three lines, not four. */
-.ag .ep-more-rows .td-row-title { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; overflow-wrap: break-word; }
+.ag .ep-more-rows .td-row-title { font: 500 1rem/1.375 var(--font-display); letter-spacing: normal; text-transform: none; color: var(--text); } /* 22px leading: two lines are exactly the title cell (--tap, 44), so the clamp hides the third line instead of letting its tops show */
+/* The row keeps its own `.clamp2` title (two lines, an ellipsis), exactly as on the Show screen: DIRECTION.md rule 5 makes an episode row 96px, 72px art,
+   a one-or-two-line title, the meta line and a two-line why-line, so seven or eight rows share a viewport. A title that ran as long as it liked took
+   four lines and ~170px (iteration 3); the full title is the link's text and the episode page itself. */
 /* The row's Play is a Fill, not a ring: the material system has no hairline borders (depth from light, state from a Fill), and the
    Ember pill, the filled bookmark and the played circle above it are all filled. The raised-on-raised tone (--bg2) is the Fill. */
 .ag .ep-more-rows .ag-btn-play.ag-btn-size-44 { background: var(--bg2); color: var(--text); box-shadow: none; }

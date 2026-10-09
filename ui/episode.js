@@ -453,8 +453,8 @@ function episodeActionsHtml(item) {
           : notPlayableNote()}
         ${episodeToolHtml("save", id, isSaved(id))}
         ${queueable ? episodeToolHtml("upnext", id, isQueued(id)) : ""}
-      </div>
-      ${playable ? `<button type="button" class="ag-btn ag-btn-quiet ep-next" data-ep-playnext="${esc(id)}">Play next</button>` : ""}`;
+        ${playable ? `<button type="button" class="ag-btn ag-btn-icon ep-tool ep-next" data-ep-playnext="${esc(id)}" aria-label="Play next">${agIcon("skip-next", 24)}</button>` : ""}
+      </div>`;
 }
 
 /** Paint the three controls from the player and the stores. Compared first, written only on a change. */

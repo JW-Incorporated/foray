@@ -759,7 +759,7 @@ test("#/episode renders Play next beside + Up Next, and its click goes through p
   const up = html.indexOf(`data-ep-upnext="${m.ctx.esc(item.id)}"`);
   const next = html.indexOf(`data-ep-playnext="${m.ctx.esc(item.id)}"`);
   assert.ok(up >= 0 && next > up, "Play next renders right after Up Next in the episode actions");
-  assert.match(html, /data-ep-playnext="[^"]*">Play next<\/button>/);
+  assert.match(html, /data-ep-playnext="[^"]*" aria-label="Play next">/);
 
   seedPlayable(m, ["x", "y"]);
   m.ctx.lsSet("cp_queue", ["x", "y"]);

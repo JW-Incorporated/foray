@@ -199,7 +199,11 @@ test("Play is a 48 primary, Save and Up Next are 44 round targets; the glyphs ar
   assert.match(html, /<button type="button" class="ag-btn ag-btn-primary ep-play" data-ep-play="ep-1" data-state="idle" aria-label="Play Cooling factories without wasting water"><svg[^>]*><use href="ui\/icons\.svg#i-play"/);
   assert.match(html, /class="ag-btn ag-btn-icon ep-tool" data-ep-save="ep-1" aria-label="Save episode"><svg[^>]*><use href="ui\/icons\.svg#i-bookmark"/);
   assert.match(html, /class="ag-btn ag-btn-icon ep-tool" data-ep-upnext="ep-1" aria-label="Add to Up Next"><svg[^>]*><use href="ui\/icons\.svg#i-queue"/);
-  assert.match(html, /data-ep-playnext="ep-1">Play next<\/button>/);
+  /* Play next is the third filled circle in the action row, not a bare caption under it (iteration 3 finding).
+     MUTATION: put it back as `ag-btn-quiet` text after the `</div>` -> both assertions go red. */
+  assert.match(html, /class="ag-btn ag-btn-icon ep-tool ep-next" data-ep-playnext="ep-1" aria-label="Play next"><svg[^>]*><use href="ui\/icons\.svg#i-skip-next"/);
+  const actions = html.slice(html.indexOf('class="ep-actions"'), html.indexOf("</div>", html.indexOf('class="ep-actions"')));
+  assert.match(actions, /data-ep-playnext="ep-1"/, "Play next sits inside the action row");
 });
 
 test("an episode with no audio draws the honest note, no Play and no Up Next, and still offers Save", () => {
@@ -559,18 +563,18 @@ test("\"More from this show\" is the Show screen's EpisodeRow: Raised, art 72 be
   assert.match(css, /\.ep-more-rows\s+\.td-row-title\s*\{[^}]*text-transform:\s*none/, "a row's h3 title takes its type back from the legacy .ep-more h3 eyebrow");
 });
 
-test("\"More from this show\": a row's title is never cut and its Play is a Fill, not a hairline ring (iteration 2 findings)", () => {
-  /* The first iteration's row inherited .clamp2 (the title ended "Future of..." on the first row) and the shared 44px Play's inset
-     1.5px ring. DIRECTION.md: vertical lists never cut a title; the material system has no hairline borders.
-     MUTATION: delete the `.ep-more-rows .td-row-title { display: block; -webkit-line-clamp: unset ... }` rule -> the clamp assertion
-     goes red (the row's own .clamp2 comes back and a long title ends in an ellipsis).
+test("\"More from this show\": a row keeps the Show screen's two-line title (96px rhythm) and its Play is a Fill, not a hairline ring (iteration 3)", () => {
+  /* Iteration 2 unclamped the title; with a long one it ran four lines (~170px) and the second row fell under the Dock.
+     DIRECTION.md rule 5: episode rows 96px. The row now keeps `.clamp2`.
+     MUTATION: re-add `.ag .ep-more-rows .td-row-title { -webkit-line-clamp: unset; ... }` -> the unclamp assertion goes red;
+     or drop `clamp2` from showEpisodeRowHtml's h3 -> the markup assertion goes red.
      MUTATION 2: delete the `.ep-more-rows .ag-btn-play.ag-btn-size-44` rule, or give it a `box-shadow: inset ...` -> the Fill
      assertion goes red (primitives.css's ring comes back around the glyph). */
   const css = read("ui/episode.css");
   const decl = (sel) => { const rest = css.split(sel + " {")[1] || ""; return rest.slice(0, rest.indexOf("}")); };
   const title = css.split(".ag .ep-more-rows .td-row-title {").slice(1).map(r => r.slice(0, r.indexOf("}"))).join(" ");
-  assert.match(title, /-webkit-line-clamp:\s*unset/, "the row's title has no line clamp");
-  assert.match(title, /overflow:\s*visible/, "and nothing clips it");
+  assert.doesNotMatch(title, /line-clamp:\s*unset|overflow:\s*visible/, "the row's title keeps the two-line clamp");
+  assert.match(read("ui/show.js"), /<h3 class="t-headline clamp2 td-row-title">/, "and the row's markup still carries clamp2");
   const body = decl(".ag .ep-more-rows .ag-btn-play.ag-btn-size-44");
   assert.match(body, /background:\s*var\(--bg2\)/, "Play is a Fill (raised-on-raised)");
   assert.match(body, /box-shadow:\s*none/, "with no ring");
