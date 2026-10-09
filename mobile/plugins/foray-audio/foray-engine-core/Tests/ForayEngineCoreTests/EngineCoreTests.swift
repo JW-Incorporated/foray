@@ -795,6 +795,98 @@ final class EngineCoreTests: XCTestCase {
         XCTAssertTrue(failed.contains(.emit(.error(code: "chain-start", message: "404"))), "\(failed)")
     }
 
+    // MARK: - CH3-12 (R4-03): a downloaded file that will not open streams instead
+
+    /// An episode as the page sends a downloaded one (download-store.js
+    /// `localPlayable`): the file in `audio_url`, the stream kept as
+    /// `source_audio_url`.
+    static func downloaded(_ id: String, file: String? = nil) -> EngineItem {
+        EngineItem(node: .object([JSONMember("id", .string(id)), JSONMember("kind", .string("episode")),
+                                  JSONMember("audio_url", .string(file ?? "file:///var/mobile/Downloads/\(id).mp3")),
+                                  JSONMember("source_audio_url", .string("https://cdn.example/\(id).mp3"))]))!
+    }
+
+    /// The URL of every load in `commands`, in order.
+    func loadURLs(_ commands: [EngineCommand]) -> [String] {
+        commands.compactMap {
+            if case let .deck(.load(_, _, url, _, _, _)) = $0 { return url ?? "nil" }
+            return nil
+        }
+    }
+
+    func anyStopRow(_ commands: [EngineCommand]) -> Bool {
+        commands.contains { if case let .diag(entry) = $0 { return entry.kind == "stop" }; return false }
+    }
+
+    /// A cold-restored downloaded episode whose file is gone (removed, or
+    /// moved by an app update) loads its stream instead, at the same second,
+    /// with no stop row; the page still hears `error` code `load`, so it marks
+    /// the download missing. The second load is the fallback's, and a failure
+    /// of THAT stops as today.
+    /// RED on main: R4-03 (the failure stopped `cause=error`, no second load).
+    /// TO SEE IT FAIL: drop `fallBackToStream` from `onLoadFailure` (no
+    /// second load), or let it retry on its own stream (a second failure
+    /// loads a third time: retrying twice).
+    func testADownloadThatWillNotOpenFallsBackToItsStreamOnce() {
+        var host = Host()
+        host.send(.queue(.load([EngineCoreTests.downloaded("a")])))
+        let first = host.send(.queue(.playIndex(0, startSec: 42, source: .tap)))
+        XCTAssertEqual(loadURLs(first), ["file:///var/mobile/Downloads/a.mp3"])
+        let failed = host.send(.deck(.failed(token: host.lastLoad!, message: "file not found")))
+        XCTAssertEqual(loadURLs(failed), ["https://cdn.example/a.mp3"], "one load, on the stream: \(failed)")
+        XCTAssertFalse(anyStopRow(failed), "a fallback is not a stop: \(failed)")
+        XCTAssertTrue(failed.contains(.emit(.error(code: "load", message: "file not found"))),
+                      "the page marks the download missing: \(failed)")
+        XCTAssertEqual(host.core.state.pendingLoad?.startSec, 42, "the same second")
+        XCTAssertEqual(host.core.state.stateType, "loadingItem", "the listener's play is still on")
+        XCTAssertTrue(failed.contains {
+            if case let .diag(entry) = $0 { return entry.kind == "deck" && entry[field: "kind"] == .string("stream-fallback") }
+            return false
+        }, "the deck row names the fallback: \(failed)")
+
+        let again = host.send(.deck(.failed(token: host.lastLoad!, message: "offline")))
+        XCTAssertEqual(loadURLs(again), [], "once: the stream failing too is today's stop")
+        assertCauseFirst(.error, again)
+        XCTAssertTrue(again.contains(.emit(.error(code: "load", message: "offline"))))
+        XCTAssertEqual(host.core.state.stateType, "idle")
+    }
+
+    /// The fallback lands and plays like any load.
+    func testAStreamFallbackThatLandsPlays() {
+        var host = Host()
+        host.send(.queue(.load([EngineCoreTests.downloaded("a")])))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        host.send(.deck(.deadlineExceeded(token: host.lastLoad!, afterMs: 20000)))
+        let landed = host.land()
+        XCTAssertNotNil(index(landed, isPlay), "\(landed)")
+        XCTAssertEqual(host.core.state.loadedId, "a")
+    }
+
+    /// Only a FILE falls back: a stream that will not open is today's stop,
+    /// whatever else the item carries.
+    /// TO SEE IT FAIL: drop the `file:` check in `fallBackToStream`.
+    func testAStreamThatWillNotOpenIsNotRetried() {
+        var host = Host()
+        host.send(.queue(.load([EngineCoreTests.downloaded("a", file: "https://mirror.example/a.mp3")])))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let failed = host.send(.deck(.failed(token: host.lastLoad!, message: "http-404")))
+        XCTAssertEqual(loadURLs(failed), [], "\(failed)")
+        assertCauseFirst(.error, failed)
+        XCTAssertEqual(host.core.state.stateType, "idle")
+    }
+
+    /// A file with no stream to fall back on is today's stop.
+    func testAFileWithNoSourceIsNotRetried() {
+        var host = Host()
+        host.send(.queue(.load([EngineItem(node: .object([JSONMember("id", .string("a")),
+                                                          JSONMember("kind", .string("episode")),
+                                                          JSONMember("audio_url", .string("file:///x/a.mp3"))]))!])))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let failed = host.send(.deck(.failed(token: host.lastLoad!, message: "file not found")))
+        XCTAssertEqual(loadURLs(failed), [], "\(failed)")
+        assertCauseFirst(.error, failed)
+    }
+
     // MARK: - DeckPolicy's tokens are the generated ones
 
     func testDeckPolicyTokensAreTheGeneratedConstants() {

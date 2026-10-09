@@ -100,7 +100,18 @@ final class EngineBridge {
     private var coalescer = SnapshotCoalescer()
     private var window: EngineObservation?
     private var lastCmdSeq: Int?
-    private var lastError: String?
+    /// The code of the core's last `error` event (the snapshot's
+    /// `lastError`), and the load it was about: the core's `lastToken` when
+    /// it was emitted. CH3-12 (R1-17): it means the CURRENT item, because the
+    /// page settles a downloaded copy's failure from it when it comes back
+    /// (client.js `settleEngineLocalLoad`), and a stale code would mark the
+    /// wrong download missing. So it ends with every accepted start
+    /// (`startsAnItem`) and with any newer load the core began by itself (a
+    /// remote ▶, an auto-advance: `transitioned()`).
+    private var lastError: (code: String, load: DeckToken)?
+    /// How many `error` events the core has emitted: a start that failed in
+    /// its own turn keeps the error it raised.
+    private var errorsEmitted = 0
     private weak var hooked: ForayEngine?
     private var handBackAnnounced = false
 
@@ -195,6 +206,7 @@ final class EngineBridge {
             }
 
             let verdict: EngineVerdict
+            let errorsBefore = errorsEmitted
             if case let .relinquish(cap) = command {
                 // The owner's, not the core's alone: it runs the legacy hand-over
                 // after the core goes terminal (plan §4.6).
@@ -213,7 +225,7 @@ final class EngineBridge {
             if case let .setPageVisible(visible) = command {
                 apply(coalescer.setVisible(visible))
             }
-            if case .playEpisode = command, verdict.ok { lastError = nil }
+            if verdict.ok, EngineBridge.startsAnItem(command), errorsEmitted == errorsBefore { lastError = nil }
             return EngineBridgeRules.refusal(for: verdict.failures)
         }
 
@@ -225,6 +237,15 @@ final class EngineBridge {
                         JSONMember("result", .string(refusal.rawValue))])
         }
         return reply(refusal)
+    }
+
+    /// The commands that make a new current item when they are accepted
+    /// (CH3-12, R1-17): the last item's `lastError` is not this one's.
+    private static func startsAnItem(_ command: EngineContract.Command) -> Bool {
+        switch command {
+        case .playEpisode, .playForay, .restoreBar, .play: return true
+        default: return false
+        }
     }
 
     // MARK: - engineRead
@@ -297,7 +318,7 @@ final class EngineBridge {
             // A torn-down engine still answers (its session reads
             // `relinquished`), but its deck is gone: nothing is loaded.
             let deck = owner.relinquished ? DeckReading.idle : engine.seams.deck.reading
-            body = EngineSnapshot.body(core: engine.coreValue, deck: deck, lastError: lastError, monoMs: timing.monoMs)
+            body = EngineSnapshot.body(core: engine.coreValue, deck: deck, lastError: lastError?.code, monoMs: timing.monoMs)
         } else {
             body = EngineSnapshot.body(core: EngineCore(), deck: .idle, lastError: nil)
         }
@@ -312,6 +333,11 @@ final class EngineBridge {
 
     /// After every input the engine handled, and at its teardown.
     private func transitioned() {
+        // CH3-12: a load newer than the one the error was about is a new
+        // current item (a remote ▶, an auto-advance, a jump).
+        if let error = lastError, let engine = owner.engine, engine.coreValue.state.lastToken != error.load {
+            lastError = nil
+        }
         if owner.relinquished, !handBackAnnounced {
             handBackAnnounced = true
             if coalescer.visible { deliver(EngineBridgeRules.modeChangedEvent(reason: .downgrade)) }
@@ -320,7 +346,10 @@ final class EngineBridge {
     }
 
     private func engineEmitted(_ event: EngineEvent) {
-        if case let .error(code, _) = event { lastError = code }
+        if case let .error(code, _) = event {
+            lastError = (code, owner.engine?.coreValue.state.lastToken ?? 0)
+            errorsEmitted += 1
+        }
         guard coalescer.visible else { return }
         deliver(EngineBridgeRules.event(event))
     }

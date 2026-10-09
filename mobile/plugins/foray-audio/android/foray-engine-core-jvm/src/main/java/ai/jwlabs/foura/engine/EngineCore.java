@@ -859,6 +859,14 @@ public final class EngineCore {
      * ran); the loaded id moves only when {@code ready} comes back.
      */
     private void load(QueueItemRef ref, LoadOffsets offsets) {
+        load(ref, offsets, null);
+    }
+
+    /**
+     * {@code url} replaces the item's own {@code audio_url} for this one load: the stream a
+     * downloaded copy that will not open falls back to ({@link #fallBackToStream}, CH3-12).
+     */
+    private void load(QueueItemRef ref, LoadOffsets offsets, String url) {
         EngineItem item = find(ref.id());
         if (item == null) {
             dispatch(new PlayerEvent.Error("loadItem: unknown ref " + ref.id()));
@@ -918,8 +926,9 @@ public final class EngineCore {
         if (index >= 0) state.currentIndex = index;
         state.lastToken += 1;
         int token = state.lastToken;
-        state.pendingLoad = new PendingLoad(token, item.id, startSec);
-        deckCommand(new DeckCommand.Load(token, item.id, item.audioUrl, startSec, bounds != null));
+        String opened = url != null ? url : item.audioUrl;
+        state.pendingLoad = new PendingLoad(token, item.id, startSec, opened);
+        deckCommand(new DeckCommand.Load(token, item.id, opened, startSec, bounds != null));
     }
 
     /**
@@ -1044,6 +1053,8 @@ public final class EngineCore {
             diag("deck", m("kind", str("superseded-failure")), m("token", num(token)));
             return;
         }
+        // CH3-12: a downloaded copy that will not open streams instead.
+        if (isPending && fallBackToStream(pending, message, cause)) return;
         String itemId = pending != null ? pending.itemId() : state.loadedId != null ? state.loadedId : "?";
         state.pendingLoad = null;
         stopRow(cause, null);
@@ -1054,6 +1065,33 @@ public final class EngineCore {
             out.add(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", message)));
         }
         dispatch(new PlayerEvent.Error("loadItem(" + itemId + ") failed: " + message));
+    }
+
+    /**
+     * CH3-12 (R4-03; Swift's {@code fallBackToStream}): a DOWNLOADED copy that will not open
+     * (the file was removed, or an app update moved it) is loaded again from its stream, at
+     * the same second, once. The page sends a downloaded item with the file in
+     * {@code audio_url} and the stream kept as {@code source_audio_url}; the page's own
+     * fallback cannot run while it sleeps, and the failure can land then (a car press after a
+     * cold restore, a hop the engine walked). Only a load that opened a {@code file:} URL falls
+     * back, and only onto a non-empty {@code source_audio_url}: the fallback's load opened the
+     * stream, so its failure is the caller's stop, as today. Offline is not the core's to
+     * know: the stream runs into its own deadline. No stop row (a fallback is not a stop); the
+     * page still hears {@code error} code {@code load}, so it marks the download missing. Not
+     * a fixture: the JS manager has no such rule (player/parity/exclusions.json), so both cores
+     * pin it with identically named unit tests.
+     */
+    private boolean fallBackToStream(PendingLoad pending, String message, StopCause cause) {
+        if (pending.url() == null || !pending.url().startsWith("file:")) return false;
+        EngineItem item = find(pending.itemId());
+        String stream = item == null ? null : string(item.node.get("source_audio_url"));
+        if (stream == null || stream.isEmpty()) return false;
+        // `why`, not `cause`: this row is not a stop.
+        diag("deck", m("kind", str("stream-fallback")), m("token", num(pending.token())), m("why", str(cause.token)));
+        state.pendingLoad = null;
+        out.add(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", message)));
+        load(item.ref(), LoadOffsets.explicitAt(pending.startSec()), stream);
+        return true;
     }
 
     /** {@code _handleBackendItemEnded}: the item ran out. */
