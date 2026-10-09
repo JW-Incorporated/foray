@@ -40,7 +40,7 @@ function tactileArtFrame(data) {
   var px = TACTILE_ART_PX[size];
   var image = d.url
     ? '<img src="' + esc(safeUrl(artUrl(d.url, px * 3))) + '" alt="' + esc(label) + '" loading="lazy" decoding="async" width="' + px + '" height="' + px + '">'
-    : '<span class="art-frame__initials" aria-hidden="true">' + esc(d.initials || "4a") + "</span>";
+    : d.plain ? "" : '<span class="art-frame__initials" aria-hidden="true">' + esc(d.initials || "4a") + "</span>";
   return '<span class="art-frame art-frame--' + esc(size) + shape + state + '"' + (d.loading ? ' aria-busy="true"' : "") + ">" + image + "</span>";
 }
 

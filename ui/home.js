@@ -570,8 +570,13 @@ function todayHeroModel(pick) {
   const enamelOf = new Map();
   for (const s of segments) if (!s.narration && s.show && !enamelOf.has(s.show)) enamelOf.set(s.show, s.enamel);
   const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  /* The card's readout is the direction's: "about 22 min · 6 shows". The runtime is already
+     rounded to the minute (fmtSpan), so "about" is true of a measured sum as well as an
+     estimated one; the Foray page keeps the stricter dialect (p-foray-8: "about" only when
+     estimated), where the clock beside the scrubber gives the exact figure. */
+  const runtime = forayRuntimeLabel(player, tally, r.totalSec);
   const facts = joinMeta(
-    forayRuntimeLabel(player, tally, r.totalSec),
+    runtime && !/^about /.test(runtime) ? `about ${runtime}` : runtime,
     countLabel(tally ? tally.shows : shows.length, "show"),
   );
   const summary = String(foray.summary || "").trim();
@@ -607,7 +612,7 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
   const path = forayRoutePath(foray.id);
   /* A pip in the show's band enamel (the `t-band__bar--c` index the bars wear), the show's
      name as the item's accessible name: the colour is never the only thing that says who. */
-  const keys = hero.discs.map((d, i) => `<span class="today-hero__key today-hero__key--c${Number(d.enamel) || 0}${i === hero.discs.length - 1 ? " today-hero__key--last" : ""}" role="listitem" aria-label="${esc(d.name || "")}">${tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })}<span class="today-hero__pip" aria-hidden="true"></span></span>`).join("");
+  const keys = hero.discs.map((d, i) => `<span class="today-hero__key today-hero__key--c${Number(d.enamel) || 0}${i === hero.discs.length - 1 ? " today-hero__key--last" : ""}" role="listitem" aria-label="${esc(d.name || "")}">${tactileArtFrame({ size: "disc", round: true, url: d.url, plain: true })}<span class="today-hero__pip" aria-hidden="true"></span></span>`).join("");
   const more = hero.moreShows > 0 ? `<span class="readout today-hero__more" role="listitem" aria-label="${esc(countLabel(hero.moreShows, "more show"))}">+${esc(String(hero.moreShows))}</span>` : "";
   const discs = `<span class="today-hero__discs" role="list" aria-label="Shows in this foray">${keys}${more}</span>`;
   const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;

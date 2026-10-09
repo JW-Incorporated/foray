@@ -205,7 +205,7 @@ test("the readout is the mono line 'about N min · N shows', draft first, progre
   const narrated = cardFor(html, NARRATED);
   assert.match(narrated, /<span class="readout yours-foray__readout">draft · about \d+ min · \d+ shows?<\/span>/, "a narrated Foray is hedged with 'about', as on Today; this one is also a draft");
   const part = cardFor(html, PUBLISHED);
-  assert.match(part, /<span class="readout yours-foray__readout">\d+ min · 7 shows · 20 min left<\/span>/, "part-played: facts then how much is left");
+  assert.match(part, /<span class="readout yours-foray__readout">about \d+ min · 7 shows · 20 min left<\/span>/, "part-played: facts ('about', as on Today) then how much is left");
   const draft = cardFor(html, DRAFT);
   assert.match(draft, /<span class="readout yours-foray__readout">draft · .+ · 10 min left<\/span>/, "a draft says draft first");
 });

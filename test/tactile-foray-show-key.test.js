@@ -269,3 +269,19 @@ test("the key shares ONE line with the readout and adds no new material to the d
   const key = rule(".today-hero__key");
   assert.doesNotMatch(key, /padding|background|border-radius/, "no ring: the disc is the plain artwork");
 });
+
+test("the key's discs carry no text, so overlapping them clips nothing, and the readout says 'about'", async () => {
+  /* KILLING MUTATION: pass `initials: d.initials` instead of `plain: true` to the disc's
+     tactileArtFrame in todayHeroHtml (a disc with no artwork draws its station code, and the
+     neighbour laid over it cuts the code to a letter and a half), or drop the "about" prefix
+     on `facts` in todayHeroModel: red. (The harness shoots with remote images off, so every
+     disc is the no-artwork case here: the state in which the clipping showed.) */
+  const { r, doc } = await sevenShowForay();
+  const app = loadApp(await realBridge());
+  const hero = app.todayHeroModel({ foray: doc, r });
+  const html = app.todayHeroHtml(hero);
+  const discs = /<span class="today-hero__discs"[^>]*>(.*?)<\/span><span class="readout today-hero__facts">/s.exec(html)[1];
+  assert.ok((discs.match(/art-frame--disc/g) || []).length >= 7, "the seven shows' discs are in the row (the check is not over an empty row)");
+  assert.doesNotMatch(discs, /art-frame__initials/, "a disc draws no station code: the pip and the show's name carry who it is");
+  assert.match(hero.facts, /^about \d+ min · 7 shows$/, "the readout keeps the direction's voice");
+});
