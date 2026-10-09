@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
-import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../_lib/showIdMap.ts";
+import { loadShowIdMap } from "../_lib/showIdMap.ts";
 import { episodeFeedFailureCache } from "../_lib/searchCache.ts";
 import { appleCallerBuckets } from "../_lib/clientLimit.ts";
 
@@ -31,7 +31,6 @@ function mockRes() {
 }
 
 function resetSharedState() {
-  _resetShowIdMapCacheForTests();
   /* P-05 piece 3: the feed-failure memory is module scope and 90 s long, so a
      failure remembered by one test would answer a later one from a different
      test's setup. Cleared here rather than per-test for the same reason the
@@ -296,24 +295,17 @@ function someBreadthOnlyShow() {
   );
 }
 
+/* The map is built from the committed catalogue files alone, through
+   api/_lib/showCatalog.ts (CH2-24); show-id-map.test.mjs pins that it never
+   touches the network. */
 async function loadFallbackMap() {
-  _resetShowIdMapCacheForTests();
-  // A fetchImpl that throws proves the map is built from the committed
-  // catalogue files alone: showIdMap.ts never touches the network (the
-  // release id-map reader was deleted in CH2-02).
-  const map = await loadShowIdMap({
-    fetchImpl: async () => {
-      throw new Error("no network in this test");
-    },
-    forceReload: true,
-  });
-  _resetShowIdMapCacheForTests();
-  return map;
+  return loadShowIdMap();
 }
 
 test("id-map: a breadth-only show's Apple collectionId maps to its numeric show_id instead of being dropped", async () => {
-  // MUTATION THAT TURNS THIS RED: delete the catalog-breadth.json pass from
-  // showIdMap.ts:loadCatalogFallback() — i.e. restore the pre-P-05 220-id map,
+  // MUTATION THAT TURNS THIS RED: drop the breadth rows from
+  // breadthCatalog.ts:loadCatalogue()'s `showIdByAppleId` (the map
+  // showIdMap.ts serves since CH2-24) — i.e. restore the pre-P-05 220-id map,
   // under which this id resolved to nothing and every episode of this show was
   // silently discarded by mapAppleHit.
   const show = someBreadthOnlyShow();
@@ -327,13 +319,15 @@ test("id-map: a breadth-only show's Apple collectionId maps to its numeric show_
 });
 
 test("id-map: a curated show keeps its SLUG id — the curated pass is merged first and breadth never overwrites it", async () => {
-  // MUTATION THAT TURNS THIS RED: swap the two passes in
-  // loadCatalogFallback(), or drop its `if (map.has(...)) continue` guard.
-  // Either one hands a curated show the numeric id, and
+  // MUTATION THAT TURNS THIS RED: in breadthCatalog.ts:loadCatalogue(), map
+  // the `in_curated` breadth rows to their own numbers (set
+  // `showIdByAppleId` for them, unconditionally, before the skip). That
+  // hands a curated show the numeric id, and
   // backend/src/catalog/breadthCatalog.ts DROPS the breadth row for a curated
-  // show — so that numeric id resolves to nothing on the show page. That is
-  // exactly the broken link mapAppleHit's drop rule exists to prevent,
-  // reintroduced by the very change meant to widen it.
+  // show — before CH2-24 that numeric id resolved to nothing on the show page
+  // (the broken link mapAppleHit's drop rule exists to prevent); now it is
+  // only an alias, and the row would still link away from the slug every
+  // other surface uses for that show.
   const idMap = await loadFallbackMap();
   let checked = 0;
   for (const show of CATALOG.shows) {
@@ -355,21 +349,12 @@ test("id-map: every id it mints resolves to a show the merged catalogue will act
   // merged index. Any id in this map that is NOT in that index is a dead link
   // on a live result row — strictly worse than the drop it replaced.
   //
-  // MUTATION THAT TURNS THIS RED: delete BOTH of loadCatalogFallback()'s
-  // breadth-pass guards — `if (show.in_curated) continue` and
-  // `if (map.has(...)) continue`. Verified red, 2026-09-12: the 103
-  // `in_curated` rows then get numeric ids, breadthCatalog.ts drops exactly
-  // those rows, and 103 entries point at show_ids the merged catalogue does
-  // not contain.
-  //
-  // SAID HONESTLY, because a test that overstates its own coverage is worse
-  // than no test: deleting the `in_curated` guard ALONE leaves this green on
-  // the committed data, because every `in_curated` breadth row happens to
-  // have a curated counterpart today (0 orphans, checked 2026-09-12) and the
-  // `map.has` guard therefore catches all of them first. The guard is kept
-  // anyway — it is the half of the rule that does not depend on that
-  // coincidence holding — and THIS assertion is what notices if the
-  // coincidence ever stops holding, which is the thing worth catching.
+  // Since CH2-24 the map and the index come out of one loadCatalogue() pass
+  // (breadthCatalog.ts sets `showIdByAppleId` only for a row it admits), so
+  // this holds by construction. MUTATION THAT TURNS THIS RED: set
+  // `showIdByAppleId` for a breadth row before its `in_curated` skip,
+  // unconditionally — the 175 `in_curated` rows then map to numeric ids the
+  // index does not contain (it serves them only as an alias of the twin).
   //
   // Scale-free by construction: it quantifies over whatever the map holds, so
   // a bigger catalogue cannot redden it — only a drift between the two
@@ -414,8 +399,8 @@ test("id-map: it is strictly wider than the curated-only map it replaced, and lo
 test("general search: a breadth-only show's Apple hit now reaches the response, end to end through the handler", async () => {
   // The point of the card, through the real handler rather than the map alone.
   //
-  // MUTATION THAT TURNS THIS RED: any change that puts loadCatalogFallback()
-  // back on catalog.json alone. Pre-P-05 this exact request answered
+  // MUTATION THAT TURNS THIS RED: any change that puts the id-map
+  // (breadthCatalog.ts's `showIdByAppleId`) back on catalog.json alone. Pre-P-05 this exact request answered
   // `{episodes: [], source: [], degraded: false}` — the measured production
   // behaviour for `tim ferriss`, `sam harris`, `elon musk`,
   // `artificial intelligence` and `the daily` on 2026-09-12.
@@ -547,7 +532,7 @@ test("show-scoped: an unknown show_id is not remembered as a feed failure", asyn
   await handler({ method: "GET", query: { q: "anything", show: "definitely-not-a-real-show" }, headers: {} }, mockRes());
 
   // The same unknown id again must still walk the real path rather than a
-  // remembered one: it reaches loadShowMeta and answers "unknown show_id".
+  // remembered one: it reaches showMetaById and answers "unknown show_id".
   const again = mockRes();
   await handler({ method: "GET", query: { q: "anything-else", show: "definitely-not-a-real-show" }, headers: {} }, again);
   assert.deepStrictEqual(again.body.episodes, []);
@@ -625,7 +610,7 @@ test("the URL sent to Apple carries the over-fetch, and the caller still gets ex
      MUTATION: drop the handler's `.slice(0, limit)`. The row-count assertion
      goes red. */
   resetSharedState();
-  const idMap = await loadShowIdMap({ fetchImpl: globalThis.fetch });
+  const idMap = await loadShowIdMap();
   const knownCollectionId = [...idMap.byCollectionId.keys()][0];
   assert.ok(knownCollectionId, "premise: the id-map has at least one known collection id");
 

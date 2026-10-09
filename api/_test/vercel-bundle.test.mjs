@@ -3,12 +3,12 @@
 //
 // WHY THIS EXISTS
 // Several `api/**` handlers read files under `data/` off disk at runtime via
-// a repo-root-relative `readFileSync`/`path.join()` call (`findRepoRoot()` +
-// `loadShowIndex()` in `api/shows/[show_id]/episodes.ts`; `loadShowMeta()` in
-// `api/episodes/search.ts`; `loadCatalogFallback()` in
-// `api/_lib/showIdMap.ts`; `readJson()` in
-// `backend/src/catalog/breadthCatalog.ts`, reached transitively from
-// `api/shows/search.ts`). Vercel's bundler does NOT include a file that's
+// a repo-root-relative `readFileSync`/`path.join()` call: since CH2-24 every
+// catalogue read is `readJson()` in `backend/src/catalog/breadthCatalog.ts`,
+// reached through `api/_lib/showCatalog.ts` from `api/shows/search.ts`,
+// `api/shows/[show_id]/episodes.ts` and `api/episodes/search.ts` (the last
+// also via `api/_lib/showIdMap.ts`); `api/_lib/showsIndexRelease.ts` reads
+// the shows-index pointer. Vercel's bundler does NOT include a file that's
 // only reached via a dynamic `readFileSync`/`join()` call at runtime — it
 // needs either a statically analyzable literal path, or an explicit
 // `vercel.json` `functions.<glob>.includeFiles` entry.

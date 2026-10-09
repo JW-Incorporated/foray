@@ -156,6 +156,29 @@ test("every bare import reachable from api/** is declared in api/package.json or
   );
 });
 
+// CH2-26 (B1-03): backend/src/feeds/politeness.ts reads
+// tools/refresh/dai-hosts.json with fs at module load. That file is not in
+// vercel.json's includeFiles, so if any api/** handler ever reached the module
+// every function in that bundle would fail at load -- the S-02 crash class
+// again, by a different route. Today no handler imports it; this keeps it so.
+// MUTATION: `import { hostSuggestsDai } from "../../backend/src/feeds/politeness";`
+// added to any api/** handler -> red.
+test("no api/** handler's import closure reaches backend/src/feeds/politeness.ts (it reads dai-hosts.json at load)", () => {
+  const entryFiles = walkFiles(API_DIR).filter((f) => f !== SELF && !f.includes(`${path.sep}_test${path.sep}`));
+  const politeness = path.join(ROOT, "backend", "src", "feeds", "politeness.ts");
+  assert.ok(fs.existsSync(politeness), "backend/src/feeds/politeness.ts moved -- update this pin, do not delete it");
+
+  const reachedFrom = entryFiles.filter((entry) => walkClosure([entry]).visited.has(politeness));
+
+  assert.deepStrictEqual(
+    reachedFrom.map((f) => path.relative(ROOT, f).split(path.sep).join("/")),
+    [],
+    "these api/** handlers reach backend/src/feeds/politeness.ts, which reads " +
+      "tools/refresh/dai-hosts.json from disk at module load; that file is not bundled " +
+      "into Vercel functions, so the handler would crash at load in production"
+  );
+});
+
 test("api/package.json's declared dependencies are non-empty and sane", () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(API_DIR, "package.json"), "utf8"));
   assert.ok(pkg.dependencies && Object.keys(pkg.dependencies).length > 0, "api/package.json has no dependencies declared");

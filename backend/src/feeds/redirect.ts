@@ -1,4 +1,4 @@
-import { env } from "../config/env";
+import { DEFAULT_FEED_USER_AGENT } from "./userAgent";
 
 const MAX_REDIRECTS = 8;
 
@@ -25,12 +25,18 @@ export interface ResolvedUrl {
  * Important: the app downloads the *original* URL, not this resolved one
  * (publishers count downloads there) — this resolver exists for dedup /
  * DAI-host detection / broken-link fallback, not for the actual fetch path.
+ *
+ * `userAgent` is a parameter (default `DEFAULT_FEED_USER_AGENT`), the same
+ * shape as `fetchFeedConditional`: this module must not import `config/env`,
+ * which pulls in `dotenv` and crashed `api/` at module load in production
+ * (S-02, B1-10). `api/_test/import-closure.test.mjs` guards that boundary.
  */
 export async function resolveRedirectChain(
   originalUrl: string,
-  opts: { maxRedirects?: number; fetchImpl?: typeof fetch; timeoutMs?: number } = {}
+  opts: { maxRedirects?: number; fetchImpl?: typeof fetch; timeoutMs?: number; userAgent?: string } = {}
 ): Promise<ResolvedUrl> {
   const maxRedirects = opts.maxRedirects ?? MAX_REDIRECTS;
+  const userAgent = opts.userAgent ?? DEFAULT_FEED_USER_AGENT;
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 10_000;
 
@@ -47,7 +53,7 @@ export async function resolveRedirectChain(
         method: "GET",
         redirect: "manual",
         headers: {
-          "User-Agent": env.userAgent,
+          "User-Agent": userAgent,
           Range: "bytes=0-0"
         },
         signal: controller.signal

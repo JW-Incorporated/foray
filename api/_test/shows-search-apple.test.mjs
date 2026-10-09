@@ -122,25 +122,27 @@ test("id lookup returns the single merged-catalogue row for a curated show", asy
   assert.equal(res.body.degraded, false);
 });
 
-test("id lookup resolves a breadth show by its minted apple_collection_id", async () => {
+test("id lookup: a curated show's apple_collection_id is an alias for its curated record", async () => {
   /* The id shape is the whole join: `breadthCatalog.ts` mints
      `String(apple_collection_id)`, `tools/build-show-index.mjs` emits the
      same string, and `#/show/:id` carries it. A lookup that only understood
      curated `show_id`s would answer null for exactly the shows this endpoint
      exists to make linkable.
 
-     `lex-fridman-podcast` IS curated, so its collection id is deduped out of
-     the merged index (`in_curated`) — which is itself the thing being pinned
-     here: the id that is NOT in the merged catalogue must answer null rather
-     than a stale duplicate.
+     `lex-fridman-podcast` IS curated, so its breadth row is deduped out of
+     the merged index (`in_curated`) and its collection id is an ALIAS: it
+     answers the curated record, never a second, poorer copy (CH2-24, A1-02:
+     this answered `show: null` while both episode endpoints served the id).
 
      MUTATION: drop the `in_curated` skip from `loadBreadthCatalog`. This id
-     resolves to a second, poorer copy of the same show and the null assertion
-     fails. */
+     resolves to the breadth copy (tier "breadth", numeric show_id) and the
+     assertions fail. MUTATION: drop the alias in showCatalog.showById. The
+     show is null and they fail. */
   const res = mockRes();
   await handler(req({ id: REAL_COLLECTION_ID }), res);
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.show, null);
+  assert.equal(res.body.show?.show_id, "lex-fridman-podcast");
+  assert.equal(res.body.show?.tier, "curated");
 });
 
 test("an unknown id is a 200 with show: null, not a 404", async () => {

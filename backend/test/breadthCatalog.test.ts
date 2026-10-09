@@ -641,3 +641,56 @@ describe("loadBreadthCatalog — breadth taxonomy_node_ids pass through", () => 
     expect(row?.taxonomy_node_ids).toEqual([]);
   });
 });
+
+describe("loadBreadthCatalog — the chart-rank join is harvest-merge's rankByAppleId (B1-14)", () => {
+  /* code-health-2 CH2-24 (B1-14). breadthCatalog.ts joins a curated row to
+     its breadth twin's `chart_rank` and normalises a breadth row's own rank;
+     tools/harvest-merge.mjs's `rankByAppleId` is the ONE join both client
+     builders read (CH2-15). The backend is a CommonJS build and cannot import
+     a repo tool, so the rule is pinned rather than shared: over one fixture
+     carrying every awkward value (null, 0, "12", "NaN", -1, a plain 7), every
+     curated and breadth entry's `chart_rank` must equal what rankByAppleId
+     gives its Apple id, or null where it gives nothing.
+
+     MUTATION: in tools/harvest-merge.mjs `isChartRank`, `Number(raw) > 0` ->
+     `Number(raw) >= 0`. rankByAppleId now joins the 0 rows; breadthCatalog
+     still says null, and this fails on both tiers. */
+  afterEach(() => {
+    breadthOverride.json = null;
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    loadBreadthCatalog();
+    delete process.env.FORAY_SKIP_CATALOGUE_CACHE;
+  });
+
+  it("every entry's chart_rank equals rankByAppleId's answer for its Apple id", async () => {
+    const harvest = (await import("../../tools/harvest-merge.mjs")) as {
+      rankByAppleId: (breadth: unknown) => Map<string, number>;
+    };
+    const ROOT = path.resolve(__dirname, "..", "..");
+    const curated = (JSON.parse(fs.readFileSync(path.join(ROOT, "data", "catalog.json"), "utf8")) as {
+      shows: Array<{ show_id: string; apple_collection_id: number }>;
+    }).shows.slice(0, 6);
+    const ranks: unknown[] = [null, 0, "12", "NaN", -1, 7];
+    const fixture = {
+      shows: [
+        ...curated.map((c, i) => ({ apple_collection_id: c.apple_collection_id, title: `Twin ${i}`, feed_url: null, in_curated: true, chart_rank: ranks[i] })),
+        ...ranks.map((r, i) => ({ apple_collection_id: 990000011 + i, title: `Fixture Rank ${i}`, feed_url: null, chart_rank: r })),
+      ],
+    };
+    breadthOverride.json = JSON.stringify(fixture);
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    const entries = loadBreadthCatalog();
+    const join = harvest.rankByAppleId(JSON.parse(breadthOverride.json));
+
+    const byId = new Map(entries.map((e) => [e.show_id, e]));
+    for (const c of curated) {
+      expect(byId.get(c.show_id)?.chart_rank, c.show_id).toBe(join.get(String(c.apple_collection_id)) ?? null);
+    }
+    for (let i = 0; i < ranks.length; i++) {
+      const id = String(990000011 + i);
+      expect(byId.get(id)?.chart_rank, id).toBe(join.get(id) ?? null);
+    }
+    // The fixture is not vacuous: per tier, exactly "12" and 7 join.
+    expect([...join.values()].sort((a, b) => a - b)).toEqual([7, 7, 12, 12]);
+  });
+});

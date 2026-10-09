@@ -31,7 +31,8 @@ public sealed interface PlayerQueueState permits PlayerQueueState.Idle, PlayerQu
 
     /**
      * Paused by an interruption or a route loss, or paused-but-ready after an interruption
-     * ended without shouldResume. {@code wasPlaying}: audio was audible when it began.
+     * ended without shouldResume. {@code wasPlaying}: the listener meant to be playing when it
+     * began (audio audible, or a load in flight, CH3-01); a route lost mid-load records false.
      */
     record Interrupted(QueueItemRef item, boolean wasPlaying) implements PlayerQueueState {}
 
