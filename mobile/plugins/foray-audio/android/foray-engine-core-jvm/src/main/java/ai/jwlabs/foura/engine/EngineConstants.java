@@ -298,6 +298,8 @@ public final class EngineConstants {
         public static final String APP_NAME = "4a";
         /** {@code MEDIA_ACTIONS} */
         public static final List<String> MEDIA_ACTIONS = Collections.unmodifiableList(Arrays.asList("play", "pause", "stop", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto"));
+        /** {@code MEDIA_ARTWORK_LADDER} */
+        public static final List<Double> MEDIA_ARTWORK_LADDER = Collections.unmodifiableList(Arrays.asList(96.0, 128.0, 192.0, 256.0, 384.0, 512.0));
         /** {@code NONE} */
         public static final String NONE = "none";
         /** {@code PAUSED} */
