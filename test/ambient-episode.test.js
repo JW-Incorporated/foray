@@ -558,3 +558,20 @@ test("\"More from this show\" is the Show screen's EpisodeRow: Raised, art 72 be
      letter-spaced, would take the row's h3 title; the iteration-3 shot showed exactly that). */
   assert.match(css, /\.ep-more-rows\s+\.td-row-title\s*\{[^}]*text-transform:\s*none/, "a row's h3 title takes its type back from the legacy .ep-more h3 eyebrow");
 });
+
+test("\"More from this show\": a row's title is never cut and its Play is a Fill, not a hairline ring (iteration 2 findings)", () => {
+  /* The first iteration's row inherited .clamp2 (the title ended "Future of..." on the first row) and the shared 44px Play's inset
+     1.5px ring. DIRECTION.md: vertical lists never cut a title; the material system has no hairline borders.
+     MUTATION: delete the `.ep-more-rows .td-row-title { display: block; -webkit-line-clamp: unset ... }` rule -> the clamp assertion
+     goes red (the row's own .clamp2 comes back and a long title ends in an ellipsis).
+     MUTATION 2: delete the `.ep-more-rows .ag-btn-play.ag-btn-size-44` rule, or give it a `box-shadow: inset ...` -> the Fill
+     assertion goes red (primitives.css's ring comes back around the glyph). */
+  const css = read("ui/episode.css");
+  const decl = (sel) => { const rest = css.split(sel + " {")[1] || ""; return rest.slice(0, rest.indexOf("}")); };
+  const title = css.split(".ag .ep-more-rows .td-row-title {").slice(1).map(r => r.slice(0, r.indexOf("}"))).join(" ");
+  assert.match(title, /-webkit-line-clamp:\s*unset/, "the row's title has no line clamp");
+  assert.match(title, /overflow:\s*visible/, "and nothing clips it");
+  const body = decl(".ag .ep-more-rows .ag-btn-play.ag-btn-size-44");
+  assert.match(body, /background:\s*var\(--bg2\)/, "Play is a Fill (raised-on-raised)");
+  assert.match(body, /box-shadow:\s*none/, "with no ring");
+});
