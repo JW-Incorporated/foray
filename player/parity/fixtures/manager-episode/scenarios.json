@@ -922,6 +922,68 @@
       }
     },
     {
+      "id": "manager-episode/a-route-flap-during-a-call-still-resumes",
+      "covers": [
+        "queue-manager::CH3-02 (R2-02): a route flap DURING a call leaves the call's should-resume in charge"
+      ],
+      "note": "CH3-02 (R2-02): a car's A2DP -> HFP -> A2DP flap while a call rings lands inside the call's interruption and paused nothing, so the call's should-resume decides (code-health-3 founder question 2, default). The opposite order is a-lost-route-is-not-resumed-by-a-later-call.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "session": "interruptionBegan" },
+        { "session": "routeLost" },
+        { "session": "routeAvailable" },
+        { "checkpoint": "flapped" },
+        { "session": "interruptionEnded", "shouldResume": true },
+        { "checkpoint": "call-resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "flapped",
+            "ops": ["load:a@0", "rate:1", "play", "store.save:a@0", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "call-resumed",
+            "ops": ["load:a@0", "rate:1", "play"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:a@0",
+          "rate:1",
+          "play",
+          "store.save:a@0",
+          "pause",
+          "load:a@0",
+          "rate:1",
+          "play"
+        ]
+      }
+    },
+    {
       "id": "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
       "covers": [
         "queue-manager::ROUND 2 p-car-3: interruptionEnded(should-resume) resumes an OS interruption, never a listener's pause",

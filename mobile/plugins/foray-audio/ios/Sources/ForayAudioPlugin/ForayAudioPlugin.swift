@@ -176,7 +176,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     static let REMOTE_ORIGIN = "command-center"
 
     private let commandCenter = MPRemoteCommandCenter.shared()
-    private var commandsRegistered = false
 
     /// Everything after the bridge: the payload, the session, the command
     /// centre and the Now Playing centre are touched from this ONE serial
@@ -221,13 +220,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// runs (`stampNative`).
     private static let bootEpochMs = Int((Date().timeIntervalSince1970 * 1000).rounded())
     private var eventSeq = 0
-
-    /// L23: whether the last hold (and, separately, the last release) was
-    /// skipped because the native engine owns the session. A skip is
-    /// recorded once per run of skips, not once per retry; a real hold or
-    /// release resets its own flag. On `stateQueue`.
-    private var holdSkipped = false
-    private var releaseSkipped = false
 
     /// Bumped when the payload's STATE changes, so a re-assert armed for an
     /// older pause does not fire after the transport has moved on. Not on every
@@ -304,7 +296,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     override public func load() {
         // L20: `nboot` is fixed at the first load, not at the first event.
         _ = Self.bootEpochMs
-        let register: () -> Void = { [weak self] in self?.runLegacyRegistration() }
+        let register: (Bool) -> Void = { [weak self] pageless in self?.runLegacyRegistration(pageless: pageless) }
         let decide = { [weak self] in
             MainActor.assumeIsolated {
                 let owner = EngineOwnership.shared
@@ -315,10 +307,28 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         if Thread.isMainThread { decide() } else { DispatchQueue.main.sync(execute: decide) }
     }
 
-    /// Today's `load()`, verbatim: the legacy lane's registration. Runs at
-    /// most once per process (`EngineOwnership.runLegacy`).
-    private func runLegacyRegistration() {
-        stateQueue.sync { legacyLane = true }
+    /// Today's `load()`: the legacy lane's registration. Runs at most once
+    /// per process (`EngineOwnership.runLegacy`), and in the native lane only
+    /// after the owner has handed the session flag back -- which is why no
+    /// legacy session site below (`holdSession`, `releaseSession`, the
+    /// category write) carries a guard of its own: none is reachable before
+    /// this runs (CH3-06, R1-07; shell-invariants' NE-16 test pins the
+    /// reachability).
+    ///
+    /// `pageless` (CH3-06, R1-02): the engine ran and no page of this
+    /// navigation said hello -- the hello watchdog's hand-over to a broken
+    /// bundle. No `setNowPlaying` will ever write over the engine's entry,
+    /// and every command is about to be disabled, so the entry the engine
+    /// left ("Episode X, paused") would sit on the head unit dead for the
+    /// rest of the process. It is cleared, on `stateQueue` BEFORE the lane
+    /// opens, so a page payload that does arrive (an old bundle that never
+    /// says hello but still sends `setNowPlaying`) lands after the clear.
+    /// A page-initiated hand-over clears nothing: its page writes its own.
+    private func runLegacyRegistration(pageless: Bool) {
+        stateQueue.sync {
+            if pageless { applyNowPlayingInfo(.empty) }
+            legacyLane = true
+        }
         registerCommandHandlers()
         /* ONE SESSION MODE FOR THE WHOLE APP: `.spokenAudio` (the platform
            contract, `docs/DECISIONS.md` 2026-09-23; audit round 2, native-10).
@@ -332,14 +342,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
            `try?`: a failure here costs the mode, never the launch. DEVICE
            CHECK, open: whether WebKit resets the mode when its element starts
            (`docs/ios-lock-screen.md` §8.5).
-           GUARDED ON `EngineModeFlag` (NE-16): when the native engine owns
-           the session, its `AudioSessionOwner` set the category at boot and
-           is the only writer; a second writer is the two-owner defect the
-           engine exists to remove. Legacy mode leaves the flag false, so
-           this line runs exactly as it did in build 2026092327. */
-        if !EngineModeFlag.sessionOwnedByEngine {
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
-        }
+           OWNER-GATED (NE-16, CH3-06): while the native engine owns the
+           session its `AudioSessionOwner` is the only writer, and this
+           registration has not run; it runs only once the engine is gone. */
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
         // NOTHING IS PLAYING AT LOAD, so nothing is enabled -- the same answer
         // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Without
         // this, every command sits at `MPRemoteCommand`'s default (enabled)
@@ -1092,21 +1098,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// so (`sessionActivated` with `failed`), which is the whole point of the
     /// row. The mode is the app's one mode, `.spokenAudio` -- see `load()`.
     private func holdSession(reason: String) {
-        /* NE-16: the native engine's `AudioSessionOwner` is the one owner
-           while `sessionOwnedByEngine` is true, and a legacy hold then would
-           activate behind its back (and, re-held from a route change, over a
-           session the engine deliberately released). Nothing is held, and
-           the log says why; a relinquish flips the flag back to false, after
-           which this runs exactly as before. */
-        guard !EngineModeFlag.sessionOwnedByEngine else {
-            holdsSession = false
-            Self.logger.notice("ForayAudio.session hold skipped: engine-owned reason=\(reason, privacy: .public)")
-            /* L23: on the record too, once per run of skips (a route change
-               and a pause each ask; the first says it). */
-            holdSkipped = noteEngineOwnedSkip(kind: "sessionActivated", alreadyNoted: holdSkipped)
-            return
-        }
-        holdSkipped = false
+        /* OWNER-GATED (NE-16, CH3-06): every caller is reached only through
+           `runLegacyRegistration` (a `setNowPlaying` in the legacy lane, or an
+           observer or command target that registration installed), which
+           runs only after the engine handed the session back. */
         let session = AVAudioSession.sharedInstance()
         var ok = true
         var facts = JSObject()
@@ -1138,16 +1133,8 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `notifyOthersOnDeactivation` so the interrupted app may resume -- see
     /// `SessionMove`. Never on the resume transition; that is `supersedeSession`.
     private func releaseSession(reason: String, notifyOthers: Bool) {
-        /* NE-16: never deactivate a session the engine owns. A legacy release
-           with `notifyOthers` would hand the car back to the app 4a
-           interrupted while the engine is mid-episode. */
-        guard !EngineModeFlag.sessionOwnedByEngine else {
-            holdsSession = false
-            Self.logger.notice("ForayAudio.session release skipped: engine-owned reason=\(reason, privacy: .public)")
-            releaseSkipped = noteEngineOwnedSkip(kind: "sessionReleased", alreadyNoted: releaseSkipped)
-            return
-        }
-        releaseSkipped = false
+        /* OWNER-GATED, as `holdSession`: reached only from a legacy-lane
+           `setNowPlaying`, so never over a session the engine owns. */
         let session = AVAudioSession.sharedInstance()
         var ok = true
         var facts = JSObject()
@@ -1161,16 +1148,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         holdsSession = false
         facts.merge(Self.categoryFacts()) { mine, _ in mine }
         emitSession(kind: "sessionReleased", reason: ok ? reason : "failed", extra: facts)
-    }
-
-    /// L23: a hold or release the engine's ownership skipped is written as
-    /// `<kind> (skipped-engine-owned)`, once per run of skips of that kind: the
-    /// first says it, the retries do not. Returns the new flag (always set).
-    /// Outside the guards, whose bodies stay a flat `return` (shell-invariants
-    /// reads them). On `stateQueue`.
-    private func noteEngineOwnedSkip(kind: String, alreadyNoted: Bool) -> Bool {
-        if !alreadyNoted { emitSession(kind: kind, reason: "skipped-engine-owned") }
-        return true
     }
 
     /// The transport is playing again: the producer's own activation stands in
@@ -1435,7 +1412,9 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - MPRemoteCommandCenter
 
-    /// Registered ONCE, in `load()`. Handlers are permanent; what changes per
+    /// Registered ONCE, by `runLegacyRegistration`, whose once-per-process
+    /// guard is the owner's (`EngineOwnership.runLegacy`); this function has
+    /// that one caller and no guard of its own (CH3-06). Handlers are permanent; what changes per
     /// report is which commands are ENABLED and what the skip pair says
     /// (`applyCommandAvailability`) -- mirroring Android's `WebViewPlayer`
     /// command-set-from-flags mapping, which is also built once and toggled by
@@ -1446,9 +1425,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `MPRemoteCommandHandlerStatus` is a receipt, not an outcome, and the
     /// outcome is the page's.
     private func registerCommandHandlers() {
-        guard !commandsRegistered else { return }
-        commandsRegistered = true
-
         commandCenter.playCommand.addTarget { [weak self] _ in
             self?.stateQueue.async { self?.remotePlay(command: "play") }
             return .success
