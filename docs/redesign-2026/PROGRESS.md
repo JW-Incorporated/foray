@@ -22,7 +22,7 @@ Source of truth for a cleared session. Update on every deliverable.
 | 1 Research | done | docs/redesign-2026/research/, design-brief.md |
 | 2 Directions | done | editorial r3, ambient r3, native-2026 r3, tactile r3, clarity r3 (docs/redesign-2026/directions/) |
 | Checkpoint | **picked: Tactile + Ambient** (owner, 2026-10-06 18:17 PDT) | one condition: replace Tactile's "cartoonish" header/title font first; Phase 3 starts once the owner approves the new font |
-| 3–5 | **running** (`wf_91b5c34d-c58`, from 2026-10-08 06:30 PDT; Sonnet builds with a turn budget, Codex reviews, PM watchdog) | foundation 8/8; screens 28/35 merged (tactile 18/19, ambient 10/16); see In flight |
+| 3–5 | **finishing** (`wf_937abf71-8ca`, from 2026-10-08 17:10 PDT: the last 9 screens) | foundation 8/8; screens 26/35 merged (tactile 16/19, ambient 10/16); QA + QA fixes merged in both; see In flight |
 
 ## Checkpoint (decided 2026-10-06: Tactile + Ambient, pending Tactile's font)
 
@@ -48,7 +48,7 @@ through Editorial's tab bar. Detail: `checkpoint/README.md`.
 
 (Agent/workflow and what it is doing. Clear an entry when it lands.)
 
-- **Phases 3-5 build, Claude workflow `wf_91b5c34d-c58`** (launched 2026-10-08 06:30 PDT, script @ 19b7b152, maxIters 3, watchdog `pm-watchdog.mjs` beside it; `wf_00d839e8-3c4` ran 06:20-05:58 and was stopped for the token fixes; before it `wf_d90d5c98-c0e`, 2026-10-07 16:10 to 2026-10-08 05:50,
+- **Phases 3-5 finishing run, Claude workflow `wf_937abf71-8ca`** (launched 2026-10-08 17:10 PDT for tactile now-playing, library, library-forays and ambient now-playing, library, now-playing-car, playlist-detail-and-playlists, episode, up-next; merged screens passed in skipScreens; watchdog beside it; before it `wf_91b5c34d-c58` 06:30-17:00, script @ 19b7b152, maxIters 3, watchdog `pm-watchdog.mjs` beside it; `wf_00d839e8-3c4` ran 06:20-05:58 and was stopped for the token fixes; before it `wf_d90d5c98-c0e`, 2026-10-07 16:10 to 2026-10-08 05:50,
   `build-directions.workflow.js` @ 197aff46; launch args and resume steps in RESTART.md "Day
   3"). Sonnet builds and fixes;
   Codex reviews (up to 3 rounds, Opus if Codex fails); Fable/Opus judge; 4 screens in
@@ -107,7 +107,8 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-06, Tactile font change, 3 Fable calls, owner-requested.
 - 2026-10-06, Tactile font round 2, 3 Fable calls, owner-requested.
 - 2026-10-06, Phase 2 polish-to-ready, 5 Fable calls (ambient r4, editorial r4, clarity r4, native-2026 r4+r5), owner-requested.
-- 2026-10-06, Phase 3 plan, 2 Fable calls (tactile and ambient BUILD-PLAN.md, workflow `wf_7ee4833f-b81`), owner-authorized for phases 3-5. From 23:00 the Codex driver counts its own Fable calls (`status` -> "Fable successful calls"); add them here when it finishes.
+- 2026-10-06, Phase 3 plan, 2 Fable calls (tactile and ambient BUILD-PLAN.md, workflow `wf_7ee4833f-b81`), owner-authorized for phases 3-5.
+- 2026-10-07/08, Phases 3-5 art-director fidelity calls: 1 (Codex driver night), 69 (`wf_d90d5c98-c0e`), 30 (`wf_91b5c34d-c58`); owner-authorized. From 23:00 the Codex driver counts its own Fable calls (`status` -> "Fable successful calls"); add them here when it finishes.
 
 ## Log
 
@@ -160,3 +161,4 @@ Finished: `wf_bab57673-e04` "redesign-2026-night-1" (19:40-22:40 PDT, 128 agents
 - 2026-10-08 — tactile: Phase 5 QA 2 high-severity issues, fixes merged; final lab build dispatched
 - 2026-10-08 — ambient: Phase 4 screens 10/16 merged; escalated: forays-list
 - 2026-10-08 — ambient: Phase 5 QA 5 high-severity issues, fixes merged; final lab build dispatched
+- 2026-10-08 17:10 PDT — Run `wf_91b5c34d-c58` (06:30-17:00, 294 agents, 0 errors) finished: merged tactile home-offline, now-playing-paused, now-playing-episode and QA fixes (2 high); ambient dock, discover, category-and-browse, forays-list (ESCALATED: taste checks not met), not-found and QA fixes (5 high). Screens 26/35 merged. Not merged after 3 iterations: tactile library-forays (baseline regression on the Settings sheet's Dials sliders); ambient now-playing and library (merge conflicts with screens merged meanwhile), now-playing-car (2 new gate violations), episode (1 test failure + 2 tap-target violations), up-next, playlist-detail-and-playlists. Tactile now-playing and library were FALSELY skipped as merged (the check matched their merge into another work branch; their code is in the branch via mini/library-forays but had no own judge/review pass); fixed in 93c7b9e4. Efficiency vs the night before: 1.85M vs 6.6M cache-read per agent, builders 31 vs 164 turns, ~51M vs ~247M cache-read per hour; the watchdog fired once (a counting false alarm, fixed). Lab builds dispatched; CI dispatched on both direction branches (runs 37862702268 tactile, 37862705120 ambient). Finishing run `wf_937abf71-8ca` launched for the 9.
