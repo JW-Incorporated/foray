@@ -858,3 +858,20 @@ test("iteration 3: the empty-state buttons are Raised, progress on the strip is 
   assert.match(played["box-shadow"], /var\(--ember\)/, "progress is an Ember mark");
   assert.strictEqual(played.opacity, undefined, "and the bar itself stays at full light");
 });
+
+test("the playing row's wash is a background-image layer: no background-color change for the reduced-motion block to crossfade", () => {
+  /* gates.mjs (reduced-motion) counted a 200ms background-color transition on `section.pl-list-section article.raised.td-row` in
+     playlist-started: playlistSyncPlay toggles `is-playing` after the row is first styled, Today's `.td-row.is-playing` rule is the
+     `background` shorthand (colour --glow-row), and tokens.css's block lets background-color crossfade on every `.ag` descendant.
+     The fix keeps the colour at Raised's --bg1 in both states and paints the wash as two image layers, which that block does not move.
+     MUTATION: change the rule's `background-color: var(--bg1)` to `var(--glow-row)` -> red. MUTATION 2: replace the rule with
+     `.ag .pl-ep.is-playing { background: linear-gradient(var(--overlay), var(--overlay)) var(--glow-row); }` -> red (no
+     background-color, no image layers). MUTATION 3: drop the glow-row layer from the image -> red. */
+  const playing = decls(CSS, ".ag .pl-ep.is-playing");
+  assert.ok(playing, "the playlist row has its own playing rule");
+  assert.strictEqual(playing["background-color"], "var(--bg1)", "the colour is Raised's, playing or not");
+  assert.match(playing["background-image"], /linear-gradient\(var\(--overlay\), var\(--overlay\)\), linear-gradient\(var\(--glow-row\), var\(--glow-row\)\)/, "overlay over the row's Glow, as Today paints it");
+  assert.strictEqual(playing.background, undefined, "no `background` shorthand: it would reset the colour to the Glow");
+  /* The Raised base is what the non-playing row wears; the playing colour must equal it for there to be nothing to transition. */
+  assert.match(read("ui/tokens.css"), /\.raised \{\s*background: linear-gradient\(var\(--overlay\), var\(--overlay\)\) var\(--bg1\);/, "fixture assumption: Raised's colour is --bg1");
+});

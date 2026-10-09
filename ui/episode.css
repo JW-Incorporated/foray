@@ -1,0 +1,143 @@
+/* ui/episode.css — Episode page (#/episode/<id>), Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The numbers are docs/redesign-2026/directions/ambient/BUILD-NOTES.md §4.6/§4.7 (the screen and its
+   show notes), §10.1 (the Room's scrim, in pixels from the top), §10.2 (lit art), §12.2 (three-line names)
+   and BUILD-PLAN.md item 11. There is no prototype route for this page; the nearest is Now Playing's
+   episode state, whose title, show line and why-line anatomy it shares. Everything is scoped under `.ag`
+   (the markup wears `.ag.ep`) so it can reach no other screen. Values come from ui/tokens.css.
+
+   NO REDUCED-MOTION BLOCK lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and
+   everything under it. The only motion on this page is a script's (the Up Next flight and the badge's
+   bump, ui/episode.js), and it asks the same media query itself. */
+
+/* The page. The legacy top bar steps aside (the page draws its own chevron) and the body paints bg0 under the Room. */
+body.view-episode { background: var(--bg0); --dock-page-bg: var(--bg0); }   /* the Dock fades to the page (ui/dock.css) */
+body.view-episode .topbar { display: none; }
+body.view-episode #view { padding-top: 0; }
+.page.ep-page { max-width: none; margin: 0; padding: 0; }
+
+.ag.ep {
+  position: relative; isolation: isolate;
+  max-width: 680px; margin: 0 auto;
+  padding: 0 var(--gutter) calc(var(--chrome-bottom) + var(--s-6));
+  background: transparent;
+  text-align: center;
+}
+/* :where() keeps the reset at the specificity of `.ag.ep` alone, so every later `.ag .ep-*` margin wins. */
+.ag.ep :where(h1, h2, h3, p, ol) { margin: 0; }
+.ag.ep :where(ol) { padding: 0; list-style: none; }
+
+/* The Room: the show's artwork, blurred, under a scrim set in pixels from the top, fixed behind the scrolling page.
+   The mid stop is where the tokens' contrast is measured, so it sits at the title's first line: 8 pad, 44 head, 8,
+   the 160 artwork, 16 = 236 from the safe top. The ramp begins behind the artwork (120), never under its edge. */
+.ag .ep-room { position: fixed; inset: 0; z-index: -1; pointer-events: none; --rs1: calc(var(--safe-top) + 120px); --rs2: calc(var(--safe-top) + 236px); }
+/* The first paint is not animated: `is-fresh` comes off two frames after the page is built (renderEpisode). The one
+   `!important` in this sheet; tokens.css's reduced-motion block uses it too and nothing less would out-rank it. */
+.ag.ep.is-fresh *, .ag.ep.is-fresh *::before, .ag.ep.is-fresh *::after { transition: none !important; }
+
+.ag .ep-top { display: flex; align-items: center; margin-inline: calc(var(--s-2) * -1); padding-top: calc(var(--safe-top) + var(--s-2)); }
+.ag .ep-top .ag-btn-icon { color: var(--text); text-decoration: none; }
+
+/* The artwork: 160, centred, lit by its own colour (lit-64 on the primitive). */
+.ag .ep-hero { display: flex; justify-content: center; margin-top: var(--s-2); }
+.ag .ep-hero .ag-art { box-shadow: none; }
+
+/* The title: --t-title, three lines, never an ellipsis through a word. A word wider than the box (an unbreakable token)
+   is not cut: script steps the size down until the longest word fits (--ep-title-size), or to 17px. */
+.ag .ep-title { margin-top: var(--s-4); color: var(--text); overflow-wrap: normal; padding-bottom: calc(var(--s-1) / 2); }
+.ag .ep-title.is-fit { font-size: var(--ep-title-size); }
+.ag .ep-title:focus { outline: none; }
+.ag .ep-title .explicit-badge { margin-left: var(--s-2); vertical-align: middle; }
+.ag .ep-caption { margin-top: 6px; color: var(--text-2); overflow-wrap: anywhere; }
+.ag .ep-caption a { color: var(--text); text-decoration: none; }
+.ag .ep-caption .ep-progress { color: var(--text); }   /* AA over the Room in both schemes; Ember (4.2:1 in Dawn there) is for the marks on a surface */
+.ag .ep-caption .ep-progress.is-played { color: var(--text-2); }
+.ag .ep-reason { margin-top: var(--s-3); color: var(--lamp-text); }
+.ag .ep-reason:empty { display: none; }
+
+/* Actions: the Primary Play (48, Ember), then Save and Add to Up Next as 44 round targets. */
+.ag .ep-actions { display: flex; align-items: center; justify-content: stretch; gap: var(--s-3); margin-top: var(--s-5); }
+.ag .ep-play { flex: 1 1 auto; min-width: 0; }
+.ag .ep-tool { flex: none; background: var(--bg2); color: var(--text); }   /* Save, Add to Up Next and Play next: three filled circles beside the Ember pill */
+.ag .ep-tool.is-on { color: var(--ember); }
+.ag .ep-notes-more { color: var(--lamp-text); }   /* a control, not a listener's mark: Lamp reads AA over the Room in Dusk and Dawn */
+.ag .not-playable { flex: 1 1 auto; display: inline-flex; align-items: center; justify-content: center; min-height: calc(var(--tap) + var(--s-1)); color: var(--text-2); font: var(--t-label); }
+.ag .ep-note { margin-top: var(--s-3); color: var(--text-2); text-align: left; }
+.ag .ep-play-from { margin-top: var(--s-4); }
+.ag .ep-play-from-btn { min-height: var(--tap); padding: 0 var(--s-4); border-radius: var(--r-pill); background: var(--bg2); color: var(--lamp-text); font: var(--t-label); }
+.ag .ep-download { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2); margin-top: var(--s-3); }
+.ag .ep-download-btn { min-height: var(--tap); padding: 0 var(--s-4); border-radius: var(--r-pill); background: var(--bg2); color: var(--text); font: var(--t-label); }
+.ag .ep-download-btn[disabled] { opacity: .6; }
+.ag .ep-download-note { flex: 1 1 100%; color: var(--text-2); font: var(--t-caption); }
+
+/* Show notes: --t-body, four lines (a "More" quiet button opens the rest), through the linkifier. The timestamps are Chips
+   that seek: a lamp-lit pill on the running line, its hit box the line (the half-leading, as the legacy stamp), and a line
+   that starts with one is a 44px chapter row. Collapsed, the clamp is the page's default (founder, 2026-09-18). */
+.ag .ep-description, .ag .ep-chapters, .ag .ep-more { margin-top: var(--s-6); text-align: left; }
+.ag .ep-more { margin-top: var(--s-5); }   /* a tighter seam from the hero block: a second row stays above the Dock */
+.ag .ep-description h2, .ag .ep-chapters h2, .ag .ep-more h2 { color: var(--text); font: var(--t-headline); }
+.ag .ep-description-text { margin-top: var(--s-2); color: var(--text-2); font: var(--t-body); white-space: pre-line; overflow-wrap: anywhere; }
+/* The clamp is four lines of --t-body (1.5rem leading) as a height, not -webkit-line-clamp: the notes mix prose with 44px
+   chapter-row blocks, and a line clamp counts those as lines and strands its ellipsis alone on a fourth line. A text that
+   runs past it fades out over its last line (is-faded, set by the measure in bindEpisodeNotes), so the cut is never a half line. */
+.ag .ep-description-text.is-clamped { --ep-notes-lines: 4; max-height: calc(var(--ep-notes-lines) * 1.5rem); overflow: hidden; }
+.ag .ep-description-text.is-clamped.is-faded { -webkit-mask-image: linear-gradient(#000 calc(100% - 1.5rem), transparent); mask-image: linear-gradient(#000 calc(100% - 1.5rem), transparent); }
+.ag .ep-description-text a { color: var(--lamp-text); text-decoration: underline; }
+.ag .ep-notes-more { margin-top: var(--s-1); margin-left: calc(var(--s-4) * -1); }
+.ag .ep-notes-more[hidden] { display: none; }
+.ag .ep-ts {
+  position: relative; display: inline; padding: 0.09em var(--s-2); margin: 0 calc(var(--s-1) / 2);
+  border-radius: var(--r-pill); background: var(--overlay); color: var(--lamp-text);
+  font: var(--t-label); font-size: 0.875em; font-variant-numeric: tabular-nums; text-decoration: none;
+}
+/* The 44px target: the chip is a line tall (24); its hit box reaches 12px above and below and 4px past each side (a stamp
+   in running prose, so it can never cover the neighbouring line's own stamp by more than a line gap). */
+.ag .ep-ts::after { content: ""; position: absolute; inset: calc(var(--s-1) * -3) calc(var(--s-1) * -1); }
+.ag .ep-ts:focus-visible, .ag .ep-chapter-row:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); border-radius: var(--r-sm); }
+.ag .ep-chapter-row { display: flex; gap: var(--s-3); align-items: baseline; width: 100%; min-height: var(--tap); padding: var(--s-3) 0; color: var(--text); font: var(--t-body); text-align: left; white-space: normal; }
+.ag .ep-chapter-row:hover .ep-chapter-title { color: inherit; }   /* the legacy rule turns it violet; a hover colour change would also crossfade under Reduce Motion */
+.ag .ep-chapter-row:active .ep-chapter-title { color: var(--lamp-text); }
+.ag .ep-chapter-time { flex: none; min-width: 3.5em; color: var(--lamp-text); font: var(--t-label); font-variant-numeric: tabular-nums; }
+.ag .ep-chapter-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.ag .ep-chapters-list li { display: block; padding: 0; border: 0; }
+.ag .ep-chapters-list li > .ep-chapter-time, .ag .ep-chapters-list li > .ep-chapter-title { display: inline; color: var(--text-2); }
+.ag .ep-more h2 .note { color: var(--text-2); font: var(--t-caption); }
+
+/* A title longer than three lines ends on a word (fitEpisodeTitle): the clamp is off, the words past line three are clipped
+   out of sight but stay in the text (a screen reader and headingName() still have the whole title), and the last visible word
+   carries the ellipsis. */
+.ag .ep-title.is-trimmed { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+.ag .ep-title .ep-cut { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ag .ep-title .ep-last::after { content: "\2026"; }
+
+
+/* "More from this show": the Show screen's EpisodeRows (.raised .td-row, drawn by ui/show.js and ui/today.css) in a stack with
+   the Show page's 8px gap. The rows own their rim and shadow; nothing here repaints them. */
+.ag .ep-more-rows :where(h3, p) { margin: 0; }
+.ag .ep-more h2 { margin-bottom: var(--s-2); }
+.ag .ep-more-rows > * + * { margin-top: var(--s-2); }
+/* styles.css still styles every `.ep-more h3` as an uppercase eyebrow (the legacy section label); a row's title is an h3 inside
+   this section, so it takes its own type back. */
+.ag .ep-more-rows .td-row-title { font: 500 1rem/1.375 var(--font-display); letter-spacing: normal; text-transform: none; color: var(--text); } /* 22px leading: two lines are exactly the title cell (--tap, 44), so the clamp hides the third line instead of letting its tops show */
+/* The row keeps its own `.clamp2` title (two lines, an ellipsis), exactly as on the Show screen: DIRECTION.md rule 5 makes an episode row 96px, 72px art,
+   a one-or-two-line title, the meta line and a two-line why-line, so seven or eight rows share a viewport. A title that ran as long as it liked took
+   four lines and ~170px (iteration 3); the full title is the link's text and the episode page itself. */
+/* The row's Play is a Fill, not a ring: the material system has no hairline borders (depth from light, state from a Fill), and the
+   Ember pill, the filled bookmark and the played circle above it are all filled. The raised-on-raised tone (--bg2) is the Fill. */
+.ag .ep-more-rows .ag-btn-play.ag-btn-size-44 { background: var(--bg2); color: var(--text); box-shadow: none; }
+
+
+/* ---------------------------------------------------------------------------------------------
+   The Up Next flight (script, 420ms, --e-spring): a clone of the artwork, in a layer of its own above the Dock, shrinks to
+   the Library tab's icon, and the tab's count badge bumps 1 to 1.3 to 1. Under Reduce Motion the script does neither
+   and the count changes in place. The badge is on every page (ui/episode.js syncLibraryBadge, called by the tab bar). */
+.ag.ep-flight-layer { position: fixed; inset: 0; z-index: 80; background: transparent; pointer-events: none; }
+.ag.ep-flight-layer .ag-art { position: fixed; margin: 0; transform-origin: top left; box-shadow: none; }
+
+.tab-btn .tab-count {
+  position: absolute; top: calc(var(--s-1) * 1); left: calc(50% + var(--s-2)); box-sizing: border-box;
+  min-width: calc(var(--s-4) + var(--s-1)); height: calc(var(--s-4) + var(--s-1)); padding: 0 var(--s-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-pill); background: var(--ember); color: var(--ember-ink);
+  font: 700 0.6875rem/1 var(--font-text); font-variant-numeric: tabular-nums; pointer-events: none;
+}

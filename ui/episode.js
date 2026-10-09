@@ -1,4 +1,5 @@
-/* ui/episode.js — Episode page (#/episode/<id>): description, chapters, timestamp seeks.
+/* ui/episode.js — Episode page (#/episode/<id>): description, chapters, timestamp seeks. Wears the Afterglow system
+   (Redesign 2026, ambient): `.ag.ep` in ui/episode.css.
    A CLASSIC script like app.js, not a module: it shares app.js's globals and
    is loaded by index.html after app.js, in the order listed in
    docs/redesign-2026/split-notes.md. Declarations only at the top level, so
@@ -52,12 +53,18 @@ function moreFromShow(item) {
   const showId = showIdForShowName(item.show);
   const show = showId ? showById(showId) : null;
   if (!show) return "";
-  const eps = episodesForShow(show).filter(e => e.id !== item.id).slice(0, 8);
-  if (!eps.length) return "";
+  const others = episodesForShow(show).filter(e => e.id !== item.id);
+  if (!others.length) return "";
   const ctx = "episode-more-" + item.id;
+  /* The Show screen's EpisodeRow (ui/show.js showEpisodeRowHtml: art 72, title, Play 44, meta, a two-line why in a 96px
+     Raised row), latest first. The wrapper carries data-show-episodes so the show page's own play sync and bindings
+     (bindShowPlay, showSyncPlay) repaint these rows too. Without ui/show.js (a test stub) today's epRow stands in. */
+  const rows = typeof showEpisodeRowHtml === "function"
+    ? showRowsLatestFirst(others).slice(0, 8).map(e => showEpisodeRowHtml(e, ctx)).join("")
+    : others.slice(0, 8).map((e, i) => epRow(e, i, ctx, -1)).join("");
   return `<section class="ep-more">
-    <h3>More from this show</h3>
-    ${eps.map((e, i) => epRow(e, i, ctx, -1)).join("")}
+    <h2>More from this show</h2>
+    <div class="ep-more-rows" data-show-episodes>${rows}</div>
   </section>`;
 }
 
@@ -280,37 +287,32 @@ if (typeof window !== "undefined") {
   window.ForayNotes = { tokens: episodeDescriptionTokens, lines: episodeNotesTokens };
 }
 
-/* COLLAPSED BY DEFAULT (founder, 2026-09-18): "When I'm listening to a podcast
-   with a lot of notes the episode page is just notes; the default should be I
-   mostly see album artwork and need to intentionally scroll somewhere to see
-   notes."
+/* FOUR LINES BY DEFAULT (founder, 2026-09-18, kept; the disclosure it ruled on is what Afterglow overturns).
 
-   Some publishers write two thousand words of links, sponsor copy and chapter
-   lists into every episode. Rendered in full and in flow, that is the entire
-   page: the artwork, the play button and "more from this show" all get pushed
-   off the first screen by the least important thing on it.
+   "When I'm listening to a podcast with a lot of notes the episode page is just notes; the default should be I
+   mostly see album artwork and need to intentionally scroll somewhere to see notes."
 
-   A NATIVE `<details>`, not a JS toggle. It needs no script (the page is
-   `script-src 'self'` with no inline handlers), it is keyboard- and
-   screen-reader-accessible for free, it holds its own state, and browser find-
-   in-page can still open it. A hand-rolled class-swap would be more code and
-   less accessible.
+   That still holds: the notes open on four lines of --t-body (BUILD-NOTES 4.7: "4-line clamp + More quiet
+   button"), so the artwork, the actions and "more from this show" are never pushed off the first screens by
+   the least important thing on the page. What changed is the control. The page used to hide the notes in a
+   native <details> ("Episode notes" and a chevron); a clamp shows the start of them, which is the part that
+   tells a listener whether to open the rest. The ruling that fell is test/episode-description-links.test.js's
+   "the description renders inside a closed <details>".
 
-   NOT a line-clamp with a fade. A clamp still renders the whole block into the
-   layout and still needs a control to undo it — it just makes the page a fixed
-   amount of notes instead of an unbounded amount, and the founder's ask is
-   about what the page IS by default, not about how tall the notes are.
-
-   Chapters stay OUT of this and remain visible: they are navigation, not prose —
-   short, scannable, and now individually tappable to seek. Burying the one part
-   of the notes that does something would be the wrong half to hide. */
+   The clamp is CSS (`.is-clamped`, ui/episode.css); the "More" button is only shown when the text really runs
+   past four lines (bindEpisodeNotes measures once the page is laid out), and a focus that lands on a control
+   inside the clamped text (a timestamp reached by keyboard) opens it, so nothing focusable is ever clipped.
+   The text goes through episodeDescriptionHtml (esc() for every character, safeUrl() for every href, timestamps
+   as Chips that seek) exactly as before. Chapters stay OUT of this and remain visible: they are navigation,
+   not prose, and burying the one part of the notes that does something would be the wrong half to hide. */
 function episodeDescriptionSectionHtml(item) {
   if (!item.description) return "";
   const durationSec = itemDurationSec(item, { upperBound: true });
-  return `<details class="ep-description">
-      <summary class="ep-description-toggle">Episode notes</summary>
-      <p class="ep-description-text">${episodeDescriptionHtml(item.description, durationSec)}</p>
-    </details>`;
+  return `<section class="ep-description">
+      <h2>Show notes</h2>
+      <p class="ep-description-text is-clamped" id="ep-notes-text">${episodeDescriptionHtml(item.description, durationSec)}</p>
+      <button type="button" class="ag-btn ag-btn-quiet ep-notes-more" aria-expanded="false" aria-controls="ep-notes-text">More</button>
+    </section>`;
 }
 
 function episodeChaptersHtml(item) {
@@ -321,7 +323,7 @@ function episodeChaptersHtml(item) {
      with no page numbers. `data-ts` is the one contract both share, so
      `bindEpisodeSeeks` binds them in a single pass. */
   return `<section class="ep-chapters">
-    <h3>Chapters</h3>
+    <h2>Chapters</h2>
     <ol class="ep-chapters-list">
       ${chapters.map(c => {
         /* `== null` FIRST, because `Number(null)` is 0 and `Number("")` is 0 —
@@ -413,6 +415,327 @@ function bindEpisodeSeeks(scope, item) {
   });
 }
 
+/* ---------- the Afterglow page: actions, notes, title fit, the Up Next flight ----------
+
+   The three controls are this page's own (`data-ep-play`, `data-ep-save`, `data-ep-upnext`), not the legacy
+   `.play-btn` / `.star` / `.up-next` glyph buttons: those are repainted from TEXT by app.js's toggles
+   (setToggleLabel) and the player's syncCardButtons (paintControl), both of which write `textContent` and would
+   wipe the sprite glyph inside an icon button. Same actions underneath (startEpisodePlay, toggleStar,
+   addToQueue, playNextInQueue); the page repaints its own three from the stores (episodeSyncControls), so a Save
+   made from the Now Playing sheet, or an episode that ends, shows here within a second. */
+
+/** Reduce Motion asked for: the flight and the badge's bump are skipped and the count changes in place. */
+function episodeReducedMotion() {
+  try { return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (_) { return false; }
+}
+
+function episodePlayLabel(title, playing) {
+  return `${playing ? "Pause" : "Play"} ${title || "this episode"}`;
+}
+
+/** The icon-only tools, as markup. Save is the bookmark (Regular, Fill when saved); Add to Up Next is the queue glyph,
+    the check-circle Fill once it is in the list (a state change is a fill, never only a colour). */
+function episodeToolHtml(kind, id, on) {
+  const save = kind === "save";
+  const label = save ? (on ? "Saved" : "Save episode") : (on ? "In Up Next" : "Add to Up Next");
+  const icon = save ? (on ? "bookmark-fill" : "bookmark") : (on ? "check-circle-fill" : "queue");
+  return `<button type="button" class="ag-btn ag-btn-icon ep-tool${on ? " is-on" : ""}" data-ep-${save ? "save" : "upnext"}="${esc(id)}" aria-label="${esc(label)}">${agIcon(icon, 24)}</button>`;
+}
+
+function episodeActionsHtml(item) {
+  const id = item.id;
+  const playable = !!item.audio_url;
+  /* NO UP NEXT FOR WHAT addToQueue REFUSES: the same definition upNextBtn() draws by (liveEpisode). */
+  const queueable = isQueued(id) || playable || !!liveEpisode(id);
+  return `<div class="ep-actions">
+        ${playable
+          ? `<button type="button" class="ag-btn ag-btn-primary ep-play" data-ep-play="${esc(id)}" data-state="idle" aria-label="${esc(episodePlayLabel(item.title, false))}">${agIcon("play", 24)}<span>Play</span></button>`
+          : notPlayableNote()}
+        ${episodeToolHtml("save", id, isSaved(id))}
+        ${queueable ? episodeToolHtml("upnext", id, isQueued(id)) : ""}
+        ${playable ? `<button type="button" class="ag-btn ag-btn-icon ep-tool ep-next" data-ep-playnext="${esc(id)}" aria-label="Play next">${agIcon("skip-next", 24)}</button>` : ""}
+      </div>`;
+}
+
+/** Paint the three controls from the player and the stores. Compared first, written only on a change. */
+function episodeSyncControls() {
+  try { episodePaintControls(); } catch (_) { /* a repaint that cannot run is not a reason to fail the tap that asked for it */ }
+}
+function episodePaintControls() {
+  const page = document.querySelector(".ag.ep");
+  if (!page || typeof page.getAttribute !== "function") return;   // a stub document has no real nodes
+  const play = page.querySelector("[data-ep-play]");
+  if (play) {
+    let on = false;
+    try { on = !!(window.ForayPlayer && window.ForayPlayer.isPlaying?.(play.dataset.epPlay)); } catch (_) { on = false; }
+    const want = on ? "playing" : "idle";
+    if (play.dataset.state !== want) {
+      play.dataset.state = want;
+      play.setAttribute("aria-label", episodePlayLabel(page.dataset.title, on));
+      play.innerHTML = `${agIcon(on ? "pause" : "play", 24)}<span>${on ? "Pause" : "Play"}</span>`;
+    }
+  }
+  for (const [attr, kind, isOn] of [["data-ep-save", "save", isSaved], ["data-ep-upnext", "upnext", isQueued]]) {
+    const btn = page.querySelector(`[${attr}]`);
+    if (!btn) continue;
+    const id = btn.getAttribute(attr);
+    const on = !!isOn(id);
+    if (btn.classList.contains("is-on") === on) continue;
+    /* REPLACED, NOT MUTATED. Under Reduce Motion the tokens turn every colour change into a 200ms crossfade, and a tool
+       whose colour flips (Ember once saved or queued) would run one: the state change is the new button, drawn in its final
+       state, with the focus the old one held. The binding is by `_bound`, so only the new node is wired. */
+    const fresh = document.createElement("div");
+    fresh.innerHTML = episodeToolHtml(kind, id, on);
+    const next = fresh.firstElementChild;
+    const held = document.activeElement === btn;
+    btn.replaceWith(next);
+    if (page._epItem) bindEpisodeActions(page, page._epItem);
+    if (held && typeof next.focus === "function") next.focus();
+  }
+}
+
+let episodePollTimer = null;
+function episodeStartPoll() {
+  if (episodePollTimer || typeof setInterval !== "function") return;
+  episodePollTimer = setInterval(() => {
+    if (!document.querySelector(".ag.ep")) { clearInterval(episodePollTimer); episodePollTimer = null; return; }
+    episodeSyncControls();
+  }, 1000);
+}
+
+/* THE LIBRARY TAB'S COUNT (BUILD-NOTES "Up Next add"). The Library tab carries the number of episodes in Up Next as a
+   small Ember badge, on every page: renderTabBar() and saveQueueIds() (the one writer of cp_queue) call this, and the
+   tab bar rewrites its anchors' contents when the glyph changes, so the badge is re-drawn from the list each time and is
+   never state of its own. While the Up Next flight is in the air the count is held, so it changes when the art lands. */
+let libraryBadgeHold = false;
+function syncLibraryBadge() {
+  if (libraryBadgeHold) return;
+  /* BEST-EFFORT CHROME: this runs inside saveQueueIds() (the one writer of cp_queue) and renderTabBar(), so a throw here
+     would break an Up Next write for the sake of a number. A stub document, or a tab bar not built yet, is not an error. */
+  try {
+    const tab = document.querySelector('#tab-bar .tab-btn[data-tab-key="library"]');
+    if (!tab || typeof tab.getAttribute !== "function" || typeof tab.querySelector !== "function") return;
+    let n = 0;
+    try { n = queueIds().length; } catch (_) { n = 0; }
+    let countBadge = tab.querySelector(".tab-count");
+    if (n <= 0) {
+      if (countBadge) countBadge.remove();
+      if (tab.getAttribute("aria-label") !== null) tab.removeAttribute("aria-label");
+      return;
+    }
+    const shown = n > 9 ? "9+" : String(n);
+    if (!countBadge) {
+      countBadge = document.createElement("span");
+      countBadge.className = "tab-count";
+      countBadge.setAttribute("aria-hidden", "true");
+      tab.appendChild(countBadge);
+    }
+    if (countBadge.textContent !== shown) countBadge.textContent = shown;
+    const name = `Library, ${n} in Up Next`;
+    if (tab.getAttribute("aria-label") !== name) tab.setAttribute("aria-label", name);
+  } catch (_) { /* the number is decoration; the list is the truth */ }
+}
+
+/** Up Next add: the artwork flies to the Library tab's icon and the badge bumps 1 to 1.3 to 1 (420ms, --e-spring).
+    Under Reduce Motion, with no artwork or no tab to fly to, the count just changes. `add` performs the write. */
+function episodeUpNextAdd(add) {
+  const art = document.querySelector(".ag.ep .ep-hero .ag-art");
+  const tab = document.querySelector('#tab-bar .tab-btn[data-tab-key="library"]');
+  const target = tab && typeof tab.querySelector === "function" ? (tab.querySelector("svg") || tab) : null;
+  let layer = null;
+  let finished = false;
+  const land = (flew) => {
+    if (finished) return;
+    finished = true;
+    libraryBadgeHold = false;
+    try { if (layer) layer.remove(); } catch (_) { /* gone */ }
+    syncLibraryBadge();
+    if (!flew) return;
+    try {
+      const badge = document.querySelector('#tab-bar .tab-btn[data-tab-key="library"] .tab-count');
+      if (badge && typeof badge.animate === "function") badge.animate([{ transform: "scale(1)" }, { transform: "scale(1.3)" }, { transform: "scale(1)" }], { duration: 420, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)" });
+    } catch (_) { /* a bump that cannot run is not a reason to fail the add */ }
+  };
+  const canFly = !episodeReducedMotion() && art && target && typeof art.animate === "function" && typeof art.getBoundingClientRect === "function"
+    && typeof document.body.appendChild === "function";
+  if (!canFly) { add(); land(false); return; }
+  let from = null, to = null;
+  try { from = art.getBoundingClientRect(); to = target.getBoundingClientRect(); } catch (_) { from = null; }
+  if (!from || !to || !from.width || !to.width) { add(); land(false); return; }
+  libraryBadgeHold = true;
+  add();
+  try {
+    layer = document.createElement("div");
+    layer.className = "ag ep-flight-layer";
+    layer.setAttribute("aria-hidden", "true");
+    const clone = art.cloneNode(true);
+    clone.removeAttribute("role");
+    clone.removeAttribute("aria-label");
+    clone.style.setProperty("left", `${from.left}px`);
+    clone.style.setProperty("top", `${from.top}px`);
+    clone.style.setProperty("width", `${from.width}px`);
+    clone.style.setProperty("height", `${from.height}px`);
+    layer.appendChild(clone);
+    document.body.appendChild(layer);
+    const ease = (getComputedStyle(document.documentElement).getPropertyValue("--e-spring") || "").trim() || "cubic-bezier(0.2, 0.9, 0.2, 1.05)";
+    const k = to.width / from.width;
+    const anim = clone.animate(
+      [{ transform: "none", opacity: 1 }, { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${k})`, opacity: 0.6 }],
+      { duration: 420, easing: ease, fill: "forwards" },
+    );
+    anim.onfinish = () => land(true);
+    anim.oncancel = () => land(false);
+    setTimeout(() => land(true), 700);   // a flight that never reports back still lands the count
+  } catch (_) {
+    land(false);
+  }
+}
+
+function bindEpisodeActions(scope, item) {
+  const id = item.id;
+  const play = scope.querySelector("[data-ep-play]");
+  if (play && !play._bound) {
+    play._bound = true;
+    play.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const player = window.ForayPlayer;
+      if (!player) return;
+      /* A BUTTON SHOWING "Pause" MUST PAUSE (the rule bindPlay learned, founder 2026-09-22): the page delegates to the
+         player whenever it is showing the player's own item, and only starts something new when it is not. */
+      if (player.isCurrent?.(id)) { await player.togglePlayback(); episodeSyncControls(); return; }
+      const live = liveEpisode(id) || state.itemIndex[id] || episode(id) || item;
+      await startEpisodePlay(id, live, { ctx: null, list: [{ id, ctx: null }] });
+      episodeSyncControls();
+    });
+  }
+  const save = scope.querySelector("[data-ep-save]");
+  if (save && !save._bound) {
+    save._bound = true;
+    save.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleStar(id);
+      episodeSyncControls();
+    });
+  }
+  const queue = scope.querySelector("[data-ep-upnext]");
+  if (queue && !queue._bound) {
+    queue._bound = true;
+    queue.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      /* Tapping again does not remove (plan 1 Q3: the control adds; removal lives on #/queue). It re-confirms, painted
+         from the QUEUE and not from the tap: addToQueue can refuse, and a flight over an unchanged list is a false success. */
+      if (isQueued(id)) { addToQueue(id); episodeSyncControls(); return; }
+      episodeUpNextAdd(() => addToQueue(id));
+      episodeSyncControls();
+    });
+  }
+  const next = scope.querySelector("[data-ep-playnext]");
+  if (next && !next._bound) {
+    next._bound = true;
+    next.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (playNextInQueue(id)) announce("Plays next.");
+      episodeSyncControls();
+    });
+  }
+}
+
+/** The notes' "More" / "Less". Shown only when the text really runs past four lines; a focus inside the clamped text
+    opens it (a timestamp reached by keyboard is never clipped). */
+function bindEpisodeNotes(scope) {
+  const section = scope.querySelector(".ep-description");
+  const text = section ? section.querySelector(".ep-description-text") : null;
+  const more = section ? section.querySelector(".ep-notes-more") : null;
+  if (!text || !more || section._bound) return;
+  section._bound = true;
+  const open = (on) => {
+    text.classList.toggle("is-clamped", !on);
+    more.setAttribute("aria-expanded", on ? "true" : "false");
+    setControlLabel(more, on ? "Less" : "More", null);
+  };
+  more.addEventListener("click", () => open(more.getAttribute("aria-expanded") !== "true"));
+  text.addEventListener("focusin", () => { if (more.getAttribute("aria-expanded") !== "true") open(true); });
+  /* Measured once the page is laid out: text that fits four lines has nothing to open. */
+  const measure = () => {
+    if (!section.isConnected || more.getAttribute("aria-expanded") === "true") return;
+    if (!(text.clientHeight > 0)) return;
+    const runs = text.scrollHeight > text.clientHeight + 1;
+    more.hidden = !runs;
+    text.classList.toggle("is-faded", runs);
+  };
+  if (typeof requestAnimationFrame === "function") requestAnimationFrame(measure); else measure();
+  try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure).catch(() => {}); } catch (_) { /* no font API */ }
+}
+
+/** THE TITLE, FITTED (the page's one measured thing). Two rules, both for "never cut mid-word":
+    1. a word wider than the box (an unbreakable token) is not broken: the size steps down 1px at a time until the
+       longest word fits, to a floor of 17px (--t-title is 26);
+    2. a title longer than three lines ends on a WORD, not where the engine's line clamp would cut it ("acros...").
+       Its words are wrapped, those past line three are clipped out of sight (still read by a screen reader, still in
+       textContent, so headingName() and the tab title keep the whole title) and the last visible word takes the
+       ellipsis. The clamp itself (.clamp3) is the first paint and the no-script fallback. */
+function fitEpisodeTitle(el) {
+  if (!el || !el.classList || typeof getComputedStyle !== "function") return;
+  const titleText = typeof el.querySelector === "function" ? el.querySelector(".ep-title-text") : null;
+  if (titleText) {
+    if (titleText._full === undefined) titleText._full = titleText.textContent;
+    if (titleText.querySelector(".ep-w")) titleText.textContent = titleText._full;
+  }
+  el.classList.remove("is-fit", "is-trimmed");
+  if (el.style && typeof el.style.removeProperty === "function") el.style.removeProperty("--ep-title-size");
+  if (!(el.clientWidth > 0)) return;
+  const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  let size = parseFloat(getComputedStyle(el).fontSize) || 26;
+  while (el.scrollWidth > el.clientWidth + 1 && size > 17) {
+    size -= 1;
+    el.classList.add("is-fit");
+    el.style.setProperty("--ep-title-size", `${(size / root).toFixed(4)}rem`);
+  }
+  if (!titleText || !(el.scrollHeight > el.clientHeight + 1)) return;
+  /* Longer than three lines: wrap the pieces the engine breaks lines at (a word, and each part of a hyphenated word after its
+     hyphen), measure which line each lands on. A hyphenated word is not one piece: it wraps across lines on its own, and its
+     first line would stand for all of them. */
+  const words = titleText._full.split(/\s+/).filter(Boolean);
+  titleText.innerHTML = words.map((w) => (w.match(/[^-]*-|[^-]+/g) || [w]).map((p) => `<span class="ep-w">${esc(p)}</span>`).join("")).join(" ");
+  el.classList.add("is-trimmed");
+  const spans = [...titleText.querySelectorAll(".ep-w")];
+  const tops = [];
+  const lineOf = (s) => {
+    const y = s.offsetTop;
+    let i = tops.findIndex((t) => Math.abs(t - y) < 3);
+    if (i < 0) { tops.push(y); tops.sort((p, q) => p - q); i = tops.findIndex((t) => Math.abs(t - y) < 3); }
+    return i;
+  };
+  spans.forEach(lineOf);
+  const lines = spans.map(lineOf);
+  let last = -1;
+  spans.forEach((s, i) => { if (lines[i] < 3) last = i; else s.classList.add("ep-cut"); });
+  /* The ellipsis rides on the last visible word: if "word..." no longer fits its line, that word goes too. */
+  while (last > 0) {
+    spans[last].classList.add("ep-last");
+    if (lineOf(spans[last]) < 3) break;
+    spans[last].classList.remove("ep-last");
+    spans[last].classList.add("ep-cut");
+    last -= 1;
+  }
+}
+
+let episodeResizeHandler = null;
+function watchEpisodeTitle(el) {
+  if (typeof window.addEventListener !== "function") return;
+  if (episodeResizeHandler) window.removeEventListener("resize", episodeResizeHandler);
+  episodeResizeHandler = () => {
+    if (!el.isConnected) { window.removeEventListener("resize", episodeResizeHandler); episodeResizeHandler = null; return; }
+    fitEpisodeTitle(el);
+  };
+  window.addEventListener("resize", episodeResizeHandler);
+  try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (el.isConnected) fitEpisodeTitle(el); }).catch(() => {}); } catch (_) { /* no font API */ }
+}
+
 /* `t` is a timestamp link's offset in whole seconds (#30, see episodeDeepLink),
    or null. It adds the "Play from" button and nothing else: the page never
    starts playback on its own. */
@@ -439,29 +762,60 @@ function renderEpisode(id, { t = null } = {}) {
   const progHtml = prog && prog.label
     ? `<span class="ep-progress${prog.state === "played" ? " is-played" : ""}">${esc(prog.label)}</span>`
     : "";
+  /* Every colour is worked out BEFORE the markup goes in (agGlowFor reads the scheme from the live styles; a read after the
+     new nodes exist would style them once with the default Glow). The page opens already lit. */
+  const glow = typeof agGlowFor === "function" ? agGlowFor(item.show) : "";
   $("#view").innerHTML = `
-    <div class="page">
-      <div class="page-head">
-        <a class="back" href="#/">‹</a>
-        <div>
-          <h2 class="fp-s-title">${esc(item.title)}${explicitBadge(item.explicit)}</h2>
-          <p class="fp-s-show">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</p>
-        </div>
+    <div class="page ep-page">
+      <div class="ag ep is-fresh" data-title="${esc(item.title || "")}">
+        <div class="room ep-room" aria-hidden="true"></div>
+        <div class="ep-top"><a class="back ag-btn ag-btn-icon" href="#/" aria-label="Back">${agIcon("chevron-left", 24)}</a></div>
+        <div class="ep-hero">${agArtwork({ name: item.show || item.title || "Artwork", src: item.artwork_url || "", size: 160, tone: "amber", state: "lit" })}</div>
+        <h1 class="t-title clamp3 ep-title" data-page-heading><span class="ep-title-text">${esc(item.title)}</span>${explicitBadge(item.explicit)}</h1>
+        <p class="t-caption ep-caption">${joinMeta(item.show ? showNameLink(item.show, item.show_id) : "", fmtDur(episodeMinutes(item)), esc(dateStr), progHtml)}</p>
+        ${item.hook ? `<p class="t-why clamp3 ep-reason">${esc(item.hook)}</p>` : ""}
+        ${playFromHtml(item, t)}
+        ${episodeActionsHtml(item)}
+        ${item.audio_url ? "" : `<p class="t-caption ep-note note">${esc(NOT_PLAYABLE_WHY)}</p>`}
+        ${downloadControlHtml(item)}
+        ${episodeDescriptionSectionHtml(item)}
+        ${episodeChaptersHtml(item)}
+        ${moreFromShow(item)}
       </div>
-      ${item.artwork_url ? `<img class="ep-art" src="${esc(safeUrl(item.artwork_url))}" alt="" decoding="async" width="600" height="600">` : ""}
-      ${item.hook ? `<p class="fp-s-why">${esc(item.hook)}</p>` : ""}
-      ${playFromHtml(item, t)}
-      <div class="ep-actions">${item.audio_url ? playBtn(item) : notPlayableNote()}${starBtn(item.id)}${upNextBtn(item.id, item)}${item.audio_url ? `<button type="button" class="up-next playnext" data-playnext="${esc(item.id)}" aria-label="Play next">Play next</button>` : ""}</div>
-      ${item.audio_url ? "" : `<p class="note">${esc(NOT_PLAYABLE_WHY)}</p>`}
-      ${downloadControlHtml(item)}
-      ${episodeDescriptionSectionHtml(item)}
-      ${episodeChaptersHtml(item)}
-      ${moreFromShow(item)}
     </div>`;
+  /* From here the page is the ambient one: the legacy top bar steps aside and the body paints bg0 behind the Room.
+     setBodyClass() clears the class on the next route. The Dock lives on <body>, so it reads the ROOT's Glow: set it too. */
+  try { document.body.classList.add("view-episode"); } catch (_) { /* a stub document */ }
+  const page = $("#view .ag.ep");
+  if (page) page._epItem = item;
+  if (glow) {
+    forayCssVar(page, "--glow", glow);
+    try { forayCssVar(document.documentElement, "--glow", glow); } catch (_) { /* a stub document */ }
+    forayCssVar($("#view .ep-hero .ag-art"), "--art-glow", glow);
+  }
+  const room = $("#view .ep-room");
+  if (room && item.artwork_url) forayCssVar(room, "--room-art", forayRoomArtValue(item.artwork_url));
   bindPickLogging($("#view"));
-  bindStars($("#view"));
-  bindUpNext($("#view"));
   bindDownloads($("#view"));
   bindPlay($("#view"));
+  /* The "more from this show" rows are the Show screen's: their Play is data-sh-play (bindPlay's data-play repaint would wipe
+     the glyph), bound and repainted by ui/show.js. */
+  if (typeof bindShowPlay === "function") { bindShowPlay($("#view .ep-more-rows")); if (typeof showStartPoll === "function") showStartPoll(); }
+  bindStars($("#view"));
+  bindUpNext($("#view"));
+  bindEpisodeActions($("#view"), item);
   bindEpisodeSeeks($("#view"), item);
+  bindEpisodeNotes($("#view"));
+  const title = $("#view .ep-title");
+  fitEpisodeTitle(title);
+  if (title) watchEpisodeTitle(title);
+  episodeSyncControls();
+  episodeStartPoll();
+  syncLibraryBadge();
+  /* Nothing animates until two frames after the first paint. */
+  if (page) {
+    const settle = () => { if (page.classList && typeof page.classList.remove === "function") page.classList.remove("is-fresh"); };
+    if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => requestAnimationFrame(settle));
+    else setTimeout(settle, 60);
+  }
 }

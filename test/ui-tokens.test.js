@@ -888,16 +888,20 @@ test("ROUND 2 review (p-first-8): at 360px and below Home's bar is never EMPTY �
   assert.notStrictEqual(displayAt(TAG, 400), "none", "and the bar its tagline");
 });
 
-test("the episode page's head is two lines at most, at the size Now Playing gives the same title", () => {
+test("the episode page's title is --t-title in at most three lines; the legacy head rule still sizes the pages that keep a .page-head", () => {
   /* Round 2, visual-4: the whole title rode the sticky head at --fs-2xl (a
      fifth of the screen on a long title) and --fs-xl in the sheet. MUTATION:
-     delete `.page-head .fp-s-title { … }` -> red. */
+     delete `.page-head .fp-s-title { … }` -> red.
+     REDESIGN 2026 (ambient Episode page): THE RULING THAT FELL is "the episode page's head is two lines at --fs-xl inside
+     a sticky .page-head". The page draws its own chevron and a Display-less title (--t-title, 26px Fraunces) under a 160 lit
+     artwork, clamped to three lines and never cut mid-word (ui/episode.js fitEpisodeTitle). The legacy rules below still
+     size every other page's head, so they stay pinned. MUTATION: clamp3 -> clamp4 on the episode title -> red. */
   assert.strictEqual(lastOn(".fp-s-title", "font-size"), "var(--fs-xl)", "the sheet's size");
   assert.strictEqual(lastOn(".page-head .fp-s-title", "font-size"), "var(--fs-xl)", "the same size on the episode page's head");
   assert.strictEqual(lastOn(".page-head .fp-s-title", "-webkit-line-clamp"), "2");
   assert.strictEqual(lastOn(".page-head .fp-s-title", "overflow"), "hidden");
-  assert.match(APP_JS, /<div class="page-head">\s*<a class="back" href="#\/">‹<\/a>\s*<div>\s*<h2 class="fp-s-title">\$\{esc\(item\.title\)\}/,
-    "fixture assumption: renderEpisode's head is an h2.fp-s-title inside .page-head");
+  assert.match(APP_JS, /<h1 class="t-title clamp3 ep-title" data-page-heading><span class="ep-title-text">\$\{esc\(item\.title\)\}<\/span>/,
+    "the episode page's title is the --t-title heading, three lines");
 });
 
 test("a control marked loading has a look, and Reduce Motion stills it", () => {

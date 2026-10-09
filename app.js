@@ -1281,6 +1281,13 @@ function setBodyClass(base) {
   const kept = PERSISTENT_BODY_CLASSES.filter((c) => body.classList.contains(c));
   const modal = typeof sheetBodyClasses === "function" ? sheetBodyClasses() : [];
   body.className = [...new Set([base, "ui-v2", ...kept, ...modal])].join(" ");
+  /* A page that lit the ROOT's Glow (the Episode page and the Foray detail write it so the Dock and the Veil share the Room's
+     light) must not leave it behind: the next page, and every sheet over it, reads the scheme's own Glow again. The page that
+     wants one writes it AFTER it calls this, so clearing here costs it nothing. */
+  try {
+    const root = document.documentElement;
+    if (root && root.style && typeof root.style.removeProperty === "function") root.style.removeProperty("--glow");
+  } catch (_) { /* a stub document */ }
 }
 
 /* ---------- loading / failed / empty: ONE convention (audit theme G, 2026-09-22) ----------
@@ -2900,6 +2907,7 @@ function saveQueueIds(ids) {
     : lsSet("cp_queue", ids);
   refreshEpisodeNavigation();
   repaintQueuePage();
+  if (typeof syncLibraryBadge === "function") syncLibraryBadge();   // the Library tab's Up Next count (ui/episode.js)
   return ok;
 }
 

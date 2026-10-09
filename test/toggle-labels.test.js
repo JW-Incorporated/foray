@@ -379,6 +379,8 @@ const NOT_CONTROLS = {
     "pct", "el", "note", "$(\"#fy-total\")", "$(\"#fy-sheet-sub\")", "now", "ui.status", "ui.notice", "ddUi.status", "n",
     "link", // a drawer <a> with fixed text, written once
     "region", // L3's announce(): the sr-only live region, a status line (integration)
+    "countBadge", // the Library tab's aria-hidden Up Next count (ui/episode.js syncLibraryBadge): the tab's own name is set beside it
+    "titleText", // the Episode page's title text span inside its h1 (ui/episode.js fitEpisodeTitle): a heading, not a control
   ]),
   "player/client.js": new Set([
     "n", "ui.tNow", "ui.tLeft", "ui.title", "ui.show", "ui.sTitle", "ui.sShow", "ui.sWhy", "ui.sDesc", "ui.note",

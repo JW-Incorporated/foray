@@ -467,7 +467,7 @@ test("the explicit badge is a named image, and no explanation lives only in a to
   ctx.renderEpisode("silent");
   const page = ctx.document.querySelector("#view").innerHTML;
   assert.match(page, /Not available to play/);
-  assert.match(page, /<p class="note">4a could not get an audio file for this episode, so it cannot play here\.<\/p>/, page.slice(0, 400));
+  assert.match(page, /<p class="t-caption ep-note note">4a could not get an audio file for this episode, so it cannot play here\.<\/p>/, page.slice(0, 400));
 });
 
 /* ROUND 2 review (p-foray-6): the client stopped lowering the subject for a

@@ -130,6 +130,11 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   /* Phase 4, Up Next page: its stylesheet (the head, the handle, the gestures' paint). ui/queue.js shrank (the page's own
      row and its four arrow buttons went into Library's QueueRow), so it stays in the legacy line. */
   { rel: "ui/queue.css", maxBytes: 1.75 * 1024 },
+  /* Phase 4, Episode page: the screen's stylesheet (and the Library tab's count badge); the stopgap Dock block went to ui/dock.css with the Dock unit.
+     Measured minified, 2026-10-09: 6.0 KB (6096 B, down from 6762 B after the More-from-this-show row and Play-next fixes); the 7 KB ceiling keeps the 0.75 floor (5376 B) readable. */
+  { rel: "ui/episode.css", maxBytes: 7 * 1024 },
+  /* ui/episode.js, which the screen rewrote (the Room, the actions row, the notes, the chapters; 7.8 KB before, 19.1 KB minified now, 2026-10-08). Budgeted here for the reason home.js and foray.js are: the 2.85 MB legacy line is not to be re-baselined, and this is a bounded feature step that put the legacy bundle 1.9 KB over it. Ceiling 24 KB keeps the 0.75 floor (18 KB) readable. */
+  { rel: "ui/episode.js", maxBytes: 24 * 1024 },
   /* QA fix (Phase 5, 2026-10-08): the rest of what the redesign ADDED to the bundle and nothing but the redesign owns —
      the token sheet, the icon sprite and its licence notice, the sprite's loader, and the per-screen stylesheets that
      no earlier unit listed. They were counted against the legacy line by omission, which is how the line (2.85 MB, not

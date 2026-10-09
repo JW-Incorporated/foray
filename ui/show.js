@@ -835,7 +835,7 @@ let showPollTimer = null;
 function showStartPoll() {
   if (showPollTimer || typeof setInterval !== "function") return;
   showPollTimer = setInterval(() => {
-    if (!document.querySelector("[data-sh-room]")) { clearInterval(showPollTimer); showPollTimer = null; return; }
+    if (!document.querySelector("[data-show-episodes]")) { clearInterval(showPollTimer); showPollTimer = null; return; }
     showSyncPlay();
   }, 1000);
 }

@@ -257,7 +257,7 @@ test("a target past the episode's known end keeps the page and draws no button",
   assert.doesNotThrow(() => m.ctx.renderEpisode("ep-1", { t: 10000 }));
   const html = m.view.innerHTML;
   assert.match(html, /Static Episode/, "the page still renders");
-  assert.match(html, /class="play-btn"/, "with its ordinary ▶");
+  assert.match(html, /class="ag-btn ag-btn-primary ep-play" data-ep-play="/, "with its ordinary Play (the Afterglow page's own control)");
   assert.doesNotMatch(html, /ep-play-from/, "and no button promising a second that does not exist");
   m.ctx.renderEpisode("ep-1", { t: 5400 });
   assert.match(m.view.innerHTML, /data-ts="5400"/, "the last second is still a target");

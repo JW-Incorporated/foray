@@ -184,6 +184,8 @@ const SHELL = [
   "ui/queue.css",
   /* Redesign 2026 (ambient): the Forays list, two-up ForayCards. A stylesheet, so listed by name. */
   "ui/forays.css",
+  /* Redesign 2026 (ambient): the Episode page. A stylesheet, so listed by name. */
+  "ui/episode.css",
   /* Redesign 2026 (ambient): Playlist detail and the Playlists list. A stylesheet, so listed by name. */
   "ui/playlist.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.

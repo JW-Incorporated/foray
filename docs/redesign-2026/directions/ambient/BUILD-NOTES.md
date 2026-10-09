@@ -1900,6 +1900,54 @@ fidelity pair is its Library Up Next section and the menu sheet, `screens.json` 
    harness has no artwork), the pushed screen's Back and the quiet "Clear Up Next" are kept, the Dock labels are the
    un-scrolled state, and the mini player's 2px line is the Dock's, empty at 0% played.
 
+## Episode page, as built (2026-10-08, branch `redesign/ambient-episode`, `ui/episode.js`, `ui/episode.css`)
+Screen 11 of `BUILD-PLAN.md` (`returning/episode`, `stress/episode`, `stress/episode-token`). There is no prototype route for
+it, so there is no fidelity run; the page borrows Now Playing's episode anatomy (title, show line, italic why-line) and Foray
+detail's Room, at the sizes the plan names. Where this departs from the lines above:
+1. **A Room that follows the scheme.** `.ag.ep` over a fixed `.room.ep-room`: the show's artwork blurred under the same
+   pixel-set scrim as Foray detail (ramp from 120, mid stop at 236: 8 pad, 44 head, 8, the 160 art, 16, so the title's first line
+   sits on the stop the token suite measures). Dawn takes the paper Room from the tokens. The page sets the root's `--glow` to the
+   show's, which tints the Dock. `ui/episode.css` carries the same Dock block Foray detail carries (`body.view-episode`), a bounded
+   copy the Dock unit retires.
+2. **Title, three lines, never cut mid-word.** `--t-title`, `clamp3`, `overflow-wrap: normal`. Two measured rules in
+   `fitEpisodeTitle` (the page's one script measurement): a word wider than the box shrinks the size 1px at a time to a 17px floor
+   (the token seed's `Supercalifragilisticexpialidocious-...` needs 19px at 375); a title past three lines ends on a piece the
+   engine breaks lines at (a word, or a part of a hyphenated word after its hyphen), because `-webkit-line-clamp` puts its
+   ellipsis wherever "..." fits ("researchers acros..."). The words past line three are clipped out of sight, not removed
+   (`.ep-cut`), so `headingName()`, the tab title and a screen reader keep the whole title. The clamp is the first paint and the
+   fallback.
+3. **Three controls of the page's own.** Play (48, Ember, `i-play`, `i-pause` while playing), Save (44, `i-bookmark`, Fill when
+   saved) and Add to Up Next (44, `i-queue`, `i-check-circle-fill` once queued), as `data-ep-play` / `data-ep-save` /
+   `data-ep-upnext`, not the legacy `.play-btn` / `.star` / `.up-next`: app.js's `setToggleLabel` and the player's
+   `syncCardButtons` rewrite a button's `textContent`, which would wipe a sprite glyph. Same actions underneath (`toggleStar`,
+   `addToQueue`, `startEpisodePlay`, `playNextInQueue`). "Play next" stays, as a Quiet button under them. Save and Up Next repaint
+   by REPLACING the button (focus handed to the new one): under Reduce Motion the tokens turn every colour change into a 200ms
+   crossfade and the reduced-motion gate fails any that runs, so a colour flip is a new node drawn in its final state. The page
+   repaints its three from the player and the stores once a second.
+4. **The Up Next flight and the Library count.** Adding an episode clones the lit art into a fixed layer above the Dock and flies
+   it (WAAPI, 420ms, `--e-spring`) onto the Library tab's icon; the tab's Ember count badge changes when the art lands and bumps
+   1 to 1.3 to 1. Reduce Motion skips both and the count changes in place; a 700ms timer lands the count if the animation never
+   reports. The badge is the length of `cp_queue`, on every page (`syncLibraryBadge`, called from `renderTabBar()` and from
+   `saveQueueIds()`, the one writer), the tab's accessible name becomes "Library, N in Up Next", and it caps at "9+". It is
+   best-effort chrome: a throw inside it never reaches a queue write. This changes the tab bar on every page that has a non-empty
+   Up Next, which is the intent; the app baseline shows it as a diff on every such screen.
+5. **Show notes, four lines.** `--t-body`, a height clamp (`--ep-notes-lines: 4` times the 1.5rem leading), not a line clamp: the
+   notes mix prose with 44px chapter-row blocks and a line clamp strands its ellipsis alone on a fourth line. The text fades over
+   its last line when it runs over, and the quiet "More" / "Less" button exists only then (measured once the page is laid out and
+   again when fonts load). A focus that lands inside the clamped text opens it, so nothing focusable is clipped. The linkifier is
+   unchanged (`esc()` for every character, `safeUrl()` for every href). Timestamps in prose are Chips (a Lamp pill on the line, its
+   hit box a 44px square through `::after`); a stamp-led line stays a 44px `.ep-chapter-row`. **The ruling that fell**: the
+   native `<details>` "Episode notes" disclosure (founder, 2026-09-18, kept in spirit: artwork first, notes by intent).
+6. **"More from this show"** is the Show screen's EpisodeRow (iteration 3; was today's `epRow`): `showEpisodeRowHtml` from `ui/show.js`, latest first, up to 8, a Raised 96px row (art 72, title, Play 44, meta, two-line why) with no Save or Up Next on the row. The wrapper carries `data-show-episodes` so the show page's `bindShowPlay` and play sync repaint the rows; `showStartPoll` now ends when `[data-show-episodes]` leaves the DOM, not `[data-sh-room]`. `ui/episode.css` paints no surface over the rows (they own the rim and warm shadows from `.raised`) and takes the row title back from styles.css's legacy `.ep-more h3` eyebrow. Iteration 2 (QA findings): the row title on this page is never cut (`.clamp2` is off, 16px Fraunces, so a long title runs three lines; the direction keeps cuts to rails) and the row Play is a Phosphor Fill (`--bg2` disc, `--text` glyph) instead of the shared 44px inset ring, since the material system has no hairline borders; the seam from the hero block to the list is 20px (was 24) with an 8px heading gap so a second row clears the Dock. The row stays the Show screen's 96px-minimum EpisodeRow; it grows past 96 only when a title or why needs the lines.
+7. **Colour choices that are not the direction's first reading.** Controls that are not a listener's mark ("Play next", "More")
+   are Lamp, not Ember: Ember (#8E520E in Dawn) is 4.2:1 on the Room's lower scrim. The caption's progress label is `--text`.
+8. **Rulings that fell, with the tests ported in this branch**: `ui-tokens` "the episode page's head is two lines at --fs-xl"
+   (now the `--t-title` heading, three lines); `episode-description-links` "closed `<details>`"; `episode-page`, `up-next-queue`,
+   `episode-deeplink` and `listener-copy`, which pinned the legacy glyph controls and the `.note` line by their markup.
+9. **Harness.** `episode-notes` state (`tools/ui-lab/lib/states.mjs`, appended): a publisher-style description patched onto one
+   episode the returning seed neither saved nor queued (prose, a chapter-style list, an inline stamp, a link), the notes opened,
+   and the Up Next add. `returning/episode`, `stress/episode` and `stress/episode-token` were already steps; the token seed's
+   known-debt overflow entry (`overflow | stress/episode-token | div.page > div.page-head > div`) is now stale and can be removed.
 ## 19. Show page (built, `redesign/ambient-show`)
 
 Screen 10 of the screen list: `ui/show.js` (`showRoomHtml`, `showEpisodeRowHtml`, `showRowsLatestFirst`), `ui/show.css`, and the Follow button in `app.js` (`showStarBtn`, `paintFollow`). No prototype route exists, so there is no fidelity pair; the is-it-better pair is the only judged one.

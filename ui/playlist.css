@@ -135,6 +135,12 @@ body.view-playlist #view { padding-top: 0; }
 .ag .pl-ep .td-row-meta > .pl-facts { flex: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .ag .pl-ep .td-row-meta > .pl-show-line:not(:last-child)::after { content: ""; display: inline-block; width: 3px; height: 3px; margin-left: 6px; border-radius: var(--r-round); background: currentColor; vertical-align: middle; }
 .ag .pl-ep .pl-row-play { background: none; box-shadow: none; color: var(--text); }
+/* The playing row's wash is a background-IMAGE layer, not Today's `background` shorthand. playlistSyncPlay toggles `is-playing` in place
+   after the row is first styled, and tokens.css's one reduced-motion block turns any change of background-color on an `.ag` descendant
+   into a 200ms crossfade (gates.mjs counts it: playlist-started, section.pl-list-section article.raised.td-row). background-image is not a
+   property that block lets transition, and the colour stays Raised's --bg1 in both states, so the row changes light without a transition
+   to run. Same two layers Today paints (overlay over --glow-row), same result. */
+.ag .pl-ep.is-playing { background-color: var(--bg1); background-image: linear-gradient(var(--overlay), var(--overlay)), linear-gradient(var(--glow-row), var(--glow-row)); }
 .ag .pl-ep.is-unavailable .td-row-title, .ag .pl-ep.is-unavailable .td-row-why { color: var(--text-2); }
 .ag .pl-next { font-weight: 600; }
 
