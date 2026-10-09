@@ -203,13 +203,14 @@ test("a category page counts nothing until the catalogue has answered", async ()
 /* a missing show                                                        */
 /* ==================================================================== */
 
-test("an unknown episode page has a ‹ back link", () => {
-  /* MUTATION: restore the bare `<div class="page"><p class="note">Episode not
-     found.</p></div>`. No `a.back`, and this goes red. */
+test("an unknown episode page has a way out: the Today button", () => {
+  /* RULING THAT FELL (Redesign 2026, ambient not-found): the ‹ went with the page head; the Secondary button to Today is
+     the way out. MUTATION: restore the bare `<div class="page"><p class="note">Episode not found.</p></div>`. No Today
+     link, and this goes red. */
   const m = mount({ hash: "#/episode/nope" });
   m.ctx.renderCurrentPage();
-  assert.match(m.html(), /Episode not found\./);
-  assert.ok(m.view.querySelector("a.back") || m.view.querySelector(".back"), `no way back: ${m.html()}`);
+  assert.match(m.html(), /Nothing here any more\./);
+  assert.ok(m.view.querySelector('a.ag-btn[href="#/"]'), `no way out: ${m.html()}`);
 });
 
 test("a show lookup that FAILED says so and retries; a genuine miss still says 'Show not found.'", async () => {
@@ -474,7 +475,7 @@ test("#/forays explains what a Foray is, from the one sentence forayAbout() hold
   assert.ok(m.html().includes(shown), "the Forays page states what a Foray is");
   /* Review 2026-09-23: not inside the sticky header, which comes back on every
      scroll-up. MUTATION: put it back as the head's `.sub`. */
-  const head = /<div class="page-head">[\s\S]*?<\/div>\s*<\/div>/.exec(m.html());
+  const head = /<header class="fl-head">[\s\S]*?<\/header>/.exec(m.html());   /* Redesign 2026: the page draws its own header */
   assert.ok(head, "fixture: the page has its header");
   assert.ok(!head[0].includes(shown), "the sentence is below the sticky header, not in it");
   assert.doesNotMatch(m.html(), /\b\d+ forays?\b/, "and states no count in its place");
@@ -672,13 +673,25 @@ test("a subject's name that finds no show by title says it is a subject, with th
     { show_id: "s2", title: "Beta Show", taxonomy_node_ids: ["science/geology"] },
   ] };
   const m = mountSearch({ taxonomy, catalog });
-  m.ctx.renderShowSearchResults("Science");
+  /* "Scien" is a PART of the name, so it is a search (a subject's WHOLE name is the subject's page, below). */
+  m.ctx.renderShowSearchResults("Scien");
   await waitFor(() => !m.empty().hidden);
   const html = m.empty().innerHTML;
-  assert.match(html, /Nothing named “Science”\./);
+  assert.match(html, /Nothing named “Scien”\./);
   assert.match(html, /“Science” is a subject, 2 shows\./, `the subject line: ${html}`);
   assert.match(html, /<a class="ag-subject-tile raised is-default" href="#\/shows\/q\/Science">/, "with the subject's own tile under it");
   assert.doesNotMatch(html, /data-retry/, "nothing failed, so nothing to retry");
+
+  /* THE WHOLE NAME IS THE SUBJECT'S PAGE, NEVER THE EMPTY ONE (round-1 review): the same query that finds no title
+     paints the subject's own two shows once every pass has answered, and no "Nothing named" over them.
+     MUTATION: delete `if (subjectTile) shows = subjectTile.shows;` in paintShowResults -> no tiles, and the empty page
+     paints under the lead (the first assertion goes red). */
+  const w = mountSearch({ taxonomy, catalog });
+  w.ctx.renderShowSearchResults("Science");
+  await waitFor(() => vm.runInContext("showSearchAnswered.token === showSearchToken", w.ctx));
+  const tileCount = (w.view.querySelector("#sh-results").innerHTML.match(/class="ag-show-tile"/g) || []).length;
+  assert.strictEqual(tileCount, 2, "the subject's two shows are drawn");
+  assert.ok(w.empty().hidden, `and no empty page over them: ${w.empty().innerHTML}`);
 });
 
 test("the Make-a-playlist button is on the text alone: no pending line, no scan, before any pass has answered", async () => {
@@ -891,8 +904,10 @@ test("'played' counts history OR a stored position, so it cannot fall as the his
      (audit round 2, honesty-6): "N played" means finished, the same word the
      rows use, so it reads the player's own verdict per row. */
   const body = /function renderPlaylistDetail\(id\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
-  assert.match(body, /const nextIdx = rows\.findIndex\(r => r\.state === "live" && !hasOpened\(r\.item\.id, history\)\);/);
-  assert.match(body, /const played = rows\.filter\(r => rowProgress\(r\.item\)\?\.state === "played"\)\.length;/);
+  assert.match(body, /const unopenedRow = rows\.find\(r => r\.state === "live" && !hasOpened\(r\.item\.id, history\)\);/);
+  assert.match(body, /const played = playlistPlayedCount\(rows, history\);/);
+  const counted = /function playlistRowPlayed\(r, history\) \{[\s\S]*?\n\}/.exec(APP_SRC)[0];
+  assert.match(counted, /progress \? progress\.state === "played" : history\.has\(item\.id\)/, "the count is the player's verdict (the history ring only while the player has not arrived)");
 });
 
 test("a playlist tile states a total duration only when every episode has one", () => {

@@ -347,6 +347,20 @@ test("the Dock reserves the field row: Discover raises it to field + receded tab
   assert.ok(!/--sh-compose-h/.test(STYLES), "and the floating row's own height token is gone");
 });
 
+test("with the keyboard up the field row floats mid-screen, so #view reserves the keyboard and the row and the root scroll-pads past them", () => {
+  /* A result scrolled into view (tap, focus move, the tap-target gate's scrollIntoView) must be able to clear
+     the field row riding the keyboard; without a reserve the last tiles / playlist row stayed under it (gate
+     debt: discover-kb "ag-subject-tile covered", discover-results-groups "dsc-pl covered").
+     MUTATION: delete the `body.ui-v2.sh-compose.kb-open #view` rule (or the `html:has(...)` scroll-padding one)
+     -> the matching assertion goes red; `gates.mjs --states discover` then reports the covered tiles again. */
+  const dockCss = require("./helpers/dock-css.js");
+  const want = "calc(var(--kb-inset, 0px) + var(--dock-field-row) + var(--s-8))";
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "body.ui-v2.sh-compose.kb-open #view", "padding-bottom"), want,
+    "keyboard up: #view reserves keyboard + field row + a gap");
+  assert.strictEqual(dockCss.declOf("ui/dock.css", "html:has(body.ui-v2.kb-open)", "scroll-padding-bottom"), want,
+    "and the root scroll-pads by the same amount");
+});
+
 /* ==================================================================== */
 /* 3. THE STACKING ORDER                                                 */
 /* ==================================================================== */
@@ -398,6 +412,16 @@ test("the field has no placement of its own: the Dock insets it, floats it and l
     "and is inset from BOTH screen edges by the gutter, not full-bleed");
   assert.match(dockCss.declOf("ui/dock.css", "body.ui-v2.kb-open .dock-layer .dock", "bottom"), /var\(--kb-inset/,
     "and while the keyboard is up it still rides its top edge");
+});
+
+test("with the keyboard up the page reserves the keyboard's inset too, so the last row scrolls above the field", () => {
+  /* The field rides the keyboard's top edge (--kb-inset); a page that only reserves the Dock's own height ends
+     UNDER the field, and the last playlist row / subject tile sits covered at its centre (the ui-lab tap-targets
+     gate, discover-kb and discover-results-groups). MUTATION: delete the `+ var(--kb-inset, 0px)` from
+     body.ui-v2's padding-bottom in ui/dock.css -> this fails. */
+  const dockCss = require("./helpers/dock-css.js");
+  assert.match(dockCss.declOf("ui/dock.css", "body.ui-v2", "padding-bottom"), /var\(--dock-reserve\).*var\(--kb-inset,\s*0px\)/,
+    "the page's bottom reserve adds the keyboard inset to the Dock reserve");
 });
 
 test("the Dock's rows hide with the keyboard exactly as the old bars did - by a class, not by the hidden attribute", () => {

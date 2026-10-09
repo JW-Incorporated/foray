@@ -274,10 +274,13 @@ export const SHELL_FILES = [
   "ui/today.css",
   "ui/onboarding.css",
   "ui/show.css",
+  "ui/browse.css",
   "ui/foray-detail.css",
   "ui/settings.css",
   "ui/library.css",
   "ui/queue.css",
+  "ui/forays.css",
+  "ui/playlist.css",
   /* Redesign 2026 (ambient): the icon sprite. An SVG: not JS or CSS, so copy() ships it byte for byte
      (the dispatch falls through to copy for anything else). */
   "ui/icons.svg",

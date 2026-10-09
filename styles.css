@@ -2169,9 +2169,7 @@ input[type="range"] { accent-color: var(--amber); }
   text-transform: uppercase; color: var(--accent);
   background: color-mix(in srgb, currentColor 18%, transparent);
 }
-/* The Forays index's intro sits a section apart from the first card, not a
-   hair above it: `.note` zeroes its margin and `.page` has no gap of its own. */
-.fy-about { margin: 0 0 20px; }
+/* The Forays index intro (`fy-about`) went with the page's redesign; the page is ui/forays.css now. */
 /* ROW TITLES ARE 600 (round 2, visual-15): the same Foray's title was 700
    here and 600 on its Home card. 700 is for page titles and the wordmark;
    ui-tokens.test.js holds every display-face 700 to that list. */

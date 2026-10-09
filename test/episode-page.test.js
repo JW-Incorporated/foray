@@ -116,7 +116,7 @@ test("resolveEpisode returns null for an id in neither source", () => {
 
 /* ---------- renderEpisode: not-found guard ---------- */
 
-test("renderEpisode renders 'Episode not found' for an unknown id, not a crash", () => {
+test("renderEpisode renders the not-found page ('Nothing here any more.') for an unknown id, not a crash", () => {
   // Mirrors renderPlaylistDetail's existing not-found guard exactly, per spec.
   // Mutation: remove the `if (!item)` guard in renderEpisode. This throws
   // instead of rendering, and the assertion below never runs.
@@ -124,7 +124,7 @@ test("renderEpisode renders 'Episode not found' for an unknown id, not a crash",
   app._state('state.session = { episodes: {} };');
   assert.doesNotThrow(() => app.renderEpisode("ghost-id"));
   const html = app._view.innerHTML;
-  assert.match(html, /Episode not found/);
+  assert.match(html, /Nothing here any more\./);
 });
 
 /* ---------- renderEpisode: full render, both data sources ---------- */

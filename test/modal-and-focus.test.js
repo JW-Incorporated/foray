@@ -392,6 +392,29 @@ test("REVIEW: with the ☰ kept reachable, Tab reaches it — and an open drawer
   assert.strictEqual(m.doc.activeElement, link, "from the ☰, Tab walks into the open drawer, not back into the sheet");
 });
 
+test("QA fix: a kept topbar the page hides with display:none is not a Tab stop - the trap wraps within the sheet", () => {
+  /* Forays, Foray detail, Settings, Category, car posture and the Today sheet hide `.topbar` with CSS. Its
+     ☰ is still in the DOM, so the trap cycled to it, called focus() on an unrenderable node (a no-op) after
+     preventing Tab's default, and focus froze on the sheet's last control. A hidden element has no client
+     rects. MUTATION: drop the `isRendered(el) &&` test in keptFocusables (ui/sheets.js) -> the second
+     assertion fails (focus stays on the last control). The real-browser repro is Now Playing opened from
+     #/forays: Tab 16 times and focus must reach 'Collapse' again. */
+  const m = mount();
+  const s = sheet(m);
+  m.ctx.openSheet(s.wrap, { keepReachable: [".topbar", "#drawer"] });
+  m.drawer.hidden = true;
+  m.menu.getClientRects = () => [];                 // display:none on the topbar: nothing is laid out
+  s.b.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, s.a, "Tab from the last control wraps to the first, past the hidden ☰");
+  m.doc.key("Tab", { shiftKey: true });
+  assert.strictEqual(m.doc.activeElement, s.b, "and Shift+Tab from the first wraps to the last");
+  m.menu.getClientRects = () => [{ width: 44, height: 44 }];  // the topbar is back: the ☰ is a stop again
+  s.b.focus();
+  m.doc.key("Tab");
+  assert.strictEqual(m.doc.activeElement, m.menu, "a laid-out ☰ is still reached");
+});
+
 test("the modal lock is derived from what is open: kept across a render, dropped when the sheet's DOM is gone", () => {
   /* THE BACK-GESTURE BUG. The feedback sheet lives inside #view; a navigation
      replaced #view and `fy-sheet-open` was carried forward because it was

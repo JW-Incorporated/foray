@@ -170,6 +170,8 @@ const SHELL = [
   "ui/onboarding.css",
   /* Redesign 2026 (ambient): the show page, the Room and its EpisodeRows. A stylesheet, so listed by name. */
   "ui/show.css",
+  /* Redesign 2026 (ambient): the subject page, the collage lead and ShowTiles. A stylesheet, so listed by name. */
+  "ui/browse.css",
   /* Redesign 2026 (ambient): Foray detail. A stylesheet, so listed by name. */
   "ui/foray-detail.css",
   /* Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet. */
@@ -178,6 +180,10 @@ const SHELL = [
   "ui/library.css",
   /* Redesign 2026 (ambient): the Up Next page, Library's Up Next section given the screen. A stylesheet, so listed by name. */
   "ui/queue.css",
+  /* Redesign 2026 (ambient): the Forays list, two-up ForayCards. A stylesheet, so listed by name. */
+  "ui/forays.css",
+  /* Redesign 2026 (ambient): Playlist detail and the Playlists list. A stylesheet, so listed by name. */
+  "ui/playlist.css",
   /* Redesign 2026 (ambient): the icon sprite ui/icons.svg, fetched by every `<use href>` agIcon() writes.
      Not a script, so uiSources() does not see it; listed by name for the same reason as tokens.css. */
   "ui/icons.svg",
