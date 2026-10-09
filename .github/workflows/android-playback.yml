@@ -106,8 +106,8 @@
 # by-hand check of `main`. The card's budget is 12 minutes for the job.
 #
 # ADVISORY, NOT REQUIRED: a cold emulator is the flakiest thing this repo runs,
-# and `protect-main` matches required checks by name (`backend`,
-# `data-and-site`, `path-policy`); `android-playback` is none of them, and the
+# and `protect-main` matches required checks by name (the list is
+# `REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`); `android-playback` is none of them, and the
 # workflow test pins that it stays so.
 #
 # NEVER UPLOADS TO A STORE, READS NO SECRET. It publishes its own evidence

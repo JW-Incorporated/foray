@@ -27,7 +27,7 @@
  * live signal: it appears and disappears on its own with no further noise.
  *
  * WHY THE CI RE-DISPATCH IS NOT OPTIONAL. Updating a branch changes the PR's
- * head SHA, and `protect-main`'s required checks (`backend`, `data-and-site`)
+ * head SHA, and `protect-main`'s required checks (REQUIRED_CHECKS, below)
  * are matched against THAT SHA. Pushes made with the automatic GITHUB_TOKEN do
  * not create new workflow runs — a deliberate GitHub anti-recursion rule — so
  * an auto-updated PR would sit forever with "Expected — waiting for status to
@@ -65,7 +65,7 @@
 import fs from "node:fs";
 import { spawnSync } from "node:child_process";
 import { isEntryScript } from "./entry.mjs";
-import { APPROVAL_LABEL, automergeDecision, disarmDecision, FOUNDER_QUEUE_LABEL } from "./path-policy.mjs";
+import { APPROVAL_LABEL, automergeDecision, disarmDecision, FOUNDER_QUEUE_LABEL, REQUIRED_CHECKS } from "./path-policy.mjs";
 
 export const CONFLICT_LABEL = "merge-conflict";
 export const CONFLICT_MARKER = "<!-- foray:pr-triage:merge-conflict -->";
@@ -78,10 +78,11 @@ export const QUEUE_LABEL = FOUNDER_QUEUE_LABEL;
 export const BLOCK_BEGIN = "<!-- BEGIN generated:waiting-on-you -->";
 export const BLOCK_END = "<!-- END generated:waiting-on-you -->";
 
-/* The checks `protect-main` requires. Used only to notice a head SHA that has
- * none of them — see the self-heal in planMergeability. Keep in step with the
- * ruleset; being wrong here costs a redundant CI dispatch, never a merge. */
-export const REQUIRED_CHECKS = ["backend", "data-and-site"];
+/* The checks `protect-main` requires: the ONE list, defined in path-policy.mjs
+ * (CH2-34b) and re-exported here because this is where the self-heal in
+ * planMergeability and tools/release/watch-release.mjs have always read it.
+ * merge-audit.yml compares it with the live ruleset every week. */
+export { REQUIRED_CHECKS };
 
 /* ------------------------------------------------------------- normalising */
 
@@ -213,7 +214,7 @@ export function normalizePr(raw = {}) {
  *
  * The guard is here — at the DISPATCHER — and deliberately not as an `if:` on
  * ci.yml's jobs. A skipped job still publishes a check run under the required
- * name (`backend`, `data-and-site`), GitHub counts `skipped` as satisfied, and
+ * name (every REQUIRED_CHECKS entry), GitHub counts `skipped` as satisfied, and
  * the dispatch run is created at almost the same instant as the `pull_request`
  * run — so a job-level skip could overwrite a FAILING required check with a
  * passing `skipped` one and let a red PR merge. Not dispatching costs nothing

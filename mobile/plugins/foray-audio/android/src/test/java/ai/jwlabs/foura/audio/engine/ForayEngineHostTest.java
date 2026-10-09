@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import ai.jwlabs.foura.engine.DeckCommand;
@@ -313,6 +314,68 @@ public class ForayEngineHostTest {
         assertTrue("and invalidates the deck", r.deck.invalidated);
         ForayEngineHost.Verdict late = r.host.handle(playIndex(0));
         assertEquals(EngineContract.Refusal.RELINQUISHED.token, late.failures().get(0));
+    }
+
+    static EngineInput relinquish() {
+        return new EngineInput.Command(new EngineContract.Command.Relinquish(EngineContract.RelinquishCap.ALL), Vocabulary.Source.TAP);
+    }
+
+    /**
+     * CH3-07 (R5-01): a core relinquish hands the listener (the Media3 session's player) a
+     * CLEARED surface, not the one the last turn left. Today teardown() re-sends the stale
+     * {@code surface} field: "Title a, playing" with every command enabled, on a session nothing
+     * will write again.
+     * MUTATION: in teardown(), hand the listener the {@code surface} field instead of the cleared
+     * one: red here.
+     */
+    @Test
+    public void aCoreRelinquishHandsTheListenerAClearedSurface() {
+        Rig r = new Rig();
+        r.host.handle(load("a", "b"));
+        r.host.handle(playIndex(0));
+        r.deck.emit(new DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        ForayEngineHost.Surface before = r.surfaces.get(r.surfaces.size() - 1);
+        assertNotNull("playing: the session shows the item", before.view());
+        assertFalse(before.availability().clearsNowPlaying());
+        int told = r.surfaces.size();
+
+        ForayEngineHost.Verdict v = r.host.handle(relinquish());
+        assertTrue("the relinquish is accepted: " + v.failures(), v.ok());
+        assertTrue(r.host.isTornDown());
+        assertEquals("the listener is told once more, at teardown", told + 1, r.surfaces.size());
+        ForayEngineHost.Surface last = r.surfaces.get(r.surfaces.size() - 1);
+        assertTrue("the last surface clears the session", last.availability().clearsNowPlaying());
+        assertTrue("with every command disabled: " + last.availability().enabled(), last.availability().enabled().isEmpty());
+        assertNull("and nothing to show", last.view());
+        assertTrue("a new surface, not the last turn's again", last.seq() > before.seq());
+        assertSame("the host keeps answering the terminal surface", last, r.host.surface());
+        assertSame(last, r.host.freshSurface());
+    }
+
+    /**
+     * CH3-07: the torn-down hook (the service releases its Media3 session there) runs once, AFTER
+     * the listener's cleared surface, whatever took the engine down: a core relinquish or the
+     * service's own teardown at onDestroy.
+     * MUTATION: drop the hook's run from teardown(): red here (and the service test).
+     */
+    @Test
+    public void theTornDownHookRunsOnceAfterTheClearedSurface() {
+        Rig r = new Rig();
+        List<String> order = new ArrayList<>();
+        r.host.setSurfaceListener(s -> order.add(s.availability().clearsNowPlaying() ? "cleared" : "surface"));
+        r.host.setOnTornDown(() -> order.add("hook"));
+        r.host.handle(load("a"));
+        order.clear();
+        r.host.handle(relinquish());
+        assertEquals("the cleared surface, then the hook, once", java.util.Arrays.asList("cleared", "hook"), order);
+        r.host.teardown();
+        assertEquals("a second teardown runs nothing", java.util.Arrays.asList("cleared", "hook"), order);
+
+        Rig direct = new Rig();
+        int[] runs = {0};
+        direct.host.setOnTornDown(() -> runs[0]++);
+        direct.host.teardown();
+        assertEquals("a teardown the service started runs it too", 1, runs[0]);
     }
 
     @Test

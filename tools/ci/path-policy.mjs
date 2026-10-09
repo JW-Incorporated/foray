@@ -422,6 +422,77 @@ export const APPROVAL_LABEL = "founder-approved";
  * something a founder has to notice. See tools/ci/pr-triage.mjs. */
 export const FOUNDER_QUEUE_LABEL = "needs-founder";
 
+/* The checks `protect-main` requires, matched BY NAME on a PR's head SHA.
+ *
+ * ONE LIST (CH2-34b, T2-16 in docs/roadmap/code-health-2.md). pr-triage's
+ * self-heal and watch-release's verdict on main read it (pr-triage re-exports
+ * this binding), formatDecision renders it, and a workflow comment either names
+ * it or enumerates exactly what it holds (pinned by path-policy.test.mjs). It
+ * lives here, not in pr-triage.mjs, because pr-triage imports this module and
+ * this one must stay a leaf.
+ *
+ * The ruleset itself is a GitHub setting no file can change, so this list can
+ * only follow it: merge-audit.yml reads the live ruleset every week and puts
+ * any difference on its ledger (requiredChecksDrift below). Read through the
+ * API on 2026-10-09 (also SEC-06, docs/audit/security-review-2026-10.md):
+ * `engine-parity` and `ios-gate` joined at G-1b (docs/native-engine-plan.md
+ * §6.8). `path-policy` and `api` are NOT required; making them so is a founder
+ * settings item, not an edit here. Being wrong here costs a redundant CI
+ * dispatch or a release held a little long, never a merge. */
+export const REQUIRED_CHECKS = ["backend", "data-and-site", "engine-parity", "ios-gate"];
+
+/** "`a`, `b` and `c`" — the list as prose, for anything that must spell it out. */
+export function renderChecks(names = REQUIRED_CHECKS) {
+  const ticked = names.map((n) => `\`${n}\``);
+  return ticked.length < 2 ? ticked.join("") : `${ticked.slice(0, -1).join(", ")} and ${ticked.at(-1)}`;
+}
+
+/** The live ruleset against REQUIRED_CHECKS.
+ *
+ *  `rules` is what `gh api repos/{owner}/{repo}/rules/branches/main` returns:
+ *  every active rule binding the branch, from any ruleset. Required contexts are
+ *  the union over its `required_status_checks` rules (none at all is a real
+ *  answer: nothing is required). Throws when `rules` is not that array, so an
+ *  error page cannot read as "the ruleset requires nothing".
+ *  -> { live, missing (required live, absent here), extra (here, not required live), ok } */
+export function requiredChecksDrift(rules, expected = REQUIRED_CHECKS) {
+  if (!Array.isArray(rules)) throw new Error("expected the rules/branches API's array of rules");
+  const live = new Set();
+  for (const rule of rules) {
+    if (rule?.type !== "required_status_checks") continue;
+    for (const c of rule.parameters?.required_status_checks ?? []) {
+      if (typeof c?.context === "string") live.add(c.context);
+    }
+  }
+  const want = new Set(expected);
+  const missing = [...live].filter((c) => !want.has(c)).sort();
+  const extra = [...want].filter((c) => !live.has(c)).sort();
+  return { live: [...live].sort(), missing, extra, ok: missing.length === 0 && extra.length === 0 };
+}
+
+/** The drift as markdown, for the merge-audit ledger. */
+export function formatRequiredChecksDrift(drift) {
+  const head = "### protect-main's required checks";
+  if (drift.ok) {
+    return [head, "", `The live ruleset requires ${renderChecks(drift.live)}, exactly \`REQUIRED_CHECKS\` in \`tools/ci/path-policy.mjs\`.`].join("\n");
+  }
+  return [
+    head,
+    "",
+    `**The live ruleset and \`REQUIRED_CHECKS\` (\`tools/ci/path-policy.mjs\`) disagree.** ` +
+      `Live: ${drift.live.length ? renderChecks(drift.live) : "nothing required"}.`,
+    "",
+    ...(drift.missing.length
+      ? [`- Required live, missing from the list: ${renderChecks(drift.missing)}. pr-triage's self-heal does not notice ${drift.missing.length === 1 ? "it" : "them"} missing, and the release trigger does not wait for ${drift.missing.length === 1 ? "it" : "them"}.`]
+      : []),
+    ...(drift.extra.length
+      ? [`- In the list, not required live: ${renderChecks(drift.extra)}. The release trigger holds on ${drift.extra.length === 1 ? "it" : "them"} and the self-heal re-dispatches CI for ${drift.extra.length === 1 ? "it" : "them"}, for nothing.`]
+      : []),
+    "",
+    "If the ruleset is what was meant, update `REQUIRED_CHECKS` to match (a `tools/ci/` human merge). If the list is what was meant, the ruleset is a founder settings change.",
+  ].join("\n");
+}
+
 /* security-1 (round-3 audit, 2026-09-25). WHO may have a PR merged unread.
  *
  * The repo is PUBLIC and protect-main requires zero approvals, so the path
@@ -852,8 +923,8 @@ export function formatDecision(decision, ctx = {}) {
   }
   lines.push(
     decision.armed
-      ? "Auto-merge has been enabled. `protect-main` still requires `backend` and " +
-          "`data-and-site` to pass, so a red PR does not merge."
+      ? `Auto-merge has been enabled. \`protect-main\` still requires ${renderChecks()} ` +
+          "to pass, so a red PR does not merge."
       : "Auto-merge was NOT enabled. **A green check here does not mean this PR " +
           "will merge** — it means the decision above was reached and recorded. " +
           "Nothing will merge this PR until the reason above is resolved.",
@@ -928,6 +999,9 @@ const USAGE = `usage:
   node tools/ci/path-policy.mjs decide  [options]   # arm auto-merge or not
   node tools/ci/path-policy.mjs check   [options]   # governed-path status check
   node tools/ci/path-policy.mjs explain             # print the policy
+  node tools/ci/path-policy.mjs required-checks --rules <path>
+                                                    # live ruleset vs REQUIRED_CHECKS:
+                                                    # 0 same, 1 differs, 2 unreadable
 
 options:
   --files-from <path|->   newline-separated changed files ("-" = stdin)
@@ -953,7 +1027,8 @@ options:
   --approval-label <name> (check) default: ${APPROVAL_LABEL}
   --summary <path>        append the markdown report here ($GITHUB_STEP_SUMMARY)
   --github-output <path>  append key=value outputs here ($GITHUB_OUTPUT)
-  --json <path>           write the decision as JSON here`;
+  --json <path>           write the decision as JSON here
+  --rules <path>          (required-checks) the rules/branches/main API's JSON`;
 
 const FLAGS_WITH_VALUE = new Set([
   "--files-from",
@@ -969,13 +1044,14 @@ const FLAGS_WITH_VALUE = new Set([
   "--json",
   "--author",
   "--armed-by",
+  "--rules",
 ]);
 const BOOL_FLAGS = new Set(["--draft", "--enforce", "--truncated", "--cross-repo"]);
 
 /** Parse argv into { command, opts } or throw. Exported for the test suite. */
 export function parseArgs(argv) {
   const [command, ...rest] = argv;
-  if (!["decide", "check", "explain"].includes(command)) {
+  if (!["decide", "check", "explain", "required-checks"].includes(command)) {
     throw new Error(`unknown command: ${command ?? "(none)"}`);
   }
   const opts = { files: [], labels: [] };
@@ -1045,6 +1121,27 @@ export function runCli(argv, io = {}) {
   if (command === "explain") {
     $.log(formatPolicy());
     return 0;
+  }
+
+  /* merge-audit.yml's weekly look at the live ruleset (CH2-34b). The exit code
+     is the answer; the markdown goes to --summary for the ledger either way. An
+     input it cannot read is 2, never a quiet "nothing is required". */
+  if (command === "required-checks") {
+    if (!opts.rules) {
+      $.err("required-checks needs --rules <rules.json>");
+      return 2;
+    }
+    let drift;
+    try {
+      drift = requiredChecksDrift(JSON.parse($.readFile(opts.rules)));
+    } catch (err) {
+      $.err(`--rules: ${err.message}`);
+      return 2;
+    }
+    const md = formatRequiredChecksDrift(drift);
+    $.log(md);
+    if (opts.summary) $.append(opts.summary, md + "\n");
+    return drift.ok ? 0 : 1;
   }
 
   let files = [...opts.files];

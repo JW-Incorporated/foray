@@ -816,7 +816,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "3c14b3eaaf40bf256f5ed0760be99db8f557ae9b5b50e848294deb75d6ad5a2c"
+        "player/parity/fixtures/manager-episode/scenarios.json": "a2d80442677a58d7f1529363c51bc2392032ea7041686c4a236bc066650d0827"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -838,6 +838,7 @@
         "manager-episode/interruption-step-back-stops-at-the-in-point",
         "manager-episode/a-lost-route-pauses",
         "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
+        "manager-episode/a-route-flap-during-a-call-still-resumes",
         "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
         "manager-episode/a-foreground-reconcile-is-not-resumable",
         "manager-episode/an-observed-pause-stays-resumable",

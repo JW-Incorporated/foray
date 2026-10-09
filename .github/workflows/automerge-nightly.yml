@@ -21,8 +21,8 @@
 # ALLOWED_PREFIXES, this job does nothing and the PR waits for a human — the
 # fail-safe direction.
 #
-# This only ENABLES auto-merge. `protect-main` still requires `backend` and
-# `data-and-site` to pass, so a red PR never merges.
+# This only ENABLES auto-merge. `protect-main` still requires its checks
+# (`REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`) to pass, so a red PR never merges.
 #
 # Two escape hatches, both needed before a large fan-out:
 #   - Label a PR `hold` or `founder-decision` to stop that one.
