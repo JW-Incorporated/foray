@@ -1873,6 +1873,11 @@ const FLOORS = {
   "tools/mobile/ios-workflow.test.mjs": 52, // CH2-16 (2026-10-07, docs/roadmap/code-health-2.md T2-01): +2 -- both iOS build paths run the inject sequence through .github/actions/ios-prepare and neither carries an inline copy; ios-prepare carries the PR path's second opinions (splash test -d + json.tool), reads no secret or input, and checks its ART/SPM_DIR contract first; the file stood at 50 against 46, so the floor is set exact: 46 -> 52 // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 50, // NE-36 (2026-09-25): the native phase, its audio base, its page and its Foray; 39 -> 50
+  /* CH2-32 (T1-19, docs/roadmap/code-health-2.md): the curated artwork backfill
+     looks up through harvest-merge's politeFetchJson - a 5xx is retried, a 404
+     fails at once, no private fetcher - and artworkFromLookup is the harvest
+     mapping (a podcast's https artworkUrl600, else null). New, zero slack. */
+  "tools/refresh/backfill-artwork.test.mjs": 4,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
      failure impossible — a backfill that reports success while emitting nothing, or
@@ -1910,11 +1915,6 @@ const FLOORS = {
      its end. The twelve added cover the walk itself — the hop cap, the per-hop
      politeness gate, partial chains, and the single authorship of the `reason`
      sentence that `--reclassify` would otherwise respell offline. */
-  /* CH2-32 (T1-19, docs/roadmap/code-health-2.md): the curated artwork backfill
-     looks up through harvest-merge's politeFetchJson - a 5xx is retried, a 404
-     fails at once, no private fetcher - and artworkFromLookup is the harvest
-     mapping (a podcast's https artworkUrl600, else null). New, zero slack. */
-  "tools/refresh/backfill-artwork.test.mjs": 4,
   "tools/refresh/dai.test.mjs": 20,
   /* Review of visual pass 1 (2026-09-23): the one entity decoder the feed scan,
      the show backfill and the classification merge all read. Zero slack. */
