@@ -18,12 +18,12 @@
      tools/segments/sweep-transcripts.mjs     readResponseCapped
      tools/segments/backfill-audio-bytes.mjs  readResponseCapped
      tools/segments/fetch-transcripts.mjs     readBodyCapped
+     tools/poll/fetch-feed.mjs                readBodyCapped
    readResponseCapped/readBodyCapped callers keep their own AbortController,
    retry ladder and politeness headers. Covered without an import:
    segments/measure-suspects.mjs reuses sweep-transcripts' fetchFeed, and
    tools/refresh-feeds.mjs is a wrapper that spawns scan.mjs. Not routed
-   here yet, each with its own reader: tools/poll/fetch-feed.mjs (a copy
-   that CH2-28 points at this module) and tools/corpus/fetcher.mjs. */
+   here, with its own reader: tools/corpus/fetcher.mjs. */
 
 export const MAX_FEED_BYTES = 20 * 1024 * 1024; // 20 MB — generous for RSS/Atom.
 export const MAX_ITEMS_PER_FEED = 2000; // defense in depth, after parsing.

@@ -1,14 +1,19 @@
 /* Conditional GET for one feed, for the S-10 watchlist poller's live path
    (PKG-10, docs/roadmap/shows-search.md).
 
-   Port of backend/src/feeds/conditionalGet.ts; fetch-feed.test.mjs pins the constants.
+   Port of backend/src/feeds/conditionalGet.ts. The body is read by
+   tools/refresh/fetch-limits.mjs's readBodyCapped (the one tools/ feed body
+   reader, code-health-2 CH2-28) -- no private copy here.
+   backend/test/fetchFeedParity.test.ts runs this module and the TS against the
+   same loopback server and asserts identical results; fetch-feed.test.mjs
+   additionally pins the constants as text.
 
    WHY A PORT AND NOT A tsx SHIM. The poller runs from
    .github/workflows/episode-poll.yml, which checks out the repo, sets up Node
    and runs `node tools/poll/*.mjs` with NO `npm install` -- there is no tsx (or
    any other TypeScript loader) on that runner, so the .ts module cannot be
    imported from here. This file therefore re-implements fetchFeedConditional in
-   plain ESM with node: builtins only, and fetch-feed.test.mjs reads the two TS
+   plain ESM with no npm dependencies, and fetch-feed.test.mjs reads the two TS
    files as TEXT so a constant changed on one side alone is a red suite:
    MAX_FEED_BYTES (20 MB), the 15_000 ms default timeout and the User-Agent
    string (backend/src/feeds/userAgent.ts).
@@ -24,61 +29,24 @@
      "HTTP <status>".
    - A declared Content-Length above maxBytes -> rejected before reading a
      byte (the request is aborted), body null, error names the limit.
+   - Any other non-2xx also cancels its body stream so the socket is freed.
    - The body is read off the stream with a byte ceiling; crossing maxBytes
      mid-stream aborts the request and the call returns status 0 (it is a
-     thrown error inside the try, exactly as in the TS).
+     thrown error inside the try, exactly as in the TS). The decode drops a
+     leading UTF-8 BOM (fetch-limits' TextDecoder); the TS still keeps it, a
+     divergence fetchFeedParity.test.ts names.
    - A thrown fetch (DNS, refused, timeout abort) -> status 0, body null, the
      PRIOR validators, error "fetch error: <message>".
    Result shape: { status, notModified, body, etag, lastModified, error? }. */
 
-import { Buffer } from "node:buffer";
 import { UA } from "../segments/politeness.mjs";
+import { MAX_FEED_BYTES, readBodyCapped } from "../refresh/fetch-limits.mjs";
 
-export const MAX_FEED_BYTES = 20 * 1024 * 1024; // 20 MB
+// The one tools/ byte ceiling (fetch-limits.mjs), re-exported for the pin.
+export { MAX_FEED_BYTES };
 export const DEFAULT_TIMEOUT_MS = 15_000;
 // The one tools/ User-Agent (#316): imported, never spelled out here.
 export const DEFAULT_FEED_USER_AGENT = UA;
-
-async function readBodyCapped(res, maxBytes, controller) {
-  const body = res.body;
-  if (!body || typeof body.getReader !== "function") {
-    // No streaming body (a test double): cap after the fact, as the TS does.
-    const text = await res.text();
-    if (Buffer.byteLength(text, "utf8") > maxBytes) {
-      throw new Error(`response exceeded ${maxBytes} bytes (post-hoc check, no stream available)`);
-    }
-    return text;
-  }
-
-  const reader = body.getReader();
-  const chunks = [];
-  let total = 0;
-  try {
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (!value) continue;
-      total += value.byteLength;
-      if (total > maxBytes) {
-        controller.abort();
-        try {
-          await reader.cancel();
-        } catch {
-          // best-effort; the abort above is what actually stops the network
-        }
-        throw new Error(`response exceeded ${maxBytes} bytes (aborted mid-stream)`);
-      }
-      chunks.push(value);
-    }
-  } finally {
-    try {
-      reader.releaseLock();
-    } catch {
-      // reader may already be released via cancel() above
-    }
-  }
-  return Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf8");
-}
 
 export async function fetchFeedConditional(url, prior = {}, opts = {}) {
   const fetchImpl = opts.fetchImpl ?? fetch;
@@ -111,7 +79,7 @@ export async function fetchFeedConditional(url, prior = {}, opts = {}) {
       try {
         await res.body?.cancel?.();
       } catch {
-        // best-effort: free the socket; the TS leaves it to GC
+        // best-effort: free the socket rather than leave the error body to GC
       }
       return { status: res.status, notModified: false, body: null, etag, lastModified, error: `HTTP ${res.status}` };
     }
@@ -139,7 +107,7 @@ export async function fetchFeedConditional(url, prior = {}, opts = {}) {
     }
 
     // Guard 2: a missing/lying Content-Length or an endless body is capped on the stream.
-    const body = await readBodyCapped(res, maxBytes, controller);
+    const body = await readBodyCapped(res, controller, maxBytes);
     return { status: res.status, notModified: false, body, etag, lastModified };
   } catch (err) {
     return {
