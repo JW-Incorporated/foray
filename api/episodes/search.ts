@@ -5,8 +5,8 @@ import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
 import { appleSearchBucket } from "../_lib/appleBucket";
 import { loadShowIdMap } from "../_lib/showIdMap";
 import { resolveShow, isPiShowId, UNKNOWN_SHOW_ID } from "../_lib/resolveShow";
-import { episodeSearchCache, episodeFeedFailureCache, normalizeQueryKey, showScopedQueryKey } from "../_lib/searchCache";
-import { sharedFeedReader, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
+import { TtlCache, episodeSearchCache, normalizeQueryKey, showScopedQueryKey } from "../_lib/searchCache";
+import { sharedFeedReader, FEED_FRESH_MS, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache";
 import { episodeIdentity } from "../../backend/src/feeds/episodeIdentity";
 import {
   appleCallerBuckets, clientKey, normalizeSearchText, CLIENT_LIMITED_ERROR,
@@ -45,9 +45,9 @@ import {
  *      2053 KB in 954 ms — a bigger feed on a CDN beat a smaller one on
  *      WordPress 4x). Nothing in this file moves that number, so do not
  *      promise this path will ever feel like the search page's. What P-05
- *      piece 3 could remove is the part we were paying twice:
- *      `episodeFeedFailureCache` stops a feed that just failed from being
- *      refetched on the next keystroke.
+ *      piece 3 could remove is the part we were paying twice: a feed that just
+ *      failed is not refetched on the next keystroke (the failure memory now
+ *      lives in feedCache.ts, shared with the list; code-health-2 CH2-38).
  *
  *      THE SHOW is resolved by api/_lib/resolveShow.ts, the one resolver the
  *      per-show list uses too (code-health-2 CH2-35, A1-03): the catalogue,
@@ -85,6 +85,23 @@ const MAX_RESULTS = 25;
 export { FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR };
 export const feedFetchBuckets = sharedFeedReader.buckets;
 export { sharedFeedReader };
+
+/* SHOW-SCOPED ANSWERS ARE KEPT NO LONGER THAN THEIR FEED IS FRESH
+   (code-health-2 CH2-38, A1-05). They shared the Apple path's 1 h cache over a
+   feed kept fresh for FEED_FRESH_MS, so a new episode stayed unfindable by a
+   query for the hour, and an answer read from a STALE copy (the refresh was
+   refused or failed) was replayed for that hour as a clean success while the
+   list for the same read said stale. Now the answer lives FEED_FRESH_MS, which
+   still saves the feed reader's revalidation for a repeated query, and a stale
+   answer is never kept: it says `stale: true` and goes out no-store, as the
+   list's does. */
+interface KeptAnswer {
+  episodes: EpisodeSearchResult[];
+  source: string[];
+  total: number;
+  capped: boolean;
+}
+export const showScopedResultCache = new TtlCache<KeptAnswer>(FEED_FRESH_MS);
 
 /* THE APPLE ASK IS NOT THE CALLER'S `limit` (defect 2, 2026-09-13).
  *
@@ -254,19 +271,19 @@ async function searchApple(
   }
 }
 
-/* `feedFailed` separates "the expensive thing went wrong" from every other
-   error this function can return (P-05 piece 3). Only a failed FEED FETCH is
-   worth remembering: it is the one that cost a real round trip and the one
-   that will cost it again on the next keystroke. An unknown `show_id` never
-   touched the network, and a missing catalogue file is a deploy gap that a
-   90-second window neither helps nor describes — both stay uncached so they
-   keep answering honestly on every request. */
+/* A feed that just failed is answered from the feed reader's 90 s failure
+   memory (feedCache.ts, P-05 piece 3), shared with the per-show list. Only a
+   failed FEED FETCH is remembered there: an unknown `show_id` never touched
+   the network, and a missing catalogue file is a deploy gap that a 90-second
+   window neither helps nor describes, so both keep answering honestly on
+   every request. `stale` says the answer was read from a kept copy whose
+   refresh was refused or failed. */
 async function searchWithinShow(
   showId: string,
   key: string | null,
   query: string,
   fetchImpl: typeof fetch
-): Promise<{ results: EpisodeSearchResult[]; error: string | null; feedFailed: boolean }> {
+): Promise<{ results: EpisodeSearchResult[]; error: string | null; stale: boolean }> {
   /* The show, from the one resolver the per-show list uses
      (api/_lib/resolveShow.ts, CH2-35): the catalogue (a local lookup; an
      `in_curated` breadth id is answered as its curated twin, so the rows
@@ -280,19 +297,19 @@ async function searchWithinShow(
   const lookup = await resolveShow(showId, key);
   if (!lookup.meta) {
     const error = lookup.error === UNKNOWN_SHOW_ID ? `${UNKNOWN_SHOW_ID}: ${showId}` : lookup.error;
-    return { results: [], error, feedFailed: false };
+    return { results: [], error, stale: false };
   }
   const meta = lookup.meta;
 
   const feed = await sharedFeedReader.read(meta.showId, meta.feedUrl, { fetchImpl, userAgent: EPISODE_USER_AGENT });
-  if (!feed.parsed) return { results: [], error: feed.error ?? "feed unavailable", feedFailed: feed.feedFailed };
+  if (!feed.parsed) return { results: [], error: feed.error ?? "feed unavailable", stale: false };
 
   const parsed = feed.parsed;
   const q = query.trim().toLowerCase();
   const results = parsed.episodes
     .map((ep) => (ep.title.toLowerCase().includes(q) ? mapLiveEpisode(meta.showId, meta.title, ep) : null))
     .filter((ep): ep is EpisodeSearchResult => ep !== null);
-  return { results, error: null, feedFailed: false };
+  return { results, error: null, stale: feed.source === "stale" };
 }
 
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
@@ -325,34 +342,25 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : MAX_RESULTS;
 
   /* The show-scoped matcher compares raw lowercased text, so its key must too
-     (showScopedQueryKey); the Apple path keys on the folded text. */
+     (showScopedQueryKey); the Apple path keys on the folded text. Each path
+     keeps its answers in its own cache (see showScopedResultCache). */
+  const resultCache = scopeKey ? showScopedResultCache : (episodeSearchCache as TtlCache<KeptAnswer>);
   const cacheKey = scopeKey ? showScopedQueryKey(q, scopeKey, limit) : normalizeQueryKey(q, showScope, limit);
-  const cached = episodeSearchCache.get(cacheKey) as { episodes: EpisodeSearchResult[]; source: string[]; total?: number; capped?: boolean } | undefined;
+  const cached = resultCache.get(cacheKey);
   if (cached) {
     res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
-    res.status(200).json({ query: q, show: showScope, episodes: cached.episodes, source: cached.source, total: cached.total ?? cached.episodes.length, capped: cached.capped ?? false, degraded: false, error: null });
+    res.status(200).json({ query: q, show: showScope, episodes: cached.episodes, source: cached.source, total: cached.total, capped: cached.capped, degraded: false, stale: false, error: null });
     return;
   }
 
   if (showScope && scopeKey) {
-    /* P-05 piece 3: a feed that just failed is not refetched for the next
-       query. Keyed on the SHOW, because it is the feed that failed and the
-       feed is what a fresh `q` would refetch — `episodeSearchCache`'s key
-       includes the query, which is exactly why retyping in the show page's
-       search box re-paid a doomed round trip every time. Answered as
-       `degraded: true` with the original error, never as an empty success:
-       the client branches on `degraded` and falls back to its own
-       `filterLoadedEpisodes`, so this is a faster honest answer, not a worse
-       one. See searchCache.ts's FEED_FAILURE_TTL_MS for the window and why it
-       is short. */
-    const rememberedFailure = episodeFeedFailureCache.get(scopeKey);
-    if (rememberedFailure) {
-      res.setHeader("Cache-Control", "no-store"); // never let the edge outlive our own short window
-      res.status(200).json({ query: q, show: showScope, episodes: [], source: ["live"], total: 0, capped: false, degraded: true, error: rememberedFailure });
-      return;
-    }
-
-    const { results, error, feedFailed } = await searchWithinShow(showScope, shardKey, q, fetch);
+    /* A feed that just failed comes back from the feed reader's failure memory
+       (feedCache.ts, P-05 piece 3), answered as `degraded: true` with the
+       original error and no-store, never as an empty success: the client
+       branches on `degraded` and falls back to its own `filterLoadedEpisodes`.
+       An answer read from a stale copy is served, says it is stale, and is
+       not kept (A1-05). */
+    const { results, error, stale } = await searchWithinShow(showScope, shardKey, q, fetch);
     const payload = {
       query: q,
       show: showScope,
@@ -361,11 +369,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       total: results.length,
       capped: false, // a feed is read whole; the count is the count
       degraded: !!error && results.length === 0,
+      stale,
       error: error && results.length === 0 ? error : null
     };
-    if (!error) episodeSearchCache.set(cacheKey, { episodes: payload.episodes, source: payload.source, total: payload.total, capped: payload.capped });
-    else if (feedFailed) episodeFeedFailureCache.set(scopeKey, error);
-    res.setHeader("Cache-Control", error ? "no-store" : "public, max-age=300, stale-while-revalidate=3600");
+    if (!error && !stale) showScopedResultCache.set(cacheKey, { episodes: payload.episodes, source: payload.source, total: payload.total, capped: payload.capped });
+    res.setHeader("Cache-Control", error || stale ? "no-store" : "public, max-age=300, stale-while-revalidate=3600");
     res.status(200).json(payload);
     return;
   }
@@ -380,7 +388,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       : null;
   if (refusal) {
     res.setHeader("Cache-Control", "no-store");
-    res.status(200).json({ query: q, show: null, episodes: [], source: [], total: 0, capped: false, degraded: true, error: refusal });
+    res.status(200).json({ query: q, show: null, episodes: [], source: [], total: 0, capped: false, degraded: true, stale: false, error: refusal });
     return;
   }
   if (!appleSearchBucket.tryConsume()) {
@@ -396,6 +404,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       total: 0,
       capped: false,
       degraded: true,
+      stale: false,
       error: "rate limit exceeded — try again shortly"
     });
     return;
@@ -421,6 +430,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     total: mapped.length,
     capped: hits.length >= appleEpisodeAsk(limit),
     degraded: !!error,
+    stale: false,
     error: error ?? null
   };
   if (!error) episodeSearchCache.set(cacheKey, { episodes: payload.episodes, source: payload.source, total: payload.total, capped: payload.capped });

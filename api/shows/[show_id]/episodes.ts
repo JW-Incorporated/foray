@@ -33,7 +33,8 @@ import { resolveShow } from "../../_lib/resolveShow";
  * episodeCursor.ts). The parsed feed is kept per show in the warm instance
  * for a few minutes and then revalidated with the etag/last-modified it holds
  * (api/_lib/feedCache.ts, shared with the show-scoped search; round-3 audit,
- * search-api-css-3), so the pages of one show cost one fetch, not one each.
+ * search-api-css-3), so the pages of one show cost one fetch, not one each,
+ * and a feed that just failed is not fetched again for 90 s (CH2-38).
  * The CDN edge cache (`s-maxage=3600`) still saves repeat URLs.
  *
  * DB mode (when DATABASE_URL IS set — currently dormant in production) is
@@ -213,7 +214,10 @@ async function serveLive(
     // Never a 500, never blank (repo convention — see ingestShowFeed.ts's
     // own degrade rule): 200 with an empty list and the error surfaced.
     // Cache-Control: no-store so a transient feed hiccup is never pinned
-    // at the edge for the next hour of visitors to that show.
+    // at the edge for the next hour of visitors to that show. A feed whose
+    // fetch just failed is answered from the reader's 90 s failure memory
+    // rather than fetched again for every visitor, the same memory the
+    // show-scoped search answers from (feedCache.ts, code-health-2 CH2-38).
     res.setHeader("Cache-Control", "no-store");
     res.status(200).json(listBody({
       show_id: showId,

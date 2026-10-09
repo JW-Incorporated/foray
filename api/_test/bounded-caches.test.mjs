@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 import { TtlCache } from "../_lib/searchCache.ts";
 import { KeyedBuckets } from "../_lib/keyedBuckets.ts";
 import * as searchModule from "../episodes/search.ts";
-import { episodeFeedFailureCache, episodeSearchCache } from "../_lib/searchCache.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -63,8 +63,8 @@ test("ONE Clock: `interface Clock` and `realClock` are declared once under api/_
   const declaring = (re) => fs.readdirSync(libDir)
     .filter((f) => f.endsWith(".ts"))
     .filter((f) => re.test(fs.readFileSync(path.join(libDir, f), "utf8")));
-  assert.deepEqual(declaring(/interface Clock/), ["clock.ts"]);
-  assert.deepEqual(declaring(/const realClock/), ["clock.ts"]);
+  assert.deepEqual(declaring(/\binterface Clock\b/), ["clock.ts"]);
+  assert.deepEqual(declaring(/\bconst realClock\b/), ["clock.ts"]);
 });
 
 test("KeyedBuckets limits each key on its own and caps how many keys it remembers", () => {
@@ -101,7 +101,7 @@ test("the show-scoped path stops fetching a show's feed past its per-minute budg
      buckets.tryConsume check in feedCache.ts read() — every request
      downloads the feed again. */
   searchModule.sharedFeedReader.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   episodeSearchCache.clear();
   let feedFetches = 0;
   const originalFetch = globalThis.fetch;

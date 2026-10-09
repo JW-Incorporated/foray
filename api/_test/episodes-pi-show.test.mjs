@@ -13,7 +13,7 @@ import * as os from "node:os";
 import * as zlib from "node:zlib";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
 import * as searchModule from "../episodes/search.ts";
-import { episodeSearchCache, episodeFeedFailureCache } from "../_lib/searchCache.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
 import { _setPointerPathForTests, isShardKey } from "../_lib/showsIndexRelease.ts";
 import { PI_SHOW_CACHE_MAX, _resetPiShowCacheForTests, _piShowCacheSizeForTests } from "../_lib/resolveShow.ts";
@@ -72,7 +72,7 @@ async function withRelease(opts, run) {
   _resetPiShowCacheForTests();
   sharedFeedReader.clear();
   episodeSearchCache.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   const calls = [];
   const original = globalThis.fetch;
   const hadDb = "DATABASE_URL" in process.env;

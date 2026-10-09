@@ -8,7 +8,7 @@ import * as feedCacheModule from "../_lib/feedCache.ts";
 import { createFeedReader, FEED_FRESH_MS, FEED_FETCHES_PER_SHOW_PER_MINUTE, FEED_FETCH_LIMITED_ERROR } from "../_lib/feedCache.ts";
 import * as searchModule from "../episodes/search.ts";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
-import { episodeSearchCache, episodeFeedFailureCache } from "../_lib/searchCache.ts";
+import { episodeSearchCache } from "../_lib/searchCache.ts";
 
 const FEED = `<?xml version="1.0"?><rss version="2.0"><channel><title>Lex</title>
 <item><title>Alpha talk</title><guid>a</guid><description><![CDATA[<p>Long <b>html</b> notes</p>]]></description><enclosure url="https://cdn.example.com/a.mp3" type="audio/mpeg" length="1"/></item>
@@ -108,7 +108,7 @@ test("the per-show list and show-scoped searches with different queries share ON
   globalThis.fetch = f.impl;
   searchModule.sharedFeedReader.clear();
   episodeSearchCache.clear();
-  episodeFeedFailureCache.clear();
+  searchModule.showScopedResultCache.clear();
   try {
     const list = pick(episodesModule);
     const search = pick(searchModule);
@@ -166,16 +166,19 @@ test("the reader remembers a failed feed for 90 s per show, before the per-show 
   assert.equal(first.source, "none");
   assert.match(first.error, /feed host down/);
 
-  clock.advance(89_999);
+  clock.advance(30_000); // inside the budget's minute: a refusal would answer if the memory came second
   const second = await reader.read("show-x", "https://feeds.example.com/x.xml", { fetchImpl: down.impl });
-  assert.equal(down.calls.length, 1, "the dead feed was not asked again inside the window");
   assert.deepEqual(second, first, "answered from memory with the original error, not the budget refusal");
+  clock.advance(59_999); // 89_999 ms after the failure
+  const third = await reader.read("show-x", "https://feeds.example.com/x.xml", { fetchImpl: down.impl });
+  assert.deepEqual(third, first);
+  assert.equal(down.calls.length, 1, "the dead feed was not asked again inside the window");
 
-  clock.advance(60_001); // past the 90 s window, and the budget's minute has reopened
+  clock.advance(1); // 90 s after the failure; the budget's minute has long reopened
   const healthy = countingFetch();
-  const third = await reader.read("show-x", "https://feeds.example.com/x.xml", { fetchImpl: healthy.impl });
-  assert.equal(healthy.calls.length, 1, "past 90 s the feed is asked again");
-  assert.equal(third.source, "fetched");
+  const fourth = await reader.read("show-x", "https://feeds.example.com/x.xml", { fetchImpl: healthy.impl });
+  assert.equal(healthy.calls.length, 1, "at 90 s the feed is asked again");
+  assert.equal(fourth.source, "fetched");
 });
 
 test("a remembered failure is the show's and the feed's: another show, or another feed url, is asked", async () => {
@@ -262,7 +265,7 @@ test("PIN: a feed fetch through the reader is abandoned at 15 s, and that failur
 function clearSharedState() {
   searchModule.sharedFeedReader.clear();
   episodeSearchCache.clear();
-  searchModule.showScopedResultCache?.clear();
+  searchModule.showScopedResultCache.clear();
 }
 
 async function withEnv(fetchImpl, body) {

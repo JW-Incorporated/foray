@@ -33,7 +33,6 @@ import * as showEpisodesModule from "../shows/[show_id]/episodes.ts";
 import * as indexModule from "../shows/index/[...path].ts";
 import { encodeCursor } from "../_lib/episodeCursor.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
-import { episodeFeedFailureCache } from "../_lib/searchCache.ts";
 import { appleCallerBuckets } from "../_lib/clientLimit.ts";
 
 const unwrap = (m) => (typeof m.default === "function" ? m.default : m.default.default);
@@ -106,7 +105,7 @@ test("firstParam: a string is itself, an array is its first value, absent is nul
 });
 
 test("GET /api/episodes/search?q=a&q=b answers the first q", async () => {
-  episodeFeedFailureCache.clear();
+  episodeSearchModule.showScopedResultCache.clear();
   episodeSearchModule.sharedFeedReader.clear();
   appleCallerBuckets.clear();
   const first = `ch17-first-${Date.now()}`;
