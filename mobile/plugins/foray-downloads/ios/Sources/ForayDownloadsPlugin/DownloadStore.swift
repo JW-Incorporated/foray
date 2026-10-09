@@ -199,7 +199,7 @@ final class DownloadStore: NSObject {
             owed.append((name: DownloadPolicy.eventFailed,
                          payload: DownloadPolicy.failedPayload(id: id, reason: DownloadPolicy.reasonInterrupted, status: nil)))
         }
-        return owed
+        return [] // MUTATION (CH3-05): the silent flip before this card
     }
 
     /// The AppDelegate hook's target (wired by PQ-21). Holds iOS's completion
