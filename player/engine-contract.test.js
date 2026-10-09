@@ -171,6 +171,16 @@ test("the validator refuses what JSON cannot carry and a kind that does not exis
   assert.throws(() => validateContract("handshake", {}), RangeError);
 });
 
+test("CH3-09 (R4-06): the snapshot's voiceFallback is typed a string, and an event is named for it", () => {
+  // CHARACTERIZATION (today's behaviour, flipped by the fix): every reader of
+  // the field wants a boolean (native-facades.js lastVoiceFallback,
+  // client.js auditionThroughEngine), yet the schema refuses one.
+  const snap = contractSchemaDocument().$defs.snapshot["x-examples"].valid["foray-narration"];
+  assert.deepStrictEqual(validateContract("snapshot", { ...snap, voiceFallback: true }).errors, ["/voiceFallback: must be string or null"]);
+  assert.equal(contractAccepts("snapshot", { ...snap, voiceFallback: "en-US" }), true);
+  assert.ok(EVENTS.includes("voiceFallback"));
+});
+
 test("decideMode: native only on iOS with the method, a well-formed native hello and protocol 1", () => {
   // MUTATION: read protocol before mode -> the NE-01 stub (no protocol) reads
   // as a mismatch and asks for a relinquish nobody needs -> red.

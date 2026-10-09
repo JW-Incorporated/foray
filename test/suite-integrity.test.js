@@ -348,7 +348,7 @@ const FLOORS = {
      sessionResult activates, and composed with the audible-start invariant
      no audible command follows a failed activation; the strike rules; and the
      six families owed to NE-11s. Zero slack. 3 -> 15 */
-  "player/engine-contract.test.js": 17, // NE-47: +1 -- an audition url is a rendered file on the narration host; 15 -> 17 (16 stood at 15)
+  "player/engine-contract.test.js": 18, // CH3-09: +1 -- the snapshot's voiceFallback is one boolean and no event is named for it; 17 -> 18 // NE-47: +1 -- an audition url is a rendered file on the narration host; 15 -> 17 (16 stood at 15)
   /* NE-04: the engine's closed vocabularies. The diag-tokens family records
      the sets for Swift; this suite holds what is about the sets themselves —
      the plan's named tokens, every page transport source admissible, the NE-01
@@ -368,7 +368,7 @@ const FLOORS = {
      contract family, the 1 Hz / hidden event rule, the warm handover. Zero slack. */
   "player/native-engine.test.js": 21, // CH-40 (P2-05): characterization, the default scheduler is a real timer that a timely hello clears (the floor also takes in the tests already there); 18 -> 21
   "player/native-facades.test.js": 20, // CH-37 (P1-10): the backend facade's `audible` mirrors HtmlAudioBackend's -- a running deck that has not run out; 19 -> 20 // CH-37 characterization (P1-10, docs/roadmap/code-health.md): a paused engine is not audible and a playing one is (native lane); 18 -> 19 // PQ-19 (#29): a downloaded pick plays its local file while the engine's pointer row is built from the original item; the suite already stood at 17 against 16, so the floor is set exact: 16 -> 18
-  "player/parity/reference-engine.test.js": 14,
+  "player/parity/reference-engine.test.js": 16, // CH3-09: +1 -- the snapshot carries the manager's own voiceFallback boolean; 14 -> 16 (15 stood at 14)
   /* NE-22: the real client.js booted in a pretend iOS shell over the
      reference engine — no <audio> or jingle element (even while hello is
      slow), no navigator.mediaSession write, no owned key written by the page,

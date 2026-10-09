@@ -280,6 +280,28 @@ test("audition is refused with engine-busy while running, and speaks through an 
   eng.dispose();
 });
 
+/* ---------- voiceFallback (CH3-09) ---------- */
+
+const NARRATED_FORAY = {
+  forayId: "f1", title: "A Foray", buildReport: {}, isLocalFile: false, allowAdPad: false, voiceId: null,
+  items: [{ type: "narration", id: "n0", script: "Hello there" }, seg("s0", "https://cdn.test/a.mp3", 100, 200)],
+};
+
+test("CH3-09 (R4-06): the snapshot carries no voiceFallback at all, even after the synthesiser fell back", async () => {
+  // CHARACTERIZATION (today's behaviour, flipped by the fix): _body() never
+  // writes the field, so a page reading `snapshot.voiceFallback` reads
+  // undefined whatever the synthesiser said.
+  const { eng: quiet } = engine();
+  assert.equal("voiceFallback" in quiet.snapshot(), false);
+  const { eng } = engine({ capabilities: ["episode", "continuation", "restore", "foray"], tts: { voiceFallback: true } });
+  const r = await send(eng, "playForay", NARRATED_FORAY);
+  assert.equal(r.ok, true);
+  assert.equal(r.snapshot.isNarrationPlayhead, true, "the spoken line is the playhead");
+  assert.equal(eng.manager.lastVoiceFallback, true, "the manager heard the synthesiser's fallback");
+  assert.equal("voiceFallback" in r.snapshot, false);
+  for (const e of [quiet, eng]) e.dispose();
+});
+
 /* ---------- relinquish ---------- */
 
 test("relinquish is terminal: the session is KEPT, the page is told, and every later command answers relinquished", async () => {
