@@ -137,6 +137,22 @@ test("the redesigned sheet starts with the artwork hero, then the title block", 
   assert.match(CODE, /ui\.sArt\.src = artworkUrl;/, "and fill it only from the safe artwork URL");
 });
 
+test("both Now Playing artwork elements take their src only from the safeUrl-gated artworkUrl", () => {
+  /* The artwork URL is third-party RSS. `ui.art.src` (mini bar) and `ui.sArt.src`
+     (the sheet hero) must be assigned from `artworkUrl`, which is derived through
+     app.js's `safeUrl`, and from nothing else. Structural pin: this file has no
+     real-client DOM that would execute setNowPlaying.
+     MUTATION 1: `safeUrl(item.artwork_url)` -> `item.artwork_url` in the
+     artworkUrl line -> the first assertion goes red.
+     MUTATION 2: `ui.sArt.src = artworkUrl;` -> `ui.sArt.src = item.artwork_url;`
+     -> the loop goes red. */
+  assert.match(CODE, /const artworkUrl = item\.artwork_url && typeof safeUrl === "" \? safeUrl\(item\.artwork_url\) : "";/); /* CODE blanks string literals */
+  const assigned = [...CODE.matchAll(/ui\.(art|sArt)\.src\s*=\s*([^;]+);/g)];
+  assert.deepEqual(assigned.map((m) => m[1]).sort(), ["art", "sArt"], "both elements are assigned, and only those");
+  for (const m of assigned) assert.equal(m[2].trim(), "artworkUrl", `ui.${m[1]}.src must come from artworkUrl, not ${m[2].trim()}`);
+  assert.doesNotMatch(CODE, /ui\.(?:art|sArt)\.setAttribute\(\s*["']src["']/, "no second path around the gate");
+});
+
 test("the sheet's notes are the episode page's notes, built as nodes from the one tokeniser — never from an HTML string", () => {
   /* The long body that makes the sheet worth scrolling. It is third-party RSS,
      so nothing here may be `innerHTML` — the rule the whole client file is

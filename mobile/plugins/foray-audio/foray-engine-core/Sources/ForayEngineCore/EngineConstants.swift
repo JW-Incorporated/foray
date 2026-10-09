@@ -254,6 +254,8 @@ public enum EngineConstants {
         public static let appName: String = "4a"
         /// `MEDIA_ACTIONS`
         public static let mediaActions: [String] = ["play", "pause", "stop", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto"]
+        /// `MEDIA_ARTWORK_LADDER`
+        public static let mediaArtworkLadder: [Double] = [96, 128, 192, 256, 384, 512]
         /// `NONE`
         public static let none: String = "none"
         /// `PAUSED`

@@ -112,7 +112,15 @@ export const REAL_DATA_SUITES: readonly string[] = [
      passage from the REAL `data/forays.json` (the page reads live narration
      at render time), so a publish that changes a narration shape the picker
      mishandles is refused here rather than found on the founder's PC. */
-  "tools/narration/render-audition.test.mjs"
+  "tools/narration/render-audition.test.mjs",
+  /* Added 2026-10-08 (redesign-2026 Tactile). Three Tactile screen suites read the
+     REAL `data/forays.json` (via their own read helper) to render the screen
+     against live Foray content, so a publish that changes a shape their screen
+     mishandles must be refused here: tactile-foray (Foray detail),
+     tactile-now-playing-paused (Now Playing) and tactile-onboarding. */
+  "test/tactile-foray.test.js",
+  "test/tactile-now-playing-paused.test.js",
+  "test/tactile-onboarding.test.js"
 ];
 
 /**

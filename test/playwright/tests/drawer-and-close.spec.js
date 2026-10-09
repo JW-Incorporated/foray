@@ -152,7 +152,36 @@ test("the drawer opens on top of an expanded Now Playing sheet, and its first it
   await expect(page.locator(".fp-sheet")).toBeVisible();
   await expect(page.locator("body.fp-expanded")).toHaveCount(1);
 
-  await page.locator("#menu-btn").click();
+  /* TACTILE (redesign-2026): the Now Playing sheet is a full-bleed modal
+     (`.fp-sheet.np`: fixed, inset 0, z 120) and the topbar's #menu-btn is
+     hidden on Today, so the drawer's opener is Today's knob (`#today-knob`)
+     and it sits UNDER the expanded sheet. That is the design, not a bug: no
+     user path opens the drawer while the sheet is expanded (the only openers
+     are the knob and Settings), the old F17 "the menu button is reachable
+     through the sheet" premise was the previous sheet's geometry, and this
+     test used to wait out its whole 180 s on a hidden #menu-btn. What F17
+     still guards is the stacking of the drawer over the player once the
+     opener is reachable, so: pin the modal fact, collapse, and run the
+     original hit-test on the collapsed (still playing) mini bar.
+     MUTATION: stop `inertOutside` marking the page inert while the sheet is open -> the
+     "opener is inert" assertion goes red. */
+  const knobBehindModal = await page.evaluate(() => {
+    const knob = document.querySelector("#today-knob");
+    if (!knob) return { error: "no #today-knob on the page" };
+    return { inert: Boolean(knob.closest("[inert]")) };
+  });
+  expect(knobBehindModal.error).toBeUndefined();
+  expect(knobBehindModal.inert, "the expanded Now Playing sheet is a modal: the page behind it, drawer opener included, is inert").toBe(true);
+
+  await page.locator(".fp-close").click();
+  await expect(page.locator("body.fp-expanded")).toHaveCount(0);
+  await expect(page.locator("body.fp-open")).toHaveCount(1);
+
+  /* Today's knob opens the settings sheet; its "More settings" key hands over
+     to the drawer (ui/settings.js). That is the only road to the drawer from
+     Today, so it is the one this test walks. */
+  await page.locator("#today-knob").click();
+  await page.locator("#settings-more").click();
   await expect(page.locator("#drawer")).toBeVisible();
 
   const hit = await page.evaluate(() => {
@@ -164,7 +193,14 @@ test("the drawer opens on top of an expanded Now Playing sheet, and its first it
        open, its scrim — not the mini bar — must be what a tap lands on. */
     const bar = document.querySelector("#foray-player .fp-bar").getBoundingClientRect();
     const overBar = document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2);
+    /* elementFromPoint skips `inert` subtrees, and the drawer makes everything
+       outside it inert while it is open, so the two hit-tests below cannot
+       see a drawer stacked UNDER the player. The stacking numbers can. */
+    const z = (el) => Number.parseInt(getComputedStyle(el).zIndex, 10);
     return {
+      drawerZ: z(document.querySelector("#drawer")),
+      overlayZ: z(document.querySelector("#drawer-overlay")),
+      playerZ: z(document.querySelector("#foray-player")),
       text: (first.textContent || "").trim(),
       insideDrawer: Boolean(at && at.closest("#drawer")),
       landedOn: at ? (at.id || at.className || at.tagName) : null,
@@ -176,6 +212,8 @@ test("the drawer opens on top of an expanded Now Playing sheet, and its first it
   });
 
   expect(hit.error).toBeUndefined();
+  expect(hit.drawerZ, "the drawer panel must stack above the player").toBeGreaterThan(hit.playerZ);
+  expect(hit.overlayZ, "the drawer scrim must stack above the player").toBeGreaterThan(hit.playerZ);
   expect(hit.text).toBe("Home");
   expect(
     hit.insideDrawer,

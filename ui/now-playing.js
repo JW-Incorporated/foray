@@ -93,7 +93,7 @@ function dialBuildNowPlaying(parts) {
 
   parts.grabZone.classList.add("np__head");
   parts.closeBtn.className = "fp-close np__collapse iconbtn";
-  parts.closeBtn.setAttribute("aria-label", "Collapse");
+  parts.closeBtn.setAttribute("aria-label", "Collapse player");
   parts.closeBtn.innerHTML = dialNpIcon("ph-caret-down");
 
   var bg = dialNpEl("div", "np__bg");
