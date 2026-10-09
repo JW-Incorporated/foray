@@ -1686,6 +1686,11 @@ public struct EngineCore {
         cutSeamGap("interruption")
         // A call or Siri clears a loss's eligibility (route-resume.js).
         routeResumeStep(.interruption)
+        // ...and explains the deck's uncommanded pause (CH3-02 review): the
+        // call paused it, so a route loss after this (an A2DP -> HFP flap
+        // inside `routeAttributionMs`) lands inside the interruption and is
+        // not attributed that pause; the call's should-resume decides.
+        state.lastUncommandedPauseAtMono = nil
         applySession(transition)
         dispatch(.interruptionBegan)
         releaseSeamGap()
@@ -1736,6 +1741,13 @@ public struct EngineCore {
     /// and it is a car (CarPlay; Bluetooth only behind `routeResumeBluetooth`,
     /// OFF). A listener's pause, a call, Siri or a system pause never resumes.
     /// Every loss and every return writes a `route` row with the decision.
+    ///
+    /// ONLY A LOSS THAT PAUSED SOMETHING IS NON-RESUMABLE (CH3-02, R2-02;
+    /// `queue-manager.js` `routeChanged`): the machine was playing, bridging or
+    /// loading, or the loss is why the deck already paused (attributed below).
+    /// A loss inside an OS interruption — a car's A2DP -> HFP -> A2DP flap
+    /// while a call rings — paused nothing; the call did, and its
+    /// should-resume decides (code-health-3 founder question 2, default).
     private mutating func onRoute(_ change: RouteChange) {
         diag("session", [JSONMember("kind", .string("route")),
                          JSONMember("oldDeviceUnavailable", .bool(change.oldDeviceUnavailable)),
@@ -1751,7 +1763,11 @@ public struct EngineCore {
             }
             state.heardRoute = nil
             state.lastRouteLostAtMono = now.monoMs
-            state.pausedByRoute = true
+            var pausesSomething: Bool
+            switch state.player {
+            case .playing, .transitioning, .loadingItem: pausesSomething = true
+            case .idle, .interrupted, .ended: pausesSomething = false
+            }
             if let paused = state.lastUncommandedPauseAtMono, now.monoMs - paused >= 0,
                now.monoMs - paused <= EngineCore.routeAttributionMs {
                 // The deck's pause came first and was reconciled as the
@@ -1760,7 +1776,11 @@ public struct EngineCore {
                 if let before = state.routeResumeBeforePause, before.atMono == paused {
                     state.routeResume = before.state
                 }
+                pausesSomething = true
             }
+            // Non-resumable when it paused something: a later call's
+            // should-resume must not undo it.
+            if pausesSomething { state.pausedByRoute = true }
             state.routeResumeBeforePause = nil
             routeResumeStep(.lost(port: change.portType, key: key, atSec: wallSec))
             diag("route", [JSONMember("kind", .string("lost")),

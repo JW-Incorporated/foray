@@ -138,7 +138,9 @@ public final class PlayerQueueStateMachine {
             case Transitioning s -> to(new Interrupted(s.to(), true), PlayerEffect.SAVE_POSITION, PlayerEffect.PAUSE_PLAYBACK,
                     telemetry("interruption.began.duringTransition"));
             // Nothing audible yet; recorded so a stray itemLoaded cannot start playback into a call.
-            case LoadingItem s -> to(new Interrupted(s.target(), false), telemetry("interruption.began.duringLoad"));
+            // It counts as playing (CH3-01): a prompt during a load that ends with shouldResume resumes
+            // the load. A route lost during a load (below) stays false.
+            case LoadingItem s -> to(new Interrupted(s.target(), true), telemetry("interruption.began.duringLoad"));
             case Idle s -> to(state);
             case Ended s -> to(state);
             case Interrupted s -> to(state);

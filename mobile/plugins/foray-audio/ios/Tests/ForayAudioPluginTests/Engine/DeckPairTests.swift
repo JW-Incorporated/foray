@@ -24,6 +24,7 @@ final class DeckPairTests: XCTestCase {
         private(set) var sent: [DeckCommand] = []
         private(set) var adopted: [DeckToken] = []
         private(set) var invalidated = false
+        private(set) var rebuilds = 0
 
         init(_ name: String, journal: Journal) {
             self.name = name
@@ -58,6 +59,16 @@ final class DeckPairTests: XCTestCase {
 
         func invalidate() {
             invalidated = true
+        }
+
+        /// A media-services reset, as AVDeck takes it: a new player, holding
+        /// nothing.
+        func rebuild() {
+            rebuilds += 1
+            journal.entries.append("\(name).rebuild")
+            loadedURL = nil
+            isReady = false
+            reading = DeckReading()
         }
 
         /// The load the pair issued on this deck most recently.
@@ -428,6 +439,30 @@ final class DeckPairTests: XCTestCase {
         XCTAssertEqual(b.count("unload"), 1)
         pair.send(.load(token: 2, itemId: "b", url: urlB, startSec: 300, preciseTiming: true))
         XCTAssertEqual(a.lastLoadToken, 2, "nothing warm survives a release")
+    }
+
+    /// A media-services reset (CH3-03, R2-03) rebuilds BOTH decks' players,
+    /// and the warm load dies with the standby's: a late `.ready` of the
+    /// discarded warm load reaches nothing, and the next load of the item it
+    /// prepared is an ordinary load on the deck with the player role, never a
+    /// promotion of a dead standby nor a "miss" of a prepare the reset
+    /// already discarded.
+    /// TO SEE IT FAIL: forward `rebuild()` to the active deck only (B is
+    /// never rebuilt), or drop `warmLoad = nil` from it (the late ready warms
+    /// it, and the load promotes it: a swap and `.prepared(hit: true)`).
+    func testARebuildReachesBothDecksAndDropsTheWarmLoad() {
+        let warm = playingWithPrepare(readyStandby: false)
+
+        pair.rebuild()
+
+        XCTAssertEqual(a.rebuilds, 1)
+        XCTAssertEqual(b.rebuilds, 1, "the standby deck's player died too")
+        b.becomeReady(warm, atSec: 300)
+        events.removeAll()
+        pair.send(.load(token: 2, itemId: "b", url: urlB, startSec: 300, preciseTiming: true))
+        XCTAssertEqual(a.lastLoadToken, 2, "the load runs on the deck with the player role")
+        XCTAssertEqual(pair.swaps, 0)
+        XCTAssertEqual(events, [], "nothing of the discarded warm load reaches the core")
     }
 
     /// Teardown reaches both decks, and nothing is routed afterwards.

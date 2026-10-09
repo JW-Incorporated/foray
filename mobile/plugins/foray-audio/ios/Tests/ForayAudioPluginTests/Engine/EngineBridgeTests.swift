@@ -28,12 +28,19 @@ final class EngineBridgeTests: XCTestCase {
         private(set) var hellos = 0
         private(set) var overrides: [EngineMode.Override] = []
         private(set) var relinquishes = 0
+        /// As `EngineOwnership.relinquished`: set by the engine's teardown
+        /// hook, whatever took the engine down. Settable, so a test can tell
+        /// the owner's answer from the engine's own flag.
+        var relinquished = false
 
         init(native: Bool, engine: ForayEngine?) {
             decision = EngineMode.decide(EngineMode.Inputs(
                 buildDefault: native ? .native : .js, modeOverride: .auto, sentinelWasSet: false, strikes: 0,
                 stickyLegacyBuild: nil, currentBuild: "test", built: engine != nil))
             self.engine = engine
+            engine?.onTornDown = { [weak self] in
+                MainActor.assumeIsolated { self?.relinquished = true }
+            }
         }
 
         func decideOnce() -> EngineMode.Decision { decision }
@@ -43,7 +50,7 @@ final class EngineBridgeTests: XCTestCase {
         /// What EngineOwnership.relinquish does with the engine.
         func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) -> EngineVerdict {
             relinquishes += 1
-            guard let engine, !engine.isTornDown else {
+            guard let engine, !relinquished else {
                 return EngineVerdict(failures: [EngineContract.Refusal.relinquished.rawValue], deferred: false)
             }
             let verdict = engine.handle(.command(.relinquish(cap: cap), source: source))
@@ -564,6 +571,48 @@ final class EngineBridgeTests: XCTestCase {
 
         let hello = rig.bridge.hello(Self.hello)
         accepted(.helloResponse, hello)
+        XCTAssertEqual(hello["mode"], .string("legacy"))
+        XCTAssertEqual(hello["reason"], .string("downgrade"))
+        XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
+    }
+
+    /// CH3-06: once the owner has relinquished (the hello watchdog's road:
+    /// `restore`, the page's boot), a snapshot read answers the relinquished
+    /// body (session `relinquished`), the hello says
+    /// legacy/downgrade, and the transport is refused `relinquished`.
+    /// TO SEE IT FAIL: let `liveEngine` return a relinquished engine (the
+    /// hello answers native).
+    @MainActor
+    func testASnapshotAfterTheOwnerRelinquishedAnswersTheRelinquishedBody() {
+        let rig = Rig()
+        rig.playing()
+        _ = rig.engine?.handle(.command(.pause, source: .remote))
+        XCTAssertTrue(rig.owner.relinquish(cap: .all, source: .restore).ok)
+
+        let snapshot = rig.bridge.read(Self.json(#"{"what":"snapshot"}"#))
+        accepted(.snapshot, snapshot)
+        XCTAssertEqual(snapshot["session"], .string("relinquished"), JSWriter.stringify(snapshot))
+
+        let hello = rig.bridge.hello(Self.hello)
+        XCTAssertEqual(hello["mode"], .string("legacy"))
+        XCTAssertEqual(hello["reason"], .string("downgrade"))
+        XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
+    }
+
+    /// CH3-06 (R1-06): the bridge's "is the engine still playing this
+    /// process?" is the OWNER's answer, `relinquished`, not the engine's own
+    /// `isTornDown`: one ownership truth. With the owner saying relinquished,
+    /// the hello is legacy/downgrade and a send is refused `relinquished`,
+    /// whatever the engine object says.
+    /// TO SEE IT FAIL: read `engine.isTornDown` in `liveEngine` again (the
+    /// hello answers native from an engine the owner has handed back).
+    @MainActor
+    func testLivenessIsTheOwnersAnswer() {
+        let rig = Rig()
+        XCTAssertEqual(rig.bridge.hello(Self.hello)["mode"], .string("native"))
+        rig.owner.relinquished = true
+        XCTAssertEqual(rig.engine?.isTornDown, false, "the engine object is untouched")
+        let hello = rig.bridge.hello(Self.hello)
         XCTAssertEqual(hello["mode"], .string("legacy"))
         XCTAssertEqual(hello["reason"], .string("downgrade"))
         XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))

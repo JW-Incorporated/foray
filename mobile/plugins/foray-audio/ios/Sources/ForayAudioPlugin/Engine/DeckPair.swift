@@ -194,6 +194,20 @@ final class DeckPair: DeckDriving {
         assetCache?.removeAll()
     }
 
+    /// Media services were reset (CH3-03): BOTH decks make their players
+    /// again (each drops what it held), and the warm state goes with them:
+    /// the warm load, and the shared assets, which died with the media
+    /// server too and would otherwise be handed to the next load of the same
+    /// source. The roles and a stand-down stay as they were; the core's
+    /// `.unload` follows.
+    func rebuild() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !invalidated else { return }
+        warmLoad = nil
+        for deck in decks { deck.rebuild() }
+        assetCache?.removeAll()
+    }
+
     // MARK: - Prepare
 
     private func prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass,

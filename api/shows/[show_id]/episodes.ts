@@ -1,14 +1,12 @@
 import { Client } from "pg";
-import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
 import { ingestShowFeed, toCatalogEpisode } from "../../../backend/src/catalog/ingestShowFeed";
 import { PostgresShowEpisodesStore, type CatalogShowEpisode } from "../../../backend/src/catalog/showEpisodesStore";
 import { applyCors } from "../../_lib/cors";
 import { firstParam } from "../../_lib/params";
 import { decodeCursor, paginate } from "../../_lib/episodeCursor";
-import { liveEpisodeGuid } from "../../_lib/liveEpisodeId";
 import { sharedFeedReader } from "../../_lib/feedCache";
-import { fetchIndexAsset, isShardKey } from "../../_lib/showsIndexRelease";
+import { type ShowMeta } from "../../_lib/showCatalog";
+import { resolveShow } from "../../_lib/resolveShow";
 
 /**
  * Fetch-on-demand per-show episode list (Stage 3b, kanban t_567b570f,
@@ -42,161 +40,19 @@ import { fetchIndexAsset, isShardKey } from "../../_lib/showsIndexRelease";
  * unchanged from Stage 3b's original behavior.
  */
 
-interface CatalogShowMeta {
-  showId: string;
-  feedUrl: string;
-  title: string | null;
-  image: string | null;
-}
-
-let showIndex: Map<string, CatalogShowMeta> | null = null; // show_id -> catalog metadata, lazily built from data/catalog*.json
-
-/**
- * Walks up from `startDir` looking for the repo root (identified by
- * `data/catalog.json` existing directly under it). Vercel's bundled
- * runtime resolves `__dirname` to this file's real on-disk location, so
- * the previous fixed `join(__dirname, "..", "..", "..")` worked there —
- * but a dev/test runner using a different module transform (e.g. tsx's
- * ESM loader) does not always give `__dirname` that same on-disk value,
- * which made this function untestable without hardcoding an environment-
- * specific offset. Walking up is correct in both places and does not
- * depend on how many directories deep this file happens to sit.
- */
-// BUNDLING NOTE (kanban t_7d1a82d2): the two files this module reads via
-// findRepoRoot()/loadShowIndex() below (data/catalog.json,
-// data/catalog-breadth.json) are NOT automatically included in this
-// function's deployed Vercel bundle — Vercel's bundler only picks up files
-// reached via a static, analyzable readFileSync('./literal') call, and this
-// is a runtime join()/readFileSync() instead. They are bundled ONLY because
-// vercel.json's `functions["api/shows/**/*.ts"].includeFiles` glob names
-// them explicitly. If you rename either file, move this function outside
-// api/shows/**, or change how it locates the repo root, update vercel.json's
-// includeFiles glob in the same change — api/_test/vercel-bundle.test.mjs
-// checks this pairing but only catches drift that test runs against, not a
-// glob that silently stops matching after a rename.
-function findRepoRoot(startDir: string): string {
-  // A module transform that doesn't preserve a real on-disk __dirname (seen
-  // under tsx's test-runner ESM loader) hands back something that isn't a
-  // real path at all (e.g. a `data:` URL string) — existsSync on that is
-  // always false, so start from process.cwd() instead in that case. Vercel's
-  // bundled runtime gives a real __dirname, so this branch is test-only.
-  let dir = existsSync(startDir) ? startDir : process.cwd();
-  for (let i = 0; i < 8; i++) {
-    if (existsSync(join(dir, "data", "catalog.json"))) return dir;
-    const parent = dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return startDir; // fall back to the original assumption; catalog reads degrade to empty below, never a crash
-}
-
-function loadShowIndex(): Map<string, CatalogShowMeta> {
-  if (showIndex) return showIndex;
-  const index = new Map<string, CatalogShowMeta>();
-  const ROOT = findRepoRoot(__dirname);
-  for (const file of ["data/catalog.json", "data/catalog-breadth.json"]) {
-    try {
-      const raw = readFileSync(join(ROOT, file), "utf8");
-      const parsed = JSON.parse(raw) as {
-        shows: Array<{
-          show_id?: string;
-          apple_collection_id?: number;
-          feed_url: string | null;
-          title?: string | null;
-          artwork_url?: string | null;
-        }>;
-      };
-      for (const show of parsed.shows ?? []) {
-        const id = show.show_id ?? (show.apple_collection_id !== undefined ? String(show.apple_collection_id) : null);
-        if (id && show.feed_url && !index.has(id)) {
-          index.set(id, {
-            showId: id,
-            feedUrl: show.feed_url,
-            title: show.title ?? null,
-            image: show.artwork_url ?? null
-          });
-        }
-      }
-    } catch {
-      // Missing/unreadable catalog file degrades to "show not found" below — never a 500.
-    }
-  }
-  showIndex = index;
-  return index;
-}
-
-/* A `pi:<n>` SHOW (pi-episodes-cold-open, #690; follows SH-COLD #1141).
-
-   A show found through the shard index has a raw PodcastIndex row id,
-   `pi:<n>` (app.js mapShardRow), and is in neither catalogue file, so
-   loadShowIndex() never knew it: its episodes answered 404 and a shared link
-   to one of them could not open. The row (`{ id, t, a, i, u, img, n, c }`,
-   tools/shows/shard-build.mjs toShardRow) carries the feed url, but the
-   shards are filed by title/author token prefix, not by id, and there is no
-   id -> row map to ask. So the caller names the shard: `?k=<key>`, the same
-   key a shared show link already carries as `/k/<key>` (app.js shareLinkFor).
-   ONE shard is read, through the same release reader the shard proxy uses
-   (api/_lib/showsIndexRelease.ts: the committed pointer, bounded fetch,
-   gunzip), and the row with that id gives the feed. No new secret, service
-   or store: the pointer is already bundled (vercel.json includeFiles).
-
-   Answers: a malformed id or key, or a shard without the row, is the same 404
-   `unknown show_id` an unknown catalogue id gets (no request for the first
-   two). A release that could not be read is a 502, so the client offers Try
-   again rather than "not found". Both are no-store: a pointer bump or a
-   recovered upstream must be seen at once. A resolved row is kept per warm
-   instance (bounded), keyed by id AND key, so the answer for one request
-   never depends on what another one asked before it, and the pages of one
-   show read their shard once. The response shape is the catalogue one. */
-const PI_SHOW_RE = /^pi:(\d{1,15})$/;
-export const PI_SHOW_CACHE_MAX = 500;
-const piShowMeta = new Map<string, CatalogShowMeta>();
-
-type PiShowLookup =
-  | { meta: CatalogShowMeta }
-  | { meta: null; status: 404 | 502; error: string };
-
-async function resolvePiShow(showId: string, key: string | null): Promise<PiShowLookup> {
-  const id = PI_SHOW_RE.exec(showId)?.[1];
-  if (!id || !isShardKey(key)) return { meta: null, status: 404, error: "unknown show_id" };
-  const cacheKey = `${showId} ${key}`;
-  const kept = piShowMeta.get(cacheKey);
-  if (kept) return { meta: kept };
-
-  const got = await fetchIndexAsset(`shards/${key}.json`);
-  if (!got.ok) {
-    return got.status === 502
-      ? { meta: null, status: 502, error: `shows index unavailable: ${got.error}` }
-      : { meta: null, status: 404, error: "unknown show_id" };
-  }
-  const rows: unknown[] = Array.isArray(got.body) ? got.body : [];
-  const row = rows.find((r): r is Record<string, unknown> =>
-    !!r && typeof r === "object" && String((r as Record<string, unknown>).id) === id);
-  /* Only an http(s) feed is fetched: the url comes from our own release, but
-     this function fetches whatever it names. */
-  const feedUrl = row && typeof row.u === "string" && /^https?:\/\//i.test(row.u) ? row.u : null;
-  if (!row || !feedUrl) return { meta: null, status: 404, error: "unknown show_id" };
-
-  const meta: CatalogShowMeta = {
-    showId,
-    feedUrl,
-    title: typeof row.t === "string" ? row.t : null,
-    image: typeof row.img === "string" ? row.img : null,
-  };
-  if (piShowMeta.size >= PI_SHOW_CACHE_MAX) piShowMeta.delete(piShowMeta.keys().next().value as string);
-  piShowMeta.set(cacheKey, meta);
-  return { meta };
-}
-
-/** Test-only: forget every resolved `pi:` show. */
-export function _resetPiShowCacheForTests(): void {
-  piShowMeta.clear();
-}
-
-/** Test-only: how many resolved `pi:` shows this instance keeps. */
-export function _piShowCacheSizeForTests(): number {
-  return piShowMeta.size;
-}
+/* THE SHOW comes from the one show resolver, api/_lib/resolveShow.ts
+   (code-health-2 CH2-35), which the show-scoped search shares: the one
+   catalogue reader (api/_lib/showCatalog.ts, CH2-24), then, for a `pi:<n>`
+   shard-index show, the shard row the caller names with `?k=<key>`
+   (pi-episodes-cold-open, #690; the resolver's header has the whole rule).
+   How the catalogue files reach a deployed function at all (vercel.json's
+   `includeFiles` for the api functions glob) is the BUNDLING NOTE in
+   backend/src/catalog/breadthCatalog.ts. An `in_curated` breadth id is
+   answered as its curated twin: the response's show_id, the episodes'
+   show_id and the feed are the twin's. Answers when there is no show: an
+   unknown catalogue id 404 `unknown show_id`; a `pi:` miss the same 404,
+   no-store; a release that could not be read 502, no-store; a deploy
+   without the catalogue pair 503, no-store (the client's Try again). */
 
 /**
  * Minimal structural types for the Vercel Node runtime request/response —
@@ -268,20 +124,14 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  let meta = loadShowIndex().get(showId);
-  if (!meta && showId.startsWith("pi:")) {
-    const pi = await resolvePiShow(showId, firstParam(req.query.k));
-    if (!pi.meta) {
-      res.setHeader("Cache-Control", "no-store");
-      res.status(pi.status).json({ error: pi.error });
-      return;
-    }
-    meta = pi.meta;
-  }
-  if (!meta) {
-    res.status(404).json({ error: "unknown show_id" });
+  const lookup = await resolveShow(showId, firstParam(req.query.k));
+  if (!lookup.meta) {
+    if (lookup.noStore) res.setHeader("Cache-Control", "no-store");
+    res.status(lookup.status).json({ error: lookup.error });
     return;
   }
+  const meta = lookup.meta;
+  const servedId = meta.showId; // the twin's slug when asked by alias, else the id asked for
 
   const showHeader = { title: meta.title, description: null as string | null, image: meta.image };
   const cursor = decodeCursor(firstParam(req.query.cursor));
@@ -299,13 +149,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     let session: DbSession | null = null;
     try {
       session = await openDbSession(databaseUrl);
-      const result = await session.refresh(showId, meta.feedUrl);
-      const episodes = await session.episodes(showId);
+      const result = await session.refresh(servedId, meta.feedUrl);
+      const episodes = await session.episodes(servedId);
       const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);
       const stale = result.status === "cached_stale";
       res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=3600");
       res.status(200).json(listBody({
-        show_id: showId,
+        show_id: servedId,
         // DB mode has no per-show description without editing the store;
         // left null rather than guessed.
         show: showHeader,
@@ -325,7 +175,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     }
   }
 
-  await serveLive(res, showId, meta, showHeader, cursor);
+  await serveLive(res, servedId, meta, showHeader, cursor);
 }
 
 /** Every list response, both branches, has exactly these keys (the contract
@@ -349,7 +199,7 @@ function listBody(body: {
 async function serveLive(
   res: ApiResponse,
   showId: string,
-  meta: CatalogShowMeta,
+  meta: ShowMeta,
   showHeader: { title: string | null; description: string | null; image: string | null },
   cursor: ReturnType<typeof decodeCursor>
 ): Promise<void> {
@@ -380,7 +230,7 @@ async function serveLive(
 
   const parsed = feed.parsed;
   const episodes = parsed.episodes
-    .map((ep, idx) => toCatalogEpisode(showId, ep, liveEpisodeGuid(ep, idx)))
+    .map((ep) => toCatalogEpisode(showId, ep))
     .filter((ep): ep is CatalogShowEpisode => ep !== null);
 
   const { page, nextCursor } = paginate(episodes, cursor, PAGE_SIZE);

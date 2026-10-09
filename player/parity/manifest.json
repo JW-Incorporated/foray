@@ -816,7 +816,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "3c14b3eaaf40bf256f5ed0760be99db8f557ae9b5b50e848294deb75d6ad5a2c"
+        "player/parity/fixtures/manager-episode/scenarios.json": "a2d80442677a58d7f1529363c51bc2392032ea7041686c4a236bc066650d0827"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -838,6 +838,7 @@
         "manager-episode/interruption-step-back-stops-at-the-in-point",
         "manager-episode/a-lost-route-pauses",
         "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
+        "manager-episode/a-route-flap-during-a-call-still-resumes",
         "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
         "manager-episode/a-foreground-reconcile-is-not-resumable",
         "manager-episode/an-observed-pause-stays-resumable",
@@ -1404,7 +1405,7 @@
     },
     "queue-state": {
       "files": {
-        "player/parity/fixtures/queue-state/queue-state.json": "4df9d1b0e362130491fad057544179b395cf733e891cfb0a5d641126edc8da51"
+        "player/parity/fixtures/queue-state/queue-state.json": "0476e86eb9232eba304211b3ced90eb4badb42e3060b292feb45107003ae2fde"
       },
       "ids": [
         "queue-state/play-from-idle",
@@ -1426,12 +1427,16 @@
         "queue-state/interruption-ended-stays-paused",
         "queue-state/manual-play-from-paused-but-ready",
         "queue-state/interruption-began-during-load",
+        "queue-state/stray-item-loaded-after-interruption-during-load",
+        "queue-state/interruption-during-load-then-ended-should-resume",
         "queue-state/interruption-began-idempotent",
         "queue-state/route-lost-while-playing",
         "queue-state/route-lost-mid-transition",
         "queue-state/route-available-does-not-resume",
         "queue-state/route-lost-during-load",
         "queue-state/stray-item-loaded-after-route-lost",
+        "queue-state/call-began-after-route-lost-during-load",
+        "queue-state/call-ended-should-resume-after-route-lost-during-load",
         "queue-state/play-while-playing-other-forces-pause",
         "queue-state/play-same-item-while-playing-no-op",
         "queue-state/play-while-transitioning-forces-pause",

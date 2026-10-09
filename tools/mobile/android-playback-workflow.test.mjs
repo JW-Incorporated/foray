@@ -4,9 +4,11 @@
  * It cannot run the workflow; the PR names the run that did. What it holds:
  *   - the job stays advisory, reads no secret, never uploads to a store, and
  *     fires on the app's paths only (no push, no schedule),
- *   - its boot is `android-smoke.yml`'s, step for step with comments stripped,
- *     plus exactly one named addition (the click tracks), so a fix to the smoke's
- *     boot that is not made here is red,
+ *   - its emulator bring-up is `.github/actions/android-emulator`, the
+ *     composite `android-smoke.yml` calls too (CH2-33), and its other shared
+ *     steps are the smoke's, step for step with comments stripped, plus
+ *     exactly one named addition (the fixtures), so a fix to the smoke's build
+ *     that is not made here is red,
  *   - every scenario the runner knows is its own step, gated only on the launch,
  *     and none of them can have its verdict discarded,
  *   - the runner and the workflow agree on where the click tracks live,
@@ -32,6 +34,7 @@ const PLAY_REL = ".github/workflows/android-playback.yml";
 const PLY = fs.readFileSync(path.join(ROOT, PLAY_REL), "utf8");
 const PYML = code(PLY);
 const SMK = fs.readFileSync(path.join(ROOT, ".github/workflows/android-smoke.yml"), "utf8");
+const EMU = fs.readFileSync(path.join(ROOT, ".github/actions/android-emulator/action.yml"), "utf8");
 
 const playStep = (name) => {
   const s = step(PLY, name);
@@ -41,19 +44,25 @@ const smokeStep = (name) => {
   const s = step(SMK, name);
   return s === null ? null : code(s);
 };
+/** One step of the android-emulator composite, comments stripped (its steps
+ *  sit at four spaces; `step()` splits at six, so it is indented by two). */
+const emulatorStep = (name) => {
+  const s = step(EMU.replace(/^/gm, "  "), name);
+  return s === null ? null : code(s);
+};
 const failureClauses = (s) => (s.match(/exit 1/g) ?? []).length;
 
-/* The boot, in order: every step up to and including the launch. */
+/* The boot, in order: every step up to and including the launch. The three
+   `android-emulator` calls (CH2-33) are compared like the rest, with the API
+   level the one difference in the sdk call: the smoke's 34, this job's leg's. */
 const BOOT = [
   "uses: actions/checkout@v4",
   "uses: actions/setup-node@v4",
   "uses: actions/setup-java@v4",
-  "name: Enable KVM, or the emulator falls back to software and never boots",
-  "name: The Android SDK, plus the emulator and one system image",
+  "name: KVM, the Android SDK, the emulator and its system image",
   "name: Build the webDir, generate the project, and build the debug APK",
   "name: The debug build is still a fair stand-in for the release build",
-  "name: Create the AVD, and prove it exists before launching anything",
-  "name: Boot it",
+  "name: Create the AVD and boot it",
   "name: Install the app and start it",
 ];
 
@@ -96,7 +105,7 @@ test("A-04: it fires on the app's paths and its own file, by hand, and never on 
   const paths = [...on.matchAll(/^ {6}- "([^"]+)"$/gm)].map((m) => m[1]);
   assert.deepEqual(
     [...paths].sort(),
-    [".github/workflows/android-playback.yml", "app.js", "index.html", "mobile/**", "player/**", "search-engine.js", "styles.css", "tools/mobile/**"].sort()
+    [".github/actions/android-emulator/**", ".github/workflows/android-playback.yml", "app.js", "index.html", "mobile/**", "player/**", "search-engine.js", "styles.css", "tools/mobile/**"].sort()
   );
   const smokePaths = [...block(SMK, "on").matchAll(/^ {6}- "([^"]+)"$/gm)].map((m) => m[1]);
   for (const p of paths.filter((x) => x !== PLAY_REL)) {
@@ -125,7 +134,14 @@ test("A-04: it reads no secret, uses only GitHub's own actions, and uploads only
   }
   const uses = [...PYML.matchAll(/uses: ([^\s]+)/g)].map((m) => m[1]);
   assert.ok(uses.length >= 4);
-  for (const u of uses) assert.match(u, /^actions\/[\w-]+@v\d+$/, `${u} is not one of GitHub's own actions pinned to a major`);
+  /* CH2-33: the one local call is the emulator bring-up, which calls no
+     action and reads no secret itself. MUTATION: add `uses: actions/cache@v4`
+     to the composite -> fails. */
+  for (const u of uses.filter((x) => x !== "./.github/actions/android-emulator")) {
+    assert.match(u, /^actions\/[\w-]+@v\d+$/, `${u} is not one of GitHub's own actions pinned to a major`);
+  }
+  assert.equal(/uses:/.test(code(EMU)), false, "the android-emulator composite calls no action");
+  assert.equal(/secrets[.:]/.test(code(EMU)), false, "and reads no secret");
   const uploads = PYML.split(/\r?\n/).filter((l) => /uses: actions\/upload-artifact@/.test(l));
   assert.equal(uploads.length, 1);
   const up = step(PLY, "Upload the playback evidence");
@@ -137,21 +153,23 @@ test("A-04: it reads no secret, uses only GitHub's own actions, and uploads only
 });
 
 test("A-04: the boot is android-smoke.yml's, step for step, plus the click tracks", () => {
-  /* MUTATION: change `-memory 4096` in either file's boot -> fails.
-     MUTATION: drop the `kill -0` check from this file's boot -> fails.
-     MUTATION: add a line to the smoke's install step and not here -> fails.
+  /* MUTATION (RUN): add a line to the smoke's build step and not here -> fails.
+     MUTATION (RUN): pass `stage: boot` an extra input here only -> fails.
      THE REUSE THE CARD ASKS FOR, ENFORCED. The two files share a boot so that
-     the launch the smoke certifies is the launch these scenarios run on. The
-     evidence directory's name is the one allowed difference in the SDK step,
-     and the click-track lines the one in the build step. */
-  const norm = (s) => s.replace(/android-playback/g, "android-smoke");
+     the launch the smoke certifies is the launch these scenarios run on. Since
+     CH2-33 the emulator half is ONE composite both call (the CH2-33 tests in
+     android-workflow.test.mjs pin that neither file boots an emulator itself);
+     what is still copied is compared here. The evidence directory's name and
+     the API level are the allowed differences in the sdk call, and the
+     fixture lines the one in the build step. */
+  const norm = (s) => s.replace(/android-playback/g, "android-smoke").replace(/^( {10}api-level: ).+$/m, "$1<leg>");
   for (const name of BOOT) {
     const mine = playStep(name);
     const theirs = smokeStep(name);
     assert.ok(mine, `this workflow has no step "${name}"`);
     assert.ok(theirs, `android-smoke.yml has no step "${name}"; re-read A-04 before following it`);
     const a = norm(mine).split(/\r?\n/).filter((l) => !isFixtureLine(l)).join("\n").trim();
-    const b = theirs.trim();
+    const b = norm(theirs).trim();
     assert.equal(a, b, `"${name}" differs from android-smoke.yml's`);
   }
   /* And the order is the smoke's: each boot step appears after the one before. */
@@ -162,15 +180,21 @@ test("A-04: the boot is android-smoke.yml's, step for step, plus the click track
     assert.ok(i > at, `"${name}" is out of the smoke's order`);
     at = i;
   }
-  /* The env block is the smoke's too: same SDK, same package. The image is the
-     matrix leg's (A-06), and the fast leg's is the smoke's: the test below. */
-  for (const key of ["SDK_PLATFORM", "SDK_BUILD_TOOLS", "AVD_NAME", "PKG"]) {
-    const re = new RegExp(`^ {6}${key}: (.+)$`, "m");
-    assert.equal(re.exec(PLY)?.[1], re.exec(SMK)?.[1], `${key} differs from the smoke's`);
+  /* The package is the smoke's. The SDK pair, the image and the AVD name are
+     the composite's (CH2-33), so neither job declares them: a job-level copy
+     would be a second definition the composite never reads. The API level is
+     the matrix leg's (A-06), and the fast leg's is the smoke's: the test below. */
+  const pkg = /^ {6}PKG: (.+)$/m;
+  assert.ok(pkg.exec(PLY), "the job names the app's package");
+  assert.equal(pkg.exec(PLY)?.[1], pkg.exec(SMK)?.[1], "PKG differs from the smoke's");
+  for (const key of ["SDK_PLATFORM", "SDK_BUILD_TOOLS", "EMULATOR_IMAGE", "AVD_NAME"]) {
+    for (const [name, src] of [["android-playback.yml", PYML], ["android-smoke.yml", code(SMK)]]) {
+      assert.equal(new RegExp(`^ {6}${key}:`, "m").test(src), false, `${name} declares ${key}; it is the android-emulator composite's`);
+    }
   }
 });
 
-/** The matrix legs, as `{ api, image, timeout }`, read from the job's
+/** The matrix legs, as `{ api, image, timeout, mode }`, read from the job's
  *  `strategy.matrix.include` list (code only, so a comment cannot add a leg). */
 function legs() {
   const strategy = block(PYML, "strategy", 4);
@@ -187,21 +211,26 @@ function legs() {
 
 test("A-06: two legs, API 34 (the smoke's image, fast) and API 36 (current, allowed to be slower)", () => {
   /* MUTATION: delete the API 36 leg -> fails. MUTATION: change the API 34
-     leg's image to android-35 -> fails (the fast leg is the launch the smoke
-     certifies). MUTATION: `fail-fast: true` -> fails (a red API 36 leg would
-     cancel API 34's verdicts). MUTATION: raise the API 34 ceiling to 45 ->
-     fails. MUTATION: hardcode `EMULATOR_IMAGE` again -> fails (both legs would
-     boot the same image under two names). */
+     leg to 35 -> fails (the fast leg is the launch the smoke certifies).
+     MUTATION: `fail-fast: true` -> fails (a red API 36 leg would cancel API
+     34's verdicts). MUTATION: raise the API 34 ceiling to 45 -> fails.
+     MUTATION (RUN): hardcode `api-level: 34` in the sdk call -> fails (both
+     legs would boot the same image under two names).
+     CH2-33: the image is the composite's
+     `system-images;android-<api-level>;google_apis;x86_64`, so a leg is its
+     API level and there is no separate image field to disagree with it. */
   const L = legs().filter((l) => l.mode === "js");
   assert.deepEqual(L.map((l) => l.api), [34, 36]);
-  const smokeImage = /^ {6}EMULATOR_IMAGE: (.+)$/m.exec(SMK)?.[1];
-  assert.equal(L[0].image, smokeImage, "the fast leg is the smoke's image");
-  assert.equal(L[0].image, "system-images;android-34;google_apis;x86_64");
-  assert.equal(L[1].image, "system-images;android-36;google_apis;x86_64", "A-06: a current google_apis x86_64 image");
+  const smokeApi = Number(/^ {10}api-level: (\d+)$/m.exec(code(SMK))?.[1]);
+  assert.equal(L[0].api, smokeApi, "the fast leg is the smoke's API level");
+  assert.equal(legs().filter((l) => l.image !== null).length, 0, "a leg names its API level, not an image (the composite derives it)");
+  assert.match(code(EMU), /EMULATOR_IMAGE="system-images;android-\$\{API_LEVEL\};google_apis;x86_64"/, "A-06: a current google_apis x86_64 image");
+  const sdkCall = playStep("name: KVM, the Android SDK");
+  assert.ok(sdkCall, "no sdk-stage call");
+  assert.match(sdkCall, /^ {10}api-level: \$\{\{ matrix\.api \}\}$/m, "each leg boots its own API level");
   assert.ok(L[0].timeout > 0 && L[0].timeout <= 30, "the fast leg keeps A-04's 30-minute ceiling");
   assert.ok(L[1].timeout >= L[0].timeout && L[1].timeout <= 45, "the API 36 leg may be slower, not unbounded");
   assert.match(block(PYML, "strategy", 4), /^ {6}fail-fast: false$/m);
-  assert.match(PYML, /^ {6}EMULATOR_IMAGE: \$\{\{ matrix\.image \}\}$/m);
   assert.match(PYML, /^ {6}API_LEVEL: \$\{\{ matrix\.api \}\}$/m);
   /* The JS legs' check names are unchanged by A-26's third leg (the suffix is empty for them). */
   assert.match(PYML, /^ {4}name: android-playback \(API \$\{\{ matrix\.api \}\}\$\{\{ matrix\.mode == 'native' && ', native engine' \|\| '' \}\}\)$/m,
@@ -220,8 +249,11 @@ test("A-06: each leg proves its device is its API level, and uploads and summari
   assert.equal(failureClauses(s), 1);
   assert.equal(/\[ "\$GOT" = "\$API_LEVEL" \][^\n]*\|\| true/.test(s), false);
   assert.match(s, /webview-version\.txt/, "the leg records its WebView version");
+  /* CH2-33: device-sdk.txt is written by the composite's Boot step; the
+     check reads what the boot recorded. */
+  assert.match(emulatorStep("name: Boot it"), /getprop ro\.build\.version\.sdk \| tee "\$ART\/device-sdk\.txt"/);
   const at = PLY.indexOf("- name: The device is the leg's API level");
-  assert.ok(at > PLY.indexOf("- name: Boot it") && at < PLY.indexOf("- name: Install the app and start it"));
+  assert.ok(at > PLY.indexOf("- name: Create the AVD and boot it") && at < PLY.indexOf("- name: Install the app and start it"));
   const up = step(PLY, "Upload the playback evidence");
   assert.match(up, /^ {10}name: foray-android-playback-api\$\{\{ matrix\.api \}\}\$\{\{ matrix\.mode == 'native' && '-native' \|\| '' \}\}$/m);
   const summary = playStep("What the scenarios established");
@@ -321,7 +353,7 @@ test("A-04: Play services' first-boot restart is waited out before the install, 
   assert.match(s, /-lt 120 \]/, "bounded");
   assert.equal(failureClauses(s), 0, "it never fails the job");
   const at = PLY.indexOf("- name: Let Play services finish its first-boot restart");
-  assert.ok(at > PLY.indexOf("- name: Boot it") && at < PLY.indexOf("- name: Install the app and start it"));
+  assert.ok(at > PLY.indexOf("- name: Create the AVD and boot it") && at < PLY.indexOf("- name: Install the app and start it"));
   assert.match(prose(step(PLY, "Let Play services")), /FontsProvider/, "the step says what it saw");
 });
 
@@ -373,6 +405,11 @@ test("A-05: the focus helper is built from its committed source without Gradle, 
   assert.match(s, /apksigner" verify/);
   assert.match(s, /\$\{SDK_BUILD_TOOLS#build-tools;\}/, "the build-tools the job installed, not a hard-coded version");
   assert.match(s, /\$\{SDK_PLATFORM#platforms;\}/);
+  /* CH2-33: the composite's sdk stage installs that pair and exports it. */
+  const sdk = emulatorStep("The Android SDK, plus the emulator");
+  assert.match(sdk, /"\$SDKMANAGER" --install "\$SDK_PLATFORM" "\$SDK_BUILD_TOOLS"/);
+  assert.match(sdk, /echo "SDK_PLATFORM=\$SDK_PLATFORM"/);
+  assert.match(sdk, /echo "SDK_BUILD_TOOLS=\$SDK_BUILD_TOOLS"/);
   const manifest = fs.readFileSync(path.join(ROOT, "tools/mobile/a05-focus-helper/AndroidManifest.xml"), "utf8");
   assert.match(manifest, new RegExp(`package="${HELPER_PKG.replace(/\./g, "\\.")}"`));
   const activity = HELPER_ACTIVITY.split("/")[1];
@@ -387,7 +424,7 @@ test("A-05: the focus helper is built from its committed source without Gradle, 
   assert.match(java, /AUDIOFOCUS_GAIN_TRANSIENT/);
   assert.match(java, /"mode=" \+ mode \+ " result=" \+ r/, "the runner reads `mode=<m> result=1` as granted");
   const at = PLY.indexOf("- name: Build the A-05 focus helper");
-  assert.ok(at > PLY.indexOf("- name: The SDK") || at > PLY.indexOf("- name: The Android SDK"));
+  assert.ok(PLY.indexOf("- name: KVM, the Android SDK") !== -1 && at > PLY.indexOf("- name: KVM, the Android SDK"));
   assert.ok(at < PLY.indexOf("- name: Install the app and start it"));
 });
 
@@ -400,7 +437,6 @@ test("A-26: a third leg runs the native engine's scenarios, every one gated, and
   const native = legs().filter((l) => l.mode === "native");
   assert.equal(native.length, 1, "one native leg");
   assert.equal(native[0].api, 34, "the fast image");
-  assert.equal(native[0].image, "system-images;android-34;google_apis;x86_64");
   assert.ok(native[0].timeout > 30 && native[0].timeout <= 45, "room for the build, the boot and ~12 min of scenarios, not unbounded");
   assert.equal(legs().filter((l) => l.mode !== "js" && l.mode !== "native").length, 0, "every leg names its mode");
   assert.match(PYML, /^ {6}MODE: \$\{\{ matrix\.mode \}\}$/m);

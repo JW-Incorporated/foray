@@ -63,6 +63,11 @@ import java.util.Objects;
  *
  * When a turn leaves the core relinquished, the host tears down the deck, every timer and the
  * listener, and answers every later input with {@code relinquished} without touching a seam.
+ * The listener's last surface is a CLEARED one (nothing enabled, nothing to show), never the
+ * last turn's again: the relinquished core still names its item, so its own snapshot would not
+ * clear (CH3-07). Then {@link #setOnTornDown the torn-down hook} runs, once: the service
+ * releases its Media3 session there, because on Android "leave it for the legacy lane" means a
+ * second session gone, not one Now Playing centre left alone as on iOS.
  *
  * <p>NOT THREAD-SAFE, BY DESIGN: every method is called on the host's one looper (main).
  */
@@ -89,7 +94,7 @@ public final class ForayEngineHost {
     public record Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view,
                           boolean buffering, int seq) {}
 
-    /** Told after every turn (and once at start), on the host's thread. */
+    /** Told after every turn (once at start, and a cleared surface at teardown), on the host's thread. */
     public interface SurfaceListener {
         void onSurface(Surface surface);
     }
@@ -105,6 +110,7 @@ public final class ForayEngineHost {
     private EngineCommand.GraceReason graceReason;
     private double graceSinceMs;
     private SurfaceListener surfaceListener;
+    private Runnable onTornDown;
     private Surface surface;
     private int surfaceSeq;
     private int activations;
@@ -148,6 +154,14 @@ public final class ForayEngineHost {
         if (listener != null && !tornDown) listener.onSurface(surface);
     }
 
+    /**
+     * Run once, at the end of {@link #teardown()}, whatever took the engine down (the iOS host's
+     * {@code onTornDown}, ForayEngine.swift). Set on the host's thread.
+     */
+    public void setOnTornDown(Runnable hook) {
+        onTornDown = hook;
+    }
+
     /** Observe the deck. Idempotent; a torn-down host never starts again. */
     public void start() {
         if (started || tornDown) return;
@@ -157,8 +171,9 @@ public final class ForayEngineHost {
     }
 
     /**
-     * Stop the deck, every timer and the listener, and refuse every later input. Runs by itself
-     * when the core relinquishes; the service calls it at {@code onDestroy}.
+     * Stop the deck, every timer and the listener, hand the listener a cleared surface, run the
+     * torn-down hook, and refuse every later input. Runs by itself when the core relinquishes;
+     * the service calls it at {@code onDestroy}.
      */
     public void teardown() {
         if (tornDown) return;
@@ -169,9 +184,13 @@ public final class ForayEngineHost {
         seams.deck.setListener(null);
         seams.deck.invalidate();
         inbox.clear();
+        surface = clearedSurface(++surfaceSeq);
         SurfaceListener listener = surfaceListener;
         surfaceListener = null;
         if (listener != null) listener.onSurface(surface);
+        Runnable hook = onTornDown;
+        onTornDown = null;
+        if (hook != null) hook.run();
     }
 
     // ---- inputs
@@ -354,6 +373,17 @@ public final class ForayEngineHost {
             if (mv != null) view = MediaMapping.sessionView(mv);
         }
         return new Surface(availability, view, core.state().buffering, seq);
+    }
+
+    /**
+     * The terminal surface: what an UNLOADED snapshot maps to (every command disabled, Now Playing
+     * cleared), with nothing to show. Not {@code computeSurface}: a relinquish leaves the core's
+     * queue and index as they were, so its snapshot still reads the item it was playing.
+     */
+    private static Surface clearedSurface(int seq) {
+        MediaMapping.CommandSnapshot none = new MediaMapping.CommandSnapshot(
+                MediaMapping.CommandSnapshot.Mode.UNLOADED, false, false, false, false);
+        return new Surface(MediaMapping.commandAvailability(none, MediaMapping.SeekSteps.DEFAULT), null, false, seq);
     }
 
     private void publishSurface() {

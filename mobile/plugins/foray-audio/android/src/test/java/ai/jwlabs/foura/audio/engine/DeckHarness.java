@@ -1,6 +1,7 @@
 package ai.jwlabs.foura.audio.engine;
 
 import ai.jwlabs.foura.engine.DeckEvent;
+import ai.jwlabs.foura.engine.DeckReading;
 import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.JsonNode;
 import android.content.Context;
@@ -109,6 +110,33 @@ final class DeckHarness implements AutoCloseable {
     void runFor(long ms) throws TimeoutException {
         long until = clock.elapsedRealtime() + ms;
         runUntil(() -> clock.elapsedRealtime() >= until);
+    }
+
+    /** The fake clock's time and the deck's reading, taken at one virtual instant. */
+    record Instant(long clockMs, DeckReading reading) {}
+
+    /**
+     * Read the clock and the deck AT ONE VIRTUAL INSTANT, for a test that compares how far the
+     * playhead moved with how far the clock moved.
+     *
+     * <p>Two separate reads are not one instant. {@link #runUntil} returns the moment its
+     * condition holds, but the player does not stop there: its playback thread keeps taking the
+     * clock's messages (RobolectricUtil's own javadoc warns of this for a condition that changes
+     * outside the main looper), and every one it takes moves virtual time. A runner that
+     * deschedules the test thread for a few real milliseconds between {@code reading()} and
+     * {@code elapsedRealtime()} lets the clock run on by a hundred virtual ms or more: "the
+     * playhead moves at 1x: 1.5 s in 1.71 s" and "1.5x plays 1.5 s of content a second: 3.0 s
+     * in 2.13 s", where the content was exact and the second clock read was late.
+     *
+     * <p>Every FakeClock step (choosing the next message, advancing time) runs under the clock's
+     * own monitor, so holding it here stops virtual time for the two reads; a message already
+     * handed over finishes at the instant it was handed over at. Neither read waits on the
+     * playback thread, so holding the monitor cannot deadlock.
+     */
+    Instant now() {
+        synchronized (clock) {
+            return new Instant(clock.elapsedRealtime(), deck.reading());
+        }
     }
 
     /** The first event of this type (and token, when the type has one) at or after {@code from}, or null. */

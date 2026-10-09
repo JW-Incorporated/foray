@@ -185,6 +185,9 @@ final class SpeechNarrator: NSObject, Speaking {
     private var current: (id: Int, owner: Owner)?
     private var nextLineId = 0
     private var paused = false
+    /// The narration line a media-services reset took from the output
+    /// (`rebuild()`): held, and spoken again from its first word on resume.
+    private var lostLineId: Int?
     /// What the last line was handed to the output: the tests read it.
     private(set) var lastLine: SpeechLine?
 
@@ -250,7 +253,19 @@ final class SpeechNarrator: NSObject, Speaking {
                 return
             }
             guardSession()
-            if output.resume() {
+            if let lost = lostLineId, let held = current, held.id == lost, let line = lastLine {
+                // The reset took the rendered audio with the old engine:
+                // nothing is left to continue, so the line starts again and
+                // the core's clock restarts with it (CH3-03). Under a new
+                // output id, so a late callback of the old engine's buffers
+                // can never count toward it.
+                lostLineId = nil
+                paused = false
+                nextLineId += 1
+                current = (nextLineId, held.owner)
+                output.start(line, id: nextLineId)
+                onNarratorEvent?(.resumed(seq: seq, answer: .fromStart))
+            } else if output.resume() {
                 paused = false
                 onNarratorEvent?(.resumed(seq: seq, answer: .continued))
             } else {
@@ -269,6 +284,29 @@ final class SpeechNarrator: NSObject, Speaking {
             current = nil
             paused = false
             output.stop()
+        }
+    }
+
+    // MARK: - Speaking: a media-services reset
+
+    /// Media services were reset (CH3-03): the output's audio objects died
+    /// with the media server and are made again (`SpeechOutput.rebuild`). A
+    /// line in flight lost its audio with them. An audition ends `cancelled`
+    /// (the probe hears it); a narration line stays current and is HELD, so
+    /// the core's pause finds it held and its resume speaks it again from the
+    /// first word (`.fromStart`) instead of answering `.continued` over
+    /// silence or refusing for good.
+    func rebuild() {
+        output.rebuild()
+        guard let line = current else { return }
+        switch line.owner {
+        case .audition:
+            current = nil
+            paused = false
+            report(.audition, .cancelled)
+        case .narration:
+            paused = true
+            lostLineId = line.id
         }
     }
 
@@ -293,6 +331,7 @@ final class SpeechNarrator: NSObject, Speaking {
             ]))
         }
         nextLineId += 1
+        lostLineId = nil
         let line = SpeechLine(text: text, voiceIdentifier: resolution.voice?.identifier,
                               rate: Self.speechRate(multiplier: multiplier),
                               overrides: SpeechRules.ipaOverrides(text, entries: config.lexicon))
@@ -362,6 +401,17 @@ protocol SpeechOutput: AnyObject {
     func resume() -> Bool
     /// Silence the line in flight. Reports nothing.
     func stop()
+    /// Media services were reset: make again whatever audio objects the
+    /// output holds. The line in flight is silenced and forgotten; nothing
+    /// is reported (the narrator decides what the line becomes).
+    func rebuild()
+}
+
+extension SpeechOutput {
+    /// An output with no audio objects of its own to make again (the direct
+    /// path speaks on the application session; a test's recording output):
+    /// the line in flight is silenced, which is all a reset leaves to do.
+    func rebuild() { stop() }
 }
 
 /// Path A (`EngineConfig.speechDirect`): the synthesizer speaks on the
@@ -445,8 +495,9 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
     var synthesizer: AVSpeechSynthesizer? { speech }
     private(set) var linesStarted = 0
     private let diag: (DiagEntry) -> Void
-    private let engine = AVAudioEngine()
-    private let player = AVAudioPlayerNode()
+    /// Vars only for `rebuild()`: a media-services reset kills both.
+    private var engine = AVAudioEngine()
+    private var player = AVAudioPlayerNode()
     private var attached = false
     private var connected: AVAudioFormat?
     private var configurationObserver: NSObjectProtocol?
@@ -464,15 +515,7 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
         speech = SpeechNarrator.makeSynthesizer()
         super.init()
         speech.delegate = self
-        // A route or format change stops the engine (Apple:
-        // AVAudioEngineConfigurationChange). A line that was playing restarts
-        // where the player stood; if it cannot, it ends CANCELLED (never a
-        // finish, so the core never advances past words nobody heard).
-        configurationObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
-        ) { [weak self] _ in
-            self?.configurationChanged()
-        }
+        observeConfiguration()
     }
 
     deinit {
@@ -512,6 +555,37 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
 
     func stop() {
         silence()
+    }
+
+    /// Media services were reset (CH3-03): the engine and its player node
+    /// died with the media server. The line in flight is silenced and
+    /// forgotten, the dead engine stopped and let go, and a new engine and
+    /// node are made; the node is attached and connected again by the next
+    /// line's first buffer (`connect`), and the engine started by it, as on
+    /// the first line of the process. The configuration observer follows the
+    /// new engine (it is registered per engine object).
+    func rebuild() {
+        silence()
+        if engine.isRunning { engine.stop() }
+        if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
+        configurationObserver = nil
+        engine = AVAudioEngine()
+        player = AVAudioPlayerNode()
+        attached = false
+        connected = nil
+        observeConfiguration()
+    }
+
+    /// A route or format change stops the engine (Apple:
+    /// AVAudioEngineConfigurationChange). A line that was playing restarts
+    /// where the player stood; if it cannot, it ends CANCELLED (never a
+    /// finish, so the core never advances past words nobody heard).
+    private func observeConfiguration() {
+        configurationObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main
+        ) { [weak self] _ in
+            self?.configurationChanged()
+        }
     }
 
     // MARK: - Rendering and playing

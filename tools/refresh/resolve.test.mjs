@@ -166,6 +166,21 @@ test("lookupEpisodes returns ok:false after three failures instead of an empty l
   assert.equal(ok.eps.length, 1);
 });
 
+/* code-health-2 T1-11 (CH2-36): one lookup for the nightly (25) and
+   backfill-audio's back-catalogue fallback (200). MUTATION: hard-code
+   `limit=25` in the URL again -- the 200 request asks for 25; default the
+   option to 200 -- the nightly's request changes. */
+test("lookupEpisodes asks iTunes for 25 episodes by default and for `limit` when given", async () => {
+  const urls = [];
+  const fetchImpl = async (url) => { urls.push(url); return { ok: true, json: async () => ({ results: [] }) }; };
+  await lookupEpisodes(100, { fetchImpl, sleep: async () => {} });
+  await lookupEpisodes(100, { fetchImpl, sleep: async () => {}, limit: 200 });
+  assert.deepEqual(urls, [
+    "https://itunes.apple.com/lookup?id=100&entity=podcastEpisode&limit=25",
+    "https://itunes.apple.com/lookup?id=100&entity=podcastEpisode&limit=200",
+  ]);
+});
+
 /* data-tools-15. The id dedup works through existingIds alone; the dead
    `seenTrackThisRun.has(id)` clause (numeric trackIds vs a string slug) is gone.
    MUTATION: drop `existingIds.add(id)` -- two same-slug episodes both publish. */
