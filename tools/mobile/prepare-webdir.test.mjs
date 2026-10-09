@@ -118,6 +118,18 @@ const AMBIENT_PRIMITIVES_ASSETS = Object.freeze([
   /* Iteration 4 added the Dock block (the warm Veil, the mini's Ember Play, the fade; 12.4 KB measured minified): ceiling 10 to 14 KB, a bounded step that ui/dock.css retires when the Dock unit lands. RETIRED by the Dock unit: the block went to ui/dock.css, ceiling back to 10 KB. */
   { rel: "ui/foray-detail.css", maxBytes: 10 * 1024 },
   { rel: "ui/foray.js", maxBytes: 32 * 1024 },
+  /* Phase 4, Library: the screen's stylesheet, the Glow palette its tiles read, and ui/library.js itself, which the
+     screen rewrote (the capped link rows went; the grid, the rows, the Up Next menu, the Toast and the reorder
+     slide came). library.js is budgeted here, not in the legacy line, for the reason the primitives are: the legacy
+     alarm is not to be re-baselined a seventh time and this is a bounded feature step. */
+  { rel: "ui/library.css", maxBytes: 8 * 1024 },
+  /* The Up Next page unit added the `page` flag on the QueueRow (handle, swipe id, Remove label), the page head's hook, the
+     in-place repaint's refocus fallback and `libRemoveRow` to this file: 30.2 KB minified against a 30 KB ceiling, so 30 to 32 KB,
+     a bounded step (the page's own code is ui/queue.js, which got smaller). */
+  { rel: "ui/library.js", maxBytes: 32 * 1024 },
+  /* Phase 4, Up Next page: its stylesheet (the head, the handle, the gestures' paint). ui/queue.js shrank (the page's own
+     row and its four arrow buttons went into Library's QueueRow), so it stays in the legacy line. */
+  { rel: "ui/queue.css", maxBytes: 1.75 * 1024 },
   /* QA fix (Phase 5, 2026-10-08): the rest of what the redesign ADDED to the bundle and nothing but the redesign owns —
      the token sheet, the icon sprite and its licence notice, the sprite's loader, and the per-screen stylesheets that
      no earlier unit listed. They were counted against the legacy line by omission, which is how the line (2.85 MB, not

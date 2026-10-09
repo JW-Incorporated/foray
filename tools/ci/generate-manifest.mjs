@@ -180,6 +180,8 @@ const SHELL = [
   "ui/foray-detail.css",
   /* Redesign 2026 (ambient): Settings, Tuning, About and the gear's Sheet. */
   "ui/settings.css",
+  /* Redesign 2026 (ambient): the Up Next page, Library's Up Next section given the screen. A stylesheet, so listed by name. */
+  "ui/queue.css",
   /* Redesign 2026 (ambient): the Forays list, two-up ForayCards. A stylesheet, so listed by name. */
   "ui/forays.css",
   /* Redesign 2026 (ambient): Playlist detail and the Playlists list. A stylesheet, so listed by name. */

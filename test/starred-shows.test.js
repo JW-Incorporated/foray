@@ -329,11 +329,12 @@ test("renderStarredShows shows an honest empty state when nothing is starred", (
 /* 5. ROUTE WIRING                                                       */
 /* ==================================================================== */
 
-test("route() dispatches #/starred-shows to renderStarredShows, matching #/playlists/#/queue's pattern", () => {
-  /* MUTATION: delete the `#/starred-shows` branch from route(). This test
-     fails because renderHome (the fallback) runs instead and the view
-     never contains the starred-shows heading. */
-  const m = mount();
+test("route() sends #/starred-shows to Library, where the followed shows now live (ROUTE_ALIASES)", () => {
+  /* REDESIGN 2026 (ambient, Library + Dock): `#/starred-shows` is folded into Library, so route() rewrites the hash
+     and paints Library's grid, which has no "Followed shows" heading by design (a followed show needs no label).
+     MUTATION: delete the `"#/starred-shows": "#/library"` entry from ROUTE_ALIASES in app.js -> the hash stays and
+     the page is not Library's grid. */
+  const m = mount({ seed: { cp_starred_shows: JSON.stringify({ "show-a": { show_id: "show-a", title: "Show A", starred_at: "2026-09-01T00:00:00Z" } }) } });
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
   m.state.taxonomy = { nodes: [] };
@@ -359,7 +360,9 @@ test("the followed shows are on Library whole (Redesign 2026: #/starred-shows fo
      lists ALL of them: a cap or an "All N" link here would send the listener to the page they are on. The ruling
      that fell: "the Shows page carries the shortcut" (2026-09-03). The original reasoning below still describes the
      drawer half, which is unchanged.
-     MUTATION: re-cap libraryFollowedHtml with `.slice(0, LIBRARY_SECTION_CAP)` -> the six-rows assertion fails. */
+     The grid (libGridHtml) holds nine cells before "Show all", which opens the rest in place: six followed shows are all
+     drawn, and a tenth waits behind the toggle, never behind a link.
+     MUTATION: cut the grid to three cells (`LIB_GRID_MAX` = 3) -> the six-shows assertion fails. */
   /* Was: "the drawer nav carries a link to #/starred-shows". The founder
      named the menu's five pages on 2026-09-03 (Home, Shows, Playlists,
      Forays, Up Next) and Starred Shows is not one of them, so the drawer

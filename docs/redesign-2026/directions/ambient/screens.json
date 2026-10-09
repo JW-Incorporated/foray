@@ -237,6 +237,46 @@
         }
       }
     },
+    "up-next": {
+      "title": "Up Next page, an episode playing (no prototype route: paired with the prototype Library's Up Next section, the same QueueRow)",
+      "prototype": {
+        "route": "?scroll=1330&screen=up-next#/library"
+      },
+      "app": {
+        "state": "up-next",
+        "step": "up-next-playing"
+      },
+      "regions": {
+        "rows": {
+          "prototype": ".q-row",
+          "app": ".qp-row"
+        },
+        "mini": {
+          "prototype": ".mini",
+          "app": "#dock-mini"
+        },
+        "tabBar": {
+          "prototype": ".tabbar",
+          "app": "#tab-bar"
+        }
+      }
+    },
+    "up-next-menu": {
+      "title": "Up Next page, a row's menu open (the prototype's Library menu, the same sheet)",
+      "prototype": {
+        "route": "?state=upnextmenu&scroll=1330&screen=up-next#/library"
+      },
+      "app": {
+        "state": "up-next",
+        "step": "up-next-menu"
+      },
+      "regions": {
+        "sheet": {
+          "prototype": ".sheet",
+          "app": ".lb-panel"
+        }
+      }
+    },
     "foray": {
       "title": "Foray detail (half played: Resume)",
       "prototype": {

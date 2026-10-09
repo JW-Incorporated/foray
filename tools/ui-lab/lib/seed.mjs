@@ -180,6 +180,7 @@ export function buildSeed(kind, fx) {
     ...base,
     ...forayRows,
     ...midlisten,
+    ...forayRows,
     ...playlistStarted,
     cp_saved: saved,
     cp_episode_snaps: snaps,

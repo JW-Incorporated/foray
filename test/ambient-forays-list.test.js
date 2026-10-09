@@ -581,11 +581,16 @@ test("the harness reaches the page: a seed with one Foray part-played and one fi
   assert.deepStrictEqual(Object.keys(seedMod.buildSeed("returning", fx)).filter((k) => k.startsWith("cp_foray:")), [], "the plain returning profile has none");
   /* The scheme-flip helpers park on a LEGACY page, never on this one: a page that wears `.ag` crossfades its colours when the
      scheme flips and the reduced-motion gate reads 94 transitions on it (the first gates run on this branch did exactly that).
-     Followed shows folded into Library (#/starred-shows is an alias of it now), so the park page is the legacy Up Next (#/queue).
-     MUTATION: `const PARK_ROUTE = "#/queue"` -> `"#/forays"` (or `"#/starred-shows"`) in tools/ui-lab/lib/states.mjs -> red. */
+     Followed shows folded into Library (#/starred-shows is an alias of it now) and the Up Next page (#/queue) is Afterglow
+     too (Redesign 2026, ambient Up Next), so no legacy PAGE is left: the helpers park on #/about and then EMPTY #view, so nothing
+     drawn is left to crossfade.
+     MUTATION 1: `const PARK_ROUTE = "#/about"` -> `"#/queue"` (or `"#/starred-shows"`) in tools/ui-lab/lib/states.mjs -> red.
+     MUTATION 2: take the `v.replaceChildren()` out of parkAway -> the emptied-view assertion is red. */
   const statesSrc = read("tools/ui-lab/lib/states.mjs");
-  assert.match(statesSrc, /const PARK_ROUTE = "#\/queue";/, "parked on Up Next (#/queue), which is still a legacy page");
-  assert.strictEqual((statesSrc.match(/PARK_ROUTE\)/g) || []).length, 4, "all four helpers (unavailable, Dawn, Forays Dawn, and freshDiscover's reset, which used to visit the now-Afterglow #/library) park there");
+  assert.match(statesSrc, /const PARK_ROUTE = "#\/about";/, "parked on About, then the view is emptied");
+  assert.match(statesSrc, /async function parkAway\(page\) \{[\s\S]*?PARK_ROUTE[\s\S]*?replaceChildren\(\)/, "parkAway empties #view after it parks: a drawn .ag page would crossfade its colours");
+  assert.strictEqual((statesSrc.match(/await parkAway\(page\)/g) || []).length, 3, "the unavailable, Dawn and Forays Dawn helpers park through parkAway");
+  assert.strictEqual((statesSrc.match(/PARK_ROUTE\)/g) || []).length, 2, "and parkAway and freshDiscover's reset are the two places that name the route");
   const states = statesMod.appStates(fx);
   const st = states.find((s) => s.id === "forays-list");
   assert.ok(st && st.seed === "forays-progress");

@@ -774,7 +774,8 @@ test("the screen is registered: linked in index.html, in every shell list, palet
     assert.ok(read(rel).includes('"ui/library.css"'), `${rel} ships library.css`);
   }
   assert.match(read("app.js"), /querySelector\("\.page-head"\) \|\| view\.querySelector\("\.lb-head"\)/, "the landing heading finds Library's title (two lookups, not a comma list: the suites' fake DOM parses one simple selector)");
-  assert.match(read("app.js"), /currentHash\(\) === "#\/library" && typeof repaintLibraryUpNext === "function"/, "a queue write repaints Library's Up Next");
+  /* Ported (Up Next page unit): the same repaint now also serves #/queue, so the guard names both routes. */
+  assert.match(read("app.js"), /\(h === "#\/library" \|\| h === "#\/queue"\) && typeof repaintLibraryUpNext === "function"/, "a queue write repaints Library's Up Next, and the Up Next page's");
 });
 
 test("a quiet link under a list starts at the content edge, and a foray tile's screen-reader line is the whole Foray line", async () => {

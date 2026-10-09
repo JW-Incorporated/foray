@@ -371,7 +371,7 @@ test("'Up Next' is a page over real cp_queue state, not a slot filled to match t
   return mountBooted({ cp_queue: JSON.stringify([item.id]) }).then((m) => {
     m.ctx.renderQueue();
     const html = m.view();
-    assert.ok(html.includes("<h2>Up Next</h2>"), "the page must be the Up Next page");
+    assert.ok(html.includes('<h2 class="t-title" tabindex="-1">Up Next</h2>'), "the page must be the Up Next page");
     assert.ok(html.includes("1 queued"), "the count must come from the stored queue");
     assert.ok(html.includes(m.ctx.esc(item.title)), "the queued episode must actually render");
   });

@@ -1,0 +1,58 @@
+/* ui/queue.css — the Up Next page (#/queue), Redesign 2026, ambient direction ("Afterglow"), phase 4.
+
+   The page is Library's Up Next section given the whole screen (BUILD-PLAN screen 13), so the QueueRow, the row menu,
+   the Toast, the cast and the fade are ui/library.css's, unchanged: the page wears the same `.ag.lb-page` shell and
+   `body.view-library`. This sheet holds only what Library does not have: the page's head (Back, the title, the count,
+   Clear) and the two gestures' paint (the lifted row, the drop line, the swipe's Remove). Everything is scoped under `.ag` and every class is `qp-*` (or the existing
+   `up-next-clear`/`is-dragging`/`drop-*`/`swiping` names, only ever under `.qp-row`), so it reaches no other screen.
+   Values come from ui/tokens.css.
+
+   NO reduced-motion block lives in this file, on purpose: ui/tokens.css has the one, scoped to `.ag` and everything
+   under it, so the row's transform transition and the drop line fall under it (a drag follows the finger by script,
+   with no transition at all). A second block would be a second owner (test/afterglow-tokens.test.js, "ONE block"). */
+
+/* The head: Back (a 44 icon button, its glyph's edge on the gutter), the title (Fraunces 26/30, the Library title's
+   treatment), how many are queued, and Clear. One 44 tall row. */
+.ag .qp-head { gap: var(--s-2); margin-top: 0; }
+.ag .qp-bar { min-height: var(--tap); display: flex; align-items: center; margin-top: var(--s-2); }
+.ag .qp-back { margin-inline-start: calc(var(--s-2) * -1); flex: none; color: var(--text); text-decoration: none; }
+.ag .qp-back:focus-visible { outline: calc(var(--s-1) / 2) solid var(--lamp-text); outline-offset: calc(var(--s-1) / 2); }
+.ag .qp-head h2 { min-width: 0; }
+/* The count is Library's section-head numeral: --text-3, the caption face, at the right edge. */
+.ag .qp-count { flex: none; color: var(--text-3); }
+/* Clear sits under the last row, not in the head (a second header action competed with the title). It is a quiet word in the
+   caption's grey, not Ember: Ember is the listener's own marks (saved, followed, progress), and `.ag-btn-quiet` paints Ember by
+   default (iteration 2: the judge saw an Ember Clear beside the title). */
+.ag .qp-foot { display: flex; justify-content: center; margin-top: var(--s-4); }
+.ag .qp-foot .qp-clear { color: var(--text-2); }
+/* The head sits 16 above the first row, as Library's title does above its grid. */
+.ag .qp-section > .lb-stack { margin-top: var(--s-3); }
+.ag .qp-section > .lb-empty { padding-top: var(--s-6); }
+
+/* The row is Library's QueueRow, unchanged: art, copy, the menu. Nothing is added to it for the page's two gestures: a swipe
+   left removes it and a hold lifts it to drag, both on its cover, so the row has ONE trailing control and the text column
+   keeps the room the title needs (titles are never cut). The cover keeps the vertical scroll for the browser (`pan-y`)
+   until a hold lifts the row (ui/queue.js then cancels the touchmove), and a held press must not select text or raise
+   the system's callout. */
+.ag .qp-row { transition: transform var(--m-ui) var(--e-out); }
+.ag .qp-row .lb-cover { touch-action: pan-y; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+
+/* While a row is carried it is lifted over its neighbours (no easing: it follows the finger), and the row it would land
+   beside shows a Lamp line on the side it would land on. Only `transform` and the line change, so nothing reflows. */
+.ag .qp-row.is-dragging { position: relative; z-index: 4; transition: none; box-shadow: inset 0 1px 0 var(--rim), var(--shadow-2); touch-action: none; }
+.ag .qp-row.drop-before::before, .ag .qp-row.drop-after::before {
+  content: ''; position: absolute; z-index: 3; left: var(--s-3); right: var(--s-3); height: calc(var(--s-1) / 2); border-radius: var(--r-xs); background: var(--lamp);
+}
+.ag .qp-row.drop-before::before { top: calc(var(--s-1) * -1); }
+.ag .qp-row.drop-after::before { bottom: calc(var(--s-1) * -1); }
+
+/* Swipe left to remove: the row follows the finger with no easing (`.swiping`), and lets go on its own transform
+   transition. The "Remove" label waits just past the row's right edge and is drawn only while a swipe is live, so it
+   is revealed as the row slides left and never widens the page otherwise (the page clips horizontal overflow). */
+.ag .qp-row.swiping { transition: none; }
+.ag .qp-under {
+  display: none; position: absolute; top: 0; bottom: 0; left: calc(100% + var(--s-2)); width: calc(var(--s-12) * 3);
+  align-items: center; padding-inline-start: var(--s-4); border-radius: var(--r-lg);
+  background: var(--bg2); color: var(--text); font: var(--t-label); pointer-events: none;
+}
+.ag .qp-row.swiping .qp-under { display: flex; }

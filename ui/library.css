@@ -43,6 +43,9 @@ body.view-library #view { padding-top: 0; }
 .ag.lb-page a:not(.ag-btn) { color: inherit; text-decoration: none; }
 .ag.lb-page a.ag-btn { text-decoration: none; }
 
+/* The Dock draws the upward light (#dock-cast) and the fade (.dock-fade) itself, on every page (ui/tabbar.js,
+   ui/dock.css); this page keeps neither. */
+
 /* Title: Fraunces 26/30 at the top, a 44 tall row. */
 .ag .lb-head { min-height: var(--tap); display: flex; align-items: center; margin-top: var(--s-2); }
 .ag .lb-head h2 { flex: 1; min-height: var(--tap); display: flex; align-items: center; }
@@ -126,8 +129,13 @@ body.view-library #view { padding-top: 0; }
 .ag .lb-qrow.lb-nomenu { grid-template-columns: var(--art-queue) minmax(0, 1fr); padding-right: var(--s-3); }
 .ag .lb-qrow .t-label { color: var(--text); }
 .ag .lb-qrow .t-label .icon { vertical-align: -4px; }
-.ag .lb-qrow .ag-row-meta { margin-top: 0; flex-wrap: nowrap; }
-.ag .lb-qrow .ag-row-state { flex: none; }
+/* A QueueRow's title and caption are never cut (DIRECTION: titles never cut; the prototype wraps a long title whole and keeps
+   the caption's length and date intact). The caption runs as inline text so a long show name wraps to a second line rather
+   than hiding what follows it; the row grows to fit (its 64 is a minimum). */
+.ag .lb-qrow .ag-row-meta { display: block; margin-top: 0; }
+.ag .lb-qrow .ag-row-meta .lb-ell { display: inline; overflow: visible; text-overflow: clip; white-space: normal; }
+/* "Playing" is the caption's own colour (the prototype sets the whole meta line in text-2; the state is carried by the Fill glyph and the row's tint, not a Lamp word). */
+.ag .lb-qrow .ag-row-state { margin-inline-end: var(--s-1); color: inherit; }
 
 /* Playlists as rows: a 56 collage (no lit glow at this size), the name, the length, the played count in Ember. */
 .ag .lb-prow { min-height: var(--row-queue); padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2); display: grid; grid-template-columns: var(--art-queue) minmax(0, 1fr); align-items: center; gap: var(--s-3); }
@@ -141,15 +149,16 @@ body.view-library #view { padding-top: 0; }
 .ag .lb-grid-section > .lb-empty { padding-top: var(--s-2); }
 
 /* The Toast: 48 tall, 8 above the bar, five seconds. Closed it is not drawn at all (visibility), so its Undo is
-   neither focusable nor read. */
+   neither focusable nor read. It rises in as an ANIMATION, not a transition (the Up Next page unit, Redesign 2026): the
+   one reduced-motion block collapses an animation to 1ms, which is no motion, while it can only soften a transition to
+   a 200ms opacity crossfade, and the motion gate (rightly) reads that crossfade as motion. It leaves at once. */
 .ag .lb-toast {
   position: fixed; left: var(--gutter); right: var(--gutter); z-index: 65; min-height: 48px;
-  bottom: calc(var(--chrome-bottom) + var(--s-2));
+  bottom: calc(var(--safe-bottom) + var(--dock-inset) + var(--dock-h) + var(--s-2));   /* 8 above the Dock's top edge: the mini row when it is up, else the tab row */
   opacity: 0; visibility: hidden; transform: translateY(var(--s-3));
-  transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s linear var(--m-ui);
 }
-body.fp-open .ag .lb-toast { bottom: calc(var(--chrome-bottom) + var(--mini) + var(--s-2)); }
-.ag .lb-toast.is-open { opacity: 1; visibility: visible; transform: none; transition: opacity var(--m-ui) var(--e-out), transform var(--m-ui) var(--e-out), visibility 0s; }
+.ag .lb-toast.is-open { opacity: 1; visibility: visible; transform: none; animation: lb-toast-in var(--m-ui) var(--e-out); }
+@keyframes lb-toast-in { from { opacity: 0; transform: translateY(var(--s-3)); } to { opacity: 1; transform: none; } }
 
 /* The row menu: a sheet over the page (the legacy sheet frame, the Afterglow ground). */
 .fy-sheet.ag.lb-sheet { background: transparent; }
