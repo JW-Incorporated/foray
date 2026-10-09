@@ -112,7 +112,14 @@ export const REAL_DATA_SUITES: readonly string[] = [
      passage from the REAL `data/forays.json` (the page reads live narration
      at render time), so a publish that changes a narration shape the picker
      mishandles is refused here rather than found on the founder's PC. */
-  "tools/narration/render-audition.test.mjs"
+  "tools/narration/render-audition.test.mjs",
+  /* Added 2026-10-08 with the Ambient redesign suites (Foray detail, Forays list,
+     Library). Each reads the real `data/forays.json` to mount its screen over
+     the committed Forays, so a publish that adds a Foray a screen mishandles
+     is refused here. */
+  "test/ambient-foray-detail.test.js",
+  "test/ambient-forays-list.test.js",
+  "test/ambient-library.test.js"
 ];
 
 /**

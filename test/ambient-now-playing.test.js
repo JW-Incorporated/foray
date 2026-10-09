@@ -252,3 +252,15 @@ test("iteration 4 (fidelity round 3): long-title art follows the prototype's for
   assert.match(states, /label: "now-playing-episode",\s*route: "#\/library",\s*run: \(page\) => startEpisodePlayback\(page, epShort, npWhy\)/);
   assert.match(states, /label: "now-playing-longtitle",[\s\S]*?startEpisodePlayback\(page, ep0\)[\s\S]*?ready: "\.ag-np\.is-long-title"/);
 });
+
+test("iteration 5 (fidelity round 4): the title group sits 12px under the art and the sleeve's glow stays under --lit-mix", () => {
+  /* MUTATION 1: set `.ag-np-titles` margin-top back to var(--s-5) -> red (title 8px under the prototype's gap; why-line to scrubber read 46 against 60).
+     MUTATION 2: set the inner ring's mix back to `calc(var(--lit-mix) + 25%)` -> red (a hard orange halo that outlined the sleeve).
+     MUTATION 3: set --rs2 back to `+ 20px` -> red (the scrim's mid stop would no longer sit where the text group starts). */
+  assert.match(css, /\.ag-np-titles \{ margin-top: var\(--s-3\);/);
+  assert.match(css, /--rs2: calc\(var\(--safe-top\) \+ 72px \+ var\(--np-art\) \+ 12px\)/);
+  const lit = css.match(/\.lit-art \{ box-shadow:[^}]*\}/)[0];
+  const mixes = [...lit.matchAll(/calc\(var\(--lit-mix\) ([+-]) (\d+)%\)/g)];
+  assert.equal(mixes.length, 2, "both glow rings read --lit-mix");
+  mixes.forEach((m) => assert.equal(m[1], "-", "a ring above --lit-mix is the neon edge-light the fidelity round removed"));
+});

@@ -7,7 +7,7 @@
 .ag-np.fp-sheet::before { opacity: 0; }
 /* Reduce Motion's entrance: client.js adds this for one frame, then the 200ms opacity transition in the reduced-motion block runs. */
 .ag-np.fp-sheet.is-entering { opacity: 0; }
-.ag-np.fp-sheet::after { z-index: 1; --rs1: calc(var(--safe-top) + 72px + var(--np-art) * .4); --rs2: calc(var(--safe-top) + 72px + var(--np-art) + 20px); }
+.ag-np.fp-sheet::after { z-index: 1; --rs1: calc(var(--safe-top) + 72px + var(--np-art) * .4); --rs2: calc(var(--safe-top) + 72px + var(--np-art) + 12px); }
 .ag-np.fp-sheet .ag-np-room-layers { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: var(--glow-room); }
 .ag-np.fp-sheet .ag-np-room-layer { position: absolute; inset: -12%; opacity: 0; background: var(--room-art, none) center/cover; filter: blur(64px) saturate(130%); transform: scale(1.4); transition: opacity var(--m-room) var(--e-out); }
 .ag-np.fp-sheet .ag-np-room-layer.is-on { opacity: var(--room-art-opacity); }
@@ -31,9 +31,9 @@
 .ag-np.fp-sheet .ag-np-art-wrap { display: flex; justify-content: center; margin-top: var(--s-4); }
 .ag-np.fp-sheet .ag-np-art-swap { position: relative; width: var(--np-art); height: var(--np-art); }
 .ag-np.fp-sheet .ag-np-art-swap > img, .ag-np.fp-sheet .ag-np-collage { position: absolute; inset: 0; width: var(--np-art); height: var(--np-art); border-radius: var(--r-xl); object-fit: cover; overflow: hidden; }
-/* The sleeve is the lamp: at 280px the cast is a lit pool in the art's own colour (a second, wider ring stands in for the glow the
+/* The sleeve is the lamp: at 280px the cast is a soft lit pool in the art's own colour (iteration 5: both rings sit under --lit-mix, so the glow lights the wall instead of outlining the sleeve) (a second, wider ring stands in for the glow the
    prototype's blurred art gives for free), never the black drop shadow --shadow-1 alone would leave. */
-.ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: var(--shadow-1), 0 0 calc(var(--lit-r) * .6) 0 color-mix(in oklab, var(--art-glow, var(--glow)) calc(var(--lit-mix) + 25%), transparent), 0 0 calc(var(--lit-r) * 1.6) calc(var(--lit-r) / -5) color-mix(in oklab, var(--art-glow, var(--glow)) calc(var(--lit-mix) + 10%), transparent); }
+.ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: var(--shadow-1), 0 0 calc(var(--lit-r) * .6) 0 color-mix(in oklab, var(--art-glow, var(--glow)) calc(var(--lit-mix) - 12%), transparent), 0 0 calc(var(--lit-r) * 1.6) calc(var(--lit-r) / -5) color-mix(in oklab, var(--art-glow, var(--glow)) calc(var(--lit-mix) - 22%), transparent); }
 @media (prefers-reduced-transparency: reduce) { .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: var(--shadow-1); } }
 @media (forced-colors: active) { .ag-np.fp-sheet .ag-np-art-swap > .lit-art { box-shadow: none; } }
 .ag-np.fp-sheet .ag-np-art-swap > img:not(.ag-np-art-out), .ag-np.fp-sheet .ag-np-collage { transition: transform var(--m-room) var(--e-spring-soft); }
@@ -49,8 +49,8 @@
 .ag-np.fp-sheet .ag-np-art-swap.is-frozen-ending .ag-np-art-in { animation: none; transform: translateX(15%); }
 @keyframes ag-np-art-out { to { transform: translateX(-24%); opacity: .4; } }
 @keyframes ag-np-art-in { from { transform: translateX(100%); } to { transform: none; } }
-/* The eyebrow starts 20px under the art: that is the scrim's second stop (--rs2 = safe-top + 72 + art + 20), so every line of text begins in the mid zone. */
-.ag-np.fp-sheet .ag-np-titles { margin-top: var(--s-5); text-align: center; }
+/* The eyebrow starts 12px under the art (the prototype's gap; it was 20 and put the text group 8px low, squeezing the why-line to scrubber gap to 46 against 60): that is the scrim's second stop (--rs2 = safe-top + 72 + art + 12), so every line of text begins in the mid zone. */
+.ag-np.fp-sheet .ag-np-titles { margin-top: var(--s-3); text-align: center; }
 .ag-np.fp-sheet .ag-np-eyebrow { height: 18px; margin: 0; display: flex; align-items: center; justify-content: center; color: var(--lamp-text); opacity: 0; overflow: hidden; transition: opacity var(--m-ui) var(--e-out); }
 .ag-np.fp-sheet .ag-np-eyebrow.is-lit { opacity: 1; }
 .ag-np.fp-sheet .fp-s-title { margin: 2px 0 0; font: var(--t-display); font-variation-settings: 'SOFT' 100, 'WONK' 0; color: var(--text); text-align: center; }
