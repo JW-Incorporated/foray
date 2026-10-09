@@ -270,9 +270,11 @@ final class SpeechNarratorTests: XCTestCase {
         try XCTSkipIf(outputRows.contains { $0[field: "kind"] == .string("engine-start-failed") },
                       "this runner's AVAudioEngine would not start: \(outputRows)")
         XCTAssertTrue(pcm.pause())
+        // Read at once: a buffer the synthesizer hands over during the hold
+        // starts the engine again (`received`), which would hide a pause.
+        XCTAssertTrue(pcm.engineIsRunning, "a held line keeps the engine running (CH3-15: pause/resume mid-line unchanged)")
         spin(until: 0.5, { false })
         XCTAssertEqual(ends, [], "a held line does not end")
-        XCTAssertTrue(pcm.engineIsRunning, "a held line keeps the engine running (CH3-15: pause/resume mid-line unchanged)")
         XCTAssertTrue(pcm.resume())
         XCTAssertTrue(pcm.engineIsRunning)
         XCTAssertTrue(spin(until: 60, { !ends.isEmpty }), "the resumed line never ended: \(outputRows)")
