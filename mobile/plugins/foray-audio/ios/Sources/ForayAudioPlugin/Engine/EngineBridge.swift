@@ -2,14 +2,19 @@ import Foundation
 import ForayEngineCore
 
 /// What the bridge needs of the process's owner (`EngineOwnership`, NE-17):
-/// the lane, the engine, and the three things only the owner may do (stand
-/// the hello watchdog down, write the Developer override, run the one-way
-/// relinquish with the legacy hand-over). A protocol so the bridge's tests
-/// run over a fake owner and the NE-15h recording seams.
+/// the lane, the engine, whether the engine has given the process back, and
+/// the three things only the owner may do (stand the hello watchdog down,
+/// write the Developer override, run the one-way relinquish with the legacy
+/// hand-over). A protocol so the bridge's tests run over a fake owner and the
+/// NE-15h recording seams.
 @MainActor
 protocol EngineBridgeOwner: AnyObject {
     @discardableResult func decideOnce() -> EngineMode.Decision
     var engine: ForayEngine? { get }
+    /// The one answer to "does the engine still own this process?" (CH3-06,
+    /// R1-06): set once, when the engine's teardown hands the process to the
+    /// legacy lane, and never cleared.
+    var relinquished: Bool { get }
     func helloReceived()
     func setModeOverride(_ mode: EngineMode.Override)
     @discardableResult func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) -> EngineVerdict
@@ -95,7 +100,18 @@ final class EngineBridge {
     private var coalescer = SnapshotCoalescer()
     private var window: EngineObservation?
     private var lastCmdSeq: Int?
-    private var lastError: String?
+    /// The code of the core's last `error` event (the snapshot's
+    /// `lastError`), and the load it was about: the core's `lastToken` when
+    /// it was emitted. CH3-12 (R1-17): it means the CURRENT item, because the
+    /// page settles a downloaded copy's failure from it when it comes back
+    /// (client.js `settleEngineLocalLoad`), and a stale code would mark the
+    /// wrong download missing. So it ends with every accepted start
+    /// (`startsAnItem`) and with any newer load the core began by itself (a
+    /// remote ▶, an auto-advance: `transitioned()`).
+    private var lastError: (code: String, load: DeckToken)?
+    /// How many `error` events the core has emitted: a start that failed in
+    /// its own turn keeps the error it raised.
+    private var errorsEmitted = 0
     private weak var hooked: ForayEngine?
     private var handBackAnnounced = false
 
@@ -126,12 +142,16 @@ final class EngineBridge {
         if !EngineContract.accepts(.helloRequest, payload) {
             row("hello", [JSONMember("invalid", .string("y"))])
         }
-        // A new page: its own command count, and a page that starts in view.
-        // Its first snapshot is the one in this answer.
+        // A new page: its own command count, and no window left over from the
+        // old one. Its first snapshot is the one in this answer. Whether it is
+        // LOOKING is its own word (CH3-23, R4-07): a hello is not a
+        // `setPageVisible`, so the last answer stands until the page sends one
+        // (client.js does, right after hello); the reference engine never
+        // reset it either.
         lastCmdSeq = nil
         window?.cancel()
         window = nil
-        coalescer = SnapshotCoalescer(visible: true)
+        coalescer = SnapshotCoalescer(visible: coalescer.visible)
 
         let decision = owner.decideOnce()
         guard let engine = liveEngine else { return EngineBridgeRules.legacyHello(reason: legacyReason(decision)) }
@@ -183,13 +203,14 @@ final class EngineBridge {
                     records.purge()
                     return nil
                 }
-                return owner.engine?.isTornDown == true ? .relinquished : .capabilityOff
+                return owner.relinquished ? .relinquished : .capabilityOff
             }
             if let needed = EngineBridgeRules.requiredCapability(command), !capabilities.contains(needed) {
                 return .capabilityOff
             }
 
             let verdict: EngineVerdict
+            let errorsBefore = errorsEmitted
             if case let .relinquish(cap) = command {
                 // The owner's, not the core's alone: it runs the legacy hand-over
                 // after the core goes terminal (plan §4.6).
@@ -208,7 +229,7 @@ final class EngineBridge {
             if case let .setPageVisible(visible) = command {
                 apply(coalescer.setVisible(visible))
             }
-            if case .playEpisode = command, verdict.ok { lastError = nil }
+            if verdict.ok, EngineBridge.startsAnItem(command), errorsEmitted == errorsBefore { lastError = nil }
             return EngineBridgeRules.refusal(for: verdict.failures)
         }
 
@@ -220,6 +241,15 @@ final class EngineBridge {
                         JSONMember("result", .string(refusal.rawValue))])
         }
         return reply(refusal)
+    }
+
+    /// The commands that make a new current item when they are accepted
+    /// (CH3-12, R1-17): the last item's `lastError` is not this one's.
+    private static func startsAnItem(_ command: EngineContract.Command) -> Bool {
+        switch command {
+        case .playEpisode, .playForay, .restoreBar, .play: return true
+        default: return false
+        }
     }
 
     // MARK: - engineRead
@@ -248,9 +278,10 @@ final class EngineBridge {
 
     // MARK: - The engine
 
-    /// The engine playing this process, while it still does.
+    /// The engine playing this process, while it still does: the owner's
+    /// answer, not the engine's own flag (CH3-06, R1-06).
     private var liveEngine: ForayEngine? {
-        guard owner.decideOnce().mode == .native, let engine = owner.engine, !engine.isTornDown else { return nil }
+        guard owner.decideOnce().mode == .native, !owner.relinquished, let engine = owner.engine else { return nil }
         return engine
     }
 
@@ -290,8 +321,8 @@ final class EngineBridge {
         if let engine = owner.engine, owner.decideOnce().mode == .native {
             // A torn-down engine still answers (its session reads
             // `relinquished`), but its deck is gone: nothing is loaded.
-            let deck = engine.isTornDown ? DeckReading.idle : engine.seams.deck.reading
-            body = EngineSnapshot.body(core: engine.coreValue, deck: deck, lastError: lastError, monoMs: timing.monoMs)
+            let deck = owner.relinquished ? DeckReading.idle : engine.seams.deck.reading
+            body = EngineSnapshot.body(core: engine.coreValue, deck: deck, lastError: lastError?.code, monoMs: timing.monoMs)
         } else {
             body = EngineSnapshot.body(core: EngineCore(), deck: .idle, lastError: nil)
         }
@@ -306,7 +337,12 @@ final class EngineBridge {
 
     /// After every input the engine handled, and at its teardown.
     private func transitioned() {
-        if let engine = owner.engine, engine.isTornDown, !handBackAnnounced {
+        // CH3-12: a load newer than the one the error was about is a new
+        // current item (a remote ▶, an auto-advance, a jump).
+        if let error = lastError, let engine = owner.engine, engine.coreValue.state.lastToken != error.load {
+            lastError = nil
+        }
+        if owner.relinquished, !handBackAnnounced {
             handBackAnnounced = true
             if coalescer.visible { deliver(EngineBridgeRules.modeChangedEvent(reason: .downgrade)) }
         }
@@ -314,7 +350,10 @@ final class EngineBridge {
     }
 
     private func engineEmitted(_ event: EngineEvent) {
-        if case let .error(code, _) = event { lastError = code }
+        if case let .error(code, _) = event {
+            lastError = (code, owner.engine?.coreValue.state.lastToken ?? 0)
+            errorsEmitted += 1
+        }
         guard coalescer.visible else { return }
         deliver(EngineBridgeRules.event(event))
     }

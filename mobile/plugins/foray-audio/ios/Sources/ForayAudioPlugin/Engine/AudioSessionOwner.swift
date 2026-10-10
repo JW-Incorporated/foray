@@ -62,12 +62,18 @@ extension AVAudioSession: AudioSessionAPI {
 ///     are posted on a secondary thread, and the core's 500 ms route
 ///     attribution (plan §4.3) relies on arriving in order on main.
 ///
-/// `phase` is what the adapters' implicit-activation guard reads (AVDeck's
-/// `sessionIsActive`, plan §4.3): `.active` from a successful activation
-/// until a deactivation, a session-losing interruption or a reset. It is the
-/// OWNER'S view of the session, not the core's ruling: a late
-/// `appWasSuspended` leaves it where it was, because only the core knows
-/// whether the engine was running when it arrived (`stale=y`).
+/// `phase` is the OWNER'S view of the session, for its own rows only:
+/// `.active` from a successful activation until a deactivation, a
+/// session-losing interruption or a reset. It gates nothing. The shell's
+/// audible starts (AVDeck's `sessionIsActive`, the jingle's, the narrator's,
+/// plan §4.3) read the CORE's phase through `EngineSessionGate` (CH3-19,
+/// R2-08): two phases disagreed on known inputs, and the moment the core
+/// heard the narrator (R2-05) a late `began` the core ignores would have left
+/// this one lost, and every jingle refused, for the rest of the Foray. So a
+/// `began` moves `phase` only once the core has ruled on it and no longer
+/// holds the session (`engineHoldsSession`); a late `appWasSuspended` leaves
+/// it where it was, because only the core knows whether the engine was
+/// running when it arrived (`stale=y`).
 final class AudioSessionOwner: SessionControlling {
 
     /// One output port: the type goes in rows (`CarAudio`,
@@ -115,8 +121,14 @@ final class AudioSessionOwner: SessionControlling {
     private let center: NotificationCenter
     private let config: Config
 
-    /// The owner's view of the session (see the type comment).
+    /// The owner's view of the session, for its rows (see the type comment).
     private(set) var phase: SessionPolicy.Phase = .inactive
+
+    /// Whether the core still holds the session active, asked right after a
+    /// `began` was handed to it (CH3-19). The boot wires it to the core's
+    /// phase once the engine exists (`EngineSessionGate.attach`); nil (a test
+    /// owner with no engine), every session-losing `began` moves `phase`.
+    var engineHoldsSession: (() -> Bool)?
 
     init(api: AudioSessionAPI = AVAudioSession.sharedInstance(),
          center: NotificationCenter = .default,
@@ -166,10 +178,17 @@ final class AudioSessionOwner: SessionControlling {
             token = Self.errorToken(code: (error as NSError).code)
         }
         let ok = token == nil
-        // A deactivation that failed left the session running, so it still
-        // reads active: a play on it is owned, not an implicit activation.
-        if ok { phase = .inactive }
-        // L13: WHY it failed, on failure only (`is-busy` is I/O still running).
+        // `is-busy` is NOT a refusal. Apple (`setActive(_:options:)`):
+        // "Deactivating an audio session that has running audio objects stops
+        // them, makes the session inactive, and returns an
+        // AVAudioSessionErrorCodeIsBusy error." So the session is inactive,
+        // as the core already holds it (the core hears no answer from a
+        // deactivate), and a play on it is an implicit activation (CH3-15,
+        // half of R2-08). Any other failure left the session as it was, so it
+        // still reads active: a play on it is owned.
+        if ok || token == Vocabulary.SessionErrorDetail.isBusy.rawValue { phase = .inactive }
+        // L13: WHY it failed, on failure only (`is-busy`: I/O was still
+        // running, and the deactivation stopped it).
         row("deactivated", [JSONMember("ok", .bool(ok)), JSONMember("notify", .bool(notifyOthers))]
             + (token.map { [JSONMember("token", .string($0))] } ?? []))
     }
@@ -181,8 +200,10 @@ final class AudioSessionOwner: SessionControlling {
     /// After a media-services reset every AVFoundation object is gone, and
     /// the session with them: the owner forgets its activation (the core
     /// lands inactive and activates again on the next play). The category is
-    /// the core's separate `reapplyCategory`; the decks are rebuilt by the
-    /// core's `.unload`. The notification observers need nothing: they are
+    /// the core's separate `reapplyCategory`. The players are the shell's to
+    /// rebuild, right after this (the host's `.sessionRebuild`: both decks,
+    /// the narration voice's engine, the jingle); the core's `.unload` only
+    /// detaches the item. The notification observers need nothing: they are
     /// on `NotificationCenter`, which survives the reset.
     func rebuild() {
         phase = .inactive
@@ -224,11 +245,19 @@ final class AudioSessionOwner: SessionControlling {
             // Admitted exactly as the table admits it, so an absent reason
             // is `unknown` here too, and takes the session there.
             let admitted = SessionPolicy.interruptionReason(reason)
-            if admitted != .builtInMicMuted, admitted != .appWasSuspended, phase == .active {
-                phase = .lostToInterruption
-            }
             row("notification", [JSONMember("name", .string("interruption")), JSONMember("type", .string("began")),
                                  JSONMember("reason", .string(admitted.rawValue))] + interrupterFields())
+            handler(event)
+            // The core has ruled. One it ruled LATE (a spoken line still
+            // speaking: a declined call, CH3-19) left its session active,
+            // and the owner's phase stays with it. (So the row above carries
+            // the phase the notification found; the core's own `session
+            // kind=interruption` row, right after it, carries the ruling.)
+            if admitted != .builtInMicMuted, admitted != .appWasSuspended, phase == .active,
+               engineHoldsSession?() != true {
+                phase = .lostToInterruption
+            }
+            return
         case let .interruptionEnded(shouldResume):
             row("notification", [JSONMember("name", .string("interruption")), JSONMember("type", .string("ended")),
                                  JSONMember("shouldResume", .bool(shouldResume))] + interrupterFields())

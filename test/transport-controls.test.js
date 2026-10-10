@@ -289,3 +289,200 @@ test("both speed buttons say they open a menu — the Foray page's as well as th
   const menu = APP.slice(APP.indexOf("function openRateMenu("), APP.indexOf("function openRateMenu(") + 800);
   assert.match(menu, /panel\.setAttribute\("role", "dialog"\);/, "fixture assumption: what it opens is a dialog");
 });
+
+/* ---------- CH3-18 (R4-05, docs/roadmap/code-health-3.md): a native-lane nudge ----------
+
+   In the native lane the ENGINE owns the playhead. A load the engine starts by
+   itself (the wheel's ⏭, Continuous playback at an episode's end) is one the
+   page did not ask for, so the page's `loadingStart` is not about it, and the
+   snapshot's `positionSec` is 0 until the deck holds the item. A nudge in that
+   window was computed from the page's 0 and sent as an absolute `seekTo`, so
+   30↻ before the load landed started the episode at 0:30 and the resume point
+   at 38:00 was overwritten.
+
+   Harness: the real client.js in a pretend iOS shell over the reference
+   engine, cut down from player/native-mode.test.js's `bootNative` (duplicated
+   rather than imported, as test/engine-continuation.test.js does: importing a
+   test file runs its tests). The engine-started load is a snapshot the
+   reference cannot hold still (its fake deck reports the load's start at
+   once), so it is pushed to the page as the Swift engine sends it. */
+
+let nativeBootSeq = 0;
+
+function nativeNode(tag) {
+  return {
+    tagName: String(tag).toUpperCase(), children: [], attrs: new Map(), listeners: new Map(),
+    style: {}, dataset: {}, className: "", textContent: "", hidden: false,
+    classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
+    append(...kids) { for (const k of kids) this.children.push(k); },
+    appendChild(k) { this.children.push(k); return k; },
+    setAttribute(k, v) { this.attrs.set(k, String(v)); },
+    getAttribute(k) { return this.attrs.has(k) ? this.attrs.get(k) : null; },
+    removeAttribute(k) { this.attrs.delete(k); },
+    addEventListener(type, fn) {
+      if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+      this.listeners.get(type).add(fn);
+    },
+    removeEventListener(type, fn) { this.listeners.get(type)?.delete(fn); },
+  };
+}
+
+/** Let the engine client's serial send reach the wire. */
+const settle = async () => { for (let i = 0; i < 8; i++) await new Promise((r) => setImmediate(r)); };
+
+async function bootNativeClient(t, { seed = [] } = {}) {
+  const { pathToFileURL } = require("node:url");
+  const { createReferenceEngine } = await import("../player/parity/reference-engine.js");
+  const { __resetInstanceForTests } = await import("../player/queue-manager.js");
+  let mono = 0;
+  const scheduler = { nowMs: () => ++mono, schedule: () => () => {} };
+  const ref = createReferenceEngine({ scheduler, now: () => 1_790_000_000_000 });
+  const base = ref.asCapacitor({ platform: "ios" });
+  /** Every transport command the page sent the engine, as the wire carried it. */
+  const sent = [];
+  const capacitor = {
+    ...base,
+    nativePromise(plugin, method, payload) {
+      if (plugin === "ForayAudio" && method === "engineSend") sent.push(JSON.parse(JSON.stringify({ cmd: payload.cmd, args: payload.args })));
+      return base.nativePromise(plugin, method, payload);
+    },
+  };
+  /* A row present at launch is the engine's too: attach adopts the engine's
+     set over the page's (replace-set), as on a device. */
+  const rows = new Map(seed);
+  for (const [k, v] of seed) ref.storage.setItem(k, v);
+  const storage = {
+    get length() { return rows.size; },
+    key: (i) => [...rows.keys()][i] ?? null,
+    getItem: (k) => (rows.has(k) ? rows.get(k) : null),
+    setItem: (k, v) => { rows.set(k, String(v)); },
+    removeItem: (k) => { rows.delete(k); },
+  };
+  const docListeners = new Map();
+  const doc = {
+    hidden: false,
+    activeElement: null,
+    body: nativeNode("body"),
+    createElement: (tag) => nativeNode(tag),
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    addEventListener(type, fn) {
+      if (!docListeners.has(type)) docListeners.set(type, new Set());
+      docListeners.get(type).add(fn);
+    },
+    removeEventListener(type, fn) { docListeners.get(type)?.delete(fn); },
+    fire(type) { for (const fn of [...(docListeners.get(type) ?? [])]) fn(); },
+  };
+  const win = {
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent: () => true,
+    Capacitor: capacitor,
+    speechSynthesis: { speak() {}, cancel() {}, pause() {}, resume() {}, getVoices: () => [], addEventListener() {} },
+    ForayMediaSession: { install: () => true, uninstall: () => true },
+  };
+  const names = ["window", "document", "localStorage", "navigator", "Event", "Audio"];
+  const prev = new Map(names.map((n) => [n, Object.getOwnPropertyDescriptor(globalThis, n)]));
+  const set = (n, value) => Object.defineProperty(globalThis, n, { value, writable: true, configurable: true });
+  set("window", win);
+  set("document", doc);
+  set("localStorage", storage);
+  set("navigator", { storage: { persisted: async () => false }, mediaSession: null });
+  set("Event", class { constructor(type) { this.type = type; } });
+  set("Audio", function Audio() { throw new Error("the native lane builds no <audio>"); });
+  __resetInstanceForTests();
+  const href = pathToFileURL(path.join(ROOT, "player", "client.js")).href;
+  const client = (await import(`${href}?ch3-18=${++nativeBootSeq}`)).default;
+  t.after(async () => {
+    try {
+      doc.hidden = true;
+      doc.fire("visibilitychange");
+      await settle();
+    } finally {
+      ref.dispose();
+      for (const [n, d] of prev) {
+        if (d) Object.defineProperty(globalThis, n, d);
+        else delete globalThis[n];
+      }
+    }
+  });
+  assert.strictEqual(await client.whenEngineReady(), "native", "fixture premise: the native lane");
+  /** Push a snapshot to the page the way the engine's event does: the
+      reference's own, with `over` on top, newer than anything it has sent. */
+  const push = async (over) => {
+    const snapshot = { ...ref.snapshot(), ...over, seq: ref.snapshot().seq + 1000 };
+    ref._emit({ type: "snapshot", snapshot });
+    await settle();
+    return snapshot;
+  };
+  return { client, ref, sent, push };
+}
+
+/** The Swift engine's snapshot while it loads `b` on its own (a wheel ⏭ off
+    `a`): the deck does not hold `b` yet, so the playhead is 0 and nothing is
+    measured; the resume point it is loading at lives only in the engine. */
+const engineLoadingB = {
+  mode: "episode", index: 0, itemId: "b", itemKind: "episode", state: "loadingItem",
+  running: true, ended: false, buffering: false, inSeamGap: false, inInterlude: false,
+  positionSec: 0, durationSec: null, sourceTimeSec: null, playheadItemId: "a",
+  isNarrationPlayhead: false, effectiveRate: 0, canNext: false, canPrevious: true,
+  nowPlaying: { title: "Title b", artist: "Show", album: "" },
+};
+
+test("CH3-18: a native-lane 30↻ during an engine-started load is sent as seekBy, the step, never a target from the page's 0 (R4-05)", async (t) => {
+  /* RED on main: R4-05. `seekEpisodeBy` read `episodePositionSec()` — the
+     page's `loadingStart` is not about a load the engine started, so it fell
+     to the facade's playhead, the snapshot's 0 — and sent `skipTarget(0 + 30)`
+     as seekTo {sec: 30}: the episode started at 0:30 and the 38:00 resume
+     point was overwritten. Now the step goes to the engine, which steps from
+     the second its load will land on (EngineCore.swift `seekBy`).
+     MUTATION: drop the native branch of `seekEpisodeBy` (fall back to the
+     page's seekTo) -> red, seekTo {sec: 30}. */
+  const { client, sent, push } = await bootNativeClient(t);
+  await push(engineLoadingB);
+  const painted = client.restoreLastEpisode();
+  await settle();
+  assert.strictEqual(painted?.id, "b", "fixture premise: the bar is the engine's episode");
+  const before = sent.length;
+  assert.strictEqual(await client.nudge(30), true);
+  await client.nudge(-15);
+  await settle();
+  const nudges = sent.slice(before).filter((c) => c.cmd === "seekTo" || c.cmd === "seekBy");
+  assert.deepStrictEqual(nudges, [{ cmd: "seekBy", args: { deltaSec: 30 } }, { cmd: "seekBy", args: { deltaSec: -15 } }]);
+});
+
+test("CH3-18: a native-lane nudge on a RESTORED bar is still the page's pend, and the press carries it as playEpisode's start", async (t) => {
+  /* The engine holds nothing behind a restored bar (it would refuse a seekBy
+     as not-loaded), so the step is written into the page's pending position
+     exactly as before, and the first press carries it.
+     MUTATION: drop the `seekAction(...) === SEEK.SEEK` guard on the native
+     branch (send seekBy whenever native) -> a seekBy goes out and the press
+     starts at 600, not 630; red. */
+  const row = JSON.stringify({ id: "r", kind: "episode", title: "Title r", show: "Show", audio_url: "https://cdn/r.mp3", duration_sec: 3600, updated_at: new Date().toISOString() });
+  const pos = JSON.stringify({ seconds: 600, duration: 3600, updated_at: new Date().toISOString() });
+  const { client, sent } = await bootNativeClient(t, { seed: [["cp_last_episode", row], ["cp_pos:r", pos]] });
+  const painted = client.restoreLastEpisode();
+  await settle();
+  assert.strictEqual(painted?.id, "r", "fixture premise: a restored bar over an idle engine");
+  const before = sent.length;
+  assert.strictEqual(await client.nudge(30), true);
+  await settle();
+  assert.deepStrictEqual(sent.slice(before).filter((c) => c.cmd === "seekTo" || c.cmd === "seekBy"), [], "nothing to seek in: nothing sent");
+  await client.togglePlayback();
+  await settle();
+  const play = sent.slice(before).find((c) => c.cmd === "playEpisode");
+  assert.ok(play, "the press is a playEpisode");
+  assert.strictEqual(play.args.startSec, 630, "from the stored 600, stepped 30");
+});
+
+test("CH3-18 characterization: off the native lane an episode nudge steps from the bar's position and lands through landEpisodeSeek", () => {
+  /* The JS lane's rule is untouched by CH3-18: the element is the page's own,
+     so the page's playhead IS the playhead (`episodePositionSec`'s
+     `loadingStart` covers the cold load, transport-reconcile's ROUND 2
+     p-impatient-1 runs it). Pinned as source so a native-lane change cannot
+     quietly reach it. MUTATION: step from `backend.currentTime` instead of
+     `episodePositionSec()` -> red. */
+  const fn = CODE.slice(CODE.indexOf("function seekEpisodeBy("), CODE.indexOf("async function landEpisodeSeek("));
+  assert.match(fn, /return landEpisodeSeek\(skipTarget\(\{\s*foray: false, positionSec: episodePositionSec\(\), offsetSec, durationSec: episodeDurationSec\(\),\s*\}\)\);/);
+  assert.match(CODE, /seekBy: \(offset\) => seekEpisodeBy\(offset\),/, "the episode lock-screen surface is the same seek");
+});

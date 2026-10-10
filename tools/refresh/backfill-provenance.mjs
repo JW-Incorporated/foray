@@ -30,7 +30,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { topicKey } from "./topics.mjs";
 
 const root = new URL("../../", import.meta.url);
@@ -82,6 +82,6 @@ function main(argv) {
   if (wouldChange) writeFileSync(discoverPath, JSON.stringify(discover, null, 2) + "\n");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2));
 }

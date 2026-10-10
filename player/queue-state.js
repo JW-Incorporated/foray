@@ -138,8 +138,10 @@ export const S = Object.freeze({
   transitioning: (from, to) => Object.freeze({ type: "transitioning", from, to }),
 
   /** Paused by interruption or route loss, or paused-but-ready afterwards.
-      `wasPlaying` records whether audio was actually audible at the moment of
-      interruption — it gates whether a resume signal actually resumes. */
+      `wasPlaying` records whether the listener meant to be playing at the
+      moment of interruption — audio audible, or (CH3-01) a load in flight
+      when an interruption began; a route lost during a load records false —
+      and it gates whether a resume signal actually resumes. */
   interrupted: (item, wasPlaying) =>
     Object.freeze({ type: "interrupted", item, wasPlaying }),
 
@@ -441,8 +443,12 @@ function handleInterruptionBegan(state) {
     case "loadingItem":
       // Nothing audible yet; nothing to pause or save. Recording the
       // interruption still matters so a stray itemLoaded doesn't start
-      // playback into a call.
-      return [S.interrupted(state.target, false), [
+      // playback into a call (`interrupted` ignores itemLoaded). It counts as
+      // playing (CH3-01, R2-01): the listener's intent was to play, so a nav
+      // prompt or Siri that lands during a cold load, a seam or a retry and
+      // ends with shouldResume resumes the load. A route lost during a load
+      // (handleRouteChanged) stays `false`: a lost route is not resumable.
+      return [S.interrupted(state.target, true), [
         F.emitTelemetry("interruption.began.duringLoad"),
       ]];
 
@@ -470,9 +476,10 @@ function handleInterruptionEnded(state, shouldResume) {
     ]];
   }
 
-  // Either the system says don't auto-resume, or nothing was audible when we
-  // were interrupted. Stay paused but ready (corner case #11): the lock
-  // screen must still show a correct, resumable state.
+  // Either the system says don't auto-resume, or the listener was not playing
+  // when we were interrupted (a route lost during a load included). Stay
+  // paused but ready (corner case #11): the lock screen must still show a
+  // correct, resumable state.
   return [S.interrupted(state.item, false), [
     F.emitTelemetry("interruption.ended.staysPaused"),
   ]];

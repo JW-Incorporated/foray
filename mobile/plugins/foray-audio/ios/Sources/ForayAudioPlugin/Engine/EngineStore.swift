@@ -38,11 +38,6 @@ final class EngineStore: EngineOutput {
     let defaults: UserDefaults
     let diagnostics: EngineDiagnostics
 
-    /// Events for the page (NE-20's bridge sets these). Until then they are
-    /// dropped here, which is safe: the pending events and walked hops also
-    /// ride in the restore record, which the page drains on attach (§5.5).
-    var onEmit: ((EngineEvent) -> Void)?
-    var onPendingEvent: ((PendingEvent) -> Void)?
     /// A ring row of a kind the page hears live (`EngineBridgeRules
     /// .liveDiagKinds`: faults), AFTER the gate and the file took it. Set by
     /// NE-20's bridge; the row is the ring's own, so the live copy and the
@@ -189,14 +184,6 @@ final class EngineStore: EngineOutput {
 
     func writeRestore(_ record: RestoreRecord?) {
         set(record?.serialized(), for: .restore)
-    }
-
-    func appendEvent(_ event: PendingEvent) {
-        onPendingEvent?(event)
-    }
-
-    func emit(_ event: EngineEvent) {
-        onEmit?(event)
     }
 
     func diag(_ entry: DiagEntry) {

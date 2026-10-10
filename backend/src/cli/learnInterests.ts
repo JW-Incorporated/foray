@@ -12,15 +12,17 @@ import { runLearningJobForUsers, type RunInTransaction } from "../curation/learn
 
 /**
  * `npm run learn-interests` — the interest-learning job's CLI entry point
- * (personalization-and-depth-plan.md Step C). Reads unprocessed rows from
- * `events`, derives node-weight deltas per 03_CURATION_SPEC.md's "Learning
- * from signals" table, and writes `taxonomy_nodes` (current weight) +
- * `user_interests` (audit log) — see curation/interestLearning.ts for the
- * rules and curation/learningJob.ts for the per-user run loop.
+ * (personalization-and-depth-plan.md Step C). Reads every unprocessed row
+ * from `events` (page by page, so one run catches each user up), derives
+ * node-weight deltas per 03_CURATION_SPEC.md's "Learning from signals"
+ * table, and writes `taxonomy_nodes` (current weight) + `user_interests`
+ * (audit log) — see curation/interestLearning.ts for the rules and
+ * curation/learningJob.ts for the per-user run loop.
  *
  * Degrades gracefully when DATABASE_URL is unset (same convention as
- * cli/migrate.ts and cli/buildSession.ts): prints what it would do and
- * exits 0, so `npm test` never needs a live Postgres instance.
+ * cli/migrate.ts): prints what it would do and exits 0, so `npm test` never
+ * needs a live Postgres instance. (build-session never reads DATABASE_URL:
+ * its interests provider is always the in-memory one.)
  *
  * Usage:
  *   npm run learn-interests

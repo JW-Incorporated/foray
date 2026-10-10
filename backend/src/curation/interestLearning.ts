@@ -19,18 +19,28 @@ import type { TaxonomyFile } from "../types/taxonomy";
  * `taxonomy_nodes.weight`.
  */
 
-export type InterestReason =
-  | "onboarding"
-  | "finished_strong"
-  | "picked_from_menu"
-  | "skip_strong_neg"
-  | "skip_weak_neg"
-  | "more_like_this"
-  | "something_different"
-  | "thumbs_down_named_node"
-  | "saved_for_later"
-  | "card_ignored_repeatedly"
-  | "manual_edit";
+/**
+ * Every `user_interests.reason` a TS writer may produce. The SQL CHECK
+ * (0006_user_interests.sql, widened by 0014_persona_seed_source.sql) must
+ * allow each one, or the job's INSERT fails, the user's transaction rolls
+ * back and their cursor stops advancing; backend/test/interestLearning.test.ts
+ * parses the migrations and pins the two sets together (CH2-05, B2-15).
+ */
+export const INTEREST_REASONS = [
+  "onboarding",
+  "finished_strong",
+  "picked_from_menu",
+  "skip_strong_neg",
+  "skip_weak_neg",
+  "more_like_this",
+  "something_different",
+  "thumbs_down_named_node",
+  "saved_for_later",
+  "card_ignored_repeatedly",
+  "manual_edit"
+] as const;
+
+export type InterestReason = (typeof INTEREST_REASONS)[number];
 
 export interface InterestDelta {
   nodeId: string;
@@ -48,8 +58,8 @@ export interface DeriveContext {
    * topic has been shown (including this one) since the topic was last
    * picked, per 03_CURATION_SPEC.md: "Card shown, never picked x5 -> gentle -
    * on that framing/topic". Computed by the caller with `CardShownStreaks`
-   * over the batch it fetched (the streak does not look further back than
-   * the current learning_cursor window; documented in docs/DECISIONS.md).
+   * over the events of one learning run, across its pages (the streak does
+   * not look further back than where the run's learning_cursor started).
    * Each topic is judged on its OWN count (round-3 review, L6): a topic just
    * picked is never penalised because a sibling topic on the same card hit
    * its fifth showing, and no topic's fifth showing is hidden behind a
@@ -325,12 +335,16 @@ export async function applyEvent(event: PersistedEvent, deps: ApplyDeps, ctx: De
 
 /**
  * Runs the full derive+apply loop over an already-fetched, ts-ordered batch
- * of events for one user. `card_shown` streak context is computed from the
- * same batch by `CardShownStreaks`, per topic.
+ * of events for one user. `card_shown` streak context is computed per topic
+ * by `streaks`; the learning job passes one `CardShownStreaks` to every page
+ * of a run, so a streak split at a page boundary still fires (CH2-05, B2-17).
  */
-export async function applyEventBatch(events: PersistedEvent[], deps: ApplyDeps): Promise<ApplyEventOutcome[]> {
+export async function applyEventBatch(
+  events: PersistedEvent[],
+  deps: ApplyDeps,
+  streaks: CardShownStreaks = new CardShownStreaks()
+): Promise<ApplyEventOutcome[]> {
   const outcomes: ApplyEventOutcome[] = [];
-  const streaks = new CardShownStreaks();
   for (const event of events) {
     const ctx: DeriveContext = event.type === "card_shown" ? { ignoredCardShownCounts: streaks.observeCounts(event) } : {};
     if (event.type === "picked") streaks.observe(event);

@@ -112,6 +112,12 @@ final class ParityFamilyTests: XCTestCase {
     /// stop's silence, an unknown ref). It must RUN, with nothing owed.
     func testManagerRemainderFamily() { assertParityFamily("manager-remainder", requireRunner: true) }
 
+    /// Code-health-3 CH3-20: the episode path at the wheel (raw remote
+    /// presses, togglePlayPause among them; a load deadline; grace expiry; a
+    /// relinquish), its n.* tokens compared, its expects authored from this
+    /// core (nativeOnly) and held on the JVM too. It must RUN.
+    func testNativeEpisodeFamily() { assertParityFamily("native-episode", requireRunner: true) }
+
     /// Every family in manifest.json, including ones no method above names:
     /// every id executed or owed, no stale pending entry, no whole-tree
     /// problem. And something must have RUN: zero failures from a runner that

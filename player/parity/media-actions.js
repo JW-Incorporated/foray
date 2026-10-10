@@ -44,9 +44,38 @@
    result: the OS never delivers a press for a command nobody registered, so a
    case that asks for one is malformed.
 
+   THE SECOND CALL, `commandAvailability` (CH3-10): the engine's NP-5 rule,
+   which the page has no twin of (the page's lane registers through WebKit, and
+   the legacy native lane through ForayAudioPlugin's own enablement). It is
+   AUTHORED HERE from the contract, not recorded from a page module, and every
+   case in its group is `authored: true`:
+
+     commandAvailability(snapshot, trackRoute)
+       snapshot    { mode, ended?, canNext?, canPrevious?, autoAdvance? } —
+                   Snapshot v1's fields (plan §5.3); `mode` is one of
+                   engine-contract.js SNAPSHOT_MODES, every flag a boolean
+                   (absent = false). Anything else is a malformed case.
+       trackRoute  boolean: the current route has a track button without
+                   looking (a headset, a Bluetooth stack, a car)
+     -> { enabled: [command, ...]  in REMOTE_COMMANDS order,
+          clearsNowPlaying: boolean }
+
+   The rule, read off docs/DECISIONS.md 2026-09-23 §1 and plan §4.5 (NP-5):
+   nothing loaded, or a finished Foray, enables nothing and clears Now Playing;
+   anything else enables play, pause, toggle, the skip pair and a scrub through
+   the SAME `mediaSessionActions` table as above, and the track pair exactly
+   when there is a neighbour AND a track route ("the track pair only where a
+   track button exists", founder question 1 of that entry: on the speaker the
+   lock screen keeps ↺15/30↻ whatever Up Next holds). `stop` is never enabled
+   (T-7); `autoAdvance` is read by nothing (the wheel's skip follows the
+   chain). Swift's `MediaMapping.commandAvailability(_:steps:trackRoute:)` and
+   the JVM's `commandAvailability(snapshot, steps, trackRoute)` answer the same
+   cases through their media-episode runners.
+
    The page never imports this file. It is harness code, like runner.js. */
 
 import { mediaSessionActions } from "../media-session.js";
+import { SNAPSHOT_MODES } from "../engine-contract.js";
 import { HarnessError } from "./codec.js";
 
 /** The surface methods mediaSessionActions reads. Closed: a case that names
@@ -89,4 +118,58 @@ export function mediaActions({ surface = undefined, opts = undefined, presses = 
     handler(...rest);
   }
   return { installed: [...handlers.keys()], calls };
+}
+
+/** The remote commands the engine registers (`MediaMapping.RemoteCommand`, in
+    its declaration order on both natives). Closed. */
+export const REMOTE_COMMANDS = Object.freeze([
+  "play", "pause", "togglePlayPause", "nextTrack", "previousTrack",
+  "skipBackward", "skipForward", "changePlaybackPosition", "stop",
+]);
+
+function flag(snapshot, name) {
+  const v = snapshot[name];
+  if (v === undefined) return false;
+  if (typeof v !== "boolean") throw new HarnessError("E_BAD_CASE", `snapshot.${name} must be a boolean, got ${JSON.stringify(v)}`);
+  return v;
+}
+
+/**
+ * NP-5 with the track-route gate (CH3-10). See the header for the shape.
+ * @returns {{enabled: string[], clearsNowPlaying: boolean}}
+ */
+export function commandAvailability(snapshot, trackRoute) {
+  if (snapshot === null || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+    throw new HarnessError("E_BAD_CASE", `a snapshot is an object, got ${JSON.stringify(snapshot)}`);
+  }
+  if (!SNAPSHOT_MODES.includes(snapshot.mode)) {
+    throw new HarnessError("E_BAD_CASE", `snapshot.mode must be one of ${SNAPSHOT_MODES.join(", ")}, got ${JSON.stringify(snapshot.mode)}`);
+  }
+  if (typeof trackRoute !== "boolean") {
+    throw new HarnessError("E_BAD_CASE", `trackRoute must be a boolean, got ${JSON.stringify(trackRoute)}`);
+  }
+  const ended = flag(snapshot, "ended");
+  const canNext = flag(snapshot, "canNext");
+  const canPrevious = flag(snapshot, "canPrevious");
+  flag(snapshot, "autoAdvance"); // carried by the snapshot, read by nothing
+
+  const finished = snapshot.mode === "none" || (snapshot.mode === "foray" && ended);
+  if (finished) return { enabled: [], clearsNowPlaying: true };
+
+  const surface = ["play", "pause", "seekBy", "seekTo"];
+  // THE TRACK PAIR ONLY WHERE A TRACK BUTTON EXISTS (DECISIONS 2026-09-23).
+  if (canNext && trackRoute) surface.push("next");
+  if (canPrevious && trackRoute) surface.push("previous");
+  const { installed } = mediaActions({ surface });
+  const has = (action) => installed.includes(action);
+  const on = new Set();
+  if (has("play")) on.add("play");
+  if (has("pause")) on.add("pause");
+  if (has("play") && has("pause")) on.add("togglePlayPause");
+  if (has("nexttrack")) on.add("nextTrack");
+  if (has("previoustrack")) on.add("previousTrack");
+  if (has("seekbackward")) on.add("skipBackward");
+  if (has("seekforward")) on.add("skipForward");
+  if (has("seekto")) on.add("changePlaybackPosition");
+  return { enabled: REMOTE_COMMANDS.filter((c) => on.has(c)), clearsNowPlaying: false };
 }

@@ -227,7 +227,6 @@ public struct EngineState: Equatable {
     // MARK: the app around the engine
 
     public var backgrounded = false
-    public var pageVisible = true
     /// BackgroundGrace: `held(reason)` from begin to end.
     public var grace: GraceReason?
     /// NE-46, the late-timer detector: when each armed ONE-SHOT engine timer
@@ -310,6 +309,11 @@ public struct PendingLoad: Equatable {
     /// §16 (queue-manager.js `_loadItem`'s `attempt`): 1 for every load the
     /// reducer asks for, 2 for a Foray clip's retry (`retryOrSkipClip`).
     public var attempt = 1
+    /// The URL this deck load opened (nil: a spoken line, or no file). A
+    /// `file:` URL that fails is retried once on the item's stream
+    /// (`fallBackToStream`, CH3-12); the stream's own load opened an `https`
+    /// URL, so its failure is the stop.
+    public var url: String?
 }
 
 /// A spoken line the playhead is on (NE-31s): queue-manager.js

@@ -98,6 +98,21 @@ public final class JvmFamilies {
     public static final FamilyRunner DECK_EPISODE = DeckEpisodeFamily.runner();
 
     /*
+     * Code-health-3 CH3-17: the manager remainder's episode cases through the same driver (stop
+     * is silence behind a paused machine among them); its warming cases are A-40's.
+     */
+    public static final FamilyRunner MANAGER_REMAINDER = ManagerEpisodeFamily.remainderRunner();
+
+    /*
+     * Code-health-3 CH3-20: the episode path at the steering wheel (raw remote presses, togglePlayPause
+     * among them; the deck's load deadline; grace expiry; a relinquish and a teardown), through the same
+     * driver, with its n.* tokens compared. The family is nativeOnly: its expects are the Swift core's,
+     * authored, and this runner holds the JVM core to them, so a one-platform edit to remote handling, a
+     * stop row's order or the grace span turns this family red.
+     */
+    public static final FamilyRunner NATIVE_EPISODE = ManagerEpisodeFamily.nativeEpisodeRunner();
+
+    /*
      * A-25: the rest of the deck's rules, ported with the ExoPlayer deck (foray-audio's
      * ExoDeck): the native out-point (three layers and a windowed watchdog, over runner.js's
      * driven clock), the deck's guards, and the standby deck's decisions (DeckPolicy).
@@ -107,5 +122,5 @@ public final class JvmFamilies {
 
     /** Every registered runner. */
     public static final List<FamilyRunner> ALL = List.of(COMPARE, NUMBER_FORMAT, QUEUE_STATE, RATE, RESUME_RULES, TRANSPORT, ROWS,
-            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, OUTPOINT, DECK);
+            SESSION, SESSION_INVARIANT, MEDIA_EPISODE, MANAGER_EPISODE, DECK_EPISODE, MANAGER_REMAINDER, NATIVE_EPISODE, OUTPOINT, DECK);
 }

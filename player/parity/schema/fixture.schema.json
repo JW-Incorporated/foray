@@ -18,6 +18,10 @@
       "description": "true: the family pins a JS rule that is deliberately never ported to Swift: plan §5.5 C-2's continuation hops (computed by the page, only walked by the engine), and since NE-39s manager-await (the JS manager's awaits: a load parked on the synthesiser's pause, onStateSettled per _handle frame, which a synchronous native turn does not have; each case's note names the XCTest holding the native form). The Swift and JVM runners skip these files by this flag and no book may owe their ids. Every file of a family must agree.",
       "type": "boolean"
     },
+    "nativeOnly": {
+      "description": "code-health-3 CH3-20: true: the family pins the native cores' own episode path at the wheel (native-episode): what a raw MPRemoteCommand press, the deck's load deadline, a grace expiry and a relinquish do, asserted on the n.* tokens (compare.js NATIVE_TOKEN_FAMILIES keeps them). The JS reference has none of these inputs (no toggle press, no load deadline, no background task, no relinquish), so the JS runner validates these files and NEVER runs them, and record.mjs never records them: every case is authored, its expect written from the Swift core (EngineCore through ForayEngineParity's scenario driver) and held by engine-parity, and the JVM ParitySuite is held to the same expects. Such a family is in jvm-pending.json \"runs\", never owed whole. Every file of a family must agree; a file is never both jsOnly and nativeOnly.",
+      "type": "boolean"
+    },
     "cases": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/case" } }
   },
   "$defs": {
@@ -100,7 +104,7 @@
       }
     },
     "opLog": {
-      "description": "Ordered op tokens. Backend tokens are queue-manager.test.js's FakeBackend grammar, unchanged: load:<id>@<s>, play, pause, seek:<s>, outPoint:<s|null>, rate:<r>, release. Other adapters are prefixed: tts.*, interlude.*, store.*, preview.* (NE-47: the engine's preview deck, preview.load:<url>, preview.play, preview.stop). NE-39j, manager target: prefetch:<id>@<s> (the manager's ask to warm the next item, setup.backend.prefetch), event.settled:<state> (setup.settledEvents), telemetry:<line> (setup.telemetry). Native-only tokens are n.* and are stripped before comparison except in the prepare family.",
+      "description": "Ordered op tokens. Backend tokens are queue-manager.test.js's FakeBackend grammar, unchanged: load:<id>@<s>, play, pause, seek:<s>, outPoint:<s|null>, rate:<r>, release. Other adapters are prefixed: tts.*, interlude.*, store.*, preview.* (NE-47: the engine's preview deck, preview.load:<url>, preview.play, preview.stop). NE-39j, manager target: prefetch:<id>@<s> (the manager's ask to warm the next item, setup.backend.prefetch), event.settled:<state> (setup.settledEvents), telemetry:<line> (setup.telemetry). Native-only tokens are n.* and are stripped before comparison except in the prepare, prepare-narration and native-episode families (compare.js NATIVE_TOKEN_FAMILIES).",
       "type": "array",
       "items": { "type": "string" }
     },
@@ -131,11 +135,11 @@
       }
     },
     "verb": {
-      "description": "The closed scenario verbs (plan §6.2). Every verb has a JS driver; a verb added without one fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS; remote (NE-29j) takes an action from runner.js REMOTE_ACTIONS, with optional details (seekto's {seekTime}), pressed through media-session.js mediaSessionActions.",
+      "description": "The closed scenario verbs (plan §6.2). Every verb has a JS driver; a verb added without one fails with E_NO_JS_DRIVER naming the card that adds it (runner.js PENDING_DRIVERS). session and lifecycle (NE-14j) take the values in runner.js SESSION_EVENTS and LIFECYCLE_EVENTS; remote (NE-29j) takes an action from runner.js REMOTE_ACTIONS, with optional details (seekto's {seekTime}), pressed through media-session.js mediaSessionActions; with raw: true (CH3-20) it takes a native remote command from runner.js RAW_REMOTE_COMMANDS instead (the MPRemoteCommand a head unit, a headset or the lock screen delivers, togglePlayPause among them), with an optional value (changePlaybackPosition's target, which it requires; a skip's value is the head unit's interval, which the step ignores), delivered as that command and never through the action table.",
       "enum": ["call", "settle", "clock", "deck", "tts", "interlude", "session", "lifecycle", "remote", "checkpoint"]
     },
     "step": {
-      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay, details; for the deck target, outPointSec, rate and token, and the ended event; NE-30j: a call step may carry returns, a runner.js RETURN_PROJECTIONS name, and on the engine target refused; NE-31j: a manager-target clock step may carry every (advance in steps of that many ms, an awake page), and the tts verb takes finish or silent; NE-39j: it also takes releasePause, and a manager-target deck step may be window).",
+      "description": "Exactly one verb key, plus that verb's own fields (args, await, reason, message, sec, audible, id, shouldResume, routeName, isCarRoute, items, index, autoplay, details; for the deck target, outPointSec, rate and token, and the ended event; NE-30j: a call step may carry returns, a runner.js RETURN_PROJECTIONS name, and on the engine target refused; NE-31j: a manager-target clock step may carry every (advance in steps of that many ms, an awake page), and the tts verb takes finish or silent; NE-39j: it also takes releasePause, and a manager-target deck step may be window; CH3-20, the native drivers only (a nativeOnly family): a manager-target deck step may be deadline (the deck's load deadline, .deadlineExceeded for the load in flight, optional afterMs, default 20000), and a lifecycle step may be graceExpired (the background task's expiration handler) or relinquish (the page's relinquish command, optional cap, default all)).",
       "type": "object",
       "minProperties": 1
     },

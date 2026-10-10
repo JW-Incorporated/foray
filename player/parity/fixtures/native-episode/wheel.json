@@ -1,0 +1,852 @@
+{
+  "family": "native-episode",
+  "note": "code-health-3 CH3-20 (R3-03, R3-04, R3-08): the episode path at the steering wheel, on the manager target with the Foray tape off. Raw remote presses (the MPRemoteCommand itself, togglePlayPause among them, never through MediaMapping.intent), the deck's load deadline, grace expiry, a relinquish and a teardown, with the native n.* tokens COMPARED (compare.js NATIVE_TOKEN_FAMILIES): the session, grace, the stop cause, n.failed and the restore record. nativeOnly: the JS reference has none of these inputs, so every expect is AUTHORED from the Swift core (EngineCore through ForayEngineParity's EngineScenarioDriver, recorded from engine-parity's report) and the JVM ParitySuite is held to the same expects. Never re-recorded by record.mjs.",
+  "nativeOnly": true,
+  "cases": [
+    {
+      "id": "native-episode/toggle-pauses-a-deck-audible-behind-a-paused-machine",
+      "covers": [],
+      "authored": true,
+      "note": "R3-03, the #689 drift at the wheel: the machine says paused (interrupted) while the deck is audible, and the head unit's play/pause (togglePlayPause) arrives. EngineCore.toggle reads the belief OR the deck's own word, so the press PAUSES the deck (pause kind=forced), never resumes a machine that was already sounding. MUTATION: `let running = state.isRunning` in toggle (the belief only) -> a resume, red.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "deck": "audible", "audible": true },
+        { "remote": "togglePlayPause", "raw": true },
+        { "checkpoint": "toggled" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick",
+              "n.diag:stop:pause",
+              "store.save:a@0",
+              "n.event.position:a@0:3600",
+              "n.restore:episode",
+              "pause",
+              "n.timer.cancel:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "toggled",
+            "ops": ["n.diag:remote", "n.diag:stop:pause", "n.diag:pause", "pause"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:stop:pause",
+          "store.save:a@0",
+          "n.event.position:a@0:3600",
+          "n.restore:episode",
+          "pause",
+          "n.timer.cancel:position-tick",
+          "n.diag:remote",
+          "n.diag:stop:pause",
+          "n.diag:pause",
+          "pause"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/a-repeated-toggle-is-never-dropped",
+      "covers": [],
+      "authored": true,
+      "note": "T-8: a press is handled, never dropped as a duplicate (the remote row says dupCandidate; the token grammar does not carry it). The first togglePlayPause pauses a playing episode, the second resumes it, a remote play that opens grace (remote-play) and closes it as played.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "remote": "togglePlayPause", "raw": true },
+        { "checkpoint": "first" },
+        { "remote": "togglePlayPause", "raw": true },
+        { "checkpoint": "second" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "first",
+            "ops": [
+              "n.diag:remote",
+              "n.diag:stop:pause",
+              "store.save:a@0",
+              "n.event.position:a@0:3600",
+              "n.restore:episode",
+              "pause",
+              "n.timer.cancel:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "second",
+            "ops": [
+              "n.diag:remote",
+              "n.grace.begin:remote-play",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick",
+              "n.grace.end:playing"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:remote",
+          "n.diag:stop:pause",
+          "store.save:a@0",
+          "n.event.position:a@0:3600",
+          "n.restore:episode",
+          "pause",
+          "n.timer.cancel:position-tick",
+          "n.diag:remote",
+          "n.grace.begin:remote-play",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.grace.end:playing"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/a-car-play-with-nothing-current-is-refused",
+      "covers": [],
+      "authored": true,
+      "note": "A queue loaded and nothing started: the car's play has no current item, so the core refuses it (n.failed:not-loaded) after its remote row, and nothing loads or sounds.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "remote": "play", "raw": true },
+        { "checkpoint": "pressed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "pressed",
+            "ops": ["n.diag:remote", "n.failed:not-loaded"],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": -1,
+            "name": "end",
+            "ops": [],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": ["n.diag:remote", "n.failed:not-loaded"]
+      }
+    },
+    {
+      "id": "native-episode/back-15-during-a-cold-load-steps-from-the-resume-point-not-the-head-units-interval",
+      "covers": [],
+      "authored": true,
+      "note": "Audit round 2 p-impatient-1 and R3-08 together: a cold resume at 38:00 (2280 s) is still loading when the car's skip-back arrives carrying the head unit's own 10 s interval. The step is the core's 15 s, from the second the load will land on (2280), never the fresh item's 0 and never 10 s. MUTATIONS: `seekBy(-(press.value ?? steps.backwardSec))` in either core -> 2270, red; drop the in-flight load from seekBy's position -> 0, red.",
+      "setup": {
+        "target": "manager",
+        "positions": { "a": 2280 },
+        "backend": { "holdLoads": true }
+      },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0], "await": false },
+        { "checkpoint": "loading" },
+        { "remote": "skipBackward", "raw": true, "value": 10 },
+        { "checkpoint": "pressed" },
+        { "deck": "loaded" },
+        { "checkpoint": "landed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "loading",
+            "ops": ["n.session.activate:1", "n.diag:session", "load:a@2280"],
+            "playhead": null,
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "pressed",
+            "ops": ["n.diag:remote"],
+            "playhead": null,
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "landed",
+            "ops": [
+              "rate:1",
+              "seek:2265",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@2280",
+          "n.diag:remote",
+          "rate:1",
+          "seek:2265",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/forward-30-ignores-the-head-units-interval",
+      "covers": [],
+      "authored": true,
+      "note": "R3-08: the press carries the head unit's 10 s; the step is ours, 30 s (MediaMapping.SeekSteps, the JS SEEK_FORWARD_SEC). MUTATION: `seekBy(press.value ?? steps.forwardSec)` in either core -> seek:110, red.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "deck": "time", "sec": 100 },
+        { "remote": "skipForward", "raw": true, "value": 10 },
+        { "checkpoint": "pressed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "pressed",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick",
+              "n.diag:remote",
+              "store.save:a@100",
+              "n.event.position:a@100:3600",
+              "n.restore:episode",
+              "seek:130"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:remote",
+          "store.save:a@100",
+          "n.event.position:a@100:3600",
+          "n.restore:episode",
+          "seek:130"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/a-lock-screen-scrub-seeks-to-its-target",
+      "covers": [],
+      "authored": true,
+      "note": "changePlaybackPosition carries its target, the one value a press does carry: an episode scrub to 600 s is a seek there.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "remote": "changePlaybackPosition", "raw": true, "value": 600 },
+        { "checkpoint": "scrubbed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "scrubbed",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick",
+              "n.diag:remote",
+              "store.save:a@0",
+              "n.event.position:a@0:3600",
+              "n.restore:episode",
+              "seek:600"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:remote",
+          "store.save:a@0",
+          "n.event.position:a@0:3600",
+          "n.restore:episode",
+          "seek:600"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/a-load-deadline-on-an-episode-stops-with-its-cause",
+      "covers": [],
+      "authored": true,
+      "note": "R3-04: the drive's `stop cause=load-deadline`. The deck's P-13 deadline runs out on an episode's load: the stop row names load-deadline (never `error`, the only failure any fixture fed before), the page hears error code `load`, and the machine goes idle. MUTATION: map .deadlineExceeded to cause .error in either core -> red.",
+      "setup": { "target": "manager", "backend": { "holdLoads": true } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0], "await": false },
+        { "checkpoint": "loading" },
+        { "deck": "deadline" },
+        { "checkpoint": "deadline" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "loading",
+            "ops": ["n.session.activate:1", "n.diag:session", "load:a@0"],
+            "playhead": null,
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "deadline",
+            "ops": ["n.diag:stop:load-deadline", "n.emit:error:load", "pause"],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": null,
+            "rate": 1,
+            "state": "idle"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "n.diag:stop:load-deadline",
+          "n.emit:error:load",
+          "pause"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/a-remote-play-opens-grace-and-the-play-closes-it",
+      "covers": [],
+      "authored": true,
+      "note": "Plan §4.4: the car's play on a paused episode opens a remote-play grace span the moment it is handled, and the deck confirming playing closes it as played.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "call": "pause" },
+        { "checkpoint": "paused" },
+        { "remote": "play", "raw": true },
+        { "checkpoint": "resumed" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "paused",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick",
+              "n.diag:stop:pause",
+              "store.save:a@0",
+              "n.event.position:a@0:3600",
+              "n.restore:episode",
+              "pause",
+              "n.timer.cancel:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "resumed",
+            "ops": [
+              "n.diag:remote",
+              "n.grace.begin:remote-play",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick",
+              "n.grace.end:playing"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:stop:pause",
+          "store.save:a@0",
+          "n.event.position:a@0:3600",
+          "n.restore:episode",
+          "pause",
+          "n.timer.cancel:position-tick",
+          "n.diag:remote",
+          "n.grace.begin:remote-play",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.grace.end:playing"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/grace-expiry-writes-its-stop-row-before-the-grace-end",
+      "covers": [],
+      "authored": true,
+      "note": "The car's next-track loads b, the load never lands, and the background task's grace runs out: the stop row (cause grace-expired) is written FIRST, then the grace end, then the pause (R3-04: the JVM wrote these the other way round until CH3-17). MUTATION: swap `stopRow(GRACE_EXPIRED)` and `endGrace(EXPIRED)` in jvm/EngineCore.java -> the JVM is red on this case.",
+      "setup": { "target": "manager", "backend": { "holdLoads": true } },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }, { "$ep": ["b"] }]] },
+        { "call": "play", "args": [0], "await": false },
+        { "deck": "loaded" },
+        { "checkpoint": "playing" },
+        { "remote": "nextTrack", "raw": true, "await": false },
+        { "checkpoint": "next" },
+        { "lifecycle": "graceExpired" },
+        { "checkpoint": "expired" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "next",
+            "ops": [
+              "n.diag:remote",
+              "n.grace.begin:remote-play",
+              "store.save:a@0",
+              "n.event.position:a@0:3600",
+              "n.restore:episode",
+              "pause",
+              "load:b@0",
+              "n.timer.cancel:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "loadingItem"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "expired",
+            "ops": ["n.diag:stop:grace-expired", "n.grace.end:expired"],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:remote",
+          "n.grace.begin:remote-play",
+          "store.save:a@0",
+          "n.event.position:a@0:3600",
+          "n.restore:episode",
+          "pause",
+          "load:b@0",
+          "n.timer.cancel:position-tick",
+          "n.diag:stop:grace-expired",
+          "n.grace.end:expired"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/a-relinquish-writes-its-stop-row-first",
+      "covers": [],
+      "authored": true,
+      "note": "Plan §4.6: the page's relinquish while an episode plays. The stop row (cause relinquish) comes before the cut, then the save and pause, the unload, the relinquished restore record and the mode row; the core is terminal after it.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "lifecycle": "relinquish" },
+        { "checkpoint": "relinquished" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "relinquished",
+            "ops": [
+              "n.diag:stop:relinquish",
+              "store.save:a@0",
+              "n.event.position:a@0:3600",
+              "n.restore:episode",
+              "pause",
+              "n.deck.unload",
+              "n.timer.cancel:position-tick",
+              "n.restore:relinquished",
+              "n.diag:mode"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "interrupted"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:stop:relinquish",
+          "store.save:a@0",
+          "n.event.position:a@0:3600",
+          "n.restore:episode",
+          "pause",
+          "n.deck.unload",
+          "n.timer.cancel:position-tick",
+          "n.restore:relinquished",
+          "n.diag:mode"
+        ]
+      }
+    },
+    {
+      "id": "native-episode/a-teardown-writes-the-relinquish-stop-row",
+      "covers": [],
+      "authored": true,
+      "note": "R3-04: the engine's own teardown while an episode plays opens with the relinquish stop row, as Swift's (the JVM's teardown() wrote none until CH3-17). MUTATION: drop `stopRow(RELINQUISH)` from jvm/EngineCore.java teardown() -> the JVM is red on this case.",
+      "setup": { "target": "manager" },
+      "steps": [
+        { "call": "loadQueue", "args": [[{ "$ep": ["a"] }]] },
+        { "call": "play", "args": [0] },
+        { "checkpoint": "playing" },
+        { "call": "dispose" },
+        { "checkpoint": "torn-down" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "playing",
+            "ops": [
+              "n.session.activate:1",
+              "n.diag:session",
+              "load:a@0",
+              "rate:1",
+              "play",
+              "n.restore:episode",
+              "n.timer.arm:position-tick"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "torn-down",
+            "ops": [
+              "n.diag:stop:relinquish",
+              "release",
+              "n.timer.cancel:position-tick",
+              "n.diag:mode"
+            ],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 0,
+            "name": "end",
+            "ops": [],
+            "playhead": "a",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "n.session.activate:1",
+          "n.diag:session",
+          "load:a@0",
+          "rate:1",
+          "play",
+          "n.restore:episode",
+          "n.timer.arm:position-tick",
+          "n.diag:stop:relinquish",
+          "release",
+          "n.timer.cancel:position-tick",
+          "n.diag:mode"
+        ]
+      }
+    }
+  ]
+}

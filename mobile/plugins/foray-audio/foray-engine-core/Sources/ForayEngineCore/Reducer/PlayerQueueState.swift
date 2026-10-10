@@ -163,9 +163,10 @@ public enum PlayerQueueState: Equatable, Sendable {
 
     /// Paused because of an interruption (phone call) or a route loss (BT
     /// disconnect), or paused-but-ready after an interruption ended without
-    /// `shouldResume`. `wasPlaying` records whether audio was actually
-    /// audible at the moment of interruption (vs. e.g. interrupted mid-load,
-    /// nothing audible yet) — it gates whether `interruptionEnded(shouldResume:
+    /// `shouldResume`. `wasPlaying` records whether the listener meant to be
+    /// playing at the moment of interruption — audio audible, or (CH3-01) a
+    /// load in flight when an interruption began; a route lost mid-load
+    /// records false — it gates whether `interruptionEnded(shouldResume:
     /// true)` should actually resume playback.
     case interrupted(item: QueueItemRef, wasPlaying: Bool)
 
@@ -485,8 +486,13 @@ public enum PlayerQueueStateMachine {
         case .loadingItem(let target, _, _):
             // Nothing audible yet; nothing to pause or save. Recording the
             // interruption still matters so a subsequent stray
-            // `itemLoaded` doesn't start playback into a call.
-            return (.interrupted(item: target, wasPlaying: false), [
+            // `itemLoaded` doesn't start playback into a call (`.interrupted`
+            // ignores itemLoaded). It counts as playing (CH3-01, R2-01,
+            // player/queue-state.js): the listener's intent was to play, so
+            // a nav prompt or Siri that lands during a cold load, a seam or a
+            // retry and ends with shouldResume resumes the load. A route lost
+            // during a load (handleRouteChanged) stays `false`.
+            return (.interrupted(item: target, wasPlaying: true), [
                 .emitTelemetry("interruption.began.duringLoad")
             ])
 
@@ -519,8 +525,9 @@ public enum PlayerQueueStateMachine {
                     .emitTelemetry("interruption.ended.resumed")
                 ])
             }
-            // Either the system says don't auto-resume, or nothing was
-            // actually audible when we got interrupted. Stay paused but
+            // Either the system says don't auto-resume, or the listener was
+            // not playing when we got interrupted (a route lost during a
+            // load included). Stay paused but
             // ready (05_CORNER_CASES.md #11): lock screen must still show
             // the correct, resumable state.
             return (.interrupted(item: item, wasPlaying: false), [

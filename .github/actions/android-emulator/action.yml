@@ -1,0 +1,347 @@
+name: "android-emulator"
+description: >-
+  The Android emulator bring-up both emulator lanes run: KVM, the SDK with the
+  emulator and one system image, the AVD, the boot, and the install and launch
+  of the debug APK. Called by android-smoke.yml (the launch verdict) and
+  android-playback.yml (the A-04/A-05/A-26 scenarios), three times per job, one
+  `stage` per call, because each caller builds its APK between `sdk` and `boot`
+  and android-playback.yml waits out Play services between `boot` and `launch`.
+  Callers must `actions/checkout` before invoking this action.
+
+# ── WHY ONE COMPOSITE (CH2-33, docs/roadmap/code-health-2.md T2-08) ──────────
+#
+# Until CH2-33 the two workflows each carried these steps, ~250 lines of shell,
+# and `android-playback-workflow.test.mjs` compared them byte for byte with
+# comments stripped. That kept them equal; it did not keep them ONE: a fix to
+# the boot had to be written twice, and the copy without the comments was the
+# one nobody read. Now the steps exist here once and both workflows `uses:` it.
+#
+# ── THE THREE STAGES, IN ORDER, IN ONE JOB ───────────────────────────────────
+#
+#   sdk     Enable KVM; install the SDK platform, build-tools, platform-tools,
+#           the emulator and `system-images;android-<api-level>;google_apis;
+#           x86_64`. Exports ART (= art-dir, created), ANDROID_HOME,
+#           SDK_PLATFORM, SDK_BUILD_TOOLS and EMULATOR_IMAGE, and puts
+#           platform-tools, the emulator and the cmdline-tools on PATH.
+#   boot    Create the AVD and prove the emulator can see it; boot it to
+#           `sys.boot_completed`. Exports ANDROID_AVD_HOME and AVD_NAME, and
+#           writes $ART/device-sdk.txt (the API level the device reports).
+#   launch  Install `apk` and start `package`/.MainActivity. Give the call an
+#           `id:` and its outcome is the launch's verdict.
+#
+# Each later stage reads what `sdk` exported, so the first step of every call
+# checks the stage name and the inputs or exports that stage needs. A stage
+# name with a typo would otherwise skip every step and report success.
+#
+# NEVER READS A SECRET, USES NO OTHER ACTION. Both callers run on any PR, fork
+# or not, and that licence rests on this file as much as on theirs; the emulator
+# is driven with `sdkmanager`, `avdmanager`, `emulator` and `adb` directly, for
+# the reason android-release.yml gives at length. Both workflow suites pin it.
+
+inputs:
+  stage:
+    description: "sdk | boot | launch: which part of the bring-up this call runs (see the header)"
+    required: true
+  api-level:
+    description: "sdk: the emulator's API level; the image is system-images;android-<api-level>;google_apis;x86_64"
+    required: false
+    default: ""
+  art-dir:
+    description: "sdk: the evidence directory, created and exported as ART for every later step"
+    required: false
+    default: ""
+  apk:
+    description: "launch: the debug APK to install"
+    required: false
+    default: ""
+  package:
+    description: "launch: the application id whose .MainActivity is started"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: The stage is one this action knows, with what it needs
+      shell: bash
+      env:
+        STAGE: ${{ inputs.stage }}
+        API_LEVEL: ${{ inputs.api-level }}
+        ART_DIR: ${{ inputs.art-dir }}
+        APK_IN: ${{ inputs.apk }}
+        PKG_IN: ${{ inputs.package }}
+      run: |
+        set -euo pipefail
+        case "$STAGE" in
+          sdk)
+            [[ "$API_LEVEL" =~ ^[0-9]+$ ]] || { echo "stage sdk needs api-level, a number; got '$API_LEVEL'"; exit 1; }
+            [ -n "$ART_DIR" ] || { echo "stage sdk needs art-dir"; exit 1; }
+            ;;
+          boot)
+            [ -n "${ART:-}" ] && [ -n "${EMULATOR_IMAGE:-}" ] \
+              || { echo "stage boot runs after stage sdk in the same job, and ART or EMULATOR_IMAGE is unset"; exit 1; }
+            ;;
+          launch)
+            [ -n "${ART:-}" ] || { echo "stage launch runs after stages sdk and boot in the same job, and ART is unset"; exit 1; }
+            [ -n "$APK_IN" ] && [ -n "$PKG_IN" ] || { echo "stage launch needs apk and package"; exit 1; }
+            ;;
+          *)
+            echo "unknown stage '$STAGE': sdk | boot | launch"
+            exit 1
+            ;;
+        esac
+
+    - name: Enable KVM, or the emulator falls back to software and never boots
+      if: inputs.stage == 'sdk'
+      # WITHOUT THIS THE JOB DOES NOT MERELY GET SLOWER. GitHub's Linux runners
+      # expose /dev/kvm but with permissions that do not include the runner
+      # user, and an emulator that cannot open it falls back to an interpreter
+      # — which is the regime MP1 §6.2 measured at "not booted after 35
+      # minutes". One udev rule is the difference between a ~2 minute boot and a
+      # timeout.
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+          | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+        # `udevadm trigger` only QUEUES the re-evaluation of the rule; it returns
+        # before the kernel has necessarily finished applying the new device
+        # mode. The version that shipped here tested `-w /dev/kvm` in the very
+        # next line — 0.03s later, measured on the run that failed (2026-08-30,
+        # run 33325261993) — which raced the udev worker rather than genuinely
+        # finding a runner without a device. `udevadm settle` blocks until the
+        # queued event has been processed, so the check below reflects the
+        # post-trigger state instead of a coin flip on scheduler timing.
+        sudo udevadm settle --timeout=30 || true
+        # BELT AND BRACES, NOT A REPLACEMENT FOR THE RULE ABOVE: if the device
+        # node exists but `settle` still raced, or the udev worker on this image
+        # is slow, retry a direct permission change rather than failing the job
+        # for a race that has nothing to do with the app. This does not paper
+        # over a genuinely missing device — the `-c` check below still fails the
+        # job when `/dev/kvm` was never created at all.
+        for i in 1 2 3 4 5; do
+          if [ -w /dev/kvm ]; then break; fi
+          sudo chmod 0666 /dev/kvm 2>/dev/null || true
+          sleep 1
+        done
+        ls -l /dev/kvm || true
+        test -c /dev/kvm || { echo "/dev/kvm does not exist on this runner at all — this runner class has no KVM device, not a permissions problem"; exit 1; }
+        test -w /dev/kvm || { echo "/dev/kvm is still not writable after udevadm settle and a direct permission change — this runner cannot accelerate an emulator"; exit 1; }
+
+    - name: The Android SDK, plus the emulator and one system image
+      if: inputs.stage == 'sdk'
+      shell: bash
+      env:
+        # The platform the app compiles against and the build-tools beside it,
+        # the same pair android-build.yml and android-bundle pin. Exported, so a
+        # caller's later step (android-playback.yml's focus helper) builds with
+        # exactly what this step installed.
+        SDK_PLATFORM: "platforms;android-36"
+        SDK_BUILD_TOOLS: "build-tools;36.0.0"
+        API_LEVEL: ${{ inputs.api-level }}
+        ART_DIR: ${{ inputs.art-dir }}
+      run: |
+        set -euo pipefail
+        echo "ART=$ART_DIR" >> "$GITHUB_ENV"
+        mkdir -p "$ART_DIR"
+        EMULATOR_IMAGE="system-images;android-${API_LEVEL};google_apis;x86_64"
+        {
+          echo "SDK_PLATFORM=$SDK_PLATFORM"
+          echo "SDK_BUILD_TOOLS=$SDK_BUILD_TOOLS"
+          echo "EMULATOR_IMAGE=$EMULATOR_IMAGE"
+        } >> "$GITHUB_ENV"
+        SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+        if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
+          echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
+          exit 1
+        fi
+        echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+        SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
+        if [ -z "$SDKMANAGER" ]; then
+          SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
+        fi
+        if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
+          echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
+          exit 1
+        fi
+        yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
+        "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS" "platform-tools" "emulator" "$EMULATOR_IMAGE"
+        # `avdmanager` LIVES BESIDE THE RESOLVED `sdkmanager`, not at a guessed
+        # path. The image may carry a versioned `cmdline-tools/<rev>/` rather
+        # than one called `latest`, which is why sdkmanager is searched for
+        # above; assuming avdmanager is on PATH would reintroduce exactly that
+        # assumption one step later.
+        echo "$SDK/platform-tools" >> "$GITHUB_PATH"
+        echo "$SDK/emulator" >> "$GITHUB_PATH"
+        echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+
+    - name: Create the AVD, and prove it exists before launching anything
+      if: inputs.stage == 'boot'
+      # THIS STEP IS A SEPARATE STEP BECAUSE IT HAS ITS OWN VERDICT.
+      #
+      # WHAT WENT WRONG THE FIRST TIME, and it is the more useful half of this
+      # comment. `echo no | avdmanager create avd …` printed its interactive
+      # "Do you wish to create a custom hardware profile? [no]" prompt, exited
+      # ZERO, and created no AVD. Nothing checked. `emulator -avd foray-ci`
+      # then died instantly with `Unknown AVD name [foray-ci]`, and
+      # `timeout 600 adb wait-for-device` spent TEN MINUTES waiting for a device
+      # that could never appear — twelve minutes of runner time to report a
+      # fault that was knowable in one second.
+      #
+      # THE PROMPT WAS THE TRIGGER; THE DEFECT WAS THE MISSING CHECK. `set -euo
+      # pipefail` was in force the whole time and did not help, because the
+      # command it would have caught did not fail. This is the fifth
+      # "step that cannot fail when its precondition is unmet" found in this
+      # repo in three days, and the fourth in this PR — the other three were a
+      # keystore-outside-$ART test that compared strings for inequality, a
+      # fingerprint test that asserted its ingredients and not the comparison,
+      # and an ordering assertion that passed when the thing being ordered was
+      # deleted. A job whose whole purpose is to catch problems is not exempt.
+      #
+      # SO: THREE CHANGES, AND THE LAST IS THE ONE THAT MATTERS.
+      shell: bash
+      env:
+        AVD_NAME: foray-ci
+      run: |
+        set -euo pipefail
+        echo "AVD_NAME=$AVD_NAME" >> "$GITHUB_ENV"
+        # 1. ONE AVD LOCATION, DECLARED, FOR BOTH TOOLS. The observed failure
+        #    was the emulator reporting "HOME is defined but there is no file
+        #    foray-ci.ini in $HOME/.android/avd" — which is a statement about
+        #    where the EMULATOR looked, not about where avdmanager wrote. Those
+        #    two resolve their AVD root through different variables
+        #    (ANDROID_AVD_HOME, ANDROID_SDK_HOME, ANDROID_USER_HOME, HOME) and a
+        #    runner image is free to set any of them. Pinning it removes a whole
+        #    class of "created it, could not find it" from the diagnosis.
+        export ANDROID_AVD_HOME="$HOME/.android/avd"
+        echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
+        mkdir -p "$ANDROID_AVD_HOME"
+        # 2. `-d`, SO THE PROMPT NEVER HAPPENS. `avdmanager` asks about a custom
+        #    hardware profile only when no device is given; with `-d` it does not
+        #    ask, so there is no stdin to satisfy and nothing for `echo no` to
+        #    get wrong. `pixel_6` was verified to be a real device id in this
+        #    SDK's `avdmanager list device` (66 profiles, `id: 28 or "pixel_6"`)
+        #    rather than assumed. Stdin is closed as well, which prevents a HANG
+        #    but is NOT what makes this safe: the original `echo no |` already
+        #    gave avdmanager EOF, and it still exited 0 having created nothing.
+        #    Only check 3 turns that into a failure.
+        #
+        #    THE EXIT CODE IS CAPTURED DIRECTLY. Not `avdmanager … | tee`: a
+        #    local probe of this very command through `| head` reported exit 0
+        #    for a run that exited 1, which is the same defect this step is
+        #    being fixed for, one layer up.
+        set +e
+        avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" -d pixel_6 --force \
+          < /dev/null > "$ART/avdmanager.log" 2>&1
+        AVDMANAGER_STATUS=$?
+        set -e
+        cat "$ART/avdmanager.log"
+        if [ "$AVDMANAGER_STATUS" -ne 0 ]; then
+          echo "avdmanager exited $AVDMANAGER_STATUS — no AVD was created"
+          exit 1
+        fi
+        # 3. THE PRECONDITION IS ASSERTED WITH THE TOOL THAT WILL CONSUME IT.
+        #    The failure being fixed here was the emulator saying `Unknown AVD
+        #    name [foray-ci], use -list-avds to see valid list`, so the check is
+        #    that exact list and passing it makes that exact error unreachable.
+        #    NOT MORE THAN THAT: `-list-avds` enumerates the `.ini` files under
+        #    the AVD root, so it would still list an AVD whose system image had
+        #    gone missing. It proves the NAME RESOLVES, which is what was broken.
+        #
+        #    NOT `avdmanager list avd | grep`, AND THIS WAS MEASURED, NOT
+        #    GUESSED: on a real machine that command prints unusable AVDs too,
+        #    under a heading reading "The following Android Virtual Devices could
+        #    not be loaded" — two of them, on the founder's own box, missing
+        #    their system images. A grep for the name over that output is
+        #    satisfied by an AVD the emulator cannot start, which would have
+        #    shipped this same bug wearing a check.
+        emulator -list-avds > "$ART/emulator-list-avds.txt" 2>&1 || true
+        cat "$ART/emulator-list-avds.txt"
+        if ! grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"; then
+          echo "the emulator does not list an AVD called $AVD_NAME, so launching it would fail with Unknown AVD name."
+          echo "--- avdmanager's own view, including AVDs it considers broken:"
+          avdmanager list avd || true
+          echo "--- $ANDROID_AVD_HOME:"
+          ls -la "$ANDROID_AVD_HOME" || true
+          exit 1
+        fi
+        test -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" \
+          || { echo "no $AVD_NAME.ini in $ANDROID_AVD_HOME — the emulator listed it but its config is not where both tools agree it should be"; exit 1; }
+        echo "AVD $AVD_NAME exists and the emulator can see it"
+
+    - name: Boot it
+      if: inputs.stage == 'boot'
+      shell: bash
+      run: |
+        set -euo pipefail
+        adb start-server
+        # `-no-snapshot` because a saved snapshot is a second thing that can be
+        # stale, and this job is a cold-start check by nature.
+        nohup emulator -avd "$AVD_NAME" \
+          -no-window -no-audio -no-boot-anim -no-snapshot \
+          -gpu swiftshader_indirect -camera-back none -camera-front none \
+          -accel on -memory 4096 -partition-size 4096 \
+          > "$ART/emulator.log" 2>&1 &
+        EMU_PID=$!
+        # ONE LOOP, WATCHING BOTH THE DEVICE AND THE PROCESS, and the process
+        # half is the fix for "twelve minutes to report a one-second fault".
+        # `adb wait-for-device` waits for something to appear and has no opinion
+        # about whether anything is still trying: an emulator that exits during
+        # startup — a bad flag, no KVM, a corrupt image, an AVD that vanished —
+        # leaves it blocking for the full timeout with the answer already in the
+        # log. `kill -0` on the pid it started turns every one of those into a
+        # failure in seconds, with the log printed.
+        #
+        # `sys.boot_completed` IS THE PROPERTY WAITED ON, not `state: device`,
+        # and MP1 §6.2 is why: that run reached `state: device` with
+        # `ro.build.version.sdk=36` while the package service still answered
+        # "Can't find service: package". Visible and usable are different events.
+        DEADLINE=$(( $(date +%s) + 900 ))
+        # `timeout 30` ON THE ADB CALL, because both guards below live in the LOOP
+        # BODY and a hung `adb shell` never reaches either one. The old code was
+        # bounded by `timeout 600 adb wait-for-device`; replacing that with a poll
+        # and no bound would have re-opened the same "hold the runner until the
+        # job timeout" hole one level down. On timeout adb exits 124, the test is
+        # false, and the loop falls through to the pid check and the deadline.
+        until [ "$(timeout 30 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+          if ! kill -0 "$EMU_PID" 2>/dev/null; then
+            echo "the emulator process exited before the device finished booting"
+            tail -80 "$ART/emulator.log"
+            exit 1
+          fi
+          if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+            echo "the emulator did not finish booting in 15 minutes"
+            tail -80 "$ART/emulator.log"
+            exit 1
+          fi
+          sleep 5
+        done
+        adb shell settings put global window_animation_scale 0
+        adb shell settings put global transition_animation_scale 0
+        adb shell settings put global animator_duration_scale 0
+        adb shell getprop ro.build.version.sdk | tee "$ART/device-sdk.txt"
+
+    - name: Install the app and start it
+      if: inputs.stage == 'launch'
+      shell: bash
+      env:
+        APK: ${{ inputs.apk }}
+        PKG: ${{ inputs.package }}
+      run: |
+        set -euo pipefail
+        adb logcat -c
+        # `|| true` ON BOTH PIPELINES, for the same reason as the `pidof` lines
+        # in android-smoke.yml's probe step: `adb install` exits non-zero on
+        # failure and `adb shell` forwards `am start`'s status, so under
+        # `pipefail` the step would abort before the grep that carries the
+        # readable message. The greps are the verdict; the pipelines only have
+        # to deliver the text.
+        adb install -r -g "$APK" 2>&1 | tee "$ART/adb-install.txt" || true
+        grep -q '^Success' "$ART/adb-install.txt" || { echo "the APK did not install"; exit 1; }
+        # `-W` waits for the launch to complete and prints a Status line, so a
+        # missing or non-exported activity is a failure HERE with a readable
+        # message rather than a mystery further down.
+        adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee "$ART/am-start.txt" || true
+        grep -q '^Status: ok' "$ART/am-start.txt" || { echo "am start did not report Status: ok"; exit 1; }

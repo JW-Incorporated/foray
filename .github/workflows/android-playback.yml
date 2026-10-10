@@ -70,22 +70,27 @@
 # `logcat -s Capacitor ForayAudio chromium`, every `dumpsys` a verdict read,
 # the screenshots and window dumps, and the diagnostics sheet's Copy.
 #
-# ── THE BOOT IS android-smoke.yml's, COPIED AND PINNED ───────────────────────
+# ── THE BOOT IS android-smoke.yml's, SHARED ──────────────────────────────────
 #
-# The steps from KVM to `am start` are `android-smoke.yml`'s, with its comments
-# left there: read that file for why each one is shaped the way it is (the KVM
-# race, the AVD that was never created, the dead emulator noticed in seconds, the
-# debug APK standing in for the release one). Two differences, both named:
-# the evidence directory is `android-playback`, and the build step copies the
-# three click tracks into the APK's web assets at `a04/`.
-# `tools/mobile/android-playback-workflow.test.mjs` compares the two files step
-# by step with comments stripped, so a fix to one without the other is red.
+# KVM, the SDK, the AVD, the boot and `am start` are
+# `.github/actions/android-emulator`, the composite `android-smoke.yml` calls
+# too (CH2-33): read it for why each step is shaped the way it is (the KVM
+# race, the AVD that was never created, the dead emulator noticed in seconds).
+# It runs in three stages because this job does its own work between them: the
+# narration render, the build with the fixtures and the focus helper before
+# `boot`, and the API-level record and the Play-services wait before `launch`.
+# The build and the debug-APK check are still the smoke's, copied, with two
+# named differences: the evidence directory is `android-playback`, and the
+# build step copies the click tracks (`a04/`) and narration (`a05/`) into the
+# APK's web assets. `tools/mobile/android-playback-workflow.test.mjs` compares
+# those steps with the smoke's, comments stripped, and pins that neither file
+# carries an emulator step of its own.
 #
-# WHY COPIED AND NOT SHARED: a composite action under `.github/actions/` would
-# have moved `android-smoke.yml`'s steps a second time in two days, and every
-# pin in `android-workflow.test.mjs` reads them from that file. A byte-for-byte
-# test gets the same guarantee without that churn. A-06 added its API 36 leg as
-# a matrix entry of this job, not as a third caller, so the copy stays two.
+# WHY THE COPY WAS FOLDED (CH2-33, T2-08 in docs/roadmap/code-health-2.md): the
+# byte-for-byte test kept the two boots EQUAL, but a fix still had to be made
+# twice, and the comment-free copy here was the one nobody read. The
+# composite moved the smoke's steps once, with their comments, and the pins in
+# `android-workflow.test.mjs` read them from there.
 #
 # WHY THE CLICK TRACKS ARE IN THE APK, NOT BEHIND `adb reverse` (the card's
 # wording): the page's CSP admits `media-src https:` only; the WebView refuses
@@ -101,14 +106,15 @@
 # by-hand check of `main`. The card's budget is 12 minutes for the job.
 #
 # ADVISORY, NOT REQUIRED: a cold emulator is the flakiest thing this repo runs,
-# and `protect-main` matches required checks by name (`backend`,
-# `data-and-site`, `path-policy`); `android-playback` is none of them, and the
+# and `protect-main` matches required checks by name (the list is
+# `REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`); `android-playback` is none of them, and the
 # workflow test pins that it stays so.
 #
 # NEVER UPLOADS TO A STORE, READS NO SECRET. It publishes its own evidence
 # directory as a GitHub Actions artifact and nothing else. Every `uses:` is
-# `actions/*`; the emulator is driven with `sdkmanager`, `avdmanager`,
-# `emulator` and `adb` directly.
+# `actions/*` or this repo's own `.github/actions/android-emulator`, which
+# reads no secret either; the emulator is driven with `sdkmanager`,
+# `avdmanager`, `emulator` and `adb` directly.
 #
 # ── WHAT THIS STILL DOES NOT PROVE ───────────────────────────────────────────
 #
@@ -172,6 +178,7 @@ on:
       - "search-engine.js"
       - "styles.css"
       - ".github/workflows/android-playback.yml"
+      - ".github/actions/android-emulator/**"
 
 concurrency:
   group: android-playback-${{ github.ref }}
@@ -189,20 +196,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The fast leg: android-smoke.yml's image, as it argues at length.
+          # The fast leg: android-smoke.yml's API level, as it argues at length.
           - api: 34
-            image: system-images;android-34;google_apis;x86_64
             timeout: 30
             mode: js
           # A-06: the platform the app targets, so the Android 15+ focus and
           # edge-to-edge rules run at least on an emulator. Allowed to be slower.
           - api: 36
-            image: system-images;android-36;google_apis;x86_64
             timeout: 45
             mode: js
-          # A-26: the native engine's leg (see the header). The fast image.
+          # A-26: the native engine's leg (see the header). The fast API level.
           - api: 34
-            image: system-images;android-34;google_apis;x86_64
             timeout: 40
             mode: native
     # The ceiling for a hung boot or a hung scenario, which the boot step's own
@@ -213,12 +217,8 @@ jobs:
     # moved: the measured legs are in docs/android-emulator-measurements.md §7.
     timeout-minutes: ${{ matrix.timeout }}
     env:
-      SDK_PLATFORM: platforms;android-36
-      SDK_BUILD_TOOLS: build-tools;36.0.0
-      EMULATOR_IMAGE: ${{ matrix.image }}
       API_LEVEL: ${{ matrix.api }}
       MODE: ${{ matrix.mode }}
-      AVD_NAME: foray-ci
       PKG: ai.jwlabs.foura
 
     steps:
@@ -236,47 +236,14 @@ jobs:
           distribution: temurin
           java-version: 21
 
-      - name: Enable KVM, or the emulator falls back to software and never boots
-        run: |
-          set -euo pipefail
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules > /dev/null
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          sudo udevadm settle --timeout=30 || true
-          for i in 1 2 3 4 5; do
-            if [ -w /dev/kvm ]; then break; fi
-            sudo chmod 0666 /dev/kvm 2>/dev/null || true
-            sleep 1
-          done
-          ls -l /dev/kvm || true
-          test -c /dev/kvm || { echo "/dev/kvm does not exist on this runner at all — this runner class has no KVM device, not a permissions problem"; exit 1; }
-          test -w /dev/kvm || { echo "/dev/kvm is still not writable after udevadm settle and a direct permission change — this runner cannot accelerate an emulator"; exit 1; }
-
-      - name: The Android SDK, plus the emulator and one system image
-        run: |
-          set -euo pipefail
-          echo "ART=$RUNNER_TEMP/android-playback" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/android-playback"
-          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
-            echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
-            exit 1
-          fi
-          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
-          if [ -z "$SDKMANAGER" ]; then
-            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
-          fi
-          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
-            echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
-            exit 1
-          fi
-          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS" "platform-tools" "emulator" "$EMULATOR_IMAGE"
-          echo "$SDK/platform-tools" >> "$GITHUB_PATH"
-          echo "$SDK/emulator" >> "$GITHUB_PATH"
-          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+      - name: KVM, the Android SDK, the emulator and its system image
+        # `.github/actions/android-emulator`, android-smoke.yml's bring-up too
+        # (CH2-33); the leg's API level picks the image.
+        uses: ./.github/actions/android-emulator
+        with:
+          stage: sdk
+          api-level: ${{ matrix.api }}
+          art-dir: ${{ runner.temp }}/android-playback
 
       - name: Render the A-05 narration fixtures (.m4a, the render profile's encode)
         # (f) and (k) play rendered narration, which ships as `audio_url` .m4a
@@ -360,8 +327,10 @@ jobs:
       - name: Build the A-05 focus helper, a tiny APK that asks for audio focus (javac, d8, aapt2; no Gradle)
         # (h)'s "other app": tools/mobile/a05-focus-helper/, one Activity that
         # requests AUDIOFOCUS_GAIN or _TRANSIENT and abandons it on command.
-        # Built from the platform and build-tools this job installed, signed
-        # with a throwaway key made here, installed on this emulator only.
+        # Built from the platform and build-tools this job installed (the
+        # android-emulator composite's `sdk` stage exports SDK_PLATFORM and
+        # SDK_BUILD_TOOLS), signed with a throwaway key made here, installed on
+        # this emulator only.
         run: |
           set -euo pipefail
           BT="$ANDROID_HOME/build-tools/${SDK_BUILD_TOOLS#build-tools;}"
@@ -396,64 +365,10 @@ jobs:
           grep -qE '^[[:space:]]*minifyEnabled[[:space:]]+false' app/build.gradle \
             || { echo "no minifyEnabled line in the generated app/build.gradle — Capacitor's template changed; re-read this step's argument before trusting the smoke result"; exit 1; }
 
-      - name: Create the AVD, and prove it exists before launching anything
-        run: |
-          set -euo pipefail
-          export ANDROID_AVD_HOME="$HOME/.android/avd"
-          echo "ANDROID_AVD_HOME=$ANDROID_AVD_HOME" >> "$GITHUB_ENV"
-          mkdir -p "$ANDROID_AVD_HOME"
-          set +e
-          avdmanager create avd -n "$AVD_NAME" -k "$EMULATOR_IMAGE" -d pixel_6 --force \
-            < /dev/null > "$ART/avdmanager.log" 2>&1
-          AVDMANAGER_STATUS=$?
-          set -e
-          cat "$ART/avdmanager.log"
-          if [ "$AVDMANAGER_STATUS" -ne 0 ]; then
-            echo "avdmanager exited $AVDMANAGER_STATUS — no AVD was created"
-            exit 1
-          fi
-          emulator -list-avds > "$ART/emulator-list-avds.txt" 2>&1 || true
-          cat "$ART/emulator-list-avds.txt"
-          if ! grep -qxF "$AVD_NAME" "$ART/emulator-list-avds.txt"; then
-            echo "the emulator does not list an AVD called $AVD_NAME, so launching it would fail with Unknown AVD name."
-            echo "--- avdmanager's own view, including AVDs it considers broken:"
-            avdmanager list avd || true
-            echo "--- $ANDROID_AVD_HOME:"
-            ls -la "$ANDROID_AVD_HOME" || true
-            exit 1
-          fi
-          test -f "$ANDROID_AVD_HOME/$AVD_NAME.ini" \
-            || { echo "no $AVD_NAME.ini in $ANDROID_AVD_HOME — the emulator listed it but its config is not where both tools agree it should be"; exit 1; }
-          echo "AVD $AVD_NAME exists and the emulator can see it"
-
-      - name: Boot it
-        run: |
-          set -euo pipefail
-          adb start-server
-          nohup emulator -avd "$AVD_NAME" \
-            -no-window -no-audio -no-boot-anim -no-snapshot \
-            -gpu swiftshader_indirect -camera-back none -camera-front none \
-            -accel on -memory 4096 -partition-size 4096 \
-            > "$ART/emulator.log" 2>&1 &
-          EMU_PID=$!
-          DEADLINE=$(( $(date +%s) + 900 ))
-          until [ "$(timeout 30 adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
-            if ! kill -0 "$EMU_PID" 2>/dev/null; then
-              echo "the emulator process exited before the device finished booting"
-              tail -80 "$ART/emulator.log"
-              exit 1
-            fi
-            if [ "$(date +%s)" -ge "$DEADLINE" ]; then
-              echo "the emulator did not finish booting in 15 minutes"
-              tail -80 "$ART/emulator.log"
-              exit 1
-            fi
-            sleep 5
-          done
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
-          adb shell getprop ro.build.version.sdk | tee "$ART/device-sdk.txt"
+      - name: Create the AVD and boot it
+        uses: ./.github/actions/android-emulator
+        with:
+          stage: boot
 
       - name: The device is the leg's API level, and its WebView is recorded
         # A-06. A matrix leg that silently booted the other image would print a
@@ -504,13 +419,11 @@ jobs:
 
       - name: Install the app and start it
         id: launch
-        run: |
-          set -euo pipefail
-          adb logcat -c
-          adb install -r -g "$APK" 2>&1 | tee "$ART/adb-install.txt" || true
-          grep -q '^Success' "$ART/adb-install.txt" || { echo "the APK did not install"; exit 1; }
-          adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee "$ART/am-start.txt" || true
-          grep -q '^Status: ok' "$ART/am-start.txt" || { echo "am start did not report Status: ok"; exit 1; }
+        uses: ./.github/actions/android-emulator
+        with:
+          stage: launch
+          apk: ${{ env.APK }}
+          package: ${{ env.PKG }}
 
       # ── The scenarios. Each is its own step with its own verdict, and each
       # runs whether or not the one before it passed, so one run prints every

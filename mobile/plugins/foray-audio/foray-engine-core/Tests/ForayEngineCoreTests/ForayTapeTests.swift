@@ -37,7 +37,7 @@ final class ForayTapeTests: XCTestCase {
 
     static func loads(_ out: [EngineCommand]) -> [String] {
         out.compactMap {
-            if case let .deck(.load(_, itemId, _, startSec, _, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
+            if case let .deck(.load(_, itemId, _, startSec, _, _, _)) = $0 { return "\(itemId)@\(JSWriter.numberToString(startSec))" }
             return nil
         }
     }
@@ -204,8 +204,8 @@ final class ForayTapeTests: XCTestCase {
     static func precision(_ out: [EngineCommand]) -> [String] {
         out.compactMap {
             switch $0 {
-            case let .deck(.load(_, itemId, _, _, precise, _)): return "load \(itemId) precise=\(precise)"
-            case let .deck(.prepare(itemId, _, _, _, precise)): return "prepare \(itemId) precise=\(precise)"
+            case let .deck(.load(_, itemId, _, _, precise, _, _)): return "load \(itemId) precise=\(precise)"
+            case let .deck(.prepare(itemId, _, _, _, precise, _)): return "prepare \(itemId) precise=\(precise)"
             default: return nil
             }
         }
@@ -259,6 +259,44 @@ final class ForayTapeTests: XCTestCase {
         XCTAssertEqual(ForayTapeTests.precision(window), ["prepare f1#1 precise=true"], "\(window)")
     }
 
+    /// `load <item> bounded=<flag>` / `prepare <item> bounded=<flag>` for every
+    /// deck load and standby prepare.
+    static func boundedness(_ out: [EngineCommand]) -> [String] {
+        out.compactMap {
+            switch $0 {
+            case let .deck(.load(_, itemId, _, _, _, _, bounded)): return "load \(itemId) bounded=\(bounded)"
+            case let .deck(.prepare(itemId, _, _, _, _, bounded)): return "prepare \(itemId) bounded=\(bounded)"
+            default: return nil
+            }
+        }
+    }
+
+    /// CH3-11 (R2-04): the core names a CLIP to the deck by its bounds, not by
+    /// its timing, because P-7's exemption makes a CBR clip approximate and
+    /// `.clip` is an episode's deadline class too. With the exemption on, a CBR
+    /// clip loads approximate AND bounded, its warm prepare likewise, and a
+    /// whole episode loads unbounded. AVDeck's §16 continue/lapse reads it.
+    /// MUTATION: drop `bounded:` from `load` (the clip loads unbounded) or from
+    /// the prepare in `warmNextSegment` (the warm clip is unbounded).
+    func testAClipLoadsAndPreparesBoundedWhateverItsTimingAndAnEpisodeDoesNot() throws {
+        let cbr = [JSONMember("seek_map", .string("cbr"))]
+        let on = EngineConfig(build: "test", forayTapeEnabled: true, approximateCBRClips: true)
+        var host = Host(config: on)
+        let first = host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(
+            [ForayTapeTests.clip(0, "a", 100, 200, cbr), ForayTapeTests.clip(1, "b", 300, 400, cbr)])))
+        XCTAssertEqual(ForayTapeTests.precision(first), ["load f1#0 precise=false"], "\(first)")
+        XCTAssertEqual(ForayTapeTests.boundedness(first), ["load f1#0 bounded=true"], "\(first)")
+        host.land()
+        host.confirm()
+        let window = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)))
+        XCTAssertEqual(ForayTapeTests.boundedness(window), ["prepare f1#1 bounded=true"], "\(window)")
+
+        var episode = Host(config: on)
+        episode.send(.queue(.load(["a", "b"].map { EngineCoreTests.item($0) })))
+        let played = episode.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        XCTAssertEqual(ForayTapeTests.boundedness(played), ["load a bounded=false"], "\(played)")
+    }
+
     /// The rule itself, item by item: bounded, and not (exempt and measured
     /// CBR). A whole episode is approximate whatever its source (P-7), and
     /// only the exact measured value "cbr" relaxes a clip.
@@ -287,7 +325,8 @@ final class ForayTapeTests: XCTestCase {
     func testGraceSpansASeamInTheBackground() throws {
         var host = try playing()
         let window = host.send(.deck(.prepareWindow(token: host.lastLoad ?? 0)))
-        XCTAssertTrue(window.contains(.deck(.prepare(itemId: "f1#1", url: "https://cdn.test/b.mp3", startSec: 300))), "\(window)")
+        XCTAssertTrue(window.contains(.deck(.prepare(itemId: "f1#1", url: "https://cdn.test/b.mp3", startSec: 300,
+                                                         bounded: true))), "\(window)")
         host.send(.lifecycle(.background))
         let out = end(&host)
         XCTAssertTrue(out.contains(.graceBegin(.seam)), "\(out)")

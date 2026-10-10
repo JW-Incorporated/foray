@@ -10,7 +10,8 @@
 //
 // These tests drive each REAL handler with a repeated parameter, so they pin
 // the behaviour a caller sees, not the helper in isolation:
-//   - the three single-value endpoints answer the FIRST value;
+//   - the three single-value endpoints answer the FIRST value (the per-show
+//     list's `show_id` too, since code-health-2 CH2-40);
 //   - CORS reads the FIRST Origin header value;
 //   - the catch-all shard route keeps EVERY path segment (its helper is
 //     `allParams`, a different rule with a different name).
@@ -25,6 +26,7 @@ import assert from "node:assert";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import * as http from "node:http";
 import { firstParam } from "../_lib/params.ts";
 import { applyCors } from "../_lib/cors.ts";
 import * as episodeSearchModule from "../episodes/search.ts";
@@ -32,9 +34,9 @@ import * as showSearchModule from "../shows/search.ts";
 import * as showEpisodesModule from "../shows/[show_id]/episodes.ts";
 import * as indexModule from "../shows/index/[...path].ts";
 import { encodeCursor } from "../_lib/episodeCursor.ts";
+import { _setPointerPathForTests } from "../_lib/showsIndexRelease.ts";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
-import { episodeFeedFailureCache } from "../_lib/searchCache.ts";
-import { appleCallerBuckets } from "../_lib/clientLimit.ts";
+import { appleCallerBuckets, QUERY_MAX_CHARS, QUERY_TOO_LONG_ERROR } from "../_lib/clientLimit.ts";
 
 const unwrap = (m) => (typeof m.default === "function" ? m.default : m.default.default);
 const episodeSearch = unwrap(episodeSearchModule);
@@ -106,8 +108,8 @@ test("firstParam: a string is itself, an array is its first value, absent is nul
 });
 
 test("GET /api/episodes/search?q=a&q=b answers the first q", async () => {
-  episodeFeedFailureCache.clear();
-  episodeSearchModule.sharedFeedReader.clear();
+  episodeSearchModule.showScopedResultCache.clear();
+  sharedFeedReader.clear();
   appleCallerBuckets.clear();
   const first = `ch17-first-${Date.now()}`;
   const req = { method: "GET", query: { q: [first, `ch17-second-${Date.now()}`] }, headers: {} };
@@ -166,7 +168,7 @@ test("CORS reads the first Origin value of a repeated header", () => {
 
 test("GET /api/shows/index/shards/fr.json keeps EVERY catch-all segment (allParams, not firstParam)", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ch17-pointer-"));
-  indexModule._setPointerPathForTests(path.join(dir, "does-not-exist.json"));
+  _setPointerPathForTests(path.join(dir, "does-not-exist.json"));
   try {
     const res = mockRes();
     await withFetch(async (url) => assert.fail(`no pointer, no fetch: ${url}`),
@@ -185,7 +187,151 @@ test("GET /api/shows/index/shards/fr.json keeps EVERY catch-all segment (allPara
     await showsIndex({ method: "GET", query: {}, headers: {} }, none);
     assert.strictEqual(none.statusCode, 400);
   } finally {
-    indexModule._setPointerPathForTests();
+    _setPointerPathForTests();
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* ── ONE LIMIT RULE AND ONE QUERY RULE FOR BOTH SEARCH HANDLERS (code-health-2
+   CH2-40, A1-10) ────────────────────────────────────────────────────────────
+   `limit` and `q` were parsed by a copy in each search handler, so the 100 cap
+   or the 25 default could change in one and not the other. These pins drive
+   BOTH real handlers with the same inputs and expect the same answers.
+
+   MUTATION: change the cap or the default in `parseLimit` (api/_lib/params.ts),
+   or its "positive integer" rule, and both handlers' rows below go red
+   together. Change the 400 message or the QUERY_MAX_CHARS check in
+   `requireQuery` and both 400 pins go red together. */
+
+const LEX_APPLE_ID = 1434243584; // lex-fridman-podcast's apple_collection_id in data/catalog.json
+
+/** The number of episodes the Apple path answers for `limit`, with Apple
+    returning far more mapped rows than any limit can take. */
+async function episodeSearchCount(limit, i) {
+  const hits = Array.from({ length: 200 }, (_, n) => ({ collectionId: LEX_APPLE_ID, collectionName: "Lex", trackName: `Hit ${n}` }));
+  const req = {
+    method: "GET",
+    query: { q: `ch2-40-limit-${Date.now()}-${i}`, ...(limit === undefined ? {} : { limit }) },
+    headers: { "x-forwarded-for": `198.51.100.${40 + i}` },
+  };
+  const res = mockRes();
+  await withFetch(async () => new Response(JSON.stringify({ results: hits }), { status: 200 }),
+    () => episodeSearch(req, res));
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.error, null, JSON.stringify(res.body));
+  return res.body.episodes.length;
+}
+
+/** The number of shows the catalogue answers for `limit` (`podcast` matches
+    far more than 100 catalogue rows). */
+async function showSearchCount(limit) {
+  const res = mockRes();
+  await withFetch(async (url) => assert.fail(`no network without fallthrough: ${url}`),
+    () => showSearch({ method: "GET", query: { q: "podcast", ...(limit === undefined ? {} : { limit }) }, headers: {} }, res));
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.degraded, false);
+  return res.body.shows.length;
+}
+
+const LIMIT_ROWS = [
+  [undefined, 25], ["0", 25], ["-1", 25], ["abc", 25], ["", 25],
+  ["101", 100], ["100", 100], ["7", 7], ["7abc", 7], [["7", "50"], 7],
+];
+
+test("GET /api/episodes/search: limit is a positive integer, default 25, capped at 100", async () => {
+  appleCallerBuckets.clear();
+  for (const [i, [limit, expected]] of LIMIT_ROWS.entries()) {
+    assert.strictEqual(await episodeSearchCount(limit, i), expected, `limit=${JSON.stringify(limit)}`);
+  }
+});
+
+test("GET /api/shows/search: the same limit rule (default 25, capped at 100)", async () => {
+  for (const [limit, expected] of LIMIT_ROWS) {
+    assert.strictEqual(await showSearchCount(limit), expected, `limit=${JSON.stringify(limit)}`);
+  }
+});
+
+test("both search handlers: a missing or blank q is a 400, and so is one over QUERY_MAX_CHARS", async () => {
+  const cases = [
+    [episodeSearch, "q is required"],
+    [showSearch, "q or id is required"],
+  ];
+  for (const [handler, missing] of cases) {
+    for (const q of [undefined, "", "   ", [" ", "real"]]) {
+      const res = mockRes();
+      await handler({ method: "GET", query: q === undefined ? {} : { q }, headers: {} }, res);
+      assert.strictEqual(res.statusCode, 400, `q=${JSON.stringify(q)}`);
+      assert.deepStrictEqual(res.body, { error: missing });
+    }
+    const long = mockRes();
+    await handler({ method: "GET", query: { q: "x".repeat(QUERY_MAX_CHARS + 1) }, headers: {} }, long);
+    assert.strictEqual(long.statusCode, 400);
+    assert.deepStrictEqual(long.body, { error: QUERY_TOO_LONG_ERROR });
+  }
+  /* The boundary: exactly QUERY_MAX_CHARS is answered (no network needed for
+     the catalogue-only show search). */
+  const atMax = mockRes();
+  await withFetch(async (url) => assert.fail(`no network: ${url}`),
+    () => showSearch({ method: "GET", query: { q: "x".repeat(QUERY_MAX_CHARS) }, headers: {} }, atMax));
+  assert.strictEqual(atMax.statusCode, 200);
+});
+
+/* THE CAPITALISED `Origin` ARM IS DEAD (CH2-40, A1-12). Node lowercases every
+   incoming header name (`IncomingMessage.headers`), and Vercel's Node runtime
+   hands the handler that object, so `req.headers.Origin` is never set however
+   the client spells the header. This sends `Origin:` capitalised over a real
+   socket and hands the request Node built to applyCors.
+   MUTATION: make applyCors read `req.headers.Origin` only (drop the lowercase
+   read) and the allowed origin is no longer echoed: red. */
+test("Node lowercases a capitalised Origin header, so applyCors only ever needs `origin`", async () => {
+  const seen = await new Promise((resolve, reject) => {
+    const server = http.createServer((req, nodeRes) => {
+      const res = mockRes();
+      applyCors(req, res);
+      resolve({ keys: Object.keys(req.headers), capital: req.headers.Origin, lower: req.headers.origin, acao: res.headers["Access-Control-Allow-Origin"] });
+      nodeRes.end();
+      server.close();
+    });
+    server.on("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const { port } = server.address();
+      const out = http.request({ host: "127.0.0.1", port, method: "GET", path: "/", headers: { Origin: "https://jwlabs.ai" } }, (r) => r.resume());
+      out.on("error", reject);
+      out.end();
+    });
+  });
+  assert.ok(seen.keys.every((k) => k === k.toLowerCase()), seen.keys.join(","));
+  assert.strictEqual(seen.capital, undefined);
+  assert.strictEqual(seen.lower, "https://jwlabs.ai");
+  assert.strictEqual(seen.acao, "https://jwlabs.ai");
+});
+
+/* THE PER-SHOW LIST'S `show_id` (CH2-40, A1-10). It was read with a private
+   `typeof === "string"` check rather than firstParam, so a repeated show_id
+   was refused with `400 show_id is required` while every other single-value
+   parameter in this API answers its first value. It reads firstParam now.
+   MUTATION: restore the `typeof` check and this is the old 400: red. */
+test("GET /api/shows/:id/episodes?show_id=a&show_id=b answers the first show_id", async () => {
+  await withoutDatabaseUrl(() =>
+    withFetch(
+      async () => new Response(FEED_TWO_EPS, { status: 200, headers: { "content-type": "application/rss+xml" } }),
+      async () => {
+        sharedFeedReader.clear();
+        const res = mockRes();
+        await showEpisodes({ method: "GET", query: { show_id: [REAL_SHOW_ID, "definitely-not-a-show"] }, headers: {} }, res);
+        assert.strictEqual(res.statusCode, 200);
+        assert.strictEqual(res.body.show_id, REAL_SHOW_ID);
+        assert.deepStrictEqual(res.body.episodes.map((e) => e.title), ["Episode Two", "Episode One"]);
+      }
+    )
+  );
+});
+
+test("GET /api/shows/:id/episodes with no show_id (or an empty first value) is still the 400", async () => {
+  for (const query of [{}, { show_id: "" }, { show_id: [] }]) {
+    const res = mockRes();
+    await withFetch(async (url) => assert.fail(`no network: ${url}`), () => showEpisodes({ method: "GET", query, headers: {} }, res));
+    assert.strictEqual(res.statusCode, 400, JSON.stringify(query));
+    assert.deepStrictEqual(res.body, { error: "show_id is required" });
   }
 });

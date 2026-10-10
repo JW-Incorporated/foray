@@ -54,8 +54,7 @@ description and a sample of its recent episodes.
    (check whether you were handed a specific batch input path — if so,
    skip to step 2):
    ```sh
-   node tools/classify/prepare-batch.mjs --shard <i>/6 --batch-size 60 --mode fresh \
-     --progress data/classify-progress.json
+   node tools/classify/prepare-batch.mjs --shard <i>/6 --batch-size 60 --mode fresh
    ```
    **`--shard <i>/6` is not optional and `<i>` is not a guess.** Use the
    number in your own routine's name (`foray-classify-shard3` → `3/6`), or
@@ -75,11 +74,18 @@ description and a sample of its recent episodes.
    flagged `needs_review`) rather than a fresh batch. Escalation has **no
    shard support** — leave `--shard` off for it, and expect escalation to
    be run as a single routine or by hand rather than six ways at once.
-   **Always pass
-   `--progress data/classify-progress.json`** for a real (non-test) run —
-   this is a tracked file so progress survives between routine
-   invocations; the default `data-local/` path is untracked and only for
-   local experimentation.
+   Progress lives in the tracked `data/classify-progress.json`, which is
+   the default — no flag needed — so state survives between routine
+   invocations and is shared by all six shards. (Passing
+   `--progress data/classify-progress.json` explicitly still works and
+   means the same thing; do not point it anywhere else for a real run.)
+
+   If the script prints `STALE GENRE MAP`, the genre map names a topic
+   that is no longer a taxonomy node. It has already been dropped from
+   every `tier0_prior` (the batch file lists it under
+   `stale_map_topics`); classify the batch as normal and mention the
+   stale ids in your PR body so a human fixes
+   `data/genre-taxonomy-map.json`.
 
    If the script prints `CLASSIFY_BATCH_EMPTY`, there is nothing to do —
    stop, do not open a PR.
@@ -226,9 +232,9 @@ description and a sample of its recent episodes.
      --batch data-local/classify-batch-<id>.json \
      --results data-local/classify-results-<id>.json
    ```
-   Set `PROGRESS_PATH=data/classify-progress.json` (same tracked path you
-   used in step 1) and `BREADTH_CLASSIFICATION_PATH` only if it isn't
-   already the default `data/breadth-classification.json`. If it reports
+   It writes the same tracked `data/classify-progress.json` that step 1
+   used, by default — set neither `PROGRESS_PATH` nor
+   `BREADTH_CLASSIFICATION_PATH` for a real run. If it reports
    validation errors for specific shows, that's expected occasionally
    (e.g. a typo'd node id) — it skips just those and merges the rest; you
    don't need to fix and re-run unless the skip count looks systematically

@@ -4,10 +4,10 @@ import path from "node:path";
 import os from "node:os";
 import {
   generateOneCandidate,
+  generateQueue,
   parseArgs,
   classifyFailure,
   resumeBackoffMs,
-  msUntilNextLocalDay,
   runNotifyHook,
   summaryLine,
   partialCandidateFilename,
@@ -194,19 +194,17 @@ describe("classifyFailure — what the driver may resume from on its own", () =>
     expect(classifyFailure(Object.assign(new Error("bad request"), { status: 400 })).kind).toBe("fatal");
   });
 
-  it("splits the budget stop by scope: daily is a window, per-Foray is a stop", () => {
-    const daily = new BudgetStopError("narrate:1", 9.9, 10, "daily", new BudgetExceededError(1, 9.9, 0.2, 10));
+  it("a budget stop is a stop at either scope: the run cap has no window to wait for (CH2-04)", () => {
+    const run = new BudgetStopError("narrate:1", 9.9, 10, "run", new BudgetExceededError(9.9, 0.2, 10));
     const perForay = new BudgetStopError("narrate:1", 9.9, 10, "per-foray", new EpisodeBudgetExceededError("s", 9.9, 0.2, 10));
-    expect(classifyFailure(daily).kind).toBe("budget-window");
+    expect(classifyFailure(run).kind).toBe("budget-stop");
     expect(classifyFailure(perForay).kind).toBe("budget-stop");
     expect(classifyFailure(new RefusedPartialError(0, 3, ["x"], [])).kind).toBe("refused-partial");
   });
 
-  it("backs off 30 s, 60 s, 120 s … capped at 10 min; a budget window waits for the next local day", () => {
+  it("backs off 30 s, 60 s, 120 s … capped at 10 min", () => {
     expect([0, 1, 2, 3].map(resumeBackoffMs)).toEqual([30_000, 60_000, 120_000, 240_000]);
     expect(resumeBackoffMs(20)).toBe(600_000);
-    const at = new Date(2026, 8, 11, 22, 30, 0, 0); // local 22:30
-    expect(msUntilNextLocalDay(at)).toBe(90 * 60_000 + 60_000);
   });
 });
 
@@ -271,17 +269,22 @@ describe("(a) the resume loop", () => {
     expect(result.entry?.resumes).toBeUndefined();
   });
 
-  it("a DAILY budget stop waits for the next local day and resumes; a per-Foray stop aborts (manual step 26)", async () => {
-    const daily = new BudgetStopError("narrate:1", 9.9, 10, "daily", new BudgetExceededError(1, 9.9, 0.2, 10));
-    const pipeline = flakyPipeline([daily]);
+  it("a RUN budget stop never sleeps: it aborts naming RUN_BUDGET_USD and tells the batch the run is spent (CH2-04)", async () => {
+    const run = new BudgetStopError("narrate:1", 9.9, 10, "run", new BudgetExceededError(9.9, 0.2, 10));
+    const pipeline = flakyPipeline([run]);
     const { sleep, waits } = recordingSleep();
-    const now = (): Date => new Date(2026, 8, 11, 23, 0, 0, 0);
 
-    const result = await generateOneCandidate({ prompt: "window" }, baseArgs(dir), { cueProvider, runPipeline: pipeline.fn, sleep, now });
-    expect(pipeline.calls).toBe(2);
-    expect(waits).toEqual([60 * 60_000 + 60_000]);
-    expect(result.entry?.resumes?.[0]?.kind).toBe("budget-window");
-    expect(result.entry?.outcome).toBe("generated");
+    const result = await generateOneCandidate({ prompt: "run cap" }, baseArgs(dir), { cueProvider, runPipeline: pipeline.fn, sleep });
+    /* MUTATION THAT KILLS THIS: restore the window — classify a "run" stop as
+       a resumable kind and sleep before retrying (the deleted budget-window
+       path): two calls and one wait. */
+    expect(pipeline.calls).toBe(1);
+    expect(waits).toEqual([]);
+    expect(result.entry?.abort?.reason).toBe("budget-stop");
+    expect(result.entry?.detail).toMatch(/RUN_BUDGET_USD/);
+    /* MUTATION THAT KILLS THIS: drop the `runBudgetSpent` flag from the
+       budget-stop return. */
+    expect(result.runBudgetSpent).toBe(true);
 
     const perForay = new BudgetStopError("narrate:1", 9.9, 10, "per-foray", new EpisodeBudgetExceededError("s", 9.9, 0.2, 10));
     const stopping = flakyPipeline([perForay]);
@@ -292,6 +295,24 @@ describe("(a) the resume loop", () => {
     expect(second.waits).toEqual([]);
     expect(stopped.entry?.abort?.reason).toBe("budget-stop");
     expect(stopped.entry?.detail).toMatch(/Raise the cap/);
+    /* A per-Foray stop ends that prompt only — the next one has its own cap. */
+    expect(stopped.runBudgetSpent).toBeUndefined();
+  });
+
+  it("the batch stops at a run-cap stop and attempts no later prompt; other aborts do not end it (CH2-04)", async () => {
+    const seen: string[] = [];
+    const queue = [{ prompt: "a" }, { prompt: "b" }, { prompt: "c" }, { prompt: "d" }];
+    const out = await generateQueue(queue, async (spec) => {
+      seen.push(spec.prompt);
+      if (spec.prompt === "a") return { skipped: false, entry: { prompt: "a", outcome: "aborted", detail: "per-foray", ms: 0 } };
+      if (spec.prompt === "b") return { skipped: false, entry: { prompt: "b", outcome: "aborted", detail: "run", ms: 0 }, runBudgetSpent: true };
+      return { skipped: false, entry: { prompt: spec.prompt, outcome: "error", detail: "x", ms: 0 } };
+    });
+    /* MUTATION THAT KILLS THIS: drop the `runBudgetSpent` early return in
+       generateQueue — "c" and "d" are attempted against a spent cap. */
+    expect(seen).toEqual(["a", "b"]);
+    expect(out.report.map((e) => e.prompt)).toEqual(["a", "b"]);
+    expect(out.notAttempted).toBe(2);
   });
 });
 

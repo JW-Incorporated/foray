@@ -20,6 +20,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import { uniformTopicShows, substantialShows, topicKey } from "./topics.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -62,4 +63,4 @@ function main(argv) {
   console.log("\nA uniform label is a defect only where the show RANGES. Read before re-tagging.");
 }
 
-main(process.argv.slice(2));
+if (isEntryScript(import.meta.url)) main(process.argv.slice(2));

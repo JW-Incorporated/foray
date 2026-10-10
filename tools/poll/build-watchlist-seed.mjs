@@ -38,7 +38,8 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { loadChangeIndex } from "../refresh/candidates.mjs";
 import { buildWatchlist, summarize, assertSeedSize } from "./watchlist.mjs";
 
@@ -221,8 +222,9 @@ export async function run({
   return 0;
 }
 
-/* pathToFileURL, not a `file://${argv[1]}` template: the template never matches
-   on Windows (see tools/build-catalog-client.mjs's entrypoint-guard comment). */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+/* tools/ci/entry.mjs's guard: a `file://${argv[1]}` template never matches on
+   Windows, a pathToFileURL comparison never matches through a junction (see
+   tools/build-catalog-client.mjs's entrypoint-guard comment). */
+if (isEntryScript(import.meta.url)) {
   process.exitCode = await run({ argv: process.argv.slice(2) });
 }

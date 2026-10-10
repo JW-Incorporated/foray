@@ -38,9 +38,9 @@ import java.util.List;
  *   <li>The words: {@code MediaMapping.sessionView}'s metadata (title, artist, album, the first
  *       artwork), written into both Media3 pairs, as {@code WebViewPlayer} does.</li>
  *   <li>The state: {@code playing} is READY with play-when-ready on; a stall or a load in
- *       flight (the view's rate 0 while playing) is BUFFERING, which keeps the controls saying
- *       pause and stops the lock screen's clock; {@code paused} is READY, play-when-ready off;
- *       {@code none} is an empty timeline, IDLE.</li>
+ *       flight (the view's {@code buffering} while playing) is BUFFERING, which keeps the
+ *       controls saying pause and stops the lock screen's clock; {@code paused} is READY,
+ *       play-when-ready off; {@code none} is an empty timeline, IDLE.</li>
  *   <li>The clock: the view's position state (the episode's own), which Media3 extrapolates at
  *       the rate given, so the host publishes a surface per turn, not per second.</li>
  * </ul>
@@ -105,10 +105,12 @@ public final class EnginePlayer extends SimpleBasePlayer {
         }
         MediaMapping.PositionState position = view.positionState();
         boolean playing = MediaMapping.PLAYING.equals(view.playbackState());
-        /* The view's rate is 0 while playing only when the clock must stand still: a stall, or a
-           load in flight. That is BUFFERING, the one Media3 state that keeps play-when-ready (the
-           controls still say pause) and stops extrapolating the playhead. */
-        boolean stalled = playing && (surface.buffering() || (position != null && position.playbackRate() == 0));
+        /* A stall, or a load in flight: the view's buffering, the core's one derivation (CH3-22).
+           Not the rate: an item whose duration is not known yet has no position state to carry a
+           rate 0, and its load would read READY, a running clock. BUFFERING is the one Media3
+           state that keeps play-when-ready (the controls still say pause) and stops extrapolating
+           the playhead. */
+        boolean stalled = playing && view.buffering();
         float speed = position != null && position.playbackRate() > 0 ? (float) position.playbackRate() : 1f;
         int before = availability.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK) ? 1 : 0;
         int after = availability.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK) ? 1 : 0;

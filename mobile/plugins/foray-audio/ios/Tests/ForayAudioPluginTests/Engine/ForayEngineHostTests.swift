@@ -223,6 +223,186 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(world.log.entries.count, seen)
     }
 
+    // MARK: - A media-services reset (CH3-03, R2-03)
+
+    /// Media services were reset mid-episode (mediaserverd restarted; CarPlay
+    /// and Bluetooth stacks are known triggers). Every AVFoundation object
+    /// died with it, so the shell makes its players again: the session owner
+    /// forgets its activation, then BOTH decks (the main one and the voice
+    /// preview's), the narration voice and the jingle are rebuilt, all before
+    /// the core's `.unload` detaches the item. The next press then activates,
+    /// loads and plays on the rebuilt deck. Before this, only the session was
+    /// "rebuilt": the decks kept their dead `AVPlayer`, and every later load
+    /// ran to the 20 s deadline (`stop cause=load-deadline`) until the app was
+    /// killed.
+    /// TO SEE IT FAIL: drop `seams.deck.rebuild()` (or any of the three
+    /// beside it) from the host's `.sessionRebuild` case.
+    @MainActor
+    func testAMediaServicesResetRebuildsTheShellsPlayers() throws {
+        let world = FakeWorld()
+        let jingle = FakeInterlude(log: world.log)
+        world.interlude = jingle
+        world.preview = FakeDeck(log: world.log, name: "preview")
+        let engine = playing(world)
+        world.log.clear()
+
+        world.session.post(.mediaServicesReset)
+
+        let log = world.log.entries
+        // Survives on main: the session is rebuilt and the core detaches the item.
+        let rebuilt = try XCTUnwrap(world.log.index(of: "session.rebuild"), "\(log)")
+        let unload = try XCTUnwrap(world.log.index(of: "deck.unload"), "\(log)")
+        XCTAssertLessThan(rebuilt, unload, "\(log)")
+        // RED on main: R2-03 (the host rebuilds nothing but the session).
+        let deck = world.log.index(of: "deck.rebuild")
+        XCTAssertNotNil(deck, "the deck kept its dead AVPlayer: \(log)")
+        if let deck {
+            XCTAssertLessThan(rebuilt, deck, "the session first, then the players: \(log)")
+            XCTAssertLessThan(deck, unload, "the players are rebuilt before the core's unload: \(log)")
+        }
+        XCTAssertEqual(world.log.count("deck.rebuild"), 1, "\(log)")
+        XCTAssertEqual(world.log.count("preview.rebuild"), 1, "the voice preview's deck died too: \(log)")
+        XCTAssertEqual(world.log.count("speaker.rebuild"), 1, "the narration voice's engine died too: \(log)")
+        XCTAssertEqual(jingle.releases, 1, "the jingle's cached player died too: \(log)")
+
+        // The next press plays, on the rebuilt deck, from a fresh activation.
+        world.log.clear()
+        XCTAssertEqual(world.remote.press(.play), .success)
+        let after = world.log.entries
+        let activate = try XCTUnwrap(world.log.index(of: "session.activate"), "\(after)")
+        let load = try XCTUnwrap(world.log.index(of: "deck.load"), "\(after)")
+        let play = try XCTUnwrap(world.log.index(of: "deck.play"), "\(after)")
+        XCTAssertLessThan(activate, load, "\(after)")
+        XCTAssertLessThan(load, play, "\(after)")
+        XCTAssertEqual(engine.state.stateType, "playing")
+    }
+
+    // MARK: - The narrator's reading (CH3-19, R2-05)
+
+    /// A Foray's spoken line: no `audio_url`, so the synthesizer speaks it.
+    static func spokenLine(_ index: Int = 0) -> EngineItem {
+        EngineItem(node: .object([
+            JSONMember("id", .string("f1#\(index)")), JSONMember("kind", .string("tts")),
+            JSONMember("type", .string("narration")), JSONMember("script", .string("a line")),
+            JSONMember("audio_url", .null)
+        ]))!
+    }
+
+    /// The utterance `seq` of the last line the host handed the synthesizer.
+    static func spokenSeq(_ speaker: FakeSpeaker) -> Int? {
+        speaker.narrated.compactMap { command -> Int? in
+            if case let .speak(seq, _, _, _) = command { return seq }
+            return nil
+        }.last
+    }
+
+    /// The Foray tape on, its spoken first line started; the clip after it
+    /// is never reached.
+    @MainActor
+    private func speakingALine(_ world: FakeWorld) throws -> (engine: ForayEngine, seq: Int) {
+        world.deck.answersReady = true
+        let engine = started(world, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        let clip = InterludeSeamTests.clip(1, "b", 300, 400)
+        engine.handle(.queue(.loadForay([Self.spokenLine(), clip], isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(Self.spokenSeq(world.speaker), "no line was spoken: \(world.speaker.narrated)")
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        XCTAssertEqual(engine.state.stateType, "playing", "\(world.log.entries)")
+        XCTAssertEqual(engine.state.session, .active)
+        return (engine, seq)
+    }
+
+    private func stopRows(_ world: FakeWorld, cause: String) -> Int {
+        world.output.diags.filter { $0.kind == "stop" && $0[field: "cause"] == .string(cause) }.count
+    }
+
+    /// A declined call's late `began` lands while the synthesizer is still
+    /// speaking the line: the host now reads the synthesizer before every
+    /// input (`EngineNow.narrator`), so the core's late-event rule runs on a
+    /// phone as it does in parity: nothing is touched, no stop row, the line
+    /// carries on, the session stays the core's. Before CH3-19 the host
+    /// passed no reading (`.unknown`), the line was stopped
+    /// (`stop cause=interruption`) and the Foray paused until a press.
+    /// TO SEE IT FAIL: pass `narrator: .unknown` (or drop the argument) in
+    /// `ForayEngine.now()`.
+    @MainActor
+    func testALateInterruptionDuringASpokenLineTouchesNothing() throws {
+        let world = FakeWorld()
+        let (engine, seq) = try speakingALine(world)
+        world.speaker.reading = .speaking
+
+        world.session.post(.interruptionBegan(reason: "default"))
+
+        // RED on main: R2-05 (the line was stopped: one `stop cause=interruption`,
+        // the machine `interrupted`, the session lost, a `pause` to the synthesizer).
+        XCTAssertEqual(stopRows(world, cause: "interruption"), 0, "\(world.output.diags)")
+        XCTAssertEqual(engine.state.stateType, "playing")
+        XCTAssertEqual(engine.state.session, .active)
+        XCTAssertFalse(world.speaker.narrated.contains(.pause(seq: seq)), "\(world.speaker.narrated)")
+        let late = world.output.diags.filter { $0.kind == "session" && $0[field: "late"] == .string("narration-speaking") }
+        XCTAssertEqual(late.count, 1, "the core says why it touched nothing: \(world.output.diags)")
+    }
+
+    /// The same `began` when the synthesizer says the line has gone silent
+    /// under it (the system took the session and stopped the output): a
+    /// real interruption, and the line is stopped as it always was,
+    /// resumable by a press or the call's should-resume.
+    /// TO SEE IT FAIL: have the core (or the reading) take any line in
+    /// flight for a speaking one.
+    @MainActor
+    func testAnInterruptionThatSilencedTheLineStillStopsIt() throws {
+        let world = FakeWorld()
+        let (engine, seq) = try speakingALine(world)
+        world.speaker.reading = .paused
+
+        world.session.post(.interruptionBegan(reason: "default"))
+
+        XCTAssertEqual(stopRows(world, cause: "interruption"), 1, "\(world.output.diags)")
+        XCTAssertEqual(engine.state.stateType, "interrupted")
+        XCTAssertEqual(engine.state.session, .lostToInterruption)
+        XCTAssertTrue(world.speaker.narrated.contains(.pause(seq: seq)), "\(world.speaker.narrated)")
+    }
+
+    /// THE ONE SESSION PHASE (R2-08): the gate every audible start reads
+    /// answers the core's `state.session`, never the owner's own phase.
+    /// Here the session seam is the recording fake and the owner handed to
+    /// `attach` never activates, so only the core can make the gate true:
+    /// false before an engine, false idle, true playing, still true after a
+    /// `began` the core ruled late, false after one that took the session.
+    /// TO SEE IT FAIL: have `EngineSessionGate.isActive` answer
+    /// `owner.phase == .active` (or answer before `attach`).
+    @MainActor
+    func testTheSessionGateAnswersTheCoresPhase() throws {
+        let world = FakeWorld()
+        world.deck.answersReady = true
+        let engine = started(world, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        let gate = EngineSessionGate()
+        XCTAssertFalse(gate.isActive, "no engine, nothing audible")
+        let idleOwner = AudioSessionOwner(api: FakeSessionAPI(), center: NotificationCenter(),
+                                          config: AudioSessionOwner.Config(diag: { _ in }))
+        gate.attach(engine, owner: idleOwner)
+        XCTAssertFalse(gate.isActive, "the core has activated nothing")
+
+        engine.handle(.queue(.loadForay([Self.spokenLine(), InterludeSeamTests.clip(1, "b", 300, 400)],
+                                        isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(Self.spokenSeq(world.speaker))
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        XCTAssertEqual(idleOwner.phase, .inactive)
+        XCTAssertTrue(gate.isActive, "the core holds the session")
+
+        world.speaker.reading = .speaking
+        world.session.post(.interruptionBegan(reason: "default"))
+        XCTAssertTrue(gate.isActive, "a began the core ruled late leaves its session active")
+        XCTAssertTrue(idleOwner.engineHoldsSession?() ?? false, "the owner asks the same gate")
+
+        world.speaker.reading = .paused
+        world.session.post(.interruptionBegan(reason: "default"))
+        XCTAssertEqual(engine.state.session, .lostToInterruption)
+        XCTAssertFalse(gate.isActive)
+        XCTAssertFalse(idleOwner.engineHoldsSession?() ?? true)
+    }
+
     // MARK: - BackgroundGrace
 
     /// The system takes the grace time back while the engine is still
@@ -296,6 +476,9 @@ final class ForayEngineHostTests: XCTestCase {
     @MainActor
     func testEveryRemoteCommandIsRegisteredAndStopIsDisabled() {
         let world = FakeWorld()
+        // A car route, so the track pair is enabled with the rest (CH3-10:
+        // on the speaker it stays off, RemoteSurfaceTests).
+        world.session.route = RoutePort(portType: "CarAudio", uid: nil)
         let engine = started(world)
         for command in MediaMapping.RemoteCommand.allCases {
             XCTAssertEqual(world.remote.liveTargets(for: command), 1, "\(command)")
@@ -414,46 +597,6 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(world.session.deactivations, [false], "the hold ran out: release, no notify")
         XCTAssertEqual(engine.liveTimers, [])
         XCTAssertEqual(world.timing.live.count, 0)
-    }
-
-    // MARK: - Off-main results
-
-    /// A result computed off main comes back as an input on main, on a later
-    /// turn. TO SEE IT FAIL: call `handle` straight from `post(fromAnyThread:)`
-    /// (the main-actor assertion traps on the background queue).
-    @MainActor
-    func testAnOffMainResultComesBackAsAnInputOnMain() {
-        let world = FakeWorld()
-        let engine = started(world)
-        let posted = expectation(description: "posted from a background queue")
-        DispatchQueue.global().async {
-            engine.post(fromAnyThread: .lifecycle(.background))
-            posted.fulfill()
-        }
-        wait(for: [posted], timeout: 5)
-        let until = Date().addingTimeInterval(5)
-        while !engine.state.backgrounded, Date() < until {
-            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
-        }
-        XCTAssertTrue(engine.state.backgrounded)
-    }
-
-    // MARK: - One per process
-
-    /// Whichever boot path runs first builds the engine; the other gets the
-    /// same one, and no second set of remote targets is registered.
-    /// TO SEE IT FAIL: drop the `if let shared` return in `boot`.
-    @MainActor
-    func testBootBuildsOneEnginePerProcess() {
-        let first = FakeWorld()
-        let second = FakeWorld()
-        let a = ForayEngine.boot(seams: first.seams, config: EngineConfig(build: "test"))
-        let b = ForayEngine.boot(seams: second.seams, config: EngineConfig(build: "test"))
-        XCTAssertTrue(a === b)
-        XCTAssertTrue(ForayEngine.shared === a)
-        XCTAssertEqual(first.remote.liveTargets, MediaMapping.RemoteCommand.allCases.count)
-        XCTAssertEqual(second.remote.liveTargets, 0)
-        a.teardown()
     }
 }
 

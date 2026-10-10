@@ -56,23 +56,6 @@ struct EngineVerdict: Equatable {
 @MainActor
 final class ForayEngine {
 
-    /// The process's engine (A-4). Set by `boot` exactly once and kept after
-    /// a relinquish, so a later boot call cannot build a second engine that
-    /// re-registers remote targets over the legacy lane's.
-    private(set) static var shared: ForayEngine?
-
-    /// Whichever of the AppDelegate cold path (NE-24) and the plugin's
-    /// `load()` (NE-17) runs first builds the engine; the other gets it.
-    @discardableResult
-    static func boot(seams: EngineSeams, config: EngineConfig,
-                     positions: [String: ResumeRules.StoredPosition] = [:]) -> ForayEngine {
-        if let shared { return shared }
-        let engine = ForayEngine(seams: seams, config: config, positions: positions)
-        shared = engine
-        engine.start()
-        return engine
-    }
-
     let seams: EngineSeams
     private var core: EngineCore
 
@@ -179,7 +162,8 @@ final class ForayEngine {
     /// the host handled to the end, and once more when the host tears down:
     /// the bridge re-reads the snapshot there and decides (coalesced, visible
     /// only) whether the page hears of it. `onEmit` hands on each of the
-    /// core's own events (`advanced`, `error`) after the output has them.
+    /// core's own events (`advanced`, `error`, `skipped`): it is their one way
+    /// out of the host.
     /// Unlike `onTurnCompleted`, neither is cleared by teardown: the page must
     /// still hear that the engine gave the process back.
     var onTransition: (() -> Void)?
@@ -310,15 +294,6 @@ final class ForayEngine {
         onTurnCompleted?()
         onTransition?()
         return EngineVerdict(failures: failures, deferred: false)
-    }
-
-    /// For a result computed off main (an asset's duration, an artwork fetch,
-    /// NE-18): it comes back as an input on a LATER main turn, never inside
-    /// the one in progress, and never on the thread that computed it.
-    nonisolated func post(fromAnyThread input: EngineInput) {
-        DispatchQueue.main.async {
-            MainActor.assumeIsolated { _ = self.handle(input) }
-        }
     }
 
     /// A seam's observation. The probe hears it after the core has: it is
@@ -513,9 +488,13 @@ final class ForayEngine {
     ///
     /// The background budget rides along (NE-16g) so the core can put it into
     /// the `remote`, `resume` and `cold-play` rows it writes for this input.
+    /// So does the synthesizer's reading (CH3-19, R2-05): without it the
+    /// core's two "still speaking" guards (a late interruption, the
+    /// suspended-pulse reconcile) ran only in parity.
     private func now() -> EngineNow {
         EngineNow(wallMs: seams.timing.wallMs, monoMs: seams.timing.monoMs, deck: seams.deck.reading,
-                  bgRemainingMs: backgroundRemainingMs(), route: seams.session.currentRoute)
+                  bgRemainingMs: backgroundRemainingMs(), narrator: seams.speaker.reading,
+                  route: seams.session.currentRoute)
     }
 
     /// `backgroundTimeRemaining` in whole milliseconds; nil in the foreground
@@ -547,7 +526,17 @@ final class ForayEngine {
         case .sessionReapplyCategory:
             seams.session.reapplyCategory()
         case .sessionRebuild:
+            // A media-services reset (CH3-03, R2-03): every AVFoundation
+            // object died with the media server, the players too. The session
+            // forgets its activation; then every player the shell holds is
+            // made again, before the core's `.unload` that follows in this
+            // turn. A deck kept from before would take every later load to
+            // the deadline until the app was killed.
             seams.session.rebuild()
+            seams.deck.rebuild()
+            seams.preview?.rebuild()
+            seams.speaker.rebuild()
+            seams.interlude?.release()
         case let .graceBegin(reason):
             beginGrace(reason)
         case let .graceEnd(outcome):
@@ -560,8 +549,11 @@ final class ForayEngine {
             seams.output.writePosition(write)
         case let .writeRow(row):
             seams.output.writeRow(row)
-        case let .appendEvent(event):
-            seams.output.appendEvent(event)
+        case .appendEvent:
+            // The core keeps the event in `state.pendingEvents`, which rides in
+            // the restore record and the bridge's snapshot; the page drains it
+            // from there on attach (§5.5). The host has nowhere else to send it.
+            break
         case let .writeRestore(record):
             seams.output.writeRestore(record)
         case let .speak(text, voiceId):
@@ -584,7 +576,6 @@ final class ForayEngine {
             // A spoken line's clock moved with no deck event to say so.
             if surfaceMove == nil { surfaceMove = .pulse }
         case let .emit(event):
-            seams.output.emit(event)
             onEmit?(event)
         case let .diag(entry):
             seams.output.diag(entry)
@@ -664,7 +655,13 @@ final class ForayEngine {
     /// overwrite (plan §4.6).
     private func publishSurface() {
         guard !isTornDown else { return }
-        let availability = MediaMapping.commandAvailability(core.commandSnapshot)
+        // THE TRACK PAIR ONLY WHERE A TRACK BUTTON EXISTS (docs/DECISIONS.md
+        // 2026-09-23, founder question 1; CH3-10): the route is read here, on
+        // every publish, so a headset or car arriving or leaving (a session
+        // `route` input, which ends in this call) re-lays the pair at once,
+        // and so does the next turn or 1 s refresh after any other route move.
+        let trackRoute = MediaMapping.trackCommandsAllowed(portTypes: seams.session.currentRoute.map { [$0.portType] } ?? [])
+        let availability = MediaMapping.commandAvailability(core.commandSnapshot, trackRoute: trackRoute)
         applyEnablement(availability.enabled)
         let move = surfaceMove
         surfaceMove = nil
@@ -826,7 +823,7 @@ final class ForayEngine {
     private func interpretPreview(_ command: DeckCommand) {
         if let preview = seams.preview {
             preview.send(command)
-        } else if case let .load(token, _, _, _, _, _) = command {
+        } else if case let .load(token, _, _, _, _, _, _) = command {
             handle(.preview(.failed(token: token, message: "no preview deck")))
         }
     }

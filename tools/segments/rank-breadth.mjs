@@ -93,8 +93,9 @@
 */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync, openSync, readSync, closeSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
@@ -872,7 +873,7 @@ function main() {
   console.log(`RANK_COMPLETE: ${outPath}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   try {
     main();
   } catch (e) {

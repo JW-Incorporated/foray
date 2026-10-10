@@ -97,6 +97,7 @@
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import copyRules from "../../backend/src/copy/rules.js";
 import { normalize } from "./transcript-normalize.mjs";
 
@@ -142,6 +143,11 @@ const APOSTROPHES = /['‘’ʼʹ′`´]/gu;
  * Forgives how text was written down; never forgives a rewrite. See the header
  * for the full rule and the reasoning behind the two odd bits (punctuation
  * becomes a space, apostrophes become nothing).
+ *
+ * The backend mints anchors with a CommonJS mirror of this function
+ * (`backend/src/types/anchorText.ts` `canonicalizeForAnchorMatch`);
+ * `backend/test/anchorTextParity.test.ts` pins the two together, so a change
+ * here lands with the same change there.
  */
 export function canonical(text) {
   return String(text == null ? "" : text)
@@ -704,5 +710,5 @@ function main() {
   console.log(`SEGMENT_MERGE_COMPLETE: batch_id=${batch.batch_id} merged=${outcome.merged} rejected=${outcome.rejected}`);
 }
 
-const invokedDirectly = process.argv[1] && resolvePath(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) main();

@@ -33,7 +33,10 @@
  *                   last failures have not used up the retry budget.
  *
  *   --mode issue    turns a verdict and the repo's issue list into ONE action
- *                   (create / reopen / edit / close / none) for the shell.
+ *                   (create / reopen / edit / close / none), and with --apply
+ *                   makes the `gh issue` calls that carry it out. Both workflows
+ *                   write the sticky issue through this one path (CH2-34a);
+ *                   without --apply it only prints what it would do.
  *
  *   --mode self-broken    after the watchdog's OWN run failed: is this the
  *                   second failure in a row? (selfBrokenVerdict says why.)
@@ -44,15 +47,21 @@
  *
  * ── THE ONE RULE THE TRIGGER MUST NEVER BREAK: DISPATCH, NEVER RE-RUN ───────
  *
- * release.yml's `version` job derives the build number from the workflow's
- * lifetime `run_number`. "Re-run failed jobs" does not even re-execute that job
- * — it reuses its cached outputs — so a re-run uploads the SAME build number,
+ * release.yml's `version` job computes the build number ONCE per run: the UTC
+ * day plus a run-of-day slot from tools/release/build-number.mjs, the larger of
+ * the count of release.yml runs created that day up to and including this one
+ * and one past the highest slot an earlier run of the day printed (ci-release-4;
+ * before it the slot was the lifetime run number wrapped at 99, which could go
+ * backwards). "Re-run failed jobs" does not even re-execute that job — it
+ * replays its cached outputs — so a re-run would upload the SAME build number,
  * and App Store Connect refuses a binary it already has (the plan's "BUILD
- * NUMBER COLLIDES ON A RE-RUN" section). A fresh `workflow_dispatch` gets a new
- * `run_number`, therefore a new build number, and rebuilds BOTH stores from one
- * commit — which is also what re-converges two stores that diverged. So the
- * trigger only ever dispatches, and watch-release.test.mjs pins that no
- * workflow here says `rerun`.
+ * NUMBER COLLIDES ON A RE-RUN" section); since OPS-04 the `ios` and `android`
+ * jobs refuse any run attempt but the first, before checkout. A fresh
+ * `workflow_dispatch` is a new run of the day, so it counts one higher, gets a
+ * new build number, and rebuilds BOTH stores from one commit — which is also
+ * what re-converges two stores that diverged. So the trigger only ever
+ * dispatches, and watch-release.test.mjs pins that no workflow here says
+ * `rerun`.
  *
  * ── WHY THE TWO WORKFLOWS WATCH EACH OTHER ──────────────────────────────────
  *
@@ -69,11 +78,18 @@
  * ── NO NETWORK, NO DEPENDENCIES ──────────────────────────────────────────────
  *
  * Same posture as tools/refresh/watch-nightly.mjs, which this is modelled on:
- * every input is a file the workflow fetched with `gh`, so every verdict is a
- * pure function of fixtures and can be shown to fire without waiting a day for
- * it to. The one import outside node: is prepare-webdir.mjs's own bundle plan,
- * loaded lazily by the CLI, because "which files reach a store build" has an
- * executable answer and a hand-kept copy of it would drift.
+ * every input is a file the workflow fetched with `gh` (the fetches live in
+ * .github/actions/release-facts, which both workflows call), so every verdict
+ * is a pure function of fixtures and can be shown to fire without waiting a day
+ * for it to. The one outbound call is the sticky issue's write, and only under
+ * `--mode issue --apply`: it spawns `gh issue ...` (issueCommands() names
+ * each call), so the plan it carries out is the plan the tests read. The one
+ * import outside node: is prepare-webdir.mjs's own bundle plan, loaded lazily
+ * by the CLI, because "which files reach a store build" has an
+ * executable answer and a hand-kept copy of it would drift. For the same reason
+ * the native half of that answer is READ at module load from the three files
+ * that build and sign the binary (NATIVE_INPUT_FILES below): files in the
+ * workflow's own checkout, not a network call.
  *
  * EXPOSURE: `tools/release/` is on DENIED_PREFIXES (tools/ci/path-policy.mjs).
  * This file decides when macOS minutes are spent and whether an alarm is
@@ -93,7 +109,8 @@
  *        --peer-workflow watch-workflow.json --peer-runs watch-runs.json \
  *        --verdict-out verdict.json
  *   node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
- *        --issues issues.json [--may-close] --action-out action.json --body-out body.md
+ *        --issues issues.json [--may-close] [--apply --repo owner/name] \
+ *        [--action-out action.json] [--body-out body.md]
  *   node tools/release/watch-release.mjs --mode self-broken --runs own-runs.json \
  *        --current "$GITHUB_RUN_ID" --verdict-out self.json
  *   Common: --now <ISO> (tests), --plan <json array of bundle paths> (tests).
@@ -103,7 +120,12 @@
  */
 
 import fs from "node:fs";
+import path from "node:path";
 import process from "node:process";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 /* protect-main's required contexts. ONE list, owned by the merge machinery: the
  * release trigger must call main "red" for exactly the checks that can block a
  * merge, and no others (ci-release-6). */
@@ -170,24 +192,218 @@ export const ISSUE_TITLE = "Release watchdog: the app stores need attention";
  *
  * The web half of the list is prepare-webdir.mjs's own plan, which is the
  * executable definition of "what is in the bundle". The native half never passes
- * through `www/`, so it is named here — exactly the plan's list. */
+ * through `www/`; it is DERIVED, below, from what the release actually runs. */
 export const NATIVE_INPUT_PREFIXES = [
   "mobile/",
   ".github/actions/ios-archive/",
+  /* ios-archive runs this composite (CH2-16): the plist keys, encryption
+   * declaration, privacy manifest, icon and splash that ship in the archive. */
+  ".github/actions/ios-prepare/",
   ".github/actions/android-bundle/",
-];
-export const NATIVE_INPUT_FILES = [
-  ".github/workflows/release.yml",
-  "tools/mobile/prepare-webdir.mjs",
-  "tools/mobile/minify.mjs",
-  "tools/mobile/fetch-models.mjs",
-  "tools/mobile/ios-embedded-frameworks.mjs",
 ];
 const INJECT_SCRIPT = /^tools\/mobile\/inject-[^/]+\.mjs$/;
 
 function isTestOrDoc(file) {
   return /\.test\.[cm]?[jt]sx?$/.test(file) || /\.md$/i.test(file);
 }
+
+/* ── the native half: what the release RUNS, read from the files that run it ──
+ *
+ * CH2-19 (T2-05). This was five hand-picked files while the composites executed
+ * a dozen more (wire-signing.mjs, ios-ci.mjs, release-ci.mjs, version.mjs,
+ * build-number.mjs, upload-retry.mjs, the PNG code the icon and splash
+ * injectors import), so a fix to the Android signing include never triggered a
+ * release: release-trigger said NOTHING_TO_RELEASE and G3 never alarmed. Now
+ * the list is every script these three files execute (`node <script>`, an
+ * `npm run` followed into its package.json, `npm ci`'s manifests, a local
+ * `uses: ./.github/actions/...` followed into its action.yml) plus everything
+ * those scripts load by relative path: the walk tools/ci/path-policy.test.mjs
+ * does over the signing jobs, here over the jobs of release.yml that make the
+ * binary (releaseBinaryJobs, below). Tests are not followed (releaseTier never
+ * treats a test as a trigger), which is why fetch-models.mjs is no longer
+ * listed: since CH-20 only test/release-gates.test.js loads it, and that suite
+ * pins that no build path runs it.
+ *
+ * GATE JOBS ARE NOT READ (PR #1202 review). release.yml also runs jobs that
+ * only decide WHETHER to ship: `guard`, `ios-checks` (tools/ci/engine-ci.mjs
+ * release-checks) and `summary`. A script that only they run never reaches a
+ * store build, so an edit to it alone must not spend a TestFlight and a Play
+ * upload. Which jobs make the binary is read from the workflow's structure,
+ * not named here (releaseBinaryJobs). A script a gate job runs that a binary
+ * job ALSO runs or imports stays a trigger: release-ci.mjs (the guard job, and
+ * android-bundle's play-gate); generate-manifest.mjs and the stamp modules it
+ * imports (prepare-webdir.mjs imports it for the bundle's data list, build
+ * stamp and seed pointer, so they put bytes in the binary).
+ *
+ * The derivation can only ADD triggers to the old hand list: the bundle, the
+ * prefixes above and the inject-* rule classify exactly as before, and every
+ * file the hand list named is still reached from a binary job. */
+export const NATIVE_INPUT_RUNNERS = [
+  ".github/workflows/release.yml",
+  ".github/actions/ios-archive/action.yml",
+  ".github/actions/android-bundle/action.yml",
+];
+
+/* Inputs a release step reads by PATH, which no import walk can see, each with
+ * the line that reads it:
+ *   icon-1024.png            tools/mobile/inject-app-icon.mjs, DEFAULT_SOURCE
+ *   tools/brand/4a-logo.png  tools/brand/build-icons.mjs, MASTER, which
+ *                            inject-splash.mjs rasterises into both splashes */
+export const NATIVE_DATA_INPUTS = ["icon-1024.png", "tools/brand/4a-logo.png"];
+
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+/** The jobs of a workflow that make the binary, read from the workflow's own
+ *  structure (PR #1202 review):
+ *    - a job whose steps use a local composite (`uses: ./.github/actions/...`)
+ *      builds, signs or uploads the binary (release.yml: `ios`, `android`);
+ *    - a job whose OUTPUTS such a job reads as data (`needs.<id>.outputs` on a
+ *      line that is not an `if:`) feeds the binary too, transitively
+ *      (`version`: the marketing version and build number the composites
+ *      stamp into it).
+ *  Every other job is a gate or a report (`guard`, `ios-checks`, `summary`):
+ *  it can stop a release but puts no byte in one. An `if:` that reads a gate's
+ *  output is a gate decision, so it does not pull the gate in.
+ *  `code` has its full-line comments stripped. Returns `{ binary, jobs }`
+ *  (sorted job ids; id -> body lines), or null for a file with no top-level
+ *  `jobs:` (a composite's action.yml, which is read whole). */
+export function releaseBinaryJobs(code) {
+  const lines = code.split(/\r?\n/);
+  const start = lines.findIndex((l) => /^jobs:\s*$/.test(l));
+  if (start < 0) return null;
+  const jobs = new Map();
+  let current = null;
+  for (const line of lines.slice(start + 1)) {
+    if (/^\S/.test(line)) break;
+    const header = /^ {2}([A-Za-z_][\w-]*):\s*$/.exec(line);
+    if (header) {
+      current = header[1];
+      jobs.set(current, []);
+    } else if (current) jobs.get(current).push(line);
+  }
+  const binary = new Set();
+  for (const [id, body] of jobs) {
+    if (body.some((l) => /uses:\s*\.\/\.github\/actions\//.test(l))) binary.add(id);
+  }
+  const queue = [...binary];
+  while (queue.length) {
+    for (const l of jobs.get(queue.shift())) {
+      if (/^\s*(?:-\s*)?if:/.test(l)) continue;
+      for (const m of l.matchAll(/\bneeds\.([\w-]+)\.outputs\b/g)) {
+        if (jobs.has(m[1]) && !binary.has(m[1])) {
+          binary.add(m[1]);
+          queue.push(m[1]);
+        }
+      }
+    }
+  }
+  return { binary: [...binary].sort(), jobs };
+}
+
+const repoPath = (wd, rel) => path.posix.normalize(path.posix.join(wd, rel)).replace(/^\.\//, "");
+
+/** The relative module specifiers one source file loads: static imports and
+ *  re-exports, bare side-effect imports, dynamic import(), require(), and the
+ *  chained `createRequire(import.meta.url)("./x")` form. */
+function relativeSpecifiers(src) {
+  return [
+    ...src.matchAll(/(?:^|\n)\s*(?:import|export)\s[^;]*?from\s*["'](\.{1,2}\/[^"']+)["']/g),
+    ...src.matchAll(/(?:^|\n)\s*import\s*["'](\.{1,2}\/[^"']+)["']/g),
+    ...src.matchAll(/\bimport\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+    ...src.matchAll(/\brequire\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+    ...src.matchAll(/\bcreateRequire\([^()]*\)\s*\(\s*["'](\.{1,2}\/[^"']+)["']\s*\)/g),
+  ].map((m) => m[1]);
+}
+
+/** Every repo file the release runners execute or load, sorted.
+ *  `read(repoPath)` returns a file's text, or null when it does not exist. A
+ *  runner or a package.json it names that cannot be read THROWS: a renamed
+ *  release.yml must fail this module's suite, never quietly shrink the list. */
+export function deriveNativeInputs(read, runners = NATIVE_INPUT_RUNNERS) {
+  const out = new Set();
+  const must = (f) => {
+    const text = read(f);
+    if (typeof text !== "string") throw new Error(`watch-release: cannot read ${f} to derive the native inputs`);
+    return text;
+  };
+  const add = (f) => {
+    if (!isTestOrDoc(f)) out.add(f);
+  };
+  const seenScripts = new Set();
+  const command = (cmd, wd) => {
+    for (const m of cmd.matchAll(/\bnode\s+((?:\.\.?\/)*[\w@./-]+\.(?:mjs|cjs|js))\b/g)) add(repoPath(wd, m[1]));
+    for (const m of cmd.matchAll(/\bnpm\s+ci\b([^\n&;|]*)/g)) {
+      const prefix = /--prefix\s+(\S+)/.exec(m[1]);
+      const dir = prefix ? repoPath(wd, prefix[1]) : wd;
+      for (const f of ["package.json", "package-lock.json"]) add(repoPath(dir, f));
+    }
+    for (const m of cmd.matchAll(/\bnpm\s+run\s+([\w:.-]+)/g)) {
+      const key = `${wd}:${m[1]}`;
+      if (seenScripts.has(key)) continue;
+      seenScripts.add(key);
+      const manifest = repoPath(wd, "package.json");
+      add(manifest);
+      const script = JSON.parse(must(manifest)).scripts?.[m[1]];
+      if (typeof script !== "string") throw new Error(`watch-release: ${manifest} has no "${m[1]}" script`);
+      command(script, wd);
+    }
+  };
+  const seenRunners = new Set();
+  const runner = (f) => {
+    if (seenRunners.has(f)) return;
+    seenRunners.add(f);
+    out.add(f);
+    // Full-line comments are prose, not commands. Each step is its own chunk,
+    // so a `working-directory` applies to its own `run` only.
+    const code = must(f).split(/\r?\n/).filter((l) => !l.trimStart().startsWith("#")).join("\n");
+    // A workflow: only the jobs that make the binary. A composite: all of it.
+    const structure = releaseBinaryJobs(code);
+    let walked = code;
+    if (structure) {
+      if (!structure.binary.length) {
+        throw new Error(`watch-release: ${f} has no job that makes the binary (none uses a local composite)`);
+      }
+      walked = structure.binary.map((id) => structure.jobs.get(id).join("\n")).join("\n");
+    }
+    for (const chunk of walked.split(/\n(?=\s*- (?:name|uses|run):)/)) {
+      for (const m of chunk.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w-]+)/g)) runner(`${m[1]}/action.yml`);
+      command(chunk, /working-directory:\s*(\S+)/.exec(chunk)?.[1] ?? ".");
+    }
+  };
+  for (const f of runners) runner(f);
+  /* The import closure. A specifier that names no file is dropped: the
+   * patterns also match an example in a comment (generate-manifest.mjs quotes
+   * `import("./x.js")`), and a path that does not exist cannot be committed to. */
+  const queue = [...out];
+  while (queue.length) {
+    const f = queue.shift();
+    if (!/\.(?:mjs|cjs|js)$/.test(f)) continue;
+    const src = read(f);
+    if (typeof src !== "string") continue;
+    for (const spec of relativeSpecifiers(src)) {
+      const dep = repoPath(path.posix.dirname(f), spec);
+      if (out.has(dep) || isTestOrDoc(dep) || typeof read(dep) !== "string") continue;
+      out.add(dep);
+      queue.push(dep);
+    }
+  }
+  return [...out].sort();
+}
+
+function readRepoFile(f) {
+  try {
+    return fs.readFileSync(path.join(REPO_ROOT, f), "utf8");
+  } catch (err) {
+    if (err && err.code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+/** The native half of the allow-list, computed once at module load. */
+export const NATIVE_INPUT_FILES = Object.freeze(
+  [...new Set([...deriveNativeInputs(readRepoFile), ...NATIVE_DATA_INPUTS])].sort()
+);
+const NATIVE_INPUT_SET = new Set(NATIVE_INPUT_FILES);
 
 /** "release", "seed" or null for one repo-relative path.
  *
@@ -202,7 +418,7 @@ export function releaseTier(file, bundle) {
   const inBundle = bundle instanceof Set && bundle.has(file);
   if (file.startsWith("data/")) return inBundle ? "seed" : null;
   if (inBundle) return "release";
-  if (NATIVE_INPUT_FILES.includes(file)) return "release";
+  if (NATIVE_INPUT_SET.has(file)) return "release";
   if (NATIVE_INPUT_PREFIXES.some((p) => file.startsWith(p))) return "release";
   if (INJECT_SCRIPT.test(file)) return "release";
   return null;
@@ -293,6 +509,17 @@ const isCompleted = (r) => r.status === "completed";
 const isSuccess = (r) => isCompleted(r) && r.conclusion === "success";
 const IN_FLIGHT = new Set(["queued", "in_progress", "waiting", "requested", "pending"]);
 const isInFlight = (r) => IN_FLIGHT.has(r.status);
+
+/** ONE definition of a red conclusion, for a workflow run, a job and a check
+ *  run alike (CH2-19, T2-15). There were three: runs left out `cancelled`,
+ *  jobs left out `action_required`, and check runs added `cancelled` ad hoc,
+ *  so a manually cancelled pages.yml run on main's head read as "main green"
+ *  while the same cancel on a check run read as "main red". A cancelled run
+ *  shipped nothing and proved nothing, so it is red wherever it is read. The
+ *  difference was not deliberate: no comment or test named it. `neutral`,
+ *  `skipped` and `stale` are not red, and every reader treats them alike. */
+const RED = new Set(["failure", "timed_out", "cancelled", "startup_failure", "action_required"]);
+export const isRed = (conclusion) => RED.has(conclusion);
 
 /** The newest release run that SUCCEEDED — the commit the stores last received.
  *
@@ -404,8 +631,6 @@ export function failedGate(runs, now) {
     runFacts(latest));
 }
 
-const RED_JOB = new Set(["failure", "timed_out", "cancelled", "startup_failure"]);
-
 /** G2 — the two stores did not get the same build.
  *
  *  Judged on the newest completed run only: a later run that uploaded to both
@@ -444,7 +669,7 @@ export function divergentGate(runs, jobs, outcome, now) {
   const fromJob = (name) => {
     const c = conclusion(name);
     if (!c) return undefined;
-    return c === "success" ? true : RED_JOB.has(c) ? false : null;
+    return c === "success" ? true : isRed(c) ? false : null;
   };
   const read = (p) => (reached(p) ? outcome[p].uploaded : fromJob(p));
   const ios = read("ios");
@@ -579,8 +804,6 @@ export function watchVerdict({ runs, jobs, summaryLog, commits, bundle, peerWork
   ], { seed_waiting: pending.seed.length });
 }
 
-const RED_RUN = new Set(["failure", "timed_out", "startup_failure", "action_required"]);
-
 /** Is main itself red or still building, ignoring the release machinery?
  *
  *  What runs on a push to main: ci.yml (the same jobs a PR ran), Pages, and a
@@ -622,7 +845,7 @@ export function mainState(mainRuns, combinedStatus, checkRuns = null, requiredCh
     if (typeof r.path === "string" && r.path.endsWith("/release.yml")) continue;
     if (byChecks && typeof r.path === "string" && r.path.endsWith("/ci.yml")) continue;
     if (isInFlight(r)) building.push(r.name);
-    else if (RED_RUN.has(r.conclusion)) failing.push(r.name);
+    else if (isRed(r.conclusion)) failing.push(r.name);
   }
   if (byChecks) {
     for (const name of requiredChecks) {
@@ -632,7 +855,7 @@ export function mainState(mainRuns, combinedStatus, checkRuns = null, requiredCh
         .sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")) || (b.id ?? 0) - (a.id ?? 0))[0];
       if (!latest) building.push(`${name} (not reported yet)`);
       else if (latest.status !== "completed") building.push(name);
-      else if (RED_RUN.has(latest.conclusion) || latest.conclusion === "cancelled") failing.push(name);
+      else if (isRed(latest.conclusion)) failing.push(name);
     }
   }
   const s = combinedStatus && typeof combinedStatus === "object" ? combinedStatus : {};
@@ -762,6 +985,39 @@ export function planIssue({ issues, verdict, mayClose }) {
   return { action: "none", number: sticky ? sticky.number : null, body };
 }
 
+/** The `gh` calls that carry out one planned action — the ONE write path for
+ *  the sticky issue (CH2-34a). Until it, each workflow turned the plan into
+ *  `gh issue` calls with its own `case` block, and a change to one block would
+ *  have left the two maintaining the same issue with different semantics.
+ *
+ *  `reopen` writes the body FIRST: reopening is what notifies, and the person
+ *  it notifies should read the current verdict, not last week's. `close` leaves
+ *  the red body as it was — the issue's history should say what went wrong — and
+ *  says in its comment that it recovered. `close` without `mayClose` is refused:
+ *  planIssue never plans it, and a job with no standing to call the gates green
+ *  must not be able to close the alarm by any other route either. */
+export function issueCommands(plan, { repo, bodyFile, mayClose }) {
+  const n = plan.number == null ? null : String(plan.number);
+  switch (plan.action) {
+    case "create":
+      return [["issue", "create", "--repo", repo, "--title", plan.title, "--body-file", bodyFile]];
+    case "reopen":
+      return [
+        ["issue", "edit", n, "--repo", repo, "--body-file", bodyFile],
+        ["issue", "reopen", n, "--repo", repo],
+      ];
+    case "edit":
+      return [["issue", "edit", n, "--repo", repo, "--body-file", bodyFile]];
+    case "close":
+      if (!mayClose) throw new Error("refusing to close the sticky issue from a job that may not close it");
+      return [["issue", "close", n, "--repo", repo, "--comment", plan.comment]];
+    case "none":
+      return [];
+    default:
+      throw new Error(`unknown issue action '${plan.action}'`);
+  }
+}
+
 /* ─────────────────────────────────── report ──────────────────────────────── */
 
 export function renderReport(verdict) {
@@ -814,7 +1070,9 @@ function writeOutput(env, line) {
   }
 }
 
-export async function run(argv, env = process.env) {
+/** `deps.spawnSync` is the seam the suite uses to see the `gh` calls without
+ *  making them; the workflows get node's own. */
+export async function run(argv, env = process.env, { spawnSync: spawn = spawnSync } = {}) {
   const mode = arg(argv, "--mode");
   const now = arg(argv, "--now", new Date().toISOString());
   if (!["last-success", "latest-completed", "watch", "trigger", "issue", "self-broken"].includes(mode)) {
@@ -842,12 +1100,14 @@ export async function run(argv, env = process.env) {
 
     if (mode === "issue") {
       const verdict = readJson(arg(argv, "--verdict"));
-      const plan = planIssue({ issues: readJson(arg(argv, "--issues")), verdict, mayClose: argv.includes("--may-close") });
+      const mayClose = argv.includes("--may-close");
+      const plan = planIssue({ issues: readJson(arg(argv, "--issues")), verdict, mayClose });
       const bodyOut = arg(argv, "--body-out");
       if (bodyOut) fs.writeFileSync(bodyOut, plan.body);
       const actionOut = arg(argv, "--action-out");
       if (actionOut) fs.writeFileSync(actionOut, JSON.stringify(plan, null, 2) + "\n");
-      return { code: 0, text: `issue: ${plan.action}${plan.number ? ` #${plan.number}` : ""}\n`, plan };
+      const head = `issue: ${plan.action}${plan.number ? ` #${plan.number}` : ""}`;
+      return applyIssue(plan, { argv, env, mayClose, bodyOut, head, spawn });
     }
 
     const bundle = await loadBundle(argv);
@@ -898,9 +1158,44 @@ export async function run(argv, env = process.env) {
   }
 }
 
-const invokedDirectly =
-  process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/release/watch-release.mjs");
-if (invokedDirectly) {
+/** `--mode issue`'s second half. DRY RUN BY DEFAULT: without `--apply` it names
+ *  the `gh` calls and makes none, so a person running the CLI by hand (or a
+ *  test) can never edit the live alarm by accident; the workflows pass
+ *  `--apply` explicitly. A `gh` call that fails is exit 1 — the step goes red,
+ *  as the shell's `set -e` made it before — and names the call. */
+function applyIssue(plan, { argv, env, mayClose, bodyOut, head, spawn }) {
+  const repo = arg(argv, "--repo", env.GITHUB_REPOSITORY || null);
+  if (!argv.includes("--apply")) {
+    const cmds = issueCommands(plan, { repo: repo || "<owner/name>", bodyFile: bodyOut || "<body file>", mayClose });
+    const said = cmds.length ? cmds.map((c) => `  gh ${c.join(" ")}`).join("\n") : "  (no gh call)";
+    return { code: 0, text: `${head} (dry run: pass --apply to make these calls)\n${said}\n`, plan, commands: cmds };
+  }
+  if (!repo) return { code: 1, text: "watch-release: --apply needs --repo owner/name (or GITHUB_REPOSITORY)\n", plan };
+  let bodyFile = bodyOut;
+  let scratch = null;
+  if (!bodyFile) {
+    scratch = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
+    bodyFile = path.join(scratch, "body.md");
+    fs.writeFileSync(bodyFile, plan.body);
+  }
+  try {
+    const cmds = issueCommands(plan, { repo, bodyFile, mayClose });
+    for (const c of cmds) {
+      const r = spawn("gh", c, { stdio: "inherit" });
+      if (r.error || r.status !== 0) {
+        const why = r.error ? r.error.message : `exit ${r.status}`;
+        return { code: 1, text: `watch-release: \`gh ${c.slice(0, 2).join(" ")}\` failed (${why}); the issue action '${plan.action}' is incomplete\n`, plan };
+      }
+    }
+    return { code: 0, text: `${head} (applied: ${cmds.length} gh call${cmds.length === 1 ? "" : "s"})\n`, plan, commands: cmds };
+  } catch (err) {
+    return { code: 1, text: `watch-release: ${err.message}\n`, plan };
+  } finally {
+    if (scratch) fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+if (isEntryScript(import.meta.url)) {
   const { code, text } = await run(process.argv.slice(2));
   process.stdout.write(text);
   process.exit(code);

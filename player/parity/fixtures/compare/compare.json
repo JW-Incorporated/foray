@@ -220,6 +220,20 @@
       }
     },
     {
+      "id": "compare/native-tokens-kept-in-native-episode",
+      "covers": [],
+      "note": "code-health-3 CH3-20: native-episode asserts the native tokens (the stop cause, grace, the session), so all three comparators keep them there.",
+      "call": "compareVerdict",
+      "args": [
+        { "ops": ["load:a@0", "play"] },
+        { "ops": ["load:a@0", "n.diag:stop:load-deadline", "play"] },
+        { "family": "native-episode" }
+      ],
+      "expect": {
+        "return": { "diffs": [{ "path": "$.ops", "why": "length 2 != 3" }], "equal": false }
+      }
+    },
+    {
       "id": "compare/native-tokens-stripped-in-a-nested-op-log",
       "covers": [],
       "call": "compareVerdict",

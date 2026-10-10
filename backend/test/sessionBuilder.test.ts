@@ -218,7 +218,7 @@ describe("buildSession — end-to-end pipeline proof (01_PROMPT.md item 8), zero
       enricher
     });
 
-    expect(await guard.spentToday("cost-test-user")).toBe(0);
+    expect(await guard.spentThisRun()).toBe(0);
   });
 });
 

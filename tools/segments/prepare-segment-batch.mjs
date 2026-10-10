@@ -92,6 +92,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import copyRules from "../../backend/src/copy/rules.js";
 import { normalize } from "./transcript-normalize.mjs";
 import { canonical, TRANSCRIPT_SOURCES } from "./merge-segments.mjs";
@@ -1028,5 +1029,5 @@ function main() {
   else runPrepare(args);
 }
 
-const invokedDirectly = process.argv[1] && resolvePath(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) main();

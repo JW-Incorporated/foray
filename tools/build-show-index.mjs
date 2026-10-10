@@ -161,9 +161,11 @@
    Usage: node tools/build-show-index.mjs [--out path] [--check] [--max-rank n] */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { isEntryScript } from "./ci/entry.mjs";
+import { isChartRank, rankByAppleId } from "./harvest-merge.mjs";
 
 /* The client's own fold, not a copy of it: the sort key here and the lookup
    key in `parseShowIndex` have to be one function or the binary search is
@@ -204,26 +206,21 @@ export function mergeShowIndexRows(curated, breadth, { maxRank = BUILD_MAX_RANK 
   const seen = new Set();
 
   /* Every breadth row, `in_curated` or not — the curated shows' twins are
-     exactly the `in_curated` rows the loop below skips, so filtering here
-     would join nothing. */
-  const rankByAppleId = new Map();
-  for (const row of breadth.shows) {
-    const rank = Number(row?.chart_rank);
-    if (Number.isFinite(rank) && rank > 0) rankByAppleId.set(String(row?.apple_collection_id), rank);
-  }
+     exactly the `in_curated` rows the loop below skips (harvest-merge.mjs's
+     rankByAppleId, the join build-catalog-client.mjs reads too). */
+  const rankOf = rankByAppleId(breadth);
 
   for (const show of curated.shows) {
     const id = sanitizeCell(show?.show_id);
     const title = sanitizeCell(show?.title);
     if (!id || !title || seen.has(id)) continue;
     seen.add(id);
-    rows.push({ title, id, chart_rank: rankByAppleId.get(String(show?.apple_collection_id)) ?? null, curated: true });
+    rows.push({ title, id, chart_rank: rankOf.get(String(show?.apple_collection_id)) ?? null, curated: true });
   }
 
   for (const show of breadth.shows) {
     if (show?.in_curated) continue; // already carried by the curated row above
     if (show?.apple_collection_id === undefined || show?.apple_collection_id === null) continue;
-    const rank = Number(show?.chart_rank);
     /* An unranked breadth row is dropped, not kept at the bottom. Since
        2026-10-07 a null `chart_rank` is an expected state: a re-harvest keeps a
        show that left every chart (tools/harvest-merge.mjs) with
@@ -232,7 +229,9 @@ export function mergeShowIndexRows(curated, breadth, { maxRank = BUILD_MAX_RANK 
        (`backend/src/catalog/breadthCatalog.ts`) still serves them and their
        show pages — so the client index leaves them out rather than guess a
        band for them. */
-    if (!Number.isFinite(rank) || rank <= 0 || rank > maxRank) continue;
+    if (!isChartRank(show?.chart_rank)) continue;
+    const rank = Number(show.chart_rank);
+    if (rank > maxRank) continue;
     const id = sanitizeCell(show.apple_collection_id);
     const title = sanitizeCell(show?.title);
     if (!id || !title || seen.has(id)) continue;
@@ -302,9 +301,8 @@ function main() {
   console.log(`wrote ${path.relative(ROOT, outPath)}: ${rows.length} shows, ${text.length} B (max chart_rank ${maxRank}).`);
 }
 
-/* `pathToFileURL`, not a `file://${argv[1]}` template — the template form is
-   what tools/build-catalog-client.mjs uses and it is silently FALSE on Windows
-   (a `C:\…` path is not `file://C:\…`), so the script would exit 0 having
-   written nothing. tools/ci/path-policy.mjs already uses this form; matched to
-   it rather than to the older neighbour. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();
+/* tools/ci/entry.mjs's guard, not a `file://${argv[1]}` template (silently
+   FALSE on Windows: a `C:\…` path is not `file://C:\…`) nor a pathToFileURL
+   comparison (false through a junction), either of which would exit 0 having
+   written nothing. See tools/entrypoint-guards.test.mjs. */
+if (isEntryScript(import.meta.url)) main();

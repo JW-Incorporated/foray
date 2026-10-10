@@ -5,15 +5,25 @@
    response fast enough to dodge that, exhausting memory before anything
    notices.
 
-   EVERY feed and transcript body read in tools/ goes through here (audit
-   round 3, data-tools-7): scan.mjs (fetchFeedCapped), backfill-show.mjs,
-   classify/prepare-batch.mjs and segments/sweep-transcripts.mjs (whose
-   fetchFeed measure-suspects.mjs reuses) through readResponseCapped with
-   their own AbortController and politeness headers, and
-   segments/fetch-transcripts.mjs through readBodyCapped. The header used to
-   say tools/refresh-feeds.mjs used it; that file is a 31-line wrapper that
-   spawns scan.mjs, so it is covered through scan, not by an import.
-   fetch-limits.test.mjs pins the list. */
+   Every feed and transcript body read in tools/ goes through here (audit
+   round 3, data-tools-7; code-health-2 T1-05 added backfill-audio and
+   harvest-episodes, which still buffered unbounded res.text() with no
+   timeout). fetch-limits.test.mjs parses this list and pins it exactly
+   against its FETCHERS table:
+     tools/refresh/scan.mjs                   fetchFeedCapped
+     tools/refresh/backfill-show.mjs          readResponseCapped
+     tools/refresh/backfill-audio.mjs         fetchFeedCapped
+     tools/harvest-episodes.mjs               fetchFeedCapped
+     tools/classify/prepare-batch.mjs         readResponseCapped
+     tools/segments/sweep-transcripts.mjs     readResponseCapped
+     tools/segments/backfill-audio-bytes.mjs  readResponseCapped
+     tools/segments/fetch-transcripts.mjs     readBodyCapped
+     tools/poll/fetch-feed.mjs                readBodyCapped
+   readResponseCapped/readBodyCapped callers keep their own AbortController,
+   retry ladder and politeness headers. Covered without an import:
+   segments/measure-suspects.mjs reuses sweep-transcripts' fetchFeed, and
+   tools/refresh-feeds.mjs is a wrapper that spawns scan.mjs. Not routed
+   here, with its own reader: tools/corpus/fetcher.mjs. */
 
 export const MAX_FEED_BYTES = 20 * 1024 * 1024; // 20 MB — generous for RSS/Atom.
 export const MAX_ITEMS_PER_FEED = 2000; // defense in depth, after parsing.

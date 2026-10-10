@@ -73,8 +73,9 @@
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath, sep } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import { UA, awaitHostSlot, waitBeforeRetry } from "./politeness.mjs";
 import { BodyTooLargeError, readBodyCapped } from "../refresh/fetch-limits.mjs";
 import { normalize } from "./transcript-normalize.mjs";
@@ -480,7 +481,7 @@ async function main() {
   console.log(`FETCH_COMPLETE: ${digestsPath}`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error("FATAL:", e instanceof FetchError ? e.message : e);
     process.exit(1);

@@ -18,11 +18,20 @@ import java.util.Map;
  * through {@link EngineScenarioDriver}; and the {@code lastEpisodeRow} pass-through through
  * {@link EngineCore#lastEpisodeRow}, against rows.js {@code engineLastEpisodeRow}. The JVM
  * twin of the Swift ManagerEpisodeFamily.
+ *
+ * <p>{@link #remainderRunner} runs {@code manager-remainder} (code-health-3 CH3-17) through the
+ * same driver: transport.json's episode cases (an unknown ref errors to idle, the position
+ * writer, the rate getter and its snap line, stop's silence behind a paused machine, and a
+ * play settling mid-skip-back keeping the restart). Its warming.json cases are the Foray
+ * tape's warming window, owed case by case to A-40 in jvm-pending.json; the driver refuses
+ * their {@code backend.prefetch} by name. The Swift ManagerRemainderFamily runs the family
+ * with the tape on.
  */
 final class ManagerEpisodeFamily {
     private ManagerEpisodeFamily() {}
 
     static final String FAMILY = "manager-episode";
+    static final String REMAINDER = "manager-remainder";
     static final String ROWS_MODULE = "player/parity/rows.js";
 
     static FamilyRunner runner() {
@@ -31,17 +40,36 @@ final class ManagerEpisodeFamily {
 
     /** A runner over a deliberately broken core, for the mutation tests. */
     static FamilyRunner runner(EngineScenarioDriver.Mutation mutation) {
+        return runner(FAMILY, mutation);
+    }
+
+    /** {@code manager-remainder}: scenarios only, through the same episode driver. */
+    static FamilyRunner remainderRunner() {
+        return runner(REMAINDER, null);
+    }
+
+    /** Code-health-3 CH3-20's {@code native-episode}: scenarios only, through the same episode driver. */
+    static final String NATIVE_EPISODE = "native-episode";
+
+    static FamilyRunner nativeEpisodeRunner() {
+        return runner(NATIVE_EPISODE, null);
+    }
+
+    private static FamilyRunner runner(String family, EngineScenarioDriver.Mutation mutation) {
         EngineScenarioDriver driver = new EngineScenarioDriver(mutation);
         return new FamilyRunner() {
             @Override
             public String family() {
-                return FAMILY;
+                return family;
             }
 
             @Override
             public Json run(FixtureCase testCase, FixtureFile file, Codec.Context context) {
                 String kind = testCase.kind();
                 if (kind == null) throw new HarnessError("E_BAD_CASE", "case " + testCase.id() + " is not exactly one of read / call / steps");
+                if (!kind.equals("scenario") && !family.equals(FAMILY)) {
+                    throw new HarnessError("E_BAD_CASE", "the JVM " + family + " runner runs scenarios only");
+                }
                 switch (kind) {
                     case "scenario":
                         return driver.run(testCase, context).encoded();

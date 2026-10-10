@@ -14,6 +14,12 @@ import ForayEngineCore
 /// asks `installedActions`, presses through `intent(for:)`, and writes down the
 /// same `{installed, calls}`. A file naming any other module is refused.
 ///
+/// The adapter's second call, `commandAvailability(snapshot, trackRoute)`
+/// (CH3-10), is authored there from docs/DECISIONS.md 2026-09-23 rather than
+/// recorded from a page module; here it is `MediaMapping.commandAvailability`
+/// with the core's own seek steps, and the answer written as the adapter
+/// writes it (`enabled` in `RemoteCommand` order, `clearsNowPlaying`).
+///
 /// THE ONE JOB HERE IS TRANSLATION, NEVER DECISION (SeamGapFamily's rule).
 /// Every mapping below is one line of JS read literally:
 ///
@@ -37,14 +43,18 @@ public enum MediaEpisodeFamily {
 
     public static let runner: FamilyRunner = makeRunner()
 
-    /// `installedActions` is injectable for ONE reason: so an XCTest can hand
-    /// the fixtures a mutant enablement table ("next is offered with no next")
-    /// and prove a case goes red (the card's mutation), without a mutant ever
-    /// reaching a source file.
+    /// `installedActions` and `commandAvailability` are injectable for ONE
+    /// reason: so an XCTest can hand the fixtures a mutant rule ("next is
+    /// offered with no next", "the track route is ignored") and prove a case
+    /// goes red (the card's mutation), without a mutant ever reaching a source
+    /// file.
     public static func makeRunner(
-        installedActions: @escaping (MediaMapping.Surface) -> [MediaAction] = MediaMapping.installedActions
+        installedActions: @escaping (MediaMapping.Surface) -> [MediaAction] = MediaMapping.installedActions,
+        commandAvailability: @escaping (MediaMapping.CommandSnapshot, Bool) -> MediaMapping.CommandAvailability = {
+            MediaMapping.commandAvailability($0, trackRoute: $1)
+        }
     ) -> FamilyRunner {
-        Runner(parts: [mappingRunner, actionsRunner(installedActions)])
+        Runner(parts: [mappingRunner, actionsRunner(installedActions, commandAvailability)])
     }
 
     /// Picks the part that ports the file's module. (NE-09 adds a general
@@ -182,7 +192,10 @@ public enum MediaEpisodeFamily {
 
     // MARK: - media-actions.js (the adapter over mediaSessionActions)
 
-    static func actionsRunner(_ installedActions: @escaping (MediaMapping.Surface) -> [MediaAction]) -> PureFamilyRunner {
+    static func actionsRunner(
+        _ installedActions: @escaping (MediaMapping.Surface) -> [MediaAction],
+        _ commandAvailability: @escaping (MediaMapping.CommandSnapshot, Bool) -> MediaMapping.CommandAvailability
+    ) -> PureFamilyRunner {
         PureFamilyRunner(
             family: family,
             module: actionsModule,
@@ -233,8 +246,39 @@ public enum MediaEpisodeFamily {
                         "installed": .array(installed.map { .string($0.rawValue) }),
                         "calls": .array(calls)
                     ]))
+                },
+                "commandAvailability": { args in
+                    let snapshot = try MediaEpisodeFamily.decodeSnapshot(MediaEpisodeFamily.arg(args, 0))
+                    guard case let .bool(trackRoute) = MediaEpisodeFamily.arg(args, 1) else {
+                        throw HarnessError("E_BAD_CASE", "trackRoute must be a boolean")
+                    }
+                    let availability = commandAvailability(snapshot, trackRoute)
+                    return .returned(.object([
+                        "enabled": .array(MediaMapping.RemoteCommand.allCases.filter { availability.isEnabled($0) }
+                            .map { .string($0.rawValue) }),
+                        "clearsNowPlaying": .bool(availability.clearsNowPlaying)
+                    ]))
                 }
             ])
+    }
+
+    /// The adapter's snapshot, as strictly as the adapter reads it: an object,
+    /// `mode` one of the snapshot modes, every flag a boolean or absent
+    /// (false). Anything else is a malformed case there, and here.
+    static func decodeSnapshot(_ value: JSValue) throws -> MediaMapping.CommandSnapshot {
+        guard case .object = value else { throw HarnessError("E_BAD_CASE", "a snapshot is an object") }
+        guard let token = value["mode"].stringValue, let mode = MediaMapping.CommandSnapshot.Mode(rawValue: token) else {
+            throw HarnessError("E_BAD_CASE", "snapshot.mode \(Codec.encode(value["mode"])) is not a snapshot mode")
+        }
+        func flag(_ name: String) throws -> Bool {
+            switch value[name] {
+            case .undefined: return false
+            case let .bool(b): return b
+            default: throw HarnessError("E_BAD_CASE", "snapshot.\(name) must be a boolean")
+            }
+        }
+        return MediaMapping.CommandSnapshot(mode: mode, ended: try flag("ended"), canNext: try flag("canNext"),
+                                            canPrevious: try flag("canPrevious"), autoAdvance: try flag("autoAdvance"))
     }
 
     /// The adapter's `recordingSurface(names)`: an ARRAY names the methods that

@@ -5,7 +5,7 @@
 
    Importing manifest.mjs / delta.mjs pulls in
    tools/segments/sweep-transcripts.mjs for writeJsonAtomic. That module's CLI
-   is guarded by `import.meta.url === pathToFileURL(process.argv[1]).href`, so
+   is guarded by `isEntryScript(import.meta.url)` (tools/ci/entry.mjs), so
    the import runs no sweep and opens no connection: this suite importing it
    at all is the check the card asks for ("verify by importing in the test"). */
 import { test } from "node:test";

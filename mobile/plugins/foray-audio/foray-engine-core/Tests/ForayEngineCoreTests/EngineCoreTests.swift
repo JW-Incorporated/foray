@@ -47,7 +47,7 @@ final class EngineCoreTests: XCTestCase {
             }
             for command in all {
                 switch command {
-                case let .deck(.load(token, _, _, startSec, _, _)):
+                case let .deck(.load(token, _, _, startSec, _, _, _)):
                     lastLoad = token
                     reading.positionSec = startSec
                     reading.audible = false
@@ -470,7 +470,7 @@ final class EngineCoreTests: XCTestCase {
         XCTAssertEqual(host.core.state.session, .active)
         host.send(.session(.interruptionBegan(reason: "default")))
         let resumed = host.send(.session(.interruptionEnded(shouldResume: true)))
-        XCTAssertTrue(resumed.contains { if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 41 }; return false },
+        XCTAssertTrue(resumed.contains { if case let .deck(.load(_, _, _, startSec, _, _, _)) = $0 { return startSec == 41 }; return false },
                       "\(resumed)")
     }
 
@@ -485,6 +485,73 @@ final class EngineCoreTests: XCTestCase {
         let route = host.send(.session(.route(RouteChange(oldDeviceUnavailable: true))), after: 200)
         XCTAssertTrue(route.contains { if case let .diag(entry) = $0 { return entry.kind == "session" && entry[field: "kind"] == .string("route-attributed") }; return false })
         XCTAssertNil(index(host.send(.session(.interruptionEnded(shouldResume: true))), isLoad))
+    }
+
+    /// The `session` row a refused should-resume writes
+    /// (`interruption ... resumed=false why=...`), if the turn wrote one.
+    func refusedResume(_ commands: [EngineCommand]) -> DiagEntry? {
+        rows("session", in: commands).first {
+            $0[field: "kind"] == .string("interruption") && $0[field: "phase"] == .string("ended")
+                && $0[field: "resumed"] == .bool(false)
+        }
+    }
+
+    /// CH3-02 (R2-02): a Bluetooth car, a call arrives, and the output flips
+    /// A2DP -> HFP -> A2DP while it rings. The loss lands inside the call's
+    /// interruption and paused nothing, so the call's should-resume decides
+    /// (code-health-3 founder question 2, default): the resume loads, and no
+    /// `resumed=false why=route-lost` row is written.
+    /// RED on main: R2-02 (`onRoute` set `pausedByRoute` unconditionally).
+    /// TO SEE IT FAIL: restore the unconditional `state.pausedByRoute = true`
+    /// in `onRoute`.
+    func testARouteFlapDuringACallLeavesTheCallsShouldResumeInCharge() {
+        var host = playing()
+        host.send(.session(.interruptionBegan(reason: "default")))
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: true))))
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: false))))
+        XCTAssertFalse(host.core.state.pausedByRoute, "the flap paused nothing")
+        let ended = host.send(.session(.interruptionEnded(shouldResume: true)))
+        XCTAssertNil(refusedResume(ended), "\(ended)")
+        XCTAssertNotNil(index(ended, isLoad), "the call's should-resume resumes: \(ended)")
+    }
+
+    /// CH3-02 review: the call pauses the deck first (an uncommanded pause,
+    /// reconciled as the system's), then iOS reports the interruption, then
+    /// the A2DP -> HFP flap lands inside `routeAttributionMs`. The interruption
+    /// explained that pause, so the flap is not attributed it: the call's
+    /// should-resume resumes, and no `route-attributed` row is written.
+    /// TO SEE IT FAIL: drop `state.lastUncommandedPauseAtMono = nil` from
+    /// `onInterruptionBegan`.
+    func testACallsPauseThenAFlapInsideTheWindowLeavesTheCallsShouldResumeInCharge() {
+        var host = playing()
+        host.reading.audible = false
+        host.send(.deck(.pausedUncommanded(token: host.lastLoad!, atSec: 3)))
+        host.send(.session(.interruptionBegan(reason: "default")), after: 50)
+        let lost = host.send(.session(.route(RouteChange(oldDeviceUnavailable: true))), after: 150)
+        XCTAssertFalse(lost.contains { if case let .diag(entry) = $0 { return entry.kind == "session" && entry[field: "kind"] == .string("route-attributed") }; return false },
+                       "\(lost)")
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: false))))
+        XCTAssertFalse(host.core.state.pausedByRoute, "the flap paused nothing")
+        let ended = host.send(.session(.interruptionEnded(shouldResume: true)))
+        XCTAssertNil(refusedResume(ended), "\(ended)")
+        XCTAssertNotNil(index(ended, isLoad), "the call's should-resume resumes: \(ended)")
+    }
+
+    /// CH3-02 characterization, the opposite order (survives the fix): a loss
+    /// while PLAYING paused the episode, so it is the route's (corner case
+    /// #13): a flap back and a later call's should-resume do not resume it,
+    /// and the refusal row says why.
+    /// TO SEE IT FAIL: drop the `.playing` arm from `onRoute`'s "the loss
+    /// paused something" condition.
+    func testARouteLostWhilePlayingIsRefusedAfterAFlapAndACall() throws {
+        var host = playing()
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: true))))
+        host.send(.session(.route(RouteChange(oldDeviceUnavailable: false))))
+        host.send(.session(.interruptionBegan(reason: "default")))
+        let ended = host.send(.session(.interruptionEnded(shouldResume: true)))
+        XCTAssertNil(index(ended, isLoad), "\(ended)")
+        let refusal = try XCTUnwrap(refusedResume(ended), "\(ended)")
+        XCTAssertEqual(refusal[field: "why"], .string("route-lost"))
     }
 
     // MARK: - Transport
@@ -546,7 +613,7 @@ final class EngineCoreTests: XCTestCase {
         let pended = idle.send(try EngineCoreTests.command("seekTo", .object([JSONMember("sec", .number(600))])))
         XCTAssertNil(pended.firstIndex { if case .deck = $0 { return true }; return false }, "nothing loaded: nothing to seek")
         XCTAssertTrue(idle.send(.command(.play, source: .tap))
-            .contains { if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 600 }; return false })
+            .contains { if case let .deck(.load(_, _, _, startSec, _, _, _)) = $0 { return startSec == 600 }; return false })
 
         var loading = Host()
         loading.send(.queue(.load([EngineCoreTests.item("a")])))
@@ -574,7 +641,7 @@ final class EngineCoreTests: XCTestCase {
         host.send(.queue(.load([EngineCoreTests.item("a")])))
         let started = host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
         XCTAssertTrue(started.contains {
-            if case let .deck(.load(_, _, _, startSec, _, _)) = $0 { return startSec == 2280 }
+            if case let .deck(.load(_, _, _, startSec, _, _, _)) = $0 { return startSec == 2280 }
             return false
         }, "the cold load resumes: \(started)")
         let nudged = host.send(try EngineCoreTests.command("seekBy", .object([JSONMember("deltaSec", .number(-15))])))
@@ -608,7 +675,7 @@ final class EngineCoreTests: XCTestCase {
             return false
         }
         let loadB = left.firstIndex {
-            if case let .deck(.load(_, itemId, _, _, _, _)) = $0 { return itemId == "b" }
+            if case let .deck(.load(_, itemId, _, _, _, _, _)) = $0 { return itemId == "b" }
             return false
         }
         XCTAssertNotNil(wrote, "the scrub is what was kept: \(left)")
@@ -699,7 +766,7 @@ final class EngineCoreTests: XCTestCase {
         var on = playing()
         on.send(try continuation(autoAdvance: true, [EngineCoreTests.hop(1, next: "b"), EngineCoreTests.hop(2, next: "c")]))
         let walked = on.send(.deck(.ended(token: on.lastLoad!)))
-        XCTAssertTrue(walked.contains { if case let .deck(.load(_, itemId, _, _, _, _)) = $0 { return itemId == "b" }; return false })
+        XCTAssertTrue(walked.contains { if case let .deck(.load(_, itemId, _, _, _, _, _)) = $0 { return itemId == "b" }; return false })
         XCTAssertTrue(walked.contains { if case .emit(.advanced) = $0 { return true }; return false })
         XCTAssertEqual(on.core.state.advanceLog.map(\.hop.nextId), ["b"])
         XCTAssertEqual(on.core.state.chain.map(\.nextId), ["c"])
@@ -726,6 +793,98 @@ final class EngineCoreTests: XCTestCase {
         host.send(.deck(.ended(token: host.lastLoad!)))
         let failed = host.send(.deck(.failed(token: host.lastLoad!, message: "404")))
         XCTAssertTrue(failed.contains(.emit(.error(code: "chain-start", message: "404"))), "\(failed)")
+    }
+
+    // MARK: - CH3-12 (R4-03): a downloaded file that will not open streams instead
+
+    /// An episode as the page sends a downloaded one (download-store.js
+    /// `localPlayable`): the file in `audio_url`, the stream kept as
+    /// `source_audio_url`.
+    static func downloaded(_ id: String, file: String? = nil) -> EngineItem {
+        EngineItem(node: .object([JSONMember("id", .string(id)), JSONMember("kind", .string("episode")),
+                                  JSONMember("audio_url", .string(file ?? "file:///var/mobile/Downloads/\(id).mp3")),
+                                  JSONMember("source_audio_url", .string("https://cdn.example/\(id).mp3"))]))!
+    }
+
+    /// The URL of every load in `commands`, in order.
+    func loadURLs(_ commands: [EngineCommand]) -> [String] {
+        commands.compactMap {
+            if case let .deck(.load(_, _, url, _, _, _, _)) = $0 { return url ?? "nil" }
+            return nil
+        }
+    }
+
+    func anyStopRow(_ commands: [EngineCommand]) -> Bool {
+        commands.contains { if case let .diag(entry) = $0 { return entry.kind == "stop" }; return false }
+    }
+
+    /// A cold-restored downloaded episode whose file is gone (removed, or
+    /// moved by an app update) loads its stream instead, at the same second,
+    /// with no stop row; the page still hears `error` code `load`, so it marks
+    /// the download missing. The second load is the fallback's, and a failure
+    /// of THAT stops as today.
+    /// RED on main: R4-03 (the failure stopped `cause=error`, no second load).
+    /// TO SEE IT FAIL: drop `fallBackToStream` from `onLoadFailure` (no
+    /// second load), or let it retry on its own stream (a second failure
+    /// loads a third time: retrying twice).
+    func testADownloadThatWillNotOpenFallsBackToItsStreamOnce() {
+        var host = Host()
+        host.send(.queue(.load([EngineCoreTests.downloaded("a")])))
+        let first = host.send(.queue(.playIndex(0, startSec: 42, source: .tap)))
+        XCTAssertEqual(loadURLs(first), ["file:///var/mobile/Downloads/a.mp3"])
+        let failed = host.send(.deck(.failed(token: host.lastLoad!, message: "file not found")))
+        XCTAssertEqual(loadURLs(failed), ["https://cdn.example/a.mp3"], "one load, on the stream: \(failed)")
+        XCTAssertFalse(anyStopRow(failed), "a fallback is not a stop: \(failed)")
+        XCTAssertTrue(failed.contains(.emit(.error(code: "load", message: "file not found"))),
+                      "the page marks the download missing: \(failed)")
+        XCTAssertEqual(host.core.state.pendingLoad?.startSec, 42, "the same second")
+        XCTAssertEqual(host.core.state.stateType, "loadingItem", "the listener's play is still on")
+        XCTAssertTrue(failed.contains {
+            if case let .diag(entry) = $0 { return entry.kind == "deck" && entry[field: "kind"] == .string("stream-fallback") }
+            return false
+        }, "the deck row names the fallback: \(failed)")
+
+        let again = host.send(.deck(.failed(token: host.lastLoad!, message: "offline")))
+        XCTAssertEqual(loadURLs(again), [], "once: the stream failing too is today's stop")
+        assertCauseFirst(.error, again)
+        XCTAssertTrue(again.contains(.emit(.error(code: "load", message: "offline"))))
+        XCTAssertEqual(host.core.state.stateType, "idle")
+    }
+
+    /// The fallback lands and plays like any load.
+    func testAStreamFallbackThatLandsPlays() {
+        var host = Host()
+        host.send(.queue(.load([EngineCoreTests.downloaded("a")])))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        host.send(.deck(.deadlineExceeded(token: host.lastLoad!, afterMs: 20000)))
+        let landed = host.land()
+        XCTAssertNotNil(index(landed, isPlay), "\(landed)")
+        XCTAssertEqual(host.core.state.loadedId, "a")
+    }
+
+    /// Only a FILE falls back: a stream that will not open is today's stop,
+    /// whatever else the item carries.
+    /// TO SEE IT FAIL: drop the `file:` check in `fallBackToStream`.
+    func testAStreamThatWillNotOpenIsNotRetried() {
+        var host = Host()
+        host.send(.queue(.load([EngineCoreTests.downloaded("a", file: "https://mirror.example/a.mp3")])))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let failed = host.send(.deck(.failed(token: host.lastLoad!, message: "http-404")))
+        XCTAssertEqual(loadURLs(failed), [], "\(failed)")
+        assertCauseFirst(.error, failed)
+        XCTAssertEqual(host.core.state.stateType, "idle")
+    }
+
+    /// A file with no stream to fall back on is today's stop.
+    func testAFileWithNoSourceIsNotRetried() {
+        var host = Host()
+        host.send(.queue(.load([EngineItem(node: .object([JSONMember("id", .string("a")),
+                                                          JSONMember("kind", .string("episode")),
+                                                          JSONMember("audio_url", .string("file:///x/a.mp3"))]))!])))
+        host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let failed = host.send(.deck(.failed(token: host.lastLoad!, message: "file not found")))
+        XCTAssertEqual(loadURLs(failed), [], "\(failed)")
+        assertCauseFirst(.error, failed)
     }
 
     // MARK: - DeckPolicy's tokens are the generated ones

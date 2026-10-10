@@ -18,11 +18,7 @@
  * to fake), and the two are equivalent for a fixed-rate cap like this one.
  */
 
-export interface Clock {
-  now(): number;
-}
-
-export const realClock: Clock = { now: () => Date.now() };
+import { realClock, type Clock } from "./clock";
 
 export class SlidingWindowBucket {
   private readonly capacity: number;
@@ -58,8 +54,9 @@ export class SlidingWindowBucket {
     return true;
   }
 
-  /** Current count within the trailing window, for tests/observability. */
-  currentCount(): number {
+  /** Slots used within the trailing window. Test-only observability, named
+   *  `size()` like KeyedBuckets' and TtlCache's (code-health-2 CH2-40). */
+  size(): number {
     this.prune(this.clock.now());
     return this.timestamps.length;
   }

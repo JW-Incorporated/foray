@@ -168,8 +168,10 @@ let bootSeq = 0;
  * @param {Array} [opts.seed]         localStorage rows present at launch
  * @param {string} [opts.platform]    Capacitor's platform: "ios" (the shell), "web" or "android"
  * @param {string[]} [opts.capabilities]  the engine's advertised capabilities (NE-35: with 'foray')
+ * @param {boolean} [opts.hidden]     document.hidden at boot (CH3-23: a page launched out of view)
+ * @param {Function} [opts.onSend]    called with each engineSend payload as it reaches the engine
  */
-async function bootNative(t, { engine = null, hello = "answer", ledger = null, seed = [], platform = "ios", capabilities = null } = {}) {
+async function bootNative(t, { engine = null, hello = "answer", ledger = null, seed = [], platform = "ios", capabilities = null, hidden = false, onSend = null } = {}) {
   const order = [];
   const scheduler = manualScheduler();
   const ref = engine ?? createReferenceEngine({
@@ -186,7 +188,7 @@ async function bootNative(t, { engine = null, hello = "answer", ledger = null, s
       if (plugin === "ForayTts") speechCalls.push(method);
       if (plugin === "ForayAudio") {
         order.push(method === "engineSend" ? `send:${payload?.cmd}` : method === "engineRead" ? `read:${payload?.what}` : method);
-        if (method === "engineSend") sent.push(JSON.parse(JSON.stringify(payload)));
+        if (method === "engineSend") { sent.push(JSON.parse(JSON.stringify(payload))); onSend?.(payload); }
         if (method === "engineHello" && hello === "reject") return Promise.reject(new Error("the bridge fell over"));
         if (method === "engineHello" && hello === "hold") {
           return new Promise((resolve) => { releaseHello = () => resolve(base.nativePromise(plugin, method, payload)); });
@@ -202,7 +204,7 @@ async function bootNative(t, { engine = null, hello = "answer", ledger = null, s
   const media = recordingMediaSession();
   const elements = [];
   const doc = {
-    hidden: false,
+    hidden,
     activeElement: null,
     body: new Node("body"),
     createElement: (tag) => {
@@ -530,6 +532,73 @@ test("NATIVE: an engine that relinquished while the page was HIDDEN hands back o
   assert.ok(h.elements.some((e) => !e.paused), "on the page's own element");
   const sentAfter = h.ref.diagnostics.filter((r) => r.kind === "cmd" && r.cmd === "playEpisode").length;
   assert.equal(sentAfter, sentBefore, "nothing was sent to the torn-down engine");
+});
+
+/* CH3-23 (R4-07): "is the page looking?" has one rule — the page says so,
+   once, right after hello, and on every visibilitychange after that. A hello
+   no longer resets the engine's answer to "visible" (EngineBridge.hello, as
+   the reference engine never did), so a page that did not say would inherit
+   the previous page's answer: a page launched hidden would be sent snapshots
+   into a suspended WebView, and a page reloaded after a hidden one would
+   hear nothing until its first visibilitychange.
+   RED on main: client.js sent no setPageVisible until a visibilitychange.
+   MUTATION: drop the `engine.setVisible(...)` after the native attach in
+   onEngineDecision -> the engine keeps the stale answer in both tests. */
+test("CH3-23: a page booted HIDDEN tells the engine once, right after hello, and the engine stops sending", async (t) => {
+  const h = await bootNative(t, { hidden: true });
+  assert.equal(h.ref.visible, true, "fixture premise: a fresh engine believes a page is looking");
+  assert.equal(await h.client.whenEngineReady(), "native");
+  assert.equal(h.ref.visible, false, "the engine knows the page is not looking");
+  const told = h.sent.filter((p) => p.cmd === "setPageVisible");
+  assert.deepEqual(told.map((p) => [p.args.visible, p.source]), [[false, "restore"]], "said once, as a restore, not a tap");
+});
+
+test("CH3-23: a page booted VISIBLE over an engine a hidden page left behind tells it it is looking", async (t) => {
+  const ref = createReferenceEngine({ scheduler: manualScheduler(), now: () => 1_790_000_000_000 });
+  /* The previous page in this process hid and was then reloaded (a WebView
+     content-process restart): the engine still holds its "hidden". */
+  await ref.engineSend({ v: 1, cmdSeq: 1, cmd: "setPageVisible", source: "restore", issuedAtWallMs: 1, args: { visible: false } });
+  assert.equal(ref.visible, false, "fixture premise");
+  const h = await bootNative(t, { engine: ref });
+  assert.equal(await h.client.whenEngineReady(), "native");
+  assert.equal(ref.visible, true, "the new page's own answer, not the old page's");
+  assert.deepEqual(h.sent.filter((p) => p.cmd === "setPageVisible").map((p) => p.args.visible), [true], "said once");
+});
+
+test("CH3-23: a plan app.js refreshes while the first setPageVisible is in flight is the one the engine keeps", async (t) => {
+  /* The held plan (handed over before hello answered) goes out in the same
+     turn the lane is committed, as on main: nothing is awaited between
+     `engineMode = "native"` and the flush. Otherwise a newer plan handed over
+     during that wait goes straight to the engine, the older held plan lands
+     after it, and the engine (which takes the last setContinuation whatever
+     its planSeq) walks a stale Up Next at the episode end.
+     MUTATION: `await engine.setVisible(...)` before the shim uninstall and the
+     pendingPlan flush in onEngineDecision -> the engine keeps planSeq 1, and
+     the shim is still installed while setPageVisible is in flight. */
+  let client = null;
+  let shimAtVisible = null;
+  const h = await bootNative(t, {
+    hello: "hold",
+    onSend: (p) => {
+      if (p.cmd !== "setPageVisible") return;
+      queueMicrotask(() => {
+        shimAtVisible = [...h.win.ForayMediaSession.calls];
+        client.setContinuation({ planSeq: 2, autoAdvance: true, chain: [] });
+      });
+    },
+  });
+  client = h.client;
+  assert.equal(client.setContinuation({ planSeq: 1, autoAdvance: false, chain: [] }), false, "held until the lane is known");
+  h.releaseHello();
+  assert.equal(await client.whenEngineReady(), "native");
+  await drain();
+  assert.deepEqual(h.sent.filter((p) => p.cmd === "setContinuation").map((p) => p.args.planSeq), [1, 2], "the held plan first, the newer one last");
+  assert.equal(h.ref.continuation.planSeq, 2, "the engine walks the newer plan");
+  assert.equal(h.ref.continuation.autoAdvance, true);
+  assert.deepEqual(shimAtVisible, ["uninstall"], "the legacy shim went in the same turn as the lane");
+  assert.deepEqual(h.sent.filter((p) => p.cmd === "setPageVisible").map((p) => p.args.visible), [true], "and the page still said it is looking");
+  assert.deepEqual(h.sent.map((p) => p.cmd).filter((c) => c === "setPageVisible" || c === "setContinuation"),
+    ["setPageVisible", "setContinuation", "setContinuation"], "first, before any plan");
 });
 
 test("DELETE MY DATA after a Foray tap (the engine torn down) still clears the engine's store, and says so", async (t) => {

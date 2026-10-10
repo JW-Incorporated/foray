@@ -245,7 +245,7 @@ final class FakeDeck: DeckDriving {
         sent.append(command)
         log.add("\(name).\(command.logName)")
         switch command {
-        case let .load(token, _, _, startSec, _, _):
+        case let .load(token, _, _, startSec, _, _, _):
             lastToken = token
             reading.positionSec = startSec
             reading.audible = false
@@ -267,6 +267,12 @@ final class FakeDeck: DeckDriving {
         log.add("\(name).invalidate")
     }
 
+    /// Media services were reset (CH3-03): the real deck makes a new
+    /// AVPlayer. The fake only records it.
+    func rebuild() {
+        log.add("\(name).rebuild")
+    }
+
     /// The deck reports something (on main, as AVDeck does).
     func report(_ event: DeckEvent) {
         onEvent?(event)
@@ -279,10 +285,12 @@ extension DeckCommand {
     /// The Simulator deck tests (AVDeckTests, TwoDeckPrerollTests) load
     /// bundled files by URL. The core's `.load` carries the queue item's id
     /// and the page's `audio_url` string; this is that command for a file,
-    /// with an id the deck never reads.
-    static func loadURL(token: DeckToken, url: URL, startSec: Double, preciseTiming: Bool) -> DeckCommand {
+    /// with an id the deck never reads. `bounded` is the core's "this is a
+    /// Foray clip" (CH3-11); false, as for an episode, unless a test says.
+    static func loadURL(token: DeckToken, url: URL, startSec: Double, preciseTiming: Bool,
+                        bounded: Bool = false) -> DeckCommand {
         .load(token: token, itemId: "deck-test-\(token)", url: url.absoluteString,
-              startSec: startSec, preciseTiming: preciseTiming)
+              startSec: startSec, preciseTiming: preciseTiming, bounded: bounded)
     }
 
     /// The command's name without its payload: `load`, `play`, `setRate`...
@@ -309,6 +317,10 @@ final class FakeSpeaker: Speaking {
     private(set) var spoken: [String] = []
     /// The narration commands the host handed on (NE-33), in order.
     private(set) var narrated: [NarrationCommand] = []
+    /// What the synthesizer says it is doing (CH3-19, R2-05): set by the
+    /// test. `.unknown` (a synthesizer that cannot say) unless a test says
+    /// otherwise, so every other host test hears what it heard before.
+    var reading: NarratorReading = .unknown
 
     init(log: SeamLog) { self.log = log }
 
@@ -323,6 +335,10 @@ final class FakeSpeaker: Speaking {
         narrated.append(command)
         log.add("speaker.narrate")
     }
+
+    /// Media services were reset (CH3-03): the real narrator makes a new
+    /// audio engine. The fake only records it.
+    func rebuild() { log.add("speaker.rebuild") }
 
     /// The synthesizer reports on a line of narration (on main, as
     /// SpeechNarrator delivers it).
@@ -464,8 +480,6 @@ final class FakeOutput: EngineOutput {
     private(set) var positions: [PositionWrite] = []
     private(set) var rows: [StoredRow] = []
     private(set) var restores: [RestoreRecord?] = []
-    private(set) var events: [PendingEvent] = []
-    private(set) var emitted: [EngineEvent] = []
     private(set) var diags: [DiagEntry] = []
     /// Called on every diag row, inside the host's turn: a test uses it to
     /// send an input re-entrantly.
@@ -476,8 +490,6 @@ final class FakeOutput: EngineOutput {
     func writePosition(_ write: PositionWrite) { positions.append(write); log.add("output.position") }
     func writeRow(_ row: StoredRow) { rows.append(row); log.add("output.row") }
     func writeRestore(_ record: RestoreRecord?) { restores.append(record); log.add("output.restore") }
-    func appendEvent(_ event: PendingEvent) { events.append(event); log.add("output.event") }
-    func emit(_ event: EngineEvent) { emitted.append(event); log.add("output.emit") }
     func flush() { log.add("output.flush") }
 
     func diag(_ entry: DiagEntry) {

@@ -34,6 +34,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 /* Q-08's rule, defined once — see `spokenLineStructureWarnings` below for
    why it lives in `backend/src/copy/` rather than in this file. */
 import narratorStructure from "../../backend/src/copy/narratorStructure.js";
@@ -873,8 +874,7 @@ export function checkNarration(root = REPO_ROOT) {
   return { errors, warnings, report };
 }
 
-const invokedDirectly =
-  process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   /* run-suites.mjs refuses an unrecognised flag rather than ignoring it, and a
      silently-ignored `--references=T2` is a person believing they generated a

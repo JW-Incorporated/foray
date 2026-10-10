@@ -113,6 +113,6 @@ public enum ParityFamilies {
          ForayClockFamily.runner, ForayProgressFamily.runner, ForayStructureFamily.runner, MediaFamily.runner,
          DeckFamily.runner, ManagerForayFamily.runner, PrepareFamily.runner, PrepareNarrationFamily.runner,
          DefaultVoiceFamily.runner, LexiconFamily.runner, SpeechRateFamily.runner,
-         RouteResumeFamily.runner, ManagerRemainderFamily.runner]
+         RouteResumeFamily.runner, ManagerRemainderFamily.runner, NativeEpisodeFamily.runner]
     }
 }

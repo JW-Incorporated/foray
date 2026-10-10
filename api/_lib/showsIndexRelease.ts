@@ -13,9 +13,9 @@ import * as zlib from "zlib";
  *   - `api/shows/index/[...path].ts`, the same-origin proxy the client's
  *     shard search fetches through (its header has the CORS, gzip and
  *     flat-asset-name reasoning); and
- *   - `api/shows/[show_id]/episodes.ts`, which reads ONE shard to find a
- *     `pi:<n>` show's feed (a shared episode of a shard show cold-opening on
- *     a fresh device).
+ *   - `api/_lib/resolveShow.ts`, which reads ONE shard to find a `pi:<n>`
+ *     show's feed for the per-show list and its search box (a shared
+ *     episode of a shard show cold-opening on a fresh device).
  * It lived inside the proxy until the second caller arrived; it moved here
  * rather than being copied, so the two cannot drift apart.
  */
@@ -148,10 +148,12 @@ interface Pointer {
   shards_published?: boolean;
 }
 
-/** Reads the committed pointer file. Returns null (never throws) when it is
- *  missing or unreadable — that is the honest "no release published yet"
- *  state while S-04a/b's `SHARD_TOO_LARGE` bug is open, not an operational
- *  failure of the caller. */
+/** Reads the committed pointer file (written by
+ *  `tools/shows/run-and-publish.mjs`; on `main` since 2026-09-15, #720,
+ *  re-pointed 2026-10-05, #1012). Returns null (never throws) when it is
+ *  missing or unreadable, which callers answer as a 404, not a 500. With a
+ *  pointer committed that is no longer the expected state: it means the
+ *  pointer was removed. */
 function loadPointer(): Pointer | null {
   try {
     const raw = fs.readFileSync(pointerPath, "utf8");

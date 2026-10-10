@@ -17,7 +17,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { similarShowsFor } from "./similar-shows.mjs";
 import { evaluate } from "./score.mjs";
 
@@ -140,8 +141,8 @@ function main(argv) {
   return 0;
 }
 
-/* `pathToFileURL`, never a `file://${argv[1]}` template -- see
+/* tools/ci/entry.mjs's guard, never a `file://${argv[1]}` template -- see
    tools/entrypoint-guards.test.mjs for the Windows failure that idiom causes. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   process.exitCode = main(process.argv.slice(2));
 }

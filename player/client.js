@@ -342,6 +342,10 @@ let pendingPlan = null;
 /** item id -> item, from the plans the page sent: the bar can name the episode
     the engine advanced to while the page slept. */
 let chainItems = new Map();
+/** The last plan sent to the engine and the sources it went out with, so a
+    download that lands or leaves for one of its hops re-sends it (CH3-04). */
+let lastPlan = null;
+let lastPlanSources = null;
 /** A page-started play whose reply has not arrived: an attach must not paint
     the engine's previous item over the one the listener just tapped. */
 let playsInFlight = 0;
@@ -387,6 +391,17 @@ async function onEngineDecision(decision) {
       engine.send("relinquish", { cap: "all" }, { source: "restore" });
     }
     if (engineMode === "native") {
+      /* "Is the page looking?" has one rule (CH3-23, R4-07): the page says so,
+         here once right after hello and then on every visibilitychange
+         (bind()). A hello leaves the engine's last answer alone, so a page
+         launched hidden, or reloaded after a hidden one, would otherwise
+         inherit it. Not awaited: setVisible never rejects, and its
+         setPageVisible takes its command number now, so it still goes out
+         first. Awaiting it here would let a plan app.js refreshes in that
+         wait reach the engine BEFORE the older held plan below, which the
+         engine would then keep (it takes the last setContinuation whatever
+         its planSeq), and would keep the legacy shim installed meanwhile. */
+      engine.setVisible(typeof document === "undefined" || document.hidden !== true);
       try { if (typeof window !== "undefined") window.ForayMediaSession?.uninstall?.(); } catch (_) { /* the shim is optional */ }
       if (pendingPlan) { const plan = pendingPlan; pendingPlan = null; sendEnginePlan(plan); }
       return engineMode;
@@ -987,9 +1002,22 @@ window.forayQueueSwipe = queueSwipe;
    (CH-02): `play()` fires it where a local load SUCCEEDED.
    `userAgent` starts as `USER_AGENT` (`4a/dev`) and becomes the real build
    once `recordBuildStamp` hears it; `platform` is that same answer's
-   "ios" | "android" | null, for `playSource`. */
+   "ios" | "android" | null, for `playSource`.
+   `store` is download-store.js's rules as they are, except that its one
+   writer, `writeDownloads` (app.js's `saveDownloads`: a file landed, was
+   removed, evicted or found missing), also hands the native engine its plan
+   again when that moved a hop onto or off a file (CH3-04,
+   `resendPlanIfSourcesMoved`). */
+const downloadRecordRules = Object.freeze({
+  ...downloadStore,
+  writeDownloads(storageArea, value) {
+    const wrote = downloadStore.writeDownloads(storageArea, value);
+    try { resendPlanIfSourcesMoved(); } catch (_) { /* the record is written; the plan is re-sent at the next change */ }
+    return wrote;
+  },
+});
 window.forayDownloads = {
-  store: downloadStore,
+  store: downloadRecordRules,
   createBridge: createDownloadBridge,
   USER_AGENT,
   userAgentFor,
@@ -2085,9 +2113,22 @@ function seekEpisodeTo(seconds) {
   return landEpisodeSeek(clampEpisodeTarget(seconds, episodeDurationSec()));
 }
 
-/** A relative seek, from wherever the bar says the listener is. */
+/** A relative seek, from wherever the bar says the listener is.
+
+    NATIVE LANE: THE STEP IS THE INTENT (CH3-18, R4-05). The engine owns the
+    playhead, and a load it started by itself (the wheel's ⏭, an auto-advance)
+    is one the page never asked for: no `loadingStart`, a snapshot reading 0
+    until the deck holds the item. A target computed here from that 0 and sent
+    as `seekTo` started the episode at 0:30 and overwrote a 38:00 resume point.
+    So whenever there is something to seek in, the engine is sent the step
+    (`seekBy`) and finds the target from where it knows the listener is
+    (EngineCore.swift `seekBy`). With nothing to seek in (a restored bar, an
+    ended episode) the pend below is unchanged: that position is the page's. */
 function seekEpisodeBy(offsetSec) {
   if (!current || foray || !manager) return Promise.resolve(false);
+  if (engineMode === "native" && seekAction({ restored: restoredPending != null, stateType: manager.state?.type }) === SEEK.SEEK) {
+    return landEngineNudge(Number(offsetSec || 0));
+  }
   return landEpisodeSeek(skipTarget({
     foray: false, positionSec: episodePositionSec(), offsetSec, durationSec: episodeDurationSec(),
   }));
@@ -2106,6 +2147,16 @@ async function landEpisodeSeek(target) {
     return true;
   }
   await manager.seek(target, { precise: true });
+  render();
+  return true;
+}
+
+/** Send a native-lane nudge to the engine as its step (`seekEpisodeBy`). A
+    step that is not a number lands nowhere, as `clampEpisodeTarget` refuses
+    one on the page's own path. */
+async function landEngineNudge(deltaSec) {
+  if (!Number.isFinite(deltaSec)) return false;
+  await manager.seekBy(deltaSec);
   render();
   return true;
 }
@@ -3962,6 +4013,24 @@ async function applyEnginePending() {
   }
 }
 
+/** A hop as the engine must walk it (CH3-04, R4-01): its item through
+    `localSourceFor`, the rule a page-started play uses — a downloaded episode
+    goes out with the file in `audio_url` and the stream as
+    `source_audio_url` — because the engine walks the chain by itself
+    (Continuous playback at an end, the wheel's next/previous) with the page
+    asleep, and a hop that streamed went silent on an offline drive. Only the
+    ITEM: `lastEpisodeRow` stays continuation.js's, built from the original, so
+    the pointer the engine stores names the episode, not a file that may be
+    evicted (the rule `play()` keeps for its own pointer). A hop with no
+    download is the same object. */
+function localHop(hop) {
+  const item = hop?.item ? localSourceFor(hop.item) : null;
+  return item && item !== hop.item ? { ...hop, item } : hop;
+}
+
+/** What the engine would play for each hop of `args`, as one comparable string. */
+const planSources = (args) => JSON.stringify([...args.chain, args.previous].map((hop) => hop?.item?.audio_url ?? null));
+
 /** Send a continuation plan (§5.5), remembering the items it names. */
 function sendEnginePlan(plan) {
   const chain = Array.isArray(plan.chain) ? plan.chain : [];
@@ -3969,10 +4038,24 @@ function sendEnginePlan(plan) {
   if (current?.id && chainItems.has(current.id)) keep.set(current.id, chainItems.get(current.id));
   for (const hop of chain) if (hop?.item?.id) keep.set(hop.item.id, hop.item);
   chainItems = keep;
-  const args = { planSeq: plan.planSeq, autoAdvance: plan.autoAdvance !== false, chain };
-  if (plan.previous !== undefined) args.previous = plan.previous;
+  const args = { planSeq: plan.planSeq, autoAdvance: plan.autoAdvance !== false, chain: chain.map(localHop) };
+  if (plan.previous !== undefined) args.previous = plan.previous && localHop(plan.previous);
+  lastPlan = plan;
+  lastPlanSources = planSources(args);
   engineWalksAtEnd = args.autoAdvance;
   return engine.send("setContinuation", args, { source: "restore" }).then((r) => r.ok === true);
+}
+
+/** The downloads record changed (`cp_downloads`, written through the store
+    published on `window.forayDownloads`): re-send the current plan when that
+    moved what the engine would play for a hop — a file landed or left — and
+    send nothing for a progress tick or an episode in no hop. Native lane only:
+    the JS lane asks EPISODE_NAVIGATION when it needs the answer. */
+function resendPlanIfSourcesMoved() {
+  if (engineMode !== "native" || !lastPlan) return;
+  const chain = Array.isArray(lastPlan.chain) ? lastPlan.chain : [];
+  const args = { chain: chain.map(localHop), previous: lastPlan.previous && localHop(lastPlan.previous) };
+  if (planSources(args) !== lastPlanSources) sendEnginePlan(lastPlan).catch(() => {});
 }
 
 /** The voice preview as an engine command: `{ok: true, voiceFallback}` or
@@ -4383,7 +4466,8 @@ function bind() {
 
   document.addEventListener("visibilitychange", () => {
     /* Native mode: tell the engine (it gates its events on this, §5.4), and on
-       the way back ATTACH — a read, never a command (W-8). */
+       the way back ATTACH — a read, never a command (W-8). The first answer
+       went right after hello (onEngineDecision, CH3-23). */
     if (engineMode === "native" && engine) {
       const visible = !document.hidden;
       engine.setVisible(visible)
@@ -4739,11 +4823,11 @@ function localSourceFor(item, opts) {
     the bar says why, the earcon sounds, and `onMissing(id, { offline: true })`
     has app.js mark the record and move Up Next on (`advanceQueueOnEnded`, the
     natural end's own rule) — returns `false`: this item did not start, and
-    nothing is owed for it. Both lanes come here, by different roads: the JS
-    manager fails a load INSIDE `play()` (it rejects, or lands `idle`), and
-    `play()` or `reportPlayFailure` calls this; the native engine fails it
-    AFTER `play()` has returned (its `error` event, code "load"), and
-    `settleEngineLocalLoad` calls this over the ticket `play()` held for it.
+    nothing is owed for it. The JS manager fails a load INSIDE `play()` (it
+    rejects, or lands `idle`), and `play()` or `reportPlayFailure` calls
+    this. The native engine fails it AFTER `play()` has returned and streams
+    it by itself (CH3-12), so its lane comes here only OFFLINE, for the drop
+    (`engineFileMissing`, over the ticket `play()` held for it).
     Null when there is no ticket — the retry already ran, or the current play
     never chose a file — so nothing here can call itself twice. */
 function degradeLocalPlay() {
@@ -4763,38 +4847,57 @@ function degradeLocalPlay() {
 
 /** The native engine's word on the downloaded copy `play()` left it loading
     (the ticket `play()` HELD past `loadingItem`; review of offline-missing-file).
-    Called with every engine event in native mode.
-    - `error` with code "load" while the ticket names the current episode: the
-      file was not there. `degradeLocalPlay` — online the stream retry (and a
-      retry that fails is painted, as `reportPlayFailure` chains it), offline
-      the drop: bar line, earcon, and app.js moves Up Next on.
-    - a snapshot that says that episode is `playing` (or already `ended`): the
-      file played. The ticket is spent and app.js stamps the play
-      (`onPlayedFromFile`), exactly what `play()` does when a load has settled
-      by the time it returns.
+    Called with every engine event in native mode. It only BOOKKEEPS: the
+    engine streams a file that will not open by itself (CH3-12, R4-03:
+    EngineCore `fallBackToStream`), because the page may be asleep when it
+    fails.
+    - `error` with code "load" while the ticket names the current episode, or
+      a snapshot of that episode whose `lastError` is "load": the file was not
+      there (`engineFileMissing`). The snapshot is how a page that was ASLEEP
+      learns it: the bridge drops every event while the page is hidden, and
+      the snapshot it reads on its way back (`attachEngine`) still says it,
+      because `lastError` means the current item (the bridge ends it with
+      every start; R1-17). Without it the stream's `playing` snapshot below
+      would stamp the missing file as played.
+    - a snapshot that says that episode is `playing` (or already `ended`)
+      with no error: the file played. The ticket is spent and app.js stamps
+      the play (`onPlayedFromFile`), exactly what `play()` does when a load
+      has settled by the time it returns.
     Anything else leaves the ticket alone: `loadingItem` is still going, and
-    `idle` is what the engine snapshots JUST BEFORE its load error (the
-    snapshot comes first, native-engine.js), so idle must not spend it. A
+    an `idle` snapshot with no error says nothing about the file. A
     `chain-start` error is a hop the engine walked, never this play. */
 function settleEngineLocalLoad(ev) {
   const attempt = localAttempt;
   if (!attempt || current?.id !== attempt.item.id) return;
   if (ev?.type === "error") {
-    if (ev.code !== "load") return;
-    const retry = degradeLocalPlay();
-    if (retry && typeof retry.then === "function") {
-      retry.then(
-        (ok) => { if (!ok) ForayPlayer.reportPlayFailure(null); },
-        (e) => ForayPlayer.reportPlayFailure(e),
-      );
-    }
+    if (ev.code === "load") engineFileMissing();
     return;
   }
   if (ev?.type !== "snapshot") return;
   const s = ev.snapshot;
-  if (s?.itemId !== attempt.item.id || (s.state !== "playing" && s.state !== "ended")) return;
+  if (s?.itemId !== attempt.item.id) return;
+  if (s.lastError === "load") return engineFileMissing();
+  if (s.state !== "playing" && s.state !== "ended") return;
   localAttempt = null;
   try { window.forayDownloads?.onPlayedFromFile?.(attempt.item.id); } catch (_) { /* the record is app.js's; the play already started */ }
+}
+
+/** The engine could not open the downloaded copy the held ticket names
+    (CH3-12). #29's rule (`missingFileAction`) still decides, but online the
+    stream is already the ENGINE's — it loads `source_audio_url` itself — so
+    the page only spends the ticket and has app.js mark the record ("streaming
+    instead"); a second stream started here would only fight the engine's.
+    Offline is `degradeLocalPlay`'s drop, as in the JS lane: the engine cannot
+    know it is offline, and moving Up Next on supersedes a stream that could
+    only time out. */
+function engineFileMissing() {
+  if (downloadStore.missingFileAction({ online: browserOnline() }) === downloadStore.MISSING_DROP) {
+    degradeLocalPlay();
+    return;
+  }
+  const attempt = localAttempt;
+  localAttempt = null;
+  try { window.forayDownloads?.onMissing?.(attempt.item.id); } catch (_) { /* the record is app.js's; the engine streams it */ }
 }
 
 /* The earcon (#29; docs/brief/04_VOICE_AUDIO_SPEC.md: "Confirmations are

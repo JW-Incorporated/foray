@@ -45,8 +45,8 @@
  *
  * Node only, no dependencies: it runs on Windows as `node` does anywhere. */
 
-import { readFileSync, realpathSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readFileSync } from "node:fs";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { NARRATION_FALLBACK_CAUSES } from "../../player/engine-vocabulary.js";
 
@@ -1569,7 +1569,4 @@ export function main(argv, { readFile = (p) => readFileSync(p, "utf8"), stdout =
   return strict && strictFailed(a) ? 1 : 0;
 }
 
-const invoked = (() => {
-  try { return process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
-})();
-if (invoked) process.exitCode = main(process.argv.slice(2));
+if (isEntryScript(import.meta.url)) process.exitCode = main(process.argv.slice(2));

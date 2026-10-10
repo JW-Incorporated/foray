@@ -3,7 +3,7 @@
   "families": {
     "compare": {
       "files": {
-        "player/parity/fixtures/compare/compare.json": "ff4f61e99859b3b1b1d09ae752d63cc10927a7d6ff62a9ab530859cc3cc83bd7"
+        "player/parity/fixtures/compare/compare.json": "0d16a868293f54c76b28b01e6cef0c24c4271e964ed1564fdc22fafcda523197"
       },
       "ids": [
         "compare/equal-return",
@@ -29,6 +29,7 @@
         "compare/differences-in-sorted-key-order",
         "compare/native-tokens-stripped-from-ops",
         "compare/native-tokens-kept-in-prepare",
+        "compare/native-tokens-kept-in-native-episode",
         "compare/native-tokens-stripped-in-a-nested-op-log",
         "compare/only-an-ops-key-strips",
         "compare/without-options-ops-strip",
@@ -110,7 +111,7 @@
     },
     "contract": {
       "files": {
-        "player/parity/fixtures/contract/contract.json": "e2d988902254b0508b983187b70e7bdd5b45bbfef5db3214e115d16c9e6c554f"
+        "player/parity/fixtures/contract/contract.json": "3e693f765df018caa54f503906e8c63501d9f0de3e68ef2c895e072cf8cf5d89"
       },
       "ids": [
         "contract/bridge-methods",
@@ -816,7 +817,7 @@
     "manager-episode": {
       "files": {
         "player/parity/fixtures/manager-episode/last-episode-row.json": "a21f5bf2c1cc037c4d84285d9d3dbb9f6ad0b5b87a6c3f36c8e2943cfb5fa454",
-        "player/parity/fixtures/manager-episode/scenarios.json": "3c14b3eaaf40bf256f5ed0760be99db8f557ae9b5b50e848294deb75d6ad5a2c"
+        "player/parity/fixtures/manager-episode/scenarios.json": "a2d80442677a58d7f1529363c51bc2392032ea7041686c4a236bc066650d0827"
       },
       "ids": [
         "manager-episode/last-episode-row-full-snapshot",
@@ -838,6 +839,7 @@
         "manager-episode/interruption-step-back-stops-at-the-in-point",
         "manager-episode/a-lost-route-pauses",
         "manager-episode/a-lost-route-is-not-resumed-by-a-later-call",
+        "manager-episode/a-route-flap-during-a-call-still-resumes",
         "manager-episode/a-listeners-pause-is-not-resumed-by-a-call",
         "manager-episode/a-foreground-reconcile-is-not-resumable",
         "manager-episode/an-observed-pause-stays-resumable",
@@ -1134,7 +1136,7 @@
     },
     "media-episode": {
       "files": {
-        "player/parity/fixtures/media-episode/media-actions.json": "334f3d62f2e5f8f67f87d3f6c0915e512e6bce29baf07261f0e5295b1836967b",
+        "player/parity/fixtures/media-episode/media-actions.json": "02e5949b5185d14cac7cd04aa416ab6869e23b12eba98d7b787f80cbb3dff234",
         "player/parity/fixtures/media-episode/media-mapping.json": "5d254e32b9c0e040a594b03be24a81bf43b26af0414e79a61afc09a45ea8a0a5"
       },
       "ids": [
@@ -1156,6 +1158,15 @@
         "media-episode/actions-seekto-unusable-time-does-nothing",
         "media-episode/actions-seekto-zero-is-honoured",
         "media-episode/actions-stop-carries-only-close",
+        "media-episode/availability-speaker-keeps-the-skip-pair-with-up-next",
+        "media-episode/availability-car-route-gets-the-track-pair",
+        "media-episode/availability-track-route-no-next-offers-previous-only",
+        "media-episode/availability-next-ignores-auto-advance",
+        "media-episode/availability-ended-episode-keeps-its-targets",
+        "media-episode/availability-foray-on-speaker-keeps-the-skip-pair",
+        "media-episode/availability-foray-on-track-route-gets-the-track-pair",
+        "media-episode/availability-finished-foray-enables-nothing-and-clears",
+        "media-episode/availability-nothing-loaded-enables-nothing-and-clears",
         "media-episode/artwork-url-https-apple",
         "media-episode/artwork-url-https-query-fragment",
         "media-episode/artwork-url-data-image",
@@ -1264,6 +1275,24 @@
         "media-episode/seek-backward-is-15",
         "media-episode/seek-forward-is-30",
         "media-episode/media-actions-vocabulary"
+      ]
+    },
+    "native-episode": {
+      "files": {
+        "player/parity/fixtures/native-episode/wheel.json": "f07b686383bf4a475c44d6a4b99d2fb01bd1252d4e276d72222b0f2688c47977"
+      },
+      "ids": [
+        "native-episode/toggle-pauses-a-deck-audible-behind-a-paused-machine",
+        "native-episode/a-repeated-toggle-is-never-dropped",
+        "native-episode/a-car-play-with-nothing-current-is-refused",
+        "native-episode/back-15-during-a-cold-load-steps-from-the-resume-point-not-the-head-units-interval",
+        "native-episode/forward-30-ignores-the-head-units-interval",
+        "native-episode/a-lock-screen-scrub-seeks-to-its-target",
+        "native-episode/a-load-deadline-on-an-episode-stops-with-its-cause",
+        "native-episode/a-remote-play-opens-grace-and-the-play-closes-it",
+        "native-episode/grace-expiry-writes-its-stop-row-before-the-grace-end",
+        "native-episode/a-relinquish-writes-its-stop-row-first",
+        "native-episode/a-teardown-writes-the-relinquish-stop-row"
       ]
     },
     "number-format": {
@@ -1404,7 +1433,7 @@
     },
     "queue-state": {
       "files": {
-        "player/parity/fixtures/queue-state/queue-state.json": "4df9d1b0e362130491fad057544179b395cf733e891cfb0a5d641126edc8da51"
+        "player/parity/fixtures/queue-state/queue-state.json": "0476e86eb9232eba304211b3ced90eb4badb42e3060b292feb45107003ae2fde"
       },
       "ids": [
         "queue-state/play-from-idle",
@@ -1426,12 +1455,16 @@
         "queue-state/interruption-ended-stays-paused",
         "queue-state/manual-play-from-paused-but-ready",
         "queue-state/interruption-began-during-load",
+        "queue-state/stray-item-loaded-after-interruption-during-load",
+        "queue-state/interruption-during-load-then-ended-should-resume",
         "queue-state/interruption-began-idempotent",
         "queue-state/route-lost-while-playing",
         "queue-state/route-lost-mid-transition",
         "queue-state/route-available-does-not-resume",
         "queue-state/route-lost-during-load",
         "queue-state/stray-item-loaded-after-route-lost",
+        "queue-state/call-began-after-route-lost-during-load",
+        "queue-state/call-ended-should-resume-after-route-lost-during-load",
         "queue-state/play-while-playing-other-forces-pause",
         "queue-state/play-same-item-while-playing-no-op",
         "queue-state/play-while-transitioning-forces-pause",
@@ -2114,7 +2147,7 @@
     },
     "snapshot": {
       "files": {
-        "player/parity/fixtures/snapshot/snapshot.json": "980da72f8c0d86fc8c1a1e726055d277d98b07f0e8328836fe218b3f46488f82"
+        "player/parity/fixtures/snapshot/snapshot.json": "c970a5346b4fe26980a79ac1024ba5dab0de4e2e9babe3c89097be2b486d50c3"
       },
       "ids": [
         "snapshot/snapshot-modes",
@@ -2123,6 +2156,7 @@
         "snapshot/snapshot-valid-playing",
         "snapshot/snapshot-valid-idle",
         "snapshot/snapshot-valid-foray-narration",
+        "snapshot/snapshot-valid-foray-voice-fallback",
         "snapshot/snapshot-valid-interrupted",
         "snapshot/snapshot-invalid-missing-session",
         "snapshot/snapshot-invalid-unknown-state",

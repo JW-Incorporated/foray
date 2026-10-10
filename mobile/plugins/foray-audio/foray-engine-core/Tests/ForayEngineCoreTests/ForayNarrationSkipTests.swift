@@ -46,14 +46,16 @@ final class ForayNarrationSkipTests: XCTestCase {
         ForayTapeTests.clip(4, "c", 500, 600)
     ]
 
-    static func back(_ sec: Double = 15) -> EngineInput { .remote(RemotePress(.skipBackward, value: sec)) }
-    static func forward(_ sec: Double = 30) -> EngineInput { .remote(RemotePress(.skipForward, value: sec)) }
+    /// A car's skip carries no interval: no host forwards one, and the core
+    /// steps `MediaMapping.SeekSteps` whatever a press says (CH3-20, R3-08).
+    static func back() -> EngineInput { .remote(RemotePress(.skipBackward)) }
+    static func forward() -> EngineInput { .remote(RemotePress(.skipForward)) }
     static func scrub(_ sec: Double) -> EngineInput { .remote(RemotePress(.changePlaybackPosition, value: sec)) }
 
     /// The one load a press made, as (item, second).
     static func load(_ out: [EngineCommand]) -> (String, Double)? {
         let loads: [(String, Double)] = out.compactMap {
-            if case let .deck(.load(_, itemId, _, startSec, _, _)) = $0 { return (itemId, startSec) }
+            if case let .deck(.load(_, itemId, _, startSec, _, _, _)) = $0 { return (itemId, startSec) }
             return nil
         }
         return loads.count == 1 ? loads[0] : nil

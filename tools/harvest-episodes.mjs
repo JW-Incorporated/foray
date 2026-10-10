@@ -1,21 +1,22 @@
 /* Full episode archives for the top-N shows. The iTunes API caps episode
    lookups at ~300; the public RSS feed IS the complete catalog (modulo
-   publisher-side feed caps, which we measure and flag per show).
+   publisher-side feed caps: each show row records episode_count_in_feed; the
+   `feed_capped_suspect` guess it once carried had no reader and was removed,
+   code-health-2 T1-18).
 
    Usage: node tools/harvest-episodes.mjs [--top N] [--out path]           */
 
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
+import { isEntryScript } from "./ci/entry.mjs";
 import { UA } from "./segments/politeness.mjs";
 import { durationMinutes } from "./refresh/enclosure.mjs";
+import { fetchFeedCapped } from "./refresh/fetch-limits.mjs";
+import { text, feedParser } from "./refresh/feed-xml.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-// reuse the backend's battle-tested lenient XML parser
-const backendRequire = createRequire(join(ROOT, "backend", "package.json"));
-const { XMLParser } = backendRequire("fast-xml-parser");
 
 const THROTTLE_MS = 2500;
 const args = process.argv.slice(2);
@@ -28,44 +29,57 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 async function fetchText(url, attempt = 1) {
   await sleep(THROTTLE_MS);
   try {
-    const res = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow" });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.text();
+    // Capped and timed (code-health-2 T1-05): a timeout takes the same retry
+    // ladder as a network error; an oversize body is final, not retried.
+    return await fetchFeedCapped(url, { headers: { "User-Agent": UA } });
   } catch (e) {
-    if (attempt >= 3) throw e;
+    if (attempt >= 3 || e.code === "TOO_LARGE") throw e;
     await sleep(THROTTLE_MS * Math.pow(2, attempt));
     return fetchText(url, attempt + 1);
   }
 }
 
-const text = (v) => (v == null ? null : typeof v === "object" ? (v["#text"] ?? null) : String(v));
+/** One RSS `<item>` (fast-xml-parser's shape) -> one archive episode. */
+export function episodeOf(it) {
+  const enc = it.enclosure || {};
+  const desc = text(it.description) || text(it["itunes:summary"]) || "";
+  return {
+    guid: text(it.guid),
+    title: text(it.title),
+    published_at: (() => {
+      // malformed pubDates exist in real feeds — never let one kill a show
+      try { const d = new Date(it.pubDate); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
+      catch (_) { return null; }
+    })(),
+    duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
+    enclosure_url: enc["@_url"] ?? null,
+    link: text(it.link),
+    episode: it["itunes:episode"] ?? null,
+    season: it["itunes:season"] ?? null,
+    description: String(desc).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 280),
+  };
+}
 
-function parseFeed(xml) {
-  const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "@_", trimValues: true });
-  const doc = parser.parse(xml);
+/** A feed's episodes, or null when the document is not RSS. */
+export function parseFeed(xml) {
+  // the backend's lenient XML parser, configured once (refresh/feed-xml.mjs)
+  const doc = feedParser().parse(xml);
   const channel = doc?.rss?.channel;
   if (!channel) return null;
   let items = channel.item || [];
   if (!Array.isArray(items)) items = [items];
-  return items.map(it => {
-    const enc = it.enclosure || {};
-    const desc = text(it.description) || text(it["itunes:summary"]) || "";
-    return {
-      guid: text(typeof it.guid === "object" ? it.guid["#text"] ?? it.guid : it.guid),
-      title: text(it.title),
-      published_at: (() => {
-        // malformed pubDates exist in real feeds — never let one kill a show
-        try { const d = new Date(it.pubDate); return isNaN(d) ? null : d.toISOString().slice(0, 10); }
-        catch (_) { return null; }
-      })(),
-      duration_min: durationMinutes(it["itunes:duration"]),   // one parser (arch-drift-5)
-      enclosure_url: enc["@_url"] ?? null,
-      link: text(it.link),
-      episode: it["itunes:episode"] ?? null,
-      season: it["itunes:season"] ?? null,
-      description: String(desc).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 280),
-    };
-  }).filter(e => e.title);
+  return items.map(episodeOf).filter(e => e.title);
+}
+
+/** One harvested show's archive row. */
+export function harvestedShow({ id, title, feed_url, rank, episodes, now = new Date() }) {
+  return {
+    apple_collection_id: id, title, feed_url,
+    chart_rank_overall: rank,
+    episode_count_in_feed: episodes.length,
+    harvested_at: now.toISOString(),
+    episodes,
+  };
 }
 
 function loadCkpt() {
@@ -106,14 +120,7 @@ async function main() {
       const xml = await fetchText(feed_url);
       const episodes = parseFeed(xml);
       if (!episodes) throw new Error("unparseable feed");
-      ckpt.shows.push({
-        apple_collection_id: id, title, feed_url,
-        chart_rank_overall: topIds.indexOf(id) + 1,
-        episode_count_in_feed: episodes.length,
-        feed_capped_suspect: episodes.length > 0 && episodes.length <= 105 && /daily|news/i.test(title || "") === false && episodes.length % 50 === 0,
-        harvested_at: new Date().toISOString(),
-        episodes,
-      });
+      ckpt.shows.push(harvestedShow({ id, title, feed_url, rank: topIds.indexOf(id) + 1, episodes }));
       console.log(`   ${i + 1}/${topIds.length} ${title}: ${episodes.length} episodes`);
     } catch (e) {
       ckpt.shows.push({ apple_collection_id: id, title, feed_url, error: e.message, harvested_at: new Date().toISOString(), episodes: [] });
@@ -136,4 +143,6 @@ async function main() {
   console.log("ARCHIVE_COMPLETE");
 }
 
-main().catch(e => { console.error("FATAL:", e); process.exit(1); });
+if (isEntryScript(import.meta.url)) {
+  main().catch(e => { console.error("FATAL:", e); process.exit(1); });
+}

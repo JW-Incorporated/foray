@@ -45,8 +45,9 @@
    only that field.                                                           */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "./ci/entry.mjs";
 import { UA } from "./segments/politeness.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -63,6 +64,19 @@ export const LOOKUP_BATCH = 150;
 
 /** A usable chart position: a finite number > 0 (the same test every consumer applies). */
 export const isChartRank = (raw) => raw !== null && raw !== undefined && Number.isFinite(Number(raw)) && Number(raw) > 0;
+
+/** The breadth rank join both builders read (tools/build-show-index.mjs,
+    tools/build-catalog-client.mjs): String(apple_collection_id) -> the usable
+    rank as a number. Every row counts, `in_curated` or not — the curated
+    shows' twins ARE the in_curated rows. `breadth` null joins nothing. One
+    join, so the TSV and the client JSON cannot disagree about a rank. */
+export function rankByAppleId(breadth) {
+  const ranks = new Map();
+  for (const row of breadth?.shows ?? []) {
+    if (isChartRank(row?.chart_rank)) ranks.set(String(row?.apple_collection_id), Number(row.chart_rank));
+  }
+  return ranks;
+}
 
 /** `row` with its keys in canonical order: ROW_KEYS first, then the rest as they were. */
 export function canonicalRow(row) {
@@ -210,18 +224,40 @@ export async function writeMergedHarvest(harvest, { outPath, replace = false, cu
   return doc;
 }
 
-/** A fetch that sleeps THROTTLE_MS before every request and records request start times. */
-export function politeFetchJson({ sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = [] } = {}) {
+/**
+ * THE fetcher for Apple's iTunes endpoints (`lookup`, the genre tree, the top
+ * charts). tools/harvest-catalog.mjs, tools/refresh/backfill-artwork.mjs and
+ * this file's --backfill-artist all use it, so there is one retry policy
+ * (CH2-32; before it there were three: one retried a 404 four times, one never
+ * retried at all):
+ *   - sleep THROTTLE_MS before EVERY request (docs/CATALOG-PIPELINE.md
+ *     politeness) and push its start time onto `log`;
+ *   - 429, 5xx and a thrown fetch (DNS blip, reset) are retried, up to 4
+ *     attempts, after a THROTTLE_MS * 2^attempt backoff (6 s, 12 s, 24 s);
+ *   - any other non-2xx — a malformed id batch is Apple 400 — fails on the
+ *     first attempt: asking again cannot fix the request.
+ * `warn(message)` hears each backoff (the harvester prints them).
+ */
+export function politeFetchJson({ sleep = (ms) => new Promise((r) => setTimeout(r, ms)), log = [], warn = () => {} } = {}) {
   const fetchJson = async (url, attempt = 1) => {
     await sleep(THROTTLE_MS);
     log.push(Date.now());
-    const res = await fetch(url, { headers: { "User-Agent": UA } });
-    if ((res.status === 429 || res.status >= 500) && attempt < 4) {
-      await sleep(THROTTLE_MS * 2 ** attempt);
-      return fetchJson(url, attempt + 1);
+    let res;
+    try {
+      res = await fetch(url, { headers: { "User-Agent": UA } });
+    } catch (e) {
+      if (attempt >= 4) throw e;
+      return retry(url, attempt, e.message);
     }
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+    if ((res.status === 429 || res.status >= 500) && attempt < 4) return retry(url, attempt, `HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}${attempt > 1 ? ` after ${attempt} tries` : ""}: ${url}`);
     return res.json();
+  };
+  const retry = async (url, attempt, why) => {
+    const backoff = THROTTLE_MS * 2 ** attempt;
+    warn(`  ${why} -> backing off ${backoff}ms`);
+    await sleep(backoff);
+    return fetchJson(url, attempt + 1);
   };
   return fetchJson;
 }
@@ -258,6 +294,6 @@ async function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).then((code) => { process.exitCode = code; }, (e) => { console.error("FATAL:", e); process.exitCode = 1; });
 }

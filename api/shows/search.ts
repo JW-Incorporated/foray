@@ -1,9 +1,9 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
-import { loadBreadthCatalog } from "../../backend/src/catalog/breadthCatalog";
+import { showById, searchableShows } from "../_lib/showCatalog";
 import { applyCors } from "../_lib/cors";
-import { firstParam } from "../_lib/params";
+import { firstParam, parseLimit, requireQuery, type ApiRequest, type ApiResponse } from "../_lib/params";
 import { appleShowSearch, mergeDirectoryShows } from "../_lib/appleShowSearch";
-import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY_TOO_LONG_ERROR, QUERY_TOO_SHORT_ERROR } from "../_lib/clientLimit";
+import { clientKey, normalizeSearchText, QUERY_MIN_CHARS, QUERY_TOO_SHORT_ERROR } from "../_lib/clientLimit";
 
 /**
  * GET /api/shows/search?q=<query>&limit=<n> — the backend half of A3.1/Q3
@@ -41,9 +41,9 @@ import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY
  *     search response this session — so a cold open on `#/show/1234567890`, a
  *     shared link, a reload or a restored tab rendered "Show not found." This
  *     returns the single merged-catalogue row for an id. It is a LOOKUP, not a
- *     scan: `loadBreadthCatalog()` is already resident (module-scope cache) and
- *     an id index is built once beside it. `q` and `id` are mutually
- *     exclusive; neither present is still a 400.
+ *     scan: the catalogue is already resident (module-scope cache) and an
+ *     id index is built once beside it (api/_lib/showCatalog.ts). `q` and
+ *     `id` are mutually exclusive; neither present is still a 400.
  *
  *     WHICH PATH WINS, and the card asks for this to be said rather than
  *     assumed: once S-03's index is on the device it can answer most of these
@@ -120,6 +120,30 @@ import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY
  *         worst band, which cost exactly the chart_rank 101-200 shows that the
  *         client's `<=100` index cut means only this endpoint has.
  *
+ * (5) ONE CATALOGUE, AND ONLY SHOWS WITH A FEED IN THE RESULTS (code-health-2
+ *     CH2-24, B1-02, A1-02). Both modes read `api/_lib/showCatalog.ts`, the
+ *     reader the episode endpoints use, so an id means the same show
+ *     everywhere:
+ *       - `?id=` answers an `in_curated` breadth row's numeric id with its
+ *         curated TWIN (it used to say `show: null` while both episode
+ *         endpoints served that id);
+ *       - `?q=` searches `searchableShows()`, the catalogue without the
+ *         shows that have no `feed_url`, BEFORE the `limit` cut, and the
+ *         `fallthrough=1` directory pass drops Apple's row for such a show
+ *         (same collectionId, so nothing in the reply would dedup it). A
+ *         feed-less breadth show used to be offered here and then 404 on
+ *         its episode list (89 of them on 2026-10-07). `?id=` still answers
+ *         such a row: a link to one renders the show and says what it is.
+ *         The alternative, keeping them in results with an honest "no feed"
+ *         state, is founder question 5 in docs/roadmap/code-health-2.md.
+ *         THIS ENDPOINT no longer offers them; the LISTENER still can see
+ *         37 of the 89, because the client paints its own index
+ *         (data/show-index.tsv, built by tools/build-show-index.mjs) first
+ *         and that builder does not apply the feed_url rule yet. That is a
+ *         follow-up outside this card, so B1-02 is not closed by it.
+ *     The catalogue files unavailable is the degraded answer of (3) and the
+ *     catch below, for both modes.
+ *
  * MEASURED, AND THE SOURCE SHOULD NOT MISLEAD THE NEXT READER: the success
  * header below sets `public, max-age=300, stale-while-revalidate=3600`, and the
  * response as received from production carries only `public, max-age=300`.
@@ -133,36 +157,6 @@ import { clientKey, normalizeSearchText, QUERY_MAX_CHARS, QUERY_MIN_CHARS, QUERY
  * against it without re-measuring.
  */
 
-interface ApiRequest {
-  method?: string;
-  query: Record<string, string | string[] | undefined>;
-  headers: Record<string, string | string[] | undefined>;
-}
-interface ApiResponse {
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-  setHeader(name: string, value: string): void;
-  end(): void;
-}
-
-/** The id -> row index over the merged catalogue, built once per warm
-    instance beside `loadBreadthCatalog`'s own module-scope cache. Rebuilt when
-    the catalogue array identity changes, which is the only way that cache can
-    be invalidated (`FORAY_SKIP_CATALOGUE_CACHE=1` in tests) — keying on
-    identity rather than on a boolean means this can never go stale against a
-    reloaded catalogue without anyone remembering to clear it. */
-let idIndex: Map<string, ReturnType<typeof loadBreadthCatalog>[number]> | null = null;
-let idIndexSource: ReturnType<typeof loadBreadthCatalog> | null = null;
-
-function showByIdFromCatalog(id: string) {
-  const catalog = loadBreadthCatalog();
-  if (idIndex === null || idIndexSource !== catalog) {
-    idIndex = new Map(catalog.map((s) => [s.show_id, s]));
-    idIndexSource = catalog;
-  }
-  return idIndex.get(id) ?? null;
-}
-
 export default async function handler(req: ApiRequest, res: ApiResponse): Promise<void> {
   if (applyCors(req, res)) return; // OPTIONS preflight already answered
 
@@ -171,21 +165,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  const q = firstParam(req.query.q);
   const id = firstParam(req.query.id);
 
   /* MUTUALLY EXCLUSIVE, and rejected rather than silently preferred. Answering
      one and ignoring the other would make a caller's bug look like a working
      request returning the wrong thing — the hardest kind to notice from the
      client side. */
-  if (q && id) {
+  if (firstParam(req.query.q) && id) {
     res.status(400).json({ error: "q and id are mutually exclusive" });
     return;
   }
 
   if (id && id.trim()) {
     try {
-      const show = showByIdFromCatalog(id.trim());
+      const show = showById(id.trim());
       /* A genuinely unknown id is a 200 with `show: null`, NOT a 404: "this id
          is not in our catalogue" is a real, renderable answer (app.js's own
          "Show not found." state), and a 404 would make `fetchApiJson` — which
@@ -200,23 +193,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return;
   }
 
-  if (!q || !q.trim()) {
-    res.status(400).json({ error: "q or id is required" });
-    return;
-  }
-  if (q.length > QUERY_MAX_CHARS) {
-    res.status(400).json({ error: QUERY_TOO_LONG_ERROR });
-    return;
-  }
+  const q = requireQuery(req, res, { missing: "q or id is required" });
+  if (q === null) return; // the 400 is already answered
 
-  const limitParam = firstParam(req.query.limit);
-  const parsedLimit = limitParam ? Number.parseInt(limitParam, 10) : NaN;
-  const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 25;
+  const limit = parseLimit(req.query.limit);
   const fallthroughAsked = firstParam(req.query.fallthrough) === "1";
 
   let results;
   try {
-    results = searchBreadthShows(q, limit);
+    results = searchBreadthShows(q, limit, searchableShows());
   } catch {
     // A missing/corrupt catalogue file degrades to an honest empty result,
     // never a 500 — the client's local catalog-client.json first pass still
@@ -254,7 +239,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
        never `[]`. Before P-02 this line read `shows: apple.shows`, which was
        only safe because `results.length === 0` was a precondition; with the
        gate gone that would have dropped the catalogue on every Apple failure. */
-    const shows = mergeDirectoryShows(results, apple.shows);
+    /* NOT A SIDE DOOR FOR A FEED-LESS SHOW (CH2-24, B1-02). Apple's row for a
+       show carries its collectionId as `show_id`, which is the feed-less
+       breadth row's id too. The catalogue pass left that row out, so the
+       merge has nothing to dedup Apple's twin of it against: drop any
+       directory row whose id the catalogue knows but cannot list. */
+    const directory = apple.shows.filter((row) => {
+      const known = showById(row.show_id);
+      return !known || known.feed_url !== null;
+    });
+    const shows = mergeDirectoryShows(results, directory);
     const source: string[] = [];
     if (results.length) source.push("catalogue");
     if (shows.length > results.length) source.push("apple");

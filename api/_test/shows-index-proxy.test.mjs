@@ -7,12 +7,13 @@ import * as path from "node:path";
 import * as os from "node:os";
 import * as zlib from "node:zlib";
 import * as indexModule from "../shows/index/[...path].ts";
+import {
+  resolveUpstreamAsset, isGzippedAsset, IndexPathError, _setPointerPathForTests,
+  shardKeyFromRequestPath, resolveShardRelease, _setUpstreamTimeoutMsForTests,
+  MAX_UPSTREAM_BYTES, MAX_DECOMPRESSED_BYTES,
+} from "../_lib/showsIndexRelease.ts";
 
 const handler = typeof indexModule.default === "function" ? indexModule.default : indexModule.default.default;
-const {
-  resolveUpstreamAsset, isGzippedAsset, IndexPathError, _setPointerPathForTests,
-  shardKeyFromRequestPath, resolveShardRelease,
-} = indexModule;
 
 function mockRes() {
   const headers = {};
@@ -382,7 +383,7 @@ const manifestReq = () => ({ method: "GET", query: { path: ["manifest.json"] }, 
 test("a hung upstream is abandoned at the deadline as a 502, never held until the platform kills it", async () => {
   /* MUTATION: drop the AbortController signal from the upstream fetch — the
      request never settles and this test times out. */
-  indexModule._setUpstreamTimeoutMsForTests(30);
+  _setUpstreamTimeoutMsForTests(30);
   try {
     await withPointerFile(TOP, () =>
       withMockedFetch(
@@ -404,7 +405,7 @@ test("a hung upstream is abandoned at the deadline as a 502, never held until th
       )
     );
   } finally {
-    indexModule._setUpstreamTimeoutMsForTests();
+    _setUpstreamTimeoutMsForTests();
   }
 });
 
@@ -431,7 +432,7 @@ test("a body that fails mid-read is the endpoint's 502, not an unhandled 500", a
 test("an upstream body over the byte cap, or one that declares it, is refused as a 502", async () => {
   await withPointerFile(TOP, () =>
     withMockedFetch(
-      async () => new Response("{}", { status: 200, headers: { "content-length": String(indexModule.MAX_UPSTREAM_BYTES + 1) } }),
+      async () => new Response("{}", { status: 200, headers: { "content-length": String(MAX_UPSTREAM_BYTES + 1) } }),
       async () => {
         const res = mockRes();
         await handler(manifestReq(), res);
@@ -444,7 +445,7 @@ test("an upstream body over the byte cap, or one that declares it, is refused as
 
 test("a shard that inflates past the decompression cap is refused as a 502", async () => {
   /* MUTATION: drop maxOutputLength from gunzipSync — the bomb inflates. */
-  const bomb = zlib.gzipSync(Buffer.alloc(indexModule.MAX_DECOMPRESSED_BYTES + 1024, 0x20));
+  const bomb = zlib.gzipSync(Buffer.alloc(MAX_DECOMPRESSED_BYTES + 1024, 0x20));
   const pointer = {
     asset_base_url: "https://example.test/rel",
     shard_releases: [{ tag: "t", asset_base_url: "https://example.test/rel", first_key: "aa", last_key: "zz", count: 1 }],

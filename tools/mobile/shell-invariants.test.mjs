@@ -1927,6 +1927,7 @@ function swiftCallersOf(code, callee) {
 }
 
 const AUDIO_SWIFT = path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/ForayAudioPlugin.swift");
+const CORE_MEDIA_MAPPING_SWIFT = path.join(PLUGIN_DIR, "foray-engine-core/Sources/ForayEngineCore/Policy/MediaMapping.swift");
 
 test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two session functions and NOWHERE on the playing path (F11/F13, 2026-09-23)", () => {
   /* Founder device diagnostics (2026-09-08/09): on iOS the play/pause button
@@ -1982,17 +1983,22 @@ test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two ses
 
 test("iOS lock-screen artwork caches only a successful load; a failure is retried after a window (audit round 3, mobile-native-6)", () => {
   /* One failed or timed-out fetch used to cache "no artwork" for that URI for
-     the rest of the item. MUTATION: put `_ = self.rememberArtwork(uri: uri,
-     image: image)` back ahead of the failure check, or drop the retry gate in
-     artworkItem. */
+     the rest of the item. Since CH3-21 both lanes load artwork through ONE
+     loader, ArtworkCache (the legacy lane's confined to its stateQueue), and
+     the retry window is its rule. MUTATION: settle a failed network load as
+     permanent again (`.infinity`, or the old `failed.insert(src)`); bring a
+     private fetch back into ForayAudioPlugin.swift; drop the window. */
   const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
-  const load = swiftFuncBody(code, "loadRemoteArtwork");
-  const fail = load.indexOf("guard image != nil else {");
-  const remember = load.indexOf("rememberArtwork(uri: uri, image: image)");
-  assert.ok(fail >= 0 && remember > fail, "a failure returns before anything is cached");
-  assert.match(load, /self\.artworkRetryAfter = \(uri: uri, at: Date\(\)\.addingTimeInterval\(Self\.artworkRetryAfterSec\)\)/);
-  assert.match(swiftFuncBody(code, "artworkItem"), /guard Self\.artworkLoadAllowed\(uri: uri, lastFailure: artworkRetryAfter, now: Date\(\)\) else \{ return nil \}\s*loadRemoteArtwork\(uri: uri, url: url\)/);
-  const after = /static let artworkRetryAfterSec: Double = (\d+)/.exec(code);
+  assert.match(code, /private lazy var artworkLoader = ArtworkCache\(queue: stateQueue\)/, "the legacy lane's loader is the engine's, on its queue");
+  assert.doesNotMatch(code, /URLSession|UIImage\(contentsOfFile:|UIImage\(data:|artworkRetryAfter|artworkTimeoutSec/,
+    "a second artwork loader (or its constants) is back in the legacy plugin");
+  const artwork = stripSwiftComments(fs.readFileSync(path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine/ArtworkCache.swift"), "utf8"));
+  const settle = swiftFuncBody(artwork, "settle") ?? "";
+  assert.match(settle, /noArtworkUntil\[src\] = retryable \? now\(\) \+ Self\.retryAfterSec : \.infinity/,
+    "a failed network load is a retry time; only an answer (unsupported, or a bundled file not there) is permanent");
+  assert.match(swiftFuncBody(artwork, "load") ?? "", /if case \.remote = source \{ retryable = true \} else \{ retryable = false \}/);
+  assert.match(swiftFuncBody(artwork, "hasNoArtwork") ?? "", /return now\(\) < until/);
+  const after = /static let retryAfterSec: Double = (\d+)/.exec(artwork);
   assert.ok(after && Number(after[1]) >= 30 && Number(after[1]) <= 60, "a 30-60 s retry window");
 });
 
@@ -2085,17 +2091,14 @@ test("the iOS re-assert survives a paused position write, and nothing on stateQu
     "the re-assert generation moves with the state, not with every position write");
   assert.equal((code.match(/reassertGeneration &\+= 1/g) ?? []).length, 1);
   assert.doesNotMatch(code, /Data\(contentsOf:/, "a synchronous network load on stateQueue");
+  /* CH3-21: the artwork is the shared ArtworkCache's (bounded at 10 s whole,
+     pinned by the NE-18 test below), confined to stateQueue. */
   const artwork = swiftFuncBody(code, "artworkItem");
-  assert.match(artwork, /if let cached = artworkCache, cached\.uri == uri \{ return cached\.item \}/, "the artwork is cached per URI");
-  assert.match(artwork, /loadRemoteArtwork\(uri: uri, url: url\)\s*return nil/, "a remote image never blocks the write it decorates");
-  const load = swiftFuncBody(code, "loadRemoteArtwork");
-  assert.match(load, /timeoutInterval: Self\.artworkTimeoutSec/, "the fetch is bounded");
-  assert.match(load, /URLSession\.shared\.dataTask/);
-  assert.match(load, /self\.stateQueue\.async \{[\s\S]*?rememberArtwork\(uri: uri, image: image\)[\s\S]*?self\.lastPayload\.artworkUri == uri[\s\S]*?applyNowPlayingInfo\(self\.lastPayload\)/,
-    "when it lands, the cache is filled on stateQueue and the entry re-posted if still current");
-  const timeout = /static let artworkTimeoutSec: Double = (\d+)/.exec(code);
-  assert.ok(timeout, "artworkTimeoutSec must be a whole-second literal");
-  assert.ok(Number(timeout[1]) > 0 && Number(timeout[1]) <= 15, `artwork timeout ${timeout[1]}s is not a short one`);
+  assert.match(artwork, /switch artworkLoader\.lookup\(src\) \{/, "the artwork is cached per source");
+  assert.match(artwork, /if let held = artworkObject, held\.src == src, held\.image === image \{ return held\.item \}/,
+    "a rewrite of the same picture hands the centre the same object");
+  assert.match(artwork, /case \.missing:\s*guard !artworkLoader\.isLoading\(src\) else \{ return nil \}\s*artworkLoader\.load\(src\) \{[\s\S]*?self\.lastPayload\.artworkUri == uri[\s\S]*?applyNowPlayingInfo\(self\.lastPayload\)\s*\}\s*return nil/,
+    "a missing image never blocks the write it decorates; one load, re-posted when it lands if still current");
   // The command handlers still do their work on stateQueue — the queue this test keeps clear.
   const register = swiftFuncBody(code, "registerCommandHandlers");
   assert.match(register, /playCommand\.addTarget \{ \[weak self\] _ in\s*self\?\.stateQueue\.async \{ self\?\.remotePlay\(command: "play"\) \}/);
@@ -2470,9 +2473,11 @@ test("the iOS ForayAudioPlugin writes every Lane B diagnostics fact at the site 
     emitTransport: ["transportFacts()"],
     handleRouteChange: ['"to"', '"from"', '"rawReason"', "categoryFacts()", "AVAudioSessionRouteChangePreviousRouteKey",
       "extra: facts"],
-    holdSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "noteEngineOwnedSkip(", "extra: facts"],
-    releaseSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "noteEngineOwnedSkip(", "extra: facts"],
-    noteEngineOwnedSkip: ['"skipped-engine-owned"'],
+    /* CH3-06 (R1-07): L23's `noteEngineOwnedSkip` and its
+       `skipped-engine-owned` row left with the unreachable flag guards they
+       fed (see the NE-16 test). */
+    holdSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "extra: facts"],
+    releaseSession: ['"err"', '"app"', "sessionErrorToken(", "categoryFacts()", "extra: facts"],
     handleInterruption: ['"why"', '"durMs"', "AVAudioSessionInterruptionReasonKey", "extra: extra"],
     reassertNowPlaying: ["nowPlayingFacts()"],
     nowPlayingFacts: ['"np"', '"cmds"', '"info"', "enabledCommandList("],
@@ -2859,6 +2864,7 @@ test("NE-01: the Preferences pin is test-only, cannot reach the app's package gr
     ".github/workflows/ios-build.yml",
     ".github/workflows/release.yml",
     ".github/actions/ios-archive/action.yml",
+    ".github/actions/ios-prepare/action.yml",
   ];
   for (const rel of appBuilders) {
     const abs = path.join(ROOT, rel);
@@ -3713,9 +3719,18 @@ test("NE-19: only EngineStore touches UserDefaults in the engine, its shared wri
   assert.match(purge, /EngineKeys\.sharedRowKey\(rawKey: rawKey\) != nil \|\| EngineKeys\.isPrivate\(rawKey: rawKey\)/,
     "the purge enumerates the defaults: shared engine rows and EVERY ForayEngine.* key");
   assert.match(purge, /diagnostics\.purge\(\)/, "the purge removes the ring file");
-  for (const name of ["writePosition", "writeRow", "writeRestore", "appendEvent", "emit", "diag", "flush"]) {
+  for (const name of ["writePosition", "writeRow", "writeRestore", "diag", "flush"]) {
     assert.ok(swiftFuncBody(store, name), `EngineStore has no ${name}`);
   }
+  /* CH3-24 (R1-08): the page's events have ONE way out of the host,
+     `ForayEngine.onEmit` (the bridge sets it); the pending events ride in the
+     restore record and the snapshot. The output once carried both again, to
+     an `EngineStore.onEmit`/`onPendingEvent` nobody ever set. MUTATION: put
+     `func emit(_ event: EngineEvent)` back in `protocol EngineOutput` -> red. */
+  const outputProtocol = /protocol EngineOutput: AnyObject \{([\s\S]*?)\n\}/.exec(stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8")));
+  assert.ok(outputProtocol, "Seams.swift declares protocol EngineOutput");
+  assert.doesNotMatch(outputProtocol[1], /func (emit|appendEvent)\(/, "EngineOutput carries the page's events again: they leave the host through onEmit only");
+  assert.doesNotMatch(store, /\bon(Emit|PendingEvent)\b/, "EngineStore grew a page-event hook again; the bridge hooks ForayEngine.onEmit");
   // Written synchronously: nothing in the store defers a write.
   assert.doesNotMatch(store, /DispatchQueue|asyncAfter|\.async\b|Task\s*\{|OperationQueue/, "EngineStore defers a write");
 
@@ -3767,7 +3782,13 @@ const FLAG_TTS_SWIFT = path.join(PLUGIN_DIR, "../foray-tts/ios/Sources/ForayTtsP
    plan counted seven (four setActive, three setCategory) before NE-16 moved
    ForayTts's two copies of the pair (speak, resume) into one guarded
    `claimSession()`, and load()'s category write is a fourth setCategory the
-   count missed; the rule is the same, and this table is the whole list. */
+   count missed; the rule is the same, and this table is the whole list.
+   TWO KINDS OF GATE (CH3-06, R1-07). foray-tts runs beside a live engine, so
+   its sites are FLAG-GATED on `EngineModeFlag.sessionOwnedByEngine`.
+   foray-audio's sites are OWNER-GATED: they are reachable only through
+   `runLegacyRegistration`, which EngineOwnership runs only after it handed
+   the flag back (EngineOwnershipTests' `flagAtLegacyRegistration == false`),
+   so a flag guard there could never fire and was deleted. */
 const GUARDED_SESSION_SITES = [
   ["ForayAudioPlugin.swift", "holdSession", "setActive"],
   ["ForayAudioPlugin.swift", "holdSession", "setCategory"],
@@ -3780,6 +3801,8 @@ const GUARDED_SESSION_SITES = [
   /* KV-R3's voice-probe keep-alive and WAV player (KokoroProbeMatrix.swift,
      five guarded sites) left with the probe (CH-20, issue #1076). */
 ];
+/** The files whose session sites are owner-gated rather than flag-gated. */
+const OWNER_GATED_SESSION_FILES = new Set(["ForayAudioPlugin.swift"]);
 
 /** The start offset and name of the Swift func whose body encloses offset `at`. */
 function enclosingSwiftFunc(code, at) {
@@ -3802,17 +3825,30 @@ function guardedOnEngineFlag(prefix) {
   return at >= 0 && !prefix.slice(at).includes("}");
 }
 
-test("NE-16: setActive( and setCategory( live only in AudioSessionOwner.swift and the six guarded legacy sites", () => {
+test("NE-16: setActive( and setCategory( live only in AudioSessionOwner.swift, foray-tts's two flag-gated sites and foray-audio's four owner-gated legacy sites", () => {
   /* ONE OWNER (plan §4.4). In native mode the engine's AudioSessionOwner is
-     the only code that may touch the session; the legacy hold (ForayAudio)
-     and ForayTts keep their sites for legacy mode and after a relinquish, but
-     each is guarded on `EngineModeFlag.sessionOwnedByEngine`, so with the flag
-     true they touch nothing and with it false they run exactly as build
-     2026092327. A session call anywhere else is a second owner.
+     the only code that may touch the session. ForayTts keeps its sites for
+     legacy mode and after a relinquish, guarded on
+     `EngineModeFlag.sessionOwnedByEngine`, so with the flag true they touch
+     nothing. foray-audio's legacy hold, release and category write are
+     OWNER-GATED (CH3-06): reachable only through `runLegacyRegistration`,
+     which the owner runs after handing the flag back, so they carry no flag
+     guard (the three it had could never fire: R1-07). A session call
+     anywhere else is a second owner.
+     BEFORE CH3-06 every site, foray-audio's included, had to pass
+     `guardedOnEngineFlag` ("... is not guarded on
+     EngineModeFlag.sessionOwnedByEngine — a second session owner in native
+     mode"); AFTER, foray-tts's sites still must, and foray-audio's must sit in
+     a func reachable only from the owner's registration (asserted below).
      MUTATION: add `try? AVAudioSession.sharedInstance().setActive(true)` to
      ForayTtsPlugin's stop() or to AVDeck -> the site list goes red; delete the
-     guard from holdSession, releaseSession or claimSession, or move load()'s
-     setCategory out of its `if` -> the guard assertion goes red. */
+     guard from claimSession -> the guard assertion goes red; restore a
+     `guard !EngineModeFlag.sessionOwnedByEngine` (or any EngineModeFlag read)
+     in ForayAudioPlugin.swift -> "no flag guard in foray-audio's legacy lane"
+     goes red; call holdSession from a new func, or register the session
+     observers from load() -> the reachability assertions go red; drop the
+     page-less clear from runLegacyRegistration -> the R1-02 assertion goes
+     red. */
   const roots = [
     path.join(PLUGIN_DIR, "ios/Sources"),
     path.join(PLUGIN_DIR, "../foray-tts/ios/Sources"),
@@ -3826,13 +3862,50 @@ test("NE-16: setActive( and setCategory( live only in AudioSessionOwner.swift an
       const fn = enclosingSwiftFunc(code, m.index);
       assert.ok(fn, `${path.relative(ROOT, file)}: a ${m[1]}( outside any func`);
       sites.push([path.basename(file), fn.name, m[1]]);
+      if (OWNER_GATED_SESSION_FILES.has(path.basename(file))) continue;
       assert.ok(guardedOnEngineFlag(code.slice(fn.start, m.index)),
         `${path.basename(file)} ${fn.name}(): ${m[1]}( is not guarded on EngineModeFlag.sessionOwnedByEngine — a second session owner in native mode`);
     }
   }
   const key = (site) => site.join(" ");
   assert.deepEqual(sites.map(key).sort(), GUARDED_SESSION_SITES.map(key).sort(),
-    "the legacy session sites changed; a new one needs the guard and a line in GUARDED_SESSION_SITES");
+    "the legacy session sites changed; a new one needs a gate and a line in GUARDED_SESSION_SITES");
+
+  /* foray-audio's sites, owner-gated (CH3-06). No flag guard in foray-audio's
+     legacy lane: the flag is the owner's to write (ProcessSessionOwnershipFlag,
+     EngineOwnership.swift) and foray-tts's to read. */
+  const audio = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
+  assert.doesNotMatch(audio, /\bEngineModeFlag\b/,
+    "no flag guard in foray-audio's legacy lane: it runs only after the owner handed the session back (CH3-06, R1-07)");
+  assert.doesNotMatch(audio, /skipped-engine-owned|noteEngineOwnedSkip|holdSkipped|releaseSkipped|commandsRegistered/,
+    "the L23 skip helpers and the second once-guard left with the unreachable guards (CH3-06)");
+  // Reachable only through the owner's registration.
+  assert.deepEqual(swiftCallersOf(audio, "runLegacyRegistration"), ["load"]);
+  assert.match(swiftFuncBody(audio, "load"), /owner\.pluginDidLoad\(legacyRegistration: register\)/,
+    "load() hands the registration to the owner, which runs it once the session is the legacy lane's");
+  assert.deepEqual(swiftCallersOf(audio, "holdSession"), ["applySessionMove", "handleInterruption", "handleRouteChange", "remotePlay"]);
+  assert.deepEqual(swiftCallersOf(audio, "releaseSession"), ["applySessionMove"]);
+  assert.deepEqual(swiftCallersOf(audio, "applySessionMove"), ["apply"]);
+  assert.deepEqual(swiftCallersOf(audio, "apply"), ["setNowPlaying"]);
+  assert.match(swiftFuncBody(audio, "setNowPlaying"), /guard let self, self\.legacyLane else \{ return \}\s*self\.apply\(payload\)/,
+    "the payload path reaches the session only in the legacy lane");
+  assert.deepEqual([...audio.matchAll(/\blegacyLane = true\b/g)].map((m) => enclosingSwiftFunc(audio, m.index)?.name),
+    ["runLegacyRegistration"], "only the owner's registration opens the legacy lane");
+  for (const handler of ["handleInterruption", "handleRouteChange"]) {
+    assert.deepEqual(swiftCallersOf(audio, handler), ["registerSessionObservers"], `${handler} is reached only as an observer`);
+  }
+  assert.deepEqual(swiftCallersOf(audio, "remotePlay"), ["registerCommandHandlers"]);
+  for (const registrar of ["registerSessionObservers", "registerCommandHandlers"]) {
+    assert.deepEqual(swiftCallersOf(audio, registrar), ["runLegacyRegistration"], `${registrar} runs only in the owner's registration`);
+  }
+  /* R1-02: a page-less hand-over (the hello watchdog's, to a page that never
+     said hello) clears the engine's entry, on stateQueue before the lane
+     opens; every command is disabled after (the Lane B test's
+     `applyCommandAvailability(.empty)` pin). */
+  assert.match(swiftFuncDecl(audio, "runLegacyRegistration"), /func runLegacyRegistration\(pageless: Bool\)/);
+  assert.match(swiftFuncBody(audio, "runLegacyRegistration"),
+    /^\{\s*stateQueue\.sync \{\s*if pageless \{ applyNowPlayingInfo\(\.empty\) \}\s*legacyLane = true\s*\}/,
+    "with no page, the engine's dead entry is cleared before the legacy lane opens (CH3-06, R1-02)");
 
   // The owner: category at boot with no activation, notify only when asked.
   const owner = stripSwiftComments(fs.readFileSync(OWNER_SWIFT, "utf8"));
@@ -3899,7 +3972,11 @@ test("NE-16: EngineModeFlag.swift is byte-identical in foray-audio and foray-tts
   assert.doesNotMatch(code, /\.set\(|setValue|synchronize|persistentDomain|CapacitorStorage/, "never persisted");
   const lines = code.split("\n").filter((l) => l.trim()).length;
   assert.ok(lines <= 12, `EngineModeFlag.swift is meant to stay about ten lines of code, not ${lines}`);
-  assert.match(stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
+  /* foray-audio WRITES it (the owner's ProcessSessionOwnershipFlag) and
+     foray-tts READS it; foray-audio's own legacy lane no longer reads it
+     (CH3-06: owner-gated, the NE-16 test above). */
+  const ownership = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineOwnership.swift"), "utf8"));
+  assert.match(ownership, /set \{ EngineModeFlag\.sessionOwnedByEngine = newValue \}/);
   assert.match(stripSwiftComments(fs.readFileSync(TTS_SWIFT, "utf8")), /EngineModeFlag\.sessionOwnedByEngine/);
 });
 
@@ -4263,6 +4340,34 @@ test("P-7: the shipping boot turns the CBR exemption ON; the core default stays 
   assert.match(coreSrc, /approximateCBRClips: Bool = false/, "EngineConfig.approximateCBRClips defaults OFF in the core");
 });
 
+test("CH3-19: one session phase gates every audible start (the core's), and the host passes the narrator's reading", () => {
+  /* docs/roadmap/code-health-3.md CH3-19 (R2-05, R2-08). The boot is the one
+     place the shell's audible starts are handed their gate, and no XCTest can
+     build it (it makes the real AVFoundation conformers), so its wiring is
+     pinned here; the gate itself and the owner's ruling are XCTests
+     (ForayEngineHostTests, AudioSessionOwnerTests). MUTATION: wire any
+     adapter's `sessionIsActive` to `session.phase == .active` again (the
+     owner's phase, which a late began would leave lost); drop
+     `gate.attach(engine, owner: session)` or move it after `engine.start()`;
+     pass `narrator: .unknown` (or nothing) in ForayEngine.now(). Each fails
+     here. */
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  const make = swiftFuncBody(boot, "makeEngine") ?? "";
+  assert.match(make, /let gate = EngineSessionGate\(\)/, "the boot makes the one gate");
+  assert.match(make, /let sessionIsActive = \{ gate\.isActive \}/, "the adapters' gate is the core's phase");
+  assert.doesNotMatch(make, /\.phase\b/, "nothing in the boot reads the owner's phase");
+  const handed = [...make.matchAll(/sessionIsActive:\s*([^,)\n]+)/g)].map((m) => m[1].trim());
+  assert.ok(handed.length >= 5, `the deck, the pair, the preview, the jingle, the silence node and the narrator take the gate: ${handed}`);
+  for (const arg of handed) assert.equal(arg, "sessionIsActive", `an adapter is handed ${arg} instead of the gate`);
+  const attach = make.indexOf("gate.attach(engine, owner: session)");
+  assert.ok(attach > 0, "the gate is attached to the engine and the owner");
+  assert.ok(attach < make.indexOf("engine.start()"), "attached before the engine starts (the first input may be audible)");
+  assert.match(boot, /engine\?\.state\.session == \.active/, "the gate answers the core's state.session");
+
+  const host = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "ForayEngine.swift"), "utf8"));
+  assert.match(swiftFuncBody(host, "now") ?? "", /narrator: seams\.speaker\.reading/, "now() passes the synthesizer's reading");
+});
+
 test("NE-46: the silence node stays off, its header states the enable rule, and the late-timer detector runs before the input", () => {
   /* The provisional decision (plan §14 NE-46): `silenceNodeEnabled` stays
      false, and only a drive paste with a `grace kind=late inSeam=y` row can
@@ -4403,24 +4508,67 @@ test("the iOS track pair follows the ROUTE, and the page's track handlers are no
      enabled only where a track button exists without looking (a headset, a
      Bluetooth stack, a car), re-read on every route change; and WebKit's own
      session — which enables the same commands for every mirrored handler — no
-     longer gets them. MUTATION: drop `&& trackRoutePresent` from either line;
-     drop the route re-apply from handleRouteChange; put UNMIRRORED_ACTIONS back
-     to ["seekto"]. */
+     longer gets them. Since CH3-10 the route rule is the core's
+     (`MediaMapping.trackCommandsAllowed`, port types as raw strings, each held
+     to the SDK's `AVAudioSession.Port` by ForayAudioPluginTests); the legacy
+     lane asks it. MUTATION: drop `&& trackRoutePresent` from either line;
+     drop the route re-apply from handleRouteChange; put `Speaker` into the
+     core's set; put UNMIRRORED_ACTIONS back to ["seekto"]. */
   const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
   const availability = swiftFuncBody(code, "applyCommandAvailability");
   assert.match(availability, /nextTrackCommand\.isEnabled = transportable && payload\.hasNext && trackRoutePresent/);
   assert.match(availability, /previousTrackCommand\.isEnabled = transportable && payload\.hasPrevious && trackRoutePresent/);
-  assert.ok(swiftFuncDecl(code, "trackCommandsAllowed"), "the pure route rule exists for the XCTests");
-  for (const port of ["headphones", "bluetoothA2DP", "bluetoothHFP", "bluetoothLE", "carAudio", "usbAudio", "airPlay"]) {
-    assert.match(code, new RegExp(`AVAudioSession\\.Port\\.${port}\\.rawValue`), `${port} is a route with a track button`);
-  }
-  assert.doesNotMatch(code, /Port\.builtInSpeaker\.rawValue/, "the speaker is never a track route");
+  const mapping = stripSwiftComments(fs.readFileSync(CORE_MEDIA_MAPPING_SWIFT, "utf8"));
+  assert.ok(swiftFuncDecl(mapping, "trackCommandsAllowed"), "the pure route rule is the core's");
+  const ports = mapping.match(/static let trackRoutePortTypes: Set<String> = \[([^\]]*)\]/);
+  assert.ok(ports, "the core spells its track routes as one set");
+  const portTypes = [...ports[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]).sort();
+  assert.deepEqual(portTypes, ["AirPlay", "BluetoothA2DPOutput", "BluetoothHFP", "BluetoothLE", "CarAudio", "Headphones", "USBAudio"],
+    "a headset, a Bluetooth stack, a car, USB and AirPlay have a track button; the speaker and the receiver never do");
   const route = swiftFuncBody(code, "handleRouteChange");
-  assert.match(route, /trackRoutePresent = Self\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
+  assert.match(route, /trackRoutePresent = MediaMapping\.trackCommandsAllowed\(portTypes: outputs\)/, "re-read on every route change");
   assert.match(route, /applyCommandAvailability\(self\.lastPayload, force: true\)/, "and re-applied when it moved");
-  assert.match(swiftFuncBody(code, "runLegacyRegistration"), /trackRoutePresent = Self\.trackCommandsAllowed/, "and read at load");
+  assert.match(swiftFuncBody(code, "runLegacyRegistration"), /trackRoutePresent = MediaMapping\.trackCommandsAllowed/, "and read at load");
   assert.ok(UNMIRRORED_ACTIONS.includes("nexttrack") && UNMIRRORED_ACTIONS.includes("previoustrack"), "WebKit's session gets no track handlers");
   assert.ok(!UNMIRRORED_ACTIONS.includes("seekforward") && !UNMIRRORED_ACTIONS.includes("seekbackward"), "the skip pair is still mirrored");
+});
+
+test("the track-pair rule is defined once, in the core, and both iOS lanes and the Android host hand it a route (CH3-10, R1-03)", () => {
+  /* docs/DECISIONS.md 2026-09-23, founder question 1 ("the track pair only
+     where a track button exists") was held in the legacy lane alone, so the
+     engine lane (the iOS default) drew ⏭ over 30↻ on the speaker. One rule now:
+     `MediaMapping.trackCommandsAllowed` in the Swift core, and
+     `commandAvailability(_, trackRoute:)` in both cores. The engine host reads
+     the route on every publish; the Android host passes true (code-health-3
+     founder question 3, on its default, #1163). MUTATION: keep a private
+     `trackCommandsAllowed` in ForayAudioPlugin.swift -> red; publish with
+     `trackRoute: true` on iOS -> red; drop the Java parameter -> red. */
+  const decls = [];
+  for (const dir of [path.join(PLUGIN_DIR, "ios"), CORE_DIR]) {
+    for (const file of swiftFilesUnder(dir)) {
+      if (/func\s+trackCommandsAllowed\s*\(/.test(stripSwiftComments(fs.readFileSync(file, "utf8")))) {
+        decls.push(path.relative(PLUGIN_DIR, file).split(path.sep).join("/"));
+      }
+    }
+  }
+  assert.deepEqual(decls, ["foray-engine-core/Sources/ForayEngineCore/Policy/MediaMapping.swift"],
+    "trackCommandsAllowed is defined once, in the core");
+  const mapping = stripSwiftComments(fs.readFileSync(CORE_MEDIA_MAPPING_SWIFT, "utf8"));
+  const availability = swiftFuncDecl(mapping, "commandAvailability");
+  assert.match(availability, /trackRoute: Bool\)/, "the Swift rule takes the route");
+  assert.match(availability, /next: snapshot\.canNext && trackRoute/);
+  assert.match(availability, /previous: snapshot\.canPrevious && trackRoute/);
+  const publish = swiftFuncBody(stripSwiftComments(fs.readFileSync(HOST_SWIFT, "utf8")), "publishSurface");
+  assert.match(publish, /MediaMapping\.trackCommandsAllowed\(portTypes: seams\.session\.currentRoute/, "the engine host reads the route");
+  assert.match(publish, /MediaMapping\.commandAvailability\(core\.commandSnapshot, trackRoute: trackRoute\)/, "and hands it to the rule");
+  const jvm = fs.readFileSync(path.join(PLUGIN_DIR,
+    "android/foray-engine-core-jvm/src/main/java/ai/jwlabs/foura/engine/MediaMapping.java"), "utf8");
+  assert.match(jvm, /commandAvailability\(CommandSnapshot snapshot, SeekSteps steps, boolean trackRoute\)/, "the JVM rule takes the route");
+  assert.match(jvm, /surface\.next = snapshot\.canNext\(\) && trackRoute;/);
+  assert.match(jvm, /surface\.previous = snapshot\.canPrevious\(\) && trackRoute;/);
+  const host = fs.readFileSync(path.join(PLUGIN_DIR,
+    "android/src/main/java/ai/jwlabs/foura/audio/engine/ForayEngineHost.java"), "utf8");
+  assert.match(host, /static final boolean TRACK_ROUTE = true;/, "Android: both pairs side by side, so the route is always a track route");
 });
 
 test("one audio-session mode, .spokenAudio, in both iOS plugins; category only at load, setActive untouched (round 2, native-10)", () => {
@@ -4627,7 +4775,7 @@ test("NE-17: load() asks EngineOwnership, and today's registration runs only thr
   const load = swiftFuncBody(code, "load");
   assert.match(load, /EngineOwnership\.shared/, "load() must ask the owner");
   assert.match(load, /pluginDidLoad\(legacyRegistration: register\)/);
-  assert.match(load, /let register: \(\) -> Void = \{ \[weak self\] in self\?\.runLegacyRegistration\(\) \}/);
+  assert.match(load, /let register: \(Bool\) -> Void = \{ \[weak self\] pageless in self\?\.runLegacyRegistration\(pageless: pageless\) \}/);
   for (const direct of ["registerCommandHandlers", "registerSessionObservers", "setCategory", "applyCommandAvailability"]) {
     assert.doesNotMatch(load, new RegExp(`\\b${direct}\\(`), `load() must not ${direct}() itself: the owner decides`);
   }
@@ -4635,15 +4783,21 @@ test("NE-17: load() asks EngineOwnership, and today's registration runs only thr
   assert.deepEqual(swiftCallersOf(code, "registerCommandHandlers"), ["runLegacyRegistration"]);
   assert.deepEqual(swiftCallersOf(code, "registerSessionObservers"), ["runLegacyRegistration"]);
   const legacy = swiftFuncBody(code, "runLegacyRegistration");
-  assert.match(legacy, /stateQueue\.sync \{ legacyLane = true \}/);
+  assert.match(legacy, /stateQueue\.sync \{\s*if pageless \{ applyNowPlayingInfo\(\.empty\) \}\s*legacyLane = true\s*\}/);
   assert.match(swiftFuncBody(code, "setNowPlaying"), /guard let self, self\.legacyLane else \{ return \}\s*self\.apply\(payload\)/,
     "in the native lane a stale page's payload must not write over the engine's Now Playing");
   // NE-20: the hello reaches the owner through the bridge, which the plugin
   // builds over the process's one owner.
   assert.match(swiftFuncBody(code, "bridgeOnMain"), /let owner = EngineOwnership\.shared[\s\S]*EngineBridge\(\s*owner: owner,/,
     "the bridge must be built over EngineOwnership.shared");
-  assert.match(swiftFuncBody(stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBridge.swift"), "utf8")), "hello"),
+  const bridgeCode = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBridge.swift"), "utf8"));
+  assert.match(swiftFuncBody(bridgeCode, "hello"),
     /^\{\s*owner\.helloReceived\(\)/, "a hello stands the watchdog down, first");
+  /* CH3-06 (R1-06): one ownership truth. The bridge asks the owner whether
+     the engine gave the process back, never the engine's own flag.
+     MUTATION: `!engine.isTornDown` back in liveEngine -> red. */
+  assert.doesNotMatch(bridgeCode, /isTornDown/, "the bridge asks owner.relinquished, not engine.isTornDown");
+  assert.match(bridgeCode, /var relinquished: Bool \{ get \}/);
 });
 
 test("NE-17: the owner is Foundation-only, keeps its keys through EngineStore and its flag through EngineModeFlag, and the host hands it two hooks", () => {
@@ -4881,11 +5035,16 @@ test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared onl
   assert.match(artwork, /static let timeoutSec: Double = 10\b/, "plan §4.5: bounded at 10 s");
   assert.match(swiftFuncBody(artwork, "load") ?? "", /deadline\(timeoutSec\) \{ finish\(nil\) \}/, "the deadline is whole, not per packet");
   /* The deadline's clock is a seam (a test fires it by hand); production's is
-     main's wall clock, and it is the init's default. */
-  assert.match(swiftFuncBody(artwork, "mainQueueDeadline") ?? "", /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ sec, execute: fire\)/);
-  assert.match(artwork, /deadline: @escaping DeadlineTimer = ArtworkCache\.mainQueueDeadline\)/, "production's deadline is the wall clock");
+     the wall clock on the cache's own queue (main for the engine, stateQueue
+     for the legacy lane, CH3-21), and it is the init's default. */
+  assert.match(swiftFuncBody(artwork, "queueDeadline") ?? "", /queue\.asyncAfter\(deadline: \.now\(\) \+ sec, execute: fire\)/);
+  assert.match(artwork, /init\(queue: DispatchQueue = \.main,/, "the engine's cache is main's");
+  assert.match(artwork, /self\.deadline = deadline \?\? ArtworkCache\.queueDeadline\(on: queue\)/, "production's deadline is the wall clock");
+  assert.match(swiftFuncBody(artwork, "load") ?? "", /dispatchPrecondition\(condition: \.onQueue\(queue\)\)/);
+  assert.doesNotMatch(artwork, /DispatchQueue\.main\.async/, "a load settles on the cache's queue, not always main");
   assert.match(artwork, /scheme\.lowercased\(\) == "https"/);
-  assert.match(swiftFuncBody(artwork, "settle") ?? "", /failed\.insert\(src\)/, "a failure is cached");
+  assert.match(swiftFuncBody(artwork, "settle") ?? "", /noArtworkUntil\[src\] = retryable \? now\(\) \+ Self\.retryAfterSec : \.infinity/,
+    "a failure is cached: until its retry time, or for good when it is an answer");
 });
 
 /* NE-27 (docs/native-engine-plan.md §4.6 "Build default", §9 G-5): the build

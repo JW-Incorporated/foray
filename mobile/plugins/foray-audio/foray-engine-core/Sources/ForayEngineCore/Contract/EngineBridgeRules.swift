@@ -235,6 +235,9 @@ public enum EngineSnapshot {
             JSONMember("canPrevious", .bool(item != nil && core.canPrevious)),
             JSONMember("autoAdvance", .bool(state.autoAdvance)),
             JSONMember("lastError", lastError.map { JSONNode.string($0) } ?? .null),
+            // V-01's notice: the core's own answer, null until a line has
+            // spoken (reference-engine.js, the manager's lastVoiceFallback).
+            JSONMember("voiceFallback", state.lastVoiceFallback.map { JSONNode.bool($0) } ?? .null),
             JSONMember("skippedSegments", .number(Double(state.skippedSegments))),
             JSONMember("pendingAdvances", .number(Double(state.advanceLog.count))),
             JSONMember("pendingEvents", .number(Double(state.pendingEvents.count))),

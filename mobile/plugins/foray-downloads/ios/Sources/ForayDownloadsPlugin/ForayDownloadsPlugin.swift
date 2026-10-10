@@ -1,7 +1,7 @@
 import Foundation
 import Capacitor
 
-/// `ForayDownloads` on iOS: the seven calls `player/download-bridge.js` makes,
+/// `ForayDownloads` on iOS: the six calls `player/download-bridge.js` makes and `fileSrc`,
 /// answered from `DownloadStore` (issue #29; docs/roadmap/player-features.md
 /// PQ-20). The web half is that file; like `foray-vault`, this plugin has no JS
 /// entry of its own.
@@ -20,10 +20,13 @@ import Capacitor
 /// expected, received, outcome, at}` (#29; `DownloadPolicy.attemptPayload`,
 /// hosts only). A row's `path` is
 /// the file's absolute path TODAY: iOS moves the app's container when it
-/// updates or restores the app, so the page should take paths from `list()`
-/// rather than keep one forever. The page turns a path into a `file://` URL
-/// itself (download-store.js percent-encodes it, because "Application
-/// Support" has a space).
+/// updates or restores the app, so the page takes paths from `list()` rather
+/// than keep one forever -- player/download-bridge.js replays every row to the
+/// page when it subscribes (CH3-05). `fileSrc` stays registered for a caller
+/// that wants one path, but the page never calls it: it reconciles from
+/// `list()` instead. The page turns a path into a `file://` URL itself
+/// (download-store.js percent-encodes it, because "Application Support" has
+/// a space).
 ///
 /// A bad argument or a file-system error REJECTS the call; the web half turns
 /// every rejection into `{ ok: false, reason }`.

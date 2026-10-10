@@ -28,12 +28,19 @@ final class EngineBridgeTests: XCTestCase {
         private(set) var hellos = 0
         private(set) var overrides: [EngineMode.Override] = []
         private(set) var relinquishes = 0
+        /// As `EngineOwnership.relinquished`: set by the engine's teardown
+        /// hook, whatever took the engine down. Settable, so a test can tell
+        /// the owner's answer from the engine's own flag.
+        var relinquished = false
 
         init(native: Bool, engine: ForayEngine?) {
             decision = EngineMode.decide(EngineMode.Inputs(
                 buildDefault: native ? .native : .js, modeOverride: .auto, sentinelWasSet: false, strikes: 0,
                 stickyLegacyBuild: nil, currentBuild: "test", built: engine != nil))
             self.engine = engine
+            engine?.onTornDown = { [weak self] in
+                MainActor.assumeIsolated { self?.relinquished = true }
+            }
         }
 
         func decideOnce() -> EngineMode.Decision { decision }
@@ -43,7 +50,7 @@ final class EngineBridgeTests: XCTestCase {
         /// What EngineOwnership.relinquish does with the engine.
         func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) -> EngineVerdict {
             relinquishes += 1
-            guard let engine, !engine.isTornDown else {
+            guard let engine, !relinquished else {
                 return EngineVerdict(failures: [EngineContract.Refusal.relinquished.rawValue], deferred: false)
             }
             let verdict = engine.handle(.command(.relinquish(cap: cap), source: source))
@@ -83,7 +90,8 @@ final class EngineBridgeTests: XCTestCase {
         let owner: FakeOwner
         let bridge: EngineBridge
 
-        init(native: Bool = true, capabilities: [String]? = ["episode", "continuation"], preview: Bool = false) {
+        init(native: Bool = true, capabilities: [String]? = ["episode", "continuation"], preview: Bool = false,
+             config: EngineConfig = EngineConfig(build: "test")) {
             let world = FakeWorld()
             // NE-47: the voice preview's own deck, logging as `preview.*`.
             if preview { world.preview = FakeDeck(log: world.log, name: "preview") }
@@ -91,7 +99,7 @@ final class EngineBridgeTests: XCTestCase {
             let clock = FakeTiming(log: SeamLog())
             var engine: ForayEngine?
             if native {
-                let built = ForayEngine(seams: world.seams, config: EngineConfig(build: "test"))
+                let built = ForayEngine(seams: world.seams, config: config)
                 built.start()
                 engine = built
             }
@@ -191,6 +199,44 @@ final class EngineBridgeTests: XCTestCase {
                              snapshot["seq"]?.numberValue ?? .infinity, "seq is a content version and moved")
     }
 
+    /// CH3-23 (R4-07): "is the page looking?" is the page's answer alone. A
+    /// hello is a new page, not a page saying it is looking: it keeps the
+    /// last answer (the reference engine never reset it), and the page sends
+    /// its own `setPageVisible` right after hello (client.js
+    /// `onEngineDecision`). A hello still ends the old page's window, so the
+    /// new page's first change goes at once.
+    /// RED on main: `hello` reset the coalescer to `visible: true`.
+    /// TO SEE IT FAIL: restore `SnapshotCoalescer(visible: true)` in `hello`
+    /// (the hidden page hears the rate change), or delete the reset outright
+    /// (the coalescer then waits on a window the hello cancelled, and no
+    /// snapshot ever leaves again).
+    @MainActor
+    func testAHelloLeavesAHiddenPageHiddenAndEndsTheOldWindow() throws {
+        let rig = Rig()
+        let engine = try XCTUnwrap(rig.engine)
+        _ = rig.bridge.hello(Self.hello)
+        XCTAssertEqual(rig.send("setPageVisible", #"{"visible":false}"#)["ok"], .bool(true))
+        XCTAssertEqual(rig.bridge.hello(Self.hello)["mode"], .string("native"))
+        XCTAssertFalse(rig.bridge.pageVisible, "a hello is not the page saying it is looking")
+        rig.clearEvents()
+        engine.handle(.queue(.setRate(1.5)))
+        rig.clock.fire(afterMs: EngineBridgeRules.snapshotEventMinMs)
+        XCTAssertEqual(rig.events.count, 0, "a hidden page hears nothing after a hello: \(rig.eventTypes)")
+
+        // The page says it is looking: one snapshot, and a window opens.
+        XCTAssertEqual(rig.send("setPageVisible", #"{"visible":true}"#)["ok"], .bool(true))
+        XCTAssertEqual(rig.eventTypes, ["snapshot"])
+        engine.handle(.queue(.setRate(1.25)))
+        XCTAssertEqual(rig.eventTypes, ["snapshot"], "fixture premise: the window holds the change")
+
+        // A reload's hello: still visible, and the old window holds nothing back.
+        _ = rig.bridge.hello(Self.hello)
+        XCTAssertTrue(rig.bridge.pageVisible, "a visible page stays visible across a hello")
+        engine.handle(.queue(.setRate(1.0)))
+        XCTAssertEqual(rig.eventTypes, ["snapshot", "snapshot"], "the new page's first change goes at once")
+        XCTAssertEqual(rig.events.last?["snapshot"]?["rate"], .number(1.0))
+    }
+
     /// §5.1: engineSend never rejects. A payload the contract refuses (not an
     /// object, an unknown command, a command without its args, a wrong `v`)
     /// is `{ok: false, reason: "unknown-cmd", snapshot}`, and the engine is
@@ -282,7 +328,7 @@ final class EngineBridgeTests: XCTestCase {
         accepted(.sendResponse, reply)
         XCTAssertEqual(reply["ok"], .bool(true), JSWriter.stringify(reply))
         XCTAssertEqual(rig.world.session.activateCalls, 1)
-        guard case let .load(token, _, url, startSec, _, _)? = preview.sent.first else {
+        guard case let .load(token, _, url, startSec, _, _, _)? = preview.sent.first else {
             return XCTFail("no preview load: \(preview.sent)")
         }
         XCTAssertEqual(url, Self.previewURL)
@@ -569,6 +615,48 @@ final class EngineBridgeTests: XCTestCase {
         XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
     }
 
+    /// CH3-06: once the owner has relinquished (the hello watchdog's road:
+    /// `restore`, the page's boot), a snapshot read answers the relinquished
+    /// body (session `relinquished`), the hello says
+    /// legacy/downgrade, and the transport is refused `relinquished`.
+    /// TO SEE IT FAIL: let `liveEngine` return a relinquished engine (the
+    /// hello answers native).
+    @MainActor
+    func testASnapshotAfterTheOwnerRelinquishedAnswersTheRelinquishedBody() {
+        let rig = Rig()
+        rig.playing()
+        _ = rig.engine?.handle(.command(.pause, source: .remote))
+        XCTAssertTrue(rig.owner.relinquish(cap: .all, source: .restore).ok)
+
+        let snapshot = rig.bridge.read(Self.json(#"{"what":"snapshot"}"#))
+        accepted(.snapshot, snapshot)
+        XCTAssertEqual(snapshot["session"], .string("relinquished"), JSWriter.stringify(snapshot))
+
+        let hello = rig.bridge.hello(Self.hello)
+        XCTAssertEqual(hello["mode"], .string("legacy"))
+        XCTAssertEqual(hello["reason"], .string("downgrade"))
+        XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
+    }
+
+    /// CH3-06 (R1-06): the bridge's "is the engine still playing this
+    /// process?" is the OWNER's answer, `relinquished`, not the engine's own
+    /// `isTornDown`: one ownership truth. With the owner saying relinquished,
+    /// the hello is legacy/downgrade and a send is refused `relinquished`,
+    /// whatever the engine object says.
+    /// TO SEE IT FAIL: read `engine.isTornDown` in `liveEngine` again (the
+    /// hello answers native from an engine the owner has handed back).
+    @MainActor
+    func testLivenessIsTheOwnersAnswer() {
+        let rig = Rig()
+        XCTAssertEqual(rig.bridge.hello(Self.hello)["mode"], .string("native"))
+        rig.owner.relinquished = true
+        XCTAssertEqual(rig.engine?.isTornDown, false, "the engine object is untouched")
+        let hello = rig.bridge.hello(Self.hello)
+        XCTAssertEqual(hello["mode"], .string("legacy"))
+        XCTAssertEqual(hello["reason"], .string("downgrade"))
+        XCTAssertEqual(rig.send("play")["reason"], .string("relinquished"))
+    }
+
     // MARK: - engineRead
 
     /// Shared rows by prefix, the engine's only; an unowned prefix reads
@@ -681,6 +769,46 @@ final class EngineBridgeTests: XCTestCase {
         XCTAssertEqual(rig.events.count, 0)
         let snapshot = rig.bridge.read(Self.json(#"{"what":"snapshot"}"#))
         XCTAssertEqual(snapshot["lastError"], .string("chain-start"))
+    }
+
+    /// CH3-12 (R1-17): `lastError` means the CURRENT item, because the page
+    /// settles a downloaded copy's failure from it when it comes back
+    /// (client.js `settleEngineLocalLoad`). A refused start and an input that
+    /// starts nothing leave it; every accepted start ends it (a Foray, a
+    /// restored bar, the page's play), and so does a load the core began by
+    /// itself (a remote ▶, an auto-advance).
+    /// RED on main: R1-17 (cleared on a successful `playEpisode` alone).
+    /// TO SEE IT FAIL: clear `lastError` on `playEpisode` alone (the Foray
+    /// and the restored bar keep it), or drop the newer-load rule in
+    /// `transitioned()` (the remote start keeps it).
+    @MainActor
+    func testLastErrorEndsWithEveryAcceptedStart() {
+        let rig = Rig(capabilities: ["episode", "continuation", "foray"],
+                      config: EngineConfig(build: "test", forayTapeEnabled: true))
+        _ = rig.bridge.hello(Self.hello)
+        func lastError() -> JSONNode? { rig.bridge.read(Self.json(#"{"what":"snapshot"}"#))["lastError"] }
+
+        rig.engine?.onEmit?(.error(code: "load", message: "file not found"))
+        XCTAssertEqual(lastError(), .string("load"))
+        XCTAssertEqual(rig.send("play")["ok"], .bool(false), "fixture premise: nothing to play")
+        XCTAssertEqual(lastError(), .string("load"), "a refused start leaves it")
+        rig.send("setPageVisible", #"{"visible":false}"#)
+        XCTAssertEqual(lastError(), .string("load"), "an input that starts nothing leaves it")
+
+        let foray = rig.send("playForay", #"{"forayId":"f1","title":"A Foray","items":["#
+            + #"{"id":"f1#0","kind":"tts","type":"narration","script":"a line","audio_url":null,"duration_sec":4},"#
+            + #"{"id":"f1#1","kind":"episode","audio_url":"https://cdn.test/b.mp3","start_sec":300,"end_sec":400,"duration_sec":3600}"#
+            + #"],"buildReport":{},"isLocalFile":false,"allowAdPad":false,"voiceId":null}"#)
+        XCTAssertEqual(foray["ok"], .bool(true), JSWriter.stringify(foray))
+        XCTAssertEqual(lastError(), .null, "a Foray is a new current item")
+
+        rig.engine?.onEmit?(.error(code: "load", message: "file not found"))
+        XCTAssertEqual(rig.send("restoreBar")["ok"], .bool(true))
+        XCTAssertEqual(lastError(), .null, "a restored bar is a new current item")
+
+        rig.engine?.onEmit?(.error(code: "load", message: "file not found"))
+        rig.engine?.handle(.queue(.playIndex(1, startSec: nil, source: .remote)))
+        XCTAssertEqual(lastError(), .null, "a load the core began by itself names a new current item")
     }
 
     /// Capacitor's options become the core's JSON with booleans kept apart

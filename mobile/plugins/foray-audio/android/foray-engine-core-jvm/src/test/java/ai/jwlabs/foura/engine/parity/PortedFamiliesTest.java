@@ -121,6 +121,16 @@ public class PortedFamiliesTest {
         assertTrue(failed.toString(), failed.contains("media-episode/actions-no-next-no-button"));
     }
 
+    /** CH3-10's mutation: an availability that ignores the track route (the speaker cases go red, and only they). */
+    @Test
+    public void anAvailabilityThatIgnoresTheTrackRouteIsCaught() {
+        FamilyRunner mutant = MediaEpisodeFamily.runnerWithAvailability(
+                (snapshot, trackRoute) -> MediaMapping.commandAvailability(snapshot, MediaMapping.SeekSteps.DEFAULT, true));
+        assertEquals(Set.of("media-episode/availability-speaker-keeps-the-skip-pair-with-up-next",
+                        "media-episode/availability-foray-on-speaker-keeps-the-skip-pair"),
+                failedIds(runWith(mutant), "media-episode"));
+    }
+
     /**
      * BYTE-IDENTICAL, not merely equal: the recorded row with two members swapped is the
      * SAME JSON value in different bytes, and the case must fail on it. A runner that

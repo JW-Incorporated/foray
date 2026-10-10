@@ -446,6 +446,99 @@ public class EngineCoreTest {
         assertTrue(failed.toString(), failed.contains(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("chain-start", "404"))));
     }
 
+    // ---- CH3-12 (R4-03): a downloaded file that will not open streams instead (Swift's EngineCoreTests twins)
+
+    /**
+     * An episode as the page sends a downloaded one (download-store.js {@code localPlayable}):
+     * the file in {@code audio_url}, the stream kept as {@code source_audio_url}.
+     */
+    static EngineItem downloaded(String id, String file) {
+        return EngineItem.of(obj("id", JsonNode.str(id), "kind", JsonNode.str("episode"),
+                "audio_url", JsonNode.str(file != null ? file : "file:///data/foray-downloads/" + id + ".mp3"),
+                "source_audio_url", JsonNode.str("https://cdn.example/" + id + ".mp3")));
+    }
+
+    static List<String> loadUrls(List<EngineCommand> commands) {
+        List<String> urls = new ArrayList<>();
+        for (EngineCommand c : commands) {
+            if (c instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Load load) urls.add(String.valueOf(load.url()));
+        }
+        return urls;
+    }
+
+    static boolean anyStopRow(List<EngineCommand> commands) {
+        return index(commands, c -> c instanceof EngineCommand.Diag d && d.entry().kind().equals("stop")) >= 0;
+    }
+
+    static List<EngineCommand> fail(Host host, String message) {
+        return host.send(new EngineInput.Deck(new DeckEvent.Failed(host.lastLoad, message)));
+    }
+
+    /**
+     * A cold-restored downloaded episode whose file is gone loads its stream instead, at the
+     * same second, with no stop row; the page still hears {@code error} code {@code load}. A
+     * failure of the fallback stops as today. RED on main: R4-03. TO SEE IT FAIL: drop
+     * {@code fallBackToStream} from {@code onLoadFailure}, or let it retry on its own stream.
+     */
+    @Test
+    public void aDownloadThatWillNotOpenFallsBackToItsStreamOnce() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(downloaded("a", null)))));
+        List<EngineCommand> first = host.send(new EngineInput.Queue(new QueueInput.PlayIndex(0, 42.0, Source.TAP)));
+        assertEquals(List.of("file:///data/foray-downloads/a.mp3"), loadUrls(first));
+        List<EngineCommand> failed = fail(host, "file not found");
+        assertEquals("one load, on the stream: " + failed, List.of("https://cdn.example/a.mp3"), loadUrls(failed));
+        assertFalse("a fallback is not a stop: " + failed, anyStopRow(failed));
+        assertTrue("the page marks the download missing: " + failed,
+                failed.contains(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", "file not found"))));
+        assertEquals("the same second", 42.0, host.core.state().pendingLoad.startSec(), 0);
+        assertEquals("the listener's play is still on", "loadingItem", host.core.state().stateType());
+        assertTrue("the deck row names the fallback: " + failed, index(failed, c -> c instanceof EngineCommand.Diag d
+                && d.entry().kind().equals("deck") && JsonNode.str("stream-fallback").equals(d.entry().field("kind"))) >= 0);
+
+        List<EngineCommand> again = fail(host, "offline");
+        assertEquals("once: the stream failing too is today's stop", List.of(), loadUrls(again));
+        assertCauseFirst(Vocabulary.StopCause.ERROR, again);
+        assertTrue(again.contains(new EngineCommand.Emit(new EngineCommand.EngineEvent.Error("load", "offline"))));
+        assertEquals("idle", host.core.state().stateType());
+    }
+
+    /** The fallback lands and plays like any load. */
+    @Test
+    public void aStreamFallbackThatLandsPlays() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(downloaded("a", null)))));
+        host.send(playIndex(0));
+        host.send(new EngineInput.Deck(new DeckEvent.DeadlineExceeded(host.lastLoad, 20000)));
+        List<EngineCommand> landed = host.land();
+        assertTrue(landed.toString(), index(landed, EngineCoreTest::isPlay) >= 0);
+        assertEquals("a", host.core.state().loadedId);
+    }
+
+    /** Only a FILE falls back. TO SEE IT FAIL: drop the {@code file:} check in {@code fallBackToStream}. */
+    @Test
+    public void aStreamThatWillNotOpenIsNotRetried() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(downloaded("a", "https://mirror.example/a.mp3")))));
+        host.send(playIndex(0));
+        List<EngineCommand> failed = fail(host, "http-404");
+        assertEquals(failed.toString(), List.of(), loadUrls(failed));
+        assertCauseFirst(Vocabulary.StopCause.ERROR, failed);
+        assertEquals("idle", host.core.state().stateType());
+    }
+
+    /** A file with no stream to fall back on is today's stop. */
+    @Test
+    public void aFileWithNoSourceIsNotRetried() {
+        Host host = new Host();
+        host.send(new EngineInput.Queue(new QueueInput.Load(List.of(EngineItem.of(obj("id", JsonNode.str("a"),
+                "kind", JsonNode.str("episode"), "audio_url", JsonNode.str("file:///x/a.mp3")))))));
+        host.send(playIndex(0));
+        List<EngineCommand> failed = fail(host, "file not found");
+        assertEquals(failed.toString(), List.of(), loadUrls(failed));
+        assertCauseFirst(Vocabulary.StopCause.ERROR, failed);
+    }
+
     // ---- the tokens are the generated ones
 
     @Test
@@ -475,6 +568,29 @@ public class EngineCoreTest {
         assertTrue(SessionPolicy.AUDIBLE_COMMANDS.contains(EngineCommand.turnName(new EngineCommand.Speak("hi", null))));
         assertFalse(SessionPolicy.AUDIBLE_COMMANDS.contains(EngineCommand.turnName(new EngineCommand.Deck(
                 new DeckCommand.Load(1, "a", null, 0, false)))));
+    }
+
+    /**
+     * CH3-11 (R2-04), the Swift core's {@code testAClipLoadsAndPreparesBoundedWhateverItsTimingAndAnEpisodeDoesNot}:
+     * the core names an item with bounds (a clip) to the deck as {@code bounded}, and a whole
+     * episode as not. MUTATION: pass {@code false} as the Load's {@code bounded} in {@code load}
+     * (the clip loads unbounded), or {@code true} (the episode loads bounded).
+     */
+    @Test
+    public void aBoundedItemLoadsBoundedAndAnEpisodeDoesNot() {
+        EngineItem clip = EngineItem.of(obj("id", JsonNode.str("c"), "kind", JsonNode.str("episode"),
+                "audio_url", JsonNode.str("https://cdn.example/c.mp3"),
+                "start_sec", JsonNode.num(100), "end_sec", JsonNode.num(200)));
+        List<Boolean> bounded = new ArrayList<>();
+        for (EngineItem first : new EngineItem[] {clip, item("a")}) {
+            Host host = new Host();
+            host.send(new EngineInput.Queue(new QueueInput.Load(new ArrayList<>(List.of(first)))));
+            for (EngineCommand c : host.send(playIndex(0))) {
+                if (c instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Load l) bounded.add(l.bounded());
+            }
+        }
+        assertEquals(List.of(true, false), bounded);
+        assertFalse("the short constructor is an unbounded load", new DeckCommand.Load(1, "a", null, 0, true).bounded());
     }
 
     // ---- ported from the Swift EngineCoreTests (NE-14s, NE-16g): the rest of what the fixtures cannot see
@@ -582,13 +698,14 @@ public class EngineCoreTest {
     }
 
     /**
-     * An interruption's resume, a KNOWN car coming back and a cold play each open their grace
-     * span. Headphones plugged back in (a route never seen as a car) resume nothing (corner
-     * case #13): no fixture drives a route coming back, so this is the only thing that
-     * notices a core resuming on any route.
+     * An interruption's resume and a cold play each open their grace span. A route coming
+     * back resumes nothing (corner case #13; the JS rule, until A-61 ports Swift's
+     * {@code RouteResume}): not headphones plugged back in, and not a car, known or not (R3-01,
+     * code-health-3 CH3-17). No JVM fixture drives a route coming back, so this is the only
+     * thing that notices a core resuming on any route.
      */
     @Test
-    public void resumesAndColdPlaysOpenGraceAndOnlyAKnownCarResumes() {
+    public void resumesAndColdPlaysOpenGraceAndNoRouteResumes() {
         Host host = playing();
         host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
         assertTrue(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)))
@@ -596,9 +713,10 @@ public class EngineCoreTest {
 
         Host car = playing();
         car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
-        assertTrue(back.toString(), back.contains(new EngineCommand.GraceBegin(GraceReason.ROUTE_RESUME)));
-        assertTrue("the known car resumes: " + back, index(back, EngineCoreTest::isLoad) >= 0);
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", true))));
+        assertEquals("a car coming back never resumes on the JVM: " + back, -1, index(back, EngineCoreTest::isLoad));
+        assertEquals(-1, index(back, c -> c instanceof EngineCommand.GraceBegin));
+        assertEquals("interrupted", car.core.state().stateType());
 
         Host phones = playing();
         phones.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "AirPods", false))));
@@ -648,7 +766,7 @@ public class EngineCoreTest {
     }
 
     /**
-     * Each resume writes one {@code resume} row (interruption or route) and a cold play one
+     * Each resume writes one {@code resume} row (an interruption's; no route resumes on the JVM) and a cold play one
      * {@code cold-play} row, as its span opens and before the activation it waits on.
      */
     @Test
@@ -672,12 +790,8 @@ public class EngineCoreTest {
         Host car = playing();
         car.bgRemainingMs = 12_000.0;
         car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
-        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", false))));
-        EngineCommand.DiagEntry route = rows("resume", back).get(0);
-        assertEquals(JsonNode.str("route"), route.field("kind"));
-        assertEquals(JsonNode.str("y"), route.field("grace"));
-        assertEquals(JsonNode.str("route-resume"), route.field("graceReason"));
-        assertEquals(JsonNode.num(12_000), route.field("bgRemainingMs"));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", true))));
+        assertTrue("a car coming back is no resume: " + back, rows("resume", back).isEmpty());
 
         Host cold = new Host();
         cold.bgRemainingMs = 25_000.0;
@@ -725,6 +839,77 @@ public class EngineCoreTest {
         assertTrue(route.toString(),
                 rows("session", route).stream().anyMatch(e -> JsonNode.str("route-attributed").equals(e.field("kind"))));
         assertEquals(-1, index(host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true))), EngineCoreTest::isLoad));
+    }
+
+    /** The {@code session} row a refused should-resume writes ({@code interruption ... resumed=false why=...}), or null. */
+    static EngineCommand.DiagEntry refusedResume(List<EngineCommand> commands) {
+        return rows("session", commands).stream()
+                .filter(e -> JsonNode.str("interruption").equals(e.field("kind")) && JsonNode.str("ended").equals(e.field("phase"))
+                        && JsonNode.FALSE.equals(e.field("resumed")))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * CH3-02 (R2-02), the twin of the Swift test: a car's A2DP -> HFP -> A2DP flap while a call
+     * rings lands inside the call's interruption and paused nothing, so the call's should-resume
+     * decides (code-health-3 founder question 2, default): the resume loads, and no
+     * {@code resumed=false why=route-lost} row is written. RED on main: R2-02 ({@code onRoute}
+     * set {@code pausedByRoute} unconditionally). TO SEE IT FAIL: restore the unconditional
+     * {@code state.pausedByRoute = true} in {@code onRoute}.
+     */
+    @Test
+    public void aRouteFlapDuringACallLeavesTheCallsShouldResumeInCharge() {
+        Host host = playing();
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))));
+        assertFalse("the flap paused nothing", host.core.state().pausedByRoute);
+        List<EngineCommand> ended = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertNull(ended.toString(), refusedResume(ended));
+        assertTrue("the call's should-resume resumes: " + ended, index(ended, EngineCoreTest::isLoad) >= 0);
+    }
+
+    /**
+     * CH3-02 review, the twin of the Swift test: the call pauses the deck first (an uncommanded
+     * pause, reconciled as the system's), then the interruption is reported, then the A2DP -> HFP
+     * flap lands inside {@code ROUTE_ATTRIBUTION_MS}. The interruption explained that pause, so the
+     * flap is not attributed it: the call's should-resume resumes. TO SEE IT FAIL: drop
+     * {@code state.lastUncommandedPauseAtMono = null} from {@code onInterruptionBegan}.
+     */
+    @Test
+    public void aCallsPauseThenAFlapInsideTheWindowLeavesTheCallsShouldResumeInCharge() {
+        Host host = playing();
+        host.reading.audible = false;
+        host.send(new EngineInput.Deck(new DeckEvent.PausedUncommanded(host.lastLoad, 3)));
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")), 50);
+        List<EngineCommand> lost = host.send(
+                session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))), 150);
+        assertTrue(lost.toString(),
+                rows("session", lost).stream().noneMatch(e -> JsonNode.str("route-attributed").equals(e.field("kind"))));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))));
+        assertFalse("the flap paused nothing", host.core.state().pausedByRoute);
+        List<EngineCommand> ended = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertNull(ended.toString(), refusedResume(ended));
+        assertTrue("the call's should-resume resumes: " + ended, index(ended, EngineCoreTest::isLoad) >= 0);
+    }
+
+    /**
+     * CH3-02 characterization, the opposite order (survives the fix): a loss while PLAYING
+     * paused the episode, so it is the route's (corner case #13): a flap back and a later call's
+     * should-resume do not resume it, and the refusal row says why. TO SEE IT FAIL: drop the
+     * {@code Playing} arm from {@code onRoute}'s "the loss paused something" condition.
+     */
+    @Test
+    public void aRouteLostWhilePlayingIsRefusedAfterAFlapAndACall() {
+        Host host = playing();
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, null, false))));
+        host.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, null, false))));
+        host.send(session(new EngineInput.SessionEvent.InterruptionBegan("default")));
+        List<EngineCommand> ended = host.send(session(new EngineInput.SessionEvent.InterruptionEnded(true)));
+        assertEquals(ended.toString(), -1, index(ended, EngineCoreTest::isLoad));
+        EngineCommand.DiagEntry refusal = refusedResume(ended);
+        assertTrue(ended.toString(), refusal != null);
+        assertEquals(JsonNode.str("route-lost"), refusal.field("why"));
     }
 
     /** Toggle reads the deck, not only the belief: an audible deck behind a paused machine is paused by the press. */
@@ -848,5 +1033,87 @@ public class EngineCoreTest {
         assertTrue("silent before released", pause < release);
         List<EngineCommand> again = host.send(EngineContract.Command.PLAY);
         assertEquals(again.toString(), 1, again.stream().filter(c -> c instanceof EngineCommand.SessionActivate).count());
+    }
+
+    // ---- CH3-17: the JVM core matches Swift on the episode path (code-health-3 R3-01, R3-02, R3-04, R3-07)
+
+    /**
+     * R3-01: the listener pauses on the wheel, parks, and next morning the car reconnects: 4a
+     * stays paused. The JVM learned a car from any route event naming one and resumed when it
+     * came back, with no listener-pause guard: the rule DECISIONS 2026-09-25 Q5 deleted. A
+     * reconnect never resumes (the JS rule) until A-61 ports Swift's {@code RouteResume}.
+     * RED on main: R3-01.
+     */
+    @Test
+    public void aKnownCarReturningAfterTheListenersPause() {
+        Host car = playing();
+        car.send(EngineContract.Command.PAUSE);
+        car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(true, "Civic", true))));
+        List<EngineCommand> back = car.send(session(new EngineInput.SessionEvent.Route(new EngineInput.RouteChange(false, "Civic", true))));
+        assertEquals("the listener's pause survives the car coming back: " + back, -1, index(back, EngineCoreTest::isLoad));
+        assertEquals(-1, index(back, c -> c instanceof EngineCommand.SessionActivate));
+        assertEquals("interrupted", car.core.state().stateType());
+    }
+
+    /**
+     * R3-02: STOP IS SILENCE (player-core-7; Swift {@code stop(persist:)}). From
+     * {@code interrupted} the reducer's stop emits no pause, so a deck audible behind a paused
+     * machine (Media3 resumed after a transient loss) must be paused by the deck's own word.
+     * RED on main: R3-02 (the JVM {@code stop()} never read the deck).
+     */
+    @Test
+    public void stopIsSilenceBehindAPausedMachine() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.reading.audible = true;
+        List<EngineCommand> out = host.send(new EngineContract.Command.Stop(true));
+        int row = stopRow(Vocabulary.StopCause.CLOSE, out);
+        int pause = index(out, EngineCoreTest::isPause);
+        assertTrue("the deck audible behind a paused machine is paused by the stop: " + out, pause >= 0);
+        assertTrue("the cause row first", row >= 0 && row < pause);
+        EngineCommand.DiagEntry forced = rows("pause", out).get(0);
+        assertEquals(JsonNode.str("forced"), forced.field("kind"));
+        assertFalse("silent afterwards", host.reading.audible);
+    }
+
+    /** R3-04: grace expiry writes its stop row, then ends the span, in Swift's order. RED on main: R3-04 (span first). */
+    @Test
+    public void graceExpiryRowOrder() {
+        Host host = playing();
+        host.send(EngineContract.Command.PAUSE);
+        host.send(remote(MediaMapping.RemoteCommand.PLAY));
+        List<EngineCommand> out = host.send(new EngineInput.Timer(EngineTimer.GRACE_EXPIRED));
+        int row = stopRow(Vocabulary.StopCause.GRACE_EXPIRED, out);
+        int end = out.indexOf(new EngineCommand.GraceEnd(GraceOutcome.EXPIRED));
+        assertTrue(out.toString(), row >= 0 && end >= 0);
+        assertTrue("the row first, as Swift: " + out, row < end);
+    }
+
+    /**
+     * R3-04: the page's {@code dispose()} while playing is the audio handed back: the turn opens
+     * with {@code stop cause=relinquish}, as Swift's {@code teardown()}. RED on main: R3-04 (no row).
+     */
+    @Test
+    public void teardownWhilePlayingStopRow() {
+        Host host = playing();
+        List<EngineCommand> out = host.send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()));
+        assertEquals("the relinquish row opens the turn: " + out, 0, stopRow(Vocabulary.StopCause.RELINQUISH, out));
+        assertCauseFirst(Vocabulary.StopCause.RELINQUISH, out);
+        assertEquals("a teardown of nothing writes no row", -1, stopRow(Vocabulary.StopCause.RELINQUISH,
+                new Host().send(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Teardown()))));
+    }
+
+    /**
+     * R3-07: "waiting is buffering" (P-14, the stall display) is Swift's provisional
+     * {@code bufferingWhileWaiting} knob; the JVM must read the same knob, not hard-code it.
+     */
+    @Test
+    public void waitingIsBufferingWhileTheKnobSaysSo() {
+        Host host = playing();
+        host.send(new EngineInput.Deck(new DeckEvent.TimeControl(host.lastLoad, DeckEvent.TimeControlStatus.WAITING, null)));
+        assertTrue("the knob is Swift's verdict (rate-latch)", EngineCore.BUFFERING_WHILE_WAITING);
+        assertEquals("a waiting deck shows buffering by the knob", EngineCore.BUFFERING_WHILE_WAITING, host.core.state().buffering);
+        host.confirm();
+        assertFalse("playing again clears it", host.core.state().buffering);
     }
 }

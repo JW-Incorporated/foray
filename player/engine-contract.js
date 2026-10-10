@@ -101,8 +101,10 @@ export const COMMANDS = Object.freeze([
 ]);
 
 /** The `type` of every "engine" event (§5.4). Delivery is best effort: a page
-    that misses one reads the snapshot on visible, pageshow and resume. */
-export const EVENTS = Object.freeze(["snapshot", "advanced", "skipped", "error", "voiceFallback", "diag", "modeChanged"]);
+    that misses one reads the snapshot on visible, pageshow and resume. A
+    narration voice's fallback is not an event: it is the snapshot's
+    `voiceFallback` boolean (CH3-09). */
+export const EVENTS = Object.freeze(["snapshot", "advanced", "skipped", "error", "diag", "modeChanged"]);
 
 /** Why an engineSend was refused: the `reason` of `{ok: false}` (§5.2). A
     closed set, fully expanded — `session-failed:<token>` is written out for
@@ -331,6 +333,12 @@ const SNAPSHOT_IDLE = {
   nowPlaying: { title: "", artist: "", album: "" },
 };
 
+/** A Foray's spoken line is the playhead, under a timed hold. */
+const SNAPSHOT_NARRATION = {
+  ...SNAPSHOT_PLAYING, mode: "foray", forayId: "foray-1", index: 3, itemId: "n-3", itemKind: "tts",
+  playheadItemId: "n-3", isNarrationPlayhead: true, narrationElapsedSec: 4.2, holdPolicy: "until:60",
+};
+
 const without = (o, k) => { const c = { ...o }; delete c[k]; return c; };
 
 /** A rendered voice preview as the picker will name it (NE-47): the per-voice
@@ -464,10 +472,9 @@ const EXAMPLES = {
     valid: {
       "playing": SNAPSHOT_PLAYING,
       "idle": SNAPSHOT_IDLE,
-      "foray-narration": {
-        ...SNAPSHOT_PLAYING, mode: "foray", forayId: "foray-1", index: 3, itemId: "n-3", itemKind: "tts",
-        playheadItemId: "n-3", isNarrationPlayhead: true, narrationElapsedSec: 4.2, holdPolicy: "until:60",
-      },
+      "foray-narration": SNAPSHOT_NARRATION,
+      // CH3-09: the synthesiser spoke the line in another voice.
+      "foray-voice-fallback": { ...SNAPSHOT_NARRATION, voiceFallback: true },
       "interrupted": { ...SNAPSHOT_PLAYING, state: "interrupted", wasPlaying: true, running: false, effectiveRate: 0, session: "lostToInterruption" },
     },
     invalid: {
@@ -627,7 +634,10 @@ export function contractSchemaDocument() {
           canPrevious: bool,
           autoAdvance: bool,
           lastError: nullable(str),
-          voiceFallback: nullable(str),
+          // Did the last spoken line use another voice than the one asked
+          // for (V-01's notice)? null until a line has spoken, and again
+          // after a speak that failed (queue-manager.js lastVoiceFallback).
+          voiceFallback: nullable(bool),
           // Counts here; the logs themselves travel in engineHello.
           skippedSegments: nonNegInt,
           pendingAdvances: nonNegInt,

@@ -106,6 +106,7 @@ export function validateFixtures(fixtures, schema = loadSchema()) {
   const problems = [];
   const seen = new Map();
   const jsOnlyOf = new Map();
+  const nativeOnlyOf = new Map();
   for (const { family, file, doc } of fixtures) {
     /* A family is ported or it is not; half a family marked JS-only would hide
        its ported half from the Swift runner (plan §5.5 C-2). */
@@ -113,6 +114,15 @@ export function validateFixtures(fixtures, schema = loadSchema()) {
     if ("jsOnly" in doc && typeof doc.jsOnly !== "boolean") problems.push(`${file}: jsOnly must be a boolean`);
     if (jsOnlyOf.has(family) && jsOnlyOf.get(family) !== jsOnly) problems.push(`${file}: jsOnly disagrees with another file of family "${family}"`);
     jsOnlyOf.set(family, jsOnly);
+    /* CH3-20: the mirror image. A nativeOnly family's expects are the Swift
+       core's (authored), so half a family marked nativeOnly would hide its
+       other half from the JS reference, and a file that is both says the rule
+       is nobody's. */
+    const nativeOnly = doc.nativeOnly === true;
+    if ("nativeOnly" in doc && typeof doc.nativeOnly !== "boolean") problems.push(`${file}: nativeOnly must be a boolean`);
+    if (nativeOnlyOf.has(family) && nativeOnlyOf.get(family) !== nativeOnly) problems.push(`${file}: nativeOnly disagrees with another file of family "${family}"`);
+    nativeOnlyOf.set(family, nativeOnly);
+    if (jsOnly && nativeOnly) problems.push(`${file}: a family is never both jsOnly and nativeOnly`);
     const where = (m) => problems.push(`${file}: ${m}`);
     if (doc.family !== family) where(`family "${doc.family}" does not match its directory "${family}"`);
     if (!sets.familyPattern.test(family)) where(`family "${family}" is not a valid family name`);
@@ -134,6 +144,8 @@ export function validateFixtures(fixtures, schema = loadSchema()) {
       const caseKeys = new Set(Object.keys(schema.$defs.case.properties));
       for (const k of Object.keys(c)) if (!caseKeys.has(k)) at(`unknown key "${k}"`);
       if (c.authored === true && !("expect" in c)) at("an authored case must carry its expect");
+      // CH3-20: nothing records a nativeOnly case; its expect is the Swift core's, written by a person.
+      if (nativeOnly && c.authored !== true) at("a nativeOnly case is authored: its expect is the Swift core's, and record.mjs never records it");
       if ("expect" in c) {
         if (containsMacro(c.expect)) at("expect may not use a macro — macros are inputs only");
         const e = c.expect ?? {};
@@ -150,6 +162,14 @@ export function validateFixtures(fixtures, schema = loadSchema()) {
         c.steps.forEach((s, j) => {
           const verbs = Object.keys(s).filter((k) => sets.verbs.includes(k));
           if (verbs.length !== 1) at(`step ${j} must carry exactly one verb (${sets.verbs.join(", ")})`);
+          /* CH3-20: a raw press names a native command. Checked here, not only
+             when JS runs it, because the family that presses them is
+             nativeOnly and a misspelled command would otherwise reach only the
+             native drivers. */
+          if ("raw" in s && s.raw !== true) at(`step ${j}: raw is true or absent`);
+          if (s.raw === true && !RAW_REMOTE_COMMANDS.includes(s.remote)) {
+            at(`step ${j}: a raw press names one of ${RAW_REMOTE_COMMANDS.join(", ")}, got ${JSON.stringify(s.remote)}`);
+          }
         });
       }
       if ("tolerance" in c && !(typeof c.tolerance === "number" && c.tolerance >= 0)) at("tolerance must be a non-negative number");
@@ -181,6 +201,13 @@ function thrownName(err) {
  * @returns {Promise<object>} the encoded actual, same shape as an `expect`
  */
 export async function runCase(c, fixture, { root = REPO_ROOT } = {}) {
+  /* CH3-20: a nativeOnly family (native-episode) has no JS reference to ask:
+     the page has no toggle press, no load deadline, no background task and no
+     relinquish. Callers skip it (isNativeOnly); one that forgets is told so,
+     rather than recording or comparing something JS never computed. */
+  if (isNativeOnly(fixture)) {
+    throw new HarnessError("E_BAD_CASE", `${c.id} is in a nativeOnly family: its expect is the Swift core's, and the JS reference never runs it`);
+  }
   const kind = caseKind(c);
   const ctx = { root };
   if (kind === "read" || kind === "call") {
@@ -199,6 +226,14 @@ export async function runCase(c, fixture, { root = REPO_ROOT } = {}) {
   }
   if (kind === "scenario") return runScenario(c, ctx);
   throw new HarnessError("E_BAD_CASE", `case ${c.id} has no runnable shape`);
+}
+
+/** CH3-20. A fixture of a nativeOnly family (schema `nativeOnly`): its cases
+    are the native cores' own episode path at the wheel, authored from the
+    Swift core and held by engine-parity and the JVM ParitySuite. The JS runner
+    validates them and never runs them. */
+export function isNativeOnly(fixture) {
+  return fixture?.doc?.nativeOnly === true;
 }
 
 /* ---------- scenarios ---------- */
@@ -233,6 +268,59 @@ export const PENDING_DRIVERS = Object.freeze({
 export const REMOTE_ACTIONS = Object.freeze([
   "play", "pause", "stop", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto",
 ]);
+
+/** CH3-20 (R3-03). A RAW press: `{remote: "<command>", raw: true, value?}`,
+    the native remote command itself, as iOS's MPRemoteCommandCenter (and the
+    Android host's Media3 commands, A-26) deliver it, never through the
+    action table. The vocabulary is ForayEngineCore's
+    `MediaMapping.RemoteCommand` minus `stop` (a remote stop pauses natively,
+    T-7, and no case runs it), and it is the only way a fixture can press
+    `togglePlayPause`: the one-button headset's and the AVRCP head unit's
+    play/pause, which the Media Session API does not have.
+
+    HERE, the JS reference's reading of each press:
+      - the engine target sends the engine command the press stands for
+        (reference-engine.js answers `toggle` from its own `_running()`);
+      - the manager target presses the same surface as `remote`, and REFUSES
+        togglePlayPause: the page's manager has no toggle, so there is no JS
+        answer to record (the native cores' toggle is native-episode's, from
+        the deck's own word: EngineCore `toggle`).
+    THE STEP IS OURS, NEVER THE HEAD UNIT'S (R3-08): a skip's `value` is the
+    interval the head unit sent, and every runtime ignores it
+    (SEEK_BACKWARD_SEC / SEEK_FORWARD_SEC; MediaMapping.SeekSteps natively).
+    `changePlaybackPosition` requires its `value`, the target second. */
+export const RAW_REMOTE_COMMANDS = Object.freeze([
+  "play", "pause", "togglePlayPause", "nextTrack", "previousTrack", "skipBackward", "skipForward", "changePlaybackPosition",
+]);
+
+function rawPress(step, surface, { toggle, steps }) {
+  if (!RAW_REMOTE_COMMANDS.includes(step.remote)) {
+    throw new HarnessError("E_BAD_CASE", `unknown raw remote command ${JSON.stringify(step.remote)} (have ${RAW_REMOTE_COMMANDS.join(", ")})`);
+  }
+  if ("value" in step && typeof step.value !== "number") throw new HarnessError("E_BAD_CASE", "a raw press's value is a number");
+  switch (step.remote) {
+    case "play": return surface.play();
+    case "pause": return surface.pause();
+    case "togglePlayPause":
+      if (!toggle) {
+        throw new HarnessError("E_BAD_CASE", "the manager target has no toggle press (the page's manager has none; the native cores' toggle is native-episode's)");
+      }
+      return toggle();
+    case "nextTrack": return surface.next();
+    case "previousTrack": return surface.previous();
+    case "skipBackward": return surface.seekBy(-steps.backwardSec);
+    case "skipForward": return surface.seekBy(steps.forwardSec);
+    default:
+      if (typeof step.value !== "number") throw new HarnessError("E_BAD_CASE", "changePlaybackPosition needs its value (the target second)");
+      return surface.seekTo(step.value);
+  }
+}
+
+/** media-session.js's 15 / 30: the step every raw skip takes. */
+async function seekSteps(ctx) {
+  const ms = await importModule(ctx.root, "player/media-session.js");
+  return { backwardSec: ms.SEEK_BACKWARD_SEC, forwardSec: ms.SEEK_FORWARD_SEC };
+}
 
 function remoteSurface(m, backend) {
   return {
@@ -634,10 +722,15 @@ async function runEngineScenario(c, setup, ctx) {
           for (let n = 0; n < (Number.isInteger(step.settle) && step.settle > 0 ? step.settle : 1); n++) await tick();
           break;
         case "remote": {
+          const send = (cmd, args) => eng.engineSend({ v: 1, cmdSeq: ++cmdSeq, cmd, source: "remote", ...(args !== undefined ? { args } : {}) });
+          if (step.raw === true) {
+            await rawPress(step, engineRemoteSurface(send), { toggle: () => send("toggle"), steps: await seekSteps(ctx) });
+            await tick();
+            break;
+          }
           if (!REMOTE_ACTIONS.includes(step.remote)) {
             throw new HarnessError("E_BAD_CASE", `unknown remote action ${JSON.stringify(step.remote)} (have ${REMOTE_ACTIONS.join(", ")})`);
           }
-          const send = (cmd, args) => eng.engineSend({ v: 1, cmdSeq: ++cmdSeq, cmd, source: "remote", ...(args !== undefined ? { args } : {}) });
           const handler = new Map(mediaSessionActions(engineRemoteSurface(send))).get(step.remote);
           if (!handler) throw new HarnessError("E_BAD_CASE", `the surface installs no "${step.remote}" handler, so the OS could never deliver this press`);
           await ("details" in step ? handler(expandInputs(step.details, ctx)) : handler());
@@ -848,12 +941,17 @@ async function runScenario(c, ctx) {
           await tick();
           break;
         case "remote": {
-          if (!REMOTE_ACTIONS.includes(step.remote)) {
-            throw new HarnessError("E_BAD_CASE", `unknown remote action ${JSON.stringify(step.remote)} (have ${REMOTE_ACTIONS.join(", ")})`);
+          let run;
+          if (step.raw === true) {
+            run = Promise.resolve(rawPress(step, remoteSurface(m, backend), { toggle: null, steps: await seekSteps(ctx) }));
+          } else {
+            if (!REMOTE_ACTIONS.includes(step.remote)) {
+              throw new HarnessError("E_BAD_CASE", `unknown remote action ${JSON.stringify(step.remote)} (have ${REMOTE_ACTIONS.join(", ")})`);
+            }
+            const handler = new Map(mediaSessionActions(remoteSurface(m, backend))).get(step.remote);
+            if (!handler) throw new HarnessError("E_BAD_CASE", `the surface installs no "${step.remote}" handler, so the OS could never deliver this press`);
+            run = Promise.resolve("details" in step ? handler(expandInputs(step.details, ctx)) : handler());
           }
-          const handler = new Map(mediaSessionActions(remoteSurface(m, backend))).get(step.remote);
-          if (!handler) throw new HarnessError("E_BAD_CASE", `the surface installs no "${step.remote}" handler, so the OS could never deliver this press`);
-          const run = Promise.resolve("details" in step ? handler(expandInputs(step.details, ctx)) : handler());
           if (step.await === false) floating.push(run.catch(() => {}));
           else await run;
           await tick();

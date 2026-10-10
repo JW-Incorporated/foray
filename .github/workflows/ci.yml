@@ -7,7 +7,7 @@ on:
   # Added 2026-08-16, and it is load-bearing rather than a convenience.
   # `.github/workflows/pr-hygiene.yml` updates PR branches that have fallen
   # behind `main`. That changes the PR's head SHA, and `protect-main`'s required
-  # checks (`backend`, `data-and-site`) are matched against THAT SHA — but a
+  # checks (`REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`) are matched against THAT SHA — but a
   # push made with the automatic GITHUB_TOKEN does not create a workflow run
   # (GitHub's anti-recursion rule), so the updated PR would sit forever at
   # "Expected — waiting for status to be reported". `workflow_dispatch` is one
@@ -73,16 +73,21 @@ jobs:
     # its DB-gated tests live (shows-postgres-integration.test.mjs: the
     # golden-query set, migrations-apply-twice, the 0019 rekey).
     #
-    # NOT added to protect-main's required-checks list (`backend`,
-    # `data-and-site`): docs/roadmap/README.md founder question 30 rules
+    # NOT added to protect-main's required-checks list (`REQUIRED_CHECKS` in
+    # `tools/ci/path-policy.mjs`): docs/roadmap/README.md founder question 30 rules
     # "The new `db` CI job is not a required check yet." Same reasoning
     # `api`/`ios-kit` document for themselves: promoting a job to required
     # is a founder call, and this job runs and reports regardless.
+    #
+    # THE IMAGE COMES FROM public.ecr.aws/docker/library, AWS's mirror of the
+    # Docker official images (same image, same tag), not Docker Hub: on
+    # 2026-10-09 this job and engine-parity repeatedly failed at "Initialize
+    # containers" on Docker Hub's anonymous pull rate limit (toomanyrequests).
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:17
+        image: public.ecr.aws/docker/library/postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -428,9 +433,12 @@ jobs:
 
   ios-gate:
     # NE-06, G-1b (docs/native-engine-plan.md §6.8). The check `protect-main`
-    # is meant to REQUIRE in place of ios-kit itself, once G-1b's founder
-    # sitting adds it (branch protection lives in GitHub's settings; nothing
-    # in this file can make a check required).
+    # REQUIRES in place of ios-kit itself: G-1b's founder sitting added it, and
+    # the ruleset read through the API on 2026-10-09 lists it (SEC-06,
+    # docs/audit/security-review-2026-10.md). Branch protection lives in
+    # GitHub's settings and nothing in this file can make a check required;
+    # the repo's copy of the list is `REQUIRED_CHECKS` in
+    # `tools/ci/path-policy.mjs`, which merge-audit.yml checks weekly.
     #
     # WHY NOT REQUIRE ios-kit DIRECTLY: it is a ~10-minute macOS job behind a
     # macOS runner queue (5 minutes of queue measured on run 35963024160).
@@ -474,7 +482,7 @@ jobs:
     # family table goes to the job summary.
     #
     # ON push, pull_request AND workflow_dispatch, and it must never copy
-    # ios-kit's dispatch skip: at G-1b this becomes a REQUIRED check, and a
+    # ios-kit's dispatch skip: since G-1b this is a REQUIRED check, and a
     # required check that does not report on a pr-hygiene-updated head strands
     # the PR at "Expected — waiting for status to be reported".
     #
@@ -491,11 +499,17 @@ jobs:
     # "image cached": GitHub has no cache for a job `container:` — it is pulled
     # before the first step runs, so no actions/cache step can reach it. The
     # pull is measured in docs/ios-native-engine-measurements.md §9.
+    #
+    # IT IS PULLED FROM public.ecr.aws/docker/library, AWS's mirror of the
+    # Docker official images (the same swift:5.10), not Docker Hub: on
+    # 2026-10-09 this required check repeatedly failed at "Initialize
+    # containers" on Docker Hub's anonymous pull rate limit (toomanyrequests),
+    # so every PR needed a manual rerun.
     needs: engine-paths
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    container: swift:5.10
+    container: public.ecr.aws/docker/library/swift:5.10
     env:
       RUN_PARITY: ${{ needs.engine-paths.outputs.engine == 'false' && 'false' || 'true' }}
     steps:
@@ -670,7 +684,7 @@ jobs:
         # that package owns its own flags (corpus needs --experimental-sqlite
         # on this job's Node 22). The repo root stays dependency-free.
         #
-        # Same job as before, deliberately: `data-and-site` is the required
+        # Same job as before, deliberately: `data-and-site` is a required
         # check in the protect-main ruleset, so a suite moved to a new job
         # would gate nothing until that ruleset changed.
         run: node tools/ci/run-suites.mjs
@@ -694,7 +708,7 @@ jobs:
     # for the full split.
     #
     # ADVISORY-ONLY ON FIRST LANDING, DELIBERATELY. protect-main's required
-    # checks are matched BY NAME (`backend`, `data-and-site`) — see this
+    # checks are matched BY NAME (`REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`) — see this
     # file's own `workflow_dispatch` comment above for that mechanism — so
     # this job is simply never added to that list; nothing else is needed to
     # keep it non-blocking. The reason is flakiness risk, not runtime: a

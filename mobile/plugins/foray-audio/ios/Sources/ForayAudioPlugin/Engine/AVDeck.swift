@@ -96,10 +96,15 @@ import os
 /// The M2 car drive (2026-10-01): a Foray clip's precise load passed its 20 s
 /// deadline with its duration in and 44 MB fetched, was detached, and each
 /// press of play then started the clip cold from nothing (`cold=no-item`,
-/// `cold=not-ready`). Two changes, both for a PRECISE load only (a Foray clip;
-/// a whole episode and a rendered line load approximate and keep M1's
-/// car-proven cold reload unchanged), and both only when the load has made
-/// progress (its duration is in, or the access log shows bytes):
+/// `cold=not-ready`). Two changes, both for a Foray CLIP only (the load's
+/// `bounded`: the item has bounds), and both only when the load has made
+/// progress (its duration is in, or the access log shows bytes). A whole
+/// episode and a rendered line are unbounded and keep M1's car-proven cold
+/// reload unchanged. NOT keyed on precise timing (CH3-11, R2-04): P-7's CBR
+/// exemption (`EngineBoot` turns `approximateCBRClips` on, P-7 #980)
+/// loads a CBR clip approximate, and a §16 keyed on precision threw a
+/// progressing CBR clip's bytes away at every deadline, so two in a row was
+/// `stop cause=load-deadline`. The two changes:
 ///   - a same-source `.load` while the load is still in flight CONTINUES it
 ///     (`continueInFlight`, a `deck kind=continue` row): the new token, the
 ///     new start, a fresh deadline, and the same item, asset and gate;
@@ -218,9 +223,10 @@ final class AVDeck: DeckDriving {
         var loadDeadlineSec: Double
         /// P-13 for a rendered narration line (`defaultLineLoadDeadlineSec`).
         var lineLoadDeadlineSec: Double
-        /// `AudioSessionOwner.phase == .active` (NE-16), read through a
-        /// closure because the owner does not exist yet and because the deck
-        /// must not own a session reference of its own (one owner, §4.4).
+        /// The core's `state.session == .active` (`EngineSessionGate`,
+        /// CH3-19), read through a closure because the engine does not exist
+        /// yet and because the deck must not own a session reference of its
+        /// own (one owner, §4.4).
         var sessionIsActive: () -> Bool
         /// Where a diagnostics row goes (NE-19's ring, later). Default: os.Logger.
         var writeRow: (String) -> Void
@@ -366,7 +372,8 @@ final class AVDeck: DeckDriving {
 
     /// Internal, not private: the Simulator tests read the real player's
     /// rate, and pause it behind the deck's back to stand in for the system.
-    let player: AVPlayer
+    /// A var only for `rebuildPlayer()`: a media-services reset kills it.
+    private(set) var player: AVPlayer
 
     /// Every AVPlayer call that can move the audible state, in order. The
     /// XCTests assert on it ("no preroll was issued", "no play before
@@ -422,6 +429,10 @@ final class AVDeck: DeckDriving {
     /// its "same episode" check). nil while no item is attached.
     private(set) var loadedURL: String?
     private var loadedPreciseTiming = false
+    /// The attached item is a Foray clip (the load's `bounded`, CH3-11): what
+    /// §16's continue and lapse are keyed on (see the header). Written on
+    /// every path that keeps an item for a load: the attach and the reuse.
+    private var loadedBounded = false
     /// The current load kept the attached item (same source) rather than
     /// making a new one. For the rows.
     private var reusedItem = false
@@ -434,7 +445,7 @@ final class AVDeck: DeckDriving {
     /// ready, commanded, or observed playing or stopping. What
     /// `reuseMaxIdleSec` is measured from.
     private var lastLiveMs: Double = 0
-    /// §16, set ONLY while a progressing precise load's `.deadlineExceeded`
+    /// §16, set ONLY while a progressing clip load's `.deadlineExceeded`
     /// is being delivered (see `deadlineFired`): the token whose deadline
     /// passed and the gate stage it was in. The core answers in that same turn,
     /// on main; a same-source retry continues the load (`continueInFlight`),
@@ -464,14 +475,20 @@ final class AVDeck: DeckDriving {
 
     init(config: Config) {
         self.config = config
-        player = AVPlayer()
-        // Plan §4.3's deck settings. `.pause` at the item's end, because the
-        // core, not AVPlayer, decides what plays next (an auto-advance is a
-        // continuation hop); stall-waiting on, because a play on a thin
-        // network should wait rather than start and starve.
+        player = Self.makePlayer()
+        observePlayer()
+    }
+
+    /// The deck's player, with plan §4.3's settings: `.pause` at the item's
+    /// end, because the core, not AVPlayer, decides what plays next (an
+    /// auto-advance is a continuation hop); stall-waiting on, because a play
+    /// on a thin network should wait rather than start and starve. The one
+    /// place a deck's AVPlayer is made, at `init` and at `rebuildPlayer()`.
+    private static func makePlayer() -> AVPlayer {
+        let player = AVPlayer()
         player.actionAtItemEnd = .pause
         player.automaticallyWaitsToMinimizeStalling = true
-        observePlayer()
+        return player
     }
 
     deinit {
@@ -490,8 +507,9 @@ final class AVDeck: DeckDriving {
         dispatchPrecondition(condition: .onQueue(.main))
         guard !invalidated else { return }
         switch command {
-        case let .load(token, _, url, startSec, preciseTiming, deadlineClass):
-            load(token: token, url: url, startSec: startSec, preciseTiming: preciseTiming, deadlineClass: deadlineClass)
+        case let .load(token, _, url, startSec, preciseTiming, deadlineClass, bounded):
+            load(token: token, url: url, startSec: startSec, preciseTiming: preciseTiming, deadlineClass: deadlineClass,
+                 bounded: bounded)
         case .play:
             play()
         case .pause:
@@ -565,14 +583,44 @@ final class AVDeck: DeckDriving {
         playerObservations = []
     }
 
-    /// True while a player-level KVO is registered (the Simulator test of
-    /// `invalidate()` reads it; nothing else does).
+    /// True while a player-level KVO is registered (the Simulator tests of
+    /// `invalidate()` and `rebuildPlayer()` read it; nothing else does).
     var isObservingPlayer: Bool { !playerObservations.isEmpty }
+
+    /// The seam's `rebuild()` (the host's `.sessionRebuild`).
+    func rebuild() {
+        rebuildPlayer()
+    }
+
+    /// Media services were reset (CH3-03, R2-03): the AVPlayer died with the
+    /// media server, and an item attached to it never turns ready, so every
+    /// later load ran to the deadline (`deadline playerStatus=failed`) until
+    /// the app was killed. Apple's rule for a reset: make the objects again.
+    ///
+    /// In this order: `unload()` silences and detaches the old player's item
+    /// and moves the generation, so a completion still in flight for its load
+    /// (a duration, a seek, a preroll) lands on a stale generation and is
+    /// dropped; the out-point reset inside it takes the boundary observer off
+    /// the OLD player (a time observer must be removed by the player that
+    /// added it); the old player's KVO goes; then a new player with the same
+    /// settings, observed the same way. The listener's rate is the deck's,
+    /// not the player's, and survives (every play re-applies it). Nothing is
+    /// reported: the core lands paused and loads again on the next play.
+    func rebuildPlayer() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard !invalidated else { return }
+        unload()
+        playerObservations.forEach { $0.invalidate() }
+        playerObservations = []
+        player = Self.makePlayer()
+        observePlayer()
+        record("rebuild")
+    }
 
     // MARK: - Load (steps 1-2)
 
     private func load(token newToken: DeckToken, url urlString: String?, startSec: Double, preciseTiming: Bool,
-                      deadlineClass newClass: DeckDeadlineClass) {
+                      deadlineClass newClass: DeckDeadlineClass, bounded: Bool) {
         // Whatever was sounding stops BEFORE the new item attaches. A
         // `replaceCurrentItem` on a playing player keeps the rate, so the new
         // item would start by itself the moment it buffered: audible before
@@ -588,13 +636,17 @@ final class AVDeck: DeckDriving {
         // Every out-point layer and timer of the previous load goes, whether
         // this load keeps the item or not (a load drops the out-point).
         resetOutPoint()
-        if continuesInFlight(urlString, preciseTiming: preciseTiming) {
+        if continuesInFlight(urlString, preciseTiming: preciseTiming, bounded: bounded) {
             continueInFlight(token: newToken, startSec: startSec, deadlineClass: newClass)
             return
         }
         let idleSec = item == nil ? nil : max(0, (config.idleClockMs() - lastLiveMs) / 1000)
         let cold = coldReason(urlString, preciseTiming: preciseTiming, idleSec: idleSec)
         if cold == nil {
+            // The kept item is THIS load's: `coldReason` does not compare
+            // `bounded`, so a clip reusing an episode's item (or the reverse)
+            // must not carry the previous load's flag into §16's lapse.
+            loadedBounded = bounded
             reuse(token: newToken, startSec: startSec, idleSec: idleSec, deadlineClass: newClass)
             return
         }
@@ -635,6 +687,7 @@ final class AVDeck: DeckDriving {
         self.item = item
         loadedURL = urlString
         loadedPreciseTiming = preciseTiming
+        loadedBounded = bounded
         noteLive()
         observe(item: item, generation: generation)
         armDeadline(generation: generation)
@@ -694,11 +747,11 @@ final class AVDeck: DeckDriving {
     }
 
     /// Does a `.load` of `url` continue the load in flight (see the header)?
-    /// The same item still on the player, the same URL, PRECISE timing on
-    /// both, no error, still loading or gating (or lapsed at its deadline),
-    /// and progress made.
-    private func continuesInFlight(_ url: String?, preciseTiming: Bool) -> Bool {
-        guard preciseTiming, loadedPreciseTiming, let item, player.currentItem === item,
+    /// A Foray clip (`bounded`) on both, the same item still on the player,
+    /// the same URL and timing option (the asset's), no error, still loading
+    /// or gating (or lapsed at its deadline), and progress made.
+    private func continuesInFlight(_ url: String?, preciseTiming: Bool, bounded: Bool) -> Bool {
+        guard bounded, loadedBounded, preciseTiming == loadedPreciseTiming, let item, player.currentItem === item,
               let url, url == loadedURL, item.status != .failed, item.error == nil else { return false }
         let inFlight = lapsed != nil || stage == .loading || stage == .gating
         return inFlight && loadProgressed
@@ -994,7 +1047,7 @@ final class AVDeck: DeckDriving {
         // Why, as the core's closed token (NE-39n), read while the item and
         // its error log are still attached.
         let cause = Self.fallbackCause(error: nil, log: lastErrorLogEvent(), deadline: true)
-        if loadedPreciseTiming && progressed {
+        if loadedBounded && progressed {
             // §16: LAPSED, NOT LOST. The event goes out with the item still
             // attached and the deck reading as failed (no playhead, no play,
             // no seek), so the core sees exactly what it always saw; nothing

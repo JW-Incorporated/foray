@@ -152,6 +152,8 @@ final class RemoteSurfaceTests: XCTestCase {
     /// an item is current, next only with a next, nothing at all with nothing
     /// current or after a close, and `stop` never. The expected sets are
     /// written out, not recomputed, so a mutant snapshot reads differently.
+    /// On a CAR route, so the track pair is the snapshot's to decide (the
+    /// speaker's answer is `testTheTrackPairOnTheSpeakerRouteWithUpNext`).
     /// TO SEE IT FAIL: build the snapshot with `canNext: true`, read `ended`
     /// as a finished Foray, leave a close as `mode: episode`, apply the
     /// enablement only at start, or enable `stop`.
@@ -165,6 +167,7 @@ final class RemoteSurfaceTests: XCTestCase {
         ]
         for situation in Situation.allCases {
             let world = FakeWorld()
+            world.session.route = RoutePort(portType: "CarAudio", uid: nil)
             let engine = Self.engine(in: situation, world: world)
             XCTAssertEqual(world.remote.enabled.count, MediaMapping.RemoteCommand.allCases.count,
                            "every command has an explicit enabled state: \(situation)")
@@ -173,6 +176,52 @@ final class RemoteSurfaceTests: XCTestCase {
             XCTAssertEqual(world.remote.enabled[.stop], false, "\(situation)")
             withExtendedLifetime(engine) {}
         }
+    }
+
+    /// CH3-10 (R1-03): THE TRACK PAIR ONLY WHERE A TRACK BUTTON EXISTS
+    /// (docs/DECISIONS.md 2026-09-23, founder question 1), in the engine lane
+    /// as in the legacy one. With Up Next holding `b`, the built-in speaker --
+    /// where the lock screen is the only surface -- keeps ↺15/30↻ (no track
+    /// pair); a car route gets it (`MediaMapping.trackCommandsAllowed`, the
+    /// legacy lane's rule moved into the core). Until CH3-10 the speaker row read
+    /// `true` (the commit before pinned it so).
+    /// TO SEE IT FAIL: pass `trackRoute: true` from `publishSurface`.
+    @MainActor
+    func testTheTrackPairOnTheSpeakerRouteWithUpNext() {
+        for (port, trackPair) in [("Speaker", false), ("CarAudio", true)] {
+            let world = FakeWorld()
+            world.session.route = RoutePort(portType: port, uid: nil)
+            let engine = Self.engine(in: .playing, world: world)
+            XCTAssertEqual(world.remote.enabled[.nextTrack], trackPair, port)
+            XCTAssertEqual(world.remote.enabled[.previousTrack], trackPair, port)
+            XCTAssertEqual(world.remote.enabled[.skipForward], true, "the skip pair stays on any route: \(port)")
+            XCTAssertEqual(world.remote.enabled[.skipBackward], true, "the skip pair stays on any route: \(port)")
+            withExtendedLifetime(engine) {}
+        }
+    }
+
+    /// The pair follows the ROUTE as it moves: a car arriving (a session
+    /// `route` input) turns it on in the same turn, and the car leaving for
+    /// the speaker turns it off again, with Up Next unchanged throughout.
+    /// TO SEE IT FAIL: read the route once at `start()`, or only after a
+    /// command turn.
+    @MainActor
+    func testTheTrackPairIsRelaidWhenTheRouteChanges() {
+        let world = FakeWorld()
+        world.session.route = RoutePort(portType: "Speaker", uid: nil)
+        let engine = Self.engine(in: .paused, world: world)
+        XCTAssertEqual(world.remote.enabled[.nextTrack], false, "speaker")
+
+        world.session.route = RoutePort(portType: "CarAudio", uid: "car-1")
+        world.session.post(.route(RouteChange(oldDeviceUnavailable: false, portType: "CarAudio", portUID: "car-1")))
+        XCTAssertEqual(world.remote.enabled[.nextTrack], true, "the car arrived")
+        XCTAssertEqual(world.remote.enabled[.previousTrack], true, "the car arrived")
+
+        world.session.route = RoutePort(portType: "Speaker", uid: nil)
+        world.session.post(.route(RouteChange(oldDeviceUnavailable: true, portType: "CarAudio", portUID: "car-1")))
+        XCTAssertEqual(world.remote.enabled[.nextTrack], false, "the car left")
+        XCTAssertEqual(world.remote.enabled[.previousTrack], false, "the car left")
+        withExtendedLifetime(engine) {}
     }
 
     /// The one place a verdict becomes MediaPlayer's status.

@@ -74,8 +74,9 @@
                        fully offline dev loop). */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { isEntryScript } from "./ci/entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(HERE, "..");
@@ -733,15 +734,15 @@ async function main() {
   }
 }
 
-/* `pathToFileURL`, not a `file://${argv[1]}` template. The template form is
-   what tools/build-catalog-client.mjs uses and it is silently FALSE on Windows
+/* tools/ci/entry.mjs's guard, not a `file://${argv[1]}` template. The template
+   form tools/build-catalog-client.mjs once used is silently FALSE on Windows
    (a `C:\…` path is not `file://C:\…`), so `node tools/search-probe.mjs`
    printed nothing and exited 0 there — on the founder's own machine, which is
    exactly where S-01's card says this has to run. A measurement tool that
    silently measures nothing is the failure class this repo's CLAUDE.md calls
-   "fails green". tools/ci/path-policy.mjs already uses this form; matched to
-   it. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+   "fails green". The pathToFileURL comparison that replaced it failed the same
+   way through a junction (T2-04); isEntryScript realpaths both sides. */
+if (isEntryScript(import.meta.url)) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);

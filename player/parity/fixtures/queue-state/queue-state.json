@@ -507,7 +507,10 @@
     },
     {
       "id": "queue-state/interruption-began-during-load",
-      "covers": ["queue-state::testInterruptionBeganDuringLoadDoesNotPauseOrSavePosition"],
+      "covers": [
+        "queue-state::testInterruptionBeganDuringLoadDoesNotPauseOrSavePosition",
+        "queue-state::testInterruptionDuringLoad_EndsWithShouldResume"
+      ],
       "call": "reduce",
       "args": [
         {
@@ -523,9 +526,69 @@
           {
             "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
             "type": "interrupted",
-            "wasPlaying": false
+            "wasPlaying": true
           },
           [{ "message": "interruption.began.duringLoad", "type": "emitTelemetry" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/stray-item-loaded-after-interruption-during-load",
+      "covers": ["queue-state::testInterruptionDuringLoad_EndsWithShouldResume"],
+      "note": "Chained: the input is interruption-began-during-load's resulting state. A late itemLoaded must not start audio into the call.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "type": "itemLoaded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": true
+          },
+          [
+            {
+              "message": "itemLoaded.ignored: unexpected in state interrupted(episode-a, wasPlaying: true)",
+              "type": "emitTelemetry"
+            }
+          ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/interruption-during-load-then-ended-should-resume",
+      "covers": ["queue-state::testInterruptionDuringLoad_EndsWithShouldResume"],
+      "note": "Chained: the input is interruption-began-during-load's resulting state (CH3-01, R2-01: a nav prompt or Siri during a load, ended with shouldResume).",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": true
+        },
+        { "shouldResume": true, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "pendingSeek": null,
+            "previous": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "target": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "loadingItem"
+          },
+          [
+            {
+              "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+              "type": "loadItem"
+            },
+            { "message": "interruption.ended.resumed", "type": "emitTelemetry" }
+          ]
         ]
       }
     },
@@ -634,7 +697,8 @@
     {
       "id": "queue-state/route-lost-during-load",
       "covers": [
-        "queue-state::testRouteChangedOldDeviceUnavailableDuringLoadSuppressesSubsequentAutoPlay"
+        "queue-state::testRouteChangedOldDeviceUnavailableDuringLoadSuppressesSubsequentAutoPlay",
+        "queue-state::testRouteLostDuringLoad_ThenACallEndsWithShouldResume_StaysPaused"
       ],
       "call": "reduce",
       "args": [
@@ -690,6 +754,54 @@
               "type": "emitTelemetry"
             }
           ]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/call-began-after-route-lost-during-load",
+      "covers": ["queue-state::testRouteLostDuringLoad_ThenACallEndsWithShouldResume_StaysPaused"],
+      "note": "Chained: the input is route-lost-during-load's resulting state; a call begins inside the loss.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": false
+        },
+        { "type": "interruptionBegan" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": false
+          },
+          []
+        ]
+      }
+    },
+    {
+      "id": "queue-state/call-ended-should-resume-after-route-lost-during-load",
+      "covers": ["queue-state::testRouteLostDuringLoad_ThenACallEndsWithShouldResume_StaysPaused"],
+      "note": "Chained: the input is call-began-after-route-lost-during-load's resulting state. A lost route is not resumable, and a call's shouldResume does not make it so (CH3-01 keeps the route arm's false).",
+      "call": "reduce",
+      "args": [
+        {
+          "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+          "type": "interrupted",
+          "wasPlaying": false
+        },
+        { "shouldResume": true, "type": "interruptionEnded" }
+      ],
+      "expect": {
+        "return": [
+          {
+            "item": { "bounds": null, "id": "episode-a", "kind": "episode" },
+            "type": "interrupted",
+            "wasPlaying": false
+          },
+          [{ "message": "interruption.ended.staysPaused", "type": "emitTelemetry" }]
         ]
       }
     },

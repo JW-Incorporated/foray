@@ -5,9 +5,10 @@
  * Issue #29, Store/Policy; docs/roadmap/player-features.md PQ-17. The rules
  * about the RECORD — what a download is in, who is evicted, what the player
  * opens — are `download-store.js`'s (PQ-16) and are not restated here. This
- * file is the WIRE and nothing else: seven calls into the native plugin, three
- * events out of it, and the one promise it makes to its callers, which is that
- * nothing here ever rejects.
+ * file is the WIRE and nothing else: six calls into the native plugin, three
+ * events out of it (replayed from `list()` once at subscription, CH3-05), and
+ * the one promise it makes to its callers, which is that nothing here ever
+ * rejects.
  *
  * HOW IT REACHES NATIVE. Through `window.Capacitor.nativePromise(plugin,
  * method, options)`, the same call `durable-store.js`'s `vaultTier` makes to
@@ -47,10 +48,30 @@
  * copy for both plugins — code-health CH-12), per event name:
  * `Capacitor.addListener` when the bridge has it, else its thinner primitive
  * `nativeCallback(plugin, "addListener", { eventName })`, else nothing (a
- * page with no event path still works — it can `list()` on resume). Every event reaches the caller as
- * `onEvent(name, payload)`, untouched; `download-store.js`'s
- * `reportFromEvent(name, payload)` turns it into the record status
- * `applyProgress` keys on (`downloadFailed`'s own `status` is the HTTP one).
+ * page with no event path still hears the boot replay below). Every event
+ * reaches the caller as `onEvent(name, payload)`, untouched;
+ * `download-store.js`'s `reportFromEvent(name, payload)` turns it into the
+ * record status `applyProgress` keys on (`downloadFailed`'s own `status` is
+ * the HTTP one).
+ *
+ * THE NATIVE INDEX IS THE ONE TRUTH (CH3-05, R4-02/R4-04). The page's
+ * `cp_downloads` is a copy fed by these events, and two things a live event
+ * cannot carry make it lie: iOS MOVES the app's container on every update, so
+ * a stored absolute path goes stale (ForayDownloadsPlugin.swift's header: the
+ * page should take paths from `list()`); and a transfer that finished, or that
+ * the plugin flipped to `interrupted` at load, emitted its event before the
+ * page subscribed. So the moment a listener subscribes (app.js's
+ * `bootDownloads`, once per page), the bridge asks `list()` once and replays
+ * every row to it AS the event the page already handles (`listReplay`): a
+ * `done` row is `downloadDone` with TODAY's path, a `failed` /
+ * `unplayable-here` one is `downloadFailed`, a `downloading` one is
+ * `downloadProgress`. The record's own rules then apply unchanged: a row the
+ * page never asked for is dropped by app.js, a late tick never un-finishes a
+ * file, and a replay that changes nothing is `applyProgress`'s identity — no
+ * write, no repaint, no "Downloaded." — so a reconcile at every boot rewrites
+ * only what moved. The bridge hears no app lifecycle, so the reconcile runs
+ * at subscription only, not on resume: the container moves only across a
+ * relaunch, and an event that lands while the page is alive reaches it live.
  *
  * THE FOURTH EVENT IS FOR THE RECORD, NOT THE PAGE (#29, 29-part). The iOS
  * plugin also emits `downloadAttempt { reqHost, finalHost, status, expected,
@@ -91,6 +112,41 @@ export const CALL_TIMEOUT_MS = 10_000;
 
 /** The three events the plugin emits, forwarded by name to `onEvent`. */
 export const DOWNLOAD_EVENTS = Object.freeze(["downloadProgress", "downloadDone", "downloadFailed"]);
+
+const isStr = (v) => typeof v === "string" && v.length > 0;
+
+/** One `list()` answer (`{ items: [row] }`, each row `{ id, status, bytes,
+    total, reason, path }` — DownloadStore.swift/.java `answer`) as the events
+    the page already handles, in the plugin's order: `[name, payload]` pairs
+    for `onEvent` (CH3-05).
+
+      done (with a path)        -> downloadDone {id, path, bytes}, TODAY's path
+      failed / unplayable-here  -> downloadFailed {id, reason, status: null}
+                                   (`unplayable-here` keeps its own name as the
+                                   reason, which is how reportFromEvent knows it)
+      downloading               -> downloadProgress {id, bytes, total}
+
+    Nothing else is replayed: a `queued` row has nothing to say that the
+    page's own `queued` row does not, and a native `missing` row (the file is
+    gone) has no event — the play that finds it gone marks it (onMissing).
+    A row with no id, a done row with no path, and an answer that is not a
+    row list are skipped. Pure.
+    MUTATION TO BREAK THIS: replay a `queued` row as downloadProgress ->
+    `listReplay maps each native row` is red. */
+export function listReplay(answer) {
+  const rows = answer && Array.isArray(answer.items) ? answer.items : [];
+  const out = [];
+  for (const row of rows) {
+    if (!row || typeof row !== "object" || !isStr(row.id)) continue;
+    const { id, status } = row;
+    if (status === "done" && isStr(row.path)) out.push(["downloadDone", { id, path: row.path, bytes: row.bytes }]);
+    else if (status === "failed" || status === "unplayable-here") {
+      const reason = status === "unplayable-here" ? "unplayable-here" : (isStr(row.reason) ? row.reason : null);
+      out.push(["downloadFailed", { id, reason, status: null }]);
+    } else if (status === "downloading") out.push(["downloadProgress", { id, bytes: row.bytes, total: row.total ?? null }]);
+  }
+  return out;
+}
 
 /** The diagnostics event (#29, 29-part): one per download attempt, iOS only
     for now (Android's half waits for its native engine, D-A3). Kept OUT of
@@ -172,7 +228,9 @@ export const USER_AGENT = userAgentFor(null);
  *   removeAll(): Promise<object>,
  *   list(): Promise<object>,
  *   usage(): Promise<object>,
+ *   webSrc(path: string): string,
  *   fileSrc(opts: {path: string}): string,
+ *   reconciled: Promise<number>,
  * }}
  */
 export function createDownloadBridge({
@@ -214,10 +272,42 @@ export function createDownloadBridge({
     );
   }
 
+  /** The URL the WebView may open for a stored file: Capacitor's
+      `convertFileSrc` (`https://localhost/_capacitor_file_/…` on Android,
+      `capacitor://localhost/_capacitor_file_/…` on iOS) when the bridge has
+      it, else the path as given. Synchronous — it rewrites a string, it asks
+      the phone nothing. Named for what it answers (a WebView URL, the
+      record's `webSrc`), so it is not mistaken for the plugin's own
+      `fileSrc` call (R4-10).
+      MUTATION TO BREAK THIS: return `path` unconditionally -> `webSrc uses the
+      bridge's convertFileSrc` is red. */
+  function webSrc(path) {
+    try {
+      if (typeof bridge.convertFileSrc === "function") return bridge.convertFileSrc(path);
+    } catch (_) { /* fall through to the raw path */ }
+    return path;
+  }
+
   const forward = typeof onEvent === "function" ? onEvent : () => {};
-  const handles = DOWNLOAD_EVENTS.map((name) => listenTo(bridge, DOWNLOADS_PLUGIN, name, (payload) => {
+  const deliver = (name, payload) => {
     try { forward(name, payload ?? {}); } catch (_) { /* a listener's bug is not the wire's */ }
-  }));
+  };
+  const handles = DOWNLOAD_EVENTS.map((name) => listenTo(bridge, DOWNLOADS_PLUGIN, name, (payload) => deliver(name, payload)));
+  /* CH3-05: the boot reconcile (header). Only for a listener — with none there
+     is nobody to tell — and after the subscriptions, so an event the plugin
+     sends while `list()` is in flight is heard live as well. A failed or
+     timed-out `list()` replays nothing: the record keeps what it had.
+     Resolves with the number of events replayed; never rejects.
+     MUTATION TO BREAK THIS: drop the `deliver` loop -> the CH3-05 path test
+     in this suite and test/downloads.test.js are red. */
+  const reconciled = typeof onEvent !== "function"
+    ? Promise.resolve(0)
+    : call("list", {}).then((answer) => {
+      if (!answer || answer.ok === false) return 0;
+      const events = listReplay(answer);
+      for (const [name, payload] of events) deliver(name, payload);
+      return events.length;
+    });
   /* #29: the attempt row goes to the record, never to `onEvent`. No window,
      or one that throws, is a missing row: diagnostics never break a download. */
   const attemptHandle = listenTo(bridge, DOWNLOADS_PLUGIN, DOWNLOAD_ATTEMPT_EVENT, (payload) => {
@@ -235,17 +325,14 @@ export function createDownloadBridge({
     removeAll: () => call("removeAll", {}),
     list: () => call("list", {}),
     usage: () => call("usage", {}),
-    /** The URL the WebView may open for a stored file: Capacitor's
-        `convertFileSrc` (`https://localhost/_capacitor_file_/…` on Android,
-        `capacitor://localhost/_capacitor_file_/…` on iOS) when the bridge has
-        it, else the path as given. Synchronous — it rewrites a string, it
-        asks the phone nothing. */
-    fileSrc: ({ path } = {}) => {
-      try {
-        if (typeof bridge.convertFileSrc === "function") return bridge.convertFileSrc(path);
-      } catch (_) { /* fall through to the raw path */ }
-      return path;
-    },
+    webSrc,
+    /** app.js's spelling of `webSrc` (`onDownloadEvent`, under the UI
+        freeze). Not the plugin's `fileSrc` call, which the page never makes:
+        the page takes today's paths from `list()` instead (CH3-05, R4-10).
+        Goes when app.js calls `webSrc(path)`. */
+    fileSrc: ({ path } = {}) => webSrc(path),
+    /** The boot reconcile's outcome (CH3-05): the number of rows replayed. */
+    reconciled,
     /** The `addListener` handles, for a page that tears the bridge down:
         one per `DOWNLOAD_EVENTS` entry, in order, and the attempt event's. */
     handles,
