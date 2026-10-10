@@ -350,6 +350,26 @@ Add one paragraph per module as it lands.
   `dryRun`, makes no `git`, `gh` or `sh` call and removes the tmp directory.
   `exec`, `now`, `log` and `fs` are injected, and the tests run the real
   export and adapter on the synthetic fixture with `gh`, `git` and `sh` faked.
+- **`dai-tier.mjs`** (PKG-16): `episodeTier(probes, {referenceDurationSec})`
+  puts one episode in one of G-12's `TIERS` (`ad-free`, `paddable`,
+  `locate-required`, `unmeasured`, `unmeasurable`) and returns `{tier, reason,
+  n, delta_max_sec, spread_sec, pad_sec, method, measured_at, hosts}`. The
+  probes are one episode's rows from `data/ad-pad-probes.json`, as
+  `groupProbesByItem` in `tools/segments/ad-pad.mjs` returns them. It is a thin
+  wrapper over that module's `padFromProbes` and `probeDeltaSec`, and it does
+  no byte or seconds arithmetic of its own: no margin beyond the observed
+  spread that `padFromProbes` adds, and no ceiling beyond its
+  `ANCHOR_TIME_TOLERANCE_SEC` split. A missing or non-positive reference is
+  `unmeasurable` (`"no reference duration"`), checked before `padFromProbes`,
+  which throws on it. An untrusted ranged-get host or an undersized delivery
+  is `unmeasurable` with that refusal as the reason. Fewer than two usable
+  probes is `unmeasurable` (`"no denominator"`) only when every probe lacks a
+  declared length (Megaphone's `length="0"`), and `unmeasured` (`"n<2"`)
+  otherwise. `PADDABLE` with a pad of 0 is `ad-free`. The numbers are copied
+  from `padFromProbes` and are null on every refusal. `hosts` lists each
+  distinct ranged-get host with `rangedGetTrusted(host)` from
+  `tools/transcribe/ad-inflation.mjs`, for PKG-17's by-host table. Pure: no
+  network and no file access.
 
 ## Usage
 
