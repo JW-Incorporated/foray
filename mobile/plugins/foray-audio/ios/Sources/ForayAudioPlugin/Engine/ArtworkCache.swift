@@ -69,11 +69,17 @@ final class ArtworkCache {
     /// Decoded squares kept at once: a drive touches a handful of shows, and
     /// each decoded 600x600 image is over a megabyte.
     static let capacity = 8
+    /// How long a failed network load waits before a write may try it again
+    /// (the legacy lane's `artworkRetryAfterSec`, audit round 3,
+    /// mobile-native-6).
+    static let retryAfterSec: Double = 45
 
     private let timeoutSec: Double
     private let fetcher: Fetcher
     private let bundleReader: BundleReader
     private let deadline: DeadlineTimer
+    /// Monotonic seconds, for the retry window.
+    private let now: () -> Double
     private let work = DispatchQueue(label: "ai.jwlabs.foura.engine.artwork", qos: .utility)
 
     private var images: [String: UIImage] = [:]
@@ -85,11 +91,13 @@ final class ArtworkCache {
     init(timeoutSec: Double = ArtworkCache.timeoutSec,
          fetcher: @escaping Fetcher = ArtworkCache.urlSessionFetch,
          bundleReader: @escaping BundleReader = ArtworkCache.readBundled,
-         deadline: @escaping DeadlineTimer = ArtworkCache.mainQueueDeadline) {
+         deadline: @escaping DeadlineTimer = ArtworkCache.mainQueueDeadline,
+         now: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
         self.timeoutSec = timeoutSec
         self.fetcher = fetcher
         self.bundleReader = bundleReader
         self.deadline = deadline
+        self.now = now
     }
 
     /// The source a `MediaMapping.Artwork.src` is read from, or nil when it
