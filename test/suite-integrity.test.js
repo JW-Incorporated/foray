@@ -169,6 +169,13 @@ const FLOORS = {
      per-file verification. Zero slack; every named mutation was run and killed.
      The writer's half is tools/ci/catalogue-directory.test.mjs. */
   "player/catalogue-directory.test.js": 17,
+  /* The catalogue directory's DRIVER (issue #40; unwired until the UI freeze
+     ends): boot never fetches and is bounded, the six-hour TTL gate persists
+     across launches, an older pointer is refused, a torn or sha256-mismatched
+     set is refused whole, a network error keeps the held set and records no
+     check, the unruled cellular policy can defer, and only a complete set is
+     adopted and cached as one row. Zero slack; every named mutation was run. */
+  "player/catalogue-directory-driver.test.js": 10,
   "player/foray-sources.test.js": 24,
     /* 108 -> 109 with #264: a telemetry sink that throws must not reject a load. That
      became reachable when `player/client.js` gave this backend its first real sink —

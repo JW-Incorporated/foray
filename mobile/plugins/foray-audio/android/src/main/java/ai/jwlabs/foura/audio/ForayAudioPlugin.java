@@ -193,13 +193,8 @@ public class ForayAudioPlugin extends Plugin {
      * as opposed to the TTS one) and {@code at} is epoch MILLISECONDS, the clock
      * {@code diagnostic-log.js} stamps every entry with and the one
      * {@code client.js}'s {@code sessionLagMs} subtracts from.
-     */
-    static JSObject sessionEvent(String kind, String reason, long at) {
-        return sessionEvent(kind, reason, java.util.Collections.emptyMap(), at);
-    }
-
-    /**
-     * A-09: the same four keys plus the facts beside them, the way
+     *
+     * <p>A-09: the facts ride beside the four keys, the way
      * {@code ForayAudioPlugin.swift}'s {@code sessionEvent(kind:reason:extra:)} writes
      * {@code extra} first and lets the four fixed keys win over it.
      */

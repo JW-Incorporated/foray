@@ -1544,6 +1544,7 @@ const STORE_LEDGER = {
   "idb:foray": { deleted: "every cp_ key — DurableStore.purge(), section 1" },
   "idb:foray_events": { deleted: "the outbound event queue — event-log purge(), section 10" },
   "idb:foray-directory": { kept: "the published Foray documents, identical for every listener" },
+  "idb:foray-catalogue-directory": { kept: "the public catalogue documents, identical for every listener (catalogue-directory-driver.js, #40; unwired)" },
   "cache:foray-shows-index-v1": { deleted: "which search prefixes were fetched: clearShardCache(), section 11" },
   "cache:foray-gen-": { kept: "the app shell and catalogue files (sw.js)" },
   "cache:foray-pointer": { kept: "which app-shell generation is current (sw.js)" },
