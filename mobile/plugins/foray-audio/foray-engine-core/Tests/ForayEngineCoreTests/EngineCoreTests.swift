@@ -385,8 +385,9 @@ final class EngineCoreTests: XCTestCase {
         host.send(.command(.pause, source: .tap))
         host.send(.lifecycle(.background))
         host.bgRemainingMs = 29_400.4
+        host.route = RoutePort(portType: "carAudio", uid: nil)
 
-        let press = host.send(.remote(RemotePress(.play, routePort: "carAudio")))
+        let press = host.send(.remote(RemotePress(.play)))
         let row = try XCTUnwrap(rows("remote", in: press).first, "\(press)")
         XCTAssertEqual(index(press) { if case let .diag(entry) = $0 { return entry.kind == "remote" }; return false }, 0,
                        "the remote row is the turn's first command")

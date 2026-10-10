@@ -182,7 +182,7 @@ final class FakeRemote: RemoteCommandRegistering {
     func press(_ command: MediaMapping.RemoteCommand, value: Double? = nil) -> RemoteVerdict? {
         guard let target = targets.last(where: { $0.0 == command && $0.1.isLive }) else { return nil }
         log.add("remote.press \(command.rawValue)")
-        return target.2(RemotePress(command, value: value, routePort: "carAudio", onMain: true))
+        return target.2(RemotePress(command, value: value, onMain: true))
     }
 }
 

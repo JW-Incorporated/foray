@@ -444,8 +444,8 @@ final class EngineOwnershipTests: XCTestCase {
 
     /// After a relinquish, the system's notifications reach nothing: zero
     /// engine commands, zero activations or deactivations.
-    /// TO SEE IT FAIL: skip `teardown()` in `relinquish`, with the host's own
-    /// terminal teardown also removed.
+    /// TO SEE IT FAIL: drop the host's terminal teardown from `runTurn`
+    /// (since R1-15 the only teardown path a relinquish takes).
     @MainActor
     func testAfterRelinquishSystemNotificationsReachNothing() throws {
         let (defaults, _) = freshDefaults()

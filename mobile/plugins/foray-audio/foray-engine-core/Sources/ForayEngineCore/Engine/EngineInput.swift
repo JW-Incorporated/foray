@@ -140,16 +140,15 @@ public struct RemotePress: Equatable {
     /// (CH3-20, R3-08): the step is `MediaMapping.SeekSteps`, whatever the
     /// head unit asked for.
     public var value: Double?
-    /// The output route's port type when it arrived (`carAudio`, ...).
-    public var routePort: String?
     /// False when the handler arrived off main (plan §4.2: written, then run
     /// through `DispatchQueue.main.sync`).
     public var onMain: Bool
+    // No route (code-health-3 R1-14): the `remote` row's `route` is
+    // `EngineNow.route`, the route the host reads for every input.
 
-    public init(_ command: MediaMapping.RemoteCommand, value: Double? = nil, routePort: String? = nil, onMain: Bool = true) {
+    public init(_ command: MediaMapping.RemoteCommand, value: Double? = nil, onMain: Bool = true) {
         self.command = command
         self.value = value
-        self.routePort = routePort
         self.onMain = onMain
     }
 }

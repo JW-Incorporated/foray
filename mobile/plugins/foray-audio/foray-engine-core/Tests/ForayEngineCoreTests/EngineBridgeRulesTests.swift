@@ -121,6 +121,19 @@ final class EngineBridgeRulesTests: XCTestCase {
         XCTAssertEqual(refusal(.snapshot, beat), "accepted")
     }
 
+    /// R4-08: `effectiveRate` is reference-engine.js `_body`'s rule, the seam
+    /// gap included: 0 in a gap even where the reducer says `playing` (no
+    /// input reaches that pair today, which is why the drift was silent).
+    /// TO SEE IT FAIL: drop `!inSeamGap` from `EngineSnapshot.effectiveRate`.
+    func testEffectiveRateIsZeroInASeamGapAsInTheReference() {
+        XCTAssertEqual(EngineSnapshot.effectiveRate(state: "playing", inSeamGap: false, buffering: false, rate: 1.5), 1.5)
+        XCTAssertEqual(EngineSnapshot.effectiveRate(state: "playing", inSeamGap: true, buffering: false, rate: 1.5), 0)
+        XCTAssertEqual(EngineSnapshot.effectiveRate(state: "playing", inSeamGap: false, buffering: true, rate: 1.5), 0)
+        for other in EngineContract.PlayerState.allCases.map(\.rawValue) where other != "playing" {
+            XCTAssertEqual(EngineSnapshot.effectiveRate(state: other, inSeamGap: false, buffering: false, rate: 1.5), 0, other)
+        }
+    }
+
     // MARK: - The coalescer (§5.4)
 
     /// Visible: the first change goes at once, the rest of the second waits,

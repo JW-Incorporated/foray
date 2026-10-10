@@ -466,16 +466,19 @@ final class EngineOwnership {
     /// runs the legacy registration. Now Playing is left for the page to
     /// overwrite when a page said hello, and cleared by the legacy
     /// registration when none did (CH3-06). A second relinquish is refused.
+    ///
+    /// ONE TEARDOWN PATH (code-health-3 R1-15): the host's own, at the end of
+    /// the turn that relinquished (`ForayEngine.runTurn`). A relinquish queued
+    /// behind a turn in progress is torn down when the core gets to it, never
+    /// before, or the relinquish itself would be dropped. A second
+    /// `engine.teardown()` here, after a turn that was not deferred, was a
+    /// no-op and is gone.
     @discardableResult
     func relinquish(cap: EngineContract.RelinquishCap, source: EngineSource) -> EngineVerdict {
         guard let engine, !relinquished else {
             return EngineVerdict(failures: [EngineContract.Refusal.relinquished.rawValue], deferred: false)
         }
-        let verdict = engine.handle(.command(.relinquish(cap: cap), source: source))
-        // Queued behind a turn in progress: the host tears down when the core
-        // gets to it. Tearing down now would drop the relinquish itself.
-        if !verdict.deferred { engine.teardown() }
-        return verdict
+        return engine.handle(.command(.relinquish(cap: cap), source: source))
     }
 
     /// The engine is gone, whatever took it: the process belongs to the
