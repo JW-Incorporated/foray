@@ -304,14 +304,24 @@ public final class MediaMapping {
         public boolean foray;
     }
 
-    public record SessionView(Metadata metadata, PositionState positionState, String playbackState) {}
+    /**
+     * {@code mediaSessionView(view)}'s three members, and {@code buffering}: the view's own flag,
+     * carried as is (CH3-22, R5-08). The JS and Swift views report a stall only through the rate
+     * (a browser's and iOS's Now Playing have nothing else to say it with); Media3 has a BUFFERING
+     * state, and the Android facade ({@code EnginePlayer}) reads it from HERE, the one derivation
+     * ({@code EngineCore.mediaView}: the stall latch or a load in flight), never from the rate,
+     * which an item with no known duration does not report. Parity compares the three JS members
+     * only ({@code MediaEpisodeFamily}).
+     */
+    public record SessionView(Metadata metadata, PositionState positionState, String playbackState, boolean buffering) {}
 
-    /** {@code mediaSessionView(view)}. */
+    /** {@code mediaSessionView(view)}, plus the view's {@code buffering}. */
     public static SessionView sessionView(View v) {
         return new SessionView(
                 metadata(v.item, v.nextItem, v.forayTitle, v.index, v.total, v.showArtworkUrl, v.appArtworkUrl),
                 positionState(v.durationSec, v.positionSec, v.playbackRate, v.buffering),
-                playbackState(v.item != null, v.playing, v.inSeamGap, v.ended, v.foray));
+                playbackState(v.item != null, v.playing, v.inSeamGap, v.ended, v.foray),
+                v.buffering);
     }
 
     // ---- remote commands: which exist, and what a press means

@@ -129,6 +129,21 @@ public class PolicyPortTest {
         assertEquals(MediaMapping.PLAYING, unknown.playbackState());
     }
 
+    /**
+     * CH3-22 (R5-08): the session view carries the view's {@code buffering} as is, duration or
+     * not, so a reader never has to infer it from the rate.
+     * MUTATION: pass {@code false} (or {@code positionState(...) != null && rate == 0}) for
+     * {@code buffering} in sessionView: red here.
+     */
+    @Test
+    public void theSessionViewCarriesBufferingDurationOrNot() {
+        assertTrue(MediaMapping.sessionView(bufferingView(90.0)).buffering());
+        assertTrue("no duration: still buffering", MediaMapping.sessionView(bufferingView(null)).buffering());
+        MediaMapping.View steady = bufferingView(null);
+        steady.buffering = false;
+        assertFalse(MediaMapping.sessionView(steady).buffering());
+    }
+
     /** {@code setRate}'s decision: snapped onto the ladder, and it SAYS it snapped. */
     @Test
     public void aSnappedRateSaysSo() {

@@ -336,6 +336,27 @@ public class ForayEngineHostTest {
         assertNull("no duration yet: no position state to carry a rate 0", s.view().positionState());
     }
 
+    /**
+     * CH3-22 (R5-08): the surface says "buffering" once, in its view, from the core's one
+     * derivation (the stall latch or a load in flight): a load with no known duration is
+     * buffering, the deck playing is not, and a stall is again.
+     * MUTATION: in MediaMapping.sessionView pass {@code false} for {@code buffering} (or drop
+     * {@code || loading} from EngineCore.mediaView): red here.
+     */
+    @Test
+    public void theViewSaysBufferingForALoadAndAStallAndNotForPlaying() {
+        Rig r = new Rig();
+        r.host.handle(loadWithoutDuration("u"));
+        r.host.handle(playIndex(0));
+        assertTrue("a load in flight, duration unknown: buffering", r.host.surface().view().buffering());
+        r.deck.emit(new DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.PLAYING, null));
+        assertFalse("the deck plays: not buffering", r.host.surface().view().buffering());
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.WAITING, null));
+        assertTrue("a stall: buffering", r.host.surface().view().buffering());
+        assertEquals("and the clock stands still", 0.0, r.host.surface().view().positionState().playbackRate(), 0);
+    }
+
     @Test
     public void timersAreArmedThroughTheSeamAndCancelledAtTeardown() {
         Rig r = new Rig();

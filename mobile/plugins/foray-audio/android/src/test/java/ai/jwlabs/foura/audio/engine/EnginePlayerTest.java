@@ -48,7 +48,7 @@ public class EnginePlayerTest {
         MediaMapping.CommandSnapshot snap = new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.UNLOADED,
                 false, false, false, false);
         return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT, ForayEngineHost.TRACK_ROUTE),
-                null, false, 0);
+                null, 0);
     }
 
     static ForayEngineHost.Surface episode(boolean playing, boolean canNext, boolean buffering) {
@@ -63,7 +63,7 @@ public class EnginePlayerTest {
         v.playing = playing;
         v.buffering = buffering;
         return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT, ForayEngineHost.TRACK_ROUTE),
-                MediaMapping.sessionView(v), buffering, 1);
+                MediaMapping.sessionView(v), 1);
     }
 
     private static EnginePlayer facade(FakeEngine engine) {
@@ -133,8 +133,7 @@ public class EnginePlayerTest {
     /**
      * The surface the host builds while a load is in flight: the core's {@code mediaView} says
      * buffering (a load in flight is {@code state.buffering || loading}), playing (the transport
-     * is running), and the deck has not said how long the item is; the host's surface-level flag
-     * is the core's stall latch alone, which no stall has set yet.
+     * is running), and the deck has not said how long the item is.
      */
     static ForayEngineHost.Surface loading(Double durationSec) {
         MediaMapping.CommandSnapshot snap = new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.EPISODE,
@@ -147,7 +146,7 @@ public class EnginePlayerTest {
         v.playing = true;
         v.buffering = true;
         return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT, ForayEngineHost.TRACK_ROUTE),
-                MediaMapping.sessionView(v), /* the stall latch: no stall yet */ false, 1);
+                MediaMapping.sessionView(v), 1);
     }
 
     /**
@@ -166,15 +165,15 @@ public class EnginePlayerTest {
 
     /**
      * CH3-22 (R5-08): a load in flight on an item whose duration is NOT yet known (no
-     * {@code duration_sec}, the deck not ready) is BUFFERING too. Today the facade ORs two
+     * {@code duration_sec}, the deck not ready) is BUFFERING too. On main the facade OR'ed two
      * derivations, the host's stall latch and "the position state's rate is 0"; with no duration
-     * there is no position state, so a load reads READY, a running clock that snaps back.
+     * there is no position state, so a load read READY, a running clock that snaps back. The
+     * facade now reads the view's {@code buffering} alone.
      * MUTATION: derive {@code stalled} from the position state's rate again
      * ({@code playing && position != null && position.playbackRate() == 0}): red here.
      */
     @Test
     public void aLoadWithNoKnownDurationIsBufferingNotARunningClock() {
-        // RED on main: R5-08
         FakeEngine e = new FakeEngine();
         e.surface = loading(null);
         EnginePlayer p = facade(e);

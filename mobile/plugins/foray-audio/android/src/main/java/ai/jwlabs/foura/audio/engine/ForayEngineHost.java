@@ -89,10 +89,10 @@ public final class ForayEngineHost {
      * What the remote surface shows after a turn: the enabled commands (with the founder's skip
      * pair), and the session view (null when there is nothing to show, which is also when
      * {@code availability.clearsNowPlaying()}). {@code seq} counts surfaces, so a reader can tell
-     * two identical ones apart.
+     * two identical ones apart. Whether it is buffering is the VIEW's ({@code view.buffering()},
+     * the core's one derivation), not a second flag here (CH3-22, R5-08).
      */
-    public record Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view,
-                          boolean buffering, int seq) {}
+    public record Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view, int seq) {}
 
     /** Told after every turn (once at start, and a cleared surface at teardown), on the host's thread. */
     public interface SurfaceListener {
@@ -270,6 +270,13 @@ public final class ForayEngineHost {
         return failures;
     }
 
+    /**
+     * NO NARRATOR READING, AND NOTHING TO READ IT FROM (CH3-22, R2-05's Android half): the JVM
+     * core is the episode subset, with no narrating overlay, no late-interruption guard that reads
+     * the synthesiser, and no {@code narrator} slot in {@link EngineNow}; the host has no speaker
+     * seam ({@code speak} is a row, below). A-41 brings all three, and passes the speaker's reading
+     * HERE, as iOS's {@code ForayEngine.now()} passes {@code seams.speaker.reading} (CH3-19).
+     */
     private EngineNow now() {
         return new EngineNow(seams.timing.wallMs(), seams.timing.monoMs(), seams.deck.reading());
     }
@@ -380,7 +387,7 @@ public final class ForayEngineHost {
             MediaMapping.View mv = core.mediaView(seams.deck.reading());
             if (mv != null) view = MediaMapping.sessionView(mv);
         }
-        return new Surface(availability, view, core.state().buffering, seq);
+        return new Surface(availability, view, seq);
     }
 
     /**
@@ -391,7 +398,7 @@ public final class ForayEngineHost {
     private static Surface clearedSurface(int seq) {
         MediaMapping.CommandSnapshot none = new MediaMapping.CommandSnapshot(
                 MediaMapping.CommandSnapshot.Mode.UNLOADED, false, false, false, false);
-        return new Surface(MediaMapping.commandAvailability(none, MediaMapping.SeekSteps.DEFAULT, TRACK_ROUTE), null, false, seq);
+        return new Surface(MediaMapping.commandAvailability(none, MediaMapping.SeekSteps.DEFAULT, TRACK_ROUTE), null, seq);
     }
 
     private void publishSurface() {
