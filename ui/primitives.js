@@ -40,7 +40,7 @@ function tactileArtFrame(data) {
   var px = TACTILE_ART_PX[size];
   var image = d.url
     ? '<img src="' + esc(safeUrl(artUrl(d.url, px * 3))) + '" alt="' + esc(label) + '" loading="lazy" decoding="async" width="' + px + '" height="' + px + '">'
-    : '<span class="art-frame__initials" aria-hidden="true">' + esc(d.initials || "4a") + "</span>";
+    : d.plain ? "" : '<span class="art-frame__initials" aria-hidden="true">' + esc(d.initials || "4a") + "</span>";
   return '<span class="art-frame art-frame--' + esc(size) + shape + state + '"' + (d.loading ? ' aria-busy="true"' : "") + ">" + image + "</span>";
 }
 
@@ -148,6 +148,49 @@ function tactileHash(value) {
   return TACTILE_SHOW_ENAMELS[(h >>> 0) % TACTILE_SHOW_ENAMELS.length];
 }
 
+/* One enamel per show WITHIN a band that wants a key (Today's foray card). The hash above
+ * is global and stable, so two shows in one foray can land on the same enamel (a seven-show
+ * foray reused teal three times and the key could only tell them apart by their codes). This
+ * keeps each show's own hash enamel when it is free and otherwise walks on to the next free
+ * one, trying the six show enamels first and the two the narration and sky blues share only
+ * once those are spent. Past eight shows an enamel repeats (there are only eight). `ids` is
+ * the show ids in first-appearance order; returns { id: enamelIndex }. */
+var TACTILE_KEY_ENAMELS = [0, 1, 3, 4, 5, 7, 6, 2];
+
+function tactileDistinctEnamels(ids) {
+  var out = {};
+  var used = {};
+  var taken = 0;
+  (Array.isArray(ids) ? ids : []).forEach(function (id) {
+    var key = String(id);
+    if (Object.prototype.hasOwnProperty.call(out, key)) return;
+    if (taken >= TACTILE_KEY_ENAMELS.length) { used = {}; taken = 0; }
+    var start = TACTILE_KEY_ENAMELS.indexOf(tactileHash(key));
+    for (var step = 0; step < TACTILE_KEY_ENAMELS.length; step += 1) {
+      var candidate = TACTILE_KEY_ENAMELS[(start + step) % TACTILE_KEY_ENAMELS.length];
+      if (!used[candidate]) { out[key] = candidate; used[candidate] = true; taken += 1; return; }
+    }
+  });
+  return out;
+}
+
+/* THE FORAY'S COLOUR KEY, ONE FUNCTION FOR EVERY SCREEN (review 2026-10-09: Today's card
+ * gave each show its own enamel while the Foray page still hashed, so a show changed colour
+ * the moment the listener tapped from the card into that foray's page). A show is keyed by
+ * its NAME (a bar with no name falls back to its source key), the narration is not a show,
+ * and the map is { showKey: enamelIndex } over the strip model's segments in order. Today,
+ * Yours, the Foray page and the player all read the answer from here, so a show is one
+ * colour wherever its foray is drawn. */
+function tactileForayShowKey(segment) {
+  return segment && segment.kind === "narration" ? "narration" : ((segment && (segment.show || segment.sourceKey)) || "show");
+}
+
+function tactileForayEnamels(segments) {
+  return tactileDistinctEnamels((Array.isArray(segments) ? segments : [])
+    .filter(function (s) { return s && s.kind !== "narration" && !s.narration; })
+    .map(tactileForayShowKey));
+}
+
 function tactileStationCode(name) {
   var words = String(name || "Show").replace(/^The\s+/i, "").trim().split(/\s+/).filter(Boolean);
   return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || "SH").slice(0, 2)).toUpperCase();
@@ -251,6 +294,7 @@ function tactileBandSegments(input) {
       show: String(s.show || (s.narration ? "4a narration" : "Show")),
       duration: Math.max(1, Number(s.duration) || 1),
       narration: Boolean(s.narration),
+      enamel: Number.isInteger(s.enamel) && s.enamel >= 0 && s.enamel <= 7 ? s.enamel : -1,
     };
   });
 }
@@ -422,7 +466,7 @@ function tactileBand(data) {
     var segment = segments[index];
     var cls = episode ? "t-band__bar t-band__bar--episode"
       : segment.narration ? "t-band__bar t-band__bar--narration" + (hatch ? "" : " t-band__bar--tick")
-      : "t-band__bar t-band__bar--c" + tactileHash(segment.showId);
+      : "t-band__bar t-band__bar--c" + (segment.enamel >= 0 ? segment.enamel : tactileHash(segment.showId));
     var shape = line ? '" y="0" width="' + box.width.toFixed(2) + '" height="60" rx="0"'
       : '" y="' + barY + '" width="' + box.width.toFixed(2) + '" height="' + barH + '" rx="' + rx.toFixed(2) + '" ry="' + ry.toFixed(2) + '"';
     return '<rect class="' + cls + '"' + (segment.narration && hatch ? ' fill="url(#' + esc(id) + '-hatch)"' : "") + ' data-segment-index="' + index + '" x="' + box.x.toFixed(2) + shape + "></rect>";

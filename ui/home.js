@@ -543,27 +543,47 @@ function todayForayPick(picks, resumeEntry = null) {
     fix for the same strip on the Foray page), so a tick is only ever where a clip ends
     and another begins. The card's band is not a scrub target, which is the one reason
     the strip keeps the merge off elsewhere; the accessible label still counts items. */
+const TODAY_KEY_MAX = 8; // the palette's length: a ninth show would only repeat an enamel
 function todayHeroModel(pick) {
   const { foray, r } = pick;
   const player = window.ForayPlayer;
   const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable, { mergeNarration: true }) : null;
   const items = model && Array.isArray(model.segments) ? model.segments : [];
+  const showIdOf = tactileForayShowKey;
+  /* ONE ENAMEL PER SHOW IN THIS FORAY. The global hash lets two of seven shows share teal,
+     and a key that tells shows apart only by their codes is not a key: so the band is handed
+     each show's enamel here (its own hash colour when free, the next free one when not) and
+     the key below reads the very same map. */
+  const enamels = tactileForayEnamels(items);
   const segments = items.map(s => ({
-    showId: s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"),
+    showId: showIdOf(s),
     show: s.kind === "narration" ? "" : (s.show || ""),
     duration: s.lengthSec,
     narration: s.kind === "narration",
+    enamel: s.kind === "narration" ? -1 : enamels[showIdOf(s)],
   }));
   const shows = [...new Set(items.filter(s => s.kind !== "narration" && s.show).map(s => s.show))];
+  /* THE KEY TO THE BAND. Each contributing show, in first-appearance order, wears the
+     enamel of its own bars: `enamel` is read off the segment the band above was just
+     handed for that show (not a second guess at its name), so a disc's pip and its
+     show's segments cannot disagree. One show is one pip. */
+  const enamelOf = new Map();
+  for (const s of segments) if (!s.narration && s.show && !enamelOf.has(s.show)) enamelOf.set(s.show, s.enamel);
   const tally = typeof player?.stripTally === "function" ? player.stripTally(r.playable) : null;
+  /* The card's readout is the direction's: "about 22 min · 6 shows". The runtime is already
+     rounded to the minute (fmtSpan), so "about" is true of a measured sum as well as an
+     estimated one; the Foray page keeps the stricter dialect (p-foray-8: "about" only when
+     estimated), where the clock beside the scrubber gives the exact figure. */
+  const runtime = forayRuntimeLabel(player, tally, r.totalSec);
   const facts = joinMeta(
-    forayRuntimeLabel(player, tally, r.totalSec),
+    runtime && !/^about /.test(runtime) ? `about ${runtime}` : runtime,
     countLabel(tally ? tally.shows : shows.length, "show"),
   );
   const summary = String(foray.summary || "").trim();
   return {
     foray, r, segments, facts,
-    discs: shows.slice(0, 3).map(name => ({ url: showArtworkUrl({ title: name }), initials: todayInitials(name) })),
+    discs: shows.slice(0, TODAY_KEY_MAX).map(name => ({ name, enamel: enamelOf.get(name), url: showArtworkUrl({ title: name }), initials: todayInitials(name) })),
+    moreShows: Math.max(0, shows.length - TODAY_KEY_MAX),
     why: summary && wordCount(summary) <= TODAY_WHY_WORDS ? summary : "",
     bandLabel: tally
       ? `Foray band: ${countLabel(tally.clips + tally.bridges, "clip")} from ${countLabel(tally.shows, "show")}${tally.bridges ? ", with 4a narration between them" : ""}`
@@ -590,7 +610,11 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
   if (!hero) return "";
   const { foray } = hero;
   const path = forayRoutePath(foray.id);
-  const discs = hero.discs.map(d => tactileArtFrame({ size: "disc", round: true, url: d.url, initials: d.initials })).join("");
+  /* A pip in the show's band enamel (the `t-band__bar--c` index the bars wear), the show's
+     name as the item's accessible name: the colour is never the only thing that says who. */
+  const keys = hero.discs.map((d, i) => `<span class="today-hero__key today-hero__key--c${Number(d.enamel) || 0}${i === hero.discs.length - 1 ? " today-hero__key--last" : ""}" role="listitem" aria-label="${esc(d.name || "")}">${tactileArtFrame({ size: "disc", round: true, url: d.url, plain: true })}<span class="today-hero__pip" aria-hidden="true"></span></span>`).join("");
+  const more = hero.moreShows > 0 ? `<span class="readout today-hero__more" role="listitem" aria-label="${esc(countLabel(hero.moreShows, "more show"))}">+${esc(String(hero.moreShows))}</span>` : "";
+  const discs = `<span class="today-hero__discs" role="list" aria-label="Shows in this foray">${keys}${more}</span>`;
   const why = firstRun ? TODAY_FIRST_RUN_LINE : hero.why;
   /* A Foray is streamed from each show's own feed, never downloaded: offline its key is
      always blocked, and the sentence is drawn once under the keys. */
@@ -602,7 +626,7 @@ function todayHeroHtml(hero, { firstRun = false } = {}) {
     <div class="today-hero__eyebrow">${tactileTag({ kind: "narration", text: "Today's foray" })}</div>
     <h2 class="display today-hero__title" id="today-hero-title"><a class="today-hero__link" href="${esc(safeUrl("#" + path))}">${esc(foray.title)}</a></h2>
     <div class="well today-hero__band">${tactileBand({ kind: "mini", segments: hero.segments, renderWidth: todayBandWidth(), label: hero.bandLabel })}</div>
-    <div class="today-hero__meta"><span class="today-hero__discs">${discs}</span><span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
+    <div class="today-hero__meta">${discs}<span class="readout today-hero__facts">${esc(hero.facts)}</span></div>
     ${why ? `<p class="today-hero__why">${esc(why)}</p>` : ""}
     <div class="today-hero__keys">
       ${play}

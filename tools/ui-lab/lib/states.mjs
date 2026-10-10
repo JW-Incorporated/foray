@@ -303,6 +303,24 @@ async function holdCatalog(page) {
   await page.route("**/data/catalog-client.json*", () => { /* held on purpose */ });
 }
 
+/* Today's hero is the first playable Foray, and the fixture's own is a one-show Foray
+   (Practical AI alone), which hides the colour key: one ring, one colour. The Foray
+   below is the published fixture Foray that draws on seven shows, so every ring is
+   a different show and the band is multi-coloured. The document is answered with only
+   that Foray in it (the page asks for it by URL, so a route is the whole seam); nothing
+   in the repo's data changes. Kept BELOW holdCatalog: test/tactile-home-loading.test.js
+   reads the first `page.route(` in this file as the catalog hold. */
+const FORAY_MULTI_SHOW = "capital-types-1";
+async function seedMultiShowHero(page) {
+  await page.route("**/data/forays.json*", async (route) => {
+    const response = await route.fetch();
+    const doc = await response.json();
+    const only = (doc.forays || []).filter((f) => f.id === FORAY_MULTI_SHOW);
+    if (!only.length) throw new Error("uilab: the multi-show Foray " + FORAY_MULTI_SHOW + " is not in data/forays.json");
+    await route.fulfill({ response, json: { ...doc, forays: only } });
+  });
+}
+
 /* Tactile `foray` (Foray detail): the four states the page draws beyond its fresh one.
  * A step shares one page with the steps before it, and the player reads a Foray's stored
  * place once at boot (its store is authoritative in memory), so a state that needs a place
@@ -560,6 +578,12 @@ export function appStates(fx) {
       description: "Returning user with a part-played episode (25 of 60 min): Today shows the Resume card.",
       seed: "resuming",
       steps: [{ label: "home-resume", route: "#/", ready: ".today-resume" }],
+    },
+    {
+      id: "today-key",
+      description: "Returning user, Today with a multi-show Foray as its hero: the contributing shows' discs are ringed in the colours of their bars (owner review 2026-10-09). The foray is the first published one that draws on several shows, put at the head of the picks by the step itself.",
+      seed: "returning",
+      steps: [{ label: "home-multi-show", route: "#/", ready: ".today-hero__key", before: seedMultiShowHero }],
     },
     {
       id: "offline",

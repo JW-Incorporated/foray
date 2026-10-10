@@ -558,8 +558,9 @@ function forayStationCodes(shows) {
 }
 
 /** The enamel class a show wears on the band (and on its swatch). */
-function forayEnamelClass(showName) {
-  return `t-band__bar--c${tactileHash(showName)}`;
+function forayEnamelClass(showName, enamels) {
+  const own = enamels && Object.prototype.hasOwnProperty.call(enamels, showName) ? enamels[showName] : undefined;
+  return `t-band__bar--c${Number.isInteger(own) ? own : tactileHash(showName)}`;
 }
 
 /** The band's bars: the strip model with each run of back-to-back narration drawn
@@ -568,13 +569,17 @@ function forayEnamelClass(showName) {
 function forayBandModel(r, player) {
   const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable, { mergeNarration: true }) : null;
   const items = model && Array.isArray(model.segments) ? model.segments : [];
+  /* The same per-foray enamels Today's card reads (tactileForayEnamels), so a show is one
+     colour on the card, on this band, in the From swatches and in the player. */
+  const enamels = tactileForayEnamels(items);
   const segments = items.map(s => ({
-    showId: s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"),
+    showId: tactileForayShowKey(s),
     show: s.kind === "narration" ? "" : (s.show || ""),
     duration: s.lengthSec,
     narration: s.kind === "narration",
+    enamel: s.kind === "narration" ? -1 : enamels[tactileForayShowKey(s)],
   }));
-  return { items, segments };
+  return { items, segments, enamels };
 }
 
 /** The drawn band's width in CSS px, for the bars' minimum-width arithmetic and
@@ -641,9 +646,9 @@ function forayBarHtml({ share }) {
 /** The "From" rows: a station swatch, the show's artwork, its name and how many
     clips it contributes. A row is a link when the show has a page of its own and
     plain text when it does not (a link to nothing is worse than a label). */
-function forayFromRowHtml(show, codes = new Map()) {
+function forayFromRowHtml(show, codes = new Map(), enamels = null) {
   const art = tactileArtFrame({ size: "mini", url: showArtworkUrl({ title: show.name }), initials: tactileStationCode(show.name) });
-  const swatch = `<span class="fdet-sw ${forayEnamelClass(show.name)}" aria-hidden="true">${esc(codes.get(show.name) || "")}</span>`;
+  const swatch = `<span class="fdet-sw ${forayEnamelClass(show.name, enamels)}" aria-hidden="true">${esc(codes.get(show.name) || "")}</span>`;
   /* The plain-text branch carries `data-credit-show`: the show index loads after the
      first paint, and `relinkForayCredits` turns a name it now knows into the link. */
   const name = show.showId
@@ -656,12 +661,12 @@ function forayFromRowHtml(show, codes = new Map()) {
     starts the Foray THERE, with its two votes beside it (siblings, never inside:
     a button in a button never survives the parent's handler). A beat that will
     not play is a plain row that says so. Narration keeps its transcript. */
-function forayRow(entry, codes = new Map()) {
+function forayRow(entry, codes = new Map(), enamels = null) {
   const narration = isForayNarration(entry);
   const name = narration ? narratorName() : (entry.show || "This clip");
   const swatch = narration
     ? `<span class="fdet-sw fdet-sw--narration" aria-hidden="true"></span>`
-    : `<span class="fdet-sw ${forayEnamelClass(entry.show)}" aria-hidden="true">${esc(codes.get(entry.show) || "")}</span>`;
+    : `<span class="fdet-sw ${forayEnamelClass(entry.show, enamels)}" aria-hidden="true">${esc(codes.get(entry.show) || "")}</span>`;
   const sub = entry.why || (!narration && entry.episode_title) || "";
   const text = `<span class="fdet-seg__text"><span class="row__title">${esc(name)}</span>${sub ? `<span class="label fdet-seg__sub">${esc(sub)}</span>` : ""}</span>`;
   /* THE LISTENER GETS A SENTENCE; THE REASON STAYS FOR US. The resolver's reason
@@ -700,7 +705,7 @@ function forayJumpLabel(name, where) {
   return `Play ${name}`;
 }
 
-function foraySlotHtml(slot, codes = new Map()) {
+function foraySlotHtml(slot, codes = new Map(), enamels = null) {
   if (!slot.entries.length) {
     return `<div class="fdet-slot">
       <h3 class="h17">${esc(slot.title)}</h3>
@@ -709,7 +714,7 @@ function foraySlotHtml(slot, codes = new Map()) {
   }
   return `<div class="fdet-slot">
     <h3 class="h17">${esc(slot.title)}</h3>
-    ${slot.entries.map(e => forayRow(e, codes)).join("")}
+    ${slot.entries.map(e => forayRow(e, codes, enamels)).join("")}
   </div>`;
 }
 
@@ -1229,11 +1234,11 @@ async function renderForay(id) {
       </div>
       ${shows.length ? `<section class="fdet-sect">
         <h2 class="heading">From</h2>
-        <div class="fdet-rows">${shows.map(s => forayFromRowHtml(s, codes)).join("")}</div>
+        <div class="fdet-rows">${shows.map(s => forayFromRowHtml(s, codes, band.enamels)).join("")}</div>
       </section>` : ""}
       <section class="fdet-sect" id="fdet-clips">
         <h2 class="heading">Clips</h2>
-        ${r.slots.map(slot => foraySlotHtml(slot, codes)).join("")}
+        ${r.slots.map(slot => foraySlotHtml(slot, codes, band.enamels)).join("")}
       </section>
       ${foraySourcesHtml(r, player)}
       ${feedbackSheetHtml()}

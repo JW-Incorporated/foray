@@ -185,11 +185,11 @@ test("every list row and Today's hero says how long a Foray is and what it is ma
   assert.ok(row.includes(`<span class="fy-home-sub">${facts}</span>`), `the Forays list row: ${row}`);
 
   const hero = app.todayHeroModel({ foray: doc, r });
-  assert.equal(hero.facts, `${resolve.fmtSpan(r.totalSec)} · 7 shows`, "Today's hero: the length and the show count");
-  assert.match(app.todayHeroHtml(hero), /class="readout today-hero__facts">\d+ min · 7 shows</, "and it is drawn as the mono readout");
+  assert.equal(hero.facts, `about ${resolve.fmtSpan(r.totalSec)} · 7 shows`, "Today's hero: the length and the show count, in the card's own voice (\"about\", Tactile iteration 3)");
+  assert.match(app.todayHeroHtml(hero), /class="readout today-hero__facts">about \d+ min · 7 shows</, "and it is drawn as the mono readout");
 
   const lib = libraryRows(app.libraryForaysHtml()).find(([t]) => t === doc.title);
-  assert.equal(lib[1], `${resolve.fmtSpan(r.totalSec)} · 7 shows`, "an unopened Foray's Yours card reads its length and show count, as Today's hero does (the clip count left the card with the band)");
+  assert.equal(lib[1], `about ${resolve.fmtSpan(r.totalSec)} · 7 shows`, "an unopened Foray's Yours card reads its length and show count, as Today's hero does (it shares todayHeroModel; the clip count left the card with the band)");
 });
 
 test("a narrated Foray's length is hedged on every list surface, and counts the narrator's clips (p-foray-8, states-11)", async () => {
