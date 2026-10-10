@@ -939,7 +939,8 @@ const sameCommit = (a, b) => {
  *  queues behind it anyway, but two dispatches would ship twice); nothing
  *  release-relevant is waiting; the retry budget is spent; the newest run was
  *  refused at the iOS gate on main's CURRENT head and a check that gate reads
- *  is still red there; or main is red or still building. Otherwise dispatch —
+ *  is still red there, or two runs were refused there (the backstop, below);
+ *  or main is red or still building. Otherwise dispatch —
  *  which is also how a FAILED release is retried, since its commits are still
  *  waiting.
  *
@@ -950,7 +951,18 @@ const sameCommit = (a, b) => {
  *  re-dispatched every two hours for ever, each run refused on sight (the gate
  *  never replaces a check run that exists) while shipping the same commit to
  *  Play again. Re-running the red check in ci.yml, or a new commit on main,
- *  clears it; a superseded run never triggers it. */
+ *  clears it; a superseded run never triggers it.
+ *
+ *  THE BACKSTOP (PR #1270 review): that hold reads the gate's checks, so it only
+ *  covers a refusal caused by a RED check. A gate that keeps refusing on main's
+ *  head for any other reason (ios-checks crashes, a token failure, the ci.yml
+ *  dispatch POST refused, checks that never appear, a job dying at setup) is
+ *  each time "refused", spends no budget, and would be re-dispatched (and
+ *  re-uploaded to Play) every two hours without limit. So, whatever the cause
+ *  and whatever the checks say now: a SECOND gate refusal on main's current
+ *  head since the last success holds. One refusal on a commit earns exactly
+ *  one more dispatch of it; a new commit on main, or a success, clears it.
+ *  Refusals on commits main has moved past, and superseded runs, never count. */
 export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, mainChecks = null, runJobs = null }) {
   const inFlight = sortRuns(runs).find(isInFlight);
   if (inFlight) {
@@ -986,6 +998,14 @@ export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, m
           `still main's head, and a dispatch now would be refused the same way (${gate.message}). ` +
           "Re-run the red check in ci.yml, or land a fix." };
     }
+  }
+  const refusedAtHead = since.filter((x) => x.kind === "refused" && sameCommit(x.run.head_sha, head));
+  if (refusedAtHead.length >= 2) {
+    return { dispatch: false, code: "HOLD_REFUSED_AT_HEAD",
+      reason: `${refusedAtHead.length} release runs since the last success ` +
+        `(${refusedAtHead.map((x) => `#${x.run.run_number}`).join(", ")}) were refused at the iOS gate on ` +
+        `${String(head).slice(0, 7)}, still main's head; not dispatching the same commit again, whatever the cause. ` +
+        "Read the ios-checks log of the newest one; a new commit on main clears this." };
   }
   const main = mainState(mainRuns, mainStatus, mainChecks);
   if (main.state !== "green") {

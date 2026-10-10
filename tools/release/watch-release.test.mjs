@@ -1123,6 +1123,63 @@ test("#745: refused at the gate on main's CURRENT head with a check still red th
   assert.equal(triggerDecision({ ...base, runJobs: null, mainChecks: red }).code, "DISPATCH");
 });
 
+/* The backstop (PR #1270 review). The red-check hold above reads the gate's
+ * checks, so a gate that keeps refusing on main's head for any OTHER reason
+ * (ios-checks crashes, a token failure, the ci.yml dispatch POST refused,
+ * checks that never appear, a job dying at setup) was "refused" every time,
+ * spent no budget, and was re-dispatched every two hours without limit, each
+ * run re-uploading to Play. The rule: a SECOND gate refusal on main's current
+ * head since the last success holds, whatever the cause and whatever the
+ * checks say now. One refusal earns exactly one more dispatch of that commit. */
+const RUN_74_AT_72 = { ...RUN_72, id: 37990000074, run_number: 74, created_at: "2026-10-09T22:00:00Z", updated_at: "2026-10-09T22:05:00Z" };
+const CRASHED = { jobs: JOBS_72, iosChecksLog: null }; // ios-checks died: no log, no SUPERSEDED line -> "refused"
+const AT_72 = [{ ...COMMITS_745[0], sha: RUN_72.head_sha }];
+const BOT_MERGED = { mainRuns: [], mainStatus: { total_count: 0 } }; // no ci.yml on the head: mainState is green with no checks at all
+
+test("#745 backstop: two gate refusals on main's current head with its checks ABSENT there — hold, whatever the cause", () => {
+  /* MUTATION (RUN, red, restored): delete the backstop (the refusedAtHead
+     block) -> DISPATCH: the absent checks never make the red-check hold fire,
+     so the same commit goes out a third time.
+     MUTATION (RUN, red, restored): `>= 3` instead of `>= 2` -> DISPATCH. */
+  const runs = [RUN_74_AT_72, RUN_72, RUN_71];
+  const runJobs = { [RUN_72.id]: CRASHED, [RUN_74_AT_72.id]: CRASHED };
+  for (const mainChecks of [[], null]) {
+    const d = triggerDecision({ runs, commits: AT_72, bundle: BUNDLE, ...BOT_MERGED, mainChecks, runJobs });
+    assert.equal(d.code, "HOLD_REFUSED_AT_HEAD", `mainChecks ${JSON.stringify(mainChecks)}: ${d.reason}`);
+    assert.match(d.reason, /2 release runs since the last success \(#74, #72\) were refused at the iOS gate on 2be7db2/);
+  }
+  // ONE refusal there still earns one more dispatch (the gate may ask ci.yml for the checks this time).
+  assert.equal(triggerDecision({ runs: [RUN_72, RUN_71], commits: AT_72, bundle: BUNDLE, ...BOT_MERGED, mainChecks: [], runJobs }).code, "DISPATCH");
+});
+
+test("#745 backstop: two gate refusals on the current head hold even with its checks GREEN; refusals main moved past, and superseded runs, never count", () => {
+  /* Green checks do not clear it: a gate that crashes, or whose token fails,
+     refuses again however green the checks are.
+     MUTATION (RUN, red, restored): delete the backstop -> the green-checks
+     case is DISPATCH.
+     MUTATION (RUN, red, restored): drop `sameCommit(...)` from refusedAtHead
+     -> the two refusals on a commit main moved past hold.
+     MUTATION (RUN, red, restored): count `superseded` as well -> the
+     superseded pair at the head holds. */
+  const green = [actionsCheck(1, "engine-parity", "success"), actionsCheck(2, "ios-kit", "success")];
+  const runs = [RUN_74_AT_72, RUN_72, RUN_71];
+  const runJobs = { [RUN_72.id]: CRASHED, [RUN_74_AT_72.id]: CRASHED };
+  const base = { runs, bundle: BUNDLE, ...GREEN, mainChecks: green, runJobs };
+  const held = triggerDecision({ ...base, commits: AT_72 });
+  assert.equal(held.code, "HOLD_REFUSED_AT_HEAD", held.reason);
+  assert.match(held.reason, /whatever the cause/);
+  // main moved past the twice-refused commit: no budget spent, dispatch the new head.
+  assert.equal(triggerDecision({ ...base, commits: COMMITS_745 }).code, "DISPATCH");
+  // One refusal on an old commit and one on the head: one at the head, so one more dispatch.
+  const oldOne = { ...RUN_72, head_sha: RUN_73.head_sha };
+  assert.equal(triggerDecision({ ...base, runs: [RUN_74_AT_72, oldOne, RUN_71], runJobs: { [oldOne.id]: CRASHED, [RUN_74_AT_72.id]: CRASHED }, commits: AT_72 }).code, "DISPATCH");
+  // Superseded runs are not refusals of the head's commit: they never count.
+  const sup = { jobs: JOBS_72, iosChecksLog: LOG_73 };
+  assert.equal(triggerDecision({ ...base, runJobs: { [RUN_72.id]: sup, [RUN_74_AT_72.id]: sup }, commits: AT_72 }).code, "DISPATCH");
+  // The run-72/73 replay is untouched by the backstop.
+  assert.equal(triggerDecision({ runs: RUNS_745, commits: COMMITS_745, bundle: BUNDLE, ...GREEN, runJobs: RUN_JOBS_745 }).code, "DISPATCH");
+});
+
 test("#745: release.yml's `ios` job is the macOS job and needs `ios-checks` — the two names the budget reads", () => {
   /* MUTATION (RUN, red, restored): IOS_GATE_JOB = "ios-gate" -> no such job
      in release.yml, and every refusal would quietly count again. */
