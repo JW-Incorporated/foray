@@ -34,11 +34,10 @@ an ordered run of segments drawn from real podcast episodes.
   they are included in your phone's own backups (iCloud, or your Google
   account), like any app's data. **Your account token is not**: it is kept on
   the phone only (§1).
-- **Five kinds of event are sent to our database**: which episode you picked,
-  which you finished, which you saved, your thumbs up/down feedback (including
-  any note you type), and the fact that a session was shown to you. They are
-  stored against an anonymous account that contains no name, email or phone
-  number.
+- **Four kinds of event are sent to our database**: which episode you picked,
+  which you saved, your thumbs up/down feedback (including any note you type),
+  and the fact that a session was shown to you. They are stored against an
+  anonymous account that contains no name, email or phone number.
 - **Audio plays straight from each publisher's own servers.** We never rehost or
   proxy podcast audio. That means the publisher — and the measurement or
   ad-attribution services the publisher has put in front of their own audio —
@@ -288,16 +287,29 @@ device.** Read this one plainly, because an earlier version of this policy
 promised something narrower. Typing into the Shows search box is answered
 first from the catalogue already on your device — that part is instant and
 local — and 4a **also** sends the text you typed to our own server
-(`app.js:API_ORIGIN`) so it can search the full catalogue, and, when nothing
-we hold matches at all, on to Apple's public podcast directory
-(`itunes.apple.com`) so a show we have never listed can still be found. **It
-does this whether or not the show was already on your device.** There is no
-"only if we cannot find it locally" condition; the previous wording said
-there was, and the code never had one. What is sent is the text you typed and
-nothing else — no account id, no device identifier, no record of your other
-searches, and nothing is stored against you. It is not sent per keystroke
-either: 4a waits until you stop typing (250 ms) and sends once, and a query
-you repeat in the same session is answered from memory without asking again.
+(`app.js:API_ORIGIN`) so it can search the full catalogue. For any search of
+three or more characters our server then passes the same text on to Apple's
+public podcast directory (`itunes.apple.com`) — once for shows and once for
+episodes — so a show or episode we have never listed can still be found. **It
+does this whether or not our own catalogue matched, and whether or not the
+show was already on your device.** There is no "only if we cannot find it"
+condition; an earlier version of this policy said there was, and the code
+dropped that condition on 2026-09-12 after measuring that the directory added
+results to every query tried. The request to Apple is made by our server, so
+Apple sees our server's address and the text you typed, not your device's
+address. What is sent is the text you typed and nothing else — no account id,
+no device identifier, no record of your other searches, and nothing is stored
+against you. It is not sent per keystroke either: 4a waits until you stop
+typing (250 ms) and then asks our server once for shows, once for the
+directory pass and once for episodes; a query you repeat in the same session
+is answered from memory without asking again.
+
+**The search box on a show's own page works the same way:** what you type
+there is sent to our server together with that show's id
+(`app.js:searchShowEpisodesScoped()`), and our server reads the show's own
+feed to search every episode, not just the ones already on your screen.
+Nothing about you goes with it, and it is not stored.
+
 Separately from anything you type, when 4a launches and each time
 you bring it back to the foreground it fetches the current foray directory —
 the small pointer `data/forays-directory.json` and, only when that pointer
@@ -384,23 +396,24 @@ ours.
 
 ### 4.1 How many parties, and who they are
 
-As of 2026-08-17 the catalogue the app downloads points at **43 distinct hosts**
+As of 2026-10-07 the catalogue the app downloads points at **44 distinct hosts**
 for audio, across the three data files the app fetches on load
 (`data/segment-sources.json` — the assembled forays; `data/session.json` — the
 home cards; `data/discover.json` — the recommendation pool, ~1,480 playable
 items). Anything with a play button plays this way.
 
 ```
-2.gum.fm  anchor.fm  aphid.fireside.fm  api.substack.com  archive.org
-audioboom.com  cdn.simplecast.com  chrt.fm  claritaspod.com  clrtpod.com
-content.rss.com  dts.podtrac.com  episodes.captivate.fm  episodes.castos.com
-feeds.soundcloud.com  injector.simplecastaudio.com  mcdn.podbean.com
-media.blubrry.com  media.transistor.fm  mgln.ai  op3.dev  pdcn.co  pdrl.fm
-pdst.fm  pfx.vpixl.com  pinecast.com  podcasts.captivate.fm  podtrac.com
-prefix.up.audio  prfx.byspotify.com  pscrb.fm  redirect.zencastr.com
-rss.art19.com  s.gum.fm  sphinx.acast.com  static1.squarespace.com
-stitcher.simplecastaudio.com  tracking.swap.fm  traffic.libsyn.com
-traffic.megaphone.fm  traffic.omny.fm  www.buzzsprout.com  www.podtrac.com
+2.gum.fm  anchor.fm  aphid.fireside.fm  api.riverside.com  api.substack.com
+archive.org  audioboom.com  cdn.simplecast.com  chrt.fm  claritaspod.com
+clrtpod.com  content.rss.com  dts.podtrac.com  episodes.captivate.fm
+episodes.castos.com  feeds.soundcloud.com  injector.simplecastaudio.com
+mcdn.podbean.com  media.blubrry.com  media.transistor.fm  mgln.ai  op3.dev
+pdcn.co  pdrl.fm  pdst.fm  pfx.vpixl.com  pinecast.com
+podcasts.captivate.fm  podtrac.com  prefix.up.audio  prfx.byspotify.com
+pscrb.fm  redirect.zencastr.com  rss.art19.com  s.gum.fm  sphinx.acast.com
+static1.squarespace.com  stitcher.simplecastaudio.com  tracking.swap.fm
+traffic.libsyn.com  traffic.megaphone.fm  traffic.omny.fm
+www.buzzsprout.com  www.podtrac.com
 ```
 
 This list is **generated from the data files, and it changes when the catalogue
@@ -498,9 +511,16 @@ bound on the channel that would carry data *out*.
 - **No crash reporting.**
 - **No third-party SDKs of any kind**, and no bundled libraries that phone home.
 - **No location access, no camera, no microphone, no contacts, no calendar, no
-  photos, no notifications.** The app requests no device permissions. There is no
-  call to `geolocation`, `getUserMedia` or the contacts APIs anywhere in the
-  client.
+  photos.** There is no call to `geolocation`, `getUserMedia` or the contacts
+  APIs anywhere in the client. **Notifications:** 4a sends no push or reminder
+  notifications, and has no server that could. On Android the app shows the
+  system's playback notification — the lock-screen transport controls — while
+  audio plays, and the system's download-progress notification while an
+  episode downloads. To show the first of those on Android 13 and later it
+  asks for the notification permission once, after the first time you press
+  play (`mobile/plugins/foray-audio/android/src/main/AndroidManifest.xml`);
+  saying no only hides those controls, and nothing else changes. That is the
+  only device permission the app asks for, and on an iPhone it asks for none.
 - **No device fingerprinting.** We do not collect a device id, advertising id,
   screen size, timezone or language list.
 - **No sale of data, and no sharing for anyone else's advertising.**
