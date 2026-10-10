@@ -808,7 +808,10 @@ public struct EngineCore {
         let fields = [
             JSONMember("cmd", .string(press.command.rawValue)),
             JSONMember("dupCandidate", .string(dup ? "y" : "n")),
-            JSONMember("route", press.routePort.map { JSONNode.string($0) } ?? .null),
+            // ONE SPELLING (code-health-3 R1-14): the route the host read for
+            // this turn, the one route resume hears (NE-38rs); a press carries
+            // no route of its own.
+            JSONMember("route", now.route.map { JSONNode.string($0.portType) } ?? .null),
             JSONMember("thread", .string(press.onMain ? "main" : "bg")),
             JSONMember("state", .string(state.stateType))
         ]
@@ -822,7 +825,7 @@ public struct EngineCore {
         // A skip or a scrub goes through `seekBy` / `seekTo`, which are the
         // nudge and scrub helpers: in a Foray they step on the FORAY's clock
         // (`forayNudge` / `forayScrub`), the clock Now Playing publishes, never
-        // the clip's source seconds (#924; the JVM's A-42). Pinned from a clip
+        // the clip's source seconds (#924; the JVM's A-40). Pinned from a clip
         // by `manager-foray/remote-clock-*` and from a line by
         // `manager-foray/narration-skip-*`.
         switch press.command {

@@ -1,0 +1,17 @@
+{
+  "name": "foray-notify",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Foray's own Capacitor plugin: local new-episode alerts for followed shows (issue #761; docs/roadmap/player-features.md PQ-28). iOS: a background app refresh (BGTaskScheduler, task identifier ai.jwlabs.foura.alerts) reads the page's cp_starred_shows row from UserDefaults (CapacitorStorage.cp_starred_shows), asks the same episodes endpoint the show page does, applies player/show-alerts.js's rules, writes the row back and posts one local notification per show with a new episode; a tap emits alertOpened { showId }, which player/alert-open.js routes to the show. NOT published, NOT a third-party dependency -- this repo's own hand-written native code, same pattern as foray-audio, foray-tts, foray-vault and foray-downloads (docs/android-native-code.md). NOT DECLARED in mobile/package.json yet (PQ-30 declares it and writes the plist keys), so no shell compiles it; its XCTests run in ci.yml (ios-kit). The Android half is PQ-29.",
+  "//no-js-entry": "No main/module/types on purpose, matching foray-audio, foray-tts, foray-vault and foray-downloads. The web half is player/alert-open.js (ALERT_PLUGIN = 'ForayNotify', ALERT_EVENT = 'alertOpened'), plus the page's nativePromise('ForayNotify', 'requestPermission', {}) when a show's alerts are turned on. There is no bundler in this repo.",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "files": [
+    "ios/Sources/",
+    "Package.swift"
+  ]
+}

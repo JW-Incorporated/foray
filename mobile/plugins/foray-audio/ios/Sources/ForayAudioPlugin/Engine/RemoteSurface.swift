@@ -1,5 +1,4 @@
 import Foundation
-import AVFAudio
 import MediaPlayer
 import ForayEngineCore
 
@@ -32,9 +31,11 @@ import ForayEngineCore
 ///     deadlock because the caller is not main. Either way the engine hears
 ///     it inside the host's own turn discipline and the status is the
 ///     verdict, not a receipt.
-///   - THE ROUTE AT THE MOMENT OF THE PRESS. `route=` in the `remote` row is
-///     the current output's port type (`carAudio`, `bluetoothA2DP`, ...): the
-///     steering-wheel question in NE-27's car script is answered by it.
+///   - NO ROUTE OF ITS OWN (code-health-3 R1-14). `route=` in the `remote`
+///     row is the current output's port type (`CarAudio`, ...), the steering-
+///     wheel question in NE-27's car script; the core writes it from the
+///     route the host reads for every input (`EngineNow.route`, NE-38rs), so
+///     a press is not a second read of the route in a second place.
 ///
 /// ── THE DOCUMENTED STATUS OF A PRESS (RemoteSurfaceTests' truth table) ──────
 ///
@@ -51,17 +52,9 @@ import ForayEngineCore
 /// own `remote` row for the press.
 final class RemoteSurface: RemoteCommandRegistering {
     private let center: MPRemoteCommandCenter
-    private let routePort: () -> String?
 
-    init(center: MPRemoteCommandCenter = .shared(), routePort: @escaping () -> String? = RemoteSurface.currentRoutePort) {
+    init(center: MPRemoteCommandCenter = .shared()) {
         self.center = center
-        self.routePort = routePort
-    }
-
-    /// The current route's first output port type. A read of the route, not
-    /// a session call: AudioSessionOwner stays the only code that activates.
-    static func currentRoutePort() -> String? {
-        AVAudioSession.sharedInstance().currentRoute.outputs.first?.portType.rawValue
     }
 
     func mpCommand(_ command: MediaMapping.RemoteCommand) -> MPRemoteCommand {
@@ -89,10 +82,9 @@ final class RemoteSurface: RemoteCommandRegistering {
             break
         }
         let target = mpCommand(command)
-        let routePort = self.routePort
         let token = target.addTarget { event in
             let verdict = RemoteSurface.deliver(command, value: RemoteSurface.value(of: event, for: command),
-                                                routePort: routePort, handler: handler)
+                                                handler: handler)
             return RemoteSurface.status(verdict)
         }
         return RemoteTarget(command: target, token: token)
@@ -116,18 +108,18 @@ final class RemoteSurface: RemoteCommandRegistering {
 
     /// Run the handler on main and return its verdict. On main: in place.
     /// Off main: `DispatchQueue.main.sync`, with the press marked `onMain:
-    /// false` so the `remote` row says `thread=bg`. The route is read on
-    /// main in both cases.
-    static func deliver(_ command: MediaMapping.RemoteCommand, value: Double?, routePort: @escaping () -> String?,
+    /// false` so the `remote` row says `thread=bg`. The route the row names
+    /// is read by the host on main, with the turn (`EngineNow.route`).
+    static func deliver(_ command: MediaMapping.RemoteCommand, value: Double?,
                         handler: @escaping (RemotePress) -> RemoteVerdict) -> RemoteVerdict {
         if Thread.isMainThread {
             return MainActor.assumeIsolated {
-                handler(RemotePress(command, value: value, routePort: routePort(), onMain: true))
+                handler(RemotePress(command, value: value, onMain: true))
             }
         }
         return DispatchQueue.main.sync {
             MainActor.assumeIsolated {
-                handler(RemotePress(command, value: value, routePort: routePort(), onMain: false))
+                handler(RemotePress(command, value: value, onMain: false))
             }
         }
     }

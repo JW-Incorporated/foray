@@ -202,7 +202,8 @@ public enum EngineSnapshot {
         let playhead = loaded ? max(0, finite(deck.positionSec) ?? 0) : 0
         let duration: JSONNode = loaded ? (finite(deck.durationSec).flatMap { $0 > 0 ? JSONNode.number($0) : nil } ?? .null) : .null
         let rate = state.rate > 0 && state.rate.isFinite ? state.rate : PlaybackRate.defaultRate
-        let effectiveRate = type == "playing" && !state.buffering ? rate : 0
+        let effectiveRate = EngineSnapshot.effectiveRate(state: type, inSeamGap: state.inSeamGap,
+                                                         buffering: state.buffering, rate: rate)
         let metadata = item.map { MediaMapping.metadata(item: MediaMapping.Item(
             kind: $0.node["kind"]?.stringValue, title: $0.node["title"]?.stringValue, show: $0.node["show"]?.stringValue)) }
 
@@ -254,6 +255,16 @@ public enum EngineSnapshot {
             members.append(JSONMember("narrationElapsedSec", .number(elapsed)))
         }
         return members
+    }
+
+    /// The rate the playhead is moving at: the listener's rate while
+    /// `playing`, and 0 in a seam gap (the beat is silence), while buffering
+    /// and in every other state. reference-engine.js `_body` is the rule
+    /// (code-health-3 R4-08: this body left out the gap, the JS did not), and
+    /// `EngineContract.extrapolate` freezes on the same three facts. No JVM
+    /// twin on main; held draft #963's Java EngineBridgeRules must mirror it.
+    public static func effectiveRate(state: String, inSeamGap: Bool, buffering: Bool, rate: Double) -> Double {
+        state == "playing" && !inSeamGap && !buffering ? rate : 0
     }
 
     private static func finite(_ value: Double?) -> Double? {

@@ -2147,7 +2147,7 @@
     },
     "snapshot": {
       "files": {
-        "player/parity/fixtures/snapshot/snapshot.json": "c970a5346b4fe26980a79ac1024ba5dab0de4e2e9babe3c89097be2b486d50c3"
+        "player/parity/fixtures/snapshot/snapshot.json": "bcc3fb9933afccdc0e4a69bad8ae11e566e7cf34614aec8a8e161fd6569b5c0d"
       },
       "ids": [
         "snapshot/snapshot-modes",
@@ -2167,6 +2167,7 @@
         "snapshot/snapshot-invalid-now-playing-missing-album",
         "snapshot/extrapolate-running-advances-at-effective-rate",
         "snapshot/extrapolate-frozen-in-seam-gap",
+        "snapshot/extrapolate-seam-beat-as-both-engines-write-it",
         "snapshot/extrapolate-frozen-while-buffering",
         "snapshot/extrapolate-frozen-when-not-running",
         "snapshot/extrapolate-clamped-at-duration",
