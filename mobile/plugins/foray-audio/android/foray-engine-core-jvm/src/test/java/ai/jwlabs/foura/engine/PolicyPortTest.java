@@ -103,6 +103,32 @@ public class PolicyPortTest {
         assertTrue(car.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK));
     }
 
+    static MediaMapping.View bufferingView(Double durationSec) {
+        MediaMapping.View v = new MediaMapping.View();
+        v.item = new MediaMapping.Item("episode", "An episode", "A show");
+        v.durationSec = durationSec;
+        v.positionSec = 3.0;
+        v.playbackRate = 1.5;
+        v.playing = true;
+        v.buffering = true;
+        return v;
+    }
+
+    /**
+     * CH3-22 characterization (survives): a buffering view with a known duration reports a rate
+     * of 0; with no known duration it reports no position state at all, so the rate cannot be
+     * where a reader learns the view is buffering (R5-08).
+     */
+    @Test
+    public void aBufferingViewStopsTheClockOnlyWhereThereIsOne() {
+        MediaMapping.SessionView known = MediaMapping.sessionView(bufferingView(90.0));
+        assertEquals(0.0, known.positionState().playbackRate(), 0);
+        assertEquals(MediaMapping.PLAYING, known.playbackState());
+        MediaMapping.SessionView unknown = MediaMapping.sessionView(bufferingView(null));
+        assertNull(unknown.positionState());
+        assertEquals(MediaMapping.PLAYING, unknown.playbackState());
+    }
+
     /** {@code setRate}'s decision: snapped onto the ladder, and it SAYS it snapped. */
     @Test
     public void aSnappedRateSaysSo() {

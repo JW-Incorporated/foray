@@ -130,6 +130,59 @@ public class EnginePlayerTest {
         p.release();
     }
 
+    /**
+     * The surface the host builds while a load is in flight: the core's {@code mediaView} says
+     * buffering (a load in flight is {@code state.buffering || loading}), playing (the transport
+     * is running), and the deck has not said how long the item is; the host's surface-level flag
+     * is the core's stall latch alone, which no stall has set yet.
+     */
+    static ForayEngineHost.Surface loading(Double durationSec) {
+        MediaMapping.CommandSnapshot snap = new MediaMapping.CommandSnapshot(MediaMapping.CommandSnapshot.Mode.EPISODE,
+                false, false, true, false);
+        MediaMapping.View v = new MediaMapping.View();
+        v.item = new MediaMapping.Item("episode", "An episode", "A show");
+        v.durationSec = durationSec;
+        v.positionSec = 0.0;
+        v.playbackRate = 1.0;
+        v.playing = true;
+        v.buffering = true;
+        return new ForayEngineHost.Surface(MediaMapping.commandAvailability(snap, MediaMapping.SeekSteps.DEFAULT, ForayEngineHost.TRACK_ROUTE),
+                MediaMapping.sessionView(v), /* the stall latch: no stall yet */ false, 1);
+    }
+
+    /**
+     * CH3-22 characterization (survives): a load in flight on an item whose duration IS known is
+     * BUFFERING, the controls still say pause.
+     */
+    @Test
+    public void aLoadWithAKnownDurationIsBuffering() {
+        FakeEngine e = new FakeEngine();
+        e.surface = loading(90.0);
+        EnginePlayer p = facade(e);
+        assertEquals(Player.STATE_BUFFERING, p.getPlaybackState());
+        assertTrue("the controls still say pause", p.getPlayWhenReady());
+        p.release();
+    }
+
+    /**
+     * CH3-22 (R5-08): a load in flight on an item whose duration is NOT yet known (no
+     * {@code duration_sec}, the deck not ready) is BUFFERING too. Today the facade ORs two
+     * derivations, the host's stall latch and "the position state's rate is 0"; with no duration
+     * there is no position state, so a load reads READY, a running clock that snaps back.
+     * MUTATION: derive {@code stalled} from the position state's rate again
+     * ({@code playing && position != null && position.playbackRate() == 0}): red here.
+     */
+    @Test
+    public void aLoadWithNoKnownDurationIsBufferingNotARunningClock() {
+        // RED on main: R5-08
+        FakeEngine e = new FakeEngine();
+        e.surface = loading(null);
+        EnginePlayer p = facade(e);
+        assertEquals("a load in flight stops the clock, duration or not", Player.STATE_BUFFERING, p.getPlaybackState());
+        assertTrue("the controls still say pause", p.getPlayWhenReady());
+        p.release();
+    }
+
     @Test
     public void everySessionCommandIsARemotePress() {
         FakeEngine e = new FakeEngine();

@@ -297,6 +297,45 @@ public class ForayEngineHostTest {
         assertFalse("a remote stop is never enabled (T-7)", s.availability().isEnabled(MediaMapping.RemoteCommand.STOP));
     }
 
+    static EngineInput loadWithoutDuration(String id) {
+        List<JsonNode.Member> m = new ArrayList<>();
+        m.add(JsonNode.member("id", JsonNode.str(id)));
+        m.add(JsonNode.member("kind", JsonNode.str("episode")));
+        m.add(JsonNode.member("title", JsonNode.str("Title " + id)));
+        m.add(JsonNode.member("show", JsonNode.str("A show")));
+        m.add(JsonNode.member("audio_url", JsonNode.str("https://cdn.example/" + id + ".mp3")));
+        List<EngineItem> items = new ArrayList<>();
+        items.add(EngineItem.of(new JsonNode.Obj(m)));
+        return new EngineInput.Queue(new EngineInput.QueueInput.Load(items));
+    }
+
+    /**
+     * CH3-22 characterization (survives): while a load is in flight on an item whose duration is
+     * known the surface's clock stands still (the view's rate is 0), and once the deck plays it
+     * runs at the listener's rate. An item with no known duration has no position state at all
+     * during its load, so "rate 0" cannot say "buffering" there (R5-08's premise).
+     */
+    @Test
+    public void aLoadInFlightStopsTheClockAndPlayingStartsIt() {
+        Rig r = new Rig();
+        r.host.handle(load("a"));
+        r.host.handle(playIndex(0));
+        ForayEngineHost.Surface loading = r.host.surface();
+        assertEquals(MediaMapping.PLAYING, loading.view().playbackState());
+        assertEquals("a load in flight: the clock stands still", 0.0, loading.view().positionState().playbackRate(), 0);
+        r.deck.emit(new DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.PLAYING, null));
+        ForayEngineHost.Surface playing = r.host.surface();
+        assertEquals("playing: the clock runs", 1.0, playing.view().positionState().playbackRate(), 0);
+
+        Rig unknown = new Rig();
+        unknown.host.handle(loadWithoutDuration("u"));
+        unknown.host.handle(playIndex(0));
+        ForayEngineHost.Surface s = unknown.host.surface();
+        assertEquals(MediaMapping.PLAYING, s.view().playbackState());
+        assertNull("no duration yet: no position state to carry a rate 0", s.view().positionState());
+    }
+
     @Test
     public void timersAreArmedThroughTheSeamAndCancelledAtTeardown() {
         Rig r = new Rig();
