@@ -290,6 +290,95 @@ final class ForayAudioPluginTests: XCTestCase {
         XCTAssertEqual(ForayAudioPlugin.preferredIntervals(ms: 0), [])
     }
 
+    // MARK: - Artwork: the engine's ArtworkCache, confined to stateQueue (CH3-21)
+
+    /// Audit round 3, mobile-native-6, now through the ONE loader (CH3-21):
+    /// the legacy lane's artwork is `ArtworkCache` confined to a serial queue
+    /// (`stateQueue`). A failed fetch is held back for `retryAfterSec` and
+    /// then tried again; another URI is never held back by it; a bundled file
+    /// that is not there is an answer and is never read again; every
+    /// completion arrives on the lane's queue.
+    /// MUTATION: settle a failed network load as permanent (`.infinity`, the
+    /// engine's old `failed.insert(src)`), and the after-the-window row goes
+    /// red; complete on main instead of the cache's queue, and the queue rows
+    /// do.
+    func testAFailedArtworkLoadIsRetriedAfterItsWindow() throws {
+        let lane = DispatchQueue(label: "test.foray-audio.state")
+        let onLane = DispatchSpecificKey<Bool>()
+        lane.setSpecific(key: onLane, value: true)
+        var clock: Double = 1_000
+        var fetched: [String] = []
+        var reads = 0
+        let png = try XCTUnwrap(UIGraphicsImageRenderer(size: CGSize(width: 2, height: 2)).image { context in
+            UIColor.orange.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 2, height: 2))
+        }.pngData())
+        let cache = ArtworkCache(queue: lane, fetcher: { url, _, done in
+            fetched.append(url.absoluteString)
+            done(fetched.count == 1 ? nil : png)
+            return {}
+        }, bundleReader: { _ in
+            reads += 1
+            return nil
+        }, deadline: { _, _ in }, now: { clock })
+        func load(_ src: String) -> (landed: Bool, onLane: Bool) {
+            let done = expectation(description: "load \(src)")
+            var result = (landed: false, onLane: false)
+            lane.async {
+                cache.load(src) { image in
+                    result = (image != nil, DispatchQueue.getSpecific(key: onLane) == true)
+                    done.fulfill()
+                }
+            }
+            wait(for: [done], timeout: 30)
+            return result
+        }
+        func advance(_ sec: Double) { lane.sync { clock += sec } }
+        let a = "https://art.test/a.jpg", b = "https://art.test/b.jpg"
+
+        XCTAssertEqual(load(a).landed, false, "the car connects in a dead zone: the fetch fails")
+        XCTAssertEqual(fetched, [a])
+        guard case .failed = lane.sync(execute: { cache.lookup(a) }) else { return XCTFail("a failure reads as none") }
+
+        advance(ArtworkCache.retryAfterSec - 1)
+        XCTAssertEqual(load(a).landed, false)
+        XCTAssertEqual(fetched, [a], "inside the window a dead URL is not fetched again")
+        XCTAssertEqual(load(b).landed, true, "another URI is never held back by this one's failure")
+
+        advance(1)
+        let retried = load(a)
+        XCTAssertEqual(fetched, [a, b, a], "after the window the failed URL is fetched again")
+        XCTAssertTrue(retried.landed)
+        XCTAssertTrue(retried.onLane, "a completion arrives on the lane's queue, never main")
+
+        let missing = load("icon-512.png")
+        XCTAssertFalse(missing.landed)
+        XCTAssertTrue(missing.onLane)
+        advance(10 * ArtworkCache.retryAfterSec)
+        XCTAssertFalse(load("icon-512.png").landed)
+        XCTAssertEqual(reads, 1, "a bundled file that is not there is an answer, read once")
+        XCTAssertTrue(ArtworkCache.retryAfterSec >= 30 && ArtworkCache.retryAfterSec <= 60)
+    }
+
+    /// The legacy lane's boundary onto the shared loader: the web half's
+    /// `bundle://public/<path>` (`IOS_ASSET_BASE`) is our icon at `<path>`
+    /// under the bundle's `public/`, an https URL is a publisher's square,
+    /// and everything else has no artwork by the cache's own gate.
+    /// MUTATION: hand `bundle://public/...` to the cache unstripped (our icon
+    /// is refused as a non-https scheme), or let a bare relative path or a
+    /// path that climbs out of `public/` through.
+    func testALegacyArtworkUriIsTheSharedLoadersSource() {
+        XCTAssertEqual(ForayAudioPlugin.artworkSource(for: "bundle://public/icon-512.png"), "icon-512.png")
+        XCTAssertEqual(ForayAudioPlugin.artworkSource(for: "bundle://public/img/icon.png"), "img/icon.png")
+        XCTAssertEqual(ForayAudioPlugin.artworkSource(for: "https://img.example/a/600x600bb.jpg"),
+                       "https://img.example/a/600x600bb.jpg")
+        for none in ["", "bundle://public/", "bundle://public/../secret.png", "bundle://public/icon.png?x=1",
+                     "bundle://other/icon.png", "icon-512.png", "http://img.example/a.jpg",
+                     "data:image/png;base64,AAAA", "file:///var/mobile/icon.png"] {
+            XCTAssertNil(ForayAudioPlugin.artworkSource(for: none), none)
+        }
+    }
+
     // MARK: - founder 2026-09-23: "my car resumed Spotify"
 
     /// The one-button press. `togglePlayPause` was mapped to `"play"`
@@ -314,22 +403,6 @@ final class ForayAudioPluginTests: XCTestCase {
     /// or return `.hold` for `(.playing, .playing)` -- the F11/F13 loop -- or
     /// return `.hold` for a pause inside an interruption -- 4a re-interrupting
     /// the app that interrupted it.
-    /// Audit round 3, mobile-native-6: a failed remote artwork load is retried
-    /// after a window, not cached as "no artwork" for the rest of the item.
-    /// MUTATION: make `artworkLoadAllowed` return false for any recorded
-    /// failure of the URI, and the after-the-window row goes red.
-    func testAFailedArtworkLoadIsRetriedAfterItsWindow() {
-        let t0 = Date(timeIntervalSince1970: 1_000)
-        let failure = (uri: "https://art.test/a.jpg", at: t0.addingTimeInterval(ForayAudioPlugin.artworkRetryAfterSec))
-        XCTAssertTrue(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/a.jpg", lastFailure: nil, now: t0))
-        XCTAssertFalse(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/a.jpg", lastFailure: failure, now: t0))
-        XCTAssertTrue(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/a.jpg", lastFailure: failure,
-                                                          now: t0.addingTimeInterval(ForayAudioPlugin.artworkRetryAfterSec)))
-        XCTAssertTrue(ForayAudioPlugin.artworkLoadAllowed(uri: "https://art.test/b.jpg", lastFailure: failure, now: t0),
-                      "another URI is never held back by this one's failure")
-        XCTAssertTrue(ForayAudioPlugin.artworkRetryAfterSec >= 30 && ForayAudioPlugin.artworkRetryAfterSec <= 60)
-    }
-
     func testSessionMoveTable() {
         typealias S = NowPlayingPayload.State
         XCTAssertEqual(ForayAudioPlugin.sessionMove(from: .playing, to: .paused, holding: false), .hold)
@@ -420,12 +493,12 @@ final class ForayAudioPluginTests: XCTestCase {
     }
 
     /// The remote artwork fetch is bounded, so a stalled network at the
-    /// moment the car connects cannot hold `stateQueue` -- and the car's play
-    /// behind it -- for the URL loading system's default minute.
-    /// TO SEE IT FAIL: set `artworkTimeoutSec` to 60 or more.
+    /// moment the car connects cannot leave a load open for the URL loading
+    /// system's default minute (the lane's loader is ArtworkCache, CH3-21).
+    /// TO SEE IT FAIL: set `ArtworkCache.timeoutSec` to 60 or more.
     func testRemoteArtworkLoadIsBoundedWellUnderTheDefaultTimeout() {
-        XCTAssertLessThanOrEqual(ForayAudioPlugin.artworkTimeoutSec, 15)
-        XCTAssertGreaterThan(ForayAudioPlugin.artworkTimeoutSec, 0)
+        XCTAssertLessThanOrEqual(ArtworkCache.timeoutSec, 15)
+        XCTAssertGreaterThan(ArtworkCache.timeoutSec, 0)
     }
 
     /// Only a PAUSED transport re-writes its entry on background / new route:
