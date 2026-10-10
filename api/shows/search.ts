@@ -1,5 +1,5 @@
 import { searchBreadthShows } from "../../backend/src/catalog/searchBreadthShows";
-import { showById, searchableShows } from "../_lib/showCatalog";
+import { showById, searchableShows, ensureCorpusCatalogue } from "../_lib/showCatalog";
 import { applyCors } from "../_lib/cors";
 import { firstParam, parseLimit, requireQuery, type ApiRequest, type ApiResponse } from "../_lib/params";
 import { appleShowSearch, mergeDirectoryShows } from "../_lib/appleShowSearch";
@@ -175,6 +175,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     res.status(400).json({ error: "q and id are mutually exclusive" });
     return;
   }
+
+  /* PKG-33: the corpus catalogue, if its pointer names one, before the first
+     lookup (once per instance; never throws; see api/_lib/showCatalog.ts).
+     With no pointer there is nothing to await and this stays synchronous. */
+  const corpus = ensureCorpusCatalogue();
+  if (corpus) await corpus;
 
   if (id && id.trim()) {
     try {

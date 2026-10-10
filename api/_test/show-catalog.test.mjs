@@ -26,8 +26,12 @@ import { fileURLToPath } from "node:url";
 import * as episodesModule from "../shows/[show_id]/episodes.ts";
 import * as episodeSearchModule from "../episodes/search.ts";
 import * as showSearchModule from "../shows/search.ts";
+import os from "node:os";
+import zlib from "node:zlib";
 import { sharedFeedReader } from "../_lib/feedCache.ts";
 import { episodeSearchCache } from "../_lib/searchCache.ts";
+import { _resetCorpusCatalogueForTests, CORPUS_FETCH_TIMEOUT_MS } from "../_lib/showCatalog.ts";
+import { loadShowIdMap } from "../_lib/showIdMap.ts";
 
 const unwrap = (m) => (typeof m.default === "function" ? m.default : m.default.default);
 const listHandler = unwrap(episodesModule);
@@ -302,4 +306,224 @@ test("the episodes/search bundle parses catalog-breadth.json once per instance (
   `);
   assert.match(got.apple, /Apple search fetch error/, "premise: the Apple path ran (and asked the network, which throws)");
   assert.equal(got.reads, 1);
+});
+
+/* ====================================================================== */
+/* THE CORPUS CATALOGUE THROUGH ITS POINTER (docs/roadmap/corpus.md PKG-33) */
+/* ====================================================================== */
+/* api/_lib/showCatalog.ts's `ensureCorpusCatalogue()` reads
+   data/corpus-catalogue-pointer.json (PKG-32's shape), fetches its
+   `catalogue_url` (catalog-breadth-corpus.json.gz) once per process and, when
+   it is a usable catalogue, serves its rows in place of
+   data/catalog-breadth.json's. Every reader awaits it before its first
+   lookup: show search (q and id), the episode list and the show-scoped
+   search (api/_lib/resolveShow.ts) and the Apple fallback's id map
+   (api/_lib/showIdMap.ts). The pointer does not exist on main, so the
+   absent branch is the one every deploy takes today. */
+
+const CORPUS_URL = "https://corpus.example.test/corpus-export-2026-10-09/catalog-breadth-corpus.json.gz";
+const CORPUS_SHOWS = [
+  { apple_collection_id: 990000201, title: "Zz Corpus Fixture Alpha", feed_url: "https://feeds.example.test/alpha.xml", artwork_url: null, in_curated: false, chart_rank: 12, taxonomy_node_ids: [] },
+  { apple_collection_id: 990000202, title: "Zz Corpus Fixture Beta", feed_url: "https://feeds.example.test/beta.xml", artwork_url: null, in_curated: false, chart_rank: null, taxonomy_node_ids: [] },
+];
+const COMMITTED_BREADTH_ID = "73329284"; // Science Friday: a committed breadth row the 2-row corpus does not carry
+const COMMITTED_BREADTH_TITLE = "Science Friday";
+
+/** A pointer file in a tmp dir naming CORPUS_URL; returns its path. */
+function writePointer(t, extra = {}) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-pointer-"));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const file = path.join(dir, "corpus-catalogue-pointer.json");
+  fs.writeFileSync(file, JSON.stringify({
+    version: 1,
+    export_version: "2026-10-09",
+    release_tag: "corpus-export-2026-10-09",
+    asset_base_url: "https://corpus.example.test/corpus-export-2026-10-09",
+    manifest_url: "https://corpus.example.test/corpus-export-2026-10-09/manifest.json",
+    catalogue_url: CORPUS_URL,
+    shows_url: "https://corpus.example.test/corpus-export-2026-10-09/shows.jsonl.gz",
+    published_at: "2026-10-09T00:00:00.000Z",
+    counts: { podcasts: 2 },
+    ...extra,
+  }));
+  return file;
+}
+
+const gz = (value) => zlib.gzipSync(Buffer.from(typeof value === "string" ? value : JSON.stringify(value)));
+
+/** Runs `fn` with the corpus state reset to `opts`, fetch swapped for
+    `fetchImpl` (every URL recorded), console output collected instead of
+    printed, and everything put back afterwards (the committed catalogue
+    included). */
+async function withCorpus(t, opts, fetchImpl, fn) {
+  const original = globalThis.fetch;
+  const hadDb = "DATABASE_URL" in process.env;
+  const db = process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL;
+  const urls = []; // listAnswer/scopedSearchAnswer empty this one per call
+  const fetched = []; // every URL, never emptied
+  const logs = [];
+  const spies = ["warn", "log", "error", "info"].map((k) => t.mock.method(console, k, (...a) => logs.push(`${k}: ${a.join(" ")}`)));
+  _resetCorpusCatalogueForTests(opts);
+  freshCaches();
+  globalThis.fetch = async (url, init) => {
+    urls.push(String(url));
+    fetched.push(String(url));
+    return fetchImpl(String(url), init);
+  };
+  try {
+    return await fn({ urls, fetched, logs });
+  } finally {
+    globalThis.fetch = original;
+    if (hadDb) process.env.DATABASE_URL = db;
+    for (const s of spies) s.mock.restore();
+    _resetCorpusCatalogueForTests();
+    freshCaches();
+  }
+}
+
+/** The corpus answer `corpus` for CORPUS_URL, a two-line feed for any other URL. */
+const corpusFetch = (corpus) => async (url, init) => {
+  if (url === CORPUS_URL) return corpus(init);
+  return new Response(FEED, { status: 200, headers: { "content-type": "application/rss+xml" } });
+};
+
+const corpusFetches = (fetched) => fetched.filter((u) => u === CORPUS_URL).length;
+
+async function showSearchQ(q) {
+  const res = mockRes();
+  await showSearchHandler({ method: "GET", query: { q, limit: "25" }, headers: {} }, res);
+  return res.body;
+}
+
+test("corpus pointer + a 2-row gz catalogue: every reader answers from it, fetched once (PKG-33)", async (t) => {
+  /* Each reader is asked FIRST in a fresh instance state (the corpus
+     forgotten before it), so each one's own await is what loads the corpus.
+     MUTATION: drop `await ensureCorpusCatalogue()` from api/shows/search.ts ->
+     the q search finds no "Zz Corpus Fixture" row and ?id= says null, red.
+     MUTATION: drop it from api/_lib/resolveShow.ts -> the episode list
+     404s the corpus show and the scoped search says unknown, red.
+     MUTATION: drop it from api/_lib/showIdMap.ts -> the id map has no
+     990000201, red. MUTATION: remember nothing (fetch on every ensure) ->
+     fetched more than once, red. */
+  const pointerPath = writePointer(t);
+  const body = gz({ version: 1, source: "foraycorpus", shows: CORPUS_SHOWS });
+  await withCorpus(t, { pointerPath }, corpusFetch(() => new Response(body, { status: 200 })), async ({ urls, fetched, logs }) => {
+    const fresh = () => {
+      _resetCorpusCatalogueForTests({ pointerPath });
+      freshCaches();
+      fetched.length = 0;
+    };
+
+    fresh();
+    const idMap = await loadShowIdMap();
+    assert.equal(idMap.byCollectionId.get(990000201), "990000201", "the Apple fallback's id map knows the corpus show");
+    assert.equal(idMap.byCollectionId.get(1434243584), "lex-fridman-podcast", "and curated still wins its Apple id");
+
+    fresh();
+    const found = await showSearchQ("Zz Corpus Fixture");
+    assert.equal(found.degraded, false);
+    assert.deepEqual(found.shows.map((s) => s.show_id).sort(), ["990000201", "990000202"]);
+
+    fresh();
+    const alpha = await showById("990000201");
+    assert.equal(alpha.show?.title, "Zz Corpus Fixture Alpha");
+    assert.equal(alpha.show?.tier, "breadth");
+    // In place of the committed breadth rows, not beside them: a committed
+    // breadth show the corpus does not carry is gone; curated shows stay.
+    assert.equal((await showById(COMMITTED_BREADTH_ID)).show, null);
+    assert.equal((await showById("lex-fridman-podcast")).show?.tier, "curated");
+
+    fresh();
+    // (urls: what that one call fetched; the corpus asset comes first here)
+    const feedsAsked = () => urls.filter((u) => u !== CORPUS_URL);
+    const list = await listAnswer("990000201", urls);
+    assert.equal(list.status, 200, "the episode list serves the corpus show");
+    assert.deepEqual(feedsAsked(), ["https://feeds.example.test/alpha.xml"]);
+
+    fresh();
+    const scoped = await scopedSearchAnswer("990000202", urls);
+    assert.equal(scoped.error, null, "the show-scoped search resolves it too");
+    assert.deepEqual(feedsAsked(), ["https://feeds.example.test/beta.xml"]);
+
+    // Once per instance: every reader, twice over, after one fresh start.
+    fresh();
+    for (let i = 0; i < 2; i++) {
+      await loadShowIdMap();
+      await showSearchQ("Zz Corpus Fixture");
+      await showById("990000201");
+      await listAnswer("990000201", urls);
+      await scopedSearchAnswer("990000202", urls);
+    }
+    assert.equal(corpusFetches(fetched), 1, "the catalogue is fetched once per process");
+    assert.deepEqual(logs, [], "a corpus that loads logs nothing");
+  });
+});
+
+test("corpus fetch fails, times out or is unusable: the committed rows are used, one log line, never degraded (PKG-33)", async (t) => {
+  /* MUTATION: let a failed fetch propagate out of ensureCorpusCatalogue
+     (rethrow in its catch) -> the handler throws, red. MUTATION: drop the
+     AbortController deadline -> "times out" never settles and the subtest's
+     own 20 s timeout fails it. MUTATION: drop the shape check (accept any
+     JSON with a `shows` array) -> "a row without a numeric id" / "an empty
+     catalogue" serve a corpus without Science Friday, red. MUTATION:
+     forget a failure (retry per request) -> fetched and logged twice, red. */
+  const failures = {
+    "fetch rejects": () => Promise.reject(new TypeError("fetch failed")),
+    "times out": (init) => new Promise((_, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }),
+    "HTTP 404": () => new Response("Not Found", { status: 404 }),
+    "not gzip": () => new Response(JSON.stringify({ shows: CORPUS_SHOWS }), { status: 200 }),
+    "not JSON": () => new Response(gz("{not json"), { status: 200 }),
+    "a row without a numeric id": () => new Response(gz({ shows: [...CORPUS_SHOWS, { apple_collection_id: "990000203", title: "Zz String Id" }] }), { status: 200 }),
+    "a row without a title": () => new Response(gz({ shows: [...CORPUS_SHOWS, { apple_collection_id: 990000204, title: "" }] }), { status: 200 }),
+    "an empty catalogue": () => new Response(gz({ shows: [] }), { status: 200 }),
+  };
+  for (const [name, answer] of Object.entries(failures)) {
+    await t.test(name, { timeout: 20_000 }, async (st) => {
+      const pointerPath = writePointer(st);
+      await withCorpus(st, { pointerPath, timeoutMs: 50 }, corpusFetch(answer), async ({ urls, fetched, logs }) => {
+        const first = await showSearchQ(COMMITTED_BREADTH_TITLE);
+        assert.equal(first.degraded, false, "never degraded (never CatalogFilesUnavailableError)");
+        assert.ok(first.shows.some((s) => s.show_id === COMMITTED_BREADTH_ID), "the committed breadth row is served");
+        assert.equal((await showById("990000201")).show, null, "no corpus row leaked in");
+        assert.equal((await showById(COMMITTED_BREADTH_ID)).show?.title, COMMITTED_BREADTH_TITLE);
+        assert.equal((await listAnswer(COMMITTED_BREADTH_ID, urls)).status, 200);
+        assert.equal(corpusFetches(fetched), 1, "tried once per process, not per request");
+        assert.equal(logs.length, 1, `one log line: ${logs.join(" / ")}`);
+        assert.match(logs[0], /corpus catalogue/);
+      });
+    });
+  }
+});
+
+test("corpus pointer absent: the committed rows, no fetch, no log line (PKG-33)", async (t) => {
+  /* The normal path: data/corpus-catalogue-pointer.json is not on main.
+     MUTATION: log the ENOENT like any other pointer failure -> a log line,
+     red. MUTATION: fetch something when there is no pointer -> a fetch,
+     red. MUTATION: treat a missing pointer as an empty catalogue -> the
+     committed rows are missing, red. MUTATION: `await` the ensure step
+     unconditionally in api/shows/search.ts (an `await null` still yields)
+     -> the first answer is no longer written synchronously, red: with no
+     pointer the handler behaves exactly as it did before PKG-33. */
+  const missing = path.join(os.tmpdir(), `no-corpus-pointer-${process.pid}`, "corpus-catalogue-pointer.json");
+  assert.equal(fs.existsSync(missing), false, "premise: the pointer is absent");
+  await withCorpus(t, { pointerPath: missing }, async (url) => { throw new Error(`unexpected fetch ${url}`); }, async ({ fetched, logs }) => {
+    const sync = mockRes();
+    const pending = showSearchHandler({ method: "GET", query: { q: COMMITTED_BREADTH_TITLE }, headers: {} }, sync);
+    assert.equal(sync.statusCode, 200, "the first answer is written before the handler's promise is awaited");
+    await pending;
+    const found = await showSearchQ(COMMITTED_BREADTH_TITLE);
+    assert.equal(found.degraded, false);
+    assert.ok(found.shows.some((s) => s.show_id === COMMITTED_BREADTH_ID));
+    assert.equal((await showById(COMMITTED_BREADTH_ID)).show?.tier, "breadth");
+    assert.equal((await showById("990000201")).show, null);
+    const idMap = await loadShowIdMap();
+    assert.equal(idMap.byCollectionId.get(Number(COMMITTED_BREADTH_ID)), COMMITTED_BREADTH_ID);
+    assert.deepEqual(fetched, [], "no fetch at all");
+    assert.deepEqual(logs, [], "no log line");
+  });
+  // The deadline is the brief's 2 s (docs/roadmap/corpus.md PKG-33).
+  assert.equal(CORPUS_FETCH_TIMEOUT_MS, 2_000);
 });

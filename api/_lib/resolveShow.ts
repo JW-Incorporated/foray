@@ -1,5 +1,5 @@
 import { fetchIndexAsset, isShardKey } from "./showsIndexRelease";
-import { showMetaById, CatalogFilesUnavailableError, type ShowMeta } from "./showCatalog";
+import { showMetaById, ensureCorpusCatalogue, CatalogFilesUnavailableError, type ShowMeta } from "./showCatalog";
 
 /**
  * THE ONE SHOW RESOLVER for the two endpoints that read a show's episodes
@@ -18,7 +18,9 @@ import { showMetaById, CatalogFilesUnavailableError, type ShowMeta } from "./sho
  * Feeds are NOT fetched here: the answer is the feed URL, and every feed fetch
  * still goes through the destination guard in api/_lib/feedCache.ts
  * (feedGuard.ts, SEC-01). The only request this makes is the one shard read,
- * through the shows-index release reader.
+ * through the shows-index release reader, besides the corpus catalogue's
+ * once-per-instance fetch, which only happens when its pointer exists
+ * (showCatalog.ts `ensureCorpusCatalogue`, PKG-33).
  */
 
 /** What either endpoint answers when there is no show to read: the status the
@@ -107,6 +109,8 @@ async function resolvePiShow(showId: string, key: string | null): Promise<ShowLo
  */
 export async function resolveShow(showId: string, key: string | null): Promise<ShowLookup> {
   let meta: ShowMeta | null = null;
+  const corpus = ensureCorpusCatalogue(); // PKG-33: the corpus catalogue, if its pointer names one (showCatalog.ts)
+  if (corpus) await corpus;
   try {
     meta = showMetaById(showId);
   } catch (err) {

@@ -90,7 +90,7 @@ interface CuratedShowRaw {
   editorial_note?: string | null;
 }
 
-interface BreadthShowRaw {
+export interface BreadthShowRaw {
   apple_collection_id: number;
   title: string;
   feed_url: string | null;
@@ -123,6 +123,30 @@ export interface Catalogue {
 
 let cached: Catalogue | null = null;
 
+/* THE CORPUS CATALOGUE (docs/roadmap/corpus.md PKG-33). Rows of the corpus
+   export's catalog-breadth-corpus.json (tools/foraycorpus-export/
+   catalog-adapter.mjs: data/catalog-breadth.json's row shape, BREADTH_KEYS,
+   and a superset of its rows), or null for the committed file. Set only by
+   `setCorpusBreadthRows`, which api/_lib/showCatalog.ts calls once per
+   process after fetching the asset its pointer names; null (never set) is
+   the path every deploy without data/corpus-catalogue-pointer.json takes,
+   and it is exactly the committed catalogue. */
+let corpusRows: readonly BreadthShowRaw[] | null = null;
+
+/**
+ * Serve `rows` IN PLACE OF data/catalog-breadth.json's rows (which is then
+ * not read at all), or, with null, the committed file again. data/catalog.json
+ * is read either way and its curated rows win: the breadth loop's
+ * `in_curated` skip and its "a curated show already claims this Apple id"
+ * skip apply to corpus rows as to committed ones. Forgets the cached
+ * catalogue, so the next loadCatalogue() builds a new object and
+ * showCatalog.ts's identity-keyed index rebuilds beside it.
+ */
+export function setCorpusBreadthRows(rows: readonly BreadthShowRaw[] | null): void {
+  corpusRows = rows;
+  cached = null;
+}
+
 /**
  * Reads catalog.json + catalog-breadth.json fresh from disk and returns the
  * merged, deduped index. Cached per-process (module scope) — both files are
@@ -145,7 +169,8 @@ export function loadCatalogue(): Catalogue {
   if (cached && process.env.FORAY_SKIP_CATALOGUE_CACHE !== "1") return cached;
 
   const curated = readJson<{ shows: CuratedShowRaw[] }>("data/catalog.json");
-  const breadth = readJson<{ shows: BreadthShowRaw[] }>("data/catalog-breadth.json");
+  const breadth: { shows?: readonly BreadthShowRaw[] } =
+    corpusRows !== null ? { shows: corpusRows } : readJson<{ shows: BreadthShowRaw[] }>("data/catalog-breadth.json");
 
   const entries: CatalogueShowEntry[] = [];
   const seenIds = new Set<string>();
@@ -188,8 +213,15 @@ export function loadCatalogue(): Catalogue {
     if (show.apple_collection_id === undefined || show.apple_collection_id === null || !show.title) continue;
     const id = String(show.apple_collection_id);
     if (seenIds.has(id)) continue; // guards a breadth/curated id collision, belt-and-suspenders
+    /* A curated show already claims this Apple id: this row is its twin even
+       without `in_curated` (catalog-adapter.mjs sets that flag only for a
+       corpus row that names its curated show), so it is an alias, never a
+       second, numeric copy. No committed row reaches this line today (every
+       curated twin in data/catalog-breadth.json is `in_curated`); a corpus
+       row can (PKG-33). */
+    if (showIdByAppleId.has(id)) continue;
     seenIds.add(id);
-    if (!showIdByAppleId.has(id)) showIdByAppleId.set(id, id); // a curated show already claimed this Apple id
+    showIdByAppleId.set(id, id);
     entries.push({
       show_id: id,
       title: show.title,

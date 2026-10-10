@@ -7,7 +7,7 @@
   "framework": null,
   "functions": {
     "api/**/*.ts": {
-      "includeFiles": "data/{catalog.json,catalog-breadth.json,shows-index-pointer.json}"
+      "includeFiles": "data/{catalog.json,catalog-breadth.json,shows-index-pointer.json,corpus-catalogue-pointer.json}"
     }
   },
   "headers": [
