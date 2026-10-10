@@ -1170,3 +1170,67 @@ test("tactileEmpty: the link key goes through safeUrl and the default stays the 
   assert.ok(/<button type="button" class="keycap keycap--md keycap--persimmon"/.test(plain), "no href: the gallery specimen's button, unchanged");
   assert.ok(plain.includes("Find a show"));
 });
+
+/* ==================================================================== */
+/* 9. THE OLD FOLLOWED-SHOWS AND FORAYS PAGES ARE YOURS VIEWS            */
+/* ==================================================================== */
+
+test("route() sends #/forays and #/starred-shows to Yours and the page opens on that chip", async () => {
+  /* Tactile, "No pre-redesign pages left reachable". Old deep links, a bookmark and a
+     relaunch that replays cp_last_route still land, on the matching Yours view.
+     MUTATION 1: swap the two values in YOURS_LEGACY_ROUTES -> the chip assertions go red.
+     MUTATION 2: delete `state.yoursChip = legacyChip` in route() -> the page keeps the stale
+     chip and both halves go red.
+     MUTATION 3: delete the `legacyChip` block in route() -> the address stays the old one
+     and the first assertion goes red. */
+  const m = await mountBooted({ cp_history: JSON.stringify(["played-before"]) });
+  for (const [legacy, chip] of [["#/starred-shows", "shows"], ["#/forays", "forays"]]) {
+    m.state.yoursChip = chip === "shows" ? "forays" : "shows";   // start on the OTHER chip: a stale memory must not pass
+    m.ctx.location.hash = legacy;
+    m.ctx.route();
+    assert.strictEqual(m.ctx.location.hash, "#/library", `${legacy} is rewritten in place`);
+    assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), chip, `${legacy} opens the ${chip} chip`);
+    assert.strictEqual(one(m, `#yours-panel-${chip}`).hidden, false, "and its panel is the one showing");
+  }
+});
+
+test("a link that means 'Yours, on this chip' sets the chip, and on Yours already shows that panel", async () => {
+  /* The drawer's Forays, a Foray's back key and Home's draft notice all carry
+     data-yours-chip-link beside a plain #/library href.
+     MUTATION 1: drop `state.yoursChip = chip` in onYoursChipLinkClick -> the first half
+     goes red. MUTATION 2: drop the `selectYoursChip` branch -> pressing it while on Yours
+     does nothing and the second half goes red. MUTATION 3: drop the chip-key validation ->
+     the junk key assertion goes red. */
+  const m = await mountBooted({ cp_history: JSON.stringify(["played-before"]) });
+  const link = (chip) => ({ closest: (sel) => (sel === "[data-yours-chip-link]" ? { getAttribute: () => chip } : null) });
+  /* From another page: the click only chooses; the link's own navigation does the rest. */
+  m.ctx.location.hash = "#/";
+  let prevented = false;
+  m.ctx.onYoursChipLinkClick({ target: link("shows"), preventDefault() { prevented = true; } });
+  assert.strictEqual(m.state.yoursChip, "shows");
+  assert.strictEqual(prevented, false, "off Yours the navigation is left alone");
+  /* On Yours: no hashchange will repaint, so the panel is switched in place. */
+  m.ctx.location.hash = "#/library";
+  m.state.yoursChip = null;
+  m.ctx.renderLibrary();
+  assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "forays");
+  m.ctx.onYoursChipLinkClick({ target: link("shows"), preventDefault() { prevented = true; } });
+  assert.strictEqual(prevented, true);
+  assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "shows", "the panel follows the press");
+  m.state.yoursChip = "saved";
+  m.ctx.onYoursChipLinkClick({ target: link("not-a-chip"), preventDefault() {} });
+  assert.strictEqual(m.state.yoursChip, "saved", "a key that is not a chip is ignored");
+});
+
+test("no in-app link, key or status page points at the retired #/forays or #/starred-shows pages", () => {
+  /* MUTATION: put `href="#/forays"` back on the drawer's Forays entry in index.html, or write
+     `href="${esc(safeUrl("#/forays"))}"` into forayBarHtml -> red. The routes still resolve (the
+     redirect), but the links must open Yours directly. */
+  const index = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  assert.ok(!/href="#\/(forays|starred-shows)"/.test(index), "the drawer carries no link to a retired page");
+  assert.ok(/href="#\/library" data-yours-chip-link="forays">Forays</.test(index), "its Forays entry opens Yours' Forays chip");
+  for (const f of ["ui/foray.js", "ui/home.js", "ui/library.js"]) {
+    const src = fs.readFileSync(path.join(ROOT, f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    assert.ok(!/href="[^"]*#\/(forays|starred-shows)"/.test(src), `${f} writes no href to a retired page`);
+  }
+});

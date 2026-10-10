@@ -123,7 +123,10 @@ function yoursForayCardHtml(f, place) {
 function libraryForaysHtml() {
   /* The player module lists Forays; until it has loaded, the count is unknown,
      and an unknown count is not zero — offer the way in, claim nothing. */
-  if (!state.forays || !window.ForayPlayer) return libSummaryRow("/forays", "All forays", "");
+  /* This used to be an "All forays" row into `#/forays`; that page is now this
+     panel (YOURS_LEGACY_ROUTES), so a row into it would link to itself. The page
+     repaints when the player module lands (renderLibrary, last lines). */
+  if (!state.forays || !window.ForayPlayer) return `<p class="note">Forays haven’t loaded yet. They show up here once they do.</p>`;
   const list = forayCards();
   if (!list.length) return `<p class="note">No forays to show yet.</p>`;
   const progress = yoursForayProgress();
@@ -987,6 +990,63 @@ function bindYoursKnob(knob) {
 }
 
 let yoursDrawerWatch = null;
+
+/* ---------- THE PRE-REDESIGN PAGES THAT BECAME A YOURS VIEW ----------
+
+   Redesign 2026 (Tactile), "No pre-redesign pages left reachable". Followed
+   shows (`#/starred-shows`) and the Forays list (`#/forays`) were their own
+   pages, drawn in the old chrome under the new tab bar. Yours has had both as
+   chips (Shows, Forays) since the `library` screen, so the pages are gone as
+   places and kept as ADDRESSES: an old deep link, a bookmark, a relaunch that
+   replays `cp_last_route`, or the native shell's saved route still lands, on
+   the matching Yours view.
+
+   route() rewrites the address to `#/library` in place (no history entry, so
+   the back gesture does not bounce off the old spelling); renderCurrentPage()
+   also answers them, for a caller that paints without routing. The chip is
+   `state.yoursChip`, which is memory and not a route, so a link that means
+   "Yours, on Forays" says so with `data-yours-chip-link` beside a plain
+   `href="#/library"` (a cold open, a long-press and a middle-click all still
+   work), and ONE capture-phase listener on the document does the choosing.
+   `#/queue` is not in this table on purpose: its drag and swipe reorder have no
+   Yours equivalent yet (test/up-next-gestures.test.js). */
+const YOURS_LEGACY_ROUTES = Object.freeze({ "#/forays": "forays", "#/starred-shows": "shows" });
+
+/** The Yours chip an old route stands for, or null for any other hash. */
+function yoursLegacyChip(hash) {
+  return Object.prototype.hasOwnProperty.call(YOURS_LEGACY_ROUTES, hash) ? YOURS_LEGACY_ROUTES[hash] : null;
+}
+
+/** The attributes of a link that opens Yours on one chip. `chip` is this
+    module's own constant ("forays", "shows"), escaped regardless. */
+function yoursChipLinkAttrs(chip) {
+  return `href="${esc(safeUrl("#/library"))}" data-yours-chip-link="${esc(chip)}"`;
+}
+
+/** The href attribute for an in-app route, sending an old Followed-shows or
+    Forays address straight to its Yours view instead of through the redirect.
+    Any other route is the plain safeUrl href every link already was. */
+function routeLinkAttrs(hash) {
+  const chip = yoursLegacyChip(String(hash));
+  return chip ? yoursChipLinkAttrs(chip) : `href="${esc(safeUrl(String(hash)))}"`;
+}
+
+/** Bound once on the document, capture phase, so it runs before the router, the
+    drawer's own close and the back handler. It only CHOOSES the chip; the link
+    still navigates. On Yours already the hash does not change, so no route()
+    would repaint: show the panel in place instead of leaving the press dead. */
+function onYoursChipLinkClick(e) {
+  const hit = e && e.target && typeof e.target.closest === "function" ? e.target.closest("[data-yours-chip-link]") : null;
+  if (!hit) return;
+  const chip = hit.getAttribute("data-yours-chip-link");
+  if (!yoursChipDefs().some((c) => c.key === chip)) return;
+  state.yoursChip = chip;
+  if (currentHash() === "#/library" && $("#yours-chips")) {
+    if (typeof e.preventDefault === "function") e.preventDefault();
+    selectYoursChip(chip, { focus: true });
+    openDrawer(false);
+  }
+}
 
 function renderLibrary(chip) {
   setBodyClass("view-page");

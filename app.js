@@ -1372,7 +1372,7 @@ function statusPageHtml({ title = "", note, back = "#/", retry = false, reload =
   const route = String(back).replace(/^#/, "");
   return `<div class="page">
     <div class="page-head">
-      <a class="back" href="${esc(safeUrl("#" + route))}">‹</a>
+      <a class="back" ${routeLinkAttrs("#" + route)}>‹</a>
       <div>${title ? `<h2>${esc(title)}</h2>` : ""}</div>
     </div>
     ${reload ? reloadNoteHtml(note) : retry ? failedNoteHtml(note) : `<p class="note">${note}</p>`}
@@ -4742,10 +4742,12 @@ function renderCurrentPage() {
   else if (h === "#/shows") renderAllShows();
   else if (h === "#/playlists") renderPlaylists();
   else if (h === "#/create") renderCreate();
-  else if (h === "#/forays") renderForays();
   else if (h === "#/queue") renderQueue();
   else if (h === "#/library") renderLibrary();
-  else if (h === "#/starred-shows") renderStarredShows();
+  /* `#/forays` and `#/starred-shows` no longer have a page: route() rewrites
+     them to `#/library`, and a caller that paints without routing lands on the
+     same Yours view. renderForays / renderStarredShows are unreachable legacy. */
+  else if (yoursLegacyChip(h)) renderLibrary(yoursLegacyChip(h));
   else if (h === "#/interests") renderInterests();
   else if (h === "#/gallery" && galleryEnabled()) renderGallery();
   else if ((m = ONB_ROUTE.exec(h))) renderOnboardingRoute(Boolean(m[1]));
@@ -4801,7 +4803,17 @@ function renderCurrentPage() {
    can be tested; it also covers a page the browser never recorded at all. */
 function route() {
   if (!state.ready) return;
-  const h = currentHash();
+  let h = currentHash();
+  /* THE OLD FOLLOWED-SHOWS AND FORAYS PAGES ARE YOURS VIEWS NOW (Tactile,
+     YOURS_LEGACY_ROUTES in ui/library.js). The address is rewritten to
+     `#/library` IN PLACE, before anything records it, the same way the
+     timestamp alias below is; the chip is set first so the render opens on it. */
+  const legacyChip = yoursLegacyChip(h);
+  if (legacyChip) {
+    state.yoursChip = legacyChip;
+    replaceHash("#/library");
+    h = "#/library";
+  }
   /* A timestamp link's alias (or a stray spelling of its `t`) is rewritten to
      the canonical address IN PLACE before anything records it (#30). */
   if (location.hash !== h && episodeDeepLink(location.hash)) replaceHash(h);
@@ -6475,6 +6487,8 @@ async function init() {
      `handleBack`. A no-op on the web and on iOS. */
   bindHardwareBack();
   $("#view").addEventListener("click", onBackClick);
+  /* Links that mean "Yours, on this chip" (the drawer's Forays, a Foray's back key). */
+  document.addEventListener("click", onYoursChipLinkClick, true);
   $("#view").addEventListener("click", onForayScriptClick);   // once — see its header
   /* The listener's settings switches, in one call — see `bindDrawerToggles`.
      They land ABOVE everything bound below, so "Delete my data" stays last where

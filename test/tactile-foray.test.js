@@ -212,7 +212,7 @@ test("the chrome: back and share keycaps, the Foray tag, a display-xl title, the
      draw the title as `<h2 class="heading">` -> red. */
   const m = await page(NARRATED, { unlock: true });
   const h = m.html;
-  assert.match(h, /<a class="keycap keycap--sm keycap--paper back" href="#\/forays" aria-label="Back">/, "the back key is a small paper link to the Forays list");
+  assert.match(h, /<a class="keycap keycap--sm keycap--paper back" href="#\/library" data-yours-chip-link="forays" aria-label="Back">/, "the back key is a small paper link to Yours, on its Forays chip");
   assert.match(h, /<button type="button" class="keycap keycap--sm keycap--paper" id="fdet-share" aria-label="Share this foray">/, "the share key is a small paper button");
   assert.match(h, /<span class="tag tag--narration">[\s\S]*?<span>Foray<\/span><\/span>/, "the tag is the narration tag, 'Foray'");
   const title = (await resolved(NARRATED)).title;
@@ -594,9 +594,10 @@ test("un-narrated and played pages follow their states: the unavailable page is 
 });
 
 test("'Try another foray' falls back to the Forays list when nothing else can be opened", async () => {
-  /* MUTATION: drop the `return "#/forays"` fallback -> the key has no href; red. */
+  /* MUTATION: drop the `return "#/forays"` fallback -> the key has no href; red. The Forays
+     list is Yours' Forays chip now, so the key opens it directly (data-yours-chip-link). */
   const m = await page("does-not-exist", { forays: { ...FORAYS, forays: [] } });
-  assert.ok(m.html.includes('<a class="keycap keycap--md keycap--persimmon" href="#/forays">'));
+  assert.ok(m.html.includes('<a class="keycap keycap--md keycap--persimmon" href="#/library" data-yours-chip-link="forays">'));
 });
 
 /* ============================================================ 7. share */
@@ -663,9 +664,11 @@ test("every in-page href goes through safeUrl: the back key, the From links and 
   const src = APP_SRC.slice(APP_SRC.indexOf("function forayFromRowHtml("), APP_SRC.indexOf("function forayRow("));
   assert.ok(/href="\$\{esc\(safeUrl\("#" \+ showRoutePath\(show\.showId\)\)\)\}"/.test(src), "From links");
   const bar = APP_SRC.slice(APP_SRC.indexOf("function forayBarHtml("), APP_SRC.indexOf("function forayFromRowHtml("));
-  assert.ok(/href="\$\{esc\(safeUrl\("#\/forays"\)\)\}"/.test(bar), "back");
+  /* routeLinkAttrs() writes `href="${esc(safeUrl(...))}"` itself (ui/library.js), and sends the old
+     Forays address to Yours' Forays chip; the census in app-security.test.js reads it there. */
+  assert.ok(/\$\{routeLinkAttrs\("#\/forays"\)\}/.test(bar), "back");
   const un = APP_SRC.slice(APP_SRC.indexOf("function renderForayUnavailable("), APP_SRC.indexOf("async function renderForay("));
-  assert.ok(/href="\$\{esc\(safeUrl\(nextAvailableForayHref\(id\)\)\)\}"/.test(un) && /href="\$\{esc\(safeUrl\("#\/library"\)\)\}"/.test(un), "unavailable keys");
+  assert.ok(/\$\{routeLinkAttrs\(nextAvailableForayHref\(id\)\)\}/.test(un) && /href="\$\{esc\(safeUrl\("#\/library"\)\)\}"/.test(un), "unavailable keys");
 });
 
 test("the stylesheet block reads tokens only, adds no !important, and its one transition is named in the reduced-motion block", () => {

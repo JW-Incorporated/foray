@@ -638,7 +638,7 @@ function forayEmptyWellHtml() {
     list on a cold open); share is a key, absent when there is nothing to share. */
 function forayBarHtml({ share }) {
   return `<div class="fdet-bar">
-    <a class="keycap keycap--sm keycap--paper back" href="${esc(safeUrl("#/forays"))}" aria-label="Back">${tactileIcon("ph-arrow-left")}</a>
+    <a class="keycap keycap--sm keycap--paper back" ${routeLinkAttrs("#/forays")} aria-label="Back">${tactileIcon("ph-arrow-left")}</a>
     ${share ? tactileKeycap({ size: "sm", variant: "paper", icon: "ph-share-network", label: "Share this foray", id: "fdet-share" }) : ""}
   </div>`;
 }
@@ -1082,7 +1082,7 @@ function renderForayUnavailable(id) {
       </header>
       ${forayEmptyWellHtml()}
       <div class="fdet-keys">
-        <a class="keycap keycap--md keycap--persimmon" href="${esc(safeUrl(nextAvailableForayHref(id)))}"><span class="keycap__label">Try another foray</span></a>
+        <a class="keycap keycap--md keycap--persimmon" ${routeLinkAttrs(nextAvailableForayHref(id))}><span class="keycap__label">Try another foray</span></a>
         <a class="keycap keycap--md keycap--paper" href="${esc(safeUrl("#/library"))}"><span class="keycap__label">Yours</span></a>
       </div>
     </div>`;

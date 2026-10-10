@@ -592,7 +592,7 @@ function routed(m) {
   const overlay = m.doc.createElement("div");
   overlay.id = "drawer-overlay";
   m.doc.body.appendChild(overlay);
-  const pages = { "#/": null, "#/library": "Library", "#/forays": "Forays" };
+  const pages = { "#/": null, "#/library": "Library", "#/playlists": "Playlists" };
   m.ctx.renderCurrentPage = () => {
     m.view.children.forEach((c) => { c.parentElement = null; });
     m.view.children = [];
@@ -635,9 +635,9 @@ test("a navigation from a link the render removed lands focus too; Home is plain
   const inPage = m.doc.createElement("a");
   m.view.appendChild(inPage);
   inPage.focus();
-  go("#/forays");
+  go("#/playlists");
   assert.strictEqual(m.doc.activeElement, heading(m));
-  assert.strictEqual(m.doc.title, "Forays · 4a");
+  assert.strictEqual(m.doc.title, "Playlists · 4a");
   m.view.children[0].appendChild(inPage);
   inPage.focus();
   go("#/");
@@ -966,13 +966,13 @@ test("a late paint for a page the listener already left says nothing (races-6)",
      landOnPage) -> the page the listener moved on to is said a second time by
      a paint that was never a navigation; red. */
   const m = mount();
-  const { go, paint } = routedPages(m, { "#/library": "Library", "#/forays": "Forays", "#/foray/x": null });
+  const { go, paint } = routedPages(m, { "#/library": "Library", "#/playlists": "Playlists", "#/foray/x": null });
   tabFocus(m);
   go("#/foray/x");
-  go("#/forays");
+  go("#/playlists");
   said(m);
   m.doc.querySelector("#a11y-status").textContent = "";
-  paint("Forays");
+  paint("Playlists");
   m.ctx.pageDidPaint();
   assert.strictEqual(said(m), "");
 });

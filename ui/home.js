@@ -379,7 +379,7 @@ function foraysForYouPicks() {
     published Foray can play). */
 function testTrackNoticeHtml() {
   if (!showDraftsOn()) return "";
-  return `<p class="today-notice note">Showing draft Forays — test track. <a href="#/forays">See them under Forays</a>.</p>`;
+  return `<p class="today-notice note">Showing draft Forays — test track. <a ${yoursChipLinkAttrs("forays")}>See them under Forays</a>.</p>`;
 }
 
 /** "Playlists for you" (D5): the listener's own recent playlists first,

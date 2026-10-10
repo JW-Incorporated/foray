@@ -318,7 +318,7 @@ test("the menu lists exactly the five named destinations, in the founder's order
      MUTATION: add a sixth `<a class="drawer-section">` to index.html, or
      reorder two. deepStrictEqual fails and prints the list. RUN: added
      "Starred Shows" back as a sixth; failed naming it. */
-  const items = [...INDEX_HTML.matchAll(/<a class="drawer-section" href="([^"]+)">([^<]+)<\/a>/g)]
+  const items = [...INDEX_HTML.matchAll(/<a class="drawer-section" href="([^"]+)"(?: data-yours-chip-link="[^"]+")?>([^<]+)<\/a>/g)]
     .map((m) => [m[2], m[1]]);
   assert.deepStrictEqual(items, [
     ["Home", "#/"],
@@ -328,28 +328,35 @@ test("the menu lists exactly the five named destinations, in the founder's order
        founder's order. */
     ["Find", "#/shows"],
     ["Playlists", "#/playlists"],
-    ["Forays", "#/forays"],
+    /* Tactile: Forays is Yours' Forays chip (data-yours-chip-link), not a page. */
+    ["Forays", "#/library"],
     ["Up Next", "#/queue"],
   ], "the drawer's top-level destinations must be exactly these five, in this order");
 });
 
-test("route() dispatches #/forays to renderForays, matching the #/playlists pattern", () => {
-  /* #/forays is the one genuinely new address in this change; every other
-     destination already had a route. A menu item pointing at an unrouted
-     hash falls through to renderHome, which looks like "the link does
-     nothing" rather than an error.
+test("#/forays and #/starred-shows have no page: route() rewrites them to Yours, on the Forays / Shows chip", () => {
+  /* RULING THAT FELL: "#/forays is a page of its own, dispatched to renderForays"
+     (this test until 2026-10-09). Tactile's Yours has Forays and Shows chips, so
+     the two old pages, drawn in the pre-redesign chrome under the new tab bar,
+     are not reachable: the old address survives only as a redirect.
 
-     MUTATION: delete the `#/forays` branch from renderCurrentPage(). This
-     fails because renderHome runs instead and the "Forays" heading never
-     appears. RUN: failed as named. */
-  const m = quietMount();
-  m.state.forays = { forays: [] };
-  m.state.ready = true;
-  m.ctx.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
-
-  m.ctx.location.hash = "#/forays";
-  m.ctx.route();
-  assert.ok(m.view().includes("<h2>Forays</h2>"), "route() must dispatch #/forays to renderForays");
+     MUTATION 1: delete the `legacyChip` block in route() -> the address stays
+     `#/forays`, the chip is never set, and the first two assertions go red.
+     MUTATION 2: swap the two values in YOURS_LEGACY_ROUTES -> the chip
+     assertion goes red. MUTATION 3: put `else if (h === "#/forays")
+     renderForays()` back ahead of the legacy branch -> the old heading renders
+     and the last assertion goes red. */
+  for (const [legacy, chip] of [["#/forays", "forays"], ["#/starred-shows", "shows"]]) {
+    const m = quietMount();
+    m.state.forays = { forays: [] };
+    m.state.ready = true;
+    m.ctx.ForayPlayer = { listForays: () => [], forayResumeList: () => [] };
+    m.ctx.location.hash = legacy;
+    m.ctx.route();
+    assert.strictEqual(m.ctx.location.hash, "#/library", `${legacy} is rewritten to Yours`);
+    assert.strictEqual(m.state.yoursChip, chip, `${legacy} opens the ${chip} chip`);
+    assert.ok(!m.view().includes("<h2>Forays</h2>") && !m.view().includes("Followed shows"), `${legacy} no longer draws its old page`);
+  }
 });
 
 /* ==================================================================== */
@@ -420,7 +427,7 @@ test("'Starred Shows' left the menu without leaving the app — the Find page ca
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.ok(m.view().includes("Followed shows"), "#/starred-shows must still route to its own page");
+  assert.strictEqual(m.ctx.location.hash, "#/library", "#/starred-shows is Yours now (its Shows chip), not a page of its own");
 });
 
 test("with nothing followed, the Find page draws no 'Followed shows' strip — a fresh install's first tappable row was a dead end", () => {
@@ -453,9 +460,9 @@ test("a Foray's back link lands on #/forays, where an unlocked draft is still li
      failed as named. */
   /* REWRITTEN ON PURPOSE (Tactile `foray`): the back link is a paper keycap now, in
      `forayBarHtml`, and its href goes through safeUrl like every other. Same question:
-     where does it land. MUTATION: change `safeUrl("#/forays")` there to `"#/"` -> red. */
+     where does it land. MUTATION: change `routeLinkAttrs("#/forays")` there to `"#/"` -> red. */
   const forayPage = APP_SRC.slice(APP_SRC.indexOf("function forayBarHtml("));
-  const back = /<a class="keycap keycap--sm keycap--paper back" href="\$\{esc\(safeUrl\("([^"]+)"\)\)\}"/.exec(forayPage);
+  const back = /<a class="keycap keycap--sm keycap--paper back" \$\{routeLinkAttrs\("([^"]+)"\)\}/.exec(forayPage);
   assert.ok(back, "the Foray page must still render a back link");
   assert.strictEqual(
     back[1], "#/forays",
