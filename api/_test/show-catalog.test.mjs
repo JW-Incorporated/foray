@@ -32,6 +32,7 @@ import { sharedFeedReader } from "../_lib/feedCache.ts";
 import { episodeSearchCache } from "../_lib/searchCache.ts";
 import { _resetCorpusCatalogueForTests, CORPUS_FETCH_TIMEOUT_MS } from "../_lib/showCatalog.ts";
 import { loadShowIdMap } from "../_lib/showIdMap.ts";
+import { buildCorpusPointer, corpusTagFor } from "../../tools/foraycorpus-export/publish-release.mjs";
 
 const unwrap = (m) => (typeof m.default === "function" ? m.default : m.default.default);
 const listHandler = unwrap(episodesModule);
@@ -321,7 +322,15 @@ test("the episodes/search bundle parses catalog-breadth.json once per instance (
    (api/_lib/showIdMap.ts). The pointer does not exist on main, so the
    absent branch is the one every deploy takes today. */
 
-const CORPUS_URL = "https://corpus.example.test/corpus-export-2026-10-09/catalog-breadth-corpus.json.gz";
+/* The pointer is the one PKG-32's publisher writes (buildCorpusPointer, for
+   corpusTagFor's tag): the host pin in showCatalog.ts accepts exactly its
+   catalogue_url, so a change to either side reddens this file. */
+const POINTER = buildCorpusPointer({
+  manifest: { export_version: "2026-10-09T00:00:00.000Z", counts: { podcasts: 2 } },
+  tag: corpusTagFor("2026-10-09T00:00:00.000Z"),
+  publishedAt: "2026-10-09T00:00:00.000Z",
+});
+const CORPUS_URL = POINTER.catalogue_url;
 const CORPUS_SHOWS = [
   { apple_collection_id: 990000201, title: "Zz Corpus Fixture Alpha", feed_url: "https://feeds.example.test/alpha.xml", artwork_url: null, in_curated: false, chart_rank: 12, taxonomy_node_ids: [] },
   { apple_collection_id: 990000202, title: "Zz Corpus Fixture Beta", feed_url: "https://feeds.example.test/beta.xml", artwork_url: null, in_curated: false, chart_rank: null, taxonomy_node_ids: [] },
@@ -334,18 +343,7 @@ function writePointer(t, extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "corpus-pointer-"));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const file = path.join(dir, "corpus-catalogue-pointer.json");
-  fs.writeFileSync(file, JSON.stringify({
-    version: 1,
-    export_version: "2026-10-09",
-    release_tag: "corpus-export-2026-10-09",
-    asset_base_url: "https://corpus.example.test/corpus-export-2026-10-09",
-    manifest_url: "https://corpus.example.test/corpus-export-2026-10-09/manifest.json",
-    catalogue_url: CORPUS_URL,
-    shows_url: "https://corpus.example.test/corpus-export-2026-10-09/shows.jsonl.gz",
-    published_at: "2026-10-09T00:00:00.000Z",
-    counts: { podcasts: 2 },
-    ...extra,
-  }));
+  fs.writeFileSync(file, JSON.stringify({ ...POINTER, ...extra }));
   return file;
 }
 
@@ -496,6 +494,36 @@ test("corpus fetch fails, times out or is unusable: the committed rows are used,
       });
     });
   }
+  await t.test("a pointer on another host", async (st) => {
+    /* data/ is the auto-merge T1 tier: a one-line pointer edit must not be
+       able to point production at another host's catalogue. Only the URL
+       buildCorpusPointer writes for this repo is fetched (showCatalog.ts
+       THE HOST PIN); anything else is a malformed pointer.
+       MUTATION: remove the pin (accept any https catalogue_url, as before)
+       -> the other host is fetched, red. */
+    const offPin = {
+      "another host": CORPUS_URL.replace("https://github.com/", "https://corpus.example.test/"),
+      "another repo on github.com": CORPUS_URL.replace("/JW-Incorporated/foray/", "/someone-else/foray/"),
+      "plain http": CORPUS_URL.replace("https://", "http://"),
+      "not a corpus-export tag": CORPUS_URL.replace("/corpus-export-", "/shows-"),
+      "another asset name": CORPUS_URL.replace(/catalog-breadth-corpus\.json\.gz$/, "shows.jsonl.gz"),
+      "a lookalike host": CORPUS_URL.replace("https://github.com/", "https://github.com.example.test/"),
+    };
+    for (const [variant, url] of Object.entries(offPin)) {
+      assert.notEqual(url, CORPUS_URL, `premise: ${variant} differs from the published URL`);
+      const pointerPath = writePointer(st, { catalogue_url: url });
+      await withCorpus(st, { pointerPath }, async (u) => { throw new Error(`unexpected fetch ${u}`); }, async ({ fetched, logs }) => {
+        const first = await showSearchQ(COMMITTED_BREADTH_TITLE);
+        assert.equal(first.degraded, false, `${variant}: never degraded`);
+        assert.ok(first.shows.some((s) => s.show_id === COMMITTED_BREADTH_ID), `${variant}: the committed breadth row is served`);
+        assert.equal((await showById(COMMITTED_BREADTH_ID)).show?.title, COMMITTED_BREADTH_TITLE);
+        assert.equal((await showById("990000201")).show, null, `${variant}: no corpus row`);
+        assert.deepEqual(fetched, [], `${variant}: fetch never called`);
+        assert.equal(logs.length, 1, `${variant}: one log line: ${logs.join(" / ")}`);
+        assert.match(logs[0], /corpus catalogue not used.*not a corpus-export release asset of JW-Incorporated\/foray/);
+      });
+    }
+  });
 });
 
 test("corpus pointer absent: the committed rows, no fetch, no log line (PKG-33)", async (t) => {

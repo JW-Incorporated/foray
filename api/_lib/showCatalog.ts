@@ -66,8 +66,9 @@
  * search) and api/_lib/showIdMap.ts (the Apple fallback).
  *   - No pointer (ENOENT) is the path every deploy takes until the first
  *     pointer lands: the committed catalogue exactly, no fetch, no log line.
- *   - Any other failure (an unreadable or malformed pointer, a fetch that
- *     rejects, a non-2xx, CORPUS_FETCH_TIMEOUT_MS passing, a body over the
+ *   - Any other failure (an unreadable or malformed pointer, a catalogue_url
+ *     that is not this repo's corpus-export release asset (THE HOST PIN
+ *     below), a fetch that rejects, a non-2xx, CORPUS_FETCH_TIMEOUT_MS passing, a body over the
  *     cap, not gzip, not JSON, rows that fail the shape check) is ONE
  *     console.warn line and the committed catalogue for the life of the
  *     instance. It never throws, and it is never
@@ -249,9 +250,26 @@ function warn(reason: string): void {
   console.warn(`[showCatalog] corpus catalogue not used, serving the committed catalogue: ${reason}`);
 }
 
-const HTTPS_RE = /^https:\/\//i;
+/* THE HOST PIN. data/ is the auto-merge T1 tier, so the pointer is a
+   one-line edit away from naming any URL; without this, that edit would swap
+   the production breadth catalogue for content from any host. The only URL
+   accepted is the one tools/foraycorpus-export/publish-release.mjs
+   `buildCorpusPointer` writes for this repo: `assetBaseUrlFor(tag,
+   REPO_SLUG)` (tools/shows/publish-release.mjs:
+   `https://github.com/<REPO_SLUG>/releases/download/<tag>`, REPO_SLUG's
+   default JW-Incorporated/foray) + `/` + ASSET_NAMES[2], with `tag` from
+   `corpusTagFor` (`corpus-export-` + releaseTagFor's slug: lowercase
+   [a-z0-9] runs joined by single dashes, no edge dash). It is spelled out
+   here rather than imported: the tools modules are not in the function
+   bundle, and REPO_SLUG follows $GITHUB_REPOSITORY, which must not move a
+   production pin. api/_test/show-catalog.test.mjs builds its pointer WITH
+   buildCorpusPointer, so a change on that side reddens it. Anything else is
+   a malformed pointer: one warn line, the committed catalogue, no fetch. */
+const CATALOGUE_URL_RE =
+  /^https:\/\/github\.com\/JW-Incorporated\/foray\/releases\/download\/corpus-export-[a-z0-9]+(?:-[a-z0-9]+)*\/catalog-breadth-corpus\.json\.gz$/;
 
-/** The pointer's `catalogue_url` (PKG-32's shape: version 1, an https URL). */
+/** The pointer's `catalogue_url` (PKG-32's shape: version 1, and the release
+ *  asset URL buildCorpusPointer writes; see THE HOST PIN). */
 function catalogueUrl(raw: string): string {
   let pointer: unknown;
   try {
@@ -262,8 +280,11 @@ function catalogueUrl(raw: string): string {
   const p = pointer as { version?: unknown; catalogue_url?: unknown } | null;
   if (!p || typeof p !== "object") throw new CorpusUnavailable("pointer is not an object");
   if (p.version !== 1) throw new CorpusUnavailable(`pointer version ${String(p.version)} is not 1`);
-  if (typeof p.catalogue_url !== "string" || !HTTPS_RE.test(p.catalogue_url)) {
-    throw new CorpusUnavailable("pointer has no https catalogue_url");
+  if (typeof p.catalogue_url !== "string") throw new CorpusUnavailable("pointer has no catalogue_url");
+  if (!CATALOGUE_URL_RE.test(p.catalogue_url)) {
+    throw new CorpusUnavailable(
+      `pointer catalogue_url ${JSON.stringify(p.catalogue_url.slice(0, 200))} is not a corpus-export release asset of JW-Incorporated/foray`
+    );
   }
   return p.catalogue_url;
 }
