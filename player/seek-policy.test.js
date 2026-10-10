@@ -297,13 +297,16 @@ test("DRIFT_TOLERANCE_SEC stays at 30 — ADR-0008 forbids widening it for ads",
   assert.equal(AD_PAD_CEILING_SEC, 120);
 });
 
-test("AD_PAD_SHIPPED is the one switch and it is off until D5", () => {
-  // README founder question 15 rules D5 yes, but the flip waits for DAI-08's
-  // probe data on main; flipping it (and this expectation, to PADDED) is DAI-09.
-  assert.equal(AD_PAD_SHIPPED, false);
+test("AD_PAD_SHIPPED is the one switch and the pad has shipped (D5, DAI-09)", () => {
+  // README founder question 15 ruled D5 yes, to flip once DAI-08's probe data
+  // was on main (#1150); DAI-09 flipped it (docs/DECISIONS.md, 2026-10-10).
+  // With the switch on, a stitched DAI copy inside a recorded pad plays PADDED
+  // instead of falling to APPROXIMATE (skipped in a Foray).
+  // MUTATION: set AD_PAD_SHIPPED back to false in seek-policy.js -> red here.
+  assert.equal(AD_PAD_SHIPPED, true);
   assert.equal(
     seekPrecision(stitched, { source: FOREIGN, adPadSec: 100, allowAdPad: AD_PAD_SHIPPED }).precision,
-    APPROXIMATE,
+    PADDED,
   );
 });
 

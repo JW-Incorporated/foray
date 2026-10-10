@@ -1590,8 +1590,9 @@ test("a padded DAI segment whose copy carries more ad load than the pad is skipp
 });
 
 test("with the pad off, the same segment is skipped and the pad is never applied", async () => {
-  // allowAdPad omitted: the pad stays off until D5 (seek-policy.js
-  // AD_PAD_SHIPPED), so a 60 s drift is a plain rung-3 failure.
+  // allowAdPad omitted: the manager's own default is off (the Foray paths opt
+  // in through forayQueueOptions, which reads seek-policy.js AD_PAD_SHIPPED,
+  // on since DAI-09), so a 60 s drift is a plain rung-3 failure.
   const { m, backend, log } = make({ backend: { durationById: { "foray-1#0": 2561 } } });
   await m.playForay(foray([fdai({ ad_pad_sec: 100 })]), { resolveItem });
   assert.equal(m.state.type, "ended");

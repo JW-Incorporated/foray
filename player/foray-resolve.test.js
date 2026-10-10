@@ -853,7 +853,7 @@ test("forayQueueOptions defaults allowAdPad to AD_PAD_SHIPPED and resolves items
   const r = resolved();
   const opts = forayQueueOptions(r);
   assert.equal(opts.allowAdPad, AD_PAD_SHIPPED);
-  assert.equal(opts.allowAdPad, false, "off until DAI-09 flips the switch");
+  assert.equal(opts.allowAdPad, true, "on since DAI-09 flipped the switch");
   assert.equal(opts.isLocalFile, false);
   assert.equal(opts.resolveItem("ep-a").show, "A Show", "resolveItem reads resolved.sources");
   assert.equal(opts.resolveItem("ep-nope"), null, "a miss is null, not undefined");
@@ -882,7 +882,10 @@ test("the padded join: with allowAdPad the queue item carries ad_pad_applied_sec
   const on = resolveForay(f.foray, { ...base, ...forayResolveOptions({ allowAdPad: true }) });
   assert.equal(on.playable[0].ad_pad_applied_sec, 100);
   assert.equal(on.playable[0].end_sec, 300, "the pad extends the stop only");
-  const off = resolveForay(f.foray, { ...base, ...forayResolveOptions({}) });
+  const off = resolveForay(f.foray, { ...base, ...forayResolveOptions({ allowAdPad: false }) });
   assert.equal(off.playable[0].ad_pad_applied_sec, 0);
   assert.equal(off.playable[0].end_sec, 200);
+  // The shipped default (DAI-09: AD_PAD_SHIPPED is true) is the padded join.
+  const shipped = resolveForay(f.foray, { ...base, ...forayResolveOptions({}) });
+  assert.equal(shipped.playable[0].ad_pad_applied_sec, 100);
 });

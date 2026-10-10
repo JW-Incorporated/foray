@@ -2927,9 +2927,9 @@ function ch10Docs({ withDai = false } = {}) {
 /** Play `resolved` from clip `startIndex`, then put the element 10 s into that
     clip's slice and let one `timeupdate` drive the repaint (and with it the
     resume-row write). Returns what the bar, the clock and the store say. */
-async function playTenSecondsInto(booted, resolved, startIndex, inPoint) {
+async function playTenSecondsInto(booted, resolved, startIndex, inPoint, playOpts = {}) {
   const { client, doc, audio, storage } = booted;
-  await client.playForay(resolved, { startIndex });
+  await client.playForay(resolved, { startIndex, ...playOpts });
   await tick();
   audio.currentTime = inPoint + 10;
   audio.fire("timeupdate");
@@ -2993,7 +2993,9 @@ test("CH-10: under the shipped option set the page's build and the manager's are
 test("CH-10: when the page's build and the manager's differ, the bar, the clock and the resume row follow the MANAGER's list", async (t) => {
   /* P1-04's failure, made to happen: the page resolves with the ad pad allowed
      (the DAI segment "sd" goes, its 600 s pad is over the ceiling) and plays
-     with the shipped default (it stays, as an approximate segment). The page's
+     with the pad off (it stays, as an approximate segment). Since DAI-09 the
+     shipped default is the pad ON, so both halves name `allowAdPad` explicitly
+     to keep the two builds apart. The page's
      list is [sa, sb, sc]; the manager's is [sa, sd, sb, sc]. Clip index 2 is
      "sb" in the audio and "sc" in the page's list.
 
@@ -3013,11 +3015,11 @@ test("CH-10: when the page's build and the manager's differ, the bar, the clock 
   const resolved = booted.client.resolve(foraysDoc, { id: "f-ch10", segmentsDoc, sourcesDoc, allowAdPad: true });
   assert.deepEqual(resolved.playable.map((i) => i.source_item_id), ["ep-a", "ep-b", "ep-c"],
     "precondition: the page's build dropped the over-ceiling pad segment");
-  const managerBuild = buildForayQueue(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false }));
+  const managerBuild = buildForayQueue(resolved.hydrated, forayQueueOptions(resolved, { isLocalFile: false, allowAdPad: false }));
   assert.deepEqual(managerBuild.items.map((i) => i.source_item_id), ["ep-a", "ep-d", "ep-b", "ep-c"],
-    "precondition: the manager's build (shipped default, no pad) keeps it");
+    "precondition: the manager's build (pad off) keeps it");
 
-  const seen = await playTenSecondsInto(booted, resolved, 2, 500);
+  const seen = await playTenSecondsInto(booted, resolved, 2, 500, { allowAdPad: false });
   assert.equal(seen.src, "https://cdn.test/b.mp3", "precondition: clip index 2 of the manager's queue is Show B");
   assert.equal(seen.status.index, 2);
   assert.equal(seen.line, "Show B · clip 3 of 4", "the bar names the clip that is playing, counted in the queue that plays");

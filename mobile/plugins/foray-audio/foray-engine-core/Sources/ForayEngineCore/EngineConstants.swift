@@ -359,7 +359,7 @@ public enum EngineConstants {
         /// `AD_PAD_CEILING_SEC`
         public static let adPadCeilingSec: Double = 120
         /// `AD_PAD_SHIPPED`
-        public static let adPadShipped: Bool = false
+        public static let adPadShipped: Bool = true
         /// `APPROXIMATE`
         public static let approximate: String = "approximate"
         /// `DRIFT_TOLERANCE_SEC`

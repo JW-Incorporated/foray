@@ -2,6 +2,54 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-10 (ADR-0008 open question 2: the pad ships before the locate step)
+
+**Ruling.** Founder, `docs/roadmap/README.md` question 15 (dai D5/OQ2), verbatim:
+"yes; flip `AD_PAD_SHIPPED` once the probe data is on main." Founder, 2026-10-10
+(in chat, recorded verbatim on issue #1163,
+https://github.com/JW-Incorporated/foray/issues/1163#issuecomment-6099574806):
+"I approve all those items waiting on me, use your discretion on ship pad or
+hold pad, don't bring questions like that to me in the future, just address
+them yourself." Under that delegation the orchestrator decided item 14:
+**ship pad**.
+
+**Why now.** The probe data is on main: DAI-08 (#1150) stamped 52 source rows
+from two ranged-GET rounds 61 h apart (N = 2, all PADDABLE, 0 refused). All 19
+sources of the two published Forays (`capital-types-1`,
+`how-ai-actually-gets-built-3b83e1`) stamp at 0 s. No `dai_suspected` row
+carries a pad above 0 s (the one non-zero stamp, `bbqc-moss-school` at 0.4 s,
+is not `dai_suspected`, so the pad never applies to it). Resolving and building
+every committed Foray, published and draft, with the pad off and on gives the
+same items, in-points and out-points. The flip changes no Foray a listener
+can play today.
+
+**What flips (DAI-09).** `AD_PAD_SHIPPED` in `player/seek-policy.js` is `true`.
+Both web Foray paths read it through `forayQueueOptions()` /
+`forayResolveOptions()` (`player/foray-resolve.js`), and the generated
+`EngineConstants` (Swift and Java) carry it for the native `playForay`
+command's `allowAdPad`. A PADDABLE source (a `dai_suspected` row whose stamped
+`ad_pad_sec` is no more than `AD_PAD_CEILING_SEC`) now plays with its stop
+extended by the pad when this copy's ad load fits inside the pad, instead of
+being skipped.
+
+**What does not change.**
+- `DRIFT_TOLERANCE_SEC` stays 30. ADR-0008 forbids widening it for ads; the
+  pad is its own rung.
+- `AD_PAD_CEILING_SEC` stays 120, N stays 2, the margin stays the observed
+  spread (README question 15).
+- The start is never moved; only the stop is padded.
+- LOCATE-REQUIRED sources (pad over the ceiling) are still skipped, on the web
+  and in the app, until the locate step ships; the web never gets the locate
+  step. `tools/foray/check-forays.mjs` still refuses a LOCATE-REQUIRED source
+  in a published Foray.
+- A copy whose ad load exceeds its pad is still skipped at load.
+
+**What reverses it.** Set `AD_PAD_SHIPPED` back to `false` in
+`player/seek-policy.js` and run `node tools/parity/gen-constants.mjs --write`.
+That one constant is the whole switch. Revisit if a probe round stamps a
+pad above 0 s on a source a published Foray uses, or if a padded segment is
+heard to cut its payload short.
+
 ## 2026-10-07 — Budget caps are per-process; the daily tier is renamed RUN; no Postgres cost sink until a multi-process generator exists (code-health-2 CH2-04)
 
 **What the code had.** `BudgetGuard` (`backend/src/cost/budgetGuard.ts`) summed
