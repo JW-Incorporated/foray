@@ -115,7 +115,12 @@ enum EngineBoot {
         // late while grace is held writes `grace kind=late timer=load-deadline`.
         config.loadDeadlineMs = [.clip: AVDeck.defaultLoadDeadlineSec * 1000,
                                  .line: AVDeck.defaultLineLoadDeadlineSec * 1000]
-        let sessionIsActive = { session.phase == .active }
+        // CH3-19 (R2-08): ONE session phase gates every audible start, the
+        // core's. The gate is made before the engine it reads (every adapter
+        // below takes it at construction) and attached to it right after;
+        // before that nothing is audible, and it answers false.
+        let gate = EngineSessionGate()
+        let sessionIsActive = { gate.isActive }
         // NE-34: the seam's jingle on the bundled asset (nil, and no jingle,
         // if the asset did not ship), and the silence node only behind its
         // flag (OFF). The jingle sounds at a Foray's seams now the tape is on.
@@ -166,9 +171,45 @@ enum EngineBoot {
             // Developer "Simulate system termination" only (DV-7a).
             terminate: { exit(0) })
         let engine = ForayEngine(seams: seams, config: config)
+        gate.attach(engine, owner: session)
         engine.start()
         engine.coldBoot(from: store.restoreRecord())
         return engine
+    }
+}
+
+/// THE ONE SESSION PHASE (CH3-19, R2-08; plan §4.3, §4.4). Every audible
+/// start in the shell (a deck's play, the jingle, the silence node, a spoken
+/// line) asks `isActive` first and writes `fault kind=implicit-activation`
+/// when it is false. It answers the CORE's phase, `state.session == .active`:
+/// the core decides every activation and every interruption, including the
+/// one it rules late because the narrator is still speaking (R2-05), so a
+/// start it commands is a start on the session it holds. Until this card the
+/// adapters read `AudioSessionOwner.phase`, which moved on every `began`
+/// whatever the core made of it: once the core heard the narrator, a late
+/// `began` would have left the core active and the owner lost, and every
+/// jingle after it refused.
+///
+/// The gate holds the engine weakly (the ownership record holds the engine;
+/// a relinquished one is the legacy lane's process) and reads it on main
+/// only, where every audible start runs; off main, or with no engine, it
+/// answers false, which is the fault row, never a silent start.
+final class EngineSessionGate {
+    private weak var engine: ForayEngine?
+
+    var isActive: Bool {
+        guard Thread.isMainThread else { return false }
+        return MainActor.assumeIsolated { engine?.state.session == .active }
+    }
+
+    /// The boot's one call, between building the engine and starting it:
+    /// the gate reads that engine, and the session owner asks the gate after
+    /// every `began` it forwards, so its own phase (rows only) stays with a
+    /// `began` the core ruled late.
+    @MainActor
+    func attach(_ engine: ForayEngine, owner: AudioSessionOwner) {
+        self.engine = engine
+        owner.engineHoldsSession = { [weak self] in self?.isActive ?? false }
     }
 }
 

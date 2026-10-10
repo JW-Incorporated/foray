@@ -4331,6 +4331,34 @@ test("P-7: the shipping boot turns the CBR exemption ON; the core default stays 
   assert.match(coreSrc, /approximateCBRClips: Bool = false/, "EngineConfig.approximateCBRClips defaults OFF in the core");
 });
 
+test("CH3-19: one session phase gates every audible start (the core's), and the host passes the narrator's reading", () => {
+  /* docs/roadmap/code-health-3.md CH3-19 (R2-05, R2-08). The boot is the one
+     place the shell's audible starts are handed their gate, and no XCTest can
+     build it (it makes the real AVFoundation conformers), so its wiring is
+     pinned here; the gate itself and the owner's ruling are XCTests
+     (ForayEngineHostTests, AudioSessionOwnerTests). MUTATION: wire any
+     adapter's `sessionIsActive` to `session.phase == .active` again (the
+     owner's phase, which a late began would leave lost); drop
+     `gate.attach(engine, owner: session)` or move it after `engine.start()`;
+     pass `narrator: .unknown` (or nothing) in ForayEngine.now(). Each fails
+     here. */
+  const boot = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  const make = swiftFuncBody(boot, "makeEngine") ?? "";
+  assert.match(make, /let gate = EngineSessionGate\(\)/, "the boot makes the one gate");
+  assert.match(make, /let sessionIsActive = \{ gate\.isActive \}/, "the adapters' gate is the core's phase");
+  assert.doesNotMatch(make, /\.phase\b/, "nothing in the boot reads the owner's phase");
+  const handed = [...make.matchAll(/sessionIsActive:\s*([^,)\n]+)/g)].map((m) => m[1].trim());
+  assert.ok(handed.length >= 5, `the deck, the pair, the preview, the jingle, the silence node and the narrator take the gate: ${handed}`);
+  for (const arg of handed) assert.equal(arg, "sessionIsActive", `an adapter is handed ${arg} instead of the gate`);
+  const attach = make.indexOf("gate.attach(engine, owner: session)");
+  assert.ok(attach > 0, "the gate is attached to the engine and the owner");
+  assert.ok(attach < make.indexOf("engine.start()"), "attached before the engine starts (the first input may be audible)");
+  assert.match(boot, /engine\?\.state\.session == \.active/, "the gate answers the core's state.session");
+
+  const host = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "ForayEngine.swift"), "utf8"));
+  assert.match(swiftFuncBody(host, "now") ?? "", /narrator: seams\.speaker\.reading/, "now() passes the synthesizer's reading");
+});
+
 test("NE-46: the silence node stays off, its header states the enable rule, and the late-timer detector runs before the input", () => {
   /* The provisional decision (plan §14 NE-46): `silenceNodeEnabled` stays
      false, and only a drive paste with a `grace kind=late inSeam=y` row can

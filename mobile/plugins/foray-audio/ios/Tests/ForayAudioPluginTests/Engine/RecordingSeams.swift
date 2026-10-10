@@ -317,6 +317,10 @@ final class FakeSpeaker: Speaking {
     private(set) var spoken: [String] = []
     /// The narration commands the host handed on (NE-33), in order.
     private(set) var narrated: [NarrationCommand] = []
+    /// What the synthesizer says it is doing (CH3-19, R2-05): set by the
+    /// test. `.unknown` (a synthesizer that cannot say) unless a test says
+    /// otherwise, so every other host test hears what it heard before.
+    var reading: NarratorReading = .unknown
 
     init(log: SeamLog) { self.log = log }
 

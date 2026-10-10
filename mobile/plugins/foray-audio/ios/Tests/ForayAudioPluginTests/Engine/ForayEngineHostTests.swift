@@ -277,6 +277,132 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(engine.state.stateType, "playing")
     }
 
+    // MARK: - The narrator's reading (CH3-19, R2-05)
+
+    /// A Foray's spoken line: no `audio_url`, so the synthesizer speaks it.
+    static func spokenLine(_ index: Int = 0) -> EngineItem {
+        EngineItem(node: .object([
+            JSONMember("id", .string("f1#\(index)")), JSONMember("kind", .string("tts")),
+            JSONMember("type", .string("narration")), JSONMember("script", .string("a line")),
+            JSONMember("audio_url", .null)
+        ]))!
+    }
+
+    /// The utterance `seq` of the last line the host handed the synthesizer.
+    static func spokenSeq(_ speaker: FakeSpeaker) -> Int? {
+        speaker.narrated.compactMap { command -> Int? in
+            if case let .speak(seq, _, _, _) = command { return seq }
+            return nil
+        }.last
+    }
+
+    /// The Foray tape on, its spoken first line started; the clip after it
+    /// is never reached.
+    @MainActor
+    private func speakingALine(_ world: FakeWorld) throws -> (engine: ForayEngine, seq: Int) {
+        world.deck.answersReady = true
+        let engine = started(world, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        let clip = InterludeSeamTests.clip(1, "b", 300, 400)
+        engine.handle(.queue(.loadForay([Self.spokenLine(), clip], isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(Self.spokenSeq(world.speaker), "no line was spoken: \(world.speaker.narrated)")
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        XCTAssertEqual(engine.state.stateType, "playing", "\(world.log.entries)")
+        XCTAssertEqual(engine.state.session, .active)
+        return (engine, seq)
+    }
+
+    private func stopRows(_ world: FakeWorld, cause: String) -> Int {
+        world.output.diags.filter { $0.kind == "stop" && $0[field: "cause"] == .string(cause) }.count
+    }
+
+    /// A declined call's late `began` lands while the synthesizer is still
+    /// speaking the line: the host now reads the synthesizer before every
+    /// input (`EngineNow.narrator`), so the core's late-event rule runs on a
+    /// phone as it does in parity: nothing is touched, no stop row, the line
+    /// carries on, the session stays the core's. Before CH3-19 the host
+    /// passed no reading (`.unknown`), the line was stopped
+    /// (`stop cause=interruption`) and the Foray paused until a press.
+    /// TO SEE IT FAIL: pass `narrator: .unknown` (or drop the argument) in
+    /// `ForayEngine.now()`.
+    @MainActor
+    func testALateInterruptionDuringASpokenLineTouchesNothing() throws {
+        let world = FakeWorld()
+        let (engine, seq) = try speakingALine(world)
+        world.speaker.reading = .speaking
+
+        world.session.post(.interruptionBegan(reason: "default"))
+
+        // RED on main: R2-05 (the line was stopped: one `stop cause=interruption`,
+        // the machine `interrupted`, the session lost, a `pause` to the synthesizer).
+        XCTAssertEqual(stopRows(world, cause: "interruption"), 0, "\(world.output.diags)")
+        XCTAssertEqual(engine.state.stateType, "playing")
+        XCTAssertEqual(engine.state.session, .active)
+        XCTAssertFalse(world.speaker.narrated.contains(.pause(seq: seq)), "\(world.speaker.narrated)")
+        let late = world.output.diags.filter { $0.kind == "session" && $0[field: "late"] == .string("narration-speaking") }
+        XCTAssertEqual(late.count, 1, "the core says why it touched nothing: \(world.output.diags)")
+    }
+
+    /// The same `began` when the synthesizer says the line has gone silent
+    /// under it (the system took the session and stopped the output): a
+    /// real interruption, and the line is stopped as it always was,
+    /// resumable by a press or the call's should-resume.
+    /// TO SEE IT FAIL: have the core (or the reading) take any line in
+    /// flight for a speaking one.
+    @MainActor
+    func testAnInterruptionThatSilencedTheLineStillStopsIt() throws {
+        let world = FakeWorld()
+        let (engine, seq) = try speakingALine(world)
+        world.speaker.reading = .paused
+
+        world.session.post(.interruptionBegan(reason: "default"))
+
+        XCTAssertEqual(stopRows(world, cause: "interruption"), 1, "\(world.output.diags)")
+        XCTAssertEqual(engine.state.stateType, "interrupted")
+        XCTAssertEqual(engine.state.session, .lostToInterruption)
+        XCTAssertTrue(world.speaker.narrated.contains(.pause(seq: seq)), "\(world.speaker.narrated)")
+    }
+
+    /// THE ONE SESSION PHASE (R2-08): the gate every audible start reads
+    /// answers the core's `state.session`, never the owner's own phase.
+    /// Here the session seam is the recording fake and the owner handed to
+    /// `attach` never activates, so only the core can make the gate true:
+    /// false before an engine, false idle, true playing, still true after a
+    /// `began` the core ruled late, false after one that took the session.
+    /// TO SEE IT FAIL: have `EngineSessionGate.isActive` answer
+    /// `owner.phase == .active` (or answer before `attach`).
+    @MainActor
+    func testTheSessionGateAnswersTheCoresPhase() throws {
+        let world = FakeWorld()
+        world.deck.answersReady = true
+        let engine = started(world, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        let gate = EngineSessionGate()
+        XCTAssertFalse(gate.isActive, "no engine, nothing audible")
+        let idleOwner = AudioSessionOwner(api: FakeSessionAPI(), center: NotificationCenter(),
+                                          config: AudioSessionOwner.Config(diag: { _ in }))
+        gate.attach(engine, owner: idleOwner)
+        XCTAssertFalse(gate.isActive, "the core has activated nothing")
+
+        engine.handle(.queue(.loadForay([Self.spokenLine(), InterludeSeamTests.clip(1, "b", 300, 400)],
+                                        isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(Self.spokenSeq(world.speaker))
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        XCTAssertEqual(idleOwner.phase, .inactive)
+        XCTAssertTrue(gate.isActive, "the core holds the session")
+
+        world.speaker.reading = .speaking
+        world.session.post(.interruptionBegan(reason: "default"))
+        XCTAssertTrue(gate.isActive, "a began the core ruled late leaves its session active")
+        XCTAssertTrue(idleOwner.engineHoldsSession?() ?? false, "the owner asks the same gate")
+
+        world.speaker.reading = .paused
+        world.session.post(.interruptionBegan(reason: "default"))
+        XCTAssertEqual(engine.state.session, .lostToInterruption)
+        XCTAssertFalse(gate.isActive)
+        XCTAssertFalse(idleOwner.engineHoldsSession?() ?? true)
+    }
+
     // MARK: - BackgroundGrace
 
     /// The system takes the grace time back while the engine is still

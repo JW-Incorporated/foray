@@ -513,9 +513,13 @@ final class ForayEngine {
     ///
     /// The background budget rides along (NE-16g) so the core can put it into
     /// the `remote`, `resume` and `cold-play` rows it writes for this input.
+    /// So does the synthesizer's reading (CH3-19, R2-05): without it the
+    /// core's two "still speaking" guards (a late interruption, the
+    /// suspended-pulse reconcile) ran only in parity.
     private func now() -> EngineNow {
         EngineNow(wallMs: seams.timing.wallMs, monoMs: seams.timing.monoMs, deck: seams.deck.reading,
-                  bgRemainingMs: backgroundRemainingMs(), route: seams.session.currentRoute)
+                  bgRemainingMs: backgroundRemainingMs(), narrator: seams.speaker.reading,
+                  route: seams.session.currentRoute)
     }
 
     /// `backgroundTimeRemaining` in whole milliseconds; nil in the foreground
