@@ -375,9 +375,9 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
       keys in foray-engine-core's `Persist/EngineKeys.swift`), the engine-mode
       flag, foray-vault's reinstall check, and `@capacitor/preferences`.
     - `NSPrivacyAccessedAPICategorySystemBootTime`, reason **35F9.1**
-      (time elapsed between in-app events): `NowPlayingPublisher.swift`'s
-      `ProcessInfo.processInfo.systemUptime`, and the monotonic
-      `DispatchTime.now().uptimeNanoseconds` timing in the audio engine.
+      (time elapsed between in-app events): the monotonic
+      `DispatchTime.now().uptimeNanoseconds` timing in the audio engine
+      (`AVDeck.swift`, `AudioSessionOwner.swift`, `MainQueueTiming.swift`).
     - No disk-space or active-keyboard API is used.
   - **Still a human step on a Mac:** Xcode's Organizer > Generate Privacy
     Report on an archive, which merges this manifest with every embedded

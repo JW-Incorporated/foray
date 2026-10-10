@@ -405,6 +405,34 @@ test("REAL REPO: data-safety.md B4 names each declared category and reason code"
   assert.doesNotMatch(b4, /uses none of the categories Apple\s+requires/, "the old 'no Required Reason APIs' claim is back");
 });
 
+test("REAL REPO: the call sites data-safety.md B4 names are still in the plugin Swift", () => {
+  /* B4 is what a store reviewer checks against the code, and its references
+     are backticked prose that test/legal-citations.test.js does not resolve.
+     CH3-16 removed NowPlayingPublisher's `systemUptime` read and B4 still
+     named it. Every `*.swift` file B4 names must exist under mobile/plugins,
+     every Swift expression it names must appear in some plugin Swift file,
+     and "`X.swift`'s `expr`" must be true of X.swift itself.
+     MUTATION: put back "`NowPlayingPublisher.swift`'s
+     `ProcessInfo.processInfo.systemUptime`" in B4 -> fails. RUN. MUTATION:
+     rename `EngineStore.swift` to `EngineStorage.swift` in B4 -> fails. RUN. */
+  const doc = read("docs/legal/data-safety.md");
+  const start = doc.indexOf("**Required Reason APIs.**");
+  const end = doc.indexOf("**Still a human step", start);
+  assert.ok(start >= 0 && end > start, "B4's Required Reason APIs bullet could not be found");
+  const bullet = doc.slice(start, end);
+  const files = pluginSwift().map((f) => ({ rel: path.relative(ROOT, f).split(path.sep).join("/"), src: fs.readFileSync(f, "utf8") }));
+  const named = (name) => files.filter((f) => f.rel.endsWith(`/${name}`));
+  const tokens = [...bullet.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+  const swiftFiles = tokens.filter((t) => t.endsWith(".swift"));
+  const exprs = tokens.filter((t) => /^[A-Z]\w*(?:\.\w+(?:\(\))?)+$/.test(t) && !t.endsWith(".swift"));
+  assert.ok(swiftFiles.length >= 2 && exprs.length >= 1, `the bullet's references were not found: ${tokens.join(", ")}`);
+  for (const name of swiftFiles) assert.ok(named(name).length, `B4 names ${name}, which is in no plugin Swift`);
+  for (const e of exprs) assert.ok(files.some((f) => f.src.includes(e)), `B4 names \`${e}\`, which no plugin Swift calls`);
+  for (const [, name, expr] of bullet.matchAll(/`([\w/]+\.swift)`'s\s+`([^`]+)`/g)) {
+    assert.ok(named(name).some((f) => f.src.includes(expr)), `B4 says ${name} calls \`${expr}\`; it does not`);
+  }
+});
+
 /* ──────────────────────── REAL REPO: the two build paths ──────────────────── */
 
 const WF = read(".github/workflows/ios-build.yml");
