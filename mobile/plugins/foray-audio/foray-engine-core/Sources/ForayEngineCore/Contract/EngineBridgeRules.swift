@@ -221,7 +221,7 @@ public enum EngineSnapshot {
         }
         members += [
             JSONMember("running", .bool(state.isRunning)),
-            JSONMember("inSeamGap", .bool(false)),
+            JSONMember("inSeamGap", .bool(state.inSeamGap)),
             JSONMember("inInterlude", .bool(state.inInterlude)),
             JSONMember("buffering", .bool(state.buffering)),
             JSONMember("ended", .bool(type == "ended")),
@@ -264,7 +264,7 @@ public enum EngineSnapshot {
     /// `EngineContract.extrapolate` freezes on the same three facts. No JVM
     /// twin on main; held draft #963's Java EngineBridgeRules must mirror it.
     public static func effectiveRate(state: String, inSeamGap: Bool, buffering: Bool, rate: Double) -> Double {
-        state == "playing" && !buffering ? rate : 0
+        state == "playing" && !inSeamGap && !buffering ? rate : 0
     }
 
     private static func finite(_ value: Double?) -> Double? {

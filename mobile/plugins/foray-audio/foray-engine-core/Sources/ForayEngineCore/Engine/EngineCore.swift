@@ -811,7 +811,7 @@ public struct EngineCore {
             // ONE SPELLING (code-health-3 R1-14): the route the host read for
             // this turn, the one route resume hears (NE-38rs); a press carries
             // no route of its own.
-            JSONMember("route", .null),
+            JSONMember("route", now.route.map { JSONNode.string($0.portType) } ?? .null),
             JSONMember("thread", .string(press.onMain ? "main" : "bg")),
             JSONMember("state", .string(state.stateType))
         ]
