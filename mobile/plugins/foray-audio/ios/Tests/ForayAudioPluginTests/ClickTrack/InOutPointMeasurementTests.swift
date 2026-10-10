@@ -10,7 +10,10 @@ import XCTest
 /// phone and a local file is not a CDN, so no number here is a pass mark
 /// (DV-5 repeats the measurement on real CDNs in M2). What IS asserted:
 ///   - every trial produced a measurement (a silent rig is a failure, not a
-///     skip: it would otherwise publish an empty table as a result);
+///     skip: it would otherwise publish an empty table as a result). The one
+///     skip: the play-from-zero probe's TAP proved compromised twice running
+///     (`delayVerdict`), which is the rig not listening, and is never a miss
+///     on a clean tap;
 ///   - NEVER EARLY: no out-point layer fires, and the player never settles,
 ///     before the out-point. An early stop cuts content the listener was
 ///     promised; a late one plays a little of the next thing. The plan's
@@ -93,18 +96,43 @@ final class InOutPointMeasurementTests: XCTestCase {
         var delays: [String] = []
         var tapFormats: Set<String> = []
         var worstDriftSec = 0.0
+        var compromised: [String] = []
         for fixture in descriptor.fixtures {
             let url = try descriptor.url(of: fixture)
             /* THE DECODER'S DELAY, counted from the stream's first sample
                (ClickRuler.swift, step 3). For the WAV it must come out at the
                detector's one-sample bias (0.125 ms): that is the end-to-end
                check that counting frames is right. For an MP3 it is the encoder
-               delay as AVFoundation's decoder presents it. */
-            let delay = try streamDelay(url, descriptor: descriptor)
-            delays.append("\(fixture.file): delay \(ms(delay.delaySec)) ms from the stream's first sample "
-                + "(that run's first label: \(ms(delay.runLabelSec)) ms)")
-            guard let delaySec = delay.delaySec else {
-                XCTFail("\(fixture.file): no click heard playing from zero: \(delay.state)")
+               delay as AVFoundation's decoder presents it.
+               A probe whose TAP was compromised (a buffer without a source
+               time, a jump in the counted timeline, or a playhead that stalled)
+               gets one retry; see `delayVerdict`. */
+            let first = try streamDelay(url, descriptor: descriptor)
+            var retry: StreamDelayProbe?
+            var verdict = Self.delayVerdict(first)
+            if verdict == .retry {
+                retry = try streamDelay(url, descriptor: descriptor)
+                verdict = Self.delayVerdict(first, retry: retry)
+            }
+            let delay = retry ?? first
+            var delayNote = "\(fixture.file): delay \(ms(delay.delaySec)) ms from the stream's first sample "
+                + "(that run's first label: \(ms(delay.runLabelSec)) ms)"
+            if retry != nil {
+                delayNote += "; retried, the first probe's tap was compromised: \(first.compromise ?? "-")"
+            }
+            delays.append(delayNote)
+            let delaySec: Double
+            switch verdict {
+            case .measured(let sec):
+                delaySec = sec
+            case .fault(let why):
+                XCTFail("\(fixture.file): \(why)")
+                continue
+            case .compromised(let why):
+                compromised.append("\(fixture.file): \(why)")
+                continue
+            case .retry:
+                XCTFail("\(fixture.file): a retried probe asked for a third try (delayVerdict never should)")
                 continue
             }
 
@@ -142,20 +170,116 @@ final class InOutPointMeasurementTests: XCTestCase {
                       "ready total ms", "asset ms", "ready ms", "seek ms", "preroll ms",
                       "seek/preroll finished", "ruler residual ms"],
             rows: rows,
-            notes: delays + [
+            notes: delays + compromised.map { "NOT MEASURED, the tap was compromised twice: \($0)" } + [
                 "Seeks are zero-tolerance; 'precise' is AVURLAssetPreferPreciseDurationAndTimingKey=true.",
                 "Landing error: where the first sample the listener hears really is, minus the in-point. It is COUNTED in frames back from the first double click after the landing (a whole ten seconds of content) and the file's decoder delay; no buffer label enters it. Positive = the listener starts late, negative = early (they hear audio from before the in-point).",
                 "Tap format: \(tapFormats.sorted().joined(separator: "; ")). Worst label-vs-count drift in any trial: \(ms(worstDriftSec)) ms.",
                 "Local files on a Simulator: DV-5 repeats this on real CDNs in M2.",
             ])
+        /* A tap compromised on both plays from zero is the rig failing to
+           listen, not AVFoundation mis-measuring: skip, with both probes'
+           states. Never over a real failure: if anything above already failed,
+           that failure is the result (the table notes still carry the skip). */
+        if !compromised.isEmpty, testRun?.hasSucceeded ?? true {
+            throw XCTSkip("the click tap was compromised twice playing from zero, so these fixtures went unmeasured: "
+                + compromised.joined(separator: " | "))
+        }
+    }
+
+    /// One play-from-zero probe (`streamDelay`): what it heard, and whether the
+    /// tap it heard through can be trusted.
+    ///
+    /// WHY THIS EXISTS (release #72 refused, ios-kit run 37982836770): the
+    /// probe failed with `timeControlStatus=0 waiting=- rate=0.0 t=1.879
+    /// itemError=- tapBuffers=24 invalidRanges=1 unsupportedFormat=false
+    /// tapRate=16000.0 events=1`. The `rate=0.0` was the probe's own pause (the
+    /// state was read after it); the player did play. The signal was
+    /// `invalidRanges=1`: a buffer with no source time, a gap in the tap, so the
+    /// first onset came late or the stream stalled. So the player's state is now
+    /// read BEFORE the pause, and the tap's counters decide whether a miss is a
+    /// measurement fault (fail) or a compromised probe (retry once, then skip).
+    struct StreamDelayProbe {
+        /// The decoder delay: the first onset's delay when it lies within
+        /// `delayToleranceSec` of where the first click was authored.
+        let delaySec: Double?
+        /// The first onset's delay, in tolerance or not; nil = nothing heard.
+        let rawDelaySec: Double?
+        let runLabelSec: Double?
+        /// The player as it was when the spin ended, BEFORE the probe paused it.
+        let played: MeasuredDeck.PlayState
+        /// Where the playhead was when play was asked for.
+        let startSec: Double
+        /// Wall time spun with the player asked to play.
+        let spunSec: Double
+        let invalidRanges: Int
+        let discontinuities: Int
+        /// `MeasuredDeck.stateDescription()`, read after the pause.
+        let state: String
+
+        static let delayToleranceSec = 0.5
+        /// "Well short": a playhead this far behind the wall clock stalled. A
+        /// prerolled local file starts in tens of milliseconds.
+        static let playheadShortfallSec = 1.0
+
+        var foundOnset: Bool { rawDelaySec != nil }
+        var advancedSec: Double { played.currentSec - startSec }
+
+        /// Why the tap's evidence cannot be trusted, or nil when it heard the
+        /// stream whole. The player's paused state is NOT a reason: every miss
+        /// ends paused.
+        var compromise: String? {
+            var why: [String] = []
+            if invalidRanges > 0 { why.append("invalidRanges=\(invalidRanges) (tap buffers with no source time)") }
+            if discontinuities > 0 { why.append("discontinuities=\(discontinuities) (the counted timeline jumped)") }
+            if spunSec - advancedSec > Self.playheadShortfallSec {
+                why.append(String(format: "the playhead advanced %.3f s in %.3f s of wall time", advancedSec, spunSec))
+            }
+            return why.isEmpty ? nil : why.joined(separator: ", ")
+        }
+
+        /// What was missing: nothing heard, or a first click found but out of tolerance.
+        var miss: String {
+            guard let raw = rawDelaySec else { return "no click heard playing from zero" }
+            return "a first click was heard playing from zero, but \(ms(raw)) ms from where it was authored "
+                + "(the delay must be within \(ms(Self.delayToleranceSec)) ms)"
+        }
+
+        var report: String {
+            "before the pause: timeControlStatus=\(played.timeControlStatus.rawValue) rate=\(played.rate) "
+                + String(format: "t=%.3f after %.3f s of wall time from t=%.3f", played.currentSec, spunSec, startSec)
+                + "; after it: \(state)"
+        }
+    }
+
+    enum DelayVerdict: Equatable {
+        case measured(Double)
+        /// The tap was clean and no in-tolerance first click was found: a real fault.
+        case fault(String)
+        /// The tap was compromised: probe once more.
+        case retry
+        /// The tap was compromised on the retry too: the rig did not listen.
+        case compromised(String)
+    }
+
+    /// The probe's verdict. Only the tap's own evidence earns a retry or a
+    /// skip; a clean miss fails, first time or second.
+    static func delayVerdict(_ first: StreamDelayProbe, retry: StreamDelayProbe? = nil) -> DelayVerdict {
+        let last = retry ?? first
+        if let delaySec = last.delaySec { return .measured(delaySec) }
+        let earlier: String = retry == nil ? "" : " (the retry; the first probe: \(first.miss): \(first.report))"
+        guard last.compromise != nil else { return .fault("\(last.miss): \(last.report)\(earlier)") }
+        guard retry != nil else { return .retry }
+        return .compromised("first probe: \(first.miss): \(first.report) || retry: \(last.miss): \(last.report)")
     }
 
     /// Plays from zero and counts, from the stream's first sample, to the first
     /// click (authored at `firstClickSec`).
-    private func streamDelay(_ url: URL, descriptor: ClickTrackDescriptor) throws -> (delaySec: Double?, runLabelSec: Double?, state: String) {
+    private func streamDelay(_ url: URL, descriptor: ClickTrackDescriptor) throws -> StreamDelayProbe {
         let deck = MeasuredDeck()
         defer { deck.tearDown() }
         _ = try deck.load(url, precise: true, seekToSec: nil, rate: 1)
+        let startSec = deck.currentSec
+        let spinStart = Date()
         deck.player.playImmediately(atRate: 1)
         let first: () -> (event: ClickEvent, anchor: Double)? = {
             let snapshot = deck.recorder.snapshot()
@@ -166,11 +290,78 @@ final class InOutPointMeasurementTests: XCTestCase {
             return nil
         }
         spin(timeoutSec: descriptor.firstClickSec + 3) { first() != nil }
+        /* Read the player BEFORE pausing it: after, rate=0 is the pause. */
+        let spunSec = Date().timeIntervalSince(spinStart)
+        let played = deck.playState()
         deck.player.pause()
-        guard let found = first() else { return (nil, nil, deck.stateDescription()) }
-        let delay = ClickRuler.delay(
-            firstClickCountedSec: found.event.countedSec, runAnchorSec: found.anchor, firstClickSec: descriptor.firstClickSec)
-        return (abs(delay) < 0.5 ? delay : nil, found.anchor, deck.stateDescription())
+        let found = first()
+        let snapshot = deck.recorder.snapshot()
+        let raw: Double? = found.map {
+            ClickRuler.delay(firstClickCountedSec: $0.event.countedSec, runAnchorSec: $0.anchor,
+                             firstClickSec: descriptor.firstClickSec)
+        }
+        return StreamDelayProbe(
+            delaySec: raw.flatMap { abs($0) < StreamDelayProbe.delayToleranceSec ? $0 : nil },
+            rawDelaySec: raw,
+            runLabelSec: found?.anchor,
+            played: played,
+            startSec: startSec,
+            spunSec: spunSec,
+            invalidRanges: snapshot.invalidRanges,
+            discontinuities: snapshot.discontinuities,
+            state: deck.stateDescription())
+    }
+
+    /// The verdict, on probes built by hand, no player. Run 37982836770's
+    /// numbers are the first case.
+    /// MUTATIONS this kills: drop any one of `compromise`'s three clauses;
+    /// retry or skip on `timeControlStatus != .playing && rate == 0` (or on any
+    /// miss); fail instead of retrying a compromised first probe; retry a
+    /// second time; let a compromised first probe excuse a clean retry's miss;
+    /// report an out-of-tolerance onset as "no click heard".
+    func testDelayVerdictRetriesOnlyACompromisedTapAndFailsACleanMiss() {
+        func probe(raw: Double? = nil, status: AVPlayer.TimeControlStatus = .playing, rate: Float = 1,
+                   at currentSec: Double = 3.95, spun: Double = 4.0,
+                   invalid: Int = 0, jumps: Int = 0, state: String = "after") -> StreamDelayProbe {
+            StreamDelayProbe(
+                delaySec: raw.flatMap { abs($0) < StreamDelayProbe.delayToleranceSec ? $0 : nil },
+                rawDelaySec: raw, runLabelSec: raw == nil ? nil : 0,
+                played: MeasuredDeck.PlayState(timeControlStatus: status, rate: rate, currentSec: currentSec),
+                startSec: 0, spunSec: spun, invalidRanges: invalid, discontinuities: jumps, state: state)
+        }
+        /* Run 37982836770: a gap in the tap (and a playhead short of the wall). */
+        let run37982836770 = probe(at: 1.879, invalid: 1, state: "run-37982836770")
+        XCTAssertEqual(Self.delayVerdict(run37982836770), .retry)
+        /* Each clause alone compromises a probe. */
+        XCTAssertEqual(Self.delayVerdict(probe(invalid: 1)), .retry)
+        XCTAssertEqual(Self.delayVerdict(probe(jumps: 1)), .retry)
+        XCTAssertEqual(Self.delayVerdict(probe(at: 1.879)), .retry)
+        XCTAssertNil(probe(at: 3.2).compromise, "0.8 s behind the wall clock is start-up, not a stall")
+        /* A clean tap's miss fails, even though the player reads paused at rate 0. */
+        let cleanSilence = probe(status: .paused, rate: 0)
+        guard case .fault(let silent) = Self.delayVerdict(cleanSilence) else {
+            return XCTFail("a clean tap that heard nothing must fail: \(Self.delayVerdict(cleanSilence))")
+        }
+        XCTAssertTrue(silent.hasPrefix("no click heard playing from zero"), silent)
+        XCTAssertTrue(silent.contains("timeControlStatus=0 rate=0.0"), silent)
+        guard case .fault(let late) = Self.delayVerdict(probe(raw: 0.75)) else {
+            return XCTFail("a clean tap's out-of-tolerance click must fail")
+        }
+        XCTAssertTrue(late.hasPrefix("a first click was heard playing from zero, but 750"), late)
+        XCTAssertNil(probe(raw: 0.75).delaySec)
+        XCTAssertTrue(probe(raw: 0.75).foundOnset)
+        /* The retry decides. */
+        XCTAssertEqual(Self.delayVerdict(run37982836770, retry: probe(raw: 0.0425)), .measured(0.0425))
+        guard case .fault(let afterRetry) = Self.delayVerdict(run37982836770, retry: probe()) else {
+            return XCTFail("a clean retry that heard nothing must fail")
+        }
+        XCTAssertTrue(afterRetry.contains("run-37982836770"), afterRetry)
+        guard case .compromised(let both) = Self.delayVerdict(run37982836770, retry: probe(jumps: 2, state: "the-retry")) else {
+            return XCTFail("compromised twice must skip, not retry again or fail")
+        }
+        XCTAssertTrue(both.contains("run-37982836770") && both.contains("the-retry"), both)
+        /* A measured first probe needs no retry, compromised or not. */
+        XCTAssertEqual(Self.delayVerdict(probe(raw: 0.000125, invalid: 3)), .measured(0.000125))
     }
 
     private func measureInPoint(
@@ -270,7 +461,7 @@ final class InOutPointMeasurementTests: XCTestCase {
             defer { try? FileManager.default.removeItem(at: url) }
             let delay = try streamDelay(url, descriptor: descriptor)
             guard let delaySec = delay.delaySec else {
-                notes.append("\(name): no click heard playing from zero: \(delay.state)")
+                notes.append("\(name): \(delay.miss): \(delay.report)")
                 continue
             }
             notes.append("\(name): delay \(ms(delaySec)) ms from the stream's first sample")

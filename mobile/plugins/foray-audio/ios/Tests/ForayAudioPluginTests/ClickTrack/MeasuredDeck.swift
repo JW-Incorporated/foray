@@ -155,7 +155,24 @@ final class MeasuredDeck {
         item = nil
     }
 
+    /// What the player is doing RIGHT NOW. A probe reads this before it pauses:
+    /// read after `pause()`, `timeControlStatus=0 rate=0.0` is the probe's own
+    /// pause and says nothing about whether the player played (run
+    /// 37982836770's report was read that way round).
+    struct PlayState {
+        let timeControlStatus: AVPlayer.TimeControlStatus
+        let rate: Float
+        let currentSec: Double
+    }
+
+    func playState() -> PlayState {
+        PlayState(timeControlStatus: player.timeControlStatus, rate: player.rate, currentSec: currentSec)
+    }
+
     /// For a report when something did not happen: what the player was doing.
+    /// The tap's counters ride along: `invalidRanges` (buffers AVFoundation
+    /// gave no source time) and `discontinuities` (times the counted timeline
+    /// jumped) say whether the tap heard the stream whole.
     func stateDescription() -> String {
         let snapshot = recorder.snapshot()
         let waiting: String = player.reasonForWaitingToPlay?.rawValue ?? "-"
@@ -168,6 +185,7 @@ final class MeasuredDeck {
             "itemError=\(itemError)",
             "tapBuffers=\(snapshot.buffers)",
             "invalidRanges=\(snapshot.invalidRanges)",
+            "discontinuities=\(snapshot.discontinuities)",
             "unsupportedFormat=\(snapshot.unsupportedFormat)",
             "tapRate=\(snapshot.sampleRate)",
             "events=\(snapshot.events.count)",
