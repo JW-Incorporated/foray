@@ -1,0 +1,4 @@
+{
+  "//": "The off-switch for the iOS Associated Domains entitlement (applinks:<SHARE_ORIGIN host>), read by tools/mobile/inject-associated-domains.mjs. Apple refuses to sign a build that claims the entitlement before the App ID ai.jwlabs.foura has the Associated Domains capability, which only the founder can turn on (HUMAN-ACTIONS.md #145, steps 1-4, which also re-issue IOS_PROVISIONING_PROFILE_BASE64). Flip to true only in the PR that follows the founder's #145 'done', and wire the script into .github/actions/ios-prepare/action.yml in that same PR. While false the injector writes nothing and its --check asserts nothing claims the entitlement.",
+  "enabled": false
+}

@@ -1273,6 +1273,7 @@ const ACKNOWLEDGED_MOBILE_NON_SOURCE = {
   "mobile/plugins/foray-tts/README.md": "documentation",
   "mobile/VERSION": "a version string version.mjs validates; a bad one fails the upload, red",
   "mobile/ENGINE_DEFAULT.json": "JSON data the plist injector writes and --checks; parsed, never executed",
+  "mobile/ASSOCIATED_DOMAINS.json": "JSON off-switch that inject-associated-domains.mjs parses strictly and --checks; parsed, never executed; no workflow invokes the injector yet (wiring it into .github/ is itself governed)",
   "mobile/capacitor.config.json": "JSON config, parsed not executed (a .js/.ts config IS code and is denied by name); its decisions are pinned by shell-invariants.test.mjs",
   "mobile/plugins/foray-tts/lexicon/hard-terms.json": "pronunciation data bundled into the app",
   "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Fixtures/ClickTracks/click-tracks.json": "XCTest fixture data",

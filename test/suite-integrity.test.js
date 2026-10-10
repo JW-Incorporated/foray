@@ -1864,6 +1864,13 @@ const FLOORS = {
      --mobile stale-class guard, the CLI's exit codes, one REAL REPO tie to
      mobile/package.json, and the ios-build.yml step. Floored exact. */
   "tools/mobile/privacy-manifest-report.test.mjs": 18,
+  /* 145-part (HUMAN-ACTIONS.md #145, #1071): tools/mobile/inject-associated-domains.mjs
+     pre-stages the iOS Associated Domains entitlement behind the committed
+     mobile/ASSOCIATED_DOMAINS.json off-switch -- the host is SHARE_ORIGIN's, the
+     AASA appID is the release bundle id and team, a false flag and a non-release
+     bundle id each change no byte, off is a verified no-op, on writes the file and
+     CODE_SIGN_ENTITLEMENTS insert-only, a re-run is idempotent, the CLI. New, floored exact. */
+  "tools/mobile/inject-associated-domains.test.mjs": 14,
   /* NE-26r (docs/native-engine-plan.md §7, §10): tools/mobile/engine-report.mjs,
      a Copy paste (or the ring file) to the DV-1..DV-13 verdict table — every
      verdict's pass, fail and no-data paths, an evicted early seam flagged
