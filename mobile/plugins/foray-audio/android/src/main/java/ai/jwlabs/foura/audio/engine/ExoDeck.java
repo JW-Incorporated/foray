@@ -11,6 +11,7 @@ import ai.jwlabs.foura.engine.EngineCommand;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.net.Uri;
 import android.os.Looper;
 import android.util.Log;
@@ -209,6 +210,21 @@ public final class ExoDeck implements DeckDriving {
         };
     }
 
+    /**
+     * The build's default {@link Config#debugFault}: an {@link AssertionError} in an app built
+     * debuggable ({@link ApplicationInfo#FLAG_DEBUGGABLE}, the debug variant), nothing in release
+     * or with no context. The flag, not {@code BuildConfig.DEBUG}: AGP 8 generates no BuildConfig
+     * for a library, and the flag is the APP's build, which is what DEBUG means on iOS.
+     */
+    public static Consumer<String> debugFaultFor(@Nullable Context context) {
+        boolean debuggable = context != null
+                && (context.getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        if (!debuggable) return row -> {};
+        return row -> {
+            throw new AssertionError(row);
+        };
+    }
+
     /** Makes the source for a load: the URL the core handed over and its timing option. */
     public interface MediaSourceMaker {
         MediaSource make(String url, boolean preciseTiming);
@@ -243,8 +259,13 @@ public final class ExoDeck implements DeckDriving {
         public BooleanSupplier sessionIsActive = () -> true;
         /** A plain log line (the fault, the out-point). Default: logcat. */
         public Consumer<String> writeRow = row -> Log.i(TAG, row);
-        /** DEBUG's hard stop for a broken invariant; injectable so a test can see it fire. Default: nothing. */
-        public Consumer<String> debugFault = row -> {};
+        /**
+         * DEBUG's hard stop for a broken invariant; injectable so a test can see it fire.
+         * Default (null): {@link ExoDeck#debugFaultFor} over {@link #context}, which stops a debuggable
+         * build and does nothing in release, the way the Swift twin's {@code assertionFailure}
+         * does (code-health-3 R5-04).
+         */
+        public Consumer<String> debugFault;
         /** The ring's structured rows ({@code deck}, {@code outPoint}). Default: nowhere. */
         public Consumer<EngineCommand.DiagEntry> diag = entry -> {};
         /** Required: see {@link #progressive}. */
@@ -308,6 +329,8 @@ public final class ExoDeck implements DeckDriving {
 
     private final ExoPlayer player;
     private final Config config;
+    /** {@link Config#debugFault}, or the build's default ({@link #debugFaultFor}). */
+    private final Consumer<String> debugFault;
     private final Clock clock;
     private final HandlerWrapper handler;
     private final Player.Listener playerListener = new PlayerListener();
@@ -357,6 +380,7 @@ public final class ExoDeck implements DeckDriving {
         this.gateAwake = config.gateAwake != null ? config.gateAwake : systemGateAwake(config.context, player);
         this.player = player;
         this.config = config;
+        this.debugFault = config.debugFault != null ? config.debugFault : debugFaultFor(config.context);
         this.clock = player.getClock();
         this.handler = clock.createHandler(player.getApplicationLooper(), null);
         // The deck's own settings (see THE PLAYER above).
@@ -422,12 +446,6 @@ public final class ExoDeck implements DeckDriving {
     /** Every Media3 call that can move the audible state, in order (bounded). The tests assert on it. */
     public List<String> primitives() {
         return Collections.unmodifiableList(new ArrayList<>(primitives));
-    }
-
-    /** The token of the load the deck holds, or null. */
-    @Nullable
-    public Integer token() {
-        return token;
     }
 
     // ---------------------------------------------------------------- load
@@ -623,7 +641,7 @@ public final class ExoDeck implements DeckDriving {
         if (!config.sessionIsActive.getAsBoolean()) {
             String row = "fault implicit-activation deck token=" + token;
             config.writeRow.accept(row);
-            config.debugFault.accept(row);
+            debugFault.accept(row);
         }
         intendsToPlay = true;
         reachedEnd = false;

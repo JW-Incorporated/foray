@@ -63,8 +63,12 @@ import com.google.common.util.concurrent.ListenableFuture;
  *
  * <p>MP1 is careful to call the second one an <b>inference</b> from two documented
  * facts rather than a sentence AOSP states, and this class does not upgrade it.
- * Nothing here has been observed on a device or an emulator — see
- * {@code docs/android-native-code.md} for exactly what is measured.
+ * The CI emulator has since run this class ({@code android-playback.yml}, API 34 and
+ * 36; {@code docs/android-emulator-measurements.md} §5–§7): it starts as a foreground
+ * service with the mediaPlayback type, and it is still one after five minutes of
+ * forced Doze and after Back to Home. That record also says what it does NOT show:
+ * with no service at all, Home plus sleep still played for 60 s on the emulator (§5),
+ * and nothing here has been observed on a phone.
  *
  * <h2>And a third reason, which is #27's</h2>
  *
