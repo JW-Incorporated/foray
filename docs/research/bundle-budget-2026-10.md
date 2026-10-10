@@ -39,9 +39,9 @@ file changes. Items are ranked by bytes saved.
 | 6 | Drop `audio_type`/`audio_bytes` from the discover slice | 32,617 | no | medium | not built |
 | 7 | Syntax minification (`minifySyntax`) | 26,564 | no (`minify.mjs`) | policy | rejected |
 | 8 | Bundle the player's import graph and tree-shake unused exports | 19,554 | no, but it changes the module layout | high | not built |
-| 9 | Front-code the item-tags `df` term lists | 12,598 | yes (`search-engine.js` reader) | low | not built |
+| 9 | **Front-code the item-tags `df` term lists** | **12,181** (12,729 data, less 548 of decoder) | no (`search-engine.js` reader, not UI-frozen) | low | **built: health/ch-bundle-09** |
 | 10 | **Stop shipping `player/` modules that nothing imports** | **12,647** | no | low | **built: perf/bundle-trim-1** |
-| 11 | Drop the unread prose keys (`notes`) | ~3,500 | no | low | not built (guard cost) |
+| 11 | Drop the unread prose keys (`notes`) | 4,647 | no | low | not built (guard cost, re-checked) |
 | 12 | Drop the unread top-level keys of `forays.json` | ~1,900 | no | medium | excluded |
 | 13 | Drop `manifest.json` from the shell | 409 | `index.html` links it | low | not built |
 | 14 | Recompress the PNG icons losslessly | ~0 | no | none | measured, nothing to gain |
@@ -50,6 +50,12 @@ file changes. Items are ranked by bytes saved.
 
 Items 5 and 10 together take the bundle from **2,750,852 B to 2,693,882 B**
 (−56,970 B), all of it in `tools/`.
+
+Item 9, measured the same way on `main` at 6bded79c (items 5 and 10 merged; the
+nightly data has grown since, so the starting point is 2,697,015 B): the bundle
+goes from **2,697,015 B to 2,684,834 B** (−12,181 B, 77 files either way).
+`data/item-tags.json` goes 124,908 B to 112,179 B, and `search-engine.js` grows
+23,278 B to 23,826 B for the decoder.
 
 ### 1. `data/show-index.tsv` (444,121 B): the largest single lever, and it needs `app.js`
 
@@ -146,11 +152,39 @@ shipping one bundled module instead of 49 files. That collides with `index.html`
 modulepreload list (a UI file, and pinned by `test/boot-path.test.js` perf-1) and
 with the "one file in, one file out" rule in `minify.mjs`.
 
-### 9. Front-coding the `df` block (12,598 B): needs `search-engine.js`
+### 9. Front-coding the `df` block (12,181 B net): built, health/ch-bundle-09
 
-`df.by_count` is 34,585 B of sorted term lists. Front-coding them (shared-prefix
-length plus suffix) makes them 21,987 B. The reader is `search-engine.js`
-`readTagDfBlock`, which this brief does not cover.
+`df.by_count` is 34,585 B of sorted term lists (3,406 terms in 90 count groups).
+The first estimate here, 21,987 B, was for one shared-prefix length plus suffix
+per term. The built form packs each group into ONE string: its terms sorted and
+separated by a space, each written as one base-36 digit (how many leading
+characters it shares with the term before it, capped at 35) followed by the rest,
+so `["war","ware","wares"]` is `"0war 3e 4s"`. That makes the groups 21,835 B
+(−12,750 B). The block is marked `"encoding":"front-1"` (21 B), so the file goes
+124,908 B to 112,179 B (−12,729 B). The decoder adds 548 B of minified JS to
+`search-engine.js`, so the bundle saves 12,181 B.
+
+- **Writer:** `tools/mobile/prepare-webdir.mjs` `tagDfBlock` (`frontCodeTerms`).
+  A term containing a space cannot be front-coded, so a map that has one ships
+  the whole block in the plain form with no `encoding`. Tags are hyphenated slugs
+  today, so the real map never takes that path.
+- **Reader:** `search-engine.js` `readTagDfBlock` decodes a block marked `front-1`,
+  still reads the plain arrays when `encoding` is absent, and ignores a block with
+  any other value. It keeps every validity check it had. It builds a Map, so the
+  order of the terms does not matter.
+- **Self-check:** the bundler's `assertItemTagsSliceComplete` decodes the written
+  block with a restated decoder (`decodeTagDfByCount`) before it compares it.
+  The restatement is needed because the bundler runs in the signing jobs and
+  never loads `search-engine.js`. The check refuses a block that does not decode
+  or that is in an unknown encoding, the cases the engine would silently ignore.
+- **Proof:** `prepare-webdir.test.mjs` round-trips the real `data/item-tags.json`
+  through both decoders to the same term → count map the engine computes by
+  counting. The engine's `tagCount`/`tagDF` parity tests from #279 now run
+  against the front-coded slice.
+
+The saving is in raw bytes on disk, which is what the 2.8 MB alarm and
+`MAX_BYTES` measure. It is not a download-size saving: the IPA and the APK are zip
+archives, and deflate already exploits shared prefixes.
 
 ### 10. Unimported `player/` modules (12,647 B): built, perf/bundle-trim-1
 
@@ -172,9 +206,19 @@ now ships the web's list, so a module joins both by being imported.
 
 ### 11 to 16
 
-- **11. Prose `notes` keys (~3,500 B).** The name `notes` appears in `app.js` as an
-  ordinary variable, so the name-based guard from item 5 cannot clear it. A
-  path-specific guard is worth more than the bytes it would save.
+- **11. Prose `notes` keys (4,647 B).** Re-measured on the 6bded79c bundle.
+  `taxonomy.json` 1,067, `validated-links.json` (`episodes.*.notes`) 1,748,
+  `segment-sources.json` 655, `personas.json` 640, `segments.json` 537, each a
+  top-level `notes` unless the path says otherwise. `forays.json`'s 649 are left
+  out because `{...foray, items}` forwards them, as in item 12. The bundle-09 brief
+  allowed this only under a guard that whitelists these exact paths and proves no
+  shipped reader reads them, and only if the guard cost less than the bytes. It
+  does not. The name `notes` appears in `app.js` as an ordinary variable, so the
+  name-based guard from item 5 cannot clear it. A path guard would need a second
+  matching mode in a DENIED file. A token scan finds no `.notes`, `["notes"]` or
+  quoted `"notes"` read in shipped JS today, but it cannot rule out a shorthand
+  destructure (`const { notes } = persona`) or a spread that forwards a whole
+  row. Those are what item 5 had to follow by hand. Not built.
 - **12. `forays.json` top-level keys (~1,900 B).** `label_prefixes`, `source_doc`,
   `spine_doc`, `beats_*` and `runtime_sec` are forwarded by a spread, and
   `runtime_sec` is read by the Swift parity harness. Excluded.

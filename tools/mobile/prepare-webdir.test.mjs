@@ -50,6 +50,7 @@ import {
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
   isBundledData, SEED_POINTER, itemTagsSlice, assertItemTagsSliceComplete, searchedPoolIds,
   tagDfBlock, tagCandidateForms, TAG_DF_SENSE_LOCKED_STEMS,
+  TAG_DF_ENCODING, frontCodeTerms, frontDecodeTerms, decodeTagDfByCount,
   UNPINNED_DATA, unpinnedDataPlan, unpinnedDataOverBudget,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
   MODEL_EXTENSIONS, assertNoModelWeights,
@@ -1032,7 +1033,7 @@ function engineDfByCount(itemTags) {
  *  Returns the terms that differ. */
 function sliceCountDivergence(whole, slice, extra = []) {
   const terms = tagTermUniverse(whole, extra);
-  for (const group of Object.values(slice?.df?.by_count ?? {})) for (const t of group) terms.add(t);
+  for (const group of Object.values(decodeTagDfByCount(slice?.df) ?? {})) for (const t of group) terms.add(t);
   return tagCountDivergence(whole, slice, terms);
 }
 
@@ -1165,8 +1166,10 @@ test("#279: a WHOLE map counts itself — no stale bundle-time counts — and th
 
   /* The verifier, reached: move `comedy` to the wrong count. */
   const corrupt = structuredClone(slice);
-  corrupt.df.by_count["1"] = corrupt.df.by_count["1"].filter((t) => t !== "comedy");
-  (corrupt.df.by_count["2"] ||= []).push("comedy");
+  const moved = decodeTagDfByCount(corrupt.df);
+  moved["1"] = moved["1"].filter((t) => t !== "comedy");
+  (moved["2"] ||= []).push("comedy");
+  for (const [n, group] of Object.entries(moved)) corrupt.df.by_count[n] = frontCodeTerms(group);
   assert.throws(
     () => assertItemTagsSliceComplete(itemTags, corrupt, { discover, session }),
     (e) => e instanceof WebDirError && /counts 1 term\(s\) differently from the whole map/.test(e.message) &&
@@ -1262,7 +1265,7 @@ test("REAL REPO: the tag slice gives every term primeVocabulary walks — and ev
   for (const id of tagged) assert.ok(id in slice.tags, `session episode ${id} lost its tags`);
   assert.equal(slice.df.total, entries);
   /* The bundler's restated matcher, on today's whole map, IS the engine's table. */
-  assert.deepEqual(slice.df.by_count, engineDfByCount(whole), "tagDfBlock no longer computes what the engine counts");
+  assert.deepEqual(decodeTagDfByCount(slice.df), engineDfByCount(whole), "tagDfBlock no longer computes what the engine counts");
   assert.equal(assertItemTagsSliceComplete(whole, slice, { discover, session }), true);
 
   const vocabulary = new Set();
@@ -1336,8 +1339,8 @@ test("#279 review: the bundler's restated matcher is the engine's — sense-lock
     assert.ok(tagCandidateForms(stem).includes(stem));
     assert.ok(tagCandidateForms(stem).every((f) => f.startsWith(stem)), "a candidate form that is not the term plus a suffix breaks the prefix walk");
   }
-  assert.deepEqual(tagDfBlock(probe, 0).by_count, engineDfByCount(probe));
-  assert.deepEqual(tagDfBlock(dfFixture().itemTags, 0).by_count, engineDfByCount(dfFixture().itemTags));
+  assert.deepEqual(decodeTagDfByCount(tagDfBlock(probe, 0)), engineDfByCount(probe));
+  assert.deepEqual(decodeTagDfByCount(tagDfBlock(dfFixture().itemTags, 0)), engineDfByCount(dfFixture().itemTags));
 
   /* And end to end: a slice of the probe map carrying the restated block is
      indistinguishable from the whole map to the real engine. */
@@ -1349,6 +1352,121 @@ test("#279 review: the bundler's restated matcher is the engine's — sense-lock
      open stems count differently on the same shape. */
   const ctx = { itemTags: probe };
   assert.notEqual(SE.tagCount("train", ctx), SE.tagCount("grill", ctx));
+});
+
+/* FRONT-CODED df GROUPS (docs/research/bundle-budget-2026-10.md item 9). The
+   bundler writes each by_count group as one front-coded string and marks the block
+   `encoding: TAG_DF_ENCODING`; search-engine.js readTagDfBlock decodes it, still
+   reads the plain arrays when `encoding` is absent, and ignores any other value.
+   The saving is raw bytes on disk, which is what MAX_BYTES and the 2.8 MB alarm
+   measure; the IPA/APK zip already exploits shared prefixes, so it is not a
+   download-size claim. */
+
+/** A term -> count Map off by_count groups that are already plain arrays. */
+function countsOf(byCount) {
+  const m = new Map();
+  for (const [n, group] of Object.entries(byCount)) for (const t of group) m.set(t, Number(n));
+  return m;
+}
+
+test("df front-coding: the real data/item-tags.json round-trips to an identical term -> count map, through the bundler's decoder AND the engine's", (t) => {
+  /* MUTATIONS THIS KILLS (each run):
+       - prepare-webdir.mjs frontCodeTerms: `FRONT_CODE_DIGITS[k] + t.slice(k)` ->
+         `FRONT_CODE_DIGITS[k] + t.slice(k + 1)` — every shared term loses a
+         character, the decoded map differs;
+       - prepare-webdir.mjs frontCodeTerms: `while (k < max && t[k] === prev[k]) k++`
+         -> `while (false) k++` — still decodes, shares nothing, and the size
+         assertion fails (the saving this item exists for is gone);
+       - search-engine.js frontDecodeTerms: `prev = prev.slice(0, k) + entry.slice(1)`
+         -> `prev = entry.slice(1)` — the engine reads suffixes as terms, and the
+         engine-side round trip below fails;
+       - search-engine.js readTagDfBlock: `frontCoded ? frontDecodeTerms(group) : group`
+         -> `group` — the engine rejects the block and counts its own (empty) map,
+         every count is 0. */
+  const whole = JSON.parse(fs.readFileSync(path.join(ROOT, "data/item-tags.json"), "utf8"));
+  const plain = engineDfByCount(whole);
+  const want = countsOf(plain);
+  assert.ok(want.size > 1000, `only ${want.size} terms count on the real map`);
+
+  const block = tagDfBlock(whole, 0);
+  assert.equal(block.encoding, TAG_DF_ENCODING, "the real map's block is not front-coded");
+  for (const group of Object.values(block.by_count)) assert.equal(typeof group, "string");
+
+  /* The bundler's own decoder. */
+  assert.deepEqual(countsOf(decodeTagDfByCount(block)), want, "the bundler's front-coding does not round-trip");
+
+  /* The ENGINE's decoder, on a map whose only source of counts is the block
+     (`entries: 0` and no tags, so readTagDfBlock honours it): every term the
+     whole map counts reads back with its count, and a term it does not count
+     reads 0, so the engine's map is exactly `want`. */
+  const ctx = { itemTags: { tags: {}, df: block } };
+  const wrong = [...tagTermUniverse(whole, ["nonesuch"])].filter((x) => SE.tagCount(x, ctx) !== (want.get(x) ?? 0));
+  assert.deepEqual(wrong.slice(0, 5), [], "the engine decodes the front-coded block to different counts");
+  assert.equal(SE.tagDF("war", ctx), (want.get("war") ?? 0) / Object.keys(whole.tags).length);
+
+  /* What it buys, in the unit the budgets measure. */
+  const plainBytes = Buffer.byteLength(JSON.stringify(plain));
+  const codedBytes = Buffer.byteLength(JSON.stringify(block.by_count));
+  t.diagnostic(`df by_count: ${plainBytes} B plain -> ${codedBytes} B front-coded (${plainBytes - codedBytes} B saved)`);
+  assert.ok(codedBytes < plainBytes * 0.75, `front-coding saves only ${plainBytes - codedBytes} of ${plainBytes} B`);
+});
+
+test("df front-coding: the engine still reads the plain form, ignores an encoding it does not know, and the verifier refuses one", () => {
+  /* MUTATIONS THIS KILLS (each run):
+       - search-engine.js readTagDfBlock: `const terms = frontCoded ? frontDecodeTerms(group) : group`
+         -> `const terms = frontDecodeTerms(group)` (front-coded only) — a plain
+         block, the form every bundle before this one shipped, is ignored and the
+         slice counts itself;
+       - search-engine.js readTagDfBlock: delete `if (df.encoding !== undefined && !frontCoded) return null;`
+         — a block in an unknown encoding whose groups happen to be arrays is read
+         as plain, and `war` reports the block's 5 instead of the slice's own 2;
+       - prepare-webdir.mjs decodeTagDfByCount: delete
+         `if (df.encoding !== undefined && df.encoding !== TAG_DF_ENCODING) return null;`
+         — the verifier passes a block the engine ignores;
+       - prepare-webdir.mjs tagDfBlock: `t.includes(" ")` -> `false` — a term with a
+         space is front-coded, splits in two on decode, and the slice diverges;
+       - prepare-webdir.mjs assertItemTagsSliceComplete: `decodeTagDfByCount(df)` ->
+         `df.by_count` (the self-check compares the block undecoded) — the plain
+         slice above is refused, and so is every front-coded one in the #279 tests. */
+  const { discover, session, itemTags } = dfFixture();
+  const slice = itemTagsSlice(itemTags, { discover, session });
+  assert.equal(slice.df.encoding, TAG_DF_ENCODING);
+  const terms = tagTermUniverse(itemTags, ["train", "book", "nonesuch"]);
+
+  /* The plain form: same block, decoded by the bundler, no `encoding`. */
+  const { encoding: _e, ...plainDf } = slice.df;
+  const plainSlice = { ...slice, df: { ...plainDf, by_count: decodeTagDfByCount(slice.df) } };
+  assert.ok(Array.isArray(plainSlice.df.by_count["1"]));
+  assert.deepEqual(tagCountDivergence(itemTags, plainSlice, terms), [], "the engine no longer reads a plain df block");
+  assert.equal(assertItemTagsSliceComplete(itemTags, plainSlice, { discover, session }), true);
+
+  /* An encoding the engine does not know, with array groups it COULD misread. */
+  const alien = { ...slice, df: { ...plainDf, encoding: "front-9", by_count: { 5: ["war"] } } };
+  assert.equal(SE.tagCount("war", { itemTags: alien }), 2, "an unknown encoding was read as plain arrays");
+  const alienRightCounts = { ...plainSlice, df: { ...plainSlice.df, encoding: "front-9" } };
+  assert.throws(
+    () => assertItemTagsSliceComplete(itemTags, alienRightCounts, { discover, session }),
+    (e) => e instanceof WebDirError && /df block does not decode: its encoding is "front-9"/.test(e.message)
+  );
+  /* ...and a front-coded group that does not decode is refused the same way. */
+  const garbled = structuredClone(slice);
+  garbled.df.by_count["1"] = "9war";
+  assert.equal(frontDecodeTerms("9war"), null);
+  assert.throws(() => assertItemTagsSliceComplete(itemTags, garbled, { discover, session }), /df block does not decode/);
+
+  /* The fallback: a term with a space ships plain, and the engine still agrees. */
+  const spaced = { ...itemTags, tags: { ...itemTags.tags, d1: ["new york-history", "ships"] } };
+  const spacedSlice = itemTagsSlice(spaced, { discover, session });
+  assert.equal(spacedSlice.df.encoding, undefined, "a term with a space was front-coded");
+  assert.deepEqual(sliceCountDivergence(spaced, spacedSlice, ["new york", "new"]), []);
+  assert.equal(SE.tagCount("new york", { itemTags: spacedSlice }), 1);
+
+  /* The encoding itself, by eye: sorted, shared-prefix digit plus suffix. */
+  assert.equal(frontCodeTerms(["wares", "war", "ware"]), "0war 3e 4s");
+  assert.deepEqual(frontDecodeTerms("0war 3e 4s"), ["war", "ware", "wares"]);
+  assert.deepEqual(frontDecodeTerms(frontCodeTerms([""])), [""]);
+  const long = "a".repeat(40);
+  assert.deepEqual(frontDecodeTerms(frontCodeTerms([long, long + "s"])), [long, long + "s"], "a shared prefix over 35 does not round-trip");
 });
 
 test("prepare WRITES the slice rather than copying the file", () => {

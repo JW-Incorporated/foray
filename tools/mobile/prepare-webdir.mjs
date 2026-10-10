@@ -1516,16 +1516,96 @@ export function tagCandidateForms(t) {
   return [t, t + "s", t + "es", t + "ing"];
 }
 
+/* FRONT-CODING THE TERM LISTS (docs/research/bundle-budget-2026-10.md, item 9).
+   Each `by_count` group is a sorted list of words, and a sorted word list repeats
+   itself: the prefix walk below puts `war`, `ware`, `wares` side by side. So a
+   group ships as ONE string, its terms in sorted order separated by a space, each
+   term written as ONE base-36 digit (how many leading characters it shares with
+   the term before it, capped at 35) followed by the rest of it:
+   `["war","ware","wares"]` is `"0war 3e 4s"`. On the real map (2026-10-09) the
+   groups went 34,585 B -> 21,835 B.
+
+   That is RAW bytes, the unit the 2.8 MB alarm and MAX_BYTES measure. It is not a
+   download saving: the IPA and the APK are zip archives, and deflate already
+   exploits shared prefixes.
+
+   The block says so: `encoding: TAG_DF_ENCODING`. search-engine.js
+   `readTagDfBlock` decodes a block that carries it, reads a block without it as
+   the plain arrays (the form #279 shipped), and ignores a block with any other
+   value, the way it ignores every block it cannot trust. The decoder is restated
+   here (`decodeTagDfByCount`) for the same reason the matcher is: this file runs
+   in the signing jobs and never loads search-engine.js. prepare-webdir.test.mjs
+   pins the two decoders together through the engine's own tagCount. Change the
+   format only together with search-engine.js, under a new `encoding` value. */
+export const TAG_DF_ENCODING = "front-1";
+const FRONT_CODE_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+/** One `by_count` group, front-coded (see above). Sorts its input, so the result
+ *  does not depend on the order the terms arrive in. A term must not contain the
+ *  separator; `tagDfBlock` falls back to the plain form when one does. */
+export function frontCodeTerms(terms) {
+  let prev = "";
+  return [...terms]
+    .sort()
+    .map((t) => {
+      const max = Math.min(t.length, prev.length, FRONT_CODE_DIGITS.length - 1);
+      let k = 0;
+      while (k < max && t[k] === prev[k]) k++;
+      prev = t;
+      return FRONT_CODE_DIGITS[k] + t.slice(k);
+    })
+    .join(" ");
+}
+
+/** The terms of one front-coded group, or null when it is not one: not a string,
+ *  an empty entry, a first character that is not a base-36 digit, or a shared
+ *  length longer than the term before it. search-engine.js `frontDecodeTerms`,
+ *  restated. */
+export function frontDecodeTerms(coded) {
+  if (typeof coded !== "string") return null;
+  const terms = [];
+  let prev = "";
+  for (const entry of coded.split(" ")) {
+    const k = entry.length > 0 ? FRONT_CODE_DIGITS.indexOf(entry[0]) : -1;
+    if (k < 0 || k > prev.length) return null;
+    prev = prev.slice(0, k) + entry.slice(1);
+    terms.push(prev);
+  }
+  return terms;
+}
+
+/** A df block's `by_count` as plain arrays of terms, whichever form it ships in:
+ *  decoded when it carries `encoding: TAG_DF_ENCODING`, as written when it
+ *  carries no `encoding`. Null for any other `encoding` value, a group that does
+ *  not decode, or a missing `by_count` — the blocks search-engine.js
+ *  `readTagDfBlock` ignores. */
+export function decodeTagDfByCount(df) {
+  if (!df || typeof df !== "object" || !df.by_count || typeof df.by_count !== "object") return null;
+  if (df.encoding !== undefined && df.encoding !== TAG_DF_ENCODING) return null;
+  const out = {};
+  for (const [n, group] of Object.entries(df.by_count)) {
+    const terms = df.encoding === TAG_DF_ENCODING ? frontDecodeTerms(group) : group;
+    if (!Array.isArray(terms)) return null;
+    out[n] = terms;
+  }
+  return out;
+}
+
 /**
  * The `df` block for a slice of `source` that keeps `keptEntries` of its entries:
- * `{ total, entries, by_count }`, where `total` is the WHOLE map's entry count and
- * `by_count` groups every term whose count over the whole map is nonzero by that
- * count (each count written once, ~7 KB less than a term -> count object on the real
- * map), terms sorted. Every candidate form is the term plus a suffix, so a term can
- * only match a segment it is a PREFIX of; walking every prefix of every segment
- * therefore reaches every term that counts nonzero. A term's count is the size of
- * the UNION of the entries its forms hit — `war` on an entry tagged both `war` and
- * `wars` counts once.
+ * `{ total, entries, encoding, by_count }`, where `total` is the WHOLE map's entry
+ * count and `by_count` groups every term whose count over the whole map is nonzero
+ * by that count (each count written once, ~7 KB less than a term -> count object on
+ * the real map), each group front-coded (see above). Every candidate form is the
+ * term plus a suffix, so a term can only match a segment it is a PREFIX of; walking
+ * every prefix of every segment therefore reaches every term that counts nonzero. A
+ * term's count is the size of the UNION of the entries its forms hit — `war` on an
+ * entry tagged both `war` and `wars` counts once.
+ *
+ * A term containing a space cannot be front-coded (the space separates terms), so
+ * on a map that has one the whole block ships in the plain form, with no
+ * `encoding`: more bytes, the same counts. Tags are hyphenated slugs today, so
+ * this is a fallback, not a path the real map takes.
  */
 export function tagDfBlock(source, keptEntries) {
   const tags = source?.tags || {};
@@ -1549,7 +1629,13 @@ export function tagDfBlock(source, keptEntries) {
     for (const f of tagCandidateForms(t)) for (const e of index.get(f) || []) hit.add(e);
     if (hit.size > 0) (byCount[hit.size] ||= []).push(t);
   }
-  return { total: Object.keys(tags).length, entries: keptEntries, by_count: byCount };
+  const total = Object.keys(tags).length;
+  if (Object.values(byCount).some((g) => g.some((t) => t.includes(" ")))) {
+    return { total, entries: keptEntries, by_count: byCount };
+  }
+  const coded = {};
+  for (const [n, group] of Object.entries(byCount)) coded[n] = frontCodeTerms(group);
+  return { total, entries: keptEntries, encoding: TAG_DF_ENCODING, by_count: coded };
 }
 
 /**
@@ -1670,13 +1756,23 @@ export function assertItemTagsSliceComplete(source, written, { discover, session
         `the whole map has ${want.total} entries and the slice ${keptEntries}. ${slicedNote}`
     );
   }
-  if (!isDeepStrictEqual(df.by_count, want.by_count)) {
+  /* Decoded before it is compared, so the check is on what the engine will read,
+     whichever form the block ships in; a block the engine would ignore (an
+     `encoding` it does not know, a group that does not decode) is refused by name. */
+  const gotByCount = decodeTagDfByCount(df);
+  if (!gotByCount) {
+    throw new WebDirError(
+      `the bundled data/item-tags.json's df block does not decode: its encoding is ` +
+        `${JSON.stringify(df.encoding)} (search-engine.js reads only ${JSON.stringify(TAG_DF_ENCODING)} ` +
+        `or none), or a by_count group is not a term list in that encoding. ${slicedNote}`
+    );
+  }
+  const wantByCount = decodeTagDfByCount(want);
+  if (!isDeepStrictEqual(gotByCount, wantByCount)) {
     const got = new Map();
-    for (const [n, group] of Object.entries(df.by_count)) {
-      for (const t of Array.isArray(group) ? group : []) got.set(t, Number(n));
-    }
+    for (const [n, group] of Object.entries(gotByCount)) for (const t of group) got.set(t, Number(n));
     const wantCounts = new Map();
-    for (const [n, group] of Object.entries(want.by_count)) for (const t of group) wantCounts.set(t, Number(n));
+    for (const [n, group] of Object.entries(wantByCount)) for (const t of group) wantCounts.set(t, Number(n));
     const off = [...new Set([...got.keys(), ...wantCounts.keys()])].filter((t) => got.get(t) !== wantCounts.get(t));
     const t = off[0];
     throw new WebDirError(
@@ -1722,7 +1818,11 @@ export function assertItemTagsSliceComplete(source, written, { discover, session
  *     the headroom alarm in prepare-webdir.test.mjs asks for ("build the df
  *     sidecar, do not raise it"). The tag half moves with the pool (shows, the
  *     knob, the session); the df half with the WHOLE map's vocabulary, a few
- *     words a night at most.
+ *     words a night at most. FRONT-CODED on 2026-10-09 (bundle-09, see
+ *     `frontCodeTerms`): the df groups went 34,585 -> 21,835 B and the file
+ *     124,908 -> 112,179 B (109.5 KB, ~26% under the budget). The budget was left
+ *     where it is: lowering it is a separate decision, and this change only made
+ *     the counts cheaper.
  *   - `data/forays.json` — 11.6 KB today (the three curated Forays; the four
  *     generated drafts are the directory's), budget 44 KB, 26% used. Its unit is
  *     a PUBLISHED GENERATED Foray: the four committed drafts weigh 17–25 KB each
