@@ -908,7 +908,7 @@ test("NE-35: a Foray tap with 'foray' sends ONE playForay whose payload IS build
   assert.equal(args.title, "A Foray");
   assert.equal(args.voiceId, VOICE, "voiceId: cp_voice");
   assert.equal(args.isLocalFile, false);
-  assert.equal(args.allowAdPad, false);
+  assert.equal(args.allowAdPad, true, "allowAdPad: seek-policy.js AD_PAD_SHIPPED, on since DAI-09");
   assert.equal("startElapsedSec" in args, false, "a start at the top carries no start");
 
   assert.deepEqual(h.order.filter((o) => o === "Audio"), [], "no <audio> element, no jingle element");
