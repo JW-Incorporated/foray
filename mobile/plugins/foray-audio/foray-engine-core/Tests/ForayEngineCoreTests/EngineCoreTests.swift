@@ -408,6 +408,23 @@ final class EngineCoreTests: XCTestCase {
         XCTAssertEqual(foreground[field: "bgRemainingMs"], .null, "the foreground has no budget to report")
     }
 
+    /// R1-14 (code-health-3 Appendix B): a press's route has ONE spelling, the
+    /// route the host reads for every input (`EngineNow.route`, NE-38rs). The
+    /// `remote` row names its port type, and no route at all is `null`.
+    /// TO SEE IT FAIL: write the row's `route` from anything but
+    /// `now.route?.portType` (say `.null`, or a second read the press carries).
+    func testTheRemoteRowNamesTheRouteTheHostReadForThisTurn() throws {
+        var host = playing()
+        host.route = RoutePort(portType: "CarAudio", uid: "car-1")
+        // RED on main: R1-14 (the row read `RemotePress.routePort`, which this press does not carry).
+        let car = try XCTUnwrap(rows("remote", in: host.send(.remote(RemotePress(.pause)))).first)
+        XCTAssertEqual(car[field: "route"], .string("CarAudio"))
+
+        host.route = nil
+        let none = try XCTUnwrap(rows("remote", in: host.send(.remote(RemotePress(.play)))).first)
+        XCTAssertEqual(none[field: "route"], .null, "no route the host can name is no route")
+    }
+
     /// Plan §10: DV-1/H-1 and H-3 are judged on `resume grace=`, and DV-7a on
     /// the cold play. Each resume writes one `resume` row (kind interruption
     /// or route) and a cold play one `cold-play` row, as its span opens and

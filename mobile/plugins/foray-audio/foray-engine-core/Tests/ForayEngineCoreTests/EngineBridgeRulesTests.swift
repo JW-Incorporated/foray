@@ -91,6 +91,36 @@ final class EngineBridgeRulesTests: XCTestCase {
         XCTAssertEqual(moved.snapshot["seq"], .number(2))
     }
 
+    /// R4-08 (code-health-3 Appendix B), characterized: a snapshot taken while
+    /// a Foray clip plays says its rate; one taken inside the seam beat (the
+    /// out-point fired, the next clip's load is in flight) says
+    /// `inSeamGap: true` and `effectiveRate: 0`, which is what the page's
+    /// extrapolation freezes on (`snapshot/extrapolate-frozen-in-seam-gap`).
+    /// TO SEE IT FAIL: write the body's `inSeamGap` as `.bool(false)`, or its
+    /// `effectiveRate` as `rate` whatever the state.
+    func testASnapshotInsideTheSeamBeatSaysSoAndRunsAtRateZero() throws {
+        var host = EngineCoreTests.Host(config: ForayTapeTests.tape)
+        host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips)))
+        host.land()
+        host.confirm()
+        var stamper = SnapshotStamper()
+        let playing = stamped(EngineSnapshot.body(core: host.core, deck: host.reading, lastError: nil), seq: &stamper)
+        XCTAssertEqual(playing["state"], .string("playing"))
+        XCTAssertEqual(playing["inSeamGap"], .bool(false))
+        XCTAssertEqual(playing["effectiveRate"], playing["rate"])
+        XCTAssertNotEqual(playing["effectiveRate"], .number(0))
+
+        host.reading.positionSec = 200
+        host.reading.audible = false
+        host.reading.ended = true
+        host.send(.deck(.ended(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertTrue(host.core.state.inSeamGap)
+        let beat = stamped(EngineSnapshot.body(core: host.core, deck: host.reading, lastError: nil), seq: &stamper)
+        XCTAssertEqual(beat["inSeamGap"], .bool(true))
+        XCTAssertEqual(beat["effectiveRate"], .number(0), "\(beat)")
+        XCTAssertEqual(refusal(.snapshot, beat), "accepted")
+    }
+
     // MARK: - The coalescer (§5.4)
 
     /// Visible: the first change goes at once, the rest of the second waits,
