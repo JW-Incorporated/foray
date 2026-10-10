@@ -53,7 +53,7 @@ final class ForayNarrationSkipTests: XCTestCase {
     /// The one load a press made, as (item, second).
     static func load(_ out: [EngineCommand]) -> (String, Double)? {
         let loads: [(String, Double)] = out.compactMap {
-            if case let .deck(.load(_, itemId, _, startSec, _, _)) = $0 { return (itemId, startSec) }
+            if case let .deck(.load(_, itemId, _, startSec, _, _, _)) = $0 { return (itemId, startSec) }
             return nil
         }
         return loads.count == 1 ? loads[0] : nil

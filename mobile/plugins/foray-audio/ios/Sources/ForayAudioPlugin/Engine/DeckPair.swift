@@ -157,11 +157,11 @@ final class DeckPair: DeckDriving {
         dispatchPrecondition(condition: .onQueue(.main))
         guard !invalidated else { return }
         switch command {
-        case let .load(token, itemId, url, startSec, preciseTiming, _):
+        case let .load(token, itemId, url, startSec, preciseTiming, _, _):
             load(command, token: token, itemId: itemId, url: url, startSec: startSec, preciseTiming: preciseTiming)
-        case let .prepare(itemId, url, startSec, deadlineClass, preciseTiming):
+        case let .prepare(itemId, url, startSec, deadlineClass, preciseTiming, bounded):
             prepare(itemId: itemId, url: url, startSec: startSec, deadlineClass: deadlineClass,
-                    preciseTiming: preciseTiming)
+                    preciseTiming: preciseTiming, bounded: bounded)
         case let .setRate(newRate):
             // Both decks: the standby primes at the rate it will play at.
             // AVDeck refuses a non-positive rate itself, and says so.
@@ -214,7 +214,7 @@ final class DeckPair: DeckDriving {
     // MARK: - Prepare
 
     private func prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass,
-                         preciseTiming: Bool) {
+                         preciseTiming: Bool, bounded: Bool) {
         let offset = DeckPolicy.warmOffset(startSec)
         let decision = DeckPolicy.prefetchDecision(
             available: available, url: url, currentUrl: decks[activeIndex].loadedURL,
@@ -244,9 +244,10 @@ final class DeckPair: DeckDriving {
         // takes instead of reading the whole file (M2 drive 2026-10-01). A promotion does not re-check the flag: the
         // prepare and the load name the same item, so they agree. The warm
         // load runs under the item's own P-13 class (NE-38): a prepared line
-        // gives up at a line's deadline, exactly as its own load would.
+        // gives up at a line's deadline, exactly as its own load would, and a
+        // clip's warm load is a clip's (`bounded`, CH3-11: AVDeck's §16).
         standby.send(.load(token: token, itemId: itemId, url: url, startSec: offset, preciseTiming: preciseTiming,
-                           deadlineClass: deadlineClass))
+                           deadlineClass: deadlineClass, bounded: bounded))
     }
 
     // MARK: - Load: promote or degrade

@@ -570,6 +570,29 @@ public class EngineCoreTest {
                 new DeckCommand.Load(1, "a", null, 0, false)))));
     }
 
+    /**
+     * CH3-11 (R2-04), the Swift core's {@code testAClipLoadsAndPreparesBoundedWhateverItsTimingAndAnEpisodeDoesNot}:
+     * the core names an item with bounds (a clip) to the deck as {@code bounded}, and a whole
+     * episode as not. MUTATION: pass {@code false} as the Load's {@code bounded} in {@code load}
+     * (the clip loads unbounded), or {@code true} (the episode loads bounded).
+     */
+    @Test
+    public void aBoundedItemLoadsBoundedAndAnEpisodeDoesNot() {
+        EngineItem clip = EngineItem.of(obj("id", JsonNode.str("c"), "kind", JsonNode.str("episode"),
+                "audio_url", JsonNode.str("https://cdn.example/c.mp3"),
+                "start_sec", JsonNode.num(100), "end_sec", JsonNode.num(200)));
+        List<Boolean> bounded = new ArrayList<>();
+        for (EngineItem first : new EngineItem[] {clip, item("a")}) {
+            Host host = new Host();
+            host.send(new EngineInput.Queue(new QueueInput.Load(new ArrayList<>(List.of(first)))));
+            for (EngineCommand c : host.send(playIndex(0))) {
+                if (c instanceof EngineCommand.Deck d && d.command() instanceof DeckCommand.Load l) bounded.add(l.bounded());
+            }
+        }
+        assertEquals(List.of(true, false), bounded);
+        assertFalse("the short constructor is an unbounded load", new DeckCommand.Load(1, "a", null, 0, true).bounded());
+    }
+
     // ---- ported from the Swift EngineCoreTests (NE-14s, NE-16g): the rest of what the fixtures cannot see
 
     static EngineInput session(EngineInput.SessionEvent event) {

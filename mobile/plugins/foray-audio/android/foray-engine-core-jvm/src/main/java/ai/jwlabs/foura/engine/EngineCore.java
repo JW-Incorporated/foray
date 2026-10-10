@@ -935,7 +935,7 @@ public final class EngineCore {
         int token = state.lastToken;
         String opened = url != null ? url : item.audioUrl;
         state.pendingLoad = new PendingLoad(token, item.id, startSec, opened);
-        deckCommand(new DeckCommand.Load(token, item.id, opened, startSec, bounds != null));
+        deckCommand(new DeckCommand.Load(token, item.id, opened, startSec, bounds != null, bounds != null));
     }
 
     /**

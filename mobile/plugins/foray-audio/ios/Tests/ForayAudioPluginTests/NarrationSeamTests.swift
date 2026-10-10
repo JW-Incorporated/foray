@@ -106,7 +106,7 @@ final class NarrationSeamTests: XCTestCase {
         var reading: DeckReading { pair.reading }
 
         func send(_ command: DeckCommand) {
-            if case let .load(token, itemId, _, _, _, _) = command {
+            if case let .load(token, itemId, _, _, _, _, _) = command {
                 loads.append((NarrationSeamTests.nowMs(), token, itemId))
             }
             pair.send(command)

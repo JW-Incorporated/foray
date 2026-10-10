@@ -253,7 +253,7 @@ final class FakeDeck: DeckDriving {
         sent.append(command)
         log.add("\(name).\(command.logName)")
         switch command {
-        case let .load(token, _, _, startSec, _, _):
+        case let .load(token, _, _, startSec, _, _, _):
             lastToken = token
             reading.positionSec = startSec
             reading.audible = false
@@ -293,10 +293,12 @@ extension DeckCommand {
     /// The Simulator deck tests (AVDeckTests, TwoDeckPrerollTests) load
     /// bundled files by URL. The core's `.load` carries the queue item's id
     /// and the page's `audio_url` string; this is that command for a file,
-    /// with an id the deck never reads.
-    static func loadURL(token: DeckToken, url: URL, startSec: Double, preciseTiming: Bool) -> DeckCommand {
+    /// with an id the deck never reads. `bounded` is the core's "this is a
+    /// Foray clip" (CH3-11); false, as for an episode, unless a test says.
+    static func loadURL(token: DeckToken, url: URL, startSec: Double, preciseTiming: Bool,
+                        bounded: Bool = false) -> DeckCommand {
         .load(token: token, itemId: "deck-test-\(token)", url: url.absoluteString,
-              startSec: startSec, preciseTiming: preciseTiming)
+              startSec: startSec, preciseTiming: preciseTiming, bounded: bounded)
     }
 
     /// The command's name without its payload: `load`, `play`, `setRate`...
