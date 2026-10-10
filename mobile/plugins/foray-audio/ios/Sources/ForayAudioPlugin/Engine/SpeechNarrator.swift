@@ -36,7 +36,7 @@ import ForayEngineCore
 // Either way it NEVER TOUCHES THE SESSION: no category, no activation. The
 // synthesizer and the player USE an active session and would implicitly
 // activate an inactive one, so every audible start (`speak`, `narrate(.speak)`,
-// `narrate(.resume)`) checks the owner's phase first, like AVDeck's `play`:
+// `narrate(.resume)`) checks the session phase first, like AVDeck's `play`:
 // not active means the core's audible-start invariant was broken, which
 // writes a `fault kind=implicit-activation at=speaker` row and stops a DEBUG
 // build (release still speaks: silence would hide the bug).
@@ -77,8 +77,8 @@ final class SpeechNarrator: NSObject, Speaking {
 
     struct Config {
         var path: Path
-        /// `AudioSessionOwner.phase == .active`, read through a closure: one
-        /// owner of the session (plan §4.4).
+        /// The core's `state.session == .active` (`EngineSessionGate`,
+        /// CH3-19), read through a closure: one session phase (plan §4.4).
         var sessionIsActive: () -> Bool
         /// Where the narrator's rows go: `EngineOutput.diag`.
         var diag: (DiagEntry) -> Void
@@ -209,6 +209,19 @@ final class SpeechNarrator: NSObject, Speaking {
     var synthesizer: AVSpeechSynthesizer? { output.synthesizer }
     /// Lines the output has audibly begun (the NE-25c smoke waits on it).
     var linesStarted: Int { output.linesStarted }
+
+    /// What the synthesizer is doing RIGHT NOW (CH3-19, R2-05): the core's
+    /// `EngineNow.narrator`, read by the host before every input. From the
+    /// line in flight (`current`) and whether it is held (`paused`), and
+    /// `.speaking` only on the output's own word that it is sounding: a line
+    /// whose output went silent under it (a session the system took stops
+    /// the engine) reads `.paused`, so a real interruption is never taken
+    /// for a late one and the line is stopped, as before this card.
+    var reading: NarratorReading {
+        guard current != nil else { return .idle }
+        if paused { return .paused }
+        return output.isSounding ? .speaking : .paused
+    }
 
     // MARK: - Speaking: the audition
 
@@ -393,6 +406,10 @@ protocol SpeechOutput: AnyObject {
     var onEnd: ((Int, SpeechEnd) -> Void)? { get set }
     var synthesizer: AVSpeechSynthesizer? { get }
     var linesStarted: Int { get }
+    /// A line is in flight, not held, and its audio is coming out now: the
+    /// narrator's `.speaking` (CH3-19). False before a line's first buffer
+    /// plays and after the system stopped the output under it.
+    var isSounding: Bool { get }
     /// Speak `line` as line `id`, silencing any line in flight.
     func start(_ line: SpeechLine, id: Int)
     /// Hold the line in flight. False when there was nothing to hold.
@@ -412,6 +429,11 @@ extension SpeechOutput {
     /// path speaks on the application session; a test's recording output):
     /// the line in flight is silenced, which is all a reset leaves to do.
     func rebuild() { stop() }
+
+    /// An output that cannot hear itself (a test's recording output) is
+    /// taken at the narrator's word: its line in flight, unheld, sounds.
+    /// Both real outputs answer for themselves.
+    var isSounding: Bool { true }
 }
 
 /// Path A (`EngineConfig.speechDirect`): the synthesizer speaks on the
@@ -441,6 +463,10 @@ final class DirectOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
 
     func pause() -> Bool { speech.pauseSpeaking(at: .word) }
     func resume() -> Bool { speech.continueSpeaking() }
+
+    /// The synthesizer's own word, as the legacy foray-tts `state()` reads
+    /// it: `isSpeaking` stays true while paused, so `isPaused` is asked too.
+    var isSounding: Bool { current != nil && speech.isSpeaking && !speech.isPaused }
 
     func stop() {
         current = nil
@@ -532,6 +558,13 @@ final class PcmOutput: NSObject, SpeechOutput, AVSpeechSynthesizerDelegate {
     /// Whether the engine's audio I/O is running: between a line's first
     /// buffer and its end only. The tests read it.
     var engineIsRunning: Bool { engine.isRunning }
+
+    /// A line in flight, not held, its player playing on a running engine.
+    /// A session the system takes stops the engine's I/O (Apple:
+    /// AVAudioEngine stops on an interruption and is started again by the
+    /// app), so a line the interruption silenced does not read sounding; a
+    /// line that carried on (a declined call's late `began`) does.
+    var isSounding: Bool { lineId != nil && !held && attached && engine.isRunning && player.isPlaying }
 
     func start(_ line: SpeechLine, id: Int) {
         silence()

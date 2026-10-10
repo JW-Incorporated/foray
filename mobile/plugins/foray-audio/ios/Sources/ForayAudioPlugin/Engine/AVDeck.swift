@@ -223,9 +223,10 @@ final class AVDeck: DeckDriving {
         var loadDeadlineSec: Double
         /// P-13 for a rendered narration line (`defaultLineLoadDeadlineSec`).
         var lineLoadDeadlineSec: Double
-        /// `AudioSessionOwner.phase == .active` (NE-16), read through a
-        /// closure because the owner does not exist yet and because the deck
-        /// must not own a session reference of its own (one owner, §4.4).
+        /// The core's `state.session == .active` (`EngineSessionGate`,
+        /// CH3-19), read through a closure because the engine does not exist
+        /// yet and because the deck must not own a session reference of its
+        /// own (one owner, §4.4).
         var sessionIsActive: () -> Bool
         /// Where a diagnostics row goes (NE-19's ring, later). Default: os.Logger.
         var writeRow: (String) -> Void

@@ -563,28 +563,52 @@ final class AudioSessionOwnerTests: XCTestCase {
         engine.teardown()
     }
 
-    /// CHARACTERIZATION (CH3-19, R2-08), today: the owner moves its own phase
-    /// on every session-losing `began`, whatever the core makes of it, and
-    /// that phase is what the shell's audible starts read. Through the host,
-    /// during a spoken line the synthesizer says it is still speaking.
+    /// ONE SESSION PHASE (CH3-19, R2-08), end to end through the real owner
+    /// and the real jingle player, wired as the boot wires them (the gate
+    /// attached to the engine and the owner; every audible start reads the
+    /// gate). A declined call's late `began` lands during a spoken line the
+    /// synthesizer says it is still speaking: the core rules it late and
+    /// touches nothing, and the owner's own phase (its rows) stays `.active`
+    /// with it. The line then ends, the next clip plays, and at its
+    /// out-point the jingle STARTS: no `fault kind=implicit-activation`.
+    /// Before CH3-19 the owner moved to `lostToInterruption` on that began,
+    /// and its phase was the gate: once the core heard the narrator (R2-05)
+    /// every jingle after it would have been refused, for the rest of the
+    /// Foray.
+    /// TO SEE IT FAIL: move the owner's phase before (or regardless of) the
+    /// core's ruling in `interruption(_:_:)`; or gate the jingle on
+    /// `owner.phase == .active` with that move in place.
     @MainActor
-    func testThroughTheHostTheOwnersPhaseFollowsEveryBeganDuringASpokenLine() throws {
+    func testThroughTheHostALateBeganLeavesBothPhasesActiveAndTheNextJingleStarts() throws {
         let api = FakeSessionAPI()
         let center = NotificationCenter()
         let owner = makeOwner(api, center: center)
         let world = FakeWorld()
         world.deck.answersReady = true
+        let clock = ClockTiming()
+        let jingle = FakeJingle()
+        var faults: [String] = []
+        let gate = EngineSessionGate()
+        let player = InterludePlayer(config: InterludePlayer.Config(
+            sessionIsActive: { gate.isActive }, diag: { world.output.diag($0) }, timing: clock,
+            makeJingle: { jingle }, debugFault: { faults.append($0) }))
         var seams = world.seams
         seams.session = owner
-        let engine = ForayEngine(seams: seams, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        seams.timing = clock
+        seams.interlude = player
+        let engine = ForayEngine(seams: seams, config: EngineConfig(build: "test", forayTapeEnabled: true,
+                                                                    interludeAvailable: true))
+        gate.attach(engine, owner: owner)
         engine.start()
-        engine.handle(.queue(.loadForay([ForayEngineHostTests.spokenLine(), InterludeSeamTests.clip(1, "a", 100, 200)],
+        engine.handle(.queue(.loadForay([ForayEngineHostTests.spokenLine(), InterludeSeamTests.clip(1, "a", 100, 200),
+                                         InterludeSeamTests.clip(2, "b", 300, 400)],
                                         isLocalFile: false, allowAdPad: false)))
         engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
         let seq = try XCTUnwrap(ForayEngineHostTests.spokenSeq(world.speaker), "\(world.speaker.narrated)")
         world.speaker.report(.started(seq: seq, voiceFallback: false))
         world.speaker.reading = .speaking
         XCTAssertEqual(owner.phase, .active)
+        XCTAssertTrue(gate.isActive)
 
         post(center, AVAudioSession.interruptionNotification, object: api,
              [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue,
@@ -592,8 +616,26 @@ final class AudioSessionOwnerTests: XCTestCase {
              fromBackground: false)
         spin(until: { world.output.diags.contains { $0.kind == "session" && $0[field: "kind"] == .string("interruption") } })
 
-        XCTAssertEqual(owner.phase, .lostToInterruption)
-        XCTAssertEqual(engine.state.session, .lostToInterruption)
+        // RED on main: R2-08 (the owner moved to lostToInterruption on every began).
+        XCTAssertEqual(owner.phase, .active, "the owner's phase stays with the core's ruling: \(rows)")
+        XCTAssertEqual(engine.state.session, .active)
+        XCTAssertEqual(engine.state.stateType, "playing")
+        XCTAssertTrue(gate.isActive)
+
+        // The line ends; the next clip plays; its out-point is a jingle seam.
+        world.speaker.reading = .idle
+        world.speaker.report(.finished(seq: seq))
+        clock.run(forMs: InterludeSeamTests.ceilingMs)
+        let token = try XCTUnwrap(world.deck.lastToken, "the next clip never loaded: \(world.log.entries)")
+        world.deck.report(.timeControl(token: token, status: .playing, waitingReason: nil))
+        XCTAssertEqual(engine.state.stateType, "playing", "\(world.log.entries)")
+        world.deck.reading.audible = false
+        world.deck.reading.ended = true
+        world.deck.report(.ended(token: token))
+
+        XCTAssertEqual(jingle.plays, 1, "the jingle after the late began starts: \(world.output.diags)")
+        XCTAssertEqual(faults, [])
+        XCTAssertFalse(world.output.diags.contains { $0.kind == "fault" }, "\(world.output.diags)")
         engine.teardown()
     }
 

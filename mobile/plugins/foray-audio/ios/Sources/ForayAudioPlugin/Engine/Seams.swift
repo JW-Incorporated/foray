@@ -243,6 +243,15 @@ protocol Speaking: AnyObject {
     /// `NarratorEvent` input, delivered on main (the host feeds it back into
     /// the core, after the turn in progress).
     var onNarratorEvent: ((NarratorEvent) -> Void)? { get set }
+    /// What the synthesizer says it is doing RIGHT NOW, read by the host
+    /// before every input as the deck's reading is: the core's
+    /// `EngineNow.narrator` (CH3-19, R2-05). `.speaking` only while a line is
+    /// in flight, not held, and its output is sounding; `.paused` while a
+    /// line is held or its output has gone silent under it (a session the
+    /// system took); `.idle` with no line. On it the core tells a LATE
+    /// interruption (a declined call; the line carried on) from one that took
+    /// the line, as `foray-tts.js`'s `state()` tells the JS manager.
+    var reading: NarratorReading { get }
     /// Audible: the core emits it only after an activation (OQ-5).
     func speak(text: String, voiceId: String?)
     func stopSpeaking()

@@ -22,6 +22,9 @@ final class SpeechNarratorTests: XCTestCase {
         private(set) var started: [(id: Int, line: SpeechLine)] = []
         private(set) var calls: [String] = []
         var resumeAnswer = true
+        /// The output's own word that its line is coming out (CH3-19): a
+        /// test sets it false for a line the system silenced.
+        var isSounding = true
 
         func start(_ line: SpeechLine, id: Int) {
             started.append((id, line))
@@ -115,6 +118,41 @@ final class SpeechNarratorTests: XCTestCase {
         audition.speak(text: "An audition the reset cut.", voiceId: nil)
         audition.rebuild()
         XCTAssertEqual(ends, [.cancelled])
+    }
+
+    /// CH3-19 (R2-05): what the narrator tells the host before every input,
+    /// the core's `EngineNow.narrator`. `.idle` with no line; `.speaking`
+    /// while a line is in flight, unheld, and its output sounds; `.paused`
+    /// while it is held (the core's pause, a media-services reset) or its
+    /// output went silent under it (the system took the session), so a real
+    /// interruption is never taken for a late one. An audition reads the same.
+    /// TO SEE IT FAIL: answer `.speaking` for any unheld line without asking
+    /// the output, or answer `.unknown` (the host's old silence).
+    func testTheReadingFollowsTheLineAndTheOutputsOwnWord() {
+        let narrator = makeNarrator()
+        XCTAssertEqual(narrator.reading, .idle)
+        narrator.narrate(.speak(seq: 3, text: "A line to read.", voiceId: nil, utteranceRate: 1))
+        XCTAssertEqual(narrator.reading, .speaking)
+        narrator.narrate(.pause(seq: 3))
+        XCTAssertEqual(narrator.reading, .paused)
+        narrator.narrate(.resume(seq: 3))
+        XCTAssertEqual(narrator.reading, .speaking)
+        output.isSounding = false
+        XCTAssertEqual(narrator.reading, .paused, "a line the system silenced is not speaking")
+        output.isSounding = true
+        output.end(output.lastId)
+        XCTAssertEqual(narrator.reading, .idle)
+
+        narrator.narrate(.speak(seq: 4, text: "A line the reset cut.", voiceId: nil, utteranceRate: 1))
+        narrator.rebuild()
+        XCTAssertEqual(narrator.reading, .paused, "held for its re-speak")
+        narrator.narrate(.stop(seq: 4))
+        XCTAssertEqual(narrator.reading, .idle)
+
+        narrator.speak(text: "An audition.", voiceId: nil)
+        XCTAssertEqual(narrator.reading, .speaking)
+        narrator.stopSpeaking()
+        XCTAssertEqual(narrator.reading, .idle)
     }
 
     /// Stop does not advance: a stopped line reports `cancelled`, and an end
@@ -320,6 +358,25 @@ final class SpeechNarratorTests: XCTestCase {
         XCTAssertTrue(rig.pcm.engineIsRunning, "the next line starts the engine again")
         XCTAssertTrue(spin(until: 60, { !rig.ends.isEmpty }), "the next line never ended: \(rig.rows)")
         XCTAssertEqual(rig.ends, [.finished])
+    }
+
+    /// CH3-19: the PCM output says it is sounding only while its line plays:
+    /// not before a line, not while held, not after a stop. On a phone a
+    /// session the system takes stops the engine's I/O, which reads the same
+    /// as the stop here: not sounding, so the core stops the line.
+    /// TO SEE IT FAIL: answer `lineId != nil` alone in `PcmOutput.isSounding`.
+    func testThePcmOutputSoundsOnlyWhileItsLinePlays() throws {
+        let rig = try PcmRig()
+        defer { rig.close() }
+        XCTAssertFalse(rig.pcm.isSounding, "no line")
+        try rig.startLine("This line is long enough to be held and let go while it plays.", id: 1)
+        XCTAssertTrue(rig.pcm.isSounding, "a line in flight, its player playing")
+        XCTAssertTrue(rig.pcm.pause())
+        XCTAssertFalse(rig.pcm.isSounding, "a held line is not sounding")
+        XCTAssertTrue(rig.pcm.resume())
+        XCTAssertTrue(rig.pcm.isSounding)
+        rig.pcm.stop()
+        XCTAssertFalse(rig.pcm.isSounding, "a stopped line is not sounding")
     }
 
     /// The real PCM output on a session the owner activated, and what it

@@ -144,6 +144,10 @@ final class NarrationSeamTests: XCTestCase {
 
         init(lineSec: Double) { self.lineSec = lineSec }
 
+        /// The tape's timing runs no interruption: the core hears what it
+        /// heard before CH3-19 gave the seam a reading (nothing).
+        var reading: NarratorReading { .unknown }
+
         func speak(text: String, voiceId: String?) {}
         func stopSpeaking() { sounding = false }
         func rebuild() { sounding = false }
