@@ -204,6 +204,34 @@ test("native-only n.* tokens are stripped from op logs, except in the prepare fa
   assert.equal(compare({ ids: ["a"] }, { ids: ["a", "n.x"] }, { family: "x" }).length, 1);
 });
 
+/* ---------- code-health-3 CH3-20: what parity cannot see at the wheel ---------- */
+
+test("CH3-20 characterization: n.* tokens are compared in the prepare families only, so no episode family sees a stop cause or a grace span", () => {
+  /* docs/roadmap/code-health-3.md R3-04: the comparator strips every n.*
+     token outside prepare / prepare-narration, so `n.diag:stop:load-deadline`
+     and `n.grace.*` are invisible to every episode fixture on both cores.
+     Pinned as it stands; CH3-20 widens the list by exactly one family
+     (native-episode) and this assertion flips with it, by design.
+     MUTATION: add any third name to NATIVE_TOKEN_FAMILIES -> red. */
+  assert.deepStrictEqual([...NATIVE_TOKEN_FAMILIES], ["prepare", "prepare-narration"]);
+  const want = { ops: ["load:a@0", "play"] };
+  const got = { ops: ["load:a@0", "n.diag:stop:load-deadline", "n.grace.begin:remote-play", "play"] };
+  assert.deepStrictEqual(compare(want, got, { family: "manager-episode" }), [], "an episode family is blind to the stop cause");
+});
+
+test("CH3-20 characterization: no fixture drives a raw remote command, so no case holds a togglePlayPause press", () => {
+  /* R3-03: every `remote` step names a Media Session action (REMOTE_ACTIONS)
+     and goes through MediaMapping.intent, which has no toggle, so the
+     one-button headset's and the AVRCP head unit's play/pause reaches neither
+     core in any fixture. Pinned as it stands; CH3-20 adds the raw arm and the
+     native-episode family that presses togglePlayPause, and this flips.
+     MUTATION: add a { remote: "togglePlayPause", raw: true } step to any
+     fixture -> red. */
+  const presses = FIXTURES.flatMap((f) => f.doc.cases).flatMap((c) => c.steps ?? []).filter((s) => "remote" in s);
+  assert.ok(presses.length > 0, "precondition: the tree has remote presses");
+  assert.deepStrictEqual(presses.filter((s) => s.raw === true || s.remote === "togglePlayPause"), []);
+});
+
 /* ---------- the schema checks the runner applies ---------- */
 
 const fx = (cases, over = {}) => [{ family: "f", file: "player/parity/fixtures/f/f.json", doc: { family: "f", module: "player/seam-gap.js", cases, ...over } }];
