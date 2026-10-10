@@ -563,6 +563,40 @@ final class AudioSessionOwnerTests: XCTestCase {
         engine.teardown()
     }
 
+    /// CHARACTERIZATION (CH3-19, R2-08), today: the owner moves its own phase
+    /// on every session-losing `began`, whatever the core makes of it, and
+    /// that phase is what the shell's audible starts read. Through the host,
+    /// during a spoken line the synthesizer says it is still speaking.
+    @MainActor
+    func testThroughTheHostTheOwnersPhaseFollowsEveryBeganDuringASpokenLine() throws {
+        let api = FakeSessionAPI()
+        let center = NotificationCenter()
+        let owner = makeOwner(api, center: center)
+        let world = FakeWorld()
+        world.deck.answersReady = true
+        var seams = world.seams
+        seams.session = owner
+        let engine = ForayEngine(seams: seams, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        engine.start()
+        engine.handle(.queue(.loadForay([ForayEngineHostTests.spokenLine(), InterludeSeamTests.clip(1, "a", 100, 200)],
+                                        isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(ForayEngineHostTests.spokenSeq(world.speaker), "\(world.speaker.narrated)")
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        world.speaker.reading = .speaking
+        XCTAssertEqual(owner.phase, .active)
+
+        post(center, AVAudioSession.interruptionNotification, object: api,
+             [AVAudioSessionInterruptionTypeKey: AVAudioSession.InterruptionType.began.rawValue,
+              AVAudioSessionInterruptionReasonKey: AVAudioSession.InterruptionReason.default.rawValue],
+             fromBackground: false)
+        spin(until: { world.output.diags.contains { $0.kind == "session" && $0[field: "kind"] == .string("interruption") } })
+
+        XCTAssertEqual(owner.phase, .lostToInterruption)
+        XCTAssertEqual(engine.state.session, .lostToInterruption)
+        engine.teardown()
+    }
+
     /// The real API, once: the shared session takes the owner's category and
     /// mode at boot without being activated by it.
     /// TO SEE IT FAIL: change the mode in `applyCategory`.

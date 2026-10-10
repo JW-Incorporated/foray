@@ -277,6 +277,64 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(engine.state.stateType, "playing")
     }
 
+    // MARK: - The narrator's reading (CH3-19, R2-05)
+
+    /// A Foray's spoken line: no `audio_url`, so the synthesizer speaks it.
+    static func spokenLine(_ index: Int = 0) -> EngineItem {
+        EngineItem(node: .object([
+            JSONMember("id", .string("f1#\(index)")), JSONMember("kind", .string("tts")),
+            JSONMember("type", .string("narration")), JSONMember("script", .string("a line")),
+            JSONMember("audio_url", .null)
+        ]))!
+    }
+
+    /// The utterance `seq` of the last line the host handed the synthesizer.
+    static func spokenSeq(_ speaker: FakeSpeaker) -> Int? {
+        speaker.narrated.compactMap { command -> Int? in
+            if case let .speak(seq, _, _, _) = command { return seq }
+            return nil
+        }.last
+    }
+
+    /// The Foray tape on, its spoken first line started; the clip after it
+    /// is never reached.
+    @MainActor
+    private func speakingALine(_ world: FakeWorld) throws -> (engine: ForayEngine, seq: Int) {
+        world.deck.answersReady = true
+        let engine = started(world, config: EngineConfig(build: "test", forayTapeEnabled: true))
+        let clip = InterludeSeamTests.clip(1, "b", 300, 400)
+        engine.handle(.queue(.loadForay([Self.spokenLine(), clip], isLocalFile: false, allowAdPad: false)))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        let seq = try XCTUnwrap(Self.spokenSeq(world.speaker), "no line was spoken: \(world.speaker.narrated)")
+        world.speaker.report(.started(seq: seq, voiceFallback: false))
+        XCTAssertEqual(engine.state.stateType, "playing", "\(world.log.entries)")
+        XCTAssertEqual(engine.state.session, .active)
+        return (engine, seq)
+    }
+
+    private func stopRows(_ world: FakeWorld, cause: String) -> Int {
+        world.output.diags.filter { $0.kind == "stop" && $0[field: "cause"] == .string(cause) }.count
+    }
+
+    /// CHARACTERIZATION (CH3-19, R2-05), today: the host never tells the core
+    /// what the synthesizer says (`EngineNow.narrator` stays `.unknown`), so
+    /// an interruption that begins while the line is still being spoken (a
+    /// declined call's late `began`) stops the line and pauses the Foray
+    /// until a press, whatever the synthesizer says.
+    @MainActor
+    func testAnInterruptionDuringASpokenLineStopsItWhateverTheNarratorSays() throws {
+        let world = FakeWorld()
+        let (engine, seq) = try speakingALine(world)
+        world.speaker.reading = .speaking
+
+        world.session.post(.interruptionBegan(reason: "default"))
+
+        XCTAssertEqual(stopRows(world, cause: "interruption"), 1, "\(world.output.diags)")
+        XCTAssertEqual(engine.state.stateType, "interrupted")
+        XCTAssertEqual(engine.state.session, .lostToInterruption)
+        XCTAssertTrue(world.speaker.narrated.contains(.pause(seq: seq)), "\(world.speaker.narrated)")
+    }
+
     // MARK: - BackgroundGrace
 
     /// The system takes the grace time back while the engine is still
