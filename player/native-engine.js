@@ -156,7 +156,11 @@ export function createNativeEngine({
   const subscribers = new Set();
   let cmdSeq = 0;
   let latest = null;          // {snapshot, receivedAtMs}
-  let visible = true;
+  /* "Is the page looking?" starts as the document says (CH3-23, R4-07): a page
+     launched or reloaded out of view is not looking until visibilitychange
+     says so. client.js tells the engine this once, right after hello. No
+     document (a worker, node): looking, as before. */
+  let visible = typeof document === "undefined" || document?.hidden !== true;
   let helloPromise = null;
   let decided = null;         // {mode, reason, relinquish, hello}
   let listening = false;
@@ -381,7 +385,8 @@ export function createNativeEngine({
    * only engineHello does. A page that stayed alive across a car drive would
    * otherwise see `pendingAdvances: 3` on attach and have no way to apply them
    * until the next launch. The native side treats a hello as "a new page" (a
-   * fresh command count, events visible), which is exactly what a page coming
+   * fresh command count; whether it is looking stays the page's last
+   * `setPageVisible`, CH3-23), which is exactly what a page coming
    * back to the foreground is, so asking again costs a `seqGap`-free restart of
    * the command count and nothing else. The mode is NOT re-decided: it was
    * decided once (`hello()`), and an answer that is no longer native, or that

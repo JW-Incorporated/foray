@@ -118,7 +118,6 @@ public final class EngineState {
     // ---- the app around the engine
 
     public boolean backgrounded = false;
-    public boolean pageVisible = true;
     /** The open grace span's reason, from begin to end; null when none is open. */
     public EngineCommand.GraceReason grace;
     /** The last remote press, for {@code dupCandidate} (recorded, never dropped). */

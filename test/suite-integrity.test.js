@@ -366,7 +366,7 @@ const FLOORS = {
      so a deleted test there is a reconcile rule the guard still counts as
      ported. reference-engine.test.js is protocol v1 over the real manager: the
      contract family, the 1 Hz / hidden event rule, the warm handover. Zero slack. */
-  "player/native-engine.test.js": 21, // CH-40 (P2-05): characterization, the default scheduler is a real timer that a timely hello clears (the floor also takes in the tests already there); 18 -> 21
+  "player/native-engine.test.js": 22, // CH3-23 (R4-07): the client starts visible exactly when the document is not hidden (no document: visible); 21 -> 22 // CH-40 (P2-05): characterization, the default scheduler is a real timer that a timely hello clears (the floor also takes in the tests already there); 18 -> 21
   "player/native-facades.test.js": 21, // CH3-18 (R4-05): a nudge is sent as seekBy carrying the step, never a target, and the engine lands it from its own playhead (facades.json maps p-impatient-1 here); 20 -> 21 // CH-37 (P1-10): the backend facade's `audible` mirrors HtmlAudioBackend's -- a running deck that has not run out; 19 -> 20 // CH-37 characterization (P1-10, docs/roadmap/code-health.md): a paused engine is not audible and a playing one is (native lane); 18 -> 19 // PQ-19 (#29): a downloaded pick plays its local file while the engine's pointer row is built from the original item; the suite already stood at 17 against 16, so the floor is set exact: 16 -> 18
   "player/parity/reference-engine.test.js": 16, // CH3-09: +1 -- the snapshot carries the manager's own voiceFallback boolean; 14 -> 16 (15 stood at 14)
   /* NE-22: the real client.js booted in a pretend iOS shell over the
@@ -377,7 +377,7 @@ const FLOORS = {
      hello landing in JS with relinquish sent, an advance applied once and
      acked, and a superseded play answering false (facades.json maps
      transport-reconcile's p-impatient-2 here). Zero slack. */
-  "player/native-mode.test.js": 18, // NE-22d: the Developer engine rows' commands (no engine: nothing sent, web and android in one loop; native: four; legacy: the setting only); 11 -> 18
+  "player/native-mode.test.js": 35, // CH3-23 (R4-07): client.js tells the engine whether the page is looking once, right after hello -- a page booted hidden, and a page booted visible over an engine a hidden page left behind (+2); the suite stood at 33 static `test(` calls against 18, so the floor is set exact: 18 -> 35 // NE-22d: the Developer engine rows' commands (no engine: nothing sent, web and android in one loop; native: four; legacy: the setting only); 11 -> 18
   /* NE-26: the engine half of Copy — the 2,000-row ring merged by wall clock
      (a merge, never a sort), the engine header line in both modes, the
      per-kind engine lines, every row accounted for (unknown kinds, unreadable

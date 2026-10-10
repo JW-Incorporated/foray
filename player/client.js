@@ -391,6 +391,12 @@ async function onEngineDecision(decision) {
       engine.send("relinquish", { cap: "all" }, { source: "restore" });
     }
     if (engineMode === "native") {
+      /* "Is the page looking?" has one rule (CH3-23, R4-07): the page says so,
+         here once right after hello and then on every visibilitychange
+         (bind()). A hello leaves the engine's last answer alone, so a page
+         launched hidden, or reloaded after a hidden one, would otherwise
+         inherit it. setVisible never rejects. */
+      await engine.setVisible(typeof document === "undefined" || document.hidden !== true);
       try { if (typeof window !== "undefined") window.ForayMediaSession?.uninstall?.(); } catch (_) { /* the shim is optional */ }
       if (pendingPlan) { const plan = pendingPlan; pendingPlan = null; sendEnginePlan(plan); }
       return engineMode;
@@ -4455,7 +4461,8 @@ function bind() {
 
   document.addEventListener("visibilitychange", () => {
     /* Native mode: tell the engine (it gates its events on this, §5.4), and on
-       the way back ATTACH — a read, never a command (W-8). */
+       the way back ATTACH — a read, never a command (W-8). The first answer
+       went right after hello (onEngineDecision, CH3-23). */
     if (engineMode === "native" && engine) {
       const visible = !document.hidden;
       engine.setVisible(visible)

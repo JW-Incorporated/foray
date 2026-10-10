@@ -407,7 +407,10 @@ public struct EngineCore {
                 diag("interlude", [JSONMember("kind", .string("enabled")), JSONMember("on", .bool(on))])
             }
             state.interludeEnabled = on
-        case let .setPageVisible(visible): state.pageVisible = visible
+        case .setPageVisible:
+            // Whether the page is looking is the bridge's (its snapshot
+            // coalescer); nothing in the core reads it (CH3-23, R4-07).
+            break
         case let .ackAdvances(upToSeq):
             state.advanceLog.removeAll { $0.seq <= upToSeq }
             writeRestore()
