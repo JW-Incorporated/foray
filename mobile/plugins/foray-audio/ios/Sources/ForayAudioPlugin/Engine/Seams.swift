@@ -171,9 +171,18 @@ protocol RemoteCommandRegistering: AnyObject {
 /// rate 0) (docs/ios-lock-screen.md §3). It is not in `SessionView` because
 /// `positionState.playbackRate` is 0 while buffering, and the default rate
 /// must not be.
+///
+/// THE HOST IS THE ONE HOLDER OF THE ENTRY (CH3-16, R1-01/R1-05). The
+/// conformer keeps no view of its own: an artwork that was still loading at a
+/// write is reported through `onArtworkLanded` (the source that landed, on
+/// main), and the host rewrites the entry it published at the deck's own
+/// playhead. The host sets the hook at start and nils it at teardown, so a
+/// landing after a relinquish reaches no one and the legacy lane's entry
+/// stands.
 protocol NowPlayingWriting: AnyObject {
     func write(_ view: MediaMapping.SessionView, listenRate: Double)
     func clear()
+    var onArtworkLanded: ((String) -> Void)? { get set }
 }
 
 /// The `MPNowPlayingInfoPropertyPlaybackRate` an entry carries (plan §4.5):

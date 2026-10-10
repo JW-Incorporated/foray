@@ -215,6 +215,14 @@ final class FakeNowPlaying: NowPlayingWriting {
         last = nil
         log.add("nowPlaying.clear")
     }
+
+    /// The host's landing hook (CH3-16): set at start, nil after teardown.
+    /// A test lands an artwork with `artworkLanded(_:)`.
+    var onArtworkLanded: ((String) -> Void)?
+
+    func artworkLanded(_ src: String) {
+        onArtworkLanded?(src)
+    }
 }
 
 // MARK: - DeckDriving

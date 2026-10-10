@@ -520,6 +520,21 @@ final class NowPlayingPublisherTests: XCTestCase {
         XCTAssertEqual(NowPlayingPublisher.defaultRate(entryRate: 0, listenRate: .nan), 1)
     }
 
+    /// The host's part of a landing, for a test that drives the publisher
+    /// alone: the last entry is written again when its artwork lands, as
+    /// ForayEngine does through `publishSurface` (CH3-16). Returns the write.
+    func writingAgainOnLanding(_ publisher: NowPlayingPublisher, listenRate: Double) -> (MediaMapping.SessionView) -> Void {
+        var last: MediaMapping.SessionView?
+        publisher.onArtworkLanded = { [unowned publisher] src in
+            guard let view = last, NowPlayingPublisher.artworkSource(of: view) == src else { return }
+            publisher.write(view, listenRate: listenRate)
+        }
+        return { view in
+            last = view
+            publisher.write(view, listenRate: listenRate)
+        }
+    }
+
     /// A rewrite of the same picture (the host's 1 s refresh) hands the
     /// centre the SAME `MPMediaItemArtwork`, so CarPlay and a head unit are
     /// never asked to fetch and redraw it once a second; a new picture is a
@@ -535,24 +550,157 @@ final class NowPlayingPublisherTests: XCTestCase {
         }, bundleReader: { _ in square }, deadline: { _, _ in })
         let center = DictionaryCenter()
         let publisher = NowPlayingPublisher(center: center, artwork: cache)
+        let write = writingAgainOnLanding(publisher, listenRate: 1.5)
         let showA = "https://img.example/a/600x600bb.jpg"
         let showB = "https://img.example/b/600x600bb.jpg"
         func artwork() -> MPMediaItemArtwork? { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] as? MPMediaItemArtwork }
 
-        publisher.write(Self.view(title: "A", artwork: showA, position: 10), listenRate: 1.5)
+        write(Self.view(title: "A", artwork: showA, position: 10))
         waitUntil("A's square lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
         let first = try XCTUnwrap(artwork())
         for second in 1...3 {
-            publisher.write(Self.view(title: "A", artwork: showA, position: 10 + 1.5 * Double(second)), listenRate: 1.5)
+            write(Self.view(title: "A", artwork: showA, position: 10 + 1.5 * Double(second)))
             XCTAssertTrue(artwork() === first, "rewrite \(second) handed the centre a new artwork object")
         }
 
-        publisher.write(Self.view(title: "B", artwork: showB, position: 0), listenRate: 1.5)
+        write(Self.view(title: "B", artwork: showB, position: 0))
         waitUntil("B's square lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
         let second = try XCTUnwrap(artwork())
         XCTAssertFalse(second === first, "a new picture is a new object")
-        publisher.write(Self.view(title: "B", artwork: showB, position: 1.5), listenRate: 1.5)
+        write(Self.view(title: "B", artwork: showB, position: 1.5))
         XCTAssertTrue(artwork() === second)
+    }
+
+    // MARK: - An artwork landing: the host's write, and none after a teardown (CH3-16)
+
+    /// A publisher's square whose fetch the test answers by hand.
+    static let showSquare = "https://img.example/cooking/600x600bb.jpg"
+
+    /// ArtworkCache's network fetch, held: every fetch the cache starts waits
+    /// here until the test answers it (the decode and the hop back to main
+    /// then run as in production).
+    final class HeldFetches {
+        private(set) var count = 0
+        private var held: [(Data?) -> Void] = []
+
+        func fetch(_ url: URL, _ timeoutSec: Double, _ done: @escaping (Data?) -> Void) -> (() -> Void) {
+            count += 1
+            held.append(done)
+            return {}
+        }
+
+        func answer(_ data: Data?) {
+            let due = held
+            held = []
+            due.forEach { $0(data) }
+        }
+    }
+
+    /// An engine playing "Grilling" (with the show's square, still loading)
+    /// through the REAL publisher over a dictionary centre.
+    @MainActor
+    func playingThroughThePublisher(_ world: FakeWorld, _ fetches: HeldFetches)
+        -> (engine: ForayEngine, publisher: NowPlayingPublisher, center: DictionaryCenter, cache: ArtworkCache) {
+        world.deck.answersReady = true
+        let cache = ArtworkCache(fetcher: fetches.fetch, bundleReader: { _ in nil }, deadline: { _, _ in })
+        let center = DictionaryCenter()
+        let publisher = NowPlayingPublisher(center: center, artwork: cache)
+        var seams = world.seams
+        seams.nowPlaying = publisher
+        let engine = ForayEngine(seams: seams, config: EngineConfig(build: "test"))
+        engine.start()
+        engine.handle(.queue(.load([Self.item("a", title: "Grilling", show: "Cooking Show", artwork: Self.showSquare)])))
+        engine.handle(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        XCTAssertEqual(engine.state.stateType, "playing")
+        return (engine, publisher, center, cache)
+    }
+
+    /// R1-01: a cold boot paints a restored episode on a slow link (its
+    /// artwork starts loading), the page relinquishes, the legacy lane paints
+    /// its own entry, and up to 10 s later the artwork lands. Nothing of the
+    /// engine's may write Now Playing after its teardown (plan §4.6), so the
+    /// legacy lane's entry stands: the landing reaches no one.
+    /// TO SEE IT FAIL: leave `seams.nowPlaying.onArtworkLanded` set in
+    /// `teardown()`, or let the publisher write the centre itself when the
+    /// artwork lands (its old `current` re-post).
+    @MainActor
+    func testAnArtworkLandingAfterATeardownWritesNothing() throws {
+        let world = FakeWorld()
+        let fetches = HeldFetches()
+        let (engine, publisher, center, cache) = playingThroughThePublisher(world, fetches)
+        XCTAssertEqual(fetches.count, 1)
+        XCTAssertTrue(cache.isLoading(Self.showSquare), "the square is still on its way")
+        XCTAssertEqual(center.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, "Grilling")
+
+        engine.teardown()
+        // The legacy lane takes over and paints its own entry.
+        center.nowPlayingInfo = [MPMediaItemPropertyTitle: "Legacy lane"]
+        let sets = center.sets
+        let rows = world.output.diags.filter { $0.kind == "nowplaying" }.count
+
+        fetches.answer(try XCTUnwrap(Self.square().pngData()))
+        waitUntil("the load settles") { !cache.isLoading(Self.showSquare) }
+        guard case .image = cache.lookup(Self.showSquare) else { return XCTFail("the square landed") }
+        XCTAssertEqual(center.sets, sets, "a landing after a teardown rewrote Now Playing over the legacy lane's entry")
+        XCTAssertEqual(center.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, "Legacy lane")
+        XCTAssertEqual(world.output.diags.filter { $0.kind == "nowplaying" }.count, rows)
+        XCTAssertNil(publisher.onArtworkLanded, "the teardown let go of the landing hook")
+    }
+
+    /// Before a teardown the landing is the HOST's write: one rewrite through
+    /// `publishSurface`, at the deck's own playhead (no extrapolation from a
+    /// second clock), carrying the square from the cache (no second fetch),
+    /// and on record as `via=artwork`.
+    /// Every write the square outlives (the `via=rate` write when sound
+    /// starts, the 1 s refresh of the running entry) goes out without it and
+    /// does not join the load: the landing is still ONE write and ONE row.
+    /// TO SEE IT FAIL: let the publisher write the centre itself when the
+    /// artwork lands (two writes, the first at an extrapolated playhead),
+    /// never set the hook in `start()`, force the write as a seek
+    /// (`via=seek`, which engine-report's rate-latch reads as the listener's
+    /// jump), or drop the `isLoading` guard in `write()`'s `.missing` arm
+    /// (each write while loading adds a landing: a write and a row each).
+    @MainActor
+    func testAnArtworkLandingIsOneHostWriteAtTheDecksPlayhead() throws {
+        let world = FakeWorld()
+        let fetches = HeldFetches()
+        let (engine, _, center, cache) = playingThroughThePublisher(world, fetches)
+        XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork], "the entry goes out without the square")
+        func rows() -> [DiagEntry] { world.output.diags.filter { $0.kind == "nowplaying" } }
+
+        // Sound starts (a `via=rate` write) and the running entry is
+        // refreshed three times, all while the square is on its way.
+        world.deck.reading.audible = true
+        engine.handle(.queue(.setRate(1.5)))
+        XCTAssertTrue(engine.isRefreshingNowPlaying, "a running entry arms the 1 s refresh")
+        let start = world.deck.reading.positionSec ?? 0
+        let refreshMs = ForayEngine.nowPlayingRefreshSec * 1000
+        for second in 1...3 {
+            let before = center.sets
+            world.deck.reading.positionSec = start + 1.5 * Double(second)
+            world.timing.fire(afterMs: refreshMs)
+            XCTAssertEqual(center.sets, before + 1, "refresh \(second) wrote the entry")
+            XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
+        }
+        XCTAssertTrue(cache.isLoading(Self.showSquare), "the square is still on its way")
+        let rowsBefore = rows().count
+        let sets = center.sets
+
+        // The deck moved on with no turn to say so: the landing writes where
+        // it is now.
+        world.deck.reading.positionSec = 42
+        fetches.answer(try XCTUnwrap(Self.square().pngData()))
+        waitUntil("the square lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
+
+        XCTAssertEqual(center.sets, sets + 1, "one write for the landing")
+        XCTAssertEqual(center.nowPlayingInfo?[MPMediaItemPropertyTitle] as? String, "Grilling")
+        XCTAssertEqual((center.nowPlayingInfo?[MPNowPlayingInfoPropertyElapsedPlaybackTime] as? NSNumber)?.doubleValue, 42,
+                       "the deck's playhead, not an extrapolation")
+        let landed = Array(rows().dropFirst(rowsBefore))
+        XCTAssertEqual(landed.map { $0[field: "via"] }, [.string("artwork")])
+        XCTAssertEqual(landed.first?[field: "elapsedSec"], .number(42))
+        XCTAssertEqual(fetches.count, 1, "the rewrite reads the cache; it does not fetch again")
+        XCTAssertTrue(engine.isPublishingNowPlaying)
     }
 
     // MARK: - Artwork
@@ -584,10 +732,11 @@ final class NowPlayingPublisherTests: XCTestCase {
         }, bundleReader: { _ in square }, deadline: deadlines.schedule)
         let center = DictionaryCenter()
         let publisher = NowPlayingPublisher(center: center, artwork: cache)
+        let write = writingAgainOnLanding(publisher, listenRate: 1)
 
-        // Our own icon (bundled) lands on a later main turn and is attached,
-        // with its deadline armed and not yet passed.
-        publisher.write(Self.view(title: "A"), listenRate: 1)
+        // Our own icon (bundled) lands on a later main turn and is attached
+        // (by the host's rewrite), with its deadline armed and not yet passed.
+        write(Self.view(title: "A"))
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
         XCTAssertEqual(deadlines.armed, [ArtworkCache.timeoutSec], "every load is bounded at the plan's 10 s")
         waitUntil("our icon lands") { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] != nil }
@@ -595,7 +744,7 @@ final class NowPlayingPublisherTests: XCTestCase {
 
         // A publisher's square that never answers.
         let show = "https://img.example/show/600x600bb.jpg"
-        publisher.write(Self.view(title: "B", artwork: show, position: 10), listenRate: 1)
+        write(Self.view(title: "B", artwork: show, position: 10))
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork], "never the previous item's square")
         XCTAssertTrue(cache.isLoading(show))
         XCTAssertEqual(deadlines.armed, [ArtworkCache.timeoutSec, ArtworkCache.timeoutSec])
@@ -609,7 +758,7 @@ final class NowPlayingPublisherTests: XCTestCase {
         }
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
 
-        publisher.write(Self.view(title: "B", artwork: show, position: 20, playing: false), listenRate: 1)
+        write(Self.view(title: "B", artwork: show, position: 20, playing: false))
         XCTAssertNil(center.nowPlayingInfo?[MPMediaItemPropertyArtwork])
         XCTAssertEqual(fetches, 1, "a dead source costs one attempt")
     }

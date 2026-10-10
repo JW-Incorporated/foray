@@ -1856,7 +1856,7 @@ const FLOORS = {
      else would notice. The fixture is the real Capacitor 8.5.0 SwiftPM template
      pbxproj, and four REAL REPO tests tie the declarations to the plugin Swift,
      their cited call sites, and data-safety.md B2/B4. Floored exact. */
-  "tools/mobile/inject-privacy-manifest.test.mjs": 31,
+  "tools/mobile/inject-privacy-manifest.test.mjs": 32,
   /* 948-part (#948 without a Mac): tools/mobile/privacy-manifest-report.mjs
      lists every PrivacyInfo.xcprivacy in the built App.app and fails when a
      bundled Required Reason plugin (@capacitor/preferences) is covered by no

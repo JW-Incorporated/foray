@@ -47,10 +47,16 @@ extension MPNowPlayingInfoCenter: NowPlayingInfoCentering {}
 ///     data deletion. The car baseline (docs/field-records/2026-09-24-car-
 ///     baseline.md) is why: iOS hands a car's play to the app whose entry and
 ///     session it last saw playing.
-///   - EVERY ENTRY IS BUILT FRESH. Artwork the cache has is attached; artwork
-///     it is still loading is attached when it lands (if the entry is still
-///     on it); artwork that failed or timed out is simply absent, so the key
-///     is dropped rather than left showing the previous item's square.
+///   - EVERY ENTRY IS BUILT FRESH, AND ONLY BY A WRITE. Artwork the cache has
+///     is attached; artwork that failed or timed out is simply absent, so the
+///     key is dropped rather than left showing the previous item's square.
+///     Artwork it is still loading is NOT re-posted from here: the publisher
+///     keeps no view of the entry (CH3-16; it once held `current` beside the
+///     host's `published`, on a second clock, and re-posted it 10 s after a
+///     relinquish over the legacy lane's entry, R1-01). A landing is reported
+///     through `onArtworkLanded`; the host, the one holder of the entry,
+///     rewrites it at the deck's playhead, and after its teardown the hook is
+///     nil.
 ///   - THE ARTWORK OBJECT IS REUSED. The host rewrites a playing entry every
 ///     second (the car's progress bar, docs/ios-lock-screen.md §3); each of
 ///     those carries the SAME `MPMediaItemArtwork` for as long as the entry
@@ -62,26 +68,22 @@ extension MPNowPlayingInfoCenter: NowPlayingInfoCentering {}
 final class NowPlayingPublisher: NowPlayingWriting {
     private let center: NowPlayingInfoCentering
     let artwork: ArtworkCache
-    /// Monotonic seconds, for the playhead an artwork re-post carries.
-    private let uptime: () -> Double
-
-    /// The entry last written, the listener's rate it was written with, and when
-    /// (`uptime`); nil after `clear()`.
-    private var current: (view: MediaMapping.SessionView, listenRate: Double, at: Double)?
     /// The one artwork object the entry shows, for the picture it was built
     /// from: every rewrite of the same picture hands the centre this object.
     private var artworkObject: (src: String, image: UIImage, item: MPMediaItemArtwork)?
 
+    /// The host's: told the source of an artwork that landed after the write
+    /// that asked for it (only an image; a failure or a timeout changes
+    /// nothing the entry shows). Nil after the host's teardown.
+    var onArtworkLanded: ((String) -> Void)?
+
     init(center: NowPlayingInfoCentering = MPNowPlayingInfoCenter.default(),
-         artwork: ArtworkCache = ArtworkCache(),
-         uptime: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
+         artwork: ArtworkCache = ArtworkCache()) {
         self.center = center
         self.artwork = artwork
-        self.uptime = uptime
     }
 
     func write(_ view: MediaMapping.SessionView, listenRate: Double) {
-        current = (view, listenRate, uptime())
         var picture: MPMediaItemArtwork?
         if let src = Self.artworkSource(of: view) {
             switch artwork.lookup(src) {
@@ -90,14 +92,23 @@ final class NowPlayingPublisher: NowPlayingWriting {
             case .failed:
                 picture = nil
             case .missing:
-                artwork.load(src) { [weak self] landed in self?.artworkLanded(src, landed) }
+                // One landing hook per load (CH3-16): a write while the square
+                // is still on its way (the 1 s refresh, the `via=rate` write
+                // when sound starts) posts the entry without it and does not
+                // join the load, so one landing is one host rewrite and one
+                // `via=artwork` row, however many writes it outlived.
+                if !artwork.isLoading(src) {
+                    artwork.load(src) { [weak self] landed in
+                        guard landed != nil else { return }
+                        self?.onArtworkLanded?(src)
+                    }
+                }
             }
         }
         center.nowPlayingInfo = Self.info(for: view, artwork: picture, listenRate: listenRate)
     }
 
     func clear() {
-        current = nil
         artworkObject = nil
         center.nowPlayingInfo = nil
     }
@@ -117,17 +128,6 @@ final class NowPlayingPublisher: NowPlayingWriting {
         view.metadata.artwork.first?.src
     }
 
-    /// An artwork load finished. Re-posted only when it found an image and
-    /// the entry still names that artwork; the playhead is carried forward
-    /// by the time since the write at the entry's own rate, so attaching a
-    /// picture never jumps the scrubber back.
-    private func artworkLanded(_ src: String, _ image: UIImage?) {
-        guard let image, let current, Self.artworkSource(of: current.view) == src else { return }
-        let elapsed = Swift.max(0, uptime() - current.at)
-        center.nowPlayingInfo = Self.info(for: current.view, artwork: artworkItem(src, image),
-                                          listenRate: current.listenRate, advancedBySec: elapsed)
-    }
-
     /// `MPNowPlayingInfoPropertyDefaultPlaybackRate`: the entry's running
     /// rate (`NowPlayingRate.of`) when its clock runs, so a playing entry's
     /// rate and default always agree (a spoken line at 1.5x says 1 and 1);
@@ -138,11 +138,10 @@ final class NowPlayingPublisher: NowPlayingWriting {
         return listenRate.isFinite && listenRate > 0 ? listenRate : 1
     }
 
-    /// The dictionary. `advancedBySec` moves the playhead on at the entry's
-    /// rate (clamped to the duration), for a re-post of an entry written
-    /// earlier.
+    /// The dictionary, at the playhead the view carries (clamped to the
+    /// duration, as before).
     static func info(for view: MediaMapping.SessionView, artwork picture: MPMediaItemArtwork?,
-                     listenRate: Double, advancedBySec: Double = 0) -> [String: Any] {
+                     listenRate: Double) -> [String: Any] {
         let rate = NowPlayingRate.of(view)
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: view.metadata.title,
@@ -153,9 +152,8 @@ final class NowPlayingPublisher: NowPlayingWriting {
             MPNowPlayingInfoPropertyDefaultPlaybackRate: NSNumber(value: defaultRate(entryRate: rate, listenRate: listenRate))
         ]
         if let position = view.positionState {
-            let elapsed = Swift.min(position.position + advancedBySec * rate, position.duration)
             info[MPMediaItemPropertyPlaybackDuration] = NSNumber(value: position.duration)
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = NSNumber(value: elapsed)
+            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = NSNumber(value: Swift.min(position.position, position.duration))
         }
         if let picture {
             info[MPMediaItemPropertyArtwork] = picture
