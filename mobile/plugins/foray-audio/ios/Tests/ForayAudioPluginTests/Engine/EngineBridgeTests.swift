@@ -199,6 +199,44 @@ final class EngineBridgeTests: XCTestCase {
                              snapshot["seq"]?.numberValue ?? .infinity, "seq is a content version and moved")
     }
 
+    /// CH3-23 (R4-07): "is the page looking?" is the page's answer alone. A
+    /// hello is a new page, not a page saying it is looking: it keeps the
+    /// last answer (the reference engine never reset it), and the page sends
+    /// its own `setPageVisible` right after hello (client.js
+    /// `onEngineDecision`). A hello still ends the old page's window, so the
+    /// new page's first change goes at once.
+    /// RED on main: `hello` reset the coalescer to `visible: true`.
+    /// TO SEE IT FAIL: restore `SnapshotCoalescer(visible: true)` in `hello`
+    /// (the hidden page hears the rate change), or delete the reset outright
+    /// (the coalescer then waits on a window the hello cancelled, and no
+    /// snapshot ever leaves again).
+    @MainActor
+    func testAHelloLeavesAHiddenPageHiddenAndEndsTheOldWindow() throws {
+        let rig = Rig()
+        let engine = try XCTUnwrap(rig.engine)
+        _ = rig.bridge.hello(Self.hello)
+        XCTAssertEqual(rig.send("setPageVisible", #"{"visible":false}"#)["ok"], .bool(true))
+        XCTAssertEqual(rig.bridge.hello(Self.hello)["mode"], .string("native"))
+        XCTAssertFalse(rig.bridge.pageVisible, "a hello is not the page saying it is looking")
+        rig.clearEvents()
+        engine.handle(.queue(.setRate(1.5)))
+        rig.clock.fire(afterMs: EngineBridgeRules.snapshotEventMinMs)
+        XCTAssertEqual(rig.events.count, 0, "a hidden page hears nothing after a hello: \(rig.eventTypes)")
+
+        // The page says it is looking: one snapshot, and a window opens.
+        XCTAssertEqual(rig.send("setPageVisible", #"{"visible":true}"#)["ok"], .bool(true))
+        XCTAssertEqual(rig.eventTypes, ["snapshot"])
+        engine.handle(.queue(.setRate(1.25)))
+        XCTAssertEqual(rig.eventTypes, ["snapshot"], "fixture premise: the window holds the change")
+
+        // A reload's hello: still visible, and the old window holds nothing back.
+        _ = rig.bridge.hello(Self.hello)
+        XCTAssertTrue(rig.bridge.pageVisible, "a visible page stays visible across a hello")
+        engine.handle(.queue(.setRate(1.0)))
+        XCTAssertEqual(rig.eventTypes, ["snapshot", "snapshot"], "the new page's first change goes at once")
+        XCTAssertEqual(rig.events.last?["snapshot"]?["rate"], .number(1.0))
+    }
+
     /// §5.1: engineSend never rejects. A payload the contract refuses (not an
     /// object, an unknown command, a command without its args, a wrong `v`)
     /// is `{ok: false, reason: "unknown-cmd", snapshot}`, and the engine is
