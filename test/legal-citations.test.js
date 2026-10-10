@@ -621,13 +621,19 @@ function toEventRowFn() {
 }
 
 /** A payload generous enough to satisfy every arm's guards, so "transmitted"
-    means "this type can produce a row", not "this fixture happened to". */
+    means "this type can produce a row", not "this fixture happened to".
+    `archetype`, `percent_complete`, `source`, `elapsed_seconds` and
+    `duration_seconds` exist for the card_shown, finished and skipped_at arms
+    (catalogue PKG-18/19, HA #150), so those types count as transmitted once
+    toEventRow maps them. */
 const FAT_PAYLOAD = {
   episode_id: "ep-1", episode_slug: "ep-1", topics: ["food"],
   app: "Apple Podcasts", context: "continue",
   node_id: "food", direction: "up", reasons: ["Bad audio quality"],
   note: "a note", segment_id: "seg-1", foray_id: "g-1",
   session_id: "sess-1", seconds: 12, duration: 100,
+  archetype: "stretch", percent_complete: 1, source: "observed",
+  elapsed_seconds: 12, duration_seconds: 100,
 };
 
 /** The event types that actually leave the device, by observation. */
@@ -732,6 +738,7 @@ test("both documents' event-type totals are the numbers the code produces", () =
     five: 5, six: 6, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
     fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
     twenty: 20, "twenty-one": 21, "twenty-two": 22, "twenty-three": 23, "twenty-four": 24,
+    "twenty-five": 25, "twenty-six": 26, "twenty-seven": 27,
   };
   const pp = read("docs/legal/privacy-policy.md");
   const ppClaim = /\*\*([A-Za-z]+) of the ([a-z-]+) event types the app\s+records never leave the device\.\*\*/

@@ -7,8 +7,11 @@ description: >-
   (peer-workflow.json, peer-runs.json). `for: watch` adds the newest completed
   release's jobs and summary-job log (jobs.json, summary.log - G2); `for:
   trigger` adds main's own state at the commit a dispatch would build
-  (main-runs.json, main-status.json, main-checks.json). Every fetch is retried,
-  and one that still fails fails the step, except the summary log (below).
+  (main-runs.json, main-status.json, main-checks.json) and, for each failed
+  release since the last success, its jobs and any iOS-gate refusal's log
+  (run-jobs/ - issue #745). Every fetch is retried,
+  and one that still fails fails the step, except the summary log and the
+  ios-checks logs (below).
   CALLER CONTRACT - the caller has checked out the repo with fetch-depth 0
   (the commits walk is `git log <last released commit>..origin/main`) and set
   up Node; tools/release/watch-release.mjs is read from that checkout.
@@ -106,6 +109,31 @@ runs:
           # this SHA, not by its whole-run conclusion (an advisory ios-kit or
           # playwright failure turns the run red and used to hold every release).
           fetch "repos/$REPO/commits/$HEAD_SHA/check-runs?per_page=100" main-checks.json
+
+          # Issue #745: the jobs of every release run since the last success that
+          # did not succeed, so the retry budget can leave out a run the iOS gate
+          # refused (ios-checks failed, so the macOS ios job was skipped and no
+          # macOS minute was spent). Then, for each such refusal, the ios-checks
+          # job's log: it says whether main had moved past the run's commit
+          # (superseded). Which runs and which jobs is decided by
+          # watch-release.mjs, never by a jq filter here. A refusal's log may be
+          # gone (retention) and that is not fatal: the run then reads as a plain
+          # refusal, never as superseded. Into run-jobs/<run>.json and
+          # run-jobs/<run>.ios-checks.log.
+          mkdir -p run-jobs
+          FAILED=$(node tools/release/watch-release.mjs --mode failed-since-success --runs runs.json)
+          for RUN in $FAILED; do
+            fetch "repos/$REPO/actions/runs/$RUN/jobs" "run-jobs/$RUN.json"
+          done
+          REFUSALS=$(node tools/release/watch-release.mjs --mode gate-refusals --runs runs.json --run-jobs run-jobs)
+          for REFUSAL in $REFUSALS; do
+            RUN=${REFUSAL%%:*}
+            JOB=${REFUSAL#*:}
+            if ! fetch "repos/$REPO/actions/jobs/$JOB/logs" "run-jobs/$RUN.ios-checks.log"; then
+              echo "::warning::the ios-checks log of release run $RUN (job $JOB) is unreadable; that run counts as refused at the iOS gate, not superseded."
+              rm -f "run-jobs/$RUN.ios-checks.log"
+            fi
+          done
         fi
 
         # The two workflows watch each other (watch-release.mjs's header):

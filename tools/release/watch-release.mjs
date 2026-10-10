@@ -105,9 +105,11 @@
  *        --verdict-out verdict.json
  *   node tools/release/watch-release.mjs --mode trigger --runs runs.json \
  *        --commits commits.txt --main-runs main-runs.json --main-status status.json \
- *        --main-checks check-runs.json \
+ *        --main-checks check-runs.json --run-jobs run-jobs/ \
  *        --peer-workflow watch-workflow.json --peer-runs watch-runs.json \
  *        --verdict-out verdict.json
+ *   node tools/release/watch-release.mjs --mode failed-since-success --runs runs.json
+ *   node tools/release/watch-release.mjs --mode gate-refusals --runs runs.json --run-jobs run-jobs/
  *   node tools/release/watch-release.mjs --mode issue --verdict verdict.json \
  *        --issues issues.json [--may-close] [--apply --repo owner/name] \
  *        [--action-out action.json] [--body-out body.md]
@@ -130,6 +132,11 @@ import { isEntryScript } from "../ci/entry.mjs";
  * release trigger must call main "red" for exactly the checks that can block a
  * merge, and no others (ci-release-6). */
 import { REQUIRED_CHECKS } from "../ci/pr-triage.mjs";
+/* release.yml's iOS gate (ios-checks runs `engine-ci.mjs release-checks`).
+ * The trigger reads that gate's refusals with the gate's OWN definitions -
+ * which checks, "green on this SHA", what a superseded refusal prints - so the
+ * two can never disagree about why TestFlight was refused (issue #745). */
+import { RELEASE_REQUIRED_CHECKS, latestActionsRun, releaseChecksVerdict, releaseRefusalKind } from "../ci/engine-ci.mjs";
 
 /* ─────────────────────────── the numbers, and why ────────────────────────── */
 
@@ -167,11 +174,18 @@ export const STUCK_MINUTES = 60;
 export const WATCHDOG_STALE_HOURS = 8;
 export const TRIGGER_STALE_HOURS = 8;
 
-/** After this many consecutive failed release runs the trigger stops
- *  dispatching. One automatic retry of a failure is cheap insurance against a
- *  transient store outage; a second failure in a row is a pattern, the issue is
- *  already open by then, and every further automatic attempt is 10x-billed macOS
- *  time spent proving the same thing. A human dispatch that succeeds resets it. */
+/** After this many failed release runs since the last success the trigger
+ *  stops dispatching. One automatic retry of a failure is cheap insurance
+ *  against a transient store outage; a second failure in a row is a pattern,
+ *  the issue is already open by then, and every further automatic attempt is
+ *  10x-billed macOS time spent proving the same thing. A human dispatch that
+ *  succeeds resets it.
+ *
+ *  A run the iOS GATE refused is not one of those failures (issue #745): its
+ *  `ios-checks` job failed, so the macOS `ios` job was SKIPPED and no macOS
+ *  minute was spent (releaseRunKind, below). Runs 72 and 73 on 2026-10-09
+ *  were both that - an ios-kit flake, then a commit main had already moved
+ *  past - and counting them froze TestFlight while Play kept shipping. */
 export const RETRY_BUDGET = 2;
 
 /** How the sticky issue is found again. The title is for people; the marker is
@@ -531,15 +545,62 @@ export function lastSuccess(runs) {
   return sortRuns(runs).find(isSuccess) || null;
 }
 
-/** Completed runs since the last success that did not succeed, newest first. */
-export function failuresSinceSuccess(runs) {
+/** release.yml's iOS gate job and the macOS job it gates (`ios` needs
+ *  `ios-checks`). watch-release.test.mjs pins both names, the `needs` and the
+ *  runner against release.yml itself. */
+export const IOS_GATE_JOB = "ios-checks";
+export const IOS_BUILD_JOB = "ios";
+
+/** The ios-checks job of a run the iOS gate REFUSED, or null: ios-checks
+ *  concluded `failure` and the macOS `ios` job was skipped because of it.
+ *  Keyed on the iOS lane ONLY (issue #745): in runs 72 and 73 android built
+ *  and uploaded to Play while TestFlight was refused, so "every binary job
+ *  skipped" would never have matched. `jobs` is GET /actions/runs/{id}/jobs. */
+export function iosGateRefusal(jobs) {
+  const list = Array.isArray(jobs) ? jobs.filter((j) => j && typeof j === "object") : [];
+  const gate = list.find((j) => j.name === IOS_GATE_JOB);
+  const build = list.find((j) => j.name === IOS_BUILD_JOB);
+  return gate && gate.conclusion === "failure" && build && build.conclusion === "skipped" ? gate : null;
+}
+
+/** One completed release run, as the retry budget sees it:
+ *    "success"     it succeeded;
+ *    "superseded"  the iOS gate refused it because main had moved past its
+ *                  commit before CI could test it (the refusal's log carries
+ *                  engine-ci.mjs's RELEASE_SUPERSEDED_MARKER) - a newer
+ *                  commit was already waiting, so nothing failed;
+ *    "refused"     the iOS gate refused it for any other reason (a red or
+ *                  absent check on its own commit);
+ *    "failed"      everything else, INCLUDING a run with no job facts: with
+ *                  nothing to read, the run counts, as it always did.
+ *  `facts` is `{ jobs, iosChecksLog }` for that run (loadRunJobs). Neither a
+ *  refused nor a superseded run spent macOS time, so neither spends the
+ *  retry budget; a run whose `ios` job RAN and failed still does. */
+export function releaseRunKind(run, facts) {
+  if (isSuccess(run)) return "success";
+  if (!facts || !Array.isArray(facts.jobs) || !iosGateRefusal(facts.jobs)) return "failed";
+  return releaseRefusalKind(facts.iosChecksLog) === "superseded" ? "superseded" : "refused";
+}
+
+/** Completed runs since the last success that did not succeed, newest first,
+ *  each with its releaseRunKind. Without `runJobs` (an older caller) every one
+ *  is "failed": stricter, never looser. */
+export function runsSinceSuccess(runs, runJobs = null) {
   const out = [];
   for (const r of sortRuns(runs)) {
     if (!isCompleted(r)) continue;
     if (r.conclusion === "success") break;
-    out.push(r);
+    const facts = runJobs && typeof runJobs === "object" ? runJobs[String(r.id)] : undefined;
+    out.push({ run: r, kind: runJobs ? releaseRunKind(r, facts) : "failed" });
   }
   return out;
+}
+
+/** The runs since the last success that COUNT against RETRY_BUDGET, newest
+ *  first: those that did not succeed and were not refused (or superseded) at
+ *  the iOS gate. Without `runJobs`, every completed non-success run. */
+export function failuresSinceSuccess(runs, runJobs = null) {
+  return runsSinceSuccess(runs, runJobs).filter((x) => x.kind === "failed").map((x) => x.run);
 }
 
 /* ─────────────────────── the summary job's outcome line ──────────────────── */
@@ -866,14 +927,43 @@ export function mainState(mainRuns, combinedStatus, checkRuns = null, requiredCh
   return { state: failing.length ? "red" : building.length ? "building" : "green", failing, building };
 }
 
+const sameCommit = (a, b) => {
+  const x = String(a ?? "").toLowerCase();
+  const y = String(b ?? "").toLowerCase();
+  return x.length >= 7 && y.length >= 7 && (x.startsWith(y) || y.startsWith(x));
+};
+
 /** Should the trigger dispatch a release now? One decision, with its reason.
  *
  *  Held, in this order, when: a release is already queued or running (release.yml
  *  queues behind it anyway, but two dispatches would ship twice); nothing
- *  release-relevant is waiting; the retry budget is spent; or main is red or
- *  still building. Otherwise dispatch — which is also how a FAILED release is
- *  retried, since its commits are still waiting. */
-export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, mainChecks = null }) {
+ *  release-relevant is waiting; the retry budget is spent; the newest run was
+ *  refused at the iOS gate on main's CURRENT head and a check that gate reads
+ *  is still red there, or two runs were refused there (the backstop, below);
+ *  or main is red or still building. Otherwise dispatch —
+ *  which is also how a FAILED release is retried, since its commits are still
+ *  waiting.
+ *
+ *  `runJobs` (issue #745) maps a run id to `{ jobs, iosChecksLog }` for the runs
+ *  since the last success (loadRunJobs). A run the iOS gate refused does not
+ *  spend the retry budget (releaseRunKind). WHY THE REFUSED-AT-HEAD HOLD: with
+ *  refusals no longer counted, a red ios-kit on an unchanged main would be
+ *  re-dispatched every two hours for ever, each run refused on sight (the gate
+ *  never replaces a check run that exists) while shipping the same commit to
+ *  Play again. Re-running the red check in ci.yml, or a new commit on main,
+ *  clears it; a superseded run never triggers it.
+ *
+ *  THE BACKSTOP (PR #1270 review): that hold reads the gate's checks, so it only
+ *  covers a refusal caused by a RED check. A gate that keeps refusing on main's
+ *  head for any other reason (ios-checks crashes, a token failure, the ci.yml
+ *  dispatch POST refused, checks that never appear, a job dying at setup) is
+ *  each time "refused", spends no budget, and would be re-dispatched (and
+ *  re-uploaded to Play) every two hours without limit. So, whatever the cause
+ *  and whatever the checks say now: a SECOND gate refusal on main's current
+ *  head since the last success holds. One refusal on a commit earns exactly
+ *  one more dispatch of it; a new commit on main, or a success, clears it.
+ *  Refusals on commits main has moved past, and superseded runs, never count. */
+export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, mainChecks = null, runJobs = null }) {
   const inFlight = sortRuns(runs).find(isInFlight);
   if (inFlight) {
     return { dispatch: false, code: "HOLD_IN_FLIGHT", reason: `Release run #${inFlight.run_number} is already ${inFlight.status}.` };
@@ -884,10 +974,38 @@ export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, m
       reason: "Nothing release-relevant has landed since the last successful release." +
         (pending.seed.length ? ` (${pending.seed.length} commit(s) changed bundled data only; the app fetches that live.)` : "") };
   }
-  const failures = failuresSinceSuccess(runs);
+  const since = runsSinceSuccess(runs, runJobs);
+  const failures = since.filter((x) => x.kind === "failed");
+  const atGate = since.filter((x) => x.kind === "refused" || x.kind === "superseded");
+  const uncounted = atGate.length
+    ? ` (${atGate.length} run(s) since the last success were refused at the iOS gate before any macOS time was spent` +
+      `${atGate.some((x) => x.kind === "superseded") ? `, ${atGate.filter((x) => x.kind === "superseded").length} of them superseded by a newer main` : ""}` +
+      "; those do not count against the retry budget.)"
+    : "";
   if (failures.length >= RETRY_BUDGET) {
     return { dispatch: false, code: "HOLD_RETRY_BUDGET",
-      reason: `The last ${failures.length} release runs failed; not spending more macOS time until someone looks.` };
+      reason: `${failures.length} release runs since the last success failed after the iOS gate; ` +
+        `not spending more macOS time until someone looks.${uncounted}` };
+  }
+  const newest = since[0];
+  const head = Array.isArray(commits) && commits.length ? commits[0].sha : null;
+  if (newest && newest.kind === "refused" && Array.isArray(mainChecks) && sameCommit(newest.run.head_sha, head)) {
+    const byName = Object.fromEntries(RELEASE_REQUIRED_CHECKS.map((n) => [n, latestActionsRun(mainChecks, n)]));
+    const gate = releaseChecksVerdict(byName);
+    if (gate.done && !gate.ok) {
+      return { dispatch: false, code: "HOLD_REFUSED_AT_HEAD",
+        reason: `Release run #${newest.run.run_number} was refused at the iOS gate on ${String(head).slice(0, 7)}, ` +
+          `still main's head, and a dispatch now would be refused the same way (${gate.message}). ` +
+          "Re-run the red check in ci.yml, or land a fix." };
+    }
+  }
+  const refusedAtHead = since.filter((x) => x.kind === "refused" && sameCommit(x.run.head_sha, head));
+  if (refusedAtHead.length >= 2) {
+    return { dispatch: false, code: "HOLD_REFUSED_AT_HEAD",
+      reason: `${refusedAtHead.length} release runs since the last success ` +
+        `(${refusedAtHead.map((x) => `#${x.run.run_number}`).join(", ")}) were refused at the iOS gate on ` +
+        `${String(head).slice(0, 7)}, still main's head; not dispatching the same commit again, whatever the cause. ` +
+        "Read the ios-checks log of the newest one; a new commit on main clears this." };
   }
   const main = mainState(mainRuns, mainStatus, mainChecks);
   if (main.state !== "green") {
@@ -897,12 +1015,12 @@ export function triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, m
   }
   return { dispatch: true, code: "DISPATCH",
     reason: `${pending.release.length} release-relevant commit(s) waiting; the oldest is ` +
-      `${pending.oldest.sha.slice(0, 7)} from ${pending.oldest.committedAt}.` };
+      `${pending.oldest.sha.slice(0, 7)} from ${pending.oldest.committedAt}.${uncounted}` };
 }
 
 /** The trigger's own verdict: its decision, plus whether the WATCHDOG is alive. */
-export function triggerVerdict({ runs, commits, bundle, mainRuns, mainStatus, mainChecks = null, peerWorkflow, peerRuns, now }) {
-  const decision = triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, mainChecks });
+export function triggerVerdict({ runs, commits, bundle, mainRuns, mainStatus, mainChecks = null, runJobs = null, peerWorkflow, peerRuns, now }) {
+  const decision = triggerDecision({ runs, commits, bundle, mainRuns, mainStatus, mainChecks, runJobs });
   return verdictOf("trigger", [
     livenessGate("L", "release-watch", peerWorkflow, peerRuns, WATCHDOG_STALE_HOURS, now),
   ], { decision });
@@ -1053,6 +1171,26 @@ function listOf(doc, key) {
   return doc && Array.isArray(doc[key]) ? doc[key] : [];
 }
 
+/** The per-run facts release-facts fetched for the trigger (issue #745), as
+ *  triggerDecision's `runJobs`: for each run since the last success that did
+ *  not succeed, `<dir>/<id>.json` (GET /actions/runs/{id}/jobs) and, for a
+ *  refusal at the iOS gate, `<dir>/<id>.ios-checks.log` (that job's log). A
+ *  run whose jobs file is missing gets no entry, so it counts as "failed";
+ *  a missing log reads as a plain refusal, never as superseded. */
+export function loadRunJobs(dir, runs) {
+  const out = {};
+  for (const { run } of runsSinceSuccess(runs)) {
+    const jobsFile = path.join(dir, `${run.id}.json`);
+    if (!fs.existsSync(jobsFile)) continue;
+    const logFile = path.join(dir, `${run.id}.ios-checks.log`);
+    out[String(run.id)] = {
+      jobs: listOf(readJson(jobsFile), "jobs"),
+      iosChecksLog: fs.existsSync(logFile) ? fs.readFileSync(logFile, "utf8") : null,
+    };
+  }
+  return out;
+}
+
 async function loadBundle(argv) {
   const planPath = arg(argv, "--plan");
   if (planPath) return bundleSet(readJson(planPath));
@@ -1075,8 +1213,9 @@ function writeOutput(env, line) {
 export async function run(argv, env = process.env, { spawnSync: spawn = spawnSync } = {}) {
   const mode = arg(argv, "--mode");
   const now = arg(argv, "--now", new Date().toISOString());
-  if (!["last-success", "latest-completed", "watch", "trigger", "issue", "self-broken"].includes(mode)) {
-    return { code: 2, text: `unknown --mode ${mode} (expected last-success|latest-completed|watch|trigger|issue|self-broken)\n` };
+  const MODES = ["last-success", "latest-completed", "failed-since-success", "gate-refusals", "watch", "trigger", "issue", "self-broken"];
+  if (!MODES.includes(mode)) {
+    return { code: 2, text: `unknown --mode ${mode} (expected ${MODES.join("|")})\n` };
   }
 
   try {
@@ -1089,6 +1228,22 @@ export async function run(argv, env = process.env, { spawnSync: spawn = spawnSyn
     if (mode === "latest-completed") {
       const r = sortRuns(listOf(readJson(arg(argv, "--runs")), "workflow_runs")).find(isCompleted);
       return r ? { code: 0, text: r.id + "\n" } : { code: 3, text: "" };
+    }
+    /* issue #745: which runs' jobs release-facts fetches for the trigger, and
+     * then which of those runs' ios-checks logs. Empty output is an answer
+     * ("none"), so both exit 0. */
+    if (mode === "failed-since-success") {
+      const ids = runsSinceSuccess(listOf(readJson(arg(argv, "--runs")), "workflow_runs")).map((x) => x.run.id);
+      return { code: 0, text: ids.map((id) => `${id}\n`).join("") };
+    }
+    if (mode === "gate-refusals") {
+      const runJobs = loadRunJobs(arg(argv, "--run-jobs"), listOf(readJson(arg(argv, "--runs")), "workflow_runs"));
+      const lines = [];
+      for (const [id, facts] of Object.entries(runJobs)) {
+        const gate = iosGateRefusal(facts.jobs);
+        if (gate && gate.id != null) lines.push(`${id}:${gate.id}\n`);
+      }
+      return { code: 0, text: lines.join("") };
     }
 
     if (mode === "self-broken") {
@@ -1134,6 +1289,8 @@ export async function run(argv, env = process.env, { spawnSync: spawn = spawnSyn
         mainStatus: readJson(arg(argv, "--main-status")),
         // ci-release-6: optional, so an older trigger workflow still runs.
         mainChecks: arg(argv, "--main-checks") ? listOf(readJson(arg(argv, "--main-checks")), "check_runs") : null,
+        // issue #745: optional too; without it every failed run counts, as before.
+        runJobs: arg(argv, "--run-jobs") ? loadRunJobs(arg(argv, "--run-jobs"), runs) : null,
         peerWorkflow, peerRuns, now,
       });
       writeOutput(env, `dispatch=${verdict.decision.dispatch}`);
