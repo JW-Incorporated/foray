@@ -114,7 +114,8 @@ decision and a `path-policy` status check that reports on every PR.
 
 **A PR needs a founder when** it touches a governed path
 (`.github/`, `.claude/`, `CLAUDE.md`, `docs/DECISIONS.md`, `docs/adr/`,
-**this file**, `docs/agents/routine-invariants.md`, `backend/src/`, `tools/ci/`)
+**this file**, `docs/agents/routine-invariants.md`, `backend/src/`,
+`backend/migrations/`, `vercel.json`, `tools/ci/`)
 or a path in neither list. Those PRs are labelled `needs-founder`
 automatically and collect in `HUMAN-ACTIONS.md`, so the residue is one batched
 glance rather than something anyone has to notice.

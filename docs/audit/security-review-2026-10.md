@@ -111,6 +111,9 @@ again but are not counted again. Two examples are `security-1` (fork PRs auto-me
 - **F-3.** Whether to add `tools/web/prepare-dist.mjs`, `tools/web/vercel-should-build.mjs`, `vercel.json`
   and `backend/migrations/` to `DENIED_PREFIXES` (SEC-03, SEC-04). This tightens the policy, but every
   change to those paths would then need the `founder-approved` label.
+  **Decided 2026-10-10** ([founder ruling on #1163](https://github.com/JW-Incorporated/foray/issues/1163#issuecomment-6099574806),
+  item 11, the recommendation as written): `backend/migrations/` and `vercel.json` are on
+  `DENIED_PREFIXES`; `tools/web/` stays on the `tools/` allowance.
 
 ## Fix PRs
 
