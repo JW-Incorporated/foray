@@ -1,0 +1,82 @@
+/* The `foray-notify` Capacitor plugin's Android library module (issue #761;
+ * docs/roadmap/player-features.md PQ-29): a WorkManager periodic check of the
+ * followed shows, a local notification on channel `foray_alerts` for a new
+ * episode, and the tap that opens the show (`alertOpened`, the PQ-28 contract).
+ *
+ * Same shape as `foray-downloads/android/build.gradle` and `foray-vault`'s, for
+ * the same reason: once `mobile/package.json` declares the plugin, `cap sync`
+ * reads `../package.json`'s `capacitor.android.src` and writes
+ * `include ':foray-notify'` / `implementation project(':foray-notify')` into the
+ * GENERATED project, so nothing is patched into `mobile/android/` by hand
+ * (docs/android-native-code.md).
+ *
+ * NOT DECLARED YET (PQ-30 declares it). Until then no shell includes this module
+ * and no APK contains it; android-build.yml's foray-notify step includes it for
+ * its own `:foray-notify:testDebugUnitTest` run only, and restores the generated
+ * settings before anything else builds.
+ *
+ * DEPENDENCIES. `project(':capacitor-android')` for the Plugin base classes, as
+ * every module here has. `androidx.work:work-runtime` 2.9.1 (PQ-29's "2.9.x";
+ * 2.9.1 is that line's last release): the periodic worker. `androidx.core` for NotificationCompat and
+ * NotificationManagerCompat, and `androidx.appcompat` because Capacitor's
+ * `getActivity()` returns an AppCompatActivity (the tap of a cold start is that
+ * activity's intent); Capacitor's own module ships both as `implementation`, so
+ * neither is on this module's compile classpath without the lines below. The
+ * versions come from the generated `variables.gradle`, as foray-audio's and
+ * foray-downloads' do; the fallbacks are only for a project that lacks them.
+ */
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace = "ai.jwlabs.foura.notify"
+    compileSdk = project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+    defaultConfig {
+        minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+        targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    lintOptions {
+        abortOnError = false
+    }
+    compileOptions {
+        /* Matches foray-audio, foray-tts, foray-vault and foray-downloads:
+           capacitor-android compiles at 21 and Capacitor 8 requires JDK 21
+           (docs/android-shell-build.md §1.2). */
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':capacitor-android')
+    implementation "androidx.work:work-runtime:2.9.1"
+    implementation "androidx.core:core:${project.hasProperty('androidxCoreVersion') ? rootProject.ext.androidxCoreVersion : '1.17.0'}"
+    implementation "androidx.appcompat:appcompat:${project.hasProperty('androidxAppCompatVersion') ? rootProject.ext.androidxAppCompatVersion : '1.7.1'}"
+
+    /* Test-only (src/test), never in the APK. JUnit and Robolectric at the
+       versions foray-audio uses (Robolectric runs the framework's own
+       SharedPreferences, org.json and NotificationManager under the tests), and
+       WorkManager's own test artifact at the runtime's version, for
+       WorkManagerTestInitHelper (the "registered once" test). */
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.16"
+    testImplementation "androidx.test:core:1.6.1"
+    testImplementation "androidx.test.ext:junit:1.2.1"
+    testImplementation "androidx.work:work-testing:2.9.1"
+}
