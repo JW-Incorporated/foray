@@ -549,12 +549,12 @@ function todayHeroModel(pick) {
   const player = window.ForayPlayer;
   const model = typeof player?.stripModel === "function" ? player.stripModel(r.playable, { mergeNarration: true }) : null;
   const items = model && Array.isArray(model.segments) ? model.segments : [];
-  const showIdOf = s => (s.kind === "narration" ? "narration" : (s.show || s.sourceKey || "show"));
+  const showIdOf = tactileForayShowKey;
   /* ONE ENAMEL PER SHOW IN THIS FORAY. The global hash lets two of seven shows share teal,
      and a key that tells shows apart only by their codes is not a key: so the band is handed
      each show's enamel here (its own hash colour when free, the next free one when not) and
      the key below reads the very same map. */
-  const enamels = tactileDistinctEnamels(items.filter(s => s.kind !== "narration").map(showIdOf));
+  const enamels = tactileForayEnamels(items);
   const segments = items.map(s => ({
     showId: showIdOf(s),
     show: s.kind === "narration" ? "" : (s.show || ""),

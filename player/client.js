@@ -1911,15 +1911,24 @@ function dialForaySegments(resolved, currentIndex) {
   const codes = dialForayCodes(resolved.playable
     .map((item, index) => (item.kind === TTS ? null : showOf(item, index)))
     .filter(Boolean));
+  /* ONE ENAMEL PER SHOW IN THIS FORAY, THE ONE TODAY'S CARD AND THE FORAY PAGE DRAW:
+     keyed by the show's name in first-appearance order (tactileForayEnamels), so the band,
+     the origin swatches and the mini line never disagree with the page the listener came
+     from. Without the primitive (a bare test host) it falls back to the global hash. */
+  const forayEnamels = typeof tactileForayEnamels === "function"
+    ? tactileForayEnamels(resolved.playable.map((item, index) => (item.kind === TTS ? { kind: "narration" } : { show: showOf(item, index)[1] })))
+    : null;
   return resolved.playable.map((item, index) => {
     const entry = resolved.entries.find((row) => row.queueIndex === index) || {};
     const narration = item.kind === TTS;
     const show = narration ? "4a narration" : showOf(item, index)[1];
     const showId = narration ? `narration-${index}` : showOf(item, index)[0];
     const source = item?.source_item_id ? resolved.sources?.get(item.source_item_id) : null;
-    const colorIndex = narration ? priorColour : dialStationIndex(showId);
+    const own = !narration && forayEnamels ? forayEnamels[show] : undefined;
+    const colorIndex = narration ? priorColour : (Number.isInteger(own) ? own : dialStationIndex(showId));
     if (!narration) priorColour = colorIndex;
     return {
+      enamel: narration ? -1 : colorIndex,
       showId, show, code: narration ? "4a" : (codes.get(showId) || dialStationCodeFor(show)), colorIndex, narration,
       duration: itemRuntimeSec(item), start: starts[index] || 0, current: index === currentIndex,
       why: entry.why || item.why || "",

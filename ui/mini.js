@@ -74,7 +74,7 @@ var DIAL_MINI_LINE_INSET = 22; /* px in from each side of the deck (prototype) *
 function dialMiniLineSegments(model) {
   if (!model || !model.foray || !Array.isArray(model.segments)) return [];
   return model.segments.map(function (segment) {
-    return { showId: segment.showId, show: segment.show, duration: segment.duration, narration: Boolean(segment.narration) };
+    return { showId: segment.showId, show: segment.show, duration: segment.duration, narration: Boolean(segment.narration), enamel: segment.enamel };
   });
 }
 

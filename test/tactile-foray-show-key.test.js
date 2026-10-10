@@ -186,8 +186,8 @@ test("a foray over eight shows keys the first eight and counts the rest", async 
 
 test("the Foray page's From swatch is the colour of that show's bars", async () => {
   /* The swatch pre-dates this request; pinned here because it IS the key on that page.
-     KILLING MUTATION: in forayEnamelClass, hash `showName + "x"` — a swatch stops
-     matching its show's bars and this is red. */
+     KILLING MUTATION: in forayEnamelClass, hash `showName + "x"` and ignore `enamels` — a
+     swatch stops matching its show's bars and this is red. */
   const { r } = await sevenShowForay();
   const app = loadApp(await realBridge());
   const band = app.forayBandModel(r, app.ForayPlayer);
@@ -198,11 +198,85 @@ test("the Foray page's From swatch is the colour of that show's bars", async () 
   assert.strictEqual(shows.length, 7);
   assert.ok(new Set(shows.map((s) => [...by.get(s.name)][0])).size >= 2, "multi-colour fixture");
   for (const show of shows) {
-    const row = app.forayFromRowHtml(show, codes);
+    const row = app.forayFromRowHtml(show, codes, band.enamels);
     const swatch = /class="fdet-sw t-band__bar--c(\d)"/.exec(row);
     assert.ok(swatch, `${show.name} has a swatch`);
     assert.deepStrictEqual([...by.get(show.name)], [swatch[1]], `${show.name}: swatch c${swatch[1]} == bars ${[...by.get(show.name)]}`);
   }
+});
+
+/** show name -> the enamel digit its bars wear, read back out of a band's own markup. */
+function barEnamelOf(segments, svg) {
+  const out = new Map();
+  for (const [show, set] of enamelsByShow(segments, barsOf(svg))) {
+    assert.strictEqual(set.size, 1, `${show} wears one enamel on one band`);
+    out.set(show, [...set][0]);
+  }
+  return out;
+}
+
+test("a show is the same colour on Today's card and on that foray's own page", async () => {
+  /* The review's blocking finding: Today gave each show its own enamel (tactileDistinctEnamels)
+     while the Foray page still hashed, so tapping the card changed a show's colour in exactly
+     the seven-show case this feature exists for. Compared on the RAW markup of both screens:
+     the card's bars, the page's bars, the page's From swatches and the page's clip-row
+     swatches. KILLING MUTATION: in forayBandModel delete the `enamel:` line from the segment
+     (or have forayEnamelClass ignore `enamels`) — the page falls back to the hash, three
+     shows change colour and this is red. */
+  const { r, doc } = await sevenShowForay();
+  const app = loadApp(await realBridge());
+  const hero = app.todayHeroModel({ foray: doc, r });
+  const today = barEnamelOf(hero.segments, app.todayHeroHtml(hero));
+  const band = app.forayBandModel(r, app.ForayPlayer);
+  const page = barEnamelOf(band.segments, app.tactileBand({ id: "k", kind: "detail", segments: band.segments, renderWidth: 345, progress: 0, currentIndex: 0 }));
+  assert.strictEqual(today.size, 7);
+  assert.strictEqual(new Set(today.values()).size, 7, "fixture: seven distinct colours on the card, so a hash fallback shows");
+  assert.ok(new Set([...today.keys()].map((n) => app.tactileHash(n))).size < 7, "fixture: the plain hash collides here, so a fallback cannot pass");
+  assert.deepStrictEqual([...page].sort(), [...today].sort(), "the page's bars wear the card's colour, show for show");
+  const shows = app.forayDetailShows(r);
+  const codes = app.forayStationCodes(shows);
+  for (const show of shows) {
+    const from = /class="fdet-sw t-band__bar--c(\d)"/.exec(app.forayFromRowHtml(show, codes, band.enamels));
+    assert.strictEqual(from && from[1], today.get(show.name), `${show.name}: From swatch == the card's colour`);
+  }
+  let rows = 0;
+  for (const slot of r.slots) {
+    for (const entry of slot.entries) {
+      if (!entry.show) continue;
+      const m = /class="fdet-sw t-band__bar--c(\d)"/.exec(app.forayRow(entry, codes, band.enamels));
+      assert.strictEqual(m && m[1], today.get(entry.show), `${entry.show}: clip-row swatch == the card's colour`);
+      rows += 1;
+    }
+  }
+  assert.ok(rows >= 7, "the clip rows were actually checked");
+});
+
+test("the player's band, swatches and mini line draw the same per-foray colours", async () => {
+  /* dialForaySegments (player/client.js, an ES module with no harness) is lifted out of the
+     source and run against the app's own primitives, so what it returns is what Now Playing's
+     band and swatches and the mini player's line receive. KILLING MUTATION: in dialForaySegments
+     use `dialStationIndex(showId)` for colorIndex (the global hash) — three shows differ from
+     the card and this is red. */
+  const { r, doc } = await sevenShowForay();
+  const app = loadApp(await realBridge());
+  const hero = app.todayHeroModel({ foray: doc, r });
+  const today = barEnamelOf(hero.segments, app.todayHeroHtml(hero));
+  const src = fs.readFileSync(path.join(ROOT, "player/client.js"), "utf8").replace(/\r\n/g, "\n");
+  const from = src.indexOf("function dialStationIndex(");
+  const stop = src.indexOf("\n/* `buffering` here is what the sheet DRAWS", from);
+  assert.ok(from > 0 && stop > from, "found dialForaySegments's neighbourhood in player/client.js");
+  vm.runInContext(`var TTS = "tts"; var artworkByShow = new Map();
+    function segmentStarts(list) { var t = 0; return list.map(function (i) { var s = t; t += i.duration_sec || 1; return s; }); }
+    function itemRuntimeSec(i) { return i.duration_sec || 1; }
+    ${src.slice(from, stop)}`, app);
+  const resolved = { playable: r.playable.map((i) => (i.kind === "narration" ? { ...i, kind: "tts" } : i)), entries: r.entries || [], sources: new Map() };
+  const segs = app.dialForaySegments(resolved, 0);
+  const drawn = new Map();
+  for (const s of segs) if (!s.narration) { assert.strictEqual(s.enamel, s.colorIndex, "the band's enamel is the swatch's colour"); drawn.set(s.show, String(s.enamel)); }
+  assert.strictEqual(drawn.size, 7);
+  assert.deepStrictEqual([...drawn].sort(), [...today].sort(), "player == card, show for show");
+  const mini = app.tactileBand({ kind: "line", segments: segs.map((s) => ({ showId: s.showId, show: s.show, duration: s.duration, narration: s.narration, enamel: s.enamel })), renderWidth: 345 });
+  assert.match(mini, /t-band__bar--c\d/, "the line paints enamel classes");
 });
 
 test("the pip takes the band's own colour tokens, never a hex of its own", () => {

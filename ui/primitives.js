@@ -174,6 +174,23 @@ function tactileDistinctEnamels(ids) {
   return out;
 }
 
+/* THE FORAY'S COLOUR KEY, ONE FUNCTION FOR EVERY SCREEN (review 2026-10-09: Today's card
+ * gave each show its own enamel while the Foray page still hashed, so a show changed colour
+ * the moment the listener tapped from the card into that foray's page). A show is keyed by
+ * its NAME (a bar with no name falls back to its source key), the narration is not a show,
+ * and the map is { showKey: enamelIndex } over the strip model's segments in order. Today,
+ * Yours, the Foray page and the player all read the answer from here, so a show is one
+ * colour wherever its foray is drawn. */
+function tactileForayShowKey(segment) {
+  return segment && segment.kind === "narration" ? "narration" : ((segment && (segment.show || segment.sourceKey)) || "show");
+}
+
+function tactileForayEnamels(segments) {
+  return tactileDistinctEnamels((Array.isArray(segments) ? segments : [])
+    .filter(function (s) { return s && s.kind !== "narration" && !s.narration; })
+    .map(tactileForayShowKey));
+}
+
 function tactileStationCode(name) {
   var words = String(name || "Show").replace(/^The\s+/i, "").trim().split(/\s+/).filter(Boolean);
   return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || "SH").slice(0, 2)).toUpperCase();
