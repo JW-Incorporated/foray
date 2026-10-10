@@ -196,6 +196,33 @@ Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-saf
 
 **Worked if:** every sentence quoted here is approved or reworded, and the policy on `main` says the same thing.
 
+**ADDENDUM — Sentences 5-9: the same rows once phone alerts ship (PQ-28..30), to be applied only by PQ-30.** Phone alerts are the iPhone half (PQ-28) and the Android half (PQ-29) of `mobile/plugins/foray-notify`, switched on by PQ-30 (`docs/roadmap/player-features.md` §PQ-28, §PQ-29, §PQ-30; founder question 6 in §1). None of the three is on `main` today (2026-10-09). **Sentences 3 and 4 above stay exactly what `main` says until PQ-30 merges.** Sentences 5-9 are drafted now so you can read them early; PQ-30's PR applies them, and no earlier PR does. They describe PQ-28/29 as `player-features.md` specifies them. If the merged code differs, PQ-30 changes the wording to match the code and brings the changed sentence back here before applying it. Edits to `docs/legal/` and `docs/store/` happen only in PQ-30.
+
+Sentence 5, the `cp_starred_shows` row in `docs/legal/privacy-policy.md` §1 (line 140 today), replacing Sentence 3 once PQ-30 merges. Only the sentence about notifications changes: a phone alert comes only when alerts are on for that show AND you allowed notifications when the phone asked.
+
+> | `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). For each show it also keeps whether new-episode alerts are on (on unless you turn them off on the show's page), when 4a last checked the show for new episodes, the newest publish date that check found, the newest one you have seen, and how many are new. New episodes are marked in your Library on this device. In the iPhone and Android apps, your phone also shows a notification naming the show and its new episode, but only when alerts are on for that show and you allowed 4a's notifications when your phone asked. Your phone makes that notification itself; nothing is sent to anyone to make it. The check asks our API for the show's latest episodes (§4.3). No auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
+
+Sentence 6, added to §4.3's Vercel paragraph directly after Sentence 4 (Sentence 4 itself stays):
+
+> In the iPhone and Android apps, your phone also runs that check in the background while 4a is closed, for the shows you follow that have alerts on. On an iPhone it uses Apple's background app refresh (`BGAppRefreshTask`): at most about once every six hours, and only when iOS chooses to run it, which can be much less often. On Android it uses the system's `WorkManager`: every six hours, on any network connection, Wi-Fi or mobile data (`NetworkType.CONNECTED`). The background check sends the same request as the check in the open app, the show's id and the usual request metadata, and nothing about you.
+
+Sentence 7, the §5 bullet that says "no notifications" (line ~501 today: "**No location access, no camera, no microphone, no contacts, no calendar, no photos, no notifications.** The app requests no device permissions."). Issue #1163 item 8 (M3) already proposes a rewrite of this whole bullet, verbatim in `docs/audit/privacy-truth-2026-10.md` §M3. Sentence 7 is only a DELTA on that rewrite, so it is not repeated here. Once alerts ship, three phrases in M3's proposed bullet change:
+
+- M3 says: "4a sends no push or reminder notifications, and has no server that could." Becomes: "4a sends no push or reminder notifications from a server, and has no server that could. The only notification about what to listen to is a new-episode alert, which your phone makes itself after its background check (§4.3), only for a show you follow with alerts on, and only if you allowed notifications."
+- M3 says: "saying no only hides those controls, and nothing else changes." Becomes: "saying no hides those controls and new-episode alerts, and nothing else changes."
+- M3 says: "That is the only device permission the app asks for, and on an iPhone it asks for none." Becomes: "That is the only device permission the app asks for. On an iPhone it is also the only one: 4a asks for it the first time you turn on new-episode alerts for a show, and saying no leaves that show's alerts off."
+
+If M3 has not been approved when PQ-30 opens, `main`'s bullet ("no notifications. The app requests no device permissions.") would be false on both phones. PQ-30 then waits for M3 plus this delta, or carries both for your approval.
+
+Sentence 8, `docs/legal/data-safety.md` rows: **none.** `grep -i notif docs/legal/data-safety.md` finds no notification row on `main` (2026-10-09), so no data-safety row changes. Alerts add no data type: the background check sends what §4.3 already lists. One exception: if #1163 item 8's proposed A2 row "**Permissions (Android)**" (M3) is on `main` before PQ-30, its "for the lock-screen controls" becomes "for the lock-screen controls and new-episode alerts", and its "iOS asks for no permission." becomes "iOS asks only for the notification permission, the first time you turn on a show's new-episode alerts."
+
+Sentence 9, `docs/store/play/full-description.txt` (the Play listing, HA #26):
+
+- Line 22 says: "Follow a show to keep it one tap away in your Library, marked when it has new episodes. Following queues nothing and sends no phone notification." Becomes: "Follow a show to keep it one tap away in your Library, marked when it has new episodes. If you allow notifications, your phone can also tell you when a show you follow has a new episode; turn that off per show. Following queues nothing."
+- Line 34 says: "4a keeps no streaks, has no infinite scroll, and sends no notifications to pull you back in." Becomes: "4a keeps no streaks, has no infinite scroll, and sends no notifications to pull you back in. The only alert is a new episode of a show you follow, and only with that show's alerts on."
+
+To answer Sentences 5-9, reply `approved 5-9`, or say what to change, any time before PQ-30 opens. For **Worked if**, Sentences 5-9 count once they are approved or reworded. The policy on `main` says them only after PQ-30 merges.
+
 ## #134 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
 <!-- ha filed=2026-10-04 kind=default -->
 
