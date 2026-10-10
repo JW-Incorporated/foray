@@ -383,6 +383,38 @@ jobs:
             test "$k" -eq 0 || { echo "$m skipped $k unit test(s): a skipped test proves nothing"; exit 1; }
           done
 
+      - name: foray-notify JUnit — the undeclared plugin's tests, its module included for this step only (PQ-29)
+        # PQ-29 (#761; docs/roadmap/player-features.md): foray-notify's Android
+        # half (WorkManager periodic check, the foray_alerts channel, the tap
+        # that emits alertOpened, and the stale-page guard: "a record rolled back
+        # by the page does not notify twice"). The plugin is NOT declared in
+        # mobile/package.json yet (PQ-30 declares it), so `cap sync` never
+        # includes `:foray-notify` and the step above cannot name it. So this
+        # step includes the module by hand for its own Gradle call only, and
+        # puts the generated settings.gradle back however the call ends: the
+        # APKs below are built exactly as before, without this module, which is
+        # what keeps the plugin inert. Same report rule as the step above: a run
+        # with no test case, or a skipped one, fails.
+        working-directory: mobile/android
+        run: |
+          set -euo pipefail
+          cp settings.gradle "$RUNNER_TEMP/settings.gradle.orig"
+          trap 'cp "$RUNNER_TEMP/settings.gradle.orig" settings.gradle' EXIT
+          printf '\ninclude %s\nproject(%s).projectDir = new File(%s)\n' \
+            "':foray-notify'" "':foray-notify'" "'../plugins/foray-notify/android'" >> settings.gradle
+          if ! ./gradlew :foray-notify:testDebugUnitTest --no-daemon --console=plain \
+              > "$ART/gradle-foray-notify-unit-test.log" 2>&1; then
+            echo "::group::foray-notify unit test log tail"; tail -300 "$ART/gradle-foray-notify-unit-test.log"; echo "::endgroup::"
+            exit 1
+          fi
+          grep -E "^BUILD (SUCCESSFUL|FAILED)" "$ART/gradle-foray-notify-unit-test.log" | tail -1 || true
+          d="../plugins/foray-notify/android/build/test-results/testDebugUnitTest"
+          n=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<testcase ' || true)
+          k=$(cat "$d"/TEST-*.xml 2>/dev/null | grep -c '<skipped' || true)
+          echo "foray-notify: $n test cases, $k skipped" | tee -a "$ART/native-unit-test-counts.txt"
+          test "$n" -gt 0 || { echo "foray-notify ran no unit tests"; exit 1; }
+          test "$k" -eq 0 || { echo "foray-notify skipped $k unit test(s): a skipped test proves nothing"; exit 1; }
+
       - name: JVM engine core — foray-engine-core-jvm is wired in and its tests run on a plain JVM (A-21)
         # docs/plans/android-assessment.md A-21. The Android engine's core is a
         # `java-library` module (no Android plugin, no Robolectric), nested at

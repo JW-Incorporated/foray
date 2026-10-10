@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  `foray-notify`'s library manifest (issue #761; PQ-29). AGP merges it into the
+  generated app's manifest only once mobile/package.json declares the plugin
+  (PQ-30); until then no shell includes the module and nothing here ships.
+
+  POST_NOTIFICATIONS: from Android 13 (API 33) a notification the user has not
+  permitted is not shown, and Capacitor refuses to request a permission alias
+  whose permission the manifest does not declare. foray-audio declares the same
+  permission for its playback notification; the merger keeps one.
+
+  INTERNET is the app's already (Capacitor's template); the check asks the same
+  endpoint the show page does, so nothing new is reached.
+
+  WorkManager's own library manifest (androidx.work:work-runtime) brings its
+  InitializationProvider, its job service and receivers, and the
+  RECEIVE_BOOT_COMPLETED, WAKE_LOCK, ACCESS_NETWORK_STATE and FOREGROUND_SERVICE
+  permissions with it. Those merge only when PQ-30 declares the plugin; that PR
+  is where the store's permission list and data-safety answers are re-read.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <application>
+    </application>
+</manifest>
