@@ -110,7 +110,7 @@ public final class EnginePlayer extends SimpleBasePlayer {
            rate 0, and its load would read READY, a running clock. BUFFERING is the one Media3
            state that keeps play-when-ready (the controls still say pause) and stops extrapolating
            the playhead. */
-        boolean stalled = playing && view.buffering();
+        boolean stalled = playing && position != null && position.playbackRate() == 0;
         float speed = position != null && position.playbackRate() > 0 ? (float) position.playbackRate() : 1f;
         int before = availability.isEnabled(MediaMapping.RemoteCommand.PREVIOUS_TRACK) ? 1 : 0;
         int after = availability.isEnabled(MediaMapping.RemoteCommand.NEXT_TRACK) ? 1 : 0;
