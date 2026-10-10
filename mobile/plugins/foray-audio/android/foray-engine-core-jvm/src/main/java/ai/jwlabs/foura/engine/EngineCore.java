@@ -183,7 +183,7 @@ public final class EngineCore {
         view.durationSec = duration;
         view.positionSec = position;
         view.playbackRate = state.rate;
-        view.buffering = state.buffering || loading;
+        view.buffering = state.buffering;
         view.playing = state.isRunning();
         view.inSeamGap = false;
         view.ended = state.stateType().equals("ended");
