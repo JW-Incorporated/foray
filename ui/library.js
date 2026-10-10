@@ -461,7 +461,14 @@ function yoursNothingYet(queued, savedCount, historyCount, playlistCount) {
   const playlistsNow = playlistCount == null ? playlists().length : playlistCount;
   const downloadsNow = state.downloadBridge && Object.values(downloadsValue().items).some((rec) => rec.status === "done");
   const forayProgressNow = window.ForayPlayer && state.forays ? forayProgressLabels().size : 0;
-  return queued === 0 && followedNow === 0 && saved === 0 && history === 0 && playlistsNow === 0 && !downloadsNow && !forayProgressNow;
+  /* A listener who ASKED for the Forays chip (#/forays, the drawer's Forays, Home's
+     draft notice, a Foray's back key) with published forays to list is not looking at
+     an empty library: before Yours, #/forays listed every published foray to anyone. */
+  const publishedForays = !state.forays ? 0
+    : window.ForayPlayer ? forayCards().length
+    : (Array.isArray(state.forays.forays) ? state.forays.forays.length : 0);   // before the player loads: the document's own count
+  const forayAsked = state.yoursChip === "forays" && publishedForays > 0;
+  return queued === 0 && followedNow === 0 && saved === 0 && history === 0 && playlistsNow === 0 && !downloadsNow && !forayProgressNow && !forayAsked;
 }
 
 function yoursEmptyPanelHtml() {
@@ -1072,6 +1079,8 @@ function renderLibrary(chip) {
   const historyHidden = allHistoryRows.length - historyRows.length;
   const allPlaylists = playlists();
   const queueList = queueRows();
+  /* The chip a caller asked for is set BEFORE the empty-state decision, which reads it. */
+  if (typeof chip === "string" && yoursChipDefs().some((c) => c.key === chip)) state.yoursChip = chip;
   const nothingYet = yoursNothingYet(queueList.length, allSavedRows.length, allHistoryRows.length, allPlaylists.length);
 
   const rowHtml = (r, i, ctx) => r.state === "live" ? epRow(r.item, i, ctx, -1) : archivedRow(r.item, i, ctx);

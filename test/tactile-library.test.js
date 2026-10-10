@@ -1194,6 +1194,48 @@ test("route() sends #/forays and #/starred-shows to Yours and the page opens on 
   }
 });
 
+test("a NEW listener (nothing saved, played, queued or followed) who asks for the Forays chip sees the published forays, not the empty panel", async () => {
+  /* The two tests above seed cp_history, which hides this: with a seed the page is never the
+     first-run screen. A new listener who opens #/forays, the drawer's Forays, Home's draft
+     notice or a Foray's back key must still get every published foray, as #/forays did before
+     Yours. A bare #/library visit stays the first-run screen.
+     MUTATION 1: delete the `forayAsked` term from yoursNothingYet (ui/library.js) -> the
+     forays panel is absent, #yours-panel-empty is drawn, and the first block goes red.
+     MUTATION 2: move the `state.yoursChip = chip` line in renderLibrary back below the
+     `nothingYet` line -> a cold #/forays (chip passed as an argument, memory still empty) goes
+     red in the second block. MUTATION 3: drop `forayCards().length` from forayAsked -> a
+     listener with no published forays loses the first-run screen and the third block goes red. */
+  const m = await mountBooted({});
+  const published = () => (m.state.forays.forays || []).filter((f) => f.status === "published");
+  assert.ok(m.state.forays && published().length > 0, "the fixture publishes forays (else this proves nothing)");
+  /* The player module's own listing, as the real listableForays does for a plain visitor. */
+  withPlayer(m, null, { listForays: () => published() });
+  m.ctx.location.hash = "#/library";
+  m.state.yoursChip = null;
+  m.ctx.renderLibrary();
+  assert.ok(m.doc.querySelector("#yours-panel-empty"), "a bare visit by a new listener is still the first-run screen");
+  /* Block 1: the route rewrite (cold open, drawer, notice and back key all land here). */
+  m.ctx.location.hash = "#/forays";
+  m.ctx.route();
+  assert.strictEqual(m.ctx.location.hash, "#/library");
+  assert.ok(!m.doc.querySelector("#yours-panel-empty"), "no empty panel when forays are asked for");
+  assert.ok(m.doc.querySelector("#yours-panel-forays"), "the Forays panel is drawn");
+  assert.ok(m.html().includes('href="#/foray/'), "and it lists the forays");
+  assert.ok(m.doc.querySelector("#yours-chips"), "with the chip strip");
+  /* Block 2: the argument alone, memory empty (a paint that does not route). */
+  m.state.yoursChip = null;
+  m.ctx.renderLibrary("forays");
+  assert.ok(m.doc.querySelector("#yours-panel-forays") && !m.doc.querySelector("#yours-panel-empty"), "the chip argument alone is enough");
+  /* Block 3: nothing published -> still the first-run screen. */
+  const kept = m.state.forays;
+  m.state.forays = { forays: [] };
+  m.state.yoursChip = null;
+  m.ctx.renderLibrary("forays");
+  const emptyDrawn = Boolean(m.doc.querySelector("#yours-panel-empty"));
+  m.state.forays = kept;
+  assert.ok(emptyDrawn, "with no forays to list, the first-run screen stays");
+});
+
 test("a link that means 'Yours, on this chip' sets the chip, and on Yours already shows that panel", async () => {
   /* The drawer's Forays, a Foray's back key and Home's draft notice all carry
      data-yours-chip-link beside a plain #/library href.
@@ -1232,5 +1274,8 @@ test("no in-app link, key or status page points at the retired #/forays or #/sta
   for (const f of ["ui/foray.js", "ui/home.js", "ui/library.js"]) {
     const src = fs.readFileSync(path.join(ROOT, f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
     assert.ok(!/href="[^"]*#\/(forays|starred-shows)"/.test(src), `${f} writes no href to a retired page`);
+    /* The template-literal form: [^"]* above stops at the quote inside safeUrl("..."), so
+       href="${esc(safeUrl("#/forays"))}" slipped past it. Match the call itself. */
+    assert.ok(!/safeUrl\(\s*["'`]#\/(forays|starred-shows)["'`]\s*\)/.test(src), `${f} passes no retired page to safeUrl`);
   }
 });
