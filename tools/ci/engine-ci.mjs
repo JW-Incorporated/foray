@@ -345,11 +345,12 @@ export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}
   const lines = [];
   let pending = false;
   let red = false;
+  let absent = false;
   for (const name of RELEASE_REQUIRED_CHECKS) {
     const run = runsByName[name];
     if (!run || isSkippedRun(run)) {
       lines.push(run ? `${name}: skipped on this SHA (nothing tested it)` : `${name}: no check run on this SHA`);
-      if (missingIsFinal) red = true;
+      if (missingIsFinal) absent = true;
       else pending = true;
     } else if (run.status !== "completed") {
       lines.push(`${name}: ${run.status}`);
@@ -362,7 +363,12 @@ export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}
     }
   }
   const message = lines.join("; ");
-  if (red) return { done: true, ok: false, message };
+  /* `cause` says WHY a refusal refused (issue #745): "red" when a check ran
+   * and did not pass, "absent" when the only reason is a check that never ran
+   * on this SHA. It changes nothing about the rule (both refuse); it only lets
+   * releaseRefusalLines() tell "main moved on before CI could test this
+   * commit" apart from "CI tested it and it failed". */
+  if (red || absent) return { done: true, ok: false, message, cause: red ? "red" : "absent" };
   if (pending) return { done: false, ok: false, message };
   return { done: true, ok: true, message };
 }
@@ -398,10 +404,13 @@ export function releaseChecksVerdict(runsByName, { missingIsFinal = false } = {}
  *  dispatch runs on the branch tip, so it would test a different commit). */
 export function releaseDispatchPlan({ byName = {}, refName, defaultBranch, branchHeadSha, sha }) {
   const missing = RELEASE_REQUIRED_CHECKS.filter((n) => !byName[n] || isSkippedRun(byName[n]));
-  if (!missing.length) return { dispatch: false, reason: "every required check has a run on this SHA that was not skipped" };
+  if (!missing.length) {
+    return { dispatch: false, code: "checks-exist", reason: "every required check has a run on this SHA that was not skipped" };
+  }
   if (!defaultBranch || refName !== defaultBranch) {
     return {
       dispatch: false,
+      code: "not-default-branch",
       reason: `${missing.join(", ")} missing, but this release runs from '${refName}', not '${defaultBranch}'; a dispatch there would not run them in full`,
     };
   }
@@ -410,10 +419,58 @@ export function releaseDispatchPlan({ byName = {}, refName, defaultBranch, branc
   if (!head || !want || !(head === want || (want.length < 40 && head.startsWith(want)))) {
     return {
       dispatch: false,
+      /* "branch-moved" needs a KNOWN head: an unreadable head is no evidence
+       * that main moved on, so it must never let a refusal read as superseded. */
+      code: head && want ? "branch-moved" : "head-unknown",
       reason: `${missing.join(", ")} missing, but ${defaultBranch} is at ${head.slice(0, 12) || "unknown"}, not ${want.slice(0, 12)}; a dispatch would test a different commit`,
     };
   }
-  return { dispatch: true, reason: `${missing.join(", ")} missing on ${want.slice(0, 12)}; dispatching ci.yml on ${defaultBranch}` };
+  return { dispatch: true, code: "dispatch", reason: `${missing.join(", ")} missing on ${want.slice(0, 12)}; dispatching ci.yml on ${defaultBranch}` };
+}
+
+/** The line a SUPERSEDED refusal prints, at the start of a log line, for
+ *  tools/release/watch-release.mjs to read back out of the ios-checks job's
+ *  log (issue #745). One literal, shared by the writer and the reader below. */
+export const RELEASE_SUPERSEDED_MARKER = "RELEASE_CHECKS_SUPERSEDED";
+
+/** What release-checks prints when it refuses.
+ *
+ *  SUPERSEDED (issue #745, release run 73, 2026-10-09). Run 73 was dispatched
+ *  on 6c7ba11, which had no CI because automerge landed it. By the time
+ *  ios-checks asked, main had moved on to 2d81b65, so releaseDispatchPlan
+ *  rightly refused to dispatch ci.yml ("a dispatch would test a different
+ *  commit"), the checks never appeared, and the gate refused. Nothing was
+ *  wrong with that commit: nobody could test it any more, and a newer one was
+ *  already waiting. The release trigger counted it as a failure anyway, and
+ *  two such runs froze TestFlight behind the retry budget.
+ *
+ *  So a refusal whose plan was "branch-moved" AND whose verdict refused only
+ *  because the checks were absent also prints RELEASE_SUPERSEDED_MARKER. The
+ *  refusal itself is unchanged: same exit, same ::error::, and green on THIS
+ *  SHA is still the only pass. A refusal for a RED check is never superseded,
+ *  even after main moved: that commit was tested and failed. */
+export function releaseRefusalLines({ sha, verdict, plan }) {
+  const lines = [];
+  if (plan && plan.code === "branch-moved" && verdict && verdict.ok === false && verdict.cause === "absent") {
+    lines.push(`${RELEASE_SUPERSEDED_MARKER} sha=${sha}: ${plan.reason}`);
+  }
+  lines.push(
+    `::error::release-checks: refusing to cut an iOS TestFlight from ${sha}: ${verdict.message}. ` +
+      "engine-parity and ios-kit must both be green on the exact SHA being released (docs/native-engine-plan.md G-1b)."
+  );
+  return lines;
+}
+
+const SUPERSEDED_LINE = new RegExp(`^(?:\\S+ )?${RELEASE_SUPERSEDED_MARKER} `, "m");
+
+/** The reader's half: an ios-checks job log -> "superseded" when the refusal
+ *  printed RELEASE_SUPERSEDED_MARKER, "refused" for any other readable log,
+ *  null when there is no log to read. Anchored to the start of a log line
+ *  (after the runner's timestamp), so only the line release-checks printed
+ *  counts, never the marker quoted inside some other line. */
+export function releaseRefusalKind(log) {
+  if (typeof log !== "string" || log.trim() === "") return null;
+  return SUPERSEDED_LINE.test(log) ? "superseded" : "refused";
 }
 
 /* ─────────────────────────────── GitHub API ───────────────────────────────── */
@@ -535,12 +592,13 @@ async function main(argv) {
     /* An auto-merged tip of main has no CI run (see releaseDispatchPlan); ask
        for one before waiting. Any failure here falls through to the wait,
        which refuses on missing checks exactly as before — never a pass. */
+    let plan = null;
     try {
       const defaultBranch = env.DEFAULT_BRANCH;
       const branchHeadSha = defaultBranch
         ? (await get(`/repos/${repo}/commits/${encodeURIComponent(defaultBranch)}`))?.sha
         : null;
-      const plan = releaseDispatchPlan({ byName: await fetchChecks(), refName: env.REF_NAME, defaultBranch, branchHeadSha, sha });
+      plan = releaseDispatchPlan({ byName: await fetchChecks(), refName: env.REF_NAME, defaultBranch, branchHeadSha, sha });
       console.log(`release-checks: ${plan.reason}`);
       if (plan.dispatch) {
         await post(`/repos/${repo}/actions/workflows/ci.yml/dispatches`, { ref: defaultBranch });
@@ -562,10 +620,7 @@ async function main(argv) {
       console.log(`release-checks: ${sha} may ship to TestFlight — ${verdict.message}`);
       return 0;
     }
-    console.log(
-      `::error::release-checks: refusing to cut an iOS TestFlight from ${sha}: ${verdict.message}. ` +
-        "engine-parity and ios-kit must both be green on the exact SHA being released (docs/native-engine-plan.md G-1b)."
-    );
+    for (const line of releaseRefusalLines({ sha, verdict, plan })) console.log(line);
     return 1;
   }
   console.error("Usage: node tools/ci/engine-ci.mjs <engine-paths|summary <report>|ios-gate|release-checks <sha>>");
