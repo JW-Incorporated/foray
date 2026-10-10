@@ -480,8 +480,6 @@ final class FakeOutput: EngineOutput {
     private(set) var positions: [PositionWrite] = []
     private(set) var rows: [StoredRow] = []
     private(set) var restores: [RestoreRecord?] = []
-    private(set) var events: [PendingEvent] = []
-    private(set) var emitted: [EngineEvent] = []
     private(set) var diags: [DiagEntry] = []
     /// Called on every diag row, inside the host's turn: a test uses it to
     /// send an input re-entrantly.
@@ -492,8 +490,6 @@ final class FakeOutput: EngineOutput {
     func writePosition(_ write: PositionWrite) { positions.append(write); log.add("output.position") }
     func writeRow(_ row: StoredRow) { rows.append(row); log.add("output.row") }
     func writeRestore(_ record: RestoreRecord?) { restores.append(record); log.add("output.restore") }
-    func appendEvent(_ event: PendingEvent) { events.append(event); log.add("output.event") }
-    func emit(_ event: EngineEvent) { emitted.append(event); log.add("output.emit") }
     func flush() { log.add("output.flush") }
 
     func diag(_ entry: DiagEntry) {

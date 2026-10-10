@@ -3719,9 +3719,18 @@ test("NE-19: only EngineStore touches UserDefaults in the engine, its shared wri
   assert.match(purge, /EngineKeys\.sharedRowKey\(rawKey: rawKey\) != nil \|\| EngineKeys\.isPrivate\(rawKey: rawKey\)/,
     "the purge enumerates the defaults: shared engine rows and EVERY ForayEngine.* key");
   assert.match(purge, /diagnostics\.purge\(\)/, "the purge removes the ring file");
-  for (const name of ["writePosition", "writeRow", "writeRestore", "appendEvent", "emit", "diag", "flush"]) {
+  for (const name of ["writePosition", "writeRow", "writeRestore", "diag", "flush"]) {
     assert.ok(swiftFuncBody(store, name), `EngineStore has no ${name}`);
   }
+  /* CH3-24 (R1-08): the page's events have ONE way out of the host,
+     `ForayEngine.onEmit` (the bridge sets it); the pending events ride in the
+     restore record and the snapshot. The output once carried both again, to
+     an `EngineStore.onEmit`/`onPendingEvent` nobody ever set. MUTATION: put
+     `func emit(_ event: EngineEvent)` back in `protocol EngineOutput` -> red. */
+  const outputProtocol = /protocol EngineOutput: AnyObject \{([\s\S]*?)\n\}/.exec(stripSwiftComments(fs.readFileSync(SEAMS_SWIFT, "utf8")));
+  assert.ok(outputProtocol, "Seams.swift declares protocol EngineOutput");
+  assert.doesNotMatch(outputProtocol[1], /func (emit|appendEvent)\(/, "EngineOutput carries the page's events again: they leave the host through onEmit only");
+  assert.doesNotMatch(store, /\bon(Emit|PendingEvent)\b/, "EngineStore grew a page-event hook again; the bridge hooks ForayEngine.onEmit");
   // Written synchronously: nothing in the store defers a write.
   assert.doesNotMatch(store, /DispatchQueue|asyncAfter|\.async\b|Task\s*\{|OperationQueue/, "EngineStore defers a write");
 
