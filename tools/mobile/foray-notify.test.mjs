@@ -355,7 +355,9 @@ test("Android: a tap emits alertOpened { showId } warm (handleOnNewIntent) and c
      opens the app where it was. RUN.
      MUTATION: drop the cold-start read in load() -> a tap that launches the app
      is lost. RUN.
-     MUTATION: payload key "showId" -> "show" -> routeForAlert gets null. RUN. */
+     MUTATION: payload key "showId" -> "show" -> routeForAlert gets null. RUN.
+     MUTATION: drop the held-tap notifyListeners from addListener -> a cold tap
+     is held forever and never reaches the page. RUN. */
   const src = java("ForayNotifyPlugin");
   assert.match(javaBody(src, "handleOnNewIntent"), /consumeAlertIntent\(intent\)/);
   assert.match(javaBody(src, "load"), /consumeAlertIntent\(activity\.getIntent\(\)\)/);
@@ -367,6 +369,8 @@ test("Android: a tap emits alertOpened { showId } warm (handleOnNewIntent) and c
   assert.match(emit, /notifyListeners\(AlertRules\.EVENT_ALERT_OPENED, payload\(showId\)\)/);
   assert.match(emit, /heldShowId = showId;/, "the last unheard tap is held");
   assert.match(javaBody(src, "addListener"), /super\.addListener\(call\);/);
+  assert.match(javaBody(src, "addListener"), /heldShowId = null;\s*notifyListeners\(AlertRules\.EVENT_ALERT_OPENED, payload\(showId\)\);/,
+    "the held tap is released to the listener that attaches");
   const key = /data\.put\("([a-zA-Z]+)", showId\)/.exec(src)?.[1];
   assert.equal(routeForAlert({ [key]: "lex-fridman" }), "#/show/lex-fridman");
   const poster = java("AlertPoster");
