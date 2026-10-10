@@ -40,6 +40,7 @@ public class ForayAudioPluginSessionEventTest {
         JSObject event = ForayAudioPlugin.sessionEvent(
             PlaybackKeepAliveService.SESSION_ROUTE_CHANGE,
             PlaybackKeepAliveService.REASON_OLD_DEVICE_GONE,
+            Collections.emptyMap(),
             1_700_000_000_000L
         );
         List<String> keys = new ArrayList<>();
