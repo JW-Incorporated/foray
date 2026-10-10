@@ -1264,6 +1264,34 @@ test("a link that means 'Yours, on this chip' sets the chip, and on Yours alread
   assert.strictEqual(m.state.yoursChip, "saved", "a key that is not a chip is ignored");
 });
 
+test("a NEW listener already on the empty Yours screen who taps the drawer's Forays sees the published forays", async () => {
+  /* The 'link that means Yours' test above seeds cp_history, so the chip strip always exists and
+     the first-run screen (no strip) is never exercised. There the drawer closes and sameHashTap
+     treats #/library -> #/library as a same-page tap (no route, no repaint), so without the
+     empty-screen branch the listener stays on 'Nothing saved yet'.
+     MUTATION: drop the `renderLibrary(chip)` branch in onYoursChipLinkClick (ui/library.js) ->
+     #yours-panel-empty is still drawn, #yours-panel-forays is absent and preventDefault is
+     never called, so this goes red. */
+  const m = await mountBooted({});
+  const published = () => (m.state.forays.forays || []).filter((f) => f.status === "published");
+  assert.ok(m.state.forays && published().length > 0, "the fixture publishes forays (else this proves nothing)");
+  withPlayer(m, null, { listForays: () => published() });
+  m.ctx.location.hash = "#/library";
+  m.state.yoursChip = null;
+  m.ctx.renderLibrary();
+  assert.ok(m.doc.querySelector("#yours-panel-empty") && !m.doc.querySelector("#yours-chips"), "precondition: the empty screen, no chip strip");
+  let prevented = false;
+  m.ctx.onYoursChipLinkClick({
+    target: { closest: (sel) => (sel === "[data-yours-chip-link]" ? { getAttribute: () => "forays" } : null) },
+    preventDefault() { prevented = true; },
+  });
+  assert.strictEqual(prevented, true, "the same-page tap is taken over, not left to sameHashTap");
+  assert.ok(!m.doc.querySelector("#yours-panel-empty"), "the empty panel is gone");
+  assert.ok(m.doc.querySelector("#yours-panel-forays"), "the Forays panel is drawn");
+  assert.ok(m.html().includes('href="#/foray/'), "and it lists the forays");
+  assert.strictEqual(one(m, '[aria-selected="true"]').getAttribute("data-yours-chip"), "forays");
+});
+
 test("no in-app link, key or status page points at the retired #/forays or #/starred-shows pages", () => {
   /* MUTATION: put `href="#/forays"` back on the drawer's Forays entry in index.html, or write
      `href="${esc(safeUrl("#/forays"))}"` into forayBarHtml -> red. The routes still resolve (the

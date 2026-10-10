@@ -1048,10 +1048,20 @@ function onYoursChipLinkClick(e) {
   const chip = hit.getAttribute("data-yours-chip-link");
   if (!yoursChipDefs().some((c) => c.key === chip)) return;
   state.yoursChip = chip;
-  if (currentHash() === "#/library" && $("#yours-chips")) {
-    if (typeof e.preventDefault === "function") e.preventDefault();
-    selectYoursChip(chip, { focus: true });
-    openDrawer(false);
+  if (currentHash() === "#/library") {
+    if ($("#yours-chips")) {
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      selectYoursChip(chip, { focus: true });
+      openDrawer(false);
+    } else if ($("#yours-panel-empty")) {
+      /* THE FIRST-RUN SCREEN DRAWS NO CHIP STRIP, so there is nothing to select; and the
+         drawer's own handler would treat #/library -> #/library as a same-page tap and
+         repaint nothing. A new listener who asks for Forays must see them: paint again
+         with the chip, which renderLibrary honours for a published-forays listener. */
+      if (typeof e.preventDefault === "function") e.preventDefault();
+      renderLibrary(chip);
+      openDrawer(false);
+    }
   }
 }
 
