@@ -104,9 +104,9 @@ final class InOutPointMeasurementTests: XCTestCase {
                detector's one-sample bias (0.125 ms): that is the end-to-end
                check that counting frames is right. For an MP3 it is the encoder
                delay as AVFoundation's decoder presents it.
-               A probe whose TAP was compromised (a buffer without a source
-               time, a jump in the counted timeline, or a playhead that stalled)
-               gets one retry; see `delayVerdict`. */
+               A probe whose TAP was compromised (buffers without a source time
+               beyond the routine leading one, a jump in the counted timeline,
+               or a playhead that stalled) gets one retry; see `delayVerdict`. */
             let first = try streamDelay(url, descriptor: descriptor)
             var retry: StreamDelayProbe?
             var verdict = Self.delayVerdict(first)
@@ -193,11 +193,18 @@ final class InOutPointMeasurementTests: XCTestCase {
     /// probe failed with `timeControlStatus=0 waiting=- rate=0.0 t=1.879
     /// itemError=- tapBuffers=24 invalidRanges=1 unsupportedFormat=false
     /// tapRate=16000.0 events=1`. The `rate=0.0` was the probe's own pause (the
-    /// state was read after it); the player did play. The signal was
-    /// `invalidRanges=1`: a buffer with no source time, a gap in the tap, so the
-    /// first onset came late or the stream stalled. So the player's state is now
-    /// read BEFORE the pause, and the tap's counters decide whether a miss is a
-    /// measurement fault (fail) or a compromised probe (retry once, then skip).
+    /// state was read after it); the player did play. `invalidRanges=1` was NOT
+    /// the signal: one leading buffer with no source time is what a healthy tap
+    /// shows (`invalidRangesBaseline`). The table note for that probe read
+    /// `click-cbr.mp3: delay - ms ... (that run's first label: -23.2 ms)`, and
+    /// a label is only reported when `first()` found an onset, so an onset WAS
+    /// found and lay 0.5 s or more past where the first click was authored: the
+    /// first click went unheard on a tap with no gap, no jump and no stall.
+    /// That stays a FAIL here (`run37982836770` in the verdict test), and its
+    /// root cause is still open. What this adds: the player's state is read
+    /// BEFORE the pause, the report tells "nothing heard" from "heard, out of
+    /// tolerance", and only a tap that really was compromised (a gap after the
+    /// run began, a jump, a stall) earns one retry and then a skip.
     struct StreamDelayProbe {
         /// The decoder delay: the first onset's delay when it lies within
         /// `delayToleranceSec` of where the first click was authored.
@@ -220,6 +227,16 @@ final class InOutPointMeasurementTests: XCTestCase {
         /// "Well short": a playhead this far behind the wall clock stalled. A
         /// prerolled local file starts in tens of milliseconds.
         static let playheadShortfallSec = 1.0
+        /// The invalid ranges a HEALTHY tap shows: the leading buffer arrives
+        /// with no source time and `BufferTimeline.place` drops it before the
+        /// run is anchored (which is why such runs anchor 23.2 ms before the
+        /// request). In run 37982836770, 29 of the 34 trials that measured
+        /// cleanly logged `invalidRanges:1` and the other 5 logged 0; all 34
+        /// logged `discontinuities:0`. So only invalid ranges BEYOND this one
+        /// are a gap in the tap. (ClickTap counts every invalid range alike; a
+        /// counter of the ones after the anchor would be exact, and is not in
+        /// this file's reach.)
+        static let invalidRangesBaseline = 1
 
         var foundOnset: Bool { rawDelaySec != nil }
         var advancedSec: Double { played.currentSec - startSec }
@@ -229,7 +246,9 @@ final class InOutPointMeasurementTests: XCTestCase {
         /// ends paused.
         var compromise: String? {
             var why: [String] = []
-            if invalidRanges > 0 { why.append("invalidRanges=\(invalidRanges) (tap buffers with no source time)") }
+            if invalidRanges > Self.invalidRangesBaseline {
+                why.append("invalidRanges=\(invalidRanges) (tap buffers with no source time, beyond the leading one)")
+            }
             if discontinuities > 0 { why.append("discontinuities=\(discontinuities) (the counted timeline jumped)") }
             if spunSec - advancedSec > Self.playheadShortfallSec {
                 why.append(String(format: "the playhead advanced %.3f s in %.3f s of wall time", advancedSec, spunSec))
@@ -313,32 +332,51 @@ final class InOutPointMeasurementTests: XCTestCase {
     }
 
     /// The verdict, on probes built by hand, no player. Run 37982836770's
-    /// numbers are the first case.
+    /// probe, rebuilt from what it logged, is the first case, and it FAILS.
     /// MUTATIONS this kills: drop any one of `compromise`'s three clauses;
+    /// count the routine leading invalid range (`invalidRanges > 0`, or
+    /// `invalidRangesBaseline = 0`); excuse a real gap (`invalidRanges > 2`);
     /// retry or skip on `timeControlStatus != .playing && rate == 0` (or on any
     /// miss); fail instead of retrying a compromised first probe; retry a
     /// second time; let a compromised first probe excuse a clean retry's miss;
     /// report an out-of-tolerance onset as "no click heard".
     func testDelayVerdictRetriesOnlyACompromisedTapAndFailsACleanMiss() {
-        func probe(raw: Double? = nil, status: AVPlayer.TimeControlStatus = .playing, rate: Float = 1,
-                   at currentSec: Double = 3.95, spun: Double = 4.0,
+        func probe(raw: Double? = nil, label: Double = 0, status: AVPlayer.TimeControlStatus = .playing,
+                   rate: Float = 1, at currentSec: Double = 3.95, spun: Double = 4.0,
                    invalid: Int = 0, jumps: Int = 0, state: String = "after") -> StreamDelayProbe {
             StreamDelayProbe(
                 delaySec: raw.flatMap { abs($0) < StreamDelayProbe.delayToleranceSec ? $0 : nil },
-                rawDelaySec: raw, runLabelSec: raw == nil ? nil : 0,
+                rawDelaySec: raw, runLabelSec: raw == nil ? nil : label,
                 played: MeasuredDeck.PlayState(timeControlStatus: status, rate: rate, currentSec: currentSec),
                 startSec: 0, spunSec: spun, invalidRanges: invalid, discontinuities: jumps, state: state)
         }
-        /* Run 37982836770: a gap in the tap (and a playhead short of the wall). */
-        let run37982836770 = probe(at: 1.879, invalid: 1, state: "run-37982836770")
-        XCTAssertEqual(Self.delayVerdict(run37982836770), .retry)
+        /* Run 37982836770 as it was logged: "first label: -23.2 ms", so an
+           onset WAS found, and `first()` only returns onsets at or past
+           firstClickSec - 0.5, so out of tolerance means +0.5 s or more (the
+           exact value was not logged; 0.86 s stands in). The spin ends when
+           that onset is found, so wall time ~ the 1.879 s playhead.
+           invalidRanges=1 is the healthy baseline; the tap's discontinuities
+           were not logged, and the event sat in run 0, so no jump preceded it.
+           No clause catches it: a clean tap missed the first click. That is a
+           real FAIL, and its root cause is still open. */
+        let run37982836770 = probe(raw: 0.86, label: -0.0232, at: 1.879, spun: 1.92, invalid: 1,
+                                   state: "run-37982836770")
+        XCTAssertNil(run37982836770.compromise)
+        guard case .fault(let logged) = Self.delayVerdict(run37982836770) else {
+            return XCTFail("run 37982836770's probe was a clean tap's out-of-tolerance click: it must fail")
+        }
+        XCTAssertTrue(logged.hasPrefix("a first click was heard playing from zero, but 860.0 ms"), logged)
+        /* The healthy baseline is no compromise; one more is a gap. */
+        guard case .fault(_) = Self.delayVerdict(probe(invalid: 1)) else {
+            return XCTFail("one leading invalid range is what a healthy tap shows: a miss on it must fail")
+        }
+        XCTAssertEqual(Self.delayVerdict(probe(invalid: 2)), .retry)
         /* Each clause alone compromises a probe. */
-        XCTAssertEqual(Self.delayVerdict(probe(invalid: 1)), .retry)
         XCTAssertEqual(Self.delayVerdict(probe(jumps: 1)), .retry)
         XCTAssertEqual(Self.delayVerdict(probe(at: 1.879)), .retry)
         XCTAssertNil(probe(at: 3.2).compromise, "0.8 s behind the wall clock is start-up, not a stall")
         /* A clean tap's miss fails, even though the player reads paused at rate 0. */
-        let cleanSilence = probe(status: .paused, rate: 0)
+        let cleanSilence = probe(status: .paused, rate: 0, invalid: 1)
         guard case .fault(let silent) = Self.delayVerdict(cleanSilence) else {
             return XCTFail("a clean tap that heard nothing must fail: \(Self.delayVerdict(cleanSilence))")
         }
@@ -351,15 +389,17 @@ final class InOutPointMeasurementTests: XCTestCase {
         XCTAssertNil(probe(raw: 0.75).delaySec)
         XCTAssertTrue(probe(raw: 0.75).foundOnset)
         /* The retry decides. */
-        XCTAssertEqual(Self.delayVerdict(run37982836770, retry: probe(raw: 0.0425)), .measured(0.0425))
-        guard case .fault(let afterRetry) = Self.delayVerdict(run37982836770, retry: probe()) else {
+        let gapped = probe(invalid: 3, state: "gapped-first")
+        XCTAssertEqual(Self.delayVerdict(gapped), .retry)
+        XCTAssertEqual(Self.delayVerdict(gapped, retry: probe(raw: 0.0425, invalid: 1)), .measured(0.0425))
+        guard case .fault(let afterRetry) = Self.delayVerdict(gapped, retry: probe(invalid: 1)) else {
             return XCTFail("a clean retry that heard nothing must fail")
         }
-        XCTAssertTrue(afterRetry.contains("run-37982836770"), afterRetry)
-        guard case .compromised(let both) = Self.delayVerdict(run37982836770, retry: probe(jumps: 2, state: "the-retry")) else {
+        XCTAssertTrue(afterRetry.contains("gapped-first"), afterRetry)
+        guard case .compromised(let both) = Self.delayVerdict(gapped, retry: probe(jumps: 2, state: "the-retry")) else {
             return XCTFail("compromised twice must skip, not retry again or fail")
         }
-        XCTAssertTrue(both.contains("run-37982836770") && both.contains("the-retry"), both)
+        XCTAssertTrue(both.contains("gapped-first") && both.contains("the-retry"), both)
         /* A measured first probe needs no retry, compromised or not. */
         XCTAssertEqual(Self.delayVerdict(probe(raw: 0.000125, invalid: 3)), .measured(0.000125))
     }
