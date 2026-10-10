@@ -21,6 +21,12 @@
          A `jsOnly` fixture family (schema; plan §5.5 C-2, the continuation
          hops the page computes and the engine only walks; NE-39s's
          manager-await) is recorded the same way and is Swift's to run never.
+         A `nativeOnly` family (schema; code-health-3 CH3-20's native-episode,
+         the episode path at the wheel) is the mirror image: JS has no
+         reference for it, so it is never evaluated here, never recorded and
+         never owed; every case is authored from the Swift core, engine-parity
+         holds it, and the JVM runs it ("runs" in jvm-pending.json). --check
+         still holds its files to the schema and the manifest.
          Refuses (writes nothing, exits 1) when:
            - JS disagrees with an `authored: true` case (a spec value, not ours
              to overwrite — change the spec on purpose, by hand, or fix the JS);
@@ -52,7 +58,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
 import {
-  REPO_ROOT, PARITY_DIR, loadFixtures, validateFixtures, runCase,
+  REPO_ROOT, PARITY_DIR, loadFixtures, validateFixtures, runCase, isNativeOnly,
 } from "../../player/parity/runner.js";
 import { compare, formatDiffs } from "../../player/parity/compare.js";
 import {
@@ -112,10 +118,14 @@ function writeParity(root, file, value) {
   fs.writeFileSync(path.join(root, PARITY_DIR, file), stableJson(value));
 }
 
-/** Run every case of the given fixtures. */
+/** Run every case of the given fixtures. A nativeOnly family (CH3-20) has no
+    JS reference to run: validateFixtures holds it to the schema (authored,
+    with its expect) and computeManifest to its bytes, and the native runners
+    hold it to its expects. */
 async function evaluate(root, fixtures) {
   const out = [];
   for (const fx of fixtures) {
+    if (isNativeOnly(fx)) continue;
     for (const c of fx.doc.cases) {
       try {
         out.push({ fx, c, actual: await runCase(c, fx, { root }) });

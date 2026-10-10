@@ -136,7 +136,9 @@ public enum QueueInput: Equatable {
 /// A press from the lock screen, the car or a headset (`MPRemoteCommand`).
 public struct RemotePress: Equatable {
     public var command: MediaMapping.RemoteCommand
-    /// `changePlaybackPosition`'s target, or a skip command's interval.
+    /// `changePlaybackPosition`'s target. A skip's interval is never read
+    /// (CH3-20, R3-08): the step is `MediaMapping.SeekSteps`, whatever the
+    /// head unit asked for.
     public var value: Double?
     /// The output route's port type when it arrived (`carAudio`, ...).
     public var routePort: String?

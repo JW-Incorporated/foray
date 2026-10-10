@@ -44,6 +44,7 @@
     "manager-episode",
     "manager-remainder",
     "media-episode",
+    "native-episode",
     "number-format",
     "outpoint",
     "queue-state",
