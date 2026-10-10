@@ -252,6 +252,84 @@ test("THE #1083/#1084 REPRODUCTION: a feature PR adding a privacy-policy sentenc
   assert.match(d.reason, /docs\/legal\/privacy-policy\.md/);
 });
 
+/* backend/migrations/ and vercel.json (2026-10-10). Founder ruling on #1163
+ * item 11, F-3 (https://github.com/JW-Incorporated/foray/issues/1163#issuecomment-6099574806;
+ * SEC-03/SEC-04 in docs/audit/security-review-2026-10.md). Both were UNLISTED,
+ * which path-policy reports as CLEAN: an RLS-loosening migration or a
+ * header-dropping vercel.json could be merged by an agent with no founder look. */
+test("backend/migrations/ is denied: every migration, the supabase/ RLS files, and the next one", () => {
+  // MUTATIONS this kills: (a) drop "backend/migrations/" from DENIED_PREFIXES
+  // (each file falls back to unlisted, which the check reads as CLEAN);
+  // (b) drop its trailing slash ("backend/migrations" is then an exact-file
+  // entry that matches nothing real); (c) narrow it to
+  // "backend/migrations/supabase/", which leaves the schema files ungoverned.
+  assert.ok(DENIED_PREFIXES.includes("backend/migrations/"));
+  for (const f of [
+    "backend/migrations/0001_extensions.sql",
+    "backend/migrations/0013_app_users.sql",
+    "backend/migrations/supabase/0003_rls_least_privilege.sql",
+    "backend/migrations/supabase/verify-applied.sql",
+    "backend/migrations/supabase/README.md",
+    "backend/migrations/0099_a_migration_added_next_year.sql",
+    "Backend/Migrations/0001_extensions.sql",
+  ]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.denied.length, 1, `${f} must be denied`);
+    assert.equal(p.denied[0].prefix, "backend/migrations/", `${f} must be denied by backend/migrations/`);
+    assert.equal(p.unlisted.length, 0, `${f} must not read as unlisted`);
+  }
+});
+
+test("vercel.json is denied as the exact file, at the repo root only, in any case", () => {
+  // MUTATIONS this kills: (a) drop "vercel.json" from DENIED_PREFIXES (it falls
+  // back to unlisted, CLEAN); (b) turn it into a directory entry "vercel.json/",
+  // which matches no real file.
+  assert.ok(DENIED_PREFIXES.includes("vercel.json"));
+  for (const f of ["vercel.json", "Vercel.json", "VERCEL.JSON"]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.denied.length, 1, `${f} must be denied`);
+    assert.equal(p.denied[0].prefix, "vercel.json", `${f} must be denied by vercel.json`);
+  }
+});
+
+test("the F-3 entries did not widen past what the ruling covered", () => {
+  // MUTATIONS this kills: widening "backend/migrations/" to "backend/",
+  // or adding tools/web/, which F-3's recommendation deliberately left on the
+  // `tools/` allowance (prepare-dist.mjs is acknowledged above as a gate script).
+  for (const f of ["tools/web/prepare-dist.mjs", "tools/web/vercel-should-build.mjs", "backend/test/rls.test.ts"]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.allowed.length, 1, `${f} must stay allowlisted`);
+    assert.equal(p.denied.length, 0, `${f} must not be denied`);
+  }
+  for (const f of ["vercel.json.bak", "api/vercel.json", "backend/migrations-old/0001.sql", "backend/migrationsx.sql"]) {
+    const p = pathPolicy([f]);
+    assert.equal(p.denied.length, 0, `${f} must not be denied`);
+    assert.equal(p.unlisted.length, 1, `${f} stays unlisted`);
+  }
+});
+
+test("a migration or vercel.json change is UNAPPROVED without the label, APPROVED with it, and never armed", () => {
+  // MUTATION this kills: drop either entry — the change reads CLEAN, the
+  // enforcing check passes with no founder in the loop, and automergeDecision
+  // reports UNLISTED_PATH instead of DENIED_PATH.
+  for (const [file, prefix] of [
+    ["backend/migrations/supabase/0007_loosen_a_policy.sql", "backend/migrations/"],
+    ["vercel.json", "vercel.json"],
+  ]) {
+    const bare = governedCheck({ files: [file], enforce: true });
+    assert.equal(bare.verdict, "UNAPPROVED", file);
+    assert.equal(bare.exitCode, 1, file);
+    assert.deepEqual(bare.governed, [{ file, prefix }]);
+    const ok = governedCheck({ files: [file], labels: [APPROVAL_LABEL], enforce: true });
+    assert.equal(ok.verdict, "APPROVED", file);
+    assert.equal(ok.exitCode, 0, file);
+    const d = automergeDecision({ files: ["app.js", file] });
+    assert.equal(d.armed, false, file);
+    assert.equal(d.code, "DENIED_PATH", file);
+    assert.equal(d.needsFounder, true, file);
+  }
+});
+
 /* Scripts `ci.yml` invokes directly ARE gates: a one-line `process.exit(0)` in
  * any of them neuters a check with no human in the loop, which is exactly what
  * the `tools/ci/` deny entry exists to prevent — one directory over. This test

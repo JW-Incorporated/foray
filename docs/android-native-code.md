@@ -616,7 +616,8 @@ app.js  styles.css  search-engine.js  STATE.md  HUMAN-ACTIONS.md
 
 - **Governed** means *on `DENIED_PREFIXES`* — `.github/`, `.claude/`, `CLAUDE.md`,
   `docs/DECISIONS.md`, `docs/adr/`, `docs/roles.md`,
-  `docs/agents/routine-invariants.md`, `docs/legal/`, `backend/src/`, `tools/ci/`,
+  `docs/agents/routine-invariants.md`, `docs/legal/`, `backend/src/`,
+  `backend/migrations/`, `vercel.json`, `tools/ci/`,
   `tools/test-search.mjs`, `tools/validate-semantic-index.mjs`. A PR touching one
   is reported **UNAPPROVED** by the `path-policy` check, **which is enforcing and
   goes RED** — `PATH_POLICY_ENFORCE=1` was set on 2026-08-16, and this PR's own run

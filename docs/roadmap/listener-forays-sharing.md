@@ -91,7 +91,7 @@ Checked against `origin/main` @ `e839f2cf`. The sections below are the 2026-09-2
 - Every new `cp_` localStorage key gets a row in `docs/legal/privacy-policy.md` §1's key table (line 59; rows like `cp_playlists` at line 133) in the same PR; `node --test test/legal-citations.test.js` and `node --test test/data-deletion.test.js` are gates.
 - PRs open as **DRAFT**, title given per task, body opens with a 1-2 sentence TL;DR. Do not arm any wake-up or poll the PR afterwards.
 - Commits end with the trailer lines your harness supplies (this session's: `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_017FFM7M73d6sEYQiHroVesz`).
-- DENIED for auto-merge (`tools/ci/path-policy.mjs` `DENIED_PREFIXES` line 61, incl. `backend/src/` at 75; `DENIED_PATTERNS` line 237, incl. `mobile/package.json` at 246): `backend/src/`, `docs/DECISIONS.md`, `docs/adr/`, `.github/`, `CLAUDE.md`, `tools/ci/`, `mobile/package*.json`; `api/`, `index.html`, `backend/migrations/` are unlisted and wait for a human. A qwen task never edits any of these; if it would have to, stop.
+- DENIED for auto-merge (`tools/ci/path-policy.mjs` `DENIED_PREFIXES` line 61, incl. `backend/src/` at 75; `DENIED_PATTERNS` line 237, incl. `mobile/package.json` at 246): `backend/src/`, `docs/DECISIONS.md`, `docs/adr/`, `.github/`, `CLAUDE.md`, `tools/ci/`, `mobile/package*.json`, and since 2026-10-10 (#1163 F-3) `backend/migrations/` and `vercel.json`; `api/` and `index.html` are unlisted and wait for a human. A qwen task never edits any of these; if it would have to, stop.
 
 ## 3. Task sections
 

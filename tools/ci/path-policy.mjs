@@ -91,6 +91,29 @@ export const DENIED_PREFIXES = [
   // explicitly on the other side of the line. Nothing has asked for
   // agent-authored `backend/src/` PRs to land unread.
   "backend/src/",
+  // The database's access rules and the deploy's configuration (2026-10-10,
+  // founder ruling on issue #1163 item 11, F-3:
+  // https://github.com/JW-Incorporated/foray/issues/1163#issuecomment-6099574806;
+  // SEC-03/SEC-04 in docs/audit/security-review-2026-10.md). Both were UNLISTED:
+  // the bots never auto-merged them, but the path-policy check passed them as
+  // CLEAN, so an agent could merge one with no founder look once checks were
+  // green (the 2026-09-21 ruling).
+  //   - backend/migrations/ holds the schema and, under supabase/, the RLS
+  //     policies and grants. A migration that loosens a policy is a data-access
+  //     change; the defence-in-depth argument for backend/src/ above applies to
+  //     it at least as strongly. Denied as a directory so the next migration is
+  //     governed from birth.
+  //   - vercel.json is the production deploy: its buildCommand, installCommand
+  //     and ignoreCommand, the functions' bundled files, and every response
+  //     header (frame-ancestors, nosniff, CORS, caching). Denied as the exact
+  //     file, so `api/vercel.json` or `vercel.json.bak` does not match.
+  // The ruling deliberately left tools/web/ (the build scripts vercel.json
+  // names) on the `tools/` allowance; path-policy.test.mjs pins that too.
+  // Cost: every migration and every deploy-config change carries
+  // `founder-approved`. Measured: 12 commits to backend/migrations/ and 11 to
+  // vercel.json between 2026-07-07 and 2026-10-10, about seven a month together.
+  "backend/migrations/",
+  "vercel.json",
   // This directory IS the gate: run-suites.mjs decides what CI executes, and
   // path-policy.mjs (this file) decides what may merge unread. `tools/` is
   // allowlisted, so without this entry the first PR to edit this file would
