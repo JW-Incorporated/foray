@@ -183,11 +183,6 @@ final class SessionMonitor {
         if (monitor != null) monitor.stop();
     }
 
-    @Nullable
-    static SessionMonitor current() {
-        return installed;
-    }
-
     private void start() {
         try {
             lifecycle = new Lifecycle();
