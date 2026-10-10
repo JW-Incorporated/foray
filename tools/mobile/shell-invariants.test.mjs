@@ -1983,17 +1983,22 @@ test("the iOS ForayAudioPlugin touches AVAudioSession.setActive from its two ses
 
 test("iOS lock-screen artwork caches only a successful load; a failure is retried after a window (audit round 3, mobile-native-6)", () => {
   /* One failed or timed-out fetch used to cache "no artwork" for that URI for
-     the rest of the item. MUTATION: put `_ = self.rememberArtwork(uri: uri,
-     image: image)` back ahead of the failure check, or drop the retry gate in
-     artworkItem. */
+     the rest of the item. Since CH3-21 both lanes load artwork through ONE
+     loader, ArtworkCache (the legacy lane's confined to its stateQueue), and
+     the retry window is its rule. MUTATION: settle a failed network load as
+     permanent again (`.infinity`, or the old `failed.insert(src)`); bring a
+     private fetch back into ForayAudioPlugin.swift; drop the window. */
   const code = stripSwiftComments(fs.readFileSync(AUDIO_SWIFT, "utf8"));
-  const load = swiftFuncBody(code, "loadRemoteArtwork");
-  const fail = load.indexOf("guard image != nil else {");
-  const remember = load.indexOf("rememberArtwork(uri: uri, image: image)");
-  assert.ok(fail >= 0 && remember > fail, "a failure returns before anything is cached");
-  assert.match(load, /self\.artworkRetryAfter = \(uri: uri, at: Date\(\)\.addingTimeInterval\(Self\.artworkRetryAfterSec\)\)/);
-  assert.match(swiftFuncBody(code, "artworkItem"), /guard Self\.artworkLoadAllowed\(uri: uri, lastFailure: artworkRetryAfter, now: Date\(\)\) else \{ return nil \}\s*loadRemoteArtwork\(uri: uri, url: url\)/);
-  const after = /static let artworkRetryAfterSec: Double = (\d+)/.exec(code);
+  assert.match(code, /private lazy var artworkLoader = ArtworkCache\(queue: stateQueue\)/, "the legacy lane's loader is the engine's, on its queue");
+  assert.doesNotMatch(code, /URLSession|UIImage\(contentsOfFile:|UIImage\(data:|artworkRetryAfter|artworkTimeoutSec/,
+    "a second artwork loader (or its constants) is back in the legacy plugin");
+  const artwork = stripSwiftComments(fs.readFileSync(path.join(PLUGIN_DIR, "ios/Sources/ForayAudioPlugin/Engine/ArtworkCache.swift"), "utf8"));
+  const settle = swiftFuncBody(artwork, "settle") ?? "";
+  assert.match(settle, /noArtworkUntil\[src\] = retryable \? now\(\) \+ Self\.retryAfterSec : \.infinity/,
+    "a failed network load is a retry time; only an answer (unsupported, or a bundled file not there) is permanent");
+  assert.match(swiftFuncBody(artwork, "load") ?? "", /if case \.remote = source \{ retryable = true \} else \{ retryable = false \}/);
+  assert.match(swiftFuncBody(artwork, "hasNoArtwork") ?? "", /return now\(\) < until/);
+  const after = /static let retryAfterSec: Double = (\d+)/.exec(artwork);
   assert.ok(after && Number(after[1]) >= 30 && Number(after[1]) <= 60, "a 30-60 s retry window");
 });
 
@@ -2086,17 +2091,14 @@ test("the iOS re-assert survives a paused position write, and nothing on stateQu
     "the re-assert generation moves with the state, not with every position write");
   assert.equal((code.match(/reassertGeneration &\+= 1/g) ?? []).length, 1);
   assert.doesNotMatch(code, /Data\(contentsOf:/, "a synchronous network load on stateQueue");
+  /* CH3-21: the artwork is the shared ArtworkCache's (bounded at 10 s whole,
+     pinned by the NE-18 test below), confined to stateQueue. */
   const artwork = swiftFuncBody(code, "artworkItem");
-  assert.match(artwork, /if let cached = artworkCache, cached\.uri == uri \{ return cached\.item \}/, "the artwork is cached per URI");
-  assert.match(artwork, /loadRemoteArtwork\(uri: uri, url: url\)\s*return nil/, "a remote image never blocks the write it decorates");
-  const load = swiftFuncBody(code, "loadRemoteArtwork");
-  assert.match(load, /timeoutInterval: Self\.artworkTimeoutSec/, "the fetch is bounded");
-  assert.match(load, /URLSession\.shared\.dataTask/);
-  assert.match(load, /self\.stateQueue\.async \{[\s\S]*?rememberArtwork\(uri: uri, image: image\)[\s\S]*?self\.lastPayload\.artworkUri == uri[\s\S]*?applyNowPlayingInfo\(self\.lastPayload\)/,
-    "when it lands, the cache is filled on stateQueue and the entry re-posted if still current");
-  const timeout = /static let artworkTimeoutSec: Double = (\d+)/.exec(code);
-  assert.ok(timeout, "artworkTimeoutSec must be a whole-second literal");
-  assert.ok(Number(timeout[1]) > 0 && Number(timeout[1]) <= 15, `artwork timeout ${timeout[1]}s is not a short one`);
+  assert.match(artwork, /switch artworkLoader\.lookup\(src\) \{/, "the artwork is cached per source");
+  assert.match(artwork, /if let held = artworkObject, held\.src == src, held\.image === image \{ return held\.item \}/,
+    "a rewrite of the same picture hands the centre the same object");
+  assert.match(artwork, /case \.missing:\s*guard !artworkLoader\.isLoading\(src\) else \{ return nil \}\s*artworkLoader\.load\(src\) \{[\s\S]*?self\.lastPayload\.artworkUri == uri[\s\S]*?applyNowPlayingInfo\(self\.lastPayload\)\s*\}\s*return nil/,
+    "a missing image never blocks the write it decorates; one load, re-posted when it lands if still current");
   // The command handlers still do their work on stateQueue — the queue this test keeps clear.
   const register = swiftFuncBody(code, "registerCommandHandlers");
   assert.match(register, /playCommand\.addTarget \{ \[weak self\] _ in\s*self\?\.stateQueue\.async \{ self\?\.remotePlay\(command: "play"\) \}/);
@@ -5024,11 +5026,16 @@ test("NE-18: Now Playing writes rate 0 rather than playbackState, is cleared onl
   assert.match(artwork, /static let timeoutSec: Double = 10\b/, "plan §4.5: bounded at 10 s");
   assert.match(swiftFuncBody(artwork, "load") ?? "", /deadline\(timeoutSec\) \{ finish\(nil\) \}/, "the deadline is whole, not per packet");
   /* The deadline's clock is a seam (a test fires it by hand); production's is
-     main's wall clock, and it is the init's default. */
-  assert.match(swiftFuncBody(artwork, "mainQueueDeadline") ?? "", /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ sec, execute: fire\)/);
-  assert.match(artwork, /deadline: @escaping DeadlineTimer = ArtworkCache\.mainQueueDeadline\)/, "production's deadline is the wall clock");
+     the wall clock on the cache's own queue (main for the engine, stateQueue
+     for the legacy lane, CH3-21), and it is the init's default. */
+  assert.match(swiftFuncBody(artwork, "queueDeadline") ?? "", /queue\.asyncAfter\(deadline: \.now\(\) \+ sec, execute: fire\)/);
+  assert.match(artwork, /init\(queue: DispatchQueue = \.main,/, "the engine's cache is main's");
+  assert.match(artwork, /self\.deadline = deadline \?\? ArtworkCache\.queueDeadline\(on: queue\)/, "production's deadline is the wall clock");
+  assert.match(swiftFuncBody(artwork, "load") ?? "", /dispatchPrecondition\(condition: \.onQueue\(queue\)\)/);
+  assert.doesNotMatch(artwork, /DispatchQueue\.main\.async/, "a load settles on the cache's queue, not always main");
   assert.match(artwork, /scheme\.lowercased\(\) == "https"/);
-  assert.match(swiftFuncBody(artwork, "settle") ?? "", /failed\.insert\(src\)/, "a failure is cached");
+  assert.match(swiftFuncBody(artwork, "settle") ?? "", /noArtworkUntil\[src\] = retryable \? now\(\) \+ Self\.retryAfterSec : \.infinity/,
+    "a failure is cached: until its retry time, or for good when it is an answer");
 });
 
 /* NE-27 (docs/native-engine-plan.md §4.6 "Build default", §9 G-5): the build
