@@ -12,6 +12,7 @@ import ai.jwlabs.foura.engine.EngineInput;
 import ai.jwlabs.foura.engine.EngineItem;
 import ai.jwlabs.foura.engine.EngineNow;
 import ai.jwlabs.foura.engine.EngineState;
+import ai.jwlabs.foura.engine.EngineTimer;
 import ai.jwlabs.foura.engine.JSMath;
 import ai.jwlabs.foura.engine.JSWriter;
 import ai.jwlabs.foura.engine.JsonNode;
@@ -45,7 +46,8 @@ import java.util.Set;
  * {@code setup.positionEvents}, {@code store.set:cp_pos:<id>} and
  * {@code event.position:...}). Everything else the core commands (the session, grace,
  * timers, rows, diagnostics) is logged as a native-only {@code n.*} token, which the
- * comparator strips, so a report shows it and the verdict ignores it.
+ * comparator strips, so a report shows it and the verdict ignores it, except in
+ * {@code native-episode} (CH3-20), which asserts them in Swift's order.
  *
  * <p>TIMING IS THE JS RUNNER'S. A step that JS awaits settles here too: loads the fake
  * resolves at once land (in the order they were issued) and a started deck confirms
@@ -72,6 +74,14 @@ import java.util.Set;
  * {@code setup.telemetry: ["rate.snapped"]} writes the core's {@code rate kind=snapped} row as
  * the JS telemetry line {@code telemetry:rate.snapped requested=<JSON> applied=<r>}; the
  * {@code positionTimer} view is whether the periodic position writer is armed.
+ *
+ * <p>THE STEERING WHEEL (code-health-3 CH3-20; the {@code native-episode} family, nativeOnly, its expects
+ * authored from the Swift core and held here too): a RAW press, {@code {remote: "<command>", raw: true,
+ * value?}}, is the remote command itself straight into the core's remote handlers, never through
+ * {@link MediaMapping#intent}, so a fixture can press {@code togglePlayPause}; {@code deck: "deadline"}
+ * (optional {@code afterMs}, default 20000) is the deck's load deadline for the load in flight (a held one
+ * is abandoned); {@code lifecycle: "graceExpired"} is the background grace running out, and
+ * {@code lifecycle: "relinquish"} (optional {@code cap}, default {@code all}) the page's relinquish command.
  *
  * <p>The Foray tape's steps and setup (the seam beat's manual clock, the engine target, the
  * page's builds, the warming window's {@code backend.prefetch} and {@code coldLoadMs}), the
@@ -400,6 +410,10 @@ public final class EngineScenarioDriver {
          * surface installs every intent.
          */
         private void remote(Map<String, Json> fields, Codec.Context context) {
+            if (fields.get("raw") instanceof Json.Bool raw && raw.value()) {
+                rawPress(fields);
+                return;
+            }
             Json name = fields.get("remote");
             MediaAction action = name == null || name.asString() == null ? null : MediaAction.of(name.asString());
             if (action == null) throw new HarnessError("E_BAD_CASE", "unknown remote action " + Json.show(name));
@@ -413,15 +427,51 @@ public final class EngineScenarioDriver {
                 case MediaMapping.Intent.Pause i -> new EngineInput.RemotePress(MediaMapping.RemoteCommand.PAUSE);
                 case MediaMapping.Intent.Next i -> new EngineInput.RemotePress(MediaMapping.RemoteCommand.NEXT_TRACK);
                 case MediaMapping.Intent.Previous i -> new EngineInput.RemotePress(MediaMapping.RemoteCommand.PREVIOUS_TRACK);
+                // The step is the core's (SeekSteps), never carried on the press: no host sends one (CH3-20, R3-08).
                 case MediaMapping.Intent.SeekBy i -> i.offset() < 0
-                        ? new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_BACKWARD, -i.offset())
-                        : new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_FORWARD, i.offset());
+                        ? new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_BACKWARD)
+                        : new EngineInput.RemotePress(MediaMapping.RemoteCommand.SKIP_FORWARD);
                 case MediaMapping.Intent.SeekTo i -> new EngineInput.RemotePress(MediaMapping.RemoteCommand.CHANGE_PLAYBACK_POSITION, i.position());
                 // runner.js's surface CLOSES on stop; natively a remote stop is a pause (T-7).
                 case MediaMapping.Intent.Stop i -> throw new HarnessError("E_BAD_CASE",
                         "a remote stop pauses natively (T-7) where the JS surface closes; no JVM case runs it");
             };
             feed(new EngineInput.Remote(command));
+        }
+
+        /**
+         * The raw commands a fixture may press (CH3-20): the MPRemoteCommand names, which are the Swift
+         * enum's raw values (EngineCore.remoteToken). {@code stop} is not one: a remote stop pauses
+         * natively (T-7) and no case runs it.
+         */
+        static final Map<String, MediaMapping.RemoteCommand> RAW_COMMANDS = Map.of(
+                "play", MediaMapping.RemoteCommand.PLAY,
+                "pause", MediaMapping.RemoteCommand.PAUSE,
+                "togglePlayPause", MediaMapping.RemoteCommand.TOGGLE_PLAY_PAUSE,
+                "nextTrack", MediaMapping.RemoteCommand.NEXT_TRACK,
+                "previousTrack", MediaMapping.RemoteCommand.PREVIOUS_TRACK,
+                "skipBackward", MediaMapping.RemoteCommand.SKIP_BACKWARD,
+                "skipForward", MediaMapping.RemoteCommand.SKIP_FORWARD,
+                "changePlaybackPosition", MediaMapping.RemoteCommand.CHANGE_PLAYBACK_POSITION);
+
+        /**
+         * A RAW press (CH3-20, {@code raw: true}): the command itself, as the head unit, the headset or the
+         * lock screen delivers it, with its {@code value} (a scrub's target; a skip's value is the head
+         * unit's interval, which the core ignores: the step is ours, R3-08).
+         */
+        private void rawPress(Map<String, Json> fields) {
+            Json name = fields.get("remote");
+            MediaMapping.RemoteCommand command = name == null || name.asString() == null ? null : RAW_COMMANDS.get(name.asString());
+            if (command == null) {
+                throw new HarnessError("E_BAD_CASE", "unknown raw remote command " + Json.show(name)
+                        + " (a remote stop pauses natively, T-7; no case runs it)");
+            }
+            Double value = null;
+            if (fields.containsKey("value")) {
+                value = fields.get("value").asNumber();
+                if (value == null) throw new HarnessError("E_BAD_CASE", "a raw press's value is a number");
+            }
+            feed(new EngineInput.Remote(new EngineInput.RemotePress(command, value)));
         }
 
         private void deck(Map<String, Json> fields) {
@@ -443,6 +493,17 @@ public final class EngineScenarioDriver {
                 case "error" -> {
                     Json message = fields.get("message");
                     feed(new EngineInput.Deck(new DeckEvent.Failed(token, message != null && message.asString() != null ? message.asString() : "error")));
+                }
+                case "deadline" -> {
+                    // CH3-20 (R3-04): the deck's load deadline ran out on the load in flight. The deck
+                    // abandons that load, so a held one never lands after it.
+                    Json after = fields.get("afterMs");
+                    Double afterMs = after == null ? Double.valueOf(20_000) : after.asNumber();
+                    if (afterMs == null || !Double.isFinite(afterMs) || afterMs < 0 || Math.rint(afterMs) != afterMs) {
+                        throw new HarnessError("E_BAD_CASE", "deck deadline's afterMs is a whole number of ms");
+                    }
+                    heldLoads.removeIf(load -> load.token() == token);
+                    feed(new EngineInput.Deck(new DeckEvent.DeadlineExceeded(token, afterMs.intValue())));
                 }
                 case "time" -> reading.positionSec = requireNumber(fields.get("sec"), "deck time needs sec");
                 case "duration" -> reading.durationSec = requireNumber(fields.get("sec"), "deck duration needs sec");
@@ -523,6 +584,19 @@ public final class EngineScenarioDriver {
                 }
                 case "foreground" -> feed(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Foreground()));
                 case "background" -> feed(new EngineInput.Lifecycle(new EngineInput.LifecycleEvent.Background()));
+                // CH3-20: the background grace ran out before the play it covered was audible.
+                case "graceExpired" -> feed(new EngineInput.Timer(EngineTimer.GRACE_EXPIRED));
+                case "relinquish" -> {
+                    // CH3-20: the page's relinquish command (the one-way hand-back), as the contract decodes it.
+                    Json cap = fields.get("cap");
+                    String wanted = cap == null || cap.asString() == null ? "all" : cap.asString();
+                    EngineContract.RelinquishCap found = null;
+                    for (EngineContract.RelinquishCap c : EngineContract.RelinquishCap.values()) {
+                        if (c.token.equals(wanted)) found = c;
+                    }
+                    if (found == null) throw new HarnessError("E_BAD_CASE", "unknown relinquish cap \"" + wanted + "\"");
+                    feed(new EngineInput.Command(new EngineContract.Command.Relinquish(found), Vocabulary.Source.TAP));
+                }
                 default -> throw new HarnessError("E_BAD_CASE", "unknown lifecycle event \"" + event + "\"");
             }
         }

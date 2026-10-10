@@ -828,8 +828,13 @@ public struct EngineCore {
         case .togglePlayPause: toggle(source: .remote)
         case .nextTrack: next(source: .remote)
         case .previousTrack: previous(source: .remote)
-        case .skipForward: seekBy(press.value ?? steps.forwardSec, source: .remote)
-        case .skipBackward: seekBy(-(press.value ?? steps.backwardSec), source: .remote)
+        // THE STEP IS OURS (CH3-20, R3-08): a skip's interval on the press
+        // is the head unit's, and no host forwards it (RemoteSurface.value,
+        // EnginePlayer's seekBack/seekForward), so the step is always
+        // `SeekSteps`, the JS rule (media-session.js SEEK_BACKWARD_SEC /
+        // SEEK_FORWARD_SEC). Pinned by `native-episode/*-head-units-interval*`.
+        case .skipForward: seekBy(steps.forwardSec, source: .remote)
+        case .skipBackward: seekBy(-steps.backwardSec, source: .remote)
         case .changePlaybackPosition:
             guard let target = press.value else { return refuse(.notLoaded) }
             seekTo(target, source: .remote)

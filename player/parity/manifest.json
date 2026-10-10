@@ -3,7 +3,7 @@
   "families": {
     "compare": {
       "files": {
-        "player/parity/fixtures/compare/compare.json": "ff4f61e99859b3b1b1d09ae752d63cc10927a7d6ff62a9ab530859cc3cc83bd7"
+        "player/parity/fixtures/compare/compare.json": "0d16a868293f54c76b28b01e6cef0c24c4271e964ed1564fdc22fafcda523197"
       },
       "ids": [
         "compare/equal-return",
@@ -29,6 +29,7 @@
         "compare/differences-in-sorted-key-order",
         "compare/native-tokens-stripped-from-ops",
         "compare/native-tokens-kept-in-prepare",
+        "compare/native-tokens-kept-in-native-episode",
         "compare/native-tokens-stripped-in-a-nested-op-log",
         "compare/only-an-ops-key-strips",
         "compare/without-options-ops-strip",
@@ -1274,6 +1275,24 @@
         "media-episode/seek-backward-is-15",
         "media-episode/seek-forward-is-30",
         "media-episode/media-actions-vocabulary"
+      ]
+    },
+    "native-episode": {
+      "files": {
+        "player/parity/fixtures/native-episode/wheel.json": "f07b686383bf4a475c44d6a4b99d2fb01bd1252d4e276d72222b0f2688c47977"
+      },
+      "ids": [
+        "native-episode/toggle-pauses-a-deck-audible-behind-a-paused-machine",
+        "native-episode/a-repeated-toggle-is-never-dropped",
+        "native-episode/a-car-play-with-nothing-current-is-refused",
+        "native-episode/back-15-during-a-cold-load-steps-from-the-resume-point-not-the-head-units-interval",
+        "native-episode/forward-30-ignores-the-head-units-interval",
+        "native-episode/a-lock-screen-scrub-seeks-to-its-target",
+        "native-episode/a-load-deadline-on-an-episode-stops-with-its-cause",
+        "native-episode/a-remote-play-opens-grace-and-the-play-closes-it",
+        "native-episode/grace-expiry-writes-its-stop-row-before-the-grace-end",
+        "native-episode/a-relinquish-writes-its-stop-row-first",
+        "native-episode/a-teardown-writes-the-relinquish-stop-row"
       ]
     },
     "number-format": {

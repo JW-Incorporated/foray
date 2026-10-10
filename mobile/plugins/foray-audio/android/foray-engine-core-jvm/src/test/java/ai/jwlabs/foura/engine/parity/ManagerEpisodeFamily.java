@@ -48,6 +48,13 @@ final class ManagerEpisodeFamily {
         return runner(REMAINDER, null);
     }
 
+    /** Code-health-3 CH3-20's {@code native-episode}: scenarios only, through the same episode driver. */
+    static final String NATIVE_EPISODE = "native-episode";
+
+    static FamilyRunner nativeEpisodeRunner() {
+        return runner(NATIVE_EPISODE, null);
+    }
+
     private static FamilyRunner runner(String family, EngineScenarioDriver.Mutation mutation) {
         EngineScenarioDriver driver = new EngineScenarioDriver(mutation);
         return new FamilyRunner() {

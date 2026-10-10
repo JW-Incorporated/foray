@@ -603,8 +603,11 @@ public final class EngineCore {
                 case TOGGLE_PLAY_PAUSE -> toggle(Source.REMOTE);
                 case NEXT_TRACK -> next(Source.REMOTE);
                 case PREVIOUS_TRACK -> previous(Source.REMOTE);
-                case SKIP_FORWARD -> seekBy(press.value() != null ? press.value() : steps.forwardSec(), Source.REMOTE);
-                case SKIP_BACKWARD -> seekBy(-(press.value() != null ? press.value() : steps.backwardSec()), Source.REMOTE);
+                // THE STEP IS OURS (code-health-3 CH3-20, R3-08): a skip's interval on the press is the head
+                // unit's, and no host forwards it (EnginePlayer's seekBack/seekForward send none), so the step
+                // is always SeekSteps, the JS rule and Swift's. Pinned by native-episode/*-head-units-interval*.
+                case SKIP_FORWARD -> seekBy(steps.forwardSec(), Source.REMOTE);
+                case SKIP_BACKWARD -> seekBy(-steps.backwardSec(), Source.REMOTE);
                 case CHANGE_PLAYBACK_POSITION -> {
                     if (press.value() == null) {
                         refuse(Refusal.NOT_LOADED);

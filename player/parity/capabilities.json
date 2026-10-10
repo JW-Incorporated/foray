@@ -1,5 +1,5 @@
 {
-  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) has every family listed under it executed and passing in Swift; since NE-39s nothing can be owed (swift-pending.json and unported.json are deleted), so a family is either ported or JS only. Every family a fixture uses must appear under some capability. `compare` (NE-05) is the comparator's own table, not a rule of the product: it sits under EVERY capability because each one's verdicts are only as good as the Swift comparator that produced them. `remainder` (NE-14j) was the unadvertised bookkeeping gate M3's owed families waited under (prepare-narration until NE-45s, route-resume until NE-38rs, manager-remainder until NE-39s); NE-39s ported the last of them and retired the gate with swift-pending.json and unported.json. `manager-remainder` (NE-39j recorded it, NE-39s ported it) is charged to foray: its runner drives the core with the Foray tape on, and its warming rules are the Foray seams'. `manager-await` (NE-39s) is JS only (schema jsOnly): two rules of the JS manager's awaits that a synchronous native turn does not have, charged to foray beside the family they came from. `foray-data` (NE-30j) is the page's build of real Forays, JS only (schema jsOnly): charged to foray so the family is gated like every other, and it can never hold a pending id.",
+  "//": "Plan §6.6. A capability the engine advertises (mobile/ENGINE_DEFAULT.json, or the Swift `advertisedCapabilities` literal) has every family listed under it executed and passing in Swift; since NE-39s nothing can be owed (swift-pending.json and unported.json are deleted), so a family is either ported or JS only. Every family a fixture uses must appear under some capability. `compare` (NE-05) is the comparator's own table, not a rule of the product: it sits under EVERY capability because each one's verdicts are only as good as the Swift comparator that produced them. `remainder` (NE-14j) was the unadvertised bookkeeping gate M3's owed families waited under (prepare-narration until NE-45s, route-resume until NE-38rs, manager-remainder until NE-39s); NE-39s ported the last of them and retired the gate with swift-pending.json and unported.json. `manager-remainder` (NE-39j recorded it, NE-39s ported it) is charged to foray: its runner drives the core with the Foray tape on, and its warming rules are the Foray seams'. `manager-await` (NE-39s) is JS only (schema jsOnly): two rules of the JS manager's awaits that a synchronous native turn does not have, charged to foray beside the family they came from. `foray-data` (NE-30j) is the page's build of real Forays, JS only (schema jsOnly): charged to foray so the family is gated like every other, and it can never hold a pending id. `native-episode` (code-health-3 CH3-20) is the episode path at the steering wheel (raw remote presses, the load deadline, grace expiry, a relinquish), native only (schema nativeOnly): its expects are the Swift core's, so it is charged to episode, where engine-parity holds it, and the JVM runs it.",
   "episode": [
     "compare",
     "queue-state",
@@ -18,7 +18,8 @@
     "media-episode",
     "manager-episode",
     "deck-episode",
-    "route-resume"
+    "route-resume",
+    "native-episode"
   ],
   "continuation": [
     "compare",
