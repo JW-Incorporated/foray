@@ -484,3 +484,21 @@ test("review: the altool log reaches $ART only as a redacted copy, from a step w
   const at = (n) => IOS_ACTION.indexOf(`- name: ${n}`);
   assert.ok(at("Export and upload") < at("Copy a redacted altool log") && at("Copy a redacted altool log") < at("Keep the release logs"));
 });
+
+test("ci-release-3: only the two jobs that hold signing secrets run in the `release` environment", () => {
+  /* MUTATION: drop `environment: release` from either job -> once the founder
+     has moved the signing/upload secrets into the environment, that job reads
+     a repository secret that no longer exists and the release silently goes
+     unsigned; or add it to guard/version/summary -> they wait on a deployment
+     gate they have no reason to need. */
+  const jobText = (name) => {
+    const lines = WF.split(/\r?\n/);
+    const i = lines.findIndex((l) => l === `  ${name}:`);
+    assert.notEqual(i, -1, `no ${name} job`);
+    const out = [];
+    for (let j = i + 1; j < lines.length && !/^ {0,2}\S/.test(lines[j]); j++) out.push(lines[j]);
+    return out.join("\n");
+  };
+  for (const name of ["ios", "android"]) assert.match(jobText(name), /^ {4}environment: release$/m, name);
+  for (const name of ["guard", "version", "summary"]) assert.doesNotMatch(jobText(name), /^ {4}environment:/m, name);
+});
