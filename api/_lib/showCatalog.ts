@@ -51,10 +51,40 @@
  *   - the Apple episode fallback: an empty id map, so every hit is dropped
  *     and the answer is honest about nothing it cannot link.
  * A failure is not remembered: the next request reads again.
+ *
+ * THE CORPUS CATALOGUE (docs/roadmap/corpus.md PKG-33). When
+ * data/corpus-catalogue-pointer.json exists (PKG-32's publish-release.mjs
+ * writes it; weekly.mjs proposes it in a PR), `ensureCorpusCatalogue()`
+ * fetches the `catalogue_url` it names (catalog-breadth-corpus.json.gz:
+ * data/catalog-breadth.json's row shape, catalog-adapter.mjs BREADTH_KEYS, a
+ * superset of its rows) ONCE per warm instance, and its rows are served in
+ * place of the committed breadth rows (breadthCatalog.ts
+ * `setCorpusBreadthRows`; data/catalog.json is still read and its curated
+ * rows still win). Every reader awaits it before its first lookup, so the
+ * lookups below stay synchronous and all of them agree: api/shows/search.ts
+ * (q and id), api/_lib/resolveShow.ts (the episode list and the show-scoped
+ * search) and api/_lib/showIdMap.ts (the Apple fallback).
+ *   - No pointer (ENOENT) is the path every deploy takes until the first
+ *     pointer lands: the committed catalogue exactly, no fetch, no log line.
+ *   - Any other failure (an unreadable or malformed pointer, a catalogue_url
+ *     that is not this repo's corpus-export release asset (THE HOST PIN
+ *     below), a fetch that rejects, a non-2xx, CORPUS_FETCH_TIMEOUT_MS passing, a body over the
+ *     cap, not gzip, not JSON, rows that fail the shape check) is ONE
+ *     console.warn line and the committed catalogue for the life of the
+ *     instance. It never throws, and it is never
+ *     CatalogFilesUnavailableError: the committed pair is still there.
+ * The pointer ships in the same vercel.json includeFiles brace list as the
+ * pair.
  */
 
+import * as fs from "fs";
+import * as path from "path";
+import * as zlib from "zlib";
+import { promisify } from "util";
 import {
   loadCatalogue,
+  setCorpusBreadthRows,
+  type BreadthShowRaw,
   type Catalogue,
   type CatalogueShowEntry,
 } from "../../backend/src/catalog/breadthCatalog";
@@ -138,4 +168,187 @@ export function appleIdToShowId(): ReadonlyMap<number, string> {
  *  feed. Same array per catalogue. */
 export function searchableShows(): CatalogueShowEntry[] {
   return catalogue().searchable;
+}
+
+/* ====================================================================== */
+/* The corpus catalogue (PKG-33): see this file's header.                  */
+/* ====================================================================== */
+
+/** The brief's deadline, for the fetch AND the body read together. */
+export const CORPUS_FETCH_TIMEOUT_MS = 2_000;
+/* Caps, so a wrong upstream cannot exhaust the function. The committed
+   breadth file is 12.5 MB for 26k rows; these leave room for a corpus
+   several times larger. */
+export const CORPUS_MAX_GZ_BYTES = 48 * 1024 * 1024;
+export const CORPUS_MAX_JSON_BYTES = 192 * 1024 * 1024;
+
+/* api/_lib sits two directories under the repo root, in the repo and in a
+   deployed function alike. The path is a literal "data/..." string so
+   api/_test/vercel-bundle.test.mjs sees this read and checks that
+   vercel.json's includeFiles covers it. */
+const DEFAULT_POINTER_PATH = path.join(path.resolve(__dirname, "..", ".."), "data/corpus-catalogue-pointer.json");
+
+let pointerPath = DEFAULT_POINTER_PATH;
+let fetchTimeoutMs = CORPUS_FETCH_TIMEOUT_MS;
+/* "pending": not tried yet in this instance. A Promise: the one fetch in
+   flight, which every caller shares. "settled": nothing left to wait for (no
+   pointer, a failure already logged, or the corpus rows already served). */
+let corpusLoad: "pending" | Promise<void> | "settled" = "pending";
+
+const gunzip = promisify(zlib.gunzip);
+
+class CorpusUnavailable extends Error {}
+
+/**
+ * Starts loading the corpus catalogue the pointer names, once per warm
+ * instance; its rows are served from then on, and with no pointer or on any
+ * failure the committed catalogue stays. Returns the load to await while one
+ * is in flight, and null when there is nothing to wait for, so a caller
+ * writes `const corpus = ensureCorpusCatalogue(); if (corpus) await corpus;`
+ * and the no-pointer path stays synchronous, exactly as before PKG-33 (an
+ * `await null` would still yield). The promise never rejects. A failure is
+ * logged once and not retried until the instance is replaced.
+ */
+export function ensureCorpusCatalogue(): Promise<void> | null {
+  if (corpusLoad === "pending") corpusLoad = startCorpusLoad();
+  return corpusLoad === "settled" ? null : corpusLoad;
+}
+
+function startCorpusLoad(): Promise<void> | "settled" {
+  let raw: string;
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the one pointer path (a test seam may move it), not external input.
+    raw = fs.readFileSync(pointerPath, "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return "settled"; // no pointer yet: the committed catalogue, silently
+    warn(`pointer unreadable: ${(err as Error).message}`);
+    return "settled";
+  }
+  let url: string;
+  try {
+    url = catalogueUrl(raw);
+  } catch (err) {
+    warn((err as Error).message);
+    return "settled";
+  }
+  /* `corpusLoad === load`: a test reset while this was in flight makes it a
+     stale attempt, which must not serve its rows or settle the new one. */
+  const load: Promise<void> = fetchCorpusRows(url)
+    .then(
+      (rows) => {
+        if (corpusLoad === load) setCorpusBreadthRows(rows);
+      },
+      (err: Error) => warn(err.message)
+    )
+    .finally(() => {
+      if (corpusLoad === load) corpusLoad = "settled";
+    });
+  return load;
+}
+
+function warn(reason: string): void {
+  console.warn(`[showCatalog] corpus catalogue not used, serving the committed catalogue: ${reason}`);
+}
+
+/* THE HOST PIN. data/ is the auto-merge T1 tier, so the pointer is a
+   one-line edit away from naming any URL; without this, that edit would swap
+   the production breadth catalogue for content from any host. The only URL
+   accepted is the one tools/foraycorpus-export/publish-release.mjs
+   `buildCorpusPointer` writes for this repo: `assetBaseUrlFor(tag,
+   REPO_SLUG)` (tools/shows/publish-release.mjs:
+   `https://github.com/<REPO_SLUG>/releases/download/<tag>`, REPO_SLUG's
+   default JW-Incorporated/foray) + `/` + ASSET_NAMES[2], with `tag` from
+   `corpusTagFor` (`corpus-export-` + releaseTagFor's slug: lowercase
+   [a-z0-9] runs joined by single dashes, no edge dash). It is spelled out
+   here rather than imported: the tools modules are not in the function
+   bundle, and REPO_SLUG follows $GITHUB_REPOSITORY, which must not move a
+   production pin. api/_test/show-catalog.test.mjs builds its pointer WITH
+   buildCorpusPointer, so a change on that side reddens it. Anything else is
+   a malformed pointer: one warn line, the committed catalogue, no fetch. */
+const CATALOGUE_URL_RE =
+  /^https:\/\/github\.com\/JW-Incorporated\/foray\/releases\/download\/corpus-export-[a-z0-9]+(?:-[a-z0-9]+)*\/catalog-breadth-corpus\.json\.gz$/;
+
+/** The pointer's `catalogue_url` (PKG-32's shape: version 1, and the release
+ *  asset URL buildCorpusPointer writes; see THE HOST PIN). */
+function catalogueUrl(raw: string): string {
+  let pointer: unknown;
+  try {
+    pointer = JSON.parse(raw);
+  } catch {
+    throw new CorpusUnavailable("pointer is not JSON");
+  }
+  const p = pointer as { version?: unknown; catalogue_url?: unknown } | null;
+  if (!p || typeof p !== "object") throw new CorpusUnavailable("pointer is not an object");
+  if (p.version !== 1) throw new CorpusUnavailable(`pointer version ${String(p.version)} is not 1`);
+  if (typeof p.catalogue_url !== "string") throw new CorpusUnavailable("pointer has no catalogue_url");
+  if (!CATALOGUE_URL_RE.test(p.catalogue_url)) {
+    throw new CorpusUnavailable(
+      `pointer catalogue_url ${JSON.stringify(p.catalogue_url.slice(0, 200))} is not a corpus-export release asset of JW-Incorporated/foray`
+    );
+  }
+  return p.catalogue_url;
+}
+
+/** Fetches, gunzips, parses and shape-checks the catalogue asset. The fetch
+ *  and the body read share one deadline. */
+async function fetchCorpusRows(url: string): Promise<BreadthShowRaw[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), fetchTimeoutMs);
+  let body: Buffer;
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new CorpusUnavailable(`${url} answered ${res.status}`);
+    const declared = Number(res.headers.get("content-length"));
+    if (Number.isFinite(declared) && declared > CORPUS_MAX_GZ_BYTES) {
+      throw new CorpusUnavailable(`${url} is ${declared} bytes, over the ${CORPUS_MAX_GZ_BYTES}-byte cap`);
+    }
+    body = Buffer.from(await res.arrayBuffer());
+  } catch (err) {
+    if (err instanceof CorpusUnavailable) throw err;
+    throw new CorpusUnavailable(
+      controller.signal.aborted
+        ? `${url} timed out after ${fetchTimeoutMs} ms`
+        : `${url} fetch failed: ${(err as Error).message}`
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+  if (body.length > CORPUS_MAX_GZ_BYTES) throw new CorpusUnavailable(`${url} exceeds the ${CORPUS_MAX_GZ_BYTES}-byte cap`);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse((await gunzip(body, { maxOutputLength: CORPUS_MAX_JSON_BYTES })).toString("utf8"));
+  } catch (err) {
+    throw new CorpusUnavailable(`${url} is not gzipped JSON: ${(err as Error).message}`);
+  }
+  return corpusRowsOf(parsed);
+}
+
+/** The light shape check: a non-empty array of rows (bare, or the `shows`
+ *  of the data/catalog-breadth.json envelope catalog-adapter.mjs writes),
+ *  each with a numeric apple_collection_id and a non-empty title. One bad
+ *  row refuses the whole asset: a half-right corpus is not a catalogue. */
+function corpusRowsOf(parsed: unknown): BreadthShowRaw[] {
+  const rows = Array.isArray(parsed) ? parsed : (parsed as { shows?: unknown } | null)?.shows;
+  if (!Array.isArray(rows)) throw new CorpusUnavailable("catalogue has no array of rows");
+  if (rows.length === 0) throw new CorpusUnavailable("catalogue has no rows");
+  rows.forEach((row: unknown, i: number) => {
+    const r = row as { apple_collection_id?: unknown; title?: unknown } | null;
+    if (!r || typeof r !== "object") throw new CorpusUnavailable(`catalogue row ${i} is not an object`);
+    if (typeof r.apple_collection_id !== "number" || !Number.isFinite(r.apple_collection_id)) {
+      throw new CorpusUnavailable(`catalogue row ${i} has no numeric apple_collection_id`);
+    }
+    if (typeof r.title !== "string" || r.title === "") throw new CorpusUnavailable(`catalogue row ${i} has no title`);
+  });
+  return rows as BreadthShowRaw[];
+}
+
+/** Test-only: forget the corpus attempt and serve the committed catalogue
+ *  again; `pointerPath` / `timeoutMs` move the pointer and the deadline (no
+ *  argument restores both). */
+export function _resetCorpusCatalogueForTests(opts: { pointerPath?: string; timeoutMs?: number } = {}): void {
+  corpusLoad = "pending";
+  pointerPath = opts.pointerPath ?? DEFAULT_POINTER_PATH;
+  fetchTimeoutMs = opts.timeoutMs ?? CORPUS_FETCH_TIMEOUT_MS;
+  setCorpusBreadthRows(null);
 }

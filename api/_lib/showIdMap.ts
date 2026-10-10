@@ -34,7 +34,7 @@
  * Nothing is cached here: showCatalog.ts keeps the map per warm instance.
  */
 
-import { appleIdToShowId } from "./showCatalog";
+import { appleIdToShowId, ensureCorpusCatalogue } from "./showCatalog";
 
 export interface ShowIdMap {
   // collectionId -> show_id
@@ -44,10 +44,13 @@ export interface ShowIdMap {
 
 const NONE: ShowIdMap = { byCollectionId: new Map(), source: "none" };
 
-/** The map. Async only so `api/episodes/search.ts` keeps its call shape;
- *  nothing here awaits, and nothing here touches the network. */
+/** The map. The one await is the corpus catalogue (PKG-33,
+ *  showCatalog.ts `ensureCorpusCatalogue`): once per instance, and only when
+ *  data/corpus-catalogue-pointer.json names one is the network touched. */
 export async function loadShowIdMap(): Promise<ShowIdMap> {
   let byCollectionId: ReadonlyMap<number, string>;
+  const corpus = ensureCorpusCatalogue();
+  if (corpus) await corpus;
   try {
     byCollectionId = appleIdToShowId();
   } catch {

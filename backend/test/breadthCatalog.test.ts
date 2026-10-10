@@ -14,7 +14,7 @@ import {
   popularityBand,
   type ShowSearchResult,
 } from "../src/catalog/searchBreadthShows";
-import { loadBreadthCatalog, type CatalogueShowEntry } from "../src/catalog/breadthCatalog";
+import { loadBreadthCatalog, loadCatalogue, setCorpusBreadthRows, type CatalogueShowEntry } from "../src/catalog/breadthCatalog";
 
 /** Section 4's seam: when `breadthOverride.json` is set, a read of
     `data/catalog-breadth.json` returns it instead of the 12 MB committed file;
@@ -692,5 +692,87 @@ describe("loadBreadthCatalog — the chart-rank join is harvest-merge's rankByAp
     }
     // The fixture is not vacuous: per tier, exactly "12" and 7 join.
     expect([...join.values()].sort((a, b) => a - b)).toEqual([7, 7, 12, 12]);
+  });
+});
+
+/* ==================================================================== */
+/* 5. THE CORPUS CATALOGUE REPLACES THE BREADTH ROWS (PKG-33)            */
+/* ==================================================================== */
+
+describe("loadCatalogue — injected corpus rows (PKG-33)", () => {
+  /* docs/roadmap/corpus.md PKG-33: api/_lib/showCatalog.ts fetches the
+     corpus catalogue (catalog-breadth-corpus.json.gz, a superset of
+     data/catalog-breadth.json in the same row shape, catalog-adapter.mjs
+     BREADTH_KEYS) once per process and hands its rows here through
+     `setCorpusBreadthRows`. They stand IN PLACE OF the committed breadth
+     rows; data/catalog.json is still read and its curated rows still win. */
+  const CORPUS_ROWS = [
+    { apple_collection_id: 990000101, title: "Fixture Corpus Show One", feed_url: "https://feeds.example.test/one.xml", chart_rank: 4, taxonomy_node_ids: ["science"] },
+    { apple_collection_id: 990000102, title: "Fixture Corpus Show Two", feed_url: null },
+  ];
+
+  afterEach(() => {
+    setCorpusBreadthRows(null);
+    breadthOverride.json = null;
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    loadBreadthCatalog();
+    delete process.env.FORAY_SKIP_CATALOGUE_CACHE;
+  });
+
+  it("corpus rows replace the committed breadth rows, and catalog-breadth.json is not read", () => {
+    /* The committed breadth file is replaced by a body that is not JSON: a
+       loader that still read it would throw here.
+       MUTATION: in loadCatalogue(), keep reading `data/catalog-breadth.json`
+       when corpus rows are set (ignore `corpusRows`) -> JSON.parse throws
+       and this fails; MUTATION: merge the corpus rows with the committed
+       ones instead of replacing them -> the same throw. */
+    breadthOverride.json = "not json: the corpus replaces this file";
+    setCorpusBreadthRows(CORPUS_ROWS);
+    const { entries, showIdByAppleId } = loadCatalogue();
+    const breadth = entries.filter((e) => e.tier === "breadth");
+    expect(breadth.map((e) => e.show_id)).toEqual(["990000101", "990000102"]);
+    expect(breadth[0]).toMatchObject({ title: "Fixture Corpus Show One", feed_url: "https://feeds.example.test/one.xml", chart_rank: 4, taxonomy_node_ids: ["science"] });
+    expect(showIdByAppleId.get("990000102")).toBe("990000102");
+    expect(entries.filter((e) => e.tier === "curated").length).toBeGreaterThan(100); // catalog.json still read
+  });
+
+  it("a curated show still wins over a corpus row for the same Apple id, in_curated or not", () => {
+    /* catalog-adapter.mjs sets `in_curated` only when the corpus row carries a
+       foray_show_id that is a curated show, so a corpus row for a curated
+       show can arrive with `in_curated: false`. It must not become a second,
+       numeric copy of the curated show: its id aliases the curated slug, and
+       its chart_rank still reaches the curated row (the P-09 join).
+       MUTATION: drop the "a curated show already claims this Apple id" skip
+       in loadCatalogue()'s breadth loop -> "173001861" appears as a second,
+       breadth-tier entry and this fails. */
+    setCorpusBreadthRows([
+      { apple_collection_id: 173001861, title: "Dan Carlin's Hardcore History (corpus copy)", feed_url: "https://feeds.example.test/hh.xml", in_curated: false, chart_rank: 9 },
+      { apple_collection_id: 1434243584, title: "Lex Fridman Podcast (corpus copy)", feed_url: null, in_curated: true },
+      ...CORPUS_ROWS,
+    ]);
+    process.env.FORAY_SKIP_CATALOGUE_CACHE = "1";
+    const { entries, showIdByAppleId } = loadCatalogue();
+    expect(entries.some((e) => e.show_id === "173001861")).toBe(false);
+    expect(entries.some((e) => e.show_id === "1434243584")).toBe(false);
+    expect(showIdByAppleId.get("173001861")).toBe("hardcore-history");
+    const curated = entries.find((e) => e.show_id === "hardcore-history");
+    expect(curated?.tier).toBe("curated");
+    expect(curated?.title).not.toContain("corpus copy");
+    expect(curated?.chart_rank).toBe(9);
+    expect(entries.filter((e) => e.tier === "breadth").map((e) => e.show_id)).toEqual(["990000101", "990000102"]);
+  });
+
+  it("clearing the corpus rows restores the committed breadth catalogue", () => {
+    /* The fallback is the committed file, exactly: showCatalog.ts relies on
+       `setCorpusBreadthRows(null)` (and on never calling it) meaning today.
+       MUTATION: have setCorpusBreadthRows leave `cached` alone -> the
+       corpus catalogue is still served after the reset and this fails. */
+    const before = loadBreadthCatalog().length;
+    setCorpusBreadthRows(CORPUS_ROWS);
+    expect(loadBreadthCatalog().filter((e) => e.tier === "breadth").length).toBe(2);
+    setCorpusBreadthRows(null);
+    const after = loadBreadthCatalog();
+    expect(after.length).toBe(before);
+    expect(after.filter((e) => e.tier === "breadth").length).toBeGreaterThan(1000);
   });
 });
