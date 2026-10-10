@@ -44,8 +44,9 @@
 */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, relative, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import { isDaiHost } from "../refresh/dai.mjs";
 import { AD_FREE_SHOWS } from "./fetch-transcripts.mjs";
 import { hostKeyOf } from "./rank-breadth.mjs";
@@ -871,7 +872,7 @@ function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   try {
     main();
   } catch (e) {

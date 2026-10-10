@@ -61,6 +61,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { createRelay, DEFAULT_DIR, DEFAULT_PORT } from "./relay.mjs";
 import { describeExit, exitCodeFor } from "./exit-code.mjs";
@@ -186,5 +187,5 @@ async function main() {
   process.exitCode = exitCodeFor(code, signal);
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 if (isMain) await main();

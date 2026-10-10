@@ -6,16 +6,20 @@
  * the iOS build) and the build number was computed two different, unrelated
  * ways per platform: iOS used `run_number.run_attempt`, Android took a
  * `versionCode` typed by a human into a workflow_dispatch box every single
- * upload (`android-release.yml`'s `version_code` input — see its own comment
- * on why a bare `.toInteger()` on a mistyped `1.0.0` blows up twenty-five
- * minutes into a build with no useful message). Two workflows computing two
+ * upload (`android-release.yml`'s `version_code` input, retired in CH2-17 —
+ * `mobile/gradle/foray-signing.gradle` still says why a bare `.toInteger()` on
+ * a mistyped `1.0.0` blew up twenty-five minutes into a build with no useful
+ * message). Two workflows computing two
  * different numbers for what is supposed to be one release is exactly the
  * kind of "green, plausible, and silently not doing the job" this repo keeps
  * getting burned by (see `mobile/gradle/foray-signing.gradle`'s own header).
  *
  * So there is now exactly one source for each half, both PURE and both
- * callable identically from the macOS shell (`ios-build.yml`) and the Ubuntu
- * shell (`android-release.yml`):
+ * called the same way by every workflow that ships a build: the `version` job
+ * of `release.yml` (both stores), of `lab-build.yml`, and of
+ * `android-release.yml` (the by-hand `.aab`, which reaches Gradle through the
+ * `.github/actions/android-bundle` composite since CH2-17). Each job computes
+ * the pair once and hands it to its platform jobs as outputs:
  *
  *   readMarketingVersion()          -> the dotted string from `mobile/VERSION`
  *   buildNumber({ now, runOfDay })  -> an integer YYYYMMDDnn
@@ -48,10 +52,10 @@
  * truncating it, because a silently truncated run counter is a second copy
  * of the exact "looks fine, uploads a duplicate" failure this file exists to
  * retire. WHO computes `runOfDay` is deliberately NOT this file's problem —
- * that is a release-workflow concern (a counter file, `run_attempt`, or a
- * store API query), decided in R-03 (t_c4feac52) — `buildNumber` only turns a
- * `{ now, runOfDay }` pair into the one correct integer, the same way from
- * both shells.
+ * each caller's `version` job counts the day's runs (`release.yml` and
+ * `android-release.yml` through `tools/release/build-number.mjs`,
+ * `lab-build.yml` inline) — `buildNumber` only turns a `{ now, runOfDay }`
+ * pair into the one correct integer, the same way for every caller.
  *
  * WHY int32 IS FINE FOR PLAY WITHOUT A RUNTIME CHECK ON EVERY CALL
  * Play's `versionCode` is a positive 32-bit integer, ceiling 2,147,483,647.
@@ -68,9 +72,9 @@
  *   node tools/mobile/version.mjs pair          [--run-of-day N] [--now ISO]
  *   node tools/mobile/version.mjs bump <major|minor|patch>
  *
- * `pair` is the one both workflows are expected to call (wiring is R-03's
- * job, not this card's): it prints `KEY=VALUE` lines that are byte-identical
- * given byte-identical `--now`/`--run-of-day`, on macOS bash or Ubuntu bash,
+ * `pair` is the one every caller runs (the `version` jobs of `release.yml`,
+ * `lab-build.yml` and `android-release.yml`): it prints `KEY=VALUE` lines that
+ * are byte-identical given byte-identical `--now`/`--run-of-day`, on any shell,
  * because the underlying functions are pure and the CLI does nothing but
  * format their output — which is also exactly what the test file asserts by
  * spawning the CLI twice and diffing stdout.
@@ -86,6 +90,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -246,6 +251,6 @@ function main(argv) {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+if (isEntryScript(import.meta.url)) {
   process.exit(main(process.argv.slice(2)));
 }

@@ -31,6 +31,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { INTERLUDE_APP_PATH, INTERLUDE_SHA256, INTERLUDE_SOURCE, sha256Hex } from "../audio/interlude-asset.mjs";
 
 export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -60,7 +61,7 @@ export function check({ dest } = {}) {
   return got === INTERLUDE_SHA256 ? [] : [`${INTERLUDE_APP_PATH} in ${dest}: sha256 ${got}, pinned ${INTERLUDE_SHA256}`];
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 if (isMain) {
   const args = process.argv.slice(2);

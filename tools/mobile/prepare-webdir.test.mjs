@@ -50,13 +50,15 @@ import {
   referencedSegmentIds, segmentSlice, segmentSourceSlice, assertForaySliceComplete,
   isBundledData, SEED_POINTER, itemTagsSlice, assertItemTagsSliceComplete, searchedPoolIds,
   tagDfBlock, tagCandidateForms, TAG_DF_SENSE_LOCKED_STEMS,
+  TAG_DF_ENCODING, frontCodeTerms, frontDecodeTerms, decodeTagDfByCount,
   UNPINNED_DATA, unpinnedDataPlan, unpinnedDataOverBudget,
   seedCarries, seedForays, assertSeedForaysComplete, seedPointerDoc,
   MODEL_EXTENSIONS, assertNoModelWeights,
+  UNREAD_DATA_KEYS, unreadKeyHits, dropUnreadKeys,
 } from "./prepare-webdir.mjs";
 import { isMinified, minifySource } from "./minify.mjs";
 import { isGeneratedDraft } from "../../player/foray-resolve.js";
-import { sourceStamp, computeManifest } from "../ci/generate-manifest.mjs";
+import { sourceStamp, computeManifest, playerSources } from "../ci/generate-manifest.mjs";
 import { createRequire } from "node:module";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -159,7 +161,7 @@ test("no pipeline input is in the plan", () => {
 });
 
 test("the plan is closed under the player's own imports", () => {
-  /* The anti-fork test. `playerFiles` takes "every non-test .js in player/",
+  /* The anti-fork test. `playerFiles` is player/client.js's import closure,
      which is correct only while the player is a flat directory of siblings. The
      day a module moves into `player/backends/`, this fails instead of shipping an
      app whose very first import 404s. */
@@ -174,6 +176,155 @@ test("the plan is closed under the player's own imports", () => {
     }
   }
   assert.deepEqual(missing, []);
+});
+
+test("the bundle ships the web's player module list, not the directory (perf/bundle-trim-1)", () => {
+  /* `playerFiles` is `playerSources` — player/client.js's import closure, the list
+     index.html preloads and the web deploys — and no longer "every non-test .js".
+     KILLING MUTATION: restore the directory walk in `playerFiles`
+     (`fs.readdirSync(path.join(root, "player")).filter((f) => f.endsWith(".js") &&
+     !f.endsWith(".test.js"))`) — the fixture's orphan is copied into the bundle and
+     the real tree's five unimported modules reappear in the plan. */
+  const fake = makeFakeRepo();
+  fs.writeFileSync(path.join(fake, "player", "orphan.js"), "export const nobodyImportsThis = 1;\n");
+  prepare({ root: fake, out: "www" });
+  assert.ok(fs.existsSync(path.join(fake, "www", "player", "queue-manager.js")),
+    "a module client.js imports must ship");
+  assert.equal(fs.existsSync(path.join(fake, "www", "player", "orphan.js")), false,
+    "a module nothing imports must not ship");
+
+  /* On the real tree: exactly the web's list, and the difference is not vacuous —
+     there ARE runtime modules nothing imports, so this assertion is about something. */
+  const web = playerSources(ROOT).map((rel) => rel.split(path.sep).join("/")).sort();
+  const planned = buildPlan(ROOT).filter((rel) => rel.startsWith("player/"));
+  assert.deepEqual(planned, web);
+  const orphans = fs.readdirSync(path.join(ROOT, "player"))
+    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
+    .map((f) => `player/${f}`)
+    .filter((rel) => !web.includes(rel));
+  assert.ok(orphans.length > 0, "no unimported player module exists, so this test no longer proves the trim");
+  for (const rel of orphans) assert.ok(!planned.includes(rel), `${rel} is imported by nothing and must not ship`);
+});
+
+/* ─────────────────── the keys nothing on a device reads (perf/bundle-trim-2) ─────────────────── */
+
+/** A fixture whose documents carry UNREAD_DATA_KEYS beside keys that must ship. */
+function makeRepoWithUnreadKeys(opts = {}) {
+  const fake = makeFakeRepo(opts);
+  const rw = (rel, edit) => {
+    const abs = path.join(fake, rel);
+    const doc = JSON.parse(fs.readFileSync(abs, "utf8"));
+    edit(doc);
+    fs.writeFileSync(abs, JSON.stringify(doc, null, 2) + "\n");
+  };
+  rw("data/discover.json", (d) => { for (const it of d.items) it.episode_guid = `guid-${it.id}`; });
+  rw("data/segment-sources.json", (d) => {
+    d.provenance = { produced_by: "fixture" };
+    for (const s of d.sources) Object.assign(s, { feed_url: "https://feed.test/rss", ad_tier: "low", ad_pad_sec: 4 });
+  });
+  fs.writeFileSync(path.join(fake, "data/taxonomy.json"), JSON.stringify({
+    version: 1,
+    episode_attributes: { format: ["interview"] },
+    nodes: [{ id: "science", label: "Science", parent: null, apple_anchor: "Science", last_evidence_at: "2026-10-01" }],
+  }));
+  fs.writeFileSync(path.join(fake, "data/validated-links.json"), JSON.stringify({
+    checked_at: "2026-10-01", podlink_note: "prose",
+    episodes: { "ep-1": { apple_episode_url: "https://podcasts.apple.com/x", episode_guid: "g", duration_min_confirmed: 40 } },
+  }));
+  return fake;
+}
+
+test("perf/bundle-trim-2: unread data keys leave the bundle, and only the bundle", () => {
+  /* KILLING MUTATION: make `dropUnreadKeys` return `doc` unchanged. Every listed key
+     below is then still in the bundle (and the copied-file re-read in
+     assertSlicesOnDisk agrees, since it compares against the same untrimmed view). */
+  const fake = makeRepoWithUnreadKeys();
+  const sourceBytes = (rel) => fs.readFileSync(path.join(fake, rel));
+  const before = ["data/discover.json", "data/segment-sources.json", "data/taxonomy.json", "data/validated-links.json"]
+    .map((rel) => [rel, sourceBytes(rel)]);
+  prepare({ root: fake, out: "www" });
+  const out = (rel) => JSON.parse(fs.readFileSync(path.join(fake, "www", rel), "utf8"));
+
+  const tax = out("data/taxonomy.json");
+  assert.equal("episode_attributes" in tax, false);
+  assert.deepEqual(tax.nodes, [{ id: "science", label: "Science", parent: null }], "the read keys of a node ship");
+
+  const links = out("data/validated-links.json");
+  assert.equal("podlink_note" in links, false);
+  assert.equal(links.checked_at, "2026-10-01", "an unlisted key ships");
+  assert.deepEqual(links.episodes["ep-1"], { apple_episode_url: "https://podcasts.apple.com/x" });
+
+  /* The two SLICES are cut from the trimmed document, so the trim reaches them too. */
+  const items = out("data/discover.json").items;
+  assert.ok(items.length > 0 && items.every((it) => !("episode_guid" in it) && typeof it.id === "string"));
+  const sources = out("data/segment-sources.json");
+  assert.equal("provenance" in sources, false);
+  assert.ok(sources.sources.length > 0);
+  for (const s of sources.sources) {
+    assert.equal("feed_url" in s, false);
+    assert.equal("ad_tier" in s, false);
+    assert.equal(s.ad_pad_sec, 4, "ad_pad_sec is read by foray-resolve and must ship");
+  }
+
+  /* The repo's documents are untouched: the website keeps every key. */
+  for (const [rel, bytes] of before) assert.ok(sourceBytes(rel).equals(bytes), `${rel} was modified by the build`);
+});
+
+test("perf/bundle-trim-2: a listed key that shipped or native code names fails the build, naming it", () => {
+  /* KILLING MUTATION: delete the `assertUnreadKeysUnread(absOut, root)` call in
+     `prepare`. All three builds below then succeed and the listed key ships missing
+     to a reader. */
+  const fetches = [
+    "data/session.json", "data/taxonomy.json", "data/discover.json", "data/item-tags.json",
+    "data/forays.json", "data/segments.json", "data/segment-sources.json",
+    "data/semantic-index.json", "data/validated-links.json",
+  ].map((f) => `await fetchJson("${f}");`).join("\n");
+  const reader = makeRepoWithUnreadKeys({ appSrc: `${fetches}\nconst anchor = (n) => n.apple_anchor;\n` });
+  assert.throws(() => prepare({ root: reader, out: "www" }), (e) =>
+    e instanceof WebDirError && /data\/taxonomy\.json nodes\[\]\.apple_anchor/.test(e.message) &&
+    /app\.js/.test(e.message) && /UNREAD_DATA_KEYS/.test(e.message));
+
+  const nativeRel = "mobile/plugins/foray-audio/android/src/main/java/ai/jwlabs/X.java";
+  const native = makeRepoWithUnreadKeys();
+  fs.mkdirSync(path.dirname(path.join(native, nativeRel)), { recursive: true });
+  fs.writeFileSync(path.join(native, nativeRel), 'class X { String f(JSObject o) { return o.getString("last_evidence_at"); } }\n');
+  assert.throws(() => prepare({ root: native, out: "www" }), (e) =>
+    e instanceof WebDirError && /last_evidence_at/.test(e.message) && e.message.includes(nativeRel));
+
+  /* A native TEST naming a key is not a reader on a phone. */
+  const testOnly = makeRepoWithUnreadKeys();
+  const testRel = "mobile/plugins/foray-audio/android/src/test/java/ai/jwlabs/XTest.java";
+  fs.mkdirSync(path.dirname(path.join(testOnly, testRel)), { recursive: true });
+  fs.writeFileSync(path.join(testOnly, testRel), 'class XTest { String k = "last_evidence_at"; }\n');
+  assert.doesNotThrow(() => prepare({ root: testOnly, out: "www" }));
+});
+
+test("perf/bundle-trim-2: dropUnreadKeys copies, and walks arrays and maps", () => {
+  const doc = { keep: 1, gone: 2, rows: [{ a: 1, x: 2 }, { a: 3 }], map: { k1: { a: 1, x: 2 }, k2: null } };
+  const table = { "data/t.json": ["gone", "rows[].x", "map.*.x", "absent", "rows[].absent"] };
+  const out = dropUnreadKeys("data/t.json", doc, table);
+  assert.deepEqual(out, { keep: 1, rows: [{ a: 1 }, { a: 3 }], map: { k1: { a: 1 }, k2: null } });
+  assert.equal(doc.gone, 2, "the argument is never mutated: readers cache it");
+  assert.equal(doc.rows[0].x, 2);
+  assert.equal(dropUnreadKeys("data/other.json", doc, table), doc, "a file with no entry is passed through as is");
+});
+
+test("REAL REPO: every UNREAD_DATA_KEYS path still names a key in its source, and the bundle carries none", () => {
+  /* Non-vacuity: a path that matches nothing is a rule that has stopped being
+     tested (the key was renamed upstream, say) — delete it deliberately. And the
+     real bundle, built through every slice, carries none of the listed keys.
+     KILLING MUTATION: in `projectData`, read through `docReader(root)` instead of
+     `sourceReader(root)` — the discover slice keeps `episode_guid` and this fails. */
+  for (const [rel, paths] of Object.entries(UNREAD_DATA_KEYS)) {
+    const source = JSON.parse(fs.readFileSync(path.join(ROOT, rel), "utf8"));
+    for (const p of paths) assert.ok(unreadKeyHits(source, p).length > 0, `${rel} ${p} names no key in the source`);
+  }
+  withRealBundle((r, absOut) => {
+    for (const [rel, paths] of Object.entries(UNREAD_DATA_KEYS)) {
+      const bundled = JSON.parse(fs.readFileSync(path.join(absOut, rel), "utf8"));
+      for (const p of paths) assert.equal(unreadKeyHits(bundled, p).length, 0, `the bundled ${rel} still carries ${p}`);
+    }
+  });
 });
 
 test("index.html's own script and style references are all bundled", () => {
@@ -882,7 +1033,7 @@ function engineDfByCount(itemTags) {
  *  Returns the terms that differ. */
 function sliceCountDivergence(whole, slice, extra = []) {
   const terms = tagTermUniverse(whole, extra);
-  for (const group of Object.values(slice?.df?.by_count ?? {})) for (const t of group) terms.add(t);
+  for (const group of Object.values(decodeTagDfByCount(slice?.df) ?? {})) for (const t of group) terms.add(t);
   return tagCountDivergence(whole, slice, terms);
 }
 
@@ -1015,8 +1166,10 @@ test("#279: a WHOLE map counts itself — no stale bundle-time counts — and th
 
   /* The verifier, reached: move `comedy` to the wrong count. */
   const corrupt = structuredClone(slice);
-  corrupt.df.by_count["1"] = corrupt.df.by_count["1"].filter((t) => t !== "comedy");
-  (corrupt.df.by_count["2"] ||= []).push("comedy");
+  const moved = decodeTagDfByCount(corrupt.df);
+  moved["1"] = moved["1"].filter((t) => t !== "comedy");
+  (moved["2"] ||= []).push("comedy");
+  for (const [n, group] of Object.entries(moved)) corrupt.df.by_count[n] = frontCodeTerms(group);
   assert.throws(
     () => assertItemTagsSliceComplete(itemTags, corrupt, { discover, session }),
     (e) => e instanceof WebDirError && /counts 1 term\(s\) differently from the whole map/.test(e.message) &&
@@ -1112,7 +1265,7 @@ test("REAL REPO: the tag slice gives every term primeVocabulary walks — and ev
   for (const id of tagged) assert.ok(id in slice.tags, `session episode ${id} lost its tags`);
   assert.equal(slice.df.total, entries);
   /* The bundler's restated matcher, on today's whole map, IS the engine's table. */
-  assert.deepEqual(slice.df.by_count, engineDfByCount(whole), "tagDfBlock no longer computes what the engine counts");
+  assert.deepEqual(decodeTagDfByCount(slice.df), engineDfByCount(whole), "tagDfBlock no longer computes what the engine counts");
   assert.equal(assertItemTagsSliceComplete(whole, slice, { discover, session }), true);
 
   const vocabulary = new Set();
@@ -1186,8 +1339,8 @@ test("#279 review: the bundler's restated matcher is the engine's — sense-lock
     assert.ok(tagCandidateForms(stem).includes(stem));
     assert.ok(tagCandidateForms(stem).every((f) => f.startsWith(stem)), "a candidate form that is not the term plus a suffix breaks the prefix walk");
   }
-  assert.deepEqual(tagDfBlock(probe, 0).by_count, engineDfByCount(probe));
-  assert.deepEqual(tagDfBlock(dfFixture().itemTags, 0).by_count, engineDfByCount(dfFixture().itemTags));
+  assert.deepEqual(decodeTagDfByCount(tagDfBlock(probe, 0)), engineDfByCount(probe));
+  assert.deepEqual(decodeTagDfByCount(tagDfBlock(dfFixture().itemTags, 0)), engineDfByCount(dfFixture().itemTags));
 
   /* And end to end: a slice of the probe map carrying the restated block is
      indistinguishable from the whole map to the real engine. */
@@ -1199,6 +1352,121 @@ test("#279 review: the bundler's restated matcher is the engine's — sense-lock
      open stems count differently on the same shape. */
   const ctx = { itemTags: probe };
   assert.notEqual(SE.tagCount("train", ctx), SE.tagCount("grill", ctx));
+});
+
+/* FRONT-CODED df GROUPS (docs/research/bundle-budget-2026-10.md item 9). The
+   bundler writes each by_count group as one front-coded string and marks the block
+   `encoding: TAG_DF_ENCODING`; search-engine.js readTagDfBlock decodes it, still
+   reads the plain arrays when `encoding` is absent, and ignores any other value.
+   The saving is raw bytes on disk, which is what MAX_BYTES and the 2.8 MB alarm
+   measure; the IPA/APK zip already exploits shared prefixes, so it is not a
+   download-size claim. */
+
+/** A term -> count Map off by_count groups that are already plain arrays. */
+function countsOf(byCount) {
+  const m = new Map();
+  for (const [n, group] of Object.entries(byCount)) for (const t of group) m.set(t, Number(n));
+  return m;
+}
+
+test("df front-coding: the real data/item-tags.json round-trips to an identical term -> count map, through the bundler's decoder AND the engine's", (t) => {
+  /* MUTATIONS THIS KILLS (each run):
+       - prepare-webdir.mjs frontCodeTerms: `FRONT_CODE_DIGITS[k] + t.slice(k)` ->
+         `FRONT_CODE_DIGITS[k] + t.slice(k + 1)` — every shared term loses a
+         character, the decoded map differs;
+       - prepare-webdir.mjs frontCodeTerms: `while (k < max && t[k] === prev[k]) k++`
+         -> `while (false) k++` — still decodes, shares nothing, and the size
+         assertion fails (the saving this item exists for is gone);
+       - search-engine.js frontDecodeTerms: `prev = prev.slice(0, k) + entry.slice(1)`
+         -> `prev = entry.slice(1)` — the engine reads suffixes as terms, and the
+         engine-side round trip below fails;
+       - search-engine.js readTagDfBlock: `frontCoded ? frontDecodeTerms(group) : group`
+         -> `group` — the engine rejects the block and counts its own (empty) map,
+         every count is 0. */
+  const whole = JSON.parse(fs.readFileSync(path.join(ROOT, "data/item-tags.json"), "utf8"));
+  const plain = engineDfByCount(whole);
+  const want = countsOf(plain);
+  assert.ok(want.size > 1000, `only ${want.size} terms count on the real map`);
+
+  const block = tagDfBlock(whole, 0);
+  assert.equal(block.encoding, TAG_DF_ENCODING, "the real map's block is not front-coded");
+  for (const group of Object.values(block.by_count)) assert.equal(typeof group, "string");
+
+  /* The bundler's own decoder. */
+  assert.deepEqual(countsOf(decodeTagDfByCount(block)), want, "the bundler's front-coding does not round-trip");
+
+  /* The ENGINE's decoder, on a map whose only source of counts is the block
+     (`entries: 0` and no tags, so readTagDfBlock honours it): every term the
+     whole map counts reads back with its count, and a term it does not count
+     reads 0, so the engine's map is exactly `want`. */
+  const ctx = { itemTags: { tags: {}, df: block } };
+  const wrong = [...tagTermUniverse(whole, ["nonesuch"])].filter((x) => SE.tagCount(x, ctx) !== (want.get(x) ?? 0));
+  assert.deepEqual(wrong.slice(0, 5), [], "the engine decodes the front-coded block to different counts");
+  assert.equal(SE.tagDF("war", ctx), (want.get("war") ?? 0) / Object.keys(whole.tags).length);
+
+  /* What it buys, in the unit the budgets measure. */
+  const plainBytes = Buffer.byteLength(JSON.stringify(plain));
+  const codedBytes = Buffer.byteLength(JSON.stringify(block.by_count));
+  t.diagnostic(`df by_count: ${plainBytes} B plain -> ${codedBytes} B front-coded (${plainBytes - codedBytes} B saved)`);
+  assert.ok(codedBytes < plainBytes * 0.75, `front-coding saves only ${plainBytes - codedBytes} of ${plainBytes} B`);
+});
+
+test("df front-coding: the engine still reads the plain form, ignores an encoding it does not know, and the verifier refuses one", () => {
+  /* MUTATIONS THIS KILLS (each run):
+       - search-engine.js readTagDfBlock: `const terms = frontCoded ? frontDecodeTerms(group) : group`
+         -> `const terms = frontDecodeTerms(group)` (front-coded only) — a plain
+         block, the form every bundle before this one shipped, is ignored and the
+         slice counts itself;
+       - search-engine.js readTagDfBlock: delete `if (df.encoding !== undefined && !frontCoded) return null;`
+         — a block in an unknown encoding whose groups happen to be arrays is read
+         as plain, and `war` reports the block's 5 instead of the slice's own 2;
+       - prepare-webdir.mjs decodeTagDfByCount: delete
+         `if (df.encoding !== undefined && df.encoding !== TAG_DF_ENCODING) return null;`
+         — the verifier passes a block the engine ignores;
+       - prepare-webdir.mjs tagDfBlock: `t.includes(" ")` -> `false` — a term with a
+         space is front-coded, splits in two on decode, and the slice diverges;
+       - prepare-webdir.mjs assertItemTagsSliceComplete: `decodeTagDfByCount(df)` ->
+         `df.by_count` (the self-check compares the block undecoded) — the plain
+         slice above is refused, and so is every front-coded one in the #279 tests. */
+  const { discover, session, itemTags } = dfFixture();
+  const slice = itemTagsSlice(itemTags, { discover, session });
+  assert.equal(slice.df.encoding, TAG_DF_ENCODING);
+  const terms = tagTermUniverse(itemTags, ["train", "book", "nonesuch"]);
+
+  /* The plain form: same block, decoded by the bundler, no `encoding`. */
+  const { encoding: _e, ...plainDf } = slice.df;
+  const plainSlice = { ...slice, df: { ...plainDf, by_count: decodeTagDfByCount(slice.df) } };
+  assert.ok(Array.isArray(plainSlice.df.by_count["1"]));
+  assert.deepEqual(tagCountDivergence(itemTags, plainSlice, terms), [], "the engine no longer reads a plain df block");
+  assert.equal(assertItemTagsSliceComplete(itemTags, plainSlice, { discover, session }), true);
+
+  /* An encoding the engine does not know, with array groups it COULD misread. */
+  const alien = { ...slice, df: { ...plainDf, encoding: "front-9", by_count: { 5: ["war"] } } };
+  assert.equal(SE.tagCount("war", { itemTags: alien }), 2, "an unknown encoding was read as plain arrays");
+  const alienRightCounts = { ...plainSlice, df: { ...plainSlice.df, encoding: "front-9" } };
+  assert.throws(
+    () => assertItemTagsSliceComplete(itemTags, alienRightCounts, { discover, session }),
+    (e) => e instanceof WebDirError && /df block does not decode: its encoding is "front-9"/.test(e.message)
+  );
+  /* ...and a front-coded group that does not decode is refused the same way. */
+  const garbled = structuredClone(slice);
+  garbled.df.by_count["1"] = "9war";
+  assert.equal(frontDecodeTerms("9war"), null);
+  assert.throws(() => assertItemTagsSliceComplete(itemTags, garbled, { discover, session }), /df block does not decode/);
+
+  /* The fallback: a term with a space ships plain, and the engine still agrees. */
+  const spaced = { ...itemTags, tags: { ...itemTags.tags, d1: ["new york-history", "ships"] } };
+  const spacedSlice = itemTagsSlice(spaced, { discover, session });
+  assert.equal(spacedSlice.df.encoding, undefined, "a term with a space was front-coded");
+  assert.deepEqual(sliceCountDivergence(spaced, spacedSlice, ["new york", "new"]), []);
+  assert.equal(SE.tagCount("new york", { itemTags: spacedSlice }), 1);
+
+  /* The encoding itself, by eye: sorted, shared-prefix digit plus suffix. */
+  assert.equal(frontCodeTerms(["wares", "war", "ware"]), "0war 3e 4s");
+  assert.deepEqual(frontDecodeTerms("0war 3e 4s"), ["war", "ware", "wares"]);
+  assert.deepEqual(frontDecodeTerms(frontCodeTerms([""])), [""]);
+  const long = "a".repeat(40);
+  assert.deepEqual(frontDecodeTerms(frontCodeTerms([long, long + "s"])), [long, long + "s"], "a shared prefix over 35 does not round-trip");
 });
 
 test("prepare WRITES the slice rather than copying the file", () => {

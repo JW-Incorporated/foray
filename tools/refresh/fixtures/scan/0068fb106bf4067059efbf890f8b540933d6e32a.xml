@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Alpha Show</title>
+    <item>
+      <title>Vibe Coding &amp;#038; Linux</title>
+      <guid><![CDATA[alpha-cdata-guid]]></guid>
+      <pubDate>Mon, 05 Oct 2026 10:00:00 GMT</pubDate>
+      <itunes:explicit>yes</itunes:explicit>
+      <itunes:duration>01:02:03</itunes:duration>
+      <description><![CDATA[<p>Show   notes with <b>HTML</b>.</p>]]></description>
+      <enclosure url="https://cdn.example.test/alpha/ep1.mp3" length="12345678" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Object Guid</title>
+      <guid isPermaLink="false">alpha-object-guid</guid>
+      <pubDate>Sun, 04 Oct 2026 10:00:00 GMT</pubDate>
+      <itunes:explicit>no</itunes:explicit>
+      <itunes:duration>1834</itunes:duration>
+      <itunes:summary>Summary only, no description.</itunes:summary>
+      <enclosure url="https://cdn.example.test/alpha/ep2.m4a?utm=1" length="999" type="audio/x-m4a"/>
+    </item>
+    <item>
+      <title>No Guid At All</title>
+      <pubDate>Sat, 03 Oct 2026 10:00:00 GMT</pubDate>
+      <itunes:explicit>true</itunes:explicit>
+      <enclosure url="https://cdn.example.test/alpha/ep3.mp3" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Seen Last Night</title>
+      <guid isPermaLink="false">20261002</guid>
+      <pubDate>Fri, 02 Oct 2026 10:00:00 GMT</pubDate>
+      <enclosure url="https://cdn.example.test/alpha/ep4.mp3" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Already In Discover</title>
+      <guid>alpha-known-title</guid>
+      <pubDate>Thu, 01 Oct 2026 10:00:00 GMT</pubDate>
+      <enclosure url="https://cdn.example.test/alpha/ep5.mp3" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Video Only</title>
+      <guid>alpha-video</guid>
+      <pubDate>Wed, 30 Sep 2026 10:00:00 GMT</pubDate>
+      <description>A video episode.</description>
+      <enclosure url="https://cdn.example.test/alpha/ep6.mp4" length="5000" type="video/mp4"/>
+    </item>
+    <item>
+      <title>Unparseable Date</title>
+      <guid>alpha-bad-date</guid>
+      <pubDate>not a date</pubDate>
+      <enclosure url="https://cdn.example.test/alpha/ep7.mp3" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Older Than The Window</title>
+      <guid>alpha-ancient</guid>
+      <pubDate>Tue, 01 Jan 1901 10:00:00 GMT</pubDate>
+      <enclosure url="https://cdn.example.test/alpha/ep8.mp3" type="audio/mpeg"/>
+    </item>
+    <item>
+      <guid>alpha-no-title</guid>
+      <pubDate>Mon, 28 Sep 2026 10:00:00 GMT</pubDate>
+      <enclosure url="https://cdn.example.test/alpha/ep9.mp3" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Tenth Item, Explicit Word</title>
+      <guid isPermaLink="true">https://alpha.example.test/ep10</guid>
+      <pubDate>Sun, 27 Sep 2026 10:00:00 GMT</pubDate>
+      <itunes:explicit>explicit</itunes:explicit>
+      <description>Ten.</description>
+      <enclosure url="https://cdn.example.test/alpha/ep10.mp3" length="0" type="audio/mpeg"/>
+    </item>
+    <item>
+      <title>Eleventh Item, Past The Slice</title>
+      <guid>alpha-eleventh</guid>
+      <pubDate>Sat, 26 Sep 2026 10:00:00 GMT</pubDate>
+      <enclosure url="https://cdn.example.test/alpha/ep11.mp3" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>

@@ -10,7 +10,8 @@
    data/breadth-classification.json — REPLACING whatever entry (old,
    distrusted "genre-map"/"llm-title-genre", or absent) currently exists
    for each classified show. Also advances the shared progress state
-   (data-local/classify-progress.json by default): classified shows leave
+   (data/classify-progress.json by default — the committed file the six shard
+   routines share, labels.mjs classifyProgressPath): classified shows leave
    `in_flight` and `failed_fetch`.
 
    This never touches data/catalog.json or data/discover.json (the curated
@@ -58,13 +59,14 @@
    Env overrides:
      BREADTH_CLASSIFICATION_PATH  (default data/breadth-classification.json)
      TAXONOMY_PATH                (default data/taxonomy.json)
-     PROGRESS_PATH                (default data-local/classify-progress.json)   */
+     PROGRESS_PATH                (default data/classify-progress.json)   */
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { dirname, join, resolve as resolvePath } from "node:path";
+import { isEntryScript } from "../ci/entry.mjs";
 import copyRules from "../../backend/src/copy/rules.js";
-import { LABEL_SCHEMA_VERSION, mergeTranscriptLabels } from "./labels.mjs";
+import { LABEL_SCHEMA_VERSION, mergeTranscriptLabels, classifyProgressPath } from "./labels.mjs";
 import { decodeEntities } from "../refresh/entities.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -189,7 +191,7 @@ function main() {
 
   const CLASSIFICATION_PATH = envPath("BREADTH_CLASSIFICATION_PATH", ["data", "breadth-classification.json"]);
   const TAXONOMY_PATH = envPath("TAXONOMY_PATH", ["data", "taxonomy.json"]);
-  const PROGRESS_PATH = envPath("PROGRESS_PATH", ["data-local", "classify-progress.json"]);
+  const PROGRESS_PATH = classifyProgressPath(ROOT);
 
   const taxonomy = readJson(TAXONOMY_PATH);
   const taxonomyNodeIds = new Set(taxonomy.nodes.map((n) => n.id));
@@ -272,6 +274,12 @@ function main() {
   writeFileSync(PROGRESS_PATH, JSON.stringify(progress, null, 2) + "\n");
 
   if (errors.length) console.warn("SKIPPED:\n  " + errors.join("\n  "));
+  /* prepare-batch.mjs lists the genre-map topics it dropped from this batch's
+     tier0_prior because they are not taxonomy nodes. Repeated here so the runner
+     sees it at merge time as well; it never changes what merges. */
+  if (Array.isArray(batch.stale_map_topics) && batch.stale_map_topics.length) {
+    console.warn(`STALE GENRE MAP (from the batch input): ${batch.stale_map_topics.join(", ")} — fix data/genre-taxonomy-map.json.`);
+  }
   console.log(
     `MERGED ${merged} show(s) (source=${source}). skipped: ${skippedMissing} no-result, ${skippedInvalid} invalid, ${skippedAlready} already-merged.`
   );
@@ -279,6 +287,6 @@ function main() {
 }
 
 /* Only run as a script, so validateResult can be imported by the suites. */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main();
 }

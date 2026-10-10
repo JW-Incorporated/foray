@@ -48,6 +48,30 @@ final class EngineBridgeRulesTests: XCTestCase {
         XCTAssertEqual(refusal(.snapshot, failed), "accepted")
     }
 
+    /// CH3-09 (R4-06): the snapshot carries the core's own `lastVoiceFallback`
+    /// as a boolean (V-01's "spoken in a different voice" notice), null until a
+    /// line has spoken, and the contract takes it (the `snapshot` family's
+    /// `foray-voice-fallback` example). Before CH3-09 the body never wrote it.
+    /// TO SEE IT FAIL: drop the `voiceFallback` member from
+    /// `EngineSnapshot.body`, or write it as a string.
+    func testTheSnapshotCarriesTheCoresVoiceFallbackAsABoolean() {
+        var stamper = SnapshotStamper()
+        let idle = stamped(EngineSnapshot.body(core: EngineCore(), deck: .idle, lastError: nil), seq: &stamper)
+        XCTAssertEqual(idle["voiceFallback"], .null, "no line has spoken")
+
+        var host = EngineCoreTests.Host(config: NarrationOverlayTests.tape)
+        host.send(.queue(.loadForay([NarrationOverlayTests.line(0, "one")], isLocalFile: false, allowAdPad: false)))
+        let out = host.send(.queue(.playIndex(0, startSec: nil, source: .tap)))
+        guard let seq = NarrationOverlayTests.spokenSeq(out) else { return XCTFail("no line was spoken: \(out)") }
+        host.send(.narrator(.started(seq: seq, voiceFallback: true)), after: 0)
+        XCTAssertEqual(host.core.state.lastVoiceFallback, true)
+        let fell = stamped(EngineSnapshot.body(core: host.core, deck: host.reading, lastError: nil), seq: &stamper)
+        XCTAssertEqual(fell["voiceFallback"], .bool(true))
+        XCTAssertEqual(fell["isNarrationPlayhead"], .bool(true))
+        XCTAssertEqual(refusal(.snapshot, fell), "accepted")
+        XCTAssertEqual(try EngineContract.Snapshot(contract: fell).voiceFallback, true)
+    }
+
     /// `seq` moves exactly when the content moved, never for the capture
     /// time alone (reference-engine.js `snapshot()`).
     /// TO SEE IT FAIL: bump `seq` on every stamp, or fold the capture stamps
@@ -65,6 +89,49 @@ final class EngineBridgeRulesTests: XCTestCase {
                                   wallMs: 3_000, monoMs: 3_000)
         XCTAssertTrue(moved.changed)
         XCTAssertEqual(moved.snapshot["seq"], .number(2))
+    }
+
+    /// R4-08 (code-health-3 Appendix B), characterized: a snapshot taken while
+    /// a Foray clip plays says its rate; one taken inside the seam beat (the
+    /// out-point fired, the next clip's load is in flight) says
+    /// `inSeamGap: true` and `effectiveRate: 0`, which is what the page's
+    /// extrapolation freezes on (`snapshot/extrapolate-frozen-in-seam-gap`).
+    /// TO SEE IT FAIL: write the body's `inSeamGap` as `.bool(false)`, or its
+    /// `effectiveRate` as `rate` whatever the state.
+    func testASnapshotInsideTheSeamBeatSaysSoAndRunsAtRateZero() throws {
+        var host = EngineCoreTests.Host(config: ForayTapeTests.tape)
+        host.send(try EngineCoreTests.command("playForay", ForayTapeTests.forayArgs(ForayTapeTests.twoClips)))
+        host.land()
+        host.confirm()
+        var stamper = SnapshotStamper()
+        let playing = stamped(EngineSnapshot.body(core: host.core, deck: host.reading, lastError: nil), seq: &stamper)
+        XCTAssertEqual(playing["state"], .string("playing"))
+        XCTAssertEqual(playing["inSeamGap"], .bool(false))
+        XCTAssertEqual(playing["effectiveRate"], playing["rate"])
+        XCTAssertNotEqual(playing["effectiveRate"], .number(0))
+
+        host.reading.positionSec = 200
+        host.reading.audible = false
+        host.reading.ended = true
+        host.send(.deck(.ended(token: host.lastLoad ?? 0)), after: 0)
+        XCTAssertTrue(host.core.state.inSeamGap)
+        let beat = stamped(EngineSnapshot.body(core: host.core, deck: host.reading, lastError: nil), seq: &stamper)
+        XCTAssertEqual(beat["inSeamGap"], .bool(true))
+        XCTAssertEqual(beat["effectiveRate"], .number(0), "\(beat)")
+        XCTAssertEqual(refusal(.snapshot, beat), "accepted")
+    }
+
+    /// R4-08: `effectiveRate` is reference-engine.js `_body`'s rule, the seam
+    /// gap included: 0 in a gap even where the reducer says `playing` (no
+    /// input reaches that pair today, which is why the drift was silent).
+    /// TO SEE IT FAIL: drop `!inSeamGap` from `EngineSnapshot.effectiveRate`.
+    func testEffectiveRateIsZeroInASeamGapAsInTheReference() {
+        XCTAssertEqual(EngineSnapshot.effectiveRate(state: "playing", inSeamGap: false, buffering: false, rate: 1.5), 1.5)
+        XCTAssertEqual(EngineSnapshot.effectiveRate(state: "playing", inSeamGap: true, buffering: false, rate: 1.5), 0)
+        XCTAssertEqual(EngineSnapshot.effectiveRate(state: "playing", inSeamGap: false, buffering: true, rate: 1.5), 0)
+        for other in EngineContract.PlayerState.allCases.map(\.rawValue) where other != "playing" {
+            XCTAssertEqual(EngineSnapshot.effectiveRate(state: other, inSeamGap: false, buffering: false, rate: 1.5), 0, other)
+        }
     }
 
     // MARK: - The coalescer (§5.4)

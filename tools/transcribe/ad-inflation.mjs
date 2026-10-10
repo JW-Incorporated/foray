@@ -63,8 +63,9 @@
 // `data/dai-classification.json` beside the host-derived flag they qualify.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve as resolvePath } from 'node:path';
+import { isEntryScript } from '../ci/entry.mjs';
 import { AUDIO_PROBE_HEADERS, awaitHostSlot, discardBody, waitBeforeRetry } from '../segments/politeness.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -634,7 +635,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error('FATAL:', e);
     process.exit(1);

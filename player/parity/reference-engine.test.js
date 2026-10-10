@@ -280,6 +280,32 @@ test("audition is refused with engine-busy while running, and speaks through an 
   eng.dispose();
 });
 
+/* ---------- voiceFallback (CH3-09) ---------- */
+
+const NARRATED_FORAY = {
+  forayId: "f1", title: "A Foray", buildReport: {}, isLocalFile: false, allowAdPad: false, voiceId: null,
+  items: [{ type: "narration", id: "n0", script: "Hello there" }, seg("s0", "https://cdn.test/a.mp3", 100, 200)],
+};
+
+test("CH3-09 (R4-06): the snapshot carries the manager's own voiceFallback, a boolean, null until a line has spoken", async () => {
+  // MUTATION: drop `voiceFallback` from _body() -> undefined, never true -> red.
+  // MUTATION: write it as `String(m.lastVoiceFallback)` -> the schema refuses
+  // the snapshot -> red. Before CH3-09 _body() never wrote the field.
+  const foray = { capabilities: ["episode", "continuation", "restore", "foray"] };
+  const { eng: quiet } = engine();
+  assert.equal(quiet.snapshot().voiceFallback, null, "no line has spoken");
+  const { eng: fell } = engine({ ...foray, tts: { voiceFallback: true } });
+  const r = await send(fell, "playForay", NARRATED_FORAY);
+  assert.equal(r.ok, true);
+  assert.equal(r.snapshot.isNarrationPlayhead, true, "the spoken line is the playhead");
+  assert.equal(r.snapshot.voiceFallback, true);
+  const v = validateContract("snapshot", r.snapshot);
+  assert.ok(v.ok, v.errors.join("; "));
+  const { eng: asked } = engine(foray);
+  assert.equal((await send(asked, "playForay", NARRATED_FORAY)).snapshot.voiceFallback, false, "the voice asked for spoke");
+  for (const e of [quiet, fell, asked]) e.dispose();
+});
+
 /* ---------- relinquish ---------- */
 
 test("relinquish is terminal: the session is KEPT, the page is told, and every later command answers relinquished", async () => {

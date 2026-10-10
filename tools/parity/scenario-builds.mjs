@@ -12,7 +12,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { REPO_ROOT, loadFixtures } from "../../player/parity/runner.js";
 import { SCENARIO_BUILDS_FILE, expectedScenarioBuilds, currentScenarioBuilds } from "../../player/parity/scenario-builds.js";
 
@@ -35,4 +35,4 @@ async function main(argv) {
   return 2;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) process.exitCode = await main(process.argv.slice(2));
+if (isEntryScript(import.meta.url)) process.exitCode = await main(process.argv.slice(2));

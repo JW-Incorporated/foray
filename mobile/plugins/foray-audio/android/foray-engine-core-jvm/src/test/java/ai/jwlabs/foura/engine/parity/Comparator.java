@@ -14,7 +14,7 @@ import java.util.TreeSet;
  * coin toss: a case green in {@code record.mjs --check} and red here says nothing
  * about the RULE. So the rules are compare.js's (exact by default, key order never
  * matters, array order always does, {@code n.*} op tokens stripped outside
- * {@code prepare}, a tolerance never forgives a {@code $num} tag), and the
+ * {@link #NATIVE_TOKEN_FAMILIES} (the prepare families and native-episode), a tolerance never forgives a {@code $num} tag), and the
  * {@code compare} fixture family runs compare.js's own decision table through this
  * port, so a drift between the two turns that family red.
  */
@@ -24,8 +24,11 @@ public final class Comparator {
     /** compare.js NATIVE_TOKEN_PREFIX. */
     public static final String NATIVE_TOKEN_PREFIX = "n.";
 
-    /** compare.js NATIVE_TOKEN_FAMILIES: the families whose op logs KEEP {@code n.*} tokens. */
-    public static final List<String> NATIVE_TOKEN_FAMILIES = List.of("prepare", "prepare-narration");
+    /**
+     * compare.js NATIVE_TOKEN_FAMILIES: the families whose op logs KEEP {@code n.*} tokens (the prepare
+     * families, and code-health-3 CH3-20's native-episode: the session, grace and the stop cause at the wheel).
+     */
+    public static final List<String> NATIVE_TOKEN_FAMILIES = List.of("prepare", "prepare-narration", "native-episode");
 
     /** One difference; {@code expected}/{@code actual} null means absent (compare.js's undefined). */
     public record Difference(String path, Json expected, Json actual, String why) {

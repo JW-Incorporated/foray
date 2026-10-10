@@ -173,7 +173,7 @@ jobs:
           # manifest-autofix.yml's header names for its own push-then-dispatch
           # pattern. Two consequences, both handled explicitly rather than
           # assumed away:
-          #   1. `ci.yml`'s required checks (`backend`, `data-and-site`) would
+          #   1. `ci.yml`'s required checks (`REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`) would
           #      never report on this head SHA — `workflow_dispatch` is the
           #      documented exception, exactly as manifest-autofix.yml and
           #      pr-hygiene.yml already rely on for their own bot commits.

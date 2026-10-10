@@ -180,7 +180,7 @@ import http from "node:http";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 /* ------------------------------------------------------------------ constants */
 
@@ -785,7 +785,7 @@ export function parseArgs(argv) {
   };
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 if (isMain) {
   const args = parseArgs(process.argv.slice(2));
   const relay = createRelay(args);

@@ -34,6 +34,9 @@
  *     (`missingFileAction`), client.js's degrade executed over each answer,
  *     the earcon executed over a fake Web Audio, and app.js dropping the
  *     episode from Up Next and playing the next by the natural end's rule.
+ * 12. CH3-05: at boot the record follows the plugin's `list()` (today's path
+ *     after an app update; a transfer settled while 4a was not running), and
+ *     an unchanged index rewrites nothing.
  *
  * Tests 9 and 10 are beyond the plan's eight: 9 because eviction deletes a
  * listener's files, 10 because the stand-in would otherwise be unchecked.
@@ -623,9 +626,12 @@ test("player/client.js publishes the real modules on window.forayDownloads, and 
   assert.match(src, /import \{ createDownloadBridge, USER_AGENT, userAgentFor \} from "\.\/download-bridge\.js";/);
   const published = /window\.forayDownloads = \{([\s\S]*?)\n\};/.exec(src);
   assert.ok(published, "window.forayDownloads is published");
-  for (const field of ["store: downloadStore,", "createBridge: createDownloadBridge,", "USER_AGENT,", "recordFor:", "onMissing:", "onPlayedFromFile:"]) {
+  for (const field of ["store: downloadRecordRules,", "createBridge: createDownloadBridge,", "USER_AGENT,", "recordFor:", "onMissing:", "onPlayedFromFile:"]) {
     assert.ok(published[1].includes(field), `window.forayDownloads carries ${field}`);
   }
+  /* CH3-04: the store is download-store.js's own rules, its writer wrapped
+     only to re-send the engine's plan (test/engine-continuation.test.js). */
+  assert.match(src, /const downloadRecordRules = Object\.freeze\(\{\s*\.\.\.downloadStore,\s*writeDownloads\(storageArea, value\) \{\s*const wrote = downloadStore\.writeDownloads\(storageArea, value\);/);
   assert.match(src, /surface\.userAgent = userAgentFor\(stamp\.native \?\? stamp\.version\);/);
   assert.strictEqual((src.match(/\breadBuildStamp\(/g) || []).length, 1, "one build-stamp read, shared");
   assert.match(src, /noteDownloadsBuild\(stamp\)/, "the one read's answer reaches the downloads UA");
@@ -945,20 +951,21 @@ test("native lane: play() holds the downloaded copy's ticket while the engine is
     "a thrown play is never a hold, never a stamp");
 });
 
-test("native lane: the engine's load error over a held ticket streams online and drops offline; a playing snapshot spends it", async () => {
-  /* settleEngineLocalLoad + degradeLocalPlay, executed together over one
-     shared ticket, and onEngineEvent's call into them.
+test("native lane: the engine's load error over a held ticket is marked online (the engine streams it) and dropped offline; a playing snapshot spends it", async () => {
+  /* settleEngineLocalLoad + engineFileMissing + degradeLocalPlay, executed
+     together over one shared ticket, and onEngineEvent's call into them.
      MUTATION: delete `settleEngineLocalLoad(ev);` from onEngineEvent — the
      engine's load error reaches nothing: no earcon, no drop, no stream; red
      on the wiring case.
      MUTATION 2: drop the `(s.state !== "playing" && s.state !== "ended")`
      test — the idle snapshot the engine sends JUST BEFORE its load error
      spends the ticket, and the error then degrades nothing; red.
-     MUTATION 3: drop `if (ev.code !== "load") return;` — a hop the engine
-     walked (`chain-start`) drops or streams the episode on screen; red.
-     MUTATION 4: drop the `retry.then(...)` chain — a stream retry that fails
-     too is never painted; red on `reports`. */
-  const src = `${clientFn("function degradeLocalPlay() {")}\n${clientFn("function settleEngineLocalLoad(ev) {")}`;
+     MUTATION 3: drop the `ev.code === "load"` test — a hop the engine
+     walked (`chain-start`) drops or marks the episode on screen; red.
+     CH3-12: online the ENGINE streams the file that would not open
+     (EngineCore `fallBackToStream`), so the page only marks the record — no
+     second stream of its own, and nothing for it to paint. */
+  const src = ["function degradeLocalPlay() {", "function engineFileMissing() {", "function settleEngineLocalLoad(ev) {"].map((head) => clientFn(head)).join("\n");
   const lane = ({ online, playOk = true, currentId = "ep-1" }) => {
     const log = { missing: [], plays: [], lines: [], earcons: 0, stamped: [], reports: [] };
     const window = { forayDownloads: {
@@ -1003,9 +1010,10 @@ test("native lane: the engine's load error over a held ticket streams online and
   on.settle(loadError);
   await settle();
   assert.deepStrictEqual(on.log.missing, [["ep-1"]], "online: marked, streaming instead");
-  assert.deepStrictEqual(on.log.plays, [{ id: "ep-1", opts: { why: "w", noLocal: true } }], "streamed once, noLocal");
+  assert.deepStrictEqual(on.log.plays, [], "the engine streams it; the page starts no second stream (CH3-12)");
   assert.strictEqual(on.log.earcons, 0);
-  assert.deepStrictEqual(on.log.reports, [null], "and a stream that fails too is painted");
+  assert.deepStrictEqual(on.log.reports, [], "nothing of the page's to paint");
+  assert.strictEqual(on.held(), false, "spent");
 
   const played = lane({ online: false });
   played.settle(snap("playing", "ep-other"));
@@ -1030,4 +1038,169 @@ test("native lane: the engine's load error over a held ticket streams online and
   };
   assert.deepStrictEqual(wire("native"), ["error"], "native: the engine's load error reaches the settle");
   assert.deepStrictEqual(wire("js"), [], "the JS lane settles inside play()");
+});
+
+/* CH3-12 (docs/roadmap/code-health-3.md, R4-03 + R1-17): the ENGINE streams a
+   downloaded copy that will not open (EngineCore `fallBackToStream`), because
+   the page may be asleep when it fails — the bridge drops every event while
+   the page is hidden. So the page's settle only bookkeeps, and it also
+   settles from the snapshot's `lastError` (which means the current item), the
+   one word about the failure a page coming back can still read. */
+test("CH3-12: the engine streams a downloaded copy that will not open; the page only bookkeeps, and settles from the snapshot's lastError on return", () => {
+  /* RED on main: R4-03 — a page that slept through the failure stamped the
+     missing file as played from the stream's `playing` snapshot, never
+     marked it, and offline never dropped it; and awake, it started a second
+     stream over the engine's own.
+     MUTATION: drop the `s.lastError === "load"` branch from
+     settleEngineLocalLoad — the return snapshot stamps a missing file as
+     played (red on `stamped`), and offline nothing is dropped.
+     MUTATION 2: make engineFileMissing call `degradeLocalPlay()` online too
+     — the page starts a second stream over the engine's; red on `plays`. */
+  const src = ["function degradeLocalPlay() {", "function engineFileMissing() {", "function settleEngineLocalLoad(ev) {"].map((head) => clientFn(head)).join("\n");
+  const lane = ({ online }) => {
+    const log = { missing: [], plays: [], lines: [], earcons: 0, stamped: [] };
+    const window = { forayDownloads: {
+      onMissing: (...a) => log.missing.push(a),
+      onPlayedFromFile: (id) => log.stamped.push(id),
+    } };
+    const ForayPlayer = {
+      play: (item, opts) => { log.plays.push({ id: item.id, opts }); return Promise.resolve(true); },
+      reportPlayFailure: () => {},
+    };
+    const api = new Function(
+      "current", "downloadStore", "browserOnline", "setPlayFailure", "EP_MISSING_OFFLINE",
+      "playEarcon", "window", "ForayPlayer",
+      `let localAttempt = { item: { id: "ep-1" }, opts: {} };\n${src}\n` +
+      "return { settle: settleEngineLocalLoad, held: () => localAttempt !== null };",
+    )(
+      { id: "ep-1", isLocalFile: true }, STORE, () => online, (line) => log.lines.push(line), "OFFLINE-LINE",
+      () => { log.earcons++; }, window, ForayPlayer,
+    );
+    return { ...api, log };
+  };
+  const snap = (state, lastError, itemId = "ep-1") => ({ type: "snapshot", snapshot: { state, itemId, lastError } });
+
+  /* Asleep through the failure, online: the engine's stream plays, and the
+     page comes back to a `playing` snapshot that says the file failed. */
+  const back = lane({ online: true });
+  back.settle(snap("playing", "load", "ep-other"));
+  assert.strictEqual(back.held(), true, "another episode's lastError is not this load's");
+  back.settle(snap("playing", "load"));
+  assert.deepStrictEqual(back.log.stamped, [], "a missing file is never stamped as played");
+  assert.deepStrictEqual(back.log.missing, [["ep-1"]], "marked: streaming instead");
+  assert.deepStrictEqual(back.log.plays, [], "the engine is the stream; the page starts none");
+  assert.strictEqual(back.held(), false, "spent");
+
+  /* Asleep, offline: the engine's stream ran into its own deadline; coming
+     back to that idle snapshot is the page's offline drop. */
+  const offline = lane({ online: false });
+  offline.settle(snap("idle", "load"));
+  assert.deepStrictEqual(offline.log.missing, [["ep-1", { offline: true }]], "dropped: app.js moves Up Next on");
+  assert.strictEqual(offline.log.earcons, 1);
+
+  /* Awake: the engine's `error` event over the held ticket marks it and
+     leaves the stream to the engine. */
+  const awake = lane({ online: true });
+  awake.settle({ type: "error", code: "load", message: "file not found" });
+  assert.deepStrictEqual(awake.log.missing, [["ep-1"]]);
+  assert.deepStrictEqual(awake.log.plays, [], "no second stream over the engine's");
+  assert.strictEqual(awake.held(), false);
+
+  /* Survives: a `playing` snapshot with no error is the file playing. */
+  const played = lane({ online: true });
+  played.settle(snap("playing", null));
+  assert.deepStrictEqual([played.log.stamped, played.log.missing], [["ep-1"], []]);
+});
+
+/* ==================================================================== */
+/* CH3-05 (docs/roadmap/code-health-3.md): the native index is the one truth.
+   iOS moves the app's container on every update, so a stored absolute path
+   goes stale; a transfer that finished (or was flipped to `interrupted`)
+   while 4a was not running emitted its event before the page listened. At
+   boot the page re-reads the plugin's `list()` and the record follows it. */
+
+const OLD_IOS_PATH = (id) => `/var/mobile/Containers/Data/Application/OLD-UUID/Library/Application Support/foray-downloads/${id}.bin`;
+const NEW_IOS_PATH = (id) => `/var/mobile/Containers/Data/Application/NEW-UUID/Library/Application Support/foray-downloads/${id}.bin`;
+
+/** The two catalogue episodes mount() puts in the pool, in its order. */
+const CATALOGUE_IDS = () => readJson("data/discover.json").items.filter((it) => it.audio_url).slice(0, 2).map((it) => it.id);
+
+/** One stored row in the store's own shape, written straight into storage. */
+function seedRow(store, id, report) {
+  const before = store.has("cp_downloads") ? JSON.parse(store.get("cp_downloads")) : STORE.normaliseDownloads({});
+  store.set("cp_downloads", JSON.stringify(STORE.applyProgress(before, { id, now: "2026-10-05T10:00:00Z", ...report })));
+}
+
+// RED on main: R4-02 — nothing reads list(), so the record keeps the pre-update path forever.
+/* MUTATION: drop the boot replay in download-bridge.js -> the record keeps OLD-UUID. */
+test("CH3-05: after an app update the record takes TODAY's path from the native index, and the play opens it", async () => {
+  const store = new Map();
+  const [id] = CATALOGUE_IDS();
+  seedRow(store, id, { status: "done", path: OLD_IOS_PATH(id), bytes: 1234 });
+  const cap = makeCapacitor({ list: () => ({ items: [{ id, status: "done", bytes: 1234, total: 1234, reason: null, path: NEW_IOS_PATH(id) }] }) });
+  const m = mount({ store, capacitor: cap });
+  await settle();
+  const rec = m.record().items[id];
+  assert.strictEqual(rec.status, "done");
+  assert.strictEqual(rec.path, NEW_IOS_PATH(id), "the stale container path is replaced");
+  assert.strictEqual(rec.webSrc, `capacitor://localhost/_capacitor_file_${NEW_IOS_PATH(id)}`);
+  assert.match(STORE.playSource(m.item, rec, { platform: "ios" }).audio_url, /NEW-UUID/);
+});
+
+// RED on main: R4-04 — a transfer that settled while 4a was not running reads "Downloading…" forever.
+/* MUTATION: drop the boot replay in download-bridge.js -> both rows stay `downloading`. */
+test("CH3-05: a transfer that finished, or was interrupted, while 4a was not running is recorded at boot", async () => {
+  const store = new Map();
+  const [a, b] = CATALOGUE_IDS();
+  seedRow(store, a, { status: "downloading", bytes: 87, total: 100 });
+  seedRow(store, b, { status: "downloading", bytes: 10, total: 100 });
+  const cap = makeCapacitor({ list: () => ({ items: [
+    { id: a, status: "done", bytes: 100, total: 100, reason: null, path: NEW_IOS_PATH(a) },
+    { id: b, status: "failed", bytes: 10, total: 100, reason: "interrupted", path: null },
+  ] }) });
+  const m = mount({ store, capacitor: cap });
+  await settle();
+  const items = m.record().items;
+  assert.strictEqual(items[a].status, "done", "the finished transfer is no longer Downloading 87%");
+  assert.strictEqual(items[a].path, NEW_IOS_PATH(a));
+  assert.strictEqual(items[b].status, "failed", "the interrupted one is offered for retry");
+  assert.strictEqual(items[b].reason, "interrupted");
+});
+
+/* The reconcile runs at every boot, so it must rewrite only what moved
+   (code-health-3 CH3-05 "Risk"): a row already `done` at the same path is not
+   re-written — `last_played_at` (CH-02) and `updated_at` survive byte for byte,
+   and nothing is repainted or announced. A native row the page never asked
+   for is dropped by app.js's own rule (it may be a purge "Delete my data" just
+   ran), and a refused one stays refused.
+   MUTATION: delete the `sameRow` guard in download-store.js's applyProgress ->
+   the stored string changes (updated_at restamped) and this is red.
+   MUTATION 2: drop `|| status === "unplayable-here"` from listReplay -> the
+   refused row stays `queued` and the last assertion is red. */
+test("CH3-05: a second boot over an unchanged native index rewrites nothing; a row the page never asked for is dropped", async () => {
+  const store = new Map();
+  const [a, b] = CATALOGUE_IDS();
+  seedRow(store, a, { status: "done", path: NEW_IOS_PATH(a), bytes: 1234, webSrc: `capacitor://localhost/_capacitor_file_${NEW_IOS_PATH(a)}` });
+  store.set("cp_downloads", JSON.stringify(STORE.markPlayed(JSON.parse(store.get("cp_downloads")), a, "2026-10-06T08:00:00Z")));
+  seedRow(store, b, { status: "queued" });
+  const stored = store.get("cp_downloads");
+  const cap = makeCapacitor({ list: () => ({ items: [
+    { id: a, status: "done", bytes: 1234, total: 1234, reason: null, path: NEW_IOS_PATH(a) },
+    { id: "ghost", status: "done", bytes: 9, total: 9, reason: null, path: NEW_IOS_PATH("ghost") },
+    { id: b, status: "queued", bytes: 0, total: null, reason: null, path: null },
+  ] }) });
+  const m = mount({ store, capacitor: cap });
+  await settle();
+  assert.ok(cap.calls.some((c) => c.method === "list"), "fixture premise: the boot asked the native index");
+  assert.strictEqual(store.get("cp_downloads"), stored, "nothing moved, nothing written");
+  assert.strictEqual(m.record().items[a].last_played_at, "2026-10-06T08:00:00.000Z");
+  assert.ok(!("ghost" in m.record().items), "a row the page never asked for is not written back");
+
+  const refused = new Map();
+  seedRow(refused, a, { status: "queued" });
+  const m2 = mount({ store: refused, capacitor: makeCapacitor({ list: () => ({ items: [
+    { id: a, status: "unplayable-here", bytes: 0, total: null, reason: "unplayable-here", path: null },
+  ] }) }) });
+  await settle();
+  assert.strictEqual(m2.record().items[a].status, "unplayable-here");
 });

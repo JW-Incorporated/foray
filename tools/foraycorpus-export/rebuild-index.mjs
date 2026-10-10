@@ -40,7 +40,7 @@
    test/suite-integrity.test.js. */
 import { spawn } from "node:child_process";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { describeExit, exitCodeFor } from "../generation/exit-code.mjs";
 import { ROOT } from "./config.mjs";
@@ -100,7 +100,7 @@ async function main(argv) {
   process.exitCode = exitCodeFor(code, signal);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).catch((e) => {
     console.error("FATAL:", e?.message ?? e);
     process.exit(1);

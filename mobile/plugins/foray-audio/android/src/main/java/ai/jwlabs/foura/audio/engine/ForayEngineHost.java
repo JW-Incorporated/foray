@@ -63,6 +63,11 @@ import java.util.Objects;
  *
  * When a turn leaves the core relinquished, the host tears down the deck, every timer and the
  * listener, and answers every later input with {@code relinquished} without touching a seam.
+ * The listener's last surface is a CLEARED one (nothing enabled, nothing to show), never the
+ * last turn's again: the relinquished core still names its item, so its own snapshot would not
+ * clear (CH3-07). Then {@link #setOnTornDown the torn-down hook} runs, once: the service
+ * releases its Media3 session there, because on Android "leave it for the legacy lane" means a
+ * second session gone, not one Now Playing centre left alone as on iOS.
  *
  * <p>NOT THREAD-SAFE, BY DESIGN: every method is called on the host's one looper (main).
  */
@@ -84,12 +89,12 @@ public final class ForayEngineHost {
      * What the remote surface shows after a turn: the enabled commands (with the founder's skip
      * pair), and the session view (null when there is nothing to show, which is also when
      * {@code availability.clearsNowPlaying()}). {@code seq} counts surfaces, so a reader can tell
-     * two identical ones apart.
+     * two identical ones apart. Whether it is buffering is the VIEW's ({@code view.buffering()},
+     * the core's one derivation), not a second flag here (CH3-22, R5-08).
      */
-    public record Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view,
-                          boolean buffering, int seq) {}
+    public record Surface(MediaMapping.CommandAvailability availability, MediaMapping.SessionView view, int seq) {}
 
-    /** Told after every turn (and once at start), on the host's thread. */
+    /** Told after every turn (once at start, and a cleared surface at teardown), on the host's thread. */
     public interface SurfaceListener {
         void onSurface(Surface surface);
     }
@@ -105,6 +110,7 @@ public final class ForayEngineHost {
     private EngineCommand.GraceReason graceReason;
     private double graceSinceMs;
     private SurfaceListener surfaceListener;
+    private Runnable onTornDown;
     private Surface surface;
     private int surfaceSeq;
     private int activations;
@@ -148,6 +154,14 @@ public final class ForayEngineHost {
         if (listener != null && !tornDown) listener.onSurface(surface);
     }
 
+    /**
+     * Run once, at the end of {@link #teardown()}, whatever took the engine down (the iOS host's
+     * {@code onTornDown}, ForayEngine.swift). Set on the host's thread.
+     */
+    public void setOnTornDown(Runnable hook) {
+        onTornDown = hook;
+    }
+
     /** Observe the deck. Idempotent; a torn-down host never starts again. */
     public void start() {
         if (started || tornDown) return;
@@ -157,8 +171,9 @@ public final class ForayEngineHost {
     }
 
     /**
-     * Stop the deck, every timer and the listener, and refuse every later input. Runs by itself
-     * when the core relinquishes; the service calls it at {@code onDestroy}.
+     * Stop the deck, every timer and the listener, hand the listener a cleared surface, run the
+     * torn-down hook, and refuse every later input. Runs by itself when the core relinquishes;
+     * the service calls it at {@code onDestroy}.
      */
     public void teardown() {
         if (tornDown) return;
@@ -169,9 +184,13 @@ public final class ForayEngineHost {
         seams.deck.setListener(null);
         seams.deck.invalidate();
         inbox.clear();
+        surface = clearedSurface(++surfaceSeq);
         SurfaceListener listener = surfaceListener;
         surfaceListener = null;
         if (listener != null) listener.onSurface(surface);
+        Runnable hook = onTornDown;
+        onTornDown = null;
+        if (hook != null) hook.run();
     }
 
     // ---- inputs
@@ -251,6 +270,13 @@ public final class ForayEngineHost {
         return failures;
     }
 
+    /**
+     * NO NARRATOR READING, AND NOTHING TO READ IT FROM (CH3-22, R2-05's Android half): the JVM
+     * core is the episode subset, with no narrating overlay, no late-interruption guard that reads
+     * the synthesiser, and no {@code narrator} slot in {@link EngineNow}; the host has no speaker
+     * seam ({@code speak} is a row, below). A-41 brings all three, and passes the speaker's reading
+     * HERE, as iOS's {@code ForayEngine.now()} passes {@code seams.speaker.reading} (CH3-19).
+     */
     private EngineNow now() {
         return new EngineNow(seams.timing.wallMs(), seams.timing.monoMs(), seams.deck.reading());
     }
@@ -345,15 +371,34 @@ public final class ForayEngineHost {
 
     // ---- the surface
 
+    /**
+     * The track route, always present on Android: the notification and Android Auto draw the
+     * skip pair and the track pair side by side, so the iOS lock screen's "one control per
+     * side" problem the 2026-09-23 ruling solves does not arise here (code-health-3 founder
+     * question 3, on its default; queued on #1163).
+     */
+    static final boolean TRACK_ROUTE = true;
+
     private Surface computeSurface(int seq) {
         MediaMapping.CommandAvailability availability =
-                MediaMapping.commandAvailability(core.commandSnapshot(), MediaMapping.SeekSteps.DEFAULT);
+                MediaMapping.commandAvailability(core.commandSnapshot(), MediaMapping.SeekSteps.DEFAULT, TRACK_ROUTE);
         MediaMapping.SessionView view = null;
         if (!availability.clearsNowPlaying()) {
             MediaMapping.View mv = core.mediaView(seams.deck.reading());
             if (mv != null) view = MediaMapping.sessionView(mv);
         }
-        return new Surface(availability, view, core.state().buffering, seq);
+        return new Surface(availability, view, seq);
+    }
+
+    /**
+     * The terminal surface: what an UNLOADED snapshot maps to (every command disabled, Now Playing
+     * cleared), with nothing to show. Not {@code computeSurface}: a relinquish leaves the core's
+     * queue and index as they were, so its snapshot still reads the item it was playing.
+     */
+    private static Surface clearedSurface(int seq) {
+        MediaMapping.CommandSnapshot none = new MediaMapping.CommandSnapshot(
+                MediaMapping.CommandSnapshot.Mode.UNLOADED, false, false, false, false);
+        return new Surface(MediaMapping.commandAvailability(none, MediaMapping.SeekSteps.DEFAULT, TRACK_ROUTE), null, seq);
     }
 
     private void publishSurface() {

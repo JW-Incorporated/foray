@@ -56,6 +56,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../../ci/entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const PROBE_DIR = HERE;
@@ -363,8 +364,7 @@ export function installProbe(dir, { write = true, phase = DEFAULT_PHASE, audioBa
 
 /* --------------------------------------------------------------------- main */
 
-const isMain =
-  process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 if (isMain) {
   const argv = process.argv.slice(2);

@@ -2,10 +2,8 @@ package ai.jwlabs.foura.engine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * The engine's composite state (docs/native-engine-plan.md §4.2): the six reducer states
@@ -62,10 +60,8 @@ public final class EngineState {
 
     /** {@code _pausedByListener}: the last pause was a press or a stop, so an OS should-resume must not bring it back. */
     public boolean pausedByListener = false;
-    /** {@code _pausedByRoute}: a route went away (corner case #13); only a press or a known car route clears it. */
+    /** {@code _pausedByRoute}: a route went away (corner case #13); only a new play clears it (the listener's, or a continuation hop). */
     public boolean pausedByRoute = false;
-    /** {@code _knownCarRoutes}. */
-    public Set<String> knownCarRoutes = new HashSet<>();
     /** For the 500 ms route attribution of an uncommanded pause (plan §4.3). */
     public Double lastRouteLostAtMono;
     public Double lastUncommandedPauseAtMono;
@@ -122,7 +118,6 @@ public final class EngineState {
     // ---- the app around the engine
 
     public boolean backgrounded = false;
-    public boolean pageVisible = true;
     /** The open grace span's reason, from begin to end; null when none is open. */
     public EngineCommand.GraceReason grace;
     /** The last remote press, for {@code dupCandidate} (recorded, never dropped). */
@@ -166,16 +161,19 @@ public final class EngineState {
      * A load in flight, and the second it was asked to land on: until the deck holds the
      * item, that is where the listener is (client.js {@code episodePositionSec}'s
      * {@code loadingStart}, audit round 2 p-impatient-1). A rendered bridge and a spoken
-     * line load differently; they arrive with A-40 and A-41.
+     * line load differently; they arrive with A-40 and A-41. {@code url} is the URL this
+     * deck load opened: a {@code file:} URL that fails is retried once on the item's stream
+     * ({@code fallBackToStream}, CH3-12), whose own load opened the stream, so its failure
+     * is the stop.
      */
-    public record PendingLoad(int token, String itemId, double startSec) {}
+    public record PendingLoad(int token, String itemId, double startSec, String url) {}
 
     /** A play-ish intent waiting for its activation's answer. */
     public record PendingActivation(int requestId, DeferredIntent intent, Vocabulary.Source source) {}
 
     /** What runs once the session is active. */
     public sealed interface DeferredIntent permits DeferredIntent.PlayIndex, DeferredIntent.Resume, DeferredIntent.SkipNext,
-            DeferredIntent.SkipPrevious, DeferredIntent.InterruptionResume, DeferredIntent.RouteResume, DeferredIntent.ColdPlay,
+            DeferredIntent.SkipPrevious, DeferredIntent.InterruptionResume, DeferredIntent.ColdPlay,
             DeferredIntent.WalkHop, DeferredIntent.Audition {
         record PlayIndex(int index, Double startSec) implements DeferredIntent {}
 
@@ -187,8 +185,6 @@ public final class EngineState {
 
         record InterruptionResume() implements DeferredIntent {}
 
-        record RouteResume() implements DeferredIntent {}
-
         record ColdPlay() implements DeferredIntent {}
 
         record WalkHop(EngineContract.Hop hop) implements DeferredIntent {}
@@ -199,7 +195,6 @@ public final class EngineState {
         DeferredIntent SKIP_NEXT = new SkipNext();
         DeferredIntent SKIP_PREVIOUS = new SkipPrevious();
         DeferredIntent INTERRUPTION_RESUME = new InterruptionResume();
-        DeferredIntent ROUTE_RESUME = new RouteResume();
         DeferredIntent COLD_PLAY = new ColdPlay();
     }
 

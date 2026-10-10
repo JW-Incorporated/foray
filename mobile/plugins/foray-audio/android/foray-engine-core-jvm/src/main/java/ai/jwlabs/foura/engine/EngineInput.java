@@ -69,8 +69,9 @@ public sealed interface EngineInput permits EngineInput.Command, EngineInput.Que
     }
 
     /**
-     * A press from the lock screen, the car or a headset. {@code value}: a scrub's target,
-     * or a skip command's interval. {@code routePort}: the output route when it arrived.
+     * A press from the lock screen, the car or a headset. {@code value}: a scrub's target (a skip's
+     * interval is never read, code-health-3 CH3-20: the step is SeekSteps, whatever the head unit asked
+     * for). {@code routePort}: the output route when it arrived.
      * {@code onMain}: false when the handler arrived off the engine's thread.
      */
     record RemotePress(MediaMapping.RemoteCommand command, Double value, String routePort, boolean onMain) {

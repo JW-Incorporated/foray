@@ -13,7 +13,8 @@ import ForayEngineCore
 /// `event.position:...`, as the real PositionStore over MemoryStore does).
 /// Everything else the core commands (the session, grace, timers, rows,
 /// diagnostics) is logged as a native-only `n.*` token, which the comparator
-/// strips (plan §6.2), so the Swift report shows it and the verdict ignores it.
+/// strips (plan §6.2), so the Swift report shows it and the verdict ignores it,
+/// except in `native-episode` (CH3-20), which asserts them.
 ///
 /// TIMING IS THE JS RUNNER'S. A step that JS awaits settles here too: loads the
 /// fake resolves at once land (in the order they were issued) and a started
@@ -58,6 +59,20 @@ import ForayEngineCore
 /// Their answers land when the step settles, before any load, as the JS
 /// awaits resolve. The silence node (flagged off) is checked too: it may
 /// start only while the transport runs with the session active.
+///
+/// THE STEERING WHEEL (code-health-3 CH3-20; the `native-episode` family,
+/// nativeOnly, its expects authored from THIS core and held on the JVM too):
+///   - a RAW press, `{remote: "<command>", raw: true, value?}`: the
+///     `MPRemoteCommand` itself (`MediaMapping.RemoteCommand`, `stop` refused
+///     as below), straight into `onRemote`, never through
+///     `MediaMapping.intent`, so a fixture can press `togglePlayPause`;
+///   - `deck: "deadline"` (optional `afterMs`, default 20000): the deck's
+///     P-13 load deadline, `.deadlineExceeded` for the load in flight (a held
+///     one is abandoned, as the deck abandons it), where every other fixture
+///     failure is `.failed("missing file")`;
+///   - `lifecycle: "graceExpired"`: BackgroundGrace's expiration handler
+///     (`.timer(.graceExpired)`), and `lifecycle: "relinquish"` (optional
+///     `cap`, default `all`): the page's relinquish command.
 ///
 /// THE MANAGER REMAINDER (NE-39s; NE-39j recorded it) adds, on the manager
 /// target, fakes.js's opt-in shapes of the same fakes:
@@ -644,7 +659,25 @@ final class ScenarioWorld {
     /// delivers it: as the `MPRemoteCommand` it stands for, into
     /// `EngineCore`'s own remote handlers (plan §4.5). runner.js's surface
     /// installs every intent, so every action is installed here too.
+    ///
+    /// A RAW press (CH3-20, `raw: true`) is the command itself, as the head
+    /// unit, the headset or the lock screen delivers it, with its `value`
+    /// (a scrub's target; a skip's value is the head unit's interval, which
+    /// the core ignores: the step is ours, R3-08). `stop` is refused for the
+    /// reason below.
     private func remote(_ fields: [String: JSONValue], context: Codec.Context) throws {
+        if fields["raw"] == .bool(true) {
+            guard let name = fields["remote"]?.stringValue, let command = MediaMapping.RemoteCommand(rawValue: name),
+                  command != .stop else {
+                throw HarnessError("E_BAD_CASE", "unknown raw remote command \(fields["remote"] ?? .null) (a remote stop pauses natively, T-7; no case runs it)")
+            }
+            var value: Double?
+            if let raw = fields["value"] {
+                guard let number = raw.numberValue else { throw HarnessError("E_BAD_CASE", "a raw press's value is a number") }
+                value = number
+            }
+            return feed(.remote(RemotePress(command, value: value)))
+        }
         guard let name = fields["remote"]?.stringValue, let action = MediaAction(rawValue: name) else {
             throw HarnessError("E_BAD_CASE", "unknown remote action \(fields["remote"] ?? .null)")
         }
@@ -659,7 +692,9 @@ final class ScenarioWorld {
         case .next: command = RemotePress(.nextTrack)
         case .previous: command = RemotePress(.previousTrack)
         case let .seekBy(offset):
-            command = offset < 0 ? RemotePress(.skipBackward, value: -offset) : RemotePress(.skipForward, value: offset)
+            // The step is the core's (MediaMapping.SeekSteps), never carried
+            // on the press: no host sends one (CH3-20, R3-08).
+            command = offset < 0 ? RemotePress(.skipBackward) : RemotePress(.skipForward)
         case let .seekTo(position): command = RemotePress(.changePlaybackPosition, value: position)
         case .stop:
             // runner.js's surface CLOSES on stop; natively a remote stop is a
@@ -686,6 +721,17 @@ final class ScenarioWorld {
             reading.ended = true
         case "error":
             feed(.deck(.failed(token: deckToken ?? 0, message: fields["message"]?.stringValue ?? "error")))
+        case "deadline":
+            // CH3-20 (R3-04): the deck's P-13 load deadline ran out on the load
+            // in flight (AVDeck's 20 s for an episode). The deck abandons that
+            // load, so a held one never lands after it.
+            let afterMs = fields["afterMs"]?.numberValue ?? 20_000
+            guard afterMs.isFinite, afterMs >= 0, afterMs.rounded() == afterMs else {
+                throw HarnessError("E_BAD_CASE", "deck deadline's afterMs is a whole number of ms")
+            }
+            let token = deckToken ?? 0
+            heldLoads.removeAll { $0.token == token }
+            feed(.deck(.deadlineExceeded(token: token, afterMs: Int(afterMs))))
         case "time":
             guard let seconds = fields["sec"]?.numberValue else { throw HarnessError("E_BAD_CASE", "deck time needs sec") }
             reading.positionSec = seconds
@@ -758,6 +804,18 @@ final class ScenarioWorld {
             feed(.lifecycle(.coldLaunch(queue: queue, index: index, autoplay: fields["autoplay"] == .bool(true))))
         case "foreground": feed(.lifecycle(.foreground))
         case "background": feed(.lifecycle(.background))
+        case "graceExpired":
+            // CH3-20: BackgroundGrace's expiration handler fired (the host's
+            // background task ran out before the play it covered was audible).
+            feed(.timer(.graceExpired))
+        case "relinquish":
+            // CH3-20: the page's relinquish command (the one-way hand-back,
+            // plan §4.6), as the contract decodes it.
+            let name = fields["cap"]?.stringValue ?? "all"
+            guard let cap = EngineContract.RelinquishCap(rawValue: name) else {
+                throw HarnessError("E_BAD_CASE", "unknown relinquish cap \"\(name)\"")
+            }
+            feed(.command(.relinquish(cap: cap), source: .tap))
         default:
             throw HarnessError("E_BAD_CASE", "unknown lifecycle event \"\(event)\"")
         }
@@ -1162,7 +1220,7 @@ final class ScenarioWorld {
     /// FakeBackend, command by command (and, on the engine target,
     /// WarmingBackend's standby deck).
     func applyDeck(_ command: DeckCommand) {
-        if case let .load(_, itemId, _, startSec, _, _) = command, !engineTarget, prefetchLoses != nil || coldLoadMs > 0 {
+        if case let .load(_, itemId, _, startSec, _, _, _) = command, !engineTarget, prefetchLoses != nil || coldLoadMs > 0 {
             // FakeBackend `load`: a warm key is spent; a cold load waits its
             // cost on the clock before it re-points the element (and logs).
             let warm = warmed.remove("\(itemId)@\(ScenarioWorld.rounded(startSec))") != nil
@@ -1177,7 +1235,7 @@ final class ScenarioWorld {
     /// FakeBackend, command by command, once a load is due to re-point it.
     private func loadDeck(_ command: DeckCommand) {
         switch command {
-        case let .load(token, itemId, url, startSec, _, _):
+        case let .load(token, itemId, url, startSec, _, _, _):
             if engineTarget {
                 // `warmPromotion` at the boundary: a load that finds its source
                 // and in-point warm is a handover, said BEFORE the load.
@@ -1245,7 +1303,7 @@ final class ScenarioWorld {
             reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
             // FakeBackend's `release()` is the teardown's (`dispose`).
             if disposing && !engineTarget { ops.append("release") } else { native("n.deck.unload") }
-        case let .prepare(itemId, url, startSec, _, _):
+        case let .prepare(itemId, url, startSec, _, _, _):
             if !engineTarget, let loses = prefetchLoses {
                 // NE-39s: the manager's ASK (FakeBackend `prefetch`).
                 let key = "\(itemId)@\(ScenarioWorld.rounded(startSec))"
@@ -1278,7 +1336,7 @@ final class ScenarioWorld {
     /// is only ever for the load that answered ready.
     private func applyPreview(_ command: DeckCommand) {
         switch command {
-        case let .load(token, _, url, _, _, _):
+        case let .load(token, _, url, _, _, _, _):
             let target = url ?? ""
             previewToken = token
             previewReadyToken = nil

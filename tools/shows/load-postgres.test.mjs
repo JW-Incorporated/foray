@@ -8,10 +8,20 @@
    own fixture-only tests. */
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { fileURLToPath } from "node:url";
+import * as config from "./config.mjs";
 import {
-  buildChangedInDumpReasons, changedIdsFromPipeline, resolveDatabaseUrl, sizingReport,
+  buildChangedInDumpReasons, changedIdsFromPipeline, fetchPreviousNewest, resolveDatabaseUrl, sizingReport,
 } from "./load-postgres.mjs";
 import { buildChanged } from "./shard-build.mjs";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
 
 test("resolveDatabaseUrl: prefers SHOWS_DATABASE_URL over DATABASE_URL", () => {
   const env = { SHOWS_DATABASE_URL: "postgres://a", DATABASE_URL: "postgres://b" };
@@ -106,4 +116,91 @@ test("sizingReport: samples at most 5000 rows for the average (never materialize
   // by a few bytes — assert it's in the right ballpark instead of bit-exact.
   const expectedApprox = report.avg_bytes_per_row * 6000;
   assert.ok(Math.abs(report.estimated_total_bytes - expectedApprox) < 6000);
+});
+
+/* ---- CH2-12 (docs/roadmap/code-health-2.md, T1-08 / T1-03 / T1-12) ---- */
+
+test("resolveDatabaseUrl: a whitespace-only DATABASE_URL is unset, and the rule is config.mjs's one resolver", () => {
+  // MUTATION: drop `.trim()` from config.mjs's resolveDatabaseUrl -> red here
+  // (and in poll-episodes.test.mjs, which shares the same function).
+  assert.deepEqual(resolveDatabaseUrl({ DATABASE_URL: " " }), { url: null, varName: null });
+  assert.deepEqual(resolveDatabaseUrl({ DATABASE_URL: "  postgres://b \n" }), { url: "postgres://b", varName: "DATABASE_URL" });
+  // MUTATION: a private copy of the resolver back in load-postgres.mjs -> red.
+  assert.equal(resolveDatabaseUrl, config.resolveDatabaseUrl);
+});
+
+test("fetchPreviousNewest: an empty shows_catalog is NO baseline (null), never the {} that marks every row changed", async () => {
+  // MUTATION: `return previousNewest` on zero rows (the {} import-dump.mjs's
+  // parseNewestSnapshot bans) -> red: buildChanged would diff against {} and
+  // flag every canonical row (T1-08).
+  const empty = { query: async () => ({ rows: [] }) };
+  assert.equal(await fetchPreviousNewest(empty), null);
+  assert.deepEqual(buildChanged([{ id: 1, newestItemPubdate: 5 }], await fetchPreviousNewest(empty)), { baseline: false, changed: null });
+
+  const loaded = { query: async () => ({ rows: [{ pi_id: "900", newest_item_at: new Date("2026-01-01T00:00:00Z") }] }) };
+  assert.deepEqual(await fetchPreviousNewest(loaded), { 900: Math.floor(Date.parse("2026-01-01T00:00:00Z") / 1000) });
+});
+
+const INTEGER_COLUMNS = new Set([
+  "id", "itunesId", "dead", "episodeCount", "lastUpdate", "newestItemPubdate",
+  "oldestItemPubdate", "popularityScore", "explicit",
+]);
+
+/** A fixture dump on disk carrying one row per curated show in the real
+    data/catalog.json, so the CLI's id-map guard (which reads that file) passes
+    and the run reaches the changed/checksum stages. */
+function writeCatalogFixtureDump(dir) {
+  const raw = JSON.parse(readFileSync(config.CATALOG_PATH, "utf8"));
+  const shows = Array.isArray(raw) ? raw : raw.shows;
+  const path = join(dir, "fixture.db");
+  const db = new DatabaseSync(path);
+  db.exec(`CREATE TABLE podcasts (${config.DUMP_COLUMNS.map((c) => `${c} ${INTEGER_COLUMNS.has(c) ? "INTEGER" : "TEXT"}`).join(", ")})`);
+  const stmt = db.prepare(
+    "INSERT INTO podcasts (id, url, itunesId, title, itunesAuthor, language, dead, episodeCount, newestItemPubdate, popularityScore) " +
+      "VALUES (?,?,?,?,?,?,?,?,?,?)",
+  );
+  const recent = Math.floor(Date.now() / 1000) - 7 * 24 * 3600;
+  shows.forEach((s, i) =>
+    stmt.run(i + 1, s.feed_url ?? null, s.apple_collection_id ?? null, s.title ?? `Show ${i}`, `Author ${i}`, "en", 0, 10, recent, 10));
+  db.close();
+  return path;
+}
+
+test("CLI --dry-run on a fixture: baseline:false, nothing flagged, no database touched, export_version is the streamed sha256", () => {
+  // Acceptance (CH2-12): `load-postgres.mjs --dump-file <fixture> --dry-run`
+  // prints baseline:false. DATABASE_URL points at a port nothing listens on:
+  // a dry run reads no baseline, so it must never connect.
+  // MUTATION: `dryRun ? {} : ...` -> red (baseline:true, every row flagged).
+  // MUTATION: connect before the dry-run branch -> red (ECONNREFUSED, exit 1).
+  const dir = mkdtempSync(join(tmpdir(), "load-postgres-"));
+  try {
+    const dump = writeCatalogFixtureDump(dir);
+    const res = spawnSync(process.execPath, [...process.execArgv, join(HERE, "load-postgres.mjs"), "--dump-file", dump, "--dry-run"], {
+      encoding: "utf8",
+      env: { ...process.env, SHOWS_DATABASE_URL: "", DATABASE_URL: "postgres://user:pw@127.0.0.1:1/never" },
+    });
+    assert.equal(res.status, 0, `stdout: ${res.stdout}\nstderr: ${res.stderr}`);
+    assert.match(res.stdout, /changed_in_dump: baseline:false, 0 row\(s\) flagged: \[\]/);
+    assert.match(res.stdout, /DRY_RUN: not writing to Postgres/);
+    const sha = createHash("sha256").update(readFileSync(dump)).digest("hex");
+    assert.ok(res.stdout.includes(`(export_version local:${sha.slice(0, 12)})`), res.stdout);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("source pin: the dump checksum is config.mjs's streamed checksumFile, never a whole-file readFile (2 GiB trap, T1-03)", () => {
+  // A >2 GiB sparse-file test is impractical, so pin the source (the
+  // fetch-feed.test.mjs pattern).
+  // MUTATION: restore `const bytes = await readFile(dumpFileArg)` in load-postgres.mjs -> red.
+  // MUTATION: config.mjs's checksumFile reads the file with readFile -> red.
+  const loader = readFileSync(join(HERE, "load-postgres.mjs"), "utf8");
+  assert.match(loader, /import \{[^}]*\bchecksumFile\b[^}]*\} from "\.\/config\.mjs"/);
+  assert.doesNotMatch(loader, /\breadFile\b/);
+  const cfg = readFileSync(join(HERE, "config.mjs"), "utf8");
+  const start = cfg.indexOf("export async function checksumFile");
+  assert.ok(start >= 0, "config.mjs exports checksumFile");
+  const fn = cfg.slice(start, cfg.indexOf("\n}\n", start) + 2);
+  assert.match(fn, /createReadStream\(/);
+  assert.doesNotMatch(fn, /readFile/);
 });

@@ -171,6 +171,23 @@ test("the validator refuses what JSON cannot carry and a kind that does not exis
   assert.throws(() => validateContract("handshake", {}), RangeError);
 });
 
+test("CH3-09 (R4-06): the snapshot's voiceFallback is one boolean, and no event is named for it", () => {
+  // MUTATION: put `voiceFallback: nullable(str)` back in the snapshot schema
+  // -> the boolean is refused -> red. MUTATION: put "voiceFallback" back in
+  // EVENTS -> red. Every reader wants a boolean (native-facades.js
+  // lastVoiceFallback, client.js auditionThroughEngine); before CH3-09 the
+  // schema refused one ("/voiceFallback: must be string or null").
+  const snap = contractSchemaDocument().$defs.snapshot["x-examples"].valid["foray-narration"];
+  for (const v of [true, false, null]) {
+    const r = validateContract("snapshot", { ...snap, voiceFallback: v });
+    assert.equal(r.ok, true, `voiceFallback ${v}: ${r.errors.join("; ")}`);
+  }
+  assert.equal(contractAccepts("snapshot", snap), true, "absent is still accepted (an older engine)");
+  assert.deepStrictEqual(validateContract("snapshot", { ...snap, voiceFallback: "en-US" }).errors, ["/voiceFallback: must be boolean or null"]);
+  assert.equal(EVENTS.includes("voiceFallback"), false, "nothing emits it: the fallback travels on the snapshot");
+  assert.equal(contractAccepts("event", { type: "voiceFallback" }), false);
+});
+
 test("decideMode: native only on iOS with the method, a well-formed native hello and protocol 1", () => {
   // MUTATION: read protocol before mode -> the NE-01 stub (no protocol) reads
   // as a mismatch and asks for a relinquish nobody needs -> red.

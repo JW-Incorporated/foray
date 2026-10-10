@@ -22,11 +22,27 @@
  * people copy.
  *
  * WHAT THIS ASSERTS
- * Not "every script has an entrypoint guard" — `tools/ci/generate-manifest.mjs`
- * deliberately has none, and `tools/ci/crlf-guard.mjs`'s header argues the case
- * at length. Only: a file that HAS one must use `pathToFileURL`, which is the
- * only formulation that is correct on both platforms. And, for the script that
- * actually had the bug, an executable proof that running it does something.
+ * Not "every script has an entrypoint guard" — `tools/ci/crlf-guard.mjs` is a
+ * script with none, and its header argues the case at length. Only: a file
+ * that HAS one must use a formulation that is correct on both platforms. And,
+ * for the script that actually had the bug, an executable proof that running
+ * it does something.
+ *
+ * THE SECOND HALF OF THE CLASS (code-health CH2-41a, T2-04). `pathToFileURL`
+ * fixed the drive-letter/slash mismatch but not the other one: Node REALPATHS
+ * the main module before it builds `import.meta.url`, while `process.argv[1]`
+ * is only made absolute. From a Windows junction or a symlinked checkout the
+ * two sides name different paths, so the `pathToFileURL` form this file used to
+ * bless, and the `path.resolve` form beside it, were false there too and the
+ * CLI exited 0 without running. The one correct form realpaths both sides:
+ * `isEntryScript(import.meta.url)` from `tools/ci/entry.mjs`. CH2-41a made it
+ * the only form allowed under `tools/ci`, `tools/release`, `tools/mobile` and
+ * `tools/ops`; CH2-41b swept the rest of `tools/`, so it is now the only form
+ * allowed for every CLI under `tools/` except the two governed files named in
+ * GOVERNED_GUARD_EXEMPT below (on DENIED_PREFIXES, left for a founder-merged
+ * follow-up), and no file anywhere in the repo may
+ * compare `import.meta.url` by hand (the `pathToFileURL` form the first rule
+ * below used to bless included).
  *
  * This test is platform-independent: the text rule holds everywhere, so a Linux
  * runner gates the Windows failure it cannot itself reproduce.
@@ -34,10 +50,11 @@
 
 import { test } from "node:test";
 import assert from "node:assert";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -84,30 +101,39 @@ export function stripComments(text) {
   return out;
 }
 
-test("every main-module guard in the repo uses pathToFileURL, not a `file://` template", () => {
+/* This file holds the legacy guards as specimens, inside string literals the
+   comment stripper cannot see past; every other tracked file is scanned. */
+const SELF = "tools/entrypoint-guards.test.mjs";
+
+test("no file in the repo compares import.meta.url by hand: neither the `file://` template nor the pathToFileURL form", () => {
   /* MUTATION: put ``if (import.meta.url === `file://${process.argv[1]}`) main();``
      back into any one of these files. That file's CLI becomes a silent no-op on
      every developer machine in this project and this test names it.
+     MUTATION (run, CH2-41b): put `if (process.argv[1] && import.meta.url ===
+     pathToFileURL(process.argv[1]).href) main();` back into
+     tools/build-catalog-client.mjs -- the form this test blessed until CH2-41b,
+     false through a junction -> named here.
 
      The scan is over every tracked `.mjs`/`.js` rather than a list, because the
      list is the thing that goes stale: this bug survived in exactly the one file
      that nobody thought to look at while seven others had already been fixed. */
   const offenders = [];
   for (const rel of TRACKED) {
+    if (rel === SELF) continue;
     const abs = path.join(ROOT, rel);
     if (!fs.existsSync(abs)) continue;
     const text = stripComments(fs.readFileSync(abs, "utf8"));
     for (const line of text.split("\n")) {
       if (!GUARD_RE.test(line)) continue;
-      if (line.includes("pathToFileURL")) continue;
       offenders.push(`${rel}: ${line.trim()}`);
     }
   }
   assert.deepStrictEqual(
     offenders,
     [],
-    "these entrypoint guards are silently FALSE on Windows, so the script's " +
-      "CLI does nothing and exits 0:\n" + offenders.join("\n")
+    "these entrypoint guards are silently FALSE on Windows or through a junction, " +
+      "so the script's CLI does nothing and exits 0 -- use isEntryScript(import.meta.url) " +
+      "from tools/ci/entry.mjs:\n" + offenders.join("\n")
   );
 });
 
@@ -125,8 +151,12 @@ test("the scan reads code, not the comments that explain the bug", () => {
   ].join("\n");
   const flagged = stripComments(src)
     .split("\n")
-    .filter((l) => GUARD_RE.test(l) && !l.includes("pathToFileURL"));
-  assert.deepStrictEqual(flagged, []);
+    .filter((l) => GUARD_RE.test(l));
+  assert.deepStrictEqual(
+    flagged,
+    ["if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();"],
+    "the two quoted in comments are not flagged; the one in code is"
+  );
 });
 
 test("build-catalog-client.mjs --check actually runs and says so", () => {
@@ -174,4 +204,352 @@ test("data/catalog-client.json and tools/foray/*.mjs are pinned to LF", () => {
     const bytes = fs.readFileSync(path.join(ROOT, rel));
     assert.ok(!bytes.includes("\r\n"), `${rel} has CRLF bytes in this checkout — the -text attribute is not in effect`);
   }
+});
+
+/* ═══════ CH2-41a (T2-04): one isEntryScript, realpath on both sides ═══════ */
+
+const ENTRY = path.join(ROOT, "tools", "ci", "entry.mjs");
+
+/* Where `isEntryScript` is the only allowed guard: every non-test `.mjs` under
+   `tools/` (CH2-41a held this to tools/ci, release, mobile and ops; CH2-41b
+   swept the rest). */
+const isToolsCli = (rel) => rel.startsWith("tools/") && rel.endsWith(".mjs") && !/\.test\.mjs$/.test(rel);
+
+/** A link to `target` inside a fresh temp dir: a junction on Windows (no
+ *  privilege needed), a symlink elsewhere. Returns `{ link, cleanup }`, or null
+ *  when the platform refuses (the caller skips). */
+function linkTo(target) {
+  const holder = fs.mkdtempSync(path.join(os.tmpdir(), "entry-link-"));
+  const link = path.join(holder, "linked");
+  const cleanup = () => {
+    try { fs.unlinkSync(link); } catch (_) { try { fs.rmdirSync(link); } catch (_) { /* best effort */ } }
+    try { fs.rmdirSync(holder); } catch (_) { /* best effort */ }
+  };
+  try {
+    fs.symlinkSync(target, link, process.platform === "win32" ? "junction" : "dir");
+  } catch (_) {
+    cleanup();
+    return null;
+  }
+  return { link, cleanup };
+}
+
+/** One probe CLI per guard form: each prints RAN when its guard says "I am
+ *  the entry script". The three legacy forms are the ones this card swept out
+ *  of the four trees (`path.resolve`: most of tools/mobile; `pathToFileURL`:
+ *  the form the first rule in this file blesses; basename `endsWith`:
+ *  upload-retry.mjs and watch-release.mjs). */
+const PROBE_FORMS = {
+  "path.resolve":
+    'import path from "node:path";\nimport { fileURLToPath } from "node:url";\n' +
+    'if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) console.log("RAN");\n',
+  pathToFileURL:
+    'import { pathToFileURL } from "node:url";\n' +
+    'if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) console.log("RAN");\n',
+  endsWith:
+    'if (String(process.argv[1] || "").split(String.fromCharCode(92)).join("/").endsWith("/probe.mjs")) console.log("RAN");\n',
+  isEntryScript:
+    `import { isEntryScript } from ${JSON.stringify(pathToFileURL(ENTRY).href)};\n` +
+    'if (isEntryScript(import.meta.url)) console.log("RAN");\n',
+};
+
+/** `{ form: ranBool }` for `node <dir>/<form>/probe.mjs`, one per form. */
+function runProbes(dir) {
+  const out = {};
+  for (const form of Object.keys(PROBE_FORMS)) {
+    const r = spawnSync(process.execPath, [path.join(dir, form, "probe.mjs")], { encoding: "utf8" });
+    out[form] = r.stdout.trim() === "RAN";
+  }
+  return out;
+}
+
+test("CH2-41a: through a junction/symlink only the isEntryScript guard runs its CLI; the path.resolve and pathToFileURL forms exit 0 having done nothing", (t) => {
+  /* T2-04, reproduced on Windows through a junction. Node realpaths the main
+     module before it builds import.meta.url; process.argv[1] is only made
+     absolute. So from a linked checkout the legacy forms compare two different
+     paths, and the CLI is a silent no-op that exits 0. From the real path every
+     form runs, which is why nobody saw it.
+     MUTATION (run): drop realpathSync from tools/ci/entry.mjs (compare
+     path.resolve(argv1) with fileURLToPath(url)) -> isEntryScript is false
+     through the link -> red. */
+  const real = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "entry-real-")));
+  try {
+    for (const [form, src] of Object.entries(PROBE_FORMS)) {
+      fs.mkdirSync(path.join(real, form));
+      fs.writeFileSync(path.join(real, form, "probe.mjs"), src);
+    }
+    const linked = linkTo(real);
+    if (!linked) return t.skip("this platform refuses to create a junction or symlink");
+    try {
+      assert.deepStrictEqual(
+        runProbes(real),
+        { "path.resolve": true, pathToFileURL: true, endsWith: true, isEntryScript: true },
+        "from the real path every form runs"
+      );
+      assert.deepStrictEqual(
+        runProbes(linked.link),
+        { "path.resolve": false, pathToFileURL: false, endsWith: true, isEntryScript: true },
+        "through the link: the path.resolve and pathToFileURL forms are silent no-ops, the helper runs"
+      );
+    } finally {
+      linked.cleanup();
+    }
+  } finally {
+    fs.rmSync(real, { recursive: true, force: true });
+  }
+});
+
+test("CH2-41a: the basename endsWith guard also fires when the module is merely IMPORTED by another file of the same name; isEntryScript does not", () => {
+  /* The endsWith form survives a junction by accident (it compares names, not
+     paths), and pays for it the other way: any entry script whose name ends the
+     same way runs the imported module's CLI as a side effect of the import.
+     MUTATION (run): make isEntryScript compare basenames -> the helper's probe
+     prints RAN when merely imported -> red. */
+  const real = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "entry-import-")));
+  try {
+    for (const [form, src] of Object.entries(PROBE_FORMS)) {
+      fs.mkdirSync(path.join(real, form, "lib"), { recursive: true });
+      fs.writeFileSync(path.join(real, form, "lib", "probe.mjs"), src);
+      fs.writeFileSync(path.join(real, form, "probe.mjs"), 'import "./lib/probe.mjs";\n');
+    }
+    assert.deepStrictEqual(
+      runProbes(real),
+      { "path.resolve": false, pathToFileURL: false, endsWith: true, isEntryScript: false },
+      "only the basename form mistakes an importer for itself"
+    );
+  } finally {
+    fs.rmSync(real, { recursive: true, force: true });
+  }
+});
+
+test("CH2-41a acceptance: node <junction>/tools/mobile/inject-splash.mjs android <missing dir> --check exits 1 with the error, as from the real path", (t) => {
+  /* The exact reproduction in T2-04: through a junction this exited 0 with no
+     output, so a step that called it would have "passed".
+     MUTATION (run): put inject-splash.mjs's old guard back
+     (`path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))`)
+     -> exit 0, empty stderr -> red. */
+  const linked = linkTo(path.join(ROOT, "tools"));
+  if (!linked) return t.skip("this platform refuses to create a junction or symlink");
+  try {
+    const missing = path.join(os.tmpdir(), "entry-guards-no-such-res-dir");
+    const run = (tools) =>
+      spawnSync(process.execPath, [path.join(tools, "mobile", "inject-splash.mjs"), "android", missing, "--check"], {
+        encoding: "utf8",
+      });
+    const viaReal = run(path.join(ROOT, "tools"));
+    const viaLink = run(linked.link);
+    assert.strictEqual(viaReal.status, 1, viaReal.stderr);
+    assert.match(viaReal.stderr, /inject-splash failed/);
+    assert.strictEqual(viaLink.status, 1, `through the junction: exit ${viaLink.status}, stderr ${JSON.stringify(viaLink.stderr)}`);
+    assert.match(viaLink.stderr, /inject-splash failed/);
+  } finally {
+    linked.cleanup();
+  }
+});
+
+/* One representative CLI per swept tools/ subtree (CH2-41b), each run with
+   arguments that make it answer and stop: an unknown flag it refuses, its usage
+   line, or a read-only `--check`. None of them fetches, spawns or writes. The
+   subtrees with no such no-op are not probed (they are held by the text rule
+   alone): tools/shows' importers and loaders (network, pg), tools/generation
+   (spawns a relay), tools/web (git + fetch), tools/brand, tools/store and
+   tools/audio (write or fetch), and tools/corpus (its own node_modules). */
+const SUBTREE_PROBES = [
+  { cli: "build-catalog-client.mjs", args: ["--entry-guard-probe"], status: 1, says: /unknown argument/ },
+  { cli: "audit/merge-audit.mjs", args: [], status: 1, says: /missing --since/ },
+  { cli: "classify/root-dumping-report.mjs", args: ["--entry-guard-probe"], status: 2, says: /unknown argument/ },
+  { cli: "dev/worktree-gc.mjs", args: ["--entry-guard-probe"], status: 2, says: /unknown flag/ },
+  { cli: "foray/check-narration.mjs", args: ["--entry-guard-probe"], status: 2, says: /unknown flag/ },
+  { cli: "foraycorpus-export/export.mjs", args: ["--entry-guard-probe"], status: 1, says: /UNKNOWN_FLAG/ },
+  { cli: "generation-bench/run.mjs", args: ["--entry-guard-probe"], status: 2, says: /unknown flag/ },
+  { cli: "narrate/narrate.mjs", args: [], status: 0, says: /usage: narrate\.mjs/ },
+  { cli: "narration/stamp-narration.mjs", args: ["--entry-guard-probe"], status: 2, says: /unknown argument/ },
+  { cli: "parity/contract-schema.mjs", args: [], status: 2, says: /usage: node tools\/parity\/contract-schema\.mjs/ },
+  { cli: "poll/poll-episodes.mjs", args: ["--entry-guard-probe"], status: 1, says: /unknown argument/ },
+  { cli: "refresh/relabel.mjs", args: ["--entry-guard-probe"], status: 2, says: /unknown argument/ },
+  { cli: "segments/backfill-audio-bytes.mjs", args: ["--entry-guard-probe"], status: 2, says: /unknown argument/ },
+  { cli: "shows/watch-pointer.mjs", args: ["--now", "not-a-date"], status: 1, says: /--now is not a parseable date/ },
+  { cli: "similar-eval/run.mjs", args: ["--check"], status: null, says: /generated block is (current|STALE)/ },
+  { cli: "transcribe/build-transcription-queue.mjs", args: ["--help"], status: 0, says: /build-transcription-queue\.mjs --scan/ },
+];
+
+test("CH2-41b: one CLI per swept tools/ subtree answers through a junction exactly as it does from the real path", (t) => {
+  /* The executable half of the widened rule: through a junction (a symlink
+     elsewhere) every one of these printed nothing and exited 0 before CH2-41b,
+     except the basename-guarded watch-pointer.mjs, which survived by accident.
+     MUTATION (run): put tools/refresh/relabel.mjs's old guard back
+     (`process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href`)
+     -> through the junction it exits 0 with no output -> red. */
+  const linked = linkTo(path.join(ROOT, "tools"));
+  if (!linked) return t.skip("this platform refuses to create a junction or symlink");
+  try {
+    const cwd = os.tmpdir();
+    const run = (tools, { cli, args }) => {
+      const r = spawnSync(process.execPath, [path.join(tools, ...cli.split("/")), ...args], { cwd, encoding: "utf8", timeout: 60_000 });
+      return { status: r.status, said: (r.stdout + r.stderr).trim() };
+    };
+    for (const probe of SUBTREE_PROBES) {
+      const real = run(path.join(ROOT, "tools"), probe);
+      const viaLink = run(linked.link, probe);
+      assert.match(real.said, probe.says, `${probe.cli} from the real path: ${JSON.stringify(real)}`);
+      if (probe.status !== null) assert.strictEqual(real.status, probe.status, `${probe.cli} from the real path: ${real.said}`);
+      assert.match(viaLink.said, probe.says, `${probe.cli} through the junction said nothing: main() never ran`);
+      assert.strictEqual(viaLink.status, real.status, `${probe.cli}: exit ${viaLink.status} through the junction, ${real.status} from the real path`);
+    }
+  } finally {
+    linked.cleanup();
+  }
+});
+
+test("CH2-41a: isEntryScript(importMetaUrl) — the plain path, another file, no argv[1], and (Windows) a differently cased drive letter", async () => {
+  /* MUTATION (run): drop the win32 case-fold from tools/ci/entry.mjs -> the
+     flipped drive letter is false -> red on Windows (a shell that reports
+     c:\ where Node reports C:\). */
+  const url = pathToFileURL(ENTRY).href;
+  const { isEntryScript } = await import(url);
+  assert.strictEqual(isEntryScript(url, ENTRY), true, "the plain path");
+  assert.strictEqual(isEntryScript(url, path.join(ROOT, "tools", "ci", "not-entry.mjs")), false, "another file");
+  assert.strictEqual(isEntryScript(url, undefined), false, "no argv[1] (node -e, a REPL)");
+  assert.strictEqual(isEntryScript(url, ""), false, "an empty argv[1]");
+  if (process.platform === "win32") {
+    const flipped = ENTRY[0] === ENTRY[0].toUpperCase()
+      ? ENTRY[0].toLowerCase() + ENTRY.slice(1)
+      : ENTRY[0].toUpperCase() + ENTRY.slice(1);
+    assert.strictEqual(isEntryScript(url, flipped), true, "the drive letter cased differently");
+  }
+});
+
+/** Is `spec`, imported from repo file `rel`, tools/ci/entry.mjs? */
+function isEntrySpecifier(rel, spec) {
+  if (!spec.startsWith(".")) return false;
+  return path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec)) === "tools/ci/entry.mjs";
+}
+
+/** The rule's offences for one non-test `.mjs` under tools/ (`code` has its
+ *  comments stripped already). */
+export function guardOffences(rel, code) {
+  if (rel === "tools/ci/entry.mjs") return [];
+  const out = [];
+  const imports = [...code.matchAll(/import\s*\{([^}]*)\}\s*from\s*["']([^"']+)["']/g)]
+    .filter((m) => /\bisEntryScript\b/.test(m[1]));
+  const fromEntry = imports.some((m) => isEntrySpecifier(rel, m[2]));
+  for (const m of imports) {
+    if (!isEntrySpecifier(rel, m[2])) out.push(`${rel}: imports isEntryScript from ${m[2]}, not tools/ci/entry.mjs`);
+  }
+  code.split("\n").forEach((line, i) => {
+    if (/process\.argv\[1\]/.test(line) || GUARD_RE.test(line) || /import\.meta\.main\b/.test(line)) {
+      out.push(`${rel}:${i + 1}: legacy entry guard: ${line.trim()}`);
+    }
+  });
+  const definesMain = /\bfunction\s+main\s*\(|\b(?:const|let|var)\s+main\s*=/.test(code);
+  const callsHelper = /\bisEntryScript\(\s*import\.meta\.url\s*\)/.test(code);
+  if (definesMain && !fromEntry) out.push(`${rel}: defines main() but does not import isEntryScript from tools/ci/entry.mjs`);
+  if (fromEntry && !callsHelper) out.push(`${rel}: imports isEntryScript but never calls isEntryScript(import.meta.url)`);
+  return out;
+}
+
+/* GOVERNED, NOT YET SWEPT: the two tools/ CLIs that sit on DENIED_PREFIXES in
+   tools/ci/path-policy.mjs, so an agent PR may not change them unread. The card
+   (code-health-2.md CH2-41b, "Governed: none (the agent stops if the grep lists
+   a DENIED path)") stops there, so their legacy guards stay until a
+   founder-merged follow-up swaps them. Named here, with the reason, so the rule
+   below stays an honest claim about every OTHER CLI rather than quietly skipping
+   these two. The rule asserts each entry is still denied AND still offends, so
+   the list cannot outlive the swap. */
+export const GOVERNED_GUARD_EXEMPT = {
+  // The founder's R2 write-token uploader. tools/ci/path-policy.test.mjs pins
+  // "the uploader imports only node: builtins", so the swap must also amend
+  // that pin: importing ../ci/entry.mjs adds a non-builtin module to the
+  // credential path.
+  "tools/narration/upload-narration.mjs": "DENIED_PREFIXES: holds the founder's R2 write token; path-policy.test.mjs pins node:-only imports",
+  // The denied icon builder (imported by the denied injectors' pipeline).
+  "tools/brand/build-icons.mjs": "DENIED_PREFIXES: the denied icon builder (with tools/brand/png.mjs)",
+};
+
+test("CH2-41a/41b rule: every CLI under tools/ guards with isEntryScript from tools/ci/entry.mjs and no other form", () => {
+  /* Every non-test .mjs under tools/ that defines main() imports isEntryScript
+     from tools/ci/entry.mjs, and NO file there carries another guard form
+     (process.argv[1] compared any way, `import.meta.url ===`,
+     import.meta.main). The scan is over tracked files, not a list, for the
+     reason the first test in this file gives.
+     MUTATION (run): put `if (process.argv[1] && path.resolve(process.argv[1])
+     === path.resolve(fileURLToPath(import.meta.url))) main(...)` back into
+     tools/mobile/release-ci.mjs -> named here.
+     MUTATION (run, CH2-41b): put tools/refresh/nightly-runner.mjs's basename
+     guard back (`process.argv[1].replace(/\\/g, "/").endsWith(...)`) -> named
+     here; and drop the guard from tools/refresh/scan.mjs (a bare `main()`) ->
+     named here as a main() with no isEntryScript.
+     The two governed files in GOVERNED_GUARD_EXEMPT are held out by name.
+     MUTATION (run): delete the upload-narration.mjs entry from
+     GOVERNED_GUARD_EXEMPT -> its path.resolve guard is named here.
+     MUTATION (run): swap upload-narration.mjs's guard to isEntryScript without
+     dropping the exemption -> the exempt-but-clean assertion is red. */
+  const offenders = [];
+  const exemptStillOffending = [];
+  let scanned = 0;
+  for (const rel of TRACKED) {
+    if (!isToolsCli(rel)) continue;
+    const abs = path.join(ROOT, rel);
+    if (!fs.existsSync(abs)) continue;
+    scanned++;
+    const found = guardOffences(rel, stripComments(fs.readFileSync(abs, "utf8")));
+    if (Object.hasOwn(GOVERNED_GUARD_EXEMPT, rel)) {
+      if (found.length) exemptStillOffending.push(rel);
+      continue;
+    }
+    offenders.push(...found);
+  }
+  assert.ok(scanned >= 200, `premise: tools/ holds at least 200 non-test .mjs files, scanned ${scanned}`);
+  assert.deepStrictEqual(
+    exemptStillOffending.sort(),
+    Object.keys(GOVERNED_GUARD_EXEMPT).sort(),
+    "an exempt file no longer carries a legacy guard (or is gone): drop it from GOVERNED_GUARD_EXEMPT"
+  );
+  assert.deepStrictEqual(
+    offenders,
+    [],
+    "these CLIs are silent no-ops from a junction or symlinked checkout:\n" + offenders.join("\n")
+  );
+});
+
+test("CH2-41b: the guard exemption holds only governed (DENIED_PREFIXES) paths, each with a reason", async () => {
+  /* The exemption exists because an agent PR may not touch these files unread;
+     an ungoverned file has no such excuse and must be swept instead.
+     MUTATION (run): add "tools/refresh/scan.mjs" to GOVERNED_GUARD_EXEMPT ->
+     path-policy does not deny it -> red. */
+  const { pathPolicy } = await import(pathToFileURL(path.join(ROOT, "tools", "ci", "path-policy.mjs")).href);
+  for (const [rel, why] of Object.entries(GOVERNED_GUARD_EXEMPT)) {
+    assert.ok(isToolsCli(rel), `${rel} is not a non-test tools/ .mjs`);
+    assert.match(why, /DENIED_PREFIXES/, `${rel}: the reason names the governing list`);
+    assert.deepStrictEqual(
+      pathPolicy([rel]).denied.map((d) => d.file),
+      [rel],
+      `${rel} is exempt from the entry-guard rule but tools/ci/path-policy.mjs does not deny it: sweep it instead`
+    );
+  }
+});
+
+test("CH2-41a/41b rule: the offence detector names each legacy form and accepts the helper", () => {
+  /* The rule above is green by construction if its detector is blind, so each
+     legacy form from the swept trees, the helper imported from the wrong
+     module, and a main() with no guard are fed through it here.
+     MUTATION (run): drop the process.argv[1] pattern from guardOffences ->
+     the endsWith and realpath forms pass -> red. */
+  const rel = "tools/mobile/x.mjs";
+  const ok = 'import { isEntryScript } from "../ci/entry.mjs";\nfunction main() {}\nif (isEntryScript(import.meta.url)) main();\n';
+  assert.deepStrictEqual(guardOffences(rel, ok), []);
+  const legacy = [
+    "function main() {}\nif (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) main();\n",
+    "function main() {}\nif (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();\n",
+    'const invokedAs = String(process.argv[1] || "");\nif (invokedAs.endsWith("/x.mjs")) run();\n',
+    "const isMain = process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));\n",
+    "if (import.meta.main) run();\n",
+  ];
+  for (const src of legacy) assert.notDeepStrictEqual(guardOffences(rel, src), [], src);
+  assert.notDeepStrictEqual(
+    guardOffences(rel, 'import { isEntryScript } from "../ci/generate-manifest.mjs";\nfunction main() {}\nif (isEntryScript(import.meta.url)) main();\n'),
+    [],
+    "the helper imported from anywhere but tools/ci/entry.mjs"
+  );
+  assert.notDeepStrictEqual(guardOffences(rel, "function main() {}\nmain();\n"), [], "a main() with no guard at all");
 });

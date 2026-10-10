@@ -10,7 +10,10 @@
 
    Imported by tools/classify/prepare-batch.mjs (writes the label),
    tools/classify/merge-results.mjs (carries it into the record) and
-   tools/classify/select.mjs (the shard key).
+   tools/classify/select.mjs (the shard key). Since CH2-13 it is also the one
+   home of two rules that used to exist twice: the genre->topics prior
+   (prepare-batch.mjs and tools/classify-breadth.mjs) and the default progress
+   path (prepare-batch.mjs and merge-results.mjs) — see the last two sections.
 
    ============================================================================
    THE ONE RULE THIS FILE EXISTS TO HOLD  (founder ruling, 2026-08-16)
@@ -87,6 +90,7 @@
    which must agree with data/transcript-availability.json and with
    backend/src/feeds/parser.ts.                                              */
 
+import { join, resolve as resolvePath } from "node:path";
 import { parseFeed, hasTimestamps, TIMED_TRANSCRIPT_TYPES } from "../segments/sweep-transcripts.mjs";
 
 export { TIMED_TRANSCRIPT_TYPES };
@@ -317,4 +321,82 @@ export function mergeTranscriptLabels(previous, next) {
   if (!b) return a ?? emptyTranscriptLabels();
   if (!a) return b;
   return Number(b.episodes_sampled ?? 0) >= Number(a.episodes_sampled ?? 0) ? b : a;
+}
+
+// --------------------------------------------------- genre -> topics prior --
+
+/* The genre map's guess at a show's taxonomy nodes. ONE function, because it
+   used to be two: tools/classify-breadth.mjs (the base layer) and
+   prepare-batch.mjs's `tier0Prior` (the prior each batch entry hands the
+   classification agent), the second a copy "kept in sync deliberately" that had
+   already drifted — it never checked the taxonomy (CH2-13, T1-07). When a node
+   was renamed, classify-breadth refused to run while the six shard routines kept
+   handing the agent the dead id as a prior.
+
+   The rule: look up `apple_genre` and `chart_genre_name` in the map; keep each
+   topic that is a taxonomy node, in map order, de-duplicated; take the LOWEST
+   map confidence across the genres that mapped. A map topic that is not a node
+   is never emitted — it is returned in `staleTopics` so each caller can say so
+   (classify-breadth refuses to write; prepare-batch lists it on the batch).
+
+   A show with no surviving topic gets `confidence: "low"` — prepare-batch's
+   no-topic shape, `{ topics: [], confidence: "low" }`. classify-breadth writes no
+   entry for it, so it never reads that confidence.
+
+   `taxonomyIds` is required. Leaving it off is exactly the drift being closed,
+   so it throws rather than skipping the check. */
+const CONF_ORDER = { high: 3, medium: 2, low: 1 };
+
+export function genreTopicPrior(show, gmap, taxonomyIds) {
+  if (!(taxonomyIds instanceof Set)) {
+    throw new Error("genreTopicPrior: taxonomyIds must be a Set of taxonomy node ids (the map is checked against it).");
+  }
+  const topics = new Set();
+  const staleTopics = [];
+  const unmappedGenres = [];
+  let confidence = "high";
+  for (const genre of [show?.apple_genre, show?.chart_genre_name]) {
+    if (!genre) continue;
+    const row = gmap[genre];
+    if (!row) {
+      unmappedGenres.push(genre);
+      continue;
+    }
+    for (const t of row.topics) {
+      if (taxonomyIds.has(t)) topics.add(t);
+      else staleTopics.push(t);
+    }
+    if (CONF_ORDER[row.confidence] < CONF_ORDER[confidence]) confidence = row.confidence;
+  }
+  return {
+    topics: [...topics],
+    confidence: topics.size ? confidence : "low",
+    staleTopics,
+    unmappedGenres
+  };
+}
+
+// ------------------------------------------------------------ progress path --
+
+/* Where the classify pipeline keeps its state (`in_flight` reservations and
+   `failed_fetch` cooldowns). The committed file, by default.
+
+   It used to default to the gitignored `data-local/classify-progress.json`
+   while the six cloud shard routines passed `--progress
+   data/classify-progress.json` — two state files for one fleet (CH2-13, T1-09).
+   A run that omitted the flag read and wrote the private copy, so the cooldowns
+   and reservations the other half recorded were invisible to it: a dead feed
+   retried from attempt 1 by every shard, and two shards able to reserve the
+   same show. The routines share state through git, so the default is the file
+   git carries.
+
+   Precedence, unchanged: the `--progress` flag (prepare-batch only), then the
+   `PROGRESS_PATH` env var, then the default. An EMPTY flag or variable counts as
+   unset, as it always has. */
+export const PROGRESS_PATH_DEFAULT = "data/classify-progress.json";
+
+export function classifyProgressPath(root, { flag = null, env = process.env, cwd = process.cwd() } = {}) {
+  if (flag) return resolvePath(cwd, flag);
+  if (env.PROGRESS_PATH) return resolvePath(cwd, env.PROGRESS_PATH);
+  return join(root, ...PROGRESS_PATH_DEFAULT.split("/"));
 }

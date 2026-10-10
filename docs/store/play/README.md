@@ -28,7 +28,26 @@ Paste the whole of **`short-description.txt`** — one line, 71 characters:
 ## 3. Full description
 
 Field: **Full description** (4000 characters max).
-Paste the whole of **`full-description.txt`** — 2202 characters.
+Paste the whole of **`full-description.txt`** — 2946 characters.
+
+**Rewritten 2026-10-07 (wave 16, issue #42)** to describe the app main ships:
+Home's rails (Play, Jump back in, Forays for you, Playlists for you, and
+Suggested with its Stretch slot), Forays, Create, in-app playback with chapters, Up Next
+and Continuous playback (and the switch that turns it off), manual downloads
+that wait for Wi-Fi, Save and Follow as the app words them, Share, Family mode
+as `familySafe()` implements it, and "No account. No ads." The 2202-character
+version described the retired four-card Home, a hand-off to Apple Podcasts,
+"no autoplay chain" and audio that always needed a connection — all false
+against main. Every privacy sentence in it was checked against
+`docs/legal/privacy-policy.md` (the short version, §3 and §7); nothing new is
+claimed there. Stretch is claimed for Suggested only: Forays for you draws a
+Stretch pick only from a topic outside its top 60%, and the two published
+Forays (business, engineering) are both top, so that row has none — the
+intro sheet makes the same claim conditional (p-first-11), and a listing
+cannot. `tools/store/play-listing.test.mjs` now fails if a retired
+claim comes back, if Stretch is put on Forays for you while the published
+Forays cannot produce one, or if a control the copy names by its in-app label stops
+existing under that label.
 
 Paste it as plain text. Play strips formatting, and the ALL-CAPS lines in the
 file are the section headings — they are meant to survive as they are.
@@ -73,10 +92,19 @@ four, **in this order** — the first is the one shown in search results:
 
 | # | File | What it shows |
 | --- | --- | --- |
-| 1 | `screenshot-1-daily-picks.jpg` | The home screen: the intro banner and the four subject cards, one of them marked Stretch, with episode counts and runtimes. |
-| 2 | `screenshot-2-built-playlist.jpg` | A queue assembled from a typed request ("the roman empire") — ten episodes across several shows. |
+| 1 | `screenshot-1-daily-picks.jpg` | The home screen as it was on 2026-08-25: the intro banner and the four subject cards, one of them marked Stretch, with episode counts and runtimes. |
+| 2 | `screenshot-2-built-playlist.jpg` | A playlist built from a typed subject ("the roman empire") — ten episodes across several shows. |
 | 3 | `screenshot-3-queue.jpg` | Tapping a card: the episodes inside one subject queue, in order, with show and running time. |
-| 4 | `screenshot-4-player.jpg` | The player: scrubber, back 15 / forward 30, playback speed, and the hand-off to another podcast app. |
+| 4 | `screenshot-4-player.jpg` | The player under the "Roman Empire" playlist: scrubber, back 15 / forward 30, playback speed, and an "Open episode ↗" link out of the app. That link no longer exists — since 2026-09-02 every episode plays inside 4a and nothing hands off to another app. |
+
+**All four screenshots are stale.** They were captured 2026-08-25, before
+Home's rails replaced the four-card Home: `screenshot-1` shows that retired
+Home and `screenshot-4` the deleted link-out, and `screenshot-2` and
+`screenshot-3` predate six weeks of changes to the list rows and the player,
+so check them against the app rather than assuming they still match. The
+rewritten description does not lean on any of them. Recut them per `CAPTURE.md` in a
+follow-up; the description does not wait on that, and a listing published
+with these four is still accurate in its words and dated in its pictures.
 
 All four are 720 × 1280 JPEG (9:16), which is what Play wants for a phone.
 
@@ -119,43 +147,24 @@ do not stop after §7 thinking you are done. Every answer already exists:
 
 - **No promo video.** Optional, and there is nothing to link.
 - **No tablet or other form-factor art.** See above.
-- ~~**No mention of forays** in the copy … every foray in `data/forays.json` is
-  `status: "draft"` … Nobody who installs from Play can browse to one.~~
-  **THE PREMISE EXPIRED 2026-08-30.** `capital-types-1` is now
-  `status: "published"`, so it is listed on the home screen for an ordinary
-  visitor and a Play installer **can** browse to it. (Verified against the real
-  data through `player/foray-resolve.js`, **not observed in a browser** —
-  `docs/curation/foray2-capital.md` §11c records a cold-load race in which the
-  row can be missing on first paint.) The copy in this package
-  still says nothing about forays, so **the copy is now the thing that is out of
-  date, and rewriting it is the highest-value edit available to this listing** —
-  a foray is the most interesting thing 4a does.
+- **Forays are in the copy now, under three limits that still hold.** Until
+  2026-10-07 the copy said nothing about them (every Foray was a draft when it
+  was written; `capital-types-1` was published 2026-08-30, and
+  `how-ai-actually-gets-built-3b83e1` since). The rewrite describes a Foray in
+  the app's own terms (`forayAbout()` in `app.js`: one subject, moments from
+  several podcasts, each from the show's own feed) and still must not claim:
 
-  **Three things the rewrite must not claim**, because they are not true and a
-  store listing is a binding public statement:
-
-  1. **Not "forays", plural, and not a library.** There is exactly **one**
-     published: *The types of capital a startup can raise*, 51 minutes, 22
-     segments from 7 shows. The other four are still drafts — and one of those
-     four, `tts-locked-screen-check`, is not content at all: it is the
-     instrument for `HUMAN-ACTIONS.md` #29 and comes out once that is answered
-     (`docs/curation/tts-locked-screen-check.md`). "A foray" is honest;
-     "forays" or "a growing collection" is not.
-  2. **Nothing about a host, a narrator or a guide.** A foray is edited tape with
-     a short beat (0.5 s) between segments and nothing spoken in between. **No narration
-     audio exists anywhere in the repo** — rule X1 ("a cross-episode seam always
-     carries narration") is unmet at all 10 of this foray's cross-episode seams,
-     and meeting it is ElevenLabs spend nobody has authorised. See
-     `docs/curation/foray2-capital.md` §11b. The diagnostic Foray named above
-     carries a narration SCRIPT, spoken by the phone's own synthesiser — still
-     not narration audio, still nothing a listing may describe, and it is not
-     on the published foray in any case.
-  3. **No promise about background or offline playback.** **#224** is open;
-     `HUMAN-ACTIONS.md` #11 says in terms to expect playback to stop at a seam
-     with the screen off.
-
-  One more thing the founder should know before writing the copy: **nobody has
-  listened to this foray end to end.** `HUMAN-ACTIONS.md` #8 is still open.
+  1. **Scale.** "4a puts each Foray together by hand, so they arrive a few at a
+     time" is the app's own line (the empty Forays page). No count, no
+     "library", no "growing collection".
+  2. **A narrator, host or guide.** One published Foray carries narration
+     items and the other carries none, so `forayAbout()` says "with a narrator"
+     only when one does. A listing cannot be conditional, so it says nothing
+     either way (`docs/curation/foray2-capital.md` §11b for the history).
+  3. **Background or offline playback of a Foray.** **#224** is open: a seam
+     can stop playback with the screen off. The offline claim in the copy is
+     scoped to downloaded episodes, which is what `player/download-store.js`
+     covers; nothing downloads a Foray.
 - **No mention of thumbs-up/down voting, its reason chips, or "more like this /
   less like this"** — but the reason has changed and it is worth being explicit
   because `https://jwlabs.ai/4a/features/` does describe them. Every one of those
@@ -163,11 +172,9 @@ do not stop after §7 thinking you are done. Every answer already exists:
   so they used to sit behind the same draft wall the forays did. **That wall is
   down**: they are reachable inside `capital-types-1`. This paragraph is now a
   choice rather than a constraint.
-- **No promise of a daily cadence**, beyond the app's own "a daily podcast
-  picker" subtitle visible in the screenshots. The four subjects are re-rolled on
-  every page load, not once a day — measured on the live site 2026-08-25 — so the
-  copy says "come back for a fresh set" and "tap refresh for a different four",
-  both of which are true today. If the picks are ever pinned to a real day, the
+- **No promise of a daily cadence.** The header still says "a daily podcast
+  picker", but Home's picks are re-dealt on load, not once a day, so the copy
+  says nothing about days. If the picks are ever pinned to a real day, the
   copy can say so.
 
 ## Regenerating

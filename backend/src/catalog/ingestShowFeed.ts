@@ -16,17 +16,14 @@ import type { CatalogShowEpisode, ShowEpisodesStore, ShowFeedState } from "./sho
  *
  * NEVER touches audio bytes — the produced `audio_url` is always the
  * original enclosure URL exactly as `parser.ts` extracted it (ADR-0007 /
- * product principle #3). Chapters JSON bodies are NOT fetched here — only
- * the `<podcast:chapters url>` pointer is stored; the body is fetched
- * lazily per-episode (see docs comment in showEpisodesStore.ts / the design
- * posted on the kanban card) so a 400-episode show's ingestion pass costs
- * exactly one request, not 401.
+ * product principle #3). A podcasting-2.0 chapters JSON file is never
+ * fetched here (only its `<podcast:chapters url>` pointer is stored), so a
+ * 400-episode show's ingestion pass costs exactly one request, not 401.
  */
 
 export interface IngestShowFeedResult {
   showId: string;
   status: "fresh" | "not_modified" | "cached_stale" | "no_cache_error";
-  episodeCount: number;
   error?: string;
 }
 
@@ -52,29 +49,41 @@ export function failureBackoffMs(consecutiveFailures: number, ttlMs: number): nu
 }
 
 /**
- * Stable per-episode identity: the ONE rule in feeds/episodeIdentity.ts, also
- * used by the live list and search, so both paths mint the same id. No
- * positional index here: the enclosure URL is always present on this path
- * (toCatalogEpisode drops items without one), so an undated guid-less episode
- * is keyed by it rather than by a feed position that shifts on every prepend.
+ * THE one ParsedEpisode -> CatalogShowEpisode mapping, used by this ingest
+ * (DB mode) and by the live per-show list (api/shows/[show_id]/episodes.ts),
+ * so the two branches of one endpoint cannot serve the same feed differently
+ * (CH2-01, B1-01: the DB copy hardcoded `chapters: null` while the live one
+ * served the feed's chapters).
+ *
+ * `guid` is minted HERE, after the drop below, with THE identity rule
+ * (feeds/episodeIdentity.ts) the show-scoped search also uses, so the list,
+ * the search and the DB store serve one id for one episode. Minting it after
+ * the drop is what lets that rule need no feed position: every item that
+ * reaches it has an enclosure URL (code-health-2 CH2-35, B1-07).
+ *
+ * `chapters` carries the chapters the feed published INLINE (Podlove Simple
+ * Chapters, `psc:chapters` — parser.ts `inlineChapters`), sorted by start, or
+ * null when the item has none. A podcasting-2.0 `podcast:chapters` JSON file
+ * is never fetched here: only its pointer, `chapters_url`, is carried, and the
+ * body is fetched separately per episode (#1071). A missing enclosure never
+ * fabricates an audio_url: the item is dropped.
  */
-export { episodeIdentity };
-
-function toCatalogEpisode(showId: string, ep: ParsedEpisode): CatalogShowEpisode | null {
-  if (!ep.enclosureUrl) return null; // no real audio_url -> not a playable episode, drop it (never a fabricated pointer)
+export function toCatalogEpisode(showId: string, ep: ParsedEpisode): CatalogShowEpisode | null {
+  const enclosureUrl = ep.enclosureUrl;
+  if (!enclosureUrl) return null; // no real audio_url -> not a playable episode, drop it (never a fabricated pointer)
   return {
     show_id: showId,
-    guid: episodeIdentity(ep),
+    guid: episodeIdentity({ guid: ep.guid, title: ep.title, publishedAt: ep.publishedAt, enclosureUrl }),
     title: ep.title,
     description_html: ep.descriptionHtml,
     description_text: ep.descriptionText || null,
     published_at: ep.publishedAt,
     duration_seconds: ep.duration.seconds,
-    audio_url: ep.enclosureUrl,
+    audio_url: enclosureUrl,
     season_number: ep.seasonNumber,
     episode_number: ep.episodeNumber,
     chapters_url: ep.chaptersUrl,
-    chapters: null // lazy — never populated by this pass
+    chapters: ep.inlineChapters ?? null
   };
 }
 
@@ -94,7 +103,10 @@ function toCatalogEpisode(showId: string, ep: ParsedEpisode): CatalogShowEpisode
  * Politeness gap (recorded here rather than in the applied 0016 comment,
  * which must not be edited): 0016 says this path "mirrors ADR-0001's ...
  * per-host politeness discipline", but feeds/politeness.ts PolitenessBudget
- * is NOT wired in. The only backoff is the per-show one above.
+ * is NOT wired in. The only backoff is the per-show one above. The live
+ * per-host budget is its pinned port, tools/poll/politeness.mjs, which the
+ * S-10 poller uses (tools/poll/select-due.mjs, poll-cycle.mjs; the daily
+ * episode-poll.yml run is a dry run until PKG-10) — not this path.
  */
 export async function ingestShowFeed(
   showId: string,
@@ -107,7 +119,7 @@ export async function ingestShowFeed(
   } catch (err) {
     // Last resort: the store itself failed (e.g. the database is down), so
     // there is no cache to fall back to either.
-    return { showId, status: "no_cache_error", episodeCount: 0, error: errorMessage(err) };
+    return { showId, status: "no_cache_error", error: errorMessage(err) };
   }
 }
 
@@ -131,10 +143,7 @@ async function ingestShowFeedUnsafe(
     prior.last_fetch_ok === true &&
     now() - new Date(prior.last_fetched_at).getTime() < ttlMs;
 
-  if (freshEnough) {
-    const cached = await store.episodesForShow(showId);
-    return { showId, status: "not_modified", episodeCount: cached.length };
-  }
+  if (freshEnough) return { showId, status: "not_modified" };
 
   const backingOff =
     prior !== null &&
@@ -143,10 +152,8 @@ async function ingestShowFeedUnsafe(
     now() - new Date(prior.last_fetched_at).getTime() < failureBackoffMs(prior.consecutive_failures, ttlMs);
 
   if (backingOff) {
-    const cached = await store.episodesForShow(showId);
     const error = prior.last_error ?? "feed failing; backing off";
-    if (cached.length > 0) return { showId, status: "cached_stale", episodeCount: cached.length, error };
-    return { showId, status: "no_cache_error", episodeCount: 0, error };
+    return { showId, status: (await store.hasEpisodes(showId)) ? "cached_stale" : "no_cache_error", error };
   }
 
   const fetchResult = await fetchFeedConditional(
@@ -174,8 +181,7 @@ async function ingestShowFeedUnsafe(
       last_fetch_ok: true,
       consecutive_failures: 0
     });
-    const cached = await store.episodesForShow(showId);
-    return { showId, status: "not_modified", episodeCount: cached.length };
+    return { showId, status: "not_modified" };
   }
 
   if (fetchResult.error || fetchResult.body === null) {
@@ -186,11 +192,11 @@ async function ingestShowFeedUnsafe(
       last_error: fetchResult.error ?? `unexpected empty body (status ${fetchResult.status})`,
       consecutive_failures: failures
     });
-    const cached = await store.episodesForShow(showId);
-    if (cached.length > 0) {
-      return { showId, status: "cached_stale", episodeCount: cached.length, error: fetchResult.error };
-    }
-    return { showId, status: "no_cache_error", episodeCount: 0, error: fetchResult.error };
+    return {
+      showId,
+      status: (await store.hasEpisodes(showId)) ? "cached_stale" : "no_cache_error",
+      error: fetchResult.error
+    };
   }
 
   let parsed: ReturnType<typeof parseFeed>;
@@ -209,9 +215,7 @@ async function ingestShowFeedUnsafe(
       last_error: error,
       consecutive_failures: (prior?.consecutive_failures ?? 0) + 1
     });
-    const cached = await store.episodesForShow(showId);
-    if (cached.length > 0) return { showId, status: "cached_stale", episodeCount: cached.length, error };
-    return { showId, status: "no_cache_error", episodeCount: 0, error };
+    return { showId, status: (await store.hasEpisodes(showId)) ? "cached_stale" : "no_cache_error", error };
   }
 
   await store.recordFeedFetch({
@@ -225,6 +229,5 @@ async function ingestShowFeedUnsafe(
     consecutive_failures: 0
   });
 
-  const finalList = await store.episodesForShow(showId);
-  return { showId, status: "fresh", episodeCount: finalList.length };
+  return { showId, status: "fresh" };
 }

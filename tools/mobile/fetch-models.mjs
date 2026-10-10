@@ -29,8 +29,11 @@
  * ruling on issue #1076, 2026-10-05: "Remove it all"). From 2026-09-12 the
  * `ios-shell`/`android-shell` jobs and both release composites fetched the
  * bundled pins and copied them into the apps for the on-device Kokoro probe;
- * the probe is gone, so every `bundle` list below is `[]` and no build path
- * calls this file. What still reads it: `render-narration.yml` runs `--check`,
+ * the probe is gone, and CH2-23 (docs/roadmap/code-health-2.md, T2-12) then
+ * deleted the per-platform `bundle` lists, `--bundled` and `--fetch <platform>`,
+ * which could only answer "nothing". No build path calls this file
+ * (`test/release-gates.test.js` scans every composite action and both build
+ * workflows for it). What still reads it: `render-narration.yml` runs `--check`,
  * and the central narration tools (`tools/narration/render-foray.py`,
  * `render-audition.py`, `bench-narration.py`) parse the model and voice pins
  * out of this file's text, so the hashes live in ONE table. By hand:
@@ -38,8 +41,6 @@
  *     node tools/mobile/fetch-models.mjs            # fetch + verify
  *     node tools/mobile/fetch-models.mjs --verify   # verify what is on disk
  *     node tools/mobile/fetch-models.mjs --check    # check the pins only (CI)
- *     node tools/mobile/fetch-models.mjs --bundled ios      # what an iOS build copies: nothing
- *     node tools/mobile/fetch-models.mjs --bundled android  # ... and an Android one: nothing
  *
  * `--check` is the mode CI can run with no download and no secret: it asserts
  * every pin is well-formed and internally consistent, which is what makes
@@ -82,6 +83,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -99,14 +101,12 @@ export const MODELS_DIR = path.join("mobile", "models");
  * the on-device probe looked the bundled file up by). The narration tools
  * find the model pins by it, so it is not cosmetic.
  *
- * `bundle` IS PER PLATFORM (KV-R2, deck D13): the list of platforms whose app
- * binary carries the file — `["ios"]`, `["android"]`, `["ios", "android"]`,
- * or `[]` for a workstation-only file. There is no implicit value and no
- * boolean. SINCE CH-20 EVERY LIST IS `[]`: no app carries a Kokoro file, and
- * `test/release-gates.test.js` holds both `--bundled` answers empty. Putting
- * a platform back in a list is a decision to ship weights again, which takes
- * a founder ruling (issue #1076 is the one that took them out) and a build
- * step to copy them.
+ * NO PIN GOES INTO AN APP. Until CH2-23 every pin carried a per-platform
+ * `bundle` list (KV-R2, deck D13), each `[]` since CH-20; the lists, and the
+ * `--bundled` answer they fed, are deleted. Shipping weights again is a
+ * founder ruling (issue #1076 is the one that took them out) plus a build
+ * step, and `test/release-gates.test.js` goes red on any build path that
+ * names this file.
  *
  * WHY fp32 ON iOS, q8f16 ON ANDROID (deck §10b, D13), kept as the record of
  * the probe-era choice. The first answer here was q8f16 everywhere — 86 MB,
@@ -142,9 +142,6 @@ export const MODELS_DIR = path.join("mobile", "models");
 export const FETCH_ATTEMPTS = 4;
 const FETCH_BACKOFF_MS = 10_000;
 
-/** The platforms a pin's `bundle` list may name: the two shell apps. */
-export const BUNDLE_PLATFORMS = Object.freeze(["ios", "android"]);
-
 export const PINS = Object.freeze([
   /* The q8f16 export (the probe-era Android model, D13). Kept FIRST, and
      kept in this exact field order: `render-audition.py`'s `read_pins` parses
@@ -158,7 +155,6 @@ export const PINS = Object.freeze([
     bytes: 86033585,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: Object.freeze([]),
   }),
   /* The fp32 export (D13, KV-R2): the only one finite and near real time on
      Apple silicon, and the model central narration renders with
@@ -171,7 +167,6 @@ export const PINS = Object.freeze([
     bytes: 325532232,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: Object.freeze([]),
   }),
   ...[
     ["af_heart", "d583ccff3cdca2f7fae535cb998ac07e9fcb90f09737b9a41fa2734ec44a8f0b", 522240],
@@ -194,7 +189,6 @@ export const PINS = Object.freeze([
     bytes,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: Object.freeze([]),
   })),
   /* THE ID TABLE'S RECEIPT. `tools/narration/kokoro-vocab.json` is the
      phoneme-to-id table, committed because it is 3 KB and because
@@ -204,9 +198,9 @@ export const PINS = Object.freeze([
      asserts the two agree, and `--fetch` re-downloads the file so the
      extraction can be repeated by hand.
 
-     `bundle: []` — it never reaches a phone. The app receives ids and has
-     no text to map; a table in the bundle would be the first step back towards
-     a front end on the device, which is the thing deck §4 exists to prevent. */
+     It never reaches a phone. The app receives ids and has no text to map;
+     a table in the bundle would be the first step back towards a front end
+     on the device, which is the thing deck §4 exists to prevent. */
   Object.freeze({
     kind: "tokenizer",
     name: "kokoro-tokenizer.json",
@@ -215,31 +209,8 @@ export const PINS = Object.freeze([
     bytes: 3497,
     licence: "Apache-2.0",
     source: "https://huggingface.co/onnx-community/Kokoro-82M-v1.0-ONNX",
-    bundle: Object.freeze([]),
   }),
 ]);
-
-/** The pins ONE PLATFORM's shell build would copy into its app: none since
-    CH-20, and `test/release-gates.test.js` holds it there. Every pin is
-    fetched for a workstation's use (the narration renders, the audition, the
-    tokenizer) and stays out of every binary.
-
-    THE PLATFORM IS REQUIRED. "Bundled" with no platform named has no answer
-    since D13 (fp32 on iOS, q8f16 on Android), and the old no-argument form
-    would have to guess one; an unknown platform throws rather than returning
-    an empty list that a build would read as "ship nothing". */
-export function bundledPins(platform, pins = PINS) {
-  if (!BUNDLE_PLATFORMS.includes(platform)) {
-    throw new Error(`bundledPins: unknown platform ${JSON.stringify(platform)} — expected one of ${BUNDLE_PLATFORMS.join(", ")}`);
-  }
-  return pins.filter((p) => Array.isArray(p.bundle) && p.bundle.includes(platform));
-}
-
-/** Total bytes ONE PLATFORM's build adds to its app. Exported so each size
-    budget is checked against the real pinned lengths instead of estimates. */
-export function bundledBytes(platform, pins = PINS) {
-  return bundledPins(platform, pins).reduce((n, p) => n + (p.bytes ?? 0), 0);
-}
 
 /** The single command that turns a `null` pin into a real one. Printed rather
     than run: filling a pin is a deliberate act by somebody who then looks at
@@ -286,20 +257,6 @@ export function pinProblems(pins = PINS) {
        hash looks filled in at a glance and verifies nothing about content. */
     if ((p.sha256 === null) !== (p.bytes === null)) {
       problems.push(`${at}: sha256 and bytes must be pinned together — a half-pin verifies nothing`);
-    }
-    /* `bundle` decides whether a 86–326 MB file goes into an app store
-       binary, and since D13 it answers that PER PLATFORM. Required, and a LIST
-       of known platforms (`[]` for none, which every pin is since CH-20), so a
-       pin that merely forgot the field is an error rather than a silent
-       answer. A bare `true` is refused too: it used to mean "both", and "both"
-       is a thing a pin has to say. */
-    if (!Array.isArray(p.bundle)) {
-      problems.push(`${at}: bundle must be a list of platforms (${BUNDLE_PLATFORMS.map((x) => `"${x}"`).join(", ")}, or [] for none) — "goes into the app" is never left implicit`);
-    } else {
-      for (const platform of p.bundle) {
-        if (!BUNDLE_PLATFORMS.includes(platform)) problems.push(`${at}: bundle names an unknown platform ${JSON.stringify(platform)}`);
-      }
-      if (new Set(p.bundle).size !== p.bundle.length) problems.push(`${at}: bundle names a platform twice`);
     }
     if (typeof p.licence !== "string" || !p.licence) problems.push(`${at}: no licence recorded`);
     if (typeof p.source !== "string" || !/^https:\/\//.test(p.source || "")) {
@@ -371,7 +328,9 @@ export function verifyOnDisk(pins = PINS, root = REPO_ROOT) {
 
 /* --------------------------------------------------------------------- main */
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const USAGE = "Usage: node tools/mobile/fetch-models.mjs [--fetch|--verify|--check]";
+
+const isMain = isEntryScript(import.meta.url);
 
 /* Wrapped in a function rather than run at module scope so this file carries NO
    top-level await: `test/release-gates.test.js` is a CommonJS suite and imports
@@ -386,28 +345,16 @@ async function main() {
     for (const p of problems) console.error(`  ${p}`);
     process.exit(1);
   }
-  const missing = unfilled();
-  if (mode === "--bundled") {
-    /* One filename per line, for a build step to read: none since CH-20.
-       Deliberately NOT a glob over `mobile/models/`: the decision belongs to
-       the pin table, in the same file as the hashes, where a reviewer sees
-       both at once. */
-    const platform = process.argv[3];
-    if (!BUNDLE_PLATFORMS.includes(platform)) {
-      console.error(`Usage: node tools/mobile/fetch-models.mjs --bundled <${BUNDLE_PLATFORMS.join("|")}>`);
-      process.exit(2);
-    }
-    for (const pin of bundledPins(platform)) console.log(pin.name);
-    process.exit(0);
+  if (process.argv.length > 3) {
+    /* No mode takes an argument since CH2-23 deleted `--bundled <platform>`
+       and `--fetch <platform>`; a stray one is a caller still asking those. */
+    console.error(`Unexpected argument: ${process.argv[3]}`);
+    console.error(USAGE);
+    process.exit(2);
   }
+  const missing = unfilled();
   if (mode === "--check") {
     console.log(`${PINS.length} pins, all well-formed.`);
-    /* One line PER PLATFORM: what each app carries (nothing since CH-20). */
-    for (const platform of BUNDLE_PLATFORMS) {
-      const names = bundledPins(platform).map((p) => p.name);
-      console.log(`${platform}: ${names.length} bundled${names.length ? ` (${names.join(", ")})` : ""}: `
-        + `${(bundledBytes(platform) / (1024 * 1024)).toFixed(1)} MiB.`);
-    }
     if (missing.length) {
       console.log(`${missing.length} of them carry no sha256 yet. Fill one with:`);
       console.log(`  ${fillPinCommand(missing[0])}`);
@@ -429,22 +376,13 @@ async function main() {
   }
   if (mode !== "--fetch") {
     console.error(`Unknown argument: ${mode}`);
-    console.error("Usage: node tools/mobile/fetch-models.mjs [--fetch [ios|android]|--verify|--check|--bundled <ios|android>]");
+    console.error(USAGE);
     process.exit(2);
   }
-  /* `--fetch <ios|android>` fetches only what that platform bundles, which is
-     nothing since CH-20. It existed so a shell build downloaded its two files
-     rather than every pin (a Hugging Face 504 failed release 36295569334,
-     2026-09-27). Bare `--fetch` fetches every pin, for a workstation. */
-  const platform = process.argv[3];
-  if (platform !== undefined && !BUNDLE_PLATFORMS.includes(platform)) {
-    console.error(`--fetch takes an optional platform (${BUNDLE_PLATFORMS.join("|")}), not ${JSON.stringify(platform)}`);
-    process.exit(2);
-  }
-  const wanted = platform === undefined ? PINS : bundledPins(platform);
+  /* `--fetch` fetches every pin, for a workstation. */
   const dir = path.join(REPO_ROOT, MODELS_DIR);
   let failed = 0;
-  for (const pin of wanted) {
+  for (const pin of PINS) {
     const abs = path.join(dir, pin.name);
     if (fs.existsSync(abs) && verifyBuffer(pin, fs.readFileSync(abs)).ok) continue;
     /* RETRIED: a 5xx or a dropped connection is the CDN, not the pin. A hash

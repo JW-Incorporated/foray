@@ -19,24 +19,24 @@
      `node tools/build-catalog-client.mjs` afterwards.
 
    TRAFFIC. One `lookup` request per 150 ids (so one request for today's 53),
-   spaced >= 1.5 s apart, with the repo's polite User-Agent.
+   through `tools/harvest-merge.mjs`'s `politeFetchJson` — the one policy for
+   Apple's iTunes endpoints: >= 3 s before every request, the repo's polite
+   User-Agent, 429/5xx/network errors retried with backoff, any other 4xx fatal.
 
    Usage:
      node tools/refresh/backfill-artwork.mjs            # fetch + write
      node tools/refresh/backfill-artwork.mjs --dry-run  # fetch + report only */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { UA } from "../segments/politeness.mjs";
+import { isEntryScript } from "../ci/entry.mjs";
+import { politeFetchJson } from "../harvest-merge.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CATALOG = join(ROOT, "data", "catalog.json");
 const BATCH = 150;
-const SPACING_MS = 1500;
 const DRY = process.argv.includes("--dry-run");
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** The harvest mapping (tools/harvest-catalog.mjs): artworkUrl600, else null. */
 export function artworkFromLookup(result) {
@@ -59,11 +59,10 @@ export function spliceArtwork(text, id, url) {
   return text.slice(0, hit) + `"artwork_url": ${JSON.stringify(url)}` + text.slice(hit + needle.length);
 }
 
-async function lookup(ids) {
-  const url = `https://itunes.apple.com/lookup?id=${ids.join(",")}&entity=podcast`;
-  const res = await fetch(url, { headers: { "User-Agent": UA } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
-  return (await res.json()).results || [];
+/** One `lookup` request for `ids`; `fetchJson` is injected for tests. */
+export async function lookup(ids, fetchJson = politeFetchJson()) {
+  const data = await fetchJson(`https://itunes.apple.com/lookup?id=${ids.join(",")}&entity=podcast`);
+  return data.results || [];
 }
 
 async function main() {
@@ -75,9 +74,9 @@ async function main() {
 
   const found = new Map();
   const ids = missing.map((s) => s.apple_collection_id);
+  const fetchJson = politeFetchJson();
   for (let i = 0; i < ids.length; i += BATCH) {
-    if (i) await sleep(SPACING_MS);
-    for (const r of await lookup(ids.slice(i, i + BATCH))) {
+    for (const r of await lookup(ids.slice(i, i + BATCH), fetchJson)) {
       const art = artworkFromLookup(r);
       if (art) found.set(r.collectionId, art);
     }
@@ -106,6 +105,6 @@ async function main() {
   console.log("wrote data/catalog.json; now run: node tools/build-catalog-client.mjs");
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => { console.error(e.message); process.exit(1); });
 }

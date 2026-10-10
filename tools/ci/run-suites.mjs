@@ -96,7 +96,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "./entry.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -448,6 +449,6 @@ export function runCli(argv, opts = {}) {
 
 /* Import-safe: suite-integrity imports this module for the closure check, and
  * importing it must never execute anything. */
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   process.exit(runCli(process.argv.slice(2)));
 }

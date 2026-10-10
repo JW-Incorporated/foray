@@ -15,8 +15,15 @@ import Foundation
 /// reordered against a turn.
 final class MainQueueTiming: EngineTiming {
 
-    /// Coalescing the system may apply. The engine's timers today are the
-    /// position cadence and the hold release (minutes); neither needs better.
+    /// Coalescing the system may apply. What runs on the default 50 ms
+    /// (code-health-3 R1-12): the core's timers (`EngineTimer`: the position
+    /// cadence, the hold release, the seam beat, the narration tick, the
+    /// silence cap), the host's 1 Hz Now Playing heartbeat (#1124), the
+    /// bridge's snapshot window, the ownership watchdogs, the jingle's ceiling
+    /// and the session probe. None of them needs better: the tightest are the
+    /// narration tick (250 ms) and the seam beat (500 ms). The one timer that
+    /// does is AVDeck's out-point watchdog, which builds its own instance at
+    /// 1 ms (NE-32).
     private let leeway: DispatchTimeInterval
 
     init(leeway: DispatchTimeInterval = .milliseconds(50)) {

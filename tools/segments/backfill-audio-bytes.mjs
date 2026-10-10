@@ -42,7 +42,8 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve as resolvePath } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { AUDIO_UA, ACCEPT_LANGUAGE, awaitHostSlot } from "./politeness.mjs";
 import { parseFeed } from "./sweep-transcripts.mjs";
 import { enclosureLengthBytes } from "../refresh/enclosure.mjs";
@@ -211,7 +212,7 @@ export async function main(argv = process.argv.slice(2), { log = console.log } =
   return { k, report, changed: out !== raw };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolvePath(process.argv[1])).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((err) => {
     console.error(`backfill-audio-bytes: ${err.message}`);
     process.exit(2);

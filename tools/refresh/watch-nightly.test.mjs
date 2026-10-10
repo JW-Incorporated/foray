@@ -699,7 +699,7 @@ test("the CLI exits 1 on the overwrite condition and 0 once the night merged", (
 
 test("the real process exits non-zero, not merely the exported run()", () => {
   // A workflow reads the exit code, so that is what has to be proven. Mutation:
-  // change the `invokedDirectly` suffix test so the CLI block never executes —
+  // change the `invokedDirectly` guard so the CLI block never executes —
   // the script then prints nothing and exits 0 on every failing night.
   const args = ["--mode", "overwrite", "--digest", fixPath(DIGEST), "--pulls", fixPath(PULLS_MISS), "--discover", fixPath(POOL_BEFORE)];
   let status = 0;

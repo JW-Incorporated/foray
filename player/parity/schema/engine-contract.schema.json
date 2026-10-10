@@ -1015,7 +1015,7 @@
         "canPrevious": { "type": "boolean" },
         "autoAdvance": { "type": "boolean" },
         "lastError": { "type": ["string", "null"] },
-        "voiceFallback": { "type": ["string", "null"] },
+        "voiceFallback": { "type": ["boolean", "null"] },
         "skippedSegments": { "type": "integer", "minimum": 0 },
         "pendingAdvances": { "type": "integer", "minimum": 0 },
         "pendingEvents": { "type": "integer", "minimum": 0 },
@@ -1119,6 +1119,41 @@
             "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" },
             "forayId": "foray-1",
             "narrationElapsedSec": 4.2
+          },
+          "foray-voice-fallback": {
+            "v": 1,
+            "seq": 42,
+            "capturedAtWallMs": 1790000000000,
+            "capturedAtMonotonicMs": 523000,
+            "mode": "foray",
+            "index": 3,
+            "itemId": "n-3",
+            "itemKind": "tts",
+            "state": "playing",
+            "running": true,
+            "inSeamGap": false,
+            "inInterlude": false,
+            "buffering": false,
+            "ended": false,
+            "positionSec": 120.5,
+            "durationSec": 3600,
+            "sourceTimeSec": 120.5,
+            "playheadItemId": "n-3",
+            "isNarrationPlayhead": true,
+            "rate": 1.5,
+            "effectiveRate": 1.5,
+            "canNext": true,
+            "canPrevious": true,
+            "autoAdvance": true,
+            "skippedSegments": 0,
+            "pendingAdvances": 0,
+            "pendingEvents": 0,
+            "session": "active",
+            "holdPolicy": "until:60",
+            "nowPlaying": { "title": "The Long Drive", "artist": "A Show", "album": "Foray" },
+            "forayId": "foray-1",
+            "narrationElapsedSec": 4.2,
+            "voiceFallback": true
           },
           "interrupted": {
             "v": 1,
@@ -1385,17 +1420,7 @@
       "type": "object",
       "required": ["type"],
       "properties": {
-        "type": {
-          "enum": [
-            "snapshot",
-            "advanced",
-            "skipped",
-            "error",
-            "voiceFallback",
-            "diag",
-            "modeChanged"
-          ]
-        }
+        "type": { "enum": ["snapshot", "advanced", "skipped", "error", "diag", "modeChanged"] }
       },
       "allOf": [
         {

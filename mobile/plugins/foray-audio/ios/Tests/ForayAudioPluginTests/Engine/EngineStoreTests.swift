@@ -126,6 +126,35 @@ final class EngineStoreTests: XCTestCase {
         XCTAssertEqual(store.restoreRecord()?.mode, .relinquished)
     }
 
+    /// R1-16 (code-health-3 Appendix B): a restore record that is PRESENT but
+    /// this build cannot read is no record to the cold path, as before, and
+    /// now the ring says so (`restore event=corrupt`) and the key is cleared,
+    /// so the next launch does not read it again and report it as `none`. An
+    /// absent record writes no row; a readable one is returned and kept.
+    /// TO SEE IT FAIL: drop the `set(nil, for: .restore)` in `restoreRecord()`,
+    /// or the `corrupt` row, or write the row for an absent record too.
+    func testAnUnreadableRestoreRecordIsReportedCorruptAndCleared() throws {
+        let store = EngineStore(defaults: suite, diagnostics: makeDiagnostics())
+        let key = EnginePrivateKey.restore.rawValue
+        XCTAssertNil(store.restoreRecord())
+        XCTAssertEqual(store.diagnostics.rows.filter { $0.kind == "restore" }.count, 0, "no record is not a corrupt one")
+
+        store.set("{\"v\":1,\"mode\":\"episode\"", for: .restore)
+        XCTAssertNil(store.restoreRecord(), "a record this build cannot trust is no record (RestoreRecord.parse)")
+        // RED on main: R1-16 (the record was left in place and no row said why).
+        XCTAssertNil(suite.string(forKey: key), "the unreadable record is cleared")
+        let corrupt = store.diagnostics.rows.filter { $0.kind == "restore" }
+        XCTAssertEqual(corrupt.count, 1)
+        XCTAssertEqual(corrupt.first?[field: "event"], .string("corrupt"))
+        XCTAssertNil(store.restoreRecord())
+        XCTAssertEqual(store.diagnostics.rows.filter { $0.kind == "restore" }.count, 1, "reported once, then gone")
+
+        store.writeRestore(RestoreRecord.relinquished(updatedAt: "2026-09-24T00:00:00.000Z", build: "1"))
+        XCTAssertEqual(store.restoreRecord()?.mode, .relinquished)
+        XCTAssertNotNil(suite.string(forKey: key), "a readable record is kept")
+        XCTAssertEqual(store.diagnostics.rows.filter { $0.kind == "restore" }.count, 1)
+    }
+
     /// Delete my data: every shared engine row, every `ForayEngine.*` key
     /// (today's six AND one a later card might add) and the ring file are
     /// gone, enumerated; the page's own rows are the page's to clear.

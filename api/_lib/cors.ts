@@ -1,16 +1,14 @@
 /**
  * Shared CORS handling for `api/**` serverless functions (S-02, kanban
- * t_4bd3c0a3). Neither `api/shows/search.ts` nor
- * `api/shows/[show_id]/episodes.ts` sets any CORS headers today, so a
- * request from the iOS shell (`Origin: capacitor://localhost`) or the
- * Android shell (`https://localhost`) or the web build
- * (`https://jwlabs.ai`, `https://jw-incorporated.github.io`) gets a normal
- * 200 with no `Access-Control-Allow-Origin` header, which the browser/
- * WebView then discards before the caller ever sees the body.
- *
- * `search.ts` is not named in this card's file list but sits in the exact
- * same `api/` directory with the identical gap — pulled in here rather than
- * left half-fixed; see the PR description for why.
+ * t_4bd3c0a3). Every handler calls `applyCors` first, before its method
+ * check: the iOS shell (`Origin: capacitor://localhost`), the Android shell
+ * (`https://localhost`) and the web build (`https://jwlabs.ai`,
+ * `https://jw-incorporated.github.io`) are all cross-origin to this API, and
+ * a 200 without `Access-Control-Allow-Origin` is discarded by the browser/
+ * WebView before the caller ever sees the body. The origins it answers are
+ * exactly `ALLOWED_ORIGINS` below; no handler sets CORS headers of its own
+ * (the shard proxy adds only `Access-Control-Expose-Headers` for its custom
+ * version header).
  *
  * SECURITY NOTE: this is a public, read-only, unauthenticated API (podcast
  * metadata only — no per-user data, no cookies). Exact-origin-echo CORS
@@ -22,7 +20,7 @@
  * to this module without re-deriving that argument from scratch.
  */
 
-import { firstParam as firstHeader } from "./params";
+import { firstParam as firstHeader, type ApiRequest, type ApiResponse } from "./params";
 
 /**
  * Exact-match allowlist — never a wildcard, never a suffix/prefix match.
@@ -41,17 +39,6 @@ export const ALLOWED_ORIGINS = [
   "https://foray-web-seven.vercel.app"
 ];
 
-interface ApiRequest {
-  method?: string;
-  headers: Record<string, string | string[] | undefined>;
-}
-interface ApiResponse {
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-  setHeader(name: string, value: string): void;
-  end(): void;
-}
-
 /**
  * Applies CORS headers for one request and, on an `OPTIONS` preflight,
  * finishes the response itself and returns `true` so the caller returns
@@ -63,9 +50,13 @@ interface ApiResponse {
  * `Access-Control-Allow-Origin: https://jwlabs.ai` to a
  * `jw-incorporated.github.io` visitor from cache, silently breaking that
  * origin's own fetch until the cache entry expires.
+ *
+ * `origin` only, lowercase: Node lowercases every incoming header name, so
+ * a capitalised `Origin` key never exists on `req.headers` (pinned over a
+ * real socket in api/_test/params.test.mjs).
  */
-export function applyCors(req: ApiRequest, res: ApiResponse): boolean {
-  const origin = firstHeader(req.headers.origin ?? req.headers.Origin);
+export function applyCors(req: Pick<ApiRequest, "method" | "headers">, res: ApiResponse): boolean {
+  const origin = firstHeader(req.headers.origin);
   res.setHeader("Vary", "Origin");
 
   if (origin && ALLOWED_ORIGINS.includes(origin)) {

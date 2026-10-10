@@ -52,6 +52,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { decode, encode } from "./png.mjs";
 import { loadMaster, renderIcon, SIZES, MASTER } from "./build-icons.mjs";
+import { SHELL } from "../ci/generate-manifest.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel));
@@ -136,11 +137,13 @@ test("index.html's touch icon and favicon both resolve to committed files", () =
 
 test("both shipped icons are copied into the mobile shell and the web dist", () => {
   const shipped = ["icon-180.png", "icon-512.png"];
-  for (const script of ["tools/mobile/prepare-webdir.mjs", "tools/web/prepare-dist.mjs"]) {
-    const src = text(script);
-    for (const icon of shipped) {
-      assert.ok(src.includes(`"${icon}"`), `${script} no longer copies ${icon}`);
-    }
+  const src = text("tools/mobile/prepare-webdir.mjs");
+  for (const icon of shipped) {
+    /* The mobile shell still writes its list out (SHELL_FILES). The web dist
+       ships generate-manifest's SHELL (+ sw.js); tools/ci/ship-lists.test.mjs
+       pins prepare-dist to exactly that, so the list itself is checked here. */
+    assert.ok(src.includes(`"${icon}"`), `tools/mobile/prepare-webdir.mjs no longer copies ${icon}`);
+    assert.ok(SHELL.includes(icon), `tools/ci/generate-manifest.mjs's SHELL (what prepare-dist ships) no longer has ${icon}`);
   }
 });
 
@@ -148,7 +151,12 @@ test("the 1024 marketing icon is NOT shipped in either bundle", () => {
   /* It exists for App Store Connect's submission form and nothing else. At
      126 KB it is larger than both shipped icons together, and the mobile slice
      is budgeted in hundreds of KB. */
-  for (const script of ["tools/mobile/prepare-webdir.mjs", "tools/web/prepare-dist.mjs", "sw.js"]) {
+  for (const script of [
+    "tools/mobile/prepare-webdir.mjs",
+    "tools/web/prepare-dist.mjs",
+    "tools/ci/generate-manifest.mjs",
+    "sw.js",
+  ]) {
     assert.ok(!text(script).includes("icon-1024"), `${script} must not ship icon-1024.png`);
   }
 });

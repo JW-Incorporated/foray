@@ -419,9 +419,12 @@ function tagSegmentIndex(ctx) {
    WHOLE map's counts beside it, as a top-level `df` block:
 
      df: { total: <entries in the whole map>, entries: <entries in this slice>,
-           by_count: { "<count>": [term, ...], ... } }
+           encoding: "front-1",
+           by_count: { "<count>": "<front-coded terms>", ... } }
 
-   so `tagCount` and `tagDF` answer exactly what they answer on the website, and
+   (or, with no `encoding`, the plain form #279 first shipped:
+   `by_count: { "<count>": [term, ...], ... }` -- both are read, see
+   frontDecodeTerms below) so `tagCount` and `tagDF` answer exactly what they answer on the website, and
    the app's query interpretation cannot drift from the web's on sampling (a bare
    trim moved 22 expansion buckets and 60 score multipliers on 2026-10-05;
    prepare-webdir.test.mjs measures both). `tagCount` and `tagDF` are the ONLY readers of the whole map's
@@ -449,13 +452,45 @@ function tagSegmentIndex(ctx) {
    itself, and a block left on a map that has since been replaced or merged is
    ignored rather than read as stale bundle-time counts. Read once per ctx, under
    the same "don't swap itemTags on a used ctx" contract as the memo maps. */
+const TAG_DF_FRONT_CODED = "front-1";
+const FRONT_CODE_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+/* ONE FRONT-CODED GROUP of the bundled df block, back to its terms (bundle budget
+   2026-10, item 9: the groups went 34.6 KB -> 21.8 KB raw on the real map). The
+   bundler (prepare-webdir.mjs `frontCodeTerms`) writes a group as ONE string: its
+   terms sorted and separated by a space, each one written as a single base-36
+   digit -- how many leading characters it shares with the term before it -- and
+   then the rest of it. `"0war 3e 4s"` is war, ware, wares. Null when the string
+   is not one (an empty entry, a first character that is not a base-36 digit, a
+   shared length longer than the previous term), and readTagDfBlock then ignores
+   the whole block, as it does any block it cannot trust. The order does not
+   matter to the reader: every term goes into a Map. */
+function frontDecodeTerms(coded) {
+  if (typeof coded !== "string") return null;
+  const terms = [];
+  let prev = "";
+  for (const entry of coded.split(" ")) {
+    const k = entry.length > 0 ? FRONT_CODE_DIGITS.indexOf(entry[0]) : -1;
+    if (k < 0 || k > prev.length) return null;
+    prev = prev.slice(0, k) + entry.slice(1);
+    terms.push(prev);
+  }
+  return terms;
+}
+
 function readTagDfBlock(itemTags) {
   const df = itemTags?.df;
   if (!df || typeof df !== "object" || !df.by_count || typeof df.by_count !== "object") return null;
   if (!Number.isInteger(df.total) || df.entries !== Object.keys(itemTags.tags || {}).length) return null;
+  /* The two forms, keyed on `encoding`: front-coded groups when it says so, plain
+     arrays when it is absent, and a block in any other encoding is one this
+     reader cannot read, so it is ignored rather than guessed at. */
+  const frontCoded = df.encoding === TAG_DF_FRONT_CODED;
+  if (df.encoding !== undefined && !frontCoded) return null;
   const counts = new Map();
-  for (const [n, terms] of Object.entries(df.by_count)) {
+  for (const [n, group] of Object.entries(df.by_count)) {
     const c = Number(n);
+    const terms = frontCoded ? frontDecodeTerms(group) : group;
     if (!Number.isInteger(c) || c < 1 || c > df.total || !Array.isArray(terms)) return null;
     for (const t of terms) counts.set(t, c);
   }

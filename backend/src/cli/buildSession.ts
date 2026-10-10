@@ -158,10 +158,10 @@ async function main(): Promise<void> {
     );
   }
 
-  const spentToday = await defaultBudgetGuard.spentToday(SEEDED_USER_ID);
+  const spentThisRun = await defaultBudgetGuard.spentThisRun();
   const allCostEvents = await defaultCostEventSink.all();
   console.log(
-    `  cost: $${spentToday.toFixed(4)} spent today across ${allCostEvents.length} LLM call(s) (budget $${env.dailyBudgetUsd.toFixed(2)}/day)`
+    `  cost: $${spentThisRun.toFixed(4)} spent this run across ${allCostEvents.length} LLM call(s) (run budget $${env.runBudgetUsd.toFixed(2)})`
   );
 }
 

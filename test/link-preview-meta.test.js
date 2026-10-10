@@ -109,9 +109,12 @@ test("og:url and og:image are on the public web origin and the image exists in t
   const h = png.readUInt32BE(20);
   assert.ok(w >= 512 && h >= 512, `${rel} is ${w}x${h}; og:image wants at least 512px`);
 
-  /* It must also be deployed: the web build copies an allowlist, not the repo. */
-  const dist = fs.readFileSync(path.join(ROOT, "tools/web/prepare-dist.mjs"), "utf8");
-  assert.ok(dist.includes(`"${rel}"`), `${rel} is not in tools/web/prepare-dist.mjs's allowlist, so the origin would 404 it`);
+  /* It must also be deployed: the web build copies an allowlist, not the repo.
+     tools/web/prepare-dist.mjs ships generate-manifest's SHELL list (pinned by
+     tools/ci/ship-lists.test.mjs), so the allowlist lives there. */
+  const shell = fs.readFileSync(path.join(ROOT, "tools/ci/generate-manifest.mjs"), "utf8").match(/const SHELL = \[([\s\S]*?)\];/);
+  assert.ok(shell, "tools/ci/generate-manifest.mjs no longer declares `const SHELL = [...]`");
+  assert.ok(shell[1].includes(`"${rel}"`), `${rel} is not in tools/ci/generate-manifest.mjs's SHELL (what prepare-dist ships), so the origin would 404 it`);
 });
 
 /* (c) MUTATION THAT KILLS THIS: any edit to the CSP meta, e.g. widening img-src

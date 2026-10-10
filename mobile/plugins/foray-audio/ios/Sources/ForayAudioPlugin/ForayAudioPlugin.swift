@@ -176,7 +176,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     static let REMOTE_ORIGIN = "command-center"
 
     private let commandCenter = MPRemoteCommandCenter.shared()
-    private var commandsRegistered = false
 
     /// Everything after the bridge: the payload, the session, the command
     /// centre and the Now Playing centre are touched from this ONE serial
@@ -222,13 +221,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private static let bootEpochMs = Int((Date().timeIntervalSince1970 * 1000).rounded())
     private var eventSeq = 0
 
-    /// L23: whether the last hold (and, separately, the last release) was
-    /// skipped because the native engine owns the session. A skip is
-    /// recorded once per run of skips, not once per retry; a real hold or
-    /// release resets its own flag. On `stateQueue`.
-    private var holdSkipped = false
-    private var releaseSkipped = false
-
     /// Bumped when the payload's STATE changes, so a re-assert armed for an
     /// older pause does not fire after the transport has moved on. Not on every
     /// payload (review, 2026-09-23): a lock-screen scrub while paused, or a
@@ -238,16 +230,16 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// while paused is not the transport moving on.
     private var reassertGeneration: UInt64 = 0
 
-    /// The artwork last built, keyed by the URI it was built from, so a
-    /// re-assert or a position write never loads it again -- see `artworkItem`.
-    private var artworkCache: (uri: String, item: MPMediaItemArtwork?)?
-    /// Remote artwork URIs with a load in flight, so one slow fetch is one fetch.
-    private var artworkLoading = Set<String>()
-    /// The last remote artwork load that FAILED, and when it may be tried
-    /// again (audit round 3, mobile-native-6). A failure is not cached as "no
-    /// artwork" for the rest of the item any more: a dead zone or a slow host
-    /// as the car connects is usually transient.
-    private var artworkRetryAfter: (uri: String, at: Date)?
+    /// This lane's artwork loader: the engine's `ArtworkCache` (CH3-21, one
+    /// loader and one rule for both lanes), confined to `stateQueue`. It
+    /// caches per source, fetches off the queue bounded at 10 s whole, and
+    /// holds a failed fetch back for `ArtworkCache.retryAfterSec` and no
+    /// longer (audit round 3, mobile-native-6) -- see `artworkItem`.
+    private lazy var artworkLoader = ArtworkCache(queue: stateQueue)
+    /// The artwork object last handed to the centre and the picture it was
+    /// built from, so a re-assert or a position write hands over the SAME
+    /// `MPMediaItemArtwork` and a head unit is never asked to redraw it.
+    private var artworkObject: (src: String, image: UIImage, item: MPMediaItemArtwork)?
 
     /// L-02's log-side needle (`FORAY_AUDIO_REACHED_NEEDLE` in
     /// `tools/mobile/ios-ci.mjs`, pinned to this string by
@@ -275,7 +267,9 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// comes from WITHOUT LOOKING -- a headset, a Bluetooth stack, a car (the
     /// platform contract, `docs/DECISIONS.md` 2026-09-23; audit round 2,
     /// p-impatient-3). Read from `AVAudioSession.currentRoute` at load and on
-    /// every route change, on `stateQueue`. See `applyCommandAvailability`.
+    /// every route change, on `stateQueue`, through the core's
+    /// `MediaMapping.trackCommandsAllowed(portTypes:)` -- the ONE rule the
+    /// engine lane asks too (CH3-10). See `applyCommandAvailability`.
     private var trackRoutePresent = false
 
     /// Whether today's registration has run in this process: at `load()` in
@@ -304,7 +298,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     override public func load() {
         // L20: `nboot` is fixed at the first load, not at the first event.
         _ = Self.bootEpochMs
-        let register: () -> Void = { [weak self] in self?.runLegacyRegistration() }
+        let register: (Bool) -> Void = { [weak self] pageless in self?.runLegacyRegistration(pageless: pageless) }
         let decide = { [weak self] in
             MainActor.assumeIsolated {
                 let owner = EngineOwnership.shared
@@ -315,10 +309,28 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         if Thread.isMainThread { decide() } else { DispatchQueue.main.sync(execute: decide) }
     }
 
-    /// Today's `load()`, verbatim: the legacy lane's registration. Runs at
-    /// most once per process (`EngineOwnership.runLegacy`).
-    private func runLegacyRegistration() {
-        stateQueue.sync { legacyLane = true }
+    /// Today's `load()`: the legacy lane's registration. Runs at most once
+    /// per process (`EngineOwnership.runLegacy`), and in the native lane only
+    /// after the owner has handed the session flag back -- which is why no
+    /// legacy session site below (`holdSession`, `releaseSession`, the
+    /// category write) carries a guard of its own: none is reachable before
+    /// this runs (CH3-06, R1-07; shell-invariants' NE-16 test pins the
+    /// reachability).
+    ///
+    /// `pageless` (CH3-06, R1-02): the engine ran and no page of this
+    /// navigation said hello -- the hello watchdog's hand-over to a broken
+    /// bundle. No `setNowPlaying` will ever write over the engine's entry,
+    /// and every command is about to be disabled, so the entry the engine
+    /// left ("Episode X, paused") would sit on the head unit dead for the
+    /// rest of the process. It is cleared, on `stateQueue` BEFORE the lane
+    /// opens, so a page payload that does arrive (an old bundle that never
+    /// says hello but still sends `setNowPlaying`) lands after the clear.
+    /// A page-initiated hand-over clears nothing: its page writes its own.
+    private func runLegacyRegistration(pageless: Bool) {
+        stateQueue.sync {
+            if pageless { applyNowPlayingInfo(.empty) }
+            legacyLane = true
+        }
         registerCommandHandlers()
         /* ONE SESSION MODE FOR THE WHOLE APP: `.spokenAudio` (the platform
            contract, `docs/DECISIONS.md` 2026-09-23; audit round 2, native-10).
@@ -332,14 +344,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
            `try?`: a failure here costs the mode, never the launch. DEVICE
            CHECK, open: whether WebKit resets the mode when its element starts
            (`docs/ios-lock-screen.md` §8.5).
-           GUARDED ON `EngineModeFlag` (NE-16): when the native engine owns
-           the session, its `AudioSessionOwner` set the category at boot and
-           is the only writer; a second writer is the two-owner defect the
-           engine exists to remove. Legacy mode leaves the flag false, so
-           this line runs exactly as it did in build 2026092327. */
-        if !EngineModeFlag.sessionOwnedByEngine {
-            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
-        }
+           OWNER-GATED (NE-16, CH3-06): while the native engine owns the
+           session its `AudioSessionOwner` is the only writer, and this
+           registration has not run; it runs only once the engine is gone. */
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio, options: [])
         // NOTHING IS PLAYING AT LOAD, so nothing is enabled -- the same answer
         // `NowPlaying.acceptsTransport()` gives for IDLE on Android. Without
         // this, every command sits at `MPRemoteCommand`'s default (enabled)
@@ -347,7 +355,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // player that has not loaded anything. `.empty` is the payload the
         // page has not sent yet, so the first real `setNowPlaying` is a
         // change the command centre can see.
-        trackRoutePresent = Self.trackCommandsAllowed(
+        trackRoutePresent = MediaMapping.trackCommandsAllowed(
             portTypes: AVAudioSession.sharedInstance().currentRoute.outputs.map { $0.portType.rawValue }
         )
         applyCommandAvailability(.empty)
@@ -536,7 +544,7 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                back to the skip pair. `force`, because the payload did not
                change and the write is what matters. */
             let hadTrackRoute = self.trackRoutePresent
-            self.trackRoutePresent = Self.trackCommandsAllowed(portTypes: outputs)
+            self.trackRoutePresent = MediaMapping.trackCommandsAllowed(portTypes: outputs)
             if hadTrackRoute != self.trackRoutePresent {
                 self.applyCommandAvailability(self.lastPayload, force: true)
             }
@@ -1092,21 +1100,10 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// so (`sessionActivated` with `failed`), which is the whole point of the
     /// row. The mode is the app's one mode, `.spokenAudio` -- see `load()`.
     private func holdSession(reason: String) {
-        /* NE-16: the native engine's `AudioSessionOwner` is the one owner
-           while `sessionOwnedByEngine` is true, and a legacy hold then would
-           activate behind its back (and, re-held from a route change, over a
-           session the engine deliberately released). Nothing is held, and
-           the log says why; a relinquish flips the flag back to false, after
-           which this runs exactly as before. */
-        guard !EngineModeFlag.sessionOwnedByEngine else {
-            holdsSession = false
-            Self.logger.notice("ForayAudio.session hold skipped: engine-owned reason=\(reason, privacy: .public)")
-            /* L23: on the record too, once per run of skips (a route change
-               and a pause each ask; the first says it). */
-            holdSkipped = noteEngineOwnedSkip(kind: "sessionActivated", alreadyNoted: holdSkipped)
-            return
-        }
-        holdSkipped = false
+        /* OWNER-GATED (NE-16, CH3-06): every caller is reached only through
+           `runLegacyRegistration` (a `setNowPlaying` in the legacy lane, or an
+           observer or command target that registration installed), which
+           runs only after the engine handed the session back. */
         let session = AVAudioSession.sharedInstance()
         var ok = true
         var facts = JSObject()
@@ -1138,16 +1135,8 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `notifyOthersOnDeactivation` so the interrupted app may resume -- see
     /// `SessionMove`. Never on the resume transition; that is `supersedeSession`.
     private func releaseSession(reason: String, notifyOthers: Bool) {
-        /* NE-16: never deactivate a session the engine owns. A legacy release
-           with `notifyOthers` would hand the car back to the app 4a
-           interrupted while the engine is mid-episode. */
-        guard !EngineModeFlag.sessionOwnedByEngine else {
-            holdsSession = false
-            Self.logger.notice("ForayAudio.session release skipped: engine-owned reason=\(reason, privacy: .public)")
-            releaseSkipped = noteEngineOwnedSkip(kind: "sessionReleased", alreadyNoted: releaseSkipped)
-            return
-        }
-        releaseSkipped = false
+        /* OWNER-GATED, as `holdSession`: reached only from a legacy-lane
+           `setNowPlaying`, so never over a session the engine owns. */
         let session = AVAudioSession.sharedInstance()
         var ok = true
         var facts = JSObject()
@@ -1161,16 +1150,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         holdsSession = false
         facts.merge(Self.categoryFacts()) { mine, _ in mine }
         emitSession(kind: "sessionReleased", reason: ok ? reason : "failed", extra: facts)
-    }
-
-    /// L23: a hold or release the engine's ownership skipped is written as
-    /// `<kind> (skipped-engine-owned)`, once per run of skips of that kind: the
-    /// first says it, the retries do not. Returns the new flag (always set).
-    /// Outside the guards, whose bodies stay a flat `return` (shell-invariants
-    /// reads them). On `stateQueue`.
-    private func noteEngineOwnedSkip(kind: String, alreadyNoted: Bool) -> Bool {
-        if !alreadyNoted { emitSession(kind: kind, reason: "skipped-engine-owned") }
-        return true
     }
 
     /// The transport is playing again: the producer's own activation stands in
@@ -1317,15 +1296,12 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         return "title=\(flag(title)) artist=\(flag(artist)) album=\(flag(album)) artwork=\(hasArtwork ? "y" : "n")"
     }
 
-    /// Artwork via `MPMediaItemArtwork`: loaded from the bundle's `public/`
-    /// for our own icon, from the network for a publisher's. `artworkUri` has
-    /// already been through `foray-media-session.js`'s `artworkUrl()` gate
-    /// (only `https:`/`data:`/same-origin survive), the same trust boundary
-    /// Android's `assetUri()` rewrite sits behind. On iOS the web half marks
-    /// our own icon with the bare `bundle://public/…` scheme
-    /// (`IOS_ASSET_BASE` in `foray-media-session.js` -- L-02, the iOS mirror
-    /// of Android's `file:///android_asset/public/`); this is the one place
-    /// that scheme is resolved, against `Bundle.main`.
+    /// Artwork via `MPMediaItemArtwork`, through `ArtworkCache` -- the
+    /// engine's loader, so the two lanes cannot drift apart again (CH3-21,
+    /// R1-10: the engine's copy had forgotten the retry below). `artworkUri`
+    /// has already been through `foray-media-session.js`'s `artworkUrl()`
+    /// and `assetUri()` gates; `artworkSource(for:)` turns it into the
+    /// cache's source at this boundary.
     ///
     /// NEVER A NETWORK WAIT ON `stateQueue` (review, 2026-09-23). This used to
     /// run `Data(contentsOf:)` -- a blocking HTTP load with the default ~60 s
@@ -1335,107 +1311,67 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// segment carries the publisher's https artwork, and a phone switching
     /// Wi-Fi -> cellular as the car connects is a stalled fetch: the car's play
     /// returned `.success` at once and `remotePlay` sat behind it for seconds
-    /// to a minute. So: the artwork is CACHED per URI (a re-assert re-writes an
-    /// unchanged payload by definition), the bundle's own icon and a file URL
-    /// are read from disk once, and a remote image is fetched asynchronously
-    /// (`URLSession`, bounded) with the entry re-posted when it lands. Until it
-    /// lands the entry goes out without artwork -- the same "no artwork, never a
+    /// to a minute. So: the artwork is CACHED per source (a re-assert re-writes
+    /// an unchanged payload by definition), and an image the cache does not
+    /// hold yet -- our bundled icon or a publisher's square -- is loaded off
+    /// the queue (bounded) with the entry re-posted when it lands, ONE load
+    /// and one re-post however many writes arrive meanwhile. Until it lands
+    /// the entry goes out without artwork -- the same "no artwork, never a
     /// guess" rule `media-session.js`'s `artworkUrl()` enforces upstream. A
-    /// failed REMOTE load is not cached as none (audit round 3, mobile-native-6):
-    /// it is retried once `artworkRetryAfterSec` has passed, so a dead URL costs
-    /// one attempt per interval and not one per write, and a fetch that timed
-    /// out in a dead zone does not leave the lock screen bare for the rest of
-    /// the item. On `stateQueue`.
+    /// failed fetch is not "no artwork" for the rest of the item (audit
+    /// round 3, mobile-native-6): the cache holds it back for
+    /// `ArtworkCache.retryAfterSec`, so a dead URL costs one attempt per
+    /// window and not one per write, and a fetch that timed out in a dead
+    /// zone is tried again by the next write after the window. On `stateQueue`.
     private func artworkItem(for uri: String) -> MPMediaItemArtwork? {
-        guard !uri.isEmpty else { return nil }
-        if let cached = artworkCache, cached.uri == uri { return cached.item }
-        if let bundlePath = Self.bundlePath(for: uri) {
-            // `Bundle.main`, not `URL(string:)` -- `bundle://` is not a real
-            // URL scheme any loader below this line understands, so the path
-            // component is resolved by hand and everything else about the
-            // string is discarded.
-            return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: bundlePath))
-        }
-        guard let url = URL(string: uri) else { return rememberArtwork(uri: uri, image: nil) }
-        if url.isFileURL {
-            return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: url.path))
-        }
-        guard Self.artworkLoadAllowed(uri: uri, lastFailure: artworkRetryAfter, now: Date()) else { return nil }
-        loadRemoteArtwork(uri: uri, url: url)
-        return nil
-    }
-
-    /// How long a failed remote artwork load waits before it is tried again.
-    static let artworkRetryAfterSec: Double = 45
-
-    /// Whether a remote artwork load may start: not while the same URI's last
-    /// failure is inside its retry window (mobile-native-6).
-    static func artworkLoadAllowed(uri: String, lastFailure: (uri: String, at: Date)?, now: Date) -> Bool {
-        guard let failure = lastFailure, failure.uri == uri else { return true }
-        return now >= failure.at
-    }
-
-    /// Cache and wrap. A `nil` image from the bundle or a file is cached too --
-    /// "this URI has no artwork" is an answer there, and asking again on every
-    /// write is the bug above. A remote failure is not (see `artworkItem`).
-    private func rememberArtwork(uri: String, image: UIImage?) -> MPMediaItemArtwork? {
-        let item = image.map { image in MPMediaItemArtwork(boundsSize: image.size) { _ in image } }
-        artworkCache = (uri: uri, item: item)
-        return item
-    }
-
-    /// One fetch per URI, off `stateQueue`, bounded. When it lands, the cache is
-    /// filled and the entry is re-posted IF the page is still on that artwork --
-    /// a payload that moved on in the meantime keeps its own.
-    static let artworkTimeoutSec: Double = 10
-
-    private func loadRemoteArtwork(uri: String, url: URL) {
-        guard !artworkLoading.contains(uri) else { return }
-        artworkLoading.insert(uri)
-        let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: Self.artworkTimeoutSec)
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
-            guard let self = self else { return }
-            self.stateQueue.async {
-                self.artworkLoading.remove(uri)
-                let image = data.flatMap { UIImage(data: $0) }
-                /* ONLY A SUCCESS IS CACHED (mobile-native-6). A failure or a
-                   timeout records a retry time instead of a permanent nil. */
-                guard image != nil else {
-                    self.artworkRetryAfter = (uri: uri, at: Date().addingTimeInterval(Self.artworkRetryAfterSec))
-                    return
-                }
-                if self.artworkRetryAfter?.uri == uri { self.artworkRetryAfter = nil }
-                _ = self.rememberArtwork(uri: uri, image: image)
-                if self.lastPayload.artworkUri == uri && self.lastPayload.state != .none {
-                    self.applyNowPlayingInfo(self.lastPayload)
-                }
+        guard let src = Self.artworkSource(for: uri) else { return nil }
+        switch artworkLoader.lookup(src) {
+        case let .image(image):
+            if let held = artworkObject, held.src == src, held.image === image { return held.item }
+            let item = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            artworkObject = (src, image, item)
+            return item
+        case .failed:
+            return nil
+        case .missing:
+            guard !artworkLoader.isLoading(src) else { return nil }
+            artworkLoader.load(src) { [weak self] image in
+                guard let self, image != nil,
+                      self.lastPayload.artworkUri == uri, self.lastPayload.state != .none else { return }
+                self.applyNowPlayingInfo(self.lastPayload)
             }
-        }.resume()
+            return nil
+        }
     }
 
-    /// `bundle://public/icon-512.png` -> an absolute path inside `Bundle.main`,
-    /// or `nil` if `uri` does not carry the scheme `IOS_ASSET_BASE` writes, or
-    /// the named resource is not actually in the bundle. TOTAL and never
-    /// throws, same posture as `NowPlayingPayload.from` -- a resource that
-    /// went missing from the bundle degrades to no artwork, not a crash.
-    private static func bundlePath(for uri: String) -> String? {
-        let prefix = "bundle://public/"
-        guard uri.hasPrefix(prefix) else { return nil }
-        // Query/fragment already stripped by the web half's `assetUri`
-        // (`pathname` only, per its own comment) before this ever arrives, so
-        // what remains is a bare relative path -- e.g. `icon-512.png`.
-        let relative = String(uri.dropFirst(prefix.count))
-        guard !relative.isEmpty else { return nil }
-        // `cap copy`'s Android destination is `public/`; on iOS the Capacitor
-        // web assets are copied into the app bundle at `public/` alongside
-        // everything else `Bundle.main` already serves the WebView from --
-        // the same tree, read a second way.
-        return Bundle.main.path(forResource: relative, ofType: nil, inDirectory: "public")
+    /// The scheme the web half marks our own icon with on iOS
+    /// (`IOS_ASSET_BASE` in `foray-media-session.js` -- L-02, the iOS mirror
+    /// of Android's `file:///android_asset/public/`).
+    static let bundleArtworkPrefix = "bundle://public/"
+
+    /// A payload's `artworkUri` -> the source `ArtworkCache` reads, or nil for
+    /// no artwork. `bundle://public/<path>` is our own icon, `<path>` under the
+    /// bundle's `public/` (`bundle://` is not a scheme any loader understands,
+    /// so it is stripped HERE, the one place it is resolved); an https URL is
+    /// a publisher's square; everything else -- empty, `data:`, `file:`, a
+    /// bare relative path the web half never sends -- has none, by the
+    /// cache's own gate (`ArtworkCache.source(for:)`). TOTAL, pure and
+    /// `internal` for the tests.
+    static func artworkSource(for uri: String) -> String? {
+        if uri.hasPrefix(bundleArtworkPrefix) {
+            let path = String(uri.dropFirst(bundleArtworkPrefix.count))
+            guard case .bundled = ArtworkCache.source(for: path) else { return nil }
+            return path
+        }
+        guard case .remote = ArtworkCache.source(for: uri) else { return nil }
+        return uri
     }
 
     // MARK: - MPRemoteCommandCenter
 
-    /// Registered ONCE, in `load()`. Handlers are permanent; what changes per
+    /// Registered ONCE, by `runLegacyRegistration`, whose once-per-process
+    /// guard is the owner's (`EngineOwnership.runLegacy`); this function has
+    /// that one caller and no guard of its own (CH3-06). Handlers are permanent; what changes per
     /// report is which commands are ENABLED and what the skip pair says
     /// (`applyCommandAvailability`) -- mirroring Android's `WebViewPlayer`
     /// command-set-from-flags mapping, which is also built once and toggled by
@@ -1446,9 +1382,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// `MPRemoteCommandHandlerStatus` is a receipt, not an outcome, and the
     /// outcome is the page's.
     private func registerCommandHandlers() {
-        guard !commandsRegistered else { return }
-        commandsRegistered = true
-
         commandCenter.playCommand.addTarget { [weak self] _ in
             self?.stateQueue.async { self?.remotePlay(command: "play") }
             return .success
@@ -1570,32 +1503,6 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// nothing, which leaves the OS its default rather than inventing one.
     static func preferredIntervals(ms: Int64) -> [NSNumber] {
         ms > 0 ? [NSNumber(value: Double(ms) / 1000.0)] : []
-    }
-
-    /// The output port types on which a next/previous press exists WITHOUT
-    /// LOOKING: wired and Bluetooth headsets, a car (CarPlay's `carAudio`, a
-    /// Bluetooth head unit's A2DP/HFP), USB and AirPlay receivers with their
-    /// own transport. The built-in speaker and receiver are not on it: there
-    /// the only surface is the lock screen, which draws ⏮/⏭ over the founder's
-    /// ↺15/30↻ the moment the track pair is enabled (founder question 1, audit
-    /// round 2). `AVAudioSession.Port` raw values, so the XCTests can table
-    /// them without a live session.
-    static let trackRoutePortTypes: Set<String> = [
-        AVAudioSession.Port.headphones.rawValue,
-        AVAudioSession.Port.bluetoothA2DP.rawValue,
-        AVAudioSession.Port.bluetoothHFP.rawValue,
-        AVAudioSession.Port.bluetoothLE.rawValue,
-        AVAudioSession.Port.carAudio.rawValue,
-        AVAudioSession.Port.usbAudio.rawValue,
-        AVAudioSession.Port.airPlay.rawValue,
-    ]
-
-    /// Whether `nextTrackCommand`/`previousTrackCommand` may be enabled on
-    /// this route (the platform contract, `docs/DECISIONS.md` 2026-09-23):
-    /// true when ANY output is a port from `trackRoutePortTypes`. Pure, so
-    /// `ForayAudioPluginTests` pins it.
-    static func trackCommandsAllowed(portTypes: [String]) -> Bool {
-        portTypes.contains { trackRoutePortTypes.contains($0) }
     }
 
     /// Enable/disable each command from the `can*`/`has*` flags -- exactly

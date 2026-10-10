@@ -66,9 +66,9 @@ import { createReadStream, createWriteStream, existsSync, mkdtempSync, readFileS
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve as resolvePath } from "node:path";
 import { pipeline } from "node:stream/promises";
-import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { createGzip } from "node:zlib";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { writeJsonAtomic } from "../segments/sweep-transcripts.mjs";
 import { RELEASE_TAG_PREFIX as SHOWS_TAG_PREFIX, REPO_SLUG } from "../shows/config.mjs";
@@ -266,7 +266,7 @@ async function main(argv) {
   });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).catch((e) => {
     console.error("FATAL:", e?.message ?? e);
     process.exit(1);

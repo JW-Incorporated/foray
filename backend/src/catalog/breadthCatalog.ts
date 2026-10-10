@@ -16,27 +16,37 @@ import * as path from "path";
  * Identity: curated shows keep their existing `show_id`. Breadth shows have
  * no `show_id` field (`apple_collection_id` is their primary key per
  * CATALOG-PIPELINE.md §"Forward-compatibility requirements") — this mints
- * `String(apple_collection_id)` as the id, matching the join
- * `api/shows/[show_id]/episodes.ts` (kanban t_567b570f) already uses, so a
- * breadth show found here resolves to the same id that card's episode
- * endpoint expects.
+ * `String(apple_collection_id)` as the id. Every api/ reader resolves a show
+ * id through this one index (api/_lib/showCatalog.ts), so an id found here is
+ * an id the episode endpoints answer.
  *
  * Dedupe: a breadth entry marked `in_curated: true` is dropped from the
  * merged index — the curated record for the same show already carries a
  * richer editorial note/taxonomy and is present under its own show_id, so
  * keeping both would surface the same show twice in one search result list.
+ * Its numeric id still resolves: `Catalogue.showIdByAppleId` aliases it to
+ * the curated twin.
  */
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
-// BUNDLING NOTE (kanban t_7d1a82d2): readJson() below reads data/catalog.json
-// and data/catalog-breadth.json via a runtime path.join(), which Vercel's
-// bundler does not auto-include for any deployed function that imports this
-// module (currently api/shows/search.ts). They only ship in production
-// because vercel.json's `functions["api/shows/**/*.ts"].includeFiles` glob
-// names them explicitly — see the matching note on
-// api/shows/[show_id]/episodes.ts's findRepoRoot(), which reads the same two
-// files independently. Keep both in sync with vercel.json if either moves.
+// THE ONE REPO-ROOT RULE for the catalogue pair: this file sits three
+// directories under the root (backend/src/catalog), in the repo and in a
+// deployed Vercel function alike - the function keeps the repo's directory
+// layout. Every api/ reader reaches the pair through here, via
+// api/_lib/showCatalog.ts; `_setCatalogRootForTests` is the one seam that
+// points it elsewhere.
+//
+// BUNDLING NOTE (kanban t_7d1a82d2): readJson() below reads
+// data/catalog.json and data/catalog-breadth.json through a runtime
+// path.join(), which Vercel's file tracing does not follow. They ship in
+// every deployed function because vercel.json's
+// `functions["api/**/*.ts"].includeFiles` names them; a handler anywhere
+// under api/ is covered by that one glob, so moving a handler needs no
+// vercel.json edit. Renaming either file does: api/_test/vercel-bundle.test.mjs
+// finds every `data/` literal in each handler's import closure and fails
+// when the glob stops covering one.
+let catalogRoot = REPO_ROOT;
 
 export type CatalogueTier = "curated" | "breadth";
 
@@ -94,7 +104,24 @@ interface BreadthShowRaw {
   taxonomy_node_ids?: string[];
 }
 
-let cached: CatalogueShowEntry[] | null = null;
+/** The merged catalogue plus the one join a reader needs beside it. */
+export interface Catalogue {
+  entries: CatalogueShowEntry[];
+  /* Apple collection id (as a string) -> show_id, for every admitted show: a
+     curated show's Apple id gives its SLUG, a breadth show's gives itself.
+     That makes it two things at once, on purpose (code-health-2 CH2-24,
+     A1-02):
+       - the Apple fallback's map (api/_lib/showIdMap.ts): an Apple hit links
+         to the id the show page resolves;
+       - the ALIAS of an `in_curated` breadth row. That row is dropped below,
+         but its numeric id is also the curated twin's Apple id, so a reader
+         that asks for the numeric id is answered the twin. Before this, two
+         endpoints resolved those ids to the dropped row's own feed and
+         `/api/shows/search?id=` said `show: null`. */
+  showIdByAppleId: Map<string, string>;
+}
+
+let cached: Catalogue | null = null;
 
 /**
  * Reads catalog.json + catalog-breadth.json fresh from disk and returns the
@@ -105,6 +132,16 @@ let cached: CatalogueShowEntry[] | null = null;
  * mutate fixture files on disk between reads.
  */
 export function loadBreadthCatalog(): CatalogueShowEntry[] {
+  return loadCatalogue().entries;
+}
+
+/**
+ * loadBreadthCatalog() with its Apple-id join, from the same one read. Throws
+ * when either file is missing, unreadable or not JSON: the pair is one
+ * artifact, and half of it is not a smaller catalogue but a broken deploy.
+ * A failure is not cached, so a read that failed once is tried again.
+ */
+export function loadCatalogue(): Catalogue {
   if (cached && process.env.FORAY_SKIP_CATALOGUE_CACHE !== "1") return cached;
 
   const curated = readJson<{ shows: CuratedShowRaw[] }>("data/catalog.json");
@@ -112,12 +149,16 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
 
   const entries: CatalogueShowEntry[] = [];
   const seenIds = new Set<string>();
+  const showIdByAppleId = new Map<string, string>();
 
   /* P-09 rule half (PKG-13): the curated rows' chart positions, from EVERY
      breadth row, `in_curated` or not - the curated shows' twins are exactly
      the `in_curated` rows the breadth loop below skips, so filtering here
-     would join nothing. tools/build-show-index.mjs's `rankByAppleId`, copied
-     rather than imported (a backend module cannot import a repo tool). */
+     would join nothing. This is tools/harvest-merge.mjs's `rankByAppleId`
+     (the one join both client builders read, CH2-15) restated, because this
+     CommonJS build cannot import an ES-module repo tool; it is PINNED equal
+     to it instead, over null, 0, "12", "NaN", -1 and a ranked row, by
+     backend/test/breadthCatalog.test.ts (code-health-2 CH2-24, B1-14). */
   const rankByAppleId = new Map<string, number>();
   for (const row of breadth.shows ?? []) {
     const rank = normalizeChartRank(row?.chart_rank);
@@ -128,6 +169,8 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
     if (!show.show_id || !show.title) continue;
     if (seenIds.has(show.show_id)) continue;
     seenIds.add(show.show_id);
+    const appleId = appleIdKey(show.apple_collection_id);
+    if (appleId !== null && !showIdByAppleId.has(appleId)) showIdByAppleId.set(appleId, show.show_id);
     entries.push({
       show_id: show.show_id,
       title: show.title,
@@ -146,6 +189,7 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
     const id = String(show.apple_collection_id);
     if (seenIds.has(id)) continue; // guards a breadth/curated id collision, belt-and-suspenders
     seenIds.add(id);
+    if (!showIdByAppleId.has(id)) showIdByAppleId.set(id, id); // a curated show already claimed this Apple id
     entries.push({
       show_id: id,
       title: show.title,
@@ -164,8 +208,21 @@ export function loadBreadthCatalog(): CatalogueShowEntry[] {
     });
   }
 
-  cached = entries;
-  return entries;
+  cached = { entries, showIdByAppleId };
+  return cached;
+}
+
+/** A curated row's Apple id as a join key, or null when it has none. */
+function appleIdKey(raw: number | string | null | undefined): string | null {
+  if (raw === undefined || raw === null || raw === "") return null;
+  return String(raw);
+}
+
+/** Test-only: read the pair from `root` instead of the repo (no argument
+ *  restores the repo root) and forget the cached catalogue. */
+export function _setCatalogRootForTests(root?: string): void {
+  catalogRoot = root ?? REPO_ROOT;
+  cached = null;
 }
 
 function normalizeChartRank(raw: number | null | undefined): number | null {
@@ -175,6 +232,6 @@ function normalizeChartRank(raw: number | null | undefined): number | null {
 
 function readJson<T>(relPath: string): T {
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- relPath is one of two hardcoded catalogue filenames, not external input.
-  const raw = fs.readFileSync(path.join(REPO_ROOT, relPath), "utf8");
+  const raw = fs.readFileSync(path.join(catalogRoot, relPath), "utf8");
   return JSON.parse(raw) as T;
 }

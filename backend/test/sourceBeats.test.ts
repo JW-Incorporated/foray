@@ -26,7 +26,6 @@ import {
   MIN_TAPE_SEGMENT_SEC,
   TIER2_WINDOW_MIN_SHARE,
   TIER2_WINDOW_MIN_TERMS,
-  canonicalizeForAnchorMatch,
   cutWindowToSegment,
   seedFloorDecided,
   selectTapeWindow,
@@ -34,6 +33,7 @@ import {
   type TapeWindow
 } from "../src/generation/transcriptArchiveLookup";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
+import { canonicalizeForAnchorMatch } from "../src/types/anchorText";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import { loadSegmentPool } from "../src/generation/segmentPoolLookup";

@@ -219,23 +219,25 @@ test("perf-1: all eight boot documents are requested before storage hydration ha
 test("ROUND 2 review: generate-manifest runs as a script when reached through a symlink or junction, not a silent exit 0", async () => {
   /* The entry guard compared path.resolve(argv[1]) with import.meta.url, which
      Node realpaths and argv[1] is not: from a symlinked or junctioned checkout
-     `--check` exited 0 without checking. MUTATION: put
-     `path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)` back
-     inside isEntryScript -> red. */
+     `--check` exited 0 without checking. The guard is tools/ci/entry.mjs's
+     isEntryScript since CH2-41a (one helper for every tools/ CLI), so this
+     pins it at the url generate-manifest passes it. MUTATION: put
+     `path.resolve(argv1) === fileURLToPath(importMetaUrl)` back inside
+     isEntryScript -> red. */
   const os = require("node:os");
   const url = pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href;
-  const { isEntryScript } = await import(url);
+  const { isEntryScript } = await import(pathToFileURL(path.join(ROOT, "tools/ci/entry.mjs")).href);
   const real = path.join(ROOT, "tools", "ci", "generate-manifest.mjs");
-  assert.strictEqual(isEntryScript(real, url), true, "the plain path");
-  assert.strictEqual(isEntryScript(path.join(ROOT, "tools", "ci", "boot-path-not-this.mjs"), url), false, "another file is not it");
+  assert.strictEqual(isEntryScript(url, real), true, "the plain path");
+  assert.strictEqual(isEntryScript(url, path.join(ROOT, "tools", "ci", "boot-path-not-this.mjs")), false, "another file is not it");
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gm-link-"));
   const link = path.join(dir, "ci");
   try {
     fs.symlinkSync(path.join(ROOT, "tools", "ci"), link, "junction");
-    assert.strictEqual(isEntryScript(path.join(link, "generate-manifest.mjs"), url), true, "through a symlink or junction");
+    assert.strictEqual(isEntryScript(url, path.join(link, "generate-manifest.mjs")), true, "through a symlink or junction");
     if (process.platform === "win32") {
       const flipped = real[0] === real[0].toUpperCase() ? real[0].toLowerCase() + real.slice(1) : real[0].toUpperCase() + real.slice(1);
-      assert.strictEqual(isEntryScript(flipped, url), true, "with the drive letter cased differently");
+      assert.strictEqual(isEntryScript(url, flipped), true, "with the drive letter cased differently");
     }
   } finally {
     try { fs.unlinkSync(link); } catch (_) { try { fs.rmdirSync(link); } catch (_) { /* best effort */ } }
@@ -295,7 +297,9 @@ test("CH-07 (P2-04): the modules nothing imports are NOT on the boot list, and s
      imported by no page code — were modulepreloaded and precached on every
      cold boot. It is client.js's import closure now. show-alerts left this
      list when PQ-26 (#761) imported it from client.js (window.forayShowAlerts):
-     it is on the boot list, preloaded and precached, by that import. MUTATION:
+     it is on the boot list, preloaded and precached, by that import.
+     catalogue-directory-driver (#40's driver) joined it unwired, and leaves it
+     only by the wiring card's deliberate import from client.js. MUTATION:
      put the `readdirSync(player)` walk back in playerSources — all four are
      listed again and this goes red (perf-1 too, until index.html follows). */
   const { playerSources } = await import(pathToFileURL(path.join(ROOT, "tools/ci/generate-manifest.mjs")).href);
@@ -303,6 +307,7 @@ test("CH-07 (P2-04): the modules nothing imports are NOT on the boot list, and s
   const graph = new Set(clientImportGraph());
   for (const rel of [
     "player/catalogue-directory.js",
+    "player/catalogue-directory-driver.js",
     "player/locate-window.js",
     "player/route-resume.js",
     "player/foray-structure.js",

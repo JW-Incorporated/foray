@@ -43,7 +43,7 @@
 // is about them, rather than reaching into module singletons — the singletons
 // are process-wide and a test that mutated them would leak into its
 // neighbours.
-import { test } from "node:test";
+import { test, mock } from "node:test";
 import assert from "node:assert";
 import * as searchModule from "../shows/search.ts";
 import {
@@ -55,6 +55,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SlidingWindowBucket, APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS } from "../_lib/appleBucket.ts";
 import { TtlCache } from "../_lib/searchCache.ts";
+import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -122,25 +123,27 @@ test("id lookup returns the single merged-catalogue row for a curated show", asy
   assert.equal(res.body.degraded, false);
 });
 
-test("id lookup resolves a breadth show by its minted apple_collection_id", async () => {
+test("id lookup: a curated show's apple_collection_id is an alias for its curated record", async () => {
   /* The id shape is the whole join: `breadthCatalog.ts` mints
      `String(apple_collection_id)`, `tools/build-show-index.mjs` emits the
      same string, and `#/show/:id` carries it. A lookup that only understood
      curated `show_id`s would answer null for exactly the shows this endpoint
      exists to make linkable.
 
-     `lex-fridman-podcast` IS curated, so its collection id is deduped out of
-     the merged index (`in_curated`) — which is itself the thing being pinned
-     here: the id that is NOT in the merged catalogue must answer null rather
-     than a stale duplicate.
+     `lex-fridman-podcast` IS curated, so its breadth row is deduped out of
+     the merged index (`in_curated`) and its collection id is an ALIAS: it
+     answers the curated record, never a second, poorer copy (CH2-24, A1-02:
+     this answered `show: null` while both episode endpoints served the id).
 
      MUTATION: drop the `in_curated` skip from `loadBreadthCatalog`. This id
-     resolves to a second, poorer copy of the same show and the null assertion
-     fails. */
+     resolves to the breadth copy (tier "breadth", numeric show_id) and the
+     assertions fail. MUTATION: drop the alias in showCatalog.showById. The
+     show is null and they fail. */
   const res = mockRes();
   await handler(req({ id: REAL_COLLECTION_ID }), res);
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.show, null);
+  assert.equal(res.body.show?.show_id, "lex-fridman-podcast");
+  assert.equal(res.body.show?.tier, "curated");
 });
 
 test("an unknown id is a 200 with show: null, not a 404", async () => {
@@ -443,30 +446,81 @@ test("a failed directory pass is briefly edge-cacheable, so a limiter trip canno
 
 test("the show directory's Apple timeout is 2 s, not the episode path's 8 s", async () => {
   /* Inherited numbers are the thing this repo's headers keep asking authors to
-     re-argue, and P-02 is where this one had to be. 8 s was an episode-feed
-     budget: `api/episodes/search.ts` fetches a show's live RSS. This fetches
-     one JSON document from one host, measured 2026-09-12 across 25 queries at
-     52 ms min / 266 ms median / 698 ms max. 8 s was also defensible while the
-     call happened on 8% of searches; it is not defensible as the worst case of
-     a pass that now runs on every one of them.
+     re-argue, and P-02 is where this one had to be. The 8 s it was copied from
+     bounds episode search's own Apple call (`entity=podcastEpisode`) and is
+     unmeasured — it was never an RSS budget, whatever this comment once said.
+     This call was measured 2026-09-12 across 25 queries at 52 ms min / 266 ms
+     median / 698 ms max. 8 s was also defensible while the call happened on 8%
+     of searches; it is not defensible as the worst case of a pass that now
+     runs on every one of them.
 
-     A CONSTANT PIN, not a behavioural one, and saying so is the point: the
-     executed version of this test would have to wait out the timeout, and a
-     suite that sleeps for seconds to prove a number is worse than a suite that
-     reads it. What this catches is the only realistic regression — somebody
-     copying the episode path's constant back over it.
+     Both callers share api/_lib/appleClient.ts (code-health-2 CH2-39) and pass
+     their own `timeoutMs`; the behavioural pins are the mock-timer abort tests
+     below and in episodes-search.test.mjs. This one names the two numbers side
+     by side, because whether they become one is founder question 3
+     (docs/roadmap/code-health-2.md §1; default: keep 8 s for episodes until an
+     episode-entity measurement exists).
 
-     MUTATION: set `APPLE_SHOW_TIMEOUT_MS` back to `8_000`. Red. */
+     MUTATION: set `APPLE_SHOW_TIMEOUT_MS` back to `8_000`. Red.
+     MUTATION: set `APPLE_EPISODE_TIMEOUT_MS` to `2_000`. Red. */
   assert.equal(APPLE_SHOW_TIMEOUT_MS, 2_000);
-  const episodeSrc = await (async () => {
-    const fs = await import("node:fs");
-    const path = await import("node:path");
-    const { fileURLToPath } = await import("node:url");
-    const here = path.dirname(fileURLToPath(import.meta.url));
-    return fs.readFileSync(path.join(here, "..", "episodes", "search.ts"), "utf8");
-  })();
-  assert.match(episodeSrc, /APPLE_TIMEOUT_MS = 8_000/,
+  const { APPLE_EPISODE_TIMEOUT_MS } = await import("../episodes/search.ts");
+  assert.equal(APPLE_EPISODE_TIMEOUT_MS, 8_000,
     "the episode path keeps its own 8 s — these are two budgets, not one constant that drifted");
+});
+
+/* CH2-39 (code-health-2, A1-07): THE SHOW CALLER'S WIRE CONTRACT WITH APPLE,
+   the twin of the episode caller's pins in api/_test/episodes-search.test.mjs.
+   Both callers share api/_lib/appleClient.ts now; these were written against
+   the hand-rolled client first and survive the unification. The abort is
+   driven by node:test's mock timers, so the 2 s is a behavioural pin that does
+   not sleep.
+
+   MUTATION: pass `timeoutMs: 8_000` from appleShowSearch.ts — the 2 s abort
+   pin goes red. MUTATION: change the User-Agent or Accept header in
+   appleClient.ts — the header pin goes red. */
+test("CH2-39: the show Apple call sends entity=podcast, the capped limit and the term, with the product's User-Agent, and aborts at 2 s", async () => {
+  let seen;
+  const asked = new Promise((resolve) => { seen = resolve; });
+  const fetchImpl = (url, init) => {
+    seen({ url: String(url), init });
+    return new Promise((_, reject) => {
+      init.signal.addEventListener("abort", () => reject(init.signal.reason));
+    });
+  };
+  const bucket = new SlidingWindowBucket(APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS);
+  const cache = new TtlCache();
+  mock.timers.enable({ apis: ["setTimeout"] });
+  let outcome;
+  try {
+    const pending = appleShowSearch("tim ferriss & co", 500, fetchImpl, { bucket, cache });
+    const { url, init } = await asked;
+    assert.equal(url, "https://itunes.apple.com/search?entity=podcast&limit=200&term=tim%20ferriss%20%26%20co");
+    assert.deepEqual(init.headers, {
+      "User-Agent": DEFAULT_FEED_USER_AGENT,
+      Accept: "application/json",
+    });
+    mock.timers.tick(1_999);
+    assert.equal(init.signal.aborted, false, "still waiting 1 ms before the show caller's 2 s");
+    mock.timers.tick(1);
+    assert.equal(init.signal.aborted, true, "aborted at exactly 2 s");
+    outcome = await pending;
+  } finally {
+    mock.timers.reset();
+  }
+  assert.deepEqual(outcome, { shows: [], error: "Apple search fetch error: This operation was aborted", cached: false });
+  assert.equal(cache.get(appleShowCacheKey("tim ferriss & co", 500)), undefined, "a timeout is not an answer and is not kept");
+});
+
+test("CH2-39: the show Apple call's two error strings — an HTTP failure and a transport failure", async () => {
+  const deps = () => ({ bucket: new SlidingWindowBucket(APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS), cache: new TtlCache() });
+  const http = await appleShowSearch("anything", 25, async () => new Response("nope", { status: 503 }), deps());
+  assert.deepEqual(http, { shows: [], error: "Apple search HTTP 503", cached: false });
+  const transport = await appleShowSearch("anything", 25, async () => { throw new Error("socket hang up"); }, deps());
+  assert.deepEqual(transport, { shows: [], error: "Apple search fetch error: socket hang up", cached: false });
+  const unparseable = await appleShowSearch("anything", 25, async () => new Response("<html>", { status: 200 }), deps());
+  assert.equal(unparseable.shows.length, 0);
+  assert.match(unparseable.error ?? "", /^Apple search fetch error: /, "an unparseable 200 is a transport failure, never an empty answer");
 });
 
 /* ====================================================================== */
@@ -511,7 +565,7 @@ test("a cached query does not re-call Apple, and does not consume a bucket slot"
      common one for the queries that reach this path at all.
 
      MUTATION: move the `bucket.tryConsume()` above the cache read. The
-     `currentCount` assertion reads 2 and this goes red. */
+     `size()` assertion reads 2 and this goes red. */
   const bucket = new SlidingWindowBucket(APPLE_BUCKET_CAPACITY, APPLE_BUCKET_WINDOW_MS);
   const cache = new TtlCache();
   let calls = 0;
@@ -523,7 +577,7 @@ test("a cached query does not re-call Apple, and does not consume a bucket slot"
   assert.equal(first.cached, false);
   assert.equal(second.cached, true);
   assert.deepEqual(second.shows, []);
-  assert.equal(bucket.currentCount(), 1, "a cache hit must not spend a slot");
+  assert.equal(bucket.size(), 1, "a cache hit must not spend a slot");
   assert.equal(appleShowCacheKey("Radiolab", 25), appleShowCacheKey("  radiolab ", 25));
 });
 
@@ -562,9 +616,9 @@ test("the show fall-through has its OWN bucket, so it cannot exhaust episode sea
   const { appleSearchBucket } = await import("../_lib/appleBucket.ts");
   const { appleShowBucket } = await import("../_lib/appleShowSearch.ts");
   assert.notEqual(appleShowBucket, appleSearchBucket, "two instances, not one");
-  const before = appleSearchBucket.currentCount();
+  const before = appleSearchBucket.size();
   appleShowBucket.tryConsume();
-  assert.equal(appleSearchBucket.currentCount(), before,
+  assert.equal(appleSearchBucket.size(), before,
     "spending a show-search slot must not spend an episode-search one");
   assert.equal(APPLE_BUCKET_CAPACITY, 20, "the CONSTANT is shared, so 20/min means one thing in this repo");
 });

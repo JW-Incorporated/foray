@@ -72,6 +72,10 @@
  *     indentation — the slices AND the copies. `assertSlicesOnDisk` therefore asserts
  *     that a copied document PARSES to the same document as the source, not that the
  *     bytes match; a trim still fails it, and that is all it ever guarded.
+ *   - (2026-10-09, perf/bundle-trim-2) The data keys no shipped code reads are left
+ *     out of every bundled document, slices and copies alike (`UNREAD_DATA_KEYS`),
+ *     and the build fails the day shipped JS or a native plugin names one. "The
+ *     source" above therefore means the source less those keys (`sourceReader`).
  * The web is untouched: the repo root stays dependency-free and no-build, GitHub
  * Pages serves the commented source, and the minifier lives in `tools/mobile/`'s
  * own package.json. `deploy-manifest.json` and `sw.js` hash the ROOT files for the
@@ -129,8 +133,9 @@
  * runs at build time, and the file it writes is a build artefact. The web keeps
  * fetching the whole document; nothing about `app.js` changes; the app just has
  * a smaller pool, and every field on every item it does have is identical (the
- * bytes differ only by the whitespace the re-serialisation drops).
- * Trimming FIELDS instead was measured and rejected: every field except
+ * bytes differ only by the whitespace the re-serialisation drops, and by
+ * `episode_guid`, which no shipped code reads: `UNREAD_DATA_KEYS`).
+ * Trimming FIELDS instead was measured and rejected as the fix for GROWTH: every field except
  * `episode_guid` (1.9 KB of 1.70 MB) has a live reader in `app.js`,
  * `search-engine.js` or `player/`, and the largest droppable one
  * (`apple_episode_url`, 205 KB) buys six nights. Bounding buys every night.
@@ -194,6 +199,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { isDeepStrictEqual } from "node:util";
 
 /* The one transform that needs a dependency. See minify.mjs's header for why it is
@@ -222,7 +228,7 @@ import { BUILD_STAMP_FILE, buildStampDoc } from "../../player/build-stamp.js";
    deploy id the live site ships this commit under, and the Foray directory
    pointer it serves. Neither is a committed file any more — see
    `tools/ci/generate-manifest.mjs`'s header. */
-import { sourceStamp } from "../ci/generate-manifest.mjs";
+import { playerSources, runtimeDataFiles, sourceStamp } from "../ci/generate-manifest.mjs";
 
 /* search-engine.js is deliberately NOT imported here (#279 review), unlike the two
    joins above. This file runs inside the release jobs that hold the iOS and Android
@@ -484,19 +490,13 @@ export function assertShellScriptsPresent(html, files = SHELL_ONLY_FILES) {
 
 /* --------------------------------------------------------------- derivation */
 
-/** Every `data/*.json` path `app.js` actually fetches, in source order.
- *
- *  Matches `fetchJson("data/x.json")` and the double/single/backtick variants.
- *  Deliberately NOT a general "any string starting with data/" scan: `app.js`
- *  mentions `data/app-links.json` in a comment and `data/forays.json` in the
- *  `state` declaration, and neither is a fetch. Anchoring on the call is what
- *  keeps prose out of the bundle plan. */
-export function runtimeDataFiles(appSrc) {
-  const re = /fetchJson\(\s*(["'`])(data\/[^"'`]+\.json)\1\s*\)/g;
-  const out = [];
-  for (const m of appSrc.matchAll(re)) if (!out.includes(m[2])) out.push(m[2]);
-  return out;
-}
+/* `runtimeDataFiles(appSrc)`: every `data/*.json` path `app.js` actually fetches,
+ * in source order — `fetchJson("data/x.json")` calls only, never prose. It lives
+ * in tools/ci/generate-manifest.mjs (CH2-18), which also derives the web deploy's
+ * data list from it, so the bundle and the web read app.js with ONE scanner;
+ * re-exported here for this file's callers. tools/ci/ship-lists.test.mjs pins
+ * the scan inside the web's RUNTIME_DATA. */
+export { runtimeDataFiles };
 
 /* A floor on the derivation itself. If `fetchJson` is renamed or the call shape
  * changes, `runtimeDataFiles` returns [] or something tiny, and a bundle with no
@@ -507,23 +507,35 @@ export function runtimeDataFiles(appSrc) {
  * this deliberately and say why in the PR. */
 export const MIN_DERIVED_DATA_FILES = 6;
 
-/** Runtime modules under `player/`, excluding test suites. The player is a flat
- *  directory of ES modules that only import each other (every `import` in a
- *  runtime `player/*.js` is a `./` sibling, which tools/ci/generate-manifest.mjs
- *  enforces), so no bundler is needed. "Every non-test .js" is a SUPERSET of the
- *  graph, not the graph: modules nothing imports (parity references, unwired
- *  rules) ride along here, while the web's preload, precache and dist list only
- *  player/client.js's import closure (`playerSources`, CH-07). The shell copies
- *  the superset so a module is never missing; it costs bytes, not a fetch, since
- *  index.html preloads only the closure. `player/package.json` is not copied: it
- *  exists to mark the directory as ESM for Node, and module-ness in the browser
- *  comes from `<script type="module">`. */
+/** The runtime modules under `player/` the bundle carries: EXACTLY the web's
+ *  list, `playerSources` from tools/ci/generate-manifest.mjs — the static and
+ *  literal-dynamic import closure of `player/client.js`, plus any `player/*.js`
+ *  index.html loads with its own `<script>` tag. The same list decides
+ *  index.html's modulepreload lines (test/boot-path.test.js perf-1), the SW's
+ *  precache and tools/web/prepare-dist.mjs's dist, so the shell and the web now
+ *  ship one module set from one owner.
+ *
+ *  IT WAS "EVERY NON-TEST .js" until perf/bundle-trim-1 (2026-10-09,
+ *  docs/research/bundle-budget-2026-10.md item 1): a SUPERSET that carried the
+ *  modules nothing imports — parity references and unwired rules
+ *  (alert-open, catalogue-directory, foray-structure, locate-window,
+ *  route-resume: 12,647 B minified on the day) — into a WebView that never
+ *  requests them, since index.html preloads only the closure and no shipped
+ *  script imports anything outside it. A module joins the bundle the way it
+ *  joins the web: by being imported. The native parity harness reads the
+ *  repo's `player/`, never this bundle, so a reference module loses nothing.
+ *
+ *  `playerSources` throws on a non-sibling specifier and on a missing module,
+ *  which is the guard this list needs: a closure that silently lost a module
+ *  would be an app whose first import 404s. `prepare-webdir.test.mjs` re-walks
+ *  the plan's own imports ("the plan is closed under the player's own
+ *  imports"). `player/package.json` is not copied: it marks the directory as
+ *  ESM for Node, and module-ness in the browser comes from
+ *  `<script type="module">`. Returned as repo-relative POSIX paths, sorted. */
 export function playerFiles(root = REPO_ROOT) {
-  return fs
-    .readdirSync(path.join(root, "player"))
-    .filter((f) => f.endsWith(".js") && !f.endsWith(".test.js"))
-    .sort()
-    .map((f) => path.posix.join("player", f));
+  return playerSources(root)
+    .map((rel) => rel.split(path.sep).join("/"))
+    .sort();
 }
 
 /** The full copy plan as repo-relative POSIX paths. Throws if the plan is not
@@ -537,7 +549,7 @@ export function buildPlan(root = REPO_ROOT) {
       `Derived only ${data.length} runtime data file(s) from app.js, expected at least ` +
         `${MIN_DERIVED_DATA_FILES}. The fetchJson() call shape in app.js has probably ` +
         `changed, and a bundle with no data would otherwise build and look fine. ` +
-        `Fix runtimeDataFiles() in tools/mobile/prepare-webdir.mjs.`
+        `Fix runtimeDataFiles() in tools/ci/generate-manifest.mjs.`
     );
   }
 
@@ -1504,16 +1516,96 @@ export function tagCandidateForms(t) {
   return [t, t + "s", t + "es", t + "ing"];
 }
 
+/* FRONT-CODING THE TERM LISTS (docs/research/bundle-budget-2026-10.md, item 9).
+   Each `by_count` group is a sorted list of words, and a sorted word list repeats
+   itself: the prefix walk below puts `war`, `ware`, `wares` side by side. So a
+   group ships as ONE string, its terms in sorted order separated by a space, each
+   term written as ONE base-36 digit (how many leading characters it shares with
+   the term before it, capped at 35) followed by the rest of it:
+   `["war","ware","wares"]` is `"0war 3e 4s"`. On the real map (2026-10-09) the
+   groups went 34,585 B -> 21,835 B.
+
+   That is RAW bytes, the unit the 2.8 MB alarm and MAX_BYTES measure. It is not a
+   download saving: the IPA and the APK are zip archives, and deflate already
+   exploits shared prefixes.
+
+   The block says so: `encoding: TAG_DF_ENCODING`. search-engine.js
+   `readTagDfBlock` decodes a block that carries it, reads a block without it as
+   the plain arrays (the form #279 shipped), and ignores a block with any other
+   value, the way it ignores every block it cannot trust. The decoder is restated
+   here (`decodeTagDfByCount`) for the same reason the matcher is: this file runs
+   in the signing jobs and never loads search-engine.js. prepare-webdir.test.mjs
+   pins the two decoders together through the engine's own tagCount. Change the
+   format only together with search-engine.js, under a new `encoding` value. */
+export const TAG_DF_ENCODING = "front-1";
+const FRONT_CODE_DIGITS = "0123456789abcdefghijklmnopqrstuvwxyz";
+
+/** One `by_count` group, front-coded (see above). Sorts its input, so the result
+ *  does not depend on the order the terms arrive in. A term must not contain the
+ *  separator; `tagDfBlock` falls back to the plain form when one does. */
+export function frontCodeTerms(terms) {
+  let prev = "";
+  return [...terms]
+    .sort()
+    .map((t) => {
+      const max = Math.min(t.length, prev.length, FRONT_CODE_DIGITS.length - 1);
+      let k = 0;
+      while (k < max && t[k] === prev[k]) k++;
+      prev = t;
+      return FRONT_CODE_DIGITS[k] + t.slice(k);
+    })
+    .join(" ");
+}
+
+/** The terms of one front-coded group, or null when it is not one: not a string,
+ *  an empty entry, a first character that is not a base-36 digit, or a shared
+ *  length longer than the term before it. search-engine.js `frontDecodeTerms`,
+ *  restated. */
+export function frontDecodeTerms(coded) {
+  if (typeof coded !== "string") return null;
+  const terms = [];
+  let prev = "";
+  for (const entry of coded.split(" ")) {
+    const k = entry.length > 0 ? FRONT_CODE_DIGITS.indexOf(entry[0]) : -1;
+    if (k < 0 || k > prev.length) return null;
+    prev = prev.slice(0, k) + entry.slice(1);
+    terms.push(prev);
+  }
+  return terms;
+}
+
+/** A df block's `by_count` as plain arrays of terms, whichever form it ships in:
+ *  decoded when it carries `encoding: TAG_DF_ENCODING`, as written when it
+ *  carries no `encoding`. Null for any other `encoding` value, a group that does
+ *  not decode, or a missing `by_count` — the blocks search-engine.js
+ *  `readTagDfBlock` ignores. */
+export function decodeTagDfByCount(df) {
+  if (!df || typeof df !== "object" || !df.by_count || typeof df.by_count !== "object") return null;
+  if (df.encoding !== undefined && df.encoding !== TAG_DF_ENCODING) return null;
+  const out = {};
+  for (const [n, group] of Object.entries(df.by_count)) {
+    const terms = df.encoding === TAG_DF_ENCODING ? frontDecodeTerms(group) : group;
+    if (!Array.isArray(terms)) return null;
+    out[n] = terms;
+  }
+  return out;
+}
+
 /**
  * The `df` block for a slice of `source` that keeps `keptEntries` of its entries:
- * `{ total, entries, by_count }`, where `total` is the WHOLE map's entry count and
- * `by_count` groups every term whose count over the whole map is nonzero by that
- * count (each count written once, ~7 KB less than a term -> count object on the real
- * map), terms sorted. Every candidate form is the term plus a suffix, so a term can
- * only match a segment it is a PREFIX of; walking every prefix of every segment
- * therefore reaches every term that counts nonzero. A term's count is the size of
- * the UNION of the entries its forms hit — `war` on an entry tagged both `war` and
- * `wars` counts once.
+ * `{ total, entries, encoding, by_count }`, where `total` is the WHOLE map's entry
+ * count and `by_count` groups every term whose count over the whole map is nonzero
+ * by that count (each count written once, ~7 KB less than a term -> count object on
+ * the real map), each group front-coded (see above). Every candidate form is the
+ * term plus a suffix, so a term can only match a segment it is a PREFIX of; walking
+ * every prefix of every segment therefore reaches every term that counts nonzero. A
+ * term's count is the size of the UNION of the entries its forms hit — `war` on an
+ * entry tagged both `war` and `wars` counts once.
+ *
+ * A term containing a space cannot be front-coded (the space separates terms), so
+ * on a map that has one the whole block ships in the plain form, with no
+ * `encoding`: more bytes, the same counts. Tags are hyphenated slugs today, so
+ * this is a fallback, not a path the real map takes.
  */
 export function tagDfBlock(source, keptEntries) {
   const tags = source?.tags || {};
@@ -1537,7 +1629,13 @@ export function tagDfBlock(source, keptEntries) {
     for (const f of tagCandidateForms(t)) for (const e of index.get(f) || []) hit.add(e);
     if (hit.size > 0) (byCount[hit.size] ||= []).push(t);
   }
-  return { total: Object.keys(tags).length, entries: keptEntries, by_count: byCount };
+  const total = Object.keys(tags).length;
+  if (Object.values(byCount).some((g) => g.some((t) => t.includes(" ")))) {
+    return { total, entries: keptEntries, by_count: byCount };
+  }
+  const coded = {};
+  for (const [n, group] of Object.entries(byCount)) coded[n] = frontCodeTerms(group);
+  return { total, entries: keptEntries, encoding: TAG_DF_ENCODING, by_count: coded };
 }
 
 /**
@@ -1658,13 +1756,23 @@ export function assertItemTagsSliceComplete(source, written, { discover, session
         `the whole map has ${want.total} entries and the slice ${keptEntries}. ${slicedNote}`
     );
   }
-  if (!isDeepStrictEqual(df.by_count, want.by_count)) {
+  /* Decoded before it is compared, so the check is on what the engine will read,
+     whichever form the block ships in; a block the engine would ignore (an
+     `encoding` it does not know, a group that does not decode) is refused by name. */
+  const gotByCount = decodeTagDfByCount(df);
+  if (!gotByCount) {
+    throw new WebDirError(
+      `the bundled data/item-tags.json's df block does not decode: its encoding is ` +
+        `${JSON.stringify(df.encoding)} (search-engine.js reads only ${JSON.stringify(TAG_DF_ENCODING)} ` +
+        `or none), or a by_count group is not a term list in that encoding. ${slicedNote}`
+    );
+  }
+  const wantByCount = decodeTagDfByCount(want);
+  if (!isDeepStrictEqual(gotByCount, wantByCount)) {
     const got = new Map();
-    for (const [n, group] of Object.entries(df.by_count)) {
-      for (const t of Array.isArray(group) ? group : []) got.set(t, Number(n));
-    }
+    for (const [n, group] of Object.entries(gotByCount)) for (const t of group) got.set(t, Number(n));
     const wantCounts = new Map();
-    for (const [n, group] of Object.entries(want.by_count)) for (const t of group) wantCounts.set(t, Number(n));
+    for (const [n, group] of Object.entries(wantByCount)) for (const t of group) wantCounts.set(t, Number(n));
     const off = [...new Set([...got.keys(), ...wantCounts.keys()])].filter((t) => got.get(t) !== wantCounts.get(t));
     const t = off[0];
     throw new WebDirError(
@@ -1710,7 +1818,11 @@ export function assertItemTagsSliceComplete(source, written, { discover, session
  *     the headroom alarm in prepare-webdir.test.mjs asks for ("build the df
  *     sidecar, do not raise it"). The tag half moves with the pool (shows, the
  *     knob, the session); the df half with the WHOLE map's vocabulary, a few
- *     words a night at most.
+ *     words a night at most. FRONT-CODED on 2026-10-09 (bundle-09, see
+ *     `frontCodeTerms`): the df groups went 34,585 -> 21,835 B and the file
+ *     124,908 -> 112,179 B (109.5 KB, ~26% under the budget). The budget was left
+ *     where it is: lowering it is a separate decision, and this change only made
+ *     the counts cheaper.
  *   - `data/forays.json` — 11.6 KB today (the three curated Forays; the four
  *     generated drafts are the directory's), budget 44 KB, 26% used. Its unit is
  *     a PUBLISHED GENERATED Foray: the four committed drafts weigh 17–25 KB each
@@ -1890,6 +2002,178 @@ export function sliceBytes(json) {
   return Buffer.byteLength(serializeSlice(json), "utf8");
 }
 
+/* ------------------------------------- the keys nothing on a device reads */
+
+/**
+ * Data keys the bundle leaves out because NO CODE THE BUNDLE SHIPS READS THEM
+ * (perf/bundle-trim-2, 2026-10-09; docs/research/bundle-budget-2026-10.md item 5).
+ * 44,323 B on the day. They are pipeline bookkeeping (transcript hashes, ad-probe
+ * methods, batch ids, verification notes) that the website's whole files keep, and
+ * that a WebView parses and throws away.
+ *
+ * A PATH, per file: dot-separated keys, where `[]` after a key means "each element
+ * of this array" and `*` means "each value of this object". `provenance` drops a
+ * top-level key; `sources[].feed_url` drops `feed_url` from every source row;
+ * `episodes.*.format` drops `format` from every value of the `episodes` map.
+ *
+ * WHAT "NOTHING READS IT" MEANS, AND HOW IT IS KEPT TRUE. A key whose NAME occurs
+ * nowhere in the JavaScript the bundle ships cannot be read by that JavaScript: the
+ * minifier keeps every identifier and every string (minify.mjs), and the bundle's
+ * copies carry no comments, so an occurrence there is code. The native engines see
+ * only what JS hands them over the bridge, and a key they read by name would appear
+ * there as a quoted string. So `assertUnreadKeysUnread` scans both — the shipped
+ * `.js` for the bare word, the native plugin sources for `"key"` — and the build
+ * FAILS, naming the key, the day either one starts to mention it. The fix is to
+ * delete the entry here, not to rename the reader.
+ *
+ * WHAT THE NAME SCAN CANNOT SEE is a key forwarded without being named — a spread,
+ * `Object.entries`, a `JSON.stringify` of a whole row — so every file here was also
+ * checked by hand for that (the doc above has the walk): `hydrateForayItems` builds
+ * segment items from a whitelist, `snapshot()` is a whitelist, and `episode()`'s
+ * `{...ep}` only feeds it. `data/forays.json` is NOT here for exactly this reason:
+ * `{ ...foray, items }` forwards every top-level key of a Foray. A new spread over
+ * one of these documents is the change that must re-check this list.
+ *
+ * THE SEED IS STILL A SUBSET OF THE DIRECTORY'S FILES, row for row, modulo these
+ * keys: the Foray directory's whole files replace the seed on the first refresh that
+ * reaches the network, and carry every key. `ad_pad_sec`, the one ad field the
+ * player reads, is not listed and ships.
+ */
+export const UNREAD_DATA_KEYS = Object.freeze({
+  "data/catalog-client.json": Object.freeze(["shows[].episode_count"]),
+  "data/discover.json": Object.freeze(["items[].episode_guid"]),
+  "data/segment-sources.json": Object.freeze([
+    "provenance",
+    ...[
+      "feed_url", "episode_guid", "ad_free_ratio", "audio_verified_on", "ad_delta_sec",
+      "ad_delta_probes", "ad_delta_spread_sec", "ad_tier", "ad_pad_method", "ad_pad_measured_at",
+      "feed_declared_duration_sec", "transcript_url", "transcript_type", "transcript_sha256",
+    ].map((k) => `sources[].${k}`),
+  ]),
+  "data/segments.json": Object.freeze([
+    "provenance", "segments[].transcript_source", "segments[].batch_id", "segments[].needs_review",
+  ]),
+  "data/session.json": Object.freeze([
+    "commute", "categories",
+    "cards[].archetype_label", "cards[].fit_line", "cards[].alternates", "cards[].provenance",
+    "episodes.*.format", "episodes.*.reactor_types",
+  ]),
+  "data/taxonomy.json": Object.freeze(["episode_attributes", "nodes[].apple_anchor", "nodes[].last_evidence_at"]),
+  "data/validated-links.json": Object.freeze([
+    "podlink_episode_format", "podlink_note", "overcast_ok", "overcast_note", "verification_summary",
+    "episodes.*.episode_guid", "episodes.*.duration_min_confirmed",
+  ]),
+});
+
+/** The key a path removes: its last segment. */
+export function unreadKeyName(keyPath) {
+  return keyPath.split(".").pop();
+}
+
+/** Every key a path names in `doc`, as `[parent, key]` pairs (only where it exists). */
+export function unreadKeyHits(doc, keyPath) {
+  const hits = [];
+  const walk = (node, parts) => {
+    if (!node || typeof node !== "object") return;
+    const [head, ...rest] = parts;
+    if (head === "*") {
+      for (const v of Object.values(node)) walk(v, rest);
+      return;
+    }
+    const isEach = head.endsWith("[]");
+    const key = isEach ? head.slice(0, -2) : head;
+    if (!Object.prototype.hasOwnProperty.call(node, key)) return;
+    if (!rest.length) {
+      if (!isEach) hits.push([node, key]);
+      return;
+    }
+    if (isEach) {
+      if (Array.isArray(node[key])) for (const el of node[key]) walk(el, rest);
+    } else {
+      walk(node[key], rest);
+    }
+  };
+  walk(doc, keyPath.split("."));
+  return hits;
+}
+
+/** `doc` as the bundle carries it: a COPY without `UNREAD_DATA_KEYS[rel]`, or `doc`
+ *  itself when the file has no entry. Never mutates its argument — the readers that
+ *  hand it documents cache them, and a projection reads the same object twice. */
+export function dropUnreadKeys(rel, doc, table = UNREAD_DATA_KEYS) {
+  const paths = table[rel];
+  if (!paths || !paths.length || !doc || typeof doc !== "object") return doc;
+  const copy = structuredClone(doc);
+  for (const p of paths) for (const [parent, key] of unreadKeyHits(copy, p)) delete parent[key];
+  return copy;
+}
+
+/** Native plugin sources, as `{ rel, text }`: what the bridge's other end could read
+ *  a key by name in. Test trees are skipped (a test fixture naming a key is not a
+ *  reader on a phone), and so is anything a build or an install put there. */
+function nativeSources(root) {
+  const base = path.join(root, "mobile", "plugins");
+  const out = [];
+  const SKIP = new Set(["test", "Tests", "androidTest", "build", "node_modules", ".gradle", ".build", "Pods"]);
+  const walk = (abs) => {
+    if (!fs.existsSync(abs)) return;
+    for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+      const child = path.join(abs, e.name);
+      if (e.isDirectory()) {
+        if (!SKIP.has(e.name)) walk(child);
+      } else if (/\.(java|kt|swift)$/.test(e.name)) {
+        out.push({ rel: path.relative(root, child).split(path.sep).join("/"), text: fs.readFileSync(child, "utf8") });
+      }
+    }
+  };
+  walk(base);
+  return out;
+}
+
+/**
+ * Prove every `UNREAD_DATA_KEYS` name is still unread, against the bundle as built
+ * (`absOut`'s `.js`, minified, so prose cannot trip it) and the native plugin
+ * sources under `root`. Throws a `WebDirError` naming each key that is read and
+ * where. Run by `prepare` BEFORE it reports success, on every build.
+ */
+export function assertUnreadKeysUnread(absOut, root = REPO_ROOT, table = UNREAD_DATA_KEYS) {
+  const shipped = [];
+  const walk = (abs) => {
+    for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+      const child = path.join(abs, e.name);
+      if (e.isDirectory()) walk(child);
+      else if (e.name.endsWith(".js")) {
+        shipped.push({ rel: path.relative(absOut, child).split(path.sep).join("/"), text: fs.readFileSync(child, "utf8") });
+      }
+    }
+  };
+  walk(absOut);
+  const native = nativeSources(root);
+  const read = [];
+  for (const [rel, paths] of Object.entries(table)) {
+    for (const p of paths) {
+      const key = unreadKeyName(p);
+      const word = new RegExp(`(?<![\\w$])${key}(?![\\w$])`);
+      const quoted = `"${key}"`;
+      const where = [
+        ...shipped.filter((f) => word.test(f.text)).map((f) => f.rel),
+        ...native.filter((f) => f.text.includes(quoted)).map((f) => f.rel),
+      ];
+      if (where.length) read.push(`${rel} ${p}: "${key}" appears in ${where.join(", ")}`);
+    }
+  }
+  if (read.length) {
+    throw new WebDirError(
+      `these keys are left out of the bundle as unread, but shipped code now mentions them:\n  ` +
+        read.join("\n  ") +
+        `\nA reader on a phone would get undefined where the website gets a value. Delete the ` +
+        `entry from UNREAD_DATA_KEYS in tools/mobile/prepare-webdir.mjs (the key then ships), ` +
+        `or confirm the mention is not a read and rename it.`
+    );
+  }
+  return true;
+}
+
 /** A cached JSON reader rooted at one directory.
  *
  *  CACHED because a projection and its verification read the same documents and
@@ -1905,10 +2189,24 @@ function docReader(dir) {
   };
 }
 
+/** The repo's documents AS THE BUNDLE SEES THEM: `docReader(root)` with
+ *  `UNREAD_DATA_KEYS` left out. Every projection reads its source through this, and
+ *  every verifier judges the bundle against it, so a slice is a slice of the trimmed
+ *  document and a copied file must parse to exactly the trimmed document. The re-read
+ *  in `assertSlicesOnDisk` is what notices a copy that kept a listed key. */
+function sourceReader(root) {
+  const raw = docReader(root);
+  const cache = new Map();
+  return (rel) => {
+    if (!cache.has(rel)) cache.set(rel, dropUnreadKeys(rel, raw(rel)));
+    return cache.get(rel);
+  };
+}
+
 /** Build every slice, with the assertions that prove each one, and hand back the
  *  JSON to write. */
 export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW, plan = null } = {}) {
-  const read = docReader(root);
+  const read = sourceReader(root);
   if (plan) {
     const absent = PROJECTED_DATA.filter((p) => !plan.includes(p.rel)).map((p) => p.rel);
     if (absent.length) {
@@ -1948,7 +2246,7 @@ export function projectData(root = REPO_ROOT, { perShow = BUNDLED_ITEMS_PER_SHOW
  * budget is enforced, so the budget is measured on the bytes that ship.
  */
 export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = null } = {}) {
-  const source = docReader(root);
+  const source = sourceReader(root);
   const bundled = docReader(absOut);
   for (const spec of PROJECTED_DATA) {
     const abs = path.join(absOut, spec.rel);
@@ -1972,8 +2270,9 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = nul
   }
   /* Every data file in the bundle that is not a slice, asserted on the bytes that
      ship — parsed, because the bytes are re-serialised on the way in. The
-     re-serialisation is the only transform they go through, and "parses to the same
-     document" is exactly the property that transform must preserve. */
+     re-serialisation and `UNREAD_DATA_KEYS` are the only transforms they go through,
+     and "parses to the same document as the source less those keys" (`source` is
+     `sourceReader`) is exactly the property both must preserve. */
   for (const rel of bundledDataFiles(absOut)) {
     if (PROJECTED_DATA.some((p) => p.rel === rel)) continue;
     /* The one data file that is neither a slice nor a copy: the seed's pointer, which
@@ -1997,7 +2296,8 @@ export function assertSlicesOnDisk(absOut, root = REPO_ROOT, { seedPointer = nul
       throw new Error(
         `the bundled ${rel} does not parse to the same document as the source. It is neither ` +
           `sliced (PROJECTED_DATA) nor the seed's pointer, so the only thing that should ` +
-          `have happened to it on the way into the bundle is losing its whitespace.`
+          `have happened to it on the way into the bundle is losing its whitespace and ` +
+          `its UNREAD_DATA_KEYS.`
       );
     }
   }
@@ -2089,7 +2389,7 @@ export function prepare({
   for (const rel of plan) {
     const src = path.join(root, rel);
     if (slices.has(rel)) reserialize(src, rel, slices.get(rel));
-    else if (isBundledData(rel)) reserialize(src, rel);
+    else if (isBundledData(rel)) reserialize(src, rel, dropUnreadKeys(rel, JSON.parse(fs.readFileSync(src, "utf8"))));
     else if (isMinified(rel)) minify(src, rel);
     else copy(src, rel);
   }
@@ -2133,6 +2433,9 @@ export function prepare({
 
   /* THE SLICES, RE-READ, for the same reason and in the same place. */
   assertSlicesOnDisk(absOut, root, { seedPointer: webStamp && webStamp.pointer ? webStamp.pointer : null });
+  /* And the keys left out as unread are still unread by the code that just shipped
+     (UNREAD_DATA_KEYS). */
+  assertUnreadKeysUnread(absOut, root);
 
   const files = [];
   let total = 0;
@@ -2185,8 +2488,7 @@ function fmt(bytes) {
 
 /* --------------------------------------------------------------------- main */
 
-const isMain =
-  process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+const isMain = isEntryScript(import.meta.url);
 
 if (isMain) {
   const argv = process.argv.slice(2);

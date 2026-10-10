@@ -53,9 +53,10 @@
 #                     app.
 #
 # SO THE TRIGGER IS NARROW ON PURPOSE. `pull_request` fires only when the RELEASE
-# PIPELINE ITSELF changes — this file, the Gradle include, and the signing script
-# — and NOT on every `mobile/**` change, which `android-build.yml` (the build)
-# and `android-smoke.yml` (the launch, A-02) already cover.
+# PIPELINE ITSELF changes — this file, the `android-bundle` composite, the Gradle
+# include, and the signing script — and NOT on every `mobile/**` change, which
+# `android-build.yml` (the build) and `android-smoke.yml` (the launch, A-02)
+# already cover.
 # `workflow_dispatch` is the founder's "make me an .aab to submit by hand" button
 # — the EXCEPTION PATH since R-05 (`docs/release-lockstep-plan.md`), not the
 # process. THIS FILE NEVER UPLOADS TO A STORE: the one path to Play is
@@ -66,16 +67,33 @@
 # is no `push` and no `schedule`: a merge re-running what already ran on the PR
 # buys nothing, and a weekly emulator boot on days nothing changed buys less.
 #
-# NEITHER JOB IS A REQUIRED CHECK, and neither is named so it could become one by
-# accident — `protect-main` matches required contexts BY NAME (`backend`,
-# `data-and-site`, `path-policy`). A flaky required check is worse than no check;
+# ONE BUILD, THE ONE `release.yml` SHIPS (CH2-17, docs/roadmap/code-health-2.md).
+# The bundle job CALLS `.github/actions/android-bundle` rather than keeping its
+# own copy of the steps. The copy had drifted twice: it never ran
+# `inject-splash.mjs`, so the by-hand `.aab` carried Capacitor's placeholder
+# splash and launcher icon, and it took its versionCode from a dispatch box (R-02's
+# leftover). Now the composite injects the real splash and icon (and `--check`s
+# the bytes), and the version pair comes from `tools/mobile/version.mjs` in the
+# secret-free `version` job, counted the way `release.yml` counts it. The
+# composite's Play upload is handed an EMPTY credential, so its play-gate reports
+# `absent` and the upload step is skipped: that empty string is why the sentence
+# above stays true.
+#
+# NO JOB HERE IS A REQUIRED CHECK, and none is named so it could become one by
+# accident — `protect-main` matches required contexts BY NAME (the list is
+# `REQUIRED_CHECKS` in `tools/ci/path-policy.mjs`, which has never held
+# `path-policy`). A flaky required check is worse than no check;
 # this one is deliberately advisory, and the smoke job's verdict is read by a
 # human before a submission, not by a merge gate.
 #
 # ── NO THIRD-PARTY ACTIONS, INCLUDING THE OBVIOUS ONE ────────────────────────
 #
-# Every `uses:` here is `actions/*`, plus the call to this repo's own
-# `android-smoke.yml`, whose `uses:` are `actions/*` too. The standard way to run
+# Every `uses:` here is `actions/*`, plus two local paths: the call to this repo's
+# own `android-smoke.yml`, whose `uses:` are `actions/*` too, and the
+# `android-bundle` composite. That composite holds the repo's one SHA-pinned
+# third-party step, the Play upload (R-03); this file hands it no credential, so
+# that step is skipped on every run of this file and its code never executes
+# here. The standard way to run
 # an Android emulator in Actions is `reactivecircus/android-emulator-runner`, and it is not used, for
 # the same reason `android-actions/setup-android` is not used in
 # `android-build.yml`: a third-party action runs arbitrary code with the job's
@@ -124,15 +142,11 @@ name: android-release
 
 on:
   workflow_dispatch:
-    inputs:
-      version_code:
-        description: "versionCode for this bundle. Play REJECTS a versionCode it has already accepted, so bump it for every upload. Blank keeps Capacitor's template value of 1."
-        required: false
-        default: ""
-      version_name:
-        description: "versionName shown to users, e.g. 1.0.0. Blank keeps the template value of 1.0."
-        required: false
-        default: ""
+    # NO INPUTS (CH2-17). The `version_code` / `version_name` boxes are retired:
+    # a versionCode typed by hand is R-02's documented leftover, and Play
+    # permanently refuses one it has already accepted. The pair is derived by
+    # the `version` job below from `mobile/VERSION` and the day's run count,
+    # the way `release.yml` derives it.
   pull_request:
     # DELIBERATELY NOT `mobile/**`. `android-build.yml` covers ordinary shell
     # changes and `android-smoke.yml` launches them; this fires only when the
@@ -143,8 +157,12 @@ on:
     # runs it, and that job now lives in `android-smoke.yml`, whose own filter
     # carries the probe. Keeping it here would build a signed bundle to test a
     # script the bundle never runs.
+    # THE COMPOSITE JOINED IT IN CH2-17: the bundle job's steps live in
+    # `.github/actions/android-bundle` now, and `release.yml` runs only on main,
+    # so this is the one pre-merge run a change to that composite gets.
     paths:
       - ".github/workflows/android-release.yml"
+      - ".github/actions/android-bundle/**"
       - "mobile/gradle/**"
       - "tools/mobile/wire-signing.mjs"
 
@@ -157,19 +175,76 @@ permissions:
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
+  # The version pair.
+  # ───────────────────────────────────────────────────────────────────────────
+  version:
+    # ITS OWN JOB BECAUSE IT HOLDS NO SECRET. `tools/mobile/version.mjs` sits on
+    # an ALLOWED path, and `tools/ci/path-policy.test.mjs`'s signing-job walk
+    # forbids running an ALLOWED file in a job that can read the upload key — the
+    # same split `release.yml` and `lab-build.yml` make.
+    #
+    # COUNTED, NOT TYPED, AND COUNTED ACROSS BOTH WORKFLOWS. The `nn` of
+    # `YYYYMMDDnn` is this run's rank among today's runs of `release.yml` AND of
+    # this file (`tools/release/build-number.mjs`, which refuses past 99 rather
+    # than wrapping), so a by-hand bundle never reuses a versionCode an earlier
+    # `release.yml` run of the same UTC day already sent to Play. The reverse is
+    # NOT closed here: `release.yml` counts only its own runs, so a release run
+    # LATER the same day can draw a number a by-hand bundle already used. If the
+    # founder has submitted that bundle, Play rejects the later upload with a
+    # red step — loud, not silent — and the exception path is rare by design.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      marketing_version: ${{ steps.pair.outputs.marketing_version }}
+      build_number: ${{ steps.pair.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: The version pair, from version.mjs, counted as release.yml counts it
+        id: pair
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          CREATED_AT=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.created_at')
+          DAY="${CREATED_AT%%T*}"
+          RUNS="$RUNNER_TEMP/runs-today.jsonl"
+          # The runs listing can lag a just-created run, so re-list until this
+          # run appears; build-number.mjs refuses if it never does.
+          for attempt in 1 2 3 4 5 6 7 8; do
+            : > "$RUNS"
+            for wf in release.yml android-release.yml; do
+              gh api --paginate "repos/$REPO/actions/workflows/$wf/runs?created=$DAY&per_page=100" \
+                --jq '.workflow_runs[] | {id, created_at} | @json' >> "$RUNS"
+            done
+            if jq -e --argjson me "$RUN_ID" 'select(.id == $me)' "$RUNS" > /dev/null; then break; fi
+            echo "::warning::run $RUN_ID not yet in the runs listing for $DAY (attempt $attempt); re-listing in 15s"
+            sleep 15
+          done
+          RUN_OF_DAY=$(node tools/release/build-number.mjs run-of-day \
+            --runs "$RUNS" --run-id "$RUN_ID" --day "$DAY" | sed -n 's/^RUN_OF_DAY=//p')
+          if [ -z "$RUN_OF_DAY" ]; then exit 1; fi
+          OUT=$(node tools/mobile/version.mjs pair --run-of-day "$RUN_OF_DAY" --now "$CREATED_AT")
+          echo "$OUT"
+          echo "marketing_version=$(echo "$OUT" | sed -n 's/^MARKETING_VERSION=//p')" >> "$GITHUB_OUTPUT"
+          echo "build_number=$(echo "$OUT" | sed -n 's/^BUILD_NUMBER=//p')" >> "$GITHUB_OUTPUT"
+
+  # ───────────────────────────────────────────────────────────────────────────
   # The submittable artefact.
   # ───────────────────────────────────────────────────────────────────────────
   android-bundle:
+    needs: version
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    env:
-      SDK_PLATFORM: platforms;android-36
-      SDK_BUILD_TOOLS: build-tools;36.0.0
-      # NO `runner.*` HERE. The `runner` context is not available in a job-level
-      # `env:` block and an unavailable context is a workflow-COMPILE error, not
-      # an empty string — the job would never start. $ART is set from
-      # $RUNNER_TEMP in the first step, exactly as the other two shell workflows
-      # do it.
 
     steps:
       - uses: actions/checkout@v4
@@ -194,232 +269,34 @@ jobs:
         # HUMAN-ACTIONS.md's G5 item is the human action that resolves it.
         run: node --test test/release-gates.test.js
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Toolchain versions (the first thing to read when this breaks)
-        run: |
-          set -euo pipefail
-          echo "ART=$RUNNER_TEMP/android-release" >> "$GITHUB_ENV"
-          mkdir -p "$RUNNER_TEMP/android-release"
-          # THE KEY DIRECTORY IS A SIBLING OF $ART, NEVER A CHILD OF IT, and that
-          # is the single most important line in this file. $ART is uploaded as a
-          # public artifact at the end of the run; anything inside it is
-          # downloadable by anyone who can see the repo. A keystore written one
-          # directory too deep is the founder's signing key published to the
-          # internet, from a run that looks completely routine.
-          echo "KEYDIR=$RUNNER_TEMP/android-keys" >> "$GITHUB_ENV"
-          {
-            echo "runner: $(uname -srm)"
-            java -version 2>&1
-            node --version
-          } | tee "$RUNNER_TEMP/android-release/toolchain.txt"
-          javac -version 2>&1 | grep -qE '^javac 21\.' \
-            || { echo "javac is not 21 — Capacitor 8 will fail at compileDebugJavaWithJavac"; exit 1; }
-
-      - name: The Android SDK, from the image plus exactly what we pin
-        run: |
-          set -euo pipefail
-          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
-          if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
-            echo "Neither ANDROID_HOME nor ANDROID_SDK_ROOT points at an SDK on this runner."
-            exit 1
-          fi
-          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
-          SDKMANAGER=$(command -v sdkmanager 2>/dev/null || true)
-          if [ -z "$SDKMANAGER" ]; then
-            SDKMANAGER=$(ls "$SDK"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1 || true)
-          fi
-          if [ -z "$SDKMANAGER" ] || [ ! -x "$SDKMANAGER" ]; then
-            echo "no sdkmanager on PATH or under $SDK/cmdline-tools/*/bin/"
-            exit 1
-          fi
-          yes 2>/dev/null | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" --install "$SDK_PLATFORM" "$SDK_BUILD_TOOLS"
-
-      - name: Install the shell's dependencies
-        working-directory: mobile
-        run: |
-          set -euo pipefail
-          npm ci --no-audit --no-fund
-
-      - name: Build the webDir and generate the Android project
-        working-directory: mobile
-        run: |
-          set -euo pipefail
-          npm run add:android 2>&1 | tee "$ART/cap-add-android.log"
-          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          chmod +x android/gradlew
-
-      - name: Wire the signing include into the generated project
-        # `mobile/android/app/build.gradle` is Capacitor TEMPLATE OUTPUT,
-        # regenerated by the step above on every run, with no signingConfigs block
-        # and a hardcoded `versionCode 1`. The decision lives in the tracked
-        # `mobile/gradle/foray-signing.gradle`; this re-applies it after
-        # generation, the same shape `cap sync` uses for `foray-audio`.
+      - name: Build, sign and check the .aab — the android-bundle composite, real splash and launcher icon included
+        # THE SAME STEPS `release.yml` SHIPS THROUGH, NOT A COPY OF THEM (CH2-17).
+        # The composite installs the JDK and SDK, generates the Android project,
+        # wires the signing include (`wire-signing.mjs`, then `--check`), puts
+        # the REAL splash screen and launcher icon in (`inject-splash.mjs android`,
+        # then `--check`, which compares bytes), decodes the upload key to
+        # $RUNNER_TEMP/android-release-keys — a SIBLING of its report directory
+        # $RUNNER_TEMP/android-bundle-release, never a child, because that
+        # directory is published below — runs `bundleRelease` with the password
+        # length floor first, the log scrubbed before it enters the report
+        # directory and the lint gate read from it, verifies the signature
+        # either way, shreds the key with `if: always()`, and exports ART and
+        # KEYDIR to the steps after it.
         #
-        # `--check` IS A SECOND RUN, NOT DECORATION. The first invocation reports
-        # what it did; the second re-reads both files off disk and fails if the
-        # apply line or the copied include is not there. A build that is silently
-        # not applying the signing config produces an unsigned bundle and prints
-        # BUILD SUCCESSFUL, which is the failure this whole file is about.
-        run: |
-          set -euo pipefail
-          node tools/mobile/wire-signing.mjs mobile/android
-          node tools/mobile/wire-signing.mjs mobile/android --check
-          tail -8 mobile/android/app/build.gradle | tee "$ART/app-build-gradle-tail.txt"
-
-      - name: Materialise the upload key, if the founder has installed one
-        # ABSENT IS A SUPPORTED STATE. With no `ANDROID_KEYSTORE_B64` secret —
-        # every fork, and every PR opened from one — the step exports an empty path
-        # and the build below produces an UNSIGNED bundle rather than failing. That
-        # is not a degraded mode to be hidden: it is checked for explicitly two
-        # steps down, so "unsigned" is a VERIFIED outcome rather than an assumed
-        # one, and a wiring bug that inverted the two branches fails on either.
-        #
-        # THE STORE IS PKCS12 AND ITS SINGLE PASSWORD IS ONE SECRET. There is no
-        # `ANDROID_KEY_PASSWORD`, because a PKCS12 entry cannot have a key password
-        # that differs from the store password.
-        id: key
-        env:
-          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-        run: |
-          set -euo pipefail
-          if [ -z "${KEYSTORE_B64:-}" ]; then
-            echo "keyed=false" >> "$GITHUB_OUTPUT"
-            echo "path=" >> "$GITHUB_OUTPUT"
-            echo "No ANDROID_KEYSTORE_B64 secret is available: this run will produce an UNSIGNED bundle."
-            echo "That is expected on a fork. See docs/android-release.md for the three secret names."
-            exit 0
-          fi
-          mkdir -p "$KEYDIR"
-          chmod 700 "$KEYDIR"
-          # `--decode` (not `-d`) because GNU and BSD base64 disagree on the short
-          # flag, and a wrong-flag failure here writes a zero-byte file that Gradle
-          # would then reject with a message about keystore format.
-          # `if !`, NOT A BARE PIPELINE. GNU base64 exits 1 on invalid input and
-          # `set -o pipefail` would abort the step there — so the message below,
-          # which names the secret and the fix, was unreachable for the commonest
-          # half of the case it was written for, and the founder would see
-          # `base64: invalid input` instead.
-          if ! printf '%s' "$KEYSTORE_B64" | base64 --decode > "$KEYDIR/upload.p12"; then
-            echo "ANDROID_KEYSTORE_B64 is not valid base64 — re-run the gh secret set line in docs/android-release.md §2"
-            exit 1
-          fi
-          chmod 600 "$KEYDIR/upload.p12"
-          if [ ! -s "$KEYDIR/upload.p12" ]; then
-            echo "ANDROID_KEYSTORE_B64 decoded to an empty file — the secret is truncated"
-            exit 1
-          fi
-          echo "keyed=true" >> "$GITHUB_OUTPUT"
-          echo "path=$KEYDIR/upload.p12" >> "$GITHUB_OUTPUT"
-          echo "upload key materialised ($(stat -c%s "$KEYDIR/upload.p12") bytes) outside the uploaded artifact directory"
-
-      - name: bundleRelease — the .aab Play accepts
-        # THE OUTPUT DIRECTORY IS NOT THE APK ONE. `app/build/outputs/bundle/release/`,
-        # not `app/build/outputs/apk/release/`, and the file is `app-release.aab`
-        # whether or not it is signed — unlike the APK, which renames itself to
-        # `app-release-unsigned.apk`. So the filename cannot be used to tell the
-        # two apart, which is why the verification step below reads the signature.
+        # `play_service_account_json: ''` IS THIS FILE'S WHOLE PLAY CONFIGURATION.
+        # The input is `required: true`, so the empty string is passed
+        # explicitly; `release-ci.mjs play-gate` reads it as `absent` (exit 0,
+        # `ready=false`) and the composite's Play upload step is skipped. R-05:
+        # `release.yml` is the one path to a store.
         id: bundle
-        working-directory: mobile/android
-        env:
-          KEYED: ${{ steps.key.outputs.keyed }}
-          # ENVIRONMENT, NEVER `-P`. A Gradle property is in the process's argv and
-          # therefore in `ps`, in the daemon's record of the invocation, and in any
-          # trace that echoes the command line. These are read by
-          # `System.getenv` in `mobile/gradle/foray-signing.gradle` and handed
-          # straight to `signingConfig`.
-          FORAY_KEYSTORE_PATH: ${{ steps.key.outputs.path }}
-          FORAY_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          FORAY_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          FORAY_VERSION_CODE: ${{ inputs.version_code }}
-          FORAY_VERSION_NAME: ${{ inputs.version_name }}
-        run: |
-          set -euo pipefail
-          # ── THE LENGTH FLOOR COMES FIRST, BEFORE ANY BUILD ─────────────────
-          # The scan further down is a SUBSTRING search. A three-letter password
-          # occurs in an ordinary Gradle log by coincidence, so the scan would
-          # delete a clean log and report a leak that did not happen. The honest
-          # reading of that case is the other one: a password short enough to
-          # collide with build output is not a password.
-          #
-          # IT IS FIRST BECAUSE IT USED TO SIT AFTER THE BUILD, and two reviewers
-          # independently found the same hole: `exit 1` there left an UNSCANNED
-          # log in $ART, which `if: always()` then published — the exact vector
-          # the scan exists to close, reachable only through the one input that
-          # makes the scan unusable. Ordering it first also makes the message true.
-          if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && [ "${#FORAY_KEYSTORE_PASSWORD}" -lt 12 ]; then
-            echo "the keystore password is under 12 characters. Refusing to build: it cannot be told apart"
-            echo "from ordinary log text, so the leak scan below would be meaningless. Rotate to a longer one."
-            exit 1
-          fi
-          # ── THE LOG IS WRITTEN OUTSIDE $ART AND COPIED IN ONLY ONCE CLEAN ──
-          # ORDERING ALONE WAS NOT ENOUGH. `timeout-minutes`, a cancelled
-          # concurrency group, or any future `exit` added between the build and
-          # the scan all leave whatever is on disk for the `if: always()` upload
-          # to publish — a scan that protects one code path of one step, against
-          # an upload that is unconditional, is a scan with a gap in it. So the
-          # log lives in $RUNNER_TEMP's root, which is NOT uploaded, until it has
-          # been read. Same structural argument that puts $KEYDIR beside $ART
-          # rather than inside it.
-          LOG="$RUNNER_TEMP/gradle-bundleRelease.log"
-          ./gradlew foraySigningStatus --no-daemon --console=plain -q \
-            | tee "$ART/signing-status.txt"
-          # AND THE TWO ANSWERS MUST AGREE, BEFORE 25 MINUTES ARE SPENT ON THEM.
-          # The workflow decides `keyed` from the secret; the Gradle include
-          # decides `signingRequested` from the environment it was handed. If those
-          # disagree — a renamed variable, a `working-directory` that stops the
-          # include being applied — the signature step catches it at the end of the
-          # build. This catches it at the start, and names which half is wrong.
-          # Until now nothing read `signing-status.txt`, so the file was evidence
-          # for a human and a check for nobody.
-          if [ "${KEYED:-false}" = "true" ]; then
-            grep -q 'FORAY_SIGNING_STATUS=keyed' "$ART/signing-status.txt" \
-              || { echo "a keystore was supplied but Gradle configured an UNSIGNED build — the signing include is not being applied"; exit 1; }
-          fi
-          # THE EXIT CODE IS CAPTURED, NOT INFERRED FROM `$?` AFTER A PIPE.
-          #
-          # GITHUB MASKS SECRETS IN LOGS AND NOT IN ARTIFACTS. This log is uploaded
-          # at the end of the run and is downloadable by anyone who can see the
-          # repo, so `***` in the web log is no protection at all for the copy in
-          # the zip. AGP does not print the password today; a future AGP, a
-          # `--stacktrace` added in haste, or a keystore error that echoes its
-          # inputs all could. The check never prints what it is looking for.
-          set +e
-          ./gradlew bundleRelease --no-daemon --console=plain > "$LOG" 2>&1
-          GRADLE_STATUS=$?
-          set -e
-          if [ -n "${FORAY_KEYSTORE_PASSWORD:-}" ] && grep -qF "$FORAY_KEYSTORE_PASSWORD" "$LOG"; then
-            rm -f "$LOG"
-            echo "the Gradle log contained the keystore password; it has been deleted rather than uploaded."
-            echo "Find what printed it before running this again."
-            exit 1
-          fi
-          # ONLY NOW does the log enter the directory that gets published.
-          cp "$LOG" "$ART/gradle-bundleRelease.log"
-          if [ "$GRADLE_STATUS" -ne 0 ]; then
-            echo "::group::bundleRelease tail"; tail -300 "$ART/gradle-bundleRelease.log"; echo "::endgroup::"
-            exit 1
-          fi
-          # A GREEN RELEASE BUILD THAT SKIPPED LINT PROVES LESS THAN IT LOOKS, and
-          # `bundleRelease` depends on `lintVitalRelease` exactly as `assembleRelease`
-          # does. Same two checks as android-build.yml — present in the task list, and
-          # not SKIPPED/NO-SOURCE — because the same three ways to bypass it apply.
-          LINTLINE=$(grep -E '^> Task :app:lintVitalRelease( |$)' "$ART/gradle-bundleRelease.log" | tail -1 || true)
-          if [ -z "$LINTLINE" ]; then
-            echo "bundleRelease did not run :app:lintVitalRelease — the release lint gate is not actually running"
-            exit 1
-          fi
-          case "$LINTLINE" in
-            *SKIPPED*|*NO-SOURCE*) echo "lintVitalRelease was registered but did not execute: $LINTLINE"; exit 1 ;;
-          esac
-          AAB=app/build/outputs/bundle/release/app-release.aab
-          test -f "$AAB" || { echo "no .aab at $AAB"; ls -R app/build/outputs || true; exit 1; }
-          cp "$AAB" "$ART/foray-release.aab"
-          echo "aab_bytes=$(stat -c%s "$AAB")" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/android-bundle
+        with:
+          marketing_version: ${{ needs.version.outputs.marketing_version }}
+          build_number: ${{ needs.version.outputs.build_number }}
+          android_keystore_b64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          android_key_alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          play_service_account_json: ''
 
       - name: It is really a BUNDLE, and it really contains the app
         # DO NOT TRUST THAT THE TASK PRINTED SUCCESS. `android-build.yml` already
@@ -436,10 +313,15 @@ jobs:
         # `AndroidManifest.xml` and `resources.arsc` and neither of the above. Both
         # directions are asserted, so a renamed APK fails here rather than at
         # Play's upload form.
+        #
+        # $ART IS THE COMPOSITE'S REPORT DIRECTORY, exported by its first step;
+        # `:?` fails here, by name, if that ever stops being true.
         id: verify
         run: |
           set -euo pipefail
+          ART="${ART:?the android-bundle composite no longer exports its report directory as ART}"
           AAB="$ART/foray-release.aab"
+          echo "aab_bytes=$(stat -c%s "$AAB")" >> "$GITHUB_OUTPUT"
           unzip -Z1 "$AAB" > "$ART/aab-entries.txt"
           echo "$(wc -l < "$ART/aab-entries.txt") entries"
           for needle in \
@@ -497,9 +379,15 @@ jobs:
         # from the bundle, so `apksigner verify` on an .aab is the wrong question.
         # No `-strict`: an upload key is self-signed by design, and `-strict`
         # returns non-zero for a certificate chain it cannot validate.
+        #
+        # KEYED IS THE COMPOSITE'S VERIFIED VERDICT. Its bundle step decides
+        # keyed-or-not from the keystore secret, then requires jarsigner to verify
+        # a keyed bundle and NO signature block in an unkeyed one before it says
+        # `signed` or `unsigned`. This step adds what the composite does not:
+        # exactly one signer, and that signer the pinned upload key.
         id: signature
         env:
-          KEYED: ${{ steps.key.outputs.keyed }}
+          KEYED: ${{ steps.bundle.outputs.signed == 'signed' }}
           # THE UPLOAD KEY'S PUBLIC IDENTITY, PINNED. This is a certificate
           # fingerprint: public by construction, displayed by Play on its own App
           # Signing page, and worth nothing to an attacker. Pinning it turns
@@ -570,10 +458,16 @@ jobs:
         # BEFORE the artifact upload, deliberately: ordering is what makes this a
         # guarantee rather than a race, even though $KEYDIR is outside the
         # uploaded path.
+        #
+        # THE COMPOSITE SHREDS ITS OWN KEY DIRECTORY, also `if: always()`. This
+        # step is the check from outside it: it finishes the job if that shred
+        # was cut short, and it is the one place the job ASSERTS the directory
+        # is gone rather than assuming it. The default is the composite's path,
+        # for a run that failed before the composite exported KEYDIR.
         if: always()
         run: |
           set -euo pipefail
-          KEYDIR="${KEYDIR:-$RUNNER_TEMP/android-keys}"
+          KEYDIR="${KEYDIR:-$RUNNER_TEMP/android-release-keys}"
           if [ -d "$KEYDIR" ]; then
             find "$KEYDIR" -type f -exec shred -u {} + 2>/dev/null || rm -rf "$KEYDIR"
             rm -rf "$KEYDIR"
@@ -586,18 +480,19 @@ jobs:
         env:
           BUNDLE_OUTCOME: ${{ steps.bundle.outcome }}
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
-          AAB_BYTES: ${{ steps.bundle.outputs.aab_bytes }}
+          AAB_BYTES: ${{ steps.verify.outputs.aab_bytes }}
           SIGN_STATE: ${{ steps.signature.outputs.state }}
+          MARKETING_VERSION: ${{ needs.version.outputs.marketing_version }}
+          BUILD_NUMBER: ${{ needs.version.outputs.build_number }}
         run: |
           set -euo pipefail
-          ART="${ART:-$RUNNER_TEMP/android-release}"
-          mkdir -p "$ART"
           {
             echo "## Android release bundle"
             echo
             echo "| | |"
             echo "|---|---|"
-            echo "| \`bundleRelease\` (incl. \`lintVitalRelease\`) | **${BUNDLE_OUTCOME:-not reached}** |"
+            echo "| version (versionName / versionCode) | ${MARKETING_VERSION:-—} / ${BUILD_NUMBER:-—} |"
+            echo "| \`android-bundle\` composite: real splash and icon, \`bundleRelease\` (incl. \`lintVitalRelease\`) | **${BUNDLE_OUTCOME:-not reached}** |"
             echo "| bundle structure verified | **${VERIFY_OUTCOME:-not reached}** |"
             echo "| \`foray-release.aab\` | ${AAB_BYTES:-—} bytes |"
             echo "| signature | **${SIGN_STATE:-not reached}** |"
@@ -629,14 +524,22 @@ jobs:
         # a submission window that closes in a fortnight is an artefact that
         # quietly has to be rebuilt.
         #
-        # THE PATH IS $ART EXACTLY. The upload key was written to a SIBLING
-        # directory ($KEYDIR) precisely so that no widening of this path can
-        # publish it; `${{ runner.temp }}` here would upload the keystore.
+        # THE PATH IS $ART EXACTLY — the composite's report directory. The upload
+        # key was written to a SIBLING directory ($KEYDIR) precisely so that no
+        # widening of this path can publish it; `${{ runner.temp }}` here would
+        # upload the keystore.
+        #
+        # `overwrite: true` BECAUSE THE COMPOSITE ALREADY UPLOADED THE BARE .aab
+        # under this same name (its fallback for release.yml). This replaces it
+        # with the whole report directory, which holds that same
+        # `foray-release.aab` plus the evidence, so docs/android-release.md's
+        # "download foray-android-release, submit foray-release.aab" stays true.
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: foray-android-release
-          path: ${{ runner.temp }}/android-release
+          path: ${{ runner.temp }}/android-bundle-release
+          overwrite: true
           if-no-files-found: warn
           retention-days: 30
 

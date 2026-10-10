@@ -224,7 +224,11 @@ test("CLI output is minified, parses, and an --out under data/ is refused", () =
    deep-equals the key order of the committed data/catalog-breadth.json's
    first row, so the next field the harvester adds turns this red here
    instead of silently vanishing from a corpus catalogue (#1148 class).
-   Mutation that turns this red: delete "artist_name" from BREADTH_KEYS. */
+   BREADTH_KEYS is derived from tools/harvest-merge.mjs's ROW_KEYS (CH2-15),
+   so this also guards ROW_KEYS against the committed file: a key added to
+   the harvester is one edit, and this goes red until the file carries it.
+   Mutation that turns this red: add a key to ROW_KEYS in harvest-merge.mjs
+   (or delete "artist_name" from it). */
 test("BREADTH_KEYS is the key order of the committed data/catalog-breadth.json's first row", () => {
   const live = JSON.parse(readFileSync(LIVE_BREADTH, "utf8"));
   assert.ok(Array.isArray(live.shows) && live.shows.length > 0, "the committed breadth file has rows");

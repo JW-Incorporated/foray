@@ -103,7 +103,7 @@ final class ColdPathTests: XCTestCase {
         XCTAssertLessThan(grace, activate, "\(log)")
         XCTAssertLessThan(activate, load, "\(log)")
         XCTAssertLessThan(load, play, "\(log)")
-        guard case let .load(_, itemId, _, startSec, _, _)? = world.deck.sent.first(where: { $0.logName == "load" }) else {
+        guard case let .load(_, itemId, _, startSec, _, _, _)? = world.deck.sent.first(where: { $0.logName == "load" }) else {
             return XCTFail("no load: \(world.deck.sent)")
         }
         XCTAssertEqual(itemId, "a")
@@ -256,7 +256,7 @@ final class ColdPathTests: XCTestCase {
         let cold = try XCTUnwrap(owner.bootIfNeeded(), "native: the AppDelegate boots the engine")
         XCTAssertEqual(world.remote.press(.play), .success, "the car's play before any page exists")
         var legacyRuns = 0
-        owner.pluginDidLoad(legacyRegistration: { legacyRuns += 1 })
+        owner.pluginDidLoad(legacyRegistration: { _ in legacyRuns += 1 })
 
         XCTAssertTrue(owner.engine === cold)
         XCTAssertEqual(built, 1, "one engine per process")

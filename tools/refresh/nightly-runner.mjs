@@ -46,8 +46,10 @@ import nodeFs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { DEFAULT_THRESHOLD_HOURS, digestDate } from "./watch-nightly.mjs";
+import { MERGE_SUMMARY } from "./merge.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 /** Repo root, resolved from this file's location (tools/refresh/). */
@@ -235,12 +237,11 @@ export function finish({
   /* 5. merge */
   const merge = exec(process.execPath, [MERGE_SCRIPT], { cwd, env: mergeEnv });
   if (merge.status !== 0) return fail(EXIT.MERGE_FAILED, `MERGE_FAILED exit=${merge.status}`, output(merge));
-  if (/^MERGE: 0 items added/m.test(merge.stdout)) {
-    return fail(EXIT.NOTHING, "NOTHING_ADDED", merge.stdout);
-  }
-  const m = /^ADDED (\d+) items\./m.exec(merge.stdout);
-  if (!m) return fail(EXIT.MERGE_FAILED, "MERGE_UNPARSED (expected `ADDED N items.`)", output(merge));
-  const added = Number(m[1]);
+  /* merge.mjs's own parser for merge.mjs's own lines (CH2-14, T1-22): a reworded
+   * summary there can no longer turn a successful merge into MERGE_UNPARSED. */
+  const added = MERGE_SUMMARY.parseAdded(merge.stdout);
+  if (added === 0) return fail(EXIT.NOTHING, "NOTHING_ADDED", merge.stdout);
+  if (added === null) return fail(EXIT.MERGE_FAILED, "MERGE_UNPARSED (expected `ADDED N items.`)", output(merge));
 
   /* 6. validate */
   const tests = exec("npx", VITEST_ARGS, { cwd: path.join(cwd, "backend"), env });
@@ -317,8 +318,7 @@ export function run(argv, deps = {}) {
   return { code: EXIT.USAGE, text: `UNKNOWN_COMMAND ${command ?? "(none)"}\n${USAGE}` };
 }
 
-const invokedDirectly =
-  process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/refresh/nightly-runner.mjs");
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   const { code, text } = run(process.argv.slice(2));
   process.stdout.write(text);

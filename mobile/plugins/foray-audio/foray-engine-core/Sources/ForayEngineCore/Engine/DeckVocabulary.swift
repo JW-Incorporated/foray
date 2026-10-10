@@ -35,8 +35,17 @@ public enum DeckCommand: Equatable, Sendable {
     /// the core names it from the item (`DeckDeadlineClass(item)`), and the
     /// deck maps it to seconds (`AVDeck.Config.deadlineSec(for:)`). It
     /// defaults to `.clip`, whose deadline is the one every load had before.
+    ///
+    /// `bounded` (CH3-11, R2-04) is whether the item carries bounds
+    /// (`EngineItem.bounds`, an in-point and an out-point: a Foray clip). The
+    /// core sets it from the item it loads; every other load (an episode, a
+    /// rendered narration line, a bridge, an audition) leaves it false.
+    /// `deadlineClass` cannot say it (`.clip` is an episode too), and
+    /// `preciseTiming` no longer does (P-7's CBR exemption makes a CBR clip
+    /// approximate), so it is what AVDeck's §16 "continue a load that is
+    /// getting somewhere" is keyed on. The Android deck ignores it.
     case load(token: DeckToken, itemId: String, url: String?, startSec: Double, preciseTiming: Bool,
-              deadlineClass: DeckDeadlineClass = .clip)
+              deadlineClass: DeckDeadlineClass = .clip, bounded: Bool = false)
     /// Legal only after `.ready` for the current token. The core also emits it
     /// only with the audio session active (`SessionPolicy`'s audible-start
     /// invariant); the adapter's implicit-activation check is the backstop.
@@ -65,8 +74,10 @@ public enum DeckCommand: Equatable, Sendable {
     /// warms approximate, as it loads; a clip warms precise unless P-7's CBR
     /// exemption is on and its source is CBR. It defaults to true, the deck's
     /// only behaviour before the core named it.
+    /// `bounded` as on `.load` (CH3-11): the core sends the item's own, so a
+    /// warm load is the load the item's own would be.
     case prepare(itemId: String, url: String?, startSec: Double, deadlineClass: DeckDeadlineClass = .clip,
-                 preciseTiming: Bool = true)
+                 preciseTiming: Bool = true, bounded: Bool = false)
 }
 
 /// Which P-13 load deadline a load runs under (card NE-38;

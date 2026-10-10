@@ -66,6 +66,9 @@ protocol SessionControlling: AnyObject {
     func activate() -> SessionActivation
     func deactivate(notifyOthers: Bool)
     func reapplyCategory()
+    /// A media-services reset: forget the activation. The host then rebuilds
+    /// every player the shell holds (`DeckDriving.rebuild`,
+    /// `Speaking.rebuild`, `InterludePlaying.release`).
     func rebuild()
     /// Interruptions, route changes and media-services resets, on main.
     func observe(_ handler: @escaping (SessionEvent) -> Void) -> EngineObservation
@@ -203,6 +206,11 @@ protocol DeckDriving: AnyObject {
     /// Stop observing for good: every KVO token, notification observer and
     /// pending callback is dropped, and no event is delivered after this.
     func invalidate()
+    /// Media services were reset (CH3-03): the platform player died with the
+    /// media server. Silence and drop what the deck holds, make the player
+    /// again, and keep observing. Nothing is reported; the deck reads idle
+    /// until the core's next `.load`.
+    func rebuild()
 }
 
 // MARK: - Speech (the audition in M1; the narrator, NE-33)
@@ -235,12 +243,27 @@ protocol Speaking: AnyObject {
     /// `NarratorEvent` input, delivered on main (the host feeds it back into
     /// the core, after the turn in progress).
     var onNarratorEvent: ((NarratorEvent) -> Void)? { get set }
+    /// What the synthesizer says it is doing RIGHT NOW, read by the host
+    /// before every input as the deck's reading is: the core's
+    /// `EngineNow.narrator` (CH3-19, R2-05). `.speaking` only while a line is
+    /// in flight, not held, and its output is sounding; `.paused` while a
+    /// line is held or its output has gone silent under it (a session the
+    /// system took); `.idle` with no line. On it the core tells a LATE
+    /// interruption (a declined call; the line carried on) from one that took
+    /// the line, as `foray-tts.js`'s `state()` tells the JS manager.
+    var reading: NarratorReading { get }
     /// Audible: the core emits it only after an activation (OQ-5).
     func speak(text: String, voiceId: String?)
     func stopSpeaking()
     /// Carry out one of the core's narration commands (speak is audible, and
     /// the core emits it only with the session active).
     func narrate(_ command: NarrationCommand)
+    /// Media services were reset (CH3-03): the output's audio engine died
+    /// with the media server and is made again. A line in flight cannot be
+    /// continued: an audition ends `cancelled`; a narration line is held,
+    /// and its next `resume` speaks it again from its first word
+    /// (`.fromStart`).
+    func rebuild()
 }
 
 // MARK: - The interlude jingle (InterludePlayer, NE-34)
@@ -261,7 +284,9 @@ protocol InterludePlaying: AnyObject {
     func start() -> Bool
     /// Silence it without an end report (a transport action cut the beat).
     func stop()
-    /// Stop and drop the decoded asset (the engine's teardown).
+    /// Stop and drop the decoded asset and its player (the engine's
+    /// teardown, and a media-services reset: the next `start()` makes them
+    /// again).
     func release()
 }
 
@@ -297,14 +322,15 @@ protocol EngineTiming: AnyObject {
 
 /// Where the core's persistence and reporting commands land. NE-19's
 /// EngineStore writes the shared rows, the private restore record and the
-/// diagnostics ring; NE-20's bridge carries the events to the page.
+/// diagnostics ring. The page's events are not here (CH3-24, R1-08): the
+/// core's own events leave the host through `ForayEngine.onEmit`, which the
+/// bridge sets, and the pending events ride in the restore record and the
+/// snapshot.
 protocol EngineOutput: AnyObject {
     func writePosition(_ write: PositionWrite)
     func writeRow(_ row: StoredRow)
     /// Nil removes the record (data deletion).
     func writeRestore(_ record: RestoreRecord?)
-    func appendEvent(_ event: PendingEvent)
-    func emit(_ event: EngineEvent)
     func diag(_ entry: DiagEntry)
     /// Make every write so far durable NOW: called by the host right after
     /// the core has handled `.background` or `.terminating` (whose position

@@ -1,7 +1,23 @@
 /* Config constants for the PodcastIndex dump import pipeline (S-04a).
    Single source of truth so a future swap to Joey's own export (D3) is a
-   one-line change here, not a hunt through import-dump.mjs. */
+   one-line change here, not a hunt through import-dump.mjs.
+
+   Also the one home of the small helpers import-dump.mjs, load-postgres.mjs
+   and tools/poll/poll-episodes.mjs used to copy (CH2-12): the DATABASE_URL
+   resolver, the streamed dump checksum, the curated-catalog reader and the
+   unmapped-curated guard (bottom of this file).
+
+   LIGHT ON PURPOSE. tools/poll/poll-episodes.mjs and
+   tools/refresh/candidates.mjs import this file from the root `node --test`
+   group, which has no pg-copy-streams and runs without --experimental-sqlite.
+   Only node: builtins and ../segments/politeness.mjs belong here, never pg,
+   pg-copy-streams or node:sqlite (tools/poll/poll-episodes.test.mjs walks
+   the import graph). */
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 import { UA as CLIENT_UA, CONTACT } from "../segments/politeness.mjs";
 
@@ -43,13 +59,6 @@ export const D1_MIN_EPISODES = 3;
    way, so "tolerated" never means "unnoticed". */
 export const MAX_UNMAPPED_CURATED_FRACTION = 0.05;
 export const D1_MAX_MONTHS_STALE = 24;
-
-/** Where the "already built this version" marker lives — durable, not
-    gitignored, so a second run on a fresh checkout still sees the last
-    build (per the card's "somewhere durable under data/ or
-    tools/shows/state/" instruction). */
-export const STATE_DIR = join(ROOT, "tools", "shows", "state");
-export const STATE_PATH = join(STATE_DIR, "last-build.json");
 
 export const CATALOG_PATH = join(ROOT, "data", "catalog.json");
 export const POINTER_PATH = join(ROOT, "data", "shows-index-pointer.json");
@@ -175,3 +184,78 @@ export const DUMP_COLUMNS = [
   "category1", "category2", "category3", "category4", "category5",
   "category6", "category7", "category8", "category9", "category10",
 ];
+
+/* ------------------------------------------------------ shared helpers -- */
+
+export class ImportError extends Error {
+  constructor(code, message, details = {}) {
+    super(message);
+    this.name = "ImportError";
+    this.code = code;
+    this.details = details;
+  }
+}
+
+/** The env vars that point this pipeline at a Postgres, in priority order:
+    SHOWS_DATABASE_URL first so the shows pipeline can use a different
+    database than the main backend without a global env change. */
+export const DATABASE_URL_VARS = ["SHOWS_DATABASE_URL", "DATABASE_URL"];
+
+/** The first configured DB URL that is actually set. A blank or
+    whitespace-only value counts as UNSET (a runner env that templates an
+    empty secret must read as "no database", not as a database called " "):
+    every CLI that asks "is a database configured?" asks it here. */
+export function resolveDatabaseUrl(env = process.env) {
+  for (const name of DATABASE_URL_VARS) {
+    const v = env[name];
+    if (v && v.trim()) return { url: v.trim(), varName: name };
+  }
+  return { url: null, varName: null };
+}
+
+/** sha256 hex of a file, STREAMED. The real PodcastIndex db is ~4.7GB
+    uncompressed, over node:fs/promises readFile's 2GiB ceiling
+    (ERR_FS_FILE_TOO_LARGE), so a whole-file read crashes on exactly the dump
+    the --dump-file path exists for (t_30a53ba2; T1-03). */
+export async function checksumFile(path) {
+  const hash = createHash("sha256");
+  await pipeline(createReadStream(path), hash);
+  return hash.digest("hex");
+}
+
+/** The curated shows in data/catalog.json (an array, or `{ shows: [...] }`). */
+export async function loadCuratedShows(path = CATALOG_PATH) {
+  const raw = JSON.parse(await readFile(path, "utf8"));
+  const shows = Array.isArray(raw) ? raw : raw.shows;
+  if (!Array.isArray(shows)) throw new ImportError("BAD_CATALOG", `${path} did not parse to an array or {shows:[...]}`);
+  return shows;
+}
+
+/** Fail closed on an incomplete id-map, before anything is written (shards
+    by import-dump.mjs, rows by load-postgres.mjs). Over
+    MAX_UNMAPPED_CURATED_FRACTION it throws ImportError ID_MAP_INCOMPLETE;
+    under it, it names the unmapped shows on `warn` and the run continues
+    (see MAX_UNMAPPED_CURATED_FRACTION's note). Returns `{ curatedTotal }`
+    for the manifest. */
+export function checkMissingMapping(result, { warn = console.warn } = {}) {
+  const curatedTotal = result.curatedTotal || (result.missing.length + Object.keys(result.idMap).length);
+  const unmappedFraction = curatedTotal > 0 ? result.missing.length / curatedTotal : 0;
+  const ceiling = `${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}%`;
+  const names = result.missing.map((m) => `${m.show_id} (${m.title})`).join(", ");
+  if (unmappedFraction > MAX_UNMAPPED_CURATED_FRACTION) {
+    throw new ImportError(
+      "ID_MAP_INCOMPLETE",
+      `${result.missing.length} of ${curatedTotal} curated show(s) did not resolve to a dump row ` +
+        `(${(unmappedFraction * 100).toFixed(1)}%, over the ${ceiling} ceiling — ` +
+        `that is the join breaking, not the index being incomplete): ${names}`,
+      { missing: result.missing, curatedTotal },
+    );
+  }
+  if (result.missing.length > 0) {
+    warn(
+      `WARN: ${result.missing.length} of ${curatedTotal} curated show(s) are not in this dump ` +
+        `(under the ${ceiling} ceiling, so the run continues; they keep working from data/catalog.json): ${names}`,
+    );
+  }
+  return { curatedTotal };
+}

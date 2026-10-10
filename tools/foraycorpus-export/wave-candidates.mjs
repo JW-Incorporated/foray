@@ -42,12 +42,13 @@
    Reads data/ only when the CLI runs. No network. */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { EXPORT_OUT_DIR, ROOT } from "./config.mjs";
 import { readShowsJsonl } from "./overlap.mjs";
+import { idKey, rowsOf } from "./rows.mjs";
 
 export const DRINK_WORDS = Object.freeze([
   "whisky",
@@ -108,17 +109,6 @@ export const PR_289_SHOW_IDS = Object.freeze([
   "spirits-and-distilling",
 ]);
 
-function idKey(value) {
-  if (value == null) return null;
-  const s = String(value).trim();
-  return s === "" ? null : s;
-}
-
-function showsOf(doc) {
-  if (Array.isArray(doc)) return doc;
-  return Array.isArray(doc?.shows) ? doc.shows : [];
-}
-
 /** Lookup by Apple id (as string) first, then by normalised feed URL. */
 function indexBy(rows, idOf, feedOf) {
   const byId = new Map();
@@ -171,13 +161,13 @@ export function compareWaveRows(a, b) {
  *          timed_transcript_episodes, dai_prior, dai_measured, score}>}
  */
 export function buildWave({ breadth, yields = null, dai = null, shows = null, catalog = null, filter = drinksFilter }) {
-  const yieldOf = indexBy(showsOf(yields), (r) => r?.apple_collection_id, (r) => r?.feed_url);
+  const yieldOf = indexBy(rowsOf(yields), (r) => r?.apple_collection_id, (r) => r?.feed_url);
   const corpusOf = indexBy(Array.isArray(shows) ? shows : [], (r) => r?.itunes_id, (r) => r?.feed_url_normalized ?? r?.feed_url);
-  const curatedOf = indexBy(showsOf(catalog), (r) => r?.apple_collection_id, (r) => r?.feed_url);
+  const curatedOf = indexBy(rowsOf(catalog), (r) => r?.apple_collection_id, (r) => r?.feed_url);
   const daiShows = dai?.shows && typeof dai.shows === "object" ? dai.shows : {};
 
   const byKey = new Map();
-  for (const show of showsOf(breadth)) {
+  for (const show of rowsOf(breadth)) {
     if (!filter(show?.title)) continue;
     const key = idKey(show?.apple_collection_id) ?? `feed:${normalizeFeedUrl(show?.feed_url)}`;
     const prev = byKey.get(key);
@@ -354,12 +344,12 @@ function main(argv) {
   const rows = buildWave({ breadth, yields, dai, shows, catalog });
   const meta = {
     breadth_built_at: breadth.built_at ?? null,
-    breadth_shows: showsOf(breadth).length,
-    catalog_shows: showsOf(catalog).length,
+    breadth_shows: rowsOf(breadth).length,
+    catalog_shows: rowsOf(catalog).length,
     dai_built_at: dai.built_at ?? null,
     dai_shows: Object.keys(dai.shows ?? {}).length,
     yields_generated_at: yields.generated_at ?? null,
-    yields_shows: showsOf(yields).length,
+    yields_shows: rowsOf(yields).length,
     shows_path: showsPath ? relative(ROOT, showsPath).replace(/\\/g, "/") : null,
     shows_rows: shows ? shows.length : null,
   };
@@ -372,7 +362,7 @@ function main(argv) {
   console.log(JSON.stringify({ matched: rows.length, curated: rows.filter((r) => r.in_curated).length, out, md }, null, 2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   try {
     main(process.argv.slice(2));
   } catch (e) {

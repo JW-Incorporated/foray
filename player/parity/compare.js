@@ -19,16 +19,22 @@
      comparison, EXCEPT in the `prepare` family, which exists to assert them
      (plan §6.2: "Native-only n.* tokens are stripped, except in the prepare
      family"), and its NE-45j sibling `prepare-narration` (the same seams with
-     a narration line in them; NE-45s ported it, under the foray capability).
-     JS never emits them; the Swift engine emits them for its standby deck,
-     and every other family must stay blind to that. */
+     a narration line in them; NE-45s ported it, under the foray capability),
+     and code-health-3 CH3-20's `native-episode`: the episode path at the
+     wheel (a raw remote press, a load deadline, grace, a relinquish), whose
+     whole claim IS the native tokens (the session, grace, the stop cause,
+     `n.failed`, the restore record), so it keeps them. That family is
+     `nativeOnly` (schema): its expects are the Swift core's, authored, and
+     the JVM is held to them; the JS reference never runs it.
+     Every other family must stay blind to the native tokens: JS never emits
+     them, and the Swift engine emits them for its standby deck. */
 
 import { encode } from "./codec.js";
 
 export const NATIVE_TOKEN_PREFIX = "n.";
 
 /** Families whose op logs keep `n.*` tokens. */
-export const NATIVE_TOKEN_FAMILIES = Object.freeze(["prepare", "prepare-narration"]);
+export const NATIVE_TOKEN_FAMILIES = Object.freeze(["prepare", "prepare-narration", "native-episode"]);
 
 const isPlainObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const isSpecialNum = (v) => isPlainObject(v) && Object.keys(v).length === 1 && "$num" in v;

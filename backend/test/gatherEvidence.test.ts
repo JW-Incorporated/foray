@@ -212,7 +212,7 @@ describe("gen-5: a failed retrieval is flagged, not passed off as an answer", ()
   });
 
   it("a budget refusal propagates instead of degrading to an empty pack (one query and two)", async () => {
-    const g = gatherer(new ThrowingRetriever(new BudgetExceededError(1, 9.9, 0.2, 10)));
+    const g = gatherer(new ThrowingRetriever(new BudgetExceededError(9.9, 0.2, 10)));
     await expect(g.gather({ claim: "the bakestone came first" }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
     await expect(g.gather({ claim: "the bakestone came first before the griddle arrived", requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(
       BudgetExceededError
@@ -237,14 +237,14 @@ describe("a budget refusal from the losing query of the two-query race", () => {
     async retrievePassages(request: PassageRetrievalRequest): Promise<RetrievedPassage[]> {
       const isClaim = request.claim === CLAIM;
       if (isClaim) {
-        if (this.refuseFirst) throw new BudgetExceededError(1, 9.9, 0.2, 10);
+        if (this.refuseFirst) throw new BudgetExceededError(9.9, 0.2, 10);
         await new Promise((r) => setTimeout(r, 5));
         return [found];
       }
       if (this.refused) return [found];
       await this.lateRefusal;
       this.refused = true;
-      throw new BudgetExceededError(1, 9.9, 0.2, 10);
+      throw new BudgetExceededError(9.9, 0.2, 10);
     }
     /** The loser refuses ONCE; any later retrieval would succeed, so only the
      * held refusal can make the next gather throw. */

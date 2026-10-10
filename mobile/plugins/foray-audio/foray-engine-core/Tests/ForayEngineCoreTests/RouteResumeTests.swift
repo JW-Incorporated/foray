@@ -139,7 +139,7 @@ final class RouteResumeTests: XCTestCase {
         XCTAssertEqual(row[field: "known"], .bool(true))
         XCTAssertFalse(resumed(back))
         // The car's own play, 7.4 s later, resumes as any press does.
-        let press = off.send(.remote(RemotePress(.play, routePort: "BluetoothA2DPOutput")), after: 7_400)
+        let press = off.send(.remote(RemotePress(.play)), after: 7_400)
         XCTAssertTrue(press.contains(.graceBegin(.remotePlay)), "\(press)")
 
         var on = RouteResumeTests.playing(through: RouteResumeTests.a2dp, config: RouteResumeTests.config(bluetooth: true))

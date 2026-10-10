@@ -1,15 +1,16 @@
 // api/episodes/search.ts end-to-end tests (S-07, kanban t_6baccaa0):
 // general Apple-backed search, show-scoped live search, id-map dropping,
 // rate limiting, and caching.
-import { test } from "node:test";
+import { test, mock } from "node:test";
 import assert from "node:assert";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as searchModule from "../episodes/search.ts";
-import { _resetShowIdMapCacheForTests, loadShowIdMap } from "../_lib/showIdMap.ts";
-import { episodeFeedFailureCache } from "../_lib/searchCache.ts";
+import { loadShowIdMap } from "../_lib/showIdMap.ts";
 import { appleCallerBuckets } from "../_lib/clientLimit.ts";
+import { sharedFeedReader } from "../_lib/feedCache.ts";
+import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -31,15 +32,15 @@ function mockRes() {
 }
 
 function resetSharedState() {
-  _resetShowIdMapCacheForTests();
-  /* P-05 piece 3: the feed-failure memory is module scope and 90 s long, so a
-     failure remembered by one test would answer a later one from a different
-     test's setup. Cleared here rather than per-test for the same reason the
-     id-map cache is. */
-  episodeFeedFailureCache.clear();
-  /* round-3 audit, search-api-css-4: the per-show feed-fetch limiter is module
-     scope too, and this file fetches the same show more than its budget. */
-  searchModule.sharedFeedReader.clear();
+  /* The feed reader is module scope: its per-show feed-fetch limiter
+     (round-3 audit, search-api-css-4; this file fetches the same show more
+     than its budget) and its 90 s feed-failure memory (P-05 piece 3, in
+     feedCache.ts since code-health-2 CH2-38), which would let a failure
+     remembered by one test answer a later one. The show-scoped answers are
+     module scope too. Cleared here rather than per-test for the same reason
+     the id-map cache is. */
+  sharedFeedReader.clear();
+  searchModule.showScopedResultCache.clear();
   /* security-10: the per-client Apple budget is module scope; these requests
      carry no x-forwarded-for, so they all share the "unknown" client. */
   appleCallerBuckets.clear();
@@ -296,24 +297,17 @@ function someBreadthOnlyShow() {
   );
 }
 
+/* The map is built from the committed catalogue files alone, through
+   api/_lib/showCatalog.ts (CH2-24); show-id-map.test.mjs pins that it never
+   touches the network. */
 async function loadFallbackMap() {
-  _resetShowIdMapCacheForTests();
-  // A fetchImpl that throws proves the map is built from committed files
-  // alone: data/shows-index-pointer.json does not exist on main, so
-  // tryLoadReleaseIdMap() must bail before it ever reaches the network.
-  const map = await loadShowIdMap({
-    fetchImpl: async () => {
-      throw new Error("no network in this test");
-    },
-    forceReload: true,
-  });
-  _resetShowIdMapCacheForTests();
-  return map;
+  return loadShowIdMap();
 }
 
 test("id-map: a breadth-only show's Apple collectionId maps to its numeric show_id instead of being dropped", async () => {
-  // MUTATION THAT TURNS THIS RED: delete the catalog-breadth.json pass from
-  // showIdMap.ts:loadCatalogFallback() — i.e. restore the pre-P-05 220-id map,
+  // MUTATION THAT TURNS THIS RED: drop the breadth rows from
+  // breadthCatalog.ts:loadCatalogue()'s `showIdByAppleId` (the map
+  // showIdMap.ts serves since CH2-24) — i.e. restore the pre-P-05 220-id map,
   // under which this id resolved to nothing and every episode of this show was
   // silently discarded by mapAppleHit.
   const show = someBreadthOnlyShow();
@@ -327,13 +321,15 @@ test("id-map: a breadth-only show's Apple collectionId maps to its numeric show_
 });
 
 test("id-map: a curated show keeps its SLUG id — the curated pass is merged first and breadth never overwrites it", async () => {
-  // MUTATION THAT TURNS THIS RED: swap the two passes in
-  // loadCatalogFallback(), or drop its `if (map.has(...)) continue` guard.
-  // Either one hands a curated show the numeric id, and
+  // MUTATION THAT TURNS THIS RED: in breadthCatalog.ts:loadCatalogue(), map
+  // the `in_curated` breadth rows to their own numbers (set
+  // `showIdByAppleId` for them, unconditionally, before the skip). That
+  // hands a curated show the numeric id, and
   // backend/src/catalog/breadthCatalog.ts DROPS the breadth row for a curated
-  // show — so that numeric id resolves to nothing on the show page. That is
-  // exactly the broken link mapAppleHit's drop rule exists to prevent,
-  // reintroduced by the very change meant to widen it.
+  // show — before CH2-24 that numeric id resolved to nothing on the show page
+  // (the broken link mapAppleHit's drop rule exists to prevent); now it is
+  // only an alias, and the row would still link away from the slug every
+  // other surface uses for that show.
   const idMap = await loadFallbackMap();
   let checked = 0;
   for (const show of CATALOG.shows) {
@@ -355,21 +351,12 @@ test("id-map: every id it mints resolves to a show the merged catalogue will act
   // merged index. Any id in this map that is NOT in that index is a dead link
   // on a live result row — strictly worse than the drop it replaced.
   //
-  // MUTATION THAT TURNS THIS RED: delete BOTH of loadCatalogFallback()'s
-  // breadth-pass guards — `if (show.in_curated) continue` and
-  // `if (map.has(...)) continue`. Verified red, 2026-09-12: the 103
-  // `in_curated` rows then get numeric ids, breadthCatalog.ts drops exactly
-  // those rows, and 103 entries point at show_ids the merged catalogue does
-  // not contain.
-  //
-  // SAID HONESTLY, because a test that overstates its own coverage is worse
-  // than no test: deleting the `in_curated` guard ALONE leaves this green on
-  // the committed data, because every `in_curated` breadth row happens to
-  // have a curated counterpart today (0 orphans, checked 2026-09-12) and the
-  // `map.has` guard therefore catches all of them first. The guard is kept
-  // anyway — it is the half of the rule that does not depend on that
-  // coincidence holding — and THIS assertion is what notices if the
-  // coincidence ever stops holding, which is the thing worth catching.
+  // Since CH2-24 the map and the index come out of one loadCatalogue() pass
+  // (breadthCatalog.ts sets `showIdByAppleId` only for a row it admits), so
+  // this holds by construction. MUTATION THAT TURNS THIS RED: set
+  // `showIdByAppleId` for a breadth row before its `in_curated` skip,
+  // unconditionally — the 175 `in_curated` rows then map to numeric ids the
+  // index does not contain (it serves them only as an alias of the twin).
   //
   // Scale-free by construction: it quantifies over whatever the map holds, so
   // a bigger catalogue cannot redden it — only a drift between the two
@@ -414,8 +401,8 @@ test("id-map: it is strictly wider than the curated-only map it replaced, and lo
 test("general search: a breadth-only show's Apple hit now reaches the response, end to end through the handler", async () => {
   // The point of the card, through the real handler rather than the map alone.
   //
-  // MUTATION THAT TURNS THIS RED: any change that puts loadCatalogFallback()
-  // back on catalog.json alone. Pre-P-05 this exact request answered
+  // MUTATION THAT TURNS THIS RED: any change that puts the id-map
+  // (breadthCatalog.ts's `showIdByAppleId`) back on catalog.json alone. Pre-P-05 this exact request answered
   // `{episodes: [], source: [], degraded: false}` — the measured production
   // behaviour for `tim ferriss`, `sam harris`, `elon musk`,
   // `artificial intelligence` and `the daily` on 2026-09-12.
@@ -475,9 +462,10 @@ test("show-scoped: a feed that just failed is not refetched for the next, differ
   // episodeSearchCache's query-keyed entry cannot be what answers the second
   // one — only the show-keyed failure memory can.
   //
-  // MUTATION THAT TURNS THIS RED: delete the `episodeFeedFailureCache.get`
-  // short-circuit in the handler's showScope branch, or the
-  // `else if (feedFailed)` write that fills it. `feedFetches` becomes 2.
+  // MUTATION THAT TURNS THIS RED: delete the `failures.get` short-circuit in
+  // feedCache.ts read(), or the `failures.set` in its `failed()` that fills
+  // it (CH2-38 moved the memory there from this handler). `feedFetches`
+  // becomes 2.
   resetSharedState();
   let feedFetches = 0;
   const fetchImpl = async (url) => {
@@ -509,12 +497,12 @@ test("show-scoped: a remembered failure is never replayed as an empty success, a
   // listener their query matched nothing (the client's
   // `searchShowEpisodesScoped` branches on exactly that and would stop falling
   // back to `filterLoadedEpisodes`). And a cacheable `Cache-Control` would let
-  // the CDN keep the dark window alive long past FEED_FAILURE_TTL_MS, turning
-  // a 90-second guard into an unbounded outage.
+  // the CDN keep the dark window alive long past feedCache.ts's
+  // FEED_FAILURE_TTL_MS, turning a 90-second guard into an unbounded outage.
   //
-  // MUTATION THAT TURNS THIS RED: answer the short-circuit with
-  // `degraded: false`, or give it the success path's
-  // `public, max-age=300, ...` header.
+  // MUTATION THAT TURNS THIS RED: answer a remembered failure with
+  // `degraded: false`, or give the show-scoped error answer the success
+  // path's `public, max-age=300, ...` header.
   resetSharedState();
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
@@ -539,15 +527,15 @@ test("show-scoped: an unknown show_id is not remembered as a feed failure", asyn
   // more to the point, a failure memory that fills up with non-failures is one
   // that will eventually dark-window a show that was never broken.
   //
-  // MUTATION THAT TURNS THIS RED: write the failure cache on any `error`
-  // rather than on `feedFailed` (i.e. drop the `feedFailed` flag threaded
-  // through searchWithinShow). The second call would be answered from the
-  // remembered failure and `reached` would stay false.
+  // MUTATION THAT TURNS THIS RED: remember an unresolved show as a feed
+  // failure (resolveShow's errors never reach feedCache.ts's failure memory).
+  // The second call would be answered from the remembered failure rather than
+  // the real unknown-id answer.
   resetSharedState();
   await handler({ method: "GET", query: { q: "anything", show: "definitely-not-a-real-show" }, headers: {} }, mockRes());
 
   // The same unknown id again must still walk the real path rather than a
-  // remembered one: it reaches loadShowMeta and answers "unknown show_id".
+  // remembered one: it reaches showMetaById and answers "unknown show_id".
   const again = mockRes();
   await handler({ method: "GET", query: { q: "anything-else", show: "definitely-not-a-real-show" }, headers: {} }, again);
   assert.deepStrictEqual(again.body.episodes, []);
@@ -558,8 +546,9 @@ test("show-scoped: a healthy feed is never poisoned by another show's failure", 
   // The memory is keyed by show. A broken feed elsewhere in the catalogue must
   // not take a working show's search box down with it.
   //
-  // MUTATION THAT TURNS THIS RED: key episodeFeedFailureCache on anything
-  // shared across shows (a single boolean, the query, the empty string).
+  // MUTATION THAT TURNS THIS RED: key feedCache.ts's failure memory on
+  // anything shared across shows (a single boolean, the query, the empty
+  // string).
   resetSharedState();
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url) => {
@@ -625,7 +614,7 @@ test("the URL sent to Apple carries the over-fetch, and the caller still gets ex
      MUTATION: drop the handler's `.slice(0, limit)`. The row-count assertion
      goes red. */
   resetSharedState();
-  const idMap = await loadShowIdMap({ fetchImpl: globalThis.fetch });
+  const idMap = await loadShowIdMap();
   const knownCollectionId = [...idMap.byCollectionId.keys()][0];
   assert.ok(knownCollectionId, "premise: the id-map has at least one known collection id");
 
@@ -718,6 +707,92 @@ test("general search: when Apple fills its over-fetch the total is a floor and t
   assert.strictEqual(res.body.episodes[0].artwork_url, null, "no artwork from Apple, an honest null — the client falls back to the show record");
 });
 
+
+/* CH2-39 (code-health-2, A1-07): THE EPISODE CALLER'S WIRE CONTRACT WITH APPLE.
+   Episode search and show search used to hand-roll two Apple clients with the
+   same URL, headers and error strings; they now share api/_lib/appleClient.ts
+   and differ only in the entity and the timeout each passes. These pins were
+   written against the hand-rolled client first and survive the unification:
+   the URL (entity, limit, term), the headers, the two error strings and the
+   8 s abort are what this caller sends and says today. 8 s and not the show
+   directory's 2 s is a founder question (docs/roadmap/code-health-2.md §1,
+   question 3; default: keep 8 s until an episode-entity measurement exists),
+   so a change to it must be a ruling, not a drift.
+
+   MUTATION: pass `timeoutMs: 2_000` from search.ts — the 8 s abort pin goes
+   red (the signal aborts at 2 s). MUTATION: change the User-Agent or Accept
+   header in appleClient.ts — the header pin goes red here and in the show
+   caller's twin (api/_test/shows-search-apple.test.mjs). */
+function appleHang() {
+  /* A fetch that never answers until its signal aborts, and says when it was
+     asked and with what. */
+  let seen;
+  const asked = new Promise((resolve) => { seen = resolve; });
+  const fetchImpl = (url, init) => {
+    seen({ url: String(url), init });
+    return new Promise((_, reject) => {
+      init.signal.addEventListener("abort", () => reject(init.signal.reason));
+    });
+  };
+  return { fetchImpl, asked };
+}
+
+test("CH2-39: the episode Apple call sends entity=podcastEpisode, the over-fetch and the term, with the product's User-Agent, and aborts at 8 s", async () => {
+  resetSharedState();
+  const { fetchImpl, asked } = appleHang();
+  const q = `hang check ${Date.now()}`;
+  const req = { method: "GET", query: { q, limit: "10" }, headers: {} };
+  const res = mockRes();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = fetchImpl;
+  mock.timers.enable({ apis: ["setTimeout"] });
+  try {
+    const pending = handler(req, res);
+    const { url, init } = await asked;
+    assert.strictEqual(url, `https://itunes.apple.com/search?entity=podcastEpisode&limit=50&term=${encodeURIComponent(q)}`);
+    assert.deepStrictEqual(init.headers, {
+      "User-Agent": DEFAULT_FEED_USER_AGENT,
+      Accept: "application/json",
+    });
+    mock.timers.tick(7_999);
+    assert.strictEqual(init.signal.aborted, false, "still waiting 1 ms before the episode caller's 8 s");
+    mock.timers.tick(1);
+    assert.strictEqual(init.signal.aborted, true, "aborted at exactly 8 s");
+    await pending;
+  } finally {
+    mock.timers.reset();
+    globalThis.fetch = originalFetch;
+  }
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.degraded, true);
+  assert.strictEqual(res.body.error, "Apple search fetch error: This operation was aborted");
+  assert.strictEqual(res.headers["Cache-Control"], "no-store");
+});
+
+test("CH2-39: the episode Apple call's two error strings — an HTTP failure and a transport failure", async () => {
+  resetSharedState();
+  const originalFetch = globalThis.fetch;
+  const bodies = [];
+  try {
+    for (const fetchImpl of [
+      async () => new Response("nope", { status: 503 }),
+      async () => { throw new Error("socket hang up"); },
+    ]) {
+      globalThis.fetch = fetchImpl;
+      const res = mockRes();
+      await handler({ method: "GET", query: { q: `error strings ${bodies.length} ${Date.now()}` }, headers: {} }, res);
+      bodies.push(res.body);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.strictEqual(bodies[0].error, "Apple search HTTP 503");
+  assert.strictEqual(bodies[1].error, "Apple search fetch error: socket hang up");
+  for (const body of bodies) {
+    assert.strictEqual(body.degraded, true);
+    assert.deepStrictEqual(body.episodes, []);
+  }
+});
 
 /* THIS TEST MUST STAY LAST IN THE FILE. It deliberately drains
    appleBucket.ts's 20/min bucket, which is module state shared by every test

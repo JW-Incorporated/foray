@@ -24,7 +24,8 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DATABASE_URL_VARS, resolveDatabaseUrl, runDryRun, main } from "./poll-episodes.mjs";
+import { DATABASE_URL_VARS, NO_DB_MESSAGE, resolveDatabaseUrl, runDryRun, main } from "./poll-episodes.mjs";
+import * as sharedConfig from "../shows/config.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CLI = path.join(HERE, "poll-episodes.mjs");
@@ -238,4 +239,45 @@ test("an absent default seed degrades to an empty run; a named missing or malfor
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+/* ---- CH2-12 (docs/roadmap/code-health-2.md, T1-12): one DATABASE_URL rule ---- */
+
+test("a whitespace-only DATABASE_URL is UNSET: no --dry-run exits 0, not the live refusal; the resolver is config.mjs's", async () => {
+  // MUTATION: a private `if (env[v])` resolver back in poll-episodes.mjs -> red
+  // (exit 3 LIVE_REFUSAL, and the identity check). The rule is load-postgres's
+  // (whitespace is unset), shared through tools/shows/config.mjs.
+  const lines = [];
+  const code = await main({ argv: [], env: { DATABASE_URL: " ", SHOWS_DATABASE_URL: "\t" }, log: (l) => lines.push(l), err: () => {} });
+  assert.equal(code, 0);
+  assert.deepEqual(lines, [NO_DB_MESSAGE]);
+  assert.equal(resolveDatabaseUrl, sharedConfig.resolveDatabaseUrl);
+  assert.equal(DATABASE_URL_VARS, sharedConfig.DATABASE_URL_VARS);
+});
+
+/** Every module specifier `file` imports (static, re-export, bare and dynamic). */
+function specifiersOf(file) {
+  const src = readFileSync(file, "utf8");
+  const re = /(?:\bfrom\s*|\bimport\s*\(?\s*)["']([^"']+)["']/g;
+  return [...src.matchAll(re)].map((m) => m[1]);
+}
+
+test("importing tools/shows/config.mjs loads neither pg-copy-streams, pg nor node:sqlite (this CLI's import contract)", () => {
+  // MUTATION: `import { from } from "pg-copy-streams";` (or "node:sqlite") added
+  // to tools/shows/config.mjs, or to anything it imports -> red.
+  const seen = new Set();
+  const external = new Set();
+  const walk = (file) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    for (const spec of specifiersOf(file)) {
+      if (spec.startsWith(".")) walk(path.resolve(path.dirname(file), spec));
+      else external.add(spec);
+    }
+  };
+  walk(path.join(HERE, "..", "shows", "config.mjs"));
+  for (const heavy of ["pg-copy-streams", "pg", "node:sqlite", "sqlite"]) {
+    assert.ok(!external.has(heavy), `config.mjs's import graph pulls ${heavy}: ${[...external].join(", ")}`);
+  }
+  assert.ok(seen.size >= 2, "the walk followed config.mjs's relative imports");
 });

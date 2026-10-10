@@ -29,7 +29,7 @@
  */
 
 import fs from "node:fs";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 export const MAX_RUN_OF_DAY = 99;
 
@@ -152,7 +152,7 @@ export function runCli(argv, io = {}) {
   };
 }
 
-if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+if (isEntryScript(import.meta.url)) {
   const { code, out, err } = runCli(process.argv.slice(2));
   process.stdout.write(out);
   process.stderr.write(err);

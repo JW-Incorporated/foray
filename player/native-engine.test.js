@@ -362,6 +362,27 @@ test("setVisible tells the engine, and coming back READS the snapshot instead of
   assert.ok(heard.includes("visibility:false") && heard.includes("visibility:true"));
 });
 
+/* CH3-23 (R4-07): "is the page looking?" starts as the document says. A page
+   booted hidden (a WebView reloaded behind the lock screen, an app launched
+   into the background by a car) held `visible = true` until its first
+   `visibilitychange`, so the backend facade's 1 Hz ticker ran into a page
+   nobody saw, and client.js told the engine "visible" on the first send.
+   RED on main: `visible` started true whatever the document said.
+   MUTATION: initialise `visible = true` again -> a hidden document reads visible. */
+test("CH3-23: the client starts visible exactly when the document is not hidden; no document is visible", async (t) => {
+  const prev = Object.getOwnPropertyDescriptor(globalThis, "document");
+  t.after(() => { if (prev) Object.defineProperty(globalThis, "document", prev); else delete globalThis.document; });
+  const at = (doc) => {
+    Object.defineProperty(globalThis, "document", { value: doc, writable: true, configurable: true });
+    return createNativeEngine({ capacitor: fakeCapacitor({ hello: nativeHello() }), scheduler: manualScheduler() }).visible;
+  };
+  assert.equal(at({ hidden: true }), false, "a hidden document: the page is not looking");
+  assert.equal(at({ hidden: false }), true, "a shown document: it is");
+  delete globalThis.document;
+  assert.equal(createNativeEngine({ capacitor: fakeCapacitor({ hello: nativeHello() }), scheduler: manualScheduler() }).visible,
+    true, "no document at all (a worker, node): visible, as before");
+});
+
 /* ---------- the hand-back a hidden page missed ---------- */
 
 test("a hand-back the page never heard (it was hidden) is learned from a `relinquished` reply, and told ONCE", async () => {

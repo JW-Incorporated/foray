@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /* tools/shows/run-and-publish.mjs — S-04b orchestration: run S-04a's
-   builder, then (unless it skipped because this export_version is already
-   built) publish a GitHub Release and write data/shows-index-pointer.json.
-   This is what .github/workflows/shows-import.yml actually invokes.
+   builder, then publish a GitHub Release and write
+   data/shows-index-pointer.json. This is what
+   .github/workflows/shows-import.yml actually invokes. Every run builds in
+   full (CI is a fresh checkout); `releaseExists` is the one idempotency
+   rule — see its doc comment in publish-release.mjs.
 
    Split from import-dump.mjs's own main() deliberately: import-dump.mjs
    is S-04a's file (owned by that card) and stays a pure offline builder;
@@ -23,10 +25,8 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { pathToFileURL } from "node:url";
-import {
-  BUILD_OUT_DIR, POINTER_PATH, STATE_PATH,
-} from "./config.mjs";
+import { isEntryScript } from "../ci/entry.mjs";
+import { BUILD_OUT_DIR, POINTER_PATH } from "./config.mjs";
 import {
   assetBaseUrlFor, buildPointer, listReleaseAssets, publishRelease, publishShardReleases,
   releaseExists, releaseTagFor,
@@ -54,7 +54,7 @@ export async function runBuild(argv, { exec = execFileP, cwd } = {}) {
   const scriptArgs = [...process.execArgv, "tools/shows/import-dump.mjs", ...argv];
   try {
     const { stdout } = await exec(process.execPath, scriptArgs, { cwd, maxBuffer: 64 * 1024 * 1024 });
-    return { stdout, skipped: /^SKIP:/m.test(stdout) };
+    return { stdout };
   } catch (err) {
     // import-dump.mjs's own --dry-run path exits 0; a real build failure
     // exits 1 with FATAL: on stderr, which the caller re-throws unchanged
@@ -87,7 +87,6 @@ export async function runBuild(argv, { exec = execFileP, cwd } = {}) {
 export async function runAndPublish(argv, {
   buildExec = execFileP,
   ghExec = execFileP,
-  statePath = STATE_PATH,
   buildOutDir = BUILD_OUT_DIR,
   pointerPath = POINTER_PATH,
   repo,
@@ -104,14 +103,9 @@ export async function runAndPublish(argv, {
     return { published: false, pointerChanged: false, reason: "dry-run" };
   }
 
-  if (build.skipped) {
-    log("SKIP: build was already current — nothing new to publish (idempotency: no release created)");
-    return { published: false, pointerChanged: false, reason: "build-skipped" };
-  }
-
-  const state = JSON.parse(await readFile(statePath, "utf8"));
   let manifest = JSON.parse(await readFile(`${buildOutDir}/manifest.json`, "utf8"));
-  const tag = releaseTagFor(state.export_version);
+  const exportVersion = manifest.export_version;
+  const tag = releaseTagFor(exportVersion);
 
   // S-04c: publish every shard batch release BEFORE the top-level release,
   // always — independent of whether the top-level release already exists,
@@ -122,10 +116,9 @@ export async function runAndPublish(argv, {
   // makes re-running this unconditionally cheap and idempotent: an
   // already-published batch is a single `gh release view`, not a
   // re-upload, so a run interrupted after batch 1 resumes cleanly at
-  // batch 2 on the next run. Only reachable once `build.skipped` is
-  // false, so `buildOutDir`/`manifest.json`'s `shard_inventory` (and the
-  // shard .gz files on disk under `buildOutDir/shards/`) are guaranteed
-  // fresh from THIS run's build step.
+  // batch 2 on the next run. The build step above always runs in full, so
+  // `buildOutDir`/`manifest.json`'s `shard_inventory` (and the shard .gz
+  // files on disk under `buildOutDir/shards/`) are fresh from THIS run.
   const shardReleases = await publishShardReleases({
     baseTag: tag,
     outDir: buildOutDir,
@@ -137,10 +130,9 @@ export async function runAndPublish(argv, {
   manifest = { ...manifest, shards_published: shardReleases.length > 0, shard_releases: shardReleases };
   await writeFile(`${buildOutDir}/manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`);
 
-  // Belt-and-braces idempotency check, independent of S-04a's own
-  // state.json skip above — see releaseExists's doc comment for why both
-  // checks matter. A tag that already exists here means state.json was
-  // lost (fresh checkout, evicted cache) while the release survived.
+  // The idempotency check (releaseExists's doc comment is the one
+  // description of it): a tag that already exists means an earlier run
+  // published this export_version, so nothing is published twice.
   //
   // NOTE: if the top-level release ALREADY exists, the manifest.json
   // asset it shipped on the run that created it is now stale relative to
@@ -161,10 +153,10 @@ export async function runAndPublish(argv, {
     const assets = await listReleaseAssets(buildOutDir);
     ({ asset_base_url: assetBaseUrl } = await publishRelease({
       tag,
-      title: `Shows index — ${state.export_version}`,
+      title: `Shows index — ${exportVersion}`,
       notes: [
         `Automated shows-index release (S-04b).`,
-        `export_version: ${state.export_version}`,
+        `export_version: ${exportVersion}`,
         `rows: read ${manifest.counts.read}, in_4a ${manifest.counts.in_4a}, canonical ${manifest.counts.canonical}`,
         ...(manifest.newest_snapshot
           ? [`changed.json baseline for the next release: ${manifest.newest_snapshot.asset} (${manifest.newest_snapshot.count} ids)`]
@@ -181,7 +173,7 @@ export async function runAndPublish(argv, {
   const pointer = buildPointer({
     tag,
     assetBaseUrl,
-    exportVersion: state.export_version,
+    exportVersion: exportVersion,
     manifest,
     shardReleases,
     shardsPublished: shardReleases.length > 0,
@@ -256,7 +248,7 @@ async function main() {
   await runAndPublish(process.argv.slice(2));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     for (const line of describeExecError(e)) console.error(line);
     process.exit(1);

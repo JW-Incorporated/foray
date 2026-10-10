@@ -38,9 +38,11 @@ import {
   parseOutcome, failedGate, divergentGate, stalledGate, stuckGate, livenessGate,
   watchVerdict, mainState, triggerDecision, triggerVerdict, selfBrokenVerdict, planIssue, renderIssueBody, run,
   GIT_LOG_FORMAT, ISSUE_MARKER, ISSUE_TITLE, GRACE_MINUTES, STALL_HOURS, STUCK_MINUTES,
-  RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS,
+  RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS, NATIVE_INPUT_FILES,
+  releaseBinaryJobs, deriveNativeInputs, issueCommands,
 } from "./watch-release.mjs";
-import { code, block, step } from "../mobile/workflow-yaml.mjs";
+import { code, block, step, prose, invocationsOf } from "../mobile/workflow-yaml.mjs";
+import { REQUIRED_CHECKS } from "../ci/pr-triage.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..", "..");
@@ -54,6 +56,8 @@ const GIT_LOG = fs.readFileSync(FIX("git-log-37554f6..a5f90c1.txt"), "utf8");
 const COMMITS = parseGitLog(GIT_LOG);
 const WATCH_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-watch.yml"), "utf8");
 const TRIGGER_WF = fs.readFileSync(path.join(ROOT, ".github/workflows/release-trigger.yml"), "utf8");
+/* CH2-34a: the fetches both workflows make live in one composite. */
+const FACTS_ACTION = fs.readFileSync(path.join(ROOT, ".github/actions/release-facts/action.yml"), "utf8");
 
 /* A small, explicit bundle for the hermetic tests. One test below reads the
  * REAL plan from prepare-webdir.mjs, which is what the workflows use. */
@@ -152,8 +156,13 @@ test("the allow-list: the bundle and the native inputs trigger, the bot-rewritte
     "mobile/ios/App/App/Info.plist": "release",
     ".github/workflows/release.yml": "release",
     ".github/actions/ios-archive/action.yml": "release",
+    // ios-archive's nested composite: the inject sequence that ships in the archive (CH2-16).
+    ".github/actions/ios-prepare/action.yml": "release",
     "tools/mobile/inject-splash.mjs": "release",
     "tools/mobile/prepare-webdir.mjs": "release",
+    // CH2-19: ios-archive runs it (xcode-container, signing-gate). It was
+    // pinned null here while the composite executed it every release.
+    "tools/mobile/ios-ci.mjs": "release",
     // What the manifest-autofix bot rewrites on nearly every PR (plan §3).
     "sw.js": null,
     "deploy-manifest.json": null,
@@ -169,11 +178,294 @@ test("the allow-list: the bundle and the native inputs trigger, the bot-rewritte
     "api/shows/[show_id]/episodes.ts": null,
     "vercel.json": null,
     ".github/workflows/ci.yml": null,
-    "tools/mobile/ios-ci.mjs": null,
+    "tools/mobile/android-playback.mjs": null,
   };
   for (const [file, tier] of Object.entries(cases)) {
     assert.equal(releaseTier(file, BUNDLE), tier, file);
   }
+});
+
+/* ═══════════ CH2-19 (T2-05): the native half is what the release RUNS ═══════════ */
+
+/* The three files that build, sign and upload the binary. This suite scans them
+ * ITSELF, more crudely than the module does (only `node tools/...` lines and
+ * their relative static imports), so the module's derivation is checked against
+ * an independent reading, not against its own output. */
+const RELEASE_RUNNER_FILES = [
+  ".github/workflows/release.yml",
+  ".github/actions/android-bundle/action.yml",
+  ".github/actions/ios-archive/action.yml",
+  ".github/actions/ios-prepare/action.yml",
+];
+
+/* release.yml's jobs that only decide WHETHER to ship, pinned by hand here so
+ * the module's structural reading (releaseBinaryJobs) is checked against an
+ * independent one (PR #1202 review). */
+const RELEASE_GATE_JOBS = ["guard", "ios-checks", "summary"];
+
+const releaseYml = () => code(fs.readFileSync(path.join(ROOT, ".github/workflows/release.yml"), "utf8"));
+
+/** The job ids under release.yml's `jobs:`, read crudely. */
+function releaseJobIds(text) {
+  return [...block(text, "jobs", 0).matchAll(/^ {2}([\w-]+):\s*$/gm)].map((m) => m[1]);
+}
+
+/** release.yml's job text with `gates` left out (every job when `gates` is []). */
+function releaseJobsText(gates = RELEASE_GATE_JOBS) {
+  const text = releaseYml();
+  return releaseJobIds(text).filter((id) => !gates.includes(id)).map((id) => block(text, id, 2)).join("\n");
+}
+
+function nodeScripts(text) {
+  return [...text.matchAll(/\bnode\s+(tools\/[\w./-]+\.mjs)\b/g)].map((m) => m[1]);
+}
+
+function independentlyScannedReleaseScripts() {
+  const found = new Set();
+  for (const f of RELEASE_RUNNER_FILES) {
+    const text = f.endsWith("release.yml") ? releaseJobsText() : code(fs.readFileSync(path.join(ROOT, f), "utf8"));
+    for (const script of nodeScripts(text)) found.add(script);
+  }
+  const queue = [...found];
+  while (queue.length) {
+    const f = queue.shift();
+    const src = fs.readFileSync(path.join(ROOT, f), "utf8");
+    for (const m of src.matchAll(/^\s*import\s[^;]*?from\s*["'](\.{1,2}\/[^"']+)["']/gm)) {
+      const dep = path.posix.normalize(path.posix.join(path.posix.dirname(f), m[1]));
+      if (!found.has(dep)) {
+        found.add(dep);
+        queue.push(dep);
+      }
+    }
+  }
+  return [...found].sort();
+}
+
+test("CH2-19: every script the release composites execute, and its static import closure, triggers a release", () => {
+  /* T2-05. The hand-kept list named five files; the composites run a dozen more,
+     so a fix to the Android signing include (wire-signing.mjs) or a regenerated
+     App Store icon never triggered a release, release-trigger said
+     NOTHING_TO_RELEASE and G3 never alarmed.
+     MUTATION: drop any derived file from NATIVE_INPUT_FILES (e.g. filter out
+     "tools/mobile/wire-signing.mjs") -> named here. */
+  const scanned = independentlyScannedReleaseScripts();
+  for (const must of [
+    "tools/mobile/wire-signing.mjs",
+    "tools/mobile/ios-ci.mjs",
+    "tools/mobile/release-ci.mjs",
+    "tools/mobile/version.mjs",
+    "tools/release/build-number.mjs",
+    "tools/release/upload-retry.mjs",
+    "tools/brand/png.mjs",
+    "tools/brand/build-icons.mjs",
+  ]) {
+    assert.ok(scanned.includes(must), `the independent scan no longer sees ${must}: it has gone blind`);
+  }
+  const missed = scanned.filter((f) => releaseTier(f, BUNDLE) !== "release");
+  assert.deepEqual(missed, [], "executed by a release composite, but not a release trigger");
+  // Read by path, not imported: inject-app-icon.mjs's DEFAULT_SOURCE.
+  assert.equal(releaseTier("icon-1024.png", BUNDLE), "release");
+});
+
+/* ═══════ PR #1202 review: a script only a GATE job runs ships nothing ═══════ */
+
+test("release.yml's binary jobs are read from its structure: ios and android use a composite, version feeds them; guard, ios-checks and summary are gates", () => {
+  /* MUTATION (run): drop releaseBinaryJobs' `needs.<id>.outputs` walk -> version
+     is no longer a binary job (and version.mjs / build-number.mjs drop out).
+     MUTATION (run): stop skipping `if:` lines -> version's
+     `if: needs.guard.outputs.allowed` pulls guard in. */
+  const text = releaseYml();
+  const { binary, jobs } = releaseBinaryJobs(text);
+  assert.deepEqual(binary, ["android", "ios", "version"]);
+  assert.deepEqual([...jobs.keys()].filter((id) => !binary.includes(id)).sort(), [...RELEASE_GATE_JOBS].sort());
+  assert.deepEqual([...jobs.keys()].sort(), releaseJobIds(text).sort(), "the module and this suite see the same jobs");
+  const composite = code(fs.readFileSync(path.join(ROOT, ".github/actions/ios-archive/action.yml"), "utf8"));
+  assert.equal(releaseBinaryJobs(composite), null, "a composite has no jobs: it is read whole");
+});
+
+test("a script only a gate job runs is not a release trigger: engine-ci.mjs (ios-checks), and a commit touching only it dispatches nothing", () => {
+  /* The trigger list was built from EVERY job, so an edit to a CI-gate script
+     spent a TestFlight and a Play upload on an identical app.
+     MUTATION (run): walk the whole workflow instead of the binary jobs
+     (`walked = code`) -> engine-ci.mjs is a native input -> red. */
+  const binaryJobScripts = nodeScripts(releaseJobsText());
+  const compositeScripts = RELEASE_RUNNER_FILES.slice(1)
+    .flatMap((a) => nodeScripts(code(fs.readFileSync(path.join(ROOT, a), "utf8"))));
+  const gateOnly = nodeScripts(releaseJobsText([]))
+    .filter((f) => !binaryJobScripts.includes(f) && !compositeScripts.includes(f));
+  assert.ok(gateOnly.includes("tools/ci/engine-ci.mjs"), `the gate jobs no longer run engine-ci.mjs: ${gateOnly}`);
+  for (const f of gateOnly) {
+    assert.ok(!NATIVE_INPUT_FILES.includes(f), `${f} runs only in a gate job but is a native input`);
+    assert.equal(releaseTier(f, BUNDLE), null, f);
+  }
+  const ciOnly = [{ sha: "c".repeat(40), committedAt: "2026-10-08T00:00:00Z", subject: "ci: release-checks wording",
+    files: ["tools/ci/engine-ci.mjs", "tools/ci/engine-ci.test.mjs"] }];
+  assert.deepEqual(pendingWork(ciOnly, BUNDLE).release, []);
+  const d = triggerDecision({ runs: [{ id: 1, run_number: 1, status: "completed", conclusion: "success", head_sha: "e".repeat(40),
+    created_at: "2026-10-07T00:00:00Z", updated_at: "2026-10-07T00:05:00Z" }], commits: ciOnly, bundle: BUNDLE,
+  mainRuns: [], mainStatus: { total_count: 1, state: "success" } });
+  assert.notEqual(d.code, "DISPATCH", d.reason);
+});
+
+test("binary inputs stay triggers: icons, plists, inject scripts, the version job's scripts, and what prepare-webdir imports", () => {
+  /* A gate job running a file does not take it off the list when a binary job
+     reaches it too: release-ci.mjs runs in `guard` AND in android-bundle's
+     play-gate. generate-manifest.mjs and the stamp modules it imports are in
+     prepare-webdir.mjs's import closure: they decide the bundle's data list,
+     build stamp and seed pointer, so they put bytes in the binary.
+     MUTATION (run): drop the feeder walk -> version.mjs and build-number.mjs
+     are null -> red. MUTATION (run): stop the import closure at tools/mobile/
+     -> generate-manifest.mjs is null -> red. */
+  for (const f of [
+    "icon-1024.png",
+    "tools/brand/4a-logo.png",
+    "mobile/ios/App/App/Info.plist",
+    "mobile/ios/App/App/PrivacyInfo.xcprivacy",
+    "tools/mobile/inject-app-icon.mjs",
+    "tools/mobile/inject-background-audio.mjs",
+    "tools/mobile/inject-privacy-manifest.mjs",
+    "tools/mobile/inject-splash.mjs",
+    "tools/mobile/inject-interlude.mjs",
+    "tools/mobile/release-ci.mjs",
+    "tools/mobile/version.mjs",
+    "tools/release/build-number.mjs",
+    "tools/ci/generate-manifest.mjs",
+    "tools/ci/forays-directory.mjs",
+    "tools/ci/catalogue-directory.mjs",
+    "tools/ci/crlf-guard.mjs",
+  ]) {
+    assert.equal(releaseTier(f, BUNDLE), "release", f);
+  }
+});
+
+test("the derivation on a synthetic workflow: a gate job's script is out, a feeder job's is in, a script both reach is in", () => {
+  /* MUTATION (run): walk every job -> tools/x/gate.mjs and report.mjs appear.
+     MUTATION (run): drop the feeder walk -> tools/x/ver.mjs disappears.
+     MUTATION (run): do not skip `if:` lines -> the gate job joins and gate.mjs
+     appears. */
+  const files = {
+    ".github/workflows/rel.yml": [
+      "on: workflow_dispatch",
+      "jobs:",
+      "  gate:",
+      "    runs-on: ubuntu-latest",
+      "    steps:",
+      "      - run: node tools/x/gate.mjs",
+      "      - run: node tools/x/shared.mjs check",
+      "  ver:",
+      "    needs: gate",
+      "    if: needs.gate.outputs.ok == 'true'",
+      "    steps:",
+      "      - run: node tools/x/ver.mjs",
+      "  build:",
+      "    needs: [ver, gate]",
+      "    steps:",
+      "      - uses: ./.github/actions/b",
+      "        with:",
+      "          v: ${{ needs.ver.outputs.v }}",
+      "  report:",
+      "    needs: [build]",
+      "    steps:",
+      "      - run: node tools/x/report.mjs \"${{ needs.build.outputs.state }}\"",
+    ].join("\n"),
+    ".github/actions/b/action.yml": "runs:\n  using: composite\n  steps:\n    - run: node tools/x/build.mjs\n      shell: bash\n",
+    "tools/x/gate.mjs": "export const g = 1;\n",
+    "tools/x/shared.mjs": "export const s = 1;\n",
+    "tools/x/ver.mjs": "export const v = 1;\n",
+    "tools/x/report.mjs": "export const r = 1;\n",
+    "tools/x/build.mjs": 'import { s } from "./shared.mjs";\n',
+  };
+  const read = (f) => files[f] ?? null;
+  assert.deepEqual(deriveNativeInputs(read, [".github/workflows/rel.yml"]), [
+    ".github/actions/b/action.yml",
+    ".github/workflows/rel.yml",
+    "tools/x/build.mjs",
+    "tools/x/shared.mjs",
+    "tools/x/ver.mjs",
+  ]);
+});
+
+test("a workflow runner with no job that makes the binary throws, never derives an empty list", () => {
+  /* A renamed composite or a restructured release.yml must fail this suite,
+     not quietly drop every native trigger.
+     MUTATION (run): delete the no-binary-job throw -> the list is just the
+     workflow file and this goes red. */
+  const read = (f) => (f === "w.yml" ? "jobs:\n  only-gate:\n    steps:\n      - run: node tools/x/gate.mjs\n" : null);
+  assert.throws(() => deriveNativeInputs(read, ["w.yml"]), /w\.yml has no job that makes the binary/);
+});
+
+test("CH2-19: fetch-models.mjs is NOT a native input — no build path runs it (release-gates.test.js pins that)", () => {
+  /* It was on the hand list from before CH-20. A change to it now ships
+     nothing, so it must not spend macOS minutes.
+     MUTATION: add "tools/mobile/fetch-models.mjs" back to the list -> red. */
+  assert.ok(!NATIVE_INPUT_FILES.includes("tools/mobile/fetch-models.mjs"));
+  assert.equal(releaseTier("tools/mobile/fetch-models.mjs", BUNDLE), null);
+});
+
+test("CH2-19 acceptance: a commit touching only wire-signing.mjs is release-relevant and the trigger dispatches it", () => {
+  const signingFix = [{ sha: "a".repeat(40), committedAt: "2026-10-07T00:00:00Z", subject: "fix(android): signing include",
+    files: ["tools/mobile/wire-signing.mjs"] }];
+  assert.deepEqual(pendingWork(signingFix, BUNDLE).release.map((c) => c.files), [["tools/mobile/wire-signing.mjs"]]);
+  const d = triggerDecision({ runs: [{ id: 1, run_number: 1, status: "completed", conclusion: "success", head_sha: "e".repeat(40),
+    created_at: "2026-10-06T00:00:00Z", updated_at: "2026-10-06T00:05:00Z" }], commits: signingFix, bundle: BUNDLE,
+  mainRuns: [], mainStatus: { total_count: 1, state: "success" } });
+  assert.equal(d.code, "DISPATCH", d.reason);
+});
+
+test("CH2-19: the derived list only ADDS — every file the old hand list named is still reached, through `npm run` and `npm ci --prefix`", () => {
+  /* release.yml is the walk's own root; prepare-webdir.mjs is reached only by
+     following mobile/package.json's `add:ios` -> `prepare:webdir`; minify.mjs is
+     its import; tools/mobile/package-lock.json pins the esbuild that minifies
+     the bundle (`deps:webdir` is `npm ci --prefix ../tools/mobile`).
+     MUTATION: stop following `npm run` in the derivation -> prepare-webdir.mjs
+     and minify.mjs are missing here. */
+  for (const f of [
+    ".github/workflows/release.yml",
+    "tools/mobile/prepare-webdir.mjs",
+    "tools/mobile/minify.mjs",
+    "tools/mobile/ios-embedded-frameworks.mjs",
+    "tools/mobile/package-lock.json",
+  ]) {
+    assert.ok(NATIVE_INPUT_FILES.includes(f), `${f} is no longer a native input`);
+  }
+});
+
+test("CH2-19 (T2-09): the headers tell ci-release-4's build-number story and the liveness threshold the code uses", () => {
+  /* The trigger's header said the build number came from `run_number`, which
+     ci-release-4 retired for tools/release/build-number.mjs; the watchdog's
+     header said 6h while TRIGGER_STALE_HOURS is 8.
+     MUTATION: put the run_number paragraph back in either header, or change
+     TRIGGER_STALE_HOURS without the header -> red. */
+  const flat = (text) => text.replace(/\r?\n[ \t]*(?:\*|#)?[ \t]?/g, " ").replace(/\s+/g, " ");
+  const sources = {
+    "watch-release.mjs": flat(fs.readFileSync(path.join(HERE, "watch-release.mjs"), "utf8").split("*/")[0]),
+    "release-trigger.yml": flat(prose(TRIGGER_WF)),
+  };
+  for (const [name, text] of Object.entries(sources)) {
+    assert.doesNotMatch(text, /build number from (?:the workflow's )?(?:lifetime )?`(?:github\.)?run_number`/, name);
+    assert.doesNotMatch(text, /gets a new `?run_number`?, (?:therefore|so) a new build number/, name);
+    assert.match(text, /tools\/release\/build-number\.mjs/, name);
+  }
+  assert.match(flat(prose(WATCH_WF)), new RegExp(`in ${TRIGGER_STALE_HOURS}h\\b`), "release-watch.yml's header states L's threshold");
+});
+
+test("every local composite release.yml reaches, nested ones included, is a release trigger", () => {
+  /* Walk `uses: ./.github/actions/<name>` from release.yml, transitively: a
+   * composite that another composite calls (ios-archive -> ios-prepare, CH2-16)
+   * builds the binary just as much. MUTATION: drop ".github/actions/ios-prepare/"
+   * from NATIVE_INPUT_PREFIXES -> red; make this walk non-transitive -> the
+   * ios-prepare assertion below goes red. */
+  const seen = new Set();
+  const queue = [".github/workflows/release.yml"];
+  while (queue.length) {
+    const src = fs.readFileSync(path.join(ROOT, queue.shift()), "utf8");
+    for (const m of src.matchAll(/uses:\s*\.\/(\.github\/actions\/[\w.-]+)/g)) {
+      const action = `${m[1]}/action.yml`;
+      if (!seen.has(action)) { seen.add(action); queue.push(action); }
+    }
+  }
+  assert.ok(seen.has(".github/actions/ios-prepare/action.yml"), `the walk reaches the nested composite: ${[...seen]}`);
+  for (const action of seen) assert.equal(releaseTier(action, new Set()), "release", action);
 });
 
 test("the allow-list reads prepare-webdir.mjs's REAL plan, so a new player file is covered the day it lands", async () => {
@@ -446,9 +738,16 @@ test("the watchdog's issue step runs after a failure too", () => {
 
 /** The `run: |` body of one workflow step, dedented — the text bash runs. */
 function runBody(wf, nameFragment) {
-  const lines = step(wf, nameFragment).split(/\r?\n/);
+  const text = step(wf, nameFragment);
+  assert.ok(text, `no step named "${nameFragment}"`);
+  return runBlock(text, nameFragment);
+}
+
+/** The first `run: |` block in a piece of YAML, dedented. */
+function runBlock(text, label = "the text") {
+  const lines = text.split(/\r?\n/);
   const at = lines.findIndex((l) => /^\s*run: \|\s*$/.test(l));
-  assert.ok(at >= 0, `step "${nameFragment}" has no run block`);
+  assert.ok(at >= 0, `${label} has no run block`);
   const body = [];
   let indent = null;
   for (const l of lines.slice(at + 1)) {
@@ -469,7 +768,7 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
    * never come back. MUTATION: drop the `if !` guard and this test fails at
    * the execFileSync, with gh's 404 as the reason. */
   const posix = (p) => p.replaceAll("\\", "/");
-  const script = runBody(WATCH_WF, "Fetch the release history")
+  const script = runBlock(FACTS_ACTION, "release-facts")
     .replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
   /* Under the repo, not os.tmpdir(): /tmp is noexec in some sandboxes, and the
    * shims must execute (the same call publish-digest.test.mjs made). */
@@ -506,7 +805,7 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
       '  console.error("jq shim: unexpected invocation " + process.argv.slice(2).join(" ")); process.exit(2);',
       "}",
       'for (const j of JSON.parse(require("fs").readFileSync(file, "utf8")).jobs) {',
-      '  if (j.name === "summary" && j.conclusion !== "skipped") console.log(j.id);',
+      '  if (j.name === "summary" && j.conclusion !== "skipped") process.stdout.write(String(j.id) + "\\n");',
       "}",
       "",
     ].join("\n"));
@@ -514,7 +813,7 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
     shim("sleep", "#!/bin/bash\nexit 0\n");
     const scriptPath = path.join(work, "fetch-step.sh");
     fs.writeFileSync(scriptPath, script);
-    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: "JW-Incorporated/foray" };
+    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: "JW-Incorporated/foray", FOR: "watch" };
     const out = execFileSync("bash", [scriptPath], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
     const calls = fs.readFileSync(path.join(fx, "calls.txt"), "utf8");
     assert.ok(calls.includes("/actions/jobs/101513086385/logs"), `the step never asked for the summary log:\n${calls}`);
@@ -536,6 +835,134 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
+});
+
+/** Runs a Fetch step's bash under shims and returns every `gh api` endpoint and
+ *  `git` call it made, in order, plus the files it left behind. */
+function fetchStepCalls(script, extraEnv = {}) {
+  const posix = (p) => p.replaceAll("\\", "/");
+  script = script.replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
+  const scratch = fs.mkdtempSync(path.join(ROOT, ".scratch-release-facts-"));
+  try {
+    const bin = path.join(scratch, "bin");
+    const work = path.join(scratch, "work");
+    const fx = path.join(scratch, "fx");
+    for (const d of [bin, work, fx]) fs.mkdirSync(d);
+    fs.writeFileSync(path.join(fx, "runs.json"), JSON.stringify({ workflow_runs: RUNS }));
+    fs.writeFileSync(path.join(fx, "jobs.json"), JSON.stringify({ jobs: JOBS_0906 }));
+    const shim = (name, body) => fs.writeFileSync(path.join(bin, name), body, { mode: 0o755 });
+    shim("gh", [
+      "#!/bin/bash",
+      '[ "$1" = "api" ] || { echo "mock gh: $*" >&2; exit 2; }',
+      `echo "gh $2" >> "${posix(fx)}/calls.txt"`,
+      'case "$2" in',
+      `  */workflows/release.yml/runs*) cat "${posix(fx)}/runs.json" ;;`,
+      `  */actions/runs/*/jobs) cat "${posix(fx)}/jobs.json" ;;`,
+      "  */actions/jobs/*/logs) echo 'the summary log' ;;",
+      `  */runs\\?event=schedule*) echo '{"workflow_runs":[]}' ;;`,
+      `  */actions/workflows/*.yml) echo '{"state":"active"}' ;;`,
+      `  */actions/runs\\?head_sha=*) echo '{"workflow_runs":[]}' ;;`,
+      `  */commits/*/status) echo '{"state":"success"}' ;;`,
+      `  */commits/*/check-runs*) echo '{"check_runs":[]}' ;;`,
+      '  *) echo "mock gh: unexpected endpoint $2" >&2; exit 2 ;;',
+      "esac",
+      "",
+    ].join("\n"));
+    shim("jq", [
+      "#!/usr/bin/env node",
+      "const [flag, filter, file] = process.argv.slice(2);",
+      'if (flag !== "-r" || !filter.includes(\'select(.name == "summary" and .conclusion != "skipped") | .id\')) {',
+      '  console.error("jq shim: unexpected invocation " + process.argv.slice(2).join(" ")); process.exit(2);',
+      "}",
+      'for (const j of JSON.parse(require("fs").readFileSync(file, "utf8")).jobs) {',
+      '  if (j.name === "summary" && j.conclusion !== "skipped") process.stdout.write(String(j.id) + "\\n");',
+      "}",
+      "",
+    ].join("\n"));
+    shim("git", [
+      "#!/bin/bash",
+      `echo "git $*" >> "${posix(fx)}/calls.txt"`,
+      '[ "$1" = "rev-parse" ] && echo "headsha0"',
+      '[ "$1" = "log" ] && printf \'\\036abc 2026-09-22T00:00:00Z a commit\\n\\nplayer/client.js\\n\'',
+      "exit 0",
+      "",
+    ].join("\n"));
+    shim("sleep", "#!/bin/bash\nexit 0\n");
+    fs.writeFileSync(path.join(work, "step.sh"), script);
+    const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: REPO_SLUG, ...extraEnv };
+    execFileSync("bash", ["step.sh"], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    return {
+      calls: fs.readFileSync(path.join(fx, "calls.txt"), "utf8").trim().split("\n"),
+      files: fs.readdirSync(work).filter((f) => f !== "step.sh").sort(),
+    };
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+const REPO_SLUG = "JW-Incorporated/foray";
+const LAST_SHIPPED = "a5f90c124098086fc2358d67c0e72045c3d33f65";
+const GIT_WALK = `git log --first-parent --diff-merges=first-parent --no-renames --name-only --format=${GIT_LOG_FORMAT} ${LAST_SHIPPED}..origin/main`;
+/* What each workflow's Fetch step asks GitHub and git for, in order — the
+ * shared half (release history, the waiting commits, the peer's pulse) and each
+ * side's own (the watchdog: the newest run's jobs and summary log; the trigger:
+ * main's runs, status and check runs at the head a dispatch would build). */
+const FETCHES = {
+  watch: {
+    calls: [
+      `gh repos/${REPO_SLUG}/actions/workflows/release.yml/runs?per_page=30`,
+      `gh repos/${REPO_SLUG}/actions/runs/35813248277/jobs`,
+      `gh repos/${REPO_SLUG}/actions/jobs/101513086385/logs`,
+      GIT_WALK,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-trigger.yml`,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-trigger.yml/runs?event=schedule&status=success&per_page=5`,
+    ],
+    files: ["commits.txt", "jobs.json", "peer-runs.json", "peer-workflow.json", "runs.json", "summary.log"],
+  },
+  trigger: {
+    calls: [
+      `gh repos/${REPO_SLUG}/actions/workflows/release.yml/runs?per_page=30`,
+      GIT_WALK,
+      "git rev-parse origin/main",
+      `gh repos/${REPO_SLUG}/actions/runs?head_sha=headsha0&per_page=50`,
+      `gh repos/${REPO_SLUG}/commits/headsha0/status`,
+      `gh repos/${REPO_SLUG}/commits/headsha0/check-runs?per_page=100`,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-watch.yml`,
+      `gh repos/${REPO_SLUG}/actions/workflows/release-watch.yml/runs?event=schedule&status=success&per_page=5`,
+    ],
+    files: ["commits.txt", "main-checks.json", "main-runs.json", "main-status.json", "peer-runs.json", "peer-workflow.json", "runs.json"],
+  },
+};
+
+test("CH2-34a: each workflow's Fetch step asks for the same facts, in the same order, and leaves the same files", () => {
+  /* Pinned against each workflow's own inline step before the move; now the
+     composite, run as each workflow calls it, must make exactly those calls.
+     MUTATION (RUN, red, restored): `for: trigger` in release-watch.yml — the
+     watchdog fetches main's state and no summary log. */
+  const norm = (r) => ({ ...r, calls: r.calls.map((c) => c.replace(`--format='${GIT_LOG_FORMAT}'`, `--format=${GIT_LOG_FORMAT}`)) });
+  for (const [wf, name] of [[WATCH_WF, "release-watch"], [TRIGGER_WF, "release-trigger"]]) {
+    const fetchStep = step(wf, "Fetch the release history");
+    assert.match(fetchStep, /uses: \.\/\.github\/actions\/release-facts\s*\n/, `${name}'s Fetch step is the composite`);
+    const role = /\n\s*for: (\w+)/.exec(fetchStep)?.[1];
+    assert.match(fetchStep, /token: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
+    const want = name === "release-watch" ? FETCHES.watch : FETCHES.trigger;
+    assert.deepEqual(norm(fetchStepCalls(runBlock(FACTS_ACTION, "release-facts"), { FOR: role })), want, `${name} (for: ${role})`);
+  }
+});
+
+test("CH2-34a: the release workflows carry no fetch helpers and no issue writes of their own — one composite, one --apply path", () => {
+  /* Acceptance: `grep -c 'retry()' .github/workflows/release-*.yml` is 0.
+     MUTATION (RUN, red, restored): put the old `case "$ACTION"` block with a
+     `gh issue edit` back into release-trigger.yml — the issue-edit sequence
+     can no longer change in one workflow and not the other. */
+  for (const [name, wf] of [["release-watch", WATCH_WF], ["release-trigger", TRIGGER_WF]]) {
+    assert.doesNotMatch(wf, /retry\(\)/, `${name} defines its own retry()`);
+    assert.doesNotMatch(code(wf), /\bfetch\(\)|\bgh issue\b|case "\$ACTION"|jq -r '\.action'/, `${name} writes the issue itself`);
+    assert.equal(code(wf).match(/uses: \.\/\.github\/actions\/release-facts/g)?.length, 1, `${name} calls release-facts once`);
+  }
+  assert.equal(code(FACTS_ACTION).match(/^\s*retry\(\) \{/gm)?.length, 1, "the composite carries THE retry()");
+  // The composite refuses a role it does not know rather than fetching half a picture.
+  assert.match(code(FACTS_ACTION), /\*\)\s+echo "::error::release-facts: input 'for' must be watch or trigger/);
 });
 
 /* ═════════════════════════════════ the issue ═════════════════════════════ */
@@ -582,6 +1009,138 @@ test("the issue body says what to do, and never tells anyone to re-run", () => {
   assert.match(body, /gh workflow run release\.yml --ref main -f bump=none/);
   assert.match(body, /Never "Re-run failed jobs"/);
   assert.doesNotMatch(body.replace(/Never "Re-run failed jobs"/, ""), /re-?run/i);
+});
+
+/* ═════════════ CH2-34a: the `gh` writes each planned action makes ═════════════
+ *
+ * docs/roadmap/code-health-2.md, card CH2-34a (T2-21). The planner above names
+ * ONE action; until this card each workflow turned it into `gh issue ...` calls
+ * with its own hand-kept `case` block. This table is what those blocks did,
+ * pinned per state, so moving the writes into one `--apply` path preserves
+ * every call: edit-then-reopen on a closed alarm (reopening notifies, and the
+ * body must be current when it does), close WITH the comment, and nothing at all
+ * for `none`. The body file's CONTENT is compared, not its path. */
+const CLOSE_COMMENT = "Every release gate is green again. Closing; this issue reopens itself if one goes red.";
+const ISSUE_STATES = [
+  // [state, verdict, issues, the watchdog's calls, the trigger's calls]
+  ["create", RED, [], [["issue", "create", "--repo", REPO_SLUG, "--title", ISSUE_TITLE, "--body-file", { body: renderIssueBody(RED) }]], "same"],
+  ["reopen", RED, [issue(12, "closed", ISSUE_MARKER)], [
+    ["issue", "edit", "12", "--repo", REPO_SLUG, "--body-file", { body: renderIssueBody(RED) }],
+    ["issue", "reopen", "12", "--repo", REPO_SLUG],
+  ], "same"],
+  ["edit", RED, [issue(7, "open", `${ISSUE_MARKER}\nold`)], [["issue", "edit", "7", "--repo", REPO_SLUG, "--body-file", { body: renderIssueBody(RED) }]], "same"],
+  ["none", RED, [issue(7, "open", renderIssueBody(RED))], [], "same"],
+  // Green with the alarm open: the watchdog closes it; the trigger may not.
+  ["close", ALL_GREEN, [issue(7, "open", ISSUE_MARKER)], [["issue", "close", "7", "--repo", REPO_SLUG, "--comment", CLOSE_COMMENT]], []],
+];
+
+/** A spawnSync stand-in: records every call, reads each --body-file back as
+ *  its content, and never runs anything. `fail` makes the nth call fail. */
+function fakeSpawn({ fail = null } = {}) {
+  const calls = [];
+  const spawn = (cmd, args) => {
+    calls.push([cmd, ...args.map((v, i) => (args[i - 1] === "--body-file" ? { body: fs.readFileSync(v, "utf8") } : v))]);
+    return { status: fail === calls.length ? 1 : 0 };
+  };
+  return { spawn, calls };
+}
+
+/** The `--mode issue` invocation one workflow's issue step makes, as argv, with
+ *  the shell's variables filled in the way the step fills them on a run that
+ *  produced a verdict. Read from the workflow text, so a flag dropped from one
+ *  workflow is a flag dropped here. */
+function issueArgv(wf, stepName, dir) {
+  const calls = invocationsOf(runBody(wf, stepName), "node").filter((l) => l.includes("--mode issue"));
+  assert.equal(calls.length, 1, `${stepName}: one --mode issue call`);
+  return calls[0]
+    .replace(/^node tools\/release\/watch-release\.mjs\s+/, "")
+    .replaceAll('"$VERDICT"', "verdict.json").replaceAll("$MAY_CLOSE", "--may-close")
+    .replaceAll('"$REPO"', REPO_SLUG)
+    .split(/\s+/)
+    .map((a) => (/\.(json|md)$/.test(a) ? path.join(dir, a) : a));
+}
+
+/** The `gh` calls one workflow's issue step makes, through the real CLI and a
+ *  fake spawn. */
+async function issueStepCalls(wf, stepName, verdict, issues) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
+  try {
+    fs.writeFileSync(path.join(dir, "verdict.json"), JSON.stringify(verdict));
+    fs.writeFileSync(path.join(dir, "issues.json"), JSON.stringify(issues));
+    const { spawn, calls } = fakeSpawn();
+    const res = await run(issueArgv(wf, stepName, dir), {}, { spawnSync: spawn });
+    assert.equal(res.code, 0, res.text);
+    assert.ok(calls.every((c) => c[0] === "gh"), "only gh is spawned");
+    return calls.map((c) => c.slice(1));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test("CH2-34a: each planned issue action makes the same `gh issue` calls from both workflows — create, reopen, edit, none, close", async () => {
+  /* Pinned against each workflow's own `case` block (executed under bash)
+     before the move; now each workflow's `--mode issue --apply` call, read
+     from its text, must make exactly those calls.
+     MUTATION (RUN, red, restored): issueCommands' reopen without the edit
+     first — the reopen notifies with last week's body. */
+  for (const [state, verdict, issues, watchCalls, triggerCalls] of ISSUE_STATES) {
+    assert.deepEqual(await issueStepCalls(WATCH_WF, "Keep the one issue in step", verdict, issues), watchCalls, `release-watch, ${state}`);
+    assert.deepEqual(await issueStepCalls(TRIGGER_WF, "Raise the alarm if the watchdog is down", verdict, issues),
+      triggerCalls === "same" ? watchCalls : triggerCalls, `release-trigger, ${state}`);
+  }
+});
+
+test("CH2-34a: --mode issue is a DRY RUN without --apply — it names the gh calls and makes none", async () => {
+  /* MUTATION (RUN, red, restored): treat a missing --apply as --apply in
+     applyIssue — a hand run of the CLI edits the live alarm. */
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
+  try {
+    fs.writeFileSync(path.join(dir, "verdict.json"), JSON.stringify(RED));
+    fs.writeFileSync(path.join(dir, "issues.json"), JSON.stringify([issue(12, "closed", ISSUE_MARKER)]));
+    const { spawn, calls } = fakeSpawn();
+    const res = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--may-close", "--repo", REPO_SLUG], {}, { spawnSync: spawn });
+    assert.equal(res.code, 0, res.text);
+    assert.deepEqual(calls, [], "no gh call without --apply");
+    assert.equal(res.plan.action, "reopen");
+    assert.match(res.text, /dry run/);
+    assert.match(res.text, /gh issue edit 12 --repo JW-Incorporated\/foray --body-file <body file>\n\s*gh issue reopen 12/);
+    // --apply with no repo anywhere is refused before any call.
+    const noRepo = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--apply"], {}, { spawnSync: spawn });
+    assert.equal(noRepo.code, 1);
+    assert.deepEqual(calls, []);
+    // GITHUB_REPOSITORY stands in for --repo, and with no --body-out the body
+    // goes through a scratch file that is gone afterwards.
+    const viaEnv = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--apply"], { GITHUB_REPOSITORY: REPO_SLUG }, { spawnSync: spawn });
+    assert.equal(viaEnv.code, 0, viaEnv.text);
+    assert.deepEqual(calls.map((c) => c.slice(1)), ISSUE_STATES.find(([s]) => s === "reopen")[3]);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("CH2-34a: a gh call that fails is exit 1 and stops the sequence; a close without --may-close is refused", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-issue-"));
+  try {
+    fs.writeFileSync(path.join(dir, "verdict.json"), JSON.stringify(RED));
+    fs.writeFileSync(path.join(dir, "issues.json"), JSON.stringify([issue(12, "closed", ISSUE_MARKER)]));
+    // The edit fails: the reopen must not follow (the shell's `set -e` did the same).
+    const { spawn, calls } = fakeSpawn({ fail: 1 });
+    const res = await run(["--mode", "issue", "--verdict", path.join(dir, "verdict.json"),
+      "--issues", path.join(dir, "issues.json"), "--apply", "--repo", REPO_SLUG], {}, { spawnSync: spawn });
+    assert.equal(res.code, 1);
+    assert.match(res.text, /gh issue edit` failed/);
+    assert.equal(calls.length, 1, "nothing after the failed call");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  /* The trigger's old `case` block refused `close` with an error; planIssue
+     never plans one without mayClose, and issueCommands refuses it anyway. */
+  const plan = { action: "close", number: 7, comment: "x" };
+  assert.throws(() => issueCommands(plan, { repo: REPO_SLUG, bodyFile: "b.md", mayClose: false }), /may not close/);
+  assert.throws(() => issueCommands({ action: "bogus" }, { repo: REPO_SLUG, bodyFile: "b.md", mayClose: true }), /unknown issue action/);
 });
 
 /* ═══════════════════════════════════ the CLI ═════════════════════════════ */
@@ -671,12 +1230,15 @@ test("both workflows run on a schedule, each in its OWN concurrency group, and w
     assert.match(block(wf, "on"), /schedule:\s*\n\s*- cron: "[^"]+"/);
     assert.match(block(wf, "concurrency"), /cancel-in-progress: false/);
     assert.match(wf, /fetch-depth: 0/, "G3 needs the full history");
-    const formats = [...code(wf).matchAll(/--format='([^']+)'/g)].map((m) => m[1]);
-    assert.deepEqual(formats, [GIT_LOG_FORMAT]);
+    assert.doesNotMatch(code(wf), /--format=/, "the commits walk lives in the release-facts composite");
   }
+  const formats = [...code(FACTS_ACTION).matchAll(/--format='([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(formats, [GIT_LOG_FORMAT]);
   // Each watches the other; the peer names must be the real file names.
-  assert.match(code(WATCH_WF), /workflows\/release-trigger\.yml\/runs\?event=schedule&status=success/);
-  assert.match(code(TRIGGER_WF), /workflows\/release-watch\.yml\/runs\?event=schedule&status=success/);
+  assert.match(code(FACTS_ACTION), /watch\)\s+PEER=release-trigger\.yml ;;/);
+  assert.match(code(FACTS_ACTION), /trigger\)\s+PEER=release-watch\.yml ;;/);
+  assert.match(code(FACTS_ACTION), /workflows\/\$PEER\/runs\?event=schedule&status=success/);
+  assert.ok(fs.existsSync(path.join(ROOT, ".github/workflows/release-watch.yml")));
   assert.ok(fs.existsSync(path.join(ROOT, ".github/workflows/release-trigger.yml")));
 });
 
@@ -691,7 +1253,7 @@ test("ci-release-6: an advisory ios-kit failure no longer holds the release", ()
   /* The measured case: runs 35950411353 and 35900753042 were `failure` with
      only ios-kit red. MUTATION: drop the `/ci.yml` skip in mainState -> the
      whole-run conclusion wins again and this is HOLD_MAIN_RED. */
-  const mainChecks = [check("backend", "success"), check("data-and-site", "success"), check("ios-kit", "failure"), check("playwright", "failure")];
+  const mainChecks = [...REQUIRED_CHECKS.map((n) => check(n, "success")), check("ios-kit", "failure"), check("playwright", "failure")];
   const d = triggerDecision({ runs: [DONE], commits: WAITING, bundle: BUNDLE, mainRuns: [CI_RUN_RED], mainStatus: {}, mainChecks });
   assert.equal(d.code, "DISPATCH", d.reason);
 });
@@ -716,7 +1278,7 @@ test("ci-release-6: the newest run of a required check wins (a green re-run clea
   const rerun = [
     check("backend", "failure", "completed", "2026-09-24T10:00:00Z"),
     check("backend", "success", "completed", "2026-09-24T11:00:00Z"),
-    check("data-and-site", "success"),
+    ...REQUIRED_CHECKS.filter((n) => n !== "backend").map((n) => check(n, "success")),
   ];
   assert.equal(mainState(CI_RAN, {}, rerun).state, "green");
 });
@@ -730,7 +1292,7 @@ test("ci-release-6: the required list IS pr-triage's REQUIRED_CHECKS, and the tr
   const all = REQUIRED_CHECKS.map((n) => check(n, "success"));
   assert.equal(mainState(CI_RAN, {}, all).state, "green");
   assert.equal(mainState(CI_RAN, {}, all.slice(1)).state, "building", "every required check is consulted");
-  assert.match(code(TRIGGER_WF), /commits\/\$HEAD_SHA\/check-runs\?per_page=100" main-checks\.json/);
+  assert.match(code(FACTS_ACTION), /commits\/\$HEAD_SHA\/check-runs\?per_page=100" main-checks\.json/);
   assert.match(code(TRIGGER_WF), /--main-checks main-checks\.json/);
 });
 
@@ -746,4 +1308,42 @@ test("ci-release-6: a BOT-MERGED head (no ci.yml run, so no required checks at a
   assert.equal(mainState([pages], {}, []).state, "green");
   // ...and once ci.yml DOES run on the head, a missing required check is building again.
   assert.equal(mainState([...CI_RAN, pages], {}, []).state, "building");
+});
+
+/* ═════════════ CH2-19 (T2-15): ONE definition of a red conclusion ═════════════ */
+
+test("CH2-19: a cancelled run on main's head and a cancelled required check are judged the same — red", () => {
+  /* T2-15. There were three definitions: RED_RUN (no `cancelled`), RED_JOB
+     (with it) and an ad-hoc `|| cancelled` for check runs. So a manually
+     cancelled pages.yml run on main's head read as "main green" while the same
+     cancel on a check run was "main red".
+     MUTATION: leave `cancelled` out of RED and add it back for check runs only
+     -> the run half is green here. */
+  const pagesCancelled = { name: "pages", event: "push", status: "completed", conclusion: "cancelled", path: ".github/workflows/pages.yml" };
+  assert.equal(mainState([pagesCancelled], {}).state, "red", "a cancelled run shipped nothing, so it is not green");
+  const checks = REQUIRED_CHECKS.map((n) => check(n, "success"));
+  checks[0] = check(checks[0].name, "cancelled");
+  assert.equal(mainState(CI_RAN, {}, checks).state, "red");
+});
+
+test("CH2-19: a workflow run, a required check run and a store job agree on every conclusion GitHub reports", () => {
+  /* One isRed(): whatever the conclusion, the three readers must not disagree.
+     MUTATION: add a conclusion to the check-run path only (or drop one from the
+     job path) -> the row for it differs. */
+  const conclusions = ["success", "failure", "cancelled", "timed_out", "startup_failure", "action_required", "neutral", "skipped", "stale"];
+  const runVerdict = (c) => mainState([{ name: "pages", event: "push", status: "completed", conclusion: c, path: ".github/workflows/pages.yml" }], {}).state === "red";
+  const checkVerdict = (c) => mainState(CI_RAN, {}, REQUIRED_CHECKS.map((n, i) => check(n, i === 0 ? c : "success"))).state === "red";
+  const jobVerdict = (c) => {
+    // iOS uploaded (job green), Android's job ended `c`: red means "the stores diverged".
+    const latest = { id: 1, run_number: 1, status: "completed", conclusion: "failure", created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:05:00Z" };
+    const g = divergentGate([latest], [{ name: "ios", conclusion: "success" }, { name: "android", conclusion: c }], null, "2026-10-02T00:00:00Z");
+    return g.code === "STORES_DIVERGED";
+  };
+  const table = conclusions.map((c) => [c, runVerdict(c), checkVerdict(c), jobVerdict(c)]);
+  for (const [c, byRun, byCheck, byJob] of table) {
+    assert.equal(byRun, byCheck, `${c}: run says red=${byRun}, check run says red=${byCheck}`);
+    assert.equal(byRun, byJob, `${c}: run says red=${byRun}, store job says red=${byJob}`);
+  }
+  assert.deepEqual(table.filter(([, red]) => red).map(([c]) => c).sort(),
+    ["action_required", "cancelled", "failure", "startup_failure", "timed_out"]);
 });

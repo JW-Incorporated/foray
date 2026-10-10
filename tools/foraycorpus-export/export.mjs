@@ -56,7 +56,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, resolve as resolvePath } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { assertNotInData } from "./catalog-adapter.mjs";
 import { buildShows } from "./catalogue.mjs";
@@ -66,6 +66,7 @@ import { buildEpisodes, showKeyOf, writeEpisodesFile } from "./episodes.mjs";
 import { buildManifest, computeSourceCounts, writeLatest } from "./manifest.mjs";
 import { computeOverlap } from "./overlap.mjs";
 import { pgRowSource } from "./pg-row-source.mjs";
+import { readJsonl } from "./rows.mjs";
 import { jsonlRowSource } from "./row-source.mjs";
 
 export const DEFAULT_CATALOG_PATH = join(ROOT, "data", "catalog.json");
@@ -149,11 +150,7 @@ function readJson(path, code) {
 
 /** Parsed rows of a JSONL file, or null when the file does not exist. */
 function readJsonlOrNull(path) {
-  if (!existsSync(path)) return null;
-  return readFileSync(path, "utf8")
-    .split(/\r?\n/)
-    .filter((line) => line.trim() !== "")
-    .map((line) => JSON.parse(line));
+  return existsSync(path) ? readJsonl(path) : null;
 }
 
 function writeJsonl(path, rows) {
@@ -312,7 +309,7 @@ async function main(argv) {
   await runExport(parseExportArgs(argv));
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).catch((e) => {
     console.error("FATAL:", e?.message ?? e);
     process.exit(1);

@@ -131,8 +131,9 @@ final class InterludePlayer: InterludePlaying {
     }
 
     struct Config {
-        /// `AudioSessionOwner.phase == .active`, read through a closure, as
-        /// AVDeck's and the speaker's are: one owner of the session.
+        /// The core's `state.session == .active` (`EngineSessionGate`,
+        /// CH3-19), read through a closure, as AVDeck's and the speaker's
+        /// are: one session phase.
         var sessionIsActive: () -> Bool
         /// Where the player's rows go: `EngineOutput.diag`.
         var diag: (DiagEntry) -> Void

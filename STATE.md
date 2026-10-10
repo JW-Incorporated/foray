@@ -16,11 +16,17 @@ docs/. Completed workstreams move to their plan doc's retro section.
 - **Lab app:** `ai.jwlabs.foura.lab` / "4a Lab", installed beside the real app; lab builds never write to production. Store setup: HUMAN-ACTIONS #142 (Apple), #143 (Google Play).
 - **Rule for other sessions:** never open a PR into main from redesign work.
 
+### 2026-10-06 — `health/ch-dai-12-part`: DAI-12, locate-step feasibility on one SYSK episode — harness, anchors and window plan done; ASR numbers PENDING
+
+- **Owned:** `docs/curation/locate-step-feasibility-2026-09.md` and `tools/transcribe/locate-feasibility.mjs` (a throwaway tool, not a suite; run-suites does not discover it). Card: `docs/roadmap/dai.md` §DAI-12.
+- **Done:** one SYSK episode ("Rope, yeah ROPE!", guid `7ed1fbda…`) and three verbatim anchors at 10/50/90 % of program time, checked against the publisher transcript. The anchors' JSON lives in the doc. The window plan: 734 s per anchor, 5.87 MB at 64 kbps and 11.74 MB at 128 kbps; both bitrates are ASSUMED and no probe was sent. The Q6 cellular reading is a PROPOSAL, not a ruling.
+- **Not measured:** time-to-locate and hit/miss per anchor. The PC has no `whisper-cli` and no `ffmpeg`, there is no Mac, and no SYSK audio was downloaded. The doc's §6 is the runbook: download the episode, `--check`, `--audio`, fill the table, delete the audio. Whoever runs it should do so when no other agent and no DAI-08 probe round are active.
+
 ### 2026-10-04 — corpus supply package (`docs/roadmap/corpus.md`, G-03, G-10…G-16, G-19)
 
-foray-db / transcript farm → R2 → foray. Owned paths: `tools/foraycorpus-export/**`, `data/dai-measurements.json`, `data/episode-topics.json`, `data/corpus-catalogue-pointer.json`. Other sessions route around them; the shared files are one `FLOORS` line each in `test/suite-integrity.test.js` and a paragraph each in `tools/foraycorpus-export/README.md`. On main today: nothing yet (PKG-01, the package scaffold, is PR #1001).
+foray-db / transcript farm → R2 → foray. Owned paths: `tools/foraycorpus-export/**`, `data/dai-measurements.json`, `data/episode-topics.json`, `data/corpus-catalogue-pointer.json`. Other sessions route around them; the shared files are one `FLOORS` line each in `test/suite-integrity.test.js` and a paragraph each in `tools/foraycorpus-export/README.md`. On main today: the exporter and its parts (PKG-01, 02, 04–09), the R2 client, show map, sync and sync-then-warm launcher (PKG-11…14), the corpus terms table and its launcher (PKG-26, 27), the breadth-shaped catalogue adapter (PKG-31), the Release + pointer publisher (PKG-32), the #279 drinks-wave candidates (PKG-35), the G-16 HUMAN-ACTIONS cards (PKG-39), and the weekly cron wrapper `tools/foraycorpus-export/weekly.mjs` (export → adapter → publish → pointer PR; HA-139). Not yet: PKG-03 (real fixtures), the field runs PKG-10/15, the DAI cards (PKG-16…25), topics (PKG-28…30), PKG-33/34, the waves (PKG-36…38) and PKG-40.
 - **Human gates (G-16), proceeding on the `docs/roadmap/README.md` proposed defaults (no founder ruling recorded):** the R2 read key, HUMAN-ACTIONS #138 (question 3: Joey issues Object Read on `foray-transcriptions`, kept at `~/.foray/r2-credentials`); the export host, #139 (question 2: weekly cron on hermes-vm as `wyatt_readonly`, GitHub Releases plus a pointer PR); the outbound probes, #140, closed as go (question 4: 2-byte ranged GETs under ForayBot, at least 1.2 s per host, never alongside Joey's crawler).
-- **What waits on them:** PKG-15 (first live sync) on #138; PKG-10 (live dry run) and PKG-32's cron on #139. The scaffolding (PKG-01…09, 11…14, 16, 17) needs none of them.
+- **What waits on them:** PKG-15 (first live sync) on #138; PKG-10 (live dry run) and the weekly cron on #139, whose step 4 is now the exact crontab line for `weekly.mjs`. Code that needs neither keeps landing without them.
 
 ### 2026-09-30 — `engine/ne-40`: NE-40, the stop-cause audit, the `.longFormAudio` trial (OFF) and the M3 drive script
 
@@ -3807,6 +3813,12 @@ and belongs with #133's live position, not behind a `tabindex` on a `role="img"`
 - **Branch:** `fix/drawer-and-close-never-stops`.
 
 ## Completed workstreams
+
+### DAI-08 — ADR-0008 pad probes, N=2 24 h+ apart, stamped onto segment-sources (2026-10-07 → 2026-10-09) — `data/ad-pad-probes-r1`, PR #1150
+
+- **What:** two `probe-ad-pad.mjs --all` rounds (2-byte ranged GETs through the politeness gate): day 1 finished 2026-10-07T03:16:21Z, day 2 ran 2026-10-09T16:35:45Z → 16:37:37Z. 52 rows each round, all 206, 0 × 429/403/404. Then `stamp-ad-pad.mjs` (`--check` prints nothing): 52 rows stamped PADDABLE, n=2; 51 at pad 0 s, `bbqc-moss-school` at 0.4 s (delivered 5,652 bytes over the declared length both days; used only by the draft Foray `grilling-history-2`). 0 refused. 46 rows skipped for no denominator (op3.dev 12, anchor.fm geology-bites 31, media.blubrry.com rewilding-earth 3).
+- **Files:** `data/ad-pad-probes.json` (104 probe rows), `data/segment-sources.json` (ad_* fields only). No `.mjs`, no `data/segments.json`.
+- **Released:** both files are free for other sessions again; DAI-09 (the D5 flip) can read this data once #1150 is on main.
 
 ### mobile bundle — minified code and compact JSON: 2,625 → 1,530 KB (2026-09-04, one PR, no follow-up) — `feature/mobile-bundle-minify`
 

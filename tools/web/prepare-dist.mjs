@@ -19,11 +19,19 @@
      node tools/web/prepare-dist.mjs --out X    # -> X/
 */
 
-import { mkdirSync, rmSync, cpSync, existsSync, statSync, readdirSync } from "node:fs";
+import { mkdirSync, rmSync, cpSync, existsSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative, sep } from "node:path";
 import { POINTER_PATH } from "../ci/forays-directory.mjs";
-import { playerSources, stampBuild, stampedProblems, stampTimestamp } from "../ci/generate-manifest.mjs";
+import {
+  SHELL,
+  fontSources,
+  playerSources,
+  runtimeData,
+  stampBuild,
+  stampedProblems,
+  stampTimestamp,
+} from "../ci/generate-manifest.mjs";
 import { resolveOutDir, USAGE } from "./out-dir.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -42,82 +50,37 @@ const OUT = outDir.out;
     failing loudly beats a slow deploy nobody looks at. */
 const MAX_MB = 8;
 
-/* The app shell. Kept explicit so a new root-level file has to be added here
-   deliberately rather than riding along. */
-const SHELL = [
-  "index.html",
-  "app.js",
-  "search-engine.js",
-  "styles.css",
-  "sw.js",
-  "manifest.json",
-  "icon-180.png",
-  "icon-512.png",
-];
+/* WHAT DIST SHIPS IS NOT DECIDED HERE (CH2-18; T2-03, T2-18 in
+   docs/roadmap/code-health-2.md). This file used to keep its own SHELL and
+   RUNTIME_DATA, "kept in sync by design" with tools/ci/generate-manifest.mjs's
+   and pinned equal by nothing. Now every list is generate-manifest's — the one
+   the deploy id hashes and the SW precaches — plus three web-only additions
+   (`sw.js`, `show-index.tsv` and WELL_KNOWN below), and
+   tools/ci/ship-lists.test.mjs pins the built dist to exactly that:
+     - the shell: generate-manifest's SHELL plus `sw.js` (the native bundle
+       refuses the worker; the manifest hashes the stamped copy separately);
+     - the brand faces (round-2 audit, perf-5: the Vercel dist once shipped
+       none and every @font-face 404'd): `fontSources()`;
+     - the player modules (#23/#24/#33; CH-07, P2-04): `playerSources()`, the
+       import closure of player/client.js — what index.html modulepreloads;
+     - the runtime data: `runtimeData()`, generate-manifest's RUNTIME_DATA plus
+       anything app.js `fetchJson`s that it lacks, so a new fetch can no longer
+       work on localhost and 404 in production; plus `show-index.tsv` (S-03,
+       docs/search-plan.md), served but deliberately neither precached nor
+       pinned — option B in tools/build-show-index.mjs's design comment. app.js
+       fetches it with a bare `fetch()` on the first focus of the search box.
 
-/* Exactly what app.js fetches at runtime — verified against its init(). Adding
-   a fetch without adding it here means a 404 in production and a working
-   localhost, which is the worst failure shape.
-
-   `forays.json`, `segments.json`, `segment-sources.json` and
-   `catalog-client.json` were missing from this list until M4 (#233
-   remainder): `tools/ci/generate-manifest.mjs`'s cross-check against
-   `dist/` (see below) caught that a Vercel deploy of this bundle would 404 on
-   every one of them, since `app.js`'s `init()` fetches all four. */
-const RUNTIME_DATA = [
-  "session.json",
-  "taxonomy.json",
-  "discover.json",
-  "semantic-index.json",
-  "item-tags.json",
-  "validated-links.json",
-  "forays.json",
-  "segments.json",
-  "segment-sources.json",
-  "catalog-client.json",
-  // Not fetched by app.js today, but small and already used by the backend
-  // curation path; harmless to ship and avoids a redeploy when the client
-  // starts reading them (personas surfacing, ladders — #25 and the R14 work).
-  "personas.json",
-  "ladders.json",
-  "dai-classification.json",
-  /* S-03 (docs/search-plan.md): the client-side show index. Listed HERE and
-     deliberately NOT in tools/ci/generate-manifest.mjs's RUNTIME_DATA — it is
-     served but not precached and not pinned, which is option B in
-     tools/build-show-index.mjs's design comment. app.js fetches it with a bare
-     `fetch()` on the first focus of the search box; a listener who never
-     searches never pays for it, and a deploy does not re-download it. */
-  "show-index.tsv",
-];
-
-/* The player modules (#23/#24/#33) are `playerSources` from
-   tools/ci/generate-manifest.mjs: the import closure of player/client.js
-   (CH-07, P2-04 in docs/roadmap/code-health.md). This used to be a second
-   directory walk, so dist shipped modules no page code imports; one list now
-   decides what dist ships, what the manifest hashes for the SW to precache and
-   what index.html modulepreloads. Test files are never listed. */
-
-/* The brand faces (round-2 audit, perf-5): the Vercel dist shipped none, so
-   the web deploy 404'd every @font-face and drew the fallback typeface for
-   good. Derived from the directory, so a new face cannot be forgotten. */
-function fontSources() {
-  const dir = join(ROOT, "fonts");
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((f) => f.endsWith(".woff2"))
-    .map((f) => join("fonts", f));
-}
-
-/* Files outside the app that ship anyway. EMPTY ON PURPOSE (round-3 audit,
-   security-11): docs/ux/foray-m3-prototype.html used to ride along because a
-   link to it had been shared, but it has no CSP, inline scripts and unescaped
-   innerHTML interpolation, and served from here it shares the app's origin,
-   where the Supabase session lives. A prototype that needs a public URL gets
-   its own origin. pages.yml removes docs/ux/*.html from the Pages artifact
+   NOTHING FROM OUTSIDE THE APP SHIPS (round-3 audit, security-11). There is no
+   "extras" list any more: docs/ux/foray-m3-prototype.html used to ride along
+   because a link to it had been shared, but it has no CSP, inline scripts and
+   unescaped innerHTML interpolation, and served from here it shares the app's
+   origin, where the Supabase session lives. A prototype that needs a public URL
+   gets its own origin. pages.yml removes docs/ux/*.html from the Pages artifact
    too (round-3 review, L4); until the HUMAN-ACTIONS #110 settings flip the
-   legacy branch deploy still serves it, so security-11 is closed on Vercel
-   and only partly on Pages until then. */
-const EXTRAS = [];
+   legacy branch deploy still serves it, so security-11 is closed on Vercel and
+   only partly on Pages until then. */
+const DIST_SHELL = [...SHELL, "sw.js"];
+const DIST_DATA = [...runtimeData(ROOT), "show-index.tsv"];
 
 /* The site-association files (#1071): what lets a shared
    https://foray-web-seven.vercel.app/#/<route> link open in the app instead of
@@ -145,11 +108,11 @@ mkdirSync(OUT, { recursive: true });
 const copied = [];
 const missing = [];
 
-for (const rel of [...SHELL, ...fontSources(), ...playerSources(ROOT), ...EXTRAS, ...WELL_KNOWN]) {
+for (const rel of [...DIST_SHELL, ...fontSources(), ...playerSources(ROOT), ...WELL_KNOWN]) {
   const r = copy(rel);
   (r.missing ? missing : copied).push(r);
 }
-for (const f of RUNTIME_DATA) {
+for (const f of DIST_DATA) {
   const r = copy(join("data", f));
   (r.missing ? missing : copied).push(r);
 }

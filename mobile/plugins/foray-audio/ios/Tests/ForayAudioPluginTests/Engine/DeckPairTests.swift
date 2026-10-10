@@ -24,6 +24,7 @@ final class DeckPairTests: XCTestCase {
         private(set) var sent: [DeckCommand] = []
         private(set) var adopted: [DeckToken] = []
         private(set) var invalidated = false
+        private(set) var rebuilds = 0
 
         init(_ name: String, journal: Journal) {
             self.name = name
@@ -34,7 +35,7 @@ final class DeckPairTests: XCTestCase {
             sent.append(command)
             journal.entries.append("\(name).\(command.logName)")
             switch command {
-            case let .load(_, _, url, startSec, _, _):
+            case let .load(_, _, url, startSec, _, _, _):
                 loadedURL = url
                 isReady = false
                 reading = DeckReading(positionSec: startSec, durationSec: nil, audible: false, ended: false)
@@ -60,10 +61,20 @@ final class DeckPairTests: XCTestCase {
             invalidated = true
         }
 
+        /// A media-services reset, as AVDeck takes it: a new player, holding
+        /// nothing.
+        func rebuild() {
+            rebuilds += 1
+            journal.entries.append("\(name).rebuild")
+            loadedURL = nil
+            isReady = false
+            reading = DeckReading()
+        }
+
         /// The load the pair issued on this deck most recently.
         var lastLoadToken: DeckToken? {
             for command in sent.reversed() {
-                if case let .load(token, _, _, _, _, _) = command { return token }
+                if case let .load(token, _, _, _, _, _, _) = command { return token }
             }
             return nil
         }
@@ -197,6 +208,26 @@ final class DeckPairTests: XCTestCase {
                                     deadlineClass: .line)
         pair.send(load)
         XCTAssertEqual(a.sent.last, load, "the missed load keeps its class on the player deck")
+    }
+
+    /// CH3-11 (R2-04): a prepared CLIP warms as a clip (`bounded`, the field
+    /// AVDeck's §16 continue/lapse is keyed on), so a warm load that runs into
+    /// its deadline is held exactly as the clip's own load would be; and a
+    /// load that misses the warm one reaches the player deck still bounded.
+    /// TO SEE IT FAIL: drop `bounded:` from the standby's `.load` in `prepare`.
+    func testAPreparedClipWarmsTheStandbyBounded() {
+        pair.send(.load(token: 1, itemId: "a", url: urlA, startSec: 100, preciseTiming: true))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        pair.send(.prepare(itemId: "f1#1", url: urlB, startSec: 300, preciseTiming: false, bounded: true))
+        let warm = b.lastLoadToken ?? 0
+        XCTAssertLessThan(warm, 0)
+        XCTAssertEqual(b.sent.last, .load(token: warm, itemId: "f1#1", url: urlB, startSec: 300, preciseTiming: false,
+                                          bounded: true))
+        let load = DeckCommand.load(token: 2, itemId: "f1#2", url: urlC, startSec: 40, preciseTiming: false,
+                                    bounded: true)
+        pair.send(load)
+        XCTAssertEqual(a.sent.last, load, "the missed load keeps its bound on the player deck")
     }
 
     // MARK: - NE-45s: a narration line is an ordinary deck item
@@ -356,6 +387,51 @@ final class DeckPairTests: XCTestCase {
         XCTAssertTrue(rows.contains { $0.kind == "prepare" && $0[field: "reason"] == .string("not-ready") })
     }
 
+    /// R2-07 (CH3-13): a warm load still IN FLIGHT at its own boundary is a
+    /// not-ready miss, and the player deck then loads THE SAME FILE cold. The
+    /// standby is let go BEFORE that cold load, so one URL is never fetched
+    /// by two items at once on a slow car link (the load the listener waits
+    /// through would share the link with a fetch nobody will play). A ready
+    /// warm load is still promoted with nothing unloaded
+    /// (`testAHitPromotesTheStandbyInHandoverOrderAndAnswersAtOnce`'s journal).
+    /// TO SEE IT FAIL: remove the standby's `.unload` from `load`'s miss path
+    /// (today's code: the standby keeps its item attached and fetching).
+    func testANotReadyMissOfTheSameFileLetsTheStandbyGoBeforeTheColdLoad() {
+        playingWithPrepare(readyStandby: false)
+        journal.entries.removeAll()
+        pair.send(.load(token: 2, itemId: "b", url: urlB, startSec: 300, preciseTiming: true))
+        XCTAssertTrue(pair.handoverLog.contains("promotion:not-ready"))
+        XCTAssertEqual(journal.entries, ["B.unload", "A.load"], "the standby lets go, then the player loads cold")
+        XCTAssertNil(b.loadedURL, "the standby no longer holds the file the player is fetching")
+        XCTAssertEqual(a.lastLoadToken, 2, "the ordinary load, on the player")
+        XCTAssertEqual(pair.activeIndex, 0)
+        XCTAssertEqual(pair.swaps, 0)
+        XCTAssertEqual(prepared(2)?.hit, false, "still reported to the core as a miss")
+        XCTAssertEqual(prepared(2)?.stages, [.attach])
+    }
+
+    /// The unload is only for the file the player is about to fetch: a
+    /// not-ready warm load at a boundary that loads SOMETHING ELSE (a skip)
+    /// keeps its item, and a warm load that FAILED is not unloaded either
+    /// (the card's minimal fix is the `.notReady` miss of the same URL).
+    /// TO SEE IT FAIL: drop the `held.warm.url == url` test or the
+    /// `.notReady` test from the unload's condition.
+    func testOnlyANotReadyMissOfTheSameFileUnloadsTheStandby() {
+        playingWithPrepare(readyStandby: false)
+        pair.send(.load(token: 2, itemId: "c", url: urlC, startSec: 10, preciseTiming: true))
+        XCTAssertTrue(pair.handoverLog.contains("promotion:not-ready"))
+        XCTAssertEqual(b.count("unload"), 0, "a skip elsewhere is not a second fetch of the warm file")
+        XCTAssertEqual(b.loadedURL, urlB)
+
+        pair.send(.prepare(itemId: "d", url: urlA, startSec: 50))
+        let warm = b.lastLoadToken ?? 0
+        b.onEvent?(.failed(token: warm, message: "HTTP 404"))
+        pair.send(.load(token: 3, itemId: "d", url: urlA, startSec: 50, preciseTiming: true))
+        XCTAssertTrue(pair.handoverLog.contains("promotion:failed"))
+        XCTAssertEqual(b.count("unload"), 0, "a failed warm load is not the not-ready miss")
+        XCTAssertEqual(a.lastLoadToken, 3)
+    }
+
     /// Readiness is re-asserted at the boundary: a warm deck at the wrong
     /// in-point, or one that drifted off it, is never promoted.
     func testAWrongOffsetOrADriftedWarmDeckIsNotPromoted() {
@@ -428,6 +504,30 @@ final class DeckPairTests: XCTestCase {
         XCTAssertEqual(b.count("unload"), 1)
         pair.send(.load(token: 2, itemId: "b", url: urlB, startSec: 300, preciseTiming: true))
         XCTAssertEqual(a.lastLoadToken, 2, "nothing warm survives a release")
+    }
+
+    /// A media-services reset (CH3-03, R2-03) rebuilds BOTH decks' players,
+    /// and the warm load dies with the standby's: a late `.ready` of the
+    /// discarded warm load reaches nothing, and the next load of the item it
+    /// prepared is an ordinary load on the deck with the player role, never a
+    /// promotion of a dead standby nor a "miss" of a prepare the reset
+    /// already discarded.
+    /// TO SEE IT FAIL: forward `rebuild()` to the active deck only (B is
+    /// never rebuilt), or drop `warmLoad = nil` from it (the late ready warms
+    /// it, and the load promotes it: a swap and `.prepared(hit: true)`).
+    func testARebuildReachesBothDecksAndDropsTheWarmLoad() {
+        let warm = playingWithPrepare(readyStandby: false)
+
+        pair.rebuild()
+
+        XCTAssertEqual(a.rebuilds, 1)
+        XCTAssertEqual(b.rebuilds, 1, "the standby deck's player died too")
+        b.becomeReady(warm, atSec: 300)
+        events.removeAll()
+        pair.send(.load(token: 2, itemId: "b", url: urlB, startSec: 300, preciseTiming: true))
+        XCTAssertEqual(a.lastLoadToken, 2, "the load runs on the deck with the player role")
+        XCTAssertEqual(pair.swaps, 0)
+        XCTAssertEqual(events, [], "nothing of the discarded warm load reaches the core")
     }
 
     /// Teardown reaches both decks, and nothing is routed afterwards.

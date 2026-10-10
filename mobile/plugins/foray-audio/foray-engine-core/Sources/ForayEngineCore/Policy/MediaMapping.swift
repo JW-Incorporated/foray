@@ -509,14 +509,44 @@ public enum MediaMapping {
         public func isEnabled(_ command: RemoteCommand) -> Bool { enabled.contains(command) }
     }
 
-    /// `commandAvailability(snapshot)`: NP-5.
+    /// The output port types on which a next/previous press exists WITHOUT
+    /// LOOKING: wired and Bluetooth headsets, a car (CarPlay's `CarAudio`, a
+    /// Bluetooth head unit's A2DP/HFP), USB and AirPlay receivers with their
+    /// own transport. The built-in speaker (`Speaker`) and receiver
+    /// (`Receiver`) are not on it: there the only surface is the lock screen,
+    /// which draws ⏮/⏭ over the founder's ↺15/30↻ the moment the track pair is
+    /// enabled (docs/DECISIONS.md 2026-09-23, founder question 1).
+    /// `AVAudioSession.Port` raw values, spelled out because the core imports
+    /// no AVFoundation; `ForayAudioPluginTests` holds each one to the SDK's
+    /// constant.
+    public static let trackRoutePortTypes: Set<String> = [
+        "Headphones", "BluetoothA2DPOutput", "BluetoothHFP", "BluetoothLE", "CarAudio", "USBAudio", "AirPlay",
+    ]
+
+    /// Whether `nextTrack`/`previousTrack` may be enabled on this route: true
+    /// when ANY output is a port from `trackRoutePortTypes`. ONE rule for both
+    /// iOS lanes (CH3-10): the legacy `ForayAudioPlugin` and the engine host
+    /// both ask it, and hand the answer to `commandAvailability` (the engine)
+    /// or AND it into their own enablement (the legacy lane).
+    public static func trackCommandsAllowed(portTypes: [String]) -> Bool {
+        portTypes.contains { trackRoutePortTypes.contains($0) }
+    }
+
+    /// `commandAvailability(snapshot, trackRoute:)`: NP-5.
     ///
     /// - The episode surface is the page's `episodeMediaSurface`: play, pause,
     ///   the seek pair and a scrub always; next / previous exactly when the
-    ///   engine has a neighbour (`canNext` / `canPrevious`). It goes through
-    ///   `installedActions`, the SAME table the `media-episode` fixtures pin,
-    ///   so a button the page would not offer is a button the engine does not
-    ///   enable.
+    ///   engine has a neighbour (`canNext` / `canPrevious`) AND the route has
+    ///   a track button (`trackRoute`, the 2026-09-23 ruling: "the track pair
+    ///   only where a track button exists"; on the speaker the lock screen
+    ///   keeps ↺15/30↻ whatever Up Next holds). iOS passes
+    ///   `trackCommandsAllowed(portTypes:)` of the current route; Android
+    ///   passes true, because its notification and Android Auto draw both
+    ///   pairs side by side (code-health-3 founder question 3, on its default;
+    ///   #1163). It goes through `installedActions`, the SAME table the
+    ///   `media-episode` fixtures pin, so a button the page would not offer is
+    ///   a button the engine does not enable; the `availability-*` cases of
+    ///   that family pin this function itself.
     /// - `stop` is registered and ALWAYS disabled (plan §4.5, T-7): a remote
     ///   stop is a pause, and a car's stop must never tear the player down.
     ///   It is left out of the surface, so the table cannot install it.
@@ -528,14 +558,15 @@ public enum MediaMapping {
     ///   interrupted player keeps every target (NP-9), and so does an ended
     ///   episode, whose play button resumes it as the page's does.
     public static func commandAvailability(_ snapshot: CommandSnapshot,
-                                           steps: SeekSteps = SeekSteps()) -> CommandAvailability {
+                                           steps: SeekSteps = SeekSteps(),
+                                           trackRoute: Bool) -> CommandAvailability {
         let finished = snapshot.mode == .unloaded || (snapshot.mode == .foray && snapshot.ended)
         guard !finished else {
             return CommandAvailability(enabled: [], skipBackwardIntervalSec: steps.backwardSec,
                                        skipForwardIntervalSec: steps.forwardSec, clearsNowPlaying: true)
         }
-        let surface = Surface(play: true, pause: true, stop: false, next: snapshot.canNext,
-                              previous: snapshot.canPrevious, seekBy: true, seekTo: true)
+        let surface = Surface(play: true, pause: true, stop: false, next: snapshot.canNext && trackRoute,
+                              previous: snapshot.canPrevious && trackRoute, seekBy: true, seekTo: true)
         let installed = Set(installedActions(surface))
         var enabled: Set<RemoteCommand> = []
         if installed.contains(.play) { enabled.insert(.play) }

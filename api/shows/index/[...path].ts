@@ -1,15 +1,10 @@
 import { applyCors } from "../../_lib/cors";
-import { fetchIndexAsset, INDEX_CACHE_CONTROL } from "../../_lib/showsIndexRelease";
-
+import { type ApiRequest, type ApiResponse } from "../../_lib/params";
 /* The allowlist, the pointer, the bounded fetch and the gunzip live in
-   api/_lib/showsIndexRelease.ts, shared with the episodes endpoint's `pi:`
-   lookup (pi-episodes-cold-open). Re-exported so this endpoint's own suites
-   keep reaching them through it. */
-export {
-  resolveUpstreamAsset, isGzippedAsset, shardKeyFromRequestPath, resolveShardRelease, IndexPathError,
-  UPSTREAM_TIMEOUT_MS, MAX_UPSTREAM_BYTES, MAX_DECOMPRESSED_BYTES, INDEX_CACHE_CONTROL,
-  _setUpstreamTimeoutMsForTests, _setPointerPathForTests,
-} from "../../_lib/showsIndexRelease";
+   api/_lib/showsIndexRelease.ts, shared with the per-show resolver's `pi:`
+   lookup (pi-episodes-cold-open); this endpoint's suites import them from
+   there. */
+import { fetchIndexAsset, INDEX_CACHE_CONTROL } from "../../_lib/showsIndexRelease";
 
 /**
  * GET /api/shows/index/<manifest.json|top.json|id-map.json|changed.json|shards/<pp>.json>
@@ -26,16 +21,17 @@ export {
  * matching S-05's own rule that a `connect-src` widening lands with the code
  * that needs it, never in advance.
  *
- * WHERE THE RELEASE LIVES: `data/shows-index-pointer.json`, written by
+ * WHERE THE RELEASE LIVES: `data/shows-index-pointer.json`, committed by
  * S-04b's `tools/shows/run-and-publish.mjs` (`asset_base_url`, a stable
- * `.../releases/download/<tag>` URL — see `tools/shows/publish-release.mjs`).
- * That pipeline is currently failing closed on `SHARD_TOO_LARGE` (the p95
- * shard-size budget in `tools/shows/config.mjs`), so no pointer is committed
- * yet — this endpoint answers 404 `{ available: false }` in that case, the
- * same "absence is a real state, never a 500" rule every other endpoint in
- * this directory follows (see `api/shows/search.ts`'s degraded branch). That
- * is a separate, tracked bug in S-04a/b's own files (see this card's Fable
- * ruling), not something this proxy works around.
+ * `.../releases/download/<tag>` URL — see `tools/shows/publish-release.mjs`;
+ * shards on the `shard_releases` batch releases). A pointer has been on
+ * `main` since 2026-09-15 (#720), re-pointed 2026-10-05 (#1012) with
+ * `shards_published: true`. So a 404 `{ available: false }` from this
+ * endpoint is no longer the steady state: it means the pointer was removed,
+ * or the shard key falls outside every `shard_releases` range — an incident
+ * to look at, still answered as 404 rather than a 500 under the "absence is
+ * a real state" rule every endpoint here follows (see `api/shows/search.ts`'s
+ * degraded branch).
  *
  * AN ALLOWLISTING PROXY, NOT AN OPEN ONE — the whole reason this file is
  * more than three lines. `req.query.path` is client-controlled, so every
@@ -74,18 +70,6 @@ export {
  * and this file's route pattern use to distinguish a shard request from
  * the four top-level files; only the UPSTREAM asset name drops it.
  */
-
-interface ApiRequest {
-  method?: string;
-  query: Record<string, string | string[] | undefined>;
-  headers: Record<string, string | string[] | undefined>;
-}
-interface ApiResponse {
-  status(code: number): ApiResponse;
-  json(body: unknown): void;
-  setHeader(name: string, value: string): void;
-  end(): void;
-}
 
 /** Every value of a catch-all parameter: Vercel hands `[...path]` over as the
  * path segments. Deliberately NOT `_lib/params.ts`'s `firstParam`, which

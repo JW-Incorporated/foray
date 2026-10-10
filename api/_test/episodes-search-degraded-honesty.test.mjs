@@ -2,7 +2,8 @@
 // (issue #560 item 1's second half).
 //
 // WHY THIS EXISTS
-// `searchWithinShow()` resolves a show_id to a feed URL via `loadShowMeta()`,
+// `searchWithinShow()` resolves a show_id to a feed URL via
+// `api/_lib/showCatalog.ts`'s `showMetaById()` (once `loadShowMeta()`, CH2-24),
 // which reads `data/catalog.json` + `data/catalog-breadth.json` off disk —
 // the same two files `api/_test/vercel-bundle.test.mjs` guards the Vercel
 // bundling of. Before this test, `loadShowMeta()` treated "both catalog
@@ -14,17 +15,18 @@
 // infrastructure failure disguises itself as an ordinary, unremarkable
 // result instead of surfacing as the operational problem it actually is.
 //
-// `loadShowMeta()` now throws `ShowMetaFilesUnavailableError` when NEITHER
-// required file could be read, and `searchWithinShow()` reports that
-// distinctly (see api/episodes/search.ts). This suite drives that path
-// end-to-end through the real handler, using `_setShowMetaRootForTests()` to
+// `showMetaById()` now throws `CatalogFilesUnavailableError` when the pair
+// cannot be read (either file: showCatalog.ts's one signal), and
+// `searchWithinShow()` reports that distinctly (see api/episodes/search.ts).
+// This suite drives that path end-to-end through the real handler, using
+// `_setCatalogRootForTests()` to
 // point the lookup at a directory with no `data/` at all — never touching
 // the real `data/` directory.
 //
-// MUTATION NOTE: this suite goes red if `loadShowMeta()` goes back to
+// MUTATION NOTE: this suite goes red if `showMetaById()` goes back to
 // swallowing a fully-missing catalog pair into a plain `null` (the handler
 // would then report the misleading `unknown show_id: ...` message instead of
-// an honest one), or if the handler stops surfacing `ShowMetaFilesUnavailableError`
+// an honest one), or if the handler stops surfacing `CatalogFilesUnavailableError`
 // as `degraded: true` + a non-empty `error` string, or degrades the response
 // shape (extra/missing keys) between the healthy and unavailable cases.
 import { test } from "node:test";
@@ -33,8 +35,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as searchModule from "../episodes/search.ts";
-import { _setShowMetaRootForTests } from "../episodes/search.ts";
-import { _resetShowIdMapCacheForTests } from "../_lib/showIdMap.ts";
+import { _setCatalogRootForTests } from "../../backend/src/catalog/breadthCatalog.ts";
 
 const handler = typeof searchModule.default === "function" ? searchModule.default : searchModule.default.default;
 
@@ -54,17 +55,19 @@ function mockRes() {
 
 /* `total` and `capped` joined the healthy show-scoped payload in audit round 2
    (honesty-11: "Showing 10 of 38"); the unavailable case carries them too, so
-   the shape is still one shape. */
-const RESPONSE_KEYS = ["query", "show", "episodes", "source", "total", "capped", "degraded", "error"].sort();
+   the shape is still one shape. `stale` joined every path in code-health-2
+   CH2-38 (A1-05): a show-scoped answer read from a kept feed copy says so, as
+   the per-show list does. MUTATION: drop `stale` from the unavailable answer
+   in api/episodes/search.ts: the key sets differ. */
+const RESPONSE_KEYS = ["query", "show", "episodes", "source", "total", "capped", "degraded", "stale", "error"].sort();
 
 test("show-scoped search: both catalog files unreadable reports an honest degraded failure, never a false-empty success", async (t) => {
-  _resetShowIdMapCacheForTests();
   const emptyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "foray-showmeta-missing-"));
   t.after(() => {
-    _setShowMetaRootForTests(); // restore the real repo root for any test that runs after this one
+    _setCatalogRootForTests(); // restore the real repo root for any test that runs after this one
     fs.rmSync(emptyRoot, { recursive: true, force: true });
   });
-  _setShowMetaRootForTests(emptyRoot);
+  _setCatalogRootForTests(emptyRoot);
 
   const req = { method: "GET", query: { q: "alpha", show: "lex-fridman-podcast" }, headers: {} };
   const res = mockRes();
@@ -90,9 +93,8 @@ test("show-scoped search: both catalog files unreadable reports an honest degrad
 });
 
 test("show-scoped search: a genuinely unknown show_id (catalog files ARE readable) keeps its original, distinct message", async (t) => {
-  _resetShowIdMapCacheForTests();
-  t.after(() => _setShowMetaRootForTests());
-  _setShowMetaRootForTests(); // explicit: use the real repo root, catalog files present
+  t.after(() => _setCatalogRootForTests());
+  _setCatalogRootForTests(); // explicit: use the real repo root, catalog files present
 
   const req = { method: "GET", query: { q: "alpha", show: "definitely-not-a-real-show-xyz-560" }, headers: {} };
   const res = mockRes();

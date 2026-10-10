@@ -106,13 +106,15 @@ final class NarrationSeamTests: XCTestCase {
         var reading: DeckReading { pair.reading }
 
         func send(_ command: DeckCommand) {
-            if case let .load(token, itemId, _, _, _, _) = command {
+            if case let .load(token, itemId, _, _, _, _, _) = command {
                 loads.append((NarrationSeamTests.nowMs(), token, itemId))
             }
             pair.send(command)
         }
 
         func invalidate() { pair.invalidate() }
+
+        func rebuild() { pair.rebuild() }
 
         /// The core token of the last load of `itemId`.
         func token(of itemId: String) -> DeckToken? { loads.last { $0.itemId == itemId }?.token }
@@ -142,8 +144,13 @@ final class NarrationSeamTests: XCTestCase {
 
         init(lineSec: Double) { self.lineSec = lineSec }
 
+        /// The tape's timing runs no interruption: the core hears what it
+        /// heard before CH3-19 gave the seam a reading (nothing).
+        var reading: NarratorReading { .unknown }
+
         func speak(text: String, voiceId: String?) {}
         func stopSpeaking() { sounding = false }
+        func rebuild() { sounding = false }
 
         func narrate(_ command: NarrationCommand) {
             switch command {

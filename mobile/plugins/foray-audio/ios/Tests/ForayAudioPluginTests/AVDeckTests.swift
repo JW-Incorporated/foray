@@ -631,50 +631,92 @@ final class AVDeckTests: XCTestCase {
         diags.filter { $0.kind == "deck" && $0[field: "kind"] == .string(kind) }
     }
 
-    /// DEADLINE, THEN A RETRY THAT KEEPS THE ASSET. A precise (Foray clip)
-    /// load that passed its deadline while progressing is still attached when
-    /// `.deadlineExceeded` is delivered, and the core's same-source retry in
-    /// that turn CONTINUES it: the same AVPlayerItem, a `deck kind=continue`
-    /// row naming both tokens, no new `attach`, and a fresh 20 s deadline. If
-    /// that one passes too and nobody continues it, the item is detached as
-    /// before. TO SEE IT FAIL: detach before the emit in `deadlineFired`
-    /// (`currentItem` is nil, and the retry attaches cold), or skip
-    /// `continuesInFlight` in `load`.
+    /// DEADLINE, THEN A RETRY THAT KEEPS THE ASSET. A Foray clip's load
+    /// (`bounded`) that passed its deadline while progressing is still
+    /// attached when `.deadlineExceeded` is delivered, and the core's
+    /// same-source retry in that turn CONTINUES it: the same AVPlayerItem, a
+    /// `deck kind=continue` row naming both tokens, no new `attach`, and a
+    /// fresh 20 s deadline. If that one passes too and nobody continues it,
+    /// the item is detached as before. It holds for a precise clip AND for an
+    /// approximate one (CH3-11, R2-04: P-7's CBR exemption ships on, so most
+    /// clips load approximate, and keying §16 on precise timing sent their
+    /// retry back to byte zero: the drive's `load-deadline` loop).
+    /// TO SEE IT FAIL: detach before the emit in `deadlineFired`
+    /// (`currentItem` is nil, and the retry attaches cold), skip
+    /// `continuesInFlight` in `load`, or key the lapse and the continue on
+    /// precise timing again (the approximate clip detaches).
     func testAProgressingClipPastItsDeadlineIsContinuedByASameSourceRetry() throws {
+        for precise in [true, false] {
+            events.removeAll()
+            diags.removeAll()
+            let timers = VirtualDeckTimers()
+            deck = stalledDeck(progress: true, timers: timers)
+            let never = try XCTUnwrap(URL(string: "foray-never://deck.test/clip-\(precise).mp3"))
+            deck.onEvent = { [unowned self] event in
+                self.events.append(event)
+                // The core's §16 answer to the first deadline, in the same turn.
+                if case .deadlineExceeded(7, _, _) = event {
+                    self.deck.send(.loadURL(token: 8, url: never, startSec: 12, preciseTiming: precise, bounded: true))
+                }
+            }
+            deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: precise, bounded: true))
+            XCTAssertTrue(spin(until: { self.stallingLoader?.requests ?? 0 > 0 }), "the loader was never asked")
+            let item = try XCTUnwrap(deck.player.currentItem)
+
+            timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
+            XCTAssertTrue(events.contains { if case .deadlineExceeded(7, _, _) = $0 { return true }; return false },
+                          "precise=\(precise) \(events)")
+            XCTAssertTrue(deck.player.currentItem === item,
+                          "precise=\(precise): the retry kept the item the first attempt fetched into")
+            XCTAssertEqual(deckRows("deadline").last?[field: "progressed"], .bool(true))
+            let row = try XCTUnwrap(deckRows("continue").last, "precise=\(precise): no deck kind=continue row: \(diags)")
+            XCTAssertEqual(row[field: "token"], .number(8))
+            XCTAssertEqual(row[field: "fromToken"], .number(7))
+            XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
+            XCTAssertFalse(deckRows("attach").contains { $0[field: "token"] == .number(8) },
+                           "precise=\(precise): the retry attached cold: \(diags)")
+            XCTAssertEqual(timers.pending.map { $0.sec }, [AVDeck.defaultLoadDeadlineSec], "one fresh deadline for the retry")
+
+            timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
+            XCTAssertTrue(events.contains { if case .deadlineExceeded(8, _, _) = $0 { return true }; return false },
+                          "precise=\(precise) \(events)")
+            XCTAssertNil(deck.player.currentItem, "precise=\(precise): nobody continued the second: detached as before")
+            deck.send(.unload)
+        }
+    }
+
+    /// AN EPISODE STILL DETACHES (CH3-11): a whole episode (unbounded,
+    /// approximate) that passed its deadline WHILE PROGRESSING is detached
+    /// before the event, as M1's car-proven path always did, so the core's
+    /// retry is a cold load. TO SEE IT FAIL: drop `loadedBounded` from the
+    /// lapse's condition in `deadlineFired` (the episode lapses, and its
+    /// retry continues).
+    func testAProgressingEpisodePastItsDeadlineIsStillDetached() throws {
         let timers = VirtualDeckTimers()
         deck = stalledDeck(progress: true, timers: timers)
-        let never = try XCTUnwrap(URL(string: "foray-never://deck.test/clip.mp3"))
+        let never = try XCTUnwrap(URL(string: "foray-never://deck.test/episode.mp3"))
+        var itemAtTheEvent: AVPlayerItem?
         deck.onEvent = { [unowned self] event in
             self.events.append(event)
-            // The core's §16 answer to the first deadline, in the same turn.
             if case .deadlineExceeded(7, _, _) = event {
-                self.deck.send(.loadURL(token: 8, url: never, startSec: 12, preciseTiming: true))
+                itemAtTheEvent = self.deck.player.currentItem
+                self.deck.send(.loadURL(token: 8, url: never, startSec: 600, preciseTiming: false))
             }
         }
-        deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: true))
+        deck.send(.loadURL(token: 7, url: never, startSec: 600, preciseTiming: false))
         XCTAssertTrue(spin(until: { self.stallingLoader?.requests ?? 0 > 0 }), "the loader was never asked")
-        let item = try XCTUnwrap(deck.player.currentItem)
-
         timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
-        XCTAssertTrue(events.contains { if case .deadlineExceeded(7, _, _) = $0 { return true }; return false }, "\(events)")
-        XCTAssertTrue(deck.player.currentItem === item, "the retry kept the item the first attempt fetched into")
+        XCTAssertNil(itemAtTheEvent, "an episode is detached before the event, as before")
         XCTAssertEqual(deckRows("deadline").last?[field: "progressed"], .bool(true))
-        let row = try XCTUnwrap(deckRows("continue").last, "no deck kind=continue row: \(diags)")
-        XCTAssertEqual(row[field: "token"], .number(8))
-        XCTAssertEqual(row[field: "fromToken"], .number(7))
-        XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
-        XCTAssertFalse(deckRows("attach").contains { $0[field: "token"] == .number(8) }, "the retry attached cold: \(diags)")
-        XCTAssertEqual(timers.pending.map { $0.sec }, [AVDeck.defaultLoadDeadlineSec], "one fresh deadline for the retry")
-
-        timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
-        XCTAssertTrue(events.contains { if case .deadlineExceeded(8, _, _) = $0 { return true }; return false }, "\(events)")
-        XCTAssertNil(deck.player.currentItem, "nobody continued the second: detached as before")
+        XCTAssertTrue(deckRows("continue").isEmpty, "\(diags)")
+        let attach = try XCTUnwrap(deckRows("attach").last { $0[field: "token"] == .number(8) }, "\(diags)")
+        XCTAssertEqual(attach[field: "cold"], .string("no-item"))
     }
 
     /// A load with NO progress (nothing fetched, no duration) is detached at
     /// its deadline before the event, as before, so the core's retry is a
-    /// fresh, cold load. TO SEE IT FAIL: drop `progressed` from the lapse's
-    /// condition in `deadlineFired`.
+    /// fresh, cold load, a clip's included. TO SEE IT FAIL: drop `progressed`
+    /// from the lapse's condition in `deadlineFired`.
     func testALoadWithNoProgressPastItsDeadlineIsDetachedAndItsRetryIsCold() throws {
         let timers = VirtualDeckTimers()
         deck = stalledDeck(progress: false, timers: timers)
@@ -684,10 +726,10 @@ final class AVDeckTests: XCTestCase {
             self.events.append(event)
             if case .deadlineExceeded(7, _, _) = event {
                 itemAtTheEvent = self.deck.player.currentItem
-                self.deck.send(.loadURL(token: 8, url: never, startSec: 12, preciseTiming: true))
+                self.deck.send(.loadURL(token: 8, url: never, startSec: 12, preciseTiming: true, bounded: true))
             }
         }
-        deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: true))
+        deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: true, bounded: true))
         XCTAssertTrue(spin(until: { self.stallingLoader?.requests ?? 0 > 0 }), "the loader was never asked")
         timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
         XCTAssertNil(itemAtTheEvent, "detached before the event, as before")
@@ -698,39 +740,134 @@ final class AVDeckTests: XCTestCase {
     }
 
     /// PLAY DURING AN IN-FLIGHT LOAD (the car's pause, then play): a
-    /// same-source precise load while one is still loading and progressing
-    /// continues it at the new start, with a fresh deadline, instead of
-    /// starting cold (`cold=not-ready` before §16). An APPROXIMATE load (a
-    /// whole episode) keeps today's cold reload. TO SEE IT FAIL: drop
-    /// `preciseTiming` from `continuesInFlight` (the episode continues), or
-    /// return false from it (the clip attaches cold).
+    /// same-source load of a Foray CLIP (`bounded`) while one is still
+    /// loading and progressing continues it at the new start, with a fresh
+    /// deadline, instead of starting cold (`cold=not-ready` before §16),
+    /// whether the clip loads precise or approximate (CH3-11: P-7's CBR
+    /// exemption). A whole EPISODE (unbounded) keeps today's cold reload.
+    /// TO SEE IT FAIL: drop `bounded` from `continuesInFlight` (the episode
+    /// continues), key it on precise timing again (the approximate clip
+    /// attaches cold), or return false from it (every clip attaches cold).
     func testASameSourceLoadWhileOneIsInFlightContinuesIt() throws {
-        for precise in [true, false] {
+        let cases: [(label: String, precise: Bool, bounded: Bool, continues: Bool)] = [
+            ("precise clip", true, true, true),
+            ("approximate (CBR) clip", false, true, true),
+            ("episode", false, false, false)
+        ]
+        for c in cases {
             events.removeAll()
             diags.removeAll()
             let timers = VirtualDeckTimers()
             deck = stalledDeck(progress: true, timers: timers)
-            let never = try XCTUnwrap(URL(string: "foray-never://deck.test/in-flight-\(precise).mp3"))
-            deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: precise))
+            let never = try XCTUnwrap(URL(string: "foray-never://deck.test/in-flight-\(c.precise)-\(c.bounded).mp3"))
+            deck.send(.loadURL(token: 7, url: never, startSec: 12, preciseTiming: c.precise, bounded: c.bounded))
             XCTAssertTrue(spin(until: { self.stallingLoader?.requests ?? 0 > 0 }), "the loader was never asked")
             let item = try XCTUnwrap(deck.player.currentItem)
             timers.advance(ms: 5_000)
-            deck.send(.loadURL(token: 8, url: never, startSec: 30, preciseTiming: precise))
-            if precise {
-                XCTAssertTrue(deck.player.currentItem === item, "the clip's load in flight was kept")
-                let row = try XCTUnwrap(deckRows("continue").last, "\(diags)")
+            deck.send(.loadURL(token: 8, url: never, startSec: 30, preciseTiming: c.precise, bounded: c.bounded))
+            if c.continues {
+                XCTAssertTrue(deck.player.currentItem === item, "\(c.label): the load in flight was kept")
+                let row = try XCTUnwrap(deckRows("continue").last, "\(c.label): \(diags)")
                 XCTAssertEqual(row[field: "fromToken"], .number(7))
                 XCTAssertEqual(row[field: "heldMs"], .number(5_000))
-                XCTAssertEqual(deck.reading.positionSec, 30, "the gate lands on the new start")
-                XCTAssertEqual(timers.pending.map { $0.dueMs }, [25_000], "one deadline, re-armed from the press")
+                XCTAssertEqual(deck.reading.positionSec, 30, "\(c.label): the gate lands on the new start")
+                XCTAssertEqual(timers.pending.map { $0.dueMs }, [25_000], "\(c.label): one deadline, re-armed from the press")
             } else {
-                XCTAssertFalse(deck.player.currentItem === item, "an episode reloads cold, as before")
-                XCTAssertTrue(deckRows("continue").isEmpty, "\(diags)")
+                XCTAssertFalse(deck.player.currentItem === item, "\(c.label): reloads cold, as before")
+                XCTAssertTrue(deckRows("continue").isEmpty, "\(c.label): \(diags)")
                 let attach = try XCTUnwrap(deckRows("attach").last { $0[field: "token"] == .number(8) }, "\(diags)")
                 XCTAssertEqual(attach[field: "cold"], .string("not-ready"))
             }
             deck.send(.unload)
         }
+    }
+
+    /// A REUSED ITEM TAKES THE NEW LOAD'S `bounded` (CH3-11 review). A
+    /// same-source load keeps the held item (`reuse`), and `coldReason`
+    /// compares the URL and the timing option but not `bounded`, so the reuse
+    /// must set the flag itself: §16's lapse reads it, and a reused item has
+    /// its duration (`progressed` is always true), so the flag alone decides.
+    /// The deck here runs on a real fixture with virtual deadlines; the reuse's
+    /// gate seek completes asynchronously on main, so moving the clock 20 s
+    /// right after the send passes the deadline mid-gate. TO SEE IT FAIL: drop
+    /// the `loadedBounded = bounded` before `reuse(...)` in `load` (the
+    /// clip keeps the episode's `false` and detaches: its retry starts cold).
+    func testAClipThatReusesAnEpisodesItemLapsesAndIsContinued() throws {
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(deadlineSec: AVDeck.defaultLoadDeadlineSec, timers: timers)
+        let url = try fixture("click-cbr", "mp3")
+        // The episode (approximate, unbounded) is held, ready.
+        deck.send(.loadURL(token: 1, url: url, startSec: 0, preciseTiming: false))
+        guard readyEvent(1) != nil else { return }
+        let item = try XCTUnwrap(deck.player.currentItem)
+        var itemAtTheEvent: AVPlayerItem?
+        deck.onEvent = { [unowned self] event in
+            self.events.append(event)
+            if case .deadlineExceeded(2, _, _) = event {
+                itemAtTheEvent = self.deck.player.currentItem
+                // The core's §16 answer, in the same turn.
+                self.deck.send(.loadURL(token: 3, url: url, startSec: 10, preciseTiming: false, bounded: true))
+            }
+        }
+        events.removeAll()
+        diags.removeAll()
+
+        // An approximate (CBR) clip of the same URL keeps the held item.
+        deck.send(.loadURL(token: 2, url: url, startSec: 10, preciseTiming: false, bounded: true))
+        XCTAssertTrue(deck.player.currentItem === item, "the clip did not reuse the held item: \(diags)")
+        XCTAssertFalse(deckRows("reuse").isEmpty, "\(diags)")
+        timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
+
+        XCTAssertTrue(events.contains { if case .deadlineExceeded(2, _, _) = $0 { return true }; return false }, "\(events)")
+        XCTAssertEqual(deckRows("deadline").last?[field: "reuse"], .bool(true))
+        XCTAssertEqual(deckRows("deadline").last?[field: "progressed"], .bool(true))
+        XCTAssertTrue(itemAtTheEvent === item, "the reused clip detached before the event instead of lapsing")
+        XCTAssertTrue(deck.player.currentItem === item, "the retry did not keep the reused item")
+        let row = try XCTUnwrap(deckRows("continue").last, "no deck kind=continue row: \(diags)")
+        XCTAssertEqual(row[field: "token"], .number(3))
+        XCTAssertEqual(row[field: "fromToken"], .number(2))
+        XCTAssertFalse(deckRows("attach").contains { $0[field: "token"] == .number(3) },
+                       "the retry attached cold: \(diags)")
+    }
+
+    /// THE REVERSE: an episode that reuses a clip's item is an episode. A
+    /// whole episode (unbounded) of the same URL keeps the held clip's item,
+    /// and past its deadline it is detached before the event, as M1's path
+    /// always did, so the core's retry is a cold load. TO SEE IT FAIL: drop
+    /// the `loadedBounded = bounded` before `reuse(...)` in `load` (the
+    /// episode keeps the clip's `true` and lapses).
+    func testAnEpisodeThatReusesAClipsItemIsStillDetached() throws {
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(deadlineSec: AVDeck.defaultLoadDeadlineSec, timers: timers)
+        let url = try fixture("click-cbr", "mp3")
+        // The clip (approximate, bounded) is held, ready.
+        deck.send(.loadURL(token: 1, url: url, startSec: 0, preciseTiming: false, bounded: true))
+        guard readyEvent(1) != nil else { return }
+        let item = try XCTUnwrap(deck.player.currentItem)
+        var itemAtTheEvent: AVPlayerItem?
+        deck.onEvent = { [unowned self] event in
+            self.events.append(event)
+            if case .deadlineExceeded(2, _, _) = event {
+                itemAtTheEvent = self.deck.player.currentItem
+                self.deck.send(.loadURL(token: 3, url: url, startSec: 10, preciseTiming: false))
+            }
+        }
+        events.removeAll()
+        diags.removeAll()
+
+        deck.send(.loadURL(token: 2, url: url, startSec: 10, preciseTiming: false))
+        XCTAssertTrue(deck.player.currentItem === item, "the episode did not reuse the held item: \(diags)")
+        XCTAssertFalse(deckRows("reuse").isEmpty, "\(diags)")
+        timers.advance(ms: AVDeck.defaultLoadDeadlineSec * 1000)
+
+        XCTAssertTrue(events.contains { if case .deadlineExceeded(2, _, _) = $0 { return true }; return false }, "\(events)")
+        XCTAssertEqual(deckRows("deadline").last?[field: "reuse"], .bool(true))
+        XCTAssertNil(itemAtTheEvent, "an episode is detached before the event, as before")
+        XCTAssertTrue(deckRows("continue").isEmpty, "\(diags)")
+        let attach = try XCTUnwrap(deckRows("attach").last { $0[field: "token"] == .number(3) }, "\(diags)")
+        XCTAssertEqual(attach[field: "cold"], .string("no-item"))
     }
 
     /// Progress is the duration or a byte, nothing else.
@@ -1021,6 +1158,87 @@ final class AVDeckTests: XCTestCase {
         XCTAssertNil(deck.onEvent)
         deck.send(.loadURL(token: 2, url: try fixture("click", "wav"), startSec: 0, preciseTiming: true))
         XCTAssertNil(deck.player.currentItem, "a command after invalidate ran")
+    }
+
+    // MARK: - A media-services reset (CH3-03, R2-03)
+
+    /// A reset kills the deck's AVPlayer, and an item attached to a dead
+    /// player never turns ready. `rebuildPlayer()` silences and detaches the
+    /// old one (its out-point's boundary observer removed from IT, the player
+    /// that added it), and makes a new player with plan §4.3's settings,
+    /// observed: the next load reaches `.ready` on the new player, plays at
+    /// the rate the listener chose before the reset, and its time-control
+    /// changes (player KVO) reach the core.
+    /// TO SEE IT FAIL: leave `player` as it was (no new object); make the new
+    /// one with a bare `AVPlayer()` (the settings fail); drop `observePlayer()`
+    /// after the swap (no `.timeControl(.playing)` for token 2); or make the
+    /// new player BEFORE `unload()` (the old boundary observer is removed
+    /// from the wrong player: AVFoundation raises, and the run crashes).
+    func testARebuildMakesANewObservedPlayerAndTheNextLoadPlaysOnIt() throws {
+        deck.send(.setRate(1.5))
+        guard loadAndWaitReady(try fixture("click", "wav"), token: 1, startSec: 2) != nil else { return }
+        deck.send(.play)
+        deck.send(.setOutPoint(sec: 30))
+        XCTAssertEqual(deck.player.rate, 1.5)
+        let old = deck.player
+
+        deck.rebuildPlayer()
+
+        XCTAssertFalse(deck.player === old, "the deck kept the player the reset killed")
+        XCTAssertEqual(old.rate, 0, "the old player still sounds")
+        XCTAssertNil(old.currentItem, "the old player still holds the item")
+        XCTAssertEqual(deck.player.actionAtItemEnd, .pause)
+        XCTAssertTrue(deck.player.automaticallyWaitsToMinimizeStalling)
+        XCTAssertTrue(deck.isObservingPlayer)
+        XCTAssertNil(deck.reading.positionSec, "a rebuilt deck holds nothing until the next load")
+        XCTAssertEqual(deck.primitives.last, "rebuild")
+
+        events.removeAll()
+        guard loadAndWaitReady(try fixture("click-cbr", "mp3"), token: 2, startSec: 4) != nil else { return }
+        XCTAssertNotNil(deck.player.currentItem)
+        deck.send(.play)
+        XCTAssertEqual(deck.player.rate, 1.5, "the listener's rate is the deck's, and survives the reset")
+        waitPlaying(2)
+    }
+
+    /// A load still in flight when the player is rebuilt reports nothing
+    /// afterwards: its item is detached, its asset cancelled, and the
+    /// generation moved, so the duration (or any other completion) that lands
+    /// late is dropped rather than reported under the load's token, and the
+    /// deck reads idle.
+    /// TO SEE IT FAIL: drop `unload()` from `rebuildPlayer()` (the old item
+    /// stays observed under its token and generation: `.durationLoaded(1)`).
+    func testALoadInFlightAtARebuildReportsNothingAfterIt() throws {
+        var assets: [AVURLAsset] = []
+        deck = makeDeck(makeAsset: { url, precise in
+            let asset = AVDeck.defaultAsset(url, precise)
+            assets.append(asset)
+            return asset
+        })
+        deck.send(.loadURL(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 5, preciseTiming: true))
+        let asset = try XCTUnwrap(assets.first)
+
+        deck.rebuildPlayer()
+
+        // Until the asset's duration request has answered (loaded, failed or
+        // cancelled) and the deck's own completion hop has had time to land.
+        XCTAssertTrue(spin(until: {
+            let status = asset.statusOfValue(forKey: "duration", error: nil)
+            return status != .loading && status != .unknown
+        }))
+        spin(0.5)
+        let late = events.filter {
+            switch $0 {
+            case .ready(1, _, _, _), .durationLoaded(1, _), .notReady(1, _, _), .failed(1, _, _),
+                 .deadlineExceeded(1, _, _), .timeControl(1, _, _):
+                return true
+            default:
+                return false
+            }
+        }
+        XCTAssertEqual(late, [], "the load the reset interrupted still reported")
+        XCTAssertNil(deck.reading.positionSec)
+        XCTAssertNil(deck.player.currentItem)
     }
 }
 

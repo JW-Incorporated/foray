@@ -178,7 +178,18 @@ export function writeDownloads(storage, value) {
     (identity). A real re-download goes through Remove first, which deletes
     the row.
     MUTATION TO BREAK THIS: delete the `IN_FLIGHT` guard line and `a late
-    progress tick after done is refused` fails. */
+    progress tick after done is refused` fails.
+
+    A REPORT THAT CHANGES NOTHING IS A NO-OP (CH3-05). download-bridge.js
+    replays the plugin's `list()` at every boot, so the same `done` (same
+    path) or `failed` (same reason) arrives again and again. Taken as news it
+    would restamp `updated_at` — the eviction rank of a never-played file —
+    and app.js would rewrite the row, repaint it and announce "Downloaded."
+    at every launch. So a report that leaves every field but the clock as it
+    was returns the SAME value (identity), the refusal shape every caller
+    already skips; `last_played_at` is untouched either way.
+    MUTATION TO BREAK THIS: delete the `sameRow` guard line and `a report
+    that changes nothing is identity` fails. */
 export function applyProgress(value, report = {}) {
   const { id, status, bytes, total, path, webSrc, reason, now } = report;
   if (!isStr(id) || !STATUS_SET.has(status)) return value;
@@ -200,7 +211,14 @@ export function applyProgress(value, report = {}) {
   };
   // A finished file is its own total: the usage line should not read 0 of null.
   if (status === "done" && next.total == null && next.bytes > 0) next.total = next.bytes;
+  if (prev && sameRow(prev, next)) return value;
   return { ...base, items: { ...base.items, [id]: next } };
+}
+
+/** Every field of a row but its clock (`updated_at`) is equal. */
+function sameRow(a, b) {
+  for (const k of Object.keys(b)) if (k !== "updated_at" && a[k] !== b[k]) return false;
+  return true;
 }
 
 /**
@@ -218,7 +236,7 @@ export function applyProgress(value, report = {}) {
  *   downloadProgress {id, bytes, total}   → downloading
  *   downloadDone     {id, path, bytes}    → done (the file is its own total;
  *                                            `webSrc` is the caller's
- *                                            `bridge.fileSrc({path})`)
+ *                                            `bridge.webSrc(path)`)
  *   downloadFailed   {id, reason, status} → unplayable-here when the host
  *                                            refused this device (HTTP 403, the
  *                                            plan's PQ-20/22 rule) or the
@@ -409,7 +427,7 @@ function hasFile(record) {
  * the engine (that is `playSource`).
  *
  * Same gate as `playSource` (`hasFile`). The URL is the bridge's
- * `fileSrc({path})` first — Capacitor's `convertFileSrc`, computed now, so a
+ * `webSrc(path)` first — Capacitor's `convertFileSrc`, computed now, so a
  * record whose `webSrc` was stamped by an older shell or another origin is not
  * trusted over the live answer — then the stored `webSrc`.
  *
@@ -422,7 +440,7 @@ function hasFile(record) {
 export function readSource(record, bridge) {
   if (!hasFile(record)) return null;
   try {
-    const src = bridge?.fileSrc?.({ path: record.path }) ?? record.webSrc;
+    const src = bridge?.webSrc?.(record.path) ?? record.webSrc;
     return isStr(src) && !src.startsWith("file:") ? src : null;
   } catch (_) {
     return null;

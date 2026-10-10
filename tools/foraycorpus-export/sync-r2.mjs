@@ -67,7 +67,7 @@
    written followed by the summary line. */
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve as resolvePath, sep } from "node:path";
-import { pathToFileURL } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 import { writeJsonAtomic } from "../segments/sweep-transcripts.mjs";
@@ -352,7 +352,7 @@ export async function runSync(argv) {
   return syncR2({ ...args, client, bucket: creds.bucket, showMap: map });
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   runSync(process.argv.slice(2)).catch((e) => {
     console.error("FATAL:", e?.message ?? e);
     process.exit(1);

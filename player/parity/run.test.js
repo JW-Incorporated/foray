@@ -13,7 +13,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { REPO_ROOT, loadFixtures, validateFixtures, runCase, closedSets, loadSchema, PENDING_DRIVERS, MANAGER_CALLS } from "./runner.js";
+import { REPO_ROOT, loadFixtures, validateFixtures, runCase, closedSets, loadSchema, PENDING_DRIVERS, MANAGER_CALLS, RAW_REMOTE_COMMANDS, isNativeOnly } from "./runner.js";
 import { encode, decodeSpecial, expandInputs, containsMacro, MACROS, SPECIAL_NUMBERS } from "./codec.js";
 import { compare, NATIVE_TOKEN_FAMILIES } from "./compare.js";
 import { manualScheduler, instantScheduler, OpLog, FakeBackend } from "./fakes.js";
@@ -28,6 +28,18 @@ const FIXTURES = loadFixtures(REPO_ROOT);
 
 for (const fx of FIXTURES) {
   for (const c of fx.doc.cases) {
+    /* CH3-20: a nativeOnly family has no JS reference; its expects are the
+       Swift core's, held by engine-parity and the JVM. Here it is held to
+       being authored, recorded with its n.* tokens kept, and never run. */
+    if (isNativeOnly(fx)) {
+      test(`${c.id} is the native cores' (nativeOnly): authored, with its n.* tokens compared`, async () => {
+        assert.equal(c.authored, true);
+        assert.ok(Array.isArray(c.expect?.checkpoints) && Array.isArray(c.expect?.ops), "a scenario's expect");
+        assert.ok(NATIVE_TOKEN_FAMILIES.includes(fx.family), `${fx.family} keeps its n.* tokens`);
+        await assert.rejects(runCase(c, fx), /nativeOnly family/);
+      });
+      continue;
+    }
     test(`${c.id} matches the JS reference`, async () => {
       assert.ok("expect" in c, `${c.id} has never been recorded — run tools/parity/record.mjs --port-card <card>`);
       const actual = await runCase(c, fx);
@@ -204,6 +216,64 @@ test("native-only n.* tokens are stripped from op logs, except in the prepare fa
   assert.equal(compare({ ids: ["a"] }, { ids: ["a", "n.x"] }, { family: "x" }).length, 1);
 });
 
+/* ---------- code-health-3 CH3-20: parity reaches the steering wheel ---------- */
+
+test("CH3-20: n.* tokens are compared in the prepare families and native-episode, and every other episode family stays blind to them", () => {
+  /* docs/roadmap/code-health-3.md R3-04. Until CH3-20 the comparator stripped
+     every n.* token outside prepare / prepare-narration, so
+     `n.diag:stop:load-deadline` and `n.grace.*` were invisible to every
+     episode fixture on both cores (the characterization pin asserted exactly
+     the two names). The list widens by EXACTLY one family, native-episode,
+     whose claim is those tokens; manager-episode and the rest stay blind.
+     MUTATIONS: drop "native-episode" from NATIVE_TOKEN_FAMILIES -> red; add
+     any other name -> red. */
+  assert.deepStrictEqual([...NATIVE_TOKEN_FAMILIES], ["prepare", "prepare-narration", "native-episode"]);
+  const want = { ops: ["load:a@0", "play"] };
+  const got = { ops: ["load:a@0", "n.diag:stop:load-deadline", "n.grace.begin:remote-play", "play"] };
+  assert.deepStrictEqual(compare(want, got, { family: "manager-episode" }), [], "an episode family is blind to the stop cause");
+  assert.equal(compare(want, got, { family: "native-episode" }).length, 1, "native-episode asserts it");
+});
+
+test("CH3-20: the native-episode family presses raw remote commands, togglePlayPause among them, and every raw press names a native command", () => {
+  /* R3-03. Until CH3-20 every `remote` step named a Media Session action and
+     went through MediaMapping.intent, which has no toggle, so the one-button
+     headset's and the AVRCP head unit's play/pause reached neither core in any
+     fixture (the characterization pin asserted no raw press at all). The raw
+     arm reaches EngineCore.onRemote with the command itself.
+     MUTATIONS: delete native-episode's toggle cases -> red; misspell a raw
+     command in a fixture -> the schema test above is red. */
+  const raw = FIXTURES.filter((f) => f.family === "native-episode").flatMap((f) => f.doc.cases)
+    .flatMap((c) => c.steps ?? []).filter((s) => s.raw === true);
+  assert.ok(raw.some((s) => s.remote === "togglePlayPause"), "a togglePlayPause press");
+  assert.ok(raw.some((s) => s.remote === "skipBackward" && typeof s.value === "number" && s.value !== 15),
+    "a skip carrying the head unit's own interval (R3-08)");
+  const everyRaw = FIXTURES.flatMap((f) => f.doc.cases).flatMap((c) => c.steps ?? []).filter((s) => s.raw === true);
+  assert.ok(everyRaw.every((s) => RAW_REMOTE_COMMANDS.includes(s.remote)));
+  assert.ok(!RAW_REMOTE_COMMANDS.includes("stop"), "a remote stop pauses natively (T-7); no raw press runs it");
+});
+
+test("CH3-20: native-episode is nativeOnly, under the episode capability, run by the JVM, and every case is authored with its n.* tokens", () => {
+  /* The family's expects are the Swift core's (EngineCore through
+     ForayEngineParity's driver), authored, and the JVM ParitySuite is held to
+     them: so it is in jvm-pending.json "runs", never owed whole, and the JS
+     reference never runs it. MUTATIONS: drop `"nativeOnly": true` from its
+     file -> red (and the per-case tests would run it against JS); move it to
+     "families" in jvm-pending.json -> red. */
+  const files = FIXTURES.filter((f) => f.family === "native-episode");
+  assert.ok(files.length > 0 && files.every(isNativeOnly), "native-episode is nativeOnly, whole");
+  const cases = files.flatMap((f) => f.doc.cases);
+  assert.ok(cases.length >= 8, `the card's cases: ${cases.length}`);
+  for (const c of cases) {
+    assert.equal(c.authored, true, `${c.id} is authored`);
+    assert.equal(c.setup?.target, "manager", `${c.id} drives the manager target, the one both native drivers log n.* on`);
+    assert.ok(c.expect.ops.some((op) => op.startsWith("n.")), `${c.id} asserts native tokens`);
+  }
+  const jvm = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/jvm-pending.json"), "utf8"));
+  assert.ok(jvm.runs.includes("native-episode") && !("native-episode" in jvm.families), "the JVM runs it");
+  const caps = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, "player/parity/capabilities.json"), "utf8"));
+  assert.ok(caps.episode.includes("native-episode"), "charged to the episode capability");
+});
+
 /* ---------- the schema checks the runner applies ---------- */
 
 const fx = (cases, over = {}) => [{ family: "f", file: "player/parity/fixtures/f/f.json", doc: { family: "f", module: "player/seam-gap.js", cases, ...over } }];
@@ -231,6 +301,26 @@ test("validation: every scenario step carries exactly one closed verb", () => {
   assert.deepStrictEqual(validateFixtures(scen([{ call: "play", args: [0] }, { checkpoint: "x" }])), []);
   assert.match(validateFixtures(scen([{ jump: 1 }])).join("\n"), /exactly one verb/);
   assert.match(validateFixtures(scen([{ call: "play", settle: 1 }])).join("\n"), /exactly one verb/);
+});
+
+test("CH3-20 validation: a nativeOnly family is authored whole, agrees across its files, is never jsOnly too, and its raw presses name native commands", () => {
+  /* MUTATIONS (runner.js validateFixtures): drop the "a nativeOnly case is
+     authored" check -> the first match is red; drop the agreement check -> the
+     second; drop the both-flags check -> the third; drop the raw-command check
+     -> the fourth. */
+  const expect = { checkpoints: [], ops: [] };
+  const scen = (c, over = {}) => fx([{ id: "f/s", covers: [], setup: { target: "manager" }, steps: [{ checkpoint: "x" }], ...c }], { module: undefined, nativeOnly: true, ...over });
+  assert.deepStrictEqual(validateFixtures(scen({ authored: true, expect })), []);
+  assert.match(validateFixtures(scen({ expect })).join("\n"), /nativeOnly case is authored/);
+  const two = [...scen({ authored: true, expect }), { family: "f", file: "player/parity/fixtures/f/g.json",
+    doc: { family: "f", cases: [{ id: "f/t", covers: [], authored: true, setup: { target: "manager" }, steps: [{ checkpoint: "x" }], expect }] } }];
+  assert.match(validateFixtures(two).join("\n"), /nativeOnly disagrees with another file/);
+  assert.match(validateFixtures(scen({ authored: true, expect }, { jsOnly: true })).join("\n"), /never both jsOnly and nativeOnly/);
+  const press = (step) => validateFixtures(scen({ authored: true, expect, steps: [step] })).join("\n");
+  assert.equal(press({ remote: "togglePlayPause", raw: true, value: 10 }), "");
+  assert.match(press({ remote: "seekbackward", raw: true }), /a raw press names one of/);
+  assert.match(press({ remote: "stop", raw: true }), /a raw press names one of/, "a remote stop pauses natively (T-7)");
+  assert.match(press({ remote: "pause", raw: false }), /raw is true or absent/);
 });
 
 /* ---------- running pure cases ---------- */
@@ -347,6 +437,38 @@ test("scenario: a remote press goes through the real action table into the real 
   assert.ok(paused.ops.includes("pause"));
   await assert.rejects(scenario([{ remote: "next" }]), /E_BAD_CASE.*unknown remote action/);
   assert.deepStrictEqual(Object.keys(PENDING_DRIVERS), [], "every schema verb has a JS driver");
+});
+
+test("CH3-20 scenario: a raw press is the command itself: toggle on the engine target, the 15/30 step whatever interval the head unit sent, and no toggle press on the manager target", async () => {
+  /* The JS arm of the raw `remote` verb (runner.js rawPress). On the engine
+     target a togglePlayPause is the contract's `toggle`, which pauses a
+     running reference engine; a skip steps media-session.js's 15 / 30 and
+     never the `value` the head unit forwarded (R3-08, the rule both native
+     cores now share). The page's manager has no toggle, so the manager
+     target refuses it rather than inventing one.
+     MUTATIONS (runner.js rawPress): `surface.seekBy(-(step.value ?? steps.backwardSec))`
+     -> the seek lands at 290, red; send "play" for togglePlayPause -> no
+     pause, red; drop the manager target's toggle refusal -> the rejects is red. */
+  const item = { id: "a", kind: "episode", audio_url: "https://cdn.test/a.mp3", title: "A" };
+  const engine = (steps) => runCase({ id: "f/e", covers: [], setup: { target: "engine" }, steps }, { family: "f", doc: {} });
+  const got = await engine([
+    { call: "playEpisode", args: { item, lastEpisodeRow: { id: "a" } } }, { deck: "time", sec: 300 }, { checkpoint: "playing" },
+    { remote: "skipBackward", raw: true, value: 10 }, { checkpoint: "back" },
+    { remote: "togglePlayPause", raw: true }, { checkpoint: "toggled" },
+  ]);
+  const [, back, toggled] = got.checkpoints;
+  assert.ok(back.ops.includes("seek:285"), `15 back, not the head unit's 10: ${back.ops}`);
+  assert.ok(toggled.ops.includes("pause"), `a toggle while running pauses: ${toggled.ops}`);
+  assert.equal(toggled.state, "interrupted");
+  const mgr = (steps) => runCase({ id: "f/m", covers: [], setup: { target: "manager" }, steps }, { family: "f", doc: {} });
+  const fwd = await mgr([
+    { call: "loadQueue", args: [[{ $ep: ["a"] }]] }, { call: "play", args: [0] }, { deck: "time", sec: 100 },
+    { remote: "skipForward", raw: true, value: 10 }, { checkpoint: "forward" },
+  ]);
+  assert.ok(fwd.checkpoints[0].ops.includes("seek:130"), `30 forward, not 10: ${fwd.checkpoints[0].ops}`);
+  await assert.rejects(mgr([{ remote: "togglePlayPause", raw: true }]), /E_BAD_CASE.*no toggle press/);
+  await assert.rejects(mgr([{ remote: "changePlaybackPosition", raw: true }]), /E_BAD_CASE.*needs its value/);
+  await assert.rejects(mgr([{ remote: "seekforward", raw: true }]), /E_BAD_CASE.*unknown raw remote command/);
 });
 
 /* ---------- NE-14j: the session, lifecycle and held-load drivers ---------- */

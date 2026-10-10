@@ -116,6 +116,7 @@
 
 import fs from "node:fs";
 import process from "node:process";
+import { isEntryScript } from "../ci/entry.mjs";
 
 /* 12 HOURS, AND WHY IT TOLERATES GITHUB'S CRON DRIFT.
  *
@@ -642,8 +643,7 @@ export function run(argv, env = process.env) {
   return { code: verdict.ok ? 0 : 1, text: report, verdict };
 }
 
-const invokedDirectly =
-  process.argv[1] && process.argv[1].replace(/\\/g, "/").endsWith("tools/refresh/watch-nightly.mjs");
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   const { code, text } = run(process.argv.slice(2));
   process.stdout.write(text);

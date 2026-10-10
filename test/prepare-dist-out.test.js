@@ -7,7 +7,7 @@
  * ever run here from a SCRATCH COPY of itself and its imports, so a broken
  * guard deletes a temp directory, never this checkout.
  */
-const { test } = require("node:test");
+const { test, after } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -68,6 +68,7 @@ function scratchScriptTree() {
     "tools/web/prepare-dist.mjs",
     "tools/web/out-dir.mjs",
     "tools/ci/generate-manifest.mjs",
+    "tools/ci/entry.mjs",
     "tools/ci/forays-directory.mjs",
     "tools/ci/catalogue-directory.mjs",
     "tools/ci/crlf-guard.mjs",
@@ -97,40 +98,54 @@ test("prepare-dist exits 2 with usage for --out . / .. / bare, and deletes nothi
   }
 });
 
+/* One real dist, built into a temp directory (prepare-dist deletes and
+   rewrites only that) and shared by the two tests that read it. */
+let builtDist = null;
+function realDist() {
+  if (builtDist) return builtDist;
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "prepare-dist-real-"));
+  const out = path.join(parent, "dist");
+  const r = spawnSync(process.execPath, [path.join(ROOT, "tools", "web", "prepare-dist.mjs"), "--out", out], {
+    cwd: ROOT, encoding: "utf8",
+  });
+  builtDist = { parent, out, status: r.status, stderr: r.stderr };
+  return builtDist;
+}
+after(() => {
+  if (builtDist) fs.rmSync(builtDist.parent, { recursive: true, force: true });
+});
+
 test("CH-07 (P2-04): the dist's player/ modules are exactly the ones its stamped manifest lists", async () => {
   /* Two lists decided what player code ships: prepare-dist.mjs copied one
      directory walk into dist/ and generate-manifest.mjs hashed another for the
-     SW to precache. They must be one list. Builds a real dist into a temp
-     directory (prepare-dist deletes and rewrites only that). MUTATION: give
-     prepare-dist.mjs its own `readdirSync(player)` walk again — dist ships
-     modules the manifest does not list and this goes red. */
+     SW to precache. They must be one list. MUTATION: give prepare-dist.mjs its
+     own `readdirSync(player)` walk again — dist ships modules the manifest
+     does not list and this goes red. */
   const { playerSources } = await import("../tools/ci/generate-manifest.mjs");
-  const parent = fs.mkdtempSync(path.join(os.tmpdir(), "prepare-dist-player-"));
-  const out = path.join(parent, "dist");
-  try {
-    const r = spawnSync(process.execPath, [path.join(ROOT, "tools", "web", "prepare-dist.mjs"), "--out", out], {
-      cwd: ROOT, encoding: "utf8",
-    });
-    assert.equal(r.status, 0, r.stderr);
-    const shipped = fs.readdirSync(path.join(out, "player")).filter((f) => f.endsWith(".js")).map((f) => `player/${f}`).sort();
-    const manifest = JSON.parse(fs.readFileSync(path.join(out, "deploy-manifest.json"), "utf8"));
-    const listed = Object.keys(manifest.files).filter((k) => k.startsWith("player/")).sort();
-    assert.ok(listed.includes("player/client.js"), "premise: the manifest lists the player");
-    assert.deepEqual(shipped, listed);
-    assert.deepEqual(listed, playerSources(ROOT).map((p) => p.split(path.sep).join("/")).sort());
-  } finally {
-    fs.rmSync(parent, { recursive: true, force: true });
-  }
+  const { out, status, stderr } = realDist();
+  assert.equal(status, 0, stderr);
+  const shipped = fs.readdirSync(path.join(out, "player")).filter((f) => f.endsWith(".js")).map((f) => `player/${f}`).sort();
+  const manifest = JSON.parse(fs.readFileSync(path.join(out, "deploy-manifest.json"), "utf8"));
+  const listed = Object.keys(manifest.files).filter((k) => k.startsWith("player/")).sort();
+  assert.ok(listed.includes("player/client.js"), "premise: the manifest lists the player");
+  assert.deepEqual(shipped, listed);
+  assert.deepEqual(listed, playerSources(ROOT).map((p) => p.split(path.sep).join("/")).sort());
 });
 
 test("the dist ships nothing from docs/, so the UX prototype is not on the app's origin (security-11)", () => {
   /* docs/ux/foray-m3-prototype.html has no CSP, inline scripts and unescaped
      innerHTML interpolation. Deployed into dist it shared the app's origin,
-     where cp_sb_session lives. MUTATION: put it back in EXTRAS. */
-  const src = fs.readFileSync(path.join(ROOT, "tools", "web", "prepare-dist.mjs"), "utf8");
-  const m = /const EXTRAS = \[([^\]]*)\];/.exec(src);
-  assert.ok(m, "prepare-dist.mjs must still declare EXTRAS");
-  assert.doesNotMatch(m[1], /docs\//, `EXTRAS ships a docs/ page: ${m[1]}`);
+     where cp_sb_session lives. It used to be kept out by an always-empty
+     EXTRAS list in prepare-dist.mjs, which CH2-18 deleted (T2-18): what dist
+     ships is now generate-manifest's lists, so this reads the BUILT dist.
+     MUTATION: append "docs/ux/foray-m3-prototype.html" to prepare-dist's
+     DIST_SHELL — dist/docs/ exists and this goes red. */
+  const { out, status, stderr } = realDist();
+  assert.equal(status, 0, stderr);
+  assert.ok(fs.existsSync(path.join(ROOT, "docs", "ux", "foray-m3-prototype.html")), "premise: the prototype exists to leave out");
+  assert.equal(fs.existsSync(path.join(out, "docs")), false, "dist ships a docs/ directory");
+  assert.doesNotMatch(fs.readFileSync(path.join(ROOT, "tools", "web", "prepare-dist.mjs"), "utf8"), /\bEXTRAS\b/,
+    "the dead EXTRAS list is back — an invitation to re-add the prototype");
 });
 
 test("the GitHub Pages artifact leaves the UX prototypes out too (security-11, the Pages half)", () => {

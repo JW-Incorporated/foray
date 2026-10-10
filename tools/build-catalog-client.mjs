@@ -23,8 +23,10 @@
    Usage: node tools/build-catalog-client.mjs [--out path] [--check] */
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { isEntryScript } from "./ci/entry.mjs";
+import { rankByAppleId } from "./harvest-merge.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
@@ -77,9 +79,9 @@ export function projectShow(show) {
 
 /* `breadth` is data/catalog-breadth.json, or null (every chart_rank null);
    `daiClass` is data/dai-classification.json, or null (every dai null).
-   The same join tools/build-show-index.mjs's mergeShowIndexRows makes for
-   data/show-index.tsv (PKG-11a) — copied, not imported, so neither builder
-   depends on the other. */
+   The rank join is harvest-merge.mjs's rankByAppleId, the one
+   tools/build-show-index.mjs's mergeShowIndexRows reads for
+   data/show-index.tsv (PKG-11a). */
 export function buildCatalogClient(catalog, breadth = null, daiClass = null) {
   if (!catalog || !Array.isArray(catalog.shows)) {
     throw new Error("data/catalog.json did not parse to { shows: [...] } — refusing to write an empty derivation");
@@ -88,13 +90,7 @@ export function buildCatalogClient(catalog, breadth = null, daiClass = null) {
     throw new Error("data/catalog-breadth.json did not parse to { shows: [...] } — refusing to write an empty derivation");
   }
 
-  /* Every breadth row, `in_curated` or not — the curated shows' twins are
-     exactly the `in_curated` rows, so filtering them out would join nothing. */
-  const rankByAppleId = new Map();
-  for (const row of breadth?.shows ?? []) {
-    const rank = Number(row?.chart_rank);
-    if (Number.isFinite(rank) && rank > 0) rankByAppleId.set(String(row?.apple_collection_id), rank);
-  }
+  const rankOf = rankByAppleId(breadth);
 
   const dai = (show) => {
     const v = daiClass?.shows?.[String(show?.apple_collection_id)]?.dai;
@@ -105,7 +101,7 @@ export function buildCatalogClient(catalog, breadth = null, daiClass = null) {
     version: catalog.version,
     shows: catalog.shows.map((show) => projectShow({
       ...show,
-      chart_rank: rankByAppleId.get(String(show?.apple_collection_id)) ?? null,
+      chart_rank: rankOf.get(String(show?.apple_collection_id)) ?? null,
       dai: dai(show),
     })),
   };
@@ -134,7 +130,7 @@ function main() {
   console.log(`wrote ${path.relative(ROOT, outPath)}: ${client.shows.length} shows, ${text.length} B.`);
 }
 
-/* THE ENTRYPOINT GUARD, AND WHY IT IS `pathToFileURL` AND NOT A TEMPLATE STRING.
+/* THE ENTRYPOINT GUARD, AND WHY IT IS `isEntryScript` AND NOT A TEMPLATE STRING.
    This line used to read:
 
        if (import.meta.url === `file://${process.argv[1]}`) main();
@@ -148,13 +144,11 @@ function main() {
    have passed its own gate on every developer machine in this project (all
    Windows) and only failed on a Linux runner, if at all.
 
-   `pathToFileURL` produces the same percent-encoded, forward-slashed, drive-
-   lettered URL Node puts in `import.meta.url`, so the comparison is true on
-   both platforms. It is the idiom every other `.mjs` in this repo already used
-   — this file was the last holdout (`tools/build-show-index.mjs`'s header says
-   so in as many words), which is why the bug survived: the fleet was right and
-   the one exception was silent.
-
-   The `process.argv[1] &&` guard matters for `node --eval`, where argv[1] is
-   undefined and `pathToFileURL(undefined)` throws. */
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+   The fix that followed, `import.meta.url === pathToFileURL(process.argv[1]).href`,
+   cured the slashes but not junctions: Node realpaths the main module before it
+   builds `import.meta.url` and only makes `process.argv[1]` absolute, so from a
+   Windows junction or a symlinked checkout it was false too (code-health T2-04).
+   `isEntryScript` (tools/ci/entry.mjs) realpaths both sides and answers false
+   when there is no argv[1] (`node --eval`); since CH2-41b it is the one guard
+   every CLI under tools/ uses, and tools/entrypoint-guards.test.mjs holds them to it. */
+if (isEntryScript(import.meta.url)) main();

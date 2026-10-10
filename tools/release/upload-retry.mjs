@@ -59,6 +59,8 @@
  * altool output this was written against.
  */
 
+import { isEntryScript } from "../ci/entry.mjs";
+
 /** How many attempts in total, including the first. */
 export const MAX_ATTEMPTS = 3;
 
@@ -207,7 +209,9 @@ async function main(argv) {
     output = "";
   }
   const verdict = classifyUploadFailure(output);
-  const retry = verdict.retry && attempt < MAX_ATTEMPTS;
+  /* shouldRetry() is the rule, not a copy of it: the tested function is the
+     one the composite's loop runs (CH2-21, T2-14). */
+  const retry = shouldRetry(output, attempt);
   const marker = (verdict.marker ?? "").replace(/'/g, "");
   console.log(
     `RETRY=${retry ? 1 : 0} REASON=${verdict.reason} ` +
@@ -216,7 +220,6 @@ async function main(argv) {
   return 0;
 }
 
-const invokedAs = String(process.argv[1] || "").split(String.fromCharCode(92)).join("/");
-if (invokedAs.endsWith("/upload-retry.mjs")) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).then((code) => process.exit(code));
 }

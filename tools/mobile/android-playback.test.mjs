@@ -15,6 +15,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import {
@@ -28,6 +29,7 @@ import {
   HELPER_PKG,
   INSETS_EXPRESSION,
   INSTRUMENT_EXPRESSION,
+  JS_LANE,
   DIAGNOSTICS_EXPRESSION,
   KNOWN_FAILURES,
   LONG_FORAY,
@@ -82,6 +84,7 @@ import {
   wakefulness,
   wasPlaying,
 } from "./android-playback.mjs";
+import { device } from "./adb.mjs";
 import { findForay, indexSegments, indexSources, resolveForay } from "../../player/foray-resolve.js";
 import { CLICK_TRACK_DIR } from "../audio/click-tracks.mjs";
 
@@ -917,4 +920,132 @@ test("A-05 (f): the instrument logs each element's playing and ended, and the lo
     { at: 4500, type: "ended", src: "jw-incorporated.github.io/interlude-placeholder.wav" },
   ]);
   assert.equal(vm.runInContext(mediaLogExpression(0), ctx).length, 2, "one listener per element, however often it plays");
+});
+
+/* ───────────── CH2-20: the device helpers both lanes share (adb.mjs) ─────────────
+ * One copy, bound to a lane by `device()`. Pinned here with a fake adb that
+ * records every call and a sleep that only records its argument, so the
+ * attempt counts and the poll rhythm are asserted, not timed. The native lane's
+ * suite pins its press predicates and that neither lane keeps a copy. */
+
+function fakeDevice(answer, lane = JS_LANE) {
+  const calls = [];
+  const waits = [];
+  const run = (args, opts) => {
+    calls.push(args.join(" "));
+    return { status: 0, stderr: "", error: null, ...answer(args, opts) };
+  };
+  const art = fs.mkdtempSync(path.join(os.tmpdir(), "ch2-20-"));
+  const dev = device({ lane, gates: GATES, helperTag: "A05Focus", run, wait: async (ms) => waits.push(ms) });
+  return { dev, calls, waits, ctx: { art }, art };
+}
+
+const DUMPED = "UI hierchary dumped to: /sdcard/window_dump.xml";
+const IDLE = "ERROR: could not get idle state.";
+
+test("CH2-20: dumpUi asks uiautomator twice, a second apart, and saves the first dump that lands", async () => {
+  /* MUTATION (run): the attempt loop `i < 2` -> `i < 3` -> the all-refused case makes three
+     calls and the first assert goes red; drop the `await wait(1000)` -> waits is []. */
+  let n = 0;
+  const one = fakeDevice((args) => (args.includes("uiautomator") ? { stdout: n++ === 0 ? IDLE : DUMPED } : { stdout: "<hierarchy/>" }));
+  const got = await one.dev.dumpUi(one.ctx, "d-window.xml");
+  assert.deepEqual(got, { xml: "<hierarchy/>", attempts: [IDLE, DUMPED] });
+  assert.deepEqual(one.calls, ["shell uiautomator dump /sdcard/window_dump.xml", "shell uiautomator dump /sdcard/window_dump.xml", "shell cat /sdcard/window_dump.xml"]);
+  assert.deepEqual(one.waits, [1000]);
+  assert.equal(fs.readFileSync(path.join(one.art, "d-window.xml"), "utf8"), "<hierarchy/>");
+
+  const none = fakeDevice(() => ({ stdout: "", stderr: IDLE }));
+  const refused = await none.dev.dumpUi(none.ctx, "d-window.xml");
+  assert.deepEqual(none.calls, ["shell uiautomator dump /sdcard/window_dump.xml", "shell uiautomator dump /sdcard/window_dump.xml"]);
+  assert.deepEqual(refused, { xml: null, attempts: [IDLE, IDLE] });
+  assert.deepEqual(none.waits, [1000, 1000]);
+  assert.equal(fs.existsSync(path.join(none.art, "d-window.xml")), false);
+});
+
+test("CH2-20: helperLog keeps the focus helper's mode and focusChange lines, tag stripped", () => {
+  /* MUTATION (run): drop the `/mode=|focusChange=/` filter -> the "onCreate" line is kept. */
+  const log = [
+    "--------- beginning of main",
+    "10-07 06:00:01.000  4242  4242 I A05Focus: mode=transient",
+    "10-07 06:00:01.100  4242  4242 I A05Focus: onCreate",
+    "10-07 06:00:02.000  4242  4242 I A05Focus  : focusChange=-2 granted",
+    "10-07 06:00:02.500  4242  4242 I Other   : mode=gain",
+  ].join("\r\n");
+  const { dev, calls } = fakeDevice(() => ({ stdout: log }));
+  assert.deepEqual(dev.helperLog(), ["mode=transient", "focusChange=-2 granted"]);
+  assert.deepEqual(calls, ["logcat -d -s A05Focus"]);
+});
+
+test("CH2-20: wakeAndUnlock is two shell calls; killReason reads the system log only for a pid", () => {
+  /* MUTATION (run): drop `wm dismiss-keyguard` -> the call list is one short;
+     drop the `pid ?` guard -> the null pid reads logcat. */
+  const sys = "10-07 I ActivityManager: Killing 2627:ai.jwlabs.foura/u0a192 (adj 900): excessive cpu";
+  const { dev, calls } = fakeDevice(() => ({ stdout: sys }));
+  dev.wakeAndUnlock();
+  assert.deepEqual(calls, ["shell input keyevent KEYCODE_WAKEUP", "shell wm dismiss-keyguard"]);
+  assert.equal(dev.killReason(null, PKG), null);
+  assert.equal(calls.length, 2);
+  assert.equal(dev.killReason("2627", PKG), "Killing 2627:ai.jwlabs.foura/u0a192 (adj 900): excessive cpu");
+  assert.equal(calls[2], "logcat -d -b system");
+  assert.equal(dev.killReason("3000", PKG), null);
+});
+
+test("CH2-20: waitFor polls the lane's own state every 500 ms; window2 reads it windowMs apart", async () => {
+  /* MUTATION (run): the poll `wait(500)` -> `wait(1000)` -> waits is [1000, 1000];
+     window2 without its wait -> no GATES.windowMs in waits. Both lanes' reads work:
+     the page's is async, the engine's is sync. */
+  for (const asyncRead of [true, false]) {
+    let reads = 0;
+    const read = (ctx) => { reads += 1; const s = { n: reads, ctx }; return asyncRead ? Promise.resolve(s) : s; };
+    const { dev, waits, ctx } = fakeDevice(() => ({ stdout: "" }), { ...JS_LANE, read });
+    const s = await dev.waitFor(ctx, (x) => x.n === 3, 60000);
+    assert.equal(s.n, 3);
+    assert.equal(s.ctx, ctx, "the lane is read with the scenario's ctx");
+    assert.deepEqual(waits, [500, 500]);
+    const once = await dev.waitFor(ctx, () => false, 0);
+    assert.equal(once.n, 4, "a spent deadline reads once and returns it");
+    const [a, b] = await dev.window2(ctx);
+    assert.deepEqual([a.n, b.n], [5, 6]);
+    assert.deepEqual(waits, [500, 500, GATES.windowMs]);
+  }
+});
+
+test("CH2-20: readShade reads the shade, and on a refused dump pauses by the lane, waits for it, and reads again", async () => {
+  /* MUTATION (run): drop the `if (!dump.xml)` fallback -> paused stays false and no pause is
+     made; swap JS_LANE.isPaused to `running === false` -> the page's state never satisfies it
+     and the wait reads until its deadline (the `reads` pin). */
+  const png = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(png);
+  png.writeUInt32BE(1080, 16);
+  png.writeUInt32BE(2400, 20);
+  let dumps = 0;
+  const answer = (args) => {
+    if (args[0] === "exec-out") return { stdout: png };
+    if (args.includes("uiautomator")) return { stdout: dumps++ < 2 ? IDLE : DUMPED };
+    if (args.includes("cat")) return { stdout: "<hierarchy paused/>" };
+    return { stdout: "" };
+  };
+  let pauses = 0;
+  let reads = 0;
+  const lane = { ...JS_LANE, pauseForShade: () => { pauses += 1; }, read: () => { reads += 1; return { episodePlaying: reads < 2 } } };
+  const { dev, calls, waits, ctx, art } = fakeDevice(answer, lane);
+  const log = [];
+  const got = await dev.readShade(ctx, "expand-notifications", log);
+  assert.deepEqual(got, { how: "expand-notifications", paused: true, xml: "<hierarchy paused/>" });
+  assert.equal(pauses, 1);
+  assert.equal(reads, 2, "the wait read the page until it said paused");
+  assert.equal(calls[0], "shell cmd statusbar expand-notifications");
+  assert.equal(waits[0], 2500);
+  assert.deepEqual(log, [
+    { how: "expand-notifications", dump: [IDLE, IDLE] },
+    { how: "expand-notifications", pausedDump: [DUMPED] },
+  ]);
+  assert.ok(fs.existsSync(path.join(art, "d-shade-expand-notifications.png")));
+  assert.ok(fs.existsSync(path.join(art, "d-window-expand-notifications-paused.xml")));
+
+  dumps = 2;
+  const playing = fakeDevice(answer, lane);
+  const first = await playing.dev.readShade(playing.ctx, "expand-settings", []);
+  assert.deepEqual(first, { how: "expand-settings", paused: false, xml: "<hierarchy paused/>" });
+  assert.equal(pauses, 1, "a dump that lands needs no pause");
 });

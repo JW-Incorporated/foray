@@ -91,23 +91,25 @@ async function readBodyCapped(
  * mechanic behind the polling-cadence ADR (0001). A 304 short-circuits with
  * `notModified: true` and no body.
  *
- * `opts.userAgent` (S-02, kanban t_4bd3c0a3): takes the User-Agent as a
- * parameter rather than importing `config/env` directly, so this module has
- * no transitive dependency on `dotenv`/`fs` — see `userAgent.ts`'s header for
- * why that import broke `api/shows/[show_id]/episodes.ts` in production.
- * Existing callers that don't pass one keep the same default string.
+ * The User-Agent is always `DEFAULT_FEED_USER_AGENT`, imported from the
+ * zero-import `userAgent.ts` rather than `config/env` (S-02, kanban
+ * t_4bd3c0a3: that import's `dotenv`/`fs` closure broke
+ * `api/shows/[show_id]/episodes.ts` in production — see `userAgent.ts`).
+ * There is no option to override it (code-health-2 CH2-39, B1-12): the one
+ * that existed only ever received this same default, and no caller — api/,
+ * the DB ingest or the transcript warm — passes `env.userAgent`.
  */
 export async function fetchFeedConditional(
   url: string,
   prior: ConditionalGetState,
-  opts: { fetchImpl?: typeof fetch; timeoutMs?: number; maxBytes?: number; userAgent?: string } = {}
+  opts: { fetchImpl?: typeof fetch; timeoutMs?: number; maxBytes?: number } = {}
 ): Promise<FeedFetchResult> {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const timeoutMs = opts.timeoutMs ?? 15_000;
   const maxBytes = opts.maxBytes ?? MAX_FEED_BYTES;
 
   const headers: Record<string, string> = {
-    "User-Agent": opts.userAgent ?? DEFAULT_FEED_USER_AGENT,
+    "User-Agent": DEFAULT_FEED_USER_AGENT,
     Accept: "application/rss+xml, application/xml, text/xml, */*"
   };
   if (prior.etag) headers["If-None-Match"] = prior.etag;
@@ -127,6 +129,14 @@ export async function fetchFeedConditional(
     const lastModified = res.headers.get("last-modified");
 
     if (!res.ok) {
+      // Free the socket now rather than leaving a (possibly large or endless)
+      // error body for GC to reclaim (code-health-2 B1-04; fetch-feed.mjs
+      // already did this, and fetchFeedParity.test.ts pins both).
+      try {
+        await res.body?.cancel?.();
+      } catch {
+        // best-effort: the result below does not depend on the body
+      }
       return {
         status: res.status,
         notModified: false,

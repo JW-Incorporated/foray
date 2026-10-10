@@ -26,7 +26,8 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { AUDIO_PROBE_HEADERS, awaitHostSlot, discardBody } from "../segments/politeness.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -366,6 +367,6 @@ async function main(argv) {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+if (isEntryScript(import.meta.url)) {
   main(process.argv.slice(2)).catch((e) => { console.error(e); process.exit(1); });
 }

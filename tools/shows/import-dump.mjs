@@ -12,7 +12,9 @@
      dedupe.mjs        — D13
      shard-build.mjs   — manifest/shards/top/changed/id-map shapes
      identity.mjs      — feed-url normalisation shared by id-map + D2
-     state.mjs         — idempotent skip-if-already-built
+
+   Every run builds in full; idempotency is run-and-publish.mjs's
+   `releaseExists` check (publish-release.mjs), not a local marker.
 
    Usage:
      node tools/shows/import-dump.mjs [--dump-file PATH] [--skip-fetch]
@@ -23,22 +25,22 @@
    the pipeline functions directly, so this flag exists purely for a human
    or a CI job re-running against a real dump. */
 import { createHash } from "node:crypto";
-import { createReadStream, createWriteStream, existsSync } from "node:fs";
+import { createWriteStream, existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { createGzip, gunzipSync } from "node:zlib";
-import { fileURLToPath, pathToFileURL } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import {
-  BUILD_OUT_DIR, CATALOG_PATH, DOWNLOAD_DIR, DUMP_UA, DUMP_URL,
+  BUILD_OUT_DIR, DOWNLOAD_DIR, DUMP_UA, DUMP_URL,
   MAX_SHARD_GZ_P95_BYTES, MAX_TOP_JSON_BYTES, POINTER_PATH,
-  STATE_DIR, STATE_PATH, TOP_N_BY_POPULARITY,
-  MAX_UNMAPPED_CURATED_FRACTION,
+  TOP_N_BY_POPULARITY,
   MAX_NEWEST_SNAPSHOT_BYTES, NEWEST_SNAPSHOT_ASSET, NEWEST_SNAPSHOT_FETCH_TIMEOUT_MS,
   NEWEST_SNAPSHOT_VERSION,
+  ImportError, checkMissingMapping, checksumFile, loadCuratedShows,
 } from "./config.mjs";
 import { applyD1Filter } from "./filter.mjs";
 import { curatedKeys } from "./identity.mjs";
@@ -46,19 +48,14 @@ import { applyD13Dedupe } from "./dedupe.mjs";
 import {
   buildChanged, buildIdMap, buildShards, buildTop,
 } from "./shard-build.mjs";
-import { alreadyBuilt, nextState } from "./state.mjs";
 import { countPodcasts, streamPodcasts } from "./dump-reader.mjs";
 
 const execFileP = promisify(execFile);
 
-export class ImportError extends Error {
-  constructor(code, message, details = {}) {
-    super(message);
-    this.name = "ImportError";
-    this.code = code;
-    this.details = details;
-  }
-}
+/* ImportError lives in config.mjs (CH2-12) so the shared guards can throw
+   it; re-exported here because this module is where callers have always
+   found it. */
+export { ImportError };
 
 /* ------------------------------------------------------------- fetch ---- */
 
@@ -328,27 +325,9 @@ export function p95(sizes) {
     is therefore computed into memory first; writes only start once every
     check has passed. */
 export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportVersion, builtAt = new Date().toISOString() } = {}) {
-  const curatedTotal = result.curatedTotal || (result.missing.length + Object.keys(result.idMap).length);
-  const unmappedFraction = curatedTotal > 0 ? result.missing.length / curatedTotal : 0;
-  if (unmappedFraction > MAX_UNMAPPED_CURATED_FRACTION) {
-    throw new ImportError(
-      "ID_MAP_INCOMPLETE",
-      `${result.missing.length} of ${curatedTotal} curated show(s) did not resolve to a dump row ` +
-        `(${(unmappedFraction * 100).toFixed(1)}%, over the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling — ` +
-        `that is the join breaking, not the index being incomplete): ` +
-        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", "),
-      { missing: result.missing, curatedTotal },
-    );
-  }
-  if (result.missing.length > 0) {
-    // Under the ceiling: publish, but name them. See config.mjs's note.
-    console.warn(
-      `WARN: ${result.missing.length} of ${curatedTotal} curated show(s) are not in this dump ` +
-        `(under the ${(MAX_UNMAPPED_CURATED_FRACTION * 100).toFixed(0)}% ceiling, so the build continues; ` +
-        `they keep working from data/catalog.json): ` +
-        result.missing.map((m) => `${m.show_id} (${m.title})`).join(", "),
-    );
-  }
+  // Fails closed over the unmapped ceiling; under it, publishes but names
+  // them (config.mjs's checkMissingMapping, shared with load-postgres.mjs).
+  const { curatedTotal } = checkMissingMapping(result);
 
   /* ---- checks: compute everything, write nothing yet ---- */
   const shardEntries = [];
@@ -445,21 +424,6 @@ export async function writeBuildOutput(result, { outDir = BUILD_OUT_DIR, exportV
 
 /* ---------------------------------------------------------------- main -- */
 
-async function loadCuratedShows() {
-  const raw = JSON.parse(await readFile(CATALOG_PATH, "utf8"));
-  const shows = Array.isArray(raw) ? raw : raw.shows;
-  if (!Array.isArray(shows)) throw new ImportError("BAD_CATALOG", `${CATALOG_PATH} did not parse to an array or {shows:[...]}`);
-  return shows;
-}
-
-async function loadState() {
-  try {
-    return JSON.parse(await readFile(STATE_PATH, "utf8"));
-  } catch {
-    return null;
-  }
-}
-
 async function main() {
   const argv = process.argv.slice(2);
   const get = (flag) => { const i = argv.indexOf(flag); return i >= 0 ? argv[i + 1] : null; };
@@ -467,38 +431,23 @@ async function main() {
   const dryRun = argv.includes("--dry-run");
 
   const curatedShows = await loadCuratedShows();
-  const prevState = await loadState();
 
-  let checksum, exportVersion, dbPath;
+  let exportVersion, dbPath;
   if (dumpFileArg) {
     // Fixture / manual path: caller supplies an already-extracted sqlite
-    // file directly, skipping fetch+extract entirely. Hashed via a stream,
-    // not readFile(dumpFileArg) — the real PodcastIndex db is ~4.7GB
-    // uncompressed, well over node:fs/promises readFile's 2GiB ceiling
-    // (ERR_FS_FILE_TOO_LARGE), which made this documented "re-run against
-    // a real dump" path unusable for exactly the real dump it exists for
-    // (found while measuring the SHARD_TOO_LARGE root cause, t_30a53ba2).
+    // file directly, skipping fetch+extract entirely. Streamed checksum
+    // (config.mjs's checksumFile): the real db is over readFile's 2GiB cap.
     dbPath = dumpFileArg;
-    const hash = createHash("sha256");
-    await pipeline(createReadStream(dumpFileArg), hash);
-    checksum = hash.digest("hex");
+    const checksum = await checksumFile(dumpFileArg);
     exportVersion = get("--export-version") || `local:${checksum.slice(0, 12)}`;
   } else {
     const archivePath = join(DOWNLOAD_DIR, "podcastindex_feeds.db.tgz");
-    const fetched = await fetchDump({ destPath: archivePath });
-    checksum = fetched.checksum;
-    exportVersion = fetched.exportVersion;
+    ({ exportVersion } = await fetchDump({ destPath: archivePath }));
     dbPath = await extractDump({ archivePath, outDir: join(DOWNLOAD_DIR, "extracted") });
-  }
-
-  if (alreadyBuilt(prevState, { exportVersion, checksum })) {
-    console.log(`SKIP: export_version ${exportVersion} (checksum ${checksum.slice(0, 12)}…) already built at ${prevState.built_at}`);
-    process.exit(0);
   }
 
   const { DatabaseSync } = await import("node:sqlite");
   const db = new DatabaseSync(dbPath, { readOnly: true });
-  let manifest;
   try {
     /* #1033: the previous release's per-id snapshot, downloaded through the
        committed pointer, is changed.json's baseline. Any failure to get it
@@ -511,26 +460,22 @@ async function main() {
     console.log(`D13 dedupe: ${JSON.stringify(result.d13Counts)}`);
 
     if (dryRun) {
-      console.log("DRY_RUN: not writing build output or state");
+      console.log("DRY_RUN: not writing build output");
       if (result.missing.length) {
         console.log(`WOULD FAIL CLOSED: ${result.missing.length} curated show(s) unmapped: ${JSON.stringify(result.missing)}`);
       }
       return;
     }
 
-    manifest = await writeBuildOutput(result, { exportVersion });
+    await writeBuildOutput(result, { exportVersion });
   } finally {
     db.close();
   }
 
-  await mkdir(STATE_DIR, { recursive: true });
-  const state = nextState(prevState, { exportVersion, checksum, builtAt: manifest.built_at, counts: manifest.counts });
-  await writeFile(STATE_PATH, JSON.stringify(state, null, 2));
-
   console.log(`BUILD_COMPLETE: ${BUILD_OUT_DIR} (export_version ${exportVersion})`);
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isEntryScript(import.meta.url)) {
   main().catch((e) => {
     console.error("FATAL:", e instanceof ImportError ? `${e.code}: ${e.message}` : e);
     process.exit(1);

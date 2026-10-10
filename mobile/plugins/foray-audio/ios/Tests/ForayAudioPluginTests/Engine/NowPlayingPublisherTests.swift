@@ -640,4 +640,51 @@ final class NowPlayingPublisherTests: XCTestCase {
             XCTAssertNil(ArtworkCache.source(for: refused), refused)
         }
     }
+
+    /// CH3-21 (R1-10, the legacy lane's mobile-native-6 lesson): a failed
+    /// publisher's square is a retry time, not a permanent "no artwork".
+    /// Inside `ArtworkCache.retryAfterSec` the host's 1 s refresh does not
+    /// fetch it again (a dead URL costs one attempt per window, never one
+    /// per write); once the window has passed the next write fetches it
+    /// again, and the entry carries it. A fetch that failed as the car
+    /// connected no longer leaves CarPlay bare for the rest of the item.
+    /// The window runs on the cache's injected clock, never the wall clock.
+    /// TO SEE IT FAIL: settle a failed network load as permanent again (the
+    /// old `failed.insert(src)`), or drop the window (fetch on every write).
+    func testAFailedSquareIsFetchedAgainOnceItsRetryWindowHasPassed() throws {
+        var clock: Double = 1_000
+        var fetches = 0
+        let png = try XCTUnwrap(Self.square().pngData())
+        let cache = ArtworkCache(fetcher: { _, _, done in
+            fetches += 1
+            done(fetches == 1 ? nil : png)
+            return {}
+        }, bundleReader: { _ in nil }, deadline: { _, _ in }, now: { clock })
+        let center = DictionaryCenter()
+        let publisher = NowPlayingPublisher(center: center, artwork: cache)
+        let show = "https://img.example/show/600x600bb.jpg"
+        func artwork() -> Any? { center.nowPlayingInfo?[MPMediaItemPropertyArtwork] }
+
+        // The car connects in a dead zone: the square's one fetch fails.
+        publisher.write(Self.view(title: "B", artwork: show, position: 10), listenRate: 1)
+        XCTAssertEqual(fetches, 1)
+        waitUntil("the failed fetch settles") { !cache.isLoading(show) }
+        guard case .failed = cache.lookup(show) else { return XCTFail("a failed fetch reads as no artwork") }
+
+        // Inside the window the refresh rewrites the entry and fetches nothing.
+        clock += ArtworkCache.retryAfterSec - 1
+        publisher.write(Self.view(title: "B", artwork: show, position: 20), listenRate: 1)
+        XCTAssertEqual(fetches, 1, "inside the window a dead source is not fetched again")
+        XCTAssertNil(artwork())
+
+        // The window passes: the next write fetches again, and the square lands.
+        clock += 1
+        publisher.write(Self.view(title: "B", artwork: show, position: 30), listenRate: 1)
+        XCTAssertEqual(fetches, 2, "after the window the square is fetched again (the legacy lane's 45 s rule)")
+        waitUntil("the retried square settles") { !cache.isLoading(show) }
+        guard case .image = cache.lookup(show) else { return XCTFail("the retried square is cached") }
+        publisher.write(Self.view(title: "B", artwork: show, position: 31), listenRate: 1)
+        XCTAssertNotNil(artwork(), "the entry carries the retried square")
+        XCTAssertEqual(fetches, 2, "a landed square is read from the cache")
+    }
 }

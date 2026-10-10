@@ -45,6 +45,7 @@
    First writer wins on a key collision. Each dropped mapping is reported. */
 import { normalizeFeedUrl } from "../shows/identity.mjs";
 import { safeKey } from "./config.mjs";
+import { rowsOf } from "./rows.mjs";
 
 /** The farm's slugify (forayfmt.py), ported step for step. */
 export function slugify(title) {
@@ -58,7 +59,6 @@ export function slugify(title) {
   return slug === "" ? "show" : slug;
 }
 
-const rowsOf = (doc) => (Array.isArray(doc) ? doc : Array.isArray(doc?.shows) ? doc.shows : []);
 const present = (v) => v !== null && v !== undefined && String(v).trim() !== "";
 
 /**

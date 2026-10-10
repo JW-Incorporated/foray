@@ -46,6 +46,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 /** The checkout this script reads by default: the frozen copy of the Foray
@@ -84,7 +85,7 @@ export function computeCadence(foraysFile, segmentsFile, forayId = "grilling-his
   return { totalRuntimeSec: t, cutGaps, median, mean };
 }
 
-const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedDirectly = isEntryScript(import.meta.url);
 if (invokedDirectly) {
   const flag = (name) => {
     const i = process.argv.indexOf(name);

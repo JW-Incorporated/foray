@@ -7,7 +7,8 @@ import Foundation
 /// coin toss: a case green in `record.mjs --check` and red here (or the other
 /// way round) says nothing about the RULE. So the rules are compare.js's, each
 /// one a decision recorded there (exact by default, key order never matters,
-/// array order always does, `n.*` op tokens stripped outside `prepare`, a
+/// array order always does, `n.*` op tokens stripped outside the
+/// `nativeTokenFamilies` (the prepare families and native-episode), a
 /// tolerance never forgives a `$num` tag), and the `compare` fixture family
 /// runs the SAME table through both: JS records `compareVerdict`'s answer from
 /// compare.js, and `CompareFamily` checks this port gives the same paths and
@@ -18,8 +19,9 @@ public enum Comparator {
     public static let nativeTokenPrefix = "n."
     /// compare.js `NATIVE_TOKEN_FAMILIES`: the families whose op logs KEEP
     /// `n.*` tokens (plan §6.2: the prepare family asserts them, and NE-45j's
-    /// prepare-narration with it).
-    public static let nativeTokenFamilies = ["prepare", "prepare-narration"]
+    /// prepare-narration with it; code-health-3 CH3-20's native-episode,
+    /// whose claim is the session, grace and the stop cause at the wheel).
+    public static let nativeTokenFamilies = ["prepare", "prepare-narration", "native-episode"]
 
     public struct Difference: Equatable, CustomStringConvertible {
         /// `$`, `$.return`, `$.ops[2]`: the same spelling compare.js uses.

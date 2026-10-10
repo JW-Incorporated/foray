@@ -1,6 +1,6 @@
 import { SlidingWindowBucket, APPLE_BUCKET_WINDOW_MS, APPLE_BUCKET_CAPACITY } from "./appleBucket";
 import { TtlCache } from "./searchCache";
-import { DEFAULT_FEED_USER_AGENT } from "../../backend/src/feeds/userAgent";
+import { appleSearch } from "./appleClient";
 import { KeyedBuckets } from "./keyedBuckets";
 import { appleShowCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } from "./clientLimit";
 
@@ -58,9 +58,12 @@ import { appleShowCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } fro
  * every show search of >= 3 characters, so both numbers had to be re-argued
  * against measurement rather than inherited. What changed here:
  *
- *   - `APPLE_SHOW_TIMEOUT_MS` is 2 s, not 8 s. 8 s was an episode-feed budget
- *     (`api/episodes/search.ts` fetches a show's live RSS; this fetches one
- *     JSON document from one host). Measured 2026-09-12 over 25 listener
+ *   - `APPLE_SHOW_TIMEOUT_MS` is 2 s, not 8 s. The 8 s it was copied from is
+ *     NOT an RSS budget, whatever this note used to say: it bounds episode
+ *     search's own Apple call (`entity=podcastEpisode`), is unmeasured, and
+ *     the feed fetch has its own 15 s in conditionalGet.ts. Both calls go
+ *     through api/_lib/appleClient.ts now, each with its own timeout
+ *     (code-health-2 CH2-39). Measured 2026-09-12 over 25 listener
  *     queries against `itunes.apple.com/search?entity=podcast`: 52 ms min,
  *     266 ms median, 698 ms max. 2 s is ~3x the measured worst case and it
  *     bounds what a typeahead's second pass can cost when Apple hangs.
@@ -89,13 +92,12 @@ import { appleShowCallerBuckets, normalizeSearchText, CLIENT_LIMITED_ERROR } fro
  * ============================================================================
  */
 
-const APPLE_SEARCH_URL = "https://itunes.apple.com/search";
-/** One User-Agent for this product, imported rather than restated (round-3
-    audit, arch-drift-14; see api/episodes/search.ts). */
-const SHOW_USER_AGENT = DEFAULT_FEED_USER_AGENT;
-/** 2 s, and NOT `api/episodes/search.ts`'s 8 s — see note (6). Exported so
-    `api/_test/shows-search-apple.test.mjs` can pin the number rather than the
-    behaviour, which is untestable without waiting for it. */
+/** 2 s, and NOT `api/episodes/search.ts`'s 8 s — see note (6). The call is
+    api/_lib/appleClient.ts, shared with episode search; the timeout is each
+    caller's own (code-health-2 CH2-39), and
+    `api/_test/shows-search-apple.test.mjs` pins it by driving the abort on
+    mock timers. Whether the two become one number is founder question 3
+    (docs/roadmap/code-health-2.md §1). */
 export const APPLE_SHOW_TIMEOUT_MS = 2_000;
 
 /** See (3): our own instances of the shared classes, never a second copy of
@@ -366,30 +368,18 @@ export async function appleShowSearch(
     return { shows: [], error: "rate limit exceeded — try again shortly", cached: false };
   }
 
-  const url =
-    `${APPLE_SEARCH_URL}?entity=podcast&limit=${encodeURIComponent(String(Math.min(limit, 200)))}` +
-    `&term=${encodeURIComponent(query)}`;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), APPLE_SHOW_TIMEOUT_MS);
-  try {
-    const res = await fetchImpl(url, {
-      headers: { "User-Agent": SHOW_USER_AGENT, Accept: "application/json" },
-      signal: controller.signal,
-    });
-    if (!res.ok) return { shows: [], error: `Apple search HTTP ${res.status}`, cached: false };
-    const body = (await res.json()) as { results?: AppleShowRaw[] };
-    const shows = (body.results ?? [])
-      .map(mapAppleShow)
-      .filter((s): s is AppleShowResult => s !== null)
-      .slice(0, limit);
-    /* Only a SUCCESSFUL call is cached, and an empty successful call is a
-       success: "Apple has never heard of this either" is a real answer worth
-       remembering for an hour. A transport failure is not an answer. */
-    cache.set(key, shows);
-    return { shows, error: null, cached: false };
-  } catch (err) {
-    return { shows: [], error: `Apple search fetch error: ${(err as Error).message}`, cached: false };
-  } finally {
-    clearTimeout(timer);
-  }
+  const { results, error } = await appleSearch<AppleShowRaw>("podcast", query, Math.min(limit, 200), {
+    fetchImpl,
+    timeoutMs: APPLE_SHOW_TIMEOUT_MS,
+  });
+  if (error) return { shows: [], error, cached: false };
+  const shows = results
+    .map(mapAppleShow)
+    .filter((s): s is AppleShowResult => s !== null)
+    .slice(0, limit);
+  /* Only a SUCCESSFUL call is cached, and an empty successful call is a
+     success: "Apple has never heard of this either" is a real answer worth
+     remembering for an hour. A transport failure is not an answer. */
+  cache.set(key, shows);
+  return { shows, error: null, cached: false };
 }

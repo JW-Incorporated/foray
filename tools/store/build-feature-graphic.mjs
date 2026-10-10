@@ -44,6 +44,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 import { encode } from "../brand/png.mjs";
 import { loadMaster, background, inkBox, resizeArea, SNAP } from "../brand/build-icons.mjs";
 
@@ -137,7 +138,7 @@ export function renderFeatureGraphic(master) {
   return encode({ width: WIDTH, height: HEIGHT, data: canvas }, { rgb: true });
 }
 
-if (process.argv[1] && process.argv[1].endsWith("build-feature-graphic.mjs")) {
+if (isEntryScript(import.meta.url)) {
   const master = loadMaster();
   const png = renderFeatureGraphic(master);
   const out = path.join(ROOT, OUTPUT);

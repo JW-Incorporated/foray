@@ -2,14 +2,101 @@
 
 <!-- ha-format: 2 -->
 
-> **30 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
+> **34 open.** Closed items are in `HUMAN-ACTIONS-DONE.md` — you never need it.
 > To close one: reply `done` (or `skip <why>`) to its card in the project's human-action channel.
 > Anything else you reply is forwarded to a thread on the card.
+
+## #153 🟡 [DECIDE] Approve the "4a Tactile" lab-build change: label PR #1254 (~2 min)
+<!-- ha filed=2026-10-09 -->
+
+**Why:** The lab-build workflow holds the app-signing setup, so changes to it need a founder's OK. PR #1254 sends Tactile builds to the new 4a Tactile app and names 4a Lab "4a Ambient". Merged before #151 and #152 are done, every Tactile lab build fails on purpose.
+**Steps:**
+1. Finish #151 (Apple) and #152 (Play) first.
+2. github.com/JW-Incorporated/foray/pull/1254 → read the TL;DR at the top.
+3. Labels (right column) → add `founder-approved`. Claude merges it once the checks are green.
+**Worked if:** PR #1254 shows merged, and the next Tactile lab build lands as "4a Tactile" in TestFlight and on Play.
+
+## #152 🟢 [UPGRADE] Google Play: set up the separate "4a Tactile" Android app (~10 min)
+<!-- ha filed=2026-10-09 -->
+
+**Why:** You chose to use both redesign directions live, side by side. Tactile gets its own lab app so it installs next to 4a Lab (which becomes "4a Ambient") and the real 4a. Nothing about the real app changes.
+**Steps:**
+1. Play Console → Create app → Name `4a Tactile`, App, Free → accept the declarations.
+2. Testing → Internal testing → Testers: add the same email list 4a Lab uses (Joey's Google account). Save the opt-in link.
+3. Users and permissions: grant the service account CI uses for 4a "Release to testing tracks" on 4a Tactile.
+4. Play may require the first bundle of a new app to be uploaded by hand. If so, the session supplies the file and the clicks.
+**Worked if:** the opt-in link installs "4a Tactile" from the Play Store beside 4a Lab and the real 4a.
+
+## #151 🟢 [UPGRADE] Apple: set up the separate "4a Tactile" iOS app (~20 min)
+<!-- ha filed=2026-10-09 -->
+
+**Why:** You chose to use both redesign directions live, side by side. Tactile gets its own TestFlight app so Wyatt can keep it installed next to 4a Lab (which becomes "4a Ambient") and the real 4a. Nothing about the real app changes.
+**Steps:**
+1. developer.apple.com → Account → Identifiers → + → App IDs → App. Description `4a Tactile`, Explicit ID `ai.jwlabs.foura.lab.tactile`, no capabilities → Register.
+2. appstoreconnect.apple.com → Apps → + → New App: iOS, `4a Tactile` (if taken `4a Tactile by JW`), English (U.S.), that bundle ID, SKU `4a-tactile`, Full Access.
+3. Profiles → + → App Store Connect distribution, that App ID, the Apple Distribution cert 4a Lab uses, name `4a Tactile App Store` → Download.
+4. PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes("$HOME\Downloads\4a_Tactile_App_Store.mobileprovision")) | Set-Clipboard`
+5. github.com/JW-Incorporated/foray/settings/secrets/actions → New repository secret `IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64`, paste.
+6. 4a Tactile → TestFlight → Internal Testing → +: group `Founders`, add Joey and Wyatt, automatic distribution.
+**Worked if:** the first Tactile lab build appears in TestFlight as "4a Tactile" and installs beside 4a Lab and the real 4a.
+
+## #150 🟡 [DECIDE] Approve privacy-policy sentences for `card_shown` and observed `finished`/`skipped_at`, and say yes or no to a `"top"` archetype (~10 min)
+<!-- ha filed=2026-10-07 kind=default -->
+
+**Why:** The catalogue package (`docs/roadmap/catalogue-personalization.md` §PKG-18 and §PKG-19) makes three more event types leave the phone: `card_shown` (a Home card was dealt to you) and, from the in-app player, `finished` and `skipped_at`. Each is a new kind of data sent to our database, so the privacy policy (`docs/legal/privacy-policy.md`) and the store audit (`docs/legal/data-safety.md`) have to say so in the same PR, and changing a privacy-policy sentence needs your approval (`docs/roadmap/README.md` Q34). The sentences are quoted below as they would land. Nothing is changed yet: neither PR exists, and this item edits no file under `docs/legal/`. The contract for all three already exists in `backend/src/types/events.ts` (`EventTypeSchema`, `CardShownPayloadSchema`, `SkippedAtPayloadSchema`, `FinishedPayloadSchema`) and `docs/curation/events-client-integration-spec.md` §1.2 and §4. The first-run events (`onboarding_seen`, `interests_seeded`, `persona_picked`, `onboarding_skipped`) are not here; they are already with you under #70.
+
+The counts below are computed the way `test/legal-citations.test.js` computes them, on `main` at `43446c00` (2026-10-07): the app records **23** event types (every `logEvent("…")` literal in `app.js` plus every `forayLogEvent("…")` in `player/client.js`) and **4** are transmitted (`picked`, `saved`, `thumbs`, `session_shown`). The plan's own numbers are older; do not use them. All three new types are transmitted, so the local-only count stays at nineteen whatever order the two PRs land in.
+
+Sentence 1, a new row in `docs/legal/privacy-policy.md` §2's **Sent** table (PKG-18):
+
+> | `card_shown` | Episode slug, its topic ids, and which Home slot the card was dealt into (`top` or `stretch`). Logged once per card each time Home deals a new set, not on every redraw. It records that the card was put in front of you, not that you looked at it or tapped it |
+
+Sentence 1 also makes two existing sentences untrue, so the same PR rewrites them. Policy §2, the note on `picked`'s context label (today: "filtered against a five-value allowlist … It does not reveal which recommendation archetype you were shown"):
+
+> - The **context label** is filtered against a six-value allowlist (`app.js:SB_ARCHETYPES`), but the only values `picked` ever produces are `continue` — you resumed something — or a subject/playlist label that the filter discards. So in practice this field is `"continue"` or empty. The Home slot a card was dealt into is sent separately, by `card_shown` (`top` or `stretch`).
+
+And `docs/legal/data-safety.md` A2, the **App activity — App interactions** row's last sentence (today: "… so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw."):
+
+> … so it is `"continue"` or null in practice. `card_shown` does report the Home slot a card was dealt into (`top` or `stretch`).
+
+Sentence 2, two new rows in the same **Sent** table (PKG-19). `finished` is sent only when 4a's own player saw the episode end; `skipped_at` only when you switch to a different episode before 85% of the current one has played. Neither is ever sent for a Foray clip:
+
+> | `finished` | Episode slug, its topic ids, how much of it had played (`percent_complete`, 1 for an episode that ran to its end) and `source: "observed"` — 4a's own player saw it end. On iPhone with Continuous playback on, an episode that runs out and moves to the next one sends no `finished` row |
+> | `skipped_at` | Episode slug, its topic ids, how many seconds of it had played when you switched to a different episode (`elapsed_seconds`) and its length (`duration_seconds`). Sent only when you switch before 85% of it has played. Not sent when the iPhone player moves on without the app (Continuous playback, or "next" from a car or the lock screen at the end of Up Next) |
+
+Sentence 3, the count sentences. Which numbers apply depends on which PR lands first; each PR writes the row that matches `main` when it merges:
+
+| State of `main` | `privacy-policy.md` §2 (bold sentence, ~line 230) | `data-safety.md` fact 2 (~line 44) | `data-safety.md` (~line 46) |
+|---|---|---|---|
+| Today (`43446c00`) | Nineteen of the twenty-three event types the app records never leave the device. | Exactly 4 of 23 event types are transmitted | the four `case` arms |
+| PKG-18 merged, PKG-19 not | **Nineteen of the twenty-four event types the app records never leave the device.** | **Exactly 5 of 24 event types are transmitted** | the five `case` arms |
+| PKG-19 merged, PKG-18 not | **Nineteen of the twenty-five event types the app records never leave the device.** | **Exactly 6 of 25 event types are transmitted** | the six `case` arms |
+| Both merged | **Nineteen of the twenty-six event types the app records never leave the device.** | **Exactly 7 of 26 event types are transmitted** | the seven `case` arms |
+
+Three more places list the transmitted events by name, and they are already wrong today: they name `finished`, which `toEventRow` does not send. The policy's summary bullet (~line 37, today "**Five kinds of event are sent to our database**: which episode you picked, which you finished, …"); `data-safety.md` A2 **App interactions** (~line 96, "The five transmitted events are interactions: picked, finished, saved, thumbs, session shown"); and Apple's **Usage Data — Product Interaction** and **Other Usage Data** rows (~lines 305 and 307, "picked / finished / saved / thumbs / session shown" and "the five mapped types"). Proposed, once both PRs have merged:
+
+> - **Seven kinds of event are sent to our database**: which episode you picked, which Home cards were shown to you, which episodes 4a's player saw you finish or switch away from part-way, which you saved, your thumbs up/down feedback (including any note you type), and the fact that a session was shown to you. They are stored against an anonymous account that contains no name, email or phone number.
+
+> The seven transmitted events are interactions: picked, card shown, finished, skipped, saved, thumbs, session shown (`app.js:toEventRow()`).
+
+> picked / card shown / finished / skipped / saved / thumbs / session shown (`app.js:toEventRow()`). … Nothing beyond the seven mapped types.
+
+If only PKG-18 has merged, the same three read "Five kinds" / "five" and name card shown instead of finished and skipped. Whichever PR merges first also fixes today's `finished` overstatement.
+
+Sentence 4, a separate yes or no (catalogue Q6): add `"top"` to `ArchetypeSlotSchema` (`backend/src/types/events.ts:44`, today `"deep-learn"`, `"stretch"`, `"narrative"`, `"comfort"`, `"continue"`). Home deals by role `top`/`stretch`, and the contract accepts only those five archetypes, so without `"top"` a top-slot `card_shown` has no valid archetype. The proposed default is `docs/roadmap/README.md` item 28, which is a PROPOSAL, not a ruling. No migration is involved: `events.archetype` is unconstrained `text` (`backend/migrations/0009_events.sql:20`); the check in `0008_session_items.sql:12` is on a different table. If you say no, PKG-18 can send only the `stretch` card, and Sentence 1 changes to say so.
+
+For whoever builds PKG-18/19 (not part of the approval): `test/legal-citations.test.js` classifies a type as sent by calling `toEventRow` with one fixed payload (`FAT_PAYLOAD`), which has no `archetype`, `percent_complete`, `source`, `elapsed_seconds` or `duration_seconds`. A mapping that requires those fields will be classified local-only unless that payload gains them. Its number-word table also stops at `twenty-four`; `twenty-five` and `twenty-six` need adding.
+
+**Steps:**
+1. Read Sentences 1 to 3 and decide Sentence 4.
+2. Reply `approved` (Sentences 1–3) plus `top: yes` or `top: no`, or say what to change. Claude puts the approved wording in the PKG-18 and PKG-19 PRs.
+
+**Worked if:** each sentence above is approved or reworded, Sentence 4 has a yes or no, and when PKG-18 and PKG-19 merge, `docs/legal/` on `main` says what was approved here.
 
 ## #149 🟢 [UPGRADE] On a phone, check the download manager against the #29 acceptance list (~20 min)
 <!-- ha filed=2026-10-06 kind=default -->
 
-**Why:** Offline downloads are merged (#1020, #1052, #1068, #1073) and unit-tested, but nobody has run them on a phone, and five of #29's acceptance asks can only be proven there: background download, airplane-mode playback, exact bookmarks on a downloaded `dai_suspected` episode, the missing-file fallback, and that the download fetches the publisher's original URL. iPhone only: the Android half waits for the Android native engine (your ruling D-A3, 2026-09-29; #127). The Wi-Fi-only, 2 GB, manual-only behaviour being checked is the default from `docs/roadmap/README.md` question 17, still a proposal, not a ruling. Automatic download of a session's picks and the offline "earcon and advance" path are not built, so this check does not cover them.
+**Why:** Offline downloads are merged (#1020, #1052, #1068, #1073) and unit-tested, but nobody has run them on a phone, and five of #29's acceptance asks can only be proven there: background download, airplane-mode playback, exact bookmarks on a downloaded `dai_suspected` episode, the missing-file fallback, and that the download fetches the publisher's original URL. iPhone only: the Android half waits for the Android native engine (your ruling D-A3, 2026-09-29; #127). The Wi-Fi-only, 2 GB, manual-only behaviour being checked is the default from `docs/roadmap/README.md` question 17, still a proposal, not a ruling. Automatic download of a session's picks is not built (manual-only downloads are the `docs/roadmap/README.md` question 17 default, a proposal, not a ruling), so this check does not cover it. The offline "earcon and advance" path is built (#1145), and step 4's "Offline variant" in `docs/downloads-device-check.md` (line 168) checks it.
 
 **Steps:**
 1. Install the first TestFlight build containing #1073 (`3a9dfefa`), or any later one, and turn TestFlight's Automatic Updates off for 4a.
@@ -109,6 +196,33 @@ Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-saf
 
 **Worked if:** every sentence quoted here is approved or reworded, and the policy on `main` says the same thing.
 
+**ADDENDUM — Sentences 5-9: the same rows once phone alerts ship (PQ-28..30), to be applied only by PQ-30.** Phone alerts are the iPhone half (PQ-28) and the Android half (PQ-29) of `mobile/plugins/foray-notify`, switched on by PQ-30 (`docs/roadmap/player-features.md` §PQ-28, §PQ-29, §PQ-30; founder question 6 in §1). None of the three is on `main` today (2026-10-09). **Sentences 3 and 4 above stay exactly what `main` says until PQ-30 merges.** Sentences 5-9 are drafted now so you can read them early; PQ-30's PR applies them, and no earlier PR does. They describe PQ-28/29 as `player-features.md` specifies them. If the merged code differs, PQ-30 changes the wording to match the code and brings the changed sentence back here before applying it. Edits to `docs/legal/` and `docs/store/` happen only in PQ-30.
+
+Sentence 5, the `cp_starred_shows` row in `docs/legal/privacy-policy.md` §1 (line 140 today), replacing Sentence 3 once PQ-30 merges. Only the sentence about notifications changes: a phone alert comes only when alerts are on for that show AND notifications for 4a are allowed on the phone. iPhones and Android 13 or later ask first; Android 7-12 (the app supports Android 7 and later, minSdk 24) never ask and allow them by default, so the sentence cannot say "when your phone asked".
+
+> | `cp_starred_shows` | A per-device map of shows you followed from a show page (the Follow button; the key keeps its older "starred" name) — a lightweight favorite, separate from episode saves (`cp_saved`). For each show it also keeps whether new-episode alerts are on (on unless you turn them off on the show's page), when 4a last checked the show for new episodes, the newest publish date that check found, the newest one you have seen, and how many are new. New episodes are marked in your Library on this device. In the iPhone and Android apps, your phone also shows a notification naming the show and its new episode, but only when alerts are on for that show and notifications for 4a are allowed on your phone (iPhones and Android 13 or later ask you first; you can turn them off in your phone's settings). Your phone makes that notification itself; nothing is sent to anyone to make it. The check asks our API for the show's latest episodes (§4.3). No auto-download, following a show never adds its new episodes anywhere, and never changes what 4a surfaces to you elsewhere | **No** |
+
+Sentence 6, added to §4.3's Vercel paragraph directly after Sentence 4 (Sentence 4 itself stays):
+
+> In the iPhone and Android apps, your phone also runs that check in the background while 4a is closed, for the shows you follow that have alerts on. On an iPhone it uses Apple's background app refresh (`BGAppRefreshTask`): at most about once every six hours, and only when iOS chooses to run it, which can be much less often. On Android it uses the system's `WorkManager`: every six hours, on any network connection, Wi-Fi or mobile data (`NetworkType.CONNECTED`). The background check sends the same request as the check in the open app, the show's id and the usual request metadata, and nothing about you.
+
+Sentence 7, the §5 bullet that says "no notifications" (line ~501 today: "**No location access, no camera, no microphone, no contacts, no calendar, no photos, no notifications.** The app requests no device permissions."). Issue #1163 item 8 (M3) already proposes a rewrite of this whole bullet, verbatim in `docs/audit/privacy-truth-2026-10.md` §M3. Sentence 7 is only a DELTA on that rewrite, so it is not repeated here. Once alerts ship, three phrases in M3's proposed bullet change:
+
+- M3 says: "4a sends no push or reminder notifications, and has no server that could." Becomes: "4a sends no push or reminder notifications from a server, and has no server that could. The only notification about what to listen to is a new-episode alert, which your phone makes itself after its background check (§4.3), only for a show you follow with alerts on, and only if notifications for 4a are allowed on your phone."
+- M3 says: "saying no only hides those controls, and nothing else changes." Becomes: "saying no hides those controls and new-episode alerts, and nothing else changes."
+- M3 says: "That is the only device permission the app asks for, and on an iPhone it asks for none." Becomes: "That is the only device permission the app asks for. On an iPhone it is also the only one: 4a asks for it the first time you turn on new-episode alerts for a show, and saying no leaves that show's alerts off."
+
+If M3 has not been approved when PQ-30 opens, `main`'s bullet ("no notifications. The app requests no device permissions.") would be false on both phones. PQ-30 then waits for M3 plus this delta, or carries both for your approval.
+
+Sentence 8, `docs/legal/data-safety.md` rows: **none.** `grep -i notif docs/legal/data-safety.md` finds no notification row on `main` (2026-10-09), so no data-safety row changes. Alerts add no data type: the background check sends what §4.3 already lists. One exception: if #1163 item 8's proposed A2 row "**Permissions (Android)**" (M3) is on `main` before PQ-30, its "for the lock-screen controls" becomes "for the lock-screen controls and new-episode alerts", and its "iOS asks for no permission." becomes "iOS asks only for the notification permission, the first time you turn on a show's new-episode alerts."
+
+Sentence 9, `docs/store/play/full-description.txt` (the Play listing, HA #26):
+
+- Line 22 says: "Follow a show to keep it one tap away in your Library, marked when it has new episodes. Following queues nothing and sends no phone notification." Becomes: "Follow a show to keep it one tap away in your Library, marked when it has new episodes. If you allow notifications, your phone can also tell you when a show you follow has a new episode; turn that off per show. Following queues nothing."
+- Line 34 says: "4a keeps no streaks, has no infinite scroll, and sends no notifications to pull you back in." Becomes: "4a keeps no streaks, has no infinite scroll, and sends no notifications to pull you back in. The only alert is a new episode of a show you follow, and only with that show's alerts on."
+
+To answer Sentences 5-9, reply `approved 5-9`, or say what to change, any time before PQ-30 opens. For **Worked if**, Sentences 5-9 count once they are approved or reworded. The policy on `main` says them only after PQ-30 merges.
+
 ## #134 🟡 [DECIDE] G6 — Re-confirm D1's liveness/count/recency filter, and settle the language question
 <!-- ha filed=2026-10-04 kind=default -->
 
@@ -149,35 +263,29 @@ Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-saf
 ## #138 🟡 [DECIDE] Get a read-only key for the transcripts bucket from Joey, and put it in one file on the PC and on hermes-vm (~15 min, with Joey)
 <!-- ha filed=2026-10-04 kind=default -->
 
-**Why:** The corpus package (`docs/roadmap/corpus.md`, G-16) copies the transcript farm's bodies from the R2 bucket `foray-transcriptions` to the generation machine, so Forays can draw on every transcript the farm has made. Reading the bucket needs an S3 key pair. No founder ruling is recorded; this proceeds on the proposed default of `docs/roadmap/README.md` question 3, which a founder ruling overrides at any time: Joey issues it with Object Read on that one bucket, and you keep it outside the repo. `data-local/.cf-token` is a Cloudflare API token, not an S3 pair, and does not work for this. The Spark gets its own token in #121; this one is for the PC and hermes-vm. Not urgent: the sync tool that reads it (corpus PKG-13) is not built yet.
+**Why:** `tools/foraycorpus-export/sync-r2.mjs` is on main and copies the farm's transcripts from R2 `foray-transcriptions`; its first live run (PKG-15) needs a read-only S3 key. Proposed default, `docs/roadmap/README.md` Q3, not a ruling.
 
 **Steps:**
-1. Joey: Cloudflare (the account that owns `foray-transcriptions`) → **R2** → **Manage R2 API Tokens** → **Create API token**. Name `foray-corpus-read`. Permissions **Object Read only**. **Apply to specific buckets only** → `foray-transcriptions`. Create, and pass Wyatt the Access Key ID, the Secret Access Key and the S3 endpoint (`https://<account id>.r2.cloudflarestorage.com`) through a password manager, not a chat.
-2. Wyatt, on the PC: in `C:\Users\wjduv\.foray` (made in #120; make it if it is missing), save a file named `r2-credentials` (Notepad: **Save as type** → **All files**, no `.txt`) with these four lines, your values after the first three `=` signs:
-   ```
-   R2_ACCESS_KEY_ID=
-   R2_SECRET_ACCESS_KEY=
-   R2_S3_ENDPOINT=
-   R2_BUCKET=foray-transcriptions
-   ```
+1. Joey: Cloudflare → **R2** → **Manage R2 API Tokens** → **Create API token**: name `foray-corpus-read`, **Object Read only**, bucket `foray-transcriptions` only. Send Wyatt the key ID, secret and S3 endpoint by password manager.
+2. Wyatt, PC: save `C:\Users\wjduv\.foray\r2-credentials` (no `.txt`) with `R2_ACCESS_KEY_ID=`, `R2_SECRET_ACCESS_KEY=`, `R2_S3_ENDPOINT=` (values after `=`) and `R2_BUCKET=foray-transcriptions`, one per line.
 3. On hermes-vm: the same four lines in `~/.foray/r2-credentials`, then `chmod 600 ~/.foray/r2-credentials`.
-4. Do **not** paste the key into any chat, issue or PR. Reply `done` only.
+4. Never paste the key into a chat, issue or PR. Reply `done` only.
 
-**Worked if:** once `tools/foraycorpus-export/sync-r2.mjs` lands, `node tools/foraycorpus-export/sync-r2.mjs --dry-run` on the PC prints `objects_seen` above 0 without asking you for anything.
+**Worked if:** on the PC, `node tools/foraycorpus-export/sync-r2.mjs --dry-run` prints `objects_seen` above 0 without asking for anything.
 
 ## #139 🟡 [DECIDE] Get hermes-vm ready to run the weekly corpus export (~20 min)
 <!-- ha filed=2026-10-04 kind=default -->
 
-**Why:** No founder ruling is recorded; this proceeds on the proposed default of `docs/roadmap/README.md` question 2 (corpus Q2, G-16), which a founder ruling overrides at any time: the corpus exporter runs weekly by cron on **hermes-vm** as the read-only database role `wyatt_readonly`, and publishes show and episode metadata (never transcript text) as GitHub Releases, with a pointer file committed by PR, the way the shows import already does. Not GitHub Actions with Tailscale. Only you place credentials on hermes-vm. Not urgent: the exporter (corpus PKG-08) and its publish step (PKG-32) are not built yet. The first live run (PKG-10) waits on steps 1–3.
+**Why:** The exporter and its weekly wrapper `tools/foraycorpus-export/weekly.mjs` are on main and need this host. Proposed default, `docs/roadmap/README.md` Q2, not a ruling: weekly cron as `wyatt_readonly`, Releases plus a pointer PR.
 
 **Steps:**
-1. On hermes-vm, check that the `wyatt_readonly` role reaches `foraycorpus` (100.79.104.9, tailnet only), for example `psql "<connection string>" -c "select 1"` if `psql` is installed.
-2. Put that connection string in `~/.foray/foraycorpus.env` as one line, `FORAYCORPUS_DATABASE_URL=<connection string>`, then `chmod 600 ~/.foray/foraycorpus.env`.
-3. Run `gh auth login` on hermes-vm with a fine-grained token for `JW-Incorporated/foray` only: **Contents: Read and write** and **Pull requests: Read and write**, nothing else, 90 days. The export uses it to create the Release and open the pointer PR. Set a reminder to renew it.
-4. Later: when PKG-32 lands, Claude writes the exact cron line here and you add it with `crontab -e`.
-5. Reply `done` after steps 1–3. Do not paste the connection string or the token anywhere.
+1. On hermes-vm, check `wyatt_readonly` reaches `foraycorpus` (100.79.104.9, tailnet): `psql "<connection string>" -c "select 1"`.
+2. Put `FORAYCORPUS_DATABASE_URL=<connection string>` as the one line of `~/.foray/foraycorpus.env`, then `chmod 600 ~/.foray/foraycorpus.env`.
+3. `gh auth login`, token for `JW-Incorporated/foray` only (Contents + Pull requests: Read and write, 90 days), then `gh auth setup-git`; set git's global `user.name`/`user.email` if unset.
+4. Clone the repo to `~/foray`, run `crontab -e` and add: `0 6 * * 1 cd ~/foray && git pull --ff-only && npm ci --prefix tools/foraycorpus-export && set -a && . ~/.foray/foraycorpus.env && set +a && node tools/foraycorpus-export/weekly.mjs >> ~/.foray/corpus-export.log 2>&1`
+5. Reply `done`. Do not paste the connection string or the token anywhere.
 
-**Worked if:** `gh auth status` on hermes-vm shows the token, and the first live dry run (corpus PKG-10) connects from hermes-vm without asking you for anything.
+**Worked if:** after the next Monday 06:00, `~/.foray/corpus-export.log` ends with a `POINTER_PR:` line naming a draft PR.
 
 ## #130 🟡 [DECIDE] Drive the M3 test on the first TestFlight build after `engine/m3` merges (~2 drives)
 <!-- ha filed=2026-09-30 kind=default -->
@@ -344,20 +452,23 @@ Sentence 4, added to §4.3's Vercel paragraph (the same PR also points `data-saf
 
 **Worked if:** `gh secret list` no longer shows the signing and upload secrets at repo level, `gh api repos/JW-Incorporated/foray/environments/release` exists, and the next release run (with `environment: release`) uploads to both stores.
 
+**Check:** `node tools/ops/release-env-check.mjs` (read-only; needs an admin `gh` token) prints READY and exits 0 only when steps 1-3 are all done. Do not merge PR #822 until it does (exit 1 = not done yet, exit 2 = could not read a setting).
+
 ## #116 🟡 [DECIDE] Apply the round-3 Supabase security migration to the production project (~10 min)
 <!-- ha filed=2026-09-25 kind=default -->
 
 **Why:** Round-3 code audit, question Q3. The fix lane adds a new numbered migration under `backend/migrations/`. It turns on row-level security for the catalogue and pipeline tables, adds per-table policies on `events`, `user_interests` and `taxonomy_nodes` (with event timestamps set by the server), and adds a delete policy on `learning_cursor` so **Delete my data** can remove that table's rows too. The code and the privacy-policy rows describing it land in the round-3 fix PR, but **nothing reaches the live database until you apply it**. You asked for this to be your follow-up (2026-09-25).
 
 **Steps:**
+0. Supabase dashboard → the 4a project → **SQL editor**: paste `backend/migrations/supabase/verify-applied.sql` and run it. It is read-only, so it is safe on production. It returns one row per migration, `applied` = `yes`/`partial`/`no`, plus what is missing. Apply only the migrations below that read `no` or `partial`, and paste the result here when you reply.
 1. Wait for the round-3 fix PR to merge. The migration is `backend/migrations/supabase/0003_rls_least_privilege.sql`.
 2. Supabase dashboard → the 4a project → **SQL editor**. Paste that file's contents, read it, and run it (or `supabase db push` if you use the CLI).
-3. Check it worked: **Table editor** shows RLS **enabled** on each table the migration names. As an anonymous user, the app still loads Home, and **Developer → Playback diagnostics** shows no `sync` or `events` errors.
-4. Also apply `backend/migrations/supabase/0005_content_reports.sql` the same way, once its PR (PH2-10, the `content_reports` table for the Report sheet) merges. It needs nothing else, so it can go in the same sitting. Check: **Table editor** shows `content_reports` with RLS **enabled** and three policies. (Note `0004_rls_shows_catalog.sql` is also unapplied: it waits for gate G2, after the portable 0017-0019, so leave it for that step.)
-5. Also apply `backend/migrations/supabase/0006_event_retention.sql` the same way, once its PR (#951, the 90-day retention job, founder ruling HA #13) merges. It needs only 0001-0003, so it can go in the same sitting. Until it runs, the privacy policy's 90-day retention paragraph stays a draft and nothing deletes an event row. Check: `select jobname, active from cron.job where jobname like 'foray-prune-%';` returns 2 rows, both `active = true`. Once it runs, #14 can be closed: the job removes the empty anonymous accounts.
-6. Reply `done` (or paste any SQL error) here.
+3. Check it worked: re-run `verify-applied.sql`; `supabase/0003_rls_least_privilege.sql` reads `yes`. **Table editor** shows RLS **enabled** on each table the migration names. As an anonymous user, the app still loads Home, and **Developer → Playback diagnostics** shows no `sync` or `events` errors.
+4. Also apply `backend/migrations/supabase/0005_content_reports.sql` the same way, once its PR (PH2-10, the `content_reports` table for the Report sheet) merges. It needs nothing else, so it can go in the same sitting. Check: re-run `verify-applied.sql`; `supabase/0005_content_reports.sql` reads `yes`, and **Table editor** shows `content_reports` with RLS **enabled** and three policies. (Note `0004_rls_shows_catalog.sql` is also unapplied: it waits for gate G2, after the portable 0017-0019, so leave it for that step.)
+5. Also apply `backend/migrations/supabase/0006_event_retention.sql` the same way, once its PR (#951, the 90-day retention job, founder ruling HA #13) merges. It needs only 0001-0003, so it can go in the same sitting. Until it runs, the privacy policy's 90-day retention paragraph stays a draft and nothing deletes an event row. Check: re-run `verify-applied.sql`; `supabase/0006_event_retention.sql` reads `yes`, and `select jobname, active from cron.job where jobname like 'foray-prune-%';` returns 2 rows, both `active = true`. Once it runs, #14 can be closed: the job removes the empty anonymous accounts.
+6. Reply `done` with the final `verify-applied.sql` result (or paste any SQL error) here.
 
-**Worked if:** RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion). `content_reports` exists with RLS on. The two `foray-prune-%` cron jobs exist and are active.
+**Worked if:** `verify-applied.sql` reads `yes` for 0001-0003, 0005 and 0006 (0004 waits for gate G2, so it may still read `no`). RLS is on for every table the migration lists, the app still syncs events and interests, and Delete my data removes the `learning_cursor` rows (check in the Table editor after a test deletion). `content_reports` exists with RLS on. The two `foray-prune-%` cron jobs exist and are active.
 
 ## #44 🟡 [DECIDE] Add the founders as Play testers, so Play actually emails you (R-08)
 <!-- ha filed=2026-09-11 kind=default -->
@@ -428,7 +539,7 @@ click-t
 
 **Steps:**
 1. Open Play Console -> your app (4a) -> Grow -> Store presence -> Main store listing.
-2. App name: type 4a. Full description: paste docs/store/play/full-description.txt (2202 chars, plain text).
+2. App name: type 4a. Full description: paste docs/store/play/full-description.txt (2946 chars, plain text). Rewritten in wave 16 (2026-10-07, issue #42): the 2202-char text described the retired four-card Home; the new one describes the shipped app (Forays, Home's rails, Up Next with Continuous playback, downloads, Family mode). The four screenshots are still the 2026-08-25 ones and are stale; a recut is a separate follow-up (docs/store/play/README.md §6).
 3. Short description: paste docs/store/play/short-description.txt (71 chars). New in wave 15: "Forays: one subject across many shows, plus new episodes picked for you" (replaces the "stitched" line).
 4. App icon: upload docs/store/play/app-icon-512.png (512x512, 32-bit with alpha) -- NOT the repo-root icon-512.png, which Play rejects.
 5. Feature graphic: upload docs/store/play/feature-graphic.png (1024x500).

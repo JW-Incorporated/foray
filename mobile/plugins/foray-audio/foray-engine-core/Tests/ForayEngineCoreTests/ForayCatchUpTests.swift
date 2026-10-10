@@ -184,8 +184,8 @@ final class ForayCatchUpTests: XCTestCase {
         func classes(_ out: [EngineCommand]) -> [String] {
             out.compactMap {
                 switch $0 {
-                case let .deck(.load(_, itemId, _, _, _, deadlineClass)): return "load:\(itemId):\(deadlineClass.rawValue)"
-                case let .deck(.prepare(itemId, _, _, deadlineClass, _)): return "prepare:\(itemId):\(deadlineClass.rawValue)"
+                case let .deck(.load(_, itemId, _, _, _, deadlineClass, _)): return "load:\(itemId):\(deadlineClass.rawValue)"
+                case let .deck(.prepare(itemId, _, _, deadlineClass, _, _)): return "prepare:\(itemId):\(deadlineClass.rawValue)"
                 default: return nil
                 }
             }
@@ -222,7 +222,7 @@ final class ForayCatchUpTests: XCTestCase {
         var out: [EngineCommand] = []
         var host = ForayCatchUpTests.host([ForayCatchUpTests.rendered(0), ForayCatchUpTests.clip(1, "a", 100, 200)], out: &out)
         let fileToken = host.lastLoad ?? 0
-        XCTAssertTrue(out.contains { if case .deck(.load(fileToken, _, _, _, _, .line)) = $0 { return true }; return false },
+        XCTAssertTrue(out.contains { if case .deck(.load(fileToken, _, _, _, _, .line, _)) = $0 { return true }; return false },
                       "\(out)")
         let fell = host.send(.deck(.deadlineExceeded(token: fileToken, afterMs: 8_000)), after: 8_000)
         guard let seq = NarrationOverlayTests.spokenSeq(fell) else { return XCTFail("no fallback speak: \(fell)") }
@@ -431,7 +431,7 @@ final class ForayCatchUpTests: XCTestCase {
     /// `prepare:<item>@<in-point>:<deadline class>` for every standby prepare.
     static func prepares(_ out: [EngineCommand]) -> [String] {
         out.compactMap {
-            if case let .deck(.prepare(itemId, _, startSec, deadlineClass, _)) = $0 {
+            if case let .deck(.prepare(itemId, _, startSec, deadlineClass, _, _)) = $0 {
                 return "\(itemId)@\(JSWriter.numberToString(startSec)):\(deadlineClass.rawValue)"
             }
             return nil

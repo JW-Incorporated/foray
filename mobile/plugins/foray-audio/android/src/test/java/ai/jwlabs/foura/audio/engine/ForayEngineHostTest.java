@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import ai.jwlabs.foura.engine.DeckCommand;
@@ -296,6 +297,66 @@ public class ForayEngineHostTest {
         assertFalse("a remote stop is never enabled (T-7)", s.availability().isEnabled(MediaMapping.RemoteCommand.STOP));
     }
 
+    static EngineInput loadWithoutDuration(String id) {
+        List<JsonNode.Member> m = new ArrayList<>();
+        m.add(JsonNode.member("id", JsonNode.str(id)));
+        m.add(JsonNode.member("kind", JsonNode.str("episode")));
+        m.add(JsonNode.member("title", JsonNode.str("Title " + id)));
+        m.add(JsonNode.member("show", JsonNode.str("A show")));
+        m.add(JsonNode.member("audio_url", JsonNode.str("https://cdn.example/" + id + ".mp3")));
+        List<EngineItem> items = new ArrayList<>();
+        items.add(EngineItem.of(new JsonNode.Obj(m)));
+        return new EngineInput.Queue(new EngineInput.QueueInput.Load(items));
+    }
+
+    /**
+     * CH3-22 characterization (survives): while a load is in flight on an item whose duration is
+     * known the surface's clock stands still (the view's rate is 0), and once the deck plays it
+     * runs at the listener's rate. An item with no known duration has no position state at all
+     * during its load, so "rate 0" cannot say "buffering" there (R5-08's premise).
+     */
+    @Test
+    public void aLoadInFlightStopsTheClockAndPlayingStartsIt() {
+        Rig r = new Rig();
+        r.host.handle(load("a"));
+        r.host.handle(playIndex(0));
+        ForayEngineHost.Surface loading = r.host.surface();
+        assertEquals(MediaMapping.PLAYING, loading.view().playbackState());
+        assertEquals("a load in flight: the clock stands still", 0.0, loading.view().positionState().playbackRate(), 0);
+        r.deck.emit(new DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.PLAYING, null));
+        ForayEngineHost.Surface playing = r.host.surface();
+        assertEquals("playing: the clock runs", 1.0, playing.view().positionState().playbackRate(), 0);
+
+        Rig unknown = new Rig();
+        unknown.host.handle(loadWithoutDuration("u"));
+        unknown.host.handle(playIndex(0));
+        ForayEngineHost.Surface s = unknown.host.surface();
+        assertEquals(MediaMapping.PLAYING, s.view().playbackState());
+        assertNull("no duration yet: no position state to carry a rate 0", s.view().positionState());
+    }
+
+    /**
+     * CH3-22 (R5-08): the surface says "buffering" once, in its view, from the core's one
+     * derivation (the stall latch or a load in flight): a load with no known duration is
+     * buffering, the deck playing is not, and a stall is again.
+     * MUTATION: in MediaMapping.sessionView pass {@code false} for {@code buffering} (or drop
+     * {@code || loading} from EngineCore.mediaView): red here.
+     */
+    @Test
+    public void theViewSaysBufferingForALoadAndAStallAndNotForPlaying() {
+        Rig r = new Rig();
+        r.host.handle(loadWithoutDuration("u"));
+        r.host.handle(playIndex(0));
+        assertTrue("a load in flight, duration unknown: buffering", r.host.surface().view().buffering());
+        r.deck.emit(new DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.PLAYING, null));
+        assertFalse("the deck plays: not buffering", r.host.surface().view().buffering());
+        r.deck.emit(new DeckEvent.TimeControl(r.deck.lastToken, DeckEvent.TimeControlStatus.WAITING, null));
+        assertTrue("a stall: buffering", r.host.surface().view().buffering());
+        assertEquals("and the clock stands still", 0.0, r.host.surface().view().positionState().playbackRate(), 0);
+    }
+
     @Test
     public void timersAreArmedThroughTheSeamAndCancelledAtTeardown() {
         Rig r = new Rig();
@@ -313,6 +374,68 @@ public class ForayEngineHostTest {
         assertTrue("and invalidates the deck", r.deck.invalidated);
         ForayEngineHost.Verdict late = r.host.handle(playIndex(0));
         assertEquals(EngineContract.Refusal.RELINQUISHED.token, late.failures().get(0));
+    }
+
+    static EngineInput relinquish() {
+        return new EngineInput.Command(new EngineContract.Command.Relinquish(EngineContract.RelinquishCap.ALL), Vocabulary.Source.TAP);
+    }
+
+    /**
+     * CH3-07 (R5-01): a core relinquish hands the listener (the Media3 session's player) a
+     * CLEARED surface, not the one the last turn left. Today teardown() re-sends the stale
+     * {@code surface} field: "Title a, playing" with every command enabled, on a session nothing
+     * will write again.
+     * MUTATION: in teardown(), hand the listener the {@code surface} field instead of the cleared
+     * one: red here.
+     */
+    @Test
+    public void aCoreRelinquishHandsTheListenerAClearedSurface() {
+        Rig r = new Rig();
+        r.host.handle(load("a", "b"));
+        r.host.handle(playIndex(0));
+        r.deck.emit(new DeckEvent.Ready(r.deck.lastToken, 0, true, 5));
+        ForayEngineHost.Surface before = r.surfaces.get(r.surfaces.size() - 1);
+        assertNotNull("playing: the session shows the item", before.view());
+        assertFalse(before.availability().clearsNowPlaying());
+        int told = r.surfaces.size();
+
+        ForayEngineHost.Verdict v = r.host.handle(relinquish());
+        assertTrue("the relinquish is accepted: " + v.failures(), v.ok());
+        assertTrue(r.host.isTornDown());
+        assertEquals("the listener is told once more, at teardown", told + 1, r.surfaces.size());
+        ForayEngineHost.Surface last = r.surfaces.get(r.surfaces.size() - 1);
+        assertTrue("the last surface clears the session", last.availability().clearsNowPlaying());
+        assertTrue("with every command disabled: " + last.availability().enabled(), last.availability().enabled().isEmpty());
+        assertNull("and nothing to show", last.view());
+        assertTrue("a new surface, not the last turn's again", last.seq() > before.seq());
+        assertSame("the host keeps answering the terminal surface", last, r.host.surface());
+        assertSame(last, r.host.freshSurface());
+    }
+
+    /**
+     * CH3-07: the torn-down hook (the service releases its Media3 session there) runs once, AFTER
+     * the listener's cleared surface, whatever took the engine down: a core relinquish or the
+     * service's own teardown at onDestroy.
+     * MUTATION: drop the hook's run from teardown(): red here (and the service test).
+     */
+    @Test
+    public void theTornDownHookRunsOnceAfterTheClearedSurface() {
+        Rig r = new Rig();
+        List<String> order = new ArrayList<>();
+        r.host.setSurfaceListener(s -> order.add(s.availability().clearsNowPlaying() ? "cleared" : "surface"));
+        r.host.setOnTornDown(() -> order.add("hook"));
+        r.host.handle(load("a"));
+        order.clear();
+        r.host.handle(relinquish());
+        assertEquals("the cleared surface, then the hook, once", java.util.Arrays.asList("cleared", "hook"), order);
+        r.host.teardown();
+        assertEquals("a second teardown runs nothing", java.util.Arrays.asList("cleared", "hook"), order);
+
+        Rig direct = new Rig();
+        int[] runs = {0};
+        direct.host.setOnTornDown(() -> runs[0]++);
+        direct.host.teardown();
+        assertEquals("a teardown the service started runs it too", 1, runs[0]);
     }
 
     @Test

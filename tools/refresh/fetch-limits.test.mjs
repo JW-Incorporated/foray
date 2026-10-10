@@ -208,23 +208,34 @@ test("readResponseCapped refuses a declared oversize before reading, and an unde
   assert.ok(endless.state.pulled <= 3 * 1024 * 1024 + 1, `pulled ${endless.state.pulled} bytes past a 2 MB cap`);
 });
 
-/* MUTATION: put `return await res.text();` back in any of these fetchers --
-   the scan below names the file. */
+/* MUTATION: put a bare fetch + whole-body res.text() read back in any of
+   these fetchers -- the scan below names the file.
+   code-health-2 T1-05 (CH2-11): backfill-audio.mjs and harvest-episodes.mjs
+   were missing from this list while the header claimed EVERY fetcher; the
+   header's list is now parsed and must equal FETCHERS exactly. */
 test("every feed and transcript fetcher in tools/ reads bodies through fetch-limits", () => {
   const FETCHERS = {
-    "tools/refresh/scan.mjs": /fetchFeedCapped\(/,
-    "tools/refresh/backfill-show.mjs": /readResponseCapped\(/,
-    "tools/classify/prepare-batch.mjs": /readResponseCapped\(/,
-    "tools/segments/sweep-transcripts.mjs": /readResponseCapped\(/,
-    "tools/segments/fetch-transcripts.mjs": /readBodyCapped\(/,
+    "tools/refresh/scan.mjs": "fetchFeedCapped",
+    "tools/refresh/backfill-show.mjs": "readResponseCapped",
+    "tools/refresh/backfill-audio.mjs": "fetchFeedCapped",
+    "tools/harvest-episodes.mjs": "fetchFeedCapped",
+    "tools/classify/prepare-batch.mjs": "readResponseCapped",
+    "tools/segments/sweep-transcripts.mjs": "readResponseCapped",
+    "tools/segments/backfill-audio-bytes.mjs": "readResponseCapped",
+    "tools/segments/fetch-transcripts.mjs": "readBodyCapped",
+    "tools/poll/fetch-feed.mjs": "readBodyCapped", // CH2-28 (T1-10): its private copy is gone
   };
-  for (const [file, uses] of Object.entries(FETCHERS)) {
+  for (const [file, fn] of Object.entries(FETCHERS)) {
     const src = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-    assert.match(src, /from "(\.\.\/refresh\/|\.\/)fetch-limits\.mjs"/, `${file} does not import fetch-limits`);
-    assert.match(src, uses, `${file} does not bound its body read`);
+    assert.match(src, new RegExp(String.raw`import \{[^}]*\b${fn}\b[^}]*\} from "\.\.?/(refresh/)?fetch-limits\.mjs"`), `${file} does not import ${fn} from fetch-limits`);
+    assert.match(src, new RegExp(String.raw`\b${fn}\(`), `${file} does not bound its body read with ${fn}`);
     assert.doesNotMatch(src, /(await|return) res\.text\(\)/, `${file} buffers a whole body with res.text()`);
   }
-  // The header names who uses it, and no longer claims refresh-feeds does.
+  // The header names exactly who uses it, and no longer claims refresh-feeds does.
   const header = readFileSync(new URL("./fetch-limits.mjs", import.meta.url), "utf8").split("*/")[0];
   assert.doesNotMatch(header, /Used by both tools\/refresh\/scan\.mjs and tools\/refresh-feeds\.mjs/);
+  const listed = Object.fromEntries(
+    [...header.matchAll(/^\s*(tools\/[\w/.-]+\.mjs)\s+(fetchFeedCapped|readResponseCapped|readBodyCapped)\s*$/gm)].map((m) => [m[1], m[2]]),
+  );
+  assert.deepEqual(listed, FETCHERS, "fetch-limits.mjs's header list and FETCHERS disagree");
 });

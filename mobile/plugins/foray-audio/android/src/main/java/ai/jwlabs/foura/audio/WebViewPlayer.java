@@ -88,9 +88,14 @@ import java.util.List;
  * unit arrives <b>in the timeline we reported</b>: report the segment and a car scrub
  * can only ever move inside 110 seconds.
  *
- * <h2>Nothing here has been executed</h2>
+ * <h2>What has run, and where</h2>
  *
- * No device, no emulator. See {@code docs/android-native-code.md} § what is measured.
+ * The CI emulator only, never a phone ({@code android-playback.yml};
+ * {@code docs/android-emulator-measurements.md} §5–§7). There this session published
+ * PLAYING with the page's title and show, a pause tapped in the shade reached the
+ * page, and it held the media button while paused. The same record keeps two
+ * expected-fails against this lane: A04-F1, a remote play from the background that
+ * never plays, and A04-F2, no 15/30 buttons on the system controls.
  */
 @OptIn(markerClass = UnstableApi.class)
 final class WebViewPlayer extends SimpleBasePlayer {

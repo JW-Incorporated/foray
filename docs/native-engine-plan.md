@@ -272,7 +272,7 @@ active             --close|finalEnd|dataDeletion-->       inactive          [dea
 - **Artwork:** https or the bundled icon, off-main, bounded at 10 s, cached; on failure the key is dropped. Narration never shows a publisher's artwork.
 - **Cold path (A-8, M-9, M1).**
   - The restore record is engine-private (§4.6): `{v, mode, queue[], index, offsetSec, forayId?, rate, voiceId?, advanceLog, pendingEvents, updated_at, build}`.
-  - `inject-background-audio.mjs` (already invoked in both CI paths) gains the AppDelegate patch. It calls `ForayEngine.shared.bootIfNeeded()` from `didFinishLaunching`, is idempotent, and is checked by `--check`. Targets therefore exist even when the bridge never loads.
+  - `inject-background-audio.mjs` (already invoked in both CI paths) gains the AppDelegate patch. It calls `ForayEngineColdPath.bootIfNeeded()` from `didFinishLaunching`, is idempotent, and is checked by `--check`. Targets therefore exist even when the bridge never loads.
   - Now Playing is painted at rate 0 **without activation** (S-3). A cold play loads, activates once, holds grace, and plays.
   - With no record, or a `mode: "relinquished"` record, the play returns `.noActionableNowPlayingItem`.
 

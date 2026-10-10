@@ -407,7 +407,10 @@ public struct EngineCore {
                 diag("interlude", [JSONMember("kind", .string("enabled")), JSONMember("on", .bool(on))])
             }
             state.interludeEnabled = on
-        case let .setPageVisible(visible): state.pageVisible = visible
+        case .setPageVisible:
+            // Whether the page is looking is the bridge's (its snapshot
+            // coalescer); nothing in the core reads it (CH3-23, R4-07).
+            break
         case let .ackAdvances(upToSeq):
             state.advanceLog.removeAll { $0.seq <= upToSeq }
             writeRestore()
@@ -805,7 +808,10 @@ public struct EngineCore {
         let fields = [
             JSONMember("cmd", .string(press.command.rawValue)),
             JSONMember("dupCandidate", .string(dup ? "y" : "n")),
-            JSONMember("route", press.routePort.map { JSONNode.string($0) } ?? .null),
+            // ONE SPELLING (code-health-3 R1-14): the route the host read for
+            // this turn, the one route resume hears (NE-38rs); a press carries
+            // no route of its own.
+            JSONMember("route", now.route.map { JSONNode.string($0.portType) } ?? .null),
             JSONMember("thread", .string(press.onMain ? "main" : "bg")),
             JSONMember("state", .string(state.stateType))
         ]
@@ -819,7 +825,7 @@ public struct EngineCore {
         // A skip or a scrub goes through `seekBy` / `seekTo`, which are the
         // nudge and scrub helpers: in a Foray they step on the FORAY's clock
         // (`forayNudge` / `forayScrub`), the clock Now Playing publishes, never
-        // the clip's source seconds (#924; the JVM's A-42). Pinned from a clip
+        // the clip's source seconds (#924; the JVM's A-40). Pinned from a clip
         // by `manager-foray/remote-clock-*` and from a line by
         // `manager-foray/narration-skip-*`.
         switch press.command {
@@ -828,8 +834,13 @@ public struct EngineCore {
         case .togglePlayPause: toggle(source: .remote)
         case .nextTrack: next(source: .remote)
         case .previousTrack: previous(source: .remote)
-        case .skipForward: seekBy(press.value ?? steps.forwardSec, source: .remote)
-        case .skipBackward: seekBy(-(press.value ?? steps.backwardSec), source: .remote)
+        // THE STEP IS OURS (CH3-20, R3-08): a skip's interval on the press
+        // is the head unit's, and no host forwards it (RemoteSurface.value,
+        // EnginePlayer's seekBack/seekForward), so the step is always
+        // `SeekSteps`, the JS rule (media-session.js SEEK_BACKWARD_SEC /
+        // SEEK_FORWARD_SEC). Pinned by `native-episode/*-head-units-interval*`.
+        case .skipForward: seekBy(steps.forwardSec, source: .remote)
+        case .skipBackward: seekBy(-steps.backwardSec, source: .remote)
         case .changePlaybackPosition:
             guard let target = press.value else { return refuse(.notLoaded) }
             seekTo(target, source: .remote)
@@ -1079,8 +1090,10 @@ public struct EngineCore {
     /// one `.load` with a fresh token. The index moves NOW (after the outgoing
     /// save already ran); the loaded id moves only when `.ready` comes back.
     /// `attempt` is §16's: 1 for every load the reducer asks for, higher only
-    /// for a Foray clip's retry (`retryOrSkipClip`).
-    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets, attempt: Int = 1) {
+    /// for a Foray clip's retry (`retryOrSkipClip`). `url` replaces the
+    /// item's own `audio_url` for this one load: the stream a downloaded copy
+    /// that will not open falls back to (`fallBackToStream`, CH3-12).
+    private mutating func load(_ ref: QueueItemRef, offsets: LoadOffsets, attempt: Int = 1, url: String? = nil) {
         guard let item = state.queue.first(where: { $0.id == ref.id }) else {
             // Drop the beat's deadline with the item it belonged to.
             endSeamGap("unknownRef")
@@ -1145,10 +1158,11 @@ public struct EngineCore {
             // SPOKEN (NE-31s).
             return loadSpokenLine(item, token: token, restart: offsets.forced != nil)
         }
-        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec, attempt: attempt)
-        deckCommand(.load(token: token, itemId: item.id, url: item.audioUrl, startSec: startSec,
+        let opened = url ?? item.audioUrl
+        state.pendingLoad = PendingLoad(token: token, itemId: item.id, startSec: startSec, attempt: attempt, url: opened)
+        deckCommand(.load(token: token, itemId: item.id, url: opened, startSec: startSec,
                           preciseTiming: item.preciseTiming(approximateCBR: config.approximateCBRClips),
-                          deadlineClass: DeckDeadlineClass(item)))
+                          deadlineClass: DeckDeadlineClass(item), bounded: bounds != nil))
     }
 
     /// `_savedPositionFor(item)`: where a COLD start begins, through the one
@@ -1332,6 +1346,11 @@ public struct EngineCore {
         if isPending, let pending = state.pendingLoad, retryOrSkipClip(pending, cause: cause, why: fallbackCause) {
             return
         }
+        // CH3-12: a downloaded copy that will not open streams instead.
+        if isPending, let pending = state.pendingLoad,
+           fallBackToStream(pending, message: message, cause: cause, why: fallbackCause) {
+            return
+        }
         let itemId = state.pendingLoad?.itemId ?? state.loadedId ?? "?"
         state.pendingLoad = nil
         stopRow(cause)
@@ -1345,6 +1364,43 @@ public struct EngineCore {
             out.append(.emit(.error(code: "load", message: message)))
         }
         dispatch(.error("loadItem(\(itemId)) failed: \(message)"))
+    }
+
+    /// CH3-12 (R4-03): a DOWNLOADED copy that will not open (the file was
+    /// removed, or an app update moved the container it lived in) is loaded
+    /// again from its stream, at the same second, once. The page sends a
+    /// downloaded item with the file in `audio_url` and the stream kept as
+    /// `source_audio_url` (download-store.js `localPlayable`); in the JS lane
+    /// the page itself streams it (client.js `degradeLocalPlay`), but here the
+    /// failure can land with the page asleep (a car press after a cold
+    /// restore, a hop the engine walked), and the bridge drops every event
+    /// while the page is hidden, so the page's fallback never ran.
+    ///
+    ///   - Only a load that opened a `file:` URL falls back, and only onto a
+    ///     non-empty `source_audio_url`. The fallback's own load opened the
+    ///     stream, so a failure of THAT is the caller's stop, as today: once.
+    ///   - Offline is not the core's to know: the stream runs into its own
+    ///     deadline, and then stops `cause=load-deadline`.
+    ///   - No `stopRow`: a fallback is not a stop (`deck kind=stream-fallback`
+    ///     says what happened). The page still hears `error` code `load`, so
+    ///     it marks the download missing; that code is the snapshot's
+    ///     `lastError` too, which is how a page that slept through it learns.
+    ///
+    /// Not pinned by a fixture: the JS manager has no such rule (its lane's
+    /// fallback is the page's), so `player/parity/exclusions.json` says so and
+    /// both cores pin it with identically named unit tests.
+    private mutating func fallBackToStream(_ pending: PendingLoad, message: String, cause: Vocabulary.StopCause,
+                                           why: Vocabulary.NarrationFallbackCause) -> Bool {
+        guard !pending.bridge, pending.spokenSeq == nil, pending.url?.hasPrefix("file:") == true,
+              let item = state.queue.first(where: { $0.id == pending.itemId }),
+              let stream = item.node["source_audio_url"]?.stringValue, !stream.isEmpty else { return false }
+        // `why`, not `cause`, as in `retryOrSkipClip`: this row is not a stop.
+        diag("deck", [JSONMember("kind", .string("stream-fallback")), JSONMember("token", .number(Double(pending.token))),
+                      JSONMember("why", .string(cause.rawValue)), JSONMember("fileCause", .string(why.rawValue))])
+        state.pendingLoad = nil
+        out.append(.emit(.error(code: "load", message: message)))
+        load(item.ref, offsets: LoadOffsets(explicit: pending.startSec), attempt: pending.attempt, url: stream)
+        return true
     }
 
     /// §16 (queue-manager.js `_retryOrSkipClip`; the M2 car drive,
@@ -1686,6 +1742,11 @@ public struct EngineCore {
         cutSeamGap("interruption")
         // A call or Siri clears a loss's eligibility (route-resume.js).
         routeResumeStep(.interruption)
+        // ...and explains the deck's uncommanded pause (CH3-02 review): the
+        // call paused it, so a route loss after this (an A2DP -> HFP flap
+        // inside `routeAttributionMs`) lands inside the interruption and is
+        // not attributed that pause; the call's should-resume decides.
+        state.lastUncommandedPauseAtMono = nil
         applySession(transition)
         dispatch(.interruptionBegan)
         releaseSeamGap()
@@ -1736,6 +1797,13 @@ public struct EngineCore {
     /// and it is a car (CarPlay; Bluetooth only behind `routeResumeBluetooth`,
     /// OFF). A listener's pause, a call, Siri or a system pause never resumes.
     /// Every loss and every return writes a `route` row with the decision.
+    ///
+    /// ONLY A LOSS THAT PAUSED SOMETHING IS NON-RESUMABLE (CH3-02, R2-02;
+    /// `queue-manager.js` `routeChanged`): the machine was playing, bridging or
+    /// loading, or the loss is why the deck already paused (attributed below).
+    /// A loss inside an OS interruption — a car's A2DP -> HFP -> A2DP flap
+    /// while a call rings — paused nothing; the call did, and its
+    /// should-resume decides (code-health-3 founder question 2, default).
     private mutating func onRoute(_ change: RouteChange) {
         diag("session", [JSONMember("kind", .string("route")),
                          JSONMember("oldDeviceUnavailable", .bool(change.oldDeviceUnavailable)),
@@ -1751,7 +1819,11 @@ public struct EngineCore {
             }
             state.heardRoute = nil
             state.lastRouteLostAtMono = now.monoMs
-            state.pausedByRoute = true
+            var pausesSomething: Bool
+            switch state.player {
+            case .playing, .transitioning, .loadingItem: pausesSomething = true
+            case .idle, .interrupted, .ended: pausesSomething = false
+            }
             if let paused = state.lastUncommandedPauseAtMono, now.monoMs - paused >= 0,
                now.monoMs - paused <= EngineCore.routeAttributionMs {
                 // The deck's pause came first and was reconciled as the
@@ -1760,7 +1832,11 @@ public struct EngineCore {
                 if let before = state.routeResumeBeforePause, before.atMono == paused {
                     state.routeResume = before.state
                 }
+                pausesSomething = true
             }
+            // Non-resumable when it paused something: a later call's
+            // should-resume must not undo it.
+            if pausesSomething { state.pausedByRoute = true }
             state.routeResumeBeforePause = nil
             routeResumeStep(.lost(port: change.portType, key: key, atSec: wallSec))
             diag("route", [JSONMember("kind", .string("lost")),
@@ -2279,7 +2355,7 @@ public struct EngineCore {
     private mutating func deckCommand(_ command: DeckCommand) {
         out.append(.deck(command))
         switch command {
-        case let .load(_, _, _, startSec, _, deadlineClass):
+        case let .load(_, _, _, startSec, _, deadlineClass, _):
             state.lastLoadClass = deadlineClass
             state.lastLoadWallMs = now.wallMs
             deck.positionSec = startSec
@@ -2499,7 +2575,8 @@ public struct EngineCore {
         state.preparedItemId = next.item.id
         deckCommand(.prepare(itemId: next.item.id, url: next.item.audioUrl, startSec: next.item.bounds?.startSec ?? 0,
                              deadlineClass: DeckDeadlineClass(next.item),
-                             preciseTiming: next.item.preciseTiming(approximateCBR: config.approximateCBRClips)))
+                             preciseTiming: next.item.preciseTiming(approximateCBR: config.approximateCBRClips),
+                             bounded: next.item.bounds != nil))
     }
 
     /// A seam that touches a Foray SEGMENT (a bounded slice): a Foray's line

@@ -47,6 +47,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { billableText } from "../narrate/billable.mjs";
 import { narrationDuration } from "../../player/foray-queue.js";
@@ -238,7 +239,7 @@ async function main() {
   return 0;
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const isMain = isEntryScript(import.meta.url);
 if (isMain) {
   main().then(
     (code) => process.exit(code),
