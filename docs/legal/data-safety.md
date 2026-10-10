@@ -36,11 +36,12 @@ collection.
 Read `privacy-policy.md` §1–§4 for the full table. The three facts that decide
 every answer below:
 
-1. **23 `cp_*` storage keys live on the device**, each mirrored into both
-   `localStorage` and IndexedDB (`player/durable-store.js` mirrors the whole
-   `cp_` prefix; db `foray`, store `kv`). Two of the 23 are diagnostics rather
-   than a listener's data — `cp_storage_health` and `cp_diag` — and neither is
-   transmitted.
+1. **Thirty-one live `cp_*` storage keys live on the device** (plus two
+   retired ones the app deletes on launch — the policy's §1 table names all
+   thirty-three), each live key mirrored into both `localStorage` and
+   IndexedDB (`player/durable-store.js` mirrors the whole `cp_` prefix; db
+   `foray`, store `kv`). Two of them are diagnostics rather than a listener's
+   data — `cp_storage_health` and `cp_diag` — and neither is transmitted.
 2. **Exactly 4 of 23 event types are transmitted**, to one endpoint
    (`https://qjdllvqdcgacvujhclny.supabase.co`), keyed to an anonymous account.
    Mapping: `app.js:toEventRow()` — the four `case` arms that return a row are
@@ -49,7 +50,7 @@ every answer below:
    after a thumb, and once on first render.
 3. **Audio streams directly from publisher hosts** (`player/html-audio-backend.js:load()`;
    URLs from `data/segment-sources.json`, `data/session.json` and
-   `data/discover.json`). **43 distinct first-hop hosts**, many of them
+   `data/discover.json`). **44 distinct first-hop hosts**, many of them
    measurement or ad-attribution prefixes that redirect onward, so the real chain
    is longer. No 4a server in the path; we receive nothing. See §A6 — this is
    the answer most likely to be got wrong in either direction.
@@ -93,8 +94,8 @@ ones a template gets wrong.
 | **Files and docs** | **No** | No | — |
 | **Calendar** | **No** | No | — |
 | **Contacts** | **No** | No | — |
-| **App activity — App interactions** | **Yes** | No | The five transmitted events are interactions: picked, finished, saved, thumbs, session shown (`app.js:toEventRow()`). The `picked` row's `context` field is filtered against a five-value allowlist (`app.js:SB_ARCHETYPES`) but the app only ever produces `continue` or a value the filter discards, so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw. |
-| **App activity — In-app search history** | **No** | No | The playlist box (`app.js:#cr-input`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_saved`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent — which since #276 also holds a copy of each saved episode’s title, show, length, topic ids and Apple Podcasts ids, so an aged-out part still renders. That is catalogue metadata about episodes, not search history about you, and none of it leaves the device either. The Shows search box (`app.js:#sh-input`) is different: every settled Shows search is sent to 4a's API (Vercel) and is not logged as a search-history event (`privacy-policy.md` §2, §4.3). It is still a network transmission of what you typed, so this row is worth a lawyer's eye. |
+| **App activity — App interactions** | **Yes** | No | The four transmitted events are interactions: picked, saved, thumbs, session shown (`app.js:toEventRow()`). The `picked` row's `context` field is filtered against a five-value allowlist (`app.js:SB_ARCHETYPES`) but the app only ever produces `continue` or a value the filter discards, so it is `"continue"` or null in practice — it does not report which recommendation archetype you saw. |
+| **App activity — In-app search history** | **No** | No | The playlist box (`app.js:#cr-input`, `maxlength=120`) is searched entirely on-device by `search-engine.js`; `playlist_built`/`playlist_saved`/`playlist_removed` are local-only (they fall to `toEventRow`'s `default: return null`). Stored in `cp_playlists`, never sent — which since #276 also holds a copy of each saved episode’s title, show, length, topic ids and Apple Podcasts ids, so an aged-out part still renders. That is catalogue metadata about episodes, not search history about you, and none of it leaves the device either. The Shows search box (`app.js:#sh-input`) is different: every settled Shows search is sent to 4a's API (Vercel), which passes it on to Apple's directory (§2) and is not logged as a search-history event (`privacy-policy.md` §2, §4.3). It is still a network transmission of what you typed, so this row is worth a lawyer's eye. |
 | **App activity — Installed apps** | **No** | No | Nothing is enumerated. (The retired `cp_player` preferred-app setting was local-only and never transmitted; the app stopped writing it on 2026-09-22.) The `picked` row carries an `app` field, but it reads a `data-app` attribute **nothing in the app ever sets**, so it is always the hardcoded literal `"Apple Podcasts"` regardless of your preference (`app.js:bindPickLogging()`) — it reports nothing about you or your device. |
 | **App activity — Other user-generated content** | **Yes** | No | The thumbs-down free-text note is transmitted (`app.js:toEventRow()`; typed into `app.js:#fy-sheet-note`, `maxlength=200`). |
 | **App activity — Other actions** | **Yes** | No | Thumbs direction and the fixed reason codes (`app.js:FB_CHIPS`, sent by `app.js:toEventRow()`). |
@@ -103,6 +104,7 @@ ones a template gets wrong.
 | **App info and performance — Diagnostics** | **No** | No | Two local-only records, neither transmitted. `cp_storage_health` records storage-tier faults; `storage_fault` is a local-only event type. `cp_diag` (#264) records how the audio player behaved — seam durations, load deadlines, out-point overshoot, stops, resume decisions, background/foreground transitions with their durations, taps on the transport that failed (#225), and narration recordings that failed and were read aloud from their script instead (the reason, the line's id and the audio server's host name — never the file's URL) — capped at 200 entries, oldest dropped first, readable and clearable from the drawer's **Playback diagnostics** (`player/diagnostic-log.js`). It holds no audio, no URLs, no account id and no device names: only numbers matched by an explicit pattern, authored segment ids, stage names from a fixed vocabulary, our own audio server's host name on a narration-fallback row, and the error *class* of a failed tap (e.g. `NotAllowedError` — the name of the error type, never its message) — a telemetry line's text is never stored, and a recognised audio route is recorded as a fact rather than by name. It is deliberately OUTSIDE the `cp_events` pipeline, so no code path can send it. |
 | **App info and performance — Other app performance data** | **No** | No | — |
 | **Device or other IDs** | **No** | No | No advertising id, no device id, no fingerprinting. `cp_profile_id` is a locally-generated random string (`app.js:profileId()`) and is **deliberately not included** in any transmitted row — `toEventRow` never copies it. |
+| **Permissions (Android)** | n/a | n/a | `POST_NOTIFICATIONS` (runtime, asked once after the first play, for the lock-screen controls), `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` and `WAKE_LOCK` (install-time, no prompt) — all in `mobile/plugins/foray-audio/android/src/main/AndroidManifest.xml`. None reads data; none is a Play data type. iOS asks for no permission. |
 
 ## A3. For each collected type — the follow-up questions
 
@@ -165,7 +167,7 @@ Playing anything points an `<audio>` element at the publisher's own URL
 address and user-agent** to that host.
 
 **Know the real scale before you answer this.** It is not a handful of CDNs:
-**43 distinct first-hop hosts** across the three catalogue files the app fetches,
+**44 distinct first-hop hosts** across the three catalogue files the app fetches,
 and because most publishers front their audio with redirecting prefix services,
 the actual chain is longer than one hop. One real URL from our catalogue passes
 through five intermediaries before reaching the audio:
@@ -298,13 +300,13 @@ longer than the real-time request needs**. Same conclusion as Play — the local
 | **User Content — Other User Content** | **Yes** | The free-text thumbs-down note is transmitted (`app.js:toEventRow()`). |
 | **User Content** — photos, videos, audio, gameplay, customer support | **No** | None exist. The app plays third-party audio; it records and uploads none. |
 | **Browsing History** | **No** | Not accessible to the app. |
-| **Search History** | **No** | Playlist search is on-device and never transmitted (`search-engine.js`; playlist events are local-only). Shows search (`app.js:#sh-input`) is different: every settled Shows search is sent to 4a's API (Vercel) and is not logged as a search-history event (`privacy-policy.md` §2, §4.3). That transmits what you typed. |
+| **Search History** | **No** | Playlist search is on-device and never transmitted (`search-engine.js`; playlist events are local-only). Shows search (`app.js:#sh-input`) is different: every settled Shows search is sent to 4a's API (Vercel), which passes it on to Apple's directory (§2) and is not logged as a search-history event (`privacy-policy.md` §2, §4.3). That transmits what you typed. |
 | **Identifiers — User ID** | **Yes** | The Supabase anonymous account id on every row (`app.js:toEventRow()`). |
 | **Identifiers — Device ID** | **No** | No IDFA, IDFV, or fingerprint. `cp_profile_id` is local-only and never transmitted. |
 | **Purchases** | **No** | — |
-| **Usage Data — Product Interaction** | **Yes** | picked / finished / saved / thumbs / session shown (`app.js:toEventRow()`). |
+| **Usage Data — Product Interaction** | **Yes** | picked / saved / thumbs / session shown (`app.js:toEventRow()`). |
 | **Usage Data — Advertising Data** | **No** | No ads anywhere. |
-| **Usage Data — Other Usage Data** | **No** | Nothing beyond the five mapped types. |
+| **Usage Data — Other Usage Data** | **No** | Nothing beyond the four mapped types. |
 | **Diagnostics** (crash, performance, other) | **No** | No crash reporter; `storage_fault`, `cp_storage_health` and `cp_diag` never leave the device. |
 | **Surroundings** / **Body** | **No** | No sensors, camera or microphone. |
 | **Other Data** | **No** | — |
@@ -425,11 +427,10 @@ Applies to **User ID**, **Product Interaction** and **Other User Content**.
 
 # Part C — Where the native app's answers differ
 
-The Capacitor shell is **not on `main`** as of `909adb5`; it lives on the
-unmerged branch `feat/capacitor-shell` (PR #209), which is also behind `main`.
-Treat this section as a forecast to re-verify at submission, not as a
-description of shipped code. Store declarations are about the **app**, so these
-are the answers that will actually be submitted.
+The Capacitor shell is on `main` under `mobile/` (merged from PR #209) and is
+the shipping app (CLAUDE.md § Layout). The table below describes shipped code;
+re-verify it at each submission all the same, because store declarations are
+about the **app**, and these are the answers that will actually be submitted.
 
 | Aspect | Web | Native shell | Effect on the declarations |
 |---|---|---|---|

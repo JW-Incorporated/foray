@@ -216,8 +216,11 @@ test("S-07/G1 Option B: the policy states the lookup is unconditional, in the wo
       "(Option B, docs/DECISIONS.md 2026-09-11) — the code has no local-hit branch and " +
       "never had one, so this sentence is false as shipped."
   );
+  /* The phrase below is the founder-approved privacy-truth wording (#1163
+     item 8, docs/audit/privacy-truth-2026-10.md M2), which added the
+     "whether or not our own catalogue matched" half to the same sentence. */
   assert.ok(
-    policy.includes("It does this whether or not the show was already on your device."),
+    policy.includes("It does this whether or not our own catalogue matched, and whether or not the show was already on your device."),
     "docs/legal/privacy-policy.md §2 must say plainly that the Shows-search lookup happens " +
       "whether or not the show is already on the device — deleting the old promise without " +
       "replacing it leaves the reader with no statement at all."
