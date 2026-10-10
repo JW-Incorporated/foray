@@ -1,8 +1,10 @@
 import Foundation
 import UIKit
 
-/// Now Playing's artwork, for NowPlayingPublisher (card NE-18;
-/// docs/native-engine-plan.md §4.5).
+/// Now Playing's artwork: the ONE loader, for both lanes (CH3-21). The
+/// native lane's NowPlayingPublisher (card NE-18; docs/native-engine-plan.md
+/// §4.5) uses one confined to main; the legacy lane's
+/// `ForayAudioPlugin.artworkItem(for:)` uses one confined to its `stateQueue`.
 ///
 /// ── THE RULES, AND WHY EACH ONE ────────────────────────────────────────────
 ///
@@ -12,28 +14,38 @@ import UIKit
 ///     Capacitor copies the web assets), an `https:` URL is a publisher's
 ///     square, and everything else, `data:` included, has no artwork: a
 ///     `data:` URI on the lock screen is an image the page could make of
-///     anything, and nothing the engine shows ever needs one.
-///   - OFF MAIN. The network fetch runs on URLSession's queue, the bundle read
-///     and every decode on a utility queue; only the finished `UIImage` comes
-///     back to main. The engine is main-confined (plan §4.2) and a car's
-///     press must never wait behind an image.
+///     anything, and nothing the engine shows ever needs one. (The legacy
+///     lane's `bundle://public/<path>` is stripped to `<path>` by its caller;
+///     a `data:` or `file:` URI gets no artwork there either.)
+///   - OFF THE CALLER'S QUEUE. The network fetch runs on URLSession's queue,
+///     the bundle read and every decode on a utility queue; only the finished
+///     `UIImage` comes back to the cache's queue. The engine is main-confined
+///     (plan §4.2), the legacy lane's remote-command handlers share its
+///     `stateQueue`, and a car's press must never wait behind an image.
 ///   - BOUNDED AT 10 s, WHOLE. `URLRequest.timeoutInterval` bounds the gaps
 ///     between packets, not the fetch, so a trickling server could hold one
-///     open for a minute. A deadline on main settles the load at 10 s
-///     whatever the transfer is doing, and cancels it.
-///   - CACHED, AND A FAILURE IS CACHED TOO. A re-write of an unchanged entry
-///     (every seek, every state change) must not fetch again, and a dead URL
-///     costs one attempt per process, not one per write (the legacy lane's
-///     2026-09-23 lesson: an uncached artwork fetch sat in front of the car's
-///     play). A failed or timed-out key has no artwork; NowPlayingPublisher
-///     builds every entry fresh, so the key is dropped, never left showing
-///     the previous item's square.
+///     open for a minute. A deadline on the cache's queue settles the load at
+///     10 s whatever the transfer is doing, and cancels it.
+///   - CACHED, AND A FAILURE IS A RETRY TIME. A re-write of an unchanged
+///     entry (every seek, every state change, the 1 s refresh) must not fetch
+///     again (the legacy lane's 2026-09-23 lesson: an uncached artwork fetch
+///     sat in front of the car's play). A failed or timed-out NETWORK load is
+///     "no artwork" for `retryAfterSec` and then may be tried again by the
+///     next write (audit round 3, mobile-native-6): a dead URL costs one
+///     attempt per window, not one per write, and a fetch that timed out in a
+///     dead zone as the car connected does not leave CarPlay bare for the
+///     rest of the item. An unsupported source or a bundled file that is not
+///     there is an answer, not a failure, and is never tried again. A key
+///     with no artwork is dropped (the entry is built fresh), never left
+///     showing the previous item's square.
 ///   - NOT FOR NARRATION. A narration line's metadata already carries only
 ///     our icon (`MediaMapping.metadata`: "a narration line is ours"), so no
 ///     publisher's artwork can reach this cache for one.
 ///
-/// MAIN-CONFINED: every method is called on main (the publisher is driven by
-/// the host), and every completion is delivered on main.
+/// CONFINED TO ITS QUEUE: every method is called on `queue` (main for the
+/// engine, whose publisher the host drives on main; the legacy plugin's
+/// serial `stateQueue` for its lane), and every completion and the deadline
+/// are delivered there.
 final class ArtworkCache {
     /// Where an artwork source is read from.
     enum Source: Equatable {
@@ -56,8 +68,9 @@ final class ArtworkCache {
     typealias Fetcher = (_ url: URL, _ timeoutSec: Double, _ done: @escaping (Data?) -> Void) -> (() -> Void)
     /// Read a bundled image by its path under `public/`, on the utility queue.
     typealias BundleReader = (_ path: String) -> UIImage?
-    /// Run `fire` on main `sec` seconds from now: the deadline's only clock.
-    /// Production is `mainQueueDeadline`; a test injects a manual one so the
+    /// Run `fire` on the cache's queue `sec` seconds from now: the
+    /// deadline's only clock. Production is `queueDeadline(on:)` over that
+    /// queue; a test injects a manual one so the
     /// deadline fires when the test says, not when a loaded runner's wall
     /// clock happens to get there first (NowPlayingPublisherTests).
     typealias DeadlineTimer = (_ sec: Double, _ fire: @escaping () -> Void) -> Void
@@ -74,6 +87,7 @@ final class ArtworkCache {
     /// mobile-native-6).
     static let retryAfterSec: Double = 45
 
+    private let queue: DispatchQueue
     private let timeoutSec: Double
     private let fetcher: Fetcher
     private let bundleReader: BundleReader
@@ -85,18 +99,23 @@ final class ArtworkCache {
     private var images: [String: UIImage] = [:]
     /// Insertion order of `images`, oldest first, for the capacity bound.
     private var order: [String] = []
-    private var failed: Set<String> = []
+    /// When each source that has no artwork may be tried again, on `now`'s
+    /// clock: a failed network load's retry time, or `.infinity` for an
+    /// answer (unsupported, or a bundled file that is not there).
+    private var noArtworkUntil: [String: Double] = [:]
     private var waiting: [String: [(UIImage?) -> Void]] = [:]
 
-    init(timeoutSec: Double = ArtworkCache.timeoutSec,
+    init(queue: DispatchQueue = .main,
+         timeoutSec: Double = ArtworkCache.timeoutSec,
          fetcher: @escaping Fetcher = ArtworkCache.urlSessionFetch,
          bundleReader: @escaping BundleReader = ArtworkCache.readBundled,
-         deadline: @escaping DeadlineTimer = ArtworkCache.mainQueueDeadline,
+         deadline: DeadlineTimer? = nil,
          now: @escaping () -> Double = { ProcessInfo.processInfo.systemUptime }) {
+        self.queue = queue
         self.timeoutSec = timeoutSec
         self.fetcher = fetcher
         self.bundleReader = bundleReader
-        self.deadline = deadline
+        self.deadline = deadline ?? ArtworkCache.queueDeadline(on: queue)
         self.now = now
     }
 
@@ -115,22 +134,29 @@ final class ArtworkCache {
 
     func lookup(_ src: String) -> Lookup {
         if let image = images[src] { return .image(image) }
-        if failed.contains(src) { return .failed }
+        if hasNoArtwork(src) { return .failed }
         return .missing
+    }
+
+    /// Whether `src` is known to have no artwork right now: an answer, or a
+    /// failure still inside its retry window.
+    private func hasNoArtwork(_ src: String) -> Bool {
+        guard let until = noArtworkUntil[src] else { return false }
+        return now() < until
     }
 
     /// Whether a load for `src` is in flight.
     func isLoading(_ src: String) -> Bool { waiting[src] != nil }
 
-    /// Load `src` once. `completion` runs on main with the image, or nil when
-    /// the source is unsupported, the load failed, or the deadline passed.
-    /// A second call while the first is in flight joins it.
+    /// Load `src` once. `completion` runs on the cache's queue with the
+    /// image, or nil when the source is unsupported, the load failed, or the
+    /// deadline passed. A second call while the first is in flight joins it.
     func load(_ src: String, completion: @escaping (UIImage?) -> Void) {
-        dispatchPrecondition(condition: .onQueue(.main))
+        dispatchPrecondition(condition: .onQueue(queue))
         if let image = images[src] { return completion(image) }
-        if failed.contains(src) { return completion(nil) }
+        if hasNoArtwork(src) { return completion(nil) }
         guard let source = Self.source(for: src) else {
-            failed.insert(src)
+            noArtworkUntil[src] = .infinity
             return completion(nil)
         }
         if waiting[src] != nil {
@@ -139,46 +165,50 @@ final class ArtworkCache {
         }
         waiting[src] = [completion]
 
-        // Settled exactly once, on main: by the image, the failure, or the
-        // deadline, whichever comes first.
+        // Settled exactly once, on the queue: by the image, the failure, or
+        // the deadline, whichever comes first. Only a network load is worth
+        // trying again; a bundled file that is not there will not appear.
         let pending = PendingLoad()
+        let retryable: Bool
+        if case .remote = source { retryable = true } else { retryable = false }
         let finish: (UIImage?) -> Void = { [weak self] image in
             guard !pending.settled else { return }
             pending.settled = true
             pending.cancel?()
             pending.cancel = nil
-            self?.settle(src, image)
+            self?.settle(src, image, retryable: retryable)
         }
         deadline(timeoutSec) { finish(nil) }
 
         switch source {
         case let .remote(url):
-            let work = self.work
+            let (work, queue) = (self.work, self.queue)
             pending.cancel = fetcher(url, timeoutSec) { data in
-                // Decoded off main, on the utility queue, whatever thread the
-                // fetcher answered on.
+                // Decoded off the cache's queue, on the utility queue,
+                // whatever thread the fetcher answered on.
                 work.async {
                     let image = data.flatMap { UIImage(data: $0) }
-                    DispatchQueue.main.async { finish(image) }
+                    queue.async { finish(image) }
                 }
             }
         case let .bundled(path):
-            let read = bundleReader
+            let (read, queue) = (bundleReader, self.queue)
             work.async {
                 let image = read(path)
-                DispatchQueue.main.async { finish(image) }
+                queue.async { finish(image) }
             }
         }
     }
 
-    /// One load's settlement, shared by its three possible endings (all on main).
+    /// One load's settlement, shared by its three possible endings (all on the queue).
     private final class PendingLoad {
         var settled = false
         var cancel: (() -> Void)?
     }
 
-    private func settle(_ src: String, _ image: UIImage?) {
+    private func settle(_ src: String, _ image: UIImage?, retryable: Bool) {
         if let image {
+            noArtworkUntil[src] = nil
             images[src] = image
             order.removeAll { $0 == src }
             order.append(src)
@@ -186,7 +216,7 @@ final class ArtworkCache {
                 images[order.removeFirst()] = nil
             }
         } else {
-            failed.insert(src)
+            noArtworkUntil[src] = retryable ? now() + Self.retryAfterSec : .infinity
         }
         let completions = waiting.removeValue(forKey: src) ?? []
         completions.forEach { $0(image) }
@@ -194,9 +224,9 @@ final class ArtworkCache {
 
     // MARK: - The real deadline, fetch and bundle read
 
-    /// The whole-load deadline on main, by the wall clock.
-    static func mainQueueDeadline(_ sec: Double, _ fire: @escaping () -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + sec, execute: fire)
+    /// The whole-load deadline on `queue`, by the wall clock.
+    static func queueDeadline(on queue: DispatchQueue) -> DeadlineTimer {
+        return { sec, fire in queue.asyncAfter(deadline: .now() + sec, execute: fire) }
     }
 
     /// URLSession, honouring the HTTP cache, a non-2xx answer read as none.

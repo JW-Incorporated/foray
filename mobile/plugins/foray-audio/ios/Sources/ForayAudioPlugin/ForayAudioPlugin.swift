@@ -230,16 +230,16 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// while paused is not the transport moving on.
     private var reassertGeneration: UInt64 = 0
 
-    /// The artwork last built, keyed by the URI it was built from, so a
-    /// re-assert or a position write never loads it again -- see `artworkItem`.
-    private var artworkCache: (uri: String, item: MPMediaItemArtwork?)?
-    /// Remote artwork URIs with a load in flight, so one slow fetch is one fetch.
-    private var artworkLoading = Set<String>()
-    /// The last remote artwork load that FAILED, and when it may be tried
-    /// again (audit round 3, mobile-native-6). A failure is not cached as "no
-    /// artwork" for the rest of the item any more: a dead zone or a slow host
-    /// as the car connects is usually transient.
-    private var artworkRetryAfter: (uri: String, at: Date)?
+    /// This lane's artwork loader: the engine's `ArtworkCache` (CH3-21, one
+    /// loader and one rule for both lanes), confined to `stateQueue`. It
+    /// caches per source, fetches off the queue bounded at 10 s whole, and
+    /// holds a failed fetch back for `ArtworkCache.retryAfterSec` and no
+    /// longer (audit round 3, mobile-native-6) -- see `artworkItem`.
+    private lazy var artworkLoader = ArtworkCache(queue: stateQueue)
+    /// The artwork object last handed to the centre and the picture it was
+    /// built from, so a re-assert or a position write hands over the SAME
+    /// `MPMediaItemArtwork` and a head unit is never asked to redraw it.
+    private var artworkObject: (src: String, image: UIImage, item: MPMediaItemArtwork)?
 
     /// L-02's log-side needle (`FORAY_AUDIO_REACHED_NEEDLE` in
     /// `tools/mobile/ios-ci.mjs`, pinned to this string by
@@ -1296,15 +1296,12 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         return "title=\(flag(title)) artist=\(flag(artist)) album=\(flag(album)) artwork=\(hasArtwork ? "y" : "n")"
     }
 
-    /// Artwork via `MPMediaItemArtwork`: loaded from the bundle's `public/`
-    /// for our own icon, from the network for a publisher's. `artworkUri` has
-    /// already been through `foray-media-session.js`'s `artworkUrl()` gate
-    /// (only `https:`/`data:`/same-origin survive), the same trust boundary
-    /// Android's `assetUri()` rewrite sits behind. On iOS the web half marks
-    /// our own icon with the bare `bundle://public/…` scheme
-    /// (`IOS_ASSET_BASE` in `foray-media-session.js` -- L-02, the iOS mirror
-    /// of Android's `file:///android_asset/public/`); this is the one place
-    /// that scheme is resolved, against `Bundle.main`.
+    /// Artwork via `MPMediaItemArtwork`, through `ArtworkCache` -- the
+    /// engine's loader, so the two lanes cannot drift apart again (CH3-21,
+    /// R1-10: the engine's copy had forgotten the retry below). `artworkUri`
+    /// has already been through `foray-media-session.js`'s `artworkUrl()`
+    /// and `assetUri()` gates; `artworkSource(for:)` turns it into the
+    /// cache's source at this boundary.
     ///
     /// NEVER A NETWORK WAIT ON `stateQueue` (review, 2026-09-23). This used to
     /// run `Data(contentsOf:)` -- a blocking HTTP load with the default ~60 s
@@ -1314,102 +1311,60 @@ public class ForayAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// segment carries the publisher's https artwork, and a phone switching
     /// Wi-Fi -> cellular as the car connects is a stalled fetch: the car's play
     /// returned `.success` at once and `remotePlay` sat behind it for seconds
-    /// to a minute. So: the artwork is CACHED per URI (a re-assert re-writes an
-    /// unchanged payload by definition), the bundle's own icon and a file URL
-    /// are read from disk once, and a remote image is fetched asynchronously
-    /// (`URLSession`, bounded) with the entry re-posted when it lands. Until it
-    /// lands the entry goes out without artwork -- the same "no artwork, never a
+    /// to a minute. So: the artwork is CACHED per source (a re-assert re-writes
+    /// an unchanged payload by definition), and an image the cache does not
+    /// hold yet -- our bundled icon or a publisher's square -- is loaded off
+    /// the queue (bounded) with the entry re-posted when it lands, ONE load
+    /// and one re-post however many writes arrive meanwhile. Until it lands
+    /// the entry goes out without artwork -- the same "no artwork, never a
     /// guess" rule `media-session.js`'s `artworkUrl()` enforces upstream. A
-    /// failed REMOTE load is not cached as none (audit round 3, mobile-native-6):
-    /// it is retried once `artworkRetryAfterSec` has passed, so a dead URL costs
-    /// one attempt per interval and not one per write, and a fetch that timed
-    /// out in a dead zone does not leave the lock screen bare for the rest of
-    /// the item. On `stateQueue`.
+    /// failed fetch is not "no artwork" for the rest of the item (audit
+    /// round 3, mobile-native-6): the cache holds it back for
+    /// `ArtworkCache.retryAfterSec`, so a dead URL costs one attempt per
+    /// window and not one per write, and a fetch that timed out in a dead
+    /// zone is tried again by the next write after the window. On `stateQueue`.
     private func artworkItem(for uri: String) -> MPMediaItemArtwork? {
-        guard !uri.isEmpty else { return nil }
-        if let cached = artworkCache, cached.uri == uri { return cached.item }
-        if let bundlePath = Self.bundlePath(for: uri) {
-            // `Bundle.main`, not `URL(string:)` -- `bundle://` is not a real
-            // URL scheme any loader below this line understands, so the path
-            // component is resolved by hand and everything else about the
-            // string is discarded.
-            return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: bundlePath))
-        }
-        guard let url = URL(string: uri) else { return rememberArtwork(uri: uri, image: nil) }
-        if url.isFileURL {
-            return rememberArtwork(uri: uri, image: UIImage(contentsOfFile: url.path))
-        }
-        guard Self.artworkLoadAllowed(uri: uri, lastFailure: artworkRetryAfter, now: Date()) else { return nil }
-        loadRemoteArtwork(uri: uri, url: url)
-        return nil
-    }
-
-    /// How long a failed remote artwork load waits before it is tried again.
-    static let artworkRetryAfterSec: Double = 45
-
-    /// Whether a remote artwork load may start: not while the same URI's last
-    /// failure is inside its retry window (mobile-native-6).
-    static func artworkLoadAllowed(uri: String, lastFailure: (uri: String, at: Date)?, now: Date) -> Bool {
-        guard let failure = lastFailure, failure.uri == uri else { return true }
-        return now >= failure.at
-    }
-
-    /// Cache and wrap. A `nil` image from the bundle or a file is cached too --
-    /// "this URI has no artwork" is an answer there, and asking again on every
-    /// write is the bug above. A remote failure is not (see `artworkItem`).
-    private func rememberArtwork(uri: String, image: UIImage?) -> MPMediaItemArtwork? {
-        let item = image.map { image in MPMediaItemArtwork(boundsSize: image.size) { _ in image } }
-        artworkCache = (uri: uri, item: item)
-        return item
-    }
-
-    /// One fetch per URI, off `stateQueue`, bounded. When it lands, the cache is
-    /// filled and the entry is re-posted IF the page is still on that artwork --
-    /// a payload that moved on in the meantime keeps its own.
-    static let artworkTimeoutSec: Double = 10
-
-    private func loadRemoteArtwork(uri: String, url: URL) {
-        guard !artworkLoading.contains(uri) else { return }
-        artworkLoading.insert(uri)
-        let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: Self.artworkTimeoutSec)
-        URLSession.shared.dataTask(with: request) { [weak self] data, _, _ in
-            guard let self = self else { return }
-            self.stateQueue.async {
-                self.artworkLoading.remove(uri)
-                let image = data.flatMap { UIImage(data: $0) }
-                /* ONLY A SUCCESS IS CACHED (mobile-native-6). A failure or a
-                   timeout records a retry time instead of a permanent nil. */
-                guard image != nil else {
-                    self.artworkRetryAfter = (uri: uri, at: Date().addingTimeInterval(Self.artworkRetryAfterSec))
-                    return
-                }
-                if self.artworkRetryAfter?.uri == uri { self.artworkRetryAfter = nil }
-                _ = self.rememberArtwork(uri: uri, image: image)
-                if self.lastPayload.artworkUri == uri && self.lastPayload.state != .none {
-                    self.applyNowPlayingInfo(self.lastPayload)
-                }
+        guard let src = Self.artworkSource(for: uri) else { return nil }
+        switch artworkLoader.lookup(src) {
+        case let .image(image):
+            if let held = artworkObject, held.src == src, held.image === image { return held.item }
+            let item = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            artworkObject = (src, image, item)
+            return item
+        case .failed:
+            return nil
+        case .missing:
+            guard !artworkLoader.isLoading(src) else { return nil }
+            artworkLoader.load(src) { [weak self] image in
+                guard let self, image != nil,
+                      self.lastPayload.artworkUri == uri, self.lastPayload.state != .none else { return }
+                self.applyNowPlayingInfo(self.lastPayload)
             }
-        }.resume()
+            return nil
+        }
     }
 
-    /// `bundle://public/icon-512.png` -> an absolute path inside `Bundle.main`,
-    /// or `nil` if `uri` does not carry the scheme `IOS_ASSET_BASE` writes, or
-    /// the named resource is not actually in the bundle. TOTAL and never
-    /// throws, same posture as `NowPlayingPayload.from` -- a resource that
-    /// went missing from the bundle degrades to no artwork, not a crash.
-    private static func bundlePath(for uri: String) -> String? {
-        let prefix = "bundle://public/"
-        guard uri.hasPrefix(prefix) else { return nil }
-        // Query/fragment already stripped by the web half's `assetUri`
-        // (`pathname` only, per its own comment) before this ever arrives, so
-        // what remains is a bare relative path -- e.g. `icon-512.png`.
-        let relative = String(uri.dropFirst(prefix.count))
-        guard !relative.isEmpty else { return nil }
-        // `cap copy`'s Android destination is `public/`; on iOS the Capacitor
-        // web assets are copied into the app bundle at `public/` alongside
-        // everything else `Bundle.main` already serves the WebView from --
-        // the same tree, read a second way.
-        return Bundle.main.path(forResource: relative, ofType: nil, inDirectory: "public")
+    /// The scheme the web half marks our own icon with on iOS
+    /// (`IOS_ASSET_BASE` in `foray-media-session.js` -- L-02, the iOS mirror
+    /// of Android's `file:///android_asset/public/`).
+    static let bundleArtworkPrefix = "bundle://public/"
+
+    /// A payload's `artworkUri` -> the source `ArtworkCache` reads, or nil for
+    /// no artwork. `bundle://public/<path>` is our own icon, `<path>` under the
+    /// bundle's `public/` (`bundle://` is not a scheme any loader understands,
+    /// so it is stripped HERE, the one place it is resolved); an https URL is
+    /// a publisher's square; everything else -- empty, `data:`, `file:`, a
+    /// bare relative path the web half never sends -- has none, by the
+    /// cache's own gate (`ArtworkCache.source(for:)`). TOTAL, pure and
+    /// `internal` for the tests.
+    static func artworkSource(for uri: String) -> String? {
+        if uri.hasPrefix(bundleArtworkPrefix) {
+            let path = String(uri.dropFirst(bundleArtworkPrefix.count))
+            guard case .bundled = ArtworkCache.source(for: path) else { return nil }
+            return path
+        }
+        guard case .remote = ArtworkCache.source(for: uri) else { return nil }
+        return uri
     }
 
     // MARK: - MPRemoteCommandCenter
