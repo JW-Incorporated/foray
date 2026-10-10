@@ -35,7 +35,7 @@ final class DeckPairTests: XCTestCase {
             sent.append(command)
             journal.entries.append("\(name).\(command.logName)")
             switch command {
-            case let .load(_, _, url, startSec, _, _):
+            case let .load(_, _, url, startSec, _, _, _):
                 loadedURL = url
                 isReady = false
                 reading = DeckReading(positionSec: startSec, durationSec: nil, audible: false, ended: false)
@@ -74,7 +74,7 @@ final class DeckPairTests: XCTestCase {
         /// The load the pair issued on this deck most recently.
         var lastLoadToken: DeckToken? {
             for command in sent.reversed() {
-                if case let .load(token, _, _, _, _, _) = command { return token }
+                if case let .load(token, _, _, _, _, _, _) = command { return token }
             }
             return nil
         }
@@ -208,6 +208,26 @@ final class DeckPairTests: XCTestCase {
                                     deadlineClass: .line)
         pair.send(load)
         XCTAssertEqual(a.sent.last, load, "the missed load keeps its class on the player deck")
+    }
+
+    /// CH3-11 (R2-04): a prepared CLIP warms as a clip (`bounded`, the field
+    /// AVDeck's §16 continue/lapse is keyed on), so a warm load that runs into
+    /// its deadline is held exactly as the clip's own load would be; and a
+    /// load that misses the warm one reaches the player deck still bounded.
+    /// TO SEE IT FAIL: drop `bounded:` from the standby's `.load` in `prepare`.
+    func testAPreparedClipWarmsTheStandbyBounded() {
+        pair.send(.load(token: 1, itemId: "a", url: urlA, startSec: 100, preciseTiming: true))
+        a.becomeReady(1, atSec: 100)
+        pair.send(.play)
+        pair.send(.prepare(itemId: "f1#1", url: urlB, startSec: 300, preciseTiming: false, bounded: true))
+        let warm = b.lastLoadToken ?? 0
+        XCTAssertLessThan(warm, 0)
+        XCTAssertEqual(b.sent.last, .load(token: warm, itemId: "f1#1", url: urlB, startSec: 300, preciseTiming: false,
+                                          bounded: true))
+        let load = DeckCommand.load(token: 2, itemId: "f1#2", url: urlC, startSec: 40, preciseTiming: false,
+                                    bounded: true)
+        pair.send(load)
+        XCTAssertEqual(a.sent.last, load, "the missed load keeps its bound on the player deck")
     }
 
     // MARK: - NE-45s: a narration line is an ordinary deck item

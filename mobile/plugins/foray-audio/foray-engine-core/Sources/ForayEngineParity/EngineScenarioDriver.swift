@@ -1162,7 +1162,7 @@ final class ScenarioWorld {
     /// FakeBackend, command by command (and, on the engine target,
     /// WarmingBackend's standby deck).
     func applyDeck(_ command: DeckCommand) {
-        if case let .load(_, itemId, _, startSec, _, _) = command, !engineTarget, prefetchLoses != nil || coldLoadMs > 0 {
+        if case let .load(_, itemId, _, startSec, _, _, _) = command, !engineTarget, prefetchLoses != nil || coldLoadMs > 0 {
             // FakeBackend `load`: a warm key is spent; a cold load waits its
             // cost on the clock before it re-points the element (and logs).
             let warm = warmed.remove("\(itemId)@\(ScenarioWorld.rounded(startSec))") != nil
@@ -1177,7 +1177,7 @@ final class ScenarioWorld {
     /// FakeBackend, command by command, once a load is due to re-point it.
     private func loadDeck(_ command: DeckCommand) {
         switch command {
-        case let .load(token, itemId, url, startSec, _, _):
+        case let .load(token, itemId, url, startSec, _, _, _):
             if engineTarget {
                 // `warmPromotion` at the boundary: a load that finds its source
                 // and in-point warm is a handover, said BEFORE the load.
@@ -1245,7 +1245,7 @@ final class ScenarioWorld {
             reading = DeckReading(positionSec: nil, durationSec: nil, audible: false, ended: false)
             // FakeBackend's `release()` is the teardown's (`dispose`).
             if disposing && !engineTarget { ops.append("release") } else { native("n.deck.unload") }
-        case let .prepare(itemId, url, startSec, _, _):
+        case let .prepare(itemId, url, startSec, _, _, _):
             if !engineTarget, let loses = prefetchLoses {
                 // NE-39s: the manager's ASK (FakeBackend `prefetch`).
                 let key = "\(itemId)@\(ScenarioWorld.rounded(startSec))"
@@ -1278,7 +1278,7 @@ final class ScenarioWorld {
     /// is only ever for the load that answered ready.
     private func applyPreview(_ command: DeckCommand) {
         switch command {
-        case let .load(token, _, url, _, _, _):
+        case let .load(token, _, url, _, _, _, _):
             let target = url ?? ""
             previewToken = token
             previewReadyToken = nil

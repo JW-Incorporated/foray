@@ -70,7 +70,7 @@ final class ClipLoadRetryTests: XCTestCase {
         XCTAssertFalse(ClipLoadRetryTests.hasStopRow(retry), "the first deadline is not a stop: \(retry)")
         XCTAssertFalse(ClipLoadRetryTests.hasError(retry), "\(retry)")
         let loads = ClipLoadRetryTests.deckLoads(retry)
-        guard loads.count == 1, case let .load(token, itemId, url, startSec, precise, deadlineClass) = loads[0] else {
+        guard loads.count == 1, case let .load(token, itemId, url, startSec, precise, deadlineClass, _) = loads[0] else {
             return XCTFail("one retry load, got \(retry)")
         }
         XCTAssertNotEqual(token, first, "a fresh token, so a late report about the first is stale")
@@ -193,7 +193,7 @@ final class ClipLoadRetryTests: XCTestCase {
         host.send(try EngineCoreTests.command("pause"), after: 0)
         let play = host.send(try EngineCoreTests.command("play"), after: 0)
         let loads = ClipLoadRetryTests.deckLoads(play)
-        guard loads.count == 1, case let .load(_, itemId, url, startSec, precise, deadlineClass) = loads[0] else {
+        guard loads.count == 1, case let .load(_, itemId, url, startSec, precise, deadlineClass, _) = loads[0] else {
             return XCTFail("one load, got \(play)")
         }
         XCTAssertEqual(itemId, "f1#1")
