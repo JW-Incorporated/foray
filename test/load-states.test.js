@@ -247,7 +247,7 @@ test("#/forays waits for the player instead of saying there are no Forays, and p
      The first paint claims there are none, and this goes red. */
   const m = mount({ hash: "#/forays" });
   m.state.forays = FORAYS_DOC;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderForays();
   assert.match(m.html(), /Loading…/);
   assert.doesNotMatch(m.html(), /0 forays|No forays right now/, `a missing module is not an empty list: ${m.html()}`);
 
@@ -268,7 +268,7 @@ test("#/forays with a player that is still loading says so, with Try again", asy
      instead. "The player didn't load." never appears. */
   const m = mount({ hash: "#/forays", readyState: "loading" });
   m.state.forays = FORAYS_DOC;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderForays();
   m.fire("forayplayer:ready"); // the module "arrived" without publishing a bridge
   await settle();
   assert.match(m.html(), /The player didn.t load\./);
@@ -285,14 +285,14 @@ test("ROUND 2 review (states-6): readyState 'interactive' is BEFORE the deferred
      playerModuleFailed -> Reload 4a on the first paint; red. */
   const m = mount({ hash: "#/forays", readyState: "interactive" });
   m.state.forays = FORAYS_DOC;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderForays();
   m.fire("forayplayer:ready"); // the wait ended; the module is still downloading
   await settle();
   assert.match(m.html(), /The player didn.t load\./);
   assert.ok(m.view.querySelector("[data-retry]"), "a slow module: Try again re-awaits it");
   assert.ok(!m.view.querySelector("[data-reload]"), "no reload of a download still in progress");
   m.fireDoc("DOMContentLoaded");   // every deferred module has now run: no bridge means it failed
-  m.ctx.renderCurrentPage();
+  m.ctx.renderForays();
   m.fire("forayplayer:ready");
   await settle();
   assert.ok(m.view.querySelector("[data-reload]"), "after DOMContentLoaded with no bridge, it is a failure");
@@ -310,7 +310,7 @@ test("#/forays with a player module that FAILED offers Reload 4a, not a Try agai
      `reloads` stays empty. */
   const m = mount({ hash: "#/forays", readyState: "complete" });
   m.state.forays = FORAYS_DOC;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderForays();
   m.fire("forayplayer:ready"); // the wait ended; the module never published a bridge
   await settle();
   assert.match(m.html(), /The player didn.t load\./);
@@ -330,7 +330,7 @@ test("the three Foray documents are one artifact at boot: a missing segments.jso
      MUTATION: delete the `applyForaySet({})` guard after the boot Promise.all.
      `state.forays` holds the list, the page paints it, and this goes red. */
   const m = mount({
-    hash: "#/forays", bridge: bridge(),
+    hash: "#/foray/f1", bridge: { ...bridge(), resolve: () => null },
     fetchImpl: diskFetch({ fail: ["data/segments.json"] }),
   });
   for (let i = 0; i < 400 && /data-boot-loading/.test(m.html()); i++) await settle(1);
@@ -356,14 +356,14 @@ test("Try again on the Foray docs says it is trying, and a late answer repaints 
   const pending = [];
   const release = (answer) => { for (const r of pending.splice(0)) r(answer); };
   const m = mount({
-    hash: "#/forays", bridge: bridge(),
+    hash: "#/foray/f1", bridge: { ...bridge(), resolve: () => null },
     fetchImpl: (url) => (/data\/(forays|segments|segment-sources)\.json/.test(url)
       ? new Promise((resolve) => { pending.push(resolve); })
       : new Promise(() => {})),
   });
   m.state.forays = null;
   m.state.catalog = CATALOG;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderCurrentPage(); await settle();
   const btn = m.view.querySelector("[data-retry]");
   assert.ok(btn, "precondition: the failure offers Try again");
   btn.click();
@@ -396,13 +396,13 @@ test("Try again on the Foray docs that fails again lands on the same failed page
      MUTATION: drop the `if (stillHere()) renderCurrentPage()` line. The button
      stays "Trying again…" and disabled; this goes red. */
   const m = mount({
-    hash: "#/forays", bridge: bridge(),
+    hash: "#/foray/f1", bridge: { ...bridge(), resolve: () => null },
     fetchImpl: (url) => (/data\/(forays|segments|segment-sources)\.json/.test(url)
       ? Promise.resolve({ ok: false, status: 503, json: async () => ({}) })
       : new Promise(() => {})),
   });
   m.state.forays = null;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderCurrentPage(); await settle();
   assert.ok(m.retry(), "precondition: the failure offers Try again");
   await settle();
   const again = m.view.querySelector("[data-retry]");
@@ -411,23 +411,24 @@ test("Try again on the Foray docs that fails again lands on the same failed page
   assert.doesNotMatch(m.html(), /Trying again…/, "the pending label does not outlive the attempt");
 });
 
-test("#/forays with no Forays document says it could not load them, and Try again fetches them", async () => {
+test("The Foray page with no Forays document says it could not load them, and Try again fetches them", async () => {
   /* MUTATION: delete the `!state.forays` branch in renderForays. The page paints
      "No forays right now" over a failed fetch, and this goes red. */
   const m = mount({
-    hash: "#/forays", bridge: bridge(),
+    hash: "#/foray/f1", bridge: { ...bridge(), resolve: () => null },
     fetchImpl: (url) => (url.includes("data/forays.json") ? okJson(FORAYS_DOC)
       : url.includes("data/segments.json") ? okJson({ segments: [] })
       : url.includes("data/segment-sources.json") ? okJson({ sources: [] })
       : new Promise(() => {})),
   });
   m.state.forays = null;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderCurrentPage(); await settle();
   assert.match(m.html(), /Couldn't load forays right now\./);
   assert.doesNotMatch(m.html(), /No forays right now|0 forays/);
   assert.ok(m.retry(), "the failure offers Try again");
-  await settle();
-  assert.match(m.html(), /First Foray/, `Try again re-fetches the documents and repaints: ${m.html()}`);
+  await settle(120);
+  assert.ok(m.state.forays && m.state.forays.forays.length, `Try again re-fetches the documents and adopts them: ${m.html()}`);
+  assert.doesNotMatch(m.html(), /Couldn.t load forays right now/, "and the failure is gone");
 });
 
 test("REVIEW: a Try again whose segments fail does not adopt a half set; the failure and Try again stay", async () => {
@@ -436,14 +437,14 @@ test("REVIEW: a Try again whose segments fail does not adopt a half set; the fai
      be found" and the Try again was gone. MUTATION: put the guard back to
      `if (forays)`. */
   const m = mount({
-    hash: "#/forays", bridge: bridge(),
+    hash: "#/foray/f1", bridge: { ...bridge(), resolve: () => null },
     fetchImpl: (url) => (url.includes("data/forays.json") ? okJson(FORAYS_DOC)
       : url.includes("data/segments.json") ? Promise.resolve({ ok: false, status: 503, json: async () => ({}) })
       : url.includes("data/segment-sources.json") ? okJson({ sources: [] })
       : new Promise(() => {})),
   });
   m.state.forays = null;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderCurrentPage(); await settle();
   assert.ok(m.retry(), "precondition: the failure offers Try again");
   await settle();
   assert.strictEqual(m.state.forays, null, "a set missing its segments is not adopted");
@@ -461,7 +462,7 @@ test("#/forays explains what a Foray is, from one constant (forayAbout)", () => 
      the page. The second assertion goes red. */
   const m = mount({ hash: "#/forays", bridge: bridge() });
   m.state.forays = FORAYS_DOC;
-  m.ctx.renderCurrentPage();
+  m.ctx.renderForays();
   const about = vm.runInContext("forayAbout()", m.ctx);
   assert.ok(about.length > 40, "the explanation is a real sentence");
   const shown = vm.runInContext("esc(forayAbout())", m.ctx);
@@ -487,7 +488,7 @@ test("a Foray page whose player failed has a way back to the list and a Try agai
   assert.match(m.html(), /The player didn.t load\./);
   assert.doesNotMatch(m.html(), /reload the page/, "no browser advice inside a native shell");
   const back = m.view.querySelector(".back");
-  assert.ok(back && back.attrs.href === "#/forays", "‹ goes back to the Forays list");
+  assert.ok(back && back.attrs.href === "#/library" && back.attrs["data-yours-chip-link"] === "forays", "‹ goes back to Yours, on the Forays chip");
   assert.ok(m.view.querySelector("[data-retry]"));
 
   /* And the module that FAILED (parsing finished, no bridge) gets the reload

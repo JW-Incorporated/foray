@@ -434,16 +434,16 @@ test("Library lists the Forays, linking each to its own page", () => {
   assert.ok(html.includes("What capital is"));
 });
 
-test("before the player has loaded, the Forays section offers the way in and claims no count", () => {
+test("before the player has loaded, the Forays section says so, claims no count, and links nowhere (it IS the old #/forays page)", () => {
   /* Loading is not empty (the three-state rule): "No forays" before the list
-     could be read would be a claim about the catalogue. MUTATION: return the
-     empty-state note when window.ForayPlayer is missing. */
+     could be read would be a claim about the catalogue. MUTATION: return the empty-state note (or an `href="#/forays"` row back) when window.ForayPlayer is missing. */
   const m = mount({ seed: NOT_FIRST_RUN });
   seedEmpty(m);
   m.state.forays = { forays: [] };
   m.ctx.renderLibrary();
   const html = m.view();
-  assert.ok(html.includes('href="#/forays"'));
+  assert.ok(!html.includes('href="#/forays"'), "no row into the retired page");
+  assert.ok(html.includes("Forays haven’t loaded yet"), "it says the list is not here yet");
   assert.ok(!html.includes("No forays"), "an unknown list is not an empty one");
 });
 

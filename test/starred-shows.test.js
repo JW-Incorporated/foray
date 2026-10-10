@@ -323,10 +323,14 @@ test("renderStarredShows shows an honest empty state when nothing is starred", (
 /* 5. ROUTE WIRING                                                       */
 /* ==================================================================== */
 
-test("route() dispatches #/starred-shows to renderStarredShows, matching #/playlists/#/queue's pattern", () => {
-  /* MUTATION: delete the `#/starred-shows` branch from route(). This test
-     fails because renderHome (the fallback) runs instead and the view
-     never contains the starred-shows heading. */
+test("#/starred-shows is Yours on the Shows chip: route() rewrites it, and the old Followed shows page is not drawn", () => {
+  /* RULING THAT FELL: "route() dispatches #/starred-shows to renderStarredShows"
+     (until 2026-10-09; Tactile: no pre-redesign page stays reachable).
+     MUTATION 1: delete the `legacyChip` block in route() -> the hash stays
+     #/starred-shows and the chip is never set; red.
+     MUTATION 2: put `else if (h === "#/starred-shows") renderStarredShows()`
+     back ahead of the legacy branch in renderCurrentPage() and delete the
+     block in route() -> "Followed shows" is drawn; red. */
   const m = mount();
   m.state.catalog = { shows: [] };
   m.state.discover = { items: [] };
@@ -337,7 +341,9 @@ test("route() dispatches #/starred-shows to renderStarredShows, matching #/playl
 
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.ok(m.view().includes("Followed shows"), "route() must dispatch #/starred-shows to renderStarredShows");
+  assert.strictEqual(m.ctx.location.hash, "#/library", "the old address is rewritten to Yours");
+  assert.strictEqual(m.state.yoursChip, "shows", "and opens on the Shows chip");
+  assert.ok(!m.view().includes("Followed shows"), "the pre-redesign page is not drawn");
 });
 
 /* ==================================================================== */
@@ -398,7 +404,7 @@ test("Yours lists every followed show (the grid replaces the link to #/starred-s
   m.state.ready = true;
   m.ctx.location.hash = "#/starred-shows";
   m.ctx.route();
-  assert.ok(m.view().includes("Followed shows"), "#/starred-shows still routes to its own page");
+  assert.strictEqual(m.ctx.location.hash, "#/library", "#/starred-shows no longer has a page of its own: it is Yours");
   assert.doesNotMatch(
     INDEX_HTML,
     /<nav id="drawer"[^]*?href="#\/starred-shows"[^]*?<\/nav>/,

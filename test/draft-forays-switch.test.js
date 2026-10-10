@@ -267,6 +267,12 @@ async function mount({ seed = {}, hash = "#/forays", search = "", appSrc = APP_S
 
   for (let i = 0; i < 200 && !vm.runInContext("state.ready", ctx); i++) await tick();
   assert.ok(vm.runInContext("state.ready", ctx), "the page never booted");
+  /* `#/forays` has no route any more (Tactile: it redirects to Yours' Forays
+     chip, test/home-information-architecture.test.js). This suite pins WHICH Forays the
+     list shows, and `forayCards()` feeds both, so it keeps reading the retired
+     list renderer directly rather than Yours, whose first-run state hides the
+     panel on a fresh profile. */
+  if (hash === "#/forays") { location.hash = "#/forays"; vm.runInContext("renderForays", ctx)(); for (let i = 0; i < 30; i++) await tick(); }
   const h = { ctx, body, document, location, playCalls, store: ctx.localStorage };
   h.state = () => vm.runInContext("state", ctx);
   h.view = () => findIn(body, "#view").innerHTML;
@@ -411,7 +417,7 @@ test("switch on: Home carries the notice and points at the drafts; its hero is s
      the published picks - a draft is the hero and the last assertions go red. */
   const h = await mount({ seed: ON, hash: "#/" });
   const home = h.view();
-  assert.match(home, /<p class="today-notice note">Showing draft Forays — test track\. <a href="#\/forays">See them under Forays<\/a>\.<\/p>/, "the one-line notice, with its link");
+  assert.match(home, /<p class="today-notice note">Showing draft Forays — test track\. <a href="#\/library" data-yours-chip-link="forays">See them under Forays<\/a>\.<\/p>/, "the one-line notice, with its link");
   assert.ok(home.indexOf("Showing draft Forays") < home.indexOf("today-hero"), "the notice is above the hero");
   const key = /data-home-play="([^"]+)"/.exec(home.slice(home.indexOf("today-hero")));
   assert.ok(key, "the hero has its Play key");
@@ -511,17 +517,21 @@ test("the drawer carries the toggle: it reads its state, flips the key, re-rende
   assert.ok(order.indexOf("drafts-toggle") < order.indexOf("diag-open"), "above Playback diagnostics");
   assert.ok(order.indexOf("drafts-toggle") < order.indexOf("delete-data"), "above Delete my data");
 
+  /* Home is the page behind the drawer: it is where the switch shows (the
+     retired #/forays list has no route; see mount()). route() closes the drawer,
+     so it goes first. */
+  h.route("#/");
+  assert.ok(!h.view().includes("Showing draft Forays"), "Home carries no draft notice before the tap");
   h.fn("openDrawer")(true);
   assert.strictEqual(h.drawer().hidden, false);
   assert.strictEqual(btn.textContent, "Show draft Forays: off");
-  assert.ok(!h.view().includes("· draft"), "#/forays shows no draft before the tap");
 
   await btn.click();
   assert.strictEqual(h.store.getItem("cp_show_drafts"), "true", "the durable key is written");
   assert.strictEqual(btn.textContent, "Show draft Forays: on");
   assert.strictEqual(h.drawer().hidden, false, "a settings toggle must not close the drawer");
   assert.deepStrictEqual(h.ids(), [...PUBLISHED_IDS, ...GENERATED_NEWEST_FIRST, ...AUTHORED_DRAFT_IDS]);
-  assert.ok(h.view().includes("foray · draft"), "the page behind the drawer re-rendered with the drafts");
+  assert.ok(h.view().includes("Showing draft Forays"), "the page behind the drawer (Home) re-rendered with the drafts notice");
 
   await btn.click();
   assert.strictEqual(h.store.getItem("cp_show_drafts"), "false");

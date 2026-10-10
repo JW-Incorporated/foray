@@ -260,7 +260,7 @@ process.on("unhandledRejection", () => {});
 
 async function mount({
   remote = {}, remoteMode = null, localPointer = null, cacheSet = null,
-  emptySeed = false, hash = "#/forays", appSrc = APP_SRC, localStorageItems = {},
+  emptySeed = false, hash = "#/library", appSrc = APP_SRC, localStorageItems = { cp_starred_shows: { "seed-show": { show_id: "seed-show", title: "Seed Show", starred_at: "2026-10-01T00:00:00.000Z" } } },
 } = {}) {
   const { dir, resolve, progress, diag, qm } = await mods;
   const fetched = [];
