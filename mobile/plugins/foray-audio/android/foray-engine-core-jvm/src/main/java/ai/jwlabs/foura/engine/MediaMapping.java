@@ -321,7 +321,7 @@ public final class MediaMapping {
                 metadata(v.item, v.nextItem, v.forayTitle, v.index, v.total, v.showArtworkUrl, v.appArtworkUrl),
                 positionState(v.durationSec, v.positionSec, v.playbackRate, v.buffering),
                 playbackState(v.item != null, v.playing, v.inSeamGap, v.ended, v.foray),
-                v.buffering);
+                false);
     }
 
     // ---- remote commands: which exist, and what a press means
