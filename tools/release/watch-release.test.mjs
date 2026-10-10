@@ -40,7 +40,9 @@ import {
   GIT_LOG_FORMAT, ISSUE_MARKER, ISSUE_TITLE, GRACE_MINUTES, STALL_HOURS, STUCK_MINUTES,
   RETRY_BUDGET, TRIGGER_STALE_HOURS, WATCHDOG_STALE_HOURS, NATIVE_INPUT_FILES,
   releaseBinaryJobs, deriveNativeInputs, issueCommands,
+  runsSinceSuccess, releaseRunKind, iosGateRefusal, loadRunJobs, IOS_GATE_JOB, IOS_BUILD_JOB,
 } from "./watch-release.mjs";
+import { releaseDispatchPlan, releaseChecksVerdict, releaseRefusalLines } from "../ci/engine-ci.mjs";
 import { code, block, step, prose, invocationsOf } from "../mobile/workflow-yaml.mjs";
 import { REQUIRED_CHECKS } from "../ci/pr-triage.mjs";
 
@@ -839,7 +841,7 @@ test("EXECUTED: an expired summary log (404 after 90 days) does not fail the Fet
 
 /** Runs a Fetch step's bash under shims and returns every `gh api` endpoint and
  *  `git` call it made, in order, plus the files it left behind. */
-function fetchStepCalls(script, extraEnv = {}) {
+function fetchStepCalls(script, extraEnv = {}, { runs = RUNS, jobsByRun = {}, logsByJob = {}, inspect = null } = {}) {
   const posix = (p) => p.replaceAll("\\", "/");
   script = script.replaceAll("tools/release/watch-release.mjs", JSON.stringify(posix(path.join(HERE, "watch-release.mjs"))));
   const scratch = fs.mkdtempSync(path.join(ROOT, ".scratch-release-facts-"));
@@ -848,17 +850,23 @@ function fetchStepCalls(script, extraEnv = {}) {
     const work = path.join(scratch, "work");
     const fx = path.join(scratch, "fx");
     for (const d of [bin, work, fx]) fs.mkdirSync(d);
-    fs.writeFileSync(path.join(fx, "runs.json"), JSON.stringify({ workflow_runs: RUNS }));
+    fs.writeFileSync(path.join(fx, "runs.json"), JSON.stringify({ workflow_runs: runs }));
     fs.writeFileSync(path.join(fx, "jobs.json"), JSON.stringify({ jobs: JOBS_0906 }));
+    // #745: a run's own jobs, and a job's own log (or a 404 for it), when the test supplies them.
+    for (const [id, jobs] of Object.entries(jobsByRun)) fs.writeFileSync(path.join(fx, `jobs-${id}.json`), JSON.stringify({ jobs }));
+    for (const [id, log] of Object.entries(logsByJob)) fs.writeFileSync(path.join(fx, `log-${id}.${log === 404 ? "404" : "txt"}`), log === 404 ? "" : log);
     const shim = (name, body) => fs.writeFileSync(path.join(bin, name), body, { mode: 0o755 });
     shim("gh", [
       "#!/bin/bash",
       '[ "$1" = "api" ] || { echo "mock gh: $*" >&2; exit 2; }',
       `echo "gh $2" >> "${posix(fx)}/calls.txt"`,
+      `FX="${posix(fx)}"`,
       'case "$2" in',
       `  */workflows/release.yml/runs*) cat "${posix(fx)}/runs.json" ;;`,
-      `  */actions/runs/*/jobs) cat "${posix(fx)}/jobs.json" ;;`,
-      "  */actions/jobs/*/logs) echo 'the summary log' ;;",
+      '  */actions/runs/*/jobs) id=${2#*/actions/runs/}; id=${id%%/*}; if [ -f "$FX/jobs-$id.json" ]; then cat "$FX/jobs-$id.json"; else cat "$FX/jobs.json"; fi ;;',
+      '  */actions/jobs/*/logs) id=${2#*/actions/jobs/}; id=${id%%/*};',
+      '    if [ -f "$FX/log-$id.404" ]; then echo \'{"message":"Not Found","status":"404"}\'; echo "gh: Not Found (HTTP 404)" >&2; exit 1;',
+      '    elif [ -f "$FX/log-$id.txt" ]; then cat "$FX/log-$id.txt"; else echo \'the summary log\'; fi ;;',
       `  */runs\\?event=schedule*) echo '{"workflow_runs":[]}' ;;`,
       `  */actions/workflows/*.yml) echo '{"state":"active"}' ;;`,
       `  */actions/runs\\?head_sha=*) echo '{"workflow_runs":[]}' ;;`,
@@ -890,11 +898,13 @@ function fetchStepCalls(script, extraEnv = {}) {
     shim("sleep", "#!/bin/bash\nexit 0\n");
     fs.writeFileSync(path.join(work, "step.sh"), script);
     const env = { ...process.env, PATH: `${bin}${path.delimiter}${process.env.PATH}`, REPO: REPO_SLUG, ...extraEnv };
-    execFileSync("bash", ["step.sh"], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-    return {
+    const stdout = execFileSync("bash", ["step.sh"], { cwd: work, env, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    const result = {
       calls: fs.readFileSync(path.join(fx, "calls.txt"), "utf8").trim().split("\n"),
       files: fs.readdirSync(work).filter((f) => f !== "step.sh").sort(),
     };
+    if (inspect) inspect(work, stdout);
+    return result;
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });
   }
@@ -930,7 +940,7 @@ const FETCHES = {
       `gh repos/${REPO_SLUG}/actions/workflows/release-watch.yml`,
       `gh repos/${REPO_SLUG}/actions/workflows/release-watch.yml/runs?event=schedule&status=success&per_page=5`,
     ],
-    files: ["commits.txt", "main-checks.json", "main-runs.json", "main-status.json", "peer-runs.json", "peer-workflow.json", "runs.json"],
+    files: ["commits.txt", "main-checks.json", "main-runs.json", "main-status.json", "peer-runs.json", "peer-workflow.json", "run-jobs", "runs.json"],
   },
 };
 
@@ -963,6 +973,205 @@ test("CH2-34a: the release workflows carry no fetch helpers and no issue writes 
   assert.equal(code(FACTS_ACTION).match(/^\s*retry\(\) \{/gm)?.length, 1, "the composite carries THE retry()");
   // The composite refuses a role it does not know rather than fetching half a picture.
   assert.match(code(FACTS_ACTION), /\*\)\s+echo "::error::release-facts: input 'for' must be watch or trigger/);
+});
+
+/* ═══════════ issue #745: a refusal at the iOS gate spends no retry budget ═══════════ */
+
+/* The run history that froze TestFlight, from `GET .../workflows/release.yml/runs`
+ * on 2026-10-10, trimmed to the fields the module reads: run 71 the last
+ * success (9fffb08), then runs 72 and 73, both refused at the iOS gate while
+ * Android built and uploaded to Play (run 73's summary: `RELEASE_OUTCOME
+ * ios_state= ios_uploaded= android_state=ready android_uploaded=true
+ * build=2026100902`). */
+const RUN_71 = { id: 37680092430, run_number: 71, event: "workflow_dispatch", status: "completed", conclusion: "success", head_sha: "9fffb085ec5e37ffad898946ed69325ce4d52d95", created_at: "2026-10-07T20:11:11Z", updated_at: "2026-10-07T20:15:28Z" };
+const RUN_72 = { id: 37982784123, run_number: 72, event: "workflow_dispatch", status: "completed", conclusion: "failure", head_sha: "2be7db2f5d85ad58b2e887c41745eb235d29d766", created_at: "2026-10-09T19:48:55Z", updated_at: "2026-10-09T20:04:22Z" };
+const RUN_73 = { id: 37983073952, run_number: 73, event: "workflow_dispatch", status: "completed", conclusion: "failure", head_sha: "6c7ba11b89fb269c3364cb2917928a602f9bbdcb", created_at: "2026-10-09T19:51:30Z", updated_at: "2026-10-09T20:15:11Z" };
+const RUNS_745 = [RUN_73, RUN_72, RUN_71];
+/* `GET .../actions/runs/{id}/jobs` for each, trimmed to name/id/status/conclusion. */
+const JOBS_72 = [
+  { id: 113997207281, name: "guard", status: "completed", conclusion: "success" },
+  { id: 113997302387, name: "ios-checks", status: "completed", conclusion: "failure" },
+  { id: 113997302399, name: "version", status: "completed", conclusion: "success" },
+  { id: 113997388756, name: "android", status: "completed", conclusion: "success" },
+  { id: 114002946443, name: "summary", status: "completed", conclusion: "success" },
+  { id: 114002948060, name: "ios", status: "completed", conclusion: "skipped" },
+];
+const JOBS_73 = [
+  { id: 114002983917, name: "guard", status: "completed", conclusion: "success" },
+  { id: 114003090578, name: "ios-checks", status: "completed", conclusion: "failure" },
+  { id: 114003090619, name: "version", status: "completed", conclusion: "success" },
+  { id: 114003187765, name: "android", status: "completed", conclusion: "success" },
+  { id: 114007040085, name: "summary", status: "completed", conclusion: "success" },
+  { id: 114007041955, name: "ios", status: "completed", conclusion: "skipped" },
+];
+/* The ios-checks logs, verbatim lines. Run 72 dispatched ci.yml and ios-kit came
+ * back red (the click-track flake). Run 73 found main already at 2d81b65; its
+ * real log predates the SUPERSEDED line, so the line the fixed release-checks
+ * prints is appended from engine-ci.mjs's own releaseRefusalLines (the writer). */
+const LOG_72 = [
+  "2026-10-09T19:49:21.7467987Z release-checks: engine-parity, ios-kit missing on 2be7db2f5d85; dispatching ci.yml on main",
+  "2026-10-09T20:04:12.8288809Z ##[error]release-checks: refusing to cut an iOS TestFlight from 2be7db2f5d85ad58b2e887c41745eb235d29d766: engine-parity: success; ios-kit: failure (https://github.com/JW-Incorporated/foray/actions/runs/37982836770/job/113997453649). engine-parity and ios-kit must both be green on the exact SHA being released (docs/native-engine-plan.md G-1b).",
+].join("\n");
+const LOG_73_BEFORE_FIX = [
+  "2026-10-09T20:04:50.7832773Z release-checks: engine-parity, ios-kit missing, but main is at 2d81b6529378, not 6c7ba11b89fb; a dispatch would test a different commit",
+  "2026-10-09T20:15:02.7804145Z ##[error]release-checks: refusing to cut an iOS TestFlight from 6c7ba11b89fb269c3364cb2917928a602f9bbdcb: engine-parity: no check run on this SHA; ios-kit: no check run on this SHA. engine-parity and ios-kit must both be green on the exact SHA being released (docs/native-engine-plan.md G-1b).",
+].join("\n");
+const LOG_73 = (() => {
+  const none = { "engine-parity": null, "ios-kit": null };
+  const plan = releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: "2d81b6529378".padEnd(40, "0"), sha: RUN_73.head_sha });
+  const verdict = releaseChecksVerdict(none, { missingIsFinal: true });
+  const lines = releaseRefusalLines({ sha: RUN_73.head_sha, verdict, plan });
+  return [LOG_73_BEFORE_FIX.split("\n")[0], ...lines.map((l) => `2026-10-09T20:15:02.7804145Z ${l}`)].join("\n");
+})();
+const RUN_JOBS_745 = {
+  [RUN_72.id]: { jobs: JOBS_72, iosChecksLog: LOG_72 },
+  [RUN_73.id]: { jobs: JOBS_73, iosChecksLog: LOG_73 },
+};
+/* main on 2026-10-10: 6bded79c, past both refused commits, everything green. */
+const COMMITS_745 = [{ sha: "6bded79c44004772c448f8a58f5805734aeafb79", committedAt: "2026-10-10T03:00:00Z", subject: "fix(android): one buffering derivation", files: ["player/client.js"] }];
+const actionsCheck = (id, name, conclusion, status = "completed") => ({ id, name, status, conclusion, app: { slug: "github-actions" } });
+
+test("#745 REPLAY: runs 72 and 73, refused at the iOS gate while Play shipped, do not spend the retry budget — DISPATCH", () => {
+  /* What the trigger decided on 2026-10-09 (HOLD_RETRY_BUDGET, TestFlight frozen
+     since 9fffb08) and what it decides now, from the same runs.
+     MUTATION (RUN, red, restored): make releaseRunKind return "failed" for a
+     gate refusal (drop the iosGateRefusal branch) -> HOLD_RETRY_BUDGET.
+     MUTATION (RUN, red, restored): also require `android` skipped in
+     iosGateRefusal ("every binary job skipped") -> both runs count, because
+     android built and uploaded in both -> HOLD_RETRY_BUDGET. */
+  const facts = { runs: RUNS_745, commits: COMMITS_745, bundle: BUNDLE, ...GREEN };
+  const before = triggerDecision(facts);
+  assert.equal(before.code, "HOLD_RETRY_BUDGET", "without the per-run jobs it holds, as it did on 2026-10-09 (stricter, never looser)");
+  const d = triggerDecision({ ...facts, runJobs: RUN_JOBS_745 });
+  assert.equal(d.code, "DISPATCH", d.reason);
+  assert.match(d.reason, /2 run\(s\) since the last success were refused at the iOS gate/);
+  assert.match(d.reason, /1 of them superseded by a newer main/);
+  assert.deepEqual(failuresSinceSuccess(RUNS_745, RUN_JOBS_745), []);
+  assert.deepEqual(failuresSinceSuccess(RUNS_745).map((r) => r.run_number), [73, 72], "the old reading is the default");
+  assert.deepEqual(runsSinceSuccess(RUNS_745, RUN_JOBS_745).map((x) => [x.run.run_number, x.kind]), [[73, "superseded"], [72, "refused"]]);
+});
+
+test("#745: a branch-moved refusal reads SUPERSEDED, any other gate refusal REFUSED, and a run with no facts still counts", () => {
+  /* MUTATION (RUN, red, restored): `releaseRunKind` ignoring the log
+     (always "refused") -> run 73 is not superseded.
+     MUTATION (RUN, red, restored): read `facts.jobs` without the "no facts"
+     guard and treat missing facts as a refusal -> a run whose jobs could not
+     be read stops counting, which is looser than before #745. */
+  assert.equal(releaseRunKind(RUN_73, { jobs: JOBS_73, iosChecksLog: LOG_73 }), "superseded");
+  assert.equal(releaseRunKind(RUN_73, { jobs: JOBS_73, iosChecksLog: LOG_73_BEFORE_FIX }), "refused", "the pre-fix log has no SUPERSEDED line");
+  assert.equal(releaseRunKind(RUN_73, { jobs: JOBS_73, iosChecksLog: null }), "refused", "an expired log is a refusal, never superseded");
+  assert.equal(releaseRunKind(RUN_72, { jobs: JOBS_72, iosChecksLog: LOG_72 }), "refused");
+  assert.equal(releaseRunKind(RUN_72, undefined), "failed");
+  assert.equal(releaseRunKind(RUN_72, { jobs: [] }), "failed");
+  assert.equal(releaseRunKind(RUN_71, undefined), "success");
+  // One refused run with no facts beside a counted failure: two count, so the budget holds.
+  const failedIos = { ...RUN_72, id: 9, run_number: 9, created_at: "2026-10-08T00:00:00Z" };
+  const runJobs = { [RUN_72.id]: undefined, [failedIos.id]: { jobs: [{ name: "ios-checks", conclusion: "success" }, { name: "ios", conclusion: "failure" }] } };
+  assert.equal(triggerDecision({ runs: [RUN_72, failedIos, RUN_71], commits: COMMITS_745, bundle: BUNDLE, ...GREEN, runJobs }).code, "HOLD_RETRY_BUDGET");
+});
+
+test("#745: a run whose macOS ios job RAN and failed still counts against the budget", () => {
+  /* The budget exists for exactly this run: macOS minutes spent, no build.
+     MUTATION (RUN, red, restored): key iosGateRefusal on ios-checks alone
+     (drop the `ios` skipped test) -> the ios-checks-failed-but-ios-ran rows
+     below stop counting and the trigger dispatches a third time. */
+  const run = (n, jobs) => ({ run: { ...RUN_72, id: 500 + n, run_number: 500 + n, created_at: `2026-10-09T2${n}:00:00Z` }, jobs });
+  for (const ios of ["failure", "cancelled", "timed_out"]) {
+    for (const gate of ["success", "failure"]) {
+      const a = run(1, [{ name: "ios-checks", conclusion: gate }, { name: "ios", conclusion: ios }, { name: "android", conclusion: "success" }]);
+      const b = run(2, [{ name: "ios-checks", conclusion: gate }, { name: "ios", conclusion: ios }, { name: "android", conclusion: "success" }]);
+      const runJobs = { [a.run.id]: { jobs: a.jobs, iosChecksLog: null }, [b.run.id]: { jobs: b.jobs, iosChecksLog: null } };
+      const d = triggerDecision({ runs: [b.run, a.run, RUN_71], commits: COMMITS_745, bundle: BUNDLE, ...GREEN, runJobs });
+      assert.equal(d.code, "HOLD_RETRY_BUDGET", `ios-checks ${gate}, ios ${ios}`);
+    }
+  }
+  // A refused gate whose ios job is somehow not skipped is not a gate refusal either.
+  assert.equal(iosGateRefusal([{ name: "ios-checks", conclusion: "failure" }]), null, "no ios job at all: not provably skipped");
+  assert.equal(iosGateRefusal([{ name: "ios-checks", conclusion: "cancelled" }, { name: "ios", conclusion: "skipped" }]), null,
+    "a cancelled gate is not a refusal (the brief: ios-checks concluded failure)");
+  assert.equal(iosGateRefusal(JOBS_73).id, 114003090578);
+});
+
+test("#745: refused at the gate on main's CURRENT head with a check still red there — hold, never re-dispatch the same refusal", () => {
+  /* With refusals uncounted, a red ios-kit on an unchanged main would be
+     re-dispatched every two hours, each run refused on sight (release-checks
+     never replaces an existing check run) while re-uploading to Play.
+     MUTATION (RUN, red, restored): delete the HOLD_REFUSED_AT_HEAD block ->
+     the first assertion is DISPATCH.
+     MUTATION (RUN, red, restored): drop `newest.kind === "refused"` -> the
+     superseded run at the head holds too.
+     MUTATION (RUN, red, restored): use the OLDEST check run instead of
+     latestActionsRun -> the green re-run does not clear the hold. */
+  const atHead = [{ ...COMMITS_745[0], sha: RUN_72.head_sha }];
+  const red = [actionsCheck(1, "engine-parity", "success"), actionsCheck(2, "ios-kit", "failure")];
+  const runJobs = { [RUN_72.id]: { jobs: JOBS_72, iosChecksLog: LOG_72 } };
+  const base = { runs: [RUN_72, RUN_71], commits: atHead, bundle: BUNDLE, mainRuns: [], mainStatus: { total_count: 1, state: "success" }, runJobs };
+  const held = triggerDecision({ ...base, mainChecks: red });
+  assert.equal(held.code, "HOLD_REFUSED_AT_HEAD", held.reason);
+  assert.match(held.reason, /#72 was refused at the iOS gate on 2be7db2/);
+  // Someone re-ran the flaky ios-kit and it went green: the newest check run wins, so dispatch.
+  assert.equal(triggerDecision({ ...base, mainChecks: [...red, actionsCheck(3, "ios-kit", "success")] }).code, "DISPATCH");
+  // Checks absent or still running at the head: release-checks can ask for them or wait, so dispatch.
+  assert.equal(triggerDecision({ ...base, mainChecks: [] }).code, "DISPATCH");
+  assert.equal(triggerDecision({ ...base, mainChecks: [actionsCheck(1, "engine-parity", "success"), actionsCheck(2, "ios-kit", null, "in_progress")] }).code, "DISPATCH");
+  // main moved past the refused commit: dispatch (the replay above).
+  assert.equal(triggerDecision({ ...base, commits: COMMITS_745, mainChecks: red }).code, "DISPATCH");
+  // A SUPERSEDED newest run never holds: nothing about its commit was judged.
+  const superseded = { [RUN_72.id]: { jobs: JOBS_72, iosChecksLog: LOG_73 } };
+  assert.equal(triggerDecision({ ...base, runJobs: superseded, mainChecks: red }).code, "DISPATCH");
+  // Without the per-run facts nothing is known to be refused: the old path (one failure, retried).
+  assert.equal(triggerDecision({ ...base, runJobs: null, mainChecks: red }).code, "DISPATCH");
+});
+
+test("#745: release.yml's `ios` job is the macOS job and needs `ios-checks` — the two names the budget reads", () => {
+  /* MUTATION (RUN, red, restored): IOS_GATE_JOB = "ios-gate" -> no such job
+     in release.yml, and every refusal would quietly count again. */
+  const { jobs } = releaseBinaryJobs(releaseYml());
+  assert.ok(jobs.has(IOS_GATE_JOB), `release.yml has no ${IOS_GATE_JOB} job`);
+  assert.ok(jobs.has(IOS_BUILD_JOB), `release.yml has no ${IOS_BUILD_JOB} job`);
+  const ios = jobs.get(IOS_BUILD_JOB).join("\n");
+  assert.match(ios, new RegExp(`^\\s*needs: \\[[^\\]]*\\b${IOS_GATE_JOB}\\b[^\\]]*\\]`, "m"), "ios must need ios-checks, or a refusal would not skip it");
+  assert.match(ios, /^\s*runs-on: macos-/m, "the budget protects macOS minutes; ios must be the macOS job");
+  assert.doesNotMatch(jobs.get("android").join("\n"), new RegExp(`\\b${IOS_GATE_JOB}\\b`), "android does not wait on the iOS gate");
+});
+
+test("#745 EXECUTED: release-facts fetches each failed run's jobs and each gate refusal's log; an expired log is not fatal; the Decide step reads run-jobs/", async () => {
+  /* The REAL composite step, run by bash under shims, with runs 71-73. It
+     must ask for both failed runs' jobs, then the ios-checks log of each gate
+     refusal (run 72's is gone: a 404), and leave files the trigger turns into
+     DISPATCH.
+     MUTATION (RUN, red, restored): drop the `if !` guard on the log fetch ->
+     the 404 kills the step (execFileSync throws).
+     MUTATION (RUN, red, restored): drop `--run-jobs run-jobs` from
+     release-trigger.yml's Decide step -> the pin below fails, and the trigger
+     reads every refusal as a failure again. */
+  assert.match(code(TRIGGER_WF), /--run-jobs run-jobs\b/);
+  let decision = null;
+  let warned = "";
+  const { calls, files } = fetchStepCalls(runBlock(FACTS_ACTION, "release-facts"), { FOR: "trigger" }, {
+    runs: RUNS_745,
+    jobsByRun: { [RUN_72.id]: JOBS_72, [RUN_73.id]: JOBS_73 },
+    logsByJob: { 113997302387: 404, 114003090578: LOG_73 },
+    inspect: (work, stdout) => {
+      warned = stdout;
+      const W = (f) => path.join(work, f);
+      const runs = JSON.parse(fs.readFileSync(W("runs.json"), "utf8")).workflow_runs;
+      const runJobs = loadRunJobs(W("run-jobs"), runs);
+      decision = triggerDecision({ runs, commits: COMMITS_745, bundle: BUNDLE, ...GREEN, runJobs });
+      assert.equal(fs.existsSync(W(`run-jobs/${RUN_72.id}.ios-checks.log`)), false, "the 404 body must not be kept as if it were the log");
+      assert.equal(runJobs[RUN_72.id].iosChecksLog, null);
+      assert.equal(runJobs[RUN_73.id].iosChecksLog, LOG_73);
+    },
+  });
+  const jobsCalls = calls.filter((c) => /\/actions\/runs\/\d+\/jobs$/.test(c));
+  assert.deepEqual(jobsCalls, [`gh repos/${REPO_SLUG}/actions/runs/${RUN_73.id}/jobs`, `gh repos/${REPO_SLUG}/actions/runs/${RUN_72.id}/jobs`]);
+  const logCalls = calls.filter((c) => /\/logs$/.test(c));
+  // A failing fetch is retried (the composite's retry()), so the 404 is asked for more than once.
+  assert.deepEqual([...new Set(logCalls)].sort(), [`gh repos/${REPO_SLUG}/actions/jobs/113997302387/logs`, `gh repos/${REPO_SLUG}/actions/jobs/114003090578/logs`].sort());
+  assert.ok(logCalls.every((c) => !c.includes("114007040085")), "never the summary log: the trigger reads only the gate's");
+  assert.ok(files.includes("run-jobs"));
+  assert.match(warned, /::warning::the ios-checks log of release run 37982784123/);
+  assert.equal(decision.code, "DISPATCH", decision.reason);
 });
 
 /* ═════════════════════════════════ the issue ═════════════════════════════ */

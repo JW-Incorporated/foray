@@ -31,8 +31,11 @@ import {
   latestActionsRun,
   releaseChecksVerdict,
   releaseDispatchPlan,
+  releaseRefusalLines,
+  releaseRefusalKind,
   github,
   RELEASE_REQUIRED_CHECKS,
+  RELEASE_SUPERSEDED_MARKER,
 } from "./engine-ci.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -597,6 +600,91 @@ test("release dispatch: only from the default branch, and only while it still po
   assert.equal(releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: sha, sha: "BBBBBBB" }).dispatch, true);
 });
 
+/* ─────────── issue #745: a refusal superseded by main moving on ─────────── */
+
+/* The two ios-checks refusals that froze TestFlight on 2026-10-09, VERBATIM
+ * from their job logs (gh api .../actions/jobs/<id>/logs), trimmed to the
+ * release-checks lines. Run 72 (job 113997302387) dispatched ci.yml and its
+ * ios-kit came back RED; run 73 (job 114003090578) found main already moved on
+ * and could not ask for CI on its commit at all. */
+const LOG_RUN_72 = [
+  "2026-10-09T19:49:20.7931902Z ##[group]Run node tools/ci/engine-ci.mjs release-checks \"$SHA\"",
+  "2026-10-09T19:49:21.7467987Z release-checks: engine-parity, ios-kit missing on 2be7db2f5d85; dispatching ci.yml on main",
+  "2026-10-09T19:49:23.7327485Z waiting: engine-parity: no check run on this SHA; ios-kit: no check run on this SHA",
+  "2026-10-09T20:04:12.8288809Z ##[error]release-checks: refusing to cut an iOS TestFlight from 2be7db2f5d85ad58b2e887c41745eb235d29d766: engine-parity: success; ios-kit: failure (https://github.com/JW-Incorporated/foray/actions/runs/37982836770/job/113997453649). engine-parity and ios-kit must both be green on the exact SHA being released (docs/native-engine-plan.md G-1b).",
+  "2026-10-09T20:04:12.8330065Z ##[error]Process completed with exit code 1.",
+].join("\n");
+const SHA_73 = "6c7ba11b89fb269c3364cb2917928a602f9bbdcb";
+const HEAD_AT_73 = "2d81b6529378"; // the log shows 12 characters of main's head; padded below
+const LOG_RUN_73_PREFIX = [
+  "2026-10-09T20:04:49.6369221Z ##[group]Run node tools/ci/engine-ci.mjs release-checks \"$SHA\"",
+  "2026-10-09T20:04:50.7832773Z release-checks: engine-parity, ios-kit missing, but main is at 2d81b6529378, not 6c7ba11b89fb; a dispatch would test a different commit",
+  "2026-10-09T20:04:51.2522714Z waiting: engine-parity: no check run on this SHA; ios-kit: no check run on this SHA",
+];
+
+test("#745: a refusal for ABSENT checks after main moved on is superseded; a red one, or one on main's own head, never is", () => {
+  /* Run 73's shape: plan branch-moved, both checks never appeared, the grace
+     ran out. It still REFUSES (green on THIS SHA is unchanged) and the
+     ::error:: line is the one it always was; it also says SUPERSEDED, which
+     the release trigger reads so the run does not spend its retry budget.
+     MUTATION (RUN, red, restored): drop `verdict.cause === "absent"` from
+     releaseRefusalLines -> the red-ios-kit refusal after a move prints the
+     marker and a commit CI tested and FAILED reads as merely superseded.
+     MUTATION (RUN, red, restored): drop `plan.code === "branch-moved"` -> a
+     refusal on main's own head (plan "dispatch") prints the marker.
+     MUTATION (RUN, red, restored): `cause: "absent"` for a red check in
+     releaseChecksVerdict -> the first red case below is superseded. */
+  const none = { "engine-parity": null, "ios-kit": null };
+  const head = HEAD_AT_73.padEnd(40, "0");
+  const moved = releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: head, sha: SHA_73 });
+  assert.equal(moved.code, "branch-moved");
+  assert.equal(moved.dispatch, false);
+  const absent = releaseChecksVerdict(none, { missingIsFinal: true });
+  assert.deepEqual([absent.done, absent.ok, absent.cause], [true, false, "absent"], "an absent check still REFUSES");
+  const lines = releaseRefusalLines({ sha: SHA_73, verdict: absent, plan: moved });
+  assert.equal(lines.length, 2);
+  assert.ok(lines[0].startsWith(`${RELEASE_SUPERSEDED_MARKER} sha=${SHA_73}: `), lines[0]);
+  assert.match(lines[1], /^::error::release-checks: refusing to cut an iOS TestFlight from 6c7ba11b89fb/);
+  const log73 = [...LOG_RUN_73_PREFIX, ...lines.map((l) => `2026-10-09T20:15:02.7804145Z ${l}`)].join("\n");
+  assert.equal(releaseRefusalKind(log73), "superseded");
+
+  // A check that RAN and failed is a real refusal, before or after main moved.
+  const red = releaseChecksVerdict({ "engine-parity": run(1, "engine-parity", "completed", "success"), "ios-kit": run(2, "ios-kit", "completed", "failure") });
+  assert.equal(red.cause, "red");
+  assert.equal(releaseRefusalLines({ sha: SHA_73, verdict: red, plan: moved }).length, 1);
+  const redAndAbsent = releaseChecksVerdict({ "engine-parity": null, "ios-kit": run(2, "ios-kit", "completed", "failure") }, { missingIsFinal: true });
+  assert.equal(redAndAbsent.cause, "red", "red wins over absent");
+  assert.equal(releaseRefusalLines({ sha: SHA_73, verdict: redAndAbsent, plan: moved }).length, 1);
+  // Main did NOT move (run 72: ci.yml was dispatched): never superseded.
+  const sameHead = releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: SHA_73, sha: SHA_73 });
+  assert.equal(sameHead.code, "dispatch");
+  assert.equal(releaseRefusalLines({ sha: SHA_73, verdict: absent, plan: sameHead }).length, 1);
+  // No plan (the dispatch step threw) and a timeout verdict (no cause): never superseded.
+  assert.equal(releaseRefusalLines({ sha: SHA_73, verdict: absent, plan: null }).length, 1);
+  assert.equal(releaseRefusalLines({ sha: SHA_73, verdict: { done: true, ok: false, message: "timed out" }, plan: moved }).length, 1);
+  assert.equal(releaseRefusalKind(LOG_RUN_72), "refused");
+});
+
+test("#745: an UNKNOWN head is not 'main moved on', and the marker counts only at the start of a log line", () => {
+  /* MUTATION (RUN, red, restored): `code: "branch-moved"` whatever the head
+     -> a head lookup that returned nothing makes the refusal superseded,
+     although nothing showed main had moved. MUTATION (RUN, red, restored):
+     drop the `^` anchor from SUPERSEDED_LINE -> the marker quoted inside an
+     ::error:: line reads as superseded. */
+  const none = { "engine-parity": null, "ios-kit": null };
+  const unknown = releaseDispatchPlan({ byName: none, refName: "main", defaultBranch: "main", branchHeadSha: null, sha: SHA_73 });
+  assert.equal(unknown.code, "head-unknown");
+  const absent = releaseChecksVerdict(none, { missingIsFinal: true });
+  assert.equal(releaseRefusalLines({ sha: SHA_73, verdict: absent, plan: unknown }).length, 1);
+  assert.equal(releaseDispatchPlan({ byName: none, refName: "v1.4.0", defaultBranch: "main", branchHeadSha: SHA_73, sha: SHA_73 }).code, "not-default-branch");
+  const exists = { "engine-parity": run(1, "engine-parity", "completed", "success"), "ios-kit": run(2, "ios-kit", "completed", "failure") };
+  assert.equal(releaseDispatchPlan({ byName: exists, refName: "main", defaultBranch: "main", branchHeadSha: "f".repeat(40), sha: SHA_73 }).code, "checks-exist");
+  assert.equal(releaseRefusalKind(`2026-10-09T20:15:02Z ##[error]release-checks: ${RELEASE_SUPERSEDED_MARKER} quoted`), "refused");
+  assert.equal(releaseRefusalKind(`${RELEASE_SUPERSEDED_MARKER} sha=abc: main moved`), "superseded", "a log line with no timestamp still reads");
+  assert.equal(releaseRefusalKind(""), null);
+  assert.equal(releaseRefusalKind(undefined), null);
+});
+
 test("CLI: release-checks refuses a malformed SHA before touching the network", () => {
   /* The SHA arrives from github.sha through env:, but the script is also the
      founder's dry-run tool; a typo must not become an API path. MUTATION:
@@ -732,6 +820,57 @@ test("CLI: release-checks' GETs and its ci.yml dispatch POST carry the same GitH
     const github = (h) => ({ authorization: h.authorization, accept: h.accept, version: h["x-github-api-version"] });
     const want = { authorization: "Bearer tok-123", accept: "application/vnd.github+json", version: "2022-11-28" };
     for (const r of [...gets, ...posts]) assert.deepEqual(github(r.headers), want, `${r.method} ${r.url}`);
+  } finally {
+    server.close();
+  }
+});
+
+test("#745 CLI: release-checks on a commit main has moved past refuses, dispatches nothing, and prints the SUPERSEDED line", async () => {
+  /* Run 73 end to end: main's head is another commit, both checks are absent.
+     A local server stands in for GitHub. The refusal is unchanged (not a
+     pass, the same ::error::), no ci.yml dispatch is sent, and the log carries
+     the line the release trigger reads back (releaseRefusalKind).
+     MUTATION (RUN, red, restored): print only the ::error:: line in the CLI
+     (the pre-#745 refusal) -> no SUPERSEDED line, and releaseRefusalKind of
+     this stdout is "refused". */
+  const http = await import("node:http");
+  const { execFile } = await import("node:child_process");
+  const posts = [];
+  const server = http.createServer((req, res) => {
+    req.resume();
+    req.on("end", () => {
+      res.setHeader("content-type", "application/json");
+      if (req.method === "POST") { posts.push(req.url); res.statusCode = 204; res.end(); return; }
+      if (req.url === "/repos/o/r/commits/main") { res.end(JSON.stringify({ sha: HEAD_AT_73.padEnd(40, "0") })); return; }
+      res.end(JSON.stringify({ check_runs: [] }));
+    });
+  });
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  try {
+    const { code, stdout } = await new Promise((resolve) => {
+      execFile(process.execPath, [SCRIPT, "release-checks", SHA_73], {
+        encoding: "utf8",
+        timeout: 30_000,
+        env: {
+          ...process.env,
+          GITHUB_TOKEN: "tok",
+          GH_TOKEN: "",
+          GITHUB_REPOSITORY: "o/r",
+          GITHUB_API_URL: `http://127.0.0.1:${server.address().port}`,
+          DEFAULT_BRANCH: "main",
+          REF_NAME: "main",
+          RELEASE_CHECKS_TIMEOUT_MIN: "0",
+          RELEASE_CHECKS_MISSING_GRACE_MIN: "0",
+        },
+      }, (err, out) => resolve({ code: err ? err.code : 0, stdout: out }));
+    });
+    // See the headers test above for why only "not a pass" is asserted of the code on Windows.
+    assert.notEqual(code, 0, "a superseded commit is still REFUSED: green on this SHA is the only pass");
+    assert.equal(posts.length, 0, "no ci.yml dispatch: it would test a different commit");
+    assert.match(stdout, /a dispatch would test a different commit/);
+    assert.match(stdout, new RegExp(`^${RELEASE_SUPERSEDED_MARKER} sha=${SHA_73}: `, "m"));
+    assert.match(stdout, /::error::release-checks: refusing to cut an iOS TestFlight/);
+    assert.equal(releaseRefusalKind(stdout), "superseded");
   } finally {
     server.close();
   }

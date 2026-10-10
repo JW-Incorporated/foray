@@ -11,10 +11,20 @@
 # `triggerDecision()` — and, if the answer is yes, dispatches release.yml on
 # main. It says yes when a release-relevant commit is on main and not in the
 # last successful release, and holds when: a release is already queued or
-# running; the last RETRY_BUDGET (2) runs in a row failed; or main itself is red
-# or still building. A failed release is retried the same way new work is
-# shipped — its commits are still waiting — so a transient store outage heals
-# at the next slot without anyone touching it, once.
+# running; RETRY_BUDGET (2) runs since the last success failed; the newest run
+# was refused at the iOS gate on main's current head and that gate's check is
+# still red there; or main itself is red or still building. A failed release is
+# retried the same way new work is shipped — its commits are still waiting — so
+# a transient store outage heals at the next slot without anyone touching it,
+# once.
+#
+# A RUN REFUSED AT THE iOS GATE SPENDS NO RETRY BUDGET (issue #745). When
+# release.yml's ios-checks job refuses (engine-parity or ios-kit not green on
+# that SHA), the macOS ios job is skipped: no macOS minute was spent, so there
+# is nothing for the budget to protect. Runs 72 and 73 (2026-10-09) were both
+# that — an ios-kit flake, then a commit main had already moved past — and
+# counting them froze TestFlight while Play kept shipping. The per-run jobs and
+# the refusal's log come from the release-facts composite (run-jobs/).
 #
 # WHY SCHEDULED, NOT `on: push` TO MAIN
 # It batches: the four merges on 2026-09-21 between 15:57 and 00:27 become one
@@ -81,7 +91,9 @@ jobs:
       # Everything the decision reads, fetched into files by the composite both
       # workflows share (CH2-34a): the release history, what is waiting, main's
       # runs, status and REQUIRED check runs at the commit a dispatch would
-      # build (ci-release-6), and the watchdog's pulse.
+      # build (ci-release-6), the jobs of each failed release since the last
+      # success with any iOS-gate refusal's log (issue #745), and the
+      # watchdog's pulse.
       - name: Fetch the release history, what is waiting, main's state and the watchdog's pulse
         uses: ./.github/actions/release-facts
         with:
@@ -97,6 +109,7 @@ jobs:
             --main-runs main-runs.json \
             --main-status main-status.json \
             --main-checks main-checks.json \
+            --run-jobs run-jobs \
             --peer-workflow peer-workflow.json \
             --peer-runs peer-runs.json \
             --verdict-out verdict.json
