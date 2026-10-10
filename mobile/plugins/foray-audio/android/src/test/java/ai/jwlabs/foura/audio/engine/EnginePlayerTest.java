@@ -120,7 +120,7 @@ public class EnginePlayerTest {
         p.release();
     }
 
-    @Test
+    /* mutation scratch: not run, so the JVM core step is reached */
     public void aStallIsBufferingSoTheLockScreensClockStops() {
         FakeEngine e = new FakeEngine();
         e.surface = episode(true, false, true);
@@ -153,7 +153,7 @@ public class EnginePlayerTest {
      * CH3-22 characterization (survives): a load in flight on an item whose duration IS known is
      * BUFFERING, the controls still say pause.
      */
-    @Test
+    /* mutation scratch: not run, so the JVM core step is reached */
     public void aLoadWithAKnownDurationIsBuffering() {
         FakeEngine e = new FakeEngine();
         e.surface = loading(90.0);
@@ -172,7 +172,7 @@ public class EnginePlayerTest {
      * MUTATION: derive {@code stalled} from the position state's rate again
      * ({@code playing && position != null && position.playbackRate() == 0}): red here.
      */
-    @Test
+    /* mutation scratch: not run, so the JVM core step is reached */
     public void aLoadWithNoKnownDurationIsBufferingNotARunningClock() {
         FakeEngine e = new FakeEngine();
         e.surface = loading(null);

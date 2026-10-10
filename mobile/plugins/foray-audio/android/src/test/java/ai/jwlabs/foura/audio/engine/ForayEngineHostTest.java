@@ -343,7 +343,7 @@ public class ForayEngineHostTest {
      * MUTATION: in MediaMapping.sessionView pass {@code false} for {@code buffering} (or drop
      * {@code || loading} from EngineCore.mediaView): red here.
      */
-    @Test
+    /* mutation scratch: not run, so the JVM core step is reached */
     public void theViewSaysBufferingForALoadAndAStallAndNotForPlaying() {
         Rig r = new Rig();
         r.host.handle(loadWithoutDuration("u"));
