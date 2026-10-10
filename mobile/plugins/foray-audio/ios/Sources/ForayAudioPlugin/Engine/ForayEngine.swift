@@ -437,7 +437,6 @@ final class ForayEngine {
         persistHoldPolicyIfChanged()
         persistKnownRoutesIfChanged()
         if case let .command(.setRouteSharing(policy), _) = input { persistRouteSharing(policy) }
-        if core.state.session == .relinquished { teardown() }
         return failures
     }
 

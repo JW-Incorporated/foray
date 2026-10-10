@@ -114,7 +114,6 @@ final class EngineStore: EngineOutput {
         guard let raw = string(.restore) else { return nil }
         if let record = RestoreRecord.parse(raw) { return record }
         diag(DiagEntry(kind: "restore", fields: [JSONMember("kind", .string("corrupt"))]))
-        set(nil, for: .restore)
         return nil
     }
 
