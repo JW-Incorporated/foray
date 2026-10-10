@@ -322,14 +322,15 @@ protocol EngineTiming: AnyObject {
 
 /// Where the core's persistence and reporting commands land. NE-19's
 /// EngineStore writes the shared rows, the private restore record and the
-/// diagnostics ring; NE-20's bridge carries the events to the page.
+/// diagnostics ring. The page's events are not here (CH3-24, R1-08): the
+/// core's own events leave the host through `ForayEngine.onEmit`, which the
+/// bridge sets, and the pending events ride in the restore record and the
+/// snapshot.
 protocol EngineOutput: AnyObject {
     func writePosition(_ write: PositionWrite)
     func writeRow(_ row: StoredRow)
     /// Nil removes the record (data deletion).
     func writeRestore(_ record: RestoreRecord?)
-    func appendEvent(_ event: PendingEvent)
-    func emit(_ event: EngineEvent)
     func diag(_ entry: DiagEntry)
     /// Make every write so far durable NOW: called by the host right after
     /// the core has handled `.background` or `.terminating` (whose position

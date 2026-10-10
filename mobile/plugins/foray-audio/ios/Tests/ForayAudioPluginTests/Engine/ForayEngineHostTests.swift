@@ -598,46 +598,6 @@ final class ForayEngineHostTests: XCTestCase {
         XCTAssertEqual(engine.liveTimers, [])
         XCTAssertEqual(world.timing.live.count, 0)
     }
-
-    // MARK: - Off-main results
-
-    /// A result computed off main comes back as an input on main, on a later
-    /// turn. TO SEE IT FAIL: call `handle` straight from `post(fromAnyThread:)`
-    /// (the main-actor assertion traps on the background queue).
-    @MainActor
-    func testAnOffMainResultComesBackAsAnInputOnMain() {
-        let world = FakeWorld()
-        let engine = started(world)
-        let posted = expectation(description: "posted from a background queue")
-        DispatchQueue.global().async {
-            engine.post(fromAnyThread: .lifecycle(.background))
-            posted.fulfill()
-        }
-        wait(for: [posted], timeout: 5)
-        let until = Date().addingTimeInterval(5)
-        while !engine.state.backgrounded, Date() < until {
-            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
-        }
-        XCTAssertTrue(engine.state.backgrounded)
-    }
-
-    // MARK: - One per process
-
-    /// Whichever boot path runs first builds the engine; the other gets the
-    /// same one, and no second set of remote targets is registered.
-    /// TO SEE IT FAIL: drop the `if let shared` return in `boot`.
-    @MainActor
-    func testBootBuildsOneEnginePerProcess() {
-        let first = FakeWorld()
-        let second = FakeWorld()
-        let a = ForayEngine.boot(seams: first.seams, config: EngineConfig(build: "test"))
-        let b = ForayEngine.boot(seams: second.seams, config: EngineConfig(build: "test"))
-        XCTAssertTrue(a === b)
-        XCTAssertTrue(ForayEngine.shared === a)
-        XCTAssertEqual(first.remote.liveTargets, MediaMapping.RemoteCommand.allCases.count)
-        XCTAssertEqual(second.remote.liveTargets, 0)
-        a.teardown()
-    }
 }
 
 /// The real timing seam: `DispatchSourceTimer`s on the main queue.

@@ -3293,7 +3293,7 @@ const SWIFT_FLOORS = {
      main-queue timers. AVDeck's Simulator suite is floored with it: NE-15h
      swapped the deck onto the core's vocabulary and added its reading,
      invalidate, out-point and bad-URL tests. */
-  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Engine/ForayEngineHostTests.swift": 21, // CH3-19 (2026-10-09, docs/roadmap/code-health-3.md R2-05, R2-08): +3 -- a late began during a spoken line touches nothing, a began that silenced the line still stops it, the session gate answers the core's phase; the file stood at 18 against 15, so the floor is set exact: 15 -> 21
+  "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/Engine/ForayEngineHostTests.swift": 19, // CH3-19 (2026-10-09, docs/roadmap/code-health-3.md R2-05, R2-08): +3 -- a late began during a spoken line touches nothing, a began that silenced the line still stops it, the session gate answers the core's phase; the file stood at 18 against 15, so the floor is set exact: 15 -> 21; CH3-24 (2026-10-09, docs/roadmap/code-health-3.md R1-04, R1-09): -2 -- testBootBuildsOneEnginePerProcess and testAnOffMainResultComesBackAsAnInputOnMain pinned ForayEngine.boot/shared and post(fromAnyThread:), test-only doors deleted with them (the one-engine guarantee is EngineOwnership.bootEngine's, pinned by EngineOwnershipTests.testDecideOnceFromBothEntryPointsCountsOneStrike), so the floor is set exact: 21 -> 19
   "mobile/plugins/foray-audio/ios/Tests/ForayAudioPluginTests/AVDeckTests.swift": 18,
   /* NE-19: the diagnostics ring and its gate on the host (durable across a
      relaunch, monotonic seq, capped at 2,000, the 51-minute retention budget,
