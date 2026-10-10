@@ -977,9 +977,9 @@
     }
   },
   "seek-policy": {
-    "AD_PAD_SHIPPED is the one switch and it is off until D5": {
+    "AD_PAD_SHIPPED is the one switch and the pad has shipped (D5, DAI-09)": {
       "reason": "js-module-shape",
-      "why": "Pins the value of AD_PAD_SHIPPED, a page-side constant (DAI-07a): the page reads it through foray-resolve.js's forayQueueOptions/forayResolveOptions and sends it to the engine as playForay's allowAdPad argument (engine-contract.js), so the engine receives the decision and never holds the switch. What seekPrecision does with allowAdPad on or off is already pinned by the existing pad tests and fixtured (seek-policy/seek-precision)."
+      "why": "Pins the value of AD_PAD_SHIPPED, a page-side constant (DAI-07a; turned on by DAI-09): the page reads it through foray-resolve.js's forayQueueOptions/forayResolveOptions and sends it to the engine as playForay's allowAdPad argument (engine-contract.js), so the engine receives the decision and never holds the switch. What seekPrecision does with allowAdPad on or off is already pinned by the existing pad tests and fixtured (seek-policy/seek-precision)."
     },
     "a padded timestamp still renders as an estimate, never as a clock time": {
       "reason": "text-pin",

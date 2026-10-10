@@ -113,18 +113,18 @@ export const AD_PAD_CEILING_SEC = 120;
     `forayResolveOptions()` in `foray-resolve.js` on the web — so turning the
     pad on is one edit, here.
 
-    Founder ruling: docs/roadmap/README.md founder question 15 ("Ad pad before
-    the locate step", dai D5 / ADR-0008 open question 2) is RULED yes — the pad
-    ships before the locate step. It stays `false` anyway because that same
-    ruling says to flip it "once the probe data is on main", and no probe data
-    is on main until DAI-08 commits it; with no `ad_pad_sec` recorded, `true`
-    would change no outcome but would claim a measurement we do not have.
-    Flipping it is DAI-09's one-line PR (docs/roadmap/dai.md §3).
+    SHIPPED (DAI-09; docs/DECISIONS.md, 2026-10-10 "ADR-0008 open question 2:
+    the pad ships before the locate step"). docs/roadmap/README.md founder
+    question 15 ("Ad pad before the locate step", dai D5 / ADR-0008 open
+    question 2) ruled yes, to flip "once the probe data is on main"; DAI-08's
+    probes are on main (#1150), and the founder's 2026-10-10 delegation
+    (issue #1163) left ship-or-hold to the orchestrator, who ruled ship.
+    Setting it back to `false` is the whole reversal.
 
     The native M2 `playForay` command's `allowAdPad` (player/engine-contract.js,
     COMMAND_ARGS.playForay) must be sent from this constant too, so the app
     and the web never disagree about whether a padded segment plays. */
-export const AD_PAD_SHIPPED = false;
+export const AD_PAD_SHIPPED = true;
 
 /**
  * Can we seek to this timestamp exactly?

@@ -417,7 +417,7 @@ public final class EngineConstants {
         /** {@code AD_PAD_CEILING_SEC} */
         public static final double AD_PAD_CEILING_SEC = 120.0;
         /** {@code AD_PAD_SHIPPED} */
-        public static final boolean AD_PAD_SHIPPED = false;
+        public static final boolean AD_PAD_SHIPPED = true;
         /** {@code APPROXIMATE} */
         public static final String APPROXIMATE = "approximate";
         /** {@code DRIFT_TOLERANCE_SEC} */
