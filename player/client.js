@@ -395,8 +395,13 @@ async function onEngineDecision(decision) {
          here once right after hello and then on every visibilitychange
          (bind()). A hello leaves the engine's last answer alone, so a page
          launched hidden, or reloaded after a hidden one, would otherwise
-         inherit it. setVisible never rejects. */
-      await engine.setVisible(typeof document === "undefined" || document.hidden !== true);
+         inherit it. Not awaited: setVisible never rejects, and its
+         setPageVisible takes its command number now, so it still goes out
+         first. Awaiting it here would let a plan app.js refreshes in that
+         wait reach the engine BEFORE the older held plan below, which the
+         engine would then keep (it takes the last setContinuation whatever
+         its planSeq), and would keep the legacy shim installed meanwhile. */
+      engine.setVisible(typeof document === "undefined" || document.hidden !== true);
       try { if (typeof window !== "undefined") window.ForayMediaSession?.uninstall?.(); } catch (_) { /* the shim is optional */ }
       if (pendingPlan) { const plan = pendingPlan; pendingPlan = null; sendEnginePlan(plan); }
       return engineMode;

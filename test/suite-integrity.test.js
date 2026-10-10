@@ -377,7 +377,7 @@ const FLOORS = {
      hello landing in JS with relinquish sent, an advance applied once and
      acked, and a superseded play answering false (facades.json maps
      transport-reconcile's p-impatient-2 here). Zero slack. */
-  "player/native-mode.test.js": 35, // CH3-23 (R4-07): client.js tells the engine whether the page is looking once, right after hello -- a page booted hidden, and a page booted visible over an engine a hidden page left behind (+2); the suite stood at 33 static `test(` calls against 18, so the floor is set exact: 18 -> 35 // NE-22d: the Developer engine rows' commands (no engine: nothing sent, web and android in one loop; native: four; legacy: the setting only); 11 -> 18
+  "player/native-mode.test.js": 36, // CH3-23 (R4-07): client.js tells the engine whether the page is looking once, right after hello -- a page booted hidden, and a page booted visible over an engine a hidden page left behind (+2), and that first answer is not awaited before the held plan goes out, so a plan refreshed meanwhile is the one the engine keeps (+1); the suite stood at 33 static `test(` calls against 18, so the floor is set exact: 18 -> 36 // NE-22d: the Developer engine rows' commands (no engine: nothing sent, web and android in one loop; native: four; legacy: the setting only); 11 -> 18
   /* NE-26: the engine half of Copy — the 2,000-row ring merged by wall clock
      (a merge, never a sort), the engine header line in both modes, the
      per-kind engine lines, every row accounted for (unknown kinds, unreadable
