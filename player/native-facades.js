@@ -331,7 +331,6 @@ export class NativeManagerFacade {
 
   resume(opts) { return this._send("play", undefined, opts?.source); }
   pause(opts) { return this._send("pause", undefined, opts?.source); }
-  toggle(opts) { return this._send("toggle", undefined, opts?.source); }
   stop(opts) { return this._send("stop", { persist: true }, opts?.source); }
   skipToNext(opts) { return this._send("next", undefined, opts?.source); }
   skipToPrevious(opts) { return this._send("previous", undefined, opts?.source); }

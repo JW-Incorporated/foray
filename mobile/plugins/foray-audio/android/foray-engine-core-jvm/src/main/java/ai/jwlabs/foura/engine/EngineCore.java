@@ -281,7 +281,8 @@ public final class EngineCore {
                 }
                 state.interludeEnabled = c.on();
             }
-            case EngineContract.Command.SetPageVisible c -> state.pageVisible = c.visible();
+            // Whether the page is looking is the host bridge's; nothing in the core reads it (CH3-23, R4-07).
+            case EngineContract.Command.SetPageVisible c -> {}
             case EngineContract.Command.AckAdvances c -> {
                 state.advanceLog.removeIf(e -> e.seq() <= c.upToSeq());
                 writeRestore();

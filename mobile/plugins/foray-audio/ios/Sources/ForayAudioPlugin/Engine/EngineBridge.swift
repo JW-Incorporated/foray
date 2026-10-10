@@ -142,12 +142,16 @@ final class EngineBridge {
         if !EngineContract.accepts(.helloRequest, payload) {
             row("hello", [JSONMember("invalid", .string("y"))])
         }
-        // A new page: its own command count, and a page that starts in view.
-        // Its first snapshot is the one in this answer.
+        // A new page: its own command count, and no window left over from the
+        // old one. Its first snapshot is the one in this answer. Whether it is
+        // LOOKING is its own word (CH3-23, R4-07): a hello is not a
+        // `setPageVisible`, so the last answer stands until the page sends one
+        // (client.js does, right after hello); the reference engine never
+        // reset it either.
         lastCmdSeq = nil
         window?.cancel()
         window = nil
-        coalescer = SnapshotCoalescer(visible: true)
+        coalescer = SnapshotCoalescer(visible: coalescer.visible)
 
         let decision = owner.decideOnce()
         guard let engine = liveEngine else { return EngineBridgeRules.legacyHello(reason: legacyReason(decision)) }

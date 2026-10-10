@@ -227,7 +227,6 @@ public struct EngineState: Equatable {
     // MARK: the app around the engine
 
     public var backgrounded = false
-    public var pageVisible = true
     /// BackgroundGrace: `held(reason)` from begin to end.
     public var grace: GraceReason?
     /// NE-46, the late-timer detector: when each armed ONE-SHOT engine timer
