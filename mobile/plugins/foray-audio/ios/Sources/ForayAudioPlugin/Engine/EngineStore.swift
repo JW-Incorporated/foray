@@ -102,8 +102,20 @@ final class EngineStore: EngineOutput {
 
     /// The cold path's record (NE-24), or nil for none or one this build
     /// cannot trust (`RestoreRecord.parse`).
+    ///
+    /// A record that is PRESENT but unreadable (code-health-3 R1-16) is
+    /// reported `restore event=corrupt` and cleared, synchronously like every
+    /// write here: left in place, every launch read it again and the
+    /// cold-boot row said only `record=none`, so a Copy could not tell a
+    /// corrupt record from no record. Clearing loses nothing: the cold path
+    /// never trusts it, and the page's own shared rows still restore the
+    /// listener when it next opens.
     func restoreRecord() -> RestoreRecord? {
-        RestoreRecord.parse(string(.restore))
+        guard let raw = string(.restore) else { return nil }
+        if let record = RestoreRecord.parse(raw) { return record }
+        diag(DiagEntry(kind: "restore", fields: [JSONMember("kind", .string("corrupt"))]))
+        set(nil, for: .restore)
+        return nil
     }
 
     // MARK: - Route resume's known routes (NE-38rs)

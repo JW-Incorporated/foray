@@ -385,8 +385,9 @@ final class EngineCoreTests: XCTestCase {
         host.send(.command(.pause, source: .tap))
         host.send(.lifecycle(.background))
         host.bgRemainingMs = 29_400.4
+        host.route = RoutePort(portType: "carAudio", uid: nil)
 
-        let press = host.send(.remote(RemotePress(.play, routePort: "carAudio")))
+        let press = host.send(.remote(RemotePress(.play)))
         let row = try XCTUnwrap(rows("remote", in: press).first, "\(press)")
         XCTAssertEqual(index(press) { if case let .diag(entry) = $0 { return entry.kind == "remote" }; return false }, 0,
                        "the remote row is the turn's first command")
@@ -406,6 +407,23 @@ final class EngineCoreTests: XCTestCase {
         host.bgRemainingMs = nil
         let foreground = try XCTUnwrap(rows("remote", in: host.send(.remote(RemotePress(.pause)))).first)
         XCTAssertEqual(foreground[field: "bgRemainingMs"], .null, "the foreground has no budget to report")
+    }
+
+    /// R1-14 (code-health-3 Appendix B): a press's route has ONE spelling, the
+    /// route the host reads for every input (`EngineNow.route`, NE-38rs). The
+    /// `remote` row names its port type, and no route at all is `null`.
+    /// TO SEE IT FAIL: write the row's `route` from anything but
+    /// `now.route?.portType` (say `.null`, or a second read the press carries).
+    func testTheRemoteRowNamesTheRouteTheHostReadForThisTurn() throws {
+        var host = playing()
+        host.route = RoutePort(portType: "CarAudio", uid: "car-1")
+        // RED on main: R1-14 (the row read `RemotePress.routePort`, which this press does not carry).
+        let car = try XCTUnwrap(rows("remote", in: host.send(.remote(RemotePress(.pause)))).first)
+        XCTAssertEqual(car[field: "route"], .string("CarAudio"))
+
+        host.route = nil
+        let none = try XCTUnwrap(rows("remote", in: host.send(.remote(RemotePress(.play)))).first)
+        XCTAssertEqual(none[field: "route"], .null, "no route the host can name is no route")
     }
 
     /// Plan §10: DV-1/H-1 and H-3 are judged on `resume grace=`, and DV-7a on

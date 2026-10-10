@@ -103,6 +103,8 @@ final class RemoteSurfaceTests: XCTestCase {
                 let engine = Self.engine(in: situation, world: world)
                 let before = world.output.diags.count
                 let value: Double? = command == .changePlaybackPosition ? 60 : nil
+                // The route the host reads for the press's turn (R1-14).
+                world.session.route = RoutePort(portType: "carAudio", uid: nil)
                 let got = world.remote.press(command, value: value)
                 let want = Self.documented(command, situation)
                 if got != want {
@@ -241,7 +243,7 @@ final class RemoteSurfaceTests: XCTestCase {
     /// for: .stop)`.
     func testTheRealSurfaceAdvertisesTheFoundersPairAndNeverEnablesStop() {
         let center = MPRemoteCommandCenter.shared()
-        let surface = RemoteSurface(center: center, routePort: { "carAudio" })
+        let surface = RemoteSurface(center: center)
         let targets = MediaMapping.RemoteCommand.allCases.map { surface.addTarget($0) { _ in .success } }
         defer {
             targets.forEach { $0.cancel() }
@@ -274,7 +276,8 @@ final class RemoteSurfaceTests: XCTestCase {
     /// Plan §4.2: a press that arrives off main is marked (`onMain: false`,
     /// the core's `thread=bg`) and handled ON MAIN through
     /// `DispatchQueue.main.sync`, and the verdict is what the handler said;
-    /// on main it is handled in place. The route is read for the press.
+    /// on main it is handled in place. The press carries no route: the row's
+    /// route is the host's `EngineNow.route` (R1-14).
     /// TO SEE IT FAIL: call the handler on the thread the press arrived on,
     /// or hop with `async` and return `.success` as a receipt.
     func testAPressOffMainIsMarkedAndHandledOnMain() {
@@ -286,7 +289,7 @@ final class RemoteSurfaceTests: XCTestCase {
         let seen = Seen()
         let done = expectation(description: "delivered")
         DispatchQueue.global(qos: .userInitiated).async {
-            seen.verdict = RemoteSurface.deliver(.play, value: nil, routePort: { "carAudio" }) { press in
+            seen.verdict = RemoteSurface.deliver(.play, value: nil) { press in
                 seen.onMainThread = Thread.isMainThread
                 seen.press = press
                 return .noActionableNowPlayingItem
@@ -296,11 +299,10 @@ final class RemoteSurfaceTests: XCTestCase {
         wait(for: [done], timeout: 5)
         XCTAssertEqual(seen.onMainThread, true)
         XCTAssertEqual(seen.press?.onMain, false)
-        XCTAssertEqual(seen.press?.routePort, "carAudio")
         XCTAssertEqual(seen.verdict, .noActionableNowPlayingItem)
 
         let local = Seen()
-        let verdict = RemoteSurface.deliver(.changePlaybackPosition, value: 42, routePort: { nil }) { press in
+        let verdict = RemoteSurface.deliver(.changePlaybackPosition, value: 42) { press in
             local.onMainThread = Thread.isMainThread
             local.press = press
             return .success
