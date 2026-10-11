@@ -1,27 +1,27 @@
 {
   "version": 2,
-  "export_version": "Sat, 03 Oct 2026 23:18:00 GMT",
-  "release_tag": "shows-index-sat-03-oct-2026-23-18-00-gmt",
-  "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-03-oct-2026-23-18-00-gmt",
-  "manifest_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-03-oct-2026-23-18-00-gmt/manifest.json",
-  "published_at": "2026-10-04T23:32:30.065Z",
+  "export_version": "Sat, 10 Oct 2026 23:15:44 GMT",
+  "release_tag": "shows-index-sat-10-oct-2026-23-15-44-gmt",
+  "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-10-oct-2026-23-15-44-gmt",
+  "manifest_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-10-oct-2026-23-15-44-gmt/manifest.json",
+  "published_at": "2026-10-11T13:03:05.718Z",
   "counts": {
-    "read": 4734025,
-    "in_4a": 895764,
-    "canonical": 884452
+    "read": 4739120,
+    "in_4a": 894879,
+    "canonical": 883602
   },
   "shards_published": true,
   "shard_releases": [
     {
-      "tag": "shows-index-sat-03-oct-2026-23-18-00-gmt-shards-1",
-      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-03-oct-2026-23-18-00-gmt-shards-1",
+      "tag": "shows-index-sat-10-oct-2026-23-15-44-gmt-shards-1",
+      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-10-oct-2026-23-15-44-gmt-shards-1",
       "first_key": "00",
       "last_key": "p4",
       "count": 900
     },
     {
-      "tag": "shows-index-sat-03-oct-2026-23-18-00-gmt-shards-2",
-      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-03-oct-2026-23-18-00-gmt-shards-2",
+      "tag": "shows-index-sat-10-oct-2026-23-15-44-gmt-shards-2",
+      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-10-oct-2026-23-15-44-gmt-shards-2",
       "first_key": "p5",
       "last_key": "zz",
       "count": 397
