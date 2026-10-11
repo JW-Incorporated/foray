@@ -184,7 +184,7 @@ Add one paragraph per module as it lands.
   caller parses the data files.
 - **`sync-r2.mjs`** (PKG-13): `node tools/foraycorpus-export/sync-r2.mjs
   [--out <dir>] [--raw] [--dry-run] [--prefix <p>] [--limit <n>] [--show
-  <dir|show_id>]` mirrors `transcripts/normalized/` (and `transcripts/raw/`
+  <dir|show_id>] [--min-free-gb <n>]` mirrors `transcripts/normalized/` (and `transcripts/raw/`
   with `--raw`) into `data-local/transcripts/`. Only keys of the form
   `transcripts/<kind>/<dir>/<file>` are bodies. The bucket-root legacy whisper
   JSONs, `fingerprints/` and every other key are counted `ignored` and never
@@ -206,7 +206,23 @@ Add one paragraph per module as it lands.
   `--dry-run` fetches and validates, writes nothing (no state file), and
   prints the state it would have written. The CLI reads credentials with
   `loadR2Credentials` and builds the map from `data/transcription-queue.json`,
-  `data/catalog.json` and `data/breadth-transcript-yield.json`.
+  `data/catalog.json` and `data/breadth-transcript-yield.json`. The run has
+  two phases (GV-06): phase A lists and filters the candidates and checks
+  free disk space before the first HEAD or GET, phase B is the per-object
+  loop above. `--list-only` sizes the bucket without fetching anything. Both
+  are described under "Sizing the bucket before a sync" below.
+- **`inventory.mjs`** (GV-06, `docs/roadmap/generation-v2.md`): pure helpers
+  for the list-only report and the disk guard. `classifyKey(key)` puts a key
+  in one area: `normalized`, `raw`, `fingerprints`, `legacy-root` (foray-db's
+  `_KEY_RE`, `<show-slug>/[<title-slug>-]<10 hex>.json`, outside the
+  `transcripts/`, `transcript-originals/` and `_` prefixes) or `other`.
+  `inventoryFromListing(objects, { out, showMap, statLocal })` returns
+  `{objects, bytes, unknownSizeObjects, by_area, top_dirs, largest_objects,
+  local}`, where `local` compares the normalized bodies against the mirror
+  through sync-r2's own path rule. `inventoryMarkdown(inv)` renders the table
+  for #1163. `ensureDiskSpace({ path, needBytes, minFreeBytes, statfs })`
+  throws `SyncError` `DISK_SPACE` when `bavail * bsize - needBytes <
+  minFreeBytes`, and is exported for the stream indexer (GV-09) to reuse.
 - **`catalog-adapter.mjs`** (PKG-31): `catalogAdapter(showRows, {
   breadthOld, catalog, harvestedAt })` turns `buildShows` rows into
   `data/catalog-breadth.json`-shaped rows and returns `{ shows, report }`.
@@ -417,6 +433,43 @@ A rerun over an unchanged corpus reports `delta_added=0 delta_changed=0` and
 writes a byte-identical `shows.jsonl`. A run that fails before `latest.json` is
 written leaves `latest.json` and `state.json` where they were, and leaves no
 version directory behind.
+
+## Sizing the bucket before a sync
+
+```
+node tools/foraycorpus-export/sync-r2.mjs --list-only
+node tools/foraycorpus-export/sync-r2.mjs --list-only --prefix transcripts/normalized --report "$TMP/inv.json"
+```
+
+`--list-only` sends ListObjectsV2 pages and nothing else: no HEAD, no GET, no
+body written. The listing carries every key's size, so the report costs one
+request per 1,000 keys. With no `--prefix` it lists the whole bucket, so the
+legacy whisper JSONs at the root and `fingerprints/` are sized too. It writes
+`--report` (default `<out>/r2-inventory.json`, i.e.
+`data-local/transcripts/r2-inventory.json`, through `writeJsonAtomic`) and
+prints a markdown table to paste into #1163: objects, bytes and directories
+per area, the total, the largest directories per area, and the local line
+(normalized bodies already on disk at the listed size, and what a sync would
+fetch). An object listed without a size counts as 64 MiB (`MAX_OBJECT_BYTES`),
+so unknowns can only over-state. `--list-only` refuses `--raw`, `--dry-run`,
+`--limit` and `--show`.
+
+| flag | meaning |
+|---|---|
+| `--list-only` | list and report, fetch nothing |
+| `--report <file>` | where the inventory JSON goes (list-only) |
+| `--min-free-gb <n>` | free space a sync must leave on the out disk; default 20, `0` turns the guard off |
+
+**The disk guard.** A real sync sums the bytes it would download: every
+candidate whose local file is absent or a different size, at its listed size.
+A local file of the same size is not counted (at most a same-size replacement
+follows). Before the first HEAD or GET it refuses with `DISK_SPACE: need X GB,
+free Y GB, keep Z GB` when free space minus that sum is below `--min-free-gb`,
+and writes nothing. During the loop it checks again every 200 writes against
+the bytes still to come, and stops with `DISK_SPACE` (no state file; a rerun
+skips what landed). The CLI exits 2 on `DISK_SPACE`. Under `--dry-run` the
+verdict is printed and never stops the run. `--min-free-gb 0` never asks the
+disk, which is the behaviour before GV-06.
 
 ## Weekly run (hermes-vm)
 

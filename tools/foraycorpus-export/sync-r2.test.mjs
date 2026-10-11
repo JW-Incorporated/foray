@@ -8,7 +8,11 @@
    returns every "stray" key whatever the prefix (a legacy whisper JSON at the
    bucket root, a fingerprints/ object), so the defensive key parse is what
    keeps them out, not the listing's prefix. GET returns the farm's shape:
-   Body.transformToByteArray() and Metadata {sha256}. */
+   Body.transformToByteArray() and Metadata {sha256}.
+
+   GV-06 (docs/roadmap/generation-v2.md): every run gets an injected statfs
+   (roomyStatfs by default, so the suite never depends on the machine's free
+   space), and (i)-(n) cover --list-only and the disk guard. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -18,7 +22,7 @@ import { join } from "node:path";
 import { safeKey } from "./config.mjs";
 import { sha256 } from "./r2-client.mjs";
 import { buildShowMap } from "./show-map.mjs";
-import { STATE_FILE_NAME, parseSyncArgs, syncR2 } from "./sync-r2.mjs";
+import { DISK_RECHECK_WRITES, REPORT_FILE_NAME, STATE_FILE_NAME, parseSyncArgs, runListOnly, syncR2 } from "./sync-r2.mjs";
 
 class ListObjectsV2Command {
   constructor(input) {
@@ -96,8 +100,12 @@ function tmp(t) {
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   return dir;
 }
+/* statfs fakes: free = bavail * bsize. roomyStatfs has 1 TB free. */
+const statfsWithFree = (freeBytes) => () => ({ bsize: 1000, bavail: freeBytes / 1000, bfree: freeBytes / 1000 });
+const roomyStatfs = statfsWithFree(1e12);
 const run = (client, out, extra = {}) =>
-  syncR2({ client, bucket: "bkt", out, showMap, commands, now: () => new Date("2026-10-05T00:00:00Z"), log: () => {}, ...extra });
+  syncR2({ client, bucket: "bkt", out, showMap, commands, statfs: roomyStatfs, now: () => new Date("2026-10-05T00:00:00Z"), log: () => {}, ...extra });
+const callNames = (client) => client.calls.map(([n]) => n);
 const readState = (out) => JSON.parse(readFileSync(join(out, STATE_FILE_NAME), "utf8"));
 
 /* (a) A normalized object under the farm's directory lands at
@@ -242,9 +250,143 @@ test("(h) --dry-run leaves out absent", async (t) => {
   const args = parseSyncArgs(["--dry-run", "--out", out]);
   assert.equal(args.dryRun, true);
   const client = fakeClient([{ key: key(R2_DIR, "ep-1-abc.json"), body: BODY_A }]);
-  const { state, summary } = await syncR2({ ...args, client, bucket: "bkt", showMap, commands, log: () => {} });
+  const { state, summary } = await syncR2({ ...args, client, bucket: "bkt", showMap, commands, statfs: roomyStatfs, log: () => {} });
   assert.equal(existsSync(out), false);
   assert.equal(state.written, 1);
   assert.equal(state.bodies_expected, 1);
   assert.match(summary, /dry run, nothing written/);
+});
+
+/* (i) --list-only sends ListObjectsV2 only (zero HeadObject, zero GetObject),
+   lists the whole bucket (prefix '' by default, so the bucket-root legacy
+   JSONs and fingerprints/ are sized too), writes no body and writes the
+   inventory report under <out>.
+   Mutation that turns this red: drop `if (!prefixGiven) args.prefix = ""`
+   from parseSyncArgs (the listing is then scoped to transcripts/normalized
+   and the call log shows that prefix). */
+test("(i) --list-only sends only ListObjectsV2 and sizes the whole bucket", async (t) => {
+  const out = tmp(t);
+  const args = parseSyncArgs(["--list-only", "--out", out]);
+  assert.equal(args.listOnly, true);
+  const objects = [
+    { key: key(R2_DIR, "ep-1-abc.json"), body: BODY_A },
+    { key: "transcripts/raw/470582/ep-1-abc.vtt", body: "WEBVTT\n" },
+    { key: "some-show/title-abcdef1234.json", body: "{}" },
+    { key: "fingerprints/470582/ep-1.bin", body: "fp" },
+  ];
+  const client = fakeClient(objects);
+  const { inventory, reportPath, markdown } = await runListOnly({ ...args, client, bucket: "bkt", showMap, commands, log: () => {} });
+  assert.deepEqual(client.calls, [["ListObjectsV2Command", ""]], "one listing of the whole bucket, no HEAD, no GET");
+  assert.equal(inventory.objects, 4);
+  assert.equal(inventory.by_area["legacy-root"].objects, 1);
+  assert.equal(inventory.by_area.fingerprints.objects, 1);
+  assert.equal(inventory.local.would_fetch_objects, 1);
+  assert.equal(reportPath, join(out, REPORT_FILE_NAME));
+  assert.equal(JSON.parse(readFileSync(reportPath, "utf8")).by_area.normalized.bytes, Buffer.byteLength(BODY_A));
+  assert.deepEqual(readdirSync(out), [REPORT_FILE_NAME], "nothing but the report is written");
+  assert.match(markdown, /\| legacy-root \| 1 \|/);
+});
+
+/* (j) --list-only refuses the flags that only mean something to a fetch,
+   keeps an explicit --prefix, and --min-free-gb refuses a negative number.
+   Mutation that turns this red: empty LIST_ONLY_REFUSES (the clash is
+   accepted). */
+test("(j) parseSyncArgs: --list-only clashes, --prefix kept, --min-free-gb bounds", () => {
+  assert.equal(parseSyncArgs(["--list-only", "--prefix", "fingerprints"]).prefix, "fingerprints");
+  assert.equal(parseSyncArgs([]).minFreeGb, 20);
+  assert.equal(parseSyncArgs(["--min-free-gb", "0"]).minFreeGb, 0);
+  assert.equal(parseSyncArgs(["--report", "r.json"]).report, "r.json");
+  for (const extra of [["--dry-run"], ["--raw"], ["--limit", "3"], ["--show", "x"]]) {
+    assert.throws(() => parseSyncArgs(["--list-only", ...extra]), { code: "LIST_ONLY_FLAGS" });
+  }
+  assert.throws(() => parseSyncArgs(["--min-free-gb", "-1"]), { code: "BAD_MIN_FREE" });
+  assert.throws(() => parseSyncArgs(["--min-free-gb", "lots"]), { code: "BAD_MIN_FREE" });
+});
+
+/* (k) A sync whose needBytes exceeds free space minus the margin throws
+   DISK_SPACE before any HEAD or GET, and writes nothing (no body, no state
+   file, not even the out directory).
+   Mutation that turns this red: drop `else if (!disk.ok) throw ...` in
+   syncR2 (the run fetches and writes). */
+test("(k) the guard refuses before any HEAD or GET and writes nothing", async (t) => {
+  const out = join(tmp(t), "mirror");
+  const client = fakeClient([{ key: key(R2_DIR, "ep-1-abc.json"), body: BODY_A }]);
+  const need = Buffer.byteLength(BODY_A);
+  // free = 20 GB + need - 1: one byte short of the default 20 GB margin.
+  await assert.rejects(run(client, out, { statfs: statfsWithFree(20e9 + need - 1) }), (e) => {
+    assert.equal(e.code, "DISK_SPACE");
+    assert.match(e.message, /need 0\.00 GB, free 20\.00 GB, keep 20\.00 GB/);
+    return true;
+  });
+  assert.deepEqual(callNames(client), ["ListObjectsV2Command"]);
+  assert.equal(existsSync(out), false);
+});
+
+/* (l) The guard passes when free space covers the need, and a same-size
+   local file is excluded from needBytes: here free space covers the new
+   body only, so counting the same-size file would refuse the run.
+   Mutation that turns this red: make fetchNeedBytes ignore the local size
+   (return sizeOrMax(listedSize) first), so the same-size file counts. */
+test("(l) the guard passes, and same-size local files are not in needBytes", async (t) => {
+  const out = tmp(t);
+  const dir = join(out, "normalized", LOCAL_DIR);
+  mkdirSync(dir, { recursive: true });
+  const big = "x".repeat(5000);
+  writeFileSync(join(dir, "have.json"), big);
+  const client = fakeClient([
+    { key: key(R2_DIR, "have.json"), body: big, meta: null },
+    { key: key(R2_DIR, "new.json"), body: body("new") },
+  ]);
+  const need = Buffer.byteLength(body("new"));
+  const { state, disk } = await run(client, out, { minFreeGb: 1, statfs: statfsWithFree(1e9 + need) });
+  assert.equal(disk.ok, true);
+  assert.equal(disk.needBytes, need);
+  assert.equal(state.written, 1);
+  assert.equal(state.skipped_same, 1);
+});
+
+/* (m) Phase B re-checks free space every DISK_RECHECK_WRITES writes and stops
+   with DISK_SPACE when the margin is gone: the first statfs (phase A) is
+   roomy, the next one reports nothing free, so exactly 200 bodies land and no
+   state file is written.
+   Mutation that turns this red: drop the `counts.written %
+   DISK_RECHECK_WRITES === 0` re-check (all 205 bodies are written). */
+test("(m) the mid-run re-check stops the sync with DISK_SPACE", async (t) => {
+  const out = tmp(t);
+  const n = DISK_RECHECK_WRITES + 5;
+  const client = fakeClient(Array.from({ length: n }, (_, i) => ({ key: key(R2_DIR, `e${String(i).padStart(4, "0")}.json`), body: body(`e${i}`) })));
+  let calls = 0;
+  const statfs = () => {
+    calls += 1;
+    return calls === 1 ? roomyStatfs() : { bsize: 4096, bavail: 0, bfree: 0 };
+  };
+  await assert.rejects(run(client, out, { statfs }), { code: "DISK_SPACE" });
+  assert.equal(calls, 2);
+  assert.equal(readdirSync(join(out, "normalized", LOCAL_DIR)).length, DISK_RECHECK_WRITES);
+  assert.equal(existsSync(join(out, STATE_FILE_NAME)), false);
+});
+
+/* (n) --min-free-gb 0 turns the guard off entirely (statfs is never asked,
+   the old behaviour), and under --dry-run a refusing verdict is printed but
+   never stops the run.
+   Mutations that turn this red: `const guardOn = true` (statfs is called
+   with --min-free-gb 0 and throws), or enforce the verdict under --dry-run
+   (drop `if (dryRun) log(...); else`). */
+test("(n) --min-free-gb 0 skips the guard; --dry-run prints but never stops", async (t) => {
+  const out = tmp(t);
+  const client = fakeClient([{ key: key(R2_DIR, "ep-1-abc.json"), body: BODY_A }]);
+  const explode = () => {
+    throw new Error("statfs must not be called with --min-free-gb 0");
+  };
+  const off = await run(client, out, { ...parseSyncArgs(["--min-free-gb", "0", "--out", out]), statfs: explode });
+  assert.equal(off.state.written, 1);
+  assert.equal(off.disk, null);
+
+  const dryOut = join(tmp(t), "dry");
+  const lines = [];
+  const dry = await run(client, dryOut, { dryRun: true, statfs: statfsWithFree(0), log: (l) => lines.push(l) });
+  assert.equal(dry.state.written, 1);
+  assert.equal(dry.disk.ok, false);
+  assert.ok(lines.some((l) => /disk guard WOULD REFUSE .*dry run, not enforced/.test(l)));
+  assert.equal(existsSync(dryOut), false);
 });
