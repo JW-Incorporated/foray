@@ -300,7 +300,10 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
        MUTATION THAT KILLS THIS: drop `markResumed("topic")` from the
        banked-topic branch — run 2's timings carry no `topic` entry at all.
        Ran it — red. Dropping it from the identity branch fails run 3 the same
-       way. */
+       way. Swapping `stageDetail`'s `markResumed(name)` back to
+       `timings.markResumed(name)` drops every other resumed span from the
+       RunLog (understand, research-shape, spine, source, narrate:0,
+       stitch:0) and fails run 3's resumed-span check. Ran it — red. */
     const store = new FakeCheckpointStore(FP);
     const at = () => new Date("2026-09-09T00:00:00Z");
     const dying = countingDeps();
@@ -330,6 +333,13 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     /* Resumed spans are not time this attempt spent. `deepen` resumes per
        act INSIDE its stage (`deepen:<i>`), so the stage itself still runs. */
     expect(identity.stages().filter((s) => s.status === "ok").map((s) => s.name)).toEqual(["deepen", "evidence", "finalize"]);
+    /* Every other banked stage comes back through `stageDetail`, which must
+       append its own resumed span — not just tick the timings. */
+    const resumedSpans = identity.stages().filter((s) => s.status === "resumed");
+    expect(resumedSpans.map((s) => s.name)).toEqual(
+      expect.arrayContaining(["understand", "topic", "research-shape", "spine", "source", "narrate:0", "stitch:0"])
+    );
+    expect(resumedSpans.every((s) => s.ms === 0)).toBe(true);
   }, 60_000);
 
   it("re-runs everything when the request changed", async () => {
