@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { GenerationRequestSchema, IntentUnderstandingSchema, SAFETY_CATEGORIES, type GenerationRequest, type UnderstandPromptResult } from "../types/generation";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
+import { currentRunLog, withCallContext, type StageStatus } from "./runLog";
 import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
 import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "./checkpoint";
 import { DeepenedActSchema, SpineSchema } from "../types/spine";
@@ -901,6 +902,13 @@ export async function runForayPipeline(
   deps: RunPipelineDeps = {}
 ): Promise<RunPipelineOutcome> {
   const req = GenerationRequestSchema.parse(request);
+  /* GV-01: the whole run carries its tier on the call context, so anything
+     below (a provider's CallRecord, an output budget) can read it. Inert
+     unless the caller opened a RunLog (`runWithRunLog`). */
+  return withCallContext({ tier: req.duration }, () => runParsedPipeline(req, options, deps));
+}
+
+async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOptions, deps: RunPipelineDeps): Promise<RunPipelineOutcome> {
   const timings = new StageTimingLog();
   const now = options.now ?? (() => new Date());
   const ctx = { userId: options.userId, sessionId: options.sessionId };
@@ -923,6 +931,27 @@ export async function runForayPipeline(
     ? `Everything finished so far is checkpointed under "${options.checkpointKey}", so a re-run restarts at this stage.`
     : undefined;
 
+  /* GV-01: the stage's span in the run's RunLog (when one is open), ok or
+     failed, on the log's own clock; and the stage name and act on the call
+     context for everything the stage calls. `act` is the trailing `:<n>` of
+     the stage name (`narrate:2`, `stitch:0`). */
+  const actOf = (name: string): number | undefined => {
+    const m = /:(\d+)$/.exec(name);
+    return m ? Number(m[1]) : undefined;
+  };
+  const appendSpan = (name: string, startMs: number, status: StageStatus): void => {
+    const log = currentRunLog();
+    if (!log) return;
+    const act = actOf(name);
+    const endMs = status === "resumed" ? startMs : log.nowMs();
+    log.append({ kind: "stage", name, ...(act !== undefined ? { act } : {}), startMs, endMs, ms: endMs - startMs, status });
+  };
+  /** A stage whose output came off the checkpoint: a `resumed` timing and span. */
+  const markResumed = (name: string): void => {
+    timings.markResumed(name);
+    appendSpan(name, currentRunLog()?.nowMs() ?? 0, "resumed");
+  };
+
   /**
    * The one seam every stage goes through, doing three things a bare `await`
    * cannot:
@@ -936,9 +965,14 @@ export async function runForayPipeline(
    *     work so far is on disk.
    */
   const timed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+    const spanStart = currentRunLog()?.nowMs() ?? 0;
     try {
-      return await timings.run(name, fn);
+      const act = actOf(name);
+      const value = await withCallContext({ stage: name, ...(act !== undefined ? { act } : {}) }, () => timings.run(name, fn));
+      appendSpan(name, spanStart, "ok");
+      return value;
     } catch (err) {
+      appendSpan(name, spanStart, "failed");
       /* Walks `cause`, because §4.4 wraps an act's failure in its own
          `ActDeepeningError` and would otherwise bury the dollar figures. */
       const budget = findBudgetError(err);
@@ -956,7 +990,7 @@ export async function runForayPipeline(
    * `itemsSoFar` would be missing everything before it. */
   const stageDetail = async <T>(name: string, parse: (raw: unknown) => T, fn: () => Promise<T>): Promise<{ value: T; resumed: boolean }> => {
     const result = await checkpoint.stage(name, parse, () => timed(name, fn));
-    if (result.resumed) timings.markResumed(name);
+    if (result.resumed) markResumed(name);
     return result;
   };
 
@@ -1133,17 +1167,24 @@ export async function runForayPipeline(
      partial a listener was polling changed id mid-run. */
   const bankedIdentity = checkpoint.resumeSync("identity", (raw) => IdentityCheckpointSchema.parse(raw));
   const bankedTopic = bankedIdentity ? null : checkpoint.resumeSync("topic", (raw) => PreSpineTopicCheckpointSchema.parse(raw));
+  /* GV-01: the decision is its own timed stage, `topic`, between understand
+     and research-shape — supply measurement walks the archive and was the one
+     piece of pre-spine work no timing covered. A banked topic or identity is
+     a resumed `topic`. */
   if (bankedIdentity) {
+    markResumed("topic");
     topicDecision = bankedIdentity.topicDecision as unknown as PipelineTopicDecision;
     console.log(`  ${topicDecisionLine(topicDecision, basis)} [resumed]`);
   } else if (bankedTopic) {
+    markResumed("topic");
     topicDecision = bankedTopic.topicDecision as unknown as PipelineTopicDecision;
     if (topicDecision.reason !== "unresolved") console.log(`  ${topicDecisionLine(topicDecision, basis)} [resumed]`);
   } else if (options.topic) {
-    topicDecision = { ...pinnedTopicDecision(options.topic, measure([options.topic])), basis };
+    const pinnedTopic = options.topic;
+    topicDecision = await timed("topic", async (): Promise<PipelineTopicDecision> => ({ ...pinnedTopicDecision(pinnedTopic, measure([pinnedTopic])), basis }));
     console.log(`  ${topicDecisionLine(topicDecision, basis)}`);
   } else {
-    const decided = decideTopic(preSpineText);
+    const decided = await timed("topic", async () => decideTopic(preSpineText));
     preSpineCandidates = decided.candidates;
     topicDecision = decided.decision;
     if (topicDecision.reason !== "unresolved") console.log(`  ${topicDecisionLine(topicDecision, basis)}`);
@@ -1693,6 +1734,9 @@ export async function runForayPipeline(
      taking a shorter total on trust. */
   const narrationActs: NarrationActTiming[] = timings
     .all()
+    /* GV-01: a failed narrate attempt is in the stage log, but it is not an
+       act's narration. */
+    .filter((t) => !t.failed)
     .map((t) => ({ t, m: /^narrate:(\d+)$/.exec(t.name) }))
     .filter((x): x is { t: StageTiming; m: RegExpExecArray } => x.m !== null)
     .map(({ t, m }) => ({ act: Number(m[1]), startedAt: t.startedAt, ms: t.ms, ...(t.resumed ? { resumed: true as const } : {}) }))

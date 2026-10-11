@@ -27,6 +27,7 @@ import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBu
 import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
+import { RunLog, currentCallContext, runWithRunLog, type CallContext } from "../src/generation/runLog";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -139,9 +140,14 @@ describe("runForayPipeline", () => {
        is what makes `ttlA1Ms` a time to first listen. `request` is the short
        tier, which is one act, so there is exactly one of each here. `evidence`
        is G-35's prefetch: every page's retrieval, right after `source` and
-       before any act is narrated. */
+       before any act is narrated. `topic` is GV-01's: the pre-spine topic
+       decision (F-91) timed as its own stage, between understand and the
+       research map it filters.
+
+       MUTATION THAT KILLS THE `topic` ENTRY: call `decideTopic` directly
+       instead of through `timed("topic", ...)`. Ran it — red. */
     expect(names).toEqual([
-      "understand", "research-shape", "spine", "deepen", "source", "evidence", "narrate:0", "stitch:0", "finalize"
+      "understand", "topic", "research-shape", "spine", "deepen", "source", "evidence", "narrate:0", "stitch:0", "finalize"
     ]);
     for (const t of out.timings) expect(t.ms).toBeGreaterThanOrEqual(0);
   });
@@ -1014,10 +1020,11 @@ describe("runForayPipeline — supply-aware topic, decided before the spine (F-9
     expect(out.reason).toContain("food/grilling-bbq=0");
     expect(out.topicDecision).toMatchObject({ reason: "no-supply", resolved: "food/grilling-bbq", topic: "food/grilling-bbq", basis: "archive" });
     expect(out.title.length).toBeGreaterThan(0);
-    /* Nothing past §4.1 ran: no research, no spine, one timed stage. */
+    /* Nothing past §4.1 ran: no research, no spine — understand, then the
+       topic decision that refused (GV-01 times it as its own stage). */
     expect(buildSpine).not.toHaveBeenCalled();
     expect(researchCalls).toBe(0);
-    expect(out.timings.map((t) => t.name)).toEqual(["understand"]);
+    expect(out.timings.map((t) => t.name)).toEqual(["understand", "topic"]);
   });
 
   it("run 8: proceeds under the engineering candidate the archive can carry, and the record says what moved it", async () => {
@@ -1072,4 +1079,84 @@ describe("runForayPipeline — supply-aware topic, decided before the spine (F-9
     expect(out.topicDecision).toMatchObject({ topic: "food/grilling-bbq", resolved: "food/grilling-bbq", reason: "best" });
     expect(out.topicDecision.considered[0]).toMatchObject({ id: "food/grilling-bbq", supply: 5 });
   });
+});
+
+describe("runForayPipeline under a RunLog (GV-01)", () => {
+  it("records one ok span per stage it timed, and each stage's code runs with its stage, act and tier on the context", async () => {
+    /* The deepen fan-out (Promise.all inside deepenActs) and the narration
+       gate (createActGate) are the two places an AsyncLocalStorage context
+       could be lost; a spy builder in each reads the context it was called
+       under.
+
+       MUTATION THAT KILLS THIS: drop the `withCallContext({stage, act})`
+       wrapper in `timed()` — the writer sees `stage` undefined. Ran it — red.
+       And dropping `appendSpan(name, spanStart, "ok")` leaves the log with no
+       spans. Ran it — red. */
+    const deps = stubDeps();
+    const deepenSeen: CallContext[] = [];
+    const writerSeen: CallContext[] = [];
+    const deepenBuilder = deps.deepenBuilder;
+    const narrationWriter = deps.narrationWriter;
+    const log = new RunLog();
+    const out = await runWithRunLog(log, () =>
+      runForayPipeline(request, options, {
+        ...deps,
+        deepenBuilder: {
+          providerName: deepenBuilder.providerName,
+          deepenAct: async (...args: Parameters<typeof deepenBuilder.deepenAct>) => {
+            await new Promise<void>((resolve) => setImmediate(resolve));
+            deepenSeen.push(currentCallContext());
+            return deepenBuilder.deepenAct(...args);
+          }
+        },
+        narrationWriter: {
+          providerName: narrationWriter.providerName,
+          writeAct: async (...args: Parameters<typeof narrationWriter.writeAct>) => {
+            await new Promise<void>((resolve) => setImmediate(resolve));
+            writerSeen.push(currentCallContext());
+            return narrationWriter.writeAct(...args);
+          }
+        }
+      })
+    );
+    expect(out.outcome).toBe("generated");
+
+    const spans = log.stages();
+    expect(spans.map((s) => s.name)).toEqual(out.timings.map((t) => t.name));
+    expect(spans.every((s) => s.status === "ok" && s.ms === s.endMs - s.startMs && s.ms >= 0)).toBe(true);
+    expect(spans.find((s) => s.name === "narrate:0")!.act).toBe(0);
+    expect(spans.find((s) => s.name === "deepen")!.act).toBeUndefined();
+
+    expect(deepenSeen.length).toBeGreaterThan(0);
+    for (const ctx of deepenSeen) expect(ctx).toMatchObject({ stage: "deepen", tier: "short" });
+    expect(writerSeen.length).toBeGreaterThan(0);
+    for (const ctx of writerSeen) expect(ctx).toMatchObject({ stage: "narrate:0", act: 0, tier: "short" });
+  }, 60_000);
+
+  it("a stage that throws leaves a failed span with its real duration, after the ok spans before it", async () => {
+    /* MUTATION THAT KILLS THIS: append the span only on success (drop the
+       `appendSpan(name, spanStart, "failed")` in timed's catch) — an aborted
+       attempt's log then ends at `spine` and says nothing about where the
+       time went. Ran it — red. */
+    const log = new RunLog();
+    const failingDeepen = {
+      providerName: "throwing-deepen",
+      deepenAct: async (): Promise<never> => {
+        await new Promise((resolve) => setTimeout(resolve, 15));
+        throw new Error("deepen fixture: refused");
+      }
+    };
+    await expect(
+      runWithRunLog(log, () => runForayPipeline(request, options, { ...stubDeps(), deepenBuilder: failingDeepen }))
+    ).rejects.toThrow(/deepen fixture: refused/);
+
+    const spans = log.stages();
+    expect(spans.map((s) => `${s.name}:${s.status}`)).toEqual([
+      "understand:ok", "topic:ok", "research-shape:ok", "spine:ok", "deepen:failed"
+    ]);
+    const deepen = spans.at(-1)!;
+    /* The act retries once, so two 15 ms refusals ran before the stage gave up. */
+    expect(deepen.ms).toBeGreaterThanOrEqual(20);
+    expect(log.spanMs()).toBeGreaterThanOrEqual(deepen.ms);
+  }, 60_000);
 });

@@ -9,6 +9,8 @@ import { corpusCoverage, corpusCoverageLine } from "../generation/transcriptCorp
 import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import { checkpointFingerprint } from "../generation/checkpoint";
 import { getUsageTotals } from "../generation/usageTracking";
+import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
+import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
 import { readAuthorIdFlag, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
@@ -79,14 +81,22 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *   release and prints a deprecation line)
  *
  * `prompts.json` is either a JSON array of strings, or of
- * `{ prompt, duration?, topic? }` objects when a prompt needs its taxonomy node
- * pinned by hand rather than resolved.
+ * `{ prompt, duration?, topic?, id? }` objects when a prompt needs its taxonomy
+ * node pinned by hand rather than resolved (`id` is carried into report.json
+ * as `promptId`, so a bench can join rows across runs without the prompt text).
+ *
+ * Each pipeline attempt's RunLog (GV-01) is written beside the candidates as
+ * `runlogs/<checkpointKey>.<attempt>.runlog.jsonl` (not under --dry-run):
+ * stage spans and, as later cards add them, call records — names, numbers and
+ * ids only, never prompt text or model output.
  */
 
 interface PromptSpec {
   prompt: string;
   duration?: "short" | "medium" | "long";
   topic?: string;
+  /** GV-01: a stable id for the prompt, reported as `promptId`. */
+  id?: string;
 }
 
 /** G-30 (a): how many times one prompt resumes itself before the driver
@@ -479,6 +489,22 @@ export type ReportEntry = {
   calls?: number;
   /** G-30 (c): what the notification hook returned, when one was configured. */
   notification?: NotificationResult;
+  /** GV-01: TRUE elapsed time of the final attempt's stages (last end minus
+   * first start, `spanMsOf`), where `ms` sums them and so double-counts the
+   * concurrent narrate stages. On an aborted or error row (whose `ms` stays
+   * 0) it comes from that attempt's RunLog stage spans, failed stage
+   * included. Null when no stage ran. */
+  elapsedMs?: number | null;
+  /** GV-01: the driver's own wall clock for this prompt, across every
+   * attempt and every backoff wait. */
+  driverMs?: number;
+  /** GV-01: the duration tier the prompt ran at. */
+  duration?: "short" | "medium" | "long";
+  /** GV-01: the prompt spec's `id`, when it has one. */
+  promptId?: string;
+  /** GV-01: the final attempt's RunLog, relative to the report's directory
+   * (`runlogs/<checkpointKey>.<attempt>.runlog.jsonl`). Absent under --dry-run. */
+  runLog?: string;
 };
 
 /**
@@ -641,8 +667,32 @@ export async function generateOneCandidate(
      stays the pipeline's own stage sum, as before. */
   const startedMs = Date.now();
   let calls = 0;
+  /* GV-01: one RunLog per attempt, written by THIS module (the pipeline's
+     generation/ modules never write files) unless --dry-run. The report row
+     names the final attempt's file. */
+  let runLogRel: string | undefined;
+  const writeRunLog = (log: RunLog, attempt: number): void => {
+    if (args.dryRun) return;
+    const rel = `runlogs/${checkpointKey}.${attempt}.runlog.jsonl`;
+    try {
+      fs.mkdirSync(path.join(path.resolve(args.out), "runlogs"), { recursive: true });
+      fs.writeFileSync(path.join(path.resolve(args.out), rel), log.toJsonl());
+      runLogRel = rel;
+    } catch (err) {
+      /* A measurement file must never cost the Foray. */
+      console.warn(`  runlog: could not write ${rel}: ${errorMessage(err)}`);
+      runLogRel = undefined;
+    }
+  };
   const finishEntry = async (entry: ReportEntry, notifyOutcome: string, id: string | null): Promise<ReportEntry> => {
-    const withCalls: ReportEntry = { ...entry, calls };
+    const withCalls: ReportEntry = {
+      ...entry,
+      calls,
+      driverMs: Date.now() - startedMs,
+      duration: request.duration,
+      ...(spec.id !== undefined ? { promptId: spec.id } : {}),
+      ...(runLogRel !== undefined ? { runLog: runLogRel } : {})
+    };
     if (!notify) return withCalls;
     const notification = await notify({
       outcome: notifyOutcome,
@@ -661,12 +711,18 @@ export async function generateOneCandidate(
   const resumes: ResumeRecord[] = [];
   let outcome: RunPipelineOutcome;
   for (;;) {
+    /* GV-01: a fresh log per attempt; attempt numbers are 1-based, and the
+       context's `resumeAttempt` counts the resumes before this attempt. */
+    const runLog = new RunLog();
+    const attempt = resumes.length + 1;
+    const runAttempt: typeof runPipeline = (req, opts, pipelineDeps) =>
+      runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length }, () => runPipeline(req, opts, pipelineDeps)));
     try {
       /* The machine this driver runs on holds the transcript bodies (data-local/,
          gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout
          without them the provider returns null for every episode and the run
          behaves exactly as before — pool segments only. */
-      outcome = await runPipeline(
+      outcome = await runAttempt(
         request,
         /* `sessionId` is what turns EPISODE_BUDGET_USD on: `BudgetGuard.checkAndRecord`
            only compares a Foray's own spend against the per-Foray cap when the call
@@ -684,9 +740,11 @@ export async function generateOneCandidate(
         },
         { cueProvider: deps.cueProvider, textIndex: deps.textIndex, checkpoint: args.dryRun ? undefined : checkpointStore, onActReady }
       );
+      writeRunLog(runLog, attempt);
       calls += getUsageTotals().calls;
       break;
     } catch (err) {
+      writeRunLog(runLog, attempt);
       calls += getUsageTotals().calls;
       const failure = classifyFailure(err);
       const detail = failure.reason;
@@ -714,6 +772,7 @@ export async function generateOneCandidate(
           outcome: "aborted",
           detail: `ABORTED (resumes-exhausted) — ${detail}`,
           ms: 0,
+          elapsedMs: runLog.spanMs(),
           abort: { reason: "resumes-exhausted", detail },
           resumes
         };
@@ -731,6 +790,7 @@ export async function generateOneCandidate(
           outcome: "aborted",
           detail: `ABORTED (${failure.kind}) — ${detail}`,
           ms: 0,
+          elapsedMs: runLog.spanMs(),
           abort: { reason: failure.kind, detail },
           ...(resumes.length ? { resumes } : {}),
           ...(refusedPartials.length ? { refusedPartials } : {}),
@@ -747,7 +807,14 @@ export async function generateOneCandidate(
       }
 
       console.log(`  ERROR  ${spec.prompt.slice(0, 60)} — ${detail.slice(0, 120)}${checkpointNote}`);
-      const entry: ReportEntry = { prompt: spec.prompt, outcome: "error", detail, ms: 0, ...(resumes.length ? { resumes } : {}) };
+      const entry: ReportEntry = {
+        prompt: spec.prompt,
+        outcome: "error",
+        detail,
+        ms: 0,
+        elapsedMs: runLog.spanMs(),
+        ...(resumes.length ? { resumes } : {})
+      };
       return { skipped: false, entry: await finishEntry(entry, "error", lastPartialId) };
     }
   }
@@ -779,6 +846,7 @@ export async function generateOneCandidate(
     outcome: outcome.outcome,
     detail: line,
     ms,
+    elapsedMs: spanMsOf(outcome.timings),
     ttlA1Ms,
     ...(outcome.outcome === "generated"
       ? { narrationConcurrency: outcome.narration.concurrency, narrationActs: outcome.narration.acts }

@@ -2601,7 +2601,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 33, // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 35, // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -2923,7 +2923,7 @@ const BACKEND_FLOORS = {
      counts. */
   "test/spineSeeding.test.ts": 6,
   /* G-30: self-resuming runs, abort on a refused partial, notification hook, id suffixing. */
-  "test/generateForaysHandsFree.test.ts": 21, // 20 -> 21 // CH2-04: a run-cap stop ends the batch (generateQueue)
+  "test/generateForaysHandsFree.test.ts": 25, // GV-01: elapsedMs/driverMs/duration/promptId on report rows, per-attempt runlogs without prompt text; 21 -> 25 // 20 -> 21 // CH2-04: a run-cap stop ends the batch (generateQueue)
   /* +1 audit finding E (2026-09-12): this package's `isGeneratedDraft` agrees
      with player/foray-resolve.js over the whole truth table; 8 -> 9. */
   "test/finalizeForay.test.ts": 10, // round-3 audit (L5-generation): gen-12 a duplicate id is a validation error, not a throw; 9 -> 10
@@ -2931,7 +2931,10 @@ const BACKEND_FLOORS = {
      refusals that stop this pipeline writing one it cannot vouch for — an
      unknown DAI verdict above all, which ADR-0007 gates seek precision on. */
   "test/audioSourceLookup.test.ts": 9,
-  "test/stageTiming.test.ts": 5,
+  "test/stageTiming.test.ts": 8, // GV-01: a throwing stage is timed (failed: true), spanMsOf; 5 -> 8
+  /* GV-01 (generation v2): the per-run RunLog — AsyncLocalStorage isolation,
+     context merge, injected clock, the runlog/1 JSONL shape. */
+  "test/runLog.test.ts": 7,
   /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
      candidate written after each act, the driver's per-act rewrite, and the
      private status read path. */
@@ -2987,7 +2990,7 @@ const BACKEND_FLOORS = {
      partway through an act re-pays only for the slots that never landed, and
      the per-Foray budget cap the batch path left inert by never passing a
      sessionId. */
-  "test/runPipelineCheckpoint.test.ts": 13,
+  "test/runPipelineCheckpoint.test.ts": 14, // GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
   /* G-32: acts narrated in parallel, stitch and continuity in act order. Seven
      cases latch the writer to PROVE overlap (acts start while act 1 is held,
      the cap holds, a failure still banks in-flight acts and never starts
