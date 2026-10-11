@@ -1,0 +1,4076 @@
+{
+ "source": "docs/roadmap/generation-v2.md",
+ "cards": [
+  {
+   "id": "GV-01",
+   "from": [
+    "W1-02"
+   ],
+   "title": "Per-run RunLog (AsyncLocalStorage) with every event type declared; stage spans including failures; timed topic stage; elapsedMs, driverMs, tier and promptId in report.json",
+   "covers": [
+    "R1-14",
+    "TM-10",
+    "MT-02",
+    "MT-03",
+    "GP-01"
+   ],
+   "wave": 1,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/stageTiming.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/stageTiming.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/runPipelineCheckpoint.test.ts",
+    "backend/test/generateForaysHandsFree.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/runLog.ts (new)",
+    "backend/test/runLog.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "The founder PC's next run (relay or local) writes the first real runlog automatically.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-02",
+   "from": [
+    "W2-03"
+   ],
+   "title": "Reply schemas in one module, plus a zod-to-JSON-Schema converter for grammar-constrained output",
+   "covers": [
+    "R1-18"
+   ],
+   "wave": 1,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/AnthropicPromptUnderstander.ts",
+    "backend/src/generation/AnthropicSpineBuilder.ts",
+    "backend/src/generation/AnthropicDeepenActBuilder.ts",
+    "backend/src/generation/AnthropicContinuityBuilder.ts",
+    "backend/src/generation/AnthropicNarrationWriterBuilder.ts",
+    "backend/src/generation/AnthropicNarrationVerifierBuilder.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/replySchemas.ts (new)",
+    "backend/src/generation/chat/jsonSchema.ts (new)",
+    "backend/test/jsonSchema.test.ts (new)",
+    "backend/test/__snapshots__/jsonSchema.test.ts.snap (new)"
+   ],
+   "size": "S",
+   "live_step": "Send each schema as response_format to local-heavy and local-worker once; confirm xgrammar and llama-server accept it and record any gap in the lane profile.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM key for the live check."
+  },
+  {
+   "id": "GV-03",
+   "from": [
+    "W2-05",
+    "W7-02"
+   ],
+   "title": "Stage routing table, implementation registry and lane profiles as config (per-stage switch, Spark lane, second-box lane)",
+   "covers": [
+    "R2-21",
+    "R1-08",
+    "R1-11",
+    "GP-27"
+   ],
+   "wave": 1,
+   "depends_on": [],
+   "files": [
+    "test/suite-integrity.test.js",
+    "backend/src/config/machineProfiles.ts (new)",
+    "backend/src/config/stageRouting.ts (new)",
+    "backend/test/stageRouting.test.ts (new)",
+    "backend/test/machineProfiles.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "R1-11: on p40-ai, run `nvidia-smi --query-gpu=name,memory.total,compute_cap --format=csv`, then a 60 s bench: prefill at 8k, decode at 1 and 4 streams.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus Joey or the founder runs the nvidia-smi command and the bench on p40-ai; there is no SSH from the agent machine."
+  },
+  {
+   "id": "GV-04",
+   "from": [
+    "W1-01"
+   ],
+   "title": "Bench: true elapsed time beside the stage sum (TM-10, back-filled), plus core/detail column groups",
+   "covers": [
+    "TM-10",
+    "MT-02"
+   ],
+   "wave": 1,
+   "depends_on": [],
+   "files": [
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "tools/generation-bench/baseline.jsonl",
+    "docs/curation/generation-kpis.md",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-05",
+   "from": [
+    "W3-04"
+   ],
+   "title": "Streamed index assembly: byte-identical per-show BM25 caches built from a body stream (backend refactor plus indexBodies CLI)",
+   "covers": [
+    "R1-09",
+    "GP-09"
+   ],
+   "wave": 1,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/transcriptArchiveLookup.ts",
+    "backend/src/generation/transcriptTextIndex.ts",
+    "backend/src/cli/warmTranscriptIndex.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/cli/indexBodies.ts (new)",
+    "backend/test/indexBodies.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-06",
+   "from": [
+    "W3-01"
+   ],
+   "title": "sync-r2: list-only inventory report and disk-space guard",
+   "covers": [
+    "R2-16",
+    "GP-09",
+    "GP-22"
+   ],
+   "wave": 1,
+   "depends_on": [],
+   "files": [
+    "tools/foraycorpus-export/sync-r2.mjs",
+    "tools/foraycorpus-export/sync-r2.test.mjs",
+    "tools/foraycorpus-export/README.md",
+    "test/suite-integrity.test.js",
+    "tools/foraycorpus-export/inventory.mjs (new)",
+    "tools/foraycorpus-export/inventory.test.mjs (new)"
+   ],
+   "size": "S",
+   "live_step": "With the read-only R2 key on the founder PC or the Spark, run `node tools/foraycorpus-export/sync-r2.mjs --list-only` and post the markdown table on #1163.",
+   "needs_founder": "The R2 read-only key (R2_CREDENTIALS_FILE) on whichever machine runs the live step."
+  },
+  {
+   "id": "GV-07",
+   "from": [
+    "W1-03"
+   ],
+   "title": "CallRecord at the model-call choke point (createMessage), with stage/act/attempt/role/reask context threaded by wrapping",
+   "covers": [
+    "R1-14",
+    "MT-04",
+    "MT-05",
+    "MT-07",
+    "GP-01"
+   ],
+   "wave": 2,
+   "depends_on": [
+    "GV-01"
+   ],
+   "files": [
+    "backend/src/generation/runLog.ts",
+    "backend/src/generation/anthropicCall.ts",
+    "backend/src/generation/deepenActs.ts",
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/parseWithRetry.ts",
+    "backend/src/generation/buildSpine.ts",
+    "backend/src/generation/postSeedSpine.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/test/anthropicCall.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/actNarration.test.ts",
+    "backend/test/parseWithRetry.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "M",
+   "live_step": "The first local Qwen run through the provider layer fills queueMs, ttftMs, cachedTokens, decodeTokPerSec and the machine field. It needs the LiteLLM key (#1163).",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-08",
+   "from": [
+    "W1-16"
+   ],
+   "title": "Listening card: schema, append-only store, unseal and pairwise results, bench MQ-20 columns",
+   "covers": [
+    "R2-01",
+    "MQ-20",
+    "QK-30",
+    "GP-20"
+   ],
+   "wave": 2,
+   "depends_on": [
+    "GV-04"
+   ],
+   "files": [
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "docs/curation/listening-quality-plan.md",
+    "docs/curation/generation-kpis.md",
+    "test/suite-integrity.test.js",
+    "tools/listening/card.mjs (new)",
+    "tools/listening/unseal.mjs (new)",
+    "tools/listening/card.test.mjs (new)",
+    "tools/listening/unseal.test.mjs (new)",
+    "docs/curation/listening/cards.jsonl (new)",
+    "docs/curation/listening/README.md (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-09",
+   "from": [
+    "W3-05"
+   ],
+   "title": "Stream indexer: build caches, staged digest rows and passages from local bodies or R2 normalized objects, one body in memory (nightly delta)",
+   "covers": [
+    "R1-09",
+    "GP-09",
+    "R2-16"
+   ],
+   "wave": 2,
+   "depends_on": [
+    "GV-05",
+    "GV-06"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/passage-index/package.json (new)",
+    "tools/passage-index/README.md (new)",
+    "tools/passage-index/sources.mjs (new)",
+    "tools/passage-index/manifest.mjs (new)",
+    "tools/passage-index/stream-index.mjs (new)",
+    "tools/passage-index/sources.test.mjs (new)",
+    "tools/passage-index/stream-index.test.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "(1) On the founder PC, run `--source local --full` over the 5,041 bodies and confirm the caches match a fresh warm-transcript-index build (W3-08 parity check).",
+   "needs_founder": "The R2 read key on the Spark, and approval to run a multi-hour stream job on the shared Spark (OQ-07: it runs niced)."
+  },
+  {
+   "id": "GV-10",
+   "from": [
+    "W5-17",
+    "W1-10"
+   ],
+   "title": "One spoken-line and readability library (backend/src/copy/spokenLine.js) shared by check-narration, the generator and the scorecard",
+   "covers": [
+    "R2-14",
+    "QK-25",
+    "MQ-15",
+    "MQ-16",
+    "MQ-17",
+    "MQ-18"
+   ],
+   "wave": 2,
+   "depends_on": [],
+   "files": [
+    "tools/foray/check-narration.mjs",
+    "test/suite-integrity.test.js",
+    "backend/src/copy/spokenLine.js (new)",
+    "backend/src/copy/spokenLine.d.ts (new)",
+    "backend/test/spokenLine.test.ts (new)",
+    "tools/foray/voice-metrics.mjs (new)",
+    "tools/foray/voice-metrics.test.mjs (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-11",
+   "from": [
+    "W6-05"
+   ],
+   "title": "render-foray.py: render from a candidate, per item, default voice first",
+   "covers": [
+    "R1-13",
+    "GP-08"
+   ],
+   "wave": 2,
+   "depends_on": [],
+   "files": [
+    "tools/narration/render-foray.py",
+    "tools/narration/render-foray.test.mjs",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-12",
+   "from": [
+    "W3-23"
+   ],
+   "title": "Passage cutter: whole-thought passages with offline anchors and separate edge kinds",
+   "covers": [
+    "R1-09",
+    "R2-04"
+   ],
+   "wave": 2,
+   "depends_on": [
+    "GV-05"
+   ],
+   "files": [
+    "backend/src/generation/tapeExtent.ts",
+    "backend/src/generation/transcriptArchiveLookup.ts",
+    "backend/src/cli/indexBodies.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/indexBodies.test.ts",
+    "backend/src/generation/passageCutter.ts (new)",
+    "backend/test/passageCutter.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-13",
+   "from": [
+    "W2-01"
+   ],
+   "title": "ChatProvider contract, call context and OpenAI-compatible client (non-streaming) for LiteLLM/SGLang/llama.cpp",
+   "covers": [
+    "HW-12",
+    "GP-06"
+   ],
+   "wave": 3,
+   "depends_on": [
+    "GV-07"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "backend/test/promptNoPersistence.test.ts",
+    "backend/src/generation/chat/ChatProvider.ts (new)",
+    "backend/src/generation/chat/openAICompatProvider.ts (new)",
+    "backend/test/openAICompatProvider.test.ts (new)",
+    "backend/test/helpers/fakeFetch.ts (new)",
+    "backend/test/helpers/fakeChatProvider.ts (new)",
+    "backend/test/fixtures/openai/chat-stop.json (new)",
+    "backend/test/fixtures/openai/chat-length.json (new)",
+    "backend/test/fixtures/openai/chat-cached-reasoning.json (new)",
+    "backend/test/fixtures/openai/chat-malformed.json (new)"
+   ],
+   "size": "M",
+   "live_step": "Capture one non-streaming reply each from local-heavy and local-worker through LiteLLM; check usage fields, x-litellm-model-id, chat_template_kwargs survival and reasoning_content; commit sanitized fixtures.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM virtual key for Foray (#1163), for the live capture only."
+  },
+  {
+   "id": "GV-15",
+   "from": [
+    "W4-01",
+    "W5-02",
+    "W3-16"
+   ],
+   "title": "Run configuration foundation: call-time flag readers, pipeline flags, gate config, checkpoint variant at both fingerprint call sites",
+   "covers": [
+    "R1-01",
+    "GP-03"
+   ],
+   "wave": 3,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/checkpoint.ts",
+    "backend/src/cli/generateForays.ts",
+    "test/suite-integrity.test.js",
+    "docs/curation/generation-architecture.md",
+    "backend/test/generateForays.test.ts",
+    "backend/src/generation/pipelineFlags.ts (new)",
+    "backend/test/pipelineFlags.test.ts (new)",
+    "backend/src/generation/gateConfig.ts (new)",
+    "backend/test/gateConfig.test.ts (new)",
+    "backend/src/generation/generationFlags.ts (new)",
+    "backend/test/generationFlags.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-16",
+   "from": [
+    "W3-08"
+   ],
+   "title": "Retrieval server core: resident episode index with exact BM25 parity, scopes, episode manifest, local cue reads, archive endpoint",
+   "covers": [
+    "R1-09",
+    "GP-09"
+   ],
+   "wave": 3,
+   "depends_on": [
+    "GV-05",
+    "GV-09"
+   ],
+   "files": [
+    "backend/src/generation/transcriptTextIndex.ts",
+    "tools/passage-index/README.md",
+    "test/suite-integrity.test.js",
+    "backend/src/cli/retrievalServer.ts (new)",
+    "backend/src/generation/manifestBodySource.ts (new)",
+    "backend/test/retrievalServer.test.ts (new)",
+    "backend/test/manifestBodySource.test.ts (new)",
+    "tools/passage-index/serve.mjs (new)",
+    "tools/passage-index/pull-archive.mjs (new)",
+    "tools/passage-index/pull-archive.test.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "Start it on the founder PC over the existing 22-show corpus and compare /v1/search with a local run for 10 claims from backend/test/fixtures/run2-deepen-2026-09-09.json. Measure resident RSS.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-17",
+   "from": [
+    "W1-04"
+   ],
+   "title": "Bench: per-call speed summary (MT-04..MT-08, MT-10, MT-12) from the runlog, with a backend parity test",
+   "covers": [
+    "R1-14",
+    "MT-04",
+    "MT-05",
+    "MT-06",
+    "MT-07",
+    "MT-08",
+    "MT-09",
+    "MT-10",
+    "MT-12",
+    "GP-01",
+    "GP-28"
+   ],
+   "wave": 3,
+   "depends_on": [
+    "GV-07",
+    "GV-08"
+   ],
+   "files": [
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "docs/curation/generation-kpis.md",
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/runlog.mjs (new)",
+    "tools/generation-bench/runlog.test.mjs (new)",
+    "tools/generation-bench/fixtures/runlog-synth/report.json (new)",
+    "tools/generation-bench/fixtures/runlog-synth/runlogs/synth.1.runlog.jsonl (new)",
+    "backend/test/runLogBenchParity.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-18",
+   "from": [
+    "W4-06"
+   ],
+   "title": "SourcingSession: source one act at a time with the Foray-wide ledgers carried forward, and a serialisable state",
+   "covers": [
+    "R1-04"
+   ],
+   "wave": 3,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/sourceBeats.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/sourcingSession.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-23",
+   "from": [
+    "W3-02"
+   ],
+   "title": "Legacy whisper JSONs: key parser, hash resolver, converter to the normalized body shape, bounded sampler",
+   "covers": [
+    "R2-16",
+    "GP-22"
+   ],
+   "wave": 3,
+   "depends_on": [],
+   "files": [
+    "tools/foraycorpus-export/README.md",
+    "test/suite-integrity.test.js",
+    "tools/foraycorpus-export/legacy-whisper.mjs (new)",
+    "tools/foraycorpus-export/legacy-whisper.test.mjs (new)",
+    "tools/foraycorpus-export/fixtures/synthetic/legacy-whisper/doc-ok.json (new)",
+    "tools/foraycorpus-export/fixtures/synthetic/legacy-whisper/doc-bad.json (new)"
+   ],
+   "size": "S",
+   "live_step": "Run `legacy-whisper.mjs sample --n 20` with the R2 read key. Confirm the meta/segments shape and how many objects carry words[]. Attach the report to #1163.",
+   "needs_founder": "The R2 read-only key for the sample."
+  },
+  {
+   "id": "GV-14",
+   "from": [
+    "W1-07"
+   ],
+   "title": "Stage x tier output-token budgets (R1-17) in one table, stamped on every call, with a pure truncation-policy decision for the provider layer",
+   "covers": [
+    "R1-17",
+    "MT-05",
+    "GP-02"
+   ],
+   "wave": 4,
+   "depends_on": [
+    "GV-07",
+    "GV-15"
+   ],
+   "files": [
+    "backend/src/generation/runLog.ts",
+    "backend/test/runLog.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/config/outputBudgets.ts (new)",
+    "backend/test/outputBudgets.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "Tune the table from the first golden-set run's out_tok by stage (W1-04).",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-19",
+   "from": [
+    "W2-04"
+   ],
+   "title": "askStructured: one provider-neutral JSON call (meter, constrained output, truncation refusal, one metered re-ask)",
+   "covers": [
+    "R1-18",
+    "GP-06",
+    "HW-12"
+   ],
+   "wave": 4,
+   "depends_on": [
+    "GV-02",
+    "GV-07",
+    "GV-13"
+   ],
+   "files": [
+    "backend/src/generation/anthropicCall.ts",
+    "backend/src/generation/researchShape.ts",
+    "backend/test/anthropicCall.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/chat/askStructured.ts (new)",
+    "backend/src/generation/replyErrors.ts (new)",
+    "backend/test/askStructured.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-20",
+   "from": [
+    "W5-01",
+    "W2-11"
+   ],
+   "title": "Typed Jev client in TypeScript (noul / choice / score): never throws on transport errors, budget-metered, records every call, with a fake and recorded fixtures",
+   "covers": [
+    "R1-20",
+    "R1-07",
+    "R2-03",
+    "OQ-05"
+   ],
+   "wave": 4,
+   "depends_on": [
+    "GV-07"
+   ],
+   "files": [
+    "backend/src/config/env.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/jevTypes.ts (new)",
+    "backend/src/generation/jevClient.ts (new)",
+    "backend/src/cli/jevSmoke.ts (new)",
+    "backend/test/jevClient.test.ts (new)",
+    "backend/test/helpers/fakeJevClient.ts (new)",
+    "backend/test/fixtures/jev/answers.json (new)"
+   ],
+   "size": "M",
+   "live_step": "On a machine with the Jev key, run npx tsx backend/src/cli/jevSmoke.ts. Record median and p95 latency and the answering model id on #1163.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus a Jev API key (JEV_API_KEY or JEV_KEY_FILE) on the machine that runs generation. One exists on the Spark (LM-22). Queue it on #1163."
+  },
+  {
+   "id": "GV-21",
+   "from": [
+    "W6-01",
+    "W5-12a"
+   ],
+   "title": "Per-act servability on partial candidates: item provenance, act veracity, the hand-off line counts as unverified, only the servable prefix is exposed",
+   "covers": [
+    "GP-07",
+    "R1-15",
+    "R2-13",
+    "QK-29",
+    "MQ-04",
+    "GP-23"
+   ],
+   "wave": 4,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/stitchForay.ts",
+    "backend/src/generation/partialCandidate.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/test/partialCandidate.test.ts",
+    "backend/test/stitchForay.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/runPipelineCheckpoint.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/generationStatus.ts",
+    "backend/test/generationStatus.test.ts",
+    "backend/src/generation/itemReadiness.ts (new)",
+    "backend/test/itemReadiness.test.ts (new)",
+    "backend/test/actVeracityGate.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-22",
+   "from": [
+    "W6-06"
+   ],
+   "title": "Long-lived render worker with a spool directory, plus the spool upload step",
+   "covers": [
+    "R1-13",
+    "GP-08"
+   ],
+   "wave": 4,
+   "depends_on": [
+    "GV-11"
+   ],
+   "files": [
+    "tools/narration/render-foray.py",
+    "tools/narration/render-foray.test.mjs",
+    "test/suite-integrity.test.js",
+    "tools/narration/render-worker.test.mjs (new)",
+    "tools/narration/spool-upload.mjs (new)",
+    "tools/narration/spool-upload.test.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "Run `render-foray.py --worker` with real weights on the Spark CPU over a rendered draft, and record render_ms per audio_sec (MT-09). spool-upload runs only where the R2 token exists.",
+   "needs_founder": "The R2 narration bucket and write token on the render host (HUMAN-ACTIONS #119/#120), for the live upload only."
+  },
+  {
+   "id": "GV-24",
+   "from": [
+    "W1-11"
+   ],
+   "title": "Scorecard: one MQ row per Foray (score.mjs) plus reference scores for the 7 committed Forays",
+   "covers": [
+    "GP-28",
+    "R2-02",
+    "MQ-01",
+    "MQ-02",
+    "MQ-03",
+    "MQ-04",
+    "MQ-05",
+    "MQ-06",
+    "MQ-07",
+    "MQ-08",
+    "MQ-09",
+    "MQ-10",
+    "MQ-11",
+    "MQ-12",
+    "MQ-13",
+    "MQ-14",
+    "MQ-15",
+    "MQ-16",
+    "MQ-17",
+    "MQ-18",
+    "MQ-19",
+    "MQ-20",
+    "MQ-21"
+   ],
+   "wave": 4,
+   "depends_on": [
+    "GV-08",
+    "GV-10",
+    "GV-17"
+   ],
+   "files": [
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "docs/curation/generation-kpis.md",
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/score.mjs (new)",
+    "tools/generation-bench/score.test.mjs (new)",
+    "tools/generation-bench/golden/reference-scorecard.jsonl (new)",
+    "tools/generation-bench/fixtures/score-synth/candidate.json (new)"
+   ],
+   "size": "M",
+   "live_step": "Score the 14 Sep candidate and report on the founder PC (backend/data-local/foray-candidates/) for the first current-writer scorecard row.",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-25",
+   "from": [
+    "W2-06"
+   ],
+   "title": "Chat builders for the planning stages: understander, spine, deepen and continuity on a ChatProvider",
+   "covers": [
+    "R2-21",
+    "GP-06",
+    "HW-12",
+    "R1-18"
+   ],
+   "wave": 5,
+   "depends_on": [
+    "GV-03",
+    "GV-14",
+    "GV-19"
+   ],
+   "files": [
+    "backend/src/generation/AnthropicPromptUnderstander.ts",
+    "backend/src/generation/AnthropicSpineBuilder.ts",
+    "backend/src/generation/AnthropicDeepenActBuilder.ts",
+    "backend/src/generation/AnthropicContinuityBuilder.ts",
+    "backend/src/generation/AnthropicNarrationVerifierBuilder.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/chat/ChatPromptUnderstander.ts (new)",
+    "backend/src/generation/chat/ChatSpineBuilder.ts (new)",
+    "backend/src/generation/chat/ChatDeepenActBuilder.ts (new)",
+    "backend/src/generation/chat/ChatContinuityBuilder.ts (new)",
+    "backend/src/generation/chat/targetFor.ts (new)",
+    "backend/test/chatPlanningBuilders.test.ts (new)",
+    "backend/test/fixtures/openai/spine-reply.json (new)",
+    "backend/test/fixtures/openai/deepen-reply.json (new)"
+   ],
+   "size": "M",
+   "live_step": "With the LiteLLM key, run one benchmark prompt with only ST-04 on local:spark and one with ST-05 on local:second. Record JSON validity and re-ask counts.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM key (#1163)."
+  },
+  {
+   "id": "GV-26",
+   "from": [
+    "W1-09"
+   ],
+   "title": "The pipeline evaluates its own publish gate; MQ-21 run success, MQ-09 tape yield and MQ-11 beat coverage in the report",
+   "covers": [
+    "GP-26",
+    "MQ-21",
+    "MQ-09",
+    "MQ-11",
+    "MQ-01",
+    "MQ-04"
+   ],
+   "wave": 5,
+   "depends_on": [
+    "GV-07"
+   ],
+   "files": [
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/generateForays.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-27",
+   "from": [
+    "W5-08"
+   ],
+   "title": "Per-sentence support judge: candidate sources per sentence (at most ~2k tokens), a Jev yes/no plus a choice of source",
+   "covers": [
+    "R1-07",
+    "MQ-02"
+   ],
+   "wave": 5,
+   "depends_on": [
+    "GV-10",
+    "GV-20"
+   ],
+   "files": [
+    "backend/src/types/narration.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/sentenceSupport.ts (new)",
+    "backend/test/sentenceSupport.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-28",
+   "from": [
+    "W3-07"
+   ],
+   "title": "Passage store and embeddings: SQLite passages table, sub-chunk embeddings, Embedder interface, dense top-k",
+   "covers": [
+    "R1-09",
+    "R2-04"
+   ],
+   "wave": 5,
+   "depends_on": [
+    "GV-09",
+    "GV-12"
+   ],
+   "files": [
+    "tools/passage-index/README.md",
+    "test/suite-integrity.test.js",
+    "tools/passage-index/store.mjs (new)",
+    "tools/passage-index/embedder.mjs (new)",
+    "tools/passage-index/index-db.mjs (new)",
+    "tools/passage-index/migrations/0001_passages.sql (new)",
+    "tools/passage-index/store.test.mjs (new)",
+    "tools/passage-index/embedder.test.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "On the Spark, choose the embedder: bge-small q8 on CPU, or an OpenAI-compatible embedding endpoint if Joey can serve one on the second box.",
+   "needs_founder": "Approval to install the tools/corpus/embed runtime (about 373 MB) on the Spark, or to serve an embedding model on the second box."
+  },
+  {
+   "id": "GV-29",
+   "from": [
+    "W3-10"
+   ],
+   "title": "Backend retrieval client: RemoteRetrieval, PrecomputedTextIndex (scope+query+limit keyed), HydratingCueProvider",
+   "covers": [
+    "R1-09",
+    "GP-09"
+   ],
+   "wave": 5,
+   "depends_on": [
+    "GV-16"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "backend/src/generation/retrievalClient.ts (new)",
+    "backend/test/retrievalClient.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-30",
+   "from": [
+    "W3-19"
+   ],
+   "title": "Offline topic dossiers, code-built: fetched article text per taxonomy node, verbatim passages, no model, robots-compliant",
+   "covers": [
+    "R2-20",
+    "QK-23"
+   ],
+   "wave": 5,
+   "depends_on": [],
+   "files": [
+    "tools/corpus/README.md",
+    "test/suite-integrity.test.js",
+    "tools/corpus/dossiers/build.mjs (new)",
+    "tools/corpus/dossiers/seeds.mjs (new)",
+    "tools/corpus/dossiers/passages.mjs (new)",
+    "tools/corpus/dossiers/schema.mjs (new)",
+    "tools/corpus/dossiers/seeds.json (new)",
+    "tools/corpus/dossiers/build.test.mjs (new)",
+    "tools/corpus/dossiers/passages.test.mjs (new)",
+    "tools/corpus/fixtures/dossiers/article.html (new)"
+   ],
+   "size": "M",
+   "live_step": "On a machine with internet, run `build.mjs --all`: about 200-400 polite fetches at at least 2 s per host, under an hour.",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-31",
+   "from": [
+    "W2-07"
+   ],
+   "title": "Chat builders for narration: act writer and act verifier on a ChatProvider (non-streaming)",
+   "covers": [
+    "R2-21",
+    "GP-06",
+    "HW-12",
+    "R1-18"
+   ],
+   "wave": 6,
+   "depends_on": [
+    "GV-03",
+    "GV-19",
+    "GV-25"
+   ],
+   "files": [
+    "backend/src/generation/AnthropicNarrationWriterBuilder.ts",
+    "backend/src/generation/AnthropicNarrationVerifierBuilder.ts",
+    "backend/src/generation/replySchemas.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/chat/ChatNarrationWriterBuilder.ts (new)",
+    "backend/src/generation/chat/ChatNarrationVerifierBuilder.ts (new)",
+    "backend/test/chatNarrationBuilders.test.ts (new)",
+    "backend/test/fixtures/openai/act-write-reply.json (new)",
+    "backend/test/fixtures/openai/act-verify-reply.json (new)"
+   ],
+   "size": "M",
+   "live_step": "Run one short-tier benchmark prompt with the writer on local:spark.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM key (#1163)."
+  },
+  {
+   "id": "GV-32",
+   "from": [
+    "W2-13",
+    "W4-04"
+   ],
+   "title": "Planning prompts split into a byte-stable prefix (stable / this Foray / this call), moved to prompts/*.ts",
+   "covers": [
+    "R1-10",
+    "GP-05",
+    "R1-03",
+    "R2-07",
+    "GP-02"
+   ],
+   "wave": 6,
+   "depends_on": [
+    "GV-25"
+   ],
+   "files": [
+    "backend/src/generation/AnthropicPromptUnderstander.ts",
+    "backend/src/generation/AnthropicSpineBuilder.ts",
+    "backend/src/generation/AnthropicDeepenActBuilder.ts",
+    "backend/src/generation/AnthropicContinuityBuilder.ts",
+    "backend/src/generation/chat/ChatPromptUnderstander.ts",
+    "backend/src/generation/chat/ChatSpineBuilder.ts",
+    "backend/src/generation/chat/ChatDeepenActBuilder.ts",
+    "backend/src/generation/chat/ChatContinuityBuilder.ts",
+    "backend/test/AnthropicSpineBuilder.test.ts",
+    "backend/test/AnthropicDeepenActBuilder.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/promptLayout.ts (new)",
+    "backend/test/promptLayout.test.ts (new)",
+    "backend/src/generation/prompts/understand.ts (new)",
+    "backend/src/generation/prompts/spine.ts (new)",
+    "backend/src/generation/prompts/deepen.ts (new)",
+    "backend/src/generation/prompts/continuity.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "With --enable-cache-report on (W2-09's live step), run one medium Foray and read cachedTokens per call. Deepen calls 2..n and the re-asks should show a cached prefix close to stable+foray.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-33",
+   "from": [
+    "W6-02",
+    "W1-06"
+   ],
+   "title": "Item-ready events: onItemReady hook, RunLog readiness events, delivery timeline and the 30 s lead monitor (MT-01, MT-11)",
+   "covers": [
+    "R1-15",
+    "GP-07",
+    "R1-14",
+    "MT-01",
+    "MT-11"
+   ],
+   "wave": 6,
+   "depends_on": [
+    "GV-01",
+    "GV-21"
+   ],
+   "files": [
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/stitchForay.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/stitchForay.test.ts",
+    "backend/test/generateForays.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/deliveryTimeline.ts (new)",
+    "backend/test/deliveryTimeline.test.ts (new)",
+    "backend/src/generation/readiness.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Read minLeadSec on the first keyed local run (Spark/LiteLLM) once the provider workstream's Qwen path exists.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-34",
+   "from": [
+    "W5-10"
+   ],
+   "title": "Numbers, dates and names checked by code against a sentence's sources (spoken-number normaliser plus proper-noun extractor)",
+   "covers": [
+    "R2-09",
+    "R1-07"
+   ],
+   "wave": 6,
+   "depends_on": [
+    "GV-10",
+    "GV-15"
+   ],
+   "files": [
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/actNarration.test.ts",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/src/generation/specifics.ts (new)",
+    "backend/test/specifics.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "In report mode, run two fresh golden prompts on the founder PC and read the flagged sentences to count false positives before switching to enforce.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-35",
+   "from": [
+    "W7-01"
+   ],
+   "title": "Model-swap decision rule, adopted-stack file and append-only swap ledger",
+   "covers": [
+    "R2-21",
+    "GP-27"
+   ],
+   "wave": 6,
+   "depends_on": [],
+   "files": [
+    "test/suite-integrity.test.js",
+    "docs/curation/model-swaps.md (new)",
+    "tools/generation-bench/swap-rule.mjs (new)",
+    "tools/generation-bench/swap-ledger.mjs (new)",
+    "tools/generation-bench/swap-ledger.test.mjs (new)",
+    "tools/generation-bench/swaps/ledger.jsonl (new)",
+    "tools/generation-bench/swaps/adopted-stack.json (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-36",
+   "from": [
+    "W1-17"
+   ],
+   "title": "Blind pair listening pack: builder plus a self-contained local listening page (no app UI)",
+   "covers": [
+    "R2-01",
+    "QK-30",
+    "GP-20",
+    "MQ-20"
+   ],
+   "wave": 6,
+   "depends_on": [
+    "GV-08"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/listening/pack.mjs (new)",
+    "tools/listening/pack.test.mjs (new)",
+    "tools/listening/fixtures/pair/a.json (new)",
+    "tools/listening/fixtures/pair/b.json (new)"
+   ],
+   "size": "M",
+   "live_step": "(1) On the founder PC, build a solo pack from backend/data-local/foray-candidates/<14 Sep candidate>.json.",
+   "needs_founder": "His ear: ~10 min for the first solo listen, ~40 min for the 10 blind pairs."
+  },
+  {
+   "id": "GV-37",
+   "from": [
+    "W2-08",
+    "W7-02"
+   ],
+   "title": "Wire routing into the seven stage factories and decouple live mode from ANTHROPIC_API_KEY",
+   "covers": [
+    "R2-21",
+    "HW-12",
+    "GP-06"
+   ],
+   "wave": 7,
+   "depends_on": [
+    "GV-03",
+    "GV-25",
+    "GV-31"
+   ],
+   "files": [
+    "backend/src/generation/createPromptUnderstander.ts",
+    "backend/src/generation/createSpineBuilder.ts",
+    "backend/src/generation/createDeepenActBuilder.ts",
+    "backend/src/generation/createNarrationWriterBuilder.ts",
+    "backend/src/generation/createNarrationVerifierBuilder.ts",
+    "backend/src/generation/createContinuityBuilder.ts",
+    "backend/src/generation/createExternalResearcher.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/chat/providerRegistry.ts (new)",
+    "backend/src/generation/NullExternalResearcher.ts (new)",
+    "backend/test/stageFactories.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-38",
+   "from": [
+    "W4-08"
+   ],
+   "title": "Act writer sees its act introduction and exit, the previous act's exit, start and end states, the overview, and earlier acts' verified pages",
+   "covers": [
+    "QK-26",
+    "GP-24"
+   ],
+   "wave": 7,
+   "depends_on": [
+    "GV-15"
+   ],
+   "files": [
+    "backend/src/generation/NarrationWriterBuilder.ts",
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/writeNarration.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/AnthropicNarrationWriterBuilder.ts",
+    "backend/test/actNarration.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/actFrame.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "Pairwise listen on medium golden prompts: sequential with frame against parallel without. Score MQ-12 seam coherence and the R2-01 card's 'flows at the seams' axis.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-39",
+   "from": [
+    "W1-13"
+   ],
+   "title": "Corpus fingerprint and prompt-set identity in report.json (golden-set snapshot)",
+   "covers": [
+    "R2-02"
+   ],
+   "wave": 7,
+   "depends_on": [
+    "GV-26"
+   ],
+   "files": [
+    "backend/src/generation/transcriptCorpus.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/transcriptCorpus.test.ts",
+    "backend/test/generateForays.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-40",
+   "from": [
+    "W2-02"
+   ],
+   "title": "Streaming (SSE) on the OpenAI-compatible provider, with true TTFT and partial text on error",
+   "covers": [
+    "HW-12",
+    "GP-06"
+   ],
+   "wave": 7,
+   "depends_on": [
+    "GV-13"
+   ],
+   "files": [
+    "backend/src/generation/chat/openAICompatProvider.ts",
+    "backend/src/generation/chat/ChatProvider.ts",
+    "backend/test/helpers/fakeChatProvider.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/chat/sse.ts (new)",
+    "backend/test/sse.test.ts (new)",
+    "backend/test/openAICompatStream.test.ts (new)",
+    "backend/test/fixtures/openai/stream-jsonl.txt (new)",
+    "backend/test/fixtures/openai/stream-length.txt (new)"
+   ],
+   "size": "S",
+   "live_step": "Stream one neutral JSONL reply from local-heavy through LiteLLM. Record TTFT and whether include_usage is forwarded, and commit the result as fixtures/openai/recorded-stream.txt.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM key (#1163) for the live capture."
+  },
+  {
+   "id": "GV-41",
+   "from": [
+    "W6-16"
+   ],
+   "title": "Review queue ordered by scorecard risk, per-act review cards, and verdict capture as labelled examples",
+   "covers": [
+    "R2-19"
+   ],
+   "wave": 7,
+   "depends_on": [
+    "GV-08"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/generation/review-queue.mjs (new)",
+    "tools/generation/review-queue.test.mjs (new)",
+    "tools/generation/fixtures/review/report.json (new)",
+    "tools/generation/fixtures/review/candidate-a.json (new)"
+   ],
+   "size": "S",
+   "live_step": "The founder reviews the 14 Sep candidate and the next Qwen-built candidates through the queue, producing the first labelled verdicts.",
+   "needs_founder": "Founder listening time per Foray, which D7 already requires."
+  },
+  {
+   "id": "GV-42",
+   "from": [
+    "W7-05"
+   ],
+   "title": "Exemplar miner: code-scored voice exemplar shortlist from committed Forays and local candidates",
+   "covers": [
+    "R2-17"
+   ],
+   "wave": 7,
+   "depends_on": [
+    "GV-10"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/generation/exemplars/mine-exemplars.mjs (new)",
+    "tools/generation/exemplars/mine-exemplars.test.mjs (new)",
+    "tools/generation/exemplars/narration-exemplars.json (new)"
+   ],
+   "size": "S",
+   "live_step": "The founder reads or hears the shortlist (phone voice or a render-foray.py render) and picks 2 exemplars and the voice card. Rerun the miner on Qwen golden outputs after E0.",
+   "needs_founder": "Pick the exemplars and approve the voice card by ear. Optionally upload the 14 Sep candidate, the only Q-03-era per-act prose, which is not in git."
+  },
+  {
+   "id": "GV-43",
+   "from": [
+    "W4-09"
+   ],
+   "title": "Streamed writer contract: writeActStream plus an incremental JSONL seam parser",
+   "covers": [
+    "R1-06",
+    "R2-08"
+   ],
+   "wave": 8,
+   "depends_on": [
+    "GV-02"
+   ],
+   "files": [
+    "backend/src/generation/NarrationWriterBuilder.ts",
+    "backend/src/generation/StubNarrationWriterBuilder.ts",
+    "backend/src/generation/runPipeline.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/replySchemas.ts",
+    "backend/src/generation/seamStream.ts (new)",
+    "backend/test/seamStream.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-44",
+   "from": [
+    "W6-03"
+   ],
+   "title": "Job snapshot sink (file-backed) and an author-checked read of the servable prefix",
+   "covers": [
+    "R1-15",
+    "GP-07"
+   ],
+   "wave": 8,
+   "depends_on": [
+    "GV-21",
+    "GV-33"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/src/generation/generationStatus.ts",
+    "docs/curation/player-streaming-brief.md",
+    "backend/test/generationStatus.test.ts",
+    "backend/test/generateForays.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/jobSink.ts (new)",
+    "backend/src/cli/fileJobSink.ts (new)",
+    "backend/test/jobSink.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-45",
+   "from": [
+    "W1-14"
+   ],
+   "title": "Golden set v1: 10 listened and 40 scored prompts, stratified, validated and locked",
+   "covers": [
+    "R2-02",
+    "GP-28"
+   ],
+   "wave": 8,
+   "depends_on": [
+    "GV-39"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/golden/golden-v1.json (new)",
+    "tools/generation-bench/golden/select.mjs (new)",
+    "tools/generation-bench/golden/validate.mjs (new)",
+    "tools/generation-bench/golden/golden.test.mjs (new)",
+    "tools/generation-bench/golden/README.md (new)"
+   ],
+   "size": "M",
+   "live_step": "(1) On the founder PC, run the manifest in stub mode (ANTHROPIC_API_KEY unset, no --dry-run, so stubs make no model calls and report.json is written).",
+   "needs_founder": "Optional async veto or swap of the 10 listened prompts, since he will listen to them. The default is to proceed with the agent's set."
+  },
+  {
+   "id": "GV-46",
+   "from": [
+    "W4-20"
+   ],
+   "title": "Stitcher and partial projection accept a Foray whose later acts are not yet deepened or sourced",
+   "covers": [
+    "R1-04"
+   ],
+   "wave": 8,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/stitchForay.ts",
+    "backend/src/generation/partialProjection.ts",
+    "backend/src/generation/partialCandidate.ts",
+    "backend/src/generation/writeNarration.ts",
+    "backend/test/stitchForay.test.ts",
+    "backend/test/partialProjection.test.ts",
+    "backend/test/partialCandidate.test.ts"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-47",
+   "from": [
+    "W5-19",
+    "W2-12"
+   ],
+   "title": "Judge fallback (OQ-05): Qwen-judge behind the JevClient interface, circuit breaker, fail-closed when unjudged, routed as the judge stage",
+   "covers": [
+    "R1-07",
+    "R1-20",
+    "OQ-05"
+   ],
+   "wave": 8,
+   "depends_on": [
+    "GV-03",
+    "GV-15",
+    "GV-19",
+    "GV-20"
+   ],
+   "files": [
+    "backend/src/generation/jevClient.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/config/stageRouting.ts",
+    "backend/src/generation/qwenJudgeClient.ts (new)",
+    "backend/test/qwenJudgeClient.test.ts (new)",
+    "backend/test/fixtures/jev/qwen-judge-replies.json (new)",
+    "backend/test/judgeFallback.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "With the LiteLLM key, rerun W5-07 calibration with --judge qwen on the same labelled sets. Post Jev-vs-Qwen agreement and latency.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus a Foray LiteLLM virtual key (#1163). Access to run 9's labelled pages in data-local on the founder PC for the shadow comparison."
+  },
+  {
+   "id": "GV-48",
+   "from": [
+    "W3-09"
+   ],
+   "title": "Dense arm, hybrid merge and per-taxonomy-node nightly shortlist",
+   "covers": [
+    "R1-09",
+    "R2-04",
+    "QK-22"
+   ],
+   "wave": 8,
+   "depends_on": [
+    "GV-16",
+    "GV-28"
+   ],
+   "files": [
+    "backend/src/cli/retrievalServer.ts",
+    "tools/passage-index/store.mjs",
+    "tools/passage-index/README.md",
+    "test/suite-integrity.test.js",
+    "backend/test/retrievalServer.test.ts",
+    "tools/passage-index/store.test.mjs",
+    "backend/src/generation/hybridRetrieval.ts (new)",
+    "backend/test/hybridRetrieval.test.ts (new)",
+    "tools/passage-index/migrations/0002_node_shortlist.sql (new)",
+    "tools/passage-index/nightly.mjs (new)",
+    "tools/passage-index/nightly.test.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "On the Spark after the W3-07 backfill, run the nightly once, time it, and spot-check the shortlists for 5 nodes, including the germ-theory case under medicine.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-49",
+   "from": [
+    "W4-02"
+   ],
+   "title": "Jev clarity understander: one Jev request with two yes/no questions replaces the Haiku clarity call",
+   "covers": [
+    "R1-02"
+   ],
+   "wave": 9,
+   "depends_on": [
+    "GV-15",
+    "GV-20",
+    "GV-37"
+   ],
+   "files": [
+    "backend/src/generation/createPromptUnderstander.ts",
+    "backend/src/types/generation.ts",
+    "backend/src/generation/understandPrompt.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/understandPrompt.test.ts",
+    "backend/src/generation/JevPromptUnderstander.ts (new)",
+    "backend/test/JevPromptUnderstander.test.ts (new)",
+    "backend/test/fixtures/jev/clarity-replies.json (new)"
+   ],
+   "size": "S",
+   "live_step": "With the Jev key, ask both questions of a labelled prompt set: the §4.1 examples in generation-architecture.md plus run prompts recorded in docs/curation/generation-run-*.md, labelled by the founder.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus Jev API key (#1163) and labels for the clarity calibration prompts, both for the live step only."
+  },
+  {
+   "id": "GV-50",
+   "from": [
+    "W4-11",
+    "W2-14"
+   ],
+   "title": "Act writer and verifier prompts split into a byte-stable cached prefix, with a JSONL contract variant and an (empty) voice slot",
+   "covers": [
+    "R2-08",
+    "GP-05",
+    "R1-10"
+   ],
+   "wave": 9,
+   "depends_on": [
+    "GV-31",
+    "GV-32",
+    "GV-38",
+    "GV-43"
+   ],
+   "files": [
+    "backend/src/generation/AnthropicNarrationWriterBuilder.ts",
+    "backend/test/actNarration.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/AnthropicNarrationVerifierBuilder.ts",
+    "backend/src/generation/chat/ChatNarrationWriterBuilder.ts",
+    "backend/src/generation/chat/ChatNarrationVerifierBuilder.ts",
+    "backend/test/promptLayout.test.ts",
+    "backend/src/generation/prompts/actWrite.ts (new)",
+    "backend/src/generation/prompts/actVerify.ts (new)",
+    "backend/test/actWritePrompt.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "In a local medium run, read cachedTokens for writer rounds 2-3 and for acts 2 and later. Expect a cached share close to (stable+foray)/prompt.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-51",
+   "from": [
+    "W5-09"
+   ],
+   "title": "JevNarrationVerifierBuilder: per-beat choice and per-sentence support run in parallel, mapped onto verifyAct with sentence verdicts",
+   "covers": [
+    "R1-07",
+    "R2-09",
+    "MQ-02",
+    "MQ-11",
+    "GP-26"
+   ],
+   "wave": 9,
+   "depends_on": [
+    "GV-15",
+    "GV-27",
+    "GV-34",
+    "GV-37"
+   ],
+   "files": [
+    "backend/src/generation/NarrationVerifierBuilder.ts",
+    "backend/src/generation/createNarrationVerifierBuilder.ts",
+    "backend/src/generation/StubNarrationVerifierBuilder.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/JevNarrationVerifierBuilder.ts (new)",
+    "backend/test/jevNarrationVerifier.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "After W5-07, run one short and one medium golden prompt with the Jev verifier. Record verifier wall time per act, retryRounds and unverifiedPages against the run-9 Sonnet baseline.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-52",
+   "from": [
+    "W1-12",
+    "W1-19",
+    "W6-21"
+   ],
+   "title": "Bench delivery columns and the split per-tier targets (R1-16): first audio, whole Foray ready, lead, render speed",
+   "covers": [
+    "R1-16",
+    "MT-01",
+    "MT-02",
+    "MT-11",
+    "R1-14"
+   ],
+   "wave": 9,
+   "depends_on": [
+    "GV-04",
+    "GV-24",
+    "GV-26",
+    "GV-33"
+   ],
+   "files": [
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "docs/curation/generation-kpis.md",
+    "docs/curation/foray-to-spec-roadmap.md",
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/fixtures/delivery/report.json (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-53",
+   "from": [
+    "W3-03"
+   ],
+   "title": "Digest rows for streamed episodes: RSS join of staged rows, legacy-key resolution, searchable-vs-mintable report",
+   "covers": [
+    "R2-16",
+    "GP-22"
+   ],
+   "wave": 9,
+   "depends_on": [
+    "GV-05",
+    "GV-23"
+   ],
+   "files": [
+    "backend/src/cli/warmTranscriptIndex.ts",
+    "backend/test/warmTranscriptIndex.test.ts",
+    "tools/generation/warm-transcript-index.mjs",
+    "test/suite-integrity.test.js",
+    "backend/test/fixtures/warm/staged-digest.jsonl (new)",
+    "backend/test/fixtures/warm/feed-cache-sample.json (new)"
+   ],
+   "size": "M",
+   "live_step": "After W3-05's first R2 build on the Spark, run `--from-staged`, `--resolve-legacy` and `--supply-report`, and post the report on #1163.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus catalogue rows and DAI verdicts for new shows are committed curation data and need a founder- or Joey-approved pass."
+  },
+  {
+   "id": "GV-54",
+   "from": [
+    "W3-24"
+   ],
+   "title": "Remote cue store: on-demand R2 body fetch with a bounded disk cache (subsumes roadmap PKG-24)",
+   "covers": [
+    "GP-09",
+    "R2-16"
+   ],
+   "wave": 9,
+   "depends_on": [
+    "GV-16",
+    "GV-23"
+   ],
+   "files": [
+    "backend/src/generation/transcriptArchiveLookup.ts",
+    "backend/src/cli/retrievalServer.ts",
+    "docs/roadmap/corpus.md",
+    "test/suite-integrity.test.js",
+    "backend/src/cli/remoteCueStore.ts (new)",
+    "backend/test/remoteCueStore.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "On the Spark, start the server with --r2 and confirm /v1/cues latency for a cold and a warm body.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus the R2 read key on the Spark."
+  },
+  {
+   "id": "GV-55",
+   "from": [
+    "W2-18",
+    "W7-02"
+   ],
+   "title": "Driver plumbing: --stage-provider flag, routing in report.json, and a routing-aware checkpoint fingerprint",
+   "covers": [
+    "R2-21",
+    "HW-12"
+   ],
+   "wave": 10,
+   "depends_on": [
+    "GV-04",
+    "GV-15",
+    "GV-37"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/src/cli/generateForay.ts",
+    "backend/src/generation/checkpoint.ts",
+    "backend/src/generation/runPipeline.ts",
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "backend/test/generateForaysArgs.test.ts",
+    "backend/test/generateForays.test.ts",
+    "backend/test/checkpoint.test.ts"
+   ],
+   "size": "S",
+   "live_step": "After GV-61 and GV-68 merge (wave 12): first full local run, FORAY_GENERATION_MODE=local on 1-2 benchmark prompts, one at a time (no batch before GV-90/GV-93); keep outputs local; log on #1163.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM key (#1163) for the live run."
+  },
+  {
+   "id": "GV-56",
+   "from": [
+    "W5-14a"
+   ],
+   "title": "Corpus body schema accepts optional per-cue word timestamps (tools side: sync-r2 shape check and transcript-normalize)",
+   "covers": [
+    "R2-05"
+   ],
+   "wave": 10,
+   "depends_on": [],
+   "files": [
+    "tools/foraycorpus-export/sync-r2.mjs",
+    "tools/foraycorpus-export/sync-r2.test.mjs",
+    "tools/segments/transcript-normalize.mjs",
+    "test/suite-integrity.test.js",
+    "tools/segments/transcript-normalize.test.mjs"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-57",
+   "from": [
+    "W6-04"
+   ],
+   "title": "Player: append a streamed Foray and wait for the next part (JS lane, no UI files)",
+   "covers": [
+    "R1-15",
+    "GP-07"
+   ],
+   "wave": 10,
+   "depends_on": [
+    "GV-44"
+   ],
+   "files": [
+    "player/foray-queue.js",
+    "player/queue-manager.js",
+    "player/client.js",
+    "player/foray-queue.test.js",
+    "player/parity/exclusions.json",
+    "test/suite-integrity.test.js",
+    "docs/curation/player-streaming-brief.md",
+    "player/foray-stream.js (new)",
+    "player/foray-stream.test.js (new)"
+   ],
+   "size": "M",
+   "live_step": "The founder hears a streamed Foray on the phone once a job source exists (W6-18/W6-19) and, after the revamp, a surface calls followForayStream.",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-58",
+   "from": [
+    "W6-09"
+   ],
+   "title": "Spark render worker deployment kit and the GB10 benchmark run (#862)",
+   "covers": [
+    "R2-18",
+    "R1-13"
+   ],
+   "wave": 10,
+   "depends_on": [
+    "GV-22"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/narration/spark/foray-render-worker.service (new)",
+    "tools/narration/spark/foray-render-upload.timer (new)",
+    "tools/narration/spark/README.md (new)",
+    "tools/narration/spark/unit.test.mjs (new)"
+   ],
+   "size": "S",
+   "live_step": "Joey or the founder installs the kit on the Spark under D8 (a merged PR plus the spark-live tag).",
+   "needs_founder": "Spark hands under D8: the founder places secrets and moves spark-live. The R2 narration write token on the Spark (#119/#120)."
+  },
+  {
+   "id": "GV-59",
+   "from": [
+    "W6-18"
+   ],
+   "title": "generation_jobs table (D9) and a Supabase job sink",
+   "covers": [
+    "R1-15",
+    "GP-07"
+   ],
+   "wave": 10,
+   "depends_on": [
+    "GV-44"
+   ],
+   "files": [
+    "backend/migrations/supabase/verify-applied.sql",
+    "backend/migrations/supabase/README.md",
+    "test/supabase-rls-coverage.test.js",
+    "test/supabase-rls-verbs.test.js",
+    "test/supabase-verify-applied.test.js",
+    "test/data-deletion.test.js",
+    "test/suite-integrity.test.js",
+    "backend/migrations/supabase/0007_generation_jobs.sql (new)",
+    "backend/src/cli/supabaseJobSink.ts (new)",
+    "backend/test/supabaseJobSink.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "The founder applies 0007 to the Supabase project and verifies it with verify-applied.sql.",
+   "needs_founder": "founder-approved label (orchestrator applies; backend/migrations/ is a DENIED_PREFIXES path); plus applying migration 0007, the service-role key on the Spark, and confirming that holding the prompt until claim satisfies §9.4/RQ-04 and any privacy-policy wording."
+  },
+  {
+   "id": "GV-60",
+   "from": [
+    "W3-06"
+   ],
+   "title": "Stream indexer: legacy whisper source (index the 7,531 root JSONs in place)",
+   "covers": [
+    "R2-16",
+    "GP-22"
+   ],
+   "wave": 10,
+   "depends_on": [
+    "GV-09",
+    "GV-23",
+    "GV-53"
+   ],
+   "files": [
+    "tools/passage-index/sources.mjs",
+    "tools/passage-index/stream-index.mjs",
+    "tools/passage-index/README.md",
+    "tools/passage-index/sources.test.mjs",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "After W3-03 has produced legacy-map.json, run `stream-index.mjs --source r2-all --full` on the Spark and post the per-show counts.",
+   "needs_founder": "The R2 read key, plus foray-db's mapping export if RSS resolution leaves many keys unmatched."
+  },
+  {
+   "id": "GV-61",
+   "from": [
+    "W2-10",
+    "W3-16"
+   ],
+   "title": "No web research on the timed path: 'none' and 'dossier' research routes, shared researcher for ST-03 and ST-07, topic scope on the context, evidence cache for anthropic only",
+   "covers": [
+    "OQ-04",
+    "GP-06",
+    "R1-05",
+    "R2-20"
+   ],
+   "wave": 11,
+   "depends_on": [
+    "GV-03",
+    "GV-37"
+   ],
+   "files": [
+    "backend/src/generation/createExternalResearcher.ts",
+    "backend/src/generation/researchShape.ts",
+    "backend/src/generation/gatherEvidence.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/writeNarration.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/ExternalResearcher.ts",
+    "backend/test/gatherEvidence.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/noWebResearch.test.ts (new)",
+    "backend/test/createExternalResearcher.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-62",
+   "from": [
+    "W7-03"
+   ],
+   "title": "Keep and fork checkpoints so arm B reruns only from the changed stage (bench prompts only)",
+   "covers": [
+    "R2-21"
+   ],
+   "wave": 11,
+   "depends_on": [
+    "GV-55"
+   ],
+   "files": [
+    "backend/src/generation/checkpoint.ts",
+    "backend/src/cli/generateForays.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/checkpointFork.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-63",
+   "from": [
+    "W6-15"
+   ],
+   "title": "Phone diagnostics: per-clip precision row and per-Foray tally ('played at authored time vs skipped')",
+   "covers": [
+    "R2-06"
+   ],
+   "wave": 11,
+   "depends_on": [],
+   "files": [
+    "player/queue-manager.js",
+    "player/diagnostic-log.js",
+    "player/diagnostic-log.test.js",
+    "player/queue-manager.test.js",
+    "player/parity/exclusions.json",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "The founder listens to a Foray with DAI clips on the phone and pastes the record. W6-14 turns it into the per-Foray MQ row.",
+   "needs_founder": "The paste itself; there is no transport, by design."
+  },
+  {
+   "id": "GV-64",
+   "from": [
+    "W1-15"
+   ],
+   "title": "Bench --golden aggregation, --headline and --compare with tolerance bands (GEN-05)",
+   "covers": [
+    "GP-28",
+    "R2-02"
+   ],
+   "wave": 11,
+   "depends_on": [
+    "GV-08",
+    "GV-24",
+    "GV-45",
+    "GV-52"
+   ],
+   "files": [
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "docs/curation/generation-kpis.md",
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/golden-baseline.jsonl (new)",
+    "tools/generation-bench/fixtures/golden-synth/report.json (new)"
+   ],
+   "size": "M",
+   "live_step": "After the first 50-prompt run, commit its summary line as golden-baseline.jsonl. Re-derive the bands from two back-to-back runs of one build (the noise floor) before anyone uses --fail-on-regression.",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-65",
+   "from": [
+    "W3-20"
+   ],
+   "title": "Dossier selection pass by Qwen: choose and flag passages, never write text",
+   "covers": [
+    "R2-20",
+    "QK-23"
+   ],
+   "wave": 11,
+   "depends_on": [
+    "GV-30"
+   ],
+   "files": [
+    "tools/corpus/README.md",
+    "test/suite-integrity.test.js",
+    "tools/corpus/dossiers/llm.mjs (new)",
+    "tools/corpus/dossiers/qwen-select.mjs (new)",
+    "tools/corpus/dossiers/qwen-select.test.mjs (new)",
+    "tools/corpus/fixtures/dossiers/qwen-select-reply.json (new)",
+    "tools/corpus/fixtures/dossiers/qwen-select-bad.json (new)"
+   ],
+   "size": "S",
+   "live_step": "Run overnight against LiteLLM local-worker for every node, then spot-check 10 nodes' kept and dropped lists.",
+   "needs_founder": "A LiteLLM virtual key for Foray (#1163)."
+  },
+  {
+   "id": "GV-66",
+   "from": [
+    "W3-22"
+   ],
+   "title": "Retrieval on the Spark: deployment kit, body transfer, nightly timer and runbook",
+   "covers": [
+    "GP-09",
+    "R1-09"
+   ],
+   "wave": 11,
+   "depends_on": [
+    "GV-09",
+    "GV-16",
+    "GV-48",
+    "GV-54"
+   ],
+   "files": [
+    "tools/passage-index/README.md",
+    "test/suite-integrity.test.js",
+    "docs/plans/retrieval-on-spark.md (new)",
+    "tools/passage-index/deploy/foray-retrieval.service (new)",
+    "tools/passage-index/deploy/foray-index-nightly.service (new)",
+    "tools/passage-index/deploy/foray-index-nightly.timer (new)",
+    "tools/passage-index/deploy/retrieval.env.example (new)",
+    "tools/passage-index/deploy/deploy.test.mjs (new)"
+   ],
+   "size": "S",
+   "live_step": "The founder or Joey copies the normalized bodies to the Spark.",
+   "needs_founder": "Spark access and a Hermes PR approval, the body transfer from the founder PC, the R2 read key and a retrieval token on the Spark, and disk-budget sign-off from the inventory."
+  },
+  {
+   "id": "GV-67",
+   "from": [
+    "W4-03"
+   ],
+   "title": "Code-derived pre-spine intent; subject, angle, disappointment, title and summary come from the spine",
+   "covers": [
+    "R1-02",
+    "R2-07"
+   ],
+   "wave": 12,
+   "depends_on": [
+    "GV-02",
+    "GV-15",
+    "GV-25",
+    "GV-32",
+    "GV-49"
+   ],
+   "files": [
+    "backend/src/generation/understandPrompt.ts",
+    "backend/src/generation/SpineBuilder.ts",
+    "backend/src/generation/AnthropicSpineBuilder.ts",
+    "backend/src/types/spine.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/StubSpineBuilder.ts",
+    "backend/test/runPipeline.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/prompts/spine.ts",
+    "backend/src/generation/replySchemas.ts",
+    "backend/src/generation/chat/ChatSpineBuilder.ts",
+    "backend/src/generation/preSpineIntent.ts (new)",
+    "backend/test/preSpineIntent.test.ts (new)",
+    "backend/test/fastPathCopy.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Golden-set comparison of MQ-10 prompt fit: folded-copy spines against the classic extractIntent path on the same prompts, by pairwise listen.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-68",
+   "from": [
+    "W2-15"
+   ],
+   "title": "Zero-Anthropic enforcement: structural guard, explicit legacy opt-in, anthropicCalls=0 in report.json, relay refused by default",
+   "covers": [
+    "HW-12",
+    "GP-06"
+   ],
+   "wave": 12,
+   "depends_on": [
+    "GV-37",
+    "GV-55",
+    "GV-61"
+   ],
+   "files": [
+    "backend/src/config/stageRouting.ts",
+    "backend/src/generation/anthropicCall.ts",
+    "backend/src/generation/usageTracking.ts",
+    "backend/src/cli/generateForays.ts",
+    "tools/generation/start-run.mjs",
+    "tools/generation/relay.test.mjs",
+    "test/suite-integrity.test.js",
+    "backend/test/stageRouting.test.ts",
+    "backend/test/generateForays.test.ts",
+    "backend/test/noAnthropicInGeneration.test.ts (new)",
+    "docs/curation/generation-providers.md (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-69",
+   "from": [
+    "W3-21"
+   ],
+   "title": "DossierExternalResearcher: print evidence and research notes from local dossiers (no network)",
+   "covers": [
+    "R2-20",
+    "QK-23",
+    "R1-05"
+   ],
+   "wave": 12,
+   "depends_on": [
+    "GV-15",
+    "GV-30",
+    "GV-61"
+   ],
+   "files": [
+    "backend/src/generation/createExternalResearcher.ts",
+    "backend/src/generation/generationFlags.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/DossierExternalResearcher.ts (new)",
+    "backend/test/DossierExternalResearcher.test.ts (new)",
+    "backend/test/fixtures/dossiers/manifest.json (new)",
+    "backend/test/fixtures/dossiers/medicine.json (new)",
+    "backend/test/fixtures/dossiers/engineering.json (new)"
+   ],
+   "size": "M",
+   "live_step": "After GV-30's live dossier build, run 3 golden prompts with FORAY_STAGE_RESEARCH=dossier and count print documents and quote-gate passes; repeat with FORAY_EVIDENCE_PREFETCH=first-act only after GV-98 merges.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-70",
+   "from": [
+    "W6-20"
+   ],
+   "title": "Lock-screen 'Building the next part' state for a waiting stream",
+   "covers": [
+    "R1-15"
+   ],
+   "wave": 12,
+   "depends_on": [
+    "GV-57"
+   ],
+   "files": [
+    "player/media-session.js",
+    "player/queue-manager.js",
+    "player/media-session.test.js",
+    "player/parity/exclusions.json",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "Wording of the waiting line, if it should differ from 'Building the next part' (product copy)."
+  },
+  {
+   "id": "GV-71",
+   "from": [
+    "W6-08"
+   ],
+   "title": "Stamp rendered audio into a candidate file, never into data/forays.json",
+   "covers": [
+    "GP-08",
+    "R1-13"
+   ],
+   "wave": 12,
+   "depends_on": [
+    "GV-11"
+   ],
+   "files": [
+    "tools/narration/stamp-narration.mjs",
+    "tools/narration/stamp-narration.test.mjs",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-72",
+   "from": [
+    "W6-12"
+   ],
+   "title": "Whisper round trip (WER <= 5% per item) and a per-Foray loudness spread report",
+   "covers": [
+    "R2-18"
+   ],
+   "wave": 12,
+   "depends_on": [
+    "GV-22"
+   ],
+   "files": [
+    "tools/narration/render-foray.py",
+    "tools/narration/render-foray.test.mjs",
+    "test/suite-integrity.test.js",
+    "tools/narration/asr-check.mjs (new)",
+    "tools/narration/asr-check.test.mjs (new)",
+    "tools/narration/asr-transcribe.py (new)"
+   ],
+   "size": "M",
+   "live_step": "Run asr-transcribe.py plus asr-check on a rendered draft on the Spark (or on CPU, about 1.33x real time for base.en) to calibrate the 5% threshold against clean Kokoro output.",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-73",
+   "from": [
+    "W4-10"
+   ],
+   "title": "writeAct streaming path: gate each seam as its line closes, release code-checked intro seams early, keep finished seams on a token-cap cut",
+   "covers": [
+    "R1-06",
+    "R1-01",
+    "GP-05"
+   ],
+   "wave": 13,
+   "depends_on": [
+    "GV-38",
+    "GV-43"
+   ],
+   "files": [
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/actSeams.ts",
+    "backend/src/generation/writeNarration.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/test/actNarration.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/actStreaming.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Measure seam-1 time on the Spark: first token plus about 150 tokens of JSONL prose (MT-12, prose-in-JSON tok/s). This is R1's 7 s against 2 s question.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-74",
+   "from": [
+    "W6-07"
+   ],
+   "title": "Backend render stage: enqueue ready narration items and fold audio state into delivery (phone voice first)",
+   "covers": [
+    "GP-08",
+    "R1-13",
+    "R1-15"
+   ],
+   "wave": 13,
+   "depends_on": [
+    "GV-22",
+    "GV-33",
+    "GV-44"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/src/generation/jobSink.ts",
+    "backend/test/generateForays.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/narrationRender.ts (new)",
+    "backend/src/cli/spoolRenderClient.ts (new)",
+    "backend/test/narrationRender.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "An end-to-end run on the Spark with the worker (W6-06/W6-09) and uploads, reading firstRenderedMs against first audio.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus the R2 narration bucket and write token on the render host (#119/#120) before any audio_url can be real."
+  },
+  {
+   "id": "GV-75",
+   "from": [
+    "W7-04",
+    "W2-16"
+   ],
+   "title": "Stage-swap experiment runner: plan, run, collect and decide (all-local arms, sealed blind pairs, ledger row)",
+   "covers": [
+    "R2-21",
+    "GP-27"
+   ],
+   "wave": 13,
+   "depends_on": [
+    "GV-35",
+    "GV-36",
+    "GV-45",
+    "GV-55",
+    "GV-62",
+    "GV-68"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/swap-experiment.mjs (new)",
+    "tools/generation-bench/swap-experiment.test.mjs (new)",
+    "tools/generation-bench/swaps/experiments/E0-floor.json (new)",
+    "tools/generation-bench/swaps/experiments/E1-deepen-p40.json (new)",
+    "tools/generation-bench/swaps/experiments/E2-continuity-p40.json (new)",
+    "tools/generation-bench/swaps/experiments/E6-verifier-jev-vs-qwen.json (new)"
+   ],
+   "size": "M",
+   "live_step": "Per experiment, after GV-90 and GV-93: run the printed arm commands with the LiteLLM and Jev keys and the data-local transcripts, then the founder's blind listen (about 40 min), then decide; E0 first.",
+   "needs_founder": "LiteLLM and Jev keys (#1163) for the arm runs. Optionally upload the 14 Sep candidate (backend/data-local/foray-candidates/) as a second Claude reference for E0."
+  },
+  {
+   "id": "GV-76",
+   "from": [
+    "W3-18"
+   ],
+   "title": "Whole clip window as evidence: no 3,000-character excerpt, truncation counted, a quote-centred slice for narrow judges",
+   "covers": [
+    "R2-12",
+    "QK-27"
+   ],
+   "wave": 13,
+   "depends_on": [
+    "GV-15"
+   ],
+   "files": [
+    "backend/src/generation/gatherEvidence.ts",
+    "backend/src/generation/evidencePrefetch.ts",
+    "backend/src/generation/generationFlags.ts",
+    "backend/test/gatherEvidence.test.ts",
+    "backend/test/evidencePrefetch.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-78",
+   "from": [
+    "W6-14"
+   ],
+   "title": "Offline anchor-resolution report per Foray (MQ row, target 0.98) plus parsing of pasted phone records",
+   "covers": [
+    "R2-06"
+   ],
+   "wave": 13,
+   "depends_on": [
+    "GV-63"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "tools/transcribe/anchor-resolve-report.mjs (new)",
+    "tools/transcribe/anchor-resolve-report.test.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "Run on recent candidates against data-local/transcripts on the founder PC, with farm ASR cues where they exist, and post the resolve rates per Foray against 0.98.",
+   "needs_founder": "A paste of the phone's diagnostic record after listening to a Foray that has DAI clips. The record is local-only by design (#264)."
+  },
+  {
+   "id": "GV-79",
+   "from": [
+    "W5-03"
+   ],
+   "title": "MQ-05 clip-on-subject scorer (shadow mode): two Scores per placed clip, computed off the timed path, recorded and reported",
+   "covers": [
+    "QK-20",
+    "GP-21",
+    "MQ-05",
+    "R2-03"
+   ],
+   "wave": 14,
+   "depends_on": [
+    "GV-15",
+    "GV-20",
+    "GV-67"
+   ],
+   "files": [
+    "backend/src/types/tapeSourcing.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/runPipelineCheckpoint.test.ts",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/src/generation/clipJudge.ts (new)",
+    "backend/src/generation/scoreClips.ts (new)",
+    "backend/test/clipJudge.test.ts (new)",
+    "backend/test/scoreClips.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "On the founder PC, with the Jev key and data-local transcripts, re-run the 14 Sep germ-theory prompt in shadow mode.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-80",
+   "from": [
+    "W4-13"
+   ],
+   "title": "Timed-path round policy: at most one edit round, editing only the failing seams with a short request",
+   "covers": [
+    "GP-04",
+    "GP-02",
+    "GP-05"
+   ],
+   "wave": 14,
+   "depends_on": [
+    "GV-73"
+   ],
+   "files": [
+    "backend/src/generation/writeNarration.ts",
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/NarrationWriterBuilder.ts",
+    "backend/src/generation/StubNarrationWriterBuilder.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/roundPolicy.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Golden-set run comparing 'timed' with 'default': retryRounds, writer output tokens per Foray (MT-05) and MQ-04 unverified pages.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-81",
+   "from": [
+    "W6-17"
+   ],
+   "title": "Two lanes: on-demand plays behind code gates (Jev later); promotion to the catalogue requires review",
+   "covers": [
+    "R2-19",
+    "GP-07"
+   ],
+   "wave": 14,
+   "depends_on": [
+    "GV-41",
+    "GV-44"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/src/cli/publishForay.ts",
+    "backend/src/generation/finalizeForay.ts",
+    "backend/src/generation/jobSink.ts",
+    "docs/DECISIONS.md",
+    "backend/test/generateForays.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/publishLane.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies; backend/src/ and docs/DECISIONS.md are DENIED_PREFIXES paths). Product and legal ruling before on-demand serves anyone beyond the founders."
+  },
+  {
+   "id": "GV-82",
+   "from": [
+    "W6-11"
+   ],
+   "title": "Pronunciation hints into a run-local render lexicon (IPA notation, validated)",
+   "covers": [
+    "R2-18"
+   ],
+   "wave": 14,
+   "depends_on": [
+    "GV-21",
+    "GV-22",
+    "GV-74"
+   ],
+   "files": [
+    "backend/src/types/narration.ts",
+    "backend/src/generation/narrationRender.ts",
+    "tools/narration/render-foray.py",
+    "tools/narration/phonemize.py",
+    "tools/narration/render-foray.test.mjs",
+    "tools/narration/phonemize.test.mjs",
+    "backend/test/narrationRender.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "Render a draft with a few hand-checked IPA hints on the Spark, and confirm by ear or with W6-12's ASR round trip.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-123",
+   "from": [
+    "W4-01"
+   ],
+   "title": "Critical-path probe: builder-level spans (callLog.ts instrumentDeps), serialCallChain and the pinned stub baseline chain",
+   "covers": [
+    "R1-01",
+    "GP-03",
+    "MT-06"
+   ],
+   "wave": 14,
+   "depends_on": [
+    "GV-17",
+    "GV-43"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "backend/src/generation/criticalPath.ts (new)",
+    "backend/src/generation/callLog.ts (new)",
+    "backend/test/helpers/recordingDeps.ts (new)",
+    "backend/test/criticalPath.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-83",
+   "from": [
+    "W3-12"
+   ],
+   "title": "Show variety metric (MQ-07): distinct shows and largest show's tape share in report.json and the bench",
+   "covers": [
+    "QK-21",
+    "GP-22"
+   ],
+   "wave": 15,
+   "depends_on": [
+    "GV-04"
+   ],
+   "files": [
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/showIdentity.ts (new)",
+    "backend/test/showIdentity.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-84",
+   "from": [
+    "W4-19"
+   ],
+   "title": "Streamed act writer on the Spark: writeActStream (one JSONL call per act) and short seam edits on ChatNarrationWriterBuilder",
+   "covers": [
+    "R1-06",
+    "R2-08",
+    "GP-05",
+    "GP-02"
+   ],
+   "wave": 15,
+   "depends_on": [
+    "GV-31",
+    "GV-40",
+    "GV-43",
+    "GV-50",
+    "GV-80"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "backend/src/generation/chat/ChatNarrationWriterBuilder.ts",
+    "backend/src/generation/prompts/actWrite.ts",
+    "backend/test/fixtures/local/writer-act-stream.jsonl (new)",
+    "backend/test/chatNarrationStream.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "With the LiteLLM key, run the R2-21 protocol with only ST-08 swapped on the 10 listened golden prompts.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM key (#1163), for the live step only."
+  },
+  {
+   "id": "GV-85",
+   "from": [
+    "W1-05"
+   ],
+   "title": "Code-time spans inside ST-02, ST-03 and ST-06 (MT-08)",
+   "covers": [
+    "MT-08",
+    "R1-14"
+   ],
+   "wave": 15,
+   "depends_on": [
+    "GV-01"
+   ],
+   "files": [
+    "backend/src/generation/transcriptTextIndex.ts",
+    "backend/src/generation/transcriptArchiveLookup.ts",
+    "backend/src/generation/topicSupply.ts",
+    "backend/src/generation/researchShape.ts",
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/transcriptTextIndex.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/codeSpans.ts (new)",
+    "backend/test/codeSpans.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "The next founder-PC run against the real corpus gives the first MT-08 numbers. TM-07 measured 3-18 s for research search and 4-14 s for sourcing.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-86",
+   "from": [
+    "W4-05"
+   ],
+   "title": "Fold deepen into the spine on the short tier (no deepen call before act 1)",
+   "covers": [
+    "R1-01",
+    "R1-03",
+    "GP-03"
+   ],
+   "wave": 16,
+   "depends_on": [
+    "GV-32",
+    "GV-67"
+   ],
+   "files": [
+    "backend/src/types/spine.ts",
+    "backend/src/generation/deepenActs.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/deepenActs.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/prompts/spine.ts",
+    "backend/src/generation/prompts/deepen.ts",
+    "backend/test/deepenFold.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "Golden-set pairwise listen on short prompts: folded introductions and exits against deepen-written ones (MQ-12 seams, MQ-20 card).",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-87",
+   "from": [
+    "W3-13"
+   ],
+   "title": "Research map: per-show quota so the spine is offered 2-3 shows",
+   "covers": [
+    "QK-21"
+   ],
+   "wave": 16,
+   "depends_on": [
+    "GV-15",
+    "GV-83"
+   ],
+   "files": [
+    "backend/src/generation/researchShape.ts",
+    "backend/src/types/research.ts",
+    "backend/src/generation/generationFlags.ts",
+    "backend/test/researchShape.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "With W3-15's replay on the founder PC, compare offeredShows and MQ-07 on 5 golden prompts with the quota on and off.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-88",
+   "from": [
+    "W3-15"
+   ],
+   "title": "Retrieval replay harness and the hybrid go/no-go gate (MQ-09 unseeded-beat yield)",
+   "covers": [
+    "R2-04",
+    "QK-22",
+    "R1-09"
+   ],
+   "wave": 16,
+   "depends_on": [
+    "GV-29",
+    "GV-83"
+   ],
+   "files": [
+    "tools/passage-index/README.md",
+    "test/suite-integrity.test.js",
+    "backend/src/cli/replaySourcing.ts (new)",
+    "backend/src/generation/replayCompare.ts (new)",
+    "backend/test/replayCompare.test.ts (new)",
+    "backend/test/replaySourcing.test.ts (new)",
+    "tools/passage-index/replay.mjs (new)",
+    "tools/passage-index/eval/README.md (new)"
+   ],
+   "size": "M",
+   "live_step": "On the founder PC corpus, run the replay for both run-2 fixtures and the germ-theory prompt's deepen output in bm25 and hybrid (the hybrid run needs W3-09 deployed).",
+   "needs_founder": "founder-approved label (orchestrator applies); plus founder-PC corpus access (data-local) for the live replay, and about an hour of labelling (about 40 beats) or an agent on that PC."
+  },
+  {
+   "id": "GV-89",
+   "from": [
+    "W4-14"
+   ],
+   "title": "Tier runtime targets and a post-spine runtime check that re-asks only a spine that cannot fit",
+   "covers": [
+    "R2-15",
+    "QK-28",
+    "GP-25"
+   ],
+   "wave": 17,
+   "depends_on": [
+    "GV-15",
+    "GV-25",
+    "GV-32"
+   ],
+   "files": [
+    "backend/src/types/spine.ts",
+    "backend/src/generation/buildSpine.ts",
+    "backend/src/generation/SpineBuilder.ts",
+    "backend/src/generation/AnthropicSpineBuilder.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/buildSpine.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/prompts/spine.ts",
+    "backend/src/generation/chat/ChatSpineBuilder.ts",
+    "backend/test/spineReask.test.ts",
+    "backend/src/generation/tierRuntime.ts (new)",
+    "backend/test/tierRuntime.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "Golden set: compare the spineRuntime estimate with the finished runtime_sec, to calibrate the estimate and the 124 s median.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-90",
+   "from": [
+    "W1-08"
+   ],
+   "title": "Unit caps per Foray: Spark seconds, second-box seconds, Jev calls (R1-19), with unit spend and Jev dollars in the report",
+   "covers": [
+    "R1-19",
+    "MT-10"
+   ],
+   "wave": 18,
+   "depends_on": [
+    "GV-14",
+    "GV-20",
+    "GV-26"
+   ],
+   "files": [
+    "backend/src/config/env.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/generateForaysHandsFree.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/jevClient.ts",
+    "backend/src/cost/unitBudget.ts (new)",
+    "backend/test/unitBudget.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Retune DEFAULT_UNIT_CAPS after the first golden-set run on the Spark (W1-04 spark_s per tier).",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-91",
+   "from": [
+    "W7-07",
+    "W4-16"
+   ],
+   "title": "Constrained best-of-2 spine wrapper with a deadline and a pluggable judge (fake judge in this card)",
+   "covers": [
+    "R2-17",
+    "R2-07"
+   ],
+   "wave": 19,
+   "depends_on": [
+    "GV-03",
+    "GV-04",
+    "GV-37",
+    "GV-67"
+   ],
+   "files": [
+    "backend/src/generation/SpineBuilder.ts",
+    "backend/src/generation/createSpineBuilder.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "test/suite-integrity.test.js",
+    "backend/test/runPipeline.test.ts",
+    "backend/src/generation/bestOfSpine.ts (new)",
+    "backend/test/bestOfSpine.test.ts (new)",
+    "backend/test/helpers/fakeSpineJudge.ts (new)",
+    "tools/generation-bench/swaps/experiments/E4-spine-best-of-2.json (new)"
+   ],
+   "size": "M",
+   "live_step": "E4 (W7-04): arm B is best-of-2 with spine-alt on the P40 lane (local-worker), rerun from 'spine'. Read p50 addedMs and how often the secondary wins.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-92",
+   "from": [
+    "W1-18"
+   ],
+   "title": "Offline judged-metrics pass: MQ-10 prompt fit and MQ-12 seam coherence (plus MQ-02/03/05 re-score) behind an injected JevClient",
+   "covers": [
+    "MQ-10",
+    "MQ-12",
+    "MQ-02",
+    "MQ-03",
+    "MQ-05"
+   ],
+   "wave": 19,
+   "depends_on": [
+    "GV-07",
+    "GV-20",
+    "GV-24",
+    "GV-27",
+    "GV-79",
+    "GV-90"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "backend/src/cli/judgeCandidate.ts (new)",
+    "backend/test/judgeCandidate.test.ts (new)",
+    "backend/test/fixtures/jev-recorded-judge-v1.json (new)",
+    "tools/generation-bench/judge.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "Run it on the founder PC, which needs data-local transcripts plus the Jev key, over the 14 Sep candidate and later the golden-set candidates.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus the Jev key on the machine that runs it (queued on #1163)."
+  },
+  {
+   "id": "GV-93",
+   "from": [
+    "W2-09"
+   ],
+   "title": "Lane scheduler: per-machine concurrency, critical-path priority, queueMs, Foray request tagging and server priority",
+   "covers": [
+    "R1-08",
+    "R1-12",
+    "GP-10"
+   ],
+   "wave": 19,
+   "depends_on": [
+    "GV-03",
+    "GV-13",
+    "GV-37",
+    "GV-90"
+   ],
+   "files": [
+    "backend/src/generation/chat/providerRegistry.ts",
+    "backend/src/generation/chat/openAICompatProvider.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/chat/laneScheduler.ts (new)",
+    "backend/test/laneScheduler.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Hermes PR plus founder or Joey deploy: priority scheduling and cache report on lane A2, a Foray-only LiteLLM deployment capped at 2, health probe off the 27B; then measure queueMs.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus approval to change the shared Spark's serving config and LiteLLM deployments (OQ-07), and the Foray virtual key."
+  },
+  {
+   "id": "GV-94",
+   "from": [
+    "W7-08"
+   ],
+   "title": "Typed self-critique decorator: per-sentence check on the first draft, one edit for flagged seams only (fake critic in this card)",
+   "covers": [
+    "R2-17"
+   ],
+   "wave": 20,
+   "depends_on": [
+    "GV-10",
+    "GV-37"
+   ],
+   "files": [
+    "backend/src/generation/NarrationWriterBuilder.ts",
+    "backend/src/generation/createNarrationWriterBuilder.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/src/types/narration.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/runPipeline.test.ts",
+    "backend/src/generation/selfCritique.ts (new)",
+    "backend/test/selfCritique.test.ts (new)",
+    "backend/test/helpers/fakeDraftCritic.ts (new)",
+    "tools/generation-bench/swaps/experiments/E5-self-critique.json (new)"
+   ],
+   "size": "M",
+   "live_step": "E5 (W7-04): rerun from 'narrate' with behind-playhead. Compare first-attempt pass rate, retry rounds, MQ-02 and the pairwise listen.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-95",
+   "from": [
+    "W3-11"
+   ],
+   "title": "Pipeline wiring: prepare every search and hydrate every body before research-shape, sourcing and evidence, behind FORAY_RETRIEVAL_URL",
+   "covers": [
+    "R1-09",
+    "GP-09"
+   ],
+   "wave": 21,
+   "depends_on": [
+    "GV-15",
+    "GV-18",
+    "GV-29"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/researchShape.ts",
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/generation/generationFlags.ts",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/researchShape.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/runPipelineRemoteRetrieval.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Run one prompt on the founder PC against the founder-PC server (bm25), and diff its report.json sourcing lines against a local run. Then point it at the Spark server once W3-22 is deployed.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-97",
+   "from": [
+    "W7-11",
+    "W4-16"
+   ],
+   "title": "Jev and Qwen-judge adapters for SpineJudge and DraftCritic, with OQ-05 fallback",
+   "covers": [
+    "R2-17"
+   ],
+   "wave": 21,
+   "depends_on": [
+    "GV-20",
+    "GV-47",
+    "GV-91",
+    "GV-94"
+   ],
+   "files": [
+    "test/suite-integrity.test.js",
+    "backend/src/generation/judges.ts (new)",
+    "backend/test/judges.test.ts (new)",
+    "backend/test/fixtures/jev-choice-spine.json (new)",
+    "backend/test/fixtures/jev-noul-sentence.json (new)"
+   ],
+   "size": "S",
+   "live_step": "Part of E4 and E5: real Jev and LiteLLM calls with the founder's keys; capture one sanitised response of each kind as a fixture.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus Jev key and LiteLLM key (#1163) for the live trials only."
+  },
+  {
+   "id": "GV-98",
+   "from": [
+    "W3-17"
+   ],
+   "title": "Evidence wave off the timed path: await only act 1's packs, gather the rest behind it",
+   "covers": [
+    "R1-05"
+   ],
+   "wave": 22,
+   "depends_on": [
+    "GV-15",
+    "GV-61"
+   ],
+   "files": [
+    "backend/src/generation/evidencePrefetch.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/generationFlags.ts",
+    "backend/test/evidencePrefetch.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-99",
+   "from": [
+    "W7-06"
+   ],
+   "title": "Voice card and exemplar block in the Qwen writer's cached static prefix (flagged)",
+   "covers": [
+    "R2-17"
+   ],
+   "wave": 22,
+   "depends_on": [
+    "GV-15",
+    "GV-31",
+    "GV-42",
+    "GV-50"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/src/generation/prompts/actWrite.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/voiceExemplars.ts (new)",
+    "backend/test/voiceExemplars.test.ts (new)",
+    "tools/generation-bench/swaps/experiments/E3-writer-exemplars.json (new)"
+   ],
+   "size": "S",
+   "live_step": "E3 (W7-04): arm A without and arm B with exemplars, rerun from 'narrate', founder pairwise listen. Check the cached-token share from the R1-14 call records.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-100",
+   "from": [
+    "W4-04",
+    "W4-18"
+   ],
+   "title": "Spine tier sizing on the Spark: per-tier JSON schema, tier-sized output budget with one shorter re-ask, seed-floor re-ask off the short timed path",
+   "covers": [
+    "R1-03",
+    "R2-07",
+    "GP-02",
+    "GP-05"
+   ],
+   "wave": 23,
+   "depends_on": [
+    "GV-02",
+    "GV-14",
+    "GV-15",
+    "GV-25",
+    "GV-32",
+    "GV-67",
+    "GV-86"
+   ],
+   "files": [
+    "backend/src/generation/chat/ChatSpineBuilder.ts",
+    "backend/src/config/outputBudgets.ts",
+    "backend/src/generation/runPipeline.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/replySchemas.ts",
+    "backend/test/spineTierSizing.test.ts (new)",
+    "backend/test/fixtures/local/spine-short-reply.json (new)",
+    "backend/test/fixtures/local/spine-medium-reply.json (new)"
+   ],
+   "size": "M",
+   "live_step": "With the LiteLLM key, run the 10 listened golden prompts with only ST-04 swapped (the R2-21 protocol).",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM virtual key for the Foray lane (#1163), for the live step only."
+  },
+  {
+   "id": "GV-101",
+   "from": [
+    "W3-26"
+   ],
+   "title": "Run-start corpus integrity guard (roadmap PKG-23), extended to the remote manifest",
+   "covers": [
+    "GP-09"
+   ],
+   "wave": 23,
+   "depends_on": [],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/test/generateForaysArgs.test.ts",
+    "docs/roadmap/corpus.md",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/archiveIntegrity.ts (new)",
+    "backend/test/archiveIntegrity.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-102",
+   "from": [
+    "W4-07"
+   ],
+   "title": "Per-act pipeline driver: act 1's deepen, source, evidence, write and stitch first, later acts behind it",
+   "covers": [
+    "R1-04",
+    "R1-01",
+    "GP-03"
+   ],
+   "wave": 24,
+   "depends_on": [
+    "GV-15",
+    "GV-18",
+    "GV-46",
+    "GV-86",
+    "GV-95",
+    "GV-98",
+    "GV-123"
+   ],
+   "files": [
+    "backend/src/generation/runPipeline.ts",
+    "backend/test/runPipelineCheckpoint.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/perActPipeline.test.ts (new)"
+   ],
+   "size": "L",
+   "live_step": "Medium golden prompts on the Spark with the flag on and off: compare first-seam time and MT-06 from CallRecords.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-103",
+   "from": [
+    "W5-07"
+   ],
+   "title": "Judge calibration harness: labelled examples in, an agreement-by-threshold table out (sentence support and clip scores), plus a flag that keeps the run data calibration needs",
+   "covers": [
+    "R1-07",
+    "R2-09",
+    "R2-03",
+    "R1-20"
+   ],
+   "wave": 24,
+   "depends_on": [
+    "GV-20",
+    "GV-27",
+    "GV-47",
+    "GV-79"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/generateForays.test.ts",
+    "backend/src/generation/judgeCalibration.ts (new)",
+    "backend/src/cli/calibrateJudges.ts (new)",
+    "tools/generation/calibrate-judges.mjs (new)",
+    "backend/test/judgeCalibration.test.ts (new)",
+    "backend/test/fixtures/calibration/synthetic-export.json (new)"
+   ],
+   "size": "M",
+   "live_step": "Founder PC with the Jev key: keep calibration data from 2-3 golden prompts, collect labels through the review lane, calibrate, post the tables on #1163.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus a Jev key on the founder PC, and about 20-30 minutes of yes/no labels on extracted clips and pages."
+  },
+  {
+   "id": "GV-104",
+   "from": [
+    "W5-18",
+    "W4-12"
+   ],
+   "title": "Voice checks on generated narration: N7-N9 and N24 in the writer gate, per-seam sentence shape, reading grade 6-9 on the scorecard (MQ-15 to MQ-18)",
+   "covers": [
+    "R2-14",
+    "QK-25",
+    "GP-24",
+    "MQ-15",
+    "MQ-16",
+    "MQ-17",
+    "MQ-18",
+    "R2-08"
+   ],
+   "wave": 25,
+   "depends_on": [
+    "GV-04",
+    "GV-10",
+    "GV-15"
+   ],
+   "files": [
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/test/actNarration.test.ts",
+    "backend/src/generation/voiceChecks.ts (new)",
+    "backend/test/voiceChecks.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Compare voice metrics for Qwen-written and Claude-written acts on the golden set (eval workstream), then choose which hard errors to enforce.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-105",
+   "from": [
+    "W6-19"
+   ],
+   "title": "Spark generation worker: claim a job, run the pipeline with the job sink and render spool",
+   "covers": [
+    "R1-15",
+    "GP-07",
+    "GP-08"
+   ],
+   "wave": 25,
+   "depends_on": [
+    "GV-59",
+    "GV-74",
+    "GV-81"
+   ],
+   "files": [
+    "backend/src/cli/generateForays.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/cli/generationWorker.ts (new)",
+    "backend/test/generationWorker.test.ts (new)",
+    "tools/generation/generation-worker.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "Once the provider workstream's Qwen path exists, run the worker on the Spark (D8 spark-live) against the applied table. Insert a founder job and measure first audio and minLeadSec end to end.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus the Supabase service key and the R2 narration token on the Spark. The founder moves spark-live (D8)."
+  },
+  {
+   "id": "GV-106",
+   "from": [
+    "W4-15"
+   ],
+   "title": "Tier-aware clip ceiling in sourcing plus the MQ-14 tier-fit metric (reported, gate behind a flag)",
+   "covers": [
+    "R2-15",
+    "QK-28",
+    "GP-25"
+   ],
+   "wave": 26,
+   "depends_on": [
+    "GV-04",
+    "GV-18",
+    "GV-89"
+   ],
+   "files": [
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/types/tapeSourcing.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/tierRuntime.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/cli/publishForay.ts",
+    "backend/src/cli/generateForays.ts",
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "test/suite-integrity.test.js",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/test/actNarration.test.ts",
+    "backend/test/tierClipCeiling.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Golden set on the Spark with the cap on and off: share of Forays within ±15% of tier, and MQ-08 tape share.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-107",
+   "from": [
+    "W5-04"
+   ],
+   "title": "Beat candidate enumeration and async pre-judging: one Jev choice per beat, then two scores on the top K",
+   "covers": [
+    "R1-20",
+    "R2-03"
+   ],
+   "wave": 27,
+   "depends_on": [
+    "GV-15",
+    "GV-18",
+    "GV-20",
+    "GV-79"
+   ],
+   "files": [
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/generation/clipJudge.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/sourceBeats.test.ts",
+    "backend/src/generation/prejudgeClips.ts (new)",
+    "backend/test/prejudgeClips.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "With the Jev key, prejudge the deepened acts of two fresh golden-set runs on the founder PC. Record choice latency per beat and how often 'none' wins.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-108",
+   "from": [
+    "W5-12b"
+   ],
+   "title": "Cut-to-introduction policy: a failing seam keeps only its code-checked introduction sentences or is dropped, and HANDOFF_SCRIPT is never emitted",
+   "covers": [
+    "R2-13",
+    "QK-29",
+    "GP-26"
+   ],
+   "wave": 28,
+   "depends_on": [
+    "GV-10",
+    "GV-15",
+    "GV-21"
+   ],
+   "files": [
+    "backend/src/generation/writeAct.ts",
+    "backend/src/types/narration.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/forayItems.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/gateConfig.ts",
+    "tools/foray/check-forays.test.mjs",
+    "test/suite-integrity.test.js",
+    "backend/test/actNarration.test.ts",
+    "backend/test/stitchForay.test.ts",
+    "backend/test/runPipelineCheckpoint.test.ts",
+    "backend/test/introCut.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-109",
+   "from": [
+    "W5-13"
+   ],
+   "title": "Clean-cut measurement (MQ-06) with per-edge boundary kinds, and refusal of a claim-only opening edge",
+   "covers": [
+    "R2-05",
+    "MQ-06"
+   ],
+   "wave": 29,
+   "depends_on": [
+    "GV-15",
+    "GV-18"
+   ],
+   "files": [
+    "backend/src/generation/tapeExtent.ts",
+    "backend/src/generation/transcriptArchiveLookup.ts",
+    "backend/src/types/tapeSourcing.ts",
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/cli/publishForay.ts",
+    "backend/src/generation/gateConfig.ts",
+    "backend/test/tapeExtent.test.ts",
+    "backend/test/sourceBeats.test.ts",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/test/runPipelineCheckpoint.test.ts"
+   ],
+   "size": "M",
+   "live_step": "Read cleanCutRate on the next real run to learn the baseline before enforcing.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-110",
+   "from": [
+    "W7-09"
+   ],
+   "title": "Bench-only writer exchange recorder (request, reply, verdict per act and round)",
+   "covers": [
+    "R2-17"
+   ],
+   "wave": 30,
+   "depends_on": [
+    "GV-55",
+    "GV-62"
+   ],
+   "files": [
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/writeNarration.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/writerExchanges.test.ts (new)",
+    "tools/generation-bench/exchanges.mjs (new)",
+    "tools/generation-bench/exchanges.test.mjs (new)"
+   ],
+   "size": "M",
+   "live_step": "Turn it on for every W7-04 arm run.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-111",
+   "from": [
+    "W5-14b"
+   ],
+   "title": "Snap clip edges to real pauses from word timestamps, with anchors re-minted from the words",
+   "covers": [
+    "R2-05",
+    "MQ-06"
+   ],
+   "wave": 30,
+   "depends_on": [
+    "GV-56",
+    "GV-109"
+   ],
+   "files": [
+    "backend/src/generation/transcriptArchiveLookup.ts",
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/pauseSnap.ts (new)",
+    "backend/test/pauseSnap.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "(1) The transcript-farm repo enables whisper word_timestamps and emits cues[].words.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus an R2 read key for the legacy-JSON sample (#1163)."
+  },
+  {
+   "id": "GV-112",
+   "from": [
+    "W3-25"
+   ],
+   "title": "Research map: add windows from the topic node's precomputed shortlist",
+   "covers": [
+    "QK-22",
+    "R1-09"
+   ],
+   "wave": 31,
+   "depends_on": [
+    "GV-48",
+    "GV-87",
+    "GV-95"
+   ],
+   "files": [
+    "backend/src/generation/researchShape.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/retrievalClient.ts",
+    "backend/src/types/research.ts",
+    "backend/src/generation/generationFlags.ts",
+    "backend/test/researchShape.test.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/retrievalClient.test.ts"
+   ],
+   "size": "S",
+   "live_step": "Replay 5 golden prompts with the shortlist on and off, comparing seeded-beat share (postSeedSpine) and unseeded yield (W3-15).",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-113",
+   "from": [
+    "W5-11"
+   ],
+   "title": "Cut unsupported sentences instead of rewriting; only an orphaned beat earns one single-seam edit",
+   "covers": [
+    "R2-10",
+    "MQ-02",
+    "MQ-11",
+    "GP-26"
+   ],
+   "wave": 31,
+   "depends_on": [
+    "GV-51",
+    "GV-108"
+   ],
+   "files": [
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/test/actNarration.test.ts",
+    "backend/test/sentenceCut.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Run the Jev verifier with cut on two golden prompts. Compare retryRounds, writer calls per act and sentencesSurvivingRate against the rewrite policy.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-114",
+   "from": [
+    "W7-10"
+   ],
+   "title": "Act-level training-example ledger and fine-tune readiness count (no training)",
+   "covers": [
+    "R2-17"
+   ],
+   "wave": 31,
+   "depends_on": [
+    "GV-35",
+    "GV-110"
+   ],
+   "files": [
+    "docs/curation/model-swaps.md",
+    "test/suite-integrity.test.js",
+    "tools/generation-bench/training-corpus.mjs (new)",
+    "tools/generation-bench/training-corpus.test.mjs (new)"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": ""
+  },
+  {
+   "id": "GV-115",
+   "from": [
+    "W3-14"
+   ],
+   "title": "Sourcing: per-show tape ledger, soft show-diversity order, optional 60% show-share gate",
+   "covers": [
+    "R2-16",
+    "QK-21"
+   ],
+   "wave": 32,
+   "depends_on": [
+    "GV-15",
+    "GV-18",
+    "GV-83"
+   ],
+   "files": [
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/types/tapeSourcing.ts",
+    "backend/src/generation/generationFlags.ts",
+    "backend/test/sourceBeats.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "M",
+   "live_step": "With W3-15's replay on the founder PC corpus, compare off, order and gate on 10 prompts for MQ-07, tape beats and narration fallbacks. The orchestrator then picks the default.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-116",
+   "from": [
+    "W4-12"
+   ],
+   "title": "Voice drift alarm: one Jev 'same narrator as the exemplar?' Score per act after narration (report only)",
+   "covers": [
+    "R2-08",
+    "GP-24"
+   ],
+   "wave": 33,
+   "depends_on": [
+    "GV-20",
+    "GV-99",
+    "GV-104"
+   ],
+   "files": [
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/runPipeline.ts",
+    "tools/generation-bench/run.mjs",
+    "tools/generation-bench/run.test.mjs",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/voiceDrift.ts (new)",
+    "backend/test/voiceDrift.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "With Jev, score the 14 Sep candidate and golden runs. Set an alarm threshold only after the founder's R2-01 cards say which acts sounded like a different narrator.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-117",
+   "from": [
+    "W4-17"
+   ],
+   "title": "Fast-path assembly: early-item signals, three serial model calls to the first seam, and an offline latency-model check",
+   "covers": [
+    "R1-01",
+    "GP-03",
+    "GP-02",
+    "GP-05"
+   ],
+   "wave": 34,
+   "depends_on": [
+    "GV-07",
+    "GV-123",
+    "GV-32",
+    "GV-33",
+    "GV-38",
+    "GV-49",
+    "GV-61",
+    "GV-67",
+    "GV-73",
+    "GV-80",
+    "GV-84",
+    "GV-86",
+    "GV-89",
+    "GV-98",
+    "GV-100",
+    "GV-102",
+    "GV-106"
+   ],
+   "files": [
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "docs/curation/generation-kpis.md",
+    "test/suite-integrity.test.js",
+    "backend/test/fastPath.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Run the golden set's 10 listened and 40 scored prompts with FORAY_FAST_PATH=1 against the Spark (LiteLLM) and Jev.",
+   "needs_founder": "founder-approved label (orchestrator applies); plus LiteLLM key and Jev key (#1163), for the live run only."
+  },
+  {
+   "id": "GV-118",
+   "from": [
+    "W5-06"
+   ],
+   "title": "Tape publish gate: swap QK-04 (taxonomy family) for MQ-05 (0.9 of clips scoring 4+) behind FORAY_TAPE_GATE, and record the gate verdict on every run",
+   "covers": [
+    "R2-03",
+    "QK-20",
+    "GP-21",
+    "MQ-05",
+    "GP-26"
+   ],
+   "wave": 35,
+   "depends_on": [
+    "GV-15",
+    "GV-26",
+    "GV-79"
+   ],
+   "files": [
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/gateConfig.ts",
+    "backend/src/cli/publishForay.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "docs/curation/generation-kpis.md",
+    "docs/curation/generation-architecture.md",
+    "test/suite-integrity.test.js",
+    "backend/test/veracityMetrics.test.ts",
+    "backend/test/publishForay.test.ts",
+    "backend/test/generateForays.test.ts"
+   ],
+   "size": "S",
+   "live_step": "After W5-07's calibration, flip the default and re-evaluate the 14 Sep candidate's meta to confirm it is now refused.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-119",
+   "from": [
+    "W5-05"
+   ],
+   "title": "Judged walk in sourceBeats: follow the choice order, a refusing score falls through, 'none' becomes narration, the runner-up is logged",
+   "covers": [
+    "R1-20",
+    "R2-03",
+    "MQ-05",
+    "QK-20"
+   ],
+   "wave": 36,
+   "depends_on": [
+    "GV-107"
+   ],
+   "files": [
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/types/tapeSourcing.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/segmentPoolLookup.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/runPipelineCheckpoint.test.ts",
+    "backend/test/judgedSourcing.test.ts (new)"
+   ],
+   "size": "L",
+   "live_step": "After W5-07 calibration, run the germ-theory prompt and two golden prompts in enforce mode. Compare clip count, tape share (MQ-08) and clipOnSubjectRate against shadow mode.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-120",
+   "from": [
+    "W5-15"
+   ],
+   "title": "Attribution check (MQ-03): the person an introduction names must be speaking in the clip window",
+   "covers": [
+    "R2-11",
+    "QK-24",
+    "MQ-03"
+   ],
+   "wave": 37,
+   "depends_on": [
+    "GV-15",
+    "GV-34"
+   ],
+   "files": [
+    "backend/src/generation/gatherEvidence.ts",
+    "backend/src/generation/actSeams.ts",
+    "backend/src/generation/NarrationWriterBuilder.ts",
+    "backend/src/generation/writeAct.ts",
+    "backend/src/generation/writeNarration.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/gatherEvidence.test.ts",
+    "backend/test/actNarration.test.ts",
+    "backend/test/attribution.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Run report mode on a Being an Engineer run and a Practical AI run. Record the unknowable share, which shows how much of the corpus can be checked at all.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-121",
+   "from": [
+    "W5-16"
+   ],
+   "title": "Verify act introductions, exits and the prelude overview sentence by sentence against held sources",
+   "covers": [
+    "QK-24",
+    "GP-23"
+   ],
+   "wave": 38,
+   "depends_on": [
+    "GV-15",
+    "GV-27",
+    "GV-34"
+   ],
+   "files": [
+    "backend/src/generation/stitchForay.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/generation/veracityMetrics.ts",
+    "backend/src/generation/gateConfig.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/runPipeline.test.ts",
+    "backend/test/runPipelineCheckpoint.test.ts",
+    "backend/test/stitchForay.test.ts",
+    "backend/src/generation/frameVerify.ts (new)",
+    "backend/test/frameVerify.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "Run report mode on two golden prompts with the Jev judge; escalate to writer-authored frames if more than about 30% fail.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-122",
+   "from": [
+    "W6-13"
+   ],
+   "title": "Mint clip anchors by distinctiveness: never a span that repeats in the episode (flagged)",
+   "covers": [
+    "R2-06"
+   ],
+   "wave": 39,
+   "depends_on": [
+    "GV-15",
+    "GV-18"
+   ],
+   "files": [
+    "backend/src/generation/transcriptArchiveLookup.ts",
+    "backend/src/generation/sourceBeats.ts",
+    "backend/src/generation/runPipeline.ts",
+    "backend/src/cli/generateForays.ts",
+    "test/suite-integrity.test.js",
+    "backend/test/anchorMint.test.ts (new)"
+   ],
+   "size": "S",
+   "live_step": "Replay sourcing on the founder PC corpus under both modes and compare W6-14's resolve rate before flipping the default.",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
+   "id": "GV-77",
+   "from": [
+    "W6-10"
+   ],
+   "title": "Optional PyTorch-CUDA render backend as a separate render profile (only if #862 shows a win)",
+   "covers": [
+    "R1-13"
+   ],
+   "wave": 0,
+   "depends_on": [
+    "GV-22",
+    "GV-58",
+    "GV-108"
+   ],
+   "files": [
+    "tools/narration/render-foray.py",
+    "tools/narration/stamp-narration.mjs",
+    "tools/narration/upload-narration.mjs",
+    "tools/foray/check-forays.mjs",
+    "tools/narration/render-foray.test.mjs",
+    "tools/narration/stamp-narration.test.mjs",
+    "tools/narration/upload-narration.test.mjs",
+    "tools/foray/check-forays.test.mjs",
+    "test/suite-integrity.test.js",
+    "tools/narration/render-profile-torch-cuda.json (new)"
+   ],
+   "size": "M",
+   "live_step": "Gated backlog (gate: a #862 bench win). Render the same draft under both profiles on the Spark GPU and measure the realtime factor.",
+   "needs_founder": "founder-approved label (orchestrator applies; tools/narration/upload-narration.mjs is an exact DENIED_PREFIXES path); plus an ear A/B of torch-cuda vs ONNX fp32 renders before switching the default profile. Gate: a #862 bench win."
+  },
+  {
+   "id": "GV-96",
+   "from": [
+    "W2-17"
+   ],
+   "title": "Retire the legacy Anthropic generation builders once the local path is validated",
+   "covers": [
+    "HW-12"
+   ],
+   "wave": 0,
+   "depends_on": [
+    "GV-47",
+    "GV-50",
+    "GV-51",
+    "GV-67",
+    "GV-68",
+    "GV-69",
+    "GV-75",
+    "GV-89",
+    "GV-91",
+    "GV-94",
+    "GV-100",
+    "GV-104",
+    "GV-106",
+    "GV-108",
+    "GV-113",
+    "GV-120"
+   ],
+   "files": [
+    "backend/src/generation/AnthropicPromptUnderstander.ts",
+    "backend/src/generation/AnthropicExternalResearcher.ts",
+    "backend/src/generation/AnthropicSpineBuilder.ts",
+    "backend/src/generation/AnthropicDeepenActBuilder.ts",
+    "backend/src/generation/AnthropicNarrationWriterBuilder.ts",
+    "backend/src/generation/AnthropicNarrationVerifierBuilder.ts",
+    "backend/src/generation/AnthropicContinuityBuilder.ts",
+    "backend/src/generation/anthropicCall.ts",
+    "backend/src/generation/createPromptUnderstander.ts",
+    "backend/src/generation/createSpineBuilder.ts",
+    "backend/src/generation/createDeepenActBuilder.ts",
+    "backend/src/generation/createNarrationWriterBuilder.ts",
+    "backend/src/generation/createNarrationVerifierBuilder.ts",
+    "backend/src/generation/createContinuityBuilder.ts",
+    "backend/src/generation/createExternalResearcher.ts",
+    "backend/src/config/stageRouting.ts",
+    "backend/src/config/models.ts",
+    "backend/test/noAnthropicInGeneration.test.ts",
+    "tools/generation/start-run.mjs",
+    "test/suite-integrity.test.js",
+    "backend/src/generation/runLog.ts",
+    "backend/src/generation/usageTracking.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/test/AnthropicPromptUnderstander.test.ts",
+    "backend/test/AnthropicSpineBuilder.test.ts",
+    "backend/test/AnthropicDeepenActBuilder.test.ts",
+    "backend/test/AnthropicExternalResearcher.test.ts",
+    "backend/test/anthropicCall.test.ts",
+    "backend/test/actNarration.test.ts",
+    "backend/test/frameTapeSource.test.ts",
+    "backend/test/hingeTapeSource.test.ts",
+    "backend/test/narratorStructure.test.ts",
+    "backend/test/postSeedSpine.test.ts",
+    "backend/test/researchShape.test.ts",
+    "backend/test/sourceBeats.test.ts",
+    "backend/test/spineReask.test.ts",
+    "backend/test/gatherEvidence.test.ts",
+    "backend/test/models.test.ts",
+    "backend/test/generateForays.test.ts",
+    "backend/test/providerGuards.test.ts (new)"
+   ],
+   "size": "M",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies); plus the gate: the founder confirms on #1163, after one golden-set listen of the all-local pipeline, that no legacy Claude run is wanted (OQ-06) and the relay may lose its generation role."
+  }
+ ],
+ "waves": [
+  {
+   "n": 1,
+   "cards": [
+    "GV-01",
+    "GV-02",
+    "GV-03",
+    "GV-04",
+    "GV-05",
+    "GV-06"
+   ],
+   "why": "Foundations with no dependencies: per-run log, reply schemas and JSON Schema converter, stage routing table, true elapsed time in the bench, streamed index assembly, sync-r2 size report and disk guard."
+  },
+  {
+   "n": 2,
+   "cards": [
+    "GV-07",
+    "GV-08",
+    "GV-09",
+    "GV-10",
+    "GV-11",
+    "GV-12"
+   ],
+   "why": "First users of the foundations: per-call records, listening card, stream indexer, shared spoken-line library, render from a candidate, passage cutter."
+  },
+  {
+   "n": 3,
+   "cards": [
+    "GV-13",
+    "GV-15",
+    "GV-16",
+    "GV-17",
+    "GV-18",
+    "GV-23"
+   ],
+   "why": "OpenAI-compatible provider, run-configuration foundation (flag readers, pipeline flags, gate config, checkpoint variant at both fingerprint sites), retrieval server, per-call bench summary, the SourcingSession refactor that lands before any other sourceBeats.ts change, and the legacy whisper reader (moved up from wave 4 to make room for GV-14)."
+  },
+  {
+   "n": 4,
+   "cards": [
+    "GV-14",
+    "GV-19",
+    "GV-20",
+    "GV-21",
+    "GV-22",
+    "GV-24"
+   ],
+   "why": "Output-token budgets (now read through generationFlags, so after GV-15), askStructured, Jev client, per-act servability, render worker, scorecard."
+  },
+  {
+   "n": 5,
+   "cards": [
+    "GV-25",
+    "GV-26",
+    "GV-27",
+    "GV-28",
+    "GV-29",
+    "GV-30"
+   ],
+   "why": "Qwen planning builders, gate verdict in every run, per-sentence support judge, passage store and embeddings, retrieval client, code-built dossiers."
+  },
+  {
+   "n": 6,
+   "cards": [
+    "GV-31",
+    "GV-32",
+    "GV-33",
+    "GV-34",
+    "GV-35",
+    "GV-36"
+   ],
+   "why": "Qwen writer and verifier, planning prompt layout, item-ready events, code checks on numbers, dates and names, swap decision rule and ledger, blind listening pack."
+  },
+  {
+   "n": 7,
+   "cards": [
+    "GV-37",
+    "GV-38",
+    "GV-39",
+    "GV-40",
+    "GV-41",
+    "GV-42"
+   ],
+   "why": "Routing wired into the factories (with the 'none' research route), act frame for the writer, corpus fingerprint, streaming transport, review queue, exemplar miner."
+  },
+  {
+   "n": 8,
+   "cards": [
+    "GV-43",
+    "GV-44",
+    "GV-45",
+    "GV-46",
+    "GV-47",
+    "GV-48"
+   ],
+   "why": "Streamed writer contract, job snapshot sink, golden set v1, incremental stitcher, judge fallback, hybrid merge and node shortlist."
+  },
+  {
+   "n": 9,
+   "cards": [
+    "GV-49",
+    "GV-50",
+    "GV-51",
+    "GV-52",
+    "GV-53",
+    "GV-54"
+   ],
+   "why": "Jev clarity check, writer prompt layout (the only actNarration.test.ts editor in this wave), Jev verifier, bench delivery targets, digest rows for streamed episodes, remote cue store."
+  },
+  {
+   "n": 10,
+   "cards": [
+    "GV-55",
+    "GV-56",
+    "GV-57",
+    "GV-58",
+    "GV-59",
+    "GV-60"
+   ],
+   "why": "Driver routing and report attribution, word-timestamp schema, player append, Spark render kit, generation_jobs table, legacy whisper indexing."
+  },
+  {
+   "n": 11,
+   "cards": [
+    "GV-61",
+    "GV-62",
+    "GV-63",
+    "GV-64",
+    "GV-65",
+    "GV-66"
+   ],
+   "why": "Shared researcher and no-web cache rule, checkpoint fork for swaps, phone clip diagnostics, golden aggregation and compare, Qwen dossier selection, retrieval-on-Spark kit."
+  },
+  {
+   "n": 12,
+   "cards": [
+    "GV-67",
+    "GV-68",
+    "GV-69",
+    "GV-70",
+    "GV-71",
+    "GV-72"
+   ],
+   "why": "Copy folded into the spine, zero-Anthropic enforcement, dossier researcher, lock-screen waiting state, candidate audio stamping, whisper round trip."
+  },
+  {
+   "n": 13,
+   "cards": [
+    "GV-73",
+    "GV-74",
+    "GV-75",
+    "GV-76",
+    "GV-78"
+   ],
+   "why": "Per-seam streaming gate, render stage, stage-swap runner, whole clip window as evidence, anchor resolution report. GV-77 moved to the gated backlog."
+  },
+  {
+   "n": 14,
+   "cards": [
+    "GV-79",
+    "GV-80",
+    "GV-81",
+    "GV-82",
+    "GV-123"
+   ],
+   "why": "Clip-on-subject scorer (shadow), timed round policy, two review lanes, IPA pronunciation hints, and the critical-path probe split out of GV-15 (it touches no shared file)."
+  },
+  {
+   "n": 15,
+   "cards": [
+    "GV-83",
+    "GV-84",
+    "GV-85"
+   ],
+   "why": "Show variety metric, streamed Qwen writer, code-time spans. runPipeline.ts is edited by 39 cards, so from here each wave carries one of them (show variety)."
+  },
+  {
+   "n": 16,
+   "cards": [
+    "GV-86",
+    "GV-87",
+    "GV-88"
+   ],
+   "why": "Deepen folded into the short spine (the runPipeline.ts editor), per-show quota, retrieval replay gate."
+  },
+  {
+   "n": 17,
+   "cards": [
+    "GV-89"
+   ],
+   "why": "Tier runtime check; runPipeline.ts chain."
+  },
+  {
+   "n": 18,
+   "cards": [
+    "GV-90"
+   ],
+   "why": "Unit caps per Foray; runPipeline.ts chain. After this wave and wave 19, batch local runs are allowed (GV-68's accepted ordering)."
+  },
+  {
+   "n": 19,
+   "cards": [
+    "GV-91",
+    "GV-92",
+    "GV-93"
+   ],
+   "why": "Best-of-2 spine wrapper (runPipeline.ts and runPipeline.test.ts editor), offline judged metrics, lane scheduler (its priority assertions live in laneScheduler.test.ts)."
+  },
+  {
+   "n": 20,
+   "cards": [
+    "GV-94"
+   ],
+   "why": "Typed self-critique; runPipeline.ts chain."
+  },
+  {
+   "n": 21,
+   "cards": [
+    "GV-95",
+    "GV-97"
+   ],
+   "why": "Remote retrieval wiring (runPipeline.ts editor), spine judge and critic adapters. GV-96 moved to the gated backlog."
+  },
+  {
+   "n": 22,
+   "cards": [
+    "GV-98",
+    "GV-99"
+   ],
+   "why": "First-act evidence wave (runPipeline.ts editor), exemplar block in the writer prefix."
+  },
+  {
+   "n": 23,
+   "cards": [
+    "GV-100",
+    "GV-101"
+   ],
+   "why": "Spine tier sizing (runPipeline.ts editor), run-start corpus guard."
+  },
+  {
+   "n": 24,
+   "cards": [
+    "GV-102",
+    "GV-103"
+   ],
+   "why": "Per-act pipeline driver (runPipeline.ts editor, after remote retrieval and first-act evidence), judge calibration."
+  },
+  {
+   "n": 25,
+   "cards": [
+    "GV-104",
+    "GV-105"
+   ],
+   "why": "Voice checks (runPipeline.ts editor), Spark generation worker."
+  },
+  {
+   "n": 26,
+   "cards": [
+    "GV-106"
+   ],
+   "why": "Tier-aware clip ceiling; runPipeline.ts chain."
+  },
+  {
+   "n": 27,
+   "cards": [
+    "GV-107"
+   ],
+   "why": "Per-beat clip Choice; runPipeline.ts chain."
+  },
+  {
+   "n": 28,
+   "cards": [
+    "GV-108"
+   ],
+   "why": "Cut-to-introduction policy; runPipeline.ts chain."
+  },
+  {
+   "n": 29,
+   "cards": [
+    "GV-109"
+   ],
+   "why": "Clean-cut measurement; runPipeline.ts chain."
+  },
+  {
+   "n": 30,
+   "cards": [
+    "GV-110",
+    "GV-111"
+   ],
+   "why": "Writer exchange recorder (runPipeline.ts editor), pause snapping."
+  },
+  {
+   "n": 31,
+   "cards": [
+    "GV-112",
+    "GV-113",
+    "GV-114"
+   ],
+   "why": "Shortlist windows for the spine (runPipeline.ts editor), cut unsupported sentences, training-example ledger."
+  },
+  {
+   "n": 32,
+   "cards": [
+    "GV-115"
+   ],
+   "why": "Show-share ledger; runPipeline.ts chain."
+  },
+  {
+   "n": 33,
+   "cards": [
+    "GV-116"
+   ],
+   "why": "Voice drift alarm; runPipeline.ts chain."
+  },
+  {
+   "n": 34,
+   "cards": [
+    "GV-117"
+   ],
+   "why": "Fast-path assembly, after every critical-path card it wires together (including GV-123's probe)."
+  },
+  {
+   "n": 35,
+   "cards": [
+    "GV-118"
+   ],
+   "why": "MQ-05 publish gate on GV-26's existing gate field; runPipeline.ts chain."
+  },
+  {
+   "n": 36,
+   "cards": [
+    "GV-119"
+   ],
+   "why": "Judged sourcing walk; runPipeline.ts chain."
+  },
+  {
+   "n": 37,
+   "cards": [
+    "GV-120"
+   ],
+   "why": "Attribution check; runPipeline.ts chain."
+  },
+  {
+   "n": 38,
+   "cards": [
+    "GV-121"
+   ],
+   "why": "Frame verification; runPipeline.ts chain."
+  },
+  {
+   "n": 39,
+   "cards": [
+    "GV-122"
+   ],
+   "why": "Distinctive anchors; runPipeline.ts chain."
+  }
+ ]
+}
