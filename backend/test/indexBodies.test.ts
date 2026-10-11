@@ -130,14 +130,18 @@ function sink(): { stream: Writable; text: () => string } {
   return { stream, text: () => out };
 }
 
-async function runIndexBodies(lines: string[], root: string): Promise<{ result: IndexBodiesResult; out: string; indexRoot: string; stagedOut: string }> {
+async function runIndexBodies(
+  lines: string[],
+  root: string,
+  archive: readonly TranscriptDigestEntry[] = committedRows
+): Promise<{ result: IndexBodiesResult; out: string; indexRoot: string; stagedOut: string }> {
   const indexRoot = path.join(root, "index");
   const stagedOut = path.join(root, "passage-index", "staged-digest.jsonl");
   const out = sink();
   const result = await main(Readable.from(lines.map((l) => `${l}\n`)), out.stream, {
     indexRoot,
     stagedOut,
-    archive: committedRows,
+    archive,
     committedDigests: [committedDigest],
     showTitle: (showId) => showId
   });
@@ -233,6 +237,48 @@ describe("indexBodies — the streamed cache is the cache FileTranscriptTextInde
     const stagedText = fs.readFileSync(stagedOut, "utf8");
     expect(stagedText).not.toContain("broad street pump");
     expect(fs.readdirSync(indexRoot).sort()).toEqual([`${SHOW_A}.json`, `${SHOW_B}.json`]);
+  });
+
+  it("on a box that has already reconciled (the archive already holds the pending rows), builds no duplicate docs, stays fresh, and still stages the rows", async () => {
+    /* This is the production case: loadTranscriptArchive() merges data-local's
+       corpus digest, so after any earlier reconcile every pending row is
+       already an archive row.
+       MUTATION THAT KILLS THIS: in indexBodies.ts delete
+       `if (seen.has(row.guid)) continue;` — a4, Buzzsprout-777 and b2 are
+       appended a second time, the doc count no longer matches the reader's,
+       and cacheIsFresh rebuilds the cache on every read. */
+    const reconciled = await offlineReconcileRows();
+    const archive = [...committedRows, ...reconciled];
+    const { result, indexRoot, stagedOut } = await runIndexBodies(streamLines(), path.join(tmp, "reconciled"), archive);
+    expect(result.exitCode).toBe(0);
+
+    // 1) Byte-equal to the local build over that same archive, no duplicate docs.
+    const localRoot = path.join(tmp, "reconciled-local-index");
+    const local = new FileTranscriptTextIndex({ archive, bodies: new FileTranscriptCueProvider(corpus), indexRoot: localRoot });
+    for (const showId of [SHOW_A, SHOW_B]) {
+      expect(local.warmShow(showId)).not.toBeNull();
+      expect(withoutBuiltAt(readCache(indexRoot, showId).raw)).toBe(withoutBuiltAt(readCache(localRoot, showId).raw));
+    }
+    const alpha = readCache(indexRoot, SHOW_A).json as { docs: Array<{ guid: string }> };
+    expect(alpha.docs.map((d) => d.guid)).toEqual([PERMALINK, "a2", "a4", "Buzzsprout-777"]);
+    const beta = readCache(indexRoot, SHOW_B).json as { docs: Array<{ guid: string }> };
+    expect(beta.docs.map((d) => d.guid)).toEqual(["b1", "b2"]);
+
+    // 2) A reader over that archive finds the streamed caches fresh.
+    const provider = new FileTranscriptCueProvider(corpus);
+    const spy = vi.spyOn(provider, "readCuesUncached");
+    const reader = new FileTranscriptTextIndex({ archive, bodies: provider, indexRoot });
+    expect(reader.search("lister carbolic antiseptic cholera broad street").length).toBeGreaterThan(0);
+    reader.warmShow(SHOW_B);
+    expect(spy).not.toHaveBeenCalled();
+
+    // 3) The staged rows are still exactly the offline reconcile's.
+    const staged = fs
+      .readFileSync(stagedOut, "utf8")
+      .split("\n")
+      .filter((l) => l.length > 0)
+      .map((l) => JSON.parse(l) as TranscriptDigestEntry);
+    expect(staged).toEqual(reconciled);
   });
 
   it("a show the stream never ends is not written, and the run reports it", async () => {
