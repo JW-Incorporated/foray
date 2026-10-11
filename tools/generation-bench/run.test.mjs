@@ -16,6 +16,12 @@
  *   4. Clip lengths are measured on the candidate, from its minted rows and the
  *      committed pool, or not at all. Tests 17-22.
  *
+ * GV-04 (TM-10) adds the tests at the end: `entry.ms` is the SUM of the stage
+ * durations, so the clock time is a separate column (`elapsed_min`: the
+ * report's own `elapsedMs`, else the span of its stage timings), and every
+ * column is `core` or `detail` so later columns can land without re-cutting
+ * the committed KPI table.
+ *
  * THE FIXTURES ARE REAL REPORTS
  * `fixtures/out-4/report.json` is run 4's report verbatim (the sparse one: a
  * `no-tape` stop with no `calls`, no `veracity`) and `fixtures/out-9/report.json`
@@ -44,6 +50,8 @@ import { fileURLToPath } from "node:url";
 import {
   ABSENT,
   COLUMNS,
+  CORE,
+  DETAIL,
   PROPOSED,
   SETTLED,
   candidatePathFor,
@@ -65,7 +73,9 @@ import {
   rowFromJsonl,
   rowsForReport,
   runIdFor,
+  spanMsOf,
   spliceRows,
+  tableColumns,
   targetLabel,
   ROWS_BEGIN,
   ROWS_END
@@ -192,7 +202,7 @@ test("the proposed targets are exactly the §1.2 rows marked *proposed*, on the 
      proposed founder target against the flattering number is the defect F-101
      is about. Ran it — red here and in the target-label test. */
   const proposed = COLUMNS.filter((c) => c.targetState === PROPOSED).map((c) => c.key).sort();
-  assert.deepEqual(proposed, ["cost_usd", "narration_share", "pages_per_seam", "tape_of_runtime", "wall_min"]);
+  assert.deepEqual(proposed, ["cost_usd", "elapsed_min", "narration_share", "pages_per_seam", "tape_of_runtime"]);
   const settled = COLUMNS.filter((c) => c.targetState === SETTLED).map((c) => c.key).sort();
   assert.deepEqual(settled, ["calls_per_beat", "first_pass_pages", "intro_restates", "tokens", "ttl_a1_min", "unverified"]);
   /* The 80 % first-attempt target is §1.2's "first-attempt PAGE pass rate", so
@@ -215,7 +225,8 @@ test("every column with a target declares whether it is settled, and vice versa"
 test("a proposed target prints with `?` and a settled one prints plain", () => {
   /* MUTATION: `return n` (drop the `?`) in targetLabel(). */
   assert.equal(targetLabel(column("tape_of_runtime")), "0.700?");
-  assert.equal(targetLabel(column("wall_min")), "6.0?");
+  assert.equal(targetLabel(column("elapsed_min")), "6.0?");
+  assert.equal(targetLabel(column("wall_min")), "", "TM-10: the stage sum is not wall time and grades against nothing");
   assert.equal(targetLabel(column("first_pass_pages")), "0.80");
   assert.equal(targetLabel(column("tape_share")), "", "F-101: the report's tape/(tape+narration) grades against nothing");
   assert.equal(targetLabel(column("unverified")), "0");
@@ -451,7 +462,7 @@ test("an absent cell prints the dash and never a zero", () => {
   const table = formatTable([run4(), run9()]);
   const run4Line = table.split("\n").find((l) => l.trim().startsWith("run-4"));
   assert.equal(run4Line.includes("0"), false, `run 4's row must contain no zeros: ${run4Line}`);
-  assert.equal((run4Line.match(/—/g) || []).length, 19);
+  assert.equal((run4Line.match(/—/g) || []).length, 20);
 });
 
 test("the machine line is one line per run, and absent metrics survive as null", () => {
@@ -634,6 +645,157 @@ test("collectRows reads several reports into one table", () => {
   assert.deepEqual(rows.map((r) => r.values.run), ["run-4", "run-9"]);
   const table = formatTable(rows);
   assert.equal(table.split("\n").filter((l) => /^\s*run-\d/.test(l)).length, 2);
+});
+
+/* =================================================================== */
+/* GV-04 (TM-10). Elapsed time beside the stage sum; core/detail groups */
+/* =================================================================== */
+
+const run9Timings = () =>
+  JSON.parse(fs.readFileSync(path.join(FIXTURES, "out-9", "report.json"), "utf8")).entries[0].veracity.stageTimings;
+
+test("TM-10: run 9's stage timings span 2,676,202 ms, printed as 44.6 elapsed beside the 107.7 stage sum", () => {
+  /* MUTATION: `return stageTimings.reduce((sum, t) => sum + t.ms, 0)` in
+     spanMsOf() (the stage sum again), or `last = start` (drop `+ ms`). Ran
+     both: red. Run 9's four narrate stages ran side by side, so the sum is
+     6,460,925 ms and the clock 2,676,202 ms (04:38:34.525 to 05:23:10.727). */
+  assert.equal(spanMsOf(run9Timings()), 2676202);
+  const row = run9();
+  assert.equal(row.values.elapsed_min, 2676202 / 60000);
+  assert.equal(row.sources.elapsed_min, "derived");
+  assert.equal(formatCell(column("elapsed_min"), row), "44.6");
+  assert.equal(formatCell(column("wall_min"), row), "107.7");
+  const out = [];
+  main(["--format", "table", "--segments", path.join(FIXTURES, "segments.json"), path.join(FIXTURES, "out-9")], (s) => out.push(s));
+  const lines = out.join("\n").split("\n");
+  const header = lines[0].trim().split(/\s{2,}/);
+  const cells = lines.find((l) => l.trim().startsWith("run-9")).trim().split(/\s{2,}/);
+  assert.equal(cells[header.indexOf("stageSum m")], "107.7");
+  assert.equal(cells[header.indexOf("elapsed m")], "44.6");
+  assert.equal(header.indexOf("elapsed m"), header.indexOf("stageSum m") + 1, "elapsed sits beside the stage sum");
+});
+
+test("TM-10: a stage timing marked resumed is left out of the span", () => {
+  /* MUTATION: drop the `t.resumed === true` skip in spanMsOf(). Ran it: red.
+     A banked stage carries the EARLIER attempt's startedAt; keeping it would
+     stretch the span over the hours between the two attempts. */
+  const timings = [
+    { name: "understand", startedAt: "2026-09-12T01:00:00.000Z", ms: 60000, resumed: true },
+    { name: "spine", startedAt: "2026-09-12T04:00:00.000Z", ms: 30000 },
+    { name: "narrate:0", startedAt: "2026-09-12T04:00:30.000Z", ms: 90000 },
+    { name: "narrate:1", startedAt: "2026-09-12T04:00:30.000Z", ms: 60000 }
+  ];
+  assert.equal(spanMsOf(timings), 120000);
+  assert.equal(spanMsOf(timings.slice(0, 1)), null, "only resumed timings: nothing was measured this attempt");
+  const row = rowFor({ outcome: "generated", ms: 240000, veracity: { stageTimings: timings } }, { runId: "run-x" });
+  assert.equal(row.values.elapsed_min, 2);
+  assert.equal(row.values.wall_min, 4);
+});
+
+test("TM-10: a report's own elapsedMs wins over the derived span", () => {
+  /* MUTATION: `spanMsOf(v.stageTimings) ?? num(entry.elapsedMs)` in rowFor()
+     (the order flipped). Ran it: red. Reports written after the per-run log
+     (GV-01) carry elapsedMs. */
+  const row = rowFor(
+    { outcome: "generated", ms: 6460925, elapsedMs: 2700000, veracity: { stageTimings: run9Timings() } },
+    { runId: "run-10" }
+  );
+  assert.equal(row.values.elapsed_min, 45);
+  assert.equal(row.sources.elapsed_min, "derived");
+  /* A non-numeric elapsedMs is absent (rule 1) and the span is used instead. */
+  const junk = rowFor({ outcome: "generated", elapsedMs: "45 min", veracity: { stageTimings: run9Timings() } }, { runId: "run-10" });
+  assert.equal(junk.values.elapsed_min, 2676202 / 60000);
+});
+
+test("TM-10: no stage timings reads as absent elapsed, never as zero", () => {
+  /* MUTATION: `return first === null ? 0 : last - first` in spanMsOf(). Ran
+     it: red. Runs 4-8 predate stage timings; a zero-minute run is a fabricated
+     KPI. A timing with no parseable start or no ms is skipped, not zeroed. */
+  assert.equal(spanMsOf(undefined), null);
+  assert.equal(spanMsOf([]), null);
+  assert.equal(spanMsOf([{ name: "x", startedAt: "not a date", ms: 5 }, { name: "y", ms: 5 }]), null);
+  assert.equal(spanMsOf([{ name: "x", startedAt: "2026-09-12T04:00:00.000Z" }]), null);
+  const row = run4();
+  assert.equal(row.values.elapsed_min, null);
+  assert.equal(row.sources.elapsed_min, "absent");
+  assert.equal(formatCell(column("elapsed_min"), row), ABSENT);
+  assert.equal(row.values.wall_min, 4.44105, "the stage sum run 4 does carry is still printed");
+});
+
+test("core/detail: a detail column is in the JSONL and --wide, never in the committed markdown table", () => {
+  /* MUTATION: `return COLUMNS` unconditionally in tableColumns() (every column
+     in the committed header and the default table). Ran it: red. */
+  for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
+  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL), [], "every column today is core");
+  const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
+  COLUMNS.push(probe);
+  try {
+    const line = JSON.parse(jsonlLine(run9()));
+    const row = rowFromJsonl({ ...line, metrics: { ...line.metrics, probe_x: 7.25 } });
+    assert.equal(row.values.probe_x, 7.25);
+    assert.equal(JSON.parse(jsonlLine(row)).metrics.probe_x, 7.25, "the JSONL carries the detail column");
+    assert.equal(markdownHeader()[0].includes("probeX"), false, "the committed header stays core");
+    assert.equal(markdownRow(row).includes("7.3"), false);
+    assert.equal(formatTable([row]).includes("probeX"), false, "the default table is core only");
+    assert.equal(formatTable([row], { wide: true }).includes("probeX"), true, "--wide prints it");
+    assert.equal(tableColumns({ wide: true }).length, tableColumns().length + 1);
+  } finally {
+    COLUMNS.pop();
+  }
+  assert.equal(COLUMNS.includes(probe), false);
+});
+
+test("--wide is a flag the CLI parses and passes to the table", () => {
+  /* MUTATION: drop the `--wide` branch in parseArgs() (it then throws
+     "unknown flag"), or call `formatTable(rows)` without options in main().
+     Ran both: red. */
+  assert.equal(parseArgs(["x"]).wide, false);
+  assert.equal(parseArgs(["--wide", "x"]).wide, true);
+  const probe = { key: "probe_y", group: DETAIL, header: "probeY", from: "report", width: 6, kind: "number", digits: 0 };
+  COLUMNS.push(probe);
+  try {
+    const seg = path.join(FIXTURES, "segments.json");
+    const wide = [];
+    main(["--wide", "--format", "table", "--segments", seg, path.join(FIXTURES, "out-9")], (s) => wide.push(s));
+    assert.match(wide.join("\n"), /probeY/);
+    const narrow = [];
+    main(["--format", "table", "--segments", seg, path.join(FIXTURES, "out-9")], (s) => narrow.push(s));
+    assert.equal(narrow.join("\n").includes("probeY"), false);
+  } finally {
+    COLUMNS.pop();
+  }
+});
+
+test("the committed baseline keeps run 9's elapsed_min through a round trip, and runs 4-8 stay absent", () => {
+  /* MUTATION: delete `"elapsed_min":44.60...` from the run-9 baseline line, or
+     add `"elapsed_min":0` to run 8's metrics. Ran both: red. The run-9 line is
+     the only one patched; the other five are byte-for-byte what they were. */
+  const lines = fs
+    .readFileSync(path.join(HERE, "baseline.jsonl"), "utf8")
+    .split("\n")
+    .filter((l) => l.trim());
+  const nine = rowFromJsonl(lines[5]);
+  assert.equal(nine.values.run, "run-9");
+  assert.equal(nine.values.elapsed_min, 2676202 / 60000);
+  assert.equal(nine.sources.elapsed_min, "derived");
+  assert.equal(JSON.parse(jsonlLine(nine)).metrics.elapsed_min, 2676202 / 60000);
+  assert.equal(markdownRow(rowFromJsonl(jsonlLine(nine))), markdownRow(nine));
+  assert.match(markdownRow(nine), /^\| run-9 \| generated \| yes \| 107\.7 \| 44\.6 \|/);
+  for (const line of lines.slice(0, 5)) {
+    const row = rowFromJsonl(line);
+    assert.equal(row.values.elapsed_min, null, `${row.values.run} carries no stage timings`);
+    assert.equal(row.sources.elapsed_min, "absent");
+  }
+});
+
+test("the KPI doc no longer calls the stage sum the driver's elapsed time", () => {
+  /* MUTATION: restore the old provenance note ("`wall m` is the driver's own
+     per-prompt elapsed (`entry.ms`)"). Ran it: red. That note is what TM-10
+     found wrong: entry.ms is a sum over concurrent stages. */
+  const doc = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "generation-kpis.md"), "utf8");
+  assert.equal(/wall m` is the driver's own per-prompt elapsed/.test(doc), false);
+  assert.match(doc, /\| `elapsed m` \| ≤ 6 min p50 \| \*\*proposed \(D0\)\*\* \|/);
+  assert.match(doc, /\| `stageSum m` \| — \| — \|/);
 });
 
 /* ------------------------------------------------------------------ */
