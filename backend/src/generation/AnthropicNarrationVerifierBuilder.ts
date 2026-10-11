@@ -13,6 +13,7 @@ import type {
   VerifyClipBrief
 } from "./NarrationVerifierBuilder";
 import { createMessage } from "./anthropicCall";
+import { RawActVerifySchema } from "./replySchemas";
 
 /**
  * Real §4.7 verification via the Anthropic API — a SEPARATE call, and
@@ -59,32 +60,6 @@ import { createMessage } from "./anthropicCall";
 const MODEL = modelFor("sonnet");
 const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
-/* Q-03: one verdict per beat and one per seam of a whole act. F-97: each
- * names what it rests on (`restsOn`, ids of the act's source set) and a
- * carried beat names its carrier. Optional in the SCHEMA so a reply that
- * omits them is still valid JSON; `writeAct.ts` reads an absent `restsOn`
- * as "the seam's own claims" and refuses a declarative seam that rests on
- * nothing either way. */
-const RawActVerifySchema = z.object({
-  beats: z.array(
-    z.object({
-      beatId: z.string(),
-      carried: z.boolean(),
-      carriedBy: z.string().optional(),
-      restsOn: z.array(z.string()).optional(),
-      notes: z.string().optional()
-    })
-  ),
-  seams: z.array(
-    z.object({
-      seamId: z.string(),
-      claimsSupported: z.boolean(),
-      restsOn: z.array(z.string()).optional(),
-      contestedHandled: z.boolean(),
-      notes: z.string().optional()
-    })
-  )
-});
 const MAX_ACT_VERIFY_OUTPUT_TOKENS = 4000;
 
 function roughTokenEstimate(text: string): number {

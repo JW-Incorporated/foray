@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
@@ -7,6 +6,7 @@ import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnderstander";
 import { createMessage } from "./anthropicCall";
+import { ClaritySchema, IntentSchema, TitleRecaseSchema } from "./replySchemas";
 import { demotedNames, houseStyleTitle, titleStyleProblems } from "../copy/rules";
 
 /**
@@ -29,23 +29,6 @@ import { demotedNames, houseStyleTitle, titleStyleProblems } from "../copy/rules
 const MODEL = modelFor("haiku");
 const USD_PER_INPUT_TOKEN = costFor("haiku").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("haiku").usdPerOutputToken;
-
-const ClaritySchema = z.object({
-  ambiguous: z.boolean(),
-  readings: z.array(z.string()).max(3),
-  question: z.string().nullable()
-});
-
-const IntentSchema = z.object({
-  subject: z.string(),
-  angle: z.string(),
-  priorKnowledge: z.string(),
-  disappointment: z.string(),
-  /* F-64 — see `IntentUnderstandingSchema`. Optional here too: a model that
-     drops them costs a clamped fallback, not a re-ask. */
-  title: z.string().optional(),
-  summary: z.string().optional()
-});
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
@@ -228,7 +211,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
     }
     let restyled: string | undefined;
     try {
-      const parsed = z.object({ title: z.string() }).safeParse(JSON.parse(text.replace(/^[^{]*/, "").replace(/[^}]*$/, "")));
+      const parsed = TitleRecaseSchema.safeParse(JSON.parse(text.replace(/^[^{]*/, "").replace(/[^}]*$/, "")));
       restyled = parsed.success ? parsed.data.title.trim() : undefined;
     } catch {
       restyled = undefined;
