@@ -1594,7 +1594,7 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 40,
+  "tools/generation-bench/run.test.mjs": 48, // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
   /* The keyless-run transport (#697). This suite is the ONLY thing in the repo
      that can notice the relay losing a behaviour, and every one of those
      behaviours was bought by a finding that cost a run something: I-23's

@@ -25,6 +25,9 @@ duplicate, so re-reading an archived report is idempotent.
   all of them — the durations of tier-1 pool clips a candidate points at
   without minting come from `data/segments.json`, and a row the pool no longer
   holds cannot be measured.
+- The table shows the **core** columns. `run.mjs --wide` prints every column,
+  including the **detail** group later bench cards add, and the JSONL
+  (`--format jsonl`, `baseline.jsonl`) always carries every number column.
 - **This table grades nothing.** G-42a's own card says so: "a trend with a
   tolerance band rather than a hard pass/fail — LLM runs are non-deterministic
   and a hard gate would be flaky by construction." The targets below are here
@@ -39,7 +42,8 @@ harness; it is not something a run can pass or fail yet.
 
 | Column | Target | Settled? | Where it comes from |
 |---|---|---|---|
-| `wall m` | ≤ 6 min p50 | **proposed (D0)** | §1.2 prompt → finished, validated Foray, keyed after Phase 3 |
+| `stageSum m` | — | — | `entry.ms`: the SUM of the stage durations, so concurrent acts are counted once each (TM-10). Not wall time; the key stays `wall_min` so the baseline stays comparable |
+| `elapsed m` | ≤ 6 min p50 | **proposed (D0)** | §1.2 prompt → finished, validated Foray, keyed after Phase 3. First stage start to last stage end: the report's `elapsedMs` when it carries one, else the span of `veracity.stageTimings` (stages marked `resumed` left out) |
 | `ttlA1 m` | ≤ 0.5 min p50 | settled | §1.2 prompt → Act 1 playable (fix plan WS-D); §1.2 itself says the deck cannot reach it and names **D6** as the re-baseline |
 | `tapeSh` | — | — | NOT §1.2's row (F-101): the report's tape ÷ (tape + narration) |
 | `tape/rt` | ≥ 0.70 | **proposed (D0)** | §1.2 **tape share of runtime** — the row's own denominator |
@@ -102,15 +106,15 @@ the regression; it made the column uninterpretable.
 
 ## The trend
 
-| run | outcome | valid | wall m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| run | outcome | valid | stageSum m | elapsed m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 <!-- bench:rows:begin -->
-| run-4 | no-tape | no | 4.4 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| run-5 | generated | no | 40.6 | 0.1 | 49 | — | — | — | — | — | — | — | — | — | 0.67 | 2 | — | — | — | — | 100380 | — |
-| run-6 | generated | yes | 55.0 | 21.2 | 72 | — | 0.598 | 11 | 142.6 | 237.8 | — | — | — | — | 0.73 | 4 | — | — | — | 0.80 | 128592 | — |
-| run-7 | generated | yes | 63.9 | 20.4 | 84 | — | 0.595 | 10 | 102.5 | 181.4 | — | — | — | — | 0.55 | 10 | — | — | — | 1.03 | 156534 | — |
-| run-8 | generated | yes | 91.1 | 34.0 | 78 | — | 0.776 | 16 | 122.3 | 176.7 | — | — | — | — | 0.68 | 4 | 7 | — | — | 1.13 | 239347 | — |
-| run-9 | generated | yes | 107.7 | 38.7 | 69 | 0.684 | 0.557 | 10 | 107.5 | 188.3 | 0.86 | 0.316 | — | — | 0.05 | 8 | 0 | — | 0 | 0.55 | 128050 | — |
+| run-4 | no-tape | no | 4.4 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| run-5 | generated | no | 40.6 | — | 0.1 | 49 | — | — | — | — | — | — | — | — | — | 0.67 | 2 | — | — | — | — | 100380 | — |
+| run-6 | generated | yes | 55.0 | — | 21.2 | 72 | — | 0.598 | 11 | 142.6 | 237.8 | — | — | — | — | 0.73 | 4 | — | — | — | 0.80 | 128592 | — |
+| run-7 | generated | yes | 63.9 | — | 20.4 | 84 | — | 0.595 | 10 | 102.5 | 181.4 | — | — | — | — | 0.55 | 10 | — | — | — | 1.03 | 156534 | — |
+| run-8 | generated | yes | 91.1 | — | 34.0 | 78 | — | 0.776 | 16 | 122.3 | 176.7 | — | — | — | — | 0.68 | 4 | 7 | — | — | 1.13 | 239347 | — |
+| run-9 | generated | yes | 107.7 | 44.6 | 38.7 | 69 | 0.684 | 0.557 | 10 | 107.5 | 188.3 | 0.86 | 0.316 | — | — | 0.05 | 8 | 0 | — | 0 | 0.55 | 128050 | — |
 <!-- bench:rows:end -->
 
 ## Provenance of the backfilled rows (runs 4–9)
@@ -131,14 +135,24 @@ are recorded here rather than reconciled by hand:
   clip columns are `—`. Its `narrationCallsPerBeat` is also absent: that run's
   report carries only the older `callsPerBeat` (requests per *attempted page*),
   a different denominator, and the harness does not substitute one for the other.
-- **`wall m` is the driver's own per-prompt elapsed (`entry.ms`)**, not the
-  operator's observed window. For runs 5, 6 and 7 the two agree to a tenth of a
-  minute (40.6 / 55.0 / 63.9 min against the ledger's 40.6 / 55 / 64). For runs
-  8 and 9 the report is longer than the window the ledger records (91.1 and
-  107.7 min against ~46 and ~32), because `ms` spans everything the driver did
-  for that prompt — the relay's answer-loop waits included — while the ledger
-  timestamps the session the operator watched. The report's number is the one
-  in this table because it is the one a scheduled bench can read.
+- **`stageSum m` (the column once headed `wall m`) is the sum of the stage
+  durations, not wall time (TM-10).** `generateForays.ts` writes `entry.ms` as
+  `outcome.timings.reduce((sum, t) => sum + t.ms, 0)`, and the acts narrate
+  concurrently, so every overlapping narrate stage is counted in full. On run 9
+  four narrate stages ran side by side and the sum reads 107.7 min where the
+  clock read 44.6. An earlier version of this note called `ms` the driver's
+  per-prompt elapsed, padded by relay waits; that was wrong. For runs 5, 6 and
+  7 the sum agrees with the ledger's window to a tenth of a minute (40.6 / 55.0
+  / 63.9 min against 40.6 / 55 / 64); for runs 8 and 9 it is longer than the
+  window the ledger records (91.1 and 107.7 min against ~46 and ~32).
+- **`elapsed m` is first stage start to last stage end.** A report that
+  carries `elapsedMs` (the per-run log's own figure) is read as is; an older
+  report gets the span of its `veracity.stageTimings`, leaving out any stage
+  marked `resumed` (its start is an earlier attempt's clock). Run 9 is the only
+  backfilled run whose report carries stage timings, so it is the only row with
+  a number: 2,676,202 ms, 44.6 min. Runs 4–8 are `—`, not zero. The ledger's
+  ~32 min for run 9 is the window the operator watched, not the span of the
+  report's own stages; the table carries the report's.
 - **`ttlA1 m` agrees with the ledger on every run that quotes it** (21.2, 20.4,
   34.0 min for runs 6, 7, 8). Run 5's 0.1 min is the artefact the ledger names:
   act 1 was banked, so the resumed run had a playable partial immediately.
