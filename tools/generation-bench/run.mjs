@@ -76,6 +76,12 @@
  *   node tools/generation-bench/run.mjs --format jsonl  out-4 out-5 ... > baseline.jsonl
  *   node tools/generation-bench/run.mjs --append docs/curation/generation-kpis.md out-9/
  *   node tools/generation-bench/run.mjs --candidates <dir> --segments <segments.json>
+ *   node tools/generation-bench/run.mjs --wide out-9/        # every column, detail included
+ *
+ * COLUMN GROUPS. Every column is `core` or `detail`. The printed table and the
+ * committed KPI doc show the core columns; `--wide` prints every column; the
+ * JSONL always carries every number column. A later measurement lands as a
+ * `detail` column without re-cutting the committed table.
  *
  * A directory argument is read as `<dir>/report.json`. The run id is the
  * directory's name with a leading `out-` rewritten to `run-` (the generation
@@ -120,28 +126,46 @@ export const SETTLED = "settled";
  * it. Nothing in this file compares a value to a target.
  */
 export const COLUMNS = [
-  { key: "run", header: "run", from: "derived", width: 7, kind: "text" },
-  { key: "outcome", header: "outcome", from: "report", width: 9, kind: "text" },
+  { key: "run", header: "run", from: "derived", width: 7, kind: "text", group: "core" },
+  { key: "outcome", header: "outcome", from: "report", width: 9, kind: "text", group: "core" },
   /* `outcome` is NOT the same question as "did this run produce a Foray".
      Run 5's row reads `outcome: "generated"` with `detail: "INVALID … D5 FAIL
      …"`: the pipeline generated a candidate and `check-forays` refused it.
      `generateForays.ts` counts its own publishable runs by the `detail`
      prefix (`report.filter(r => r.detail.startsWith("OK "))`), so this column
      asks the driver's own question rather than inventing a second one. */
-  { key: "valid", header: "valid", from: "derived", width: 5, kind: "text" },
+  { key: "valid", header: "valid", from: "derived", width: 5, kind: "text", group: "core" },
+  /* TM-10: `entry.ms` is NOT wall time. generateForays.ts writes it as the SUM
+     of the stage durations, and the acts narrate concurrently, so run 9's four
+     overlapping narrate stages make 107.7 min of "ms" out of 44.6 min on the
+     clock. The key stays `wall_min` so the committed baseline stays comparable;
+     the header says what the number is. `elapsed_min` is the clock. */
   {
     key: "wall_min",
-    header: "wall m",
+    group: "core",
+    header: "stageSum m",
     from: "derived",
-    width: 6,
+    width: 10,
+    kind: "number",
+    digits: 1,
+    targetNote: "sum of stage durations; concurrent acts counted twice (TM-10)"
+  },
+  {
+    key: "elapsed_min",
+    group: "core",
+    header: "elapsed m",
+    from: "derived",
+    width: 9,
     kind: "number",
     digits: 1,
     target: 6,
     targetState: PROPOSED,
-    targetNote: "§1.2 prompt -> finished Foray, <= 6 min p50 keyed (proposed, D0)"
+    targetNote:
+      "§1.2 prompt -> finished Foray, <= 6 min p50 keyed (proposed, D0); first stage start to last stage end (`elapsedMs` when the report carries it)"
   },
   {
     key: "ttl_a1_min",
+    group: "core",
     header: "ttlA1 m",
     from: "derived",
     width: 7,
@@ -151,9 +175,10 @@ export const COLUMNS = [
     targetState: SETTLED,
     targetNote: "§1.2 prompt -> act 1 playable, <= 30 s p50 (fix plan WS-D; D6 re-baseline pending)"
   },
-  { key: "calls", header: "calls", from: "report", width: 5, kind: "number", digits: 0 },
+  { key: "calls", header: "calls", from: "report", width: 5, kind: "number", digits: 0, group: "core" },
   {
     key: "tape_share",
+    group: "core",
     header: "tapeSh",
     from: "report",
     width: 6,
@@ -164,6 +189,7 @@ export const COLUMNS = [
   },
   {
     key: "tape_of_runtime",
+    group: "core",
     header: "tape/rt",
     from: "candidate",
     width: 7,
@@ -174,9 +200,10 @@ export const COLUMNS = [
     targetNote:
       "§1.2 tape share OF RUNTIME, >= 70 % (proposed, D0) — the roadmap's own 59-61 %/78 % reading: tape seconds over the candidate's runtimeSec"
   },
-  { key: "clips", header: "clips", from: "candidate", width: 5, kind: "number", digits: 0 },
+  { key: "clips", header: "clips", from: "candidate", width: 5, kind: "number", digits: 0, group: "core" },
   {
     key: "clip_mean_s",
+    group: "core",
     header: "clip mean",
     from: "candidate",
     width: 9,
@@ -184,9 +211,10 @@ export const COLUMNS = [
     digits: 1,
     targetNote: "Q-01 cuts clips to a thought, 60-1,800 s; no §1.2 target"
   },
-  { key: "clip_max_s", header: "clip max", from: "candidate", width: 8, kind: "number", digits: 1 },
+  { key: "clip_max_s", header: "clip max", from: "candidate", width: 8, kind: "number", digits: 1, group: "core" },
   {
     key: "pages_per_seam",
+    group: "core",
     header: "pg/seam",
     from: "report",
     width: 7,
@@ -198,6 +226,7 @@ export const COLUMNS = [
   },
   {
     key: "narration_share",
+    group: "core",
     header: "narrSh",
     from: "report",
     width: 6,
@@ -209,6 +238,7 @@ export const COLUMNS = [
   },
   {
     key: "first_pass_pages",
+    group: "core",
     header: "1stPg",
     from: "report",
     width: 5,
@@ -220,6 +250,7 @@ export const COLUMNS = [
   },
   {
     key: "first_pass_beats",
+    group: "core",
     header: "1stBt",
     from: "report",
     width: 5,
@@ -229,6 +260,7 @@ export const COLUMNS = [
   },
   {
     key: "first_pass",
+    group: "core",
     header: "1stPass?",
     from: "report",
     width: 8,
@@ -239,6 +271,7 @@ export const COLUMNS = [
   },
   {
     key: "unverified",
+    group: "core",
     header: "unver",
     from: "report",
     width: 5,
@@ -248,10 +281,11 @@ export const COLUMNS = [
     targetState: SETTLED,
     targetNote: "F-51: any page kept `verified: false` refuses publish (evaluateVeracityGate)"
   },
-  { key: "synth_verified", header: "synth", from: "report", width: 5, kind: "number", digits: 0 },
-  { key: "seed_lost", header: "seedLost", from: "report", width: 8, kind: "number", digits: 0 },
+  { key: "synth_verified", header: "synth", from: "report", width: 5, kind: "number", digits: 0, group: "core" },
+  { key: "seed_lost", header: "seedLost", from: "report", width: 8, kind: "number", digits: 0, group: "core" },
   {
     key: "intro_restates",
+    group: "core",
     header: "introRe",
     from: "report",
     width: 7,
@@ -263,6 +297,7 @@ export const COLUMNS = [
   },
   {
     key: "calls_per_beat",
+    group: "core",
     header: "call/bt",
     from: "report",
     width: 7,
@@ -274,6 +309,7 @@ export const COLUMNS = [
   },
   {
     key: "tokens",
+    group: "core",
     header: "tokens",
     from: "report",
     width: 7,
@@ -285,6 +321,7 @@ export const COLUMNS = [
   },
   {
     key: "cost_usd",
+    group: "core",
     header: "cost $",
     from: "report",
     width: 6,
@@ -295,6 +332,18 @@ export const COLUMNS = [
     targetNote: "§1.2 cost per Foray inside EPISODE_BUDGET_USD $10 (proposed, D0); no report carries `usage` yet"
   }
 ];
+
+/** Column groups. A `core` column is in the committed KPI table
+ * (markdownHeader / markdownRow) and the default printed table; a `detail`
+ * column is carried in every JSONL line and printed only under `--wide`, so a
+ * later card can add a measurement without re-cutting the committed table. */
+export const CORE = "core";
+export const DETAIL = "detail";
+
+/** The columns a table prints: core only, or every column when `wide`. */
+export function tableColumns(options = {}) {
+  return options.wide ? COLUMNS : COLUMNS.filter((col) => col.group === CORE);
+}
 
 /** What an absent cell prints as. Never `0`, never an empty string — a blank
  * column in a trend table reads as "nothing happened" rather than "nobody
@@ -343,6 +392,34 @@ export function num(value) {
 export function minutes(ms) {
   const v = num(ms);
   return v === null ? null : v / 60000;
+}
+
+/**
+ * TM-10: the clock time a run's stages covered — the latest stage end minus
+ * the earliest stage start — from the `stageTimings` every report since run 9
+ * carries (`{ name, startedAt, ms }`).
+ *
+ * Summing the `ms` (which is what `entry.ms` is) counts the concurrent acts'
+ * narrate stages once each; the span counts the clock once. A timing marked
+ * `resumed: true` was banked by an EARLIER attempt and its `startedAt` is that
+ * attempt's clock, so it is left out — keeping it would stretch the span
+ * across the gap between the two attempts. Null (absent, rule 1) when there is
+ * no usable timing at all; a timing with no parseable start or no `ms` is
+ * skipped rather than read as zero.
+ */
+export function spanMsOf(stageTimings) {
+  if (!Array.isArray(stageTimings)) return null;
+  let first = null;
+  let last = null;
+  for (const t of stageTimings) {
+    if (!t || t.resumed === true) continue;
+    const start = typeof t.startedAt === "string" ? Date.parse(t.startedAt) : Number.NaN;
+    const ms = num(t.ms);
+    if (!Number.isFinite(start) || ms === null) continue;
+    if (first === null || start < first) first = start;
+    if (last === null || start + ms > last) last = start + ms;
+  }
+  return first === null ? null : last - first;
 }
 
 /* ------------------------------------------------------------------ */
@@ -465,6 +542,10 @@ export function rowFor(entry, context = {}) {
     outcome: typeof entry.outcome === "string" ? entry.outcome : null,
     valid: typeof entry.detail === "string" ? (entry.detail.startsWith("OK ") ? "yes" : "no") : null,
     wall_min: minutes(entry.ms),
+    /* A report that records its own elapsed time (`elapsedMs`, the per-run
+       RunLog's) is the authority; older reports get the span of their stage
+       timings; reports with neither (runs 4-8) are absent. */
+    elapsed_min: minutes(num(entry.elapsedMs) ?? spanMsOf(v.stageTimings)),
     ttl_a1_min: minutes(entry.ttlA1Ms),
     calls: num(entry.calls),
     /* F-101 put the denominator in the name; runs 4–9 carry the old one. The
@@ -551,20 +632,22 @@ export function targetLabel(col) {
 }
 
 /** The human table: a header, one row per run, then the legend that says what
- * each column is, where it came from, and whether its target is settled. */
-export function formatTable(rows) {
-  const widths = COLUMNS.map((col) =>
+ * each column is, where it came from, and whether its target is settled. Core
+ * columns only, unless `options.wide` (the CLI's `--wide`) asks for every one. */
+export function formatTable(rows, options = {}) {
+  const columns = tableColumns(options);
+  const widths = columns.map((col) =>
     Math.max(col.header.length, col.width, ...rows.map((row) => formatCell(col, row).length))
   );
   const line = (cells) => cells.map((cell, i) => String(cell).padStart(widths[i])).join("  ");
-  const out = [line(COLUMNS.map((c) => c.header)), line(widths.map((w) => "-".repeat(w)))];
-  for (const row of rows) out.push(line(COLUMNS.map((col) => formatCell(col, row))));
+  const out = [line(columns.map((c) => c.header)), line(widths.map((w) => "-".repeat(w)))];
+  for (const row of rows) out.push(line(columns.map((col) => formatCell(col, row))));
 
   out.push("");
   out.push(`${ABSENT} = the report does not carry it (never read as zero).  * = measured over some of the clips, not all.`);
   out.push("targets: a bare number is SETTLED; a number with ? is PROPOSED and waits on founder decision D0.");
   out.push("");
-  for (const col of COLUMNS) {
+  for (const col of columns) {
     const target = targetLabel(col);
     const note = col.targetNote || "";
     if (!target && !note) continue;
@@ -636,9 +719,10 @@ export function rowFromJsonl(line) {
 export const ROWS_BEGIN = "<!-- bench:rows:begin -->";
 export const ROWS_END = "<!-- bench:rows:end -->";
 
-/** One markdown table row, `| run | … |`. */
+/** One markdown table row, `| run | … |`. Core columns only: the committed
+ * KPI table is the core table, and a `detail` column lives in the JSONL. */
 export function markdownRow(row) {
-  return `| ${COLUMNS.map((col) => formatCell(col, row)).join(" | ")} |`;
+  return `| ${tableColumns().map((col) => formatCell(col, row)).join(" | ")} |`;
 }
 
 /** The two header lines the spliced rows sit under. The KPI doc commits these
@@ -646,7 +730,8 @@ export function markdownRow(row) {
  * equals this — so adding a column cannot silently shift every cell one place
  * left in a table nobody re-generates. */
 export function markdownHeader() {
-  return [`| ${COLUMNS.map((c) => c.header).join(" | ")} |`, `|${COLUMNS.map(() => "---").join("|")}|`];
+  const columns = tableColumns();
+  return [`| ${columns.map((c) => c.header).join(" | ")} |`, `|${columns.map(() => "---").join("|")}|`];
 }
 
 /**
@@ -691,7 +776,7 @@ export function spliceRows(doc, rows) {
 /* ------------------------------------------------------------------ */
 
 export function parseArgs(argv) {
-  const args = { targets: [], format: "both", candidatesDir: null, segments: null, runId: null, append: null };
+  const args = { targets: [], format: "both", candidatesDir: null, segments: null, runId: null, append: null, wide: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--format") args.format = argv[++i];
@@ -699,6 +784,7 @@ export function parseArgs(argv) {
     else if (a === "--segments") args.segments = argv[++i];
     else if (a === "--run-id") args.runId = argv[++i];
     else if (a === "--append") args.append = argv[++i];
+    else if (a === "--wide") args.wide = true;
     else if (a.startsWith("--")) throw new Error(`unknown flag ${a}`);
     else args.targets.push(a);
   }
@@ -726,7 +812,7 @@ export function collectRows(args) {
 export function main(argv, out = console.log) {
   const args = parseArgs(argv);
   const rows = collectRows(args);
-  if (args.format === "both" || args.format === "table") out(formatTable(rows));
+  if (args.format === "both" || args.format === "table") out(formatTable(rows, { wide: args.wide }));
   if (args.format === "both") out("");
   if (args.format === "both" || args.format === "jsonl") for (const row of rows) out(jsonlLine(row));
   if (args.append) {
