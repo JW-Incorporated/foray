@@ -64,7 +64,28 @@
 
    --dry-run lists, HEADs and GETs as usual (so quarantines are reported),
    writes no body and no state file, and prints the state it would have
-   written followed by the summary line. */
+   written followed by the summary line.
+
+   Two phases and the disk guard (GV-06 / W3-01, docs/roadmap/generation-v2.md).
+   Phase A walks the listing and keeps the candidates (the same parseBodyKey,
+   show map, --show and --limit rules as before, in listing order), then
+   sums needBytes: every candidate whose local file is absent or a different
+   size, at its listed size (MAX_OBJECT_BYTES when the listing gave none;
+   inventory.mjs fetchNeedBytes). Before the first HEAD or GET,
+   inventory.mjs ensureDiskSpace refuses the run with SyncError DISK_SPACE
+   when free - needBytes < --min-free-gb (default 20), and nothing is
+   written. Phase B is the per-object loop above; it re-checks free space
+   every DISK_RECHECK_WRITES writes against the bytes still to come and stops
+   with DISK_SPACE (no state file) when the margin is gone. Under --dry-run
+   the verdict is printed and never stops the run. --min-free-gb 0 turns the
+   guard off entirely (no statfs), which is the old behaviour. The CLI exits
+   2 on DISK_SPACE.
+
+   --list-only (inventory.mjs) lists the bucket (prefix '' unless --prefix
+   is given) and nothing else: no HEAD, no GET, no body written. It writes
+   the inventory to --report (default <out>/r2-inventory.json, i.e.
+   data-local/transcripts/r2-inventory.json) and prints the markdown table
+   for #1163. */
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve as resolvePath, sep } from "node:path";
 import { isEntryScript } from "../ci/entry.mjs";
@@ -72,12 +93,19 @@ import { isEntryScript } from "../ci/entry.mjs";
 import { TRANSCRIPT_SOURCES } from "../segments/merge-segments.mjs";
 import { writeJsonAtomic } from "../segments/sweep-transcripts.mjs";
 import { NORMALIZED_PREFIX, RAW_PREFIX, ROOT, SYNC_STATE_FILE, TRANSCRIPTS_DIR } from "./config.mjs";
+import { diskVerdict, ensureDiskSpace, fetchNeedBytes, GB, inventoryFromListing, inventoryMarkdown, localSizeOf } from "./inventory.mjs";
 import { createR2Client, getObject, listPrefix, loadR2Credentials, sha256 } from "./r2-client.mjs";
 import { buildShowMap, localDirFor, resolveShowDir } from "./show-map.mjs";
 
 export const STATE_FILE_NAME = basename(SYNC_STATE_FILE);
+export const REPORT_FILE_NAME = "r2-inventory.json";
+export const DEFAULT_MIN_FREE_GB = 20;
+export const DISK_RECHECK_WRITES = 200;
+export const DISK_SPACE_EXIT_CODE = 2;
 export const USAGE =
-  "node tools/foraycorpus-export/sync-r2.mjs [--out <dir>] [--raw] [--dry-run] [--prefix <prefix>] [--limit <n>] [--show <dir|show_id>]";
+  "node tools/foraycorpus-export/sync-r2.mjs [--out <dir>] [--raw] [--dry-run] [--prefix <prefix>] [--limit <n>] [--show <dir|show_id>] [--min-free-gb <n>]" +
+  " | --list-only [--out <dir>] [--prefix <prefix>] [--report <file>]";
+const LIST_ONLY_REFUSES = Object.freeze(["raw", "dryRun", "limit", "showFilter"]);
 
 const KINDS = Object.freeze({ normalized: "normalized", raw: "raw" });
 
@@ -90,11 +118,26 @@ export class SyncError extends Error {
 }
 
 /**
- * `{out, raw, dryRun, prefix, limit, showFilter}` from argv. An unknown flag,
- * a flag missing its value or a non-positive --limit throws SyncError.
+ * `{out, raw, dryRun, prefix, limit, showFilter, minFreeGb, listOnly, report}`
+ * from argv. An unknown flag, a flag missing its value, a non-positive
+ * --limit or a negative --min-free-gb throws SyncError, and so does
+ * --list-only beside --raw, --dry-run, --limit or --show (it fetches
+ * nothing, so they mean nothing). `report` is null unless --report is given
+ * (runListOnly then writes <out>/REPORT_FILE_NAME).
  */
 export function parseSyncArgs(argv) {
-  const args = { out: TRANSCRIPTS_DIR, raw: false, dryRun: false, prefix: NORMALIZED_PREFIX, limit: Infinity, showFilter: null };
+  const args = {
+    out: TRANSCRIPTS_DIR,
+    raw: false,
+    dryRun: false,
+    prefix: NORMALIZED_PREFIX,
+    limit: Infinity,
+    showFilter: null,
+    minFreeGb: DEFAULT_MIN_FREE_GB,
+    listOnly: false,
+    report: null,
+  };
+  let prefixGiven = false;
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     if (flag === "--raw") {
@@ -105,6 +148,10 @@ export function parseSyncArgs(argv) {
       args.dryRun = true;
       continue;
     }
+    if (flag === "--list-only") {
+      args.listOnly = true;
+      continue;
+    }
     const value = argv[i + 1];
     const needsValue = () => {
       if (value === undefined || value.startsWith("--")) throw new SyncError("MISSING_VALUE", `${flag} needs a value`);
@@ -112,13 +159,27 @@ export function parseSyncArgs(argv) {
       return value;
     };
     if (flag === "--out") args.out = needsValue();
-    else if (flag === "--prefix") args.prefix = needsValue();
+    else if (flag === "--prefix") {
+      args.prefix = needsValue();
+      prefixGiven = true;
+    } else if (flag === "--report") args.report = needsValue();
     else if (flag === "--show") args.showFilter = needsValue();
+    else if (flag === "--min-free-gb") {
+      const n = Number(needsValue());
+      if (!Number.isFinite(n) || n < 0) throw new SyncError("BAD_MIN_FREE", `--min-free-gb must be a number >= 0, got ${JSON.stringify(value)}`);
+      args.minFreeGb = n;
+    }
     else if (flag === "--limit") {
       const n = Number(needsValue());
       if (!Number.isInteger(n) || n <= 0) throw new SyncError("BAD_LIMIT", `--limit must be a positive integer, got ${JSON.stringify(value)}`);
       args.limit = n;
     } else throw new SyncError("UNKNOWN_FLAG", `${JSON.stringify(flag)}; usage: ${USAGE}`);
+  }
+  if (args.listOnly) {
+    const fresh = parseSyncArgs([]);
+    const clash = LIST_ONLY_REFUSES.filter((k) => args[k] !== fresh[k]);
+    if (clash.length > 0) throw new SyncError("LIST_ONLY_FLAGS", `--list-only fetches nothing and takes only --out, --prefix and --report; got ${clash.join(", ")}`);
+    if (!prefixGiven) args.prefix = "";
   }
   return args;
 }
@@ -197,7 +258,7 @@ function bodiesOnDisk(dirPath) {
 const listingPrefix = (p) => (p.endsWith("/") ? p : `${p}/`);
 
 /**
- * @returns {Promise<{state: object, summary: string}>}
+ * @returns {Promise<{state: object, summary: string, disk: object | null}>}
  */
 export async function syncR2({
   client,
@@ -212,6 +273,8 @@ export async function syncR2({
   now = () => new Date(),
   commands = {},
   log = (line) => console.log(line),
+  minFreeGb = DEFAULT_MIN_FREE_GB,
+  statfs,
 } = {}) {
   const prefixes = [listingPrefix(prefix)];
   if (raw && !prefixes[0].startsWith(listingPrefix(RAW_PREFIX))) prefixes.push(listingPrefix(RAW_PREFIX));
@@ -221,8 +284,11 @@ export async function syncR2({
   const unmapped = new Map(); // r2 dir -> objects
   const shows = new Map(); // localDir -> {show_id, via}
   const wouldWrite = new Map(); // localDir -> Set(file), dry run only
-  let candidates = 0;
 
+  // Phase A: list and filter, no HEAD and no GET. Each candidate keeps its
+  // local path (or the PATH_ESCAPE it will be quarantined for) and the bytes
+  // a fetch would add.
+  const candidates = [];
   walk: for (const listed of prefixes) {
     for await (const obj of listPrefix(client, bucket, listed, { ListObjectsV2Command: commands.ListObjectsV2Command })) {
       counts.objects_seen += 1;
@@ -234,62 +300,84 @@ export async function syncR2({
       const mapped = resolveShowDir(showMap, parsed.dir);
       const localDir = mapped ? localDirFor(mapped.show_id) : parsed.dir;
       if (showFilter !== null && showFilter !== parsed.dir && showFilter !== localDir && showFilter !== mapped?.show_id) continue;
-      if (candidates >= limit) break walk;
-      candidates += 1;
-
-      let localPath;
+      if (candidates.length >= limit) break walk;
+      let localPath = null;
+      let need = 0;
       try {
         localPath = bodyPath(out, parsed.kind, localDir, parsed.file);
+        need = fetchNeedBytes(obj.size, localSizeOf(localPath));
       } catch (e) {
         if (e.code !== "PATH_ESCAPE") throw e;
-        quarantined.push({ key: obj.key, reason: "PATH_ESCAPE" });
-        continue;
       }
-      if (!mapped) unmapped.set(parsed.dir, (unmapped.get(parsed.dir) ?? 0) + 1);
-      if (parsed.kind === KINDS.normalized && !shows.has(localDir)) {
-        shows.set(localDir, mapped ? { show_id: mapped.show_id, via: mapped.via } : { show_id: null, via: "unmapped" });
-      }
+      candidates.push({ obj, parsed, mapped, localDir, localPath, need });
+    }
+  }
 
-      if (existsSync(localPath)) {
-        const localSize = statSync(localPath).size;
-        if (typeof obj.size !== "number" || localSize === obj.size) {
-          const meta = await headSha256(client, bucket, obj.key, commands.HeadObjectCommand);
-          const same = meta ? sha256(readFileSync(localPath)) === String(meta).toLowerCase() : localSize === obj.size;
-          if (same) {
-            counts.skipped_same += 1;
-            continue;
-          }
+  const guardOn = minFreeGb > 0;
+  const minFreeBytes = minFreeGb * GB;
+  const statfsOpt = statfs ? { statfs } : {};
+  let remainingNeed = candidates.reduce((sum, c) => sum + c.need, 0);
+  let disk = null;
+  if (guardOn) {
+    disk = diskVerdict({ path: out, needBytes: remainingNeed, minFreeBytes, ...statfsOpt });
+    if (dryRun) log(`sync-r2: disk guard ${disk.ok ? "ok" : "WOULD REFUSE"} (${disk.message}; dry run, not enforced)`);
+    else if (!disk.ok) throw new SyncError("DISK_SPACE", disk.message);
+  }
+
+  // Phase B: the per-object loop, in listing order.
+  for (const { obj, parsed, mapped, localDir, localPath, need } of candidates) {
+    remainingNeed -= need;
+    if (localPath === null) {
+      quarantined.push({ key: obj.key, reason: "PATH_ESCAPE" });
+      continue;
+    }
+    if (!mapped) unmapped.set(parsed.dir, (unmapped.get(parsed.dir) ?? 0) + 1);
+    if (parsed.kind === KINDS.normalized && !shows.has(localDir)) {
+      shows.set(localDir, mapped ? { show_id: mapped.show_id, via: mapped.via } : { show_id: null, via: "unmapped" });
+    }
+
+    if (existsSync(localPath)) {
+      const localSize = statSync(localPath).size;
+      if (typeof obj.size !== "number" || localSize === obj.size) {
+        const meta = await headSha256(client, bucket, obj.key, commands.HeadObjectCommand);
+        const same = meta ? sha256(readFileSync(localPath)) === String(meta).toLowerCase() : localSize === obj.size;
+        if (same) {
+          counts.skipped_same += 1;
+          continue;
         }
       }
+    }
 
-      const got = await getObject(client, bucket, obj.key, { GetObjectCommand: commands.GetObjectCommand });
-      if (got.sha256Meta && sha256(got.body) !== String(got.sha256Meta).toLowerCase()) {
-        quarantined.push({ key: obj.key, reason: "SHA_MISMATCH" });
+    const got = await getObject(client, bucket, obj.key, { GetObjectCommand: commands.GetObjectCommand });
+    if (got.sha256Meta && sha256(got.body) !== String(got.sha256Meta).toLowerCase()) {
+      quarantined.push({ key: obj.key, reason: "SHA_MISMATCH" });
+      continue;
+    }
+    if (parsed.kind === KINDS.normalized) {
+      let body;
+      try {
+        body = JSON.parse(got.body.toString("utf8"));
+      } catch {
+        quarantined.push({ key: obj.key, reason: "BAD_JSON" });
         continue;
       }
+      const bad = bodyShapeError(body);
+      if (bad) {
+        quarantined.push({ key: obj.key, reason: `BAD_SHAPE:${bad}` });
+        continue;
+      }
+    }
+    if (dryRun) {
       if (parsed.kind === KINDS.normalized) {
-        let body;
-        try {
-          body = JSON.parse(got.body.toString("utf8"));
-        } catch {
-          quarantined.push({ key: obj.key, reason: "BAD_JSON" });
-          continue;
-        }
-        const bad = bodyShapeError(body);
-        if (bad) {
-          quarantined.push({ key: obj.key, reason: `BAD_SHAPE:${bad}` });
-          continue;
-        }
+        if (!wouldWrite.has(localDir)) wouldWrite.set(localDir, new Set());
+        wouldWrite.get(localDir).add(parsed.file);
       }
-      if (dryRun) {
-        if (parsed.kind === KINDS.normalized) {
-          if (!wouldWrite.has(localDir)) wouldWrite.set(localDir, new Set());
-          wouldWrite.get(localDir).add(parsed.file);
-        }
-      } else {
-        writeBytesAtomic(localPath, got.body);
-      }
-      counts.written += 1;
+    } else {
+      writeBytesAtomic(localPath, got.body);
+    }
+    counts.written += 1;
+    if (guardOn && !dryRun && counts.written % DISK_RECHECK_WRITES === 0) {
+      ensureDiskSpace({ path: out, needBytes: remainingNeed, minFreeBytes, ...statfsOpt });
     }
   }
 
@@ -324,7 +412,40 @@ export async function syncR2({
     writeJsonAtomic(join(out, STATE_FILE_NAME), state);
   }
   log(summary);
-  return { state, summary };
+  return { state, summary, disk };
+}
+
+/**
+ * --list-only: one listing under `prefix` ('' lists the whole bucket), no
+ * HEAD and no GET. Writes {version, listed_at, bucket, prefix, ...inventory}
+ * to `report` (default <out>/REPORT_FILE_NAME) and logs the markdown table.
+ * @returns {Promise<{state: null, inventory: object, markdown: string, reportPath: string, summary: string}>}
+ */
+export async function runListOnly({
+  client,
+  bucket,
+  out = TRANSCRIPTS_DIR,
+  prefix = "",
+  report = null,
+  showMap = new Map(),
+  now = () => new Date(),
+  commands = {},
+  log = (line) => console.log(line),
+  statLocal,
+} = {}) {
+  const listed = [];
+  for await (const obj of listPrefix(client, bucket, prefix, { ListObjectsV2Command: commands.ListObjectsV2Command })) {
+    listed.push({ key: obj.key, size: obj.size });
+  }
+  const inventory = inventoryFromListing(listed, { out, showMap, ...(statLocal ? { statLocal } : {}) });
+  const listedAt = now().toISOString();
+  const reportPath = report ?? join(out, REPORT_FILE_NAME);
+  writeJsonAtomic(reportPath, { version: 1, listed_at: listedAt, bucket, prefix, ...inventory });
+  const markdown = inventoryMarkdown(inventory, { bucket, prefix, listedAt });
+  const summary = `sync-r2 --list-only: objects=${inventory.objects} bytes=${inventory.bytes} unknown_size=${inventory.unknownSizeObjects} report=${reportPath}`;
+  log(markdown);
+  log(summary);
+  return { state: null, inventory, markdown, reportPath, summary };
 }
 
 /** Reads one data/ file, or null when it is absent (the map then has fewer
@@ -337,7 +458,9 @@ function readDataJson(name) {
 /**
  * The CLI run: parse argv, read credentials, build the show map from data/,
  * sync. Returns syncR2's `{state, summary}`. Exported so rebuild-index.mjs
- * (PKG-14) syncs in its own process and warms from the returned state.
+ * (PKG-14) syncs in its own process and warms from the returned state. With
+ * --list-only it returns runListOnly's result, whose `state` is null (no
+ * show is synced, so rebuild-index warms nothing).
  */
 export async function runSync(argv) {
   const args = parseSyncArgs(argv);
@@ -349,12 +472,13 @@ export async function runSync(argv) {
     breadth: readDataJson("breadth-transcript-yield.json"),
   });
   if (collisions.length > 0) console.error(`sync-r2: ${collisions.length} show-map collision(s); first writer kept`);
+  if (args.listOnly) return runListOnly({ client, bucket: creds.bucket, out: args.out, prefix: args.prefix, report: args.report, showMap: map });
   return syncR2({ ...args, client, bucket: creds.bucket, showMap: map });
 }
 
 if (isEntryScript(import.meta.url)) {
   runSync(process.argv.slice(2)).catch((e) => {
     console.error("FATAL:", e?.message ?? e);
-    process.exit(1);
+    process.exit(e?.code === "DISK_SPACE" ? DISK_SPACE_EXIT_CODE : 1);
   });
 }
