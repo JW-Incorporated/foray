@@ -1595,7 +1595,12 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 56, // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  "tools/generation-bench/run.test.mjs": 64, // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  /* GV-17 (W1-04, MT-04..MT-12): the runlog reader. Each test is one quiet
+     wrong number: parallel calls counted as serial, a re-ask counted twice, a
+     reservation read as spend, a decode rate diluted with end-to-end calls,
+     a 0 standing in for a field no provider reported. */
+  "tools/generation-bench/runlog.test.mjs": 12, // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
@@ -2959,6 +2964,11 @@ const BACKEND_FLOORS = {
   /* GV-01 (generation v2): the per-run RunLog — AsyncLocalStorage isolation,
      context merge, injected clock, the runlog/1 JSONL shape. */
   "test/runLog.test.ts": 7,
+  /* GV-17: a stub pipeline under a real RunLog, its toJsonl() read by
+     tools/generation-bench/runlog.mjs: call count, token totals, calls per
+     stage, repeat work and the prose rate agree with the log's own, and every
+     event kind and CallRecord field the reader uses is one the emitter writes. */
+  "test/runLogBenchParity.test.ts": 3, // GV-17: new
   /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
      candidate written after each act, the driver's per-act rewrite, and the
      private status read path. */

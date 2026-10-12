@@ -134,6 +134,39 @@ table below does not change shape. No target is proposed: the founder's ear is
 the criterion, and a number to grade it against would be the bench grading the
 founder.
 
+### Per-call speed (GV-17)
+
+Every attempt since GV-01 writes a `runlog/1` file beside its report
+(`runlogs/<checkpointKey>.<attempt>.runlog.jsonl`, named by the entry's
+`runLog`, relative to the report's directory), and every model request in it is
+a CallRecord (GV-07). `tools/generation-bench/runlog.mjs` summarises it into the
+speed scorecard below; `backend/test/runLogBenchParity.test.ts` runs a stub
+pipeline under a real RunLog and checks the reader's counts against the log's
+own, so the emitter and the reader share one schema.
+
+A report with no `runLog`, or whose runlog was not copied with it (runs 4–9,
+every `--dry-run`), prints `—` in every column below. Inside a runlog, a field
+no call reports (Anthropic returns no queue time or TTFT on a non-streamed
+call) is `—` too: a median or a share over nothing is not zero. The JSONL line
+also carries `calls_by_stage` (calls per stage, a meta object rather than a
+column) and `prose_basis`.
+
+| Column | Target | Settled? | Where it comes from |
+|---|---|---|---|
+| `outTok` | — | — | **detail, MT-05.** Output tokens over every model call of the attempt; runlog.mjs keeps them per stage too (`outputTokensByStage`) |
+| `series` | — | — | **detail, MT-06.** Calls in series: the longest chain of calls in which each starts at or after the previous one ended. Parallel calls are one link. GV-123's `serialCallChain` must agree with it on `fixtures/runlog-synth` |
+| `reasks` | — | — | **detail, MT-07.** Repeat requests: JSON re-asks + spine re-asks (structural and seed-floor) + writer rounds after the first (not themselves re-asks) + continuations |
+| `queueP50` | — | — | **detail, MT-04.** Median seconds a call waited in the server's queue, over the calls that report it |
+| `ttftP50` | — | — | **detail, MT-04.** Median seconds to the first token, over the calls that report it |
+| `cached` | — | — | **detail, MT-04.** Cached prompt tokens ÷ prompt tokens, over the calls that report both |
+| `proseTps` | — | — | **detail, MT-12.** The writer's output tokens per second of decode (call time minus TTFT). When no writer call reports a TTFT the cell is the end-to-end rate, printed with `e2e` after it; the two are never mixed |
+| `code s` | — | — | **detail, MT-08.** Seconds of code time inside the stages (`CodeSpanAggregate` events; none are emitted until GV-85) |
+| `renderX` | — | — | **detail, MT-09.** Seconds of narration audio rendered per second of rendering (`RenderSpan` events) |
+| `spark s` | — | — | **detail, MT-10.** Spark seconds charged: reconciled `sparkSeconds` meter events. A reservation is a hold, not a charge (meters land with GV-90) |
+
+No target is proposed for any of them here: the per-tier speed targets are
+GV-52's, and this card only measures.
+
 ## The trend
 
 | run | outcome | valid | stageSum m | elapsed m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
