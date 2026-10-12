@@ -70,6 +70,18 @@ describe("OpenAICompatChatProvider.complete: reading a reply", () => {
     expect(res.usage).toEqual({ promptTokens: 900, completionTokens: 50, cachedTokens: 768, reasoningTokens: 31 });
     expect(res.text).toBe("Synthetic answer text.");
     expect(JSON.stringify(res)).not.toContain("Synthetic reasoning");
+
+    /* A reply whose thinking ate the budget: content null, reasoning only.
+       The text is empty, never the reasoning. */
+    const thinkingOnly = JSON.stringify({
+      model: "synthetic-heavy-27b",
+      choices: [{ index: 0, message: { role: "assistant", content: null, reasoning_content: "Synthetic reasoning only." }, finish_reason: "length" }]
+    });
+    const { p: p2 } = provider({ body: thinkingOnly });
+    const res2 = await p2.complete(request());
+    expect(res2.text).toBe("");
+    expect(res2.finishReason).toBe("length");
+    expect(JSON.stringify(res2)).not.toContain("Synthetic reasoning");
   });
 
   it("maps finish_reason 'length' to 'length' (a truncated reply is never reported as finished)", async () => {
