@@ -346,85 +346,225 @@ export interface SourceBeatsOptions {
  * Sources every beat of every deepened act. Pure function over its
  * inputs (plus whatever `cueProvider` is asked to resolve) — no network,
  * no writes, matching §1.1/§4.6.
+ *
+ * A `SourcingSession` driven over every act in order (GV-18): the session is
+ * the same body, cut at the act boundary, so the order and the ledgers are the
+ * ones this function has always used and the result is identical.
  */
 export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOptions = {}): SourceBeatsResult {
-  const segmentPool = options.segmentPool ?? loadSegmentPool();
-  const transcriptArchive = options.transcriptArchive ?? loadTranscriptArchive();
-  const cueProvider = options.cueProvider ?? new NullTranscriptCueProvider();
-  const textIndex = options.textIndex ?? new NullTranscriptTextIndex();
+  const session = new SourcingSession(options);
+  deepenedActs.forEach((act, actIndex) => session.sourceAct(act, actIndex));
+  return session.result(deepenedActs);
+}
 
-  const newSegments: NewSegment[] = [];
-  /* One row per episode a segment was minted from, deduplicated by item id:
-     `check-forays.mjs` requires exactly one registry entry per item id, and two
-     beats commonly take two segments from one episode. */
-  const newSegmentSources = new Map<string, MintedSegmentSource>();
-  const transcriptionQueueCandidates: TranscriptionQueueCandidate[] = [];
-  const mintedIds = new Set<string>(segmentPool.map((s) => s.id));
-  /* What THIS Foray has already committed to. Both are Foray-wide, not
-     per-slot, because both rules they serve span the whole running order:
-       - `usedSegmentIds` — a segment may not play twice;
-       - `lastStartByItem`  — segments from one episode must play in ascending
-         time order (check-forays' M3), so an episode already heard at 1964 s
-         cannot later be joined at 900 s;
-       - `lastEndByItem`    — and they must not OVERLAP (2026-09-13 audit,
-         defect 2): ascending starts alone admit a window that begins INSIDE
-         the clip before it, which mints a second clip that replays tape the
-         listener has already heard. See `m3OrderAllows`.
-     A set scoped to a slot or an act would satisfy neither. */
-  const usedSegmentIds = new Set<string>();
-  const lastStartByItem = new Map<string, number>();
-  const lastEndByItem = new Map<string, number>();
-  /* M4: no single episode may be more than a quarter of a Foray — see
-     `m4SegmentCapFor` for the cap, its denominator, and why the denominator is
-     the count of tape segments PLACED rather than the beat count it used to be
-     (F-70). `placedTapeCount` is that denominator: every tape placement, tier 1
-     or tier 2, increments it. */
-  const usedCountByItem = new Map<string, number>();
-  /* And the D-tier ledger (F-73, restated by Q-04): the durations of everything
-     placed, in playing order, plus the tape seconds each episode has contributed
-     and the longest single clip it has contributed. D2 and D5's pair clause are
-     functions of the first; M4's runtime clause is a function of the other
-     three. Foray-wide for the same reason as the two above — the running order
-     they judge is the whole Foray's. */
-  const placedDurations: number[] = [];
-  const placedSecByItem = new Map<string, number>();
-  const longestSecByItem = new Map<string, number>();
-  /* Which episode each placement came from and where in it, positionally
-     parallel to `placedDurations`. */
-  const placed: PlacedSegment[] = [];
+/**
+ * THE VERSION OF `SourcingSnapshot`'s SHAPE. `SourcingSession.resume` refuses a
+ * snapshot of any other version rather than guess at what a missing ledger
+ * held. Bump it whenever a ledger is added, removed or re-shaped.
+ */
+export const SOURCING_SNAPSHOT_VERSION = 1;
 
-  const forayTopic = options.topic ?? null;
-  const state: SourcingState = {
-    segmentPool,
-    transcriptArchive,
-    cueProvider,
-    textIndex,
-    windowText: makeSegmentWindowText(transcriptArchive, cueProvider),
-    forayTopic,
-    root: options.root,
-    audioSourceFor: options.audioSourceFor,
-    supersedableCut: options.supersedableCut,
-    mintedIds,
-    newSegments,
-    newSegmentSources,
-    transcriptionQueueCandidates,
-    usedSegmentIds,
-    lastStartByItem,
-    lastEndByItem,
-    usedCountByItem,
-    placedTapeCount: 0,
-    placedDurations,
-    placedSecByItem,
-    longestSecByItem,
-    placed,
-    lastMintedClip: null
-  };
-  const tapeRelevance: TapeRelevanceInput[] = [];
+/**
+ * A JSON-safe copy of every Foray-wide ledger a `SourcingSession` carries
+ * from one act to the next (GV-18), plus the acts sourced so far — what a
+ * per-act checkpoint banks so a Foray can resume sourcing mid-way.
+ *
+ * Maps travel as `[key, value]` entry arrays and sets as arrays, both in
+ * insertion order, which is the order the live structures iterate in.
+ *
+ * `lastMintedClip` is always `null`. It is the one clip a later beat may merge
+ * into, and a merge is allowed only within the clip's own act (`Tier2Walk`'s
+ * `mergeableInto`), so at an act boundary — the only place a snapshot is
+ * meaningful — dropping it changes nothing.
+ *
+ * DECISION 21 (docs/roadmap/generation-v2.md): any ledger added to
+ * `SourcingState` must be added here. `exportState` is typed so that it does
+ * not compile until it is (`SourcingLedgerKey`).
+ */
+export interface SourcingSnapshot {
+  version: typeof SOURCING_SNAPSHOT_VERSION;
+  mintedIds: string[];
+  newSegments: NewSegment[];
+  newSegmentSources: Array<[string, MintedSegmentSource]>;
+  transcriptionQueueCandidates: TranscriptionQueueCandidate[];
+  usedSegmentIds: string[];
+  lastStartByItem: Array<[string, number]>;
+  lastEndByItem: Array<[string, number]>;
+  usedCountByItem: Array<[string, number]>;
+  placedTapeCount: number;
+  placedDurations: number[];
+  placedSecByItem: Array<[string, number]>;
+  longestSecByItem: Array<[string, number]>;
+  placed: Array<{ itemId: string; startSec: number }>;
+  lastMintedClip: null;
+  tapeRelevance: TapeRelevanceInput[];
+  sourcingTrace: SourcingTrace[];
+  acts: SourcedAct[];
+}
+
+/** The members of `SourcingState` that are CONFIGURATION — rebuilt from
+ * `SourceBeatsOptions` on resume, never banked. Everything else is a ledger. */
+type SourcingConfigKey =
+  | "segmentPool"
+  | "transcriptArchive"
+  | "cueProvider"
+  | "textIndex"
+  | "windowText"
+  | "forayTopic"
+  | "root"
+  | "audioSourceFor"
+  | "supersedableCut";
+
+/** Every Foray-wide ledger in `SourcingState`. A new member of the state is a
+ * ledger unless it is named in `SourcingConfigKey`, and `exportState` will not
+ * compile until `SourcingSnapshot` carries it. */
+type SourcingLedgerKey = Exclude<keyof SourcingState, SourcingConfigKey>;
+
+/**
+ * §4.5-4.6 ONE ACT AT A TIME (GV-18; R1-04). The body of `sourceBeats`, cut at
+ * the act boundary so act 1 can be sourced — and frozen — before acts 2+ are
+ * deepened, with every Foray-wide ledger carried forward from act to act
+ * exactly as `sourceBeats` carries it across its loop.
+ *
+ * WHY ACT i STAYS FROZEN WHEN ACT i+1 IS SOURCED. The ledgers are not strictly
+ * append-only: `placeTape`'s `replacing` branch rewrites an earlier placement
+ * when a merge grows a clip, and a merge moves the clip's `NewSegment`, its
+ * `TapePointer` and its relevance row together. But a merge is allowed only
+ * into the last clip of the SAME act (`Tier2Walk`'s `mergeableInto` checks
+ * `last.actIndex === this.act.index`), so nothing in act i's `SourcedAct`, its
+ * `newSegments` rows or its `tapeRelevance` rows can change once act i+1
+ * starts. `sourcingSession.test.ts` pins that with the rows deep-frozen.
+ *
+ * Acts must arrive in order — 0, 1, 2, … with none skipped — because the
+ * ledgers judge the running order and the result's acts are positional.
+ */
+export class SourcingSession {
+  private readonly state: SourcingState;
+  private tapeRelevance: TapeRelevanceInput[] = [];
   /* One row per narration-degraded beat, saying what each tier saw and which
      gate refused it (F-49). The two arrays partition the Foray's beats. */
-  const sourcingTrace: SourcingTrace[] = [];
+  private sourcingTrace: SourcingTrace[] = [];
+  private acts: SourcedAct[] = [];
 
-  const acts: SourcedAct[] = deepenedActs.map((act, actIndex) => {
+  constructor(options: SourceBeatsOptions = {}) {
+    const segmentPool = options.segmentPool ?? loadSegmentPool();
+    const transcriptArchive = options.transcriptArchive ?? loadTranscriptArchive();
+    const cueProvider = options.cueProvider ?? new NullTranscriptCueProvider();
+    const textIndex = options.textIndex ?? new NullTranscriptTextIndex();
+
+    const newSegments: NewSegment[] = [];
+    /* One row per episode a segment was minted from, deduplicated by item id:
+       `check-forays.mjs` requires exactly one registry entry per item id, and two
+       beats commonly take two segments from one episode. */
+    const newSegmentSources = new Map<string, MintedSegmentSource>();
+    const transcriptionQueueCandidates: TranscriptionQueueCandidate[] = [];
+    const mintedIds = new Set<string>(segmentPool.map((s) => s.id));
+    /* What THIS Foray has already committed to. Both are Foray-wide, not
+       per-slot, because both rules they serve span the whole running order:
+         - `usedSegmentIds` — a segment may not play twice;
+         - `lastStartByItem`  — segments from one episode must play in ascending
+           time order (check-forays' M3), so an episode already heard at 1964 s
+           cannot later be joined at 900 s;
+         - `lastEndByItem`    — and they must not OVERLAP (2026-09-13 audit,
+           defect 2): ascending starts alone admit a window that begins INSIDE
+           the clip before it, which mints a second clip that replays tape the
+           listener has already heard. See `m3OrderAllows`.
+       A set scoped to a slot or an act would satisfy neither. */
+    const usedSegmentIds = new Set<string>();
+    const lastStartByItem = new Map<string, number>();
+    const lastEndByItem = new Map<string, number>();
+    /* M4: no single episode may be more than a quarter of a Foray — see
+       `m4SegmentCapFor` for the cap, its denominator, and why the denominator is
+       the count of tape segments PLACED rather than the beat count it used to be
+       (F-70). `placedTapeCount` is that denominator: every tape placement, tier 1
+       or tier 2, increments it. */
+    const usedCountByItem = new Map<string, number>();
+    /* And the D-tier ledger (F-73, restated by Q-04): the durations of everything
+       placed, in playing order, plus the tape seconds each episode has contributed
+       and the longest single clip it has contributed. D2 and D5's pair clause are
+       functions of the first; M4's runtime clause is a function of the other
+       three. Foray-wide for the same reason as the two above — the running order
+       they judge is the whole Foray's. */
+    const placedDurations: number[] = [];
+    const placedSecByItem = new Map<string, number>();
+    const longestSecByItem = new Map<string, number>();
+    /* Which episode each placement came from and where in it, positionally
+       parallel to `placedDurations`. */
+    const placed: PlacedSegment[] = [];
+
+    const forayTopic = options.topic ?? null;
+    this.state = {
+      segmentPool,
+      transcriptArchive,
+      cueProvider,
+      textIndex,
+      windowText: makeSegmentWindowText(transcriptArchive, cueProvider),
+      forayTopic,
+      root: options.root,
+      audioSourceFor: options.audioSourceFor,
+      supersedableCut: options.supersedableCut,
+      mintedIds,
+      newSegments,
+      newSegmentSources,
+      transcriptionQueueCandidates,
+      usedSegmentIds,
+      lastStartByItem,
+      lastEndByItem,
+      usedCountByItem,
+      placedTapeCount: 0,
+      placedDurations,
+      placedSecByItem,
+      longestSecByItem,
+      placed,
+      lastMintedClip: null
+    };
+  }
+
+  /** Rebuilds a session from `exportState`'s snapshot (after any JSON round
+   * trip). `options` supplies the configuration — pool, archive, providers,
+   * topic — which a snapshot never carries; pass the ones the snapshot's run
+   * used, or the resumed acts are judged against a different catalogue. */
+  static resume(options: SourceBeatsOptions, snapshot: SourcingSnapshot): SourcingSession {
+    if (snapshot.version !== SOURCING_SNAPSHOT_VERSION) {
+      throw new Error(`SourcingSession.resume: snapshot version ${String(snapshot.version)} is not ${SOURCING_SNAPSHOT_VERSION}`);
+    }
+    const session = new SourcingSession(options);
+    const copy = JSON.parse(JSON.stringify(snapshot)) as SourcingSnapshot;
+    const state = session.state;
+    state.mintedIds = new Set(copy.mintedIds);
+    state.newSegments = copy.newSegments;
+    state.newSegmentSources = new Map(copy.newSegmentSources);
+    state.transcriptionQueueCandidates = copy.transcriptionQueueCandidates;
+    state.usedSegmentIds = new Set(copy.usedSegmentIds);
+    state.lastStartByItem = new Map(copy.lastStartByItem);
+    state.lastEndByItem = new Map(copy.lastEndByItem);
+    state.usedCountByItem = new Map(copy.usedCountByItem);
+    state.placedTapeCount = copy.placedTapeCount;
+    state.placedDurations = copy.placedDurations;
+    state.placedSecByItem = new Map(copy.placedSecByItem);
+    state.longestSecByItem = new Map(copy.longestSecByItem);
+    state.placed = copy.placed;
+    state.lastMintedClip = null;
+    session.tapeRelevance = copy.tapeRelevance;
+    session.sourcingTrace = copy.sourcingTrace;
+    session.acts = copy.acts;
+    return session;
+  }
+
+  /** How many acts this session has sourced — the index the next one must carry. */
+  get sourcedActCount(): number {
+    return this.acts.length;
+  }
+
+  /** Sources every beat of one act, in playing order, against the ledgers the
+   * acts before it left. Throws unless `actIndex` is the next act. */
+  sourceAct(act: DeepenedAct, actIndex: number): SourcedAct {
+    if (actIndex !== this.acts.length) {
+      throw new Error(
+        `SourcingSession: act ${actIndex} arrived out of order — ${this.acts.length} act(s) sourced, so act ${this.acts.length} is next`
+      );
+    }
+    const forayTopic = this.state.forayTopic;
     /* The act's thesis rides along (Q-01): the thought extension scores the
        tape around a claim against the claim AND the thesis it serves, so an
        answer that moves from the one to the other is still relevant tape.
@@ -434,14 +574,14 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
        run 9's extension stopped almost at once (`tapeExtent.ts`,
        `relevanceScorer`). One index query per act, and the thesis is weighed
        the way the claim is. */
-    const actContext: ActContext = { index: actIndex, thesis: act.thesis, thesisIdf: thesisIdfFor(act.thesis, state) };
+    const actContext: ActContext = { index: actIndex, thesis: act.thesis, thesisIdf: thesisIdfFor(act.thesis, this.state) };
     const slots: SourcedSlot[] = act.slots.map((slot, slotIndex) => {
       // Resolve tape-or-not for every beat in the slot FIRST, because the
       // Patch/Carry decision needs to know whether ANY beat in this slot —
       // not just this one — ended up tape-sourced (§4.5: "pick based on
       // whether the SLOT the beat belongs to has any other tape-sourced
       // beats").
-      const resolutions = slot.beats.map((beat, beatIndex) => resolveOneBeat(beat, state, actContext, { slot: slotIndex, beat: beatIndex }));
+      const resolutions = slot.beats.map((beat, beatIndex) => resolveOneBeat(beat, this.state, actContext, { slot: slotIndex, beat: beatIndex }));
       const slotHasTape = resolutions.some((r) => r.kind === "tape");
 
       const beats: SourcedBeat[] = slot.beats.map((beat, beatIndex) => {
@@ -459,7 +599,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
             families: familiesOfNodes(resolution.nodes),
             forayTopic,
             forayFamily: taxonomyRoot(forayTopic),
-            onTopic: isOnTopic(forayTopic, resolution.nodes, state.root),
+            onTopic: isOnTopic(forayTopic, resolution.nodes, this.state.root),
             /* WS-L (F-63): which episode the spine wrote this beat from, and
                whether that is where the tape came from. The pair is how a run
                can be asked "did reading the tape first actually produce the
@@ -491,11 +631,11 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
                cover it (`MERGE_GAP_SEC`); the row names that beat. */
             ...(resolution.mergedInto ? { mergedInto: resolution.mergedInto } : {})
           };
-          tapeRelevance.push(row);
+          this.tapeRelevance.push(row);
           /* A later beat merged into this clip lengthens it; the row that
              says how far it was extended has to follow (F-96). */
-          if (state.lastMintedClip && state.lastMintedClip.pointer === resolution.pointer && !resolution.mergedInto) {
-            state.lastMintedClip.relevanceRow = row;
+          if (this.state.lastMintedClip && this.state.lastMintedClip.pointer === resolution.pointer && !resolution.mergedInto) {
+            this.state.lastMintedClip.relevanceRow = row;
           }
           return {
             sourcing: "tape",
@@ -506,7 +646,7 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
             ...(resolution.mergedInto ? { mergedInto: resolution.mergedInto } : {})
           };
         }
-        sourcingTrace.push({
+        this.sourcingTrace.push({
           actIndex,
           slotIndex,
           beatIndex,
@@ -538,18 +678,63 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
       return { title: slot.title, beats };
     });
 
-    return { title: act.title, slots };
-  });
-
-  const validation = validateSourcing(deepenedActs, acts);
-  if (!validation.valid) {
-    // This should be structurally unreachable — resolveOneBeat/the map
-    // above never drop, add, or reorder a beat — but fail loudly rather
-    // than silently violate §4.5's own guardrail if it ever is.
-    throw new Error(`sourceBeats violated the beat-preservation guardrail: ${validation.issues.map((i) => i.message).join("; ")}`);
+    const sourced: SourcedAct = { title: act.title, slots };
+    this.acts.push(sourced);
+    return sourced;
   }
 
-  return { acts, newSegments, transcriptionQueueCandidates, tapeRelevance, sourcingTrace, newSegmentSources: [...newSegmentSources.values()] };
+  /** Everything sourced so far, checked against the deepened acts it came from
+   * (§4.5's beat-preservation guardrail) — the first `sourcedActCount` of
+   * `deepenedActs`. */
+  result(deepenedActs: DeepenedAct[]): SourceBeatsResult {
+    const acts = [...this.acts];
+    const validation = validateSourcing(deepenedActs.slice(0, acts.length), acts);
+    if (!validation.valid) {
+      // This should be structurally unreachable — resolveOneBeat/the map
+      // above never drop, add, or reorder a beat — but fail loudly rather
+      // than silently violate §4.5's own guardrail if it ever is.
+      throw new Error(`sourceBeats violated the beat-preservation guardrail: ${validation.issues.map((i) => i.message).join("; ")}`);
+    }
+    const { state } = this;
+    return {
+      acts,
+      newSegments: [...state.newSegments],
+      transcriptionQueueCandidates: [...state.transcriptionQueueCandidates],
+      tapeRelevance: [...this.tapeRelevance],
+      sourcingTrace: [...this.sourcingTrace],
+      newSegmentSources: [...state.newSegmentSources.values()]
+    };
+  }
+
+  /** A JSON-safe copy of every ledger and the acts sourced so far — see
+   * `SourcingSnapshot`. Shares no object with the live session. */
+  exportState(): SourcingSnapshot {
+    const { state } = this;
+    const ledgers: { [K in SourcingLedgerKey]: SourcingSnapshot[K] } = {
+      mintedIds: [...state.mintedIds],
+      newSegments: state.newSegments,
+      newSegmentSources: [...state.newSegmentSources.entries()],
+      transcriptionQueueCandidates: state.transcriptionQueueCandidates,
+      usedSegmentIds: [...state.usedSegmentIds],
+      lastStartByItem: [...state.lastStartByItem.entries()],
+      lastEndByItem: [...state.lastEndByItem.entries()],
+      usedCountByItem: [...state.usedCountByItem.entries()],
+      placedTapeCount: state.placedTapeCount,
+      placedDurations: state.placedDurations,
+      placedSecByItem: [...state.placedSecByItem.entries()],
+      longestSecByItem: [...state.longestSecByItem.entries()],
+      placed: state.placed,
+      lastMintedClip: null
+    };
+    const snapshot: SourcingSnapshot = {
+      version: SOURCING_SNAPSHOT_VERSION,
+      ...ledgers,
+      tapeRelevance: this.tapeRelevance,
+      sourcingTrace: this.sourcingTrace,
+      acts: this.acts
+    };
+    return JSON.parse(JSON.stringify(snapshot)) as SourcingSnapshot;
+  }
 }
 
 /**
@@ -612,7 +797,8 @@ export function topReasonFor(trace: SourcingTrace): string {
 
 /** Everything `resolveOneBeat` needs, gathered once so the beat-level function
  * takes one argument instead of eleven. Mutable members are the Foray-wide
- * ledgers documented in `sourceBeats` above. */
+ * ledgers documented in `SourcingSession`'s constructor, banked by its
+ * `exportState`. */
 interface SourcingState {
   segmentPool: SegmentRecord[];
   transcriptArchive: TranscriptDigestEntry[];
@@ -655,7 +841,7 @@ interface SourcingState {
    * excludes from the share, and what its one-long-clip clause counts. */
   longestSecByItem: Map<string, number>;
   /** Where each placement came from, positionally parallel to
-   * `placedDurations` — see the declaration in `sourceBeats`. */
+   * `placedDurations` — see the declaration in `SourcingSession`. */
   placed: PlacedSegment[];
   /** The one clip a later beat's window may merge into (F-96) — the last
    * segment this run minted, while nothing has been placed after it. */
