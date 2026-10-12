@@ -17,6 +17,7 @@ import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/
 import type { PartialCandidate } from "../src/generation/partialCandidate";
 import { CheckpointSession, checkpointFingerprint } from "../src/generation/checkpoint";
 import { FAST_PATH_PIPELINE_FLAGS, PIPELINE_FLAG_ENV, checkpointVariant, readPipelineFlags, type FoldDeepen } from "../src/generation/pipelineFlags";
+import { readGateConfig } from "../src/generation/gateConfig";
 
 /**
  * WS-D2's own "exercisable without an API key" requirement (fix plan, D2):
@@ -343,7 +344,7 @@ describe("GV-15 — run configuration on the batch driver", () => {
   it("the report row carries the resolved gates and flags objects", async () => {
     const result = await run(new CountingSpineBuilder(), false);
     expect(result.entry?.outcome).toBe("generated");
-    expect(result.entry?.gates).toEqual({});
+    expect(result.entry?.gates).toEqual(readGateConfig({}));
     expect(result.entry?.flags).toEqual(readPipelineFlags({}));
   });
 

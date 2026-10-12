@@ -48,6 +48,7 @@ import {
   type SeamRest
 } from "./actSeams";
 import { pageDocIdFor } from "./synthesisVerify";
+import { prepareSpecificsSources, unsupportedSpecificsInScript, type PreparedSources, type SpecificsMode } from "./specifics";
 import { withCallContext } from "./runLog";
 import {
   decideConnectiveNarration,
@@ -213,6 +214,17 @@ export interface WriteActOptions {
    * `writeNarration` hands each act its own.
    */
   showsIntroduced?: ReadonlyArray<string>;
+  /**
+   * GV-34 (W5-10): the `specifics` gate (FORAY_SPECIFICS_CHECK, threaded from
+   * the run's `GateConfig`). Only `enforce` does anything here: every
+   * sentence of a seam is checked against the act's source texts — every
+   * gated claim's quote, every clip's transcript window, every ground page —
+   * and a year, figure or name none of them carries is a mechanical issue,
+   * so the writer is re-asked. `report` (the default) and `off` leave the
+   * act exactly as before; the metric is computed from the finished pages
+   * (`veracityMetrics.ts`), not here.
+   */
+  specifics?: SpecificsMode;
 }
 
 interface ClipState {
@@ -415,7 +427,7 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
        set is the union of what survives), then every seam's script through
        the structural rules against that set. A frozen seam is not re-read:
        its text is kept whatever the writer returned. */
-    const mechanical = mechanicalPass(seams, reply, clipById, clips.filter((c) => c.window).length + ground.length, round, act.title);
+    const mechanical = mechanicalPass(seams, reply, clipById, clips.filter((c) => c.window).length + ground.length, round, act.title, options.specifics);
     if (mechanical.length > 0) {
       console.warn(`writeAct: act "${act.title}" round ${round} refused in code — ${mechanical.join(" | ").slice(0, 600)}`);
     }
@@ -518,7 +530,15 @@ function seamStateOf(plan: SeamPlan, intro: IntroKind | undefined, documents: Ev
  * seams' surviving claims, the clips' windows, the ground. Leaves each
  * seam with a `draft` or a recorded rejection; returns the refusals.
  */
-function mechanicalPass(seams: SeamState[], reply: ActWriteResult, clipById: Map<string, GateClip>, clipSourceCount: number, round: number, actTitle: string): string[] {
+function mechanicalPass(
+  seams: SeamState[],
+  reply: ActWriteResult,
+  clipById: Map<string, GateClip>,
+  clipSourceCount: number,
+  round: number,
+  actTitle: string,
+  specifics: SpecificsMode = "report"
+): string[] {
   const mechanical: string[] = [];
   const pending = new Map<string, { script: string; claims: SelectedClaim[]; hints: NarratedBeat["pronunciationHints"] }>();
   for (const seam of seams) {
@@ -542,16 +562,38 @@ function mechanicalPass(seams: SeamState[], reply: ActWriteResult, clipById: Map
   const totalClaims = seams.reduce((n, s) => n + claimCount(s.plan.seamId), 0);
   const quotesOf = (exceptSeam: string): string[] =>
     seams.flatMap((s) => (s.plan.seamId === exceptSeam ? [] : (pending.get(s.plan.seamId)?.claims ?? s.draft?.claims ?? []).map((c) => c.quote)));
+  /* GV-34: the act's source TEXTS, once per pass and only when enforcing —
+     a seam's own quotes plus every other seam's (`actSourceQuotes`), the
+     clips' windows and the ground pages; and the names the check never asks
+     about, the act's clip shows and episode titles. */
+  const specificsScope = specifics === "enforce" ? actSpecificsScope(seams, clipById, quotesOf("")) : undefined;
   for (const seam of seams) {
     const p = pending.get(seam.plan.seamId);
     if (!p) continue;
     const issues = validateSeam(seam, p, clipById, round, {
       actSourceCount: clipSourceCount + totalClaims - p.claims.length,
-      actSourceQuotes: quotesOf(seam.plan.seamId)
+      actSourceQuotes: quotesOf(seam.plan.seamId),
+      ...(specificsScope ? { specifics: specificsScope } : {})
     });
     if (issues.length > 0) mechanical.push(`seam ${seam.plan.seamId}: ${issues.join("; ")}`);
   }
   return mechanical;
+}
+
+/** GV-34: what `validateSeam` checks a seam's specifics against. */
+interface SpecificsScope {
+  texts: PreparedSources;
+  allowNames: string[];
+}
+
+/** GV-34: the act's source texts — every gated claim's quote, every clip's
+ * transcript window, every ground page (F-88's `page` documents) — prepared
+ * once, with the act's clip shows and episode titles as the allowed names. */
+function actSpecificsScope(seams: SeamState[], clipById: Map<string, GateClip>, quotes: string[]): SpecificsScope {
+  const windows = [...clipById.values()].map((c) => c.window?.text ?? "").filter((t) => t.length > 0);
+  const groundPages = (seams[0]?.gate.evidence.docs ?? []).filter((d) => d.kind === "page").map((d) => d.text);
+  const allowNames = [...clipById.values()].flatMap((c) => [c.brief.show, c.brief.title]).filter((n) => n.trim().length > 0);
+  return { texts: prepareSpecificsSources([...quotes, ...windows, ...groundPages]), allowNames };
 }
 
 /**
@@ -866,7 +908,7 @@ function validateSeam(
   pending: { script: string; claims: SelectedClaim[]; hints: NarratedBeat["pronunciationHints"] },
   clipById: Map<string, GateClip>,
   round: number,
-  actScope: { actSourceCount: number; actSourceQuotes: string[] }
+  actScope: { actSourceCount: number; actSourceQuotes: string[]; specifics?: SpecificsScope }
 ): string[] {
   const { script, claims, hints } = pending;
   /* The provisional page: the seam's own claims as its sources, under the
@@ -945,6 +987,19 @@ function validateSeam(
     if (restated.restates) {
       issues.push(
         `the prose before clip ${clip.brief.clipId} repeats the clip's own first sentences ("${restated.run}") — introduce who is speaking and what to listen for; never say what the clip is about to say (Q-02)`
+      );
+    }
+  }
+
+  /* GV-34, `enforce` only: every year, figure and name a sentence states is
+     in one of the act's source texts. Asked in CODE because the model that
+     verifies is weak at exactly this (LM-23), and a re-ask of one seam is
+     cheaper than a page the verifier waves through. */
+  if (actScope.specifics) {
+    for (const { sentence, unsupported } of unsupportedSpecificsInScript(script, actScope.specifics.texts, { allowNames: actScope.specifics.allowNames })) {
+      issues.push(
+        `the sentence "${sentence.slice(0, 160)}" states ${unsupported.map((u) => `"${u}"`).join(", ")}, which no source of this act carries (not a clip's transcript window, a claim's quote or an earlier act's page) — ` +
+          "state only the numbers, dates and names the sources say, or leave the specific out (GV-34)"
       );
     }
   }

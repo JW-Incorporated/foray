@@ -3111,7 +3111,7 @@ const BACKEND_FLOORS = {
   /* RAISED 43 -> 47 by F-101: `computeFirstAttemptPassRates` emits the pages
      and beats units separately and declares which the legacy scalar carries;
      `computeListeningShares` says its denominator in the field name. */
-  "test/veracityMetrics.test.ts": 53, // GV-26 (generation v2): computeTapeYield (MQ-09, 0.75 on 3 tape / 1 no-tape / 1 argument; null with nothing wanted), computeBeatCoverage (MQ-11, null per-page), buildVeracityMetrics carries both, the gate ignores them; 48 -> 53 // round-3 audit (L5-generation): arch-drift-2 the publish gate grounds print quotes with findHoldingDoc; 47 -> 48
+  "test/veracityMetrics.test.ts": 56, // GV-34 (generation v2): specificsUnsupported counted from each page's own held evidence (null when none held, null under off, never gated) and identical after a resumed narrate stage; 53 -> 56 // GV-26 (generation v2): computeTapeYield (MQ-09, 0.75 on 3 tape / 1 no-tape / 1 argument; null with nothing wanted), computeBeatCoverage (MQ-11, null per-page), buildVeracityMetrics carries both, the gate ignores them; 48 -> 53 // round-3 audit (L5-generation): arch-drift-2 the publish gate grounds print quotes with findHoldingDoc; 47 -> 48
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's
@@ -3230,7 +3230,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 56, // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
+  "test/actNarration.test.ts": 59, // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
@@ -3269,7 +3269,7 @@ const BACKEND_FLOORS = {
      variant, and the empty gate-config table. One named mutation per test. */
   "test/generationFlags.test.ts": 8,
   "test/pipelineFlags.test.ts": 12,
-  "test/gateConfig.test.ts": 7,
+  "test/gateConfig.test.ts": 8, // GV-34 (generation v2): the first gate row, FORAY_SPECIFICS_CHECK off|report|enforce defaulting to report; 7 -> 8
   /* GV-13 (docs/roadmap/generation-v2.md, #1286): the ChatProvider contract
      and the non-streaming OpenAI-compatible client (reply mapping, request
      body, http/timeout/network/malformed/aborted errors, one CallRecord per
@@ -3314,6 +3314,15 @@ const BACKEND_FLOORS = {
      8 asks in flight, and the code-overlap judge. Offline: FakeJevClient and
      synthetic texts. One named mutation per test. */
   "test/sentenceSupport.test.ts": 18,
+  /* GV-34 (docs/roadmap/generation-v2.md, #1286): numbers, dates and names
+     checked in code against a sentence's sources -- spokenNumberValues (word
+     and digit years, decades, percent, scales, ranges, ordinals),
+     extractSpecifics/extractNames (small-cardinal and ordinal exemptions,
+     sentence-initial common words, possessives, allowNames) and
+     unsupportedSpecifics (ASR-lowercase names, longest-token fallback,
+     decade-from-year support). Static count 5: three it.each tables of 62
+     cases, pinned at >= 40 by the suite's own first test. Pure; no fixtures. */
+  "test/specifics.test.ts": 5,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

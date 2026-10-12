@@ -1,4 +1,5 @@
-import { readFlag, type FlagParser, type FlagSource } from "./generationFlags";
+import { enumParser, readFlag, type FlagParser, type FlagSource } from "./generationFlags";
+import { SPECIFICS_MODES, type SpecificsMode } from "./specifics";
 
 /**
  * GV-15 (docs/roadmap/generation-v2.md, W5-02): the gate configuration.
@@ -25,9 +26,19 @@ import { readFlag, type FlagParser, type FlagSource } from "./generationFlags";
  * default and its new mode (generation-architecture.md §12.2).
  */
 
-/* Each gate card adds `key: Type` here. Empty until the first one lands. */
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- see above: gate cards add the keys.
-export interface GateConfig {}
+/* Each gate card adds `key: Type` here. */
+export interface GateConfig {
+  /**
+   * GV-34 (W5-10): FORAY_SPECIFICS_CHECK = off|report|enforce, default
+   * `report`. Whether the numbers, years and names a narration sentence
+   * states are checked in code against the sentence's sources
+   * (`specifics.ts`). `report` computes `meta.veracity.specificsUnsupported`
+   * and changes nothing in writeAct; `enforce` also refuses a seam that
+   * states a specific no act source carries (a mechanical issue, so the
+   * writer is re-asked); `off` computes nothing.
+   */
+  specifics: SpecificsMode;
+}
 
 /** One row of the declarative table. */
 export interface GateTableEntry<T = unknown> {
@@ -54,7 +65,9 @@ export function defineGateTable(entries: readonly GateTableEntry[]): readonly Ga
 }
 
 /** The gate table. Each gate card appends its row. */
-export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([]);
+export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
+  { key: "specifics", env: "FORAY_SPECIFICS_CHECK", parse: enumParser(SPECIFICS_MODES), default: "report" } satisfies GateTableEntry<SpecificsMode>
+]);
 
 /**
  * The gate config in force for `source`. Pure: reads only `source`, and only
@@ -63,7 +76,7 @@ export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([]);
 export function readGateConfig(source: FlagSource = process.env, table: readonly GateTableEntry[] = GATE_TABLE): GateConfig {
   const config: Record<string, unknown> = {};
   for (const entry of table) config[entry.key] = readFlag(entry.env, entry.parse, entry.default, source);
-  return config as GateConfig;
+  return config as unknown as GateConfig;
 }
 
 /**
@@ -77,5 +90,5 @@ export function resolveGateConfig(
 ): GateConfig {
   const merged: Record<string, unknown> = { ...readGateConfig(source, table) };
   for (const [key, value] of Object.entries(overrides)) if (value !== undefined) merged[key] = value;
-  return merged as GateConfig;
+  return merged as unknown as GateConfig;
 }
