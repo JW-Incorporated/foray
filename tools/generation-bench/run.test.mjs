@@ -49,6 +49,8 @@ import { fileURLToPath } from "node:url";
 
 import {
   ABSENT,
+  candidateIdFor,
+  loadListening,
   COLUMNS,
   CORE,
   DETAIL,
@@ -253,6 +255,7 @@ test("nothing in the harness compares a value to a target", () => {
     "candidate_read",
     "clips_measured",
     "generated_at",
+    "last_listen",
     "metrics",
     "outcome",
     "prompt",
@@ -726,7 +729,8 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
   /* MUTATION: `return COLUMNS` unconditionally in tableColumns() (every column
      in the committed header and the default table). Ran it: red. */
   for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
-  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL), [], "every column today is core");
+  /* GV-08 added the first detail columns; every earlier column stays core. */
+  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), ["listen", "last_listen"]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
   try {
@@ -738,7 +742,7 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
     assert.equal(markdownRow(row).includes("7.3"), false);
     assert.equal(formatTable([row]).includes("probeX"), false, "the default table is core only");
     assert.equal(formatTable([row], { wide: true }).includes("probeX"), true, "--wide prints it");
-    assert.equal(tableColumns({ wide: true }).length, tableColumns().length + 1);
+    assert.equal(tableColumns({ wide: true }).length, tableColumns().length + 3);
   } finally {
     COLUMNS.pop();
   }
@@ -796,6 +800,182 @@ test("the KPI doc no longer calls the stage sum the driver's elapsed time", () =
   assert.equal(/wall m` is the driver's own per-prompt elapsed/.test(doc), false);
   assert.match(doc, /\| `elapsed m` \| ≤ 6 min p50 \| \*\*proposed \(D0\)\*\* \|/);
   assert.match(doc, /\| `stageSum m` \| — \| — \|/);
+});
+
+/* =================================================================== */
+/* GV-08 (MQ-20). What the founder heard: listen and lastListen         */
+/* =================================================================== */
+
+/* Run 9's candidate id as a listening key names it: the report entry's
+   `file` basename without `.json`. */
+const RUN9_CANDIDATE = "what-engineers-actually-do-all-day-how-e-4e64fd43";
+
+/** A synthetic listen-card/1 card (no transcript text). */
+function listenCard(packId, label, overall, listenedAt, n = 1) {
+  return {
+    schema: "listen-card/1",
+    cardId: `${packId}-${label}-${n}`,
+    packId,
+    label,
+    act: 1,
+    listener: "founder",
+    listenedAt,
+    scores: { onSubject: overall, flowsAtSeams: overall, oneNarrator: overall, nothingFalseOrOdd: overall },
+    overall,
+    q06: { oneVoice: true, everyClipIntroduced: true, anyClipCutShort: false },
+    winces: [],
+    ...(label === "solo" ? {} : { preference: "A" })
+  };
+}
+
+/** A store and a key directory in a temp dir: two solo listens of run 9's
+   candidate and one pair whose B arm is another candidate. */
+function listeningFixture() {
+  const dir = tmpdir();
+  const keys = path.join(dir, "keys");
+  fs.mkdirSync(keys);
+  const key = (packId, arms) => fs.writeFileSync(path.join(keys, `${packId}.key.json`), JSON.stringify({ schema: "listen-key/1", packId, promptId: "p", act: 1, ...arms }));
+  const arm = (candidateId) => ({ candidateId, provider: "local:spark", stageSwap: "baseline" });
+  key("s1", { solo: arm(RUN9_CANDIDATE) });
+  key("s2", { solo: arm(RUN9_CANDIDATE) });
+  key("p1", { A: arm("someone-else"), B: { ...arm("another"), stageSwap: "spine:local:second" } });
+  const cards = path.join(dir, "cards.jsonl");
+  fs.writeFileSync(
+    cards,
+    [
+      listenCard("s1", "solo", 3, "2026-10-11T22:30:00Z"),
+      listenCard("s2", "solo", 4, "2026-10-14T22:00:00-04:00"),
+      listenCard("p1", "A", 5, "2026-10-20T09:00:00Z")
+    ]
+      .map((c) => JSON.stringify(c))
+      .join("\n") + "\n"
+  );
+  return { dir, keys, cards };
+}
+
+const wideCells = (argv) => {
+  const out = [];
+  main(["--wide", "--format", "table", "--segments", path.join(FIXTURES, "segments.json"), ...argv, path.join(FIXTURES, "out-9")], (s) => out.push(s));
+  const lines = out.join("\n").split("\n");
+  const header = lines[0].trim().split(/\s{2,}/);
+  const cells = lines.find((l) => l.trim().startsWith("run-9")).trim().split(/\s{2,}/);
+  return (name) => cells[header.indexOf(name)];
+};
+
+test("GV-08: listen and lastListen are detail columns from the listening store; the committed KPI header does not change", () => {
+  /* MUTATION: `group: "core"` on the listen column. Ran it: red here and in
+     "the committed KPI doc's header matches the harness's columns". The
+     committed table is the core table; MQ-20 lands beside it. */
+  assert.equal(column("listen").group, DETAIL);
+  assert.equal(column("last_listen").group, DETAIL);
+  assert.equal(column("listen").from, "listening");
+  assert.equal(column("last_listen").kind, "text");
+  assert.equal(column("listen").target, undefined, "MQ-20 grades nothing here");
+  assert.equal(markdownHeader()[0].includes("listen"), false);
+  assert.equal(tableColumns({ wide: true }).some((c) => c.header === "lastListen"), true);
+});
+
+test("GV-08: the bench prints lastListen as — until the first real card exists", () => {
+  /* MUTATION: `last_listen: heard ? heard.lastListenedAt : "never"` in
+     rowFor(). Ran it: red. "Nobody has listened" is the dash, not a word a
+     reader could take for a date column's value. This reads the COMMITTED
+     store with an empty key directory: an unkeyed or unheard candidate is
+     absent either way, and stays so after the founder's first card (which
+     names another candidate and whose key is not in this temp dir). */
+  const keys = tmpdir();
+  const cell = wideCells(["--listen-keys", keys]);
+  assert.equal(cell("lastListen"), ABSENT);
+  assert.equal(cell("listen"), ABSENT);
+  const row = collectRows({ targets: [path.join(FIXTURES, "out-9")], segments: path.join(FIXTURES, "segments.json"), listenKeys: keys })[0];
+  assert.equal(row.values.last_listen, null);
+  assert.equal(row.sources.last_listen, "absent");
+});
+
+test("GV-08: with the keys and cards, listen is the candidate's mean overall and lastListen the latest card's UTC date", () => {
+  /* MUTATION: `listen: null` in rowFor(), or join on `entry.prompt` instead of
+     candidateIdFor(entry). Ran both: red. The 3 and the 4 are run 9's two
+     solo listens; the pair's 5 belongs to another candidate. The second card
+     is 22:00 on the 14th at -04:00, i.e. 02:00Z on the 15th: the column is a
+     UTC date. THIRD MUTATION: `heard.lastListenedAt.slice(0, 10)` (the
+     card's local date). Ran it: red. */
+  const fx = listeningFixture();
+  const cell = wideCells(["--cards", fx.cards, "--listen-keys", fx.keys]);
+  assert.equal(cell("listen"), "3.50");
+  assert.equal(cell("lastListen"), "2026-10-15");
+  const row = collectRows({ targets: [path.join(FIXTURES, "out-9")], segments: path.join(FIXTURES, "segments.json"), cards: fx.cards, listenKeys: fx.keys })[0];
+  assert.equal(row.values.listen, 3.5);
+  assert.equal(row.sources.listen, "listening");
+  assert.equal(row.sources.last_listen, "listening");
+  /* The default table is unchanged by a listen. */
+  const narrow = [];
+  main(["--format", "table", "--segments", path.join(FIXTURES, "segments.json"), "--cards", fx.cards, "--listen-keys", fx.keys, path.join(FIXTURES, "out-9")], (s) => narrow.push(s));
+  assert.equal(narrow.join("\n").includes("lastListen"), false);
+});
+
+test("GV-08: the JSONL carries listen and lastListen, and a baseline line round-trips them", () => {
+  /* MUTATION: drop `last_listen` from jsonlLine()'s object, or from
+     rowFromJsonl()'s values. Ran both: red. A diff over the JSONL is how a
+     scheduled bench would see "nobody has listened since". */
+  const fx = listeningFixture();
+  const row = rowsForReport(path.join(FIXTURES, "out-9", "report.json"), { pool: POOL, listening: loadListening({ cards: fx.cards, keyDir: fx.keys }) })[0];
+  const line = JSON.parse(jsonlLine(row));
+  assert.equal(line.metrics.listen, 3.5);
+  assert.equal(line.last_listen, "2026-10-15");
+  const back = rowFromJsonl(jsonlLine(row));
+  assert.equal(back.values.last_listen, "2026-10-15");
+  assert.equal(back.sources.last_listen, "listening");
+  assert.equal(formatTable([back], { wide: true }), formatTable([row], { wide: true }));
+  /* A baseline line written before GV-08 has neither: absent, not zero. */
+  const old = rowFromJsonl({ run: "run-9", metrics: {}, sources: {} });
+  assert.equal(old.values.listen, null);
+  assert.equal(old.values.last_listen, null);
+  assert.equal(old.sources.listen, "absent");
+});
+
+test("GV-08: the join is skipped (absent) when the keys are not on this machine; a broken key still fails loudly", () => {
+  /* MUTATION: drop the `err.code === KEY_MISSING` return in loadListening()
+     (the refusal then crashes every bench run on a machine without the
+     keys). Ran it: red. SECOND MUTATION: `catch { return null; }` (swallow
+     everything). Ran it: red on the malformed key below: a broken file is
+     not a missing machine. */
+  const fx = listeningFixture();
+  assert.equal(loadListening({ cards: fx.cards, keyDir: path.join(fx.dir, "not-here") }), null, "no key directory");
+  fs.rmSync(path.join(fx.keys, "s2.key.json"));
+  assert.equal(loadListening({ cards: fx.cards, keyDir: fx.keys }), null, "a card whose pack key is not here");
+  const cell = wideCells(["--cards", fx.cards, "--listen-keys", fx.keys]);
+  assert.equal(cell("listen"), ABSENT);
+  fs.writeFileSync(path.join(fx.keys, "s2.key.json"), "{broken");
+  assert.throws(() => loadListening({ cards: fx.cards, keyDir: fx.keys }), /cannot read key/);
+  fs.writeFileSync(fx.cards, "not a card\n");
+  assert.throws(() => loadListening({ cards: fx.cards, keyDir: fx.keys }), /not JSON/);
+});
+
+test("GV-08: the candidate id is the report entry's file basename without .json", () => {
+  /* MUTATION: drop the `.replace(/\.json$/i, "")` in candidateIdFor(). Ran
+     it: red. The key names the candidate by that id; with the extension the
+     join silently finds nothing. */
+  assert.equal(candidateIdFor({ file: `C:\\Users\\op\\AppData\\Local\\Temp\\${RUN9_CANDIDATE}.json` }), RUN9_CANDIDATE);
+  assert.equal(candidateIdFor({ file: "/tmp/x/cand.JSON" }), "cand");
+  assert.equal(candidateIdFor({}), null);
+  assert.equal(candidateIdFor({ file: "" }), null);
+});
+
+test("GV-08: --cards and --listen-keys are flags the CLI parses", () => {
+  /* MUTATION: drop the `--listen-keys` branch in parseArgs() (it then throws
+     "unknown flag"). Ran it: red. */
+  const args = parseArgs(["--cards", "c.jsonl", "--listen-keys", "k", "x"]);
+  assert.equal(args.cards, "c.jsonl");
+  assert.equal(args.listenKeys, "k");
+  assert.equal(parseArgs(["x"]).listenKeys, null);
+});
+
+test("GV-08: the KPI doc defines MQ-20 and says the listening columns are detail", () => {
+  /* MUTATION: delete the MQ-20 section from docs/curation/generation-kpis.md.
+     Ran it: red. */
+  const doc = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "generation-kpis.md"), "utf8");
+  assert.match(doc, /### MQ-20 · the founder's listen/);
+  assert.match(doc, /`listen` \| — \| — \|/);
+  assert.match(doc, /`lastListen` \| — \| — \|/);
 });
 
 /* ------------------------------------------------------------------ */
