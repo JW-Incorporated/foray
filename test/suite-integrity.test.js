@@ -1595,7 +1595,17 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 48, // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  "tools/generation-bench/run.test.mjs": 56, // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
+     append-only store under docs/ (auto-merge territory). Each test is one
+     refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
+     pair card without a preference, a transcript in an extra field, a bad
+     line skipped, an append that rewrites the store. */
+  "tools/listening/card.test.mjs": 17, // GV-08: new -- listen-card/1 validation, store read/append, committed-store gate, Q-06 status + README founder-only rule
+  /* GV-08 (R2-21, MQ-20): unsealing blind labels against the local pack keys.
+     Each test pins a way a swap that lost could read as a swap that won: a
+     label mapped to the wrong arm, a keyless guess, a tie counted as a win. */
+  "tools/listening/unseal.test.mjs": 11, // GV-08: new -- unseal with/without keys, aggregate on 10 pairs, ties, axis deltas, re-listen, listenByCandidate, key checks, CLI
   /* The keyless-run transport (#697). This suite is the ONLY thing in the repo
      that can notice the relay losing a behaviour, and every one of those
      behaviours was bought by a finding that cost a run something: I-23's

@@ -315,6 +315,11 @@ says to say it however the sentence wants it, and that the same sentence twice
 is worse than not saying it.
 
 ### Q-06 · The acceptance test is a listening test — **founder gate**
+**Status (2026-10-11).** Superseded by the listening card (R2-01, roadmap card
+GV-08 in docs/roadmap/generation-v2.md): four axes scored 1–5, an overall
+score, timestamped winces and a blind A/B preference, per act, stored in
+docs/curation/listening/cards.jsonl. The three questions below are kept on
+the card as its `q06` answers, so MQ-20 stays continuous with this gate.
 **Ask.** After Q-01–Q-03 land, regenerate the run-8 prompt (the best-supplied
 subject, *Being an Engineer*) and Wyatt listens to the first act on the phone.
 Three questions, yes/no: does the narration read as one voice telling a story;
