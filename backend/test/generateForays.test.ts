@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { batchSummaryText, generateOneCandidate, parseArgs, partialCandidateFilename, candidateFilename, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
+import { batchReportDocument, batchSummaryText, corpusReport, generateOneCandidate, parseArgs, partialCandidateFilename, candidateFilename, readPromptSet, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
+import { corpusCoverage, corpusFingerprint, corpusSafeKey } from "../src/generation/transcriptCorpus";
+import { TRANSCRIPT_TEXT_INDEX_VERSION } from "../src/generation/transcriptTextIndex";
+import { createHash } from "node:crypto";
 import { evaluateVeracityGate, type VeracityGateResult } from "../src/generation/veracityMetrics";
 import type { ItemReadyEvent } from "../src/generation/deliveryTimeline";
 import { runForayPipeline } from "../src/generation/runPipeline";
@@ -621,5 +624,117 @@ describe("GV-33 — the report row carries the delivery timeline", () => {
       runPipeline: async () => ({ outcome: "rejected", category: "unsafe", explanation: "no", timings: [] })
     });
     expect(result.entry && "delivery" in result.entry).toBe(false);
+  });
+});
+
+describe("GV-39 — report.json names the prompt set and the corpus snapshot it ran against", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "gv39-report-"));
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** A prompts file with CRLF line ends and odd spacing: its bytes, not its
+   * parsed prompts, are what the hash must cover. */
+  function writePrompts(): { file: string; bytes: Buffer } {
+    const file = path.join(dir, "golden-v1.prompts.json");
+    const bytes = Buffer.from('[\r\n  "germ theory, start to finish",\r\n  { "prompt": "banded iron", "id": "gold-02" }\r\n]\r\n', "utf8");
+    fs.writeFileSync(file, bytes);
+    return { file, bytes };
+  }
+
+  /** A tmpdir corpus with one show, two digest rows and one body on disk. */
+  function corpusOnDisk() {
+    const root = path.join(dir, "normalized");
+    const showDir = path.join(root, "tpwky-6eb31515b0");
+    fs.mkdirSync(showDir, { recursive: true });
+    const row = (guid: string, sha256: string) => ({ show_id: "tpwky", show_title: "TPWKY", guid, title: guid, cues: 1, sha256, bytes: 64 });
+    const archive = [row("ep-1", "1".repeat(64)), row("ep-2", "2".repeat(64))];
+    fs.writeFileSync(
+      path.join(showDir, `${corpusSafeKey("ep-1")}.json`),
+      JSON.stringify({ show_id: "tpwky", guid: "ep-1", cues: [{ text: "miasma and Semmelweis", start_sec: 0, end_sec: 4 }] }),
+      "utf8"
+    );
+    const provider = new FileTranscriptCueProvider(root);
+    const hasBody = (entry: { show_id: string }) => provider.bodyStat(entry as (typeof archive)[number]) !== null;
+    return { root, archive, hasBody };
+  }
+
+  /** What `main` hands `writeReport`, written and read back as the CLI does. */
+  function writtenReport(promptsFile: string, corpus: ReturnType<typeof corpusReport>): Record<string, unknown> {
+    const { identity } = readPromptSet(promptsFile);
+    const reportPath = path.join(dir, "report.json");
+    const doc = batchReportDocument({
+      generatedAt: "2026-10-12T00:00:00.000Z",
+      maxResumes: 3,
+      continueOnRefusedPartial: false,
+      resumes: 0,
+      aborts: 0,
+      notify: null,
+      notification: null,
+      corpus,
+      prompts: identity,
+      entries: []
+    });
+    fs.writeFileSync(reportPath, `${JSON.stringify(doc, null, 2)}\n`);
+    return JSON.parse(fs.readFileSync(reportPath, "utf8")) as Record<string, unknown>;
+  }
+
+  /* MUTATION THAT KILLS THIS: hash the parsed prompts (JSON.stringify(specs))
+     or the path instead of the file's bytes, or count the --limit queue. A
+     prompt file edited in place keeps its name; only the byte hash says so. */
+  it("readPromptSet hashes the very bytes it parsed, names the file and counts its prompts", () => {
+    const { file, bytes } = writePrompts();
+    const { specs, identity } = readPromptSet(file);
+    expect(specs).toEqual([{ prompt: "germ theory, start to finish" }, { prompt: "banded iron", id: "gold-02" }]);
+    expect(identity).toEqual({
+      file: "golden-v1.prompts.json",
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      count: 2
+    });
+  });
+
+  /* MUTATION THAT KILLS THIS: drop `prompts` from batchReportDocument, or drop
+     the fingerprint from corpusReport. Either makes the golden-set snapshot
+     silent about what it was taken against. */
+  it("a non-dry report carries prompts.sha256 matching the file and corpus.fingerprint when bodies exist", () => {
+    const { file, bytes } = writePrompts();
+    const { root, archive, hasBody } = corpusOnDisk();
+    const coverage = corpusCoverage({ archive, hasBody, normalizedRoot: root });
+    const fingerprint = corpusFingerprint({ archive, hasBody, indexVersion: TRANSCRIPT_TEXT_INDEX_VERSION });
+    const report = writtenReport(file, corpusReport(coverage, fingerprint));
+
+    expect(report.dry_run).toBe(false);
+    expect(report.prompts).toEqual({ file: "golden-v1.prompts.json", sha256: createHash("sha256").update(bytes).digest("hex"), count: 2 });
+    const corpus = report.corpus as { showsOnDisk: number; fingerprint: { sha256: string; rows: number; indexVersion: number } };
+    expect(corpus.showsOnDisk).toBe(1);
+    expect(corpus.fingerprint.rows).toBe(1);
+    expect(corpus.fingerprint.indexVersion).toBe(TRANSCRIPT_TEXT_INDEX_VERSION);
+    expect(corpus.fingerprint.sha256).toBe(createHash("sha256").update(`tpwky\tep-1\t${"1".repeat(64)}`).digest("hex"));
+    /* The existing fields keep their order; the two new ones are additive. */
+    expect(Object.keys(report)).toEqual([
+      "generated_at",
+      "dry_run",
+      "max_resumes",
+      "continue_on_refused_partial",
+      "resumes",
+      "aborts",
+      "notify",
+      "notification",
+      "corpus",
+      "prompts",
+      "entries"
+    ]);
+  });
+
+  it("with no corpus directory the report's corpus stays null and prompts are still named", () => {
+    const { file } = writePrompts();
+    const missing = path.join(dir, "no-such-corpus");
+    const coverage = corpusCoverage({ archive: [], hasBody: () => false, normalizedRoot: missing });
+    const report = writtenReport(file, corpusReport(coverage, corpusFingerprint({ archive: [], hasBody: () => false, indexVersion: 2 })));
+    expect(report.corpus).toBeNull();
+    expect((report.prompts as { count: number }).count).toBe(2);
   });
 });

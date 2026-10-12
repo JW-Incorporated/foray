@@ -6,6 +6,7 @@ import * as path from "path";
 import {
   corpusCoverage,
   corpusCoverageLine,
+  corpusFingerprint,
   corpusSafeKey,
   isLetterSpacedCue,
   LETTER_SPACED_MIN_TOKENS,
@@ -38,6 +39,10 @@ import { FileTranscriptCueProvider, type TranscriptDigestEntry } from "../src/ge
  *     report that cannot tell them apart cannot tell a reader what to fix.
  *  6. `corpusCoverageLine` staying quiet about a blind spot — the whole of
  *     #703's second ask is that a run SAYS it drew on 14 of 22 shows.
+ *  7. GV-39: `corpusFingerprint` depending on archive order, ignoring a row's
+ *     content digest, hashing rows whose body is not on disk, or giving an
+ *     empty corpus anything but the stable sha256 of nothing. Named per case
+ *     in the last describe block.
  */
 describe("corpusSafeKey mirrors the name the fetcher actually wrote", () => {
   /** The rule as `tools/segments/fetch-transcripts.mjs` states it, restated
@@ -315,5 +320,114 @@ describe("FileTranscriptCueProvider reads the bodies the fetcher actually wrote"
     } finally {
       cleanup();
     }
+  });
+});
+
+describe("GV-39 — corpusFingerprint freezes which corpus a run read", () => {
+  /** sha256 of the empty string: the fingerprint of a corpus with no body. */
+  const EMPTY_SHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+  const rows = [
+    { show_id: "geology-bites", guid: "g-1", sha256: "a".repeat(64), bytes: 1200 },
+    { show_id: "geology-bites", guid: "g-2", sha256: "b".repeat(64), bytes: 1300 },
+    { show_id: "tpwky", guid: "t-1", sha256: "c".repeat(64), bytes: 900 },
+    /* A machine-local corpus-digest row: no content digest, size only. */
+    { show_id: "tpwky", guid: "t-2", bytes: 4096 }
+  ];
+  const all = () => true;
+
+  /* MUTATION THAT KILLS THIS: drop `lines.sort()`. Archive order is whichever
+     digest file named a row first, so an unsorted hash moves when the digests
+     are merged differently and the corpus has not changed at all. */
+  it("does not depend on archive order", () => {
+    const forward = corpusFingerprint({ archive: rows, hasBody: all, indexVersion: 2 });
+    const reversed = corpusFingerprint({ archive: [...rows].reverse(), hasBody: all, indexVersion: 2 });
+    const shuffled = corpusFingerprint({ archive: [2, 0, 3, 1].map((i) => rows[i]!), hasBody: all, indexVersion: 2 });
+    expect(reversed.sha256).toBe(forward.sha256);
+    expect(shuffled.sha256).toBe(forward.sha256);
+    expect(forward.rows).toBe(4);
+    expect(forward.shows).toBe(2);
+  });
+
+  /* MUTATION THAT KILLS THIS: hash only `${show_id}\t${guid}`. A re-fetched
+     transcript keeps its guid and changes its bytes, which is exactly the
+     corpus change that must not pass for a pipeline change. */
+  it("changes when one row's sha256 changes", () => {
+    const before = corpusFingerprint({ archive: rows, hasBody: all, indexVersion: 2 });
+    const edited = rows.map((r) => (r.guid === "g-2" ? { ...r, sha256: "d".repeat(64) } : r));
+    expect(corpusFingerprint({ archive: edited, hasBody: all, indexVersion: 2 }).sha256).not.toBe(before.sha256);
+  });
+
+  /* MUTATION THAT KILLS THIS: hash '' instead of `bytes:<n>` for a row with no
+     sha256. Such a row is weaker evidence, so it is counted, but it still has
+     to move the hash when its size does. */
+  it("hashes a row without a sha256 by its size, and counts it", () => {
+    const before = corpusFingerprint({ archive: rows, hasBody: all, indexVersion: 2 });
+    expect(before.rowsHashedBySize).toBe(1);
+    const resized = rows.map((r) => (r.guid === "t-2" ? { ...r, bytes: 4097 } : r));
+    expect(corpusFingerprint({ archive: resized, hasBody: all, indexVersion: 2 }).sha256).not.toBe(before.sha256);
+  });
+
+  /* MUTATION THAT KILLS THIS: hash every archive row whether or not its body
+     resolves. The digest is unchanged when a body goes missing, and the corpus
+     the run could read is not. Real bodies on a real cue provider, so the
+     `hasBody` the CLI passes is the one under test. */
+  it("changes when a body is removed from disk", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "foray-fingerprint-"));
+    try {
+      const showDir = path.join(root, "beckers-3d12a20e19");
+      fs.mkdirSync(showDir);
+      const digest = (guid: string, sha: string): TranscriptDigestEntry & { sha256: string; bytes: number } => ({
+        show_id: "beckers",
+        show_title: "Becker's Healthcare Podcast",
+        guid,
+        title: "An episode",
+        cues: 1,
+        sha256: sha,
+        bytes: 100
+      });
+      const archive = [digest("ep-one", "1".repeat(64)), digest("ep-two", "2".repeat(64))];
+      for (const row of archive) {
+        fs.writeFileSync(
+          path.join(showDir, `${corpusSafeKey(row.guid)}.json`),
+          JSON.stringify({ show_id: "beckers", guid: row.guid, cues: [{ text: "margins are the story", start_sec: 0, end_sec: 5 }] }),
+          "utf8"
+        );
+      }
+      const fingerprintOf = () => {
+        const provider = new FileTranscriptCueProvider(root);
+        return corpusFingerprint({
+          archive,
+          hasBody: (entry) => provider.bodyStat(entry as TranscriptDigestEntry) !== null,
+          indexVersion: 2
+        });
+      };
+      const both = fingerprintOf();
+      expect(both.rows).toBe(2);
+      fs.rmSync(path.join(showDir, `${corpusSafeKey("ep-two")}.json`));
+      const one = fingerprintOf();
+      expect(one.rows).toBe(1);
+      expect(one.sha256).not.toBe(both.sha256);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  /* MUTATION THAT KILLS THIS: return '' (or a timestamp) for a corpus with no
+     body. CI and a fresh checkout have none, and two such reports must still
+     compare equal on the fingerprint. */
+  it("gives an archive with no bodies rows 0 and a stable empty hash", () => {
+    const none = corpusFingerprint({ archive: rows, hasBody: () => false, indexVersion: 2 });
+    expect(none).toEqual({ sha256: EMPTY_SHA256, rows: 0, rowsHashedBySize: 0, shows: 0, indexVersion: 2, extra: null });
+    expect(corpusFingerprint({ archive: [], hasBody: all, indexVersion: 2 }).sha256).toBe(EMPTY_SHA256);
+  });
+
+  /* MUTATION THAT KILLS THIS: drop either passthrough. The index version is
+     part of the snapshot (a rebuilt index changes what sourcing finds), and
+     `extra` is the passage-index checksum's slot (R1-09). */
+  it("carries the index version and the extra checksum through", () => {
+    const fp = corpusFingerprint({ archive: rows, hasBody: all, indexVersion: 7, extra: { passageIndex: "abc" } });
+    expect(fp.indexVersion).toBe(7);
+    expect(fp.extra).toEqual({ passageIndex: "abc" });
   });
 });

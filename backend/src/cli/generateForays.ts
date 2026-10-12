@@ -5,8 +5,8 @@ import { spawn } from "child_process";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
-import { corpusCoverage, corpusCoverageLine } from "../generation/transcriptCorpus";
-import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
+import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
+import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import { checkpointFingerprint } from "../generation/checkpoint";
 import { checkpointVariant, resolvePipelineFlags, type PipelineFlags } from "../generation/pipelineFlags";
 import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
@@ -185,6 +185,77 @@ export function normalizePrompts(raw: unknown): PromptSpec[] {
     }
     throw new Error(`prompts[${i}] is neither a string nor an object with a "prompt" string`);
   });
+}
+
+/** GV-39: WHICH PROMPT FILE A BATCH RAN, as `report.json` records it. Two
+ * golden-set reports compare only when their prompt sets agree, and a file
+ * edited in place keeps its name, so the name alone cannot say so. */
+export interface PromptSetIdentity {
+  /** The file's basename, for a human; the hash is what compares. */
+  file: string;
+  /** sha256 of the file's bytes exactly as read — the bytes the run parsed. */
+  sha256: string;
+  /** Prompts in the file (before `--limit`). */
+  count: number;
+}
+
+/** Reads a prompts file ONCE, so the identity is of the very bytes the batch
+ * parsed and not of a later read of a file that changed in between. */
+export function readPromptSet(promptsPath: string): { specs: PromptSpec[]; identity: PromptSetIdentity } {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- node builtin, sync by design
+  const { createHash } = require("crypto") as typeof import("crypto");
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- the operator's own --prompts path.
+  const bytes = fs.readFileSync(path.resolve(promptsPath));
+  const specs = normalizePrompts(JSON.parse(bytes.toString("utf8")));
+  return {
+    specs,
+    identity: { file: path.basename(promptsPath), sha256: createHash("sha256").update(bytes).digest("hex"), count: specs.length }
+  };
+}
+
+/** `report.corpus`: #703's coverage plus GV-39's fingerprint, or null when
+ * there is no corpus directory at all (CI, a fresh checkout), which is not the
+ * same as "nothing was missing". */
+export type CorpusReport = CorpusCoverage & { fingerprint: CorpusFingerprint };
+
+export function corpusReport(coverage: CorpusCoverage, fingerprint: CorpusFingerprint): CorpusReport | null {
+  return coverage.showsOnDisk > 0 ? { ...coverage, fingerprint } : null;
+}
+
+/** The whole `report.json` document of a non-dry batch, in its written key
+ * order. Pure, so the fields a reader compares on are testable without a run. */
+export function batchReportDocument(s: {
+  generatedAt: string;
+  maxResumes: number;
+  continueOnRefusedPartial: boolean;
+  resumes: number;
+  aborts: number;
+  notify: string | null;
+  notification: NotificationResult | null;
+  corpus: CorpusReport | null;
+  prompts: PromptSetIdentity;
+  entries: PriorReportEntry[];
+}): Record<string, unknown> {
+  return {
+    generated_at: s.generatedAt,
+    dry_run: false,
+    /* G-30 (e): the policy the run had and what the driver did on its
+       own under it, so a reader can tell "three resumes" from "three
+       attempts by hand". */
+    max_resumes: s.maxResumes,
+    continue_on_refused_partial: s.continueOnRefusedPartial,
+    resumes: s.resumes,
+    aborts: s.aborts,
+    notify: s.notify,
+    notification: s.notification,
+    /* #703 ask 2: the corpus this batch was sourced from, named shows
+       and all; GV-39 adds its fingerprint, so a transcript or index
+       change cannot pass for a pipeline change. */
+    corpus: s.corpus,
+    /* GV-39: the prompt set this batch ran. */
+    prompts: s.prompts,
+    entries: s.entries
+  };
 }
 
 /** Filesystem-safe, stable per prompt — this is the resume key. */
@@ -998,7 +1069,7 @@ async function main(): Promise<void> {
       defaultBudgetGuard.setCaps({ runUsd: args.budgetUsd, episodeUsd: args.budgetUsd });
     }
 
-    const specs = normalizePrompts(JSON.parse(fs.readFileSync(path.resolve(args.prompts), "utf8")));
+    const { specs, identity: promptSet } = readPromptSet(args.prompts);
     const queue = args.limit ? specs.slice(0, args.limit) : specs;
 
     /* State the mode before doing anything expensive. A run that silently used
@@ -1043,14 +1114,35 @@ async function main(): Promise<void> {
        whole corpus says so — and the same numbers go into report.json, so a
        reader who never watched the console can still tell which corpus a batch
        was sourced from. */
-    const corpus = corpusCoverage({
-      archive: loadTranscriptArchive(),
-      hasBody: (entry) => cueProvider.bodyStat(entry as TranscriptDigestEntry) !== null,
+    const archive = loadTranscriptArchive();
+    /* One stat per row, shared by the coverage count and the fingerprint. */
+    const bodyOnDisk = new Map<TranscriptDigestEntry, boolean>();
+    const hasBody = (entry: TranscriptDigestEntry): boolean => {
+      let known = bodyOnDisk.get(entry);
+      if (known === undefined) {
+        known = cueProvider.bodyStat(entry) !== null;
+        bodyOnDisk.set(entry, known);
+      }
+      return known;
+    };
+    const coverage = corpusCoverage({
+      archive,
+      hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
       /* The same directory `FileTranscriptCueProvider` defaults to, resolved
          the same way: two levels up from `backend/src/cli`. */
       normalizedRoot: path.resolve(__dirname, "..", "..", "..", "data-local", "transcripts", "normalized")
     });
-    if (corpus.showsOnDisk > 0) console.log(corpusCoverageLine(corpus));
+    if (coverage.showsOnDisk > 0) console.log(corpusCoverageLine(coverage));
+    /* GV-39: the golden-set corpus snapshot — which rows, with which content
+       digests, this run could read, through which index format. */
+    const corpus = corpusReport(
+      coverage,
+      corpusFingerprint({
+        archive,
+        hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
+        indexVersion: TRANSCRIPT_TEXT_INDEX_VERSION
+      })
+    );
 
     const { report, generated, skipped } = await generateQueue(queue, (spec) =>
       generateOneCandidate(spec, args, { cueProvider, textIndex })
@@ -1081,24 +1173,18 @@ async function main(): Promise<void> {
       fs.writeFileSync(
         reportPath,
         `${JSON.stringify(
-          {
-            generated_at: new Date().toISOString(),
-            dry_run: false,
-            /* G-30 (e): the policy the run had and what the driver did on its
-               own under it, so a reader can tell "three resumes" from "three
-               attempts by hand". */
-            max_resumes: args.maxResumes,
-            continue_on_refused_partial: args.continueOnRefusedPartial,
+          batchReportDocument({
+            generatedAt: new Date().toISOString(),
+            maxResumes: args.maxResumes,
+            continueOnRefusedPartial: args.continueOnRefusedPartial,
             resumes: resumesTotal,
             aborts,
             notify: args.notify,
             notification,
-            /* #703 ask 2: the corpus this batch was sourced from, named shows
-               and all. Null when there is no corpus directory at all (CI, a
-               fresh checkout), which is not the same as "nothing was missing". */
-            corpus: corpus.showsOnDisk > 0 ? corpus : null,
+            corpus,
+            prompts: promptSet,
             entries
-          },
+          }),
           null,
           2
         )}\n`

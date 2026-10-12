@@ -284,3 +284,88 @@ export function corpusCoverageLine(coverage: CorpusCoverage): string {
     .join(", ");
   return `${head}; NOT SEARCHABLE: ${named}. Run \`node tools/generation/warm-transcript-index.mjs\` before this run.`;
 }
+
+/** One archive row as the fingerprint reads it: its identity, plus whatever
+ * content digest the row carries. The committed digests carry both `sha256`
+ * and `bytes`; a machine-local corpus-digest row may carry neither. */
+export interface CorpusFingerprintRow {
+  show_id: string;
+  guid: string;
+  sha256?: string | null;
+  bytes?: number | null;
+}
+
+/** WHICH CORPUS A RUN WAS SOURCED FROM, as one comparable value (GV-39). */
+export interface CorpusFingerprint {
+  /** sha256 over the sorted per-row lines (see `corpusFingerprint`). The sha256
+   * of the empty string when no row has a body on disk. */
+  sha256: string;
+  /** Archive rows whose body is on disk: the rows the hash covers. */
+  rows: number;
+  /** Of `rows`, those with no `sha256` of their own, hashed by `bytes` (or by
+   * identity alone when they have neither). Weaker evidence, so it is counted:
+   * a body rewritten at the same size does not move these rows. */
+  rowsHashedBySize: number;
+  /** Distinct show ids among `rows`. */
+  shows: number;
+  /** The text-index format the run read the corpus through
+   * (`TRANSCRIPT_TEXT_INDEX_VERSION`), passed in by the caller: the index
+   * imports this module, so importing it back would be a cycle. */
+  indexVersion: number;
+  /** A hook for further corpus-side checksums (the passage-index checksum,
+   * R1-09). Carried through verbatim; null when not given. */
+  extra: Record<string, unknown> | null;
+}
+
+/** The line one row contributes to the fingerprint. */
+function corpusFingerprintLine(row: CorpusFingerprintRow): { line: string; bySize: boolean } {
+  const sha = typeof row.sha256 === "string" && row.sha256 !== "" ? row.sha256 : null;
+  if (sha !== null) return { line: `${row.show_id}\t${row.guid}\t${sha}`, bySize: false };
+  const digest = typeof row.bytes === "number" && Number.isFinite(row.bytes) ? `bytes:${row.bytes}` : "";
+  return { line: `${row.show_id}\t${row.guid}\t${digest}`, bySize: true };
+}
+
+/**
+ * THE GOLDEN SET'S CORPUS SNAPSHOT (GV-39, R2-02).
+ *
+ * A golden-set comparison between two runs is only a pipeline comparison if
+ * both runs read the same transcripts. A re-fetched body, a new digest row, a
+ * body that went missing on one machine or a rebuilt text index all change
+ * what sourcing can find, and without this value such a change passes for a
+ * pipeline change. `report.json` carries it so two reports can be compared on
+ * it before their Forays are.
+ *
+ * The hash is taken over `${show_id}\t${guid}\t${sha256 | 'bytes:'+bytes | ''}`
+ * for every archive row whose body is on disk (`hasBody`, which only the cue
+ * provider can answer), the lines SORTED and joined with "\n" — so archive
+ * order, which depends on which digest file named the row first, never moves
+ * it. A row without a body is not part of the corpus this run could read, so
+ * removing a body from disk moves the hash even though the digest is
+ * unchanged.
+ */
+export function corpusFingerprint(options: {
+  archive: readonly CorpusFingerprintRow[];
+  hasBody: (entry: CorpusFingerprintRow) => boolean;
+  indexVersion: number;
+  extra?: Record<string, unknown> | null;
+}): CorpusFingerprint {
+  const lines: string[] = [];
+  const shows = new Set<string>();
+  let rowsHashedBySize = 0;
+  for (const row of options.archive) {
+    if (!options.hasBody(row)) continue;
+    const { line, bySize } = corpusFingerprintLine(row);
+    lines.push(line);
+    shows.add(row.show_id);
+    if (bySize) rowsHashedBySize += 1;
+  }
+  lines.sort();
+  return {
+    sha256: crypto.createHash("sha256").update(lines.join("\n"), "utf8").digest("hex"),
+    rows: lines.length,
+    rowsHashedBySize,
+    shows: shows.size,
+    indexVersion: options.indexVersion,
+    extra: options.extra ?? null
+  };
+}

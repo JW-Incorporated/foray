@@ -2801,7 +2801,7 @@ const BACKEND_FLOORS = {
      miss. Every case names the mutation it kills; four of them are the 990
      dark Becker's episodes and the sigma-nutrition cover page that was served
      as tape on a germ-theory Foray. */
-  "test/transcriptCorpus.test.ts": 19,
+  "test/transcriptCorpus.test.ts": 26, // GV-39 (generation v2): corpusFingerprint is order-free, moves on one row's sha256, on a size-only row's bytes and on a body removed from disk, gives no-body corpora rows 0 and the empty sha256, and carries indexVersion and extra; the suite stood at 20 against 19, so the floor is set exact: 19 -> 26
   "test/transcriptTextIndex.test.ts": 13,
   /* GV-05 (docs/roadmap/generation-v2.md): the per-show BM25 cache built from a
      body stream equals FileTranscriptTextIndex's own build, is judged fresh by
@@ -3030,7 +3030,7 @@ const BACKEND_FLOORS = {
      private status read path. */
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
-  "test/generateForays.test.ts": 19, // GV-33 (generation v2): the report row's delivery block for a fresh run (lead at 1x and 1.5x), resumed:true with no lead, one event per item from the real stub pipeline, no delivery on a non-generated row; 15 -> 19 // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
+  "test/generateForays.test.ts": 22, // GV-39 (generation v2): readPromptSet hashes the file bytes it parsed, a non-dry report carries prompts {file, sha256, count} and corpus.fingerprint when bodies exist, corpus stays null with no corpus directory; 19 -> 22 // GV-33 (generation v2): the report row's delivery block for a fresh run (lead at 1x and 1.5x), resumed:true with no lead, one event per item from the real stub pipeline, no delivery on a non-generated row; 15 -> 19 // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
   "test/generationStatus.test.ts": 6, // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
   "test/partialCandidate.test.ts": 11, // GV-21: delivery attached with items unchanged, the item-count units pinned, no delivery without provenance, misaligned and malformed fallbacks; 6 -> 11 (7 on disk before)
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
