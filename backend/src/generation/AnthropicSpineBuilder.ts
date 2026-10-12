@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
+import { BUILDER_MAX_TOKENS } from "../config/outputBudgets";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { IntentUnderstanding } from "../types/generation";
@@ -34,7 +35,8 @@ import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 const MODEL = modelFor("opus");
 const USD_PER_INPUT_TOKEN = costFor("opus").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("opus").usdPerOutputToken;
-const MAX_OUTPUT_TOKENS = 8000;
+/* GV-25 (decision 10): the cap lives in config/outputBudgets.ts, value unchanged. */
+const MAX_OUTPUT_TOKENS = BUILDER_MAX_TOKENS.spine;
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
@@ -68,19 +70,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
        the model keeps every act, slot and beat the gate did not name and
        changes only the ones it did. A fresh single-turn prompt would cost the
        same Opus call and hand back a different spine with its own defects. */
-    const messages: Anthropic.MessageParam[] = ctx.revision
-      ? [
-          { role: "user", content: promptText },
-          { role: "assistant", content: spineReplyText(ctx.revision.previous) },
-          {
-            role: "user",
-            content:
-              ctx.revision.kind === "seed-floor"
-                ? buildSeedFloorInstruction(ctx.revision.violations)
-                : buildSpineFixInstruction(ctx.revision.violations)
-          }
-        ]
-      : [{ role: "user", content: promptText }];
+    const messages: Anthropic.MessageParam[] = spineConversation(promptText, ctx.revision);
     const conversationText = messages.map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
     const estimatedInputTokens = roughTokenEstimate(conversationText);
     /* Metered the way any spine call is — a re-ask is a whole Opus call, and
@@ -139,6 +129,32 @@ export class AnthropicSpineBuilder implements SpineBuilder {
       acts: raw.acts
     };
   }
+}
+
+/** One turn of the spine conversation, provider-neutral. */
+export interface SpineTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * F-86 / F-98: the spine call's conversation. A first call is the prompt
+ * alone; a re-ask (`revision` present) is [prompt, the refused reply as the
+ * assistant's own turn, one user turn naming what to fix], the fix turn being
+ * the seed-floor instruction for a `seed-floor` re-ask and the structural one
+ * otherwise. Shared by this builder and its Chat twin (GV-25), so the two
+ * cannot ask a re-ask differently. A fresh array on every call.
+ */
+export function spineConversation(promptText: string, revision: SpineBuildContext["revision"]): SpineTurn[] {
+  if (!revision) return [{ role: "user", content: promptText }];
+  return [
+    { role: "user", content: promptText },
+    { role: "assistant", content: spineReplyText(revision.previous) },
+    {
+      role: "user",
+      content: revision.kind === "seed-floor" ? buildSeedFloorInstruction(revision.violations) : buildSpineFixInstruction(revision.violations)
+    }
+  ];
 }
 
 /**

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
+import { BUILDER_MAX_TOKENS } from "../config/outputBudgets";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type {
   ActSourceBrief,
@@ -60,7 +61,8 @@ import { RawActVerifySchema } from "./replySchemas";
 const MODEL = modelFor("sonnet");
 const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
-const MAX_ACT_VERIFY_OUTPUT_TOKENS = 4000;
+/* GV-25 (decision 10): the cap lives in config/outputBudgets.ts, value unchanged. */
+const MAX_ACT_VERIFY_OUTPUT_TOKENS = BUILDER_MAX_TOKENS.verifier;
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);

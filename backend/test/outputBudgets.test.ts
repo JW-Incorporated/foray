@@ -213,34 +213,46 @@ describe("outputBudgets: the FORAY_OUTPUT_BUDGETS flag", () => {
 });
 
 describe("outputBudgets: BUILDER_MAX_TOKENS parity", () => {
-  it("holds exactly the max_tokens each Anthropic builder sends today", () => {
-    /* MUTATION THAT KILLS THIS: BUILDER_MAX_TOKENS.continuity 500 -> 600.
-       Ran it — red. */
-    const constantOf = (file: string, name: string): number => {
+  it("holds the caps the Anthropic builders sent before GV-25, and every Anthropic and Chat builder reads its cap from it", () => {
+    /* GV-25 (decision 10) pointed the builders at BUILDER_MAX_TOKENS, so this
+       test now checks the values are unchanged AND that no builder keeps a
+       literal cap of its own.
+       MUTATIONS THAT KILL THIS: BUILDER_MAX_TOKENS.continuity 500 -> 600
+       (ran it, red); put `const MAX_OUTPUT_TOKENS = 8000;` back in
+       AnthropicSpineBuilder.ts (ran it, red); send `max_tokens: 120` in the
+       understander's title ask (ran it, red). */
+    expect(BUILDER_MAX_TOKENS).toEqual({ clarity: 400, intent: 600, title: 120, spine: 8000, deepen: 4000, continuity: 500, verifier: 4000 });
+    const constantOf = (file: string, name: string): string => {
       const source = read(file);
-      const value = new RegExp(`const ${name} = (\\d+);`).exec(source)?.[1];
-      expect(value, `${file}: ${name}`).toBeDefined();
+      const value = new RegExp(`const ${name} = BUILDER_MAX_TOKENS\\.(\\w+);`).exec(source)?.[1];
+      expect(value, `${file}: ${name} reads BUILDER_MAX_TOKENS`).toBeDefined();
       /* Every max_tokens in that builder sends the constant. */
       const sites = [...source.matchAll(/max_tokens:\s*([\w.]+)/g)].map((m) => m[1]);
       expect(sites.length, file).toBeGreaterThan(0);
       for (const site of sites) expect([name, "maxOutputTokens"], `${file}: max_tokens ${site}`).toContain(site);
-      return Number(value);
+      return value ?? "";
     };
     const understander = read("AnthropicPromptUnderstander.ts");
     const slice = (from: string, to?: string) => understander.slice(understander.indexOf(from), to ? understander.indexOf(to) : undefined);
-    const literalCap = (body: string): number => {
-      const caps = [...new Set([...body.matchAll(/max_tokens:\s*(\d+)/g)].map((m) => Number(m[1])))];
-      expect(caps).toHaveLength(1);
-      return caps[0] ?? Number.NaN;
+    const capKey = (body: string): string => {
+      const keys = [...new Set([...body.matchAll(/max_tokens:\s*([\w.]+)/g)].map((m) => m[1]))];
+      expect(keys).toHaveLength(1);
+      return /^BUILDER_MAX_TOKENS\.(\w+)$/.exec(keys[0] ?? "")?.[1] ?? `literal ${keys[0]}`;
     };
     expect({
-      clarity: literalCap(slice("async assessClarity", "async extractIntent")),
-      intent: literalCap(slice("async extractIntent", "private async sentenceCaseTitle")),
-      title: literalCap(slice("private async sentenceCaseTitle")),
+      clarity: capKey(slice("async assessClarity", "async extractIntent")),
+      intent: capKey(slice("async extractIntent", "private async sentenceCaseTitle")),
+      title: capKey(slice("private async sentenceCaseTitle", "export interface TitleTurn")),
       spine: constantOf("AnthropicSpineBuilder.ts", "MAX_OUTPUT_TOKENS"),
       deepen: constantOf("AnthropicDeepenActBuilder.ts", "MAX_OUTPUT_TOKENS"),
       continuity: constantOf("AnthropicContinuityBuilder.ts", "MAX_OUTPUT_TOKENS"),
       verifier: constantOf("AnthropicNarrationVerifierBuilder.ts", "MAX_ACT_VERIFY_OUTPUT_TOKENS")
-    }).toEqual(BUILDER_MAX_TOKENS);
+    }).toEqual({ clarity: "clarity", intent: "intent", title: "title", spine: "spine", deepen: "deepen", continuity: "continuity", verifier: "verifier" });
+    /* The Chat twins send the table's keys and no literal. */
+    const chatCaps = (file: string): string[] => [...read(path.join("chat", file)).matchAll(/maxTokens:\s*([\w.]+)/g)].map((m) => m[1] ?? "");
+    expect(chatCaps("ChatPromptUnderstander.ts")).toEqual(["BUILDER_MAX_TOKENS.clarity", "BUILDER_MAX_TOKENS.intent", "BUILDER_MAX_TOKENS.title"]);
+    expect(chatCaps("ChatSpineBuilder.ts")).toEqual(["BUILDER_MAX_TOKENS.spine"]);
+    expect(chatCaps("ChatDeepenActBuilder.ts")).toEqual(["BUILDER_MAX_TOKENS.deepen"]);
+    expect(chatCaps("ChatContinuityBuilder.ts")).toEqual(["BUILDER_MAX_TOKENS.continuity"]);
   });
 });
