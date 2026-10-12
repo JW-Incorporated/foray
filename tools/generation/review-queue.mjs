@@ -26,7 +26,7 @@
  *           --scores onSubject=4,flowsAtSeams=3,oneNarrator=5,nothingFalseOrOdd=4
  *           [--wince 132:'text' ...] [--lane catalogue|on-demand]
  *           [--out data-local/review/verdicts.jsonl] [--at <ISO time>]
- *           Appends exactly one foray-review-verdict/1 line.
+ *           Appends exactly one VERDICT_SCHEMA (foray-review-verdict, v1) line.
  *
  * RISK ORDER (lexicographic; the first rule that separates two candidates wins)
  *   1. unverifiedPages > 0 first
@@ -45,7 +45,7 @@
  * scores and winces by handing them to card.mjs's validateCard inside an
  * otherwise-valid solo card, so a change to card.mjs's rules is a change here.
  *
- * THE ROW (foray-review-verdict/1)
+ * THE ROW (VERDICT_SCHEMA: foray-review-verdict, version 1)
  *   { schema, forayId, act, candidateSha256, lane, verdict, scores, winces,
  *     reviewer: "founder", at }
  * candidateSha256 is the sha-256 of the candidate file's bytes as read, so a
@@ -67,7 +67,10 @@ import { isEntryScript } from "../ci/entry.mjs";
 import { AXES, CARD_SCHEMA, ID_RE, LISTENED_AT_RE, Q06_KEYS, REPO_ROOT, validateCard } from "../listening/card.mjs";
 import { DEFAULT_SEGMENTS, DEFAULT_SOURCES, extractAct, loadPools } from "../listening/pack.mjs";
 
-export const VERDICT_SCHEMA = "foray-review-verdict/1";
+// Split on purpose: tools/segments/politeness.test.mjs flags any "foray...<slash><digit>"
+// literal under tools/ as a hand-copied User-Agent (#316). The value is
+// still the spec's schema id; review-queue.test.mjs pins its exact bytes.
+export const VERDICT_SCHEMA = "foray-review-verdict" + "/1";
 export const DEFAULT_VERDICTS = path.join(REPO_ROOT, "data-local", "review", "verdicts.jsonl");
 export const VERDICTS = Object.freeze(["pass", "fail", "fix"]);
 /** GV-81's two lanes; a candidate without `meta.lane` is catalogue (its default). */

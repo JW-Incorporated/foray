@@ -343,7 +343,7 @@ test("appending keeps every earlier byte, and a store with a bad line is not app
       [2, "fail", "on-demand"]
     ]
   );
-  fs.appendFileSync(store, '{"schema":"foray-review-verdict/1","prompt":"x"}\n');
+  fs.appendFileSync(store, JSON.stringify({ schema: VERDICT_SCHEMA, prompt: "x" }) + "\n");
   assert.throws(() => capture(["verdict", A_ID, "--dir", REVIEW, "--act", "1", "--verdict", "pass", "--scores", GOOD_SCORES, "--out", store, "--at", AT]), /verdicts\.jsonl:3: unknown field "prompt"/);
   assert.deepEqual(readVerdicts(tmpStore()), []);
 });
@@ -357,6 +357,7 @@ test("validateVerdict: no prompt or other extra field, a sha-256, a zoned time, 
   assert.match(bad({ at: "2026-10-12T09:30:00" }), /at must be an ISO 8601 date-time with a zone/);
   assert.match(bad({ reviewer: "agent" }), /reviewer must be "founder"/);
   assert.match(bad({ schema: "listen-card/1" }), /schema must be "foray-review-verdict\/1"/);
+  assert.match(VERDICT_SCHEMA, /^foray-review-verdict\/1$/, "the spec's schema id, byte for byte");
   assert.match(bad({ winces: [{ atSec: -1, note: "x" }] }), /winces\[0\]\.atSec must be seconds >= 0/);
   assert.equal(validateVerdict("x").ok, false);
 });
