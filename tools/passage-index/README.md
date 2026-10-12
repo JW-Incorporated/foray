@@ -13,20 +13,22 @@ directory. Add one section per module as it lands.
 ## Running the tests
 
 ```
-npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs pull-archive.test.mjs
+npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs pull-archive.test.mjs store.test.mjs embedder.test.mjs
 ```
 
 The package has no dependencies. It imports `tools/foraycorpus-export/`
 (`r2-client.mjs`, `sync-r2.mjs`, `show-map.mjs`, `inventory.mjs`), whose AWS
 SDK import is lazy, and the tests inject the SDK's command classes, a fake S3
-client, `statfs` and a recording indexer. No test opens a network connection,
-reads a credential or needs `backend/node_modules`.
+client, `statfs` and a recording indexer. The passage store tests use
+synthetic passages, the stub embedder and a fake `fetch`, so no model is
+downloaded. No test opens a network connection, reads a credential or needs
+`backend/node_modules`.
 
 `tools/ci/run-suites.mjs` finds this package by its `package.json` and `test`
 script and runs `npm test -- <files>`, so the script must keep ending in
 `node --test` and forwarding its arguments. `stream-index.test.mjs` checks
-that. `--experimental-sqlite` is in the script for the passage store that a
-later card adds (node:sqlite is behind a flag on Node 22.x).
+that. `--experimental-sqlite` is in the script for the passage store
+(`store.mjs`; node:sqlite is behind a flag on Node 22.x).
 
 ## stream-index.mjs: the stream indexer (GV-09, W3-05)
 
@@ -208,3 +210,79 @@ or an empty archive (unless `--allow-empty`) leaves the old file as it was.
 `--url` defaults to `FORAY_RETRIEVAL_URL`; the token comes from
 `FORAY_RETRIEVAL_TOKEN` or `FORAY_RETRIEVAL_TOKEN_FILE`, never from argv.
 Exit 0 when written, 1 otherwise.
+
+## store.mjs, embedder.mjs, index-db.mjs: the passage store (GV-28, W3-07)
+
+```
+node --experimental-sqlite tools/passage-index/index-db.mjs ingest --passages f [--db path]
+node --experimental-sqlite tools/passage-index/index-db.mjs embed --embedder stub|transformers|openai [--db path] [--batch n]
+```
+
+A node:sqlite file (default `data-local/passage-index/passages.db`) that
+holds the cut passages and their dense vectors, so a semantic arm can find
+episodes that share no word with a claim. **Nothing reads it yet.** The
+retrieval server picks it up in W3-09, and the dense arm stays behind the
+replay gate (W3-15): `tools/corpus` measured hybrid losing to keyword on its
+gold set (`tools/corpus/README.md`, "Semantic search").
+
+**Schema** (`migrations/0001_passages.sql`, applied with
+`tools/corpus/db.mjs`'s `migrate`):
+
+- `passages`: one row per cutter passage (`backend/src/generation/passageCutter.ts`),
+  indexed on `(show_id, guid)`.
+- `embedding_models`: name, revision, dim, pooling, normalized,
+  query_prefix, passage_prefix. A model row is a vector space. Registering
+  the same name and revision with another dim, pooling, normalization or
+  passage prefix is refused; register a new revision instead. The query
+  prefix may change in place.
+- `passage_chunks`: `(passage_id, ord, model_id, vector)`. The vector is
+  the bare little-endian float32 blob of `tools/corpus/vectors.mjs`
+  (sqlite-vec's format), normalized at the write. A trigger refuses any blob
+  whose length is not 4 x the model's dim. Deleting a passage deletes its
+  vectors (ON DELETE CASCADE).
+
+**ingest** reads the JSONL that `indexBodies --passages-out` writes, line
+by line. Each episode's passages are replaced in one transaction: delete,
+then insert. A re-ingest is idempotent, and a re-cut episode loses its old
+vectors through the cascade. `indexBodies` appends, so a re-streamed show
+shows up again later in the file; each run of lines for one episode replaces
+that episode, and the last run wins. A malformed line stops the ingest and
+names its line number. The episodes before it are already committed, and
+running it again after a fix is safe.
+
+**embed** embeds every passage that has no vector under the embedder's
+model, so it resumes after an interruption. A passage of 90-180 s is about
+340-680 bge tokens, over bge's 512-token limit, and a too-long input is
+truncated without warning. So each passage is split into sub-chunks of at most
+`EMBED_CHUNK_MAX` (400, `tools/corpus/embedder.mjs`) tokens. The split packs
+whole sentences, then words, and cuts a single word only when it alone is
+over the limit. Nothing is dropped. Tokens are counted by the embedder's own
+tokenizer when it has one, and as chars/4 otherwise. The model row's
+`passage_prefix` is put before each chunk. A passage's chunks are written in
+the same transaction, so a passage is never half embedded. It prints one
+JSON line with the passages and chunks embedded, empty passages and the
+chunks per passage (min, max, mean, histogram).
+
+**Search.** `loadDenseIndex(db, modelId)` loads every vector of one model
+into one Float32Array, with a chunk-to-passage map, once.
+`denseSearch(index, queryVector, {episodeFilter, k})` takes dot products over
+the chunks of the episodes in the filter (`[[show_id, guid], ...]`, the
+retrieval server's scope shape, or `null` for all). A passage scores the
+max over its chunks. It returns `[{passageId, show_id, guid, sim}]`, ties
+by passage id. `embedQuery(embedder, model, text)` encodes a query with the
+model row's `query_prefix`. Brute force over 1-2M chunk vectors x 384 floats
+is 1.5-3 GB of RAM: fine on the Spark, not on a laptop. sqlite-vec or
+pgvector can replace the scan later over the same blobs.
+
+**Embedders** (`createPassageEmbedder({kind})`), each
+`{model, embed(texts), countTokens?}`. `embed` encodes text exactly as given;
+the prefixes come from the model row only.
+
+| kind | what | tokenizer |
+| --- | --- | --- |
+| `stub` | deterministic word hashing into 64 dims, for tests | none (chars/4) |
+| `transformers` | `tools/corpus/embedder.mjs` `createEmbedder`: bge-small-en-v1.5 q8 on CPU. Needs the opt-in runtime (`cd tools/corpus/embed && npm install`, about 373 MB). The quantization is folded into the revision (`main+q8`). | bge's own |
+| `openai` | any OpenAI-compatible server (LiteLLM, or a model on the second box): `POST ${FORAY_EMBED_URL}/v1/embeddings` with `{model: FORAY_EMBED_MODEL, input, encoding_format: "float"}` and `Authorization: Bearer ${FORAY_EMBED_KEY}` (left out when the key is empty). `FORAY_EMBED_DIM` is required, and a vector of any other length is refused. Optional: `FORAY_EMBED_REVISION` (default `main`), `FORAY_EMBED_QUERY_PREFIX`, `FORAY_EMBED_PASSAGE_PREFIX`. | none (chars/4) |
+
+No embedder calls an Anthropic model or the relay. The settings come from
+the environment, never from argv.
