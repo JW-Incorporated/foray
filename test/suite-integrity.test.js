@@ -3232,7 +3232,7 @@ const BACKEND_FLOORS = {
      unique item ids and the mint guard (gen-6), the banked Foray identity
      (gen-13), declared slot ids on items (gen-4), control bytes in backend
      source (gen-11), and the transcript body lookup (gen-7). */
-  "test/anthropicCall.test.ts": 18, // GV-07 (generation v2): one CallRecord per request at createMessage (shape, relay machine, truncation, transport error, continuation, inert without a log) and the PROVIDER_CALL_SITES guard; 9 -> 18
+  "test/anthropicCall.test.ts": 19, // GV-07 (generation v2): one CallRecord per request at createMessage (shape, relay machine, truncation, transport error, continuation, inert without a log) and the PROVIDER_CALL_SITES guard; 9 -> 18. GV-19: the structural guard scans generation/** recursively (recordUsage, bare fetch, chat .complete allowlists) with a planted-offender test; 18 -> 19
   "test/finalizeRefusal.test.ts": 6,
   "test/generationCaches.test.ts": 5,
   "test/itemIdCollision.test.ts": 6,
@@ -3258,6 +3258,12 @@ const BACKEND_FLOORS = {
      call, the inert-import guard) plus the scriptedProvider helper. Offline:
      fakeFetch over synthetic fixtures. */
   "test/openAICompatProvider.test.ts": 26,
+  /* GV-19 (docs/roadmap/generation-v2.md, #1286): askStructured, the one
+     provider-neutral JSON call (meter, json_schema/json_object/none
+     response_format, recordUsage, 'length' refused as TruncatedReplyError
+     before any parse, one metered re-ask, budget refusal on cause).
+     Offline: scriptedProvider replies only. */
+  "test/askStructured.test.ts": 11,
   /* GV-21 (docs/roadmap/generation-v2.md, #1286): per-act servability on
      partial candidates. itemReadiness: item classification, the per-act
      verdict under both seam policies, the servable prefix as an item count,

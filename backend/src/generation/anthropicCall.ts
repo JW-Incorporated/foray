@@ -1,4 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
+import { TruncatedReplyError } from "./replyErrors";
 import { recordUsage } from "./usageTracking";
 import { currentRunLog, recordModelCall, withCallContext } from "./runLog";
 
@@ -104,12 +105,10 @@ export function assertReplyComplete(stopReason: string | null | undefined, label
   );
 }
 
-export class TruncatedReplyError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "TruncatedReplyError";
-  }
-}
+/* GV-19: the class lives in replyErrors.ts, shared with chat/askStructured.ts,
+   so one `instanceof` matches a truncation refusal from either path. Re-exported
+   here so existing importers keep their import. */
+export { TruncatedReplyError };
 
 /** The first text block of a reply (the shape every non-tool builder gets:
  * one text block holding the JSON). */
