@@ -30,6 +30,7 @@ import { servableThroughAct, servableView, type PartialCandidate } from "../src/
 import { itemKeyOf } from "../src/generation/itemReadiness";
 import type { NarrationVerifierBuilder } from "../src/generation/NarrationVerifierBuilder";
 import { RunLog, currentCallContext, runWithRunLog, type CallContext } from "../src/generation/runLog";
+import { FlagValueError } from "../src/generation/generationFlags";
 import { createMessage } from "../src/generation/anthropicCall";
 import { getUsageTotals } from "../src/generation/usageTracking";
 import { makeFakeAnthropicClient, textBlock } from "./helpers/fakeAnthropicClient";
@@ -1275,6 +1276,59 @@ describe("runForayPipeline under a RunLog: per-call records (GV-07)", () => {
     expect(getUsageTotals().total).toBe(totals.promptTokens + totals.outputTokens);
     expect(getUsageTotals().calls).toBe(totals.calls);
   }, 60_000);
+});
+
+/**
+ * GV-14 review: a malformed FORAY_OUTPUT_BUDGETS fails the run LOUDLY at run
+ * start, before any builder is asked, because recordModelCall (which runs
+ * after a paid reply) deliberately swallows a bad flag rather than cost the
+ * reply. Every stub builder is wrapped so any method call is seen.
+ */
+describe("runForayPipeline — FORAY_OUTPUT_BUDGETS is validated at run start (GV-14)", () => {
+  const savedFlag = process.env.FORAY_OUTPUT_BUDGETS;
+  afterEach(() => {
+    if (savedFlag === undefined) delete process.env.FORAY_OUTPUT_BUDGETS;
+    else process.env.FORAY_OUTPUT_BUDGETS = savedFlag;
+  });
+
+  it("rejects with FlagValueError before any builder is called", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `outputBudgetMode()` call next to
+       resolvePipelineFlags in runParsedPipeline — the run goes on to call the
+       understander (and, with the recording guard in place, never fails on
+       the flag at all). Ran it — red. */
+    process.env.FORAY_OUTPUT_BUDGETS = "bogus";
+    const called: string[] = [];
+    const spy = <T extends object>(name: string, target: T): T =>
+      new Proxy(target, {
+        get(t, prop, receiver) {
+          const value = Reflect.get(t, prop, receiver);
+          if (typeof value !== "function") return value;
+          return (...args: unknown[]) => {
+            called.push(`${name}.${String(prop)}`);
+            return (value as (...a: unknown[]) => unknown).apply(t, args);
+          };
+        }
+      });
+    const deps = stubDeps();
+    const finalize = deps.finalize;
+    const spied = {
+      understander: spy("understander", deps.understander),
+      researcher: spy("researcher", deps.researcher),
+      spineBuilder: spy("spineBuilder", deps.spineBuilder),
+      deepenBuilder: spy("deepenBuilder", deps.deepenBuilder),
+      narrationWriter: spy("narrationWriter", deps.narrationWriter),
+      narrationVerifier: spy("narrationVerifier", deps.narrationVerifier),
+      continuityBuilder: spy("continuityBuilder", deps.continuityBuilder),
+      finalize: async (input: FinalizeForayInput) => {
+        called.push("finalize");
+        return finalize(input);
+      }
+    };
+    const log = new RunLog();
+    await expect(runWithRunLog(log, () => runForayPipeline(request, options, spied))).rejects.toThrow(FlagValueError);
+    expect(called).toEqual([]);
+    expect(log.calls()).toEqual([]);
+  });
 });
 
 describe("runForayPipeline — per-act servability on partial candidates (GV-21)", () => {

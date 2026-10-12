@@ -6,6 +6,7 @@ import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "..
 import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "./checkpoint";
 import { checkpointVariant, resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
 import { resolveGateConfig, type GateConfig } from "./gateConfig";
+import { outputBudgetMode } from "../config/outputBudgets";
 import { DeepenedActSchema, SpineSchema } from "../types/spine";
 import { NewSegmentSchema, SourcedActSchema, TapeBoundarySchema, TapePointerSchema, TranscriptionQueueCandidateSchema } from "../types/tapeSourcing";
 import { ResearchShapeSchema } from "../types/research";
@@ -943,6 +944,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      variant below. */
   const flags = resolvePipelineFlags(options.flags);
   void resolveGateConfig(options.gates);
+  // GV-14: a malformed FORAY_OUTPUT_BUDGETS throws here, not inside recordModelCall after a paid reply.
+  void outputBudgetMode();
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
