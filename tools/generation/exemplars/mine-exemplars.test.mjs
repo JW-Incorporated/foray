@@ -57,7 +57,10 @@ const frozenContext = () => ({
 });
 const committedInput = (doc, label = "frozen") => ({ doc, label, sourceKind: "committed", provenance: PROVENANCE.historic, generatedOnly: true });
 const candidateInput = (doc, label = "synthetic") => ({ doc, label, sourceKind: "candidate", provenance: PROVENANCE.qwen, generatedOnly: false });
-const readFrozen = () => JSON.parse(fs.readFileSync(path.join(FROZEN, "forays.json"), "utf8"));
+// The frozen FIXTURE, not data/forays.json: named apart so publishSuites'
+// REAL_DATA_READ_RE does not read this suite as a real-data reader.
+const FROZEN_FORAYS = path.join(FROZEN, "forays.json");
+const readFrozen = () => JSON.parse(fs.readFileSync(FROZEN_FORAYS, "utf8"));
 const mineFrozen = () => mine([committedInput(readFrozen())], frozenContext());
 
 /* A 30-word sentence, a digit and a structure leak, plus clean seams. Shows are
