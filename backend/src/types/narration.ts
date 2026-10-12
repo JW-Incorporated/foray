@@ -653,17 +653,27 @@ const LISTENER_IMPERATIVES = [
   "remember", "picture", "imagine", "follow", "hold", "wait", "note", "ask"
 ];
 
+/** GV-27: whether ONE sentence asserts something about the world, the
+ * per-sentence rule of `hasDeclarativeSentence`: not a question, at least
+ * three words, and not opened by one of the LISTENER_IMPERATIVES. Exported
+ * so the per-sentence support judge (generation/sentenceSupport.ts) asks
+ * about exactly the sentences this rule calls statements. */
+export function isStatementSentence(sentence: string): boolean {
+  const s = String(sentence ?? "").trim();
+  if (/[?]\s*$/.test(s)) return false;
+  const words = quoteWords(s);
+  if (words.length < 3) return false;
+  if (LISTENER_IMPERATIVES.includes(words[0]!)) return false;
+  return true;
+}
+
 export function hasDeclarativeSentence(script: string): boolean {
   const sentences = String(script ?? "")
     .split(/(?<=[.!?…])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
   for (const sentence of sentences) {
-    if (/[?]\s*$/.test(sentence)) continue;
-    const words = quoteWords(sentence);
-    if (words.length < 3) continue;
-    if (LISTENER_IMPERATIVES.includes(words[0]!)) continue;
-    return true;
+    if (isStatementSentence(sentence)) return true;
   }
   return false;
 }

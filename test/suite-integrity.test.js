@@ -3284,6 +3284,16 @@ const BACKEND_FLOORS = {
      pool, FakeJevClient, the endpoint guard and the Jev env variables.
      Offline: fakeFetch over synthetic fixtures. One named mutation per test. */
   "test/jevClient.test.ts": 34,
+  /* GV-27 (docs/roadmap/generation-v2.md, #1286): the per-sentence support
+     judge -- narration.ts's isStatementSentence (the hasDeclarativeSentence
+     rule), statement sentences via splitSpokenSentences, passageAround's
+     densest sentence-snapped window and its word-edged fallback,
+     candidateSourcesFor (8,000-char budget over a 30-minute clip, mustInclude
+     kept at zero overlap, distinct-overlap ranking, budget sharing), the Jev
+     judge's noul/choice mapping, unavailable and malformed answers, at most
+     8 asks in flight, and the code-overlap judge. Offline: FakeJevClient and
+     synthetic texts. One named mutation per test. */
+  "test/sentenceSupport.test.ts": 18,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
