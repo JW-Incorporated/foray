@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-10-12T00:00:00.000Z",
+  "dry_run": false,
+  "entries": [
+    {
+      "prompt": "PROMPT-SENTINEL-7f3a how bridges learn to stand, a synthetic review prompt",
+      "outcome": "generated",
+      "detail": "OK synthetic-review-a-5c1e0d (12 items, 512.40s)",
+      "ms": 120000,
+      "narrationActs": [
+        { "act": 0, "startedAt": "2026-10-12T00:00:01.000Z", "ms": 41000 },
+        { "act": 1, "startedAt": "2026-10-12T00:00:01.000Z", "ms": 23500 }
+      ],
+      "spineReasks": [{ "attempt": 1, "violations": ["act 2 has one slot"] }],
+      "veracity": {
+        "groundedQuoteRate": 0.5,
+        "purposeFidelity": 0.1,
+        "tapeRelevance": 0.8,
+        "retryRounds": 9,
+        "unverifiedPages": 0
+      },
+      "file": "candidate-a.json"
+    },
+    {
+      "prompt": "PROMPT-SENTINEL-7f3a a rejected synthetic prompt",
+      "outcome": "rejected",
+      "detail": "rejected: ambiguous",
+      "ms": 900
+    }
+  ]
+}

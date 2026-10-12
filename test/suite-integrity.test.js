@@ -1641,11 +1641,13 @@ const FLOORS = {
      as pipeline latency. The 12 mutations named in the suite header were each
      applied and observed to fail before it landed. */
   "tools/generation/relay.test.mjs": 33, // round-3 audit (L5): the default port is 8788, not the retired events server's 8787; 32 -> 33 // a leftover reply never answers a new run, web pages and foreign Hosts are refused, /answer and /reset need the run token, header ids cannot escape the queue; 27 -> 32
+  "tools/generation/review-queue.test.mjs": 16, // GV-41: new -- risk order (out-9 + synthetic: unverified pages first; each of the six rules beats the later ones, null-worst, clipOnSubjectRate over tapeRelevance, forayId tiebreak), loadDir/list never carry the prompt, act card play order + segmentSources before the pool + act title + CLI, verdict row (one line, card.mjs-valid scores, file sha) and its refusals, append-only store, validateVerdict, no axis list of its own; 17 mutations red
   /* #703: the corpus-warming launcher. Small on purpose — the work is in
      backend/src/cli/warmTranscriptIndex.ts and pinned by its own suite — but a
      launcher that spawns an entry that no longer exists fails quietly, and a
      run then proceeds on the cold corpus this issue was filed about. */
   "tools/generation/warm-transcript-index.test.mjs": 7, // round-3 audit data-tools-8: a child ended by a signal exits 128 + n, and both launchers use exitCodeFor; 5 -> 7
+  "tools/generation/exemplars/mine-exemplars.test.mjs": 13, // GV-42: new -- frozen counts (disclosure out of seam runs, clip-only skipped), runs never span a segment or an act change, roles from ids + neighbouring shows (unresolved = bridge), show resolution through segments.json then segment-sources.json, digit/30-word/leak metrics, FK and shape from spokenLine.js, top-5 ranking, --select refusals (finding, leak, >60-word card, >2 exemplars, no selectedBy/listenedOn), the written shape, byte-stable output, the committed file starts empty, CLI --out and exit 1
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,

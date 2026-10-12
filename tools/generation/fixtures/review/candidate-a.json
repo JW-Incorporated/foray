@@ -1,0 +1,45 @@
+{
+  "id": "synthetic-review-a-5c1e0d",
+  "title": "How bridges learn to stand",
+  "topic": "engineering",
+  "summary": "A synthetic two-act candidate for the review-queue tests.",
+  "slots": [
+    { "id": "the-first-load", "title": "The first load" },
+    { "id": "what-the-wind-taught", "title": "What the wind taught" },
+    { "id": "fixing-it-in-the-field", "title": "Fixing it in the field" }
+  ],
+  "items": [
+    { "type": "narration", "id": "disclosure", "script": "This Foray was put together by a computer from real podcast clips.", "mode": "marker" },
+    { "type": "narration", "id": "act-1-introduction", "script": "Every bridge starts as a guess about weight.", "mode": "frame", "slot": "the-first-load" },
+    { "type": "narration", "id": "narration-act-1-0-beat", "script": "First up, an inspector on the day a deck first carried trucks.", "mode": "intro", "slot": "the-first-load" },
+    { "type": "segment", "slot": "the-first-load", "segment_id": "synthetic-show-a--ep-12#40" },
+    { "type": "jingle", "id": "jingle-cut-act-1-2" },
+    { "type": "narration", "id": "narration-act-1-3-beat", "script": "Then the wind arrived, and nobody had drawn it.", "mode": "hinge", "slot": "what-the-wind-taught" },
+    { "type": "segment", "slot": "what-the-wind-taught", "segment_id": "synthetic-show-b--ep-3#310" },
+    { "type": "narration", "id": "act-1-exit", "script": "Weight was the easy half.", "mode": "carry", "slot": "what-the-wind-taught" },
+    { "type": "narration", "id": "act-2-introduction", "script": "Repair is where the guesses get tested.", "mode": "frame", "slot": "fixing-it-in-the-field" },
+    { "type": "segment", "slot": "fixing-it-in-the-field", "segment_id": "synthetic-show-a--ep-14#1200" },
+    { "type": "narration", "id": "narration-act-2-1-beat", "script": "She fixed it with a bolt and a notebook.", "mode": "hinge", "slot": "fixing-it-in-the-field" },
+    { "type": "narration", "id": "act-2-exit", "script": "That is the whole trade.", "mode": "carry", "slot": "fixing-it-in-the-field" }
+  ],
+  "runtimeSec": 512.4,
+  "meta": {
+    "veracity": {
+      "groundedQuoteRate": 0.5,
+      "purposeFidelity": 0.1,
+      "tapeRelevance": 0.8,
+      "retryRounds": 9,
+      "unverifiedPages": 0
+    }
+  },
+  "segments": [
+    { "id": "synthetic-show-a--ep-12#40", "itemId": "synthetic-show-a--ep-12", "startSec": 40.5, "endSec": 152.25, "boundary": "turn" },
+    { "id": "synthetic-show-b--ep-3#310", "itemId": "synthetic-show-b--ep-3", "startSec": 310, "endSec": 395.5, "boundary": "sentence" },
+    { "id": "synthetic-show-a--ep-14#1200", "itemId": "synthetic-show-a--ep-14", "startSec": 1200, "endSec": 1290, "boundary": "claim-only" }
+  ],
+  "segmentSources": [
+    { "id": "synthetic-show-a--ep-12", "show": "Synthetic Show A", "title": "Episode 12: The load test", "audio_url": "https://example.invalid/a12.mp3", "dai_suspected": false },
+    { "id": "synthetic-show-b--ep-3", "show": "Synthetic Show B", "title": "Episode 3: Wind", "audio_url": "https://example.invalid/b3.mp3", "dai_suspected": false },
+    { "id": "synthetic-show-a--ep-14", "show": "Synthetic Show A", "title": "Episode 14: Field repair", "audio_url": "https://example.invalid/a14.mp3", "dai_suspected": false }
+  ]
+}
