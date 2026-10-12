@@ -474,44 +474,100 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   private locateUncached(showId: string, guid: string): string | null {
     const dir = this.showDir(showId);
     if (!dir) return null;
-    /* THE WRITER'S OWN KEY FIRST (#703). `corpusSafeKey` is byte-identical to
-       `fetch-transcripts.mjs`'s `safeKey`, the function that named this file,
-       so this is an exact lookup rather than a prefix guess — and it costs one
-       `Set.has` on a directory listing this provider now caches, instead of a
-       linear `find` over 2,857 names per episode. */
+    /* The listing is cached per directory (#703); the rule itself lives in
+       `locateInListing` so a streamed index build (GV-05, `cli/indexBodies.ts`)
+       maps archive rows onto bodies by exactly the same rule with no
+       directory on disk. */
     const files = this.filesIn(dir);
-    const exact = files.get(`${corpusSafeKey(guid)}.json`);
-    if (exact) return path.join(dir, exact);
-    const slug = guidSlug(guid);
-    if (slug) {
-      /* gen-7 (round-3 audit): the legacy bare-slug name is an exact name, and
-         is trusted as one. A PREFIX match is not: guid "ep-5" is a prefix of
-         "ep-5-bonus-<hash>.json", which is another episode's body. So a
-         prefix candidate is opened and used only when the guid it records is
-         this guid. */
-      const legacy = files.get(`${slug}.json`);
-      if (legacy) return path.join(dir, legacy);
-      for (const [lower, real] of files) {
-        if (!lower.startsWith(`${slug}-`)) continue;
-        if (bodyGuid(path.join(dir, real)) === guid) return path.join(dir, real);
-      }
-    }
-    // Fallback: index the directory's real guids once, then look the guid up.
-    let index = this.guidIndexByDir.get(dir);
-    if (!index) {
-      index = new Map();
-      for (const f of files.values()) {
-        try {
-          const j = JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")) as { guid?: unknown };
-          if (typeof j.guid === "string") index.set(j.guid, path.join(dir, f));
-        } catch {
-          /* an unreadable body is simply not indexed */
+    const real = locateInListing({
+      files,
+      guid,
+      bodyGuidOf: (name) => bodyGuid(path.join(dir, name)),
+      guidIndex: () => {
+        let index = this.guidIndexByDir.get(dir);
+        if (!index) {
+          index = guidIndexOfListing(files, (name) => bodyGuid(path.join(dir, name)));
+          this.guidIndexByDir.set(dir, index);
         }
+        return index;
       }
-      this.guidIndexByDir.set(dir, index);
-    }
-    return index.get(guid) ?? null;
+    });
+    return real === null ? null : path.join(dir, real);
   }
+}
+
+/** One show directory's listing, as `locateInListing` reads it. */
+export interface ListingLocateInput {
+  /** Lowercased file name -> real file name, `.json` files only, in listing order. */
+  files: ReadonlyMap<string, string>;
+  /** The archive row's guid. */
+  guid: string;
+  /** The guid a body records about itself (its `guid` field), or null when it
+   * records none or cannot be read. Asked only of prefix candidates and, on the
+   * last resort, of every file. */
+  bodyGuidOf: (realName: string) => string | null;
+  /** The listing's recorded-guid -> real-name index, for a caller that keeps it
+   * across lookups. Built from `bodyGuidOf` on first need when absent. */
+  guidIndex?: () => ReadonlyMap<string, string>;
+}
+
+/**
+ * Which file in one show's listing holds the body of the episode `guid` — the
+ * real file name, or null.
+ *
+ * THE RULE (#703, gen-7), in order:
+ *   1. the writer's own key, `corpusSafeKey(guid).json` (an exact name);
+ *   2. the legacy bare slug, `<slug>.json` (also an exact name);
+ *   3. a `<slug>-` prefix candidate, but only when the guid the body records IS
+ *      this guid (guid "ep-5" must not open "ep-5-bonus-<hash>.json");
+ *   4. the guid every body records about itself, indexed once per listing.
+ *
+ * Pure over its input: `FileTranscriptCueProvider` passes a cached directory
+ * listing, and GV-05's streamed index build passes the file names it was sent.
+ * Committed rows and bodies can disagree on the guid (Becker's: a permalink in
+ * the row, a slug in the body), which is why step 1 keys on the ROW's guid and
+ * step 4 on the BODY's.
+ */
+export function locateInListing(input: ListingLocateInput): string | null {
+  const { files, guid, bodyGuidOf } = input;
+  /* THE WRITER'S OWN KEY FIRST (#703). `corpusSafeKey` is byte-identical to
+     `fetch-transcripts.mjs`'s `safeKey`, the function that named this file,
+     so this is an exact lookup rather than a prefix guess — and it costs one
+     `Map.get` on a listing the provider caches, instead of a linear `find`
+     over 2,857 names per episode. */
+  const exact = files.get(`${corpusSafeKey(guid)}.json`);
+  if (exact) return exact;
+  const slug = guidSlug(guid);
+  if (slug) {
+    /* gen-7 (round-3 audit): the legacy bare-slug name is an exact name, and
+       is trusted as one. A PREFIX match is not: guid "ep-5" is a prefix of
+       "ep-5-bonus-<hash>.json", which is another episode's body. So a
+       prefix candidate is opened and used only when the guid it records is
+       this guid. */
+    const legacy = files.get(`${slug}.json`);
+    if (legacy) return legacy;
+    for (const [lower, real] of files) {
+      if (!lower.startsWith(`${slug}-`)) continue;
+      if (bodyGuidOf(real) === guid) return real;
+    }
+  }
+  // Fallback: index the listing's recorded guids once, then look the guid up.
+  const index = input.guidIndex ? input.guidIndex() : guidIndexOfListing(files, bodyGuidOf);
+  return index.get(guid) ?? null;
+}
+
+/** Recorded guid -> real file name over a listing. A later file recording the
+ * same guid wins, as the provider's directory index always did. */
+export function guidIndexOfListing(
+  files: ReadonlyMap<string, string>,
+  bodyGuidOf: (realName: string) => string | null
+): Map<string, string> {
+  const index = new Map<string, string>();
+  for (const real of files.values()) {
+    const recorded = bodyGuidOf(real);
+    if (recorded !== null) index.set(recorded, real);
+  }
+  return index;
 }
 
 /**
@@ -547,7 +603,23 @@ function bodyGuid(file: string): string | null {
 }
 
 function readCues(file: string): TranscriptCue[] | null {
-  const j = JSON.parse(fs.readFileSync(file, "utf8")) as { cues?: unknown };
+  return cuesFromBodyJson(JSON.parse(fs.readFileSync(file, "utf8")));
+}
+
+/**
+ * The cues a parsed normalized body yields, through the ONE reading rule every
+ * reader of a body shares: a cue with no text, a non-numeric or non-finite
+ * timing, or an end before its start is skipped, and a letter-spaced cue is
+ * dropped (#703). Null when the body has no cue array or nothing survives.
+ *
+ * Exported for GV-05's streamed index build, which receives bodies as JSON over
+ * a stream and must count exactly the words `FileTranscriptCueProvider` would.
+ */
+export function cuesFromBodyJson(json: unknown): TranscriptCue[] | null {
+  /* A JSON `null` body threw a TypeError here once, which every caller caught
+     as "no cues"; null is that same answer, said directly. */
+  if (json === null || typeof json !== "object") return null;
+  const j = json as { cues?: unknown };
   if (!Array.isArray(j.cues)) return null;
   const cues: TranscriptCue[] = [];
   for (const c of j.cues as Array<Record<string, unknown>>) {

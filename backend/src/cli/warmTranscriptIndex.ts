@@ -123,8 +123,10 @@ function feedEpisodes(xml: string): FeedEpisode[] {
   return out;
 }
 
-/** `<show_id>-<10 hex>` is the directory; `<show_id>` is what a digest row says. */
-function catalogueShows(): Map<string, { title: string; feedUrl: string | null }> {
+/** `<show_id>-<10 hex>` is the directory; `<show_id>` is what a digest row says.
+ * Exported for GV-05's streamed index build, which titles its new rows exactly
+ * as a reconcile does. */
+export function catalogueShows(): Map<string, { title: string; feedUrl: string | null }> {
   const out = new Map<string, { title: string; feedUrl: string | null }>();
   try {
     const file = path.join(REPO_ROOT, "data", "catalog.json");
@@ -264,12 +266,21 @@ export function readCorpusDigestRows(file: string = CORPUS_DIGEST): TranscriptDi
 function readBody(file: string): { guid: string; cues: number } | null {
   try {
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- path came from this module's own directory walk.
-    const parsed = JSON.parse(fs.readFileSync(file, "utf8")) as { guid?: unknown; cues?: unknown };
-    if (typeof parsed.guid !== "string" || !Array.isArray(parsed.cues) || parsed.cues.length === 0) return null;
-    return { guid: parsed.guid, cues: parsed.cues.length };
+    return bodyIdentity(JSON.parse(fs.readFileSync(file, "utf8")));
   } catch {
     return null;
   }
+}
+
+/** What one parsed body says about itself: the guid it records and how many
+ * cues it carries (before any reading filter — the digest row's `cues`). Null
+ * for a body with no guid or no cues, which no reconcile turns into a row.
+ * Exported for GV-05's streamed index build, which gets bodies as JSON. */
+export function bodyIdentity(json: unknown): { guid: string; cues: number } | null {
+  if (json === null || typeof json !== "object") return null;
+  const parsed = json as { guid?: unknown; cues?: unknown };
+  if (typeof parsed.guid !== "string" || !Array.isArray(parsed.cues) || parsed.cues.length === 0) return null;
+  return { guid: parsed.guid, cues: parsed.cues.length };
 }
 
 /** The identity of one body file, for the "is this episode already covered"
@@ -312,78 +323,158 @@ export interface ReconcileResult {
   perShow: Array<{ showId: string; added: number; mintable: number; searchableOnly: number }>;
 }
 
+/** The digests a reconcile treats as already describing the corpus. */
+export const COMMITTED_DIGEST_FILES: readonly string[] = [
+  path.join(REPO_ROOT, "data", "transcript-digests.json"),
+  path.join(REPO_ROOT, "data", "breadth-transcript-digests.json")
+];
+
+/**
+ * The body files the committed digests already describe, as `claimKey`s.
+ *
+ * KEYED ON THE BODY FILE, NOT ON THE GUID (measured, and it matters).
+ *
+ * A committed row and the body it describes do NOT always agree about the
+ * guid: Becker's Healthcare rows carry the permalink URL
+ * (`https://blubrry.com/.../david-dunkle-.../`) while the body file's own
+ * `guid` field is the slug it was saved under. Dedupe on the guid string and
+ * all 990 look unrepresented, a second row is written for each, and the
+ * archive holds the same episode twice — which is how the first run of this
+ * tool reported "6162 of 5041 episodes searchable" for a 5,041-episode
+ * corpus. The FILE is the thing that is or is not already covered, and
+ * `corpusSafeKey` is what maps a committed row onto one.
+ */
+export function claimedFilesFromDigests(files: readonly string[] = COMMITTED_DIGEST_FILES): Set<string> {
+  const claimedFiles = new Set<string>();
+  for (const full of files) {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the committed digest paths (or a test's).
+    if (!fs.existsSync(full)) continue;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
+    const parsed = JSON.parse(fs.readFileSync(full, "utf8")) as { transcripts?: TranscriptDigestEntry[] };
+    for (const t of parsed.transcripts ?? []) claimedFiles.add(claimKey(t.show_id, corpusSafeKey(String(t.guid))));
+  }
+  return claimedFiles;
+}
+
+/** One body a reconcile has read: its file name in the show directory, the
+ * guid it records about itself, and how many cues it carries. */
+export interface CorpusBodyListing {
+  fileName: string;
+  guid: string;
+  cues: number;
+}
+
+/** Whether a body file is already described by a committed row: by its file
+ * name (the cheap test, asked before the body is read), or by the guid it
+ * records (for a body saved under a name no committed row maps to but whose
+ * guid one of them does carry). */
+function isClaimed(showId: string, fileName: string, guid: string | null, claimedFiles: ReadonlySet<string>): boolean {
+  if (claimedFiles.has(claimKey(showId, fileName.replace(/\.json$/i, "")))) return true;
+  return guid !== null && claimedFiles.has(claimKey(showId, corpusSafeKey(guid)));
+}
+
+/**
+ * THE PURE CORE OF A RECONCILE, for one show: the corpus-digest rows its bodies
+ * add to the archive, in corpus-digest order (by guid), and how many of them
+ * are mintable. A body the committed digests already claim adds nothing; every
+ * other body with cues adds one row, joined to `feed` when the feed carries its
+ * guid and searchable-only (titled by its guid) otherwise.
+ *
+ * `reconcileCorpus` reads the bodies from `data-local/` and calls this; GV-05's
+ * streamed index build (`cli/indexBodies.ts`) calls it over bodies it was sent,
+ * with no feed, and so stages exactly the rows an offline reconcile with no
+ * cached feed writes.
+ */
+export function pendingCorpusRows(
+  showId: string,
+  showTitle: string,
+  bodies: readonly CorpusBodyListing[],
+  claimedFiles: ReadonlySet<string>,
+  feed: ReadonlyMap<string, FeedEpisode> = new Map()
+): { rows: TranscriptDigestEntry[]; mintable: number } {
+  const rows: TranscriptDigestEntry[] = [];
+  let mintable = 0;
+  for (const body of bodies) {
+    if (!(body.cues > 0) || isClaimed(showId, body.fileName, body.guid, claimedFiles)) continue;
+    const joined = corpusDigestRow(showId, showTitle, { guid: body.guid, cues: body.cues }, feed.get(body.guid));
+    if (joined.mintable) mintable += 1;
+    rows.push(joined.row);
+  }
+  rows.sort(compareCorpusRows);
+  return { rows, mintable };
+}
+
+/** The corpus digest's row order: show, then guid. */
+function compareCorpusRows(a: TranscriptDigestEntry, b: TranscriptDigestEntry): number {
+  return a.show_id.localeCompare(b.show_id) || a.guid.localeCompare(b.guid);
+}
+
+export interface ReconcileOptions {
+  offline: boolean;
+  onlyShows: string[];
+  /** Defaults to `data-local/transcripts/normalized/`. */
+  normalizedRoot?: string;
+  /** Defaults to `COMMITTED_DIGEST_FILES`. */
+  committedDigests?: readonly string[];
+  /** Defaults to `data-local/transcripts/feeds/`. */
+  feedCacheDir?: string;
+}
+
 /**
  * Build corpus-digest rows for every body on disk that the COMMITTED digests do
  * not already describe.
  *
  * Keyed on `show_id + guid`, which is the same key `loadTranscriptArchive`
  * dedupes on, so a row here can never shadow a committed one — this pass only
- * ever ADDS episodes to the searchable universe.
+ * ever ADDS episodes to the searchable universe. Which bodies are already
+ * described is `claimedFilesFromDigests`'s question, and the rows are
+ * `pendingCorpusRows`'s answer; this function only reads the disk and the feed.
  */
-export async function reconcileCorpus(options: { offline: boolean; onlyShows: string[] }): Promise<ReconcileResult> {
-  /**
-   * KEYED ON THE BODY FILE, NOT ON THE GUID (measured, and it matters).
-   *
-   * A committed row and the body it describes do NOT always agree about the
-   * guid: Becker's Healthcare rows carry the permalink URL
-   * (`https://blubrry.com/.../david-dunkle-.../`) while the body file's own
-   * `guid` field is the slug it was saved under. Dedupe on the guid string and
-   * all 990 look unrepresented, a second row is written for each, and the
-   * archive holds the same episode twice — which is how the first run of this
-   * tool reported "6162 of 5041 episodes searchable" for a 5,041-episode
-   * corpus. The FILE is the thing that is or is not already covered, and
-   * `corpusSafeKey` is what maps a committed row onto one.
-   */
-  const claimedFiles = new Set<string>();
-  for (const file of ["data/transcript-digests.json", "data/breadth-transcript-digests.json"]) {
-    const full = path.join(REPO_ROOT, file);
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- hardcoded repo-relative path list.
-    if (!fs.existsSync(full)) continue;
-    // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
-    const parsed = JSON.parse(fs.readFileSync(full, "utf8")) as { transcripts?: TranscriptDigestEntry[] };
-    for (const t of parsed.transcripts ?? []) claimedFiles.add(claimKey(t.show_id, corpusSafeKey(String(t.guid))));
-  }
-
+export async function reconcileCorpus(options: ReconcileOptions): Promise<ReconcileResult> {
+  const normalizedRoot = options.normalizedRoot ?? NORMALIZED_ROOT;
+  const claimedFiles = claimedFilesFromDigests(options.committedDigests);
   const catalogue = catalogueShows();
   const rows: TranscriptDigestEntry[] = [];
   const perShow: ReconcileResult["perShow"] = [];
 
-  for (const show of scanNormalizedCorpus(NORMALIZED_ROOT)) {
+  for (const show of scanNormalizedCorpus(normalizedRoot)) {
     if (options.onlyShows.length > 0 && !options.onlyShows.includes(show.showId)) continue;
-    const dir = path.join(NORMALIZED_ROOT, show.dirName);
+    const dir = path.join(normalizedRoot, show.dirName);
     const meta = catalogue.get(show.showId);
+    const showTitle = meta?.title ?? show.showId;
     /* The bodies this show has and the committed digests do not. Read FIRST, so
        a show that needs nothing never causes a network request. */
-    const pending: Array<{ guid: string; cues: number }> = [];
+    const unclaimed: CorpusBodyListing[] = [];
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- directory came from `scanNormalizedCorpus`.
     for (const name of fs.readdirSync(dir)) {
       if (!name.endsWith(".json")) continue;
       /* The cheap test first: a file a committed row already names is not read
          at all. That is what keeps a re-warm of a 2,857-episode show from
          re-parsing 306 MB of JSON to learn it has nothing to do. */
-      if (claimedFiles.has(claimKey(show.showId, name.replace(/\.json$/i, "")))) continue;
+      if (isClaimed(show.showId, name, null, claimedFiles)) continue;
       const body = readBody(path.join(dir, name));
       if (!body) continue;
-      /* And the guid test second, for a body saved under a name no committed
-         row maps to but whose guid one of them does carry. */
-      if (claimedFiles.has(claimKey(show.showId, corpusSafeKey(body.guid)))) continue;
-      pending.push(body);
+      unclaimed.push({ fileName: name, guid: body.guid, cues: body.cues });
     }
-    if (pending.length === 0) continue;
+    /* The guid test second, inside the pure core. */
+    const searchable = pendingCorpusRows(show.showId, showTitle, unclaimed, claimedFiles);
+    if (searchable.rows.length === 0) continue;
 
     const feed = await loadFeed(show.showId, meta?.feedUrl ?? null, options.offline, {
-      needGuids: pending.map((b) => b.guid)
+      cacheDir: options.feedCacheDir,
+      needGuids: searchable.rows.map((r) => r.guid)
     });
-    let mintable = 0;
-    for (const body of pending) {
-      const joined = corpusDigestRow(show.showId, meta?.title ?? show.showId, body, feed.get(body.guid));
-      if (joined.mintable) mintable += 1;
-      rows.push(joined.row);
-    }
-    perShow.push({ showId: show.showId, added: pending.length, mintable, searchableOnly: pending.length - mintable });
+    const added = pendingCorpusRows(show.showId, showTitle, unclaimed, claimedFiles, feed);
+    rows.push(...added.rows);
+    perShow.push({
+      showId: show.showId,
+      added: added.rows.length,
+      mintable: added.mintable,
+      searchableOnly: added.rows.length - added.mintable
+    });
   }
 
-  rows.sort((a, b) => a.show_id.localeCompare(b.show_id) || a.guid.localeCompare(b.guid));
+  rows.sort(compareCorpusRows);
   return { rows, perShow };
 }
 

@@ -167,7 +167,7 @@ export interface TranscriptBodySource extends TranscriptCueProvider {
   readCuesUncached?(entry: TranscriptDigestEntry): TranscriptCue[] | null;
 }
 
-interface IndexedDoc {
+export interface IndexedDoc {
   guid: string;
   /** Content-word count after tokenizing — BM25's `|D|`. */
   length: number;
@@ -175,7 +175,7 @@ interface IndexedDoc {
   size: number;
 }
 
-interface ShowIndex {
+export interface ShowIndex {
   version: number;
   showId: string;
   builtAt: string;
@@ -414,32 +414,17 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
   }
 
   private build(showId: string, entries: TranscriptDigestEntry[]): ShowIndex | null {
-    const docs: IndexedDoc[] = [];
-    /* F-85: a null-prototype map, so a token such as "constructor" or "__proto__" is a key like any other. */
-    const postings: Record<string, Array<[number, number]>> = Object.create(null);
-    for (const entry of entries) {
+    return buildShowIndex(showId, entries, (entry) => {
       const stat = this.bodies.bodyStat(entry);
-      if (!stat) continue;
+      if (!stat) return null;
       const cues = this.bodies.readCuesUncached ? this.bodies.readCuesUncached(entry) : this.bodies.getCues(entry);
-      if (!cues || cues.length === 0) continue;
-      const counts = countTerms(cues);
-      const docIndex = docs.length;
-      let length = 0;
-      for (const [term, tf] of counts) {
-        length += tf;
-        const list = postings[term];
-        if (list) list.push([docIndex, tf]);
-        else postings[term] = [[docIndex, tf]];
-      }
-      docs.push({ guid: entry.guid, length, mtimeMs: stat.mtimeMs, size: stat.size });
-    }
-    if (docs.length === 0) return null;
-    return { version: TRANSCRIPT_TEXT_INDEX_VERSION, showId, builtAt: new Date().toISOString(), docs, postings };
+      if (!cues || cues.length === 0) return null;
+      return { stat, counts: countTerms(cues) };
+    });
   }
 
   private cacheFile(showId: string): string {
-    const safe = String(showId).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").slice(0, 100) || "show";
-    return path.join(this.indexRoot, `${safe}.json`);
+    return showIndexCacheFile(this.indexRoot, showId);
   }
 
   private readCache(showId: string): ShowIndex | null {
@@ -462,14 +447,7 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
 
   private writeCache(showId: string, index: ShowIndex): void {
     try {
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see readCache.
-      fs.mkdirSync(this.indexRoot, { recursive: true });
-      const file = this.cacheFile(showId);
-      const tmp = `${file}.tmp`;
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see readCache.
-      fs.writeFileSync(tmp, JSON.stringify(index), "utf8");
-      // eslint-disable-next-line security/detect-non-literal-fs-filename -- see readCache.
-      fs.renameSync(tmp, file);
+      writeShowIndexFile(this.indexRoot, { ...index, showId });
     } catch {
       /* A read-only or absent `data-local/` costs a rebuild next run, nothing
          more. Sourcing must never fail because a cache could not be written. */
@@ -477,10 +455,77 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
   }
 }
 
+/** One episode's contribution to a show index: its body's identity on disk and
+ * its content-word counts. */
+export interface ShowIndexDoc {
+  stat: TranscriptBodyStat;
+  counts: ReadonlyMap<string, number>;
+}
+
+/**
+ * A show's inverted index over `entries`, IN ENTRY ORDER — the one build rule,
+ * shared by `FileTranscriptTextIndex` (bodies read through its provider) and
+ * GV-05's streamed build (`cli/indexBodies.ts`, bodies sent over a stream).
+ * `docFor` answers null for an entry with no body or no usable cues, and such
+ * an entry is not a document. Null when no entry is.
+ *
+ * The order is the cache's identity: docs are numbered in it, postings are
+ * keyed in the order terms are first met, so two builds over the same entries
+ * and the same counts serialize to the same bytes (save `builtAt`).
+ */
+export function buildShowIndex(
+  showId: string,
+  entries: readonly TranscriptDigestEntry[],
+  docFor: (entry: TranscriptDigestEntry) => ShowIndexDoc | null
+): ShowIndex | null {
+  const docs: IndexedDoc[] = [];
+  /* F-85: a null-prototype map, so a token such as "constructor" or "__proto__" is a key like any other. */
+  const postings: Record<string, Array<[number, number]>> = Object.create(null);
+  for (const entry of entries) {
+    const doc = docFor(entry);
+    if (!doc) continue;
+    const docIndex = docs.length;
+    let length = 0;
+    for (const [term, tf] of doc.counts) {
+      length += tf;
+      const list = postings[term];
+      if (list) list.push([docIndex, tf]);
+      else postings[term] = [[docIndex, tf]];
+    }
+    docs.push({ guid: entry.guid, length, mtimeMs: doc.stat.mtimeMs, size: doc.stat.size });
+  }
+  if (docs.length === 0) return null;
+  return { version: TRANSCRIPT_TEXT_INDEX_VERSION, showId, builtAt: new Date().toISOString(), docs, postings };
+}
+
+/** Where a show's index cache lives under `indexRoot`. */
+export function showIndexCacheFile(indexRoot: string, showId: string): string {
+  const safe = String(showId).toLowerCase().replace(/[^a-z0-9_-]+/g, "-").slice(0, 100) || "show";
+  return path.join(indexRoot, `${safe}.json`);
+}
+
+/**
+ * Write a show's index cache: to a `.tmp` sibling, then renamed over the cache,
+ * so a reader never sees half a file. THROWS on failure — the search path
+ * swallows that (a cache is optional there), the streamed build reports it.
+ * Returns the cache file's path.
+ */
+export function writeShowIndexFile(indexRoot: string, index: ShowIndex): string {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- the index root (data-local/transcripts/index/ or a caller's).
+  fs.mkdirSync(indexRoot, { recursive: true });
+  const file = showIndexCacheFile(indexRoot, index.showId);
+  const tmp = `${file}.tmp`;
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- path derived from a show id, slugged by showIndexCacheFile.
+  fs.writeFileSync(tmp, JSON.stringify(index), "utf8");
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
+  fs.renameSync(tmp, file);
+  return file;
+}
+
 /** Content-word counts over an episode's cues, with the SAME tokenizer the
  * §4.5 scorers use — an index that tokenized differently would rank episodes by
  * one rule and score claims by another. */
-function countTerms(cues: TranscriptCue[]): Map<string, number> {
+export function countTerms(cues: readonly TranscriptCue[]): Map<string, number> {
   const counts = new Map<string, number>();
   for (const cue of cues) {
     for (const term of tokenizeForSourcing(cue.text)) {

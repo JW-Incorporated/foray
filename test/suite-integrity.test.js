@@ -2753,6 +2753,10 @@ const BACKEND_FLOORS = {
      as tape on a germ-theory Foray. */
   "test/transcriptCorpus.test.ts": 19,
   "test/transcriptTextIndex.test.ts": 13,
+  /* GV-05 (docs/roadmap/generation-v2.md): the per-show BM25 cache built from a
+     body stream equals FileTranscriptTextIndex's own build, is judged fresh by
+     it, and stages the rows an offline reconcile writes. */
+  "test/indexBodies.test.ts": 10,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
