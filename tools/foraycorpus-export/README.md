@@ -386,6 +386,41 @@ Add one paragraph per module as it lands.
   distinct ranged-get host with `rangedGetTrusted(host)` from
   `tools/transcribe/ad-inflation.mjs`, for PKG-17's by-host table. Pure: no
   network and no file access.
+- **`legacy-whisper.mjs`** (GV-23 / W3-02, `docs/roadmap/generation-v2.md`):
+  reads the 7,531 legacy whisper JSONs at the bucket root without a mirror,
+  porting foray-db's verified mapper
+  (`src/forays_corpus/acquisition/legacy_asr_mapper.py`). `parseLegacyKey(key)`
+  gives `{key, showSlug, titleSlug, guidSha1_10}` for
+  `<show-slug>/[<title-slug>-]<sha1(guid)[:10]>.json` and null for the
+  `transcripts/`, `transcript-originals/` and `_` (probe) prefixes and any key
+  without the 10-hex suffix; its test pins that it agrees with
+  `inventory.mjs` `classifyKey`'s `legacy-root`. `guidHashes(guid)` is the
+  distinct 10-hex sha1 prefixes of the raw and the trimmed guid.
+  `resolveLegacyEpisode(legacyKey, candidates[{guid, title}])` returns
+  `{status: matched|unmatched|ambiguous, guid, reason, hits}`. Only the hash
+  decides: whitespace spellings of one guid are one episode, a hit on two
+  distinct episodes is `ambiguous` (`guid_hash_multi_episode`) and nothing is
+  picked, and no hit is `unmatched` (`not_a_legacy_key`, `no_candidates` or
+  `no_episode_for_guid_hash`). The title slug is never a match: each hit only
+  reports `titleSlugMatch` (plain or accent-folded slug, null when the key has
+  no title). `convertWhisperDoc(doc, {keepWords})` turns raw faster-whisper
+  output (`meta` + `segments[]`) into `{cues[{start_sec, end_sec, text}],
+  asr{engine, model, detected_language}, stats}`, throws `LegacyShapeError`
+  `not_a_whisper_doc` when the doc, `meta` or `segments` is missing or
+  mis-typed, and drops and counts a segment that is not an object or whose
+  start/end is not a finite number. With `keepWords` every cue carries
+  `words` `[{text, start, end}]`; without it no cue has the key.
+  `toNormalizedBody(converted, {show_id, guid})` is `{show_id, guid,
+  transcript_source: "asr-local", asr, cues}`, which passes sync-r2's
+  `bodyShapeError`. It never sets `source_url`, because
+  `FileTranscriptCueProvider` infers `publisher` from one. The bounded sampler
+  `node tools/foraycorpus-export/legacy-whisper.mjs sample [--n <1..200,
+  default 20>] [--out <dir>] [--prefix <p>]` lists the bucket, picks n legacy
+  keys round-robin across show slugs, GETs exactly those n into
+  `data-local/legacy-sample/<show>/` (gitignored) and prints a shape table
+  (segments, cues with words, last end, language, engine, model, error),
+  also written as `legacy-sample-report.json` there. Nothing calls the module
+  yet; GV-53 (`--resolve-legacy`) and GV-60 (`r2LegacySource`) will.
 
 ## Usage
 
