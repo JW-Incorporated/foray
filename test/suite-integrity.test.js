@@ -1595,12 +1595,17 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 64, // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  "tools/generation-bench/run.test.mjs": 69, // GV-24 (MQ scorecard): --scorecard adds the scorecard to the JSONL line and the MQ detail columns to --wide only (plain lines unchanged), out-9 report cells filled and judged/listen null, a scored line round-trips, a judged.json beside the candidate, clipDurations under clipStats; 64 -> 69 // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
   /* GV-17 (W1-04, MT-04..MT-12): the runlog reader. Each test is one quiet
      wrong number: parallel calls counted as serial, a re-ask counted twice, a
      reservation read as spend, a decode rate diluted with end-to-end calls,
      a 0 standing in for a field no provider reported. */
   "tools/generation-bench/runlog.test.mjs": 12, // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
+  /* GV-24 (W1-11, MQ-01..MQ-21): the quality scorecard. Each test is one
+     quiet wrong number: a clip-only Foray scored as a voice of zero, a pool
+     clip counted as a clean cut, tape credited to the wrong show, the report's
+     own measurement overridden by a candidate guess, reference drift unseen. */
+  "tools/generation-bench/score.test.mjs": 17, // GV-24: new -- synthetic two-show MQ-06/07/08/16/19, show resolution order, pool boundary unknown, absent never 0, out-9 report vs judged/listen, report fields win, MQ-14 tier table, judged file, frozen clip-only null voice, --write/--check drift, committed reference shape, 21 keys, CLI, KPI doc rows
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
