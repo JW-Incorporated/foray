@@ -4,7 +4,7 @@ import type { StageTiming } from "./stageTiming";
 import type { EvidencePrefetchMetrics } from "./evidencePrefetch";
 import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeSourcing";
 import type { WrittenAct, WrittenBeat } from "./writeNarration";
-import { decideConnectiveNarration, pageOfWrittenBeat } from "./writeNarration";
+import { HANDOFF_SCRIPT, decideConnectiveNarration, pageOfWrittenBeat } from "./writeNarration";
 import { clipOpening, introRestatesClip, planActSeams } from "./actSeams";
 import { findHoldingDoc, isSynthesisVerified, isTapeSource, purposeWasRevised, scriptSeconds, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
 import { phraseIsInWindow } from "../types/anchorText";
@@ -614,6 +614,61 @@ export function computeUnverifiedPages(writtenActs: WrittenAct[]): UnverifiedPag
     });
   }
   return { count: pages.length, pages };
+}
+
+/* ------------------------------------------------------------------ */
+/* Per-act veracity (GV-21, W5-12a)                                     */
+/* ------------------------------------------------------------------ */
+
+export interface ActVeracity {
+  actIndex: number;
+  /** `computeUnverifiedPages` on this act alone — the HANDOFF page included. */
+  unverifiedPages: FailingPage[];
+  /** Pages that are the HANDOFF fallback (`HANDOFF_SCRIPT`, or
+   * `unverifiedReason: "no-page"`): counted here AND in `unverifiedPages`. */
+  handoffPages: number;
+  /** `computeGroundedQuoteRate` on this act alone; null when no page of the
+   * act carries evidence. */
+  groundedQuoteRate: number | null;
+  ok: boolean;
+  failures: string[];
+}
+
+/**
+ * The publish gate's two page-level conditions, for ONE act, so the partial
+ * path can withhold an act the whole-Foray gate would refuse (GV-21;
+ * docs/roadmap/generation-v2.md decision 13). The whole-Foray gate already
+ * counts the HANDOFF page (it is `verified: false`); this makes the same
+ * count per act and names the hand-off separately, because a hand-off is a
+ * page the writer never produced, not a page the verifier refused.
+ *
+ * `ok` is false on any unverified page or a grounded-quote rate below 1. A
+ * null rate (no page held evidence) is "unmeasured" and does not fail here:
+ * the per-act verdict withholds what is known to be wrong, and the
+ * whole-Foray gate (`evaluateVeracityGate`) still refuses the unmeasured.
+ */
+export function computeActVeracity(written: WrittenAct, actIndex: number): ActVeracity {
+  const unverified = computeUnverifiedPages([written]);
+  const grounded = computeGroundedQuoteRate([written]);
+  let handoffPages = 0;
+  for (const { page } of flattenWrittenPages([written])) {
+    if (page.script === HANDOFF_SCRIPT || page.unverifiedReason === "no-page") handoffPages++;
+  }
+  const failures: string[] = [];
+  if (unverified.count > 0) {
+    failures.push(`${unverified.count} page(s) in act ${actIndex + 1} were kept without passing verification${handoffPages > 0 ? `, ${handoffPages} of them the hand-off line` : ""}`);
+  }
+  if (grounded.rate !== null && grounded.rate < GATE_MIN_GROUNDED_QUOTE_RATE) {
+    failures.push(`groundedQuoteRate ${grounded.rate.toFixed(3)} < ${GATE_MIN_GROUNDED_QUOTE_RATE} in act ${actIndex + 1}`);
+  }
+  return {
+    actIndex,
+    unverifiedPages: unverified.pages,
+    handoffPages,
+    groundedQuoteRate: grounded.rate,
+    ok: failures.length === 0,
+    failures
+  };
 }
 
 /* ------------------------------------------------------------------ */

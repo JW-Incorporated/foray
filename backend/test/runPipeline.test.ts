@@ -26,7 +26,9 @@ import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/genera
 import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
 import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
-import type { PartialCandidate } from "../src/generation/partialCandidate";
+import { servableThroughAct, servableView, type PartialCandidate } from "../src/generation/partialCandidate";
+import { itemKeyOf } from "../src/generation/itemReadiness";
+import type { NarrationVerifierBuilder } from "../src/generation/NarrationVerifierBuilder";
 import { RunLog, currentCallContext, runWithRunLog, type CallContext } from "../src/generation/runLog";
 import { createMessage } from "../src/generation/anthropicCall";
 import { getUsageTotals } from "../src/generation/usageTracking";
@@ -1272,5 +1274,89 @@ describe("runForayPipeline under a RunLog: per-call records (GV-07)", () => {
     expect(out.input.meta?.veracity?.pipelineTokens).toBe(totals.promptTokens + totals.outputTokens);
     expect(getUsageTotals().total).toBe(totals.promptTokens + totals.outputTokens);
     expect(getUsageTotals().calls).toBe(totals.calls);
+  }, 60_000);
+});
+
+describe("runForayPipeline — per-act servability on partial candidates (GV-21)", () => {
+  const multiAct: GenerationRequest = { ...request, duration: "medium" };
+
+  function capturingSpine() {
+    const builder = new StubSpineBuilder();
+    const real = builder.buildSpine.bind(builder);
+    const captured: { spine: Spine | null } = { spine: null };
+    builder.buildSpine = async (...args: Parameters<SpineBuilder["buildSpine"]>) => {
+      captured.spine = await real(...args);
+      return captured.spine;
+    };
+    return { builder, captured };
+  }
+
+  it("every partial carries delivery aligned 1:1 with its items (prelude included), and the final items are unchanged", async () => {
+    /* MUTATION THAT KILLS THIS: hand buildPartialCandidate `provenanceSoFar`
+       without the prelude record. Every delivery is then misaligned by one
+       and alignDelivery serves the prelude only. Ran it — red. */
+    const partials: PartialCandidate[] = [];
+    const baseline = await runForayPipeline(multiAct, options, stubDeps());
+    const out = await runForayPipeline(multiAct, options, { ...stubDeps(), onActReady: (c) => void partials.push(c) });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated" || baseline.outcome !== "generated") return;
+    expect(partials.length).toBeGreaterThan(1);
+    for (const p of partials) {
+      expect(p.delivery).toBeDefined();
+      expect(p.delivery!.items.map((d) => d.itemId)).toEqual(p.items.map((it, k) => itemKeyOf(it, k)));
+      expect(p.delivery!.items[0]).toMatchObject({ itemId: "prelude", act: -1, check: "prelude" });
+      for (const item of p.items) {
+        expect(item).not.toHaveProperty("verified");
+        expect(item).not.toHaveProperty("pronunciationHints");
+      }
+      /* The stub verifier passes every page, and unchecked seams play by
+         default: the whole partial is servable. */
+      expect(p.delivery!.servableThrough).toBe(p.items.length);
+      expect(p.acts.filter((a) => a.status === "ready").every((a) => a.served === true && a.veracity?.ok === true)).toBe(true);
+    }
+    expect(out.input.items).toEqual(baseline.input.items);
+  }, 120_000);
+
+  it("a verifier that refuses act 0's seams makes act 0 unservable — and the run, its validation and the abort policy are untouched", async () => {
+    /* MUTATION THAT KILLS THIS: make assessAct call every act servable
+       (`servable: true`). Act 0 comes back servable. Ran it — red. Second:
+       feed the servability verdict into the refusal (`!validation.ok ||
+       servableThrough !== items.length` before the abort) — refusedPartial
+       "abort" then throws RefusedPartialError and the run never completes.
+       Ran it — red. */
+    const { builder: spineBuilder, captured } = capturingSpine();
+    const stub = new StubNarrationVerifierBuilder();
+    const refusing: NarrationVerifierBuilder = {
+      providerName: "stub",
+      verifyAct: async (request, ctx) => {
+        const result = await stub.verifyAct(request, ctx);
+        if (request.actTitle !== captured.spine?.acts[0]?.title) return result;
+        return {
+          ...result,
+          seams: result.seams.map((seam) => ({ ...seam, claimsSupported: false, notes: `"${request.seams.find((s) => s.seamId === seam.seamId)?.script.slice(0, 40) ?? ""}" rests on nothing held` }))
+        };
+      }
+    } as NarrationVerifierBuilder;
+
+    const partials: PartialCandidate[] = [];
+    const out = await runForayPipeline(multiAct, { ...options, refusedPartial: "abort" }, {
+      ...stubDeps(),
+      spineBuilder,
+      narrationVerifier: refusing,
+      onActReady: (c) => void partials.push(c)
+    });
+
+    expect(out.outcome).toBe("generated");
+    expect(partials.length).toBeGreaterThan(1);
+    for (const p of partials) {
+      expect(p.validation.ok).toBe(true);
+      expect(p.delivery!.acts[0]!.servable).toBe(false);
+      expect(p.delivery!.acts[0]!.blockers.some((b) => b.reason === "unverified")).toBe(true);
+      expect(p.delivery!.servableThrough).toBe(1);
+      expect(servableThroughAct(p.delivery!)).toBe(-1);
+      expect(servableView(p)).toEqual([p.items[0]]);
+      expect(p.acts[0]!.served).toBe(false);
+      expect(p.acts[0]!.veracity?.ok).toBe(false);
+    }
   }, 60_000);
 });
