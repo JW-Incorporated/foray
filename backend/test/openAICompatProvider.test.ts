@@ -52,7 +52,7 @@ afterEach(() => {
 describe("OpenAICompatChatProvider.complete: reading a reply", () => {
   it("returns text, finishReason, usage, model, requestId and servedBy from a stop reply; cachedTokens is null when prompt_tokens_details is absent", async () => {
     const c = clock();
-    const { p } = provider(ok("chat-stop", { "x-request-id": "req-1", "x-litellm-model-id": "spark-sglang-a2" }), { now: c.now });
+    const { p } = provider(ok("chat-stop", { "x-request-id": "req-1", "x-litellm-call-id": "litellm-call-9", "x-litellm-model-id": "spark-sglang-a2" }), { now: c.now });
     const res = await p.complete(request());
     expect(res.text).toBe('{"ok":true}');
     expect(res.finishReason).toBe("stop");
