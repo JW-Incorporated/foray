@@ -57,7 +57,8 @@ import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate, preludeTemplate } from "../types/narration";
 import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 import { resetUsageTracking, getUsageTotals } from "./usageTracking";
-import { buildVeracityMetrics } from "./veracityMetrics";
+import { buildVeracityMetrics, computeActVeracity, type ActVeracity } from "./veracityMetrics";
+import { preludeProvenance } from "./itemReadiness";
 
 import { createPromptUnderstander } from "./createPromptUnderstander";
 import { createExternalResearcher } from "./createExternalResearcher";
@@ -1557,6 +1558,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      `deps.onActReady` — there was no act-boundary clock to read. */
   let ttlA1Ms: number | null = null;
 
+  /* GV-21 (W5-12a): every act's veracity, filled in the ordered loop below
+     from the `WrittenAct` it stitches — banked or fresh — and NOT from the
+     callback: a resumed act never fires `onActReady`, and its pages must
+     still count. The partial candidate reads it per act. */
+  const actVeracity: ActVeracity[] = [];
+
   /* §4.8's per-act driver. Constructed BEFORE narration starts because it
      needs nothing narration produces: its continuity smoothing reads act
      N-1's exit and act N's introduction, both of them §4.4 output (see
@@ -1568,7 +1575,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       /* gen-4: items carry the slot ids `slots` declares, by position. */
       slotIds: slotIdsFromSpine(spine),
       onActReady: deps.onActReady
-        ? async ({ actIndex, itemsSoFar }) => {
+        ? async ({ actIndex, itemsSoFar, provenanceSoFar }) => {
             if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
             /* The disclosure is prepended here for the SAME reason the
                whole-Foray path prepends it below: it is a Foray-level
@@ -1578,6 +1585,11 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                validates with those same gates, so it needs the same
                opening item the final candidate gets. */
             const itemsWithDisclosure = [preludeItem(intent.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
+            /* GV-21: per-item readiness beside the items (never on them), the
+               prelude classified explicitly as index 0. The verdict it feeds
+               (`delivery`) is independent of `validation` and of the refusal
+               below: an unservable act is withheld, never aborts the run. */
+            const itemProvenance = [preludeProvenance(itemsWithDisclosure[0]!), ...provenanceSoFar];
             const candidate = await buildPartialCandidate(
               {
                 actIndex,
@@ -1586,7 +1598,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                 items: itemsWithDisclosure,
                 slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
                 runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
-                ttlA1Ms
+                ttlA1Ms,
+                itemProvenance,
+                actVeracity: actVeracity.slice(0, actIndex + 1)
               },
               {
                 id: forayId,
@@ -1750,6 +1764,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       const writtenAct = await narrations[i]!;
 
       written.push(writtenAct);
+      actVeracity[i] = computeActVeracity(writtenAct, i);
 
       /* THIS act, stitched now — not after the last act (F-66). Timed and
          checkpointed under its own `stitch:<i>` key, so a resume does not re-pay
@@ -1761,8 +1776,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         () => stitcher.stitchNextAct(writtenAct)
       );
       /* A resumed act never went through the stitcher, so it has to be told:
-         act i+1's `itemsSoFar` is every act before it, banked or built. */
-      if (resumed) stitcher.acceptStitchedAct(actItems);
+         act i+1's `itemsSoFar` is every act before it, banked or built.
+         GV-21: handed its banked narration too, so its provenance is
+         recomputed rather than unknown (no new checkpoint key). */
+      if (resumed) stitcher.acceptStitchedAct(actItems, writtenAct);
     }
   } catch (err) {
     gate.abort(err instanceof Error ? err : new Error(String(err)));

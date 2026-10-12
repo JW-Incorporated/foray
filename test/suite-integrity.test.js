@@ -1595,12 +1595,17 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 64, // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  "tools/generation-bench/run.test.mjs": 69, // GV-24 (MQ scorecard): --scorecard adds the scorecard to the JSONL line and the MQ detail columns to --wide only (plain lines unchanged), out-9 report cells filled and judged/listen null, a scored line round-trips, a judged.json beside the candidate, clipDurations under clipStats; 64 -> 69 // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
   /* GV-17 (W1-04, MT-04..MT-12): the runlog reader. Each test is one quiet
      wrong number: parallel calls counted as serial, a re-ask counted twice, a
      reservation read as spend, a decode rate diluted with end-to-end calls,
      a 0 standing in for a field no provider reported. */
   "tools/generation-bench/runlog.test.mjs": 12, // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
+  /* GV-24 (W1-11, MQ-01..MQ-21): the quality scorecard. Each test is one
+     quiet wrong number: a clip-only Foray scored as a voice of zero, a pool
+     clip counted as a clean cut, tape credited to the wrong show, the report's
+     own measurement overridden by a candidate guess, reference drift unseen. */
+  "tools/generation-bench/score.test.mjs": 17, // GV-24: new -- synthetic two-show MQ-06/07/08/16/19, show resolution order, pool boundary unknown, absent never 0, out-9 report vs judged/listen, report fields win, MQ-14 tier table, judged file, frozen clip-only null voice, --write/--check drift, committed reference shape, 21 keys, CLI, KPI doc rows
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
@@ -2032,8 +2037,10 @@ const FLOORS = {
      rule that keeps R2 writes off GitHub Actions, and the workflow test is the rule that keeps credentials out
      of it; stamp-narration refusing a stale script or a published Foray is what keeps a wrong or unsafe file
      off a listener's phone. */
-  "tools/narration/render-foray.test.mjs": 29, // GV-11: --candidate (a PartialCandidate, disclosure included, data/forays.json never read), malformed candidates refused, --items in play order, unknown/non-narration --items and --items+--smoke refused, voice_order default-first, voices-outside-lines loop, --forays/@drafts plan unchanged, the pinned key, refusals before render_all, the real CLI's refusals; 19 -> 29 // review: an encoded line over -1 dBTP true peak is re-encoded with a lower ceiling, bounded, never accepted; 18 -> 19 // content-hash key (deterministic, moves with every audio input, not with ids or rejects), per-voice unchanged detection, one peak-capped linear gain and whole-AAC-frame lines, the manifest entry and document, the D2/D5 profile, the pins from fetch-models.mjs and Echo's recorded pin, the D2 speed refusal, @drafts = narrated drafts only (synthetic catalogue, so no publish can break it), the no-narration and unknown-id refusals, --smoke's two shortest lines, --check and --report through the real CLI, and the no-credentials workflow
+  "tools/narration/render-foray.test.mjs": 32, // GV-22: render_all through render_line writes the pre-GV-22 manifest, sidecars and log, a second run reuses each line from its sidecar with the manifest unchanged, render_line raises the line's own phonemize error and writes nothing; 29 -> 32 // GV-11: --candidate (a PartialCandidate, disclosure included, data/forays.json never read), malformed candidates refused, --items in play order, unknown/non-narration --items and --items+--smoke refused, voice_order default-first, voices-outside-lines loop, --forays/@drafts plan unchanged, the pinned key, refusals before render_all, the real CLI's refusals; 19 -> 29 // review: an encoded line over -1 dBTP true peak is re-encoded with a lower ceiling, bounded, never accepted; 18 -> 19 // content-hash key (deterministic, moves with every audio input, not with ids or rejects), per-voice unchanged detection, one peak-capped linear gain and whole-AAC-frame lines, the manifest entry and document, the D2/D5 profile, the pins from fetch-models.mjs and Echo's recorded pin, the D2 speed refusal, @drafts = narrated drafts only (synthetic catalogue, so no publish can break it), the no-narration and unknown-id refusals, --smoke's two shortest lines, --check and --report through the real CLI, and the no-credentials workflow
+  "tools/narration/render-worker.test.mjs": 11, // GV-22: the --worker spool loop through the real interpreter with an injected render_line and phonemize -- (priority, enqueued_at) order with done/<job_id>.json timings, work/ re-queued at start and rendered exactly once (a finished one dropped), the claim is a rename into work/ and a vanished job is skipped, the staged upload dir passes upload-narration.mjs collectUploads, a failing or malformed job is recorded failed with its text and the worker continues, --once drains mid-drain jobs and --idle-exit returns, --worker refuses batch options before any load, the real CLI refuses --once alone, validate_job's refusals, the resident phonemizer (one G2P load, the job lexicon first)
   "tools/narration/stamp-narration.test.mjs": 9, // review: after a script edit every voice the line carries is re-stamped together, or nothing is; 8 -> 9 // Heart flat / Echo voices / render.{profile,script_sha,lexicon_sha}, runtime_sec restated by Heart's delta and check-forays agreeing, idempotence, the stale-script refusal with nothing written, the published-Foray refusal, the https-base rule, the profile refusal, and the real CLI twice
+  "tools/narration/spool-upload.test.mjs": 7, // GV-22: public_url written only after the injected uploader succeeds (then the staged dir goes), a failed upload records nothing and keeps the dir, the CI refusal before any read (function, main and real CLI), collectUploads and the done-key check gate the upload, only rendered done records are taken, the default runner is the unchanged governed uploader, --dry-run calls nothing
   "tools/narration/upload-narration.test.mjs": 6, // refuses under CI (CI and GITHUB_ACTIONS, dry run included), the dry run reads no credentials, a file that differs from its manifest is refused, credentials only from the env file and never printed, only foray-narration is writable, and --immutable + headers with the secret only in rclone's environment
   "tools/mobile/android-playback.test.mjs": 40, // CH2-20 (+5): the device helpers both lanes share (tools/mobile/adb.mjs) pinned with a fake adb -- dumpUi's two attempts a second apart, helperLog's filter, wakeAndUnlock's two shell calls and killReason's pid guard, waitFor's 500 ms poll and window2 over a sync or async lane read, readShade's paused fallback through the lane; 35 -> 40 // A-05 (+14): the interlude jingle is taken out of a seam before the A-15 line (run 36562447644), the four A-05 fixture Forays resolve through the join with rendered lines at a05/, the focus stack reads run 36551857323's real dumpsys audio, the button route / call state / focused window parsers, seam statistics count a never-audible seam as the worst (D-A4), and each verdict (f)-(l) fails on what it gates and only that, the ring read and the speech instrument run in a fake page. A-04 (docs/plans/android-assessment.md): the playback scenarios' fixture resolves through the player's own join, the dumpsys parsers read A-03's real API 34 output, and each verdict (a)-(e) fails on each thing the card names, a dead process carries ActivityManager's reason, a known product defect excuses only the failure it names, and the real API 34 shade dump reads as A04-F2; new
   "tools/mobile/android-native-playback.test.mjs": 14, // CH2-20 (+2): one press predicate judged through both lanes' views on one table, and neither runner declares its own copy of an adb.mjs helper; 12 -> 14 // A-26 (docs/plans/android-assessment.md): the native-mode leg's runner -- the names it uses are the Java's (service, receiver, dump prefix), the queues are the APK's click tracks as assets, the dump and am-broadcast parsers read what the platform prints (escaped or not), and each verdict (a)-(d), (g), (h), (i) fails on what it gates; new
@@ -2623,7 +2630,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 39, // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 38 -> 39 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 41, // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -2880,7 +2887,7 @@ const BACKEND_FLOORS = {
      citation takes), and with `verified: false` copied verbatim rather than
      interpreted here. */
   "test/stitchAct.test.ts": 13,
-  "test/stitchForay.test.ts": 4,
+  "test/stitchForay.test.ts": 10, // GV-21: item provenance beside onActReady's items, actProvenance equals the emitted records, a banked act's provenance is recomputed; 4 -> 10 (7 on disk before)
   /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
      searchBreadthShows.ts — show search over the FULL breadth catalogue
      (curated + ~10k breadth tier), not just the 220 curated shows the
@@ -3000,8 +3007,8 @@ const BACKEND_FLOORS = {
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
   "test/generateForays.test.ts": 10, // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
-  "test/generationStatus.test.ts": 4,
-  "test/partialCandidate.test.ts": 6,
+  "test/generationStatus.test.ts": 6, // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
+  "test/partialCandidate.test.ts": 11, // GV-21: delivery attached with items unchanged, the item-count units pinned, no delivery without provenance, misaligned and malformed fallbacks; 6 -> 11 (7 on disk before)
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
      share-of-whole rules (M4, D2-end, D4-share) and on itself for every
      monotone rule — run 5 was aborted on an M4 share computed over a one-act
@@ -3049,7 +3056,7 @@ const BACKEND_FLOORS = {
      partway through an act re-pays only for the slots that never landed, and
      the per-Foray budget cap the batch path left inert by never passing a
      sessionId. */
-  "test/runPipelineCheckpoint.test.ts": 14, // GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
+  "test/runPipelineCheckpoint.test.ts": 15, // GV-21: a banked act's provenance and veracity equal a fresh run's; 14 -> 15. GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
   /* G-32: acts narrated in parallel, stitch and continuity in act order. Seven
      cases latch the writer to PROVE overlap (acts start while act 1 is held,
      the cap holds, a failure still banks in-flight acts and never starts
@@ -3231,7 +3238,7 @@ const BACKEND_FLOORS = {
      unique item ids and the mint guard (gen-6), the banked Foray identity
      (gen-13), declared slot ids on items (gen-4), control bytes in backend
      source (gen-11), and the transcript body lookup (gen-7). */
-  "test/anthropicCall.test.ts": 18, // GV-07 (generation v2): one CallRecord per request at createMessage (shape, relay machine, truncation, transport error, continuation, inert without a log) and the PROVIDER_CALL_SITES guard; 9 -> 18
+  "test/anthropicCall.test.ts": 19, // GV-07 (generation v2): one CallRecord per request at createMessage (shape, relay machine, truncation, transport error, continuation, inert without a log) and the PROVIDER_CALL_SITES guard; 9 -> 18. GV-19: the structural guard scans generation/** recursively (recordUsage, bare fetch, chat .complete allowlists) with a planted-offender test; 18 -> 19
   "test/finalizeRefusal.test.ts": 6,
   "test/generationCaches.test.ts": 5,
   "test/itemIdCollision.test.ts": 6,
@@ -3257,6 +3264,26 @@ const BACKEND_FLOORS = {
      call, the inert-import guard) plus the scriptedProvider helper. Offline:
      fakeFetch over synthetic fixtures. */
   "test/openAICompatProvider.test.ts": 26,
+  /* GV-19 (docs/roadmap/generation-v2.md, #1286): askStructured, the one
+     provider-neutral JSON call (meter, json_schema/json_object/none
+     response_format, recordUsage, 'length' refused as TruncatedReplyError
+     before any parse, one metered re-ask, budget refusal on cause).
+     Offline: scriptedProvider replies only. */
+  "test/askStructured.test.ts": 11,
+  /* GV-21 (docs/roadmap/generation-v2.md, #1286): per-act servability on
+     partial candidates. itemReadiness: item classification, the per-act
+     verdict under both seam policies, the servable prefix as an item count,
+     and the alignment guard. actVeracityGate: per-act veracity, the HANDOFF
+     page counted as unverified and as a hand-off. Offline, hand-built
+     fixtures. */
+  "test/itemReadiness.test.ts": 11,
+  "test/actVeracityGate.test.ts": 6,
+  /* GV-20 (docs/roadmap/generation-v2.md, #1286): the typed Jev client —
+     reply validation (every malformed variant), transport categories, the
+     key never leaking, one CallRecord per ask, BudgetGuard metering, the
+     pool, FakeJevClient, the endpoint guard and the Jev env variables.
+     Offline: fakeFetch over synthetic fixtures. One named mutation per test. */
+  "test/jevClient.test.ts": 34,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
