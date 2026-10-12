@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { PartialCandidate } from "./partialCandidate";
+import { servableView, type PartialCandidate } from "./partialCandidate";
 
 /**
  * WS-D2's "generation status" read path (docs/curation/generation-fix-plan-2026-09-09.md,
@@ -74,5 +74,26 @@ export function readPartialCandidate(candidateDir: string, forayId: string, requ
 
   const candidate = JSON.parse(fs.readFileSync(path.join(candidateDir, match.name), "utf8")) as PartialCandidate;
   if (candidate.authorId !== requestingUserId) return { found: true, authorized: false };
-  return { found: true, authorized: true, candidate };
+  return { found: true, authorized: true, candidate: servableCandidate(candidate) };
+}
+
+/**
+ * GV-21 (docs/roadmap/generation-v2.md decision 13 and 32): a stored partial
+ * that carries `delivery.servableThrough` is served ONLY as its servable
+ * prefix — `servableView`, an item count, prelude included — and its
+ * readiness rows are cut at the same count, so nothing past the first
+ * unservable act (the hand-off line, an unverified page) leaves this read
+ * path, not even as an id. A malformed count serves nothing. A candidate
+ * without `delivery` predates GV-21 and is returned whole, exactly as before.
+ * No env is read: there is no flag.
+ */
+function servableCandidate(candidate: PartialCandidate): PartialCandidate {
+  const delivery = candidate.delivery;
+  if (!delivery) return candidate;
+  const items = servableView(candidate);
+  return {
+    ...candidate,
+    items,
+    delivery: { ...delivery, items: (delivery.items ?? []).slice(0, items.length) }
+  };
 }

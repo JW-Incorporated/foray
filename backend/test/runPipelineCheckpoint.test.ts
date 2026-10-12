@@ -18,6 +18,7 @@ import type { PromptUnderstander } from "../src/generation/PromptUnderstander";
 import type { DeepenActBuilder } from "../src/generation/DeepenActBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
 import { RunLog, runWithRunLog } from "../src/generation/runLog";
+import type { PartialCandidate } from "../src/generation/partialCandidate";
 
 /**
  * F-17/F-18, driven through the real pipeline.
@@ -468,4 +469,52 @@ describe("the per-Foray cap only exists when the run carries a sessionId (requir
     );
     expect(outcome.outcome).toBe("generated");
   });
+});
+
+describe("per-act servability survives a resume (GV-21)", () => {
+  const medium: GenerationRequest = { ...request, duration: "medium" };
+  const MEDIUM_FP = checkpointFingerprint({ prompt: medium.prompt, duration: medium.duration });
+  const at = () => new Date("2026-09-09T00:00:00Z");
+
+  it("a banked act's provenance and veracity equal a fresh run's, so the next act's partial is the same", async () => {
+    /* MUTATION THAT KILLS THIS (provenance): make acceptStitchedAct record
+       the banked act with unverifiedProvenanceFor(...) instead of
+       recomputing it. Act 0 then reads unservable on the resumed run and the
+       deliveries differ. Ran it — red.
+       MUTATION THAT KILLS THIS (veracity): compute actVeracity inside the
+       onActReady wrapper instead of the stitch loop. The resumed act 0 never
+       fires the callback, so its `veracity` is missing. Ran it — red. */
+    const store = new FakeCheckpointStore(MEDIUM_FP);
+    const freshPartials: PartialCandidate[] = [];
+    const fresh = await runForayPipeline(
+      medium,
+      { userId: "u", checkpointKey: KEY, now: at },
+      { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store, onActReady: (c) => void freshPartials.push(c) }
+    );
+    expect(fresh.outcome).toBe("generated");
+    expect(freshPartials.length).toBeGreaterThan(1);
+
+    /* Keep act 0's stitch banked, forget every later one: the second run
+       accepts act 0 from the checkpoint and stitches act 1 onward fresh. */
+    store.drop(KEY, store.stageKeys(KEY).filter((k) => /^stitch:\d+$/.test(k) && k !== "stitch:0"));
+
+    const resumedPartials: PartialCandidate[] = [];
+    const resumed = await runForayPipeline(
+      medium,
+      { userId: "u", checkpointKey: KEY, now: at },
+      { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store, onActReady: (c) => void resumedPartials.push(c) }
+    );
+    expect(resumed.outcome).toBe("generated");
+    /* Act 0 was accepted, not stitched: no partial for it on this run. */
+    expect(resumedPartials).toHaveLength(freshPartials.length - 1);
+
+    const freshAct1 = freshPartials[1]!;
+    const resumedAct1 = resumedPartials[0]!;
+    expect(resumedAct1.items).toEqual(freshAct1.items);
+    expect(resumedAct1.delivery).toEqual(freshAct1.delivery);
+    expect(resumedAct1.delivery!.items.filter((d) => d.act === 0).length).toBeGreaterThan(0);
+    expect(resumedAct1.acts[0]!.veracity).toBeDefined();
+    expect(resumedAct1.acts[0]!.veracity).toEqual(freshAct1.acts[0]!.veracity);
+    expect(resumedAct1.acts[0]!.served).toBe(freshAct1.acts[0]!.served);
+  }, 120_000);
 });

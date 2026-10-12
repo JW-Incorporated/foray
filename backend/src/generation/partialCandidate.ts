@@ -10,6 +10,8 @@ import {
   type PartialProjectionPlan,
   type PartialRuleScope
 } from "./partialProjection";
+import { alignDelivery, DEFAULT_READINESS_POLICY, deliveryView, servableThroughAct, type DeliveryView, type ItemProvenance, type ReadinessPolicy } from "./itemReadiness";
+import type { ActVeracity } from "./veracityMetrics";
 
 /**
  * WS-D2 — the partial-candidate shape (docs/curation/generation-fix-plan-2026-09-09.md,
@@ -61,6 +63,14 @@ export interface PartialCandidateAct {
   index: number;
   title: string;
   status: PartialActStatus;
+  /** GV-21: whether this act sits inside the servable prefix
+   * (`delivery.servableThrough`). Present only when the candidate carries
+   * `delivery`; a pending act is never served. */
+  served?: boolean;
+  /** GV-21 (W5-12a): this act's own veracity, for a ready act whose
+   * `WrittenAct` was handed in. `handoffPages` are counted in
+   * `unverifiedPages` too: the hand-off line is an unverified page. */
+  veracity?: { ok: boolean; unverifiedPages: number; handoffPages: number };
 }
 
 export interface PartialCandidate {
@@ -97,6 +107,14 @@ export interface PartialCandidate {
   /** F-79: which rules `validation` judged on the projected whole and which
    * on the partial's own items — see `partialProjection.ts`. */
   ruleScope: PartialRuleScope;
+  /** GV-21 (docs/roadmap/generation-v2.md decision 13): per-item readiness
+   * and per-act servability, aligned 1:1 with `items` (prelude included).
+   * `delivery.servableThrough` is the ITEM COUNT of the servable prefix —
+   * the only part of `items` a listener may be served (`servableView`).
+   * Independent of `validation`: an unservable act never refuses the
+   * partial or aborts the run. Optional: absent when the caller handed no
+   * provenance, which reads as today's whole-partial behaviour. */
+  delivery?: DeliveryView;
 }
 
 /** Per-act info `runForayPipeline` hands this module — everything
@@ -115,6 +133,13 @@ export interface PartialActInfo {
   slots: ForaySlot[];
   runtimeSec: number;
   ttlA1Ms: number | null;
+  /** GV-21 (W6-01): one readiness record per entry of `items`, in order,
+   * prelude included (index 0). When present the candidate carries
+   * `delivery`. */
+  itemProvenance?: ItemProvenance[];
+  /** GV-21 (W5-12a): per-act veracity for acts `0..actIndex`, computed by
+   * the caller from every act's `WrittenAct` — resumed acts included. */
+  actVeracity?: ActVeracity[];
 }
 
 export interface PartialCandidateMeta {
@@ -161,6 +186,9 @@ export interface PartialCandidateMeta {
    * F-79) gets exactly today's behaviour — every rule on the partial.
    */
   projection?: PartialProjectionPlan;
+  /** GV-21: the readiness policy. Default `DEFAULT_READINESS_POLICY`
+   * (`blockOnUncheckedSeams: false`), so act seams play as they do today. */
+  readinessPolicy?: ReadinessPolicy;
 }
 
 export type FinalizeFn = (input: FinalizeForayInput, root?: string) => Promise<FinalizeForayResult>;
@@ -227,11 +255,21 @@ export async function buildPartialCandidate(info: PartialActInfo, meta: PartialC
     ruleScope = partialOnlyScope(status === "complete" ? "whole" : "partial-only");
   }
 
-  const acts: PartialCandidateAct[] = info.allActTitles.map((title, index) => ({
-    index,
-    title,
-    status: index <= info.actIndex ? "ready" : "pending"
-  }));
+  const delivery = info.itemProvenance ? deliveryFor(info, meta.readinessPolicy ?? DEFAULT_READINESS_POLICY) : undefined;
+  const lastServedAct = delivery ? servableThroughAct(delivery) : -1;
+  const veracityByAct = new Map((info.actVeracity ?? []).map((v) => [v.actIndex, v]));
+
+  const acts: PartialCandidateAct[] = info.allActTitles.map((title, index) => {
+    const act: PartialCandidateAct = {
+      index,
+      title,
+      status: index <= info.actIndex ? "ready" : "pending"
+    };
+    if (delivery) act.served = index <= lastServedAct;
+    const v = index <= info.actIndex ? veracityByAct.get(index) : undefined;
+    if (v) act.veracity = { ok: v.ok, unverifiedPages: v.unverifiedPages.length, handoffPages: v.handoffPages };
+    return act;
+  });
 
   return {
     id: meta.id,
@@ -249,6 +287,36 @@ export async function buildPartialCandidate(info: PartialActInfo, meta: PartialC
     builtAt: meta.builtAt,
     updatedAt: new Date().toISOString(),
     validation,
-    ruleScope
+    ruleScope,
+    ...(delivery ? { delivery } : {})
   };
 }
+
+/** GV-21: groups the cumulative provenance by act and builds the delivery
+ * view, then checks it against the items it describes (`alignDelivery`). */
+function deliveryFor(info: PartialActInfo, policy: ReadinessPolicy): DeliveryView {
+  const prov = info.itemProvenance ?? [];
+  const veracityByAct = new Map((info.actVeracity ?? []).map((v) => [v.actIndex, v]));
+  const acts = [];
+  for (let index = 0; index <= info.actIndex; index++) {
+    acts.push({ index, provenance: prov.filter((p) => p.actIndex === index), veracity: veracityByAct.get(index) });
+  }
+  const view = deliveryView({ prelude: prov.filter((p) => p.actIndex < 0), acts }, policy);
+  return alignDelivery(view, info.items);
+}
+
+/**
+ * GV-21: the only shape a route or job row may serve — `items` cut at
+ * `delivery.servableThrough`, an ITEM COUNT (prelude included). A candidate
+ * with no `delivery` predates GV-21 and is returned whole, as today.
+ */
+export function servableView(candidate: Pick<PartialCandidate, "items" | "delivery">): ForayItem[] {
+  if (!candidate.delivery) return candidate.items;
+  /* A stored candidate is read back from disk: a count that is not a
+     non-negative integer serves nothing rather than everything
+     (`slice(0, undefined)` would be the whole Foray). */
+  const n = candidate.delivery.servableThrough;
+  return candidate.items.slice(0, Number.isInteger(n) && n >= 0 ? n : 0);
+}
+
+export { servableThroughAct };
