@@ -3,6 +3,13 @@ import { z } from "zod";
 import { parseWithRetry, parseLastJsonBlock } from "../src/generation/parseWithRetry";
 import fs from "node:fs";
 import path from "node:path";
+import { AnthropicSpineBuilder } from "../src/generation/AnthropicSpineBuilder";
+import { RunLog, currentCallContext, runWithRunLog, withCallContext, type CallContext } from "../src/generation/runLog";
+import { BudgetGuard } from "../src/cost/budgetGuard";
+import { InMemoryCostEventSink } from "../src/cost/costEvents";
+import { makeFakeAnthropicClient, textBlock } from "./helpers/fakeAnthropicClient";
+import type { IntentUnderstanding } from "../src/types/generation";
+import type { ResearchShape } from "../src/types/research";
 
 /**
  * Direct unit coverage for the shared parseWithRetry/parseLastJsonBlock
@@ -211,5 +218,87 @@ describe("parseWithRetry — every reask closure meters its own spend (coordinat
     // its one askJson helper.
     expect(reaskClosuresFound).toBeGreaterThanOrEqual(9);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("parseWithRetry — GV-07: the re-ask is recorded as one, and every parse outcome is a ParseEvent", () => {
+  const schema = z.object({ a: z.string() });
+
+  it("the reask closure runs under reask 'json', and the log gets ok:false then ok:true", async () => {
+    /* MUTATION THAT KILLS THIS: call `reask()` bare (drop its
+       withCallContext({reask:'json'})) — the closure sees no reask. Or drop
+       the recordParse calls — the log has no parse events. Ran both — red. */
+    const log = new RunLog();
+    const seen: CallContext[] = [];
+    const out = await runWithRunLog(log, () =>
+      withCallContext({ stage: "spine" }, () =>
+        parseWithRetry(schema, "not json", "x", async () => {
+          seen.push(currentCallContext());
+          return JSON.stringify({ a: "y" });
+        })
+      )
+    );
+    expect(out).toEqual({ a: "y" });
+    expect(seen).toEqual([{ stage: "spine", reask: "json" }]);
+    expect(log.events("parse")).toEqual([
+      { kind: "parse", ok: false, reask: false },
+      { kind: "parse", ok: true, reask: true }
+    ]);
+  });
+
+  it("a first-time parse is one ok:true event; a failed re-ask is ok:false twice; no log, no events and no change", async () => {
+    const log = new RunLog();
+    await runWithRunLog(log, () => parseWithRetry(schema, JSON.stringify({ a: "x" })));
+    await expect(runWithRunLog(log, () => parseWithRetry(schema, "nope", "x", async () => "still nope"))).rejects.toThrow(/after one re-ask/);
+    expect(log.events("parse").map((e) => [e.ok, e.reask])).toEqual([
+      [true, false],
+      [false, false],
+      [false, true]
+    ]);
+    await expect(parseWithRetry(schema, "nope", "x", async () => JSON.stringify({ a: "z" }))).resolves.toEqual({ a: "z" });
+  });
+
+  it("a forced JSON re-ask through AnthropicSpineBuilder makes a second CallRecord with reask 'json'", async () => {
+    /* MUTATION THAT KILLS THIS: same as above — without the wrapper the
+       re-ask's record reads reask null. Ran it — red. */
+    const validRawSpine = {
+      overview: "We look at what happens when the thing you built meets the world that has to run it, told by the people who were there.",
+      voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },
+      acts: [
+        {
+          title: "Act 1",
+          thesis: "thesis",
+          startState: "start",
+          endState: "end",
+          slots: [{ title: "slot", beats: [{ claim: "A claim happened", exploration: false }] }]
+        }
+      ]
+    };
+    const intent: IntentUnderstanding = { subject: "Charcoal briquettes", angle: "an industrial scheme", priorKnowledge: "grilling", disappointment: "none" };
+    const researchShape: ResearchShape = {
+      subject: intent.subject,
+      angle: intent.angle,
+      generatedAt: new Date().toISOString(),
+      subtopics: [],
+      nonObviousAngle: null,
+      externalGapsResearched: []
+    };
+    const usage = { input_tokens: 50, output_tokens: 5 };
+    const { client, create } = makeFakeAnthropicClient([]);
+    create
+      .mockResolvedValueOnce({ content: [textBlock("not json at all")], stop_reason: "end_turn", usage })
+      .mockResolvedValueOnce({ content: [textBlock(JSON.stringify(validRawSpine))], stop_reason: "end_turn", usage });
+    const builder = new AnthropicSpineBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client);
+    const log = new RunLog();
+    const spine = await runWithRunLog(log, () =>
+      withCallContext({ stage: "spine" }, () => builder.buildSpine(intent, researchShape, "short", { userId: "u1", sessionId: "s1" }))
+    );
+    expect(spine.acts).toHaveLength(1);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(log.calls().map((c) => [c.seq, c.stage, c.label, c.reask])).toEqual([
+      [0, "spine", "spine", null],
+      [1, "spine", "spine", "json"]
+    ]);
+    expect(log.events("parse").map((e) => e.ok)).toEqual([false, true]);
   });
 });

@@ -41,6 +41,7 @@ import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SeamBrief 
 import type { ActVerifyRequest, ActVerifyResult } from "../src/generation/NarrationVerifierBuilder";
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
 import { validateDeepenedAct, type Voice } from "../src/types/spine";
+import { RunLog, currentCallContext, runWithRunLog, withCallContext, type CallContext } from "../src/generation/runLog";
 
 /**
  * Q-02 / Q-03 / Q-05 (docs/curation/listening-quality-plan.md; ledger F-95):
@@ -1618,5 +1619,52 @@ describe("gen-8 — Q-09's show memory is carried ACROSS acts", () => {
     const { writer, verifier, requests } = builders();
     await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer(), showsIntroduced: [[SHOW]] }, voice, ctx);
     expect(requests[0]!.clips.map((c) => c.showFirstHeard)).toEqual([false, false]);
+  });
+});
+
+describe("GV-07 — the writer and verifier run under their round and role", () => {
+  it("each writer and verifier call sees currentCallContext() with attempt = the round and its role", async () => {
+    /* Round 1's s0 is refused in code (the contested-record sentence), so the
+       act takes two rounds: two writer calls and a verifier call per round
+       that had a changed seam to judge. Builder arguments are untouched (no
+       prompt pin in this file moves).
+
+       MUTATION THAT KILLS THIS: call writer.writeAct (or verifier.verifyAct)
+       bare in writeAct.ts — the call sees no attempt and no role. Or pass
+       role 'writer' on both wrappers — the verifier reads 'writer'. Ran
+       both — red. */
+    const sentence = "The rest was the plan nobody wrote down.";
+    const { writer, verifier, calls } = builders((reply, _request, round) =>
+      round === 1 ? { seams: reply.seams.map((s) => (s.seamId === "s0" ? { ...s, script: `${s.script} ${sentence}` } : s)) } : reply
+    );
+    const writerSeen: CallContext[] = [];
+    const verifierSeen: CallContext[] = [];
+    const write = writer.writeAct.bind(writer);
+    writer.writeAct = async (request, buildCtx) => {
+      writerSeen.push(currentCallContext());
+      return write(request, buildCtx);
+    };
+    const verify = verifier.verifyAct.bind(verifier);
+    verifier.verifyAct = async (request, buildCtx) => {
+      verifierSeen.push(currentCallContext());
+      return verify(request, buildCtx);
+    };
+    const log = new RunLog();
+    await runWithRunLog(log, () =>
+      withCallContext({ stage: "narrate:0", act: 0 }, () => writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx))
+    );
+    expect(calls.write).toBe(2);
+    expect(writerSeen).toEqual([
+      { stage: "narrate:0", act: 0, attempt: 1, role: "writer" },
+      { stage: "narrate:0", act: 0, attempt: 2, role: "writer" }
+    ]);
+    expect(verifierSeen.length).toBe(calls.verify);
+    expect(verifierSeen[0]).toEqual({ stage: "narrate:0", act: 0, attempt: 1, role: "verifier" });
+    expect(verifierSeen.map((c) => c.attempt)).toEqual([...verifierSeen.map((c) => c.attempt)].sort());
+    expect(verifierSeen.every((c) => c.role === "verifier" && (c.attempt === 1 || c.attempt === 2))).toBe(true);
+    /* Outside a RunLog the wrappers are inert: the same run sees an empty context. */
+    writerSeen.length = 0;
+    await writeNarration([fourBeatsTwoClips()], { writer, verifier, evidence: gatherer() }, voice, ctx);
+    expect(writerSeen.every((c) => Object.keys(c).length === 0)).toBe(true);
   });
 });

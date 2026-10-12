@@ -2523,7 +2523,7 @@ const BACKEND_FLOORS = {
      vocab, a missing interpreter. Delete those and a missing system package
      takes down a written Foray after the writer has spent its tokens. */
   "test/phonemize.test.ts": 15, // round-3 audit (L5-generation): gen-16 the phonemizer says why it produced nothing (ENOENT, exit+stderr), 64 MB buffer, phonemizedSummary; 12 -> 15
-  "test/parseWithRetry.test.ts": 17,
+  "test/parseWithRetry.test.ts": 20, // GV-07 (generation v2): the re-ask runs under reask 'json', ParseEvents per outcome, and a forced AnthropicSpineBuilder re-ask records a second CallRecord; 17 -> 20
   "test/parser.test.ts": 41, // CH2-03 (2026-10-07): the unread Tier-1 transcriptUrl pick was deleted, so its 4-test describe and the 1,957-ordering replay go (-5); pins added for the normalised timed pick, the parsed shape and the warnings ingestFixtures reads (+3); 43 -> 41 // #1071 chapters-psc-inline: psc:chapters (Podlove Simple Chapters) parse into sorted inline chapters -- the omegatau fixture, sort, NPT accepted and refused, dropped starts/null when empty, href/image protocols, the 500 cap; 36 -> 43 // round-3 L6 (2026-09-25): backend-rest-1/-10: parseFeed never throws on out-of-range entities; an empty guid is null; 29 -> 36
   "test/parserItemIsolation.test.ts": 1, // round-3 L6 (2026-09-25): backend-rest-1 — a throwing item is a warning, the feed still parses
   "test/personas.test.ts": 6,
@@ -2603,7 +2603,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 35, // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 38, // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -3158,7 +3158,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 55, // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
+  "test/actNarration.test.ts": 56, // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
@@ -3177,7 +3177,7 @@ const BACKEND_FLOORS = {
      unique item ids and the mint guard (gen-6), the banked Foray identity
      (gen-13), declared slot ids on items (gen-4), control bytes in backend
      source (gen-11), and the transcript body lookup (gen-7). */
-  "test/anthropicCall.test.ts": 9,
+  "test/anthropicCall.test.ts": 18, // GV-07 (generation v2): one CallRecord per request at createMessage (shape, relay machine, truncation, transport error, continuation, inert without a log) and the PROVIDER_CALL_SITES guard; 9 -> 18
   "test/finalizeRefusal.test.ts": 6,
   "test/generationCaches.test.ts": 5,
   "test/itemIdCollision.test.ts": 6,

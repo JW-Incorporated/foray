@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { recordUsage } from "./usageTracking";
+import { currentRunLog, recordModelCall, withCallContext } from "./runLog";
 
 /**
  * THE ONE WAY A GENERATION STAGE TALKS TO THE MODEL (round-3 audit, gen-10
@@ -25,13 +26,68 @@ export async function createMessage(
   label: string,
   options: { allowTruncated?: boolean } = {}
 ): Promise<Anthropic.Message> {
-  const response = await client.messages.create(params);
+  const startMs = currentRunLog()?.nowMs() ?? 0;
+  let response: Anthropic.Message;
+  try {
+    response = await client.messages.create(params);
+  } catch (err) {
+    recordAnthropicCall(params, label, startMs, undefined, err);
+    throw err;
+  }
   recordUsage(response.usage);
+  /* Recorded BEFORE the truncation check below, so a refused max_tokens
+     reply still leaves its CallRecord (stopReason 'max_tokens'). */
+  recordAnthropicCall(params, label, startMs, response);
   /* `allowTruncated` is for the one caller that reads a truncated reply
      WITHOUT repairing it (evidence retrieval keeps only the passages that
      finished; see createWebSearchTurnKeepingTruncation). Nobody else passes it. */
   if (!options.allowTruncated) assertReplyComplete(response.stop_reason, label, params.max_tokens);
   return response;
+}
+
+/**
+ * GV-07 (docs/roadmap/generation-v2.md): one CallRecord per request in the
+ * active RunLog, success or failure; a no-op when no log is open. Times are
+ * on the log's own clock, which a test injects (`new RunLog({ now })`).
+ *
+ * This path is NON-STREAMING, so it cannot know how long the request queued
+ * or when its first token arrived: queueMs, ttftMs and decodeTokPerSec stay
+ * null (an absent measurement must not read as a fast one). The provider
+ * layer's streamed calls fill them.
+ *
+ * `machine` is 'relay' when ANTHROPIC_BASE_URL points the SDK elsewhere
+ * (the test-drive relay), else 'anthropic-api'. A thrown transport error is
+ * recorded with its `name` (and HTTP status when the SDK gives one) and then
+ * rethrown unchanged by the caller.
+ */
+function recordAnthropicCall(
+  params: Anthropic.MessageCreateParamsNonStreaming,
+  label: string,
+  startMs: number,
+  response: Anthropic.Message | undefined,
+  err?: unknown
+): void {
+  const log = currentRunLog();
+  if (!log) return;
+  const usage = response?.usage as (Partial<Anthropic.Usage> & { cache_read_input_tokens?: number | null }) | undefined;
+  const count = (n: unknown): number | null => (typeof n === "number" ? n : null);
+  const status = (err as { status?: unknown } | undefined)?.status;
+  recordModelCall({
+    provider: "anthropic",
+    machine: process.env.ANTHROPIC_BASE_URL ? "relay" : "anthropic-api",
+    model: params.model,
+    label,
+    startMs,
+    endMs: log.nowMs(),
+    promptTokens: count(usage?.input_tokens),
+    cachedTokens: count(usage?.cache_read_input_tokens),
+    outputTokens: count(usage?.output_tokens),
+    stopReason: response?.stop_reason ?? null,
+    maxTokens: params.max_tokens,
+    ...(err !== undefined
+      ? { error: { kind: err instanceof Error ? err.name : typeof err, ...(typeof status === "number" ? { status } : {}) } }
+      : {})
+  });
 }
 
 /**
@@ -138,13 +194,16 @@ async function runWebSearchTurn(
   let continuations = 0;
   while (response.stop_reason === "pause_turn" && continuations < MAX_PAUSE_TURN_CONTINUATIONS) {
     continuations += 1;
-    await meter();
-    response = await createMessage(
-      client,
-      { ...params, messages: [...params.messages, { role: "assistant", content: content as Anthropic.ContentBlockParam[] }] },
-      label,
-      { allowTruncated }
-    );
+    /* GV-07: a pause_turn continuation is its own request, recorded as one. */
+    response = await withCallContext({ reask: "continuation" }, async () => {
+      await meter();
+      return createMessage(
+        client,
+        { ...params, messages: [...params.messages, { role: "assistant", content: content as Anthropic.ContentBlockParam[] }] },
+        label,
+        { allowTruncated }
+      );
+    });
     content.push(...response.content);
   }
   return { content, truncated: response.stop_reason === "max_tokens" };

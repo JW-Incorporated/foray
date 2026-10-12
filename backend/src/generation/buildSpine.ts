@@ -3,6 +3,7 @@ import type { ResearchShape } from "../types/research";
 import { SpineSchema, validateSpine, type DurationTier, type Spine, type SpineValidationResult } from "../types/spine";
 import { checkSpineStructure, InvalidSpineStructureError } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder, SpineRevisionRequest } from "./SpineBuilder";
+import { withCallContext } from "./runLog";
 
 /**
  * §4.3 end to end (docs/curation/generation-architecture.md §4.3), taking
@@ -116,7 +117,12 @@ export async function buildSpineWithReasks(
     /* Each iteration is one builder call — the first, then at most `maxReasks`
        re-asks. Every one of them meters itself through the budget guard the
        way any spine call does; this loop adds no second budget. */
-    const rawSpine = await builder.buildSpine(intent, researchShape, duration, revision ? { ...ctx, revision } : ctx);
+    const buildCtx = revision ? { ...ctx, revision } : ctx;
+    /* GV-07: a structural re-ask's model calls are recorded as such (a no-op
+       wrapper outside a RunLog). */
+    const rawSpine = await withCallContext({ reask: attempt > 0 ? "structural" : undefined, attempt }, () =>
+      builder.buildSpine(intent, researchShape, duration, buildCtx)
+    );
 
     // Schema-validate shape first (catches a builder that returns malformed
     // structure, e.g. a per-act voice field slipping in) before the

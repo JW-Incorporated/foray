@@ -48,6 +48,7 @@ import {
   type SeamRest
 } from "./actSeams";
 import { pageDocIdFor } from "./synthesisVerify";
+import { withCallContext } from "./runLog";
 import {
   decideConnectiveNarration,
   decodeClaimEntities,
@@ -396,18 +397,18 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
   for (let round = 1; round <= NARRATION_PAGE_ATTEMPTS; round++) {
     if (round > 1 && stats) stats.retryRounds += 1;
 
-    const reply = await writer.writeAct(
-      {
-        actTitle: act.title,
-        voice,
-        seams: seams.map(seamBriefOf),
-        clips: clips.map((c) => c.brief),
-        documents,
-        ...(ground.length > 0 ? { ground: [...ground] } : {}),
-        ...(actRejections.length > 0 ? { retryNote: retryNoteFrom(actRejections) } : {})
-      },
-      ctx
-    );
+    /* GV-07: the writer's model calls are recorded with this round and role
+       (a no-op wrapper outside a RunLog; the request is unchanged). */
+    const writeRequest = {
+      actTitle: act.title,
+      voice,
+      seams: seams.map(seamBriefOf),
+      clips: clips.map((c) => c.brief),
+      documents,
+      ...(ground.length > 0 ? { ground: [...ground] } : {}),
+      ...(actRejections.length > 0 ? { retryNote: retryNoteFrom(actRejections) } : {})
+    };
+    const reply = await withCallContext({ attempt: round, role: "writer" }, () => writer.writeAct(writeRequest, ctx));
 
     /* THE MECHANICAL GATE, seam by seam, in two passes (`mechanicalPass`):
        first every seam's claims through the quote gate (the act's source
@@ -440,19 +441,17 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
        answer, and asking twice would count it twice. */
     const open = [...beats.values()].filter((b) => !b.carried && !b.seedLostClosed && hasScript(b.seamId));
     if (toJudge.length > 0) {
-      const verdicts = await verifier.verifyAct(
-        {
-          actTitle: act.title,
-          voice,
-          beats: open.map((b) => b.brief),
-          seams: seams.filter((s) => s.draft).map((s) => verifySeamBriefOf(s, actSources)),
-          clips: clips.map((c): VerifyClipBrief => ({ ...c.brief, windowText: c.windowText })),
-          sources: actSources.map((s) => s.brief),
-          ...(ground.length > 0 ? { ground: [...ground] } : {}),
-          documents
-        },
-        ctx
-      );
+      const verifyRequest = {
+        actTitle: act.title,
+        voice,
+        beats: open.map((b) => b.brief),
+        seams: seams.filter((s) => s.draft).map((s) => verifySeamBriefOf(s, actSources)),
+        clips: clips.map((c): VerifyClipBrief => ({ ...c.brief, windowText: c.windowText })),
+        sources: actSources.map((s) => s.brief),
+        ...(ground.length > 0 ? { ground: [...ground] } : {}),
+        documents
+      };
+      const verdicts = await withCallContext({ attempt: round, role: "verifier" }, () => verifier.verifyAct(verifyRequest, ctx));
       judge(toJudge, open, verdicts, actSources, round, act.title, stats);
     }
 

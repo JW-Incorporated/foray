@@ -3,6 +3,7 @@ import { claimTermWeigher, TIER2_WINDOW_MIN_SHARE } from "./transcriptArchiveLoo
 import { SpineSeedLedger } from "./spineSeeding";
 import { checkSpineStructure } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
+import { withCallContext } from "./runLog";
 import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape, ResearchTapeWindow } from "../types/research";
 import { SpineSchema, validateSpine, type Beat, type DurationTier, type Spine } from "../types/spine";
@@ -369,7 +370,9 @@ export async function postSeedWithFloor(
      it a reply with seeds it did not write would ask it to keep as its own a
      judgement this stage made. */
   const revision = { previous: spine, violations, attempt: 1, kind: "seed-floor" as const };
-  const raw = await builder.buildSpine(intent, researchShape, duration, { ...ctx, revision });
+  /* GV-07: the seed-floor re-ask's model calls are recorded as such (a no-op
+     wrapper outside a RunLog). */
+  const raw = await withCallContext({ reask: "seed-floor" }, () => builder.buildSpine(intent, researchShape, duration, { ...ctx, revision }));
   const reasked = SpineSchema.parse(raw);
   const seedableEpisodeIds = researchShape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId));
   if (!validateSpine(reasked).valid || checkSpineStructure(reasked, { seedableEpisodeIds }).length > 0) {

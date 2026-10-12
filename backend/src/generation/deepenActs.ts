@@ -2,6 +2,7 @@ import type { Act, DeepenedAct, Slot, Spine } from "../types/spine";
 import { DeepenedActSchema, validateDeepenedAct } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
 import { toNarrationWords } from "../copy/narratorStructure";
+import { withCallContext } from "./runLog";
 
 /**
  * THE ARGUMENT CAP (finding F-49).
@@ -286,7 +287,9 @@ async function deepenOneActWithRetry(
   let lastError: unknown;
   for (let attempt = 0; attempt < DEEPEN_ATTEMPTS; attempt++) {
     try {
-      const raw = await builder.deepenAct(spine, act, index, ctx);
+      /* GV-07: a model call under this attempt is recorded with it (a no-op
+         wrapper outside a RunLog). */
+      const raw = await withCallContext({ attempt }, () => builder.deepenAct(spine, act, index, ctx));
       const parsed = DeepenedActSchema.parse(raw);
       const deepened = attempt === DEEPEN_ATTEMPTS - 1 ? spokenIntroductionAndExit(parsed, act.title) : parsed;
 
@@ -353,7 +356,8 @@ export async function deepenActs(
        replaying the defect it exists to avoid re-paying for. A checkpoint
        written before beats carried seeds gets them restored the same way. */
     if (resumed) return capArgumentBeats(carryBeatSeeds(act, pinSlotTitles(act, resumed)));
-    const deepened = await deepenOneActWithRetry(spine, act, index, builder, ctx);
+    /* GV-07: every model call this act makes carries its index. */
+    const deepened = await withCallContext({ act: index }, () => deepenOneActWithRetry(spine, act, index, builder, ctx));
     /* Persisted BEFORE `Promise.all` settles, so an act that succeeded is
        banked even when a sibling act's retry budget runs out and fails the
        whole stage. That is the F-17 case: the run dies, and the next attempt
