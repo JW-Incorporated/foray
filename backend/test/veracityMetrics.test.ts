@@ -14,6 +14,7 @@ import {
   countAttemptedPages,
   computeTapeYield,
   computeBeatCoverage,
+  computeSpecificsUnsupported,
   buildVeracityMetrics,
   evaluateVeracityGate,
   GATE_MIN_GROUNDED_QUOTE_RATE,
@@ -25,6 +26,7 @@ import type { WrittenAct, WrittenBeat } from "../src/generation/writeNarration";
 import type { NarratedBeat, Source } from "../src/types/narration";
 import { findHoldingDoc } from "../src/types/narration";
 import type { SourceBeatsResult, SourcedAct, SourcingTrace, TapePointer, TapeRelevanceInput } from "../src/types/tapeSourcing";
+import { CheckpointSession, type CheckpointFile, type CheckpointStore } from "../src/generation/checkpoint";
 
 /**
  * WS-B (docs/curation/generation-fix-plan-2026-09-09.md): every metric this
@@ -919,5 +921,84 @@ describe("GV-26 — MQ-09 tape yield and MQ-11 beat coverage", () => {
     expect(clean.beatCoverage?.rate).toBe(0);
     const failures = evaluateVeracityGate(clean).failures;
     expect(failures.some((f) => /tapeYield|beatCoverage/.test(f))).toBe(false);
+  });
+});
+
+describe("GV-34 — specificsUnsupported is computed from each page's own held evidence", () => {
+  const STAR = { docId: "print:star", title: "Kansas City Star", text: "joe couitt ran the hotel for a decade" };
+  const NBS = { docId: "print:nbs", title: "NBS Building Science Series 143", text: "the connection carried about 60% of the required load" };
+  /** Three pages: one states a year its evidence lacks (and a name it has),
+   * one states a percent its evidence has in digits, one holds no evidence
+   * at all (uncheckable, skipped — it would be flagged if it were read). */
+  function specificsActs(): WrittenAct[] {
+    return actsOf([
+      narrationBeat("c1", narratedBeat({ script: "In 1957 the walkway opened. Joe Couitt ran it.", evidence: [STAR] })),
+      narrationBeat("c2", narratedBeat({ script: "It carried sixty percent of the load.", evidence: [NBS] })),
+      narrationBeat("c3", narratedBeat({ script: "In 1931 Margaret Haines built it." }))
+    ]);
+  }
+
+  it("counts the specifics no held document of their page carries, and names the sentence", () => {
+    /* MUTATION THAT KILLS THIS: drop the no-evidence skip (read a page with
+       no `evidence` against nothing) — the third page's year and name are
+       flagged and the count reads 3. Ran it — red. */
+    const result = computeSpecificsUnsupported(specificsActs());
+    expect(result.count).toBe(1);
+    expect(result.checkedPages).toBe(2);
+    expect(result.details).toEqual([{ claim: "c1", mode: "Patch", sentence: "In 1957 the walkway opened.", unsupported: ["1957"] }]);
+  });
+
+  it("is null, not zero, when no page holds evidence; buildVeracityMetrics carries it, and `off` reports null", () => {
+    /* MUTATION THAT KILLS THIS: return `count` instead of null when nothing
+       was checked — an unmeasured candidate reads as a clean 0. Ran it — red. */
+    expect(computeSpecificsUnsupported(actsOf([narrationBeat("c", narratedBeat({ script: "In 1931 it opened." }))])).count).toBe(null);
+    const base = { sourcedActs: [], writtenActs: specificsActs(), topic: "t", writerCalls: 0, verifierCalls: 0, pipelineTokens: 0, stageTimings: [] };
+    const reported = buildVeracityMetrics(base);
+    expect(reported.specificsUnsupported).toBe(1);
+    expect(reported.specificsDetails).toHaveLength(1);
+    expect(buildVeracityMetrics({ ...base, specifics: "off" }).specificsUnsupported).toBe(null);
+    expect(evaluateVeracityGate(reported).failures.some((f) => /specifics/i.test(f))).toBe(false);
+  });
+
+  it("is identical after a resumed narrate stage — it reads the banked pages, not the run's stats", async () => {
+    /* NarrationWriteStats is not checkpointed: a resumed act's counters start
+       at zero, so a count kept there is lost on resume. MUTATION THAT KILLS
+       THIS: report specificsUnsupported from a run-side counter instead of
+       the pages (`input.retryRounds ?? null` in buildVeracityMetrics, the
+       shape a stats-kept count would take) — the resumed run reads 0 where
+       the fresh one read 2. Ran it — red. */
+    const files = new Map<string, string>();
+    const store: CheckpointStore = {
+      load: (key) => (files.has(key) ? (JSON.parse(files.get(key)!) as CheckpointFile) : null),
+      save: (key, stage, data) => {
+        const file: CheckpointFile = files.has(key)
+          ? (JSON.parse(files.get(key)!) as CheckpointFile)
+          : { version: 3, key, fingerprint: "fp", updatedAt: "t", stages: {} };
+        file.stages[stage] = data;
+        files.set(key, JSON.stringify(file));
+      }
+    };
+    const narrate = async (stats: { retryRounds: number }) => {
+      const session = await CheckpointSession.open(store, "foray-1", "fp");
+      const { value, resumed } = await session.stage("narrate:0", (raw) => raw as WrittenAct, async () => {
+        stats.retryRounds += 2;
+        return specificsActs()[0]!;
+      });
+      return { value, resumed };
+    };
+    const freshStats = { retryRounds: 0 };
+    const fresh = await narrate(freshStats);
+    const resumedStats = { retryRounds: 0 };
+    const resumed = await narrate(resumedStats);
+    expect(fresh.resumed).toBe(false);
+    expect(resumed.resumed).toBe(true);
+    const metricsOf = (act: WrittenAct, stats: { retryRounds: number }) =>
+      buildVeracityMetrics({ sourcedActs: [], writtenActs: [act], topic: "t", writerCalls: 0, verifierCalls: 0, pipelineTokens: 0, stageTimings: [], retryRounds: stats.retryRounds });
+    const a = metricsOf(fresh.value, freshStats);
+    const b = metricsOf(resumed.value, resumedStats);
+    expect(a.retryRounds).not.toBe(b.retryRounds);
+    expect(b.specificsUnsupported).toBe(a.specificsUnsupported);
+    expect(b.specificsDetails).toEqual(a.specificsDetails);
+    expect(a.specificsUnsupported).toBe(1);
   });
 });

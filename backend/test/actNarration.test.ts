@@ -1668,3 +1668,52 @@ describe("GV-07 — the writer and verifier run under their round and role", () 
     expect(writerSeen.every((c) => Object.keys(c).length === 0)).toBe(true);
   });
 });
+
+describe("GV-34 — numbers, dates and names are checked in code against the act's sources", () => {
+  /* The stub writer's seams say "Hyatt" and "sixty percent" (the beats'
+     claims), which its chosen quotes do not hold; this window carries both,
+     so under `enforce` the stub's own act is clean and the ONLY specific in
+     question is the year the test adds. */
+  const WINDOW_A_SPECIFICS = `${WINDOW_A} We read about the Hyatt walkway, which carried about sixty percent of the load.`;
+  const windows = (extra = ""): Record<string, string> => ({ [SEGMENT_A]: `${WINDOW_A_SPECIFICS}${extra}`, [SEGMENT_B]: WINDOW_B_PLAIN });
+  const YEAR_LINE = "In 1957 the walkway opened to the public.";
+  /** Round 1 opens seam s0 with a year; later rounds are the stub's own text. */
+  const withYear = () =>
+    builders((reply, _request, round) => (round > 1 ? reply : { seams: reply.seams.map((seam, i) => (i === 0 ? { ...seam, script: `${YEAR_LINE} ${seam.script}` } : seam)) }));
+
+  it("enforce re-asks a seam that states a year absent from every act source", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `actScope.specifics` block from
+       `validateSeam` (or build the scope only for `report`) — the year
+       ships, one writer call, and the page still says 1957. Ran it — red. */
+    const { writer, verifier, calls, requests } = withYear();
+    const act = await writeActNarration(fourBeatsTwoClips(), { writer, verifier, evidence: gatherer(windows()), specifics: "enforce" }, voice, ctx);
+    expect(calls.write).toBe(2);
+    expect(requests[1]!.retryNote).toContain('"1957"');
+    expect(requests[1]!.retryNote).toContain("GV-34");
+    for (const page of pagesInOrder(act)) expect(page.script).not.toContain("1957");
+  });
+
+  it("enforce passes the same seam when the year is in a clip's transcript window", async () => {
+    /* MUTATION THAT KILLS THIS: leave the clip windows out of
+       `actSpecificsScope` (quotes and ground only) — the year is refused
+       although the tape says it, and the act takes a second round. Ran it — red. */
+    const { writer, verifier, calls } = withYear();
+    const act = await writeActNarration(fourBeatsTwoClips(), { writer, verifier, evidence: gatherer(windows(" The walkway opened in nineteen fifty-seven.")), specifics: "enforce" }, voice, ctx);
+    expect(calls.write).toBe(1);
+    expect(pagesInOrder(act)[0]!.script.startsWith(YEAR_LINE)).toBe(true);
+  });
+
+  it("report (the default) leaves the rounds and the text unchanged", async () => {
+    /* MUTATION THAT KILLS THIS: build the scope for any mode but `off`
+       (`specifics !== "off"`) — report then refuses the year exactly as
+       enforce does, and the default run takes two rounds. Ran it — red. */
+    const baseline = withYear();
+    const byDefault = await writeActNarration(fourBeatsTwoClips(), { writer: baseline.writer, verifier: baseline.verifier, evidence: gatherer(windows()) }, voice, ctx);
+    const reported = withYear();
+    const inReport = await writeActNarration(fourBeatsTwoClips(), { writer: reported.writer, verifier: reported.verifier, evidence: gatherer(windows()), specifics: "report" }, voice, ctx);
+    expect(baseline.calls.write).toBe(1);
+    expect(reported.calls.write).toBe(1);
+    expect(pagesInOrder(byDefault)[0]!.script.startsWith(YEAR_LINE)).toBe(true);
+    expect(pagesInOrder(inReport).map((p) => p.script)).toEqual(pagesInOrder(byDefault).map((p) => p.script));
+  });
+});

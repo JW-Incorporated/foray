@@ -10,6 +10,7 @@ import { findHoldingDoc, isSynthesisVerified, isTapeSource, purposeWasRevised, s
 import { phraseIsInWindow } from "../types/anchorText";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
+import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
 
 /**
  * WS-B (docs/curation/generation-fix-plan-2026-09-09.md §WS-B): "the AI
@@ -937,6 +938,63 @@ export function computeBeatCoverage(writtenActs: WrittenAct[]): BeatCoverageResu
 }
 
 /* ------------------------------------------------------------------ */
+/* specificsUnsupported (GV-34, W5-10)                                  */
+/* ------------------------------------------------------------------ */
+
+/** One sentence of a kept page stating a specific its held evidence lacks. */
+export interface SpecificsPageNote {
+  claim: string;
+  mode: string;
+  sentence: string;
+  unsupported: string[];
+}
+
+export interface SpecificsUnsupportedResult {
+  /** Specifics (years, figures, names) no held document of their page
+   * carries, summed over the candidate. `null` when no page held evidence
+   * — unmeasured, not zero. */
+  count: number | null;
+  /** Pages that held evidence and so were checked. */
+  checkedPages: number;
+  details: SpecificsPageNote[];
+}
+
+/**
+ * GV-34: every kept page's script, sentence by sentence, against that
+ * page's OWN held evidence (`NarratedBeat.evidence`: the documents it cites
+ * and the windows of the clips beside it), with the evidence titles as the
+ * names it may say. A count, reported and never gated (FORAY_SPECIFICS_CHECK
+ * `report`, the default) — the live step reads the flagged sentences to
+ * count false positives before anything enforces on it.
+ *
+ * RESUME-SAFE BY CONSTRUCTION. It reads only the written pages, which the
+ * `narrate:<i>` checkpoint banks whole; `NarrationWriteStats` is not
+ * checkpointed, so a count kept there would reset on a resumed act. A page
+ * with no evidence is uncheckable and skipped, as in `groundedQuoteRate`;
+ * the hand-off line states nothing and is skipped too.
+ */
+export function computeSpecificsUnsupported(writtenActs: WrittenAct[]): SpecificsUnsupportedResult {
+  let count = 0;
+  let checkedPages = 0;
+  const details: SpecificsPageNote[] = [];
+  for (const { claim, page } of flattenWrittenPages(writtenActs)) {
+    const evidence = page.evidence;
+    if (!evidence || evidence.length === 0 || page.script === HANDOFF_SCRIPT) continue;
+    checkedPages++;
+    const flagged = unsupportedSpecificsInScript(
+      page.script,
+      evidence.map((d) => d.text),
+      { allowNames: evidence.map((d) => d.title) }
+    );
+    for (const { sentence, unsupported } of flagged) {
+      count += unsupported.length;
+      details.push({ claim, mode: page.mode, sentence, unsupported });
+    }
+  }
+  return { count: checkedPages > 0 ? count : null, checkedPages, details };
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -1029,6 +1087,13 @@ export interface VeracityMetrics {
   /** GV-26 (MQ-11): narration beats the verifier confirmed are carried.
    * `null` on the per-page path; absent on a candidate built before GV-26. */
   beatCoverage?: BeatCoverageResult | null;
+  /** GV-34 (R2-09): years, figures and names on kept pages that the page's
+   * own held evidence does not carry (`computeSpecificsUnsupported`).
+   * `null` when no page held evidence or FORAY_SPECIFICS_CHECK is `off`;
+   * absent on a candidate built before GV-34. Reported, never gated. */
+  specificsUnsupported?: number | null;
+  /** GV-34: the flagged sentences, each with what it stated unsupported. */
+  specificsDetails?: SpecificsPageNote[];
 }
 
 export interface BuildVeracityMetricsInput {
@@ -1058,6 +1123,10 @@ export interface BuildVeracityMetricsInput {
   /** G-35: carried through verbatim when the caller ran a prefetch. */
   retrieval?: EvidencePrefetchMetrics;
   root?: string;
+  /** GV-34: the run's `GateConfig.specifics`. `off` reports
+   * `specificsUnsupported: null`; `report` (the default) and `enforce`
+   * compute it. */
+  specifics?: SpecificsMode;
 }
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
@@ -1069,6 +1138,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     : computeTapeRelevance(input.sourcedActs, input.topic, input.root);
   const shares = computeListeningShares(input.sourcedActs, input.writtenActs);
   const firstAttempt = computeFirstAttemptPassRates(input.writtenActs);
+  const specifics = (input.specifics ?? "report") === "off" ? null : computeSpecificsUnsupported(input.writtenActs);
 
   return {
     groundedQuoteRate: grounded.rate,
@@ -1108,7 +1178,9 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
       input.tapeRelevanceRows && input.sourcingTrace
         ? computeTapeYield({ tapeRelevance: input.tapeRelevanceRows, sourcingTrace: input.sourcingTrace, sourcedActs: input.sourcedActs })
         : null,
-    beatCoverage: computeBeatCoverage(input.writtenActs)
+    beatCoverage: computeBeatCoverage(input.writtenActs),
+    specificsUnsupported: specifics ? specifics.count : null,
+    specificsDetails: specifics ? specifics.details : []
   };
 }
 
