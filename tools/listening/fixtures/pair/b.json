@@ -1,0 +1,40 @@
+{
+  "id": "fixture-bridges-hold-2c90d4",
+  "title": "Fixture Beta: How Bridges Hold",
+  "topic": "fixtures/synthetic",
+  "summary": "A synthetic candidate for the listening-pack tests. Every line is made up; no transcript text.",
+  "runtimeSec": 655,
+  "slots": [
+    { "id": "beta-slot-load", "title": "Load" },
+    { "id": "beta-slot-failure", "title": "Failure" }
+  ],
+  "items": [
+    { "type": "narration", "id": "disclosure", "script": "This is a test Foray. Much of it is written by AI.", "mode": "marker" },
+    { "type": "narration", "id": "act-1-introduction", "script": "Act one starts with a bridge that should not stand.", "mode": "frame" },
+    { "type": "segment", "slot": "beta-slot-load", "segment_id": "fixture-show-ep2#40" },
+    { "type": "narration", "id": "narration-act-1-0-beat", "script": "Beta says the weight is the easy part.", "mode": "hinge" },
+    { "type": "segment", "slot": "beta-slot-load", "segment_id": "fixture-show-ep4#12" },
+    { "type": "narration", "id": "act-1-exit", "script": "Then the wind arrives.", "mode": "frame" },
+    { "type": "narration", "id": "act-2-introduction", "script": "Act two is about the wind.", "mode": "frame" },
+    { "type": "segment", "slot": "beta-slot-failure", "segment_id": "fixture-show-ep3#5" },
+    { "type": "narration", "id": "act-2-exit", "script": "That is where beta ends.", "mode": "frame" }
+  ],
+  "segments": [
+    { "id": "fixture-show-ep4#12", "itemId": "fixture-show-ep4", "startSec": 12, "endSec": 75.5 }
+  ],
+  "segmentSources": [
+    {
+      "id": "fixture-show-ep4",
+      "show": "Fixture Show",
+      "title": "Episode four",
+      "feed_url": null,
+      "episode_guid": "fixture-guid-4",
+      "audio_url": "https://media.example.test/fixture-show/ep4.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 2400,
+      "dai_suspected": true,
+      "source": "generation-tier-2"
+    }
+  ],
+  "meta": { "provider": "fixture-provider-beta", "model": "fixture-model-beta" }
+}

@@ -1622,6 +1622,12 @@ const FLOORS = {
      Each test pins a way a swap that lost could read as a swap that won: a
      label mapped to the wrong arm, a keyless guess, a tie counted as a win. */
   "tools/listening/unseal.test.mjs": 11, // GV-08: new -- unseal with/without keys, aggregate on 10 pairs, ties, axis deltas, re-listen, listenByCandidate, key checks, CLI
+  /* GV-36 (W1-17: R2-01, QK-30, MQ-20): the blind listening pack. Each test
+     pins a way the founder's listen stops being blind or stops being the act:
+     a candidate name in the page, the key beside the pack, an A/B order the
+     seed does not decide, an act that runs on, a clip from the wrong row, an
+     outside script, a card the page builds that card.mjs refuses. */
+  "tools/listening/pack.test.mjs": 10, // GV-36: new -- act extraction, clip resolution order + DAI, no candidate/provider/file-name leak, key only under --key-dir + unseal round-trip, same seed byte-identical, out-9 solo, no external URL, page card builder vs validateCard, voice record, CLI refusals
   /* The keyless-run transport (#697). This suite is the ONLY thing in the repo
      that can notice the relay losing a behaviour, and every one of those
      behaviours was bought by a finding that cost a run something: I-23's
@@ -3117,7 +3123,7 @@ const BACKEND_FLOORS = {
   /* RAISED 43 -> 47 by F-101: `computeFirstAttemptPassRates` emits the pages
      and beats units separately and declares which the legacy scalar carries;
      `computeListeningShares` says its denominator in the field name. */
-  "test/veracityMetrics.test.ts": 53, // GV-26 (generation v2): computeTapeYield (MQ-09, 0.75 on 3 tape / 1 no-tape / 1 argument; null with nothing wanted), computeBeatCoverage (MQ-11, null per-page), buildVeracityMetrics carries both, the gate ignores them; 48 -> 53 // round-3 audit (L5-generation): arch-drift-2 the publish gate grounds print quotes with findHoldingDoc; 47 -> 48
+  "test/veracityMetrics.test.ts": 56, // GV-34 (generation v2): specificsUnsupported counted from each page's own held evidence (null when none held, null under off, never gated) and identical after a resumed narrate stage; 53 -> 56 // GV-26 (generation v2): computeTapeYield (MQ-09, 0.75 on 3 tape / 1 no-tape / 1 argument; null with nothing wanted), computeBeatCoverage (MQ-11, null per-page), buildVeracityMetrics carries both, the gate ignores them; 48 -> 53 // round-3 audit (L5-generation): arch-drift-2 the publish gate grounds print quotes with findHoldingDoc; 47 -> 48
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's
@@ -3236,7 +3242,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 56, // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
+  "test/actNarration.test.ts": 59, // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
@@ -3275,7 +3281,7 @@ const BACKEND_FLOORS = {
      variant, and the empty gate-config table. One named mutation per test. */
   "test/generationFlags.test.ts": 8,
   "test/pipelineFlags.test.ts": 12,
-  "test/gateConfig.test.ts": 7,
+  "test/gateConfig.test.ts": 8, // GV-34 (generation v2): the first gate row, FORAY_SPECIFICS_CHECK off|report|enforce defaulting to report; 7 -> 8
   /* GV-13 (docs/roadmap/generation-v2.md, #1286): the ChatProvider contract
      and the non-streaming OpenAI-compatible client (reply mapping, request
      body, http/timeout/network/malformed/aborted errors, one CallRecord per
@@ -3310,6 +3316,16 @@ const BACKEND_FLOORS = {
      reply, one wire-level replay. Offline: scriptedProvider, fakeFetch over
      synthetic bodies, a fake Anthropic client. One named mutation per test. */
   "test/chatPlanningBuilders.test.ts": 14,
+  /* GV-31 (docs/roadmap/generation-v2.md, #1286): the Chat twins of the act
+     writer and act verifier -- parity with each Anthropic twin for the same
+     recorded-shape reply (pronunciationHints and restsOn defaulted to []),
+     the act_write / act_verify schemas, actOutputTokenBudget and the
+     verifier cap, 'length' refused, one metered re-ask, one wire-level
+     replay, the shared post-parse mappings in replySchemas.ts, and a
+     short-tier runForayPipeline with both injected matching the all-Stub
+     Foray. Offline: scriptedProvider, fakeFetch over synthetic bodies, a fake
+     Anthropic client. One named mutation per test. */
+  "test/chatNarrationBuilders.test.ts": 10,
   /* GV-27 (docs/roadmap/generation-v2.md, #1286): the per-sentence support
      judge -- narration.ts's isStatementSentence (the hasDeclarativeSentence
      rule), statement sentences via splitSpokenSentences, passageAround's
@@ -3330,6 +3346,15 @@ const BACKEND_FLOORS = {
      pre-GV-32 prompts (deepen's act-marker rewrites listed). Offline:
      scriptedProvider and hand-built fixtures. One named mutation per test. */
   "test/promptLayout.test.ts": 11,
+  /* GV-34 (docs/roadmap/generation-v2.md, #1286): numbers, dates and names
+     checked in code against a sentence's sources -- spokenNumberValues (word
+     and digit years, decades, percent, scales, ranges, ordinals),
+     extractSpecifics/extractNames (small-cardinal and ordinal exemptions,
+     sentence-initial common words, possessives, allowNames) and
+     unsupportedSpecifics (ASR-lowercase names, longest-token fallback,
+     decade-from-year support). Static count 5: three it.each tables of 62
+     cases, pinned at >= 40 by the suite's own first test. Pure; no fixtures. */
+  "test/specifics.test.ts": 5,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

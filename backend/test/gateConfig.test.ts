@@ -71,10 +71,21 @@ describe("resolveGateConfig", () => {
      an undefined override erasing an env value (dropping the `!== undefined`
      guard), or resolveGateConfig ignoring its `table`. */
   it("merges overrides over the env, ignoring undefined ones", () => {
-    expect(resolveGateConfig({}, {})).toEqual({});
-    expect(resolveGateConfig({ extra: 1, gone: undefined } as never, {})).toStrictEqual({ extra: 1 });
+    expect(resolveGateConfig({}, {})).toEqual(readGateConfig({}));
+    expect(resolveGateConfig({ extra: 1, gone: undefined } as never, {})).toStrictEqual({ ...readGateConfig({}), extra: 1 });
     expect(resolveGateConfig({}, { [TEST_ENV]: "block" }, testTable)).toEqual({ testGate: "block", testBand: 6 });
-    expect((resolveGateConfig({ testGate: "block" } as never, { [TEST_ENV]: "warn" }, testTable) as Record<string, unknown>).testGate).toBe("block");
-    expect((resolveGateConfig({ testGate: undefined } as never, { [TEST_ENV]: "block" }, testTable) as Record<string, unknown>).testGate).toBe("block");
+    expect((resolveGateConfig({ testGate: "block" } as never, { [TEST_ENV]: "warn" }, testTable) as unknown as Record<string, unknown>).testGate).toBe("block");
+    expect((resolveGateConfig({ testGate: undefined } as never, { [TEST_ENV]: "block" }, testTable) as unknown as Record<string, unknown>).testGate).toBe("block");
+  });
+});
+
+describe("GV-34: the specifics gate row", () => {
+  /* Kills: a default other than `report` (the card's metrics-only default),
+     or the row missing from GATE_TABLE (the env would be ignored). */
+  it("FORAY_SPECIFICS_CHECK defaults to report and reads off|report|enforce", () => {
+    expect(readGateConfig({}).specifics).toBe("report");
+    expect(readGateConfig({ FORAY_SPECIFICS_CHECK: "enforce" }).specifics).toBe("enforce");
+    expect(readGateConfig({ FORAY_SPECIFICS_CHECK: "off" }).specifics).toBe("off");
+    expect(() => readGateConfig({ FORAY_SPECIFICS_CHECK: "strict" })).toThrow(/FORAY_SPECIFICS_CHECK/);
   });
 });

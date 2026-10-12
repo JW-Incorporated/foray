@@ -1,0 +1,22 @@
+{
+  "_source": "GV-31: a SYNTHETIC OpenAI chat.completion in the shape a local verifier returns for the same act (RawActVerifySchema): one verdict per beat and per seam; seam s1 omits restsOn, as a model may. Hand-written for backend/test/chatNarrationBuilders.test.ts. Never from a live model.",
+  "id": "chatcmpl-synthetic-act-verify-0001",
+  "object": "chat.completion",
+  "created": 1760000000,
+  "model": "synthetic-heavy-27b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"beats\":[{\"beatId\":\"b0\",\"carried\":true,\"carriedBy\":\"s0\",\"restsOn\":[\"k0\"]},{\"beatId\":\"b1\",\"carried\":true,\"carriedBy\":\"s1\",\"restsOn\":[\"k1\"],\"notes\":\"carried by the sixty-percent sentence\"}],\"seams\":[{\"seamId\":\"s0\",\"claimsSupported\":true,\"restsOn\":[\"k0\"],\"contestedHandled\":true},{\"seamId\":\"s1\",\"claimsSupported\":true,\"contestedHandled\":true,\"notes\":\"every statement follows from k1\"}]}"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 2600,
+    "completion_tokens": 180,
+    "total_tokens": 2780
+  }
+}
