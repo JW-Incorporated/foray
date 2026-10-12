@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
+import { BUILDER_MAX_TOKENS } from "../config/outputBudgets";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { parseWithRetry } from "./parseWithRetry";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
@@ -64,7 +65,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
 
     const response = await createMessage(this.client, {
       model: MODEL,
-      max_tokens: 400,
+      max_tokens: BUILDER_MAX_TOKENS.clarity,
       messages: [{ role: "user", content: promptText }]
     }, "prompt-understand");
 
@@ -88,7 +89,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
 
       const retryResponse = await createMessage(this.client, {
         model: MODEL,
-        max_tokens: 400,
+        max_tokens: BUILDER_MAX_TOKENS.clarity,
         messages: [
           { role: "user", content: promptText },
           { role: "assistant", content: textBlock.text },
@@ -117,7 +118,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
 
     const response = await createMessage(this.client, {
       model: MODEL,
-      max_tokens: 600,
+      max_tokens: BUILDER_MAX_TOKENS.intent,
       messages: [{ role: "user", content: promptText }]
     }, "prompt-understand");
 
@@ -141,7 +142,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
 
       const retryResponse = await createMessage(this.client, {
         model: MODEL,
-        max_tokens: 600,
+        max_tokens: BUILDER_MAX_TOKENS.intent,
         messages: [
           { role: "user", content: promptText },
           { role: "assistant", content: textBlock.text },
@@ -174,19 +175,7 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
    * single expensive stage runs, because the gate runs after the spend.
    */
   private async sentenceCaseTitle<T extends { title?: string }>(intent: T, promptText: string, listenerPrompt: string, ctx: PromptUnderstandContext): Promise<T> {
-    const title = intent.title?.trim();
-    if (!title) return intent;
-    const problems = titleStyleProblems(houseStyleTitle(title));
-    if (problems.length === 0) return intent;
-    const line =
-      `The title "${title}" ${problems.join("; ")}. Reply with ONLY a JSON object {"title": string}: the same title in sentence case — ` +
-      "the first word, proper nouns and acronyms capitalised, every other word lower case, no closing period.";
-    /* A style-only call must never cost the run: the intent is already
-       parsed and usable, so a budget refusal, a 429/529 or a network error
-       here keeps the original title, exactly as a second miss does (review of
-       PR #785). */
-    let text: string;
-    try {
+    return recaseIntentTitle(intent, promptText, listenerPrompt, "AnthropicPromptUnderstander", async ({ messages, line }) => {
       await this.budgetGuard.checkAndRecord({
         userId: ctx.userId,
         operation: "prompt_intent",
@@ -197,45 +186,103 @@ export class AnthropicPromptUnderstander implements PromptUnderstander {
       });
       const response = await createMessage(this.client, {
         model: MODEL,
-        max_tokens: 120,
-        messages: [
-          { role: "user", content: promptText },
-          { role: "assistant", content: JSON.stringify(intent) },
-          { role: "user", content: line }
-        ]
+        max_tokens: BUILDER_MAX_TOKENS.title,
+        messages
       }, "prompt-understand");
-      text = response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
-    } catch (error) {
-      console.warn(`AnthropicPromptUnderstander: the title re-ask for "${title}" failed (${error instanceof Error ? error.message : String(error)}); keeping it`);
-      return intent;
-    }
-    let restyled: string | undefined;
-    try {
-      const parsed = TitleRecaseSchema.safeParse(JSON.parse(text.replace(/^[^{]*/, "").replace(/[^}]*$/, "")));
-      restyled = parsed.success ? parsed.data.title.trim() : undefined;
-    } catch {
-      restyled = undefined;
-    }
-    /* Only the CASE may change: a reply that rewords the title is not the
-       title the rest of the intent was written around. */
-    const letters = (t: string): string => houseStyleTitle(t).toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (!restyled || letters(restyled) !== letters(title) || titleStyleProblems(houseStyleTitle(restyled)).length > 0) {
-      console.warn(`AnthropicPromptUnderstander: the title "${title}" is still not sentence case after one re-ask; keeping it`);
-      return intent;
-    }
-    /* ...and the case change may not demote a name to get past the checker
-       ("Why Doctor who still works" keeps the letters and passes it). */
-    const demoted = demotedNames(title, restyled, listenerPrompt);
-    if (demoted.length > 0) {
-      console.warn(`AnthropicPromptUnderstander: the re-ask lower-cased what may be a name (${demoted.join(", ")}) in "${restyled}"; keeping "${title}"`);
-      return intent;
-    }
-    return { ...intent, title: restyled };
+      return response.content.find((b: Anthropic.ContentBlock): b is Anthropic.TextBlock => b.type === "text")?.text ?? "";
+    });
   }
 }
 
 
-function buildClarityPrompt(prompt: string): string {
+/** One turn of the title re-ask conversation, provider-neutral. */
+export interface TitleTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+/**
+ * What a title re-ask hands its `ask`: the 3-turn conversation (the intent
+ * prompt, the parsed intent as the assistant's own turn, the corrective line)
+ * and the corrective line alone (for metering). `ask` meters, sends and
+ * returns the reply's text; it may throw.
+ */
+export interface TitleRecaseAsk {
+  messages: TitleTurn[];
+  line: string;
+}
+
+/**
+ * The title house-style re-ask (see AnthropicPromptUnderstander's
+ * sentenceCaseTitle), extracted by GV-25 so the Anthropic builder and its
+ * Chat twin share one implementation and differ only in how they ask:
+ * - no title, or a title that already keeps the style after the code fixes,
+ *   asks nothing;
+ * - otherwise ONE ask, with the checker's own words for what is wrong;
+ * - any failure of the ask (budget refusal, 429/529, network, a refused
+ *   reply) keeps the original title, as does a reply that does not parse,
+ *   rewords the title, still breaks the style, or demotes a name.
+ * `who` prefixes the warnings (the builder's class name).
+ */
+export async function recaseIntentTitle<T extends { title?: string }>(
+  intent: T,
+  promptText: string,
+  listenerPrompt: string,
+  who: string,
+  ask: (request: TitleRecaseAsk) => Promise<string>
+): Promise<T> {
+  const title = intent.title?.trim();
+  if (!title) return intent;
+  const problems = titleStyleProblems(houseStyleTitle(title));
+  if (problems.length === 0) return intent;
+  const line =
+    `The title "${title}" ${problems.join("; ")}. Reply with ONLY a JSON object {"title": string}: the same title in sentence case — ` +
+    "the first word, proper nouns and acronyms capitalised, every other word lower case, no closing period.";
+  /* A style-only call must never cost the run: the intent is already
+     parsed and usable, so a budget refusal, a 429/529 or a network error
+     here keeps the original title, exactly as a second miss does (review of
+     PR #785). */
+  let text: string;
+  try {
+    text = await ask({
+      messages: [
+        { role: "user", content: promptText },
+        { role: "assistant", content: JSON.stringify(intent) },
+        { role: "user", content: line }
+      ],
+      line
+    });
+  } catch (error) {
+    console.warn(`${who}: the title re-ask for "${title}" failed (${error instanceof Error ? error.message : String(error)}); keeping it`);
+    return intent;
+  }
+  let restyled: string | undefined;
+  try {
+    const parsed = TitleRecaseSchema.safeParse(JSON.parse(text.replace(/^[^{]*/, "").replace(/[^}]*$/, "")));
+    restyled = parsed.success ? parsed.data.title.trim() : undefined;
+  } catch {
+    restyled = undefined;
+  }
+  /* Only the CASE may change: a reply that rewords the title is not the
+     title the rest of the intent was written around. */
+  const letters = (t: string): string => houseStyleTitle(t).toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (!restyled || letters(restyled) !== letters(title) || titleStyleProblems(houseStyleTitle(restyled)).length > 0) {
+    console.warn(`${who}: the title "${title}" is still not sentence case after one re-ask; keeping it`);
+    return intent;
+  }
+  /* ...and the case change may not demote a name to get past the checker
+     ("Why Doctor who still works" keeps the letters and passes it). */
+  const demoted = demotedNames(title, restyled, listenerPrompt);
+  if (demoted.length > 0) {
+    console.warn(`${who}: the re-ask lower-cased what may be a name (${demoted.join(", ")}) in "${restyled}"; keeping "${title}"`);
+    return intent;
+  }
+  return { ...intent, title: restyled };
+}
+
+
+/** Exported for the Chat twin (GV-25), which sends the same words. */
+export function buildClarityPrompt(prompt: string): string {
   return [
     "A user has asked for an AI-generated audio documentary (a \"Foray\") on this prompt:",
     "",

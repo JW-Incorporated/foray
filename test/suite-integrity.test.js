@@ -3284,6 +3284,14 @@ const BACKEND_FLOORS = {
      pool, FakeJevClient, the endpoint guard and the Jev env variables.
      Offline: fakeFetch over synthetic fixtures. One named mutation per test. */
   "test/jevClient.test.ts": 34,
+  /* GV-25 (docs/roadmap/generation-v2.md, #1286): the Chat twins of the
+     planning builders (understander, spine, deepen, continuity) and
+     targetFor — parity with each Anthropic twin for the same reply, the
+     spine re-ask conversation (structural and seed-floor), schema, cap and
+     thinking:false on every call, 'length' refused, one re-ask per invalid
+     reply, one wire-level replay. Offline: scriptedProvider, fakeFetch over
+     synthetic bodies, a fake Anthropic client. One named mutation per test. */
+  "test/chatPlanningBuilders.test.ts": 14,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

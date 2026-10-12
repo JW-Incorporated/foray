@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
+import { BUILDER_MAX_TOKENS } from "../config/outputBudgets";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { ContinuityBuilder, ContinuityBuildContext, ContinuitySmoothRequest, ContinuitySmoothResult } from "./ContinuityBuilder";
 import { createMessage } from "./anthropicCall";
@@ -27,7 +28,8 @@ import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 const MODEL = modelFor("sonnet");
 const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
-const MAX_OUTPUT_TOKENS = 500;
+/* GV-25 (decision 10): the cap lives in config/outputBudgets.ts, value unchanged. */
+const MAX_OUTPUT_TOKENS = BUILDER_MAX_TOKENS.continuity;
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
@@ -37,13 +39,16 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /** `client` is an optional injection point for tests (GV-25 added it, the
+   * same pattern as AnthropicSpineBuilder's), so the Chat twin's parity test
+   * can drive this class with a fake; without it nothing changes. */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicContinuityBuilder constructed without ANTHROPIC_API_KEY set — use createContinuityBuilder() so it falls back to StubContinuityBuilder instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   async smoothSeam(request: ContinuitySmoothRequest, ctx: ContinuityBuildContext): Promise<ContinuitySmoothResult> {
