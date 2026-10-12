@@ -179,6 +179,41 @@ function readBoundedNumber(name: string, fallback: number, schema: z.ZodNumber):
   return result.data;
 }
 
+/**
+ * GV-20 (docs/roadmap/generation-v2.md): Jev, TypeSafe's hosted
+ * typed-decision model. The total time one ask may take, in milliseconds
+ * (`FORAY_JEV_BUDGET_MS`). A malformed value fails startup like the budget
+ * caps above; 60 s is a typo guard, not a target (the design budget is 4 s).
+ */
+const DEFAULT_JEV_BUDGET_MS = 4000;
+const MAX_JEV_BUDGET_MS = 60_000;
+const jevBudgetSchema = z
+  .number({ invalid_type_error: "FORAY_JEV_BUDGET_MS" })
+  .int({ message: "FORAY_JEV_BUDGET_MS" })
+  .positive({ message: "FORAY_JEV_BUDGET_MS" })
+  .max(MAX_JEV_BUDGET_MS, { message: "FORAY_JEV_BUDGET_MS" });
+
+/**
+ * The Jev API key: `JEV_API_KEY`, else the trimmed contents of the file named
+ * by `JEV_KEY_FILE` (how the Spark keeps it, LM-22). Read at call time, so a
+ * key added after startup is seen. An unset, empty or unreadable source is
+ * `undefined`, which keeps the Jev client inert (NullJevClient). Never
+ * logged: envPresenceSummary reports only whether one is present.
+ */
+function readJevApiKey(): string | undefined {
+  const direct = readString("JEV_API_KEY");
+  if (direct !== undefined) return direct;
+  const file = readString("JEV_KEY_FILE");
+  if (file === undefined) return undefined;
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- JEV_KEY_FILE is an operator-set path to the key, not request input.
+    const contents = fs.readFileSync(file, "utf8").trim();
+    return contents.length === 0 ? undefined : contents;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface Env {
   anthropicApiKey: string | undefined;
   podcastIndexApiKey: string | undefined;
@@ -197,6 +232,15 @@ export interface Env {
   episodeBudgetUsd: number;
   databaseUrl: string | undefined;
   userAgent: string;
+  /** GV-20: the Jev key (JEV_API_KEY, else the JEV_KEY_FILE contents), read
+   * at call time; undefined keeps the Jev client inert. */
+  readonly jevApiKey: string | undefined;
+  /** GV-20: FORAY_JEV_BASE_URL; unset means jevClient.ts's default host. */
+  jevBaseUrl: string | undefined;
+  /** GV-20: FORAY_JEV_MODEL; unset means jevClient.ts's pinned model. */
+  jevModel: string | undefined;
+  /** GV-20: FORAY_JEV_BUDGET_MS, the total time one Jev ask may take. */
+  jevBudgetMs: number;
   /** true when no ANTHROPIC_API_KEY is configured -> StubEnricher must be used */
   readonly anthropicDryRun: boolean;
   /** true when no Podcast Index credentials configured -> client runs dry-run */
@@ -211,6 +255,12 @@ export const env: Env = {
   episodeBudgetUsd: readBoundedNumber("EPISODE_BUDGET_USD", DEFAULT_EPISODE_BUDGET_USD, budgetSchema("EPISODE_BUDGET_USD")),
   databaseUrl: readString("DATABASE_URL"),
   userAgent: DEFAULT_FEED_USER_AGENT,
+  get jevApiKey(): string | undefined {
+    return readJevApiKey();
+  },
+  jevBaseUrl: readString("FORAY_JEV_BASE_URL"),
+  jevModel: readString("FORAY_JEV_MODEL"),
+  jevBudgetMs: readBoundedNumber("FORAY_JEV_BUDGET_MS", DEFAULT_JEV_BUDGET_MS, jevBudgetSchema),
   get anthropicDryRun(): boolean {
     return this.anthropicApiKey === undefined;
   },
@@ -226,6 +276,7 @@ export function envPresenceSummary(): Record<string, boolean | number> {
     podcastIndexKeyPresent: env.podcastIndexApiKey !== undefined,
     podcastIndexSecretPresent: env.podcastIndexApiSecret !== undefined,
     databaseUrlPresent: env.databaseUrl !== undefined,
+    jevApiKeyPresent: env.jevApiKey !== undefined,
     runBudgetUsd: env.runBudgetUsd,
     episodeBudgetUsd: env.episodeBudgetUsd
   };

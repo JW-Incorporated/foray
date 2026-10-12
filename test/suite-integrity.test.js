@@ -3244,6 +3244,12 @@ const BACKEND_FLOORS = {
      call, the inert-import guard) plus the scriptedProvider helper. Offline:
      fakeFetch over synthetic fixtures. */
   "test/openAICompatProvider.test.ts": 26,
+  /* GV-20 (docs/roadmap/generation-v2.md, #1286): the typed Jev client —
+     reply validation (every malformed variant), transport categories, the
+     key never leaking, one CallRecord per ask, BudgetGuard metering, the
+     pool, FakeJevClient, the endpoint guard and the Jev env variables.
+     Offline: fakeFetch over synthetic fixtures. One named mutation per test. */
+  "test/jevClient.test.ts": 34,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
