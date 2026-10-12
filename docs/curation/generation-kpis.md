@@ -167,6 +167,64 @@ column) and `prose_basis`.
 No target is proposed for any of them here: the per-tier speed targets are
 GV-52's, and this card only measures.
 
+### The quality scorecard (GV-24, MQ-01..MQ-21)
+
+`tools/generation-bench/score.mjs` scores one Foray on the Baseline's
+twenty-one quality metrics, off the timed path. Each cell is
+`{ value, source, note }`: `source` is the metric's producer (`report`, the
+run's report entry; `candidate`, measured on the candidate Foray; `judged`, a
+`<candidate>.judged.json` from the offline judge pass or the report's own judge
+field once an in-pipeline judge writes it; `listen`, the founder's cards), and
+a metric the row cannot know is `null` with a note saying why — never 0. A
+clip-only Foray has no voice, not a voice that scored zero.
+
+- `run.mjs --scorecard` adds a `scorecard` object to each JSONL line and, under
+  `--wide`, the MQ columns (**detail**: the committed table below does not
+  change). Without the flag the bench's lines and tables are byte-identical.
+- `score.mjs --candidate <foray.json> [--report <report.json>]` scores one
+  candidate; `score.mjs --forays data/forays.json` scores published Forays,
+  which have no report, so only voice, tape, structure and runtime apply.
+- **Reference scores.** `tools/generation-bench/golden/reference-scorecard.jsonl`
+  holds the 7 Forays committed in `data/forays.json`: 3 labelled
+  `curated clip-only` and 4 labelled `generated pre-Q-03`. They are
+  **references, not targets**: the four generated ones come from the pre-Q-03
+  writer the founder called clunky, and no metric is tuned towards them. If
+  MQ-02 and MQ-05 do not separate them from run 9 once judged, that is a
+  metric defect (R2-02's own check). Re-derive with
+  `node tools/generation-bench/score.mjs --forays data/forays.json --check`
+  (exit 1 on drift; `--write` rewrites it). It is a CLI check, not a unit
+  test, so a change to `data/forays.json` cannot break CI.
+
+"Today" below is what a run report written at this card's merge carries; a
+metric whose producer is a later card says which.
+
+| MQ | Metric | Source | Where it comes from | Available today |
+|---|---|---|---|---|
+| MQ-01 | Grounded quote rate | report | `veracity.groundedQuoteRate` | yes, from run 9 on; absent on a published Foray |
+| MQ-02 | Supported-sentence rate | judged | judged file `MQ-02`, else `veracity.supportedSentenceRate` | no: needs the per-sentence support judge (GV-27) or the judge pass (GV-92) |
+| MQ-03 | Attribution accuracy | judged | judged file `MQ-03`, else `veracity.attributionAccuracy` | no: needs GV-92 / the attribution check (GV-120) |
+| MQ-04 | Unverified pages kept | report | `veracity.unverifiedPages` | yes, runs 5-9; absent on a published Foray |
+| MQ-05 | Clip on subject | judged | judged file `MQ-05`, else `veracity.clipOnSubjectRate` | no: needs the clip scorer (GV-79) or GV-92 |
+| MQ-06 | Clean-cut share | candidate | minted rows whose `boundary` is `turn` or `sentence`, over every clip; a pool clip is unknown, never clean | yes on a candidate with Q-01 minted rows; null on the published Forays (pool clips only) |
+| MQ-07 | Show variety | candidate | report `veracity.showVariety` (GV-83) when present, else distinct shows / episodes and the largest show's tape share from the candidate (show via its `segmentSources`, then `data/segment-sources.json`, then the pool `show_id`) | yes (candidate fallback) |
+| MQ-08 | Tape shape | candidate | tape ÷ runtime, median clip, share of clips under 60 s (run.mjs's `clipDurations`) | yes |
+| MQ-09 | Tape yield | report | `veracity.tapeYield.rate` | no: GV-26 adds it |
+| MQ-10 | Prompt fit | judged | judged file `MQ-10`, else `veracity.promptFit` | no: needs GV-92 |
+| MQ-11 | Beat coverage | report | `veracity.beatCoverage.rate` | no: GV-26 adds it |
+| MQ-12 | Seam coherence | judged | judged file `MQ-12`, else `veracity.seamCoherence` | no: needs GV-92 |
+| MQ-13 | Intro restates | report | `veracity.introRestates` | yes, from run 9 on |
+| MQ-14 | Tier fit | candidate | report `veracity.tierFit.ratio` (GV-106), else runtime ÷ `entry.tierTargetSec`, else runtime ÷ a **proposed** table (short 15 / medium 60 / long 180 min, the committed spec; the R2-15 row expects 8-12 min for short) | partly: needs the entry's tier (`duration`, GV-01); null on a published Foray |
+| MQ-15 | Reading grade | candidate | word-weighted Flesch-Kincaid grade of the narration scripts (`voice-metrics.mjs`, GV-10); band 6-9 (OQ-02) | yes where scripts are present; null on clip-only Forays |
+| MQ-16 | Sentence shape | candidate | mean and max words, sentences over 25 words, short share | yes where scripts are present |
+| MQ-17 | Speakability | candidate | digits, URLs, acronyms, brackets and spoken-line errors per 100 words | yes where scripts are present |
+| MQ-18 | Filler | candidate | -ly adverbs, passives, banned words, rhetorical questions per 100 words | yes where scripts are present |
+| MQ-19 | Structure leaks | candidate | `narratorStructureLeaks` over the scripts (`backend/src/copy/narratorStructure.js`) | yes where scripts are present |
+| MQ-20 | The founder's listen | listen | mean `overall` of the cards that unseal to the Foray (`unseal.listenByCandidate`, GV-08) | only on the machine holding the pack keys; left out of the reference file |
+| MQ-21 | Publishable | report | `entry.publishable` | no: GV-26 adds it |
+
+Every score is a heuristic or a judgement to calibrate against the founder's
+listening cards before anything gates on it.
+
 ## The trend
 
 | run | outcome | valid | stageSum m | elapsed m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |

@@ -5,6 +5,7 @@ import { countActBeats, stitchAct } from "./stitchAct";
 import { smoothActIntroduction, type SmoothActsOptions } from "./smoothSeam";
 import { toForayItems, assertNoInternalFieldsLeaked, type ForayItem } from "./forayItems";
 import type { ContinuityBuildContext } from "./ContinuityBuilder";
+import { itemKeyOf, PRELUDE_ITEM_COUNT, provenanceFor, unverifiedProvenanceFor, type ItemProvenance } from "./itemReadiness";
 
 /**
  * §4.8 top-level orchestrator (docs/curation/generation-architecture.md
@@ -94,6 +95,15 @@ export interface StitchForayOptions {
     totalActs: number;
     actItems: ForayItem[];
     itemsSoFar: ForayItem[];
+    /** GV-21 (W5-12a): the act's own `WrittenAct`, so a caller can judge the
+     * act's veracity from the pages it was stitched from. */
+    written: WrittenAct;
+    /** GV-21 (W6-01): one readiness record per `actItems` entry, in order —
+     * what `toForayItems` drops (`verified`) kept beside the items rather
+     * than on them. Indexes count the prelude §4.9 prepends. */
+    actItemProvenance: ItemProvenance[];
+    /** Every act's records so far, 1:1 with `itemsSoFar` (no prelude). */
+    provenanceSoFar: ItemProvenance[];
   }) => void | Promise<void>;
 }
 
@@ -131,6 +141,10 @@ export class ForayStitcher {
    * whose items came from a checkpoint (`acceptStitchedAct`) drops into
    * the same structure without a second representation. */
   private readonly actItemLists: ForayItem[][] = [];
+  /** GV-21: one readiness list per act, parallel to `actItemLists` — built
+   * by `stitchNextAct`, or recomputed by `acceptStitchedAct` for a banked
+   * act, so a resumed act has real provenance rather than none. */
+  private readonly actProvenanceLists: ItemProvenance[][] = [];
 
   constructor(
     private readonly deepenedActs: DeepenedAct[],
@@ -167,10 +181,7 @@ export class ForayStitcher {
     const introduction = await smoothActIntroduction(this.deepenedActs, i, this.options.continuity, this.ctx);
 
     // (a) Within-act deterministic stitching.
-    const actSlotIds = this.options.slotIds?.[i];
-    const stitched = stitchAct(written, actLabel, actSlotIds);
-    const firstSlotId = actSlotIds?.[0];
-    const lastSlotId = actSlotIds?.[act.slots.length - 1];
+    const stitched = stitchAct(written, actLabel, this.options.slotIds?.[i]);
 
     const totalBeats = countActBeats(written);
     const coverageResult = validateActCoverage(stitched.coverage, totalBeats);
@@ -182,35 +193,14 @@ export class ForayStitcher {
       );
     }
 
-    // (c, partial) Seam narration around the act's own body: the act's
-    // (possibly smoothed) introduction opens it, its own exit closes it
-    // — mirroring `disclosureNarratedBeat`'s "seam" role but for a
-    // whole-act boundary rather than the Foray's own opening.
-    const actStitchedItems: StitchedItem[] = [
-      {
-        kind: "narration",
-        narrationKind: "seam",
-        slotTitle: act.slots[0]?.title,
-        ...(firstSlotId !== undefined ? { slotId: firstSlotId } : {}),
-        mode: "Frame",
-        script: introduction,
-        id: `${actLabel}-introduction`
-      },
-      ...stitched.items,
-      {
-        kind: "narration",
-        narrationKind: "seam",
-        slotTitle: act.slots[act.slots.length - 1]?.title,
-        ...(lastSlotId !== undefined ? { slotId: lastSlotId } : {}),
-        mode: "Frame",
-        script: act.exit,
-        id: `${actLabel}-exit`
-      }
-    ];
-
+    const actStitchedItems = this.withActSeams(i, stitched.items, introduction);
     const actItems = toForayItems(actStitchedItems);
     assertNoInternalFieldsLeaked(actItems);
+    /* GV-21: read off the stitched items BEFORE the push, so the act's first
+       index is the items before it plus the prelude. */
+    const actItemProvenance = provenanceFor(actStitchedItems, i, this.firstItemIndexOf(i));
     this.actItemLists.push(actItems);
+    this.actProvenanceLists.push(actItemProvenance);
 
     // WS-D2: this act's own items are now complete and coverage-checked —
     // the earliest point in the PIPELINE (not merely in this stage) that a
@@ -222,7 +212,10 @@ export class ForayStitcher {
         actTitle: act.title,
         totalActs: this.deepenedActs.length,
         actItems,
-        itemsSoFar
+        itemsSoFar,
+        written,
+        actItemProvenance,
+        provenanceSoFar: this.provenance()
       });
     }
 
@@ -238,9 +231,91 @@ export class ForayStitcher {
    * paid for on an earlier run, and re-emitting a partial candidate for
    * work this process did not do is the same fiction `ttlA1Ms` refuses to
    * report on a resumed run.
+   *
+   * GV-21: `written` is the act's banked `narrate:<i>`, so the accepted act's
+   * provenance is RECOMPUTED (`actProvenance`) rather than marked unknown —
+   * no new checkpoint key. If the recomputed ids disagree with the banked
+   * items, every item of the act is recorded `unverified`: a record that
+   * does not describe the items beside it must not let them be served.
    */
-  acceptStitchedAct(actItems: ForayItem[]): void {
+  acceptStitchedAct(actItems: ForayItem[], written: WrittenAct): void {
+    const i = this.actItemLists.length;
+    const firstIndex = this.firstItemIndexOf(i);
+    let provenance = this.actProvenance(i, written);
+    const sameIds = provenance.length === actItems.length && provenance.every((p, k) => p.itemId === itemKeyOf(actItems[k]!, firstIndex + k));
+    if (!sameIds) {
+      console.warn(`ForayStitcher: act ${i + 1}'s banked items do not match its narration's — recording every item of it unverified (GV-21)`);
+      provenance = unverifiedProvenanceFor(actItems, i, firstIndex);
+    }
     this.actItemLists.push(actItems);
+    this.actProvenanceLists.push(provenance);
+  }
+
+  /**
+   * GV-21: act `i`'s readiness records, rebuilt from its `WrittenAct` the way
+   * `stitchNextAct` builds its items (`stitchAct` plus the introduction and
+   * exit seams). Pure: the introduction's smoothed text is never needed —
+   * provenance reads ids and verification, not scripts — so no continuity
+   * call is made. Valid for any act up to the next one to be stitched.
+   */
+  actProvenance(i: number, written: WrittenAct): ItemProvenance[] {
+    const act = this.deepenedActs[i];
+    if (!act) {
+      throw new Error(`ForayStitcher: no deepened act at index ${i} — ${this.deepenedActs.length} act(s) were supplied`);
+    }
+    const stitched = stitchAct(written, `act-${i + 1}`, this.options.slotIds?.[i]);
+    return provenanceFor(this.withActSeams(i, stitched.items, act.introduction), i, this.firstItemIndexOf(i));
+  }
+
+  /** GV-21: every act's readiness records so far, 1:1 with `items()`. */
+  provenance(): ItemProvenance[] {
+    return this.actProvenanceLists.flat();
+  }
+
+  /** Act `i`'s first item's index in the candidate's item list: the prelude
+   * plus every earlier act's items. */
+  private firstItemIndexOf(i: number): number {
+    if (i > this.actItemLists.length) {
+      throw new Error(`ForayStitcher: act ${i} is not reachable — ${this.actItemLists.length} act(s) are stitched`);
+    }
+    let n = PRELUDE_ITEM_COUNT;
+    for (let k = 0; k < i; k++) n += this.actItemLists[k]!.length;
+    return n;
+  }
+
+  /** The act's stitched body wrapped in its seams — shared by `stitchNextAct`
+   * and `actProvenance` so the two cannot disagree on what an act's items are. */
+  private withActSeams(i: number, body: StitchedItem[], introduction: string): StitchedItem[] {
+    const act = this.deepenedActs[i]!;
+    const actLabel = `act-${i + 1}`;
+    const actSlotIds = this.options.slotIds?.[i];
+    const firstSlotId = actSlotIds?.[0];
+    const lastSlotId = actSlotIds?.[act.slots.length - 1];
+    // (c, partial) Seam narration around the act's own body: the act's
+    // (possibly smoothed) introduction opens it, its own exit closes it
+    // — mirroring `disclosureNarratedBeat`'s "seam" role but for a
+    // whole-act boundary rather than the Foray's own opening.
+    return [
+      {
+        kind: "narration",
+        narrationKind: "seam",
+        slotTitle: act.slots[0]?.title,
+        ...(firstSlotId !== undefined ? { slotId: firstSlotId } : {}),
+        mode: "Frame",
+        script: introduction,
+        id: `${actLabel}-introduction`
+      },
+      ...body,
+      {
+        kind: "narration",
+        narrationKind: "seam",
+        slotTitle: act.slots[act.slots.length - 1]?.title,
+        ...(lastSlotId !== undefined ? { slotId: lastSlotId } : {}),
+        mode: "Frame",
+        script: act.exit,
+        id: `${actLabel}-exit`
+      }
+    ];
   }
 
   /** (c) Every act stitched so far, in act order, mapped into the

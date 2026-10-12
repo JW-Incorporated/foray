@@ -88,4 +88,39 @@ describe("readPartialCandidate", () => {
     const out = readPartialCandidate(dir, "the-history-of-grilling-2026-09-08", "founder-1");
     expect(out.found).toBe(true);
   });
+
+  describe("the servable prefix (GV-21)", () => {
+    const items = [
+      { type: "narration" as const, id: "prelude", script: "Opening.", mode: "marker" as const, slot: "s1" },
+      { type: "narration" as const, id: "act-1-introduction", script: "Act one opens.", mode: "frame" as const },
+      { type: "narration" as const, id: "act-1-b0", script: "Where does the story go from here?", mode: "hinge" as const },
+      { type: "narration" as const, id: "act-1-exit", script: "Act one closes.", mode: "frame" as const }
+    ];
+    const delivery = {
+      acts: [{ index: 0, servable: false, blockers: [{ itemId: "act-1-b0", reason: "unverified" as const }] }],
+      servableThrough: 1,
+      items: items.map((it, index) => ({ itemId: it.id, index, act: index === 0 ? -1 : 0, check: index === 0 ? ("prelude" as const) : index === 2 ? ("unverified" as const) : ("unchecked-seam" as const), ready: index < 1, audio: "pending" as const }))
+    };
+
+    it("never returns act items from a stored partial whose act 0 is unservable (servableThrough = 1, the prelude only)", () => {
+      /* MUTATION THAT KILLS THIS: return the stored candidate unchanged
+         (drop servableCandidate). Every act item, the hand-off line among
+         them, goes back to the listener. Ran it — red. */
+      fs.writeFileSync(path.join(dir, "x.partial.json"), JSON.stringify(candidate({ items, delivery })));
+      const out = readPartialCandidate(dir, "the-history-of-grilling-2026-09-08", "founder-1");
+      expect(out.found && out.authorized).toBe(true);
+      if (!out.found || !out.authorized) return;
+      expect(out.candidate.items).toEqual([items[0]]);
+      expect(out.candidate.delivery!.items.map((d) => d.itemId)).toEqual(["prelude"]);
+      expect(JSON.stringify(out.candidate)).not.toContain("Where does the story go from here?");
+    });
+
+    it("returns everything, as today, for a stored partial without delivery", () => {
+      fs.writeFileSync(path.join(dir, "x.partial.json"), JSON.stringify(candidate({ items })));
+      const out = readPartialCandidate(dir, "the-history-of-grilling-2026-09-08", "founder-1");
+      if (!out.found || !out.authorized) throw new Error("expected an authorized candidate");
+      expect(out.candidate.items).toEqual(items);
+      expect(out.candidate).not.toHaveProperty("delivery");
+    });
+  });
 });

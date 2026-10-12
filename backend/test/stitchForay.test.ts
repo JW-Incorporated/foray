@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { stitchForay, ActCoverageFailedError } from "../src/generation/stitchForay";
+import { stitchForay, ActCoverageFailedError, ForayStitcher } from "../src/generation/stitchForay";
+import { itemKeyOf, PRELUDE_ITEM_COUNT, type ItemProvenance } from "../src/generation/itemReadiness";
+import type { ForayItem } from "../src/generation/forayItems";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import type { ContinuityBuildContext } from "../src/generation/ContinuityBuilder";
 import type { DeepenedAct } from "../src/types/spine";
@@ -179,6 +181,119 @@ describe("stitchForay — end-to-end orchestration", () => {
       const writtenActs = [makeWritten("Act One"), makeWritten("Act Two")];
       const result = await stitchForay(deepenedActs, writtenActs, { continuity: { builder: new StubContinuityBuilder() } }, ctx);
       expect(result.items.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("item provenance (GV-21)", () => {
+    /** An act with one verified narration page, one tape clip, and one page
+     * kept unverified — the shape the readiness view has to tell apart. */
+    function makeWrittenWithPages(title: string, secondVerified: boolean): WrittenAct {
+      return {
+        title,
+        slots: [
+          {
+            title: `${title} slot`,
+            beats: [
+              { sourcing: "narration", claim: `${title} makes a real claim.`, exploration: false, narration: narratedBeat() },
+              { sourcing: "tape", claim: `${title} plays a clip.`, exploration: false, tape: tapePointer(`${title}-ep`, 0, 30) },
+              { sourcing: "narration", claim: `${title} closes.`, exploration: false, narration: { ...narratedBeat("A closing line that the verifier judged."), verified: secondVerified } }
+            ]
+          }
+        ]
+      };
+    }
+    const deepen = (title: string, index: number): DeepenedAct => ({
+      ...makeDeepened(title, index),
+      slots: [
+        {
+          title: `${title} slot`,
+          beats: [
+            { claim: `${title} makes a real claim.`, exploration: false },
+            { claim: `${title} plays a clip.`, exploration: false },
+            { claim: `${title} closes.`, exploration: false }
+          ]
+        }
+      ]
+    });
+
+    it("hands onActReady one record per item, ids equal to actItems in order, indexed after the prelude", async () => {
+      /* MUTATION THAT KILLS THIS: compute `actItemProvenance` from
+         `stitched.items` (the body) instead of `actStitchedItems` (body plus
+         the introduction and exit). The lengths and ids no longer match.
+         Ran it — red. Second mutation: index from 0 instead of
+         `firstItemIndexOf(i)` — act 2's indexes collide with act 1's. Ran it
+         — red. */
+      const calls: Array<{ actItems: ForayItem[]; prov: ItemProvenance[]; soFar: ItemProvenance[]; itemsSoFar: ForayItem[] }> = [];
+      await stitchForay(
+        [deepen("Act One", 1), deepen("Act Two", 2)],
+        [makeWrittenWithPages("Act One", true), makeWrittenWithPages("Act Two", false)],
+        {
+          continuity: { builder: new StubContinuityBuilder() },
+          onActReady: ({ actItems, actItemProvenance, provenanceSoFar, itemsSoFar }) => {
+            calls.push({ actItems, prov: actItemProvenance, soFar: provenanceSoFar, itemsSoFar });
+          }
+        },
+        ctx
+      );
+      expect(calls).toHaveLength(2);
+      for (const { actItems, prov, soFar, itemsSoFar } of calls) {
+        expect(prov.map((p) => p.itemId)).toEqual(actItems.map((it, k) => itemKeyOf(it, prov[k]!.index)));
+        expect(soFar.map((p) => p.itemId)).toEqual(itemsSoFar.map((it, k) => itemKeyOf(it, k + PRELUDE_ITEM_COUNT)));
+        expect(soFar.map((p) => p.index)).toEqual(itemsSoFar.map((_it, k) => k + PRELUDE_ITEM_COUNT));
+      }
+      expect(calls[0]!.prov.map((p) => p.check)).toEqual(["unchecked-seam", "verified", "tape", "verified", "unchecked-seam"]);
+      expect(calls[1]!.prov.map((p) => p.check)).toEqual(["unchecked-seam", "verified", "tape", "unverified", "unchecked-seam"]);
+      expect(calls[1]!.prov.every((p) => p.actIndex === 1)).toBe(true);
+      // The items themselves stay forays.json-shaped: nothing internal leaked.
+      for (const item of calls[1]!.itemsSoFar) expect(item).not.toHaveProperty("verified");
+    });
+
+    it("actProvenance equals the provenance stitchNextAct emitted, without a continuity call", async () => {
+      /* MUTATION THAT KILLS THIS: build actProvenance's list without the
+         seams (`provenanceFor(stitched.items, ...)`). It then disagrees with
+         what stitchNextAct emitted. Ran it — red. */
+      let smoothCalls = 0;
+      const builder = new StubContinuityBuilder();
+      const real = builder.smoothSeam.bind(builder);
+      builder.smoothSeam = async (...args: Parameters<StubContinuityBuilder["smoothSeam"]>) => {
+        smoothCalls++;
+        return real(...args);
+      };
+      const emitted: ItemProvenance[][] = [];
+      const deepened = [deepen("Act One", 1), deepen("Act Two", 2)];
+      const written = [makeWrittenWithPages("Act One", true), makeWrittenWithPages("Act Two", false)];
+      const stitcher = new ForayStitcher(deepened, { continuity: { builder }, onActReady: ({ actItemProvenance }) => void emitted.push(actItemProvenance) }, ctx);
+      await stitcher.stitchNextAct(written[0]!);
+      await stitcher.stitchNextAct(written[1]!);
+      const callsBefore = smoothCalls;
+      expect(stitcher.actProvenance(0, written[0]!)).toEqual(emitted[0]);
+      expect(stitcher.actProvenance(1, written[1]!)).toEqual(emitted[1]);
+      expect(smoothCalls).toBe(callsBefore);
+      expect(stitcher.provenance()).toEqual([...emitted[0]!, ...emitted[1]!]);
+    });
+
+    it("acceptStitchedAct recomputes a banked act's provenance — equal to a fresh stitch — and marks a mismatch unverified", async () => {
+      /* MUTATION THAT KILLS THIS: push no provenance (or an empty list) for
+         an accepted act. The resumed act's records go missing and act 2's
+         indexes shift. Ran it — red. Second mutation: skip the id
+         comparison. The tampered act comes back with its recomputed (clean)
+         checks. Ran it — red. */
+      const deepened = [deepen("Act One", 1), deepen("Act Two", 2)];
+      const written = [makeWrittenWithPages("Act One", true), makeWrittenWithPages("Act Two", true)];
+      const fresh = new ForayStitcher(deepened, { continuity: { builder: new StubContinuityBuilder() } }, ctx);
+      const banked0 = await fresh.stitchNextAct(written[0]!);
+      const banked1 = await fresh.stitchNextAct(written[1]!);
+
+      const resumed = new ForayStitcher(deepened, { continuity: { builder: new StubContinuityBuilder() } }, ctx);
+      resumed.acceptStitchedAct(banked0, written[0]!);
+      resumed.acceptStitchedAct(banked1, written[1]!);
+      expect(resumed.provenance()).toEqual(fresh.provenance());
+
+      const tampered = new ForayStitcher(deepened, { continuity: { builder: new StubContinuityBuilder() } }, ctx);
+      const swapped = [banked0[1]!, banked0[0]!, ...banked0.slice(2)];
+      tampered.acceptStitchedAct(swapped, written[0]!);
+      expect(tampered.provenance().every((p) => p.check === "unverified")).toBe(true);
+      expect(tampered.provenance().map((p) => p.itemId)).toEqual(swapped.map((it, k) => itemKeyOf(it, k + PRELUDE_ITEM_COUNT)));
     });
   });
 });

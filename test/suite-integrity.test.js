@@ -1595,12 +1595,17 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 64, // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  "tools/generation-bench/run.test.mjs": 69, // GV-24 (MQ scorecard): --scorecard adds the scorecard to the JSONL line and the MQ detail columns to --wide only (plain lines unchanged), out-9 report cells filled and judged/listen null, a scored line round-trips, a judged.json beside the candidate, clipDurations under clipStats; 64 -> 69 // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
   /* GV-17 (W1-04, MT-04..MT-12): the runlog reader. Each test is one quiet
      wrong number: parallel calls counted as serial, a re-ask counted twice, a
      reservation read as spend, a decode rate diluted with end-to-end calls,
      a 0 standing in for a field no provider reported. */
   "tools/generation-bench/runlog.test.mjs": 12, // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
+  /* GV-24 (W1-11, MQ-01..MQ-21): the quality scorecard. Each test is one
+     quiet wrong number: a clip-only Foray scored as a voice of zero, a pool
+     clip counted as a clean cut, tape credited to the wrong show, the report's
+     own measurement overridden by a candidate guess, reference drift unseen. */
+  "tools/generation-bench/score.test.mjs": 17, // GV-24: new -- synthetic two-show MQ-06/07/08/16/19, show resolution order, pool boundary unknown, absent never 0, out-9 report vs judged/listen, report fields win, MQ-14 tier table, judged file, frozen clip-only null voice, --write/--check drift, committed reference shape, 21 keys, CLI, KPI doc rows
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
@@ -2625,7 +2630,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 38, // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 40, // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -2882,7 +2887,7 @@ const BACKEND_FLOORS = {
      citation takes), and with `verified: false` copied verbatim rather than
      interpreted here. */
   "test/stitchAct.test.ts": 13,
-  "test/stitchForay.test.ts": 4,
+  "test/stitchForay.test.ts": 10, // GV-21: item provenance beside onActReady's items, actProvenance equals the emitted records, a banked act's provenance is recomputed; 4 -> 10 (7 on disk before)
   /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
      searchBreadthShows.ts — show search over the FULL breadth catalogue
      (curated + ~10k breadth tier), not just the 220 curated shows the
@@ -2996,8 +3001,8 @@ const BACKEND_FLOORS = {
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
   "test/generateForays.test.ts": 10, // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
-  "test/generationStatus.test.ts": 4,
-  "test/partialCandidate.test.ts": 6,
+  "test/generationStatus.test.ts": 6, // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
+  "test/partialCandidate.test.ts": 11, // GV-21: delivery attached with items unchanged, the item-count units pinned, no delivery without provenance, misaligned and malformed fallbacks; 6 -> 11 (7 on disk before)
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
      share-of-whole rules (M4, D2-end, D4-share) and on itself for every
      monotone rule — run 5 was aborted on an M4 share computed over a one-act
@@ -3045,7 +3050,7 @@ const BACKEND_FLOORS = {
      partway through an act re-pays only for the slots that never landed, and
      the per-Foray budget cap the batch path left inert by never passing a
      sessionId. */
-  "test/runPipelineCheckpoint.test.ts": 14, // GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
+  "test/runPipelineCheckpoint.test.ts": 15, // GV-21: a banked act's provenance and veracity equal a fresh run's; 14 -> 15. GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
   /* G-32: acts narrated in parallel, stitch and continuity in act order. Seven
      cases latch the writer to PROVE overlap (acts start while act 1 is held,
      the cap holds, a failure still banks in-flight acts and never starts
@@ -3259,6 +3264,14 @@ const BACKEND_FLOORS = {
      before any parse, one metered re-ask, budget refusal on cause).
      Offline: scriptedProvider replies only. */
   "test/askStructured.test.ts": 11,
+  /* GV-21 (docs/roadmap/generation-v2.md, #1286): per-act servability on
+     partial candidates. itemReadiness: item classification, the per-act
+     verdict under both seam policies, the servable prefix as an item count,
+     and the alignment guard. actVeracityGate: per-act veracity, the HANDOFF
+     page counted as unverified and as a hand-off. Offline, hand-built
+     fixtures. */
+  "test/itemReadiness.test.ts": 11,
+  "test/actVeracityGate.test.ts": 6,
   /* GV-20 (docs/roadmap/generation-v2.md, #1286): the typed Jev client —
      reply validation (every malformed variant), transport categories, the
      key never leaking, one CallRecord per ask, BudgetGuard metering, the

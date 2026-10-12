@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildPartialCandidate, type PartialActInfo, type PartialCandidateMeta } from "../src/generation/partialCandidate";
+import { buildPartialCandidate, servableThroughAct, servableView, type PartialActInfo, type PartialCandidateMeta } from "../src/generation/partialCandidate";
+import { preludeProvenance, provenanceFor } from "../src/generation/itemReadiness";
+import { assertNoInternalFieldsLeaked, toForayItems } from "../src/generation/forayItems";
+import { computeActVeracity } from "../src/generation/veracityMetrics";
+import { HANDOFF_MODE, HANDOFF_SCRIPT, type WrittenAct } from "../src/generation/writeNarration";
+import type { StitchedItem } from "../src/types/stitching";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
 import type { ForayItem } from "../src/generation/forayItems";
 import type { MintedSegmentSource } from "../src/generation/audioSourceLookup";
@@ -167,5 +172,107 @@ describe("buildPartialCandidate", () => {
     );
     expect(candidate.validation.ok).toBe(false);
     expect(candidate.validation.checkForaysErrors).toEqual(["boom"]);
+  });
+
+  describe("delivery (GV-21)", () => {
+    /* A two-act partial built the way runPipeline builds one: stitched items
+       mapped with toForayItems, provenance read off the same stitched items,
+       the prelude prepended at index 0. Act 1 (index 1) holds the HANDOFF
+       page, so it is unservable. */
+    const prelude: ForayItem = { type: "narration", id: "prelude", script: "s", mode: "marker", slot: "s1" };
+    const seam = (id: string): StitchedItem => ({ kind: "narration", narrationKind: "seam", mode: "Frame", script: "A seam line.", id });
+    const act0Stitched: StitchedItem[] = [
+      seam("act-1-introduction"),
+      { kind: "narration", narrationKind: "beat", beatIndex: 0, mode: "Carry", script: "A verified page.", id: "act-1-b0", sources: [], verified: true },
+      { kind: "tape", beatIndex: 1, slotTitle: "Slot", segmentId: "ep#0", itemId: "ep", startSec: 0, endSec: 30 },
+      seam("act-1-exit")
+    ];
+    const act1Stitched: StitchedItem[] = [
+      seam("act-2-introduction"),
+      { kind: "narration", narrationKind: "beat", beatIndex: 0, mode: "Hinge", script: HANDOFF_SCRIPT, id: "act-2-b0", sources: [], verified: false },
+      seam("act-2-exit")
+    ];
+    const writtenAct0: WrittenAct = { title: "A", slots: [{ title: "Slot", beats: [{ sourcing: "narration", claim: "c", exploration: false, narration: { mode: "Carry", script: "A verified page.", sources: [], pronunciationHints: [], verified: true } }] }] };
+    const writtenAct1: WrittenAct = {
+      title: "B",
+      slots: [{ title: "Slot", beats: [{ sourcing: "narration", claim: "c", exploration: false, narration: { mode: HANDOFF_MODE, script: HANDOFF_SCRIPT, sources: [], pronunciationHints: [], verified: false, unverifiedReason: "no-page" } }] }]
+    };
+
+    function twoActInfo(): PartialActInfo {
+      const twoActItems = [prelude, ...toForayItems(act0Stitched), ...toForayItems(act1Stitched)];
+      return {
+        actIndex: 1,
+        totalActs: 3,
+        allActTitles: ["A", "B", "C"],
+        items: twoActItems,
+        slots: [{ id: "s1", title: "Slot" }],
+        runtimeSec: 60,
+        ttlA1Ms: 10,
+        itemProvenance: [preludeProvenance(prelude), ...provenanceFor(act0Stitched, 0, 1), ...provenanceFor(act1Stitched, 1, 1 + act0Stitched.length)],
+        actVeracity: [computeActVeracity(writtenAct0, 0), computeActVeracity(writtenAct1, 1)]
+      };
+    }
+
+    it("attaches delivery aligned 1:1 with items, and leaves items and validation untouched", async () => {
+      /* MUTATION THAT KILLS THIS: drop the `delivery` spread from
+         buildPartialCandidate's return. Ran it — red. */
+      const info = twoActInfo();
+      const before = JSON.stringify(info.items);
+      const candidate = await buildPartialCandidate(info, meta, fakeFinalize([]));
+      expect(candidate.items).toBe(info.items);
+      expect(JSON.stringify(candidate.items)).toBe(before);
+      expect(() => assertNoInternalFieldsLeaked(candidate.items)).not.toThrow();
+      expect(candidate.validation.ok).toBe(true);
+      expect(candidate.delivery).toBeDefined();
+      expect(candidate.delivery!.items.map((d) => d.itemId)).toEqual(["prelude", "act-1-introduction", "act-1-b0", "ep#0", "act-1-exit", "act-2-introduction", "act-2-b0", "act-2-exit"]);
+      expect(candidate.delivery!.acts.map((a) => a.servable)).toEqual([true, false]);
+      expect(candidate.delivery!.acts[1]!.blockers).toContainEqual({ itemId: "act-2-b0", reason: "unverified" });
+      expect(candidate.acts.map((a) => [a.status, a.served])).toEqual([
+        ["ready", true],
+        ["ready", false],
+        ["pending", false]
+      ]);
+      expect(candidate.acts[1]!.veracity).toEqual({ ok: false, unverifiedPages: 1, handoffPages: 1 });
+      expect(candidate.acts[2]!.veracity).toBeUndefined();
+    });
+
+    it("pins the units: servableThrough is an item count (prelude + act 0), servableThroughAct is 0, servableView ends in act 0", async () => {
+      /* MUTATION THAT KILLS THIS: slice servableView by servableThroughAct
+         (an act index) instead of servableThrough (an item count). It returns
+         0 items, not 5. Ran it — red. */
+      const candidate = await buildPartialCandidate(twoActInfo(), meta, fakeFinalize([]));
+      const delivery = candidate.delivery!;
+      expect(delivery.servableThrough).toBe(1 + act0Stitched.length);
+      expect(servableThroughAct(delivery)).toBe(0);
+      const view = servableView(candidate);
+      expect(view).toHaveLength(delivery.servableThrough);
+      const last = view.at(-1)!;
+      expect(last.type === "narration" && last.id).toBe("act-1-exit");
+      expect(delivery.items[view.length - 1]!.act).toBe(0);
+    });
+
+    it("carries no delivery and no served flag when no provenance is handed in, and servableView then returns everything", async () => {
+      const candidate = await buildPartialCandidate(
+        { actIndex: 0, totalActs: 1, allActTitles: ["Act 1"], items, slots: [{ id: "s1", title: "Slot" }], runtimeSec: 10, ttlA1Ms: 0 },
+        meta,
+        fakeFinalize([])
+      );
+      expect(candidate).not.toHaveProperty("delivery");
+      expect(candidate.acts[0]).not.toHaveProperty("served");
+      expect(servableView(candidate)).toBe(candidate.items);
+    });
+
+    it("serves only the prelude when the provenance does not describe the items, and nothing for a malformed count", async () => {
+      /* MUTATION THAT KILLS THIS: skip alignDelivery in buildPartialCandidate.
+         The misaligned act 0 stays servable. Ran it — red. */
+      const info = twoActInfo();
+      const misaligned = { ...info, items: [info.items[0]!, info.items[2]!, info.items[1]!, ...info.items.slice(3)] };
+      const candidate = await buildPartialCandidate(misaligned, meta, fakeFinalize([]));
+      expect(candidate.delivery!.servableThrough).toBe(1);
+      expect(candidate.acts.every((a) => a.served === false)).toBe(true);
+
+      const broken = { ...candidate, delivery: { ...candidate.delivery!, servableThrough: undefined as unknown as number } };
+      expect(servableView(broken)).toEqual([]);
+    });
   });
 });
