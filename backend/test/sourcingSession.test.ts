@@ -38,8 +38,13 @@ import type { DeepenedAct } from "../src/types/spine";
  * to another act: the freeze below is a real constraint, not a vacuous one.
  * One act-0 beat is spoken nowhere (`UNSPOKEN`), so tier 3 logs it too.
  * Read through the REAL `FileTranscriptCueProvider` and `FileTranscriptTextIndex`
- * (its cache in the same tmpdir), with no topic (the lineage gate is inert, so
- * nothing reads the committed catalogue) and a pure audio resolver.
+ * (its cache in the same tmpdir), with no topic (the lineage gate is inert) and
+ * a pure audio resolver. Even without a topic, every placement's
+ * `taxonomyNodeIds` / `families` are read off the catalogue, so `root` points
+ * at a repo stand-in in the tmpdir whose `data/catalog.json` lists no shows:
+ * the output, and the digest below, never depend on the committed catalogue.
+ * (`taxonomyFamily.ts` caches those reads per module instance, not keyed
+ * on `root`, so every call in this file must pass the same `root` — it does.)
  */
 
 const RUN2: DeepenedAct[] = (
@@ -60,12 +65,13 @@ const FILLER = [
 
 /**
  * SHA-256 OF `JSON.stringify(sourceBeats(RUN2, options()))`, recorded from the
- * pre-extraction `sourceBeats` (origin/main 8606b2d0) over this exact corpus.
+ * pre-extraction `sourceBeats` (origin/main 8606b2d0) over this exact corpus and
+ * these exact options, `root` included.
  * It pins today's default sourcing output byte for byte: a later card that
  * changes it without a flag fails here. A deliberate default flip re-records
  * it, and says so in its PR.
  */
-const PRE_EXTRACTION_DIGEST = "4b50305e768508fe6f3583db3d82bbcf721b52a65673faccf5fa7dab6d1bcbf1";
+const PRE_EXTRACTION_DIGEST = "e82d02ed3ab7d8c7f82ce96c5cfdf8595991d35c641b028ac1e3cb74ad3baa95";
 
 /** A claim's own words, spoken over four 20 s cues from `startSec`. */
 function claimCues(claim: string, startSec: number): TranscriptCue[] {
@@ -168,6 +174,10 @@ beforeAll(() => {
   for (const entry of corpus.archive) {
     fs.writeFileSync(path.join(showDir, `${entry.guid}.json`), JSON.stringify({ show_id: SHOW, guid: entry.guid, cues: corpus.cuesByGuid[entry.guid] }));
   }
+  /* The catalogue the taxonomy joins read: empty, so no committed data leaks in. */
+  const repoRoot = path.join(root, "repo");
+  fs.mkdirSync(path.join(repoRoot, "data"), { recursive: true });
+  fs.writeFileSync(path.join(repoRoot, "data", "catalog.json"), JSON.stringify({ shows: [] }));
   /* A fresh provider and index per session, as two processes would have; the
      index's disk cache is shared, as it is on a machine. */
   options = () => {
@@ -178,6 +188,7 @@ beforeAll(() => {
       cueProvider,
       textIndex: new FileTranscriptTextIndex({ archive: corpus.archive, bodies: cueProvider, indexRoot: path.join(root, "index") }),
       topic: null,
+      root: repoRoot,
       audioSourceFor: (entry, itemId) => mintSegmentSource(entry, itemId, SHOW_META)
     };
   };
@@ -323,6 +334,29 @@ describe("SourcingSession — exportState / resume", () => {
     expect(snapshot.acts).toHaveLength(2);
     expect(snapshot.transcriptionQueueCandidates.length).toBeGreaterThan(0);
     expect(snapshot.placedTapeCount).toBe(snapshot.placedDurations.length);
+    /* The per-episode ledgers, recomputed independently from the placement log
+       (`placed`, positionally parallel to `placedDurations`) — an export that
+       emptied or garbled any one of them would otherwise round-trip cleanly. */
+    expect(snapshot.placed).toHaveLength(snapshot.placedTapeCount);
+    expect(snapshot.placedTapeCount).toBeGreaterThan(0);
+    const countByItem = new Map<string, number>();
+    const secByItem = new Map<string, number>();
+    const longestByItem = new Map<string, number>();
+    snapshot.placed.forEach(({ itemId }, i) => {
+      const sec = snapshot.placedDurations[i]!;
+      countByItem.set(itemId, (countByItem.get(itemId) ?? 0) + 1);
+      secByItem.set(itemId, (secByItem.get(itemId) ?? 0) + sec);
+      longestByItem.set(itemId, Math.max(longestByItem.get(itemId) ?? 0, sec));
+    });
+    expect(new Map(snapshot.usedCountByItem)).toStrictEqual(countByItem);
+    expect(new Map(snapshot.placedSecByItem)).toStrictEqual(secByItem);
+    expect(new Map(snapshot.longestSecByItem)).toStrictEqual(longestByItem);
+    /* Every clip placed, by id: the tape rows that opened a clip (a merged
+       beat rides in an earlier clip and adds no id). */
+    const placedIds = snapshot.tapeRelevance.filter((r) => r.mergedInto === undefined).map((r) => r.segmentId);
+    expect(placedIds).toHaveLength(snapshot.placedTapeCount);
+    expect(new Set(snapshot.usedSegmentIds)).toStrictEqual(new Set(placedIds));
+    expect(snapshot.usedSegmentIds).toHaveLength(placedIds.length);
     expect(snapshot.mintedIds).toEqual(expect.arrayContaining([POOL[0]!.id, ...snapshot.newSegments.map((s) => s.id)]));
     expect(SourcingSession.resume(options(), snapshot).exportState()).toStrictEqual(snapshot);
   });
