@@ -151,6 +151,36 @@ describe("AnthropicDeepenActBuilder", () => {
     expect(prompt).toMatch(/scores THAT WORDING, word for word, against THAT STRETCH OF TAPE/);
   });
 
+  it("GV-32: one user turn, the rules first, then the spine summary with every act alike, then the act being deepened", async () => {
+    /* GV-32 (docs/roadmap/generation-v2.md, #1286) reordered this prompt on
+       purpose so the rules and the spine summary are a prefix every act's
+       call shares: the act marker left the summary for the call part, and
+       rule 4 says "this act" instead of the act's number.
+       MUTATION THAT KILLS THIS: in buildDeepenActPromptParts, render the
+       target act's summary line as the legacy marker
+       (`i === targetActIndex ? 'Act N (THIS IS THE ACT YOU ARE DEEPENING ...'`).
+       Ran it: red. */
+    const two: Spine = { ...spine, acts: [spine.acts[0]!, { ...spine.acts[0]!, title: "Act 2", thesis: "second thesis" }] };
+    const { client, create } = makeFakeAnthropicClient([textBlock(JSON.stringify(validDeepenedAct))]);
+    await new AnthropicDeepenActBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client).deepenAct(two, two.acts[1]!, 1, ctx);
+
+    const messages = create.mock.calls[0]![0].messages;
+    expect(messages).toHaveLength(1);
+    const prompt = String(messages[0].content);
+    expect(prompt.startsWith("Your job:\n1. Refine this act's slots")).toBe(true);
+    expect(prompt).toContain('Act 2: "Act 2" — thesis: second thesis — start: start — end: end');
+    expect(prompt).not.toContain("(THIS IS THE ACT YOU ARE DEEPENING — full detail below)");
+    expect(prompt).toContain("   this act does not re-explain what an earlier act already established.");
+    const shape = prompt.indexOf('"introduction": string, "exit": string}');
+    const summary = prompt.indexOf("FULL SPINE (all acts, for context — you own only the target act):");
+    const marker = prompt.indexOf('THIS IS THE ACT YOU ARE DEEPENING: Act 2, "Act 2" — full detail below.');
+    const target = prompt.indexOf('TARGET ACT (Act 2 of 2): "Act 2"');
+    expect(shape).toBeGreaterThan(0);
+    expect(summary).toBeGreaterThan(shape);
+    expect(marker).toBeGreaterThan(summary);
+    expect(target).toBeGreaterThan(marker);
+  });
+
   it("accepts a beat kind when the model sends one, and does not retry when it omits it", async () => {
     /* Optional in the schema on purpose: a model that forgets the key must not
        cost the whole act a retry, and an absent kind means `account` — the

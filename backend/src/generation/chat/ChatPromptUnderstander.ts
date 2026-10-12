@@ -1,8 +1,9 @@
 import { BUILDER_MAX_TOKENS } from "../../config/outputBudgets";
 import { defaultBudgetGuard } from "../../cost/budgetGuard";
 import type { ClarityResult, IntentUnderstanding } from "../../types/generation";
-import { buildClarityPrompt, buildIntentPrompt, recaseIntentTitle } from "../AnthropicPromptUnderstander";
 import type { PromptUnderstandContext, PromptUnderstander } from "../PromptUnderstander";
+import { joinParts, toChatMessages } from "../promptLayout";
+import { buildClarityPromptParts, buildIntentPromptParts, recaseIntentTitle } from "../prompts/understand";
 import { ClaritySchema, IntentSchema, TitleRecaseSchema } from "../replySchemas";
 import type { ChatProvider } from "./ChatProvider";
 import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from "./askStructured";
@@ -13,7 +14,9 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
  * behind LiteLLM), the twin of AnthropicPromptUnderstander.
  *
  * Same words, same schemas, same caps: the prompts are the Anthropic
- * builder's (buildClarityPrompt, buildIntentPrompt), the replies parse
+ * builder's (prompts/understand.ts), sent split as [system: the rules and
+ * the reply shape, user: the listener's prompt] (GV-32, promptLayout.ts's
+ * toChatMessages) so the rules are a prefix every call shares; the replies parse
  * against ClaritySchema / IntentSchema / TitleRecaseSchema, and max_tokens is
  * BUILDER_MAX_TOKENS (clarity 400, intent 600, title 120). Every call goes
  * through askStructured: metered, json_schema-constrained, a 'length' reply
@@ -24,8 +27,8 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
  * helper keeps the title.
  *
  * DARK: constructed only by the stage factories (GV-37) when a stage routes
- * to 'local'. No Anthropic call; the Anthropic module is imported for its
- * prompt text only, until the prompts move to prompts/*.ts (decision 8).
+ * to 'local'. No Anthropic call and no Anthropic module imported: the
+ * prompt text lives in prompts/understand.ts (GV-32, decision 8).
  */
 export class ChatPromptUnderstander implements PromptUnderstander {
   /** `local:<lane>` (targetFor). */
@@ -49,7 +52,7 @@ export class ChatPromptUnderstander implements PromptUnderstander {
       target: this.target,
       schemaName: "clarity",
       schema: ClaritySchema,
-      messages: [{ role: "user", content: buildClarityPrompt(prompt) }],
+      messages: toChatMessages(buildClarityPromptParts(prompt)),
       maxTokens: BUILDER_MAX_TOKENS.clarity,
       operation: "prompt_clarity",
       budget: this.budget(ctx),
@@ -59,25 +62,30 @@ export class ChatPromptUnderstander implements PromptUnderstander {
   }
 
   async extractIntent(prompt: string, ctx: PromptUnderstandContext): Promise<IntentUnderstanding> {
-    const promptText = buildIntentPrompt(prompt);
+    const parts = buildIntentPromptParts(prompt);
     const { value: intent } = await askStructured({
       provider: this.provider,
       target: this.target,
       schemaName: "intent",
       schema: IntentSchema,
-      messages: [{ role: "user", content: promptText }],
+      messages: toChatMessages(parts),
       maxTokens: BUILDER_MAX_TOKENS.intent,
       operation: "prompt_intent",
       budget: this.budget(ctx),
       label: "prompt-understand"
     });
-    return recaseIntentTitle(intent, promptText, prompt, "ChatPromptUnderstander", async ({ messages }) => {
+    return recaseIntentTitle(intent, joinParts(parts), prompt, "ChatPromptUnderstander", async ({ messages }) => {
+      /* The helper's conversation opens with the intent prompt as one user
+         turn; here that turn goes split, exactly as the intent call sent it,
+         so the re-ask reuses the intent call's cached prefix (GV-32). The
+         assistant turn and the corrective line follow unchanged. */
+      const [, ...rest] = messages;
       const { value } = await askStructured({
         provider: this.provider,
         target: this.target,
         schemaName: "title_recase",
         schema: TitleRecaseSchema,
-        messages,
+        messages: [...toChatMessages(parts), ...rest],
         maxTokens: BUILDER_MAX_TOKENS.title,
         operation: "prompt_intent",
         budget: this.budget(ctx),
