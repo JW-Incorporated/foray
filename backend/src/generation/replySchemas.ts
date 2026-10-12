@@ -1,4 +1,6 @@
 import { z, type ZodTypeAny } from "zod";
+import type { ActWriteResult } from "./NarrationWriterBuilder";
+import type { ActVerifyResult } from "./NarrationVerifierBuilder";
 
 /**
  * Every JSON reply schema the generation builders parse a model's answer
@@ -127,6 +129,16 @@ export const RawWrittenSeamSchema = z.object({
 
 export const RawActWriteSchema = z.object({ seams: z.array(RawWrittenSeamSchema) });
 
+/**
+ * GV-31: the writer's one post-parse step, shared by the Anthropic writer
+ * and its Chat twin so both hand writeAct.ts the same ActWriteResult for the
+ * same reply. A seam that named no pronunciation hints gets [] (the field is
+ * optional in the schema so a reply without it is still valid).
+ */
+export function toActWriteResult(raw: z.infer<typeof RawActWriteSchema>): ActWriteResult {
+  return { seams: raw.seams.map((s) => ({ ...s, pronunciationHints: s.pronunciationHints ?? [] })) };
+}
+
 /* ---------- narration verifier (AnthropicNarrationVerifierBuilder) ---------- */
 
 /* Q-03: one verdict per beat and one per seam of a whole act. F-97: each
@@ -155,6 +167,16 @@ export const RawActVerifySchema = z.object({
     })
   )
 });
+
+/**
+ * GV-31: the verifier's one post-parse step, shared by the Anthropic
+ * verifier and its Chat twin. A seam verdict that named nothing it rests on
+ * gets [] (writeAct.ts then reads it as "the seam's own claims"); the beat
+ * verdicts pass through as parsed.
+ */
+export function toActVerifyResult(raw: z.infer<typeof RawActVerifySchema>): ActVerifyResult {
+  return { beats: raw.beats, seams: raw.seams.map((s) => ({ ...s, restsOn: s.restsOn ?? [] })) };
+}
 
 /* ---------- the registry ---------- */
 

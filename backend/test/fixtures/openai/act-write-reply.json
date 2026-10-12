@@ -1,0 +1,22 @@
+{
+  "_source": "GV-31: a SYNTHETIC OpenAI chat.completion in the shape a local writer returns for one act (RawActWriteSchema): two seams quoting NBS Building Science Series 143 verbatim; seam s1 omits pronunciationHints, as a model may. Hand-written for backend/test/chatNarrationBuilders.test.ts. Never from a live model.",
+  "id": "chatcmpl-synthetic-act-write-0001",
+  "object": "chat.completion",
+  "created": 1760000000,
+  "model": "synthetic-heavy-27b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"seams\":[{\"seamId\":\"s0\",\"script\":\"Nobody checked the hanger-rod connection, at any stage of the design. The federal investigators said so in plain words: the box beam-hanger rod connections were not checked for adequacy. In a hotel lobby built for crowds, that one omission is where the story starts.\",\"claims\":[{\"claimText\":\"The hanger-rod connections were never checked for adequacy during design.\",\"quote\":\"The box beam-hanger rod connections were not checked for adequacy at any stage of the design.\",\"docId\":\"print:nbs-143\",\"contested\":false}],\"usedClaims\":[0],\"pronunciationHints\":[{\"word\":\"Hyatt\",\"hint\":\"HIGH-it\"}]},{\"seamId\":\"s1\",\"script\":\"And the connection as built was weaker still. By the investigators' arithmetic it could carry about sixty percent of what the city's building code required, on an ordinary day, before a single dancer stepped onto the walkway.\",\"claims\":[{\"claimText\":\"The as-built connection could carry about sixty percent of the code load.\",\"quote\":\"The as-built connection could support about sixty percent of the load required by the Kansas City Building Code.\",\"docId\":\"print:nbs-143\",\"contested\":false}],\"usedClaims\":[0]}]}"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 3100,
+    "completion_tokens": 410,
+    "total_tokens": 3510
+  }
+}

@@ -14,7 +14,7 @@ import type {
   SeamBrief
 } from "./NarrationWriterBuilder";
 import { assertReplyComplete, createMessage } from "./anthropicCall";
-import { RawActWriteSchema } from "./replySchemas";
+import { RawActWriteSchema, toActWriteResult } from "./replySchemas";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -100,19 +100,22 @@ export class AnthropicNarrationWriterBuilder implements NarrationWriterBuilder {
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /** `client` is an optional injection point for tests (GV-31 added it, the
+   * same pattern GV-25 gave the planning builders), so the Chat twin's parity
+   * test can drive this class with a fake; without it nothing changes. */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicNarrationWriterBuilder constructed without ANTHROPIC_API_KEY set — use createNarrationWriterBuilder() so it falls back to StubNarrationWriterBuilder instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   /** Q-03: the whole act in one call. See `buildActWritePrompt`. */
   async writeAct(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult> {
     const raw = await this.askJson(RawActWriteSchema, buildActWritePrompt(request), "narration_write_act", ctx, actOutputTokenBudget(request));
-    return { seams: raw.seams.map((s) => ({ ...s, pronunciationHints: s.pronunciationHints ?? [] })) };
+    return toActWriteResult(raw);
   }
 
   /**

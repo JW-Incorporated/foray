@@ -3304,6 +3304,16 @@ const BACKEND_FLOORS = {
      reply, one wire-level replay. Offline: scriptedProvider, fakeFetch over
      synthetic bodies, a fake Anthropic client. One named mutation per test. */
   "test/chatPlanningBuilders.test.ts": 14,
+  /* GV-31 (docs/roadmap/generation-v2.md, #1286): the Chat twins of the act
+     writer and act verifier -- parity with each Anthropic twin for the same
+     recorded-shape reply (pronunciationHints and restsOn defaulted to []),
+     the act_write / act_verify schemas, actOutputTokenBudget and the
+     verifier cap, 'length' refused, one metered re-ask, one wire-level
+     replay, the shared post-parse mappings in replySchemas.ts, and a
+     short-tier runForayPipeline with both injected matching the all-Stub
+     Foray. Offline: scriptedProvider, fakeFetch over synthetic bodies, a fake
+     Anthropic client. One named mutation per test. */
+  "test/chatNarrationBuilders.test.ts": 10,
   /* GV-27 (docs/roadmap/generation-v2.md, #1286): the per-sentence support
      judge -- narration.ts's isStatementSentence (the hasDeclarativeSentence
      rule), statement sentences via splitSpokenSentences, passageAround's

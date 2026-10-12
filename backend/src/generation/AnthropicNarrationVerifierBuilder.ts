@@ -14,7 +14,7 @@ import type {
   VerifyClipBrief
 } from "./NarrationVerifierBuilder";
 import { createMessage } from "./anthropicCall";
-import { RawActVerifySchema } from "./replySchemas";
+import { RawActVerifySchema, toActVerifyResult } from "./replySchemas";
 
 /**
  * Real §4.7 verification via the Anthropic API — a SEPARATE call, and
@@ -72,19 +72,22 @@ export class AnthropicNarrationVerifierBuilder implements NarrationVerifierBuild
   readonly providerName = "anthropic";
   private readonly client: Anthropic;
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {
-    if (env.anthropicDryRun) {
+  /** `client` is an optional injection point for tests (GV-31 added it, the
+   * same pattern GV-25 gave the planning builders), so the Chat twin's parity
+   * test can drive this class with a fake; without it nothing changes. */
+  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard, client?: Anthropic) {
+    if (!client && env.anthropicDryRun) {
       throw new Error(
         "AnthropicNarrationVerifierBuilder constructed without ANTHROPIC_API_KEY set — use createNarrationVerifierBuilder() so it falls back to StubNarrationVerifierBuilder instead."
       );
     }
-    this.client = new Anthropic({ apiKey: env.anthropicApiKey });
+    this.client = client ?? new Anthropic({ apiKey: env.anthropicApiKey });
   }
 
   /** Q-03: the per-beat question for a whole act. See `buildActVerifyPrompt`. */
   async verifyAct(request: ActVerifyRequest, ctx: NarrationBuildContext): Promise<ActVerifyResult> {
     const raw = await this.ask(buildActVerifyPrompt(request), RawActVerifySchema, ctx, MAX_ACT_VERIFY_OUTPUT_TOKENS);
-    return { beats: raw.beats, seams: raw.seams.map((s) => ({ ...s, restsOn: s.restsOn ?? [] })) };
+    return toActVerifyResult(raw);
   }
 
   private async ask<T>(promptText: string, schema: z.ZodType<T>, ctx: NarrationBuildContext, maxOutputTokens: number): Promise<T> {
