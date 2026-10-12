@@ -13,7 +13,7 @@ directory. Add one section per module as it lands.
 ## Running the tests
 
 ```
-npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs pull-archive.test.mjs store.test.mjs embedder.test.mjs
+npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs pull-archive.test.mjs store.test.mjs embedder.test.mjs nightly.test.mjs
 ```
 
 The package has no dependencies. It imports `tools/foraycorpus-export/`
@@ -21,7 +21,8 @@ The package has no dependencies. It imports `tools/foraycorpus-export/`
 SDK import is lazy, and the tests inject the SDK's command classes, a fake S3
 client, `statfs` and a recording indexer. The passage store tests use
 synthetic passages, the stub embedder and a fake `fetch`, so no model is
-downloaded. No test opens a network connection, reads a credential or needs
+downloaded. The nightly tests inject every step and answer the two HTTP
+steps from a loopback fake server. No test opens a network connection, reads a credential or needs
 `backend/node_modules`.
 
 `tools/ci/run-suites.mjs` finds this package by its `package.json` and `test`
@@ -133,6 +134,7 @@ Re-streaming a whole show costs up to about 306 MB for the largest show.
 ```
 node tools/passage-index/serve.mjs [--host 127.0.0.1] [--port 7311] [--shows a,b]
   [--index-root d] [--manifest f] [--normalized-root d]
+  [--passages-db f [--embedder stub|transformers|openai]]
 ```
 
 A launcher for `backend/src/cli/retrievalServer.ts`, started through
@@ -173,7 +175,10 @@ gives: same order, same scores, same idf.
 | `GET /v1/cues?show_id=&guid=` | `{cues, transcript_source}`, or 404. |
 | `GET /v1/archive` | `{generated_at, transcripts}`: the archive rows exactly as loaded. |
 | `GET /healthz` | `{indexVersion, shows, episodes, archiveGeneratedAt}`. |
-| `POST /v1/reload` | Re-reads the archive, the manifest and the caches. |
+| `POST /v1/reload` | Re-reads the archive, the manifest and the caches, and the passage store's dense index. |
+| `POST /v1/search` `{..., mode: "hybrid", policy?}` | The BM25 answer merged with the dense arm (GV-48, below). |
+| `POST /v1/shortlist/rebuild` `{nodes?}` | Rebuilds the per-node shortlists (GV-48, below). |
+| `GET /v1/shortlist?node=&query=&limit=` | A node's shortlist, reranked against `query` (GV-48, below). |
 
 **Auth.** The default bind is 127.0.0.1. Any other bind is refused unless
 `FORAY_RETRIEVAL_TOKEN` (or a file named by `FORAY_RETRIEVAL_TOKEN_FILE`) is
@@ -182,8 +187,10 @@ set, and with a token every `/v1` route needs `Authorization: Bearer <token>`.
 
 **Privacy.** Search requests carry beat claims. The server never logs or
 stores query text: a log line (one JSON line per event, on stderr) carries
-counts, latencies and a 12-hex sha256 prefix per query. The only file it
-writes is a show's index cache, rebuilt from transcripts alone.
+counts, latencies and a 12-hex sha256 prefix per query. It writes a show's
+index cache, rebuilt from transcripts alone, and (with `--passages-db`) the
+node shortlists, built from taxonomy labels and transcripts, never from a
+request.
 
 **Nothing uses it yet.** It is an inert new process: the pipeline talks to it
 only once GV-95 (W3-11) reads `FORAY_RETRIEVAL_URL`, and with that unset every
@@ -220,8 +227,8 @@ node --experimental-sqlite tools/passage-index/index-db.mjs embed --embedder stu
 
 A node:sqlite file (default `data-local/passage-index/passages.db`) that
 holds the cut passages and their dense vectors, so a semantic arm can find
-episodes that share no word with a claim. **Nothing reads it yet.** The
-retrieval server picks it up in W3-09, and the dense arm stays behind the
+episodes that share no word with a claim. The retrieval server reads it when
+started with `--passages-db` (GV-48, below). The dense arm stays behind the
 replay gate (W3-15): `tools/corpus` measured hybrid losing to keyword on its
 gold set (`tools/corpus/README.md`, "Semantic search").
 
@@ -235,6 +242,10 @@ gold set (`tools/corpus/README.md`, "Semantic search").
   the same name and revision with another dim, pooling, normalization or
   passage prefix is refused; register a new revision instead. The query
   prefix may change in place.
+- `node_shortlist` (`migrations/0002_node_shortlist.sql`, GV-48):
+  `(node_id, rank, passage_id, score, built_at)`, at most 50 ranks (0-49) per
+  node by a CHECK, one row per passage per node. Deleting a passage deletes
+  its rows.
 - `passage_chunks`: `(passage_id, ord, model_id, vector)`. The vector is
   the bare little-endian float32 blob of `tools/corpus/vectors.mjs`
   (sqlite-vec's format), normalized at the write. A trigger refuses any blob
@@ -286,3 +297,93 @@ the prefixes come from the model row only.
 
 No embedder calls an Anthropic model or the relay. The settings come from
 the environment, never from argv.
+
+## The dense arm, the hybrid merge and the node shortlist (GV-48, W3-09)
+
+Start the server with the passage store to turn them on:
+
+```
+node tools/passage-index/serve.mjs --passages-db data-local/passage-index/passages.db --embedder transformers
+```
+
+`main()` loads `store.mjs` and `embedder.mjs` by dynamic import, only when
+`--passages-db` is given, so the BM25 server and every backend test run
+without node:sqlite. `serve.mjs` does not pass `--experimental-sqlite` to its
+child: on Node 22.13 or later node:sqlite needs no flag; on an older 22.x set
+`NODE_OPTIONS=--experimental-sqlite`. The embedder must be the one the store
+was embedded with (same name and revision). Until that model has vectors,
+hybrid answers 503 and the shortlist is lexical only.
+
+**Hybrid search.** `POST /v1/search` with `mode: "hybrid"` embeds each query
+once, searches the passages of the scope's episodes, and merges with
+`backend/src/generation/hybridRetrieval.ts` `mergeCandidates`:
+
+- `policy: "append"` (the default) keeps the BM25 list exactly (order, rank,
+  score) and appends at most 4 dense-only episodes. The keyword arm may only
+  gain candidates, the rule tier 2's title path follows.
+- `policy: "rrf"` is reciprocal rank fusion at episode level, for evaluation
+  (the replay gate) only.
+
+Each candidate gains `via` (`bm25`, `dense` or `both`) and, when the dense arm
+found it, `passage` (`{passageId, startSec, endSec, startBoundary,
+endBoundary}`, its best passage) and `denseSim`. A dense-only candidate has
+score 0 and matchedTerms 0. The result's `idf` is the BM25 search's, and the
+client gives every candidate that map, so the window floors weigh dense-only
+episodes the same way. The server drops a dense hit outside the scope even if
+the store returned it. With no mode, or `mode: "bm25"`, the answer is the
+BM25 one, unchanged. The client sends `hybrid` only when
+`FORAY_RETRIEVAL_MODE=hybrid`, which stays `bm25` until the replay gate
+passes.
+
+**Shortlists.** `POST /v1/shortlist/rebuild` (body `{nodes?: [...]}`; all 194
+`data/taxonomy.json` nodes by default) builds, per node:
+
+1. the query: the node's label, its children's labels and the terms of the
+   semantic-index concepts the label matches (`matchConceptsInText` with the
+   node as the topic);
+2. the scope: the archive entries `familyGateAllows(node,
+   nodesForArchiveEntry(entry))` admits, the lineage gate sourcing uses;
+3. the episode pool: the top 50 BM25 episodes in scope, plus the dense-only
+   episodes among the top 200 dense passages in scope;
+4. every passage of the pool, ranked by BM25 over its text and by cosine to
+   the query, fused by RRF. The top 50 replace the node's rows.
+
+A node whose lineage admits nothing is stored empty. `GET
+/v1/shortlist?node=&query=&limit=` (limit 1-50, default 50) returns the stored
+passages with text, seconds, boundaries and anchors, reranked against `query`
+by cosine, or by BM25 over the passage text when the server has no embedder.
+Without a query they come in stored order. Shortlists are a day stale by
+design. The query of a GET is never logged (a 12-hex hash is).
+
+## nightly.mjs: the nightly chain (GV-48, W3-09)
+
+```
+node tools/passage-index/nightly.mjs [--source r2|local] [--url http://127.0.0.1:7311]
+  [--db f] [--embedder stub|transformers|openai] [--passages f] [--log f]
+```
+
+One run, in order, stopping at the first failure:
+
+1. `stream-index` the delta, appending passages to `--passages` (default
+   `data-local/passage-index/nightly-passages.jsonl`);
+2. `warm-transcript-index.mjs --from-staged` (GV-53, W3-03);
+3. `index-db.mjs ingest --passages <that file>`;
+4. `index-db.mjs embed --embedder <kind>` (default `transformers`). The
+   passages file is removed only after this succeeds;
+5. `POST /v1/reload`;
+6. `POST /v1/shortlist/rebuild`.
+
+On an unchanged corpus stream-index re-streams nothing, steps 2-5 are skipped
+and only the shortlists are rebuilt. A passages file left by a run that
+failed after step 1 counts as a change, so its passages still reach the
+store. Each step appends one JSON line (`{at, run, step, status, ms, ...}`,
+status `ok`, `skipped` or `failed`) to `--log` (default
+`data-local/passage-index/nightly.log`), and the run ends with a
+`{step: "nightly"}` line. Exit 0 when the chain finished, 1 when a step
+failed. The server URL comes from `--url`, `FORAY_RETRIEVAL_URL` or the
+loopback default; the token from `FORAY_RETRIEVAL_TOKEN` or
+`FORAY_RETRIEVAL_TOKEN_FILE`. On the Spark, run it niced
+(`nice -n 10 node tools/passage-index/nightly.mjs`).
+
+Step 2 needs GV-53's `--from-staged`. Until that card lands the warm step
+fails and stops the chain, so the nightly is not scheduled before it.

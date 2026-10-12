@@ -13,13 +13,17 @@ import { createPassageEmbedder, stubVector } from "./embedder.mjs";
 import { parseIndexDbArgs, runIndexDb } from "./index-db.mjs";
 import {
   backfillEmbeddings,
+  createServerPassageStore,
   denseSearch,
   EMBED_CHUNK_MAX,
   embedQuery,
+  findModel,
   ingestPassages,
   loadDenseIndex,
   openStore,
+  readShortlist,
   registerModel,
+  replaceShortlist,
   splitForEmbedding,
 } from "./store.mjs";
 
@@ -280,6 +284,102 @@ test("denseSearch scores a passage by its best chunk, respects episodeFilter and
   assert.deepEqual(objs.map((h) => h.passageId), [rows[3].id]);
   assert.deepEqual(denseSearch(index, q, { episodeFilter: [], k: 5 }), []);
   assert.throws(() => denseSearch(index, new Float32Array(3)), /3 dims/);
+  db.close();
+});
+
+test("migration 0002: node_shortlist holds at most 50 ranks per node, is replaced whole, and loses rows with their passages", async () => {
+  /* MUTATIONS THAT KILL THIS: drop the `rank < 50` CHECK (the 51-row write
+     commits); drop the BEGIN/ROLLBACK around replaceShortlist (the failed
+     write leaves the node half replaced); drop ON DELETE CASCADE (a re-cut
+     episode's old passage stays in the shortlist). Ran all three — red. */
+  const db = openStore(":memory:");
+  assert.equal(db.prepare("PRAGMA user_version").get().user_version, 2);
+  const cols = db.prepare("PRAGMA table_info(node_shortlist)").all().map((c) => c.name);
+  assert.deepEqual(cols, ["node_id", "rank", "passage_id", "score", "built_at"]);
+
+  const rows = Array.from({ length: 51 }, (_x, i) => passage("s1", `e${Math.floor(i / 10)}`, i % 10, `text ${i}.`));
+  await ingestPassages(db, jsonl(rows));
+  const fifty = rows.slice(0, 50).map((p, rank) => ({ rank, passageId: p.id, score: 1 - rank / 100 }));
+  replaceShortlist(db, "medicine", fifty, "2026-10-12T00:00:00.000Z");
+  const stored = readShortlist(db, "medicine");
+  assert.equal(stored.length, 50);
+  assert.deepEqual(stored[0], { rank: 0, passageId: rows[0].id, score: 1, builtAt: "2026-10-12T00:00:00.000Z" });
+
+  /* A 51st rank aborts the whole write; the old 50 stay. */
+  const tooMany = rows.map((p, rank) => ({ rank, passageId: p.id, score: 0 }));
+  assert.throws(() => replaceShortlist(db, "medicine", tooMany, "2026-10-13T00:00:00.000Z"), /CHECK constraint/);
+  assert.deepEqual(readShortlist(db, "medicine"), stored);
+  /* One passage once per node; an unknown passage is refused. */
+  assert.throws(() => replaceShortlist(db, "x", [{ rank: 0, passageId: rows[0].id, score: 1 }, { rank: 1, passageId: rows[0].id, score: 1 }], "t"), /UNIQUE/);
+  assert.throws(() => replaceShortlist(db, "x", [{ rank: 0, passageId: "nope", score: 1 }], "t"), /FOREIGN KEY/);
+  assert.deepEqual(readShortlist(db, "x"), []);
+
+  /* Replace with fewer rows; another node is untouched. */
+  replaceShortlist(db, "science", [{ rank: 0, passageId: rows[50].id, score: 0.5 }], "t2");
+  replaceShortlist(db, "medicine", fifty.slice(0, 3), "t3");
+  assert.deepEqual(readShortlist(db, "medicine").map((r) => r.builtAt), ["t3", "t3", "t3"]);
+  assert.equal(readShortlist(db, "science").length, 1);
+
+  /* Re-cutting episode e0 deletes its passages and, through the cascade, their rows. */
+  await ingestPassages(db, jsonl([passage("s1", "e0", 9, "a re-cut passage.")]));
+  assert.deepEqual(readShortlist(db, "medicine"), []);
+  db.close();
+});
+
+test("createServerPassageStore: the retrieval server's PassageStore and QueryEmbedder over the real store", async () => {
+  /* MUTATION THAT KILLS THIS: in passagesById return rows in store order
+     instead of the order asked (the reversed lookup comes back unreversed).
+     Ran it (ids sorted) — red. */
+  const db = openStore(":memory:");
+  const rows = [
+    passage("s1", "e1", 1, `${QUERY}.`, { startAnchor: "Semmelweis handwashing childbed" }),
+    passage("s1", "e1", 0, filler(80)),
+    passage("s2", "e2", 0, `${QUERY} again.`),
+    passage("s3", "e3", 0, filler(80, 4)),
+  ];
+  await ingestPassages(db, jsonl(rows));
+
+  const lexical = createServerPassageStore(db);
+  assert.equal(lexical.queryEmbedder, null);
+  assert.deepEqual(lexical.passageStore.denseSearch(new Float32Array(64), { episodes: null, k: 5 }), []);
+
+  const embedder = await createPassageEmbedder({ kind: "stub", queryPrefix: "query: " });
+  const { passageStore, queryEmbedder } = createServerPassageStore(db, { embedder });
+  /* No vectors yet: no model row, nothing found, and a query is refused. */
+  assert.equal(findModel(db, embedder.model), null);
+  await assert.rejects(queryEmbedder.embedQuery(QUERY), /no vectors in this store yet/);
+  await backfillEmbeddings(db, embedder);
+  assert.deepEqual(passageStore.denseSearch(new Float32Array(64).fill(1), { episodes: null, k: 5 }), []);
+  passageStore.reload();
+
+  const q = await queryEmbedder.embedQuery(QUERY);
+  assert.deepEqual(Array.from(q), Array.from(stubVector(`query: ${QUERY}`)));
+  const hits = passageStore.denseSearch(q, { episodes: [["s1", "e1"], ["s3", "e3"]], k: 10 });
+  assert.deepEqual(new Set(hits.map((h) => h.guid)), new Set(["e1", "e3"]));
+  assert.equal(hits[0].passageId, rows[0].id);
+  assert.equal(passageStore.denseSearch(q, { episodes: null, k: Infinity }).length, 4);
+
+  const byId = passageStore.passagesById([rows[2].id, "missing", rows[0].id]);
+  assert.deepEqual(byId.map((p) => p.passageId), [rows[2].id, rows[0].id]);
+  assert.deepEqual(byId[1], {
+    passageId: rows[0].id,
+    show_id: "s1",
+    guid: "e1",
+    startSec: 120,
+    endSec: 240,
+    startBoundary: "sentence",
+    endBoundary: "turn",
+    startAnchor: "Semmelweis handwashing childbed",
+    endAnchor: null,
+    text: `${QUERY}.`,
+  });
+  /* Episode by episode in the order given, by start time within one. */
+  assert.deepEqual(
+    passageStore.passagesForEpisodes([["s2", "e2"], ["s1", "e1"], ["s2", "e2"]]).map((p) => p.passageId),
+    [rows[2].id, rows[1].id, rows[0].id]
+  );
+  passageStore.replaceShortlist("medicine", [{ rank: 0, passageId: rows[2].id, score: 0.9 }], "t");
+  assert.deepEqual(passageStore.readShortlist("medicine"), [{ rank: 0, passageId: rows[2].id, score: 0.9, builtAt: "t" }]);
   db.close();
 });
 

@@ -2303,6 +2303,7 @@ const FLOORS = {
   "tools/passage-index/pull-archive.test.mjs": 4, // GV-16 (W3-08, docs/roadmap/generation-v2.md): pull-archive against a fake HTTP server (bearer + gzip + item_id_suffix stripped + atomic write with no tmp left, an HTTP error / bad row / non-JSON / empty archive leaves the old digest byte for byte, parsePullArgs url/token from env or file never argv, serve.mjs entry exists and passes flags through)
   "tools/passage-index/store.test.mjs": 9, // GV-28 (W3-07, docs/roadmap/generation-v2.md): passage store (migration + absent store refused unless created, ingest idempotent per episode with stale chunk vectors removed by the cascade, appended re-stream last block wins + bad lines named, length trigger on insert/update, registerModel refuses a vector-space change, sub-chunks under EMBED_CHUNK_MAX never truncated + tokenizer path, backfill passage_prefix from the model row + resumable + chunks-per-passage report, denseSearch best-chunk score + episodeFilter + top-k, index-db ingest/embed CLI)
   "tools/passage-index/embedder.test.mjs": 6, // GV-28 (W3-07, docs/roadmap/generation-v2.md): Embedder interface (stub deterministic 64-dim never zero, openai POST /v1/embeddings request with bearer on a fake fetch placed by index, dimension mismatch + short/repeated/HTTP-error answers refused, FORAY_EMBED_* config names the missing variable, transformers delegates to tools/corpus createEmbedder with quantization folded into the revision, unknown kind refused)
+  "tools/passage-index/nightly.test.mjs": 4, // GV-48 (W3-09, docs/roadmap/generation-v2.md): nightly chain with injected steps (stream-index -> warm -> ingest -> embed -> reload -> shortlist in order with JSON-line timings, passages file cleared only after embed, an unchanged corpus skips warm/ingest/embed/reload and only rebuilds the shortlist, a left-over passages file counts as a change, a thrown or {ok:false} step stops the chain with exit 1, reload/shortlist POST with the bearer against a loopback fake and an HTTP error fails the step)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2832,6 +2833,13 @@ const BACKEND_FLOORS = {
      8 in flight, pin + LRU memory bound, transcriptSource parity with
      FileTranscriptCueProvider, and no fs write in the module. */
   "test/retrievalClient.test.ts": 16,
+  /* GV-48 (docs/roadmap/generation-v2.md, from W3-09): the hybrid merge —
+     'append' keeps every BM25 candidate's rank and adds at most denseExtra
+     dense-only episodes with their best passage, every candidate carries the
+     query's idf, 'rrf' fusion, passage BM25, the per-node shortlist query
+     over the committed 194-node taxonomy, and no backend test imports
+     node:sqlite or the passage store. */
+  "test/hybridRetrieval.test.ts": 9,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —

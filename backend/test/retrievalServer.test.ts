@@ -11,10 +11,21 @@ import {
   parseRetrievalServerArgs,
   queryHash,
   RetrievalService,
+  SHORTLIST_SIZE,
   startRetrievalServer,
+  type DensePassageHit,
+  type LineageGate,
+  type PassageRecord,
+  type PassageStore,
+  type QueryEmbedder,
   type RetrievalLogger,
   type RetrievalServiceOptions,
-  type StartedRetrievalServer
+  type ShortlistAnswer,
+  type ShortlistBuild,
+  type ShortlistRow,
+  type ShortlistTaxonomy,
+  type StartedRetrievalServer,
+  type WireHybridResult
 } from "../src/cli/retrievalServer";
 import type { CueStore, EpisodeManifestRow } from "../src/generation/manifestBodySource";
 import {
@@ -562,6 +573,393 @@ describe("retrievalServer — residency, stale caches and reload", () => {
     expect(() => new RetrievalService(serviceOptions(indexRoot, { logger, loadManifest: () => null, createCueStore: () => noStat }))).toThrow(
       /cannot stat bodies/
     );
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   GV-48 (from W3-09): the dense arm, the hybrid merge and the node shortlist,
+   over an in-memory fake PassageStore and a stub QueryEmbedder. No test here
+   (or anywhere under backend/test) loads node:sqlite or the real store.
+   --------------------------------------------------------------------------- */
+
+/** The stub embedder's vector: words hashed into 16 buckets (FNV-1a). */
+function stubVector(text: string): number[] {
+  const v = new Array<number>(16).fill(0);
+  for (const w of text.toLowerCase().match(/[a-z0-9]+/g) ?? []) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < w.length; i++) h = Math.imul(h ^ w.charCodeAt(i), 0x01000193) >>> 0;
+    v[h % 16] = (v[h % 16] ?? 0) + 1;
+  }
+  return v;
+}
+
+function cosine(a: ArrayLike<number>, b: ArrayLike<number>): number {
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += (a[i] ?? 0) * (b[i] ?? 0);
+    na += (a[i] ?? 0) ** 2;
+    nb += (b[i] ?? 0) ** 2;
+  }
+  return na === 0 || nb === 0 ? 0 : dot / Math.sqrt(na * nb);
+}
+
+/** A query embedder: an explicit vector per text, else the stub. */
+function stubEmbedder(table: Record<string, number[]> = {}): QueryEmbedder & { calls: string[] } {
+  const calls: string[] = [];
+  return {
+    calls,
+    embedQuery: async (text) => {
+      calls.push(text);
+      return table[text] ?? stubVector(text);
+    }
+  };
+}
+
+interface FakePassage extends PassageRecord {
+  vector: number[];
+}
+
+/** A fake passage without its vector: what the store hands back. */
+const recordOf = (p: FakePassage): PassageRecord => {
+  const record: PassageRecord & { vector?: number[] } = { ...p };
+  delete record.vector;
+  return record;
+};
+
+type FakeStore = PassageStore & { shortlists: Map<string, ShortlistRow[]>; reloads: number; byEpisodeCalls: Array<Array<readonly [string, string]>> };
+
+/** The in-memory PassageStore. `ignoreFilter` makes denseSearch and
+ * passagesForEpisodes return passages of EVERY episode, so the server's own
+ * scope enforcement is what the test sees. */
+function fakeStore(passages: FakePassage[], { ignoreFilter = false } = {}): FakeStore {
+  const shortlists = new Map<string, ShortlistRow[]>();
+  const byEpisodeCalls: Array<Array<readonly [string, string]>> = [];
+  const store: FakeStore = {
+    shortlists,
+    reloads: 0,
+    byEpisodeCalls,
+    denseSearch(vector, { episodes, k }): DensePassageHit[] {
+      const allow = episodes && !ignoreFilter ? new Set(episodes.map(([s, g]) => keyOf(s, g))) : null;
+      return passages
+        .filter((p) => !allow || allow.has(keyOf(p.show_id, p.guid)))
+        .map((p) => ({ passageId: p.passageId, show_id: p.show_id, guid: p.guid, sim: cosine(vector, p.vector) }))
+        .sort((a, b) => b.sim - a.sim || (a.passageId < b.passageId ? -1 : 1))
+        .slice(0, k);
+    },
+    passagesById: (ids) => ids.flatMap((id) => passages.filter((p) => p.passageId === id)).map(recordOf),
+    passagesForEpisodes(episodes) {
+      byEpisodeCalls.push([...episodes]);
+      const allow = new Set(episodes.map(([s, g]) => keyOf(s, g)));
+      return passages.filter((p) => ignoreFilter || allow.has(keyOf(p.show_id, p.guid))).map(recordOf);
+    },
+    replaceShortlist(nodeId, rows, builtAt) {
+      shortlists.set(
+        nodeId,
+        rows.map((r) => ({ rank: r.rank, passageId: r.passageId, score: r.score, builtAt }))
+      );
+    },
+    readShortlist: (nodeId) => shortlists.get(nodeId) ?? [],
+    reload() {
+      store.reloads += 1;
+    }
+  };
+  return store;
+}
+
+/** One passage per cue of every fixture episode, vectors from the stub. */
+function cuePassages(overrides: Record<string, number[]> = {}): FakePassage[] {
+  return EPISODES.flatMap((e) =>
+    e.cues.map((c, i) => {
+      const passageId = `${e.row.show_id}:${e.row.guid}:${i}`;
+      return {
+        passageId,
+        show_id: e.row.show_id,
+        guid: e.row.guid,
+        startSec: c.start_sec,
+        endSec: c.end_sec,
+        startBoundary: "sentence",
+        endBoundary: i % 2 ? "turn" : "cue",
+        startAnchor: c.text.split(" ").slice(0, 3).join(" "),
+        endAnchor: null,
+        text: c.text,
+        vector: overrides[passageId] ?? stubVector(c.text)
+      };
+    })
+  );
+}
+
+const pid = (e: Episode, i = 0): string => `${e.row.show_id}:${e.row.guid}:${i}`;
+const byGuid = (guid: string): Episode => EPISODES.find((e) => e.row.guid === guid) as Episode;
+
+const TAXONOMY: ShortlistTaxonomy = {
+  nodes: [
+    { id: "medicine", parent: null, label: "Germ theory and miasma" },
+    { id: "medicine/surgery", parent: "medicine", label: "Antiseptic surgery" },
+    { id: "science", parent: null, label: "Geology and rocks" },
+    { id: "arts", parent: null, label: "Painting" }
+  ],
+  concepts: { cholera: { terms: ["cholera", "pump"], topics: ["medicine"], related: [] } }
+};
+/* Alpha is filed under medicine/surgery, gamma under medicine, beta under
+   science. The gate admits a node's lineage: itself, ancestors, descendants. */
+const NODES_BY_SHOW: Record<string, string[]> = { [SHOW_A]: ["medicine/surgery"], [SHOW_B]: ["science"], [SHOW_C]: ["medicine"] };
+const LINEAGE: LineageGate = {
+  nodesFor: (entry) => NODES_BY_SHOW[entry.show_id] ?? [],
+  allows: (node, nodes) => nodes.some((n) => n === node || n.startsWith(`${node}/`) || node.startsWith(`${n}/`))
+};
+
+describe("retrievalServer — hybrid mode (GV-48)", () => {
+  const indexRoot = path.join(tmp, "hybrid", "index");
+  beforeAll(async () => buildCaches(indexRoot));
+
+  /* "germ theory miasma": BM25 finds a2 and the permalink episode in the
+     lineage scope. The dense arm is told (by explicit vectors) that a3, b2,
+     c2 and b1 are close, in that order of closeness: c2 and b1 are out of the
+     lineage scope. */
+  const QUERY = "germ theory miasma";
+  const Q = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const near = (x: number): number[] => [x, Math.sqrt(1 - x * x), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const far = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+  const vectors = (): Record<string, number[]> => {
+    const out: Record<string, number[]> = {};
+    for (const e of EPISODES) e.cues.forEach((_c, i) => (out[pid(e, i)] = far));
+    out[pid(byGuid("c2"))] = near(0.95);
+    out[pid(byGuid("b1"))] = near(0.9);
+    out[pid(byGuid("a3"))] = near(0.8);
+    out[pid(byGuid("b2"), 1)] = near(0.7);
+    out[pid(byGuid("a2"), 2)] = near(0.6);
+    return out;
+  };
+  const LINEAGE_SCOPE = [[SHOW_A, PERMALINK], [SHOW_A, "a2"], [SHOW_A, "a3"], [SHOW_A, "a4"], [SHOW_B, "b2"]];
+
+  it("'append': the BM25 answer unchanged, then the in-scope dense-only episodes; out-of-scope hits never returned even from a store that ignores the filter", async () => {
+    /* MUTATIONS THAT KILL THIS: drop the server's `inScope` filter (c2 and b1
+       come back from the filter-ignoring store); send the dense arm the
+       query's BM25 candidates instead of its scope (a3 is lost); serialize the
+       merged candidates without `via`. Ran the first — red. */
+    const logger = capturedLogger();
+    const store = fakeStore(cuePassages(vectors()), { ignoreFilter: true });
+    const embedder = stubEmbedder({ [QUERY]: Q });
+    const service = new RetrievalService(serviceOptions(indexRoot, { logger, passageStore: store, queryEmbedder: embedder }));
+    const base = await serve(service, logger);
+    const { scopeId } = (await call(base, "POST", "/v1/scopes", { episodes: LINEAGE_SCOPE })).json as { scopeId: string };
+
+    const bm25 = (await call(base, "POST", "/v1/search", { scopeId, queries: [{ text: QUERY, limit: 2 }] })).json as { results: WireResult[] };
+    const reply = await call(base, "POST", "/v1/search", { scopeId, mode: "hybrid", queries: [{ text: QUERY, limit: 2 }] });
+    expect(reply.status).toBe(200);
+    const [hybrid] = (reply.json as { results: WireHybridResult[] }).results;
+    const lexical = bm25.results[0] as WireResult;
+    expect(lexical.candidates.map((c) => c.guid)).toEqual(["a2", PERMALINK]);
+
+    /* a4 is in scope with every passage at similarity 0: still a dense hit,
+       third of the at most four dense-only episodes. */
+    expect(hybrid?.candidates.map((c) => c.guid)).toEqual(["a2", PERMALINK, "a3", "b2", "a4"]);
+    expect(hybrid?.candidates.slice(0, 2).map(({ show_id, guid, score, matchedTerms, rank }) => ({ show_id, guid, score, matchedTerms, rank }))).toEqual(
+      lexical.candidates
+    );
+    expect(hybrid?.candidates.map((c) => c.via)).toEqual(["both", "both", "dense", "dense", "dense"]);
+    expect(hybrid?.candidates.map((c) => c.rank)).toEqual([0, 1, 2, 3, 4]);
+    expect(hybrid?.idf).toEqual(lexical.idf);
+    const a3 = byGuid("a3");
+    expect(hybrid?.candidates[2]?.passage).toEqual({
+      passageId: pid(a3),
+      startSec: a3.cues[0]?.start_sec,
+      endSec: a3.cues[0]?.end_sec,
+      startBoundary: "sentence",
+      endBoundary: "cue"
+    });
+    expect(hybrid?.candidates[2]?.denseSim).toBeCloseTo(0.8, 10);
+    expect(hybrid?.candidates[3]?.passage?.passageId).toBe(pid(byGuid("b2"), 1));
+    expect(hybrid?.candidates[0]?.passage?.passageId).toBe(pid(byGuid("a2"), 2));
+    for (const c of hybrid?.candidates ?? []) expect(["c2", "b1"]).not.toContain(c.guid);
+    expect(embedder.calls).toEqual([QUERY]);
+
+    /* An 'all' scope admits c2 and b1; b1 is a BM25 hit (miasma) too. */
+    const all = (await call(base, "POST", "/v1/scopes", { episodes: "all" })).json as { scopeId: string };
+    const wide = (await call(base, "POST", "/v1/search", { scopeId: all.scopeId, mode: "hybrid", queries: [{ text: QUERY, limit: 8 }] })).json as {
+      results: WireHybridResult[];
+    };
+    const viaOf = Object.fromEntries((wide.results[0]?.candidates ?? []).map((c) => [c.guid, c.via]));
+    expect(viaOf.c2).toBe("dense");
+    expect(viaOf.b1).toBe("both");
+
+    /* Never the query text in a log line. */
+    expect(logger.lines.join("\n")).not.toContain("miasma");
+    expect(logger.events().find((e) => e.event === "request" && e.mode === "hybrid")).toMatchObject({ queryHashes: [queryHash(QUERY)], dense: [3] });
+  });
+
+  it("is deterministic with the stub embedder; no mode is byte-identical to a server with no store; bad modes and a missing store are refused", async () => {
+    /* MUTATION THAT KILLS THIS: route a request with no mode through
+       searchHybrid (its answer gains `via`, so it differs from the plain
+       server's). Ran it — red. */
+    const logger = capturedLogger();
+    const withStore = new RetrievalService(serviceOptions(indexRoot, { logger, passageStore: fakeStore(cuePassages()), queryEmbedder: stubEmbedder() }));
+    const plain = new RetrievalService(serviceOptions(indexRoot, { logger }));
+    const base = await serve(withStore, logger);
+    const plainBase = await serve(plain, logger);
+    const scopeA = ((await call(base, "POST", "/v1/scopes", { episodes: "all" })).json as { scopeId: string }).scopeId;
+    const scopeB = ((await call(plainBase, "POST", "/v1/scopes", { episodes: "all" })).json as { scopeId: string }).scopeId;
+    const queries = QUERIES.map((text) => ({ text, limit: 3 }));
+
+    const one = await call(base, "POST", "/v1/search", { scopeId: scopeA, mode: "hybrid", queries });
+    const two = await call(base, "POST", "/v1/search", { scopeId: scopeA, mode: "hybrid", queries });
+    expect(one.status).toBe(200);
+    expect(two.json).toEqual(one.json);
+    expect(((one.json as { results: WireHybridResult[] }).results ?? []).some((r) => r.candidates.some((c) => c.via === "dense"))).toBe(true);
+
+    const noMode = await call(base, "POST", "/v1/search", { scopeId: scopeA, queries });
+    const bm25Mode = await call(base, "POST", "/v1/search", { scopeId: scopeA, mode: "bm25", queries });
+    const reference = await call(plainBase, "POST", "/v1/search", { scopeId: scopeB, queries });
+    expect(JSON.stringify(noMode.json)).toBe(JSON.stringify(reference.json));
+    expect(JSON.stringify(bm25Mode.json)).toBe(JSON.stringify(reference.json));
+
+    expect((await call(base, "POST", "/v1/search", { scopeId: scopeA, mode: "dense", queries })).status).toBe(400);
+    expect((await call(base, "POST", "/v1/search", { scopeId: scopeA, mode: "hybrid", policy: "max", queries })).status).toBe(400);
+    const rrf = await call(base, "POST", "/v1/search", { scopeId: scopeA, mode: "hybrid", policy: "rrf", queries });
+    expect(rrf.status).toBe(200);
+    expect((await call(plainBase, "POST", "/v1/search", { scopeId: scopeB, mode: "hybrid", queries })).status).toBe(503);
+    const failing: QueryEmbedder = { embedQuery: async () => Promise.reject(new Error("no vectors for semmelweis")) };
+    const broken = new RetrievalService(serviceOptions(indexRoot, { logger, passageStore: fakeStore(cuePassages()), queryEmbedder: failing }));
+    const brokenBase = await serve(broken, logger);
+    const scopeC = ((await call(brokenBase, "POST", "/v1/scopes", { episodes: "all" })).json as { scopeId: string }).scopeId;
+    const refused = await call(brokenBase, "POST", "/v1/search", { scopeId: scopeC, mode: "hybrid", queries });
+    expect(refused.status).toBe(503);
+    expect(JSON.stringify(refused.json)).not.toContain("semmelweis");
+  });
+});
+
+describe("retrievalServer — the per-taxonomy-node shortlist (GV-48)", () => {
+  const indexRoot = path.join(tmp, "shortlist", "index");
+  beforeAll(async () => buildCaches(indexRoot));
+
+  /* a2 gets 60 extra passages, so the medicine pool holds more than 50. */
+  const extra = (): FakePassage[] =>
+    Array.from({ length: 60 }, (_x, i) => {
+      const text = i % 3 === 0 ? `germ theory lecture part ${i}` : `antiseptic surgery notes ${i} on wards`;
+      return {
+        passageId: `extra:${String(i).padStart(2, "0")}`,
+        show_id: SHOW_A,
+        guid: "a2",
+        startSec: 100 + i * 120,
+        endSec: 220 + i * 120,
+        startBoundary: "turn",
+        endBoundary: "turn",
+        startAnchor: null,
+        endAnchor: null,
+        text,
+        vector: stubVector(text)
+      };
+    });
+
+  it("a node's shortlist holds only lineage-admitted episodes and at most 50 rows; a node with no admitted episode is stored empty", async () => {
+    /* MUTATIONS THAT KILL THIS: drop the `inAdmitted` filter on the pool's
+       passages (the filter-ignoring store leaks beta's geology passages into
+       medicine); drop `.slice(0, SHORTLIST_SIZE)` (medicine stores 70+ rows).
+       Ran both — red. */
+    const logger = capturedLogger();
+    const store = fakeStore([...cuePassages(), ...extra()], { ignoreFilter: true });
+    const service = new RetrievalService(
+      serviceOptions(indexRoot, { logger, passageStore: store, queryEmbedder: stubEmbedder(), loadTaxonomy: () => TAXONOMY, lineage: LINEAGE })
+    );
+    const base = await serve(service, logger);
+    const reply = await call(base, "POST", "/v1/shortlist/rebuild", {});
+    expect(reply.status).toBe(200);
+    const build = reply.json as ShortlistBuild;
+    expect(build).toMatchObject({ nodes: 4, empty: ["arts"] });
+
+    const showOf = (passageId: string): string => passageId.split(":")[0] as string;
+    const medicine = store.shortlists.get("medicine") ?? [];
+    expect(SHORTLIST_SIZE).toBe(50);
+    expect(medicine).toHaveLength(50);
+    expect(medicine.map((r) => r.rank)).toEqual(Array.from({ length: 50 }, (_x, i) => i));
+    const medicineShows = new Set(medicine.map((r) => (r.passageId.startsWith("extra:") ? SHOW_A : showOf(r.passageId))));
+    expect([...medicineShows].sort()).toEqual([SHOW_A, SHOW_C]);
+    expect(new Set(medicine.map((r) => r.builtAt))).toEqual(new Set([build.builtAt]));
+
+    /* surgery's lineage is itself and medicine: alpha (surgery) and gamma
+       (medicine, an ancestor). science admits beta only. */
+    const science = store.shortlists.get("science") ?? [];
+    expect(science.length).toBeGreaterThan(0);
+    expect(science.every((r) => showOf(r.passageId) === SHOW_B)).toBe(true);
+    expect(store.shortlists.get("arts")).toEqual([]);
+    expect(build.rows).toBe([...store.shortlists.values()].reduce((n, rows) => n + rows.length, 0));
+    for (const asked of store.byEpisodeCalls) for (const [show] of asked) expect([SHOW_A, SHOW_C, SHOW_B]).toContain(show);
+    expect(store.byEpisodeCalls.some((asked) => asked.some(([show]) => show === SHOW_B) && asked.some(([show]) => show !== SHOW_B))).toBe(false);
+
+    /* Only the named nodes are rebuilt; an unknown node is refused. */
+    store.shortlists.set("science", []);
+    expect(((await call(base, "POST", "/v1/shortlist/rebuild", { nodes: ["arts"] })).json as ShortlistBuild).nodes).toBe(1);
+    expect(store.shortlists.get("science")).toEqual([]);
+    expect((await call(base, "POST", "/v1/shortlist/rebuild", { nodes: ["nope"] })).status).toBe(400);
+  });
+
+  it("GET reranks the stored rows against the query by cosine with an embedder, by BM25 without one, and returns text, seconds, boundaries and anchors", async () => {
+    /* MUTATION THAT KILLS THIS: ignore `query` and return the stored order
+       (the cholera passage is not first). Ran it — red. */
+    const logger = capturedLogger();
+    const store = fakeStore(cuePassages());
+    const service = new RetrievalService(
+      serviceOptions(indexRoot, { logger, passageStore: store, queryEmbedder: stubEmbedder(), loadTaxonomy: () => TAXONOMY, lineage: LINEAGE })
+    );
+    const base = await serve(service, logger);
+    await call(base, "POST", "/v1/shortlist/rebuild", { nodes: ["medicine"] });
+    const stored = store.shortlists.get("medicine") ?? [];
+    const cholera = pid(byGuid("c1"));
+    expect(stored.map((r) => r.passageId)).toContain(cholera);
+    expect(stored[0]?.passageId).not.toBe(cholera);
+
+    const secret = "cholera maps of the broad street pump";
+    const answer = (await call(base, "GET", `/v1/shortlist?node=medicine&query=${encodeURIComponent(secret)}&limit=5`)).json as ShortlistAnswer;
+    expect(answer.reranked).toBe("cosine");
+    expect(answer.passages).toHaveLength(5);
+    expect(answer.passages[0]).toMatchObject({
+      passageId: cholera,
+      show_id: SHOW_C,
+      guid: "c1",
+      startSec: 0,
+      endSec: 8,
+      startBoundary: "sentence",
+      endBoundary: "cue",
+      startAnchor: "cholera maps of",
+      endAnchor: null,
+      text: secret,
+      rank: 0
+    });
+    expect(answer.passages[0]?.storedRank).toBe(stored.findIndex((r) => r.passageId === cholera));
+    expect(answer.passages[0]?.rerankScore).toBeCloseTo(1, 10);
+    expect(logger.lines.join("\n")).not.toContain("broad street");
+
+    const plainOrder = (await call(base, "GET", "/v1/shortlist?node=medicine")).json as ShortlistAnswer;
+    expect(plainOrder.reranked).toBeNull();
+    expect(plainOrder.passages.map((p) => p.passageId)).toEqual(stored.map((r) => r.passageId));
+
+    /* No embedder: BM25 over the passage text. */
+    const lexicalOnly = new RetrievalService(serviceOptions(indexRoot, { logger, passageStore: store, loadTaxonomy: () => TAXONOMY, lineage: LINEAGE }));
+    const lexBase = await serve(lexicalOnly, logger);
+    const lex = (await call(lexBase, "GET", `/v1/shortlist?node=medicine&query=${encodeURIComponent("broad street pump")}&limit=3`)).json as ShortlistAnswer;
+    expect(lex.reranked).toBe("bm25");
+    expect(lex.passages[0]?.passageId).toBe(cholera);
+
+    expect((await call(base, "GET", "/v1/shortlist?node=nope")).status).toBe(404);
+    expect((await call(base, "GET", "/v1/shortlist?node=medicine&limit=51")).status).toBe(400);
+    const noStore = new RetrievalService(serviceOptions(indexRoot, { logger }));
+    expect((await call(await serve(noStore, logger), "GET", "/v1/shortlist?node=medicine")).status).toBe(503);
+
+    /* POST /v1/reload re-reads the dense index too. */
+    expect(store.reloads).toBe(0);
+    await call(base, "POST", "/v1/reload", {});
+    expect(store.reloads).toBe(1);
+  });
+
+  it("--passages-db and --embedder parse; --embedder alone or of an unknown kind is refused", () => {
+    expect(parseRetrievalServerArgs([])).toMatchObject({ passagesDb: null, embedder: null });
+    const args = parseRetrievalServerArgs(["--passages-db", "x/p.db", "--embedder", "stub"]);
+    expect(args.passagesDb).toBe(path.resolve("x/p.db"));
+    expect(args.embedder).toBe("stub");
+    expect(() => parseRetrievalServerArgs(["--embedder", "stub"])).toThrow(/needs --passages-db/);
+    expect(() => parseRetrievalServerArgs(["--passages-db", "p.db", "--embedder", "anthropic"])).toThrow(/--embedder must be one of/);
   });
 });
 

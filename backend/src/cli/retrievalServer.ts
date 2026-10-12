@@ -2,7 +2,25 @@ import * as crypto from "crypto";
 import * as fs from "fs";
 import * as http from "http";
 import * as path from "path";
+import { pathToFileURL } from "url";
 import * as zlib from "zlib";
+import { loadCatalogueData, type SemanticConcept } from "../generation/catalogueLookup";
+import {
+  DEFAULT_DENSE_EXTRA,
+  mergeCandidates,
+  MERGE_POLICIES,
+  nodeShortlistQuery,
+  rankByScore,
+  reciprocalRankFusion,
+  scorePassagesBm25,
+  type BestPassage,
+  type CandidateVia,
+  type DenseHit,
+  type MergePolicy,
+  type ShortlistNode
+} from "../generation/hybridRetrieval";
+import { loadTaxonomyNodes } from "../generation/resolveTopic";
+import { familyGateAllows, nodesForArchiveEntry } from "../generation/taxonomyFamily";
 import {
   CORPUS_DIGEST_FILE,
   FileTranscriptCueProvider,
@@ -29,6 +47,7 @@ import {
  *
  *     node tools/passage-index/serve.mjs [--host 127.0.0.1] [--port 7311] [--shows a,b]
  *       [--index-root DIR] [--manifest FILE] [--normalized-root DIR]
+ *       [--passages-db FILE [--embedder stub|transformers|openai]]
  *
  * WHY A RESIDENT PROCESS. Every generation process used to load each show's
  * BM25 cache on first search (and needed the transcript bodies on its own
@@ -70,7 +89,32 @@ import {
  *   GET  /v1/archive   {generated_at, transcripts}: the archive rows exactly
  *                    as loaded (tools/passage-index/pull-archive.mjs).
  *   GET  /healthz      {indexVersion, shows, episodes, archiveGeneratedAt}.
- *   POST /v1/reload    re-reads the archive, the manifest and the caches.
+ *   POST /v1/reload    re-reads the archive, the manifest and the caches (and
+ *                    the passage store's dense index, when there is one).
+ *
+ * THE DENSE ARM AND THE SHORTLIST (GV-48, from W3-09; covers R1-09, R2-04,
+ * QK-22). Both need the passage store (tools/passage-index/store.mjs, GV-28),
+ * which `main()` opens only with --passages-db, by dynamic import, so no
+ * backend module or test ever loads node:sqlite. The service sees it through
+ * the `PassageStore` and `QueryEmbedder` interfaces; tests inject fakes.
+ *   POST /v1/search  {..., mode: "hybrid", policy?: "append"|"rrf"} embeds each
+ *                    query once, searches the passages of the SCOPE's episodes,
+ *                    and merges with `mergeCandidates` (hybridRetrieval.ts):
+ *                    under 'append' (the default) every BM25 candidate keeps
+ *                    its rank and at most DEFAULT_DENSE_EXTRA dense-only
+ *                    episodes follow. Candidates gain `via` and, when the dense
+ *                    arm found them, `passage` and `denseSim`. No mode (or
+ *                    "bm25") is the BM25 answer above, unchanged. The client
+ *                    sends "hybrid" only when FORAY_RETRIEVAL_MODE=hybrid.
+ *   POST /v1/shortlist/rebuild {nodes?: [node_id]} for each data/taxonomy.json
+ *                    node (or the ones named): query = label + child labels +
+ *                    the terms of the semantic-index concepts the label
+ *                    matches; scope = the archive entries the lineage gate
+ *                    admits for the node; the top SHORTLIST_SIZE passages of a
+ *                    hybrid passage search are stored in node_shortlist.
+ *   GET  /v1/shortlist?node=&query=&limit=  the stored passages (text, seconds,
+ *                    boundaries, anchors), reranked against `query` by cosine,
+ *                    or by BM25 over the passage text with no embedder.
  *
  * AUTH. Bearer FORAY_RETRIEVAL_TOKEN (or the file named by
  * FORAY_RETRIEVAL_TOKEN_FILE). The default bind is 127.0.0.1; any other bind
@@ -80,7 +124,9 @@ import {
  * Nothing here logs or persists query text: a log line carries counts,
  * latencies and a 12-hex sha256 prefix per query, never the text, and the
  * only file this process writes is a show's index cache, which is built from
- * transcripts alone. Responses are gzip-encoded for a client that accepts it.
+ * transcripts alone, and the node shortlists (built from taxonomy labels and
+ * transcripts, never from a request's query). Responses are gzip-encoded for
+ * a client that accepts it.
  *
  * INJECTION. The archive and manifest loaders, the cue store and the logger
  * are injected; `main()` is the only place that builds the real ones. An
@@ -102,6 +148,15 @@ export const MAX_REQUEST_BYTES = 16 * 1024 * 1024;
 export const MAX_QUERIES_PER_SEARCH = 256;
 export const MAX_QUERY_CHARS = 20_000;
 export const MAX_SEARCH_LIMIT = 200;
+/** Dense passages a hybrid query reads before grouping them by episode: enough
+ * for DEFAULT_DENSE_EXTRA new episodes past a full BM25 list. */
+export const HYBRID_DENSE_PASSAGES = 200;
+/** Passages kept per taxonomy node. */
+export const SHORTLIST_SIZE = 50;
+/** BM25 episodes a shortlist build pools; dense-only episodes may add as many. */
+export const SHORTLIST_EPISODES = 50;
+/** Dense passages a shortlist build reads to find its dense-only episodes. */
+export const SHORTLIST_DENSE_PASSAGES = 200;
 
 export interface RetrievalLogger {
   info(event: string, fields?: Record<string, unknown>): void;
@@ -112,6 +167,72 @@ export interface LoadedArchive {
   rows: TranscriptDigestEntry[];
   /** The machine-local corpus digest's `generated_at`, or null without one. */
   generatedAt: string | null;
+}
+
+/** One passage of the store (passageCutter.ts `Passage`, as stored). */
+export interface PassageRecord {
+  passageId: string;
+  show_id: string;
+  guid: string;
+  startSec: number;
+  endSec: number;
+  startBoundary: string;
+  endBoundary: string;
+  startAnchor: string | null;
+  endAnchor: string | null;
+  text: string;
+}
+
+/** A dense hit: a passage scored by its best chunk. */
+export interface DensePassageHit {
+  passageId: string;
+  show_id: string;
+  guid: string;
+  sim: number;
+}
+
+export interface ShortlistRow {
+  rank: number;
+  passageId: string;
+  score: number;
+  builtAt: string;
+}
+
+/**
+ * The passage store as the server uses it. The real one is
+ * tools/passage-index/store.mjs `createServerPassageStore` (node:sqlite),
+ * loaded only by `main()`; tests inject an in-memory fake.
+ */
+export interface PassageStore {
+  /** Passages of `episodes` ([show_id, guid] pairs; null = every episode)
+   * scored against the query vector, best first, at most `k`. */
+  denseSearch(vector: ArrayLike<number>, options: { episodes: ReadonlyArray<readonly [string, string]> | null; k: number }): DensePassageHit[];
+  passagesById(ids: readonly string[]): PassageRecord[];
+  passagesForEpisodes(episodes: ReadonlyArray<readonly [string, string]>): PassageRecord[];
+  /** Replace a node's shortlist whole, in one transaction. */
+  replaceShortlist(nodeId: string, rows: ReadonlyArray<{ rank: number; passageId: string; score: number }>, builtAt: string): void;
+  /** A node's stored rows, by rank. */
+  readShortlist(nodeId: string): ShortlistRow[];
+  /** Re-read the dense index (after an embed). */
+  reload?(): void;
+}
+
+/** Encodes a query for the dense arm (the model row's query prefix is the
+ * store's business). */
+export interface QueryEmbedder {
+  embedQuery(text: string): Promise<ArrayLike<number>>;
+}
+
+/** What a shortlist build reads: the taxonomy and the semantic index. */
+export interface ShortlistTaxonomy {
+  nodes: readonly ShortlistNode[];
+  concepts: Readonly<Record<string, SemanticConcept>>;
+}
+
+/** The lineage gate sourcing uses (familyGateAllows / nodesForArchiveEntry). */
+export interface LineageGate {
+  nodesFor(entry: TranscriptDigestEntry): string[];
+  allows(nodeId: string, nodes: string[]): boolean;
 }
 
 export interface RetrievalServiceOptions {
@@ -128,6 +249,13 @@ export interface RetrievalServiceOptions {
   logger: RetrievalLogger;
   now?: () => number;
   scopeTtlMs?: number;
+  /** The dense arm and the shortlists (GV-48): absent, mode 'hybrid' and the
+   * shortlist routes answer 503 and the BM25 routes are unchanged. */
+  passageStore?: PassageStore | null;
+  /** Absent: no hybrid search, and a shortlist is lexical only. */
+  queryEmbedder?: QueryEmbedder | null;
+  loadTaxonomy?: () => ShortlistTaxonomy;
+  lineage?: LineageGate;
 }
 
 export interface EpisodeRow {
@@ -156,6 +284,46 @@ export interface WireSearchResult {
   idf: Record<string, number>;
 }
 
+/** A hybrid candidate on the wire: the BM25 fields plus how it was found. The
+ * idf stays on the result (the client gives every candidate that map). */
+export interface WireHybridCandidate extends WireCandidate {
+  via: CandidateVia;
+  passage?: BestPassage;
+  denseSim?: number;
+}
+
+export interface WireHybridResult {
+  candidates: WireHybridCandidate[];
+  idf: Record<string, number>;
+}
+
+export interface ShortlistBuild {
+  builtAt: string;
+  nodes: number;
+  rows: number;
+  /** Nodes whose lineage admits no episode (stored empty). */
+  empty: string[];
+  ms: number;
+}
+
+export interface ShortlistPassage extends PassageRecord {
+  /** Position in this answer. */
+  rank: number;
+  /** Position in the stored shortlist. */
+  storedRank: number;
+  /** The build's fused score. */
+  score: number;
+  /** The rerank score against `query`; null without a query. */
+  rerankScore: number | null;
+}
+
+export interface ShortlistAnswer {
+  node: string;
+  builtAt: string | null;
+  reranked: "cosine" | "bm25" | null;
+  passages: ShortlistPassage[];
+}
+
 export interface Health {
   indexVersion: number;
   shows: number;
@@ -181,6 +349,33 @@ interface Scope {
 }
 
 const keyOf = (showId: string, guid: string): string => `${showId}\u0000${guid}`;
+const splitKey = (key: string): [string, string] => {
+  const at = key.indexOf("\u0000");
+  return [key.slice(0, at), key.slice(at + 1)];
+};
+
+/** Dense hits with their passages' bounds; a hit whose passage the store no
+ * longer holds is dropped. */
+function withBounds(store: PassageStore, hits: readonly DensePassageHit[]): DenseHit[] {
+  if (hits.length === 0) return [];
+  const records = new Map(store.passagesById([...new Set(hits.map((h) => h.passageId))]).map((p) => [p.passageId, p]));
+  const out: DenseHit[] = [];
+  for (const h of hits) {
+    const p = records.get(h.passageId);
+    if (!p) continue;
+    out.push({
+      passageId: h.passageId,
+      show_id: h.show_id,
+      guid: h.guid,
+      sim: h.sim,
+      startSec: p.startSec,
+      endSec: p.endSec,
+      startBoundary: p.startBoundary,
+      endBoundary: p.endBoundary
+    });
+  }
+  return out;
+}
 
 /** A 12-hex sha256 prefix: what a log line may say about a query. */
 export function queryHash(text: string): string {
@@ -216,6 +411,7 @@ export class RetrievalService {
    * serving until the new one is complete, and stays if loading throws. */
   reload(): Health {
     this.snapshot = this.load();
+    this.options.passageStore?.reload?.();
     return this.health();
   }
 
@@ -344,6 +540,11 @@ export class RetrievalService {
 
   /** Answers in query order. Throws 404 for an unknown or expired scope. */
   search(scopeId: unknown, queries: unknown): WireSearchResult[] {
+    const { scope, parsed } = this.parseSearch(scopeId, queries);
+    return this.searchParsed(this.snapshot, scope, parsed);
+  }
+
+  private parseSearch(scopeId: unknown, queries: unknown): { scope: Scope; parsed: Array<{ text: string; limit: number }> } {
     this.sweep();
     if (typeof scopeId !== "string") throw new HttpError(400, "scopeId must be a string");
     const scope = this.scopes.get(scopeId);
@@ -364,7 +565,11 @@ export class RetrievalService {
       }
       parsed.push({ text: query.text, limit });
     }
-    const { index, resident } = this.snapshot;
+    return { scope, parsed };
+  }
+
+  private searchParsed(snapshot: Snapshot, scope: Scope, parsed: Array<{ text: string; limit: number }>): WireSearchResult[] {
+    const { index, resident } = snapshot;
     const keys = scope.keys;
     /* A non-resident show is never offered to the index, so a request can
        never build one. For a scope of every resident show this predicate
@@ -386,6 +591,225 @@ export class RetrievalService {
         idf: Object.fromEntries(result.idf)
       };
     });
+  }
+
+  /**
+   * Mode 'hybrid' (GV-48): the BM25 answer of `search`, merged with the dense
+   * passages of the scope's episodes. Each query is embedded once. A dense hit
+   * outside the scope, or on an episode the archive does not hold, is dropped
+   * here even if the store returned it, so the scope is enforced twice.
+   */
+  async searchHybrid(scopeId: unknown, queries: unknown, policy: unknown = "append"): Promise<WireHybridResult[]> {
+    const store = this.options.passageStore;
+    const embedder = this.options.queryEmbedder;
+    if (!store || !embedder) throw new HttpError(503, "hybrid search needs the passage store and a query embedder (--passages-db, --embedder)");
+    if (typeof policy !== "string" || !MERGE_POLICIES.includes(policy as MergePolicy)) {
+      throw new HttpError(400, `policy must be one of ${MERGE_POLICIES.join(", ")}`);
+    }
+    const { scope, parsed } = this.parseSearch(scopeId, queries);
+    const snapshot = this.snapshot;
+    const lexical = this.searchParsed(snapshot, scope, parsed);
+    const keys = scope.keys;
+    const inScope = (showId: string, guid: string): boolean => {
+      const key = keyOf(showId, guid);
+      return snapshot.byKey.has(key) && (keys === "all" || keys.has(key));
+    };
+    const episodes = keys === "all" ? null : [...keys].map(splitKey);
+    const out: WireHybridResult[] = [];
+    for (let i = 0; i < parsed.length; i++) {
+      const text = (parsed[i] as { text: string }).text;
+      const answer = lexical[i] as WireSearchResult;
+      const vector = await this.embed(embedder, text);
+      const hits = store.denseSearch(vector, { episodes, k: HYBRID_DENSE_PASSAGES }).filter((h) => inScope(h.show_id, h.guid));
+      const merged = mergeCandidates(answer.candidates, withBounds(store, hits), {
+        policy: policy as MergePolicy,
+        denseExtra: DEFAULT_DENSE_EXTRA,
+        idf: new Map(Object.entries(answer.idf))
+      });
+      out.push({
+        candidates: merged.map((c) => ({
+          show_id: c.show_id,
+          guid: c.guid,
+          score: c.score,
+          matchedTerms: c.matchedTerms,
+          rank: c.rank,
+          via: c.via,
+          ...(c.passage ? { passage: c.passage } : {}),
+          ...(c.denseSim !== null ? { denseSim: c.denseSim } : {})
+        })),
+        idf: answer.idf
+      });
+    }
+    return out;
+  }
+
+  /** A query vector, or 503: an embedder failure never becomes a 500, and its
+   * message (which may be anything) is not passed on; the log gets its class. */
+  private async embed(embedder: QueryEmbedder, text: string): Promise<ArrayLike<number>> {
+    try {
+      return await embedder.embedQuery(text);
+    } catch (error) {
+      this.options.logger.error("embed-failed", { error: error instanceof Error ? error.name : typeof error });
+      throw new HttpError(503, "the query embedder failed");
+    }
+  }
+
+  private requireShortlistDeps(): { store: PassageStore; taxonomy: ShortlistTaxonomy; lineage: LineageGate } {
+    const store = this.options.passageStore;
+    const { loadTaxonomy, lineage } = this.options;
+    if (!store || !loadTaxonomy || !lineage) throw new HttpError(503, "the shortlist needs the passage store (--passages-db)");
+    return { store, taxonomy: loadTaxonomy(), lineage };
+  }
+
+  /**
+   * POST /v1/shortlist/rebuild (GV-48). For each node: its query
+   * (`nodeShortlistQuery`), its scope (the archive entries the lineage gate
+   * admits), then a hybrid PASSAGE search over that scope:
+   *   1. the episode pool: the top SHORTLIST_EPISODES BM25 episodes, plus the
+   *      dense-only episodes among the top SHORTLIST_DENSE_PASSAGES passages
+   *      ('append', so the BM25 pool is whole);
+   *   2. every passage of the pool, ranked twice: BM25 over the passage text
+   *      (with the episode search's corpus idf) and cosine to the query;
+   *   3. the two rankings fused by RRF; the top SHORTLIST_SIZE are stored.
+   * Without an embedder step 2 is the BM25 ranking alone. A node whose lineage
+   * admits nothing is stored empty. Yields to the event loop between nodes.
+   */
+  async rebuildShortlist(nodes?: unknown): Promise<ShortlistBuild> {
+    const { store, taxonomy, lineage } = this.requireShortlistDeps();
+    const embedder = this.options.queryEmbedder ?? null;
+    let targets: ShortlistNode[];
+    if (nodes === undefined || nodes === null) {
+      targets = [...taxonomy.nodes];
+    } else {
+      if (!Array.isArray(nodes) || nodes.some((n) => typeof n !== "string")) throw new HttpError(400, "nodes must be an array of taxonomy node ids");
+      const byId = new Map(taxonomy.nodes.map((n) => [n.id, n]));
+      const unknownIds = (nodes as string[]).filter((id) => !byId.has(id));
+      if (unknownIds.length > 0) throw new HttpError(400, `unknown taxonomy node(s): ${unknownIds.slice(0, 5).join(", ")}`);
+      targets = [...new Set(nodes as string[])].map((id) => byId.get(id) as ShortlistNode);
+    }
+    const started = this.now();
+    const builtAt = new Date(started).toISOString();
+    const snapshot = this.snapshot;
+    const nodesOf = new Map<TranscriptDigestEntry, string[]>();
+    for (const entry of snapshot.archive) nodesOf.set(entry, lineage.nodesFor(entry));
+    let rows = 0;
+    const empty: string[] = [];
+    for (const node of targets) {
+      const admitted = new Set<string>();
+      for (const entry of snapshot.archive) {
+        if (lineage.allows(node.id, nodesOf.get(entry) ?? [])) admitted.add(keyOf(String(entry.show_id), String(entry.guid)));
+      }
+      if (admitted.size === 0) empty.push(node.id);
+      const picked =
+        admitted.size === 0 ? [] : await this.shortlistFor(snapshot, store, embedder, nodeShortlistQuery(node, taxonomy.nodes, taxonomy.concepts), admitted);
+      store.replaceShortlist(node.id, picked, builtAt);
+      rows += picked.length;
+      await new Promise<void>((resolve) => setImmediate(resolve));
+    }
+    const build: ShortlistBuild = { builtAt, nodes: targets.length, rows, empty, ms: this.now() - started };
+    this.options.logger.info("shortlist-rebuilt", { nodes: build.nodes, rows, empty: empty.length, ms: build.ms });
+    return build;
+  }
+
+  private async shortlistFor(
+    snapshot: Snapshot,
+    store: PassageStore,
+    embedder: QueryEmbedder | null,
+    query: string,
+    admitted: Set<string>
+  ): Promise<Array<{ rank: number; passageId: string; score: number }>> {
+    const isUsable = (entry: TranscriptDigestEntry): boolean =>
+      snapshot.resident.has(entry.show_id) && admitted.has(keyOf(String(entry.show_id), String(entry.guid)));
+    const lexical = snapshot.index.searchWithIdf(query, { limit: SHORTLIST_EPISODES, isUsable });
+    const bm25 = lexical.candidates.map((c) => ({
+      show_id: String(c.entry.show_id),
+      guid: String(c.entry.guid),
+      score: c.score,
+      matchedTerms: c.matchedTerms,
+      rank: c.rank
+    }));
+    const inAdmitted = (h: { show_id: string; guid: string }): boolean => admitted.has(keyOf(h.show_id, h.guid));
+    const vector = embedder ? await this.embed(embedder, query) : null;
+    const denseHits = vector
+      ? store.denseSearch(vector, { episodes: [...admitted].map(splitKey), k: SHORTLIST_DENSE_PASSAGES }).filter(inAdmitted)
+      : [];
+    const pool = mergeCandidates(bm25, withBounds(store, denseHits), { policy: "append", denseExtra: SHORTLIST_EPISODES });
+    if (pool.length === 0) return [];
+    const poolPairs = pool.map((c) => [c.show_id, c.guid] as [string, string]);
+    const passages = store.passagesForEpisodes(poolPairs).filter(inAdmitted);
+    if (passages.length === 0) return [];
+    const rankings: string[][] = [rankByScore(scorePassagesBm25(query, passages, { idf: lexical.idf }))];
+    if (vector) {
+      const ids = new Set(passages.map((p) => p.passageId));
+      rankings.push(
+        store
+          .denseSearch(vector, { episodes: poolPairs, k: passages.length })
+          .filter((h) => ids.has(h.passageId))
+          .map((h) => h.passageId)
+      );
+    }
+    const fused = reciprocalRankFusion(rankings);
+    return [...fused.entries()]
+      .sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+      .slice(0, SHORTLIST_SIZE)
+      .map(([passageId, score], rank) => ({ rank, passageId, score }));
+  }
+
+  /**
+   * GET /v1/shortlist (GV-48): a node's stored passages, reranked against
+   * `query` by cosine (with an embedder) or by BM25 over the passage text, and
+   * cut to `limit`. Without a query, the stored order.
+   */
+  async shortlist(nodeId: unknown, query: unknown, limitText: unknown): Promise<ShortlistAnswer> {
+    const { store, taxonomy } = this.requireShortlistDeps();
+    if (typeof nodeId !== "string" || nodeId.length === 0) throw new HttpError(400, "node is required");
+    if (!taxonomy.nodes.some((n) => n.id === nodeId)) throw new HttpError(404, "unknown taxonomy node");
+    if (query !== null && query !== undefined && (typeof query !== "string" || query.length > MAX_QUERY_CHARS)) {
+      throw new HttpError(400, `query must be at most ${MAX_QUERY_CHARS} characters`);
+    }
+    const limit = limitText === null || limitText === undefined || limitText === "" ? SHORTLIST_SIZE : Number(limitText);
+    if (!Number.isInteger(limit) || limit < 1 || limit > SHORTLIST_SIZE) throw new HttpError(400, `limit must be an integer 1..${SHORTLIST_SIZE}`);
+    const rows = store.readShortlist(nodeId);
+    const records = new Map(store.passagesById(rows.map((r) => r.passageId)).map((p) => [p.passageId, p]));
+    const present = rows.filter((r) => records.has(r.passageId));
+    const recordOf = (r: ShortlistRow): PassageRecord => records.get(r.passageId) as PassageRecord;
+    const text = typeof query === "string" ? query.trim() : "";
+    let rerank: Map<string, number> | null = null;
+    let reranked: ShortlistAnswer["reranked"] = null;
+    if (text.length > 0 && present.length > 0) {
+      const embedder = this.options.queryEmbedder;
+      if (embedder) {
+        const vector = await this.embed(embedder, text);
+        const ids = new Set(present.map((r) => r.passageId));
+        const pairs = [...new Set(present.map((r) => keyOf(recordOf(r).show_id, recordOf(r).guid)))].map(splitKey);
+        rerank = new Map(
+          store
+            .denseSearch(vector, { episodes: pairs, k: Infinity })
+            .filter((h) => ids.has(h.passageId))
+            .map((h) => [h.passageId, h.sim])
+        );
+        reranked = "cosine";
+      } else {
+        rerank = scorePassagesBm25(text, present.map(recordOf));
+        reranked = "bm25";
+      }
+    }
+    const scores = rerank;
+    const ordered = scores
+      ? [...present].sort((a, b) => (scores.get(b.passageId) ?? -Infinity) - (scores.get(a.passageId) ?? -Infinity) || a.rank - b.rank)
+      : present;
+    return {
+      node: nodeId,
+      builtAt: rows[0]?.builtAt ?? null,
+      reranked,
+      passages: ordered.slice(0, limit).map((r, rank) => ({
+        ...recordOf(r),
+        rank,
+        storedRank: r.rank,
+        score: r.score,
+        rerankScore: scores ? (scores.get(r.passageId) ?? null) : null
+      }))
+    };
   }
 
   /** Every archive row that maps to a body, in archive order. */
@@ -543,6 +967,8 @@ export function createRetrievalHttpServer(options: RetrievalHttpOptions): http.S
         "/v1/scopes": "POST",
         "/v1/search": "POST",
         "/v1/reload": "POST",
+        "/v1/shortlist/rebuild": "POST",
+        "/v1/shortlist": "GET",
         "/v1/episodes": "GET",
         "/v1/cues": "GET",
         "/v1/archive": "GET"
@@ -559,13 +985,38 @@ export function createRetrievalHttpServer(options: RetrievalHttpOptions): http.S
           return { status: 200, payload: scope };
         }
         case "/v1/search": {
-          const body = (await readBody(req)) as { scopeId?: unknown; queries?: unknown };
+          const body = (await readBody(req)) as { scopeId?: unknown; queries?: unknown; mode?: unknown; policy?: unknown };
           const queries = Array.isArray(body?.queries) ? (body.queries as Array<{ text?: unknown }>) : [];
           fields.queries = queries.length;
           fields.queryHashes = queries.map((q) => (typeof q?.text === "string" ? queryHash(q.text) : null));
-          const results = service.search(body?.scopeId, body?.queries);
+          const mode = body?.mode;
+          /* No mode, or "bm25": the BM25 answer exactly as before GV-48. */
+          if (mode === undefined || mode === null || mode === "bm25") {
+            const results = service.search(body?.scopeId, body?.queries);
+            fields.candidates = results.map((r) => r.candidates.length);
+            return { status: 200, payload: { results } };
+          }
+          if (mode !== "hybrid") throw new HttpError(400, 'mode must be "bm25" or "hybrid"');
+          fields.mode = "hybrid";
+          const results = await service.searchHybrid(body?.scopeId, body?.queries, body?.policy ?? "append");
           fields.candidates = results.map((r) => r.candidates.length);
+          fields.dense = results.map((r) => r.candidates.filter((c) => c.via === "dense").length);
           return { status: 200, payload: { results } };
+        }
+        case "/v1/shortlist/rebuild": {
+          const body = (await readBody(req)) as { nodes?: unknown };
+          const build = await service.rebuildShortlist(body?.nodes);
+          fields.nodes = build.nodes;
+          fields.rows = build.rows;
+          return { status: 200, payload: build };
+        }
+        case "/v1/shortlist": {
+          const query = url.searchParams.get("query");
+          if (query) fields.queryHash = queryHash(query);
+          const answer = await service.shortlist(url.searchParams.get("node"), query, url.searchParams.get("limit"));
+          fields.node = answer.node;
+          fields.passages = answer.passages.length;
+          return { status: 200, payload: answer };
         }
         case "/v1/reload": {
           await readBody(req);
@@ -651,7 +1102,14 @@ export interface RetrievalServerArgs {
   indexRoot: string;
   manifest: string;
   normalizedRoot: string;
+  /** The passage store (GV-48); null: no dense arm and no shortlist. */
+  passagesDb: string | null;
+  /** The query embedder kind (tools/passage-index/embedder.mjs); null: none. */
+  embedder: string | null;
 }
+
+/** tools/passage-index/embedder.mjs EMBEDDER_KINDS. */
+export const EMBEDDER_KINDS = ["stub", "transformers", "openai"] as const;
 
 export function parseRetrievalServerArgs(argv: readonly string[]): RetrievalServerArgs {
   const value = (flag: string): string | null => {
@@ -664,6 +1122,12 @@ export function parseRetrievalServerArgs(argv: readonly string[]): RetrievalServ
       for (const s of String(argv[i + 1]).split(",")) if (s.trim().length > 0) shows.push(s.trim());
     }
   });
+  const embedder = value("--embedder");
+  if (embedder !== null && !(EMBEDDER_KINDS as readonly string[]).includes(embedder)) {
+    throw new Error(`--embedder must be one of ${EMBEDDER_KINDS.join(", ")}, got ${embedder}`);
+  }
+  const passagesDb = value("--passages-db");
+  if (embedder !== null && passagesDb === null) throw new Error("--embedder needs --passages-db");
   const portText = value("--port");
   const port = portText === null ? DEFAULT_PORT : Number(portText);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`--port must be 0..65535, got ${portText}`);
@@ -673,8 +1137,35 @@ export function parseRetrievalServerArgs(argv: readonly string[]): RetrievalServ
     shows,
     indexRoot: path.resolve(value("--index-root") ?? DEFAULT_INDEX_ROOT),
     manifest: path.resolve(value("--manifest") ?? DEFAULT_MANIFEST),
-    normalizedRoot: path.resolve(value("--normalized-root") ?? DEFAULT_NORMALIZED_ROOT)
+    normalizedRoot: path.resolve(value("--normalized-root") ?? DEFAULT_NORMALIZED_ROOT),
+    passagesDb: passagesDb === null ? null : path.resolve(passagesDb),
+    embedder
   };
+}
+
+/** The passage store's server adapter (tools/passage-index/store.mjs). */
+interface ServerPassageStoreModule {
+  openStore(dbPath: string): unknown;
+  createServerPassageStore(db: unknown, options: { embedder: unknown }): { passageStore: PassageStore; queryEmbedder: QueryEmbedder | null };
+}
+
+/**
+ * Open the passage store and the query embedder, by DYNAMIC import: only this
+ * path loads node:sqlite (flagged behind --experimental-sqlite before Node
+ * 22.13), so the BM25 server and every backend test run without it.
+ */
+async function loadPassageStore(args: RetrievalServerArgs): Promise<{ passageStore: PassageStore; queryEmbedder: QueryEmbedder | null } | null> {
+  if (args.passagesDb === null) return null;
+  const toolsDir = path.join(REPO_ROOT, "tools", "passage-index");
+  const storeModule = (await import(pathToFileURL(path.join(toolsDir, "store.mjs")).href)) as ServerPassageStoreModule;
+  let embedder: unknown = null;
+  if (args.embedder !== null) {
+    const embedderModule = (await import(pathToFileURL(path.join(toolsDir, "embedder.mjs")).href)) as {
+      createPassageEmbedder(options: { kind: string }): Promise<unknown>;
+    };
+    embedder = await embedderModule.createPassageEmbedder({ kind: args.embedder });
+  }
+  return storeModule.createServerPassageStore(storeModule.openStore(args.passagesDb), { embedder });
 }
 
 /** One JSON line per event on stderr. */
@@ -722,6 +1213,8 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
   const logger = jsonLineLogger();
   const token = retrievalToken();
   assertBindAllowed(args.host, token);
+  const dense = await loadPassageStore(args);
+  if (dense) logger.info("passage-store", { embedder: args.embedder ?? "none" });
   const service = new RetrievalService({
     loadArchive: loadArchiveFresh,
     loadManifest: () => {
@@ -732,7 +1225,11 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
     createCueStore: () => new FileTranscriptCueProvider(args.normalizedRoot),
     indexRoot: args.indexRoot,
     shows: args.shows,
-    logger
+    logger,
+    passageStore: dense?.passageStore ?? null,
+    queryEmbedder: dense?.queryEmbedder ?? null,
+    loadTaxonomy: () => ({ nodes: loadTaxonomyNodes(), concepts: loadCatalogueData().concepts }),
+    lineage: { nodesFor: (entry) => nodesForArchiveEntry(entry), allows: (nodeId, nodes) => familyGateAllows(nodeId, nodes) }
   });
   const started = await startRetrievalServer({ service, token, logger, host: args.host, port: args.port });
   const stop = (): void => {
