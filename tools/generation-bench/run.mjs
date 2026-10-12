@@ -78,6 +78,14 @@
  *   node tools/generation-bench/run.mjs --candidates <dir> --segments <segments.json>
  *   node tools/generation-bench/run.mjs --wide out-9/        # every column, detail included
  *   node tools/generation-bench/run.mjs --wide --cards <store.jsonl> --listen-keys <dir> out-9/
+ *   node tools/generation-bench/run.mjs --scorecard --wide out-9/   # + the MQ scorecard (GV-24)
+ *
+ * THE QUALITY SCORECARD (GV-24, MQ-01..MQ-21). `--scorecard` scores each
+ * entry with score.mjs's scoreCandidate (the report entry, the candidate
+ * beside it, a `<candidate>.judged.json` beside that, the listening cards)
+ * and adds a `scorecard` object to each JSONL line; under `--wide` the MQ
+ * columns (detail group) print after the others. Without the flag nothing
+ * changes: the lines and tables are byte-identical to the bench's own.
  *
  * PER-CALL SPEED (GV-17, MT-04..MT-12). A report entry written since GV-01
  * names its attempt's runlog (`entry.runLog`, relative to the report's own
@@ -111,6 +119,7 @@ import { isEntryScript } from "../ci/entry.mjs";
 import { DEFAULT_STORE as DEFAULT_LISTEN_CARDS, readCards } from "../listening/card.mjs";
 import { DEFAULT_KEY_DIR as DEFAULT_LISTEN_KEYS, KEY_MISSING, listenByCandidate } from "../listening/unseal.mjs";
 import { SPARK_UNIT, readRunLog, repeatRequests, summarizeRunLog } from "./runlog.mjs";
+import { SCORECARD_COLUMNS, judgedPathFor, loadSegmentSources, readJudged, scoreCandidate, scorecardValues } from "./score.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -488,7 +497,9 @@ export const DETAIL = "detail";
 
 /** The columns a table prints: core only, or every column when `wide`. */
 export function tableColumns(options = {}) {
-  return options.wide ? COLUMNS : COLUMNS.filter((col) => col.group === CORE);
+  if (!options.wide) return COLUMNS.filter((col) => col.group === CORE);
+  /* GV-24: the MQ scorecard columns, only when the rows were scored. */
+  return options.scorecard ? [...COLUMNS, ...SCORECARD_COLUMNS] : COLUMNS;
 }
 
 /** What an absent cell prints as. Never `0`, never an empty string — a blank
@@ -601,6 +612,29 @@ export function loadSegmentPool(file) {
 }
 
 /**
+ * The duration of every `type: "segment"` item, in item order: the minted row
+ * first, then the pool row, else null (unresolved). clipStats aggregates these;
+ * the scorecard (score.mjs, GV-24, MQ-08) reads them per clip, so the bench and
+ * the scorecard measure the same clips.
+ */
+export function clipDurations(candidate, pool = new Map()) {
+  const minted = new Map();
+  for (const row of candidate.segments || []) {
+    const start = num(row.startSec);
+    const end = num(row.endSec);
+    if (start !== null && end !== null) minted.set(row.id, end - start);
+  }
+  const items = (candidate.items || []).filter((item) => item && item.type === "segment");
+  return items.map((item) => {
+    if (minted.has(item.segment_id)) return minted.get(item.segment_id);
+    const row = pool.get(item.segment_id);
+    const start = row ? num(row.start_sec) : null;
+    const end = row ? num(row.end_sec) : null;
+    return start !== null && end !== null ? end - start : null;
+  });
+}
+
+/**
  * Clip statistics for one candidate Foray.
  *
  * Every `type: "segment"` item is a clip the listener hears. Its duration
@@ -616,28 +650,12 @@ export function loadSegmentPool(file) {
  * subset, not the run's mean, and the difference has to be visible.
  */
 export function clipStats(candidate, pool = new Map()) {
-  const minted = new Map();
-  for (const row of candidate.segments || []) {
-    const start = num(row.startSec);
-    const end = num(row.endSec);
-    if (start !== null && end !== null) minted.set(row.id, end - start);
-  }
-  const items = (candidate.items || []).filter((item) => item && item.type === "segment");
-  const durations = [];
-  for (const item of items) {
-    if (minted.has(item.segment_id)) {
-      durations.push(minted.get(item.segment_id));
-      continue;
-    }
-    const row = pool.get(item.segment_id);
-    const start = row ? num(row.start_sec) : null;
-    const end = row ? num(row.end_sec) : null;
-    if (start !== null && end !== null) durations.push(end - start);
-  }
+  const all = clipDurations(candidate, pool);
+  const durations = all.filter((d) => d !== null);
   const tapeSec = durations.reduce((sum, d) => sum + d, 0);
   const runtimeSec = num(candidate.runtimeSec);
   return {
-    count: items.length,
+    count: all.length,
     measured: durations.length,
     meanSec: durations.length ? tapeSec / durations.length : null,
     maxSec: durations.length ? Math.max(...durations) : null,
@@ -743,7 +761,7 @@ export function runLogSummaryFor(entry, reportPath) {
  * `null` means "the run did not do it" or "the file did not say".
  */
 export function rowFor(entry, context = {}) {
-  const { report = {}, runId = "run", clips = null, listening = null, runlog = null } = context;
+  const { report = {}, runId = "run", clips = null, listening = null, runlog = null, scorecard = null } = context;
   const v = entry.veracity || {};
   const candidateId = candidateIdFor(entry);
   const heard = listening && candidateId !== null ? listening.get(candidateId) || null : null;
@@ -803,9 +821,14 @@ export function rowFor(entry, context = {}) {
   for (const col of COLUMNS) {
     sources[col.key] = values[col.key] === null || values[col.key] === undefined ? "absent" : col.from;
   }
+  /* GV-24: the MQ scalars join `values` for the --wide table only; their
+     provenance is the scorecard's own per-cell `source`, so `sources` (the
+     bench columns' provenance) is unchanged. */
+  if (scorecard) Object.assign(values, scorecardValues(scorecard));
   return {
     values,
     sources,
+    ...(scorecard ? { scorecard } : {}),
     /* Context a diff wants that is not a graded column. */
     meta: {
       run: runId,
@@ -822,6 +845,22 @@ export function rowFor(entry, context = {}) {
   };
 }
 
+/** GV-24: one entry's MQ scorecard. The judged file is GV-92's
+ * `<candidate>.judged.json` beside the candidate; MQ-20 is joined by the same
+ * candidate id as the listen column. */
+export function scorecardFor(entry, candidate, candidateFile, context = {}) {
+  const candidateId = candidateIdFor(entry);
+  const judgedFile = judgedPathFor(candidateFile);
+  return scoreCandidate({
+    candidate,
+    entry,
+    pool: context.pool || new Map(),
+    sources: context.sources || null,
+    judged: judgedFile ? readJudged(judgedFile)(candidateId) : null,
+    listen: context.listening && candidateId !== null ? context.listening.get(candidateId) || null : null
+  });
+}
+
 /** Every row a report yields — one per entry, in the report's own order. */
 export function rowsForReport(reportPath, options = {}) {
   const report = readJson(reportPath);
@@ -830,10 +869,15 @@ export function rowsForReport(reportPath, options = {}) {
   const pool = options.pool || new Map();
   return entries.map((entry, index) => {
     const candidateFile = candidatePathFor(entry, reportPath, options.candidatesDir);
-    const clips = candidateFile ? clipStats(readJson(candidateFile), pool) : null;
+    const candidate = candidateFile ? readJson(candidateFile) : null;
+    const clips = candidate ? clipStats(candidate, pool) : null;
     const id = entries.length > 1 ? `${runId}#${index + 1}` : runId;
     const runlog = runLogSummaryFor(entry, reportPath);
-    return rowFor(entry, { report, runId: id, clips, listening: options.listening || null, runlog });
+    const listening = options.listening || null;
+    const scorecard = options.scorecard
+      ? scorecardFor(entry, candidate, candidateFile, { pool, sources: options.segmentSources, listening })
+      : null;
+    return rowFor(entry, { report, runId: id, clips, listening, runlog, scorecard });
   });
 }
 
@@ -906,7 +950,10 @@ export function jsonlLine(row) {
     /* GV-17: calls per stage as a meta object (not a column), and the basis of
        prose_tps so a diff never compares a decode rate with an e2e one. */
     calls_by_stage: row.meta.calls_by_stage ?? null,
-    prose_basis: row.meta.prose_basis ?? null
+    prose_basis: row.meta.prose_basis ?? null,
+    /* GV-24: the MQ scorecard, only on a --scorecard row, so a plain line is
+       byte-identical to the bench's own. */
+    ...(row.scorecard ? { scorecard: row.scorecard } : {})
   });
 }
 
@@ -941,9 +988,12 @@ export function rowFromJsonl(line) {
   for (const col of COLUMNS) {
     if (sources[col.key] === undefined) sources[col.key] = values[col.key] === null || values[col.key] === undefined ? "absent" : col.from;
   }
+  const scorecard = obj.scorecard && typeof obj.scorecard === "object" ? obj.scorecard : null;
+  if (scorecard) Object.assign(values, scorecardValues(scorecard));
   return {
     values,
     sources,
+    ...(scorecard ? { scorecard } : {}),
     meta: {
       run: obj.run,
       generated_at: obj.generated_at ?? null,
@@ -1030,11 +1080,15 @@ export function parseArgs(argv) {
     append: null,
     wide: false,
     cards: null,
-    listenKeys: null
+    listenKeys: null,
+    scorecard: false,
+    segmentSources: null
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--format") args.format = argv[++i];
+    else if (a === "--scorecard") args.scorecard = true;
+    else if (a === "--segment-sources") args.segmentSources = argv[++i];
     else if (a === "--candidates") args.candidatesDir = argv[++i];
     else if (a === "--segments") args.segments = argv[++i];
     else if (a === "--run-id") args.runId = argv[++i];
@@ -1057,6 +1111,10 @@ export function collectRows(args) {
     cards: args.cards ? path.resolve(args.cards) : null,
     keyDir: args.listenKeys ? path.resolve(args.listenKeys) : null
   });
+  /* GV-24: MQ-07 resolves a clip's show through the segment-sources registry. */
+  const segmentSources = args.scorecard
+    ? loadSegmentSources(args.segmentSources ? path.resolve(args.segmentSources) : path.join(REPO_ROOT, "data", "segment-sources.json"))
+    : null;
   const rows = [];
   for (const target of args.targets) {
     rows.push(
@@ -1064,7 +1122,9 @@ export function collectRows(args) {
         runId: args.runId,
         candidatesDir: args.candidatesDir,
         pool,
-        listening
+        listening,
+        scorecard: Boolean(args.scorecard),
+        segmentSources
       })
     );
   }
@@ -1074,7 +1134,7 @@ export function collectRows(args) {
 export function main(argv, out = console.log) {
   const args = parseArgs(argv);
   const rows = collectRows(args);
-  if (args.format === "both" || args.format === "table") out(formatTable(rows, { wide: args.wide }));
+  if (args.format === "both" || args.format === "table") out(formatTable(rows, { wide: args.wide, scorecard: args.scorecard }));
   if (args.format === "both") out("");
   if (args.format === "both" || args.format === "jsonl") for (const row of rows) out(jsonlLine(row));
   if (args.append) {

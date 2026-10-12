@@ -1,0 +1,37 @@
+{
+  "id": "score-synth",
+  "title": "Synthetic two-show candidate (GV-24 scorecard fixture)",
+  "runtimeSec": 600,
+  "items": [
+    {
+      "type": "narration",
+      "id": "intro",
+      "script": "Bread starts with flour and water. The baker you are about to hear spent many years learning how a slow dough changes its flavour overnight in a cold room before it ever goes near the hot oven door."
+    },
+    { "type": "segment", "segment_id": "synth-ep-a1#0", "slot": "slot-1" },
+    {
+      "type": "narration",
+      "id": "seam-1",
+      "script": "In this act the story turns to yeast. A second baker disagrees."
+    },
+    { "type": "segment", "segment_id": "synth-ep-a2#100", "slot": "slot-1" },
+    {
+      "type": "narration",
+      "id": "seam-2",
+      "script": "Across the ocean a miller who grinds his own grain by hand every single morning says the flour matters far more than the yeast and he has the loaves to prove it."
+    },
+    { "type": "segment", "segment_id": "synth-ep-b1#30", "slot": "slot-2" },
+    { "type": "segment", "segment_id": "synth-ep-b2#10", "slot": "slot-2" },
+    { "type": "narration", "id": "outro" }
+  ],
+  "segments": [
+    { "id": "synth-ep-a1#0", "itemId": "synth-ep-a1", "startSec": 0, "endSec": 120, "boundary": "turn" },
+    { "id": "synth-ep-a2#100", "itemId": "synth-ep-a2", "startSec": 100, "endSec": 140, "boundary": "sentence" },
+    { "id": "synth-ep-b1#30", "itemId": "synth-ep-b1", "startSec": 30, "endSec": 120, "boundary": "claim-only" }
+  ],
+  "segmentSources": [
+    { "id": "synth-ep-a1", "show": "Synthetic Show A" },
+    { "id": "synth-ep-a2", "show": "Synthetic Show A" },
+    { "id": "synth-ep-b1", "show": "Synthetic Show B" }
+  ]
+}

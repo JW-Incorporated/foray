@@ -57,6 +57,7 @@ import {
   PROPOSED,
   SETTLED,
   candidatePathFor,
+  clipDurations,
   clipStats,
   collectRows,
   costUsdFor,
@@ -1134,6 +1135,84 @@ test("GV-17: the KPI doc legend names each speed column and its MT id", () => {
     const escaped = header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(doc, new RegExp("\\| `" + escaped + "` \\| — \\| — \\| \\*\\*detail, " + ids[key] + "\\.\\*\\*"), `${header} (${ids[key]})`);
   }
+});
+
+/* =================================================================== */
+/* GV-24 — the MQ scorecard under --scorecard                           */
+/* =================================================================== */
+
+const OUT9_DIR = path.join(FIXTURES, "out-9");
+const scored9 = () => rowsForReport(path.join(OUT9_DIR, "report.json"), { pool: POOL, scorecard: true, segmentSources: new Map() })[0];
+
+test("GV-24: without --scorecard the JSONL line and the --wide table carry no scorecard", () => {
+  /* MUTATION: in jsonlLine(), always add `scorecard: row.scorecard ?? null`.
+     Ran it: red. */
+  const line = JSON.parse(jsonlLine(run9()));
+  assert.equal("scorecard" in line, false);
+  assert.equal("scorecard" in run9(), false);
+  assert.equal(tableColumns({ wide: true }).some((c) => c.from === "scorecard"), false);
+  assert.equal(tableColumns({ wide: true, scorecard: true }).filter((c) => c.from === "scorecard").length > 0, true);
+  /* Detail columns: the core table never shows them, scored or not. */
+  assert.deepEqual(tableColumns({ scorecard: true }), tableColumns());
+  assert.equal(markdownRow(scored9()), markdownRow(run9()));
+});
+
+test("GV-24: --scorecard on out-9 fills the report cells, leaves judged and listen null, and --wide prints the MQ columns", () => {
+  /* MUTATION: drop `scorecard` from the context rowsForReport() hands
+     rowFor(). Ran it: red. */
+  const out = [];
+  main(["--scorecard", "--wide", "--segments", path.join(FIXTURES, "segments.json"), OUT9_DIR], (s) => out.push(s));
+  const text = out.join("\n");
+  const lines = text.split("\n");
+  const header = lines[0].trim().split(/\s{2,}/);
+  const cells = lines.find((l) => l.trim().startsWith("run-9")).trim().split(/\s{2,}/);
+  const cell = (name) => cells[header.indexOf(name)];
+  assert.equal(cell("MQ01"), "1.000");
+  assert.equal(cell("MQ04"), "8");
+  assert.equal(cell("MQ13"), "0");
+  assert.equal(cell("MQ02"), ABSENT);
+  assert.equal(cell("MQ21"), ABSENT);
+  assert.match(text, /MQ-01 grounded quote rate/);
+  const json = JSON.parse(lines.find((l) => l.startsWith("{")));
+  assert.equal(json.scorecard["MQ-01"].value, 1);
+  assert.equal(json.scorecard["MQ-01"].source, "report");
+  for (const id of ["MQ-02", "MQ-03", "MQ-05", "MQ-10", "MQ-12", "MQ-20"]) assert.equal(json.scorecard[id].value, null, id);
+  assert.equal(Object.keys(json.scorecard).length, 21);
+});
+
+test("GV-24: a scored line round-trips through rowFromJsonl to the same --wide table", () => {
+  /* MUTATION: in rowFromJsonl(), drop the `scorecardValues` merge. Ran it: red. */
+  const row = scored9();
+  const back = rowFromJsonl(jsonlLine(row));
+  assert.deepEqual(back.scorecard, row.scorecard);
+  assert.equal(formatTable([back], { wide: true, scorecard: true }), formatTable([row], { wide: true, scorecard: true }));
+});
+
+test("GV-24: a judged.json beside the candidate fills the judged MQ cells", () => {
+  /* MUTATION: in scorecardFor(), pass `judged: null`. Ran it: red. */
+  const dir = tmpdir();
+  for (const f of fs.readdirSync(OUT9_DIR)) fs.copyFileSync(path.join(OUT9_DIR, f), path.join(dir, f));
+  fs.writeFileSync(path.join(dir, `${RUN9_CANDIDATE}.judged.json`), JSON.stringify({ questionsVersion: 1, "MQ-10": 4, "MQ-12": 3.5 }));
+  const row = rowsForReport(path.join(dir, "report.json"), { pool: POOL, scorecard: true })[0];
+  assert.equal(row.scorecard["MQ-10"].value, 4);
+  assert.equal(row.scorecard["MQ-12"].value, 3.5);
+  assert.equal(row.values.mq10, 4);
+});
+
+test("GV-24: clipStats aggregates clipDurations, one entry per clip, null where unresolved", () => {
+  /* MUTATION: in clipDurations(), `.filter()` out the unresolved clips instead
+     of returning null for them. Ran it: red (length 2). */
+  const candidate = {
+    runtimeSec: 400,
+    items: [{ type: "segment", segment_id: "m" }, { type: "narration" }, { type: "segment", segment_id: "gone" }, { type: "segment", segment_id: "p" }],
+    segments: [{ id: "m", startSec: 0, endSec: 100 }]
+  };
+  const pool = new Map([["p", { id: "p", start_sec: 10, end_sec: 60 }]]);
+  assert.deepEqual(clipDurations(candidate, pool), [100, null, 50]);
+  const stats = clipStats(candidate, pool);
+  assert.equal(stats.count, 3);
+  assert.equal(stats.measured, 2);
+  assert.equal(stats.tapeSec, 150);
 });
 
 /* ------------------------------------------------------------------ */
