@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
@@ -7,6 +6,7 @@ import { parseWithRetry } from "./parseWithRetry";
 import type { Act, DeepenedAct, Spine } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
 import { createMessage } from "./anthropicCall";
+import { RawDeepenedActSchema } from "./replySchemas";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -28,39 +28,6 @@ const MODEL = modelFor("sonnet");
 const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 4000;
-
-/* `kind` is optional here and defaulted downstream rather than required: a
-   model that omits it must not cost the whole act a retry, and an absent kind
-   means "account", which is the search-for-tape behaviour that predates the
-   field (see BeatKindSchema in types/spine.ts). */
-/* `seed` (WS-L, F-63) is parsed rather than dropped: a beat the spine wrote from
-   a quoted transcript window names that window, and §4.5 opens the named episode
-   first. It is optional here for the same reason `kind` is — a model that omits
-   it must not cost the act a retry — and `deepenActs.ts` puts back any seed the
-   reply lost, so the pass-through is guaranteed in code rather than asked for in
-   a prompt.
-
-   F-68 EXTENDS THAT TO THE CLAIM. A seeded beat's `claim` is frozen: the prompt
-   says to copy it verbatim, and `deepenActs.ts` restores it when the model
-   paraphrased anyway. A paraphrase parses fine here on purpose — it must not
-   cost the act a retry — it simply does not survive the stage. */
-const BeatSeedSchema = z.object({ episodeId: z.string(), startSec: z.number(), endSec: z.number() });
-const BeatSchema = z.object({
-  claim: z.string(),
-  exploration: z.boolean(),
-  kind: z.enum(["account", "argument"]).optional(),
-  seed: BeatSeedSchema.optional()
-});
-const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
-const RawDeepenedActSchema = z.object({
-  title: z.string(),
-  thesis: z.string(),
-  startState: z.string(),
-  endState: z.string(),
-  slots: z.array(SlotSchema),
-  introduction: z.string(),
-  exit: z.string()
-});
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);

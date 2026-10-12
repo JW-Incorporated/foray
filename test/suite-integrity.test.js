@@ -2507,6 +2507,7 @@ const BACKEND_FLOORS = {
   "test/entitiesParity.test.ts": 7, // CH2-09 (docs/roadmap/code-health-2.md, B1-05): html.ts and tools/refresh/entities.mjs agree over backend/fixtures/entities.json, every shared-table name decodes the same, neither module carries its own name map, html.ts loads when compiled to CommonJS with or without esModuleInterop, and the live parser shows "Café" and a CDATA "&amp;#038;" as data/ does; new
   "test/interestLearning.test.ts": 40, // CH2-05 (B2-15): INTEREST_REASONS and UserTaxonomyRow.source are pinned to the last migration's CHECKs, persona_seed the named SQL-only reason; 38 -> 40 // round-3 completeness sweep: app-2-6 a changed or withdrawn thumbs vote undoes the one it replaces; 35 -> 38 // round-3 L6 (2026-09-25): backend-rest-17: card_ignored fires once per threshold, running per-topic streak; 30 -> 35
   "test/itunes.test.ts": 3,
+  "test/jsonSchema.test.ts": 13, // GV-02 (docs/roadmap/generation-v2.md, #1286): reply schemas in replySchemas.ts, zodToJsonSchema over every one (snapshot per schema), optional/nullable/additionalProperties rules, sample replies fit both zod and the JSON Schema, union/transform/record/default refused with the path, responseFormatFor cached; new
   "test/ladderBuilder.test.ts": 13,
   "test/ladderIntegrity.test.ts": 11,
   "test/ladderProgress.test.ts": 8,

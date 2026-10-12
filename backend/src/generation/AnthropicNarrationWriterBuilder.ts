@@ -14,6 +14,7 @@ import type {
   SeamBrief
 } from "./NarrationWriterBuilder";
 import { assertReplyComplete, createMessage } from "./anthropicCall";
+import { RawActWriteSchema } from "./replySchemas";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -51,12 +52,6 @@ import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 const MODEL = modelFor("sonnet");
 const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
-const RawClaimSchema = z.object({
-  claimText: z.string(),
-  quote: z.string(),
-  docId: z.string(),
-  contested: z.boolean()
-});
 
 /* Q-03: the whole act's seams come back in one reply — every seam's script,
  * claims and quotes. Sized for a long act (a dozen beats over half a dozen
@@ -94,16 +89,6 @@ export function actOutputTokenBudget(request: Pick<ActWriteRequest, "seams">): n
   const needed = Math.ceil(scriptChars * ACT_OUTPUT_TOKENS_PER_SEAM_CHAR);
   return Math.min(ACT_OUTPUT_TOKEN_CEILING, Math.max(MAX_ACT_OUTPUT_TOKENS, needed));
 }
-
-const RawWrittenSeamSchema = z.object({
-  seamId: z.string(),
-  script: z.string(),
-  claims: z.array(RawClaimSchema),
-  usedClaims: z.array(z.number()),
-  pronunciationHints: z.array(z.object({ word: z.string(), hint: z.string() })).optional()
-});
-
-const RawActWriteSchema = z.object({ seams: z.array(RawWrittenSeamSchema) });
 
 type WriterOperation = "narration_write_act";
 

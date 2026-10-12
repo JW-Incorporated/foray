@@ -1,11 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
 import { parseWithRetry } from "./parseWithRetry";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { ContinuityBuilder, ContinuityBuildContext, ContinuitySmoothRequest, ContinuitySmoothResult } from "./ContinuityBuilder";
 import { createMessage } from "./anthropicCall";
+import { RawSmoothResultSchema } from "./replySchemas";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -28,10 +28,6 @@ const MODEL = modelFor("sonnet");
 const USD_PER_INPUT_TOKEN = costFor("sonnet").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("sonnet").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 500;
-
-const RawSmoothResultSchema = z.object({
-  nextIntroduction: z.string()
-});
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);

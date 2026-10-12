@@ -1,5 +1,4 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { z } from "zod";
 import { env } from "../config/env";
 import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
@@ -10,6 +9,7 @@ import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTi
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "./spineSeeding";
 import { createMessage } from "./anthropicCall";
+import { RawSpineSchema } from "./replySchemas";
 import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
 
 /**
@@ -35,29 +35,6 @@ const MODEL = modelFor("opus");
 const USD_PER_INPUT_TOKEN = costFor("opus").usdPerInputToken;
 const USD_PER_OUTPUT_TOKEN = costFor("opus").usdPerOutputToken;
 const MAX_OUTPUT_TOKENS = 8000;
-
-/* `seed` is optional and passed through: WS-L asks for at least
-   `SPINE_MIN_SEEDED_BEATS_PER_ACT` beats per act written from a quoted
-   transcript window, and the seed is how the beat says which one. A missing or
-   malformed seed must not cost the whole spine a re-ask — `spineStructure.ts`
-   is what enforces the floor, with a message that says what to fix. */
-const BeatSeedSchema = z.object({ episodeId: z.string(), startSec: z.number(), endSec: z.number() });
-const BeatSchema = z.object({ claim: z.string(), exploration: z.boolean(), seed: BeatSeedSchema.optional() });
-const SlotSchema = z.object({ title: z.string(), beats: z.array(BeatSchema) });
-const ActSchema = z.object({
-  title: z.string(),
-  thesis: z.string(),
-  startState: z.string(),
-  endState: z.string(),
-  slots: z.array(SlotSchema)
-});
-const VoiceSchema = z.object({
-  style: z.string(),
-  register: z.string(),
-  sentenceRhythm: z.string(),
-  narratorPresence: z.string()
-});
-const RawSpineSchema = z.object({ overview: z.string(), voice: VoiceSchema, acts: z.array(ActSchema) });
 
 function roughTokenEstimate(text: string): number {
   return Math.ceil(text.length / 4);
