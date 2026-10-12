@@ -605,11 +605,15 @@ export function prepareSpecificsSources(sourceTexts: ReadonlyArray<string>): Pre
       else values.push(n.value);
     }
     /* A name is extracted with its possessive stripped ("Couitt's" gives
-       "Couitt"), so the sources are prepared the same way: canonicalising
-       alone turns a source's "Couitt's" into "couitts", and the name the
-       sentence states would be flagged although the source carries it. */
-    const c = canonicalizeForAnchorMatch(stripPossessives(text));
+       "Couitt"), so each source is kept in both forms: canonicalising alone
+       turns a source's "Couitt's" into "couitts", and the plain name the
+       sentence states would be flagged although the source carries it; the
+       stripped form alone loses "couitts", and a sentence's "McDonalds" or
+       plural "Couitts" would be flagged instead. */
+    const c = canonicalizeForAnchorMatch(text);
     if (c) canon.push(c);
+    const stripped = canonicalizeForAnchorMatch(stripPossessives(text));
+    if (stripped && stripped !== c) canon.push(stripped);
   }
   return { kind: "prepared-specifics-sources", values, decades, canonical: ` ${canon.join(" | ")} ` };
 }

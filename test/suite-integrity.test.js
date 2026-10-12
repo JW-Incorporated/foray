@@ -3361,7 +3361,7 @@ const BACKEND_FLOORS = {
      unsupportedSpecifics (ASR-lowercase names, longest-token fallback,
      decade-from-year support). Static count 5: three it.each tables of 62
      cases, pinned at >= 40 by the suite's own first test. Pure; no fixtures. */
-  "test/specifics.test.ts": 6, // GV-38 (decision 34 follow-up, GV-34 review): a name in the possessive is the same name -- sources are prepared with 's stripped like the extracted names (an it.each table of 7 and one numbers-untouched test); 5 -> 6
+  "test/specifics.test.ts": 6, // GV-38 (decision 34 follow-up, GV-34 review): a name in the possessive is the same name -- sources are prepared with 's stripped like the extracted names (an it.each table of 9, incl. the review's no-apostrophe and plural rows, and one numbers-untouched test); 5 -> 6
   /* GV-38 (docs/roadmap/generation-v2.md, W4-08, #1286): the act frame --
      buildActFrames (own introduction and exit, the previous act's exit, the
      spine states, the overview for act 0), the frame on every act request

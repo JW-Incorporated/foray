@@ -30,6 +30,10 @@ import {
  *      flagged, and so is "McDonald's" against "McDonald's".
  *   7. (GV-38) extractNames without `stripPossessive` — the sentence's
  *      "Couitt's" is reported as "Couitt's" and flagged against "Couitt".
+ *   8. (GV-38 review) prepareSpecificsSources keeping only the stripped form
+ *      (dropping the unstripped canonical text) — "McDonalds" against "the
+ *      McDonald's stall" and the plural "Couitts" against "Couitt's men" are
+ *      flagged.
  */
 
 const NUMBER_CASES: Array<[string, string, Array<{ value: number; percent?: boolean; decade?: boolean; ordinal?: boolean }>]> = [
@@ -169,7 +173,9 @@ describe("GV-38 — a name in the possessive is the same name (GV-34 review)", (
     ["a possessive on both sides", "McDonald's opened a stall.", ["the McDonald's stall"], []],
     ["a two-word name against a possessive surname", "Joe Couitt kept the ledger.", ["it was Couitt's ledger"], []],
     ["a different name in the possessive is still flagged", "Couitt kept the ledger.", ["Coutts's ledger"], ["Couitt"]],
-    ["an ordinary contraction is not a name", "Couitt kept it.", ["it's couitt"], []]
+    ["an ordinary contraction is not a name", "Couitt kept it.", ["it's couitt"], []],
+    ["a no-apostrophe spelling against a possessive in the source", "McDonalds opened a stall.", ["the McDonald's stall"], []],
+    ["a plural name against a possessive in the source", "Then Couitts arrived.", ["Couitt's men arrived"], []]
   ];
   it.each(POSSESSIVE_CASES)("%s", (_label, sentence, sources, expected) => {
     expect(unsupportedSpecifics(sentence, sources)).toEqual(expected);
