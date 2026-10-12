@@ -114,15 +114,20 @@ export async function askStructured<T>(input: AskStructuredInput<T>): Promise<As
   const { provider, target, schemaName, schema, maxTokens, operation, budget, label } = input;
   const responseFormat = responseFormatOf(target, schemaName);
 
-  const ask = async (messages: ChatMessage[]): Promise<ChatResponse> => {
-    await budget.guard.checkAndRecord({
-      userId: budget.userId,
-      operation,
-      provider: target.providerName,
-      model: target.model,
-      estimatedUsd: estimateUsd(messages, maxTokens, target),
-      ...(budget.sessionId !== undefined ? { sessionId: budget.sessionId } : {})
-    });
+  /* Step 1's cost event. The guard is called at each call site (first ask
+     and re-ask) so every `reask` closure visibly meters itself, the rule
+     parseWithRetry.test.ts checks across backend/src. */
+  const costEventFor = (messages: readonly ChatMessage[]): CostEventInput => ({
+    userId: budget.userId,
+    operation,
+    provider: target.providerName,
+    model: target.model,
+    estimatedUsd: estimateUsd(messages, maxTokens, target),
+    ...(budget.sessionId !== undefined ? { sessionId: budget.sessionId } : {})
+  });
+
+  /* Steps 2-4: send, record usage, refuse a truncated reply. */
+  const send = async (messages: ChatMessage[]): Promise<ChatResponse> => {
     const request: ChatRequest = {
       model: target.model,
       messages,
@@ -146,12 +151,15 @@ export async function askStructured<T>(input: AskStructuredInput<T>): Promise<As
     return response;
   };
 
-  const first = await ask(input.messages);
+  await budget.guard.checkAndRecord(costEventFor(input.messages));
+  const first = await send(input.messages);
   let last = first;
   let reasked = false;
   const reask = async (): Promise<string> => {
     reasked = true;
-    last = await ask([...input.messages, { role: "assistant", content: first.text }, { role: "user", content: REASK_LINE }]);
+    const reaskMessages: ChatMessage[] = [...input.messages, { role: "assistant", content: first.text }, { role: "user", content: REASK_LINE }];
+    await budget.guard.checkAndRecord(costEventFor(reaskMessages));
+    last = await send(reaskMessages);
     return last.text;
   };
   const value = await parseWithRetry(schema, first.text, label, reask);
