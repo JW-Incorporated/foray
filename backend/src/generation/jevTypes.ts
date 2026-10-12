@@ -94,6 +94,11 @@ export interface JevUsage {
   outputTokens: number | null;
 }
 
+/** GV-47: the judges that answer through the JevClient interface: Jev
+ * itself, and the Qwen judge (qwenJudgeClient.ts, OQ-05's fallback). */
+export const JUDGE_IDS = ["jev", "qwen"] as const;
+export type JudgeId = (typeof JUDGE_IDS)[number];
+
 export type JevErrorCategory = "no_key" | "network" | "timeout" | "http" | "malformed";
 
 /** `reason` is always a fixed string chosen by the client (e.g. 'http_503',
@@ -116,12 +121,21 @@ export interface JevOk {
   /** The x-typesafe-request-id header, or null when absent. */
   requestId: string | null;
   latencyMs: number;
+  /** GV-47: which judge answered. Absent means Jev (HttpJevClient does not
+   * set it); QwenJudgeClient and FallbackJudgeClient always do, so a
+   * consumer reads its thresholds per judge (gateConfig.ts judgeThreshold). */
+  judge?: JudgeId;
+  /** GV-47: false when the probabilities are the judge's own self-report
+   * rather than token logprobs (QwenJudgeClient sets it; absent for Jev). */
+  calibrated?: boolean;
 }
 
 export interface JevFailure {
   ok: false;
   error: JevError;
   latencyMs: number;
+  /** GV-47: the judge whose failure this is (absent means Jev). */
+  judge?: JudgeId;
 }
 
 export type JevResult = JevOk | JevFailure;
@@ -153,5 +167,6 @@ export interface JevCallInfo {
   latencyMs: number;
   usage: JevUsage | null;
   requestId: string | null;
-  judge: "jev";
+  /** Which judge answered (GV-47): 'qwen' when the Qwen judge did. */
+  judge: JudgeId;
 }
