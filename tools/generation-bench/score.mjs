@@ -379,24 +379,31 @@ export function scoreCandidate({ candidate = null, entry = null, pool = new Map(
 
   /* ---- candidate ---- */
   const noCandidate = "no candidate Foray to measure";
+  /* MQ-07: the pipeline's own showVariety wins, with or without a candidate;
+     the candidate measurement is only the fallback. */
+  const variety = v?.showVariety;
+  const reportVariety =
+    variety && typeof variety === "object" && num(variety.distinctShows) !== null
+      ? {
+          value: {
+            distinctShows: variety.distinctShows,
+            distinctEpisodes: num(variety.distinctEpisodes),
+            largestShow: typeof variety.largestShowKey === "string" ? variety.largestShowKey : null,
+            largestShowTapeShare: num(variety.largestShowTapeShare)
+          },
+          source: "report",
+          note: "report veracity.showVariety (GV-83)"
+        }
+      : null;
   if (!candidate) {
     for (const id of ["MQ-06", "MQ-07", "MQ-08", "MQ-15", "MQ-16", "MQ-17", "MQ-18", "MQ-19"]) out[id] = cell(id, null, noCandidate);
+    if (reportVariety) out["MQ-07"] = reportVariety;
   } else {
     const clips = clipsOf(candidate, pool);
     const mq06 = cleanCutShare(clips);
     out["MQ-06"] = cell("MQ-06", mq06.value, mq06.note);
-    const variety = v?.showVariety;
-    if (variety && typeof variety === "object" && num(variety.distinctShows) !== null) {
-      out["MQ-07"] = {
-        value: {
-          distinctShows: variety.distinctShows,
-          distinctEpisodes: num(variety.distinctEpisodes),
-          largestShow: typeof variety.largestShowKey === "string" ? variety.largestShowKey : null,
-          largestShowTapeShare: num(variety.largestShowTapeShare)
-        },
-        source: "report",
-        note: "report veracity.showVariety (GV-83)"
-      };
+    if (reportVariety) {
+      out["MQ-07"] = reportVariety;
     } else {
       const mq07 = showVariety(clips, candidate, sources, pool);
       out["MQ-07"] = cell("MQ-07", mq07.value, mq07.note);

@@ -104,6 +104,11 @@ test("synthetic candidate: MQ-16's over-25 count matches an independent word cou
   assert.equal(card["MQ-16"].value.maxWords, 32);
   assert.equal(card["MQ-19"].value, 1, "'In this act' is a structure leak");
   assert.equal(card["MQ-15"].value, scoreVoice(scripts).fkGrade);
+  /* MUTATION: swap MQ-17 and MQ-18 in scoreCandidate() (MQ-17 reads
+     fillerPer100, MQ-18 speakabilityPer100). Ran it: red. */
+  assert.equal(card["MQ-17"].value, scoreVoice(scripts).speakabilityPer100);
+  assert.equal(card["MQ-18"].value, scoreVoice(scripts).fillerPer100);
+  assert.notEqual(card["MQ-17"].value, card["MQ-18"].value, "the fixture tells speakability from filler");
   /* The narration item with no script (a redacted outro) is not a script of 0 words. */
   assert.match(card["MQ-15"].note, /^3 script\(s\)/);
 });
@@ -193,6 +198,11 @@ test("the report's own measurements win: showVariety, tierFit, tapeYield, beatCo
   assert.equal(card["MQ-09"].value, 0.75);
   assert.equal(card["MQ-11"].value, 0.9);
   assert.equal(card["MQ-21"].value, false, "a refused run is false, not absent");
+  /* MUTATION: read veracity.showVariety only when a candidate is there (the
+     report-only path of run.mjs --scorecard). Ran it: red (MQ-07 null). */
+  const reportOnly = scoreCandidate({ entry });
+  assert.equal(reportOnly["MQ-07"].source, "report");
+  assert.equal(reportOnly["MQ-07"].value.distinctShows, 5);
 });
 
 test("MQ-14: entry.tierTargetSec, else the PROPOSED tier table; no tier is null", () => {
@@ -252,6 +262,8 @@ test("frozen forays: null voice metrics (not zeros) for the 3 clip-only rows, nu
   assert.equal(scripts.length, 40);
   assert.equal(we.scorecard["MQ-15"].value, scoreVoice(scripts).fkGrade);
   assert.equal(we.scorecard["MQ-16"].value.over25, scoreVoice(scripts).over25);
+  assert.equal(we.scorecard["MQ-17"].value, scoreVoice(scripts).speakabilityPer100);
+  assert.equal(we.scorecard["MQ-18"].value, scoreVoice(scripts).fillerPer100);
   for (const id of VOICE) assert.equal(typeof (id === "MQ-16" ? we.scorecard[id].value.over25 : we.scorecard[id].value), "number", id);
   assert.ok(we.scorecard["MQ-19"].value > 0, "the pre-rule Forays say structural words aloud");
   /* No report: MQ-01/02/04/11 are absent by construction (RQ-04). */

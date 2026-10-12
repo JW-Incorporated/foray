@@ -12,7 +12,7 @@
     {
       "type": "narration",
       "id": "seam-1",
-      "script": "In this act the story turns to yeast. A second baker disagrees."
+      "script": "In this act the story turns to yeast. A second baker disagrees completely."
     },
     { "type": "segment", "segment_id": "synth-ep-a2#100", "slot": "slot-1" },
     {
