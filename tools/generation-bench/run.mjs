@@ -77,6 +77,7 @@
  *   node tools/generation-bench/run.mjs --append docs/curation/generation-kpis.md out-9/
  *   node tools/generation-bench/run.mjs --candidates <dir> --segments <segments.json>
  *   node tools/generation-bench/run.mjs --wide out-9/        # every column, detail included
+ *   node tools/generation-bench/run.mjs --wide --cards <store.jsonl> --listen-keys <dir> out-9/
  *
  * COLUMN GROUPS. Every column is `core` or `detail`. The printed table and the
  * committed KPI doc show the core columns; `--wide` prints every column; the
@@ -99,6 +100,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
+import { DEFAULT_STORE as DEFAULT_LISTEN_CARDS, readCards } from "../listening/card.mjs";
+import { DEFAULT_KEY_DIR as DEFAULT_LISTEN_KEYS, KEY_MISSING, listenByCandidate } from "../listening/unseal.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -120,6 +123,8 @@ export const SETTLED = "settled";
  *   from: "report"     — a field on the report row or its `meta.veracity`
  *   from: "candidate"  — measured on the candidate Foray beside the report
  *   from: "derived"    — computed from report fields only (e.g. ms -> minutes)
+ *   from: "listening"  — the founder's listening cards (GV-08), unsealed to this
+ *                        candidate by tools/listening/unseal.mjs
  *
  * `target` is `null` where §1.2 names none. Where it names one, `targetState`
  * is SETTLED or PROPOSED and `targetNote` cites the row or the code that fixes
@@ -330,6 +335,32 @@ export const COLUMNS = [
     target: 10,
     targetState: PROPOSED,
     targetNote: "§1.2 cost per Foray inside EPISODE_BUDGET_USD $10 (proposed, D0); no report carries `usage` yet"
+  },
+  /* GV-08 (MQ-20, QK-30): what the founder heard. Detail columns, so the
+     committed KPI table does not change shape. Joined by candidate id (the
+     report entry's `file` without `.json`) through
+     tools/listening/unseal.mjs listenByCandidate; absent when the pack keys
+     are not on this machine, and absent for a candidate nobody has listened
+     to, which is the point: "nobody has listened since" is a visible dash
+     beside a dated column, not a silence. */
+  {
+    key: "listen",
+    group: "detail",
+    header: "listen",
+    from: "listening",
+    width: 6,
+    kind: "number",
+    digits: 2,
+    targetNote: "MQ-20: mean overall (1-5) of the founder's listening cards for this candidate (listen-card/1); — without the pack keys or a card"
+  },
+  {
+    key: "last_listen",
+    group: "detail",
+    header: "lastListen",
+    from: "listening",
+    width: 10,
+    kind: "text",
+    targetNote: "MQ-20: date (UTC) of the latest listening card for this candidate; — = nobody has listened"
   }
 ];
 
@@ -525,6 +556,42 @@ export function costUsdFor(entry, report) {
 }
 
 /* ------------------------------------------------------------------ */
+/* What the founder heard (GV-08, MQ-20)                               */
+/* ------------------------------------------------------------------ */
+
+/** The id a listening key names a candidate by: the basename generateForays.ts
+ * writes as the entry's `file`, without `.json`. Read off the report, so the
+ * join works whether or not the candidate itself is on this machine. */
+export function candidateIdFor(entry) {
+  if (!entry || typeof entry.file !== "string") return null;
+  const base = entry.file.replace(/\\/g, "/").split("/").pop();
+  const id = base ? base.replace(/\.json$/i, "") : "";
+  return id === "" ? null : id;
+}
+
+/**
+ * The per-candidate listening summary, or null when it cannot be had here.
+ *
+ * Null (every listening cell absent) when the key directory is not on this
+ * machine, or when a card's pack has no key here: the keys are written where
+ * the packs were built and never committed, so most checkouts can read the
+ * cards and unseal none of them. A malformed store or key THROWS — that is a
+ * broken file, not a missing machine, and a bench that skipped it would hide a
+ * listen that happened.
+ */
+export function loadListening(options = {}) {
+  const keyDir = options.keyDir || DEFAULT_LISTEN_KEYS;
+  if (!fs.existsSync(keyDir)) return null;
+  const cards = readCards(options.cards || DEFAULT_LISTEN_CARDS);
+  try {
+    return listenByCandidate(cards, { keyDir });
+  } catch (err) {
+    if (err && err.code === KEY_MISSING) return null;
+    throw err;
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* One row                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -535,8 +602,10 @@ export function costUsdFor(entry, report) {
  * `null` means "the run did not do it" or "the file did not say".
  */
 export function rowFor(entry, context = {}) {
-  const { report = {}, runId = "run", clips = null } = context;
+  const { report = {}, runId = "run", clips = null, listening = null } = context;
   const v = entry.veracity || {};
+  const candidateId = candidateIdFor(entry);
+  const heard = listening && candidateId !== null ? listening.get(candidateId) || null : null;
   const values = {
     run: runId,
     outcome: typeof entry.outcome === "string" ? entry.outcome : null,
@@ -572,7 +641,9 @@ export function rowFor(entry, context = {}) {
     intro_restates: num(v.introRestates),
     calls_per_beat: num(v.narrationCallsPerBeat),
     tokens: num(v.pipelineTokens),
-    cost_usd: costUsdFor(entry, report)
+    cost_usd: costUsdFor(entry, report),
+    listen: heard ? num(heard.meanOverall) : null,
+    last_listen: heard && typeof heard.lastListenedAt === "string" ? new Date(heard.lastListenedAt).toISOString().slice(0, 10) : null
   };
   const sources = {};
   for (const col of COLUMNS) {
@@ -603,7 +674,7 @@ export function rowsForReport(reportPath, options = {}) {
     const candidateFile = candidatePathFor(entry, reportPath, options.candidatesDir);
     const clips = candidateFile ? clipStats(readJson(candidateFile), pool) : null;
     const id = entries.length > 1 ? `${runId}#${index + 1}` : runId;
-    return rowFor(entry, { report, runId: id, clips });
+    return rowFor(entry, { report, runId: id, clips, listening: options.listening || null });
   });
 }
 
@@ -668,7 +739,9 @@ export function jsonlLine(row) {
     sources: row.sources,
     clips_measured: row.meta.clips_measured,
     candidate_read: row.meta.candidate_read,
-    prompt: row.meta.prompt
+    prompt: row.meta.prompt,
+    /* The one text column a diff wants (GV-08): the date of the last listen. */
+    last_listen: row.values.last_listen ?? null
   });
 }
 
@@ -685,7 +758,12 @@ export function jsonlLine(row) {
  */
 export function rowFromJsonl(line) {
   const obj = typeof line === "string" ? JSON.parse(line) : line;
-  const values = { run: obj.run, outcome: obj.outcome ?? null, valid: obj.valid ?? null };
+  const values = {
+    run: obj.run,
+    outcome: obj.outcome ?? null,
+    valid: obj.valid ?? null,
+    last_listen: typeof obj.last_listen === "string" ? obj.last_listen : null
+  };
   for (const col of COLUMNS) {
     if (col.kind === "number") values[col.key] = num(obj.metrics?.[col.key]);
   }
@@ -776,7 +854,17 @@ export function spliceRows(doc, rows) {
 /* ------------------------------------------------------------------ */
 
 export function parseArgs(argv) {
-  const args = { targets: [], format: "both", candidatesDir: null, segments: null, runId: null, append: null, wide: false };
+  const args = {
+    targets: [],
+    format: "both",
+    candidatesDir: null,
+    segments: null,
+    runId: null,
+    append: null,
+    wide: false,
+    cards: null,
+    listenKeys: null
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--format") args.format = argv[++i];
@@ -785,6 +873,8 @@ export function parseArgs(argv) {
     else if (a === "--run-id") args.runId = argv[++i];
     else if (a === "--append") args.append = argv[++i];
     else if (a === "--wide") args.wide = true;
+    else if (a === "--cards") args.cards = argv[++i];
+    else if (a === "--listen-keys") args.listenKeys = argv[++i];
     else if (a.startsWith("--")) throw new Error(`unknown flag ${a}`);
     else args.targets.push(a);
   }
@@ -796,13 +886,18 @@ export function parseArgs(argv) {
 
 export function collectRows(args) {
   const pool = loadSegmentPool(args.segments || path.join(REPO_ROOT, "data", "segments.json"));
+  const listening = loadListening({
+    cards: args.cards ? path.resolve(args.cards) : null,
+    keyDir: args.listenKeys ? path.resolve(args.listenKeys) : null
+  });
   const rows = [];
   for (const target of args.targets) {
     rows.push(
       ...rowsForReport(resolveReportPath(target), {
         runId: args.runId,
         candidatesDir: args.candidatesDir,
-        pool
+        pool,
+        listening
       })
     );
   }

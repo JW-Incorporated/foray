@@ -104,6 +104,36 @@ re-attempted (and one clean Intro dropped) for another seam's failure — the pa
 unit would have read near zero on run 9 too. The unit change did not manufacture
 the regression; it made the column uninterpretable.
 
+### MQ-20 · the founder's listen
+
+**Definition.** MQ-20 is what the founder heard: a blind listen of one act of a
+candidate, recorded on the listening card (`listen-card/1`,
+`tools/listening/card.mjs`, roadmap card GV-08 for R2-01). Per act the card
+scores four axes 1–5 (`onSubject`, `flowsAtSeams`, `oneNarrator`,
+`nothingFalseOrOdd`), an `overall` 1–5, a list of timestamped winces, and —
+when two versions were heard blind as A and B — a preference (`A`, `B` or
+`tie`). It also keeps Q-06's three yes/no answers (`q06.oneVoice`,
+`q06.everyClipIntroduced`, `q06.anyClipCutShort`), so MQ-20 stays continuous
+with the baseline definition, which was Q-06's three questions. The cards are
+committed, append-only, in `docs/curation/listening/cards.jsonl`
+(`docs/curation/listening/README.md` says who may append).
+
+**Per candidate**, MQ-20 is the mean `overall` over every card that unseals to
+that candidate, with the date of the latest one. **Per stage swap** (R2-21),
+it is the pairwise preference rate: the share of blind pairs in which the arm
+carrying that swap was preferred (a tie is not a win), from
+`tools/listening/unseal.mjs`'s `aggregate()`.
+
+| Column | Target | Settled? | Where it comes from |
+|---|---|---|---|
+| `listen` | — | — | **detail.** Mean `overall` (1–5) of the founder's cards for this candidate. Joined by candidate id (the report entry's `file` without `.json`) through the pack keys in `data-local/listening/keys/`, which are never committed: on a machine without them the column is `—` |
+| `lastListen` | — | — | **detail.** UTC date of the latest card for this candidate. `—` means nobody has listened — the dated field that makes "nobody has listened since run N" visible |
+
+Both are **detail** columns (`run.mjs --wide`, and the JSONL), so the committed
+table below does not change shape. No target is proposed: the founder's ear is
+the criterion, and a number to grade it against would be the bench grading the
+founder.
+
 ## The trend
 
 | run | outcome | valid | stageSum m | elapsed m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
