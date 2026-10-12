@@ -13,7 +13,7 @@ directory. Add one section per module as it lands.
 ## Running the tests
 
 ```
-npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs
+npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs pull-archive.test.mjs
 ```
 
 The package has no dependencies. It imports `tools/foraycorpus-export/`
@@ -125,3 +125,86 @@ again. Readers keep the first row per guid.
 - The tsx child needs `backend/node_modules` on the machine that runs it.
 
 Re-streaming a whole show costs up to about 306 MB for the largest show.
+
+## serve.mjs: the retrieval server (GV-16, W3-08)
+
+```
+node tools/passage-index/serve.mjs [--host 127.0.0.1] [--port 7311] [--shows a,b]
+  [--index-root d] [--manifest f] [--normalized-root d]
+```
+
+A launcher for `backend/src/cli/retrievalServer.ts`, started through
+`backend/node_modules`' tsx the way `tools/generation/warm-transcript-index.mjs`
+starts the warmer. Every flag passes through to the server.
+
+The server loads the BM25 index once and keeps it resident, on the box that
+holds the corpus, so a generation run neither pays the per-process index load
+nor needs transcripts on its own disk. It reuses `FileTranscriptTextIndex`
+itself, so a `/v1/search` answer is what a local search over the same archive
+gives: same order, same scores, same idf.
+
+**At boot** (and on `POST /v1/reload`):
+
+1. The archive is `loadTranscriptArchive()`: the committed digests plus this
+   box's `data-local/transcripts/corpus-digest.json`.
+2. The body stats come from the stream indexer's manifest
+   (`--manifest`, default `data-local/passage-index/episodes.jsonl`), through
+   `backend/src/generation/manifestBodySource.ts`. Each archive row is mapped
+   onto a manifest row by the build's own locate rule, so a cache built from
+   an R2 stream is fresh with no body on disk. Without a manifest, the bodies
+   under `--normalized-root` are stat'ed instead.
+3. Each show is held from its cache when the cache is fresh. A stale or
+   missing cache is logged as an error and rebuilt only when the cue store
+   (the local normalized bodies, `--normalized-root`) holds every body the
+   show's rows map to. Otherwise the show is left out and reported. A show
+   that is not resident is never searched, so no request ever builds an index.
+   `--shows` limits the resident set on a small machine: resident memory for
+   every show's postings is unmeasured, so the laptop should use it.
+
+**API** (JSON; gzip for a client that accepts it):
+
+| Route | Answer |
+| --- | --- |
+| `POST /v1/scopes` `{episodes: [[show_id, guid], ...] \| "all"}` | `{scopeId, episodes, unknown}`. Held in memory for 2 h after last use. Lineage is decided by the client, which sends the episodes its lineage gate admits. |
+| `POST /v1/search` `{scopeId, queries: [{text, limit}]}` | `{results: [{candidates: [{show_id, guid, score, matchedTerms, rank}], idf}]}`, in query order. `idf` is present even with no candidates. |
+| `GET /v1/episodes` | `[{show_id, guid, size, mtimeMs, transcript_source}]`, one per archive row with a body. `transcript_source` is null unless the manifest row records it. |
+| `GET /v1/cues?show_id=&guid=` | `{cues, transcript_source}`, or 404. |
+| `GET /v1/archive` | `{generated_at, transcripts}`: the archive rows exactly as loaded. |
+| `GET /healthz` | `{indexVersion, shows, episodes, archiveGeneratedAt}`. |
+| `POST /v1/reload` | Re-reads the archive, the manifest and the caches. |
+
+**Auth.** The default bind is 127.0.0.1. Any other bind is refused unless
+`FORAY_RETRIEVAL_TOKEN` (or a file named by `FORAY_RETRIEVAL_TOKEN_FILE`) is
+set, and with a token every `/v1` route needs `Authorization: Bearer <token>`.
+`/healthz` carries counts only and stays open.
+
+**Privacy.** Search requests carry beat claims. The server never logs or
+stores query text: a log line (one JSON line per event, on stderr) carries
+counts, latencies and a 12-hex sha256 prefix per query. The only file it
+writes is a show's index cache, rebuilt from transcripts alone.
+
+**Nothing uses it yet.** It is an inert new process: the pipeline talks to it
+only once GV-95 (W3-11) reads `FORAY_RETRIEVAL_URL`, and with that unset every
+run keeps today's local path.
+
+## pull-archive.mjs: the server's archive on a generation box (GV-16)
+
+```
+node tools/passage-index/pull-archive.mjs --url http://<server>:7311 [--out f] [--timeout-ms n] [--allow-empty]
+```
+
+GETs `/v1/archive` and writes `data-local/transcripts/corpus-digest.json`
+through a tmp file and a rename, so every backend reader on the generation
+box (topic supply, sourcing, `findDigestForItem`, the item-id derivation) sees
+the server's rows. The file is replaced whole; this box's own reconcile rows
+are dropped. `loadTranscriptArchive` still reads the committed digests first
+and keeps the first row per episode, so with the same committed digests on
+both boxes the archive, and every derived item id, is the server's.
+`item_id_suffix` is runtime-only and is stripped before writing.
+
+Nothing is written unless the whole answer validates: an HTTP error, a body
+without a `transcripts` array, a row without a string `show_id` and `guid`,
+or an empty archive (unless `--allow-empty`) leaves the old file as it was.
+`--url` defaults to `FORAY_RETRIEVAL_URL`; the token comes from
+`FORAY_RETRIEVAL_TOKEN` or `FORAY_RETRIEVAL_TOKEN_FILE`, never from argv.
+Exit 0 when written, 1 otherwise.

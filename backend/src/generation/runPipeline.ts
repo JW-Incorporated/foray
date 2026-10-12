@@ -4,6 +4,8 @@ import { StageTimingLog, type StageTiming } from "./stageTiming";
 import { currentRunLog, withCallContext, type StageStatus } from "./runLog";
 import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
 import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "./checkpoint";
+import { checkpointVariant, resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
+import { resolveGateConfig, type GateConfig } from "./gateConfig";
 import { DeepenedActSchema, SpineSchema } from "../types/spine";
 import { NewSegmentSchema, SourcedActSchema, TapeBoundarySchema, TapePointerSchema, TranscriptionQueueCandidateSchema } from "../types/tapeSourcing";
 import { ResearchShapeSchema } from "../types/research";
@@ -300,6 +302,20 @@ export interface RunPipelineOptions {
    * no call on the floor — post-seeding still runs, since it calls nothing.
    */
   spineSeedFloorReasks?: number;
+  /**
+   * GV-15: pipeline flags for this run, merged over `readPipelineFlags()`
+   * once at the top of the run (`resolvePipelineFlags`). Absent, the env
+   * decides, and with no env set every flag is today's behaviour. The batch
+   * driver passes its own fully merged flags here, so the session
+   * fingerprint below and its FileCheckpointStore's are the same.
+   */
+  flags?: Partial<PipelineFlags>;
+  /**
+   * GV-15: gate config for this run, merged over `readGateConfig()` once per
+   * run. Empty until the gate cards add their keys; each of them threads its
+   * own key from here into the stage options that need it (decision 34).
+   */
+  gates?: Partial<GateConfig>;
 }
 
 /** G-32: one act's narration, as the report shows it — the `narrate:<i>`
@@ -919,13 +935,24 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   // module.
   const pipelineStartMs = Date.now();
 
+  /* GV-15: the run's flags and gates, resolved ONCE, before any stage runs —
+     so a malformed variable fails the run before it spends a call, and no
+     stage re-reads the env behind an options override. Nothing reads a gate
+     key yet (the gate cards thread their own); the flags feed the checkpoint
+     variant below. */
+  const flags = resolvePipelineFlags(options.flags);
+  void resolveGateConfig(options.gates);
+
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
-     one code path whether or not the caller wants resume. */
+     one code path whether or not the caller wants resume. GV-15: the variant
+     keeps a flag-on run and a classic run off each other's banked stages;
+     with every semantics-changing flag off it is undefined and the
+     fingerprint is today's. */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
-    checkpointFingerprint({ prompt: req.prompt, duration: req.duration, topic: options.topic })
+    checkpointFingerprint({ prompt: req.prompt, duration: req.duration, topic: options.topic, variant: checkpointVariant(flags) })
   );
   const resumeHint = options.checkpointKey
     ? `Everything finished so far is checkpointed under "${options.checkpointKey}", so a re-run restarts at this stage.`

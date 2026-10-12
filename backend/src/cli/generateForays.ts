@@ -8,6 +8,8 @@ import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigest
 import { corpusCoverage, corpusCoverageLine } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import { checkpointFingerprint } from "../generation/checkpoint";
+import { checkpointVariant, resolvePipelineFlags, type PipelineFlags } from "../generation/pipelineFlags";
+import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
 import { getUsageTotals } from "../generation/usageTracking";
 import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
 import { spanMsOf } from "../generation/stageTiming";
@@ -132,6 +134,10 @@ export interface CliArgs {
   /** G-30 (c): a shell command run with a one-line summary at every prompt's
    * end and at the batch's end (or crash). `--notify` or `GENERATION_NOTIFY_CMD`. */
   notify: string | null;
+  /** GV-15: `--fast-path`, the `FORAY_FAST_PATH` umbrella for this run
+   * (per-field variables still override it). Absent unless given, so the
+   * parsed args of a run without it are unchanged. */
+  fastPath?: boolean;
 }
 
 export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.env): CliArgs {
@@ -161,7 +167,8 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     noResume: argv.includes("--no-resume"),
     maxResumes: Number.isInteger(maxResumes) && maxResumes >= 0 ? maxResumes : DEFAULT_MAX_RESUMES,
     continueOnRefusedPartial: argv.includes("--continue-on-refused-partial"),
-    notify: get("--notify") ?? (notifyEnv ? notifyEnv : null)
+    notify: get("--notify") ?? (notifyEnv ? notifyEnv : null),
+    ...(argv.includes("--fast-path") ? { fastPath: true } : {})
   };
 }
 
@@ -505,6 +512,11 @@ export type ReportEntry = {
   /** GV-01: the final attempt's RunLog, relative to the report's directory
    * (`runlogs/<checkpointKey>.<attempt>.runlog.jsonl`). Absent under --dry-run. */
   runLog?: string;
+  /** GV-15: the pipeline flags this prompt ran under (env merged with
+   * `--fast-path`), the same object the checkpoint variant was built from. */
+  flags?: PipelineFlags;
+  /** GV-15: the resolved gate config (empty until the gate cards add keys). */
+  gates?: GateConfig;
 };
 
 /**
@@ -613,9 +625,17 @@ export async function generateOneCandidate(
      files sit side by side and a human can see which prompt a half-finished
      run belongs to. */
   const checkpointKey = basename.replace(/\.json$/, "");
+  /* GV-15 (decision 20): the run's flags, resolved ONCE here and handed to
+     the pipeline whole (`options.flags`), so the store's fingerprint and the
+     pipeline session's are built from the same variant. FileCheckpointStore
+     keeps banked stages only when the file's fingerprint equals ITS OWN, so a
+     variant on the session alone would stop a flag-on run resuming itself
+     and would merge classic and flag-on stages into one file. */
+  const flags = resolvePipelineFlags(args.fastPath ? { fastPath: true } : {});
+  const gates = resolveGateConfig();
   const checkpointStore = new FileCheckpointStore(
     path.resolve(args.out),
-    checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic })
+    checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, variant: checkpointVariant(flags) })
   );
   if (args.noResume) checkpointStore.discard(checkpointKey);
   const resumable = !args.noResume && checkpointStore.load(checkpointKey) !== null;
@@ -691,7 +711,9 @@ export async function generateOneCandidate(
       driverMs: Date.now() - startedMs,
       duration: request.duration,
       ...(spec.id !== undefined ? { promptId: spec.id } : {}),
-      ...(runLogRel !== undefined ? { runLog: runLogRel } : {})
+      ...(runLogRel !== undefined ? { runLog: runLogRel } : {}),
+      flags,
+      gates
     };
     if (!notify) return withCalls;
     const notification = await notify({
@@ -736,7 +758,9 @@ export async function generateOneCandidate(
           topic: spec.topic,
           checkpointKey,
           sessionId: checkpointKey,
-          refusedPartial: args.continueOnRefusedPartial ? "continue" : "abort"
+          refusedPartial: args.continueOnRefusedPartial ? "continue" : "abort",
+          flags,
+          gates
         },
         { cueProvider: deps.cueProvider, textIndex: deps.textIndex, checkpoint: args.dryRun ? undefined : checkpointStore, onActReady }
       );
@@ -893,7 +917,7 @@ async function main(): Promise<void> {
     console.error(
       "Usage: npm run generate-forays -- --prompts prompts.json [--out DIR] " +
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
-        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>]"
+        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path]"
     );
     process.exitCode = 1;
     return;

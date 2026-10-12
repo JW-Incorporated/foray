@@ -1,0 +1,29 @@
+{
+  "id": "chatcmpl-synthetic-cached-0003",
+  "object": "chat.completion",
+  "created": 1760000002,
+  "model": "synthetic-heavy-27b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Synthetic answer text.",
+        "reasoning_content": "Synthetic reasoning the client must never surface."
+      },
+      "finish_reason": "stop",
+      "logprobs": {
+        "content": [
+          { "token": "Synthetic", "logprob": -0.01, "top_logprobs": [ { "token": "Synthetic", "logprob": -0.01 }, { "token": "Example", "logprob": -4.6 } ] }
+        ]
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 900,
+    "completion_tokens": 50,
+    "total_tokens": 950,
+    "prompt_tokens_details": { "cached_tokens": 768 },
+    "completion_tokens_details": { "reasoning_tokens": 31 }
+  }
+}
