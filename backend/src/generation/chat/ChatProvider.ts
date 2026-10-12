@@ -5,9 +5,9 @@
  * and the second box's llama-server) for one reply.
  *
  * Types only, plus the one error class every provider throws. The
- * OpenAI-compatible client is chat/openAICompatProvider.ts; the streaming
- * half (`stream`) is GV-40's. Nothing on the default generation path imports
- * this module yet.
+ * OpenAI-compatible client is chat/openAICompatProvider.ts, whose `stream`
+ * (GV-40) reads the same endpoint as Server-Sent Events (chat/sse.ts).
+ * Nothing on the default generation path imports this module yet.
  *
  * Call context is NOT here (decision 3): stage, act, seam, attempt, priority
  * and lane come from runLog.ts's `withCallContext`, and a provider records
@@ -100,8 +100,16 @@ export interface ChatResponse {
   logprobs?: ChatTokenLogprob[];
 }
 
-/** GV-40 implements `stream`; the event shape is fixed here so consumers and
- * the scripted fake agree on it. */
+/**
+ * GV-40: what `stream` yields. Every non-empty content delta in order, then
+ * exactly one `done` (never after a throw). `usage` is null when the server
+ * sent no usage chunk; finishReason 'length' arrives on `done` and is never
+ * thrown; `timing.firstByteAt` is the first non-empty content delta (null
+ * when there was none). A failure midway throws ChatProviderError with
+ * `partialText` = the concatenated deltas so far. The shape is fixed here so
+ * consumers and the scripted fake (backend/test/helpers/fakeChatProvider.ts)
+ * agree on it.
+ */
 export type ChatStreamEvent =
   | { type: "delta"; text: string }
   | {
@@ -125,7 +133,11 @@ export type ChatProviderErrorKind = "http" | "timeout" | "network" | "malformed"
  * Every failure a provider reports. The message is a FIXED reason
  * ('http_429', 'timeout', 'malformed_json', ...): it never carries the API
  * key, the upstream response body or the prompt, so it is safe to log and to
- * put in a report. `partialText` is for a stream that died midway (GV-40).
+ * put in a report. `partialText` is set on every failure of a stream after
+ * a 2xx response arrived (GV-40): the text of every delta received, possibly
+ * '' ('stream_dropped', 'stream_error', 'malformed_chunk', 'malformed_stream',
+ * 'network', 'timeout', 'aborted'). An http_<status> or a failure before
+ * the response carries none.
  */
 export class ChatProviderError extends Error {
   readonly kind: ChatProviderErrorKind;

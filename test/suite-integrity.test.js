@@ -3290,6 +3290,17 @@ const BACKEND_FLOORS = {
      call, the inert-import guard) plus the scriptedProvider helper. Offline:
      fakeFetch over synthetic fixtures. */
   "test/openAICompatProvider.test.ts": 26,
+  /* GV-40 (docs/roadmap/generation-v2.md, #1286): the SSE reader (chunk
+     boundaries incl. split UTF-8 and CRLF under fast-check, comments,
+     multi-line data, [DONE], a cut event dropped) and the streaming
+     OpenAI-compatible provider (stream:true + include_usage, deltas then one
+     done, usage null without the usage chunk, 'length' on done, firstByteAt
+     at the first content delta under fake timers, queueMs/ttftMs on the
+     CallRecord, partialText on every drop, abort/timeout/early-stop cancel
+     the body) plus the scriptedProvider stream-script self-test. Offline:
+     synthetic SSE fixtures. One named mutation per test. */
+  "test/sse.test.ts": 5,
+  "test/openAICompatStream.test.ts": 14,
   /* GV-19 (docs/roadmap/generation-v2.md, #1286): askStructured, the one
      provider-neutral JSON call (meter, json_schema/json_object/none
      response_format, recordUsage, 'length' refused as TruncatedReplyError
