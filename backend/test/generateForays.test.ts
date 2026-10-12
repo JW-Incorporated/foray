@@ -4,6 +4,7 @@ import path from "node:path";
 import os from "node:os";
 import { batchSummaryText, generateOneCandidate, parseArgs, partialCandidateFilename, candidateFilename, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
 import { evaluateVeracityGate, type VeracityGateResult } from "../src/generation/veracityMetrics";
+import type { ItemReadyEvent } from "../src/generation/deliveryTimeline";
 import { runForayPipeline } from "../src/generation/runPipeline";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
@@ -535,5 +536,90 @@ describe("GV-26 — the report row carries the publish gate verdict and MQ-21 pu
       resumesTotal: 0
     });
     expect(line).toBe("1 candidate(s) written, 0 skipped, 0 aborted, 1 did not produce a publishable Foray; 1 passed every gate (publishable without --force)");
+  });
+});
+
+describe("GV-33 — the report row carries the delivery timeline", () => {
+  let dir: string;
+  const spec = { prompt: "the history of grilling and barbecue" };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv33-"));
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** The stub pipeline with its own item events replaced by a scripted
+   * timeline: prelude and act 0 ready at 4 s, act 1 at 30 s (it plays at
+   * 4 + 100 = 104 s, so 74 s ahead at 1x; at 1.5x 4 + 66.667 - 30 = 40.667 s). */
+  const scripted =
+    (resumedStitch = false): typeof runForayPipeline =>
+    async (request, options, deps = {}) => {
+      const { onItemReady, ...rest } = deps;
+      const out = await stubPipeline()(request, options, rest);
+      const item = { type: "narration", id: "x", script: "x", mode: "Frame" } as unknown as ItemReadyEvent["item"];
+      const ev = (index: number, actIndex: number, readyAtMs: number, playStartSec: number): ItemReadyEvent => ({
+        forayId: "f",
+        index,
+        itemId: `i${index}`,
+        actIndex,
+        check: "verified",
+        servable: true,
+        readyAtMs,
+        playStartSec,
+        durationSec: 10,
+        item,
+        granularity: "act"
+      });
+      for (const e of [ev(0, -1, 4_000, 0), ev(1, 0, 4_000, 10), ev(2, 1, 30_000, 100)]) await onItemReady?.(e);
+      if (!resumedStitch) return out;
+      return { ...out, timings: [...out.timings, { name: "stitch:0", startedAt: new Date(0).toISOString(), ms: 0, resumed: true as const }] };
+    };
+
+  it("a fresh run's row carries delivery.* with the lead at 1x and 1.5x", async () => {
+    /* MUTATION THAT KILLS THIS: leave `onItemReady` out of the deps
+       generateOneCandidate hands the pipeline. The timeline stays empty and
+       the row has no delivery. Ran it — red. */
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), { cueProvider, runPipeline: scripted() });
+    expect(result.entry?.outcome).toBe("generated");
+    expect(result.entry?.delivery).toEqual({
+      granularity: "act",
+      items: 3,
+      firstItemReadyMs: 4_000,
+      firstServableMs: 4_000,
+      allItemsReadyMs: 30_000,
+      minLeadSec: 74,
+      minLeadSecAt1_5x: 40.667,
+      itemsBelow30s: 0,
+      pausedAtIndex: null,
+      unknownDurations: 0
+    });
+  });
+
+  it("a run with a resumed act carries delivery.resumed and no lead", async () => {
+    /* MUTATION THAT KILLS THIS: pass `false` for resumed to deliveryReportOf.
+       The row then carries a lead measured over half a run. Ran it — red. */
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), { cueProvider, runPipeline: scripted(true) });
+    expect(result.entry?.delivery).toEqual({ granularity: "act", items: 3, resumed: true });
+  });
+
+  it("the real stub pipeline's events reach the row: one per item of the candidate", async () => {
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), { cueProvider, runPipeline: stubPipeline() });
+    expect(result.entry?.outcome).toBe("generated");
+    const candidate = JSON.parse(fs.readFileSync(result.file!, "utf8")) as { items: unknown[] };
+    expect(result.entry?.delivery?.items).toBe(candidate.items.length);
+    expect(result.entry?.delivery?.minLeadSec).toBeDefined();
+  });
+
+  it("a row that never generated carries no delivery", async () => {
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: async () => ({ outcome: "rejected", category: "unsafe", explanation: "no", timings: [] })
+    });
+    expect(result.entry && "delivery" in result.entry).toBe(false);
   });
 });

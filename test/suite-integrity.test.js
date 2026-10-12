@@ -2646,7 +2646,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 43, // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 50, // GV-33 (generation v2): onItemReady alone fires once per item in order with no partial finalize, an injected wallClockMs pins readyAtMs and the lead without moving the id, one act ReadyEvent per act concatenating to the items, partialOk from the partial, no event for a resumed act, emitPreludeEarly, an unservable act pauses the timeline; 43 -> 50 // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -2911,7 +2911,7 @@ const BACKEND_FLOORS = {
      citation takes), and with `verified: false` copied verbatim rather than
      interpreted here. */
   "test/stitchAct.test.ts": 13,
-  "test/stitchForay.test.ts": 10, // GV-21: item provenance beside onActReady's items, actProvenance equals the emitted records, a banked act's provenance is recomputed; 4 -> 10 (7 on disk before)
+  "test/stitchForay.test.ts": 12, // GV-33: emitSeamItems forwards seams in order and refuses an out-of-order or wrong-act call, onActReady reports seamItemsEmitted, and a stitched act whose leading items are not the emitted seams is refused; 10 -> 12 // GV-21: item provenance beside onActReady's items, actProvenance equals the emitted records, a banked act's provenance is recomputed; 4 -> 10 (7 on disk before)
   /* A3.1/Q3 (kanban t_8d1a6a58): backend/src/catalog/breadthCatalog.ts +
      searchBreadthShows.ts — show search over the FULL breadth catalogue
      (curated + ~10k breadth tier), not just the 220 curated shows the
@@ -3030,7 +3030,7 @@ const BACKEND_FLOORS = {
      private status read path. */
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
-  "test/generateForays.test.ts": 15, // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
+  "test/generateForays.test.ts": 19, // GV-33 (generation v2): the report row's delivery block for a fresh run (lead at 1x and 1.5x), resumed:true with no lead, one event per item from the real stub pipeline, no delivery on a non-generated row; 15 -> 19 // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
   "test/generationStatus.test.ts": 6, // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
   "test/partialCandidate.test.ts": 11, // GV-21: delivery attached with items unchanged, the item-count units pinned, no delivery without provenance, misaligned and malformed fallbacks; 6 -> 11 (7 on disk before)
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
@@ -3302,6 +3302,13 @@ const BACKEND_FLOORS = {
      fixtures. */
   "test/itemReadiness.test.ts": 11,
   "test/actVeracityGate.test.ts": 6,
+  /* GV-33 (docs/roadmap/generation-v2.md, #1286; decision 14): the delivery
+     timeline and the lead over the playhead (first / first-servable / all
+     ready, lead at 1x and 1.5x, a late item, an explicit first audio, the
+     pause at an unservable act, no servable item, unknown durations and
+     granularity) and the report block (fresh, resumed, empty). Offline,
+     synthetic events. */
+  "test/deliveryTimeline.test.ts": 11,
   /* GV-20 (docs/roadmap/generation-v2.md, #1286): the typed Jev client —
      reply validation (every malformed variant), transport categories, the
      key never leaking, one CallRecord per ask, BudgetGuard metering, the

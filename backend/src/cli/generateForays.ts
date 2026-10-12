@@ -12,6 +12,7 @@ import { checkpointVariant, resolvePipelineFlags, type PipelineFlags } from "../
 import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
 import { getUsageTotals } from "../generation/usageTracking";
 import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
+import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../generation/deliveryTimeline";
 import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
 import { readAuthorIdFlag, type GenerationRequest } from "../types/generation";
@@ -548,6 +549,15 @@ export type ReportEntry = {
    * gate, so it could be published without `--force`. Only on a `generated`
    * row. */
   publishable?: boolean;
+  /** GV-33 (decision 14; MT-01, MT-11): the final attempt's delivery timeline
+   * — when the first item, the first servable item and the last item were
+   * ready (ms since the attempt started), the smallest lead over the playhead
+   * at 1x and 1.5x, how many items were under 30 s of lead, where an
+   * unservable act paused playback, and how many items `runtimeSecFor` could
+   * not time. A resumed attempt (a banked `stitch:<i>` fired no events)
+   * carries `resumed: true` and no lead or first-item times, the `ttlA1Ms`
+   * rule. Only on a `generated` row; absent stays absent, never zero. */
+  delivery?: DeliveryReport;
 };
 
 /**
@@ -763,10 +773,15 @@ export async function generateOneCandidate(
      resume" asked a person to do. */
   const resumes: ResumeRecord[] = [];
   let outcome: RunPipelineOutcome;
+  let timeline: DeliveryTimeline;
   for (;;) {
     /* GV-01: a fresh log per attempt; attempt numbers are 1-based, and the
        context's `resumeAttempt` counts the resumes before this attempt. */
     const runLog = new RunLog();
+    /* GV-33: one delivery timeline per attempt, like the RunLog — a resumed
+       attempt's banked acts fire nothing, so its timeline is its own. */
+    timeline = new DeliveryTimeline();
+    const attemptTimeline = timeline;
     const attempt = resumes.length + 1;
     const runAttempt: typeof runPipeline = (req, opts, pipelineDeps) =>
       runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length }, () => runPipeline(req, opts, pipelineDeps)));
@@ -793,7 +808,13 @@ export async function generateOneCandidate(
           flags,
           gates
         },
-        { cueProvider: deps.cueProvider, textIndex: deps.textIndex, checkpoint: args.dryRun ? undefined : checkpointStore, onActReady }
+        {
+          cueProvider: deps.cueProvider,
+          textIndex: deps.textIndex,
+          checkpoint: args.dryRun ? undefined : checkpointStore,
+          onActReady,
+          onItemReady: (ev) => attemptTimeline.record(ev)
+        }
       );
       writeRunLog(runLog, attempt);
       calls += getUsageTotals().calls;
@@ -901,6 +922,10 @@ export async function generateOneCandidate(
      veracity numbers looked the way they did, not just candidates that
      made it to disk. */
   const veracity = outcome.outcome === "generated" ? outcome.input.meta?.veracity : undefined;
+  /* GV-33: the final attempt's delivery timeline. Resumed when any act's
+     stitch came off the checkpoint: that act fired no events. */
+  const stitchResumed = outcome.timings.some((t) => /^stitch:\d+$/.test(t.name) && t.resumed === true);
+  const delivery = outcome.outcome === "generated" ? deliveryReportOf(timeline, stitchResumed) : undefined;
   const entry: ReportEntry = {
     prompt: spec.prompt,
     outcome: outcome.outcome,
@@ -915,6 +940,7 @@ export async function generateOneCandidate(
     ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,
     ...(outcome.outcome === "generated" && gate ? { gate, publishable: outcome.result.validation.ok && gate.ok } : {}),
+    ...(delivery ? { delivery } : {}),
     ...(resumes.length ? { resumes } : {}),
     ...(refusedPartials.length ? { refusedPartials } : {})
   };
