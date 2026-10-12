@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { measureStage, StageTimingLog } from "../src/generation/stageTiming";
+import { measureStage, spanMsOf, StageTimingLog, type StageTiming } from "../src/generation/stageTiming";
 
 /**
  * §6.3's minimal batch-pipeline scope (stageTiming.ts's own doc comment):
@@ -68,5 +68,55 @@ describe("StageTimingLog", () => {
     const snapshot = log.all();
     snapshot.push({ name: "injected", startedAt: new Date().toISOString(), ms: 999 });
     expect(log.all()).toHaveLength(1);
+  });
+});
+
+describe("GV-01: a stage that throws is still timed", () => {
+  it("records {failed: true} with the stage's real ms, then rethrows the same error", async () => {
+    /* MUTATION THAT KILLS THIS: restore `run` to `measureStage` + push — a
+       throwing stage leaves no entry at all, so a failed attempt reports no
+       time for the stage it died in. Ran it — red. */
+    const log = new StageTimingLog();
+    await log.run("understand", () => 1);
+    const boom = new Error("deepen exhausted its retry");
+    await expect(
+      log.run("deepen", async () => {
+        await sleep(20);
+        throw boom;
+      })
+    ).rejects.toBe(boom);
+
+    const [ok, failed] = log.all();
+    expect(ok!.failed).toBeUndefined();
+    expect(failed!.name).toBe("deepen");
+    expect(failed!.failed).toBe(true);
+    expect(failed!.ms).toBeGreaterThanOrEqual(15);
+    expect(failed!.ms).toBeLessThan(2000);
+  });
+});
+
+describe("GV-01: spanMsOf", () => {
+  const at = (iso: string, ms: number, extra: Partial<StageTiming> = {}): StageTiming => ({
+    name: "s",
+    startedAt: `2026-10-11T00:00:${iso}Z`,
+    ms,
+    ...extra
+  });
+
+  it("is last end minus first start, so overlapping stages count once", () => {
+    /* MUTATION THAT KILLS THIS: return the sum of `ms` (totalMs) — two
+       overlapping 4 s narrations would read 9 s instead of the 6 s that
+       passed. */
+    const timings = [at("00.000", 1000), at("01.000", 4000, { name: "narrate:0" }), at("02.000", 4000, { name: "narrate:1" })];
+    expect(spanMsOf(timings)).toBe(6000);
+  });
+
+  it("skips resumed entries, counts failed ones, and is null when nothing ran", () => {
+    /* MUTATION THAT KILLS THIS: drop the resumed filter — the resumed entry
+       stamped later drags the span's end past the stages that ran. */
+    const timings = [at("00.000", 500), at("01.000", 2000, { failed: true }), at("09.000", 0, { resumed: true })];
+    expect(spanMsOf(timings)).toBe(3000);
+    expect(spanMsOf([at("00.000", 0, { resumed: true })])).toBeNull();
+    expect(spanMsOf([])).toBeNull();
   });
 });

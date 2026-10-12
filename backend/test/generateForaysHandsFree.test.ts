@@ -26,6 +26,8 @@ import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWrite
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { BudgetStopError, BudgetExceededError, EpisodeBudgetExceededError } from "../src/cost/budgetGuard";
+import { currentCallContext, currentRunLog, RUNLOG_SCHEMA, type RunLog, type StageSpan } from "../src/generation/runLog";
+import { spanMsOf } from "../src/generation/stageTiming";
 
 /**
  * G-30 (docs/curation/foray-to-spec-roadmap.md; latency brief §4 manual
@@ -464,5 +466,121 @@ describe("(d) a duplicate Foray id is suffixed, not thrown (manual step 25)", ()
     expect(secondId).toBe(`${firstId}-2`);
     expect(finalizeIds.length).toBeGreaterThan(1);
     expect(new Set(finalizeIds)).toEqual(new Set([secondId]));
+  });
+});
+
+/** A runlog file read back: its header and its stage spans. */
+function readRunLogFile(file: string): { header: { schema: string; t0Iso: string }; spans: StageSpan[]; text: string } {
+  const text = fs.readFileSync(file, "utf8");
+  const [header, ...events] = text.trimEnd().split("\n").map((l) => JSON.parse(l));
+  return { header, spans: events.filter((e: { kind: string }) => e.kind === "stage"), text };
+}
+
+describe("(e) GV-01: elapsed time, driver time, tier, prompt id and the per-attempt RunLog", () => {
+  it("a generated row carries elapsedMs = spanMsOf(timings), driverMs, duration and promptId, and its runlog holds no prompt text", async () => {
+    /* MUTATIONS THAT KILL THIS: set `elapsedMs` from `ms` (the stage SUM) —
+       the concurrent narrate stages make it exceed the span; drop the
+       `writeRunLog` call after a successful attempt — no file; write the
+       prompt into the header — the substring check fails. Ran the first two
+       — red. */
+    const spec = { prompt: "the history of grilling and barbecue", id: "golden-07" };
+    let seen: RunPipelineOutcome | undefined;
+    const pipeline = stubPipeline();
+    const result = await generateOneCandidate(spec, baseArgs(dir), {
+      cueProvider,
+      runPipeline: async (req, options, deps) => (seen = await pipeline(req, options, deps))
+    });
+
+    const entry = result.entry!;
+    expect(entry.outcome).toBe("generated");
+    expect(entry.elapsedMs).toBe(spanMsOf(seen!.timings));
+    expect(entry.elapsedMs).toBeGreaterThan(0);
+    expect(entry.driverMs).toBeGreaterThanOrEqual(entry.elapsedMs!);
+    expect(entry.duration).toBe("medium");
+    expect(entry.promptId).toBe("golden-07");
+    expect(entry.runLog).toMatch(/^runlogs\/the-history-of-grilling-and-barbecue-[0-9a-f]{8}\.1\.runlog\.jsonl$/);
+
+    const { header, spans, text } = readRunLogFile(path.join(dir, entry.runLog!));
+    expect(header).toEqual({ schema: RUNLOG_SCHEMA, t0Iso: expect.any(String) });
+    expect(spans.map((sp) => sp.name)).toEqual(seen!.timings.map((t) => t.name));
+    for (const word of spec.prompt.split(" ").filter((w) => w.length >= 4)) expect(text).not.toContain(word);
+    expect(text).not.toContain(spec.prompt);
+  }, 60_000);
+
+  it("an aborted row keeps ms 0 and takes elapsedMs from its attempt's RunLog: refused-partial and budget-stop", async () => {
+    /* MUTATION THAT KILLS THIS: leave `elapsedMs` off the abort rows (or set
+       it from the pipeline's timings, which an abort never returns) — both
+       rows lose it. Ran it — red. */
+    const refused = await generateOneCandidate({ prompt: "the history of grilling and barbecue" }, baseArgs(dir), {
+      cueProvider,
+      runPipeline: stubPipeline(REFUSING_FINALIZE)
+    });
+    expect(refused.entry?.abort?.reason).toBe("refused-partial");
+    expect(refused.entry?.ms).toBe(0);
+    const refusedLog = readRunLogFile(path.join(dir, refused.entry!.runLog!));
+    /* The refusal is thrown from inside act 0's stitch, so that stage failed. */
+    expect(refusedLog.spans.find((sp) => sp.name === "stitch:0")?.status).toBe("failed");
+    const ran = refusedLog.spans.filter((sp) => sp.status !== "resumed");
+    expect(refused.entry?.elapsedMs).toBe(Math.max(...ran.map((sp) => sp.endMs)) - Math.min(...ran.map((sp) => sp.startMs)));
+    expect(refused.entry?.elapsedMs).toBeGreaterThan(0);
+
+    const overBudget = {
+      providerName: "over-budget-deepen",
+      deepenAct: async (): Promise<never> => {
+        throw new EpisodeBudgetExceededError("s", 9.9, 0.2, 10);
+      }
+    };
+    const stopped = await generateOneCandidate({ prompt: "a budget stop in deepen", topic: "food/grilling-bbq" }, baseArgs(dir), {
+      cueProvider,
+      runPipeline: stubPipeline(FAKE_FINALIZE, { deepenBuilder: overBudget })
+    });
+    expect(stopped.entry?.abort?.reason).toBe("budget-stop");
+    expect(stopped.entry?.ms).toBe(0);
+    const stoppedLog = readRunLogFile(path.join(dir, stopped.entry!.runLog!));
+    expect(stoppedLog.spans.at(-1)).toMatchObject({ name: "deepen", status: "failed" });
+    expect(typeof stopped.entry?.elapsedMs).toBe("number");
+  }, 60_000);
+
+  it("writes one runlog per attempt, each attempt under its own log and resumeAttempt; the row names the last", async () => {
+    /* MUTATION THAT KILLS THIS: create the RunLog once, outside the resume
+       loop — every attempt shares one log and `logs` has one distinct entry.
+       Ran it — red. */
+    const contexts: Array<number | undefined> = [];
+    const logs: Array<RunLog | undefined> = [];
+    const pipeline = flakyPipeline([new Error("Request timed out."), new Error("Request timed out.")]);
+    const runPipeline: typeof runForayPipeline = (req, options, deps) => {
+      contexts.push(currentCallContext().resumeAttempt);
+      logs.push(currentRunLog());
+      return pipeline.fn(req, options, deps);
+    };
+    const result = await generateOneCandidate({ prompt: "three attempts" }, baseArgs(dir), { cueProvider, runPipeline, sleep: recordingSleep().sleep });
+
+    expect(contexts).toEqual([0, 1, 2]);
+    expect(new Set(logs).size).toBe(3);
+    expect(logs.every((l) => l !== undefined)).toBe(true);
+    const files = fs.readdirSync(path.join(dir, "runlogs")).sort();
+    expect(files.map((f) => f.replace(/^.*-[0-9a-f]{8}\./, ""))).toEqual(["1.runlog.jsonl", "2.runlog.jsonl", "3.runlog.jsonl"]);
+    expect(result.entry?.runLog).toMatch(/\.3\.runlog\.jsonl$/);
+    /* The fake pipeline timed no stage, so there is no span to measure. */
+    expect(result.entry?.elapsedMs).toBe(spanMsOf([]));
+  });
+
+  it("an error row has elapsedMs null when no stage ran; --dry-run writes no runlog and names none", async () => {
+    const failing = flakyPipeline([new Error("Cannot read properties of undefined")]);
+    const errored = await generateOneCandidate({ prompt: "a bug", id: "p-1" }, baseArgs(dir), { cueProvider, runPipeline: failing.fn });
+    expect(errored.entry?.outcome).toBe("error");
+    expect(errored.entry?.elapsedMs).toBeNull();
+    expect(errored.entry?.promptId).toBe("p-1");
+    expect(errored.entry?.duration).toBe("medium");
+    expect(typeof errored.entry?.driverMs).toBe("number");
+
+    /* MUTATION THAT KILLS THIS: drop the `args.dryRun` return in writeRunLog. */
+    const dry = path.join(dir, "dry");
+    const result = await generateOneCandidate({ prompt: "dry run" }, baseArgs(dry, { dryRun: true }), {
+      cueProvider,
+      runPipeline: flakyPipeline([]).fn
+    });
+    expect(result.entry?.runLog).toBeUndefined();
+    expect(fs.existsSync(path.join(dry, "runlogs"))).toBe(false);
   });
 });

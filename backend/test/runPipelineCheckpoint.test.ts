@@ -17,6 +17,7 @@ import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { PromptUnderstander } from "../src/generation/PromptUnderstander";
 import type { DeepenActBuilder } from "../src/generation/DeepenActBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
+import { RunLog, runWithRunLog } from "../src/generation/runLog";
 
 /**
  * F-17/F-18, driven through the real pipeline.
@@ -238,7 +239,7 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     const resumedVeracity = (resumed.seen[0] as { meta: { veracity: { callsPerBeat: number | null; stageTimings: Array<{ name: string; resumed?: boolean }> } } }).meta.veracity;
     expect(resumedVeracity.callsPerBeat).toBe(0);
     expect(resumedVeracity.stageTimings.filter((t) => t.resumed).map((t) => t.name)).toEqual(
-      expect.arrayContaining(["understand", "research-shape", "spine", "source", "narrate:0", "stitch:0"])
+      expect.arrayContaining(["understand", "topic", "research-shape", "spine", "source", "narrate:0", "stitch:0"])
     );
   });
 
@@ -289,6 +290,57 @@ describe("per-stage checkpoint and resume inside one Foray (F-17/F-18)", () => {
     /* Finalize always runs — it validates, it does not generate. */
     expect(outcome.timings.find((t) => t.name === "finalize")!.resumed).toBeUndefined();
   });
+
+  it("GV-01: a banked topic is a RESUMED `topic` stage, in the timings and in the RunLog, whether the identity or only the topic was banked", async () => {
+    /* Run 1 dies in the spine, after the topic was banked and before the
+       identity was: run 2 resumes from `topic` alone. Run 3 then finds the
+       identity banked too. Neither re-decides the topic, so neither may time
+       a `topic` stage as if it ran.
+
+       MUTATION THAT KILLS THIS: drop `markResumed("topic")` from the
+       banked-topic branch — run 2's timings carry no `topic` entry at all.
+       Ran it — red. Dropping it from the identity branch fails run 3 the same
+       way. Swapping `stageDetail`'s `markResumed(name)` back to
+       `timings.markResumed(name)` drops every other resumed span from the
+       RunLog (understand, research-shape, spine, source, narrate:0,
+       stitch:0) and fails run 3's resumed-span check. Ran it — red. */
+    const store = new FakeCheckpointStore(FP);
+    const at = () => new Date("2026-09-09T00:00:00Z");
+    const dying = countingDeps();
+    dying.deps.spineBuilder.buildSpine = async () => {
+      throw new Error("spine fixture: transport died");
+    };
+    await expect(
+      runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at }, { ...dying.deps, finalize: fakeFinalize().fn, checkpoint: store })
+    ).rejects.toThrow(/transport died/);
+    expect(store.stageKeys(KEY)).toContain("topic");
+    expect(store.stageKeys(KEY)).not.toContain("identity");
+
+    const topicOnly = new RunLog();
+    const second = await runWithRunLog(topicOnly, () =>
+      runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store })
+    );
+    expect(second.timings.find((t) => t.name === "topic")).toMatchObject({ ms: 0, resumed: true });
+    expect(second.timings.find((t) => t.name === "spine")!.resumed).toBeUndefined();
+    expect(topicOnly.stages().find((s) => s.name === "topic")).toMatchObject({ status: "resumed", ms: 0 });
+
+    const identity = new RunLog();
+    const third = await runWithRunLog(identity, () =>
+      runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store })
+    );
+    expect(third.timings.filter((t) => t.name === "topic")).toEqual([expect.objectContaining({ ms: 0, resumed: true })]);
+    expect(identity.stages().find((s) => s.name === "topic")!.status).toBe("resumed");
+    /* Resumed spans are not time this attempt spent. `deepen` resumes per
+       act INSIDE its stage (`deepen:<i>`), so the stage itself still runs. */
+    expect(identity.stages().filter((s) => s.status === "ok").map((s) => s.name)).toEqual(["deepen", "evidence", "finalize"]);
+    /* Every other banked stage comes back through `stageDetail`, which must
+       append its own resumed span — not just tick the timings. */
+    const resumedSpans = identity.stages().filter((s) => s.status === "resumed");
+    expect(resumedSpans.map((s) => s.name)).toEqual(
+      expect.arrayContaining(["understand", "topic", "research-shape", "spine", "source", "narrate:0", "stitch:0"])
+    );
+    expect(resumedSpans.every((s) => s.ms === 0)).toBe(true);
+  }, 60_000);
 
   it("re-runs everything when the request changed", async () => {
     const store = new FakeCheckpointStore(FP);

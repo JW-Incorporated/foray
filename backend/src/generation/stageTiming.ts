@@ -32,25 +32,26 @@ export interface StageTiming {
    * rather than inferred from `ms: 0`, because a report that shows a 0 ms
    * spine without saying why reads as a broken measurement. */
   resumed?: true;
+  /** GV-01: set when the stage THREW. `ms` is still its real duration — the
+   * time the stage spent before failing — so a failed attempt's report can
+   * say where the time went instead of reporting nothing. Optional for the
+   * same reason as `resumed`. */
+  failed?: true;
 }
 
 /** Runs `fn`, records how long it actually took (wall clock, `Date.now()`
  * — no jitter injected, no estimate), and returns both the result and
- * the timing record. Never swallows an error: a failing stage still
- * gets timed (the `finally` below), and the error propagates unchanged
- * so a timing wrapper can never mask a real failure. */
+ * the timing record. Never swallows an error: a throw propagates unchanged
+ * so a timing wrapper can never mask a real failure.
+ *
+ * A FAILING STAGE IS NOT TIMED HERE: there is no result to return beside a
+ * timing, so on a throw this function only rethrows. `StageTimingLog.run`
+ * below is the wrapper that records failures (GV-01: `failed: true` with the
+ * stage's real ms). */
 export async function measureStage<T>(name: string, fn: () => Promise<T> | T): Promise<{ result: T; timing: StageTiming }> {
   const startedAt = new Date().toISOString();
   const start = Date.now();
-  let result: T;
-  try {
-    result = await fn();
-  } finally {
-    // Nothing to do in finally beyond letting the error propagate; the
-    // timing push happens after a successful return below. A caller that
-    // wants timing-on-failure too should catch and record ms via
-    // `Date.now() - start` itself — kept simple here on purpose.
-  }
+  const result = await fn();
   const ms = Date.now() - start;
   return { result, timing: { name, startedAt, ms } };
 }
@@ -61,9 +62,20 @@ export async function measureStage<T>(name: string, fn: () => Promise<T> | T): P
 export class StageTimingLog {
   private readonly entries: StageTiming[] = [];
 
+  /** Times `fn` and records it. A stage that throws is recorded too —
+   * `{name, startedAt, ms, failed: true}` with its real duration — and the
+   * error is rethrown unchanged (GV-01). */
   async run<T>(name: string, fn: () => Promise<T> | T): Promise<T> {
-    const { result, timing } = await measureStage(name, fn);
-    this.entries.push(timing);
+    const startedAt = new Date().toISOString();
+    const start = Date.now();
+    let result: T;
+    try {
+      result = await fn();
+    } catch (err) {
+      this.entries.push({ name, startedAt, ms: Date.now() - start, failed: true });
+      throw err;
+    }
+    this.entries.push({ name, startedAt, ms: Date.now() - start });
     return result;
   }
 
@@ -81,4 +93,17 @@ export class StageTimingLog {
   totalMs(): number {
     return this.entries.reduce((sum, e) => sum + e.ms, 0);
   }
+}
+
+/** GV-01 (the same definition the bench's W1-01 column uses): the TRUE
+ * elapsed time of a run's stages — the last end minus the first start — so
+ * stages that overlap (G-32's concurrent `narrate:<i>`) are counted once,
+ * where `totalMs()` sums them. Resumed entries did not run and are skipped;
+ * failed ones did and count. Null when no entry ran. */
+export function spanMsOf(timings: readonly StageTiming[]): number | null {
+  const ran = timings.filter((t) => !t.resumed);
+  if (ran.length === 0) return null;
+  const starts = ran.map((t) => Date.parse(t.startedAt));
+  const ends = ran.map((t, i) => starts[i]! + t.ms);
+  return Math.max(...ends) - Math.min(...starts);
 }
