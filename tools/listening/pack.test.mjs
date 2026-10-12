@@ -116,6 +116,17 @@ function pageCardBuilder(html) {
   return ctx;
 }
 
+/** The page's item label, evaluated from listen.html the same way: what the
+ * founder reads beside each item, not the module's copy of it. */
+function pageDescribe(html) {
+  const m = html.match(/<script id="item-describer">([\s\S]*?)<\/script>/);
+  assert.ok(m, "listen.html has an item-describer script block");
+  assert.match(html, /function describe\(item\) \{ return describeItem\(item, NO_SCRIPT\); \}/, "the page's describe() is that block's describeItem");
+  const ctx = {};
+  vm.runInNewContext(`${m[1]}\nthis.describe = function (item) { return describeItem(item, NO_SCRIPT); };`, ctx);
+  return ctx.describe;
+}
+
 const form = (packId, label, over = {}) => ({
   packId,
   label,
@@ -290,8 +301,10 @@ test("the same seed gives a byte-identical pack, and the seed decides which cand
   );
 });
 
-/* MUTATION: in the page's describe(), show "Narration" instead of
-   "Narration: " + NO_SCRIPT for an item with neither script nor audio -> red. */
+/* MUTATION: in describeItem (the page's describe()), show "Narration" instead
+   of "Narration: " + noScript for an item with neither script nor audio; or
+   flip the test to `item.audioUrl ? "Narration (rendered)" : !item.script ?
+   "Narration (spoken by this device)" : "Narration: " + noScript` -> red. */
 test("solo mode works on the out-9 candidate; a narration item without a script says 'script not in fixture'", () => {
   const dir = tmpdir();
   const { segmentsFile, sourcesFile } = poolFiles(dir);
@@ -317,8 +330,15 @@ test("solo mode works on the out-9 candidate; a narration item without a script 
 
   const html = fs.readFileSync(path.join(out, "listen.html"), "utf8");
   assert.equal(NO_SCRIPT, "script not in fixture", "the card's wording");
-  assert.ok(html.includes(JSON.stringify(NO_SCRIPT)), "the page carries the 'script not in fixture' wording");
-  assert.match(html, /"Narration: " \+ NO_SCRIPT/, "and shows it for a narration item with neither script nor audio");
+  const describe = pageDescribe(html);
+  const narration = items.filter((i) => i.kind === "narration");
+  assert.equal(narration.length, 6);
+  for (const item of narration) assert.equal(describe(item), "Narration: script not in fixture", "the page shows it for each scriptless narration item");
+  assert.equal(describe({ kind: "narration", script: "A spoken line.", audioUrl: null }), "Narration (spoken by this device)");
+  assert.equal(describe({ kind: "narration", script: "A spoken line.", audioUrl: "https://narration.example.test/x.m4a" }), "Narration (rendered)");
+  assert.equal(describe(items[3]), "Clip, 1:18");
+  assert.equal(describe(items[5]), "Clip: cannot be played (no audio source)");
+  assert.equal(describe(items[4]), "Jingle (not played here)");
 
   const key = readJson(path.join(keys, `${built.packId}.key.json`));
   assert.deepEqual(validateKey(key), { ok: true, errors: [] });

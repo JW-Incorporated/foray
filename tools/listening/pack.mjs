@@ -386,6 +386,25 @@ export function buildCard(input, shape) {
   return { card: card, missing: missing };
 }
 
+/**
+ * What the page shows for one item of a version. Like buildCard, its source is
+ * embedded verbatim in listen.html (in <script id="item-describer">), so it
+ * stays self-contained; the test runs that embedded copy.
+ */
+export function describeItem(item, noScript) {
+  var fmt = function (sec) {
+    sec = Math.max(0, Math.floor(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  };
+  if (item.kind === "clip") {
+    if (item.unresolved) return "Clip: cannot be played (" + item.unresolved + ")";
+    return "Clip, " + fmt(item.endSec - item.startSec);
+  }
+  if (item.kind === "narration") return item.audioUrl ? "Narration (rendered)" : item.script ? "Narration (spoken by this device)" : "Narration: " + noScript;
+  return "Jingle (not played here)";
+}
+
 /* ------------------------------------------------------------------ */
 /* The page                                                            */
 /* ------------------------------------------------------------------ */
@@ -444,7 +463,6 @@ const PAGE_JS = `
   var synth = window.speechSynthesis || null;
   var AXIS_LABELS = ${scriptJson(AXIS_LABELS)};
   var Q06_LABELS = ${scriptJson(Q06_LABELS)};
-  var NO_SCRIPT = ${scriptJson(NO_SCRIPT)};
   var states = {};
   var current = null;
   var token = 0;
@@ -462,14 +480,7 @@ const PAGE_JS = `
     return m + ":" + (s < 10 ? "0" : "") + s;
   }
   function elapsed(st) { return st.base + (st.playing ? now() - st.since : 0); }
-  function describe(item) {
-    if (item.kind === "clip") {
-      if (item.unresolved) return "Clip: cannot be played (" + item.unresolved + ")";
-      return "Clip, " + fmt(item.endSec - item.startSec);
-    }
-    if (item.kind === "narration") return item.audioUrl ? "Narration (rendered)" : item.script ? "Narration (spoken by this device)" : "Narration: " + NO_SCRIPT;
-    return "Jingle (not played here)";
-  }
+  function describe(item) { return describeItem(item, NO_SCRIPT); }
 
   function stopAll() {
     token++;
@@ -729,6 +740,10 @@ export function renderHtml(pack) {
 <script id="card-builder">
 var CARD_SHAPE = ${scriptJson(CARD_SHAPE)};
 ${buildCard.toString()}
+</script>
+<script id="item-describer">
+var NO_SCRIPT = ${scriptJson(NO_SCRIPT)};
+${describeItem.toString()}
 </script>
 <script>${PAGE_JS}</script>
 </body>
