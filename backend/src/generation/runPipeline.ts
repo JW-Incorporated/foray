@@ -1139,7 +1139,18 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
       narrationWriterCalls++;
       return narrationWriter.writeAct(actRequest, actCtx);
-    }
+    },
+    /* GV-43: a streamed act is one request too, so it counts once, when the
+       stream is opened. Forwarded only when the writer has it, so a caller
+       that checks for the method sees exactly what the writer offers. */
+    ...(narrationWriter.writeActStream
+      ? {
+          writeActStream: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
+            narrationWriterCalls++;
+            return narrationWriter.writeActStream!(actRequest, actCtx);
+          }
+        }
+      : {})
   };
   /* G-34: `retryRounds` is counted by the stage itself (a round is an act
      going back to the writer), not by the proxy above, which sees

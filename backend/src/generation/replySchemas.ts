@@ -1,4 +1,5 @@
 import { z, type ZodTypeAny } from "zod";
+import { zodToJsonSchema, type JsonSchema } from "./chat/jsonSchema";
 import type { ActWriteResult } from "./NarrationWriterBuilder";
 import type { ActVerifyResult } from "./NarrationVerifierBuilder";
 
@@ -128,6 +129,29 @@ export const RawWrittenSeamSchema = z.object({
 });
 
 export const RawActWriteSchema = z.object({ seams: z.array(RawWrittenSeamSchema) });
+
+/**
+ * GV-43 (W4-09, docs/roadmap/generation-v2.md): ONE SEAM PER LINE. The
+ * streamed writer reply is JSONL -- one seam object per line, in listening
+ * order -- so `seamStream.ts`'s JsonlSeamParser can hand each seam on the
+ * moment its line closes instead of waiting for the whole act's JSON.
+ *
+ * The line variant differs from RawWrittenSeamSchema in one way: every
+ * field is REQUIRED, pronunciationHints included (R2-08's condition). In
+ * the whole-act reply a missing pronunciationHints is defaulted to [] by
+ * toActWriteResult; on a line there is no post-parse step, so the line
+ * says it outright and the parser's seam is a WrittenSeam as parsed.
+ */
+export const RawWrittenSeamLineSchema = RawWrittenSeamSchema.extend({
+  pronunciationHints: z.array(z.object({ word: z.string(), hint: z.string() }))
+});
+
+/** The JSON Schema of one streamed seam line (seamId, script, claims[],
+ * usedClaims[], pronunciationHints[], all required), converted once by
+ * chat/jsonSchema.ts's zodToJsonSchema (decision 11: no hand-built schema).
+ * It is a per-LINE schema, so it is not in REPLY_SCHEMAS, whose entries are
+ * whole replies sent as a json_schema response_format. */
+export const WRITTEN_SEAM_JSON_SCHEMA: JsonSchema = zodToJsonSchema(RawWrittenSeamLineSchema);
 
 /**
  * GV-31: the writer's one post-parse step, shared by the Anthropic writer

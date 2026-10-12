@@ -52,6 +52,66 @@ export interface NarrationWriterBuilder {
    * branch into a second orchestration.
    */
   writeAct(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult>;
+
+  /**
+   * GV-43 (W4-09, docs/roadmap/generation-v2.md): THE SAME ACT, STREAMED.
+   * The same request as `writeAct`, answered one seam at a time in
+   * listening order as each seam's line of the JSONL reply closes
+   * (`seamStream.ts`), then exactly one `end` event. A stream is ONE call
+   * to the model, as `writeAct` is.
+   *
+   * OPTIONAL, and nothing calls it on the default path: the streamed
+   * narration stage that consumes it sits behind W4-10's flag, and a
+   * writer without it keeps working through `writeAct` alone.
+   * `collectActStream` turns a stream back into `writeAct`'s result.
+   */
+  writeActStream?(request: ActWriteRequest, ctx: NarrationBuildContext): AsyncIterable<WriterStreamEvent>;
+}
+
+/* ------------------------------------------------------------------ *
+ * GV-43: the streamed writer contract.
+ * ------------------------------------------------------------------ */
+
+/** Why a stream ended: `end`, the model finished; `length`, it hit the
+ * output-token cap, so the seams in `unfinishedSeamIds` never arrived. */
+export type WriterStreamStopReason = "end" | "length";
+
+/** Token counts a streamed reply reported; null when the server did not
+ * say (never 0, which would read as a free call). */
+export interface WriterStreamUsage {
+  promptTokens: number | null;
+  outputTokens: number | null;
+}
+
+/**
+ * One event of a streamed act. `atMs` is when the seam was ready, in
+ * milliseconds since the stream began, on the writer's own clock. `end` is
+ * always the last event; `unfinishedSeamIds` names every requested seam
+ * that never arrived as a valid line (cut at the cap, or a bad line), in
+ * request order -- empty on a clean reply.
+ */
+export type WriterStreamEvent =
+  | { type: "seam"; seam: WrittenSeam; atMs: number }
+  | { type: "end"; stopReason: WriterStreamStopReason; unfinishedSeamIds: string[]; usage?: WriterStreamUsage };
+
+export type ActStreamResult = ActWriteResult & { stopReason: WriterStreamStopReason; unfinishedSeamIds: string[] };
+
+/**
+ * Drains a streamed act into `writeAct`'s result shape: the seams in the
+ * order they arrived, plus how the stream ended. A stream that stops
+ * without its `end` event, or yields anything after it, breaks the
+ * contract and throws rather than passing a silently short act on.
+ */
+export async function collectActStream(stream: AsyncIterable<WriterStreamEvent>): Promise<ActStreamResult> {
+  const seams: WrittenSeam[] = [];
+  let ended: Extract<WriterStreamEvent, { type: "end" }> | undefined;
+  for await (const event of stream) {
+    if (ended) throw new Error(`collectActStream: the writer stream yielded a '${event.type}' event after its 'end' event`);
+    if (event.type === "seam") seams.push(event.seam);
+    else ended = event;
+  }
+  if (!ended) throw new Error("collectActStream: the writer stream finished without an 'end' event");
+  return { seams, stopReason: ended.stopReason, unfinishedSeamIds: [...ended.unfinishedSeamIds] };
 }
 
 /* ------------------------------------------------------------------ *

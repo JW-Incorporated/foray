@@ -3389,6 +3389,18 @@ const BACKEND_FLOORS = {
      in-memory checkpoint (one full medium run, the rest resume the banked
      prefix); offline. One named mutation per test in the header. */
   "test/actFrame.test.ts": 5,
+  /* GV-43 (docs/roadmap/generation-v2.md, W4-09, #1286): the streamed writer
+     contract -- JsonlSeamParser (every seam in order under any chunking: each
+     single boundary, a grid of pairs and a fast-check property over
+     generated replies; escaped newlines, unicode escapes, opening and
+     closing fences, blank and CRLF lines; a malformed or hint-less line is
+     a bad-line and later lines still parse; a reply cut mid-line is the
+     completed seams plus one 'unfinished', never a seam),
+     RawWrittenSeamLineSchema and WRITTEN_SEAM_JSON_SCHEMA (every field
+     required), the Stub's writeActStream on a fake clock and
+     collectActStream (equals writeAct, one budget record, throws on a
+     missing or early 'end'). Pure; offline. One named mutation per test. */
+  "test/seamStream.test.ts": 9,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
