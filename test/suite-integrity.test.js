@@ -2806,6 +2806,14 @@ const BACKEND_FLOORS = {
      body on disk. */
   "test/retrievalServer.test.ts": 11,
   "test/manifestBodySource.test.ts": 5,
+  /* GV-29 (docs/roadmap/generation-v2.md, from W3-10): the backend retrieval
+     client — prepared lineage and 'all' answers equal a local search (scores,
+     ranks, idf, zero-hit idf), isUsable and limit honoured, unknown episodes
+     dropped, dedup and batching, misses fall back and are counted, timeouts
+     degrade without throwing, bodyStat from the manifest, hydration capped at
+     8 in flight, pin + LRU memory bound, transcriptSource parity with
+     FileTranscriptCueProvider, and no fs write in the module. */
+  "test/retrievalClient.test.ts": 15,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
