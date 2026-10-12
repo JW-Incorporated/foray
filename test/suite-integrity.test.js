@@ -1594,7 +1594,17 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 48, // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  "tools/generation-bench/run.test.mjs": 56, // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
+     append-only store under docs/ (auto-merge territory). Each test is one
+     refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
+     pair card without a preference, a transcript in an extra field, a bad
+     line skipped, an append that rewrites the store. */
+  "tools/listening/card.test.mjs": 17, // GV-08: new -- listen-card/1 validation, store read/append, committed-store gate, Q-06 status + README founder-only rule
+  /* GV-08 (R2-21, MQ-20): unsealing blind labels against the local pack keys.
+     Each test pins a way a swap that lost could read as a swap that won: a
+     label mapped to the wrong arm, a keyless guess, a tie counted as a win. */
+  "tools/listening/unseal.test.mjs": 11, // GV-08: new -- unseal with/without keys, aggregate on 10 pairs, ties, axis deltas, re-listen, listenByCandidate, key checks, CLI
   /* The keyless-run transport (#697). This suite is the ONLY thing in the repo
      that can notice the relay losing a behaviour, and every one of those
      behaviours was bought by a finding that cost a run something: I-23's
@@ -2260,6 +2270,8 @@ const FLOORS = {
   "tools/foraycorpus-export/time.test.mjs": 4, // CH2-30 (docs/roadmap/code-health-2.md, T1-20): one time.mjs instant/toIsoOrNull (ISO string, pg Date, Date with ms, null cases); catalogue.mjs's feed choice and every written timestamp keep pg Date milliseconds (RED on main: tie -> first seen, .000Z)
   "tools/foraycorpus-export/rows.test.mjs": 3, // CH2-30 (docs/roadmap/code-health-2.md, T1-20): one rows.mjs rowsOf / idKey / readJsonl (CRLF + blank lines skipped, MALFORMED_ROW path:line, OverlapError via readShowsJsonl)
   "tools/foraycorpus-export/dai-tier.test.mjs": 8, // PKG-16 (docs/roadmap/corpus.md): per-episode DAI tier over tools/segments/ad-pad.mjs (Gastropod 99.5 s paddable copied from padFromProbes, exact-ceiling paddable vs 0.1 s over locate-required, pad 0 ad-free, one usable probe unmeasured n<2, every probe declared 0 unmeasurable no denominator, flightcast untrusted host listed trusted:false, undersized unmeasurable, no reference duration unmeasurable without a throw)
+  "tools/passage-index/sources.test.mjs": 5, // GV-09 (W3-05, docs/roadmap/generation-v2.md): stream indexer body sources (local walk order + show_id = dir minus safeKey hash + file stat + unparseable body sent as null, shadowed dirs, R2 dir mapping through show-map with unmapped dirs kept + strays ignored and listing-only, sync-r2 quarantine codes SHA_MISMATCH/BAD_JSON/BAD_SHAPE/NO_BODY persisted and GET_FAILED not, each object fetched once, PATH_ESCAPE at list time, last-listed name wins)
+  "tools/passage-index/stream-index.test.mjs": 9, // GV-09 (W3-05, docs/roadmap/generation-v2.md): stream indexer (package script forwards args, parseStreamArgs, R2 --full fetches each object once and groups records by show with an end-show after each and writes only the manifest, delta: unchanged rerun no GET + changed object/etag rebuilds only its show + --show narrowing, quarantine reported/skipped/persisted, disk guard refuses before any GET + estimate + --min-free-gb 0, cue-cache LRU eviction by bytes, local stat parity, spawnIndexer line protocol against a node child)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
