@@ -1646,6 +1646,7 @@ const FLOORS = {
      launcher that spawns an entry that no longer exists fails quietly, and a
      run then proceeds on the cold corpus this issue was filed about. */
   "tools/generation/warm-transcript-index.test.mjs": 7, // round-3 audit data-tools-8: a child ended by a signal exits 128 + n, and both launchers use exitCodeFor; 5 -> 7
+  "tools/generation/exemplars/mine-exemplars.test.mjs": 13, // GV-42: new -- frozen counts (disclosure out of seam runs, clip-only skipped), runs never span a segment or an act change, roles from ids + neighbouring shows (unresolved = bridge), show resolution through segments.json then segment-sources.json, digit/30-word/leak metrics, FK and shape from spokenLine.js, top-5 ranking, --select refusals (finding, leak, >60-word card, >2 exemplars, no selectedBy/listenedOn), the written shape, byte-stable output, the committed file starts empty, CLI --out and exit 1
   /* The native shell (#36). `shell-invariants` is the one to be most careful
      with: four of the five things it pins are properties of files OUTSIDE
      tools/ — the root package.json staying dependency-free, index.html's CSP,
