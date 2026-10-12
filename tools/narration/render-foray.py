@@ -50,6 +50,13 @@ USAGE
     python tools/narration/render-foray.py --forays the-chain-reaction-how-engineering-disasters-rea-25f1b7 --voices af_heart
     python tools/narration/render-foray.py --smoke            # 2 short items, CPU, both voices
     python tools/narration/render-foray.py --report out/manifest.json
+    python tools/narration/render-foray.py --candidate data-local/runs/<id>/partial.json --items prelude,disclosure
+
+GV-11 (docs/roadmap/generation-v2.md): `--candidate PATH` renders a generated
+candidate, a PartialCandidate or a job snapshot (any document with a top-level
+`id` and `items`) without reading data/forays.json; `--items` renders only the
+named narration items; the profile's default voice always renders first, every
+selected line in play order, whatever order `--voices` names.
 """
 
 from __future__ import annotations
@@ -205,6 +212,92 @@ def select_forays(doc: dict, spec: list[str]) -> list[dict]:
             if f not in out:
                 out.append(f)
     return out
+
+
+def load_candidate(path: Path) -> dict:
+    """GV-11: a generated candidate as a one-Foray catalogue.
+
+    Takes a final candidate, a PartialCandidate or a job snapshot: any JSON
+    document with a top-level string `id` and an `items` list. It is wrapped as
+    {forays:[{id, status:'candidate', items}]}, the shape `narration_items` and
+    `select_forays` already read, so the render is the same code path as a
+    data/forays.json Foray. Nothing else of the document is carried (camelCase
+    `runtimeSec`, `acts`, `validation` ... are not the renderer's business), and
+    data/forays.json is never opened."""
+    try:
+        doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise RenderError(f"--candidate {path}: cannot read it ({exc.strerror or exc})")
+    except ValueError as exc:
+        raise RenderError(f"--candidate {path}: not JSON ({exc})")
+    if not isinstance(doc, dict) or not isinstance(doc.get("id"), str) or not doc["id"].strip():
+        raise RenderError(f"--candidate {path}: no top-level string `id`")
+    if not isinstance(doc.get("items"), list):
+        raise RenderError(f"--candidate {path}: no top-level `items` list")
+    return {"forays": [{"id": doc["id"], "status": "candidate", "items": doc["items"]}]}
+
+
+def select_items(work: list[tuple[dict, list[dict]]], ids: list[str]) -> list[tuple[dict, list[dict]]]:
+    """GV-11 --items: keep only the narration items with these ids, in play
+    order (never the order asked), dropping a Foray left with none. An id that
+    names no narration item of the selection is a refusal, never a silent skip."""
+    known = {i.get("id") for _, items in work for i in items}
+    unknown = [i for i in ids if i not in known]
+    if unknown:
+        raise RenderError(f"--items: {', '.join(unknown)} is not a narration item id in the selection")
+    want = set(ids)
+    out = []
+    for foray, items in work:
+        kept = [i for i in items if i.get("id") in want]
+        if kept:
+            out.append((foray, kept))
+    return out
+
+
+def voice_order(voices: list[str], default_voice: str) -> list[str]:
+    """GV-11: the default voice first, then the rest in the order asked, each
+    once. The default voice then renders every selected line, in play order,
+    before any other voice starts (render_all loops voices outside lines)."""
+    seen: list[str] = []
+    for v in voices:
+        if v not in seen:
+            seen.append(v)
+    if default_voice in seen:
+        seen.remove(default_voice)
+        seen.insert(0, default_voice)
+    return seen
+
+
+def _csv(value: str | None) -> list[str]:
+    return [s.strip() for s in (value or "").split(",") if s.strip()]
+
+
+def plan_work(args, profile: dict) -> tuple[list[tuple[dict, list[dict]]], list[str]]:
+    """Everything the render will do, decided and validated before anything
+    heavy loads (so a typo'd id costs a second, not a model load): the Forays
+    (data/forays.json, or the --candidate document alone), the lines
+    (--items, --smoke) and the voices in render order."""
+    if args.candidate:
+        doc = load_candidate(Path(args.candidate))
+        spec = [doc["forays"][0]["id"]]
+    else:
+        doc = json.loads(FORAYS_PATH.read_text(encoding="utf-8"))
+        spec = _csv(args.forays) or [DRAFTS]
+    forays = select_forays(doc, spec)
+    items = _csv(getattr(args, "items", None))
+    if items and args.smoke:
+        raise RenderError("--items and --smoke both pick lines; give one")
+    if args.smoke:
+        work = smoke_selection(forays)
+    else:
+        work = [(f, narration_items(f)) for f in forays]
+        if items:
+            work = select_items(work, items)
+    voices = _csv(args.voices) or list(profile["voices"])
+    for v in voices:
+        if v not in profile["voices"]:
+            raise RenderError(f"{v} is not a voice in render-profile.json ({', '.join(profile['voices'])})")
+    return work, voice_order(voices, profile["default_voice"])
 
 
 def smoke_selection(forays: list[dict], n: int = 2) -> list[tuple[dict, list[dict]]]:
@@ -664,21 +757,12 @@ def phonemize_work(work: list[tuple[dict, list[dict]]]) -> tuple[list[dict], dic
     return lines, phon
 
 
-def render_all(args, profile: dict) -> int:
+def render_all(args, profile: dict, work: list[tuple[dict, list[dict]]], voices: list[str]) -> int:
     import numpy as np
 
     ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
     if not ffmpeg or not ffprobe:
         raise RenderError("ffmpeg and ffprobe must be on PATH (apt-get install ffmpeg)")
-
-    doc = json.loads(FORAYS_PATH.read_text(encoding="utf-8"))
-    spec = args.forays.split(",") if args.forays else [DRAFTS]
-    forays = select_forays(doc, [s.strip() for s in spec if s.strip()])
-    work = smoke_selection(forays) if args.smoke else [(f, narration_items(f)) for f in forays]
-    voices = args.voices.split(",") if args.voices else list(profile["voices"])
-    for v in voices:
-        if v not in profile["voices"]:
-            raise RenderError(f"{v} is not a voice in render-profile.json ({', '.join(profile['voices'])})")
 
     pins = read_pins()
     mpin = model_pin(profile, pins)
@@ -846,11 +930,17 @@ def cmd_check(profile: dict) -> int:
     return 0
 
 
-def main(argv: list[str]) -> int:
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--check", action="store_true", help="report what is installed and pinned, then exit")
-    ap.add_argument("--forays", help=f"comma-separated Foray ids, or {DRAFTS} (default)")
-    ap.add_argument("--voices", help="comma-separated voices (default: the profile's, Heart and Echo)")
+    source = ap.add_mutually_exclusive_group()
+    source.add_argument("--forays", help=f"comma-separated Foray ids, or {DRAFTS} (default)")
+    source.add_argument("--candidate", metavar="PATH",
+                        help="render a generated candidate, PartialCandidate or job snapshot (top-level id + items) "
+                             "instead of data/forays.json")
+    ap.add_argument("--items", help="comma-separated narration item ids: render only these")
+    ap.add_argument("--voices", help="comma-separated voices (default: the profile's, Heart and Echo); "
+                                     "the default voice always renders first")
     ap.add_argument("--smoke", action="store_true", help="the 2 shortest lines of the first selected Foray only")
     ap.add_argument("--out", help="output directory (default data-local/narration-render)")
     ap.add_argument("--manifest", help="manifest path (default <out>/manifest.json)")
@@ -859,7 +949,11 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--rerender", action="store_true", help="render lines data/forays.json already stamps with the same key")
     ap.add_argument("--threads", type=int, default=min(4, os.cpu_count() or 1), help="onnxruntime intra-op threads")
     ap.add_argument("--report", nargs="+", metavar="MANIFEST", help="print a markdown summary of manifest(s) and exit")
-    args = ap.parse_args(argv)
+    return ap
+
+
+def main(argv: list[str]) -> int:
+    args = build_parser().parse_args(argv)
 
     try:
         if args.report:
@@ -871,9 +965,8 @@ def main(argv: list[str]) -> int:
             return cmd_check(profile)
         # Validate the selection BEFORE anything heavy loads, so a typo'd id
         # costs a second, not a model load.
-        doc = json.loads(FORAYS_PATH.read_text(encoding="utf-8"))
-        select_forays(doc, [s.strip() for s in (args.forays or DRAFTS).split(",") if s.strip()])
-        return render_all(args, profile)
+        work, voices = plan_work(args, profile)
+        return render_all(args, profile, work, voices)
     except RenderError as exc:
         print(f"render-foray: {exc}", file=sys.stderr)
         return 2

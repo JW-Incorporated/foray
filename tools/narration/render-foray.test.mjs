@@ -4,7 +4,8 @@
  * can be settled without the 325 MB model, misaki or ffmpeg (none of which CI's
  * test job installs): the content-hash key, the manifest's shape, the profile's
  * pins and settings, the Foray selection and its refusals, and the render
- * workflow's no-credentials contract. The audio itself is exercised by
+ * workflow's no-credentials contract, and GV-11's plan (a candidate document
+ * instead of data/forays.json, --items, the default voice first). The audio itself is exercised by
  * `.github/workflows/render-narration.yml` (`--smoke`, and the Phase 1 drafts).
  *
  * Every test names the mutation that turns it red.
@@ -323,6 +324,191 @@ test("--report renders a manifest as a markdown table", () => {
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+/* ---------- GV-11: a candidate, per item, default voice first ---------- */
+
+/* A PartialCandidate as runPipeline writes it (backend/src/generation/
+   partialCandidate.ts): camelCase runtimeSec, acts, private visibility, the
+   prelude and disclosure narration items (runPipeline.ts preludeItem /
+   disclosureItem) ahead of the acts' items, one act still pending. */
+const PARTIAL = {
+  id: "gen-quiet-engines-3f2a1c",
+  title: "Quiet engines",
+  topic: "quiet engines",
+  summary: "s",
+  status: "partial",
+  visibility: "private",
+  authorId: "u1",
+  acts: [{ index: 0, title: "One", status: "ready" }, { index: 1, title: "Two", status: "pending" }],
+  slots: [{ id: "s1" }],
+  items: [
+    { type: "narration", id: "prelude", script: "Welcome to Foray. This one is about quiet engines.", mode: "marker" },
+    { type: "narration", id: "disclosure", script: "The narration you will hear is synthetic.", mode: "marker", slot: "s1" },
+    { type: "segment", slot: "s1", segment_id: "show#1" },
+    { type: "narration", id: "a1-n1", script: "The first engine ran almost without a sound.", mode: "bridge" },
+    { type: "segment", segment_id: "show#2" },
+    { type: "jingle", id: "j1" },
+    { type: "narration", id: "a1-n2", script: "Nobody noticed until it stopped.", mode: "bridge" },
+  ],
+  runtimeSec: 412,
+  ttlA1Ms: 41000,
+  builtAt: "2026-10-11T00:00:00.000Z",
+  updatedAt: "2026-10-11T00:01:00.000Z",
+  validation: { ok: true },
+};
+
+function withCandidate(doc, fn) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "rf-cand-"));
+  try {
+    const p = path.join(tmp, "partial.json");
+    fs.writeFileSync(p, typeof doc === "string" ? doc : JSON.stringify(doc));
+    return fn(p);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+/* plan_work with data/forays.json pointed at a path that does not exist, so
+   any read of it fails the call. */
+const PLAN = (argv) =>
+  `import pathlib\nR.FORAYS_PATH=pathlib.Path(${JSON.stringify(path.join(os.tmpdir(), "rf-no-such", "forays.json"))})\n` +
+  `a=R.build_parser().parse_args(${JSON.stringify(argv)})\n` +
+  `try:\n  work,voices=R.plan_work(a,P); res={"work":[[f["id"],f["status"],[i["id"] for i in its]] for f,its in work],"voices":voices}\n` +
+  `except R.RenderError as e:\n  res={"refused":str(e)}\n` +
+  `print(json.dumps(res))`;
+
+test("--candidate renders a PartialCandidate's narration, disclosure included, without reading data/forays.json", () => {
+  /* MUTATION: plan_work reads FORAYS_PATH before (or regardless of) --candidate
+     -> FileNotFoundError; or narration_items narrowed to `mode != marker` -> the
+     prelude and disclosure drop out; or the wrap keeps the doc's status
+     "partial" -> the status assertion fails. */
+  const out = withCandidate(PARTIAL, (p) => pyJson(PLAN(["--candidate", p])));
+  assert.deepEqual(out.work, [["gen-quiet-engines-3f2a1c", "candidate", ["prelude", "disclosure", "a1-n1", "a1-n2"]]]);
+  assert.deepEqual(out.voices, ["af_heart", "am_echo"]);
+});
+
+test("a candidate document with no top-level id or items is refused, naming what is missing", () => {
+  /* Any doc with a top-level id and items is a candidate; anything else is not
+     rendered as an empty Foray. MUTATION: drop either guard in load_candidate
+     -> a KeyError/TypeError escapes or the doc renders nothing silently. */
+  const noId = withCandidate({ items: PARTIAL.items }, (p) => pyJson(PLAN(["--candidate", p])));
+  const noItems = withCandidate({ id: "x", acts: [] }, (p) => pyJson(PLAN(["--candidate", p])));
+  const notJson = withCandidate("{nope", (p) => pyJson(PLAN(["--candidate", p])));
+  const noNarration = withCandidate({ id: "x", items: [{ type: "segment" }] }, (p) => pyJson(PLAN(["--candidate", p])));
+  assert.match(noId.refused, /no top-level string `id`/);
+  assert.match(noItems.refused, /no top-level `items` list/);
+  assert.match(notJson.refused, /not JSON/);
+  assert.match(noNarration.refused, /x has no narration item/);
+});
+
+test("--items keeps only the named narration lines, in play order, not the order asked", () => {
+  /* MUTATION: build the kept list from `ids` (asked order) -> a1-n2 renders
+     before the disclosure; or ignore --items in plan_work -> all four lines. */
+  const out = withCandidate(PARTIAL, (p) => pyJson(PLAN(["--candidate", p, "--items", "a1-n2,disclosure"])));
+  assert.deepEqual(out.work, [["gen-quiet-engines-3f2a1c", "candidate", ["disclosure", "a1-n2"]]]);
+});
+
+test("--items with an unknown id, or a non-narration id, is refused, and --items with --smoke too", () => {
+  /* MUTATION: drop the unknown-id check in select_items -> the unknown id is
+     skipped silently and the plan renders a subset that looks green; build
+     `known` from every item rather than the narration lines -> j1 passes. */
+  const unknown = withCandidate(PARTIAL, (p) => pyJson(PLAN(["--candidate", p, "--items", "a1-n1,nope"])));
+  assert.match(unknown.refused, /--items: nope is not a narration item id/);
+  const jingle = withCandidate(PARTIAL, (p) => pyJson(PLAN(["--candidate", p, "--items", "j1"])));
+  assert.match(jingle.refused, /--items: j1 is not a narration item id/);
+  const smoke = withCandidate(PARTIAL, (p) => pyJson(PLAN(["--candidate", p, "--items", "a1-n1", "--smoke"])));
+  assert.match(smoke.refused, /--items and --smoke/);
+});
+
+test("voice_order puts the default voice first whatever --voices says, each voice once", () => {
+  /* GP-08: Heart renders every line before Echo starts, so the default voice
+     is complete first. MUTATION: return `voices` unchanged from voice_order, or
+     drop the voice_order call in plan_work -> am_echo first. */
+  const out = pyJson(
+    `print(json.dumps({"fn":[R.voice_order(["am_echo","af_heart"],"af_heart"),R.voice_order(["am_echo"],"af_heart"),` +
+      `R.voice_order(["af_heart","am_echo","af_heart"],"af_heart")]}))\n`
+  );
+  assert.deepEqual(out.fn, [["af_heart", "am_echo"], ["am_echo"], ["af_heart", "am_echo"]]);
+  const plan = withCandidate(PARTIAL, (p) => pyJson(PLAN(["--candidate", p, "--voices", "am_echo,af_heart"])));
+  assert.deepEqual(plan.voices, ["af_heart", "am_echo"]);
+});
+
+test("the render loop runs voices outside lines, over the planned order", () => {
+  /* Default-voice-first only holds while render_all loops the planned voices
+     outermost and the lines inside. MUTATION: swap the two loops, or have
+     render_all re-read args.voices -> red. */
+  const src = fs.readFileSync(SCRIPT, "utf8");
+  const body = src.slice(src.indexOf("def render_all("), src.indexOf("\ndef ", src.indexOf("def render_all(") + 1));
+  assert.match(body, /^def render_all\(args, profile: dict, work: list\[tuple\[dict, list\[dict\]\]\], voices: list\[str\]\)/);
+  assert.doesNotMatch(body, /args\.voices|args\.forays|args\.candidate|FORAYS_PATH/);
+  const outer = body.indexOf("for voice in voices:");
+  const inner = body.indexOf("for line in lines:");
+  assert.ok(outer > 0 && inner > outer, "voices must be the outer loop");
+});
+
+test("--forays and @drafts plan as before: data/forays.json, every line, Heart then Echo", () => {
+  /* The default path is unchanged by GV-11. MUTATION: default to the candidate
+     path or drop the @drafts default in plan_work -> red. */
+  const out = pyJson(
+    DOC +
+      `import pathlib,tempfile\n` +
+      `d=pathlib.Path(tempfile.mkdtemp())/"forays.json"; d.write_text(json.dumps(doc),encoding="utf-8"); R.FORAYS_PATH=d\n` +
+      `res=[]\n` +
+      `for argv in ([],["--forays","d3,d1"],["--forays","d1","--items","z"]):\n` +
+      `  w,v=R.plan_work(R.build_parser().parse_args(argv),P); res.append([[[f["id"],[i["id"] for i in its]] for f,its in w],v])\n` +
+      `print(json.dumps(res))`
+  );
+  assert.deepEqual(out[0], [[["d1", ["x", "y", "z", "w"]], ["d3", ["q"]]], ["af_heart", "am_echo"]]);
+  assert.deepEqual(out[1], [[["d3", ["q"]], ["d1", ["x", "y", "z", "w"]]], ["af_heart", "am_echo"]]);
+  assert.deepEqual(out[2], [[["d1", ["z"]]], ["af_heart", "am_echo"]]);
+});
+
+test("the key is pinned: a candidate line keys exactly as the same line did before GV-11", () => {
+  /* Keys carry no ids, so a candidate's line and a forays.json line with the
+     same phonemes are one object, and every stamped audio_url stays valid.
+     The hex below is origin/main's key for these chunks before GV-11.
+     MUTATION: add the Foray or item id, or bump KEY_SCHEMA -> the hash moves. */
+  const out = pyJson(`print(json.dumps(R.render_key(P,"af_heart","${HEART}","${FP32}",${CHUNKS})))`);
+  assert.equal(out, `n/${PROFILE.id}/af_heart/62e7e8ed8a47360cc318b096e926013b42cac61a0863e1d557e32ac23d65469f.m4a`);
+});
+
+test("refusals come from main before render_all, with exit 2", () => {
+  /* Validation runs before anything heavy loads. render_all is replaced by a
+     tripwire, so a refusal that happened inside it (after the model load in
+     real life) would show as "REACHED". MUTATION: move plan_work into
+     render_all, or drop the mutually exclusive group -> red. */
+  const out = withCandidate(PARTIAL, (p) => pyJson(
+    `import contextlib,io\n` +
+      `R.render_all=lambda *a,**k: (_ for _ in ()).throw(SystemExit("REACHED"))\n` +
+      `res=[]\n` +
+      `for argv in (["--candidate",${JSON.stringify(p)},"--forays","d1"],["--candidate",${JSON.stringify(p)},"--items","nope"],["--forays","no-such-foray"]):\n` +
+      `  err=io.StringIO()\n` +
+      `  try:\n` +
+      `    with contextlib.redirect_stderr(err): code=R.main(argv)\n` +
+      `  except SystemExit as e: code=e.code\n` +
+      `  res.append([code,err.getvalue()])\n` +
+      `print(json.dumps(res))`
+  ));
+  assert.equal(out[0][0], 2);
+  assert.match(out[0][1], /not allowed with argument/);
+  assert.equal(out[1][0], 2);
+  assert.match(out[1][1], /--items: nope is not a narration item id/);
+  assert.equal(out[2][0], 2);
+  assert.match(out[2][1], /no-such-foray is not a Foray id/);
+});
+
+test("the CLI refuses --candidate with --forays, and an unknown --items id, through the real entry point", () => {
+  /* MUTATION: drop the mutually exclusive group -> the pair is accepted and the
+     run proceeds to load weights. */
+  withCandidate(PARTIAL, (p) => {
+    const both = runCli(["--candidate", p, "--forays", "d1"]);
+    assert.equal(both.status, 2, both.stderr);
+    assert.match(both.stderr, /not allowed with argument/);
+    const bad = runCli(["--candidate", p, "--items", "nope"]);
+    assert.equal(bad.status, 2, bad.stderr);
+    assert.match(bad.stderr, /--items: nope is not a narration item id/);
+  });
 });
 
 /* ---------- the workflow ---------- */
