@@ -131,8 +131,8 @@ describe("ManifestBodySource — archive rows mapped onto manifest rows by the b
        recorded-guid scan never finds Buzzsprout-777); key the listing by the
        body's recorded guid instead of locateInListing (the permalink row
        misses its file); store fileNames case-sensitively (a mixed-case
-       manifest name is missed by the writer's-key lookup). Ran the first two
-       — red. */
+       manifest name is missed by the legacy bare-slug lookup: "Ep-9.json"
+       below). Ran all three — red. */
     const source = new ManifestBodySource({ rows: manifestRows(), cues: spyStore() });
     const [becker, a2, buzz, ep5, bonus, b1] = ARCHIVE as [
       TranscriptDigestEntry,
@@ -154,6 +154,16 @@ describe("ManifestBodySource — archive rows mapped onto manifest rows by the b
     /* The same row under another show is not this show's body. */
     expect(source.bodyStat({ ...a2, show_id: SHOW_B })).toBeNull();
     expect(source.showIds().sort()).toEqual([SHOW_A, SHOW_B]);
+
+    /* A mixed-case manifest name: a legacy bare-slug body "Ep-9.json" that
+       records no guid, so only the case-insensitive name lookup finds it, and
+       the row answered carries the manifest's exact name. */
+    const legacy: EpisodeManifestRow = { show_id: SHOW_A, fileName: "Ep-9.json", bodyGuid: null, size: 1209, mtimeMs: 1_760_000_000_009 };
+    const mixed = new ManifestBodySource({ rows: [...manifestRows(), legacy], cues: spyStore() });
+    const ep9: TranscriptDigestEntry = { show_id: SHOW_A, show_title: "Alpha", guid: "ep-9", title: "Episode nine", cues: 1 };
+    expect(mixed.rowFor(ep9)?.fileName).toBe("Ep-9.json");
+    expect(mixed.bodyStat(ep9)).toEqual({ mtimeMs: 1_760_000_000_009, size: 1209 });
+    expect(mixed.rowFor(a2)?.fileName).toBe(`${corpusSafeKey("a2")}.json`);
   });
 
   it("caches built by indexBodies from a stream are judged fresh with NO body on disk, and the cue store is never read", async () => {

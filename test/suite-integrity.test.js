@@ -2784,7 +2784,7 @@ const BACKEND_FLOORS = {
      reload, and the pull-archive round trip through loadTranscriptArchive;
      plus the manifest body source that keeps streamed caches fresh with no
      body on disk. */
-  "test/retrievalServer.test.ts": 10,
+  "test/retrievalServer.test.ts": 11,
   "test/manifestBodySource.test.ts": 5,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),

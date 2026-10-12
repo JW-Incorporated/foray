@@ -49,7 +49,8 @@ import {
  *   3. every show is held from its cache if the cache is fresh
  *      (`warmFromCache`). A stale or missing cache is logged as an ERROR and
  *      rebuilt only when the cue store can serve every body the show's rows
- *      map to; otherwise the show is left out and reported, never half-built.
+ *      map to (a store with no `bodyStat` cannot say, so it counts as unable);
+ *      otherwise the show is left out and reported, never half-built.
  *      `--shows` limits the set on a small machine.
  * A show that is not resident is never searched, so a query can never trigger
  * a build inside a request.
@@ -271,7 +272,16 @@ export class RetrievalService {
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- the cache path of a digest show id, slugged by showIndexCacheFile.
       const reason = fs.existsSync(showIndexCacheFile(this.options.indexRoot, showId)) ? "stale" : "missing";
       logger.error("cache-stale", { show: showId, reason, episodes: entries.length });
-      const missing = cueStore.bodyStat ? entries.filter((e) => cueStore.bodyStat?.(e) === null).length : 0;
+      /* FAIL CLOSED. A store that cannot say whether it holds a body (no
+         `bodyStat`, e.g. a read-through store) is not trusted to hold any:
+         rebuilding over it could write a partial index over the cache file
+         and hold the show resident half-built. */
+      const storeStat = cueStore.bodyStat;
+      if (!storeStat) {
+        logger.error("cache-not-rebuilt", { show: showId, missingBodies: entries.length, reason: "store-cannot-stat" });
+        continue;
+      }
+      const missing = entries.filter((e) => storeStat.call(cueStore, e) === null).length;
       if (missing > 0) {
         logger.error("cache-not-rebuilt", { show: showId, missingBodies: missing });
         continue;

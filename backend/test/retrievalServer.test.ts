@@ -485,6 +485,37 @@ describe("retrievalServer — residency, stale caches and reload", () => {
     expect(service.health()).toMatchObject({ shows: 2, episodes: 6 });
   });
 
+  it("fails closed on a cue store with no bodyStat: a stale show is not rebuilt, the store is never read, and its cache file is unchanged", async () => {
+    /* MUTATION THAT KILLS THIS: count a store with no bodyStat as able to
+       serve every body (`missing = 0`, the old behaviour) — beta and gamma are
+       rebuilt from a store that answers no cues, read, and their cache files
+       overwritten. */
+    const indexRoot = path.join(tmp, "stale-nostat", "index");
+    await buildCaches(indexRoot);
+    const bumped = manifestRows().map((r) => (r.show_id === SHOW_B || r.show_id === SHOW_C ? { ...r, size: r.size + 1 } : r));
+    const full = memoryStore();
+    const store: CueStore & { reads: string[] } = {
+      reads: full.reads,
+      getCues: full.getCues,
+      readCuesUncached: full.readCuesUncached,
+      transcriptSource: full.transcriptSource
+    };
+    expect("bodyStat" in store).toBe(false);
+    const before = new Map([SHOW_B, SHOW_C].map((s) => [s, fs.readFileSync(showIndexCacheFile(indexRoot, s), "utf8")]));
+    const logger = capturedLogger();
+    const service = new RetrievalService(serviceOptions(indexRoot, { logger, loadManifest: () => bumped, createCueStore: () => store }));
+    expect(service.residentShows()).toEqual([SHOW_A]);
+    expect(store.reads).toEqual([]);
+    for (const [s, text] of before) expect(fs.readFileSync(showIndexCacheFile(indexRoot, s), "utf8")).toBe(text);
+    expect(logger.events("error")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ event: "cache-not-rebuilt", show: SHOW_B, missingBodies: 2, reason: "store-cannot-stat" }),
+        expect.objectContaining({ event: "cache-not-rebuilt", show: SHOW_C, reason: "store-cannot-stat" })
+      ])
+    );
+    expect(logger.events().some((e) => e.event === "cache-rebuilt")).toBe(false);
+  });
+
   it("--shows limits the resident set; POST /v1/reload re-reads the archive and caches", async () => {
     /* MUTATION THAT KILLS THIS: in reload(), keep the old snapshot's archive
        (the new episode never appears). */
