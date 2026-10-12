@@ -22,6 +22,9 @@ import type { PartialCandidate } from "../src/generation/partialCandidate";
 import { CheckpointSession, checkpointFingerprint } from "../src/generation/checkpoint";
 import { FAST_PATH_PIPELINE_FLAGS, PIPELINE_FLAG_ENV, checkpointVariant, readPipelineFlags, type FoldDeepen } from "../src/generation/pipelineFlags";
 import { readGateConfig } from "../src/generation/gateConfig";
+import { JobSnapshotSchema, type JobSnapshot } from "../src/generation/jobSink";
+import type { PromptUnderstandContext } from "../src/generation/PromptUnderstander";
+import type { IntentUnderstanding } from "../src/types/generation";
 
 /**
  * WS-D2's own "exercisable without an API key" requirement (fix plan, D2):
@@ -736,5 +739,105 @@ describe("GV-39 — report.json names the prompt set and the corpus snapshot it 
     const report = writtenReport(file, corpusReport(coverage, corpusFingerprint({ archive: [], hasBody: () => false, indexVersion: 2 })));
     expect(report.corpus).toBeNull();
     expect((report.prompts as { count: number }).count).toBe(2);
+  });
+});
+
+describe("GV-44 — --job-dir publishes the job snapshot", () => {
+  let dir: string;
+  let jobDir: string;
+  /* The understander's copy differs from the prompt, so the prompt string
+     can only reach a job file if something carries the prompt itself. */
+  const PROMPT = "tell me the whole story of grilling and barbecue please";
+  class RetitlingUnderstander extends StubPromptUnderstander {
+    override async extractIntent(prompt: string, ctx: PromptUnderstandContext): Promise<IntentUnderstanding> {
+      const intent = await super.extractIntent(prompt, ctx);
+      return { ...intent, subject: "Fire, smoke and the long cook", priorKnowledge: "Knows the word.", disappointment: "Stays on the surface." };
+    }
+  }
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv44-"));
+    jobDir = path.join(dir, "jobs");
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** The stub pipeline with the retitling understander; after every hook the
+   * driver awaited, the job file as it then stood on disk is recorded. */
+  const observed = (seen: JobSnapshot[]): typeof runForayPipeline => (request, options, deps = {}) => {
+    const readJob = (): void => {
+      const files = fs.existsSync(jobDir) ? fs.readdirSync(jobDir).filter((f) => f.endsWith(".job.json")) : [];
+      if (files.length) seen.push(JSON.parse(fs.readFileSync(path.join(jobDir, files[0]!), "utf8")) as JobSnapshot);
+    };
+    return stubPipeline()(request, options, {
+      ...deps,
+      understander: new RetitlingUnderstander(),
+      onItemReady: async (ev) => {
+        await deps.onItemReady?.(ev);
+        readJob();
+      },
+      onActReady: async (c) => {
+        await deps.onActReady?.(c);
+        readJob();
+      }
+    });
+  };
+
+  it("parses --job-dir, and adds nothing without it", () => {
+    /* MUTATION THAT KILLS THIS: always set `jobDir` (e.g. to a default
+       directory). Every run would publish a job row. Ran it — red. */
+    expect(parseArgs(["--prompts", "p.json", "--job-dir", "data-local/jobs"]).jobDir).toBe("data-local/jobs");
+    expect("jobDir" in parseArgs(["--prompts", "p.json"])).toBe(false);
+  });
+
+  it("a stub run writes <forayId>.job.json with a strictly increasing seq, ending complete", async () => {
+    /* MUTATION THAT KILLS THIS: drop the publish from the onItemReady hook
+       (act-level snapshots only). The file seen after the first item event
+       does not exist yet, so fewer snapshots than events are seen and the
+       first is not the prelude alone. Ran it — red. Also killed: drop the
+       closeJob("complete") call in finishEntry (the final status stays
+       "running"). Ran it — red. */
+    const seen: JobSnapshot[] = [];
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { jobDir, maxResumes: 0 }), { cueProvider, runPipeline: observed(seen), newJobId: () => "job-test" });
+    expect(result.entry?.outcome).toBe("generated");
+    const forayId = JSON.parse(fs.readFileSync(result.file!, "utf8")).id as string;
+    expect(fs.readdirSync(jobDir)).toEqual([`${forayId}.job.json`]);
+    const final = JSON.parse(fs.readFileSync(path.join(jobDir, `${forayId}.job.json`), "utf8")) as JobSnapshot;
+
+    expect(seen.length).toBeGreaterThan(result.entry!.delivery!.items);
+    expect(seen[0]!.items).toHaveLength(1);
+    const seqs = [...seen.map((s) => s.seq), final.seq];
+    for (let i = 1; i < seqs.length; i++) expect(seqs[i]!).toBeGreaterThan(seqs[i - 1]!);
+    expect(final.status).toBe("complete");
+    expect(final.closed).toEqual({ outcome: "complete" });
+    expect(final.jobId).toBe("job-test");
+    expect(final.forayId).toBe(forayId);
+    expect(final.items).toHaveLength(final.delivery!.servableThrough);
+    expect(final.items.length).toBeGreaterThan(1);
+    expect(final.title).toBe(JSON.parse(fs.readFileSync(result.file!, "utf8")).title);
+    for (const s of [...seen, final]) expect(JobSnapshotSchema.safeParse(s).success).toBe(true);
+  });
+
+  it("the raw prompt is in none of the written job files", async () => {
+    /* MUTATION THAT KILLS THIS: publish the snapshot with the request's
+       prompt as its title. The schema refuses nothing then (title is a
+       string), and the prompt lands in the job file. Ran it — red. */
+    const seen: JobSnapshot[] = [];
+    await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { jobDir, maxResumes: 0 }), { cueProvider, runPipeline: observed(seen) });
+    expect(seen.length).toBeGreaterThan(0);
+    expect(seen.some((s) => s.title !== null)).toBe(true);
+    for (const s of seen) expect(JSON.stringify(s)).not.toContain(PROMPT);
+    for (const f of fs.readdirSync(jobDir)) expect(fs.readFileSync(path.join(jobDir, f), "utf8")).not.toContain(PROMPT);
+  });
+
+  it("writes nothing under --dry-run", async () => {
+    /* MUTATION THAT KILLS THIS: open the sink without the `!args.dryRun`
+       guard. The dry run writes a job file. Ran it — red. */
+    await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { jobDir, dryRun: true, maxResumes: 0 }), { cueProvider, runPipeline: observed([]) });
+    expect(fs.existsSync(jobDir)).toBe(false);
   });
 });

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { readPartialCandidate } from "../src/generation/generationStatus";
+import { readJobSnapshot, readPartialCandidate } from "../src/generation/generationStatus";
+import { EMPTY_JOB_PROGRESS, progressWithPartial, snapshotFrom, type JobSnapshot } from "../src/generation/jobSink";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
 import { partialOnlyScope } from "../src/generation/partialProjection";
 
@@ -122,5 +123,55 @@ describe("readPartialCandidate", () => {
       expect(out.candidate.items).toEqual(items);
       expect(out.candidate).not.toHaveProperty("delivery");
     });
+  });
+});
+
+describe("readJobSnapshot (GV-44)", () => {
+  let root: string;
+  let dir: string;
+  const id = "the-history-of-grilling-2026-09-08";
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "foray-jobs-"));
+    dir = path.join(root, "jobs");
+    fs.mkdirSync(dir);
+  });
+
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  const snapshot = (authorId = "founder-1"): JobSnapshot =>
+    snapshotFrom({ jobId: "job-1", authorId, lane: "catalogue" }, progressWithPartial(EMPTY_JOB_PROGRESS, candidate({ id, authorId })), 0, "2026-09-08T12:00:05.000Z")!;
+  const put = (name: string, body: unknown): void => fs.writeFileSync(path.join(dir, name), JSON.stringify(body));
+
+  it("refuses an id that fails the regex before building any path, even when the file it names exists", () => {
+    /* MUTATION THAT KILLS THIS: drop the isJobForayId check and name the
+       file by plain concatenation. "../x" then reads <dir>/../x.job.json, a
+       file outside the job directory, instead of being refused. Ran it — red. */
+    fs.writeFileSync(path.join(root, "x.job.json"), JSON.stringify({ ...snapshot(), forayId: "x" }));
+    expect(readJobSnapshot(dir, "../x", "founder-1")).toEqual({ found: false, refused: "invalid-id" });
+    for (const bad of ["a/b", "a.b", "", "UPPER"]) expect(readJobSnapshot(dir, bad, "founder-1")).toEqual({ found: false, refused: "invalid-id" });
+  });
+
+  it("refuses another author's job and serves the author's own", () => {
+    /* MUTATION THAT KILLS THIS: drop the authorId comparison. A stranger
+       gets another listener's in-flight Foray. Ran it — red. */
+    put(`${id}.job.json`, snapshot());
+    expect(readJobSnapshot(dir, id, "someone-else")).toEqual({ found: true, authorized: false });
+    const own = readJobSnapshot(dir, id, "founder-1");
+    expect(own.found && own.authorized && own.snapshot.forayId).toBe(id);
+  });
+
+  it("reads exactly <forayId>.job.json: never scans, never serves an unvalidated document", () => {
+    /* MUTATION THAT KILLS THIS: scan the directory for a matching forayId
+       (readPartialCandidate's way). The job filed under another name is
+       found. Ran it — red. */
+    put("some-other-name.job.json", snapshot());
+    expect(readJobSnapshot(dir, id, "founder-1")).toEqual({ found: false });
+    put(`${id}.job.json`, { ...snapshot(), prompt: "the history of grilling" });
+    expect(readJobSnapshot(dir, id, "founder-1")).toEqual({ found: false });
+    fs.writeFileSync(path.join(dir, `${id}.job.json`), "{not json");
+    expect(readJobSnapshot(dir, id, "founder-1")).toEqual({ found: false });
   });
 });

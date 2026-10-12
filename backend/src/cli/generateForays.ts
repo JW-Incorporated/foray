@@ -2,6 +2,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
+import { randomUUID } from "crypto";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
@@ -15,6 +16,8 @@ import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
 import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../generation/deliveryTimeline";
 import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
+import { FileJobSink } from "./fileJobSink";
+import { EMPTY_JOB_PROGRESS, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity } from "../generation/jobSink";
 import { readAuthorIdFlag, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
 import type { VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
@@ -79,6 +82,7 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *                              [--budget-usd N] [--no-resume] [--dry-run]
  *                              [--max-resumes N] [--continue-on-refused-partial]
  *                              [--notify <command>] [--author-id <id>]
+ *                              [--job-dir <dir>]
  *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
  *   same default `generate-foray` uses; `--author` still works for one
  *   release and prints a deprecation line)
@@ -92,6 +96,11 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  * `runlogs/<checkpointKey>.<attempt>.runlog.jsonl` (not under --dry-run):
  * stage spans and, as later cards add them, call records — names, numbers and
  * ids only, never prompt text or model output.
+ *
+ * `--job-dir <dir>` (GV-44, off by default) also publishes a job snapshot
+ * (`generation/jobSink.ts`) to `<dir>/<forayId>.job.json` on every act-ready and
+ * item-ready event, then closes it with the run's outcome: what a phone may
+ * play so far, the servable prefix only, never the prompt. Not under --dry-run.
  */
 
 interface PromptSpec {
@@ -139,6 +148,10 @@ export interface CliArgs {
    * (per-field variables still override it). Absent unless given, so the
    * parsed args of a run without it are unchanged. */
   fastPath?: boolean;
+  /** GV-44: `--job-dir <dir>`, where the job snapshot sink writes
+   * `<forayId>.job.json`. Absent unless given, so the parsed args of a run
+   * without it are unchanged and nothing is published. */
+  jobDir?: string;
 }
 
 export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.env): CliArgs {
@@ -169,7 +182,8 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     maxResumes: Number.isInteger(maxResumes) && maxResumes >= 0 ? maxResumes : DEFAULT_MAX_RESUMES,
     continueOnRefusedPartial: argv.includes("--continue-on-refused-partial"),
     notify: get("--notify") ?? (notifyEnv ? notifyEnv : null),
-    ...(argv.includes("--fast-path") ? { fastPath: true } : {})
+    ...(argv.includes("--fast-path") ? { fastPath: true } : {}),
+    ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {})
   };
 }
 
@@ -709,6 +723,9 @@ export async function generateOneCandidate(
     sleep?: (ms: number) => Promise<void>;
     now?: () => Date;
     notify?: (summary: NotifySummary) => Promise<NotificationResult>;
+    /** GV-44: the job id the snapshot sink is opened with (default a random
+     * UUID per prompt, never derived from the prompt). */
+    newJobId?: () => string;
   }
 ): Promise<CandidateResult> {
   const runPipeline = deps.runPipeline ?? runForayPipeline;
@@ -774,12 +791,43 @@ export async function generateOneCandidate(
   const partialFile = path.join(path.resolve(args.out), partialCandidateFilename(spec.prompt));
   const refusedPartials: number[] = [];
   let lastPartialId: string | null = null;
-  const onActReady = (candidate: PartialCandidate): void => {
+  /* GV-44 (W6-03): the job row. One sink per prompt, kept across resume
+     attempts so the row's seq keeps climbing and a banked act already served
+     stays served. Nothing is opened without --job-dir, and nothing under
+     --dry-run. A job-row failure never costs the Foray: it is a warning. */
+  const jobSink: GenerationJobSink | null = args.jobDir && !args.dryRun ? new FileJobSink(path.resolve(args.jobDir)) : null;
+  const job: JobIdentity = { jobId: (deps.newJobId ?? randomUUID)(), authorId: args.authorId, lane: "catalogue" };
+  let jobProgress = EMPTY_JOB_PROGRESS;
+  let jobSeq = 0;
+  const publishJob = async (): Promise<void> => {
+    if (!jobSink) return;
+    const snapshot = snapshotFrom(job, jobProgress, jobSeq, now().toISOString());
+    if (!snapshot) return;
+    try {
+      await jobSink.publish(snapshot);
+      jobSeq = snapshot.seq;
+    } catch (err) {
+      console.warn(`  job: could not publish snapshot ${snapshot.seq}: ${errorMessage(err)}`);
+    }
+  };
+  const closeJob = async (outcome: JobCloseOutcome, detail?: string): Promise<void> => {
+    if (!jobSink) return;
+    try {
+      await jobSink.close(outcome, detail);
+    } catch (err) {
+      console.warn(`  job: could not close the job: ${errorMessage(err)}`);
+    }
+  };
+  const onActReady = async (candidate: PartialCandidate): Promise<void> => {
     lastPartialId = candidate.id;
     if (!candidate.validation.ok) refusedPartials.push(candidate.acts.filter((a) => a.status === "ready").length - 1);
     if (args.dryRun) return;
     fs.writeFileSync(partialFile, `${JSON.stringify(candidate, null, 2)}\n`);
     deps.onPartialWrite?.(candidate, partialFile);
+    if (jobSink) {
+      jobProgress = progressWithPartial(jobProgress, candidate);
+      await publishJob();
+    }
   };
   /* The partial is discarded wherever the CHECKPOINT is, and kept wherever the
      checkpoint is kept — the two answer the same question ("is there more to
@@ -817,6 +865,12 @@ export async function generateOneCandidate(
     }
   };
   const finishEntry = async (entry: ReportEntry, notifyOutcome: string, id: string | null): Promise<ReportEntry> => {
+    /* GV-44: every return goes through here, so the job row closes once,
+       with the same outcome code the notify hook gets ("built",
+       "aborted:<reason>", "error", "invalid", "rejected" ...). */
+    if (notifyOutcome === "built") await closeJob("complete");
+    else if (notifyOutcome.startsWith("aborted:")) await closeJob("aborted", notifyOutcome.slice("aborted:".length));
+    else await closeJob("failed", notifyOutcome);
     const withCalls: ReportEntry = {
       ...entry,
       calls,
@@ -884,7 +938,13 @@ export async function generateOneCandidate(
           textIndex: deps.textIndex,
           checkpoint: args.dryRun ? undefined : checkpointStore,
           onActReady,
-          onItemReady: (ev) => attemptTimeline.record(ev)
+          onItemReady: async (ev) => {
+            attemptTimeline.record(ev);
+            if (jobSink) {
+              jobProgress = progressWithEvent(jobProgress, ev);
+              await publishJob();
+            }
+          }
         }
       );
       writeRunLog(runLog, attempt);
@@ -1051,7 +1111,7 @@ async function main(): Promise<void> {
     console.error(
       "Usage: npm run generate-forays -- --prompts prompts.json [--out DIR] " +
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
-        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path]"
+        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>]"
     );
     process.exitCode = 1;
     return;

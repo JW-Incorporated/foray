@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { servableView, type PartialCandidate } from "./partialCandidate";
+import { isJobForayId, jobSnapshotFilename, JobSnapshotSchema, type JobSnapshot } from "./jobSink";
 
 /**
  * WS-D2's "generation status" read path (docs/curation/generation-fix-plan-2026-09-09.md,
@@ -30,10 +31,20 @@ import { servableView, type PartialCandidate } from "./partialCandidate";
  * PRIVACY, ENFORCED HERE. A partial candidate is `visibility: "private"` by
  * construction (`buildPartialCandidate`) — this function is the enforcement
  * point: it refuses to return a candidate whose `authorId` does not match
- * the requesting listener, exactly as a real route's auth check would, and
- * it never lists or globs the directory (only ever reads the ONE file a
- * caller names by Foray id), so it cannot leak the existence of another
- * listener's in-flight generation.
+ * the requesting listener, exactly as a real route's auth check would.
+ *
+ * CORRECTED (GV-44, docs/roadmap/generation-v2.md): this header used to say
+ * `readPartialCandidate` "never lists or globs the directory (only ever reads
+ * the ONE file a caller names by Foray id)". That was never true: the partial
+ * file is named by the prompt's slug and hash (`partialCandidateFilename`),
+ * which a caller holding only the Foray id cannot rebuild, so the function
+ * `readdir`s the directory and parses EVERY `*.partial.json` in it to find
+ * the one whose `id` matches. The author check still holds — another
+ * listener's candidate is never returned — but the read touches every
+ * listener's file. The function is kept, with that behaviour unchanged, for
+ * its existing callers. New callers use `readJobSnapshot` below: it reads
+ * exactly one file, `<forayId>.job.json`, named by the id itself, and refuses
+ * any id that could name another path.
  */
 
 export type GenerationStatusOutcome =
@@ -43,7 +54,9 @@ export type GenerationStatusOutcome =
 
 /**
  * Reads the partial candidate `generateForays.ts` last wrote for `forayId`
- * (see `partialCandidateFilename`), scoped to `requestingUserId`.
+ * (see `partialCandidateFilename`), scoped to `requestingUserId`. It scans
+ * every `*.partial.json` in `candidateDir` to find the id (see the header);
+ * new callers use `readJobSnapshot`, which reads one file by id.
  *
  * @param candidateDir the same `--out` directory `generateForays.ts` writes
  *   to (default `data-local/foray-candidates`) — passed explicitly rather
@@ -96,4 +109,46 @@ function servableCandidate(candidate: PartialCandidate): PartialCandidate {
     items,
     delivery: { ...delivery, items: (delivery.items ?? []).slice(0, items.length) }
   };
+}
+
+export type JobSnapshotOutcome =
+  | { found: false; refused?: "invalid-id" }
+  | { found: true; authorized: false }
+  | { found: true; authorized: true; snapshot: JobSnapshot };
+
+/**
+ * GV-44 (W6-03): the job-row read a future `GET /generation/:id` handler
+ * calls. Reads EXACTLY `<jobDir>/<forayId>.job.json` — never lists the
+ * directory — and:
+ * - refuses an id that fails `JOB_FORAY_ID_PATTERN` before building any path
+ *   (`../x`, a slash, a dot, an empty or over-long id): `{ found: false,
+ *   refused: "invalid-id" }`;
+ * - treats a missing file, unparseable JSON, a document that fails
+ *   `JobSnapshotSchema`, or one naming another Foray id as not found — an
+ *   unvalidated document is never served;
+ * - refuses a snapshot whose `authorId` is not the requesting listener.
+ * A route should answer the refusal and the author mismatch the same way as
+ * not-found (a 403 confirms the id exists). The snapshot's `items` are already
+ * the servable prefix only (`snapshotFrom`; the schema pins
+ * `delivery.servableThrough === items.length`). No env, no flag.
+ */
+export function readJobSnapshot(jobDir: string, forayId: string, requestingUserId: string): JobSnapshotOutcome {
+  if (!isJobForayId(forayId)) return { found: false, refused: "invalid-id" };
+  let raw: string;
+  try {
+    raw = fs.readFileSync(path.join(jobDir, jobSnapshotFilename(forayId)), "utf8");
+  } catch {
+    return { found: false };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { found: false };
+  }
+  const checked = JobSnapshotSchema.safeParse(parsed);
+  if (!checked.success || checked.data.forayId !== forayId) return { found: false };
+  const snapshot = parsed as JobSnapshot;
+  if (snapshot.authorId !== requestingUserId) return { found: true, authorized: false };
+  return { found: true, authorized: true, snapshot };
 }
