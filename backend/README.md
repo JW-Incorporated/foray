@@ -137,8 +137,8 @@ Some `../tools/` scripts also use `src/` directly, outside any CLI:
 | `src/` file | used by | how |
 |---|---|---|
 | `copy/rules.js` | `tools/foray/check-forays.mjs`, `tools/refresh/merge.mjs`, `tools/classify/merge-results.mjs`, `tools/segments/merge-segments.mjs`, `tools/segments/prepare-segment-batch.mjs` | imports it |
-| `copy/narratorStructure.js` | `tools/foray/check-narration.mjs`, `tools/generation-bench/score.mjs` | imports it |
-| `copy/spokenLine.js` | `tools/foray/check-narration.mjs`, `tools/foray/voice-metrics.mjs` | imports it |
+| `copy/narratorStructure.js` | `tools/foray/check-narration.mjs`, `tools/generation-bench/score.mjs`, `tools/generation/exemplars/mine-exemplars.mjs` | imports it |
+| `copy/spokenLine.js` | `tools/foray/check-narration.mjs`, `tools/foray/voice-metrics.mjs`, `tools/generation/exemplars/mine-exemplars.mjs` | imports it |
 | `feeds/entitiesTable.json` | `tools/refresh/entities.mjs` | reads the table |
 | `generation/catalogueLookup.ts`, `generation/resolveTopic.ts` | `tools/foraycorpus-export/topics.mjs` | reads the source text for its word lists |
 
