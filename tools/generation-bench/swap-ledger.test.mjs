@@ -252,6 +252,52 @@ test("malformed evidence throws rather than reading as nothing measured", () => 
   assert.throws(() => decideSwap(evidence({ prefs: ["a"] })), /preference/);
 });
 
+/** Wrap every scorecard value the way score.mjs emits it: { value, source, note }. */
+const asCells = (ev) => {
+  for (const p of ev.prompts) {
+    for (const arm of ["A", "B"]) {
+      p.mq[arm] = Object.fromEntries(Object.entries(p.mq[arm]).map(([k, v]) => [k, { value: v, source: "report", note: null }]));
+    }
+  }
+  return ev;
+};
+
+test("score.mjs cells are unwrapped: a B regressed on MQ-01, MQ-04 and MQ-21 holds", () => {
+  const ev = evidence();
+  ev.prompts[0].mq.B["MQ-01"] = 0.2;
+  ev.prompts[1].mq.B["MQ-04"] = 5;
+  ev.prompts[2].mq.B["MQ-21"] = false;
+  ev.prompts[3].mq.B["MQ-21"] = false;
+  const v = decideSwap(asCells(ev), { bands: BANDS });
+  assert.equal(v.decision, "hold");
+  assert.equal(result(v, "MQ-01+MQ-04"), "fail");
+  assert.equal(result(v, "MQ-21"), "fail");
+  assert.deepEqual(v.failing, ["MQ-01+MQ-04", "MQ-21"]);
+  /* the banded rates are read through the cell too, not dropped to unmeasured */
+  assert.equal(result(v, "MQ-02"), "pass");
+  assert.equal(result(v, "MQ-05"), "pass");
+  assert.equal(v.scorecardDelta["MQ-04"].B, 0.5);
+  /* a cell whose value is null is absent, exactly like a bare null */
+  const gone = asCells(evidence());
+  for (const p of gone.prompts) p.mq.B["MQ-02"] = { value: null, source: "judged", note: "no judged file" };
+  assert.equal(result(decideSwap(gone, { bands: BANDS }), "MQ-02"), "fail");
+});
+
+test("a scorecard value that is not a number, a boolean, null or a cell carrying one throws", () => {
+  const stray = evidence();
+  stray.prompts[4].mq.B["MQ-04"] = "0";
+  assert.throws(() => decideSwap(stray, { bands: BANDS }), /g-05: arm B MQ-04/);
+  const obj = evidence();
+  obj.prompts[0].mq.A["MQ-21"] = { ok: true };
+  assert.throws(() => decideSwap(obj, { bands: BANDS }), /g-01: arm A MQ-21/);
+  const inCell = asCells(evidence());
+  inCell.prompts[0].mq.B["MQ-01"].value = { rate: 1 };
+  assert.throws(() => decideSwap(inCell, { bands: BANDS }), /g-01: arm B MQ-01/);
+  const nan = evidence();
+  nan.prompts[0].mq.B["MQ-02"] = Number.NaN;
+  assert.throws(() => decideSwap(nan, { bands: BANDS }), /MQ-02/);
+});
+
 /* ------------------------------------------------------------------ */
 /* The ledger                                                          */
 /* ------------------------------------------------------------------ */

@@ -28,7 +28,9 @@
  *       preference: "A" | "B" | "tie" | null,  // UNSEALED arm, not the blind pack label; null = not listened
  *       scores: { A: { onSubject, ... }, B: { ... } } | null,   // listen-card/1 axes, act 1
  *       mq: { A: { "MQ-01": 1, "MQ-02": 0.91, "MQ-04": 0, "MQ-05": 0.88, "MQ-21": true },
- *             B: { ... } }              // a scorecard (score.mjs) cell per metric, null = absent
+ *             B: { ... } }              // per metric: a finite number, a boolean, null (absent),
+ *                                       // or a scorecard (score.mjs) cell { value, source, note }
+ *                                       // whose `value` is one of those; anything else throws
  *     }],
  *     timing: [{ stage, A: p50Ms | null, B: p50Ms | null, resumed?: true }]   // pipeline order
  *   }
@@ -104,8 +106,22 @@ function presence(inA, inB, what) {
   return null;
 }
 
+/**
+ * One arm's values of one metric, one per prompt: a finite number, a boolean,
+ * or null (absent). A score.mjs cell ({ value, source, note }) is unwrapped to
+ * its `value`. Any other value throws, naming the prompt and the metric: an
+ * object counted as "present" but never equal to 1, 0 or true would let both
+ * arms score zero clean prompts and pass 0 >= 0.
+ */
 function metricValues(prompts, arm, metric) {
-  return prompts.map((p) => (isPlainObject(p.mq) && isPlainObject(p.mq[arm]) ? p.mq[arm][metric] : null));
+  return prompts.map((p) => {
+    if (!isPlainObject(p.mq) || !isPlainObject(p.mq[arm])) return null;
+    let v = p.mq[arm][metric];
+    if (isPlainObject(v) && Object.prototype.hasOwnProperty.call(v, "value")) v = v.value;
+    if (v === null || v === undefined) return null;
+    if (isNum(v) || typeof v === "boolean") return v;
+    throw new Error(`prompt ${p.promptId}: arm ${arm} ${metric} must be a finite number, a boolean, null or a score.mjs cell carrying one, got ${JSON.stringify(v)}`);
+  });
 }
 
 /** The changed stage's slack in ms, for a stage whose A p50 is `aMs`. */
@@ -120,8 +136,9 @@ export function slackFor(evidence, aMs, options = {}) {
  * Apply the rule. Never throws on missing metrics (they become 'unmeasured' or
  * 'fail' per the presence rule); throws only on evidence that is not evidence
  * (an unknown kind, prompts that are not a list, a preference that is not
- * A/B/tie/null), because a malformed object would otherwise read as a run with
- * nothing measured.
+ * A/B/tie/null, a scorecard metric that is not a number, a boolean, null or a
+ * score.mjs cell carrying one), because a malformed object would otherwise read
+ * as a run with nothing measured.
  *
  * @param {object} evidence  see the header
  * @param {{ bands?: Record<string, number>, slackMs?: number, minListened?: number }} options
