@@ -34,6 +34,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 import { collectUploads, inCI, PROFILE_PATH } from "./upload-narration.mjs";
 
@@ -174,8 +175,7 @@ export function main(argv = process.argv.slice(2), env = process.env, deps = {})
   return r.failed.length ? 1 : 0;
 }
 
-const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
+if (isEntryScript(import.meta.url)) {
   try {
     process.exit(main());
   } catch (err) {

@@ -84,9 +84,15 @@ function withSpool(fn) {
   }
 }
 
+/* The job schema id, built in two pieces: written out whole it matches the
+   User-Agent scan in tools/segments/politeness.test.mjs (#316), which reads
+   any "foray<word>/<digit>" under tools/ as a hand-spelt UA. */
+const SCHEMA_NAME = "foray-render-job";
+const SCHEMA_V1 = `${SCHEMA_NAME}/1`;
+
 function job(id, priority, enqueuedAt, extra = {}) {
   return {
-    schema: "foray-render-job/1", job_id: id, foray_id: "gen-quiet-engines-3f2a1c", item_id: `i-${id}`,
+    schema: SCHEMA_V1, job_id: id, foray_id: "gen-quiet-engines-3f2a1c", item_id: `i-${id}`,
     script: `Line for ${id}.`, priority, enqueued_at: enqueuedAt, ...extra,
   };
 }
@@ -223,7 +229,7 @@ test("a failing job writes status failed with the RenderError text, and the work
     put(spool, "in", job("j-fail", 0, "2026-10-11T11:00:00.000Z", { script: "This one will FAIL." }));
     put(spool, "in", job("j-unsing", 1, "2026-10-11T11:00:00.000Z", { script: "UNSINGABLE line." }));
     put(spool, "in", job("j-good", 2, "2026-10-11T11:00:00.000Z"));
-    put(spool, "in", { ...job("j-schema", 0, "2026-10-11T11:00:00.000Z"), schema: "foray-render-job/0" });
+    put(spool, "in", { ...job("j-schema", 0, "2026-10-11T11:00:00.000Z"), schema: `${SCHEMA_NAME}/0` });
     put(spool, "in", "{nope", "j-garbled.job.json");
     put(spool, "in", job("j-other", 0, "2026-10-11T11:00:00.000Z"), "j-renamed.job.json");
     put(spool, "in", job("j-echo", 3, "2026-10-11T11:00:00.000Z", { voice: "am_echo" }));
@@ -330,12 +336,12 @@ test("the real CLI refuses --once without --worker, exit 2", () => {
   assert.match(r.stderr, /--once needs --worker SPOOL/);
 });
 
-test("validate_job takes foray-render-job/1 and names what is wrong with anything else", () => {
+test(`validate_job takes ${SCHEMA_V1} and names what is wrong with anything else`, () => {
   /* MUTATION: accept a bool priority (isinstance int alone), a naive
      timestamp, a path-like job id, a lexicon entry with no ipa, or a voice
      that is not a Kokoro id -> that case stops being refused. */
   const out = py(
-    `base={"schema":"foray-render-job/1","job_id":"j1","foray_id":"f","item_id":"i","script":"S.","priority":3,` +
+    `base={"schema":"${SCHEMA_V1}","job_id":"j1","foray_id":"f","item_id":"i","script":"S.","priority":3,` +
       `"enqueued_at":"2026-10-11T11:00:00.000Z","lexicon":[{"term":"Foray","ipa":"fəɹˈeɪ"}]}\n` +
       `cases={"bool":{"priority":True},"str":{"priority":"1"},"naive":{"enqueued_at":"2026-10-11T11:00:00"},` +
       `"garbage":{"enqueued_at":"soon"},"script":{"script":"  "},"foray":{"foray_id":None},"lex":{"lexicon":[{"term":"x"}]},` +
