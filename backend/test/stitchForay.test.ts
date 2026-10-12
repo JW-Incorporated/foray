@@ -356,3 +356,89 @@ describe("ForayStitcher.emitSeamItems (GV-33)", () => {
     await expect(stitcher.stitchNextAct(makeWritten("Act One"))).rejects.toThrow(/is not the seam item emitted for it/);
   });
 });
+
+describe("ForayStitcher with an incremental act source (GV-46)", () => {
+  const options = () => ({ continuity: { builder: new StubContinuityBuilder() } });
+
+  it("stitches act 0 when only act 0 is deepened, reports the declared act count, and throws until the next act is deepened", async () => {
+    /* MUTATION THAT KILLS THIS: derive `totalActs` from the acts deepened so
+       far (or from `actsDone`) instead of `actCount` — `totalActs` reads 1 and
+       onActReady reports a one-act Foray. Ran it — red. Second: drop the
+       not-deepened-yet throw in `deepenedAct` (return `undefined!`) — act 1
+       then stitches against nothing and fails on `act.slots` with a TypeError
+       instead of naming the act. Ran it — red on the /not deepened yet/ match. */
+    const deepened: Array<DeepenedAct | undefined> = [makeDeepened("Act One", 1), undefined, undefined];
+    const ready: Array<{ actIndex: number; totalActs: number }> = [];
+    const stitcher = new ForayStitcher(
+      { actCount: 3, deepenedAct: (i) => deepened[i] },
+      { ...options(), onActReady: ({ actIndex, totalActs }) => void ready.push({ actIndex, totalActs }) },
+      ctx
+    );
+    expect(stitcher.totalActs).toBe(3);
+
+    const act0 = await stitcher.stitchNextAct(makeWritten("Act One"));
+    expect(act0.length).toBeGreaterThan(0);
+    expect(ready).toEqual([{ actIndex: 0, totalActs: 3 }]);
+
+    await expect(stitcher.stitchNextAct(makeWritten("Act Two"))).rejects.toThrow(/act 2 of 3 is not deepened yet/);
+    expect(stitcher.actsDone).toBe(1);
+
+    deepened[1] = makeDeepened("Act Two", 2);
+    await stitcher.stitchNextAct(makeWritten("Act Two"));
+    expect(ready.map((r) => r.totalActs)).toEqual([3, 3]);
+  });
+
+  it("produces exactly the items and provenance the array form does, continuity included", async () => {
+    /* MUTATION THAT KILLS THIS: hand `smoothActIntroduction` a window without
+       the previous act (or with the current act at index i - 1) — the
+       continuity call smooths against the wrong exit, or throws. Ran it —
+       red. */
+    const acts = [makeDeepened("Act One", 1), makeDeepened("Act Two", 2), makeDeepened("Act Three", 3)];
+    const written = [makeWritten("Act One"), makeWritten("Act Two"), makeWritten("Act Three")];
+    const seenArray: unknown[] = [];
+    const seenLazy: unknown[] = [];
+    const whole = new ForayStitcher(acts, { continuity: { builder: recordingBuilder(seenArray) } }, ctx);
+    const lazy = new ForayStitcher({ actCount: 3, deepenedAct: (i) => acts[i] }, { continuity: { builder: recordingBuilder(seenLazy) } }, ctx);
+    for (const w of written) {
+      await whole.stitchNextAct(w);
+      await lazy.stitchNextAct(w);
+    }
+    expect(lazy.items()).toEqual(whole.items());
+    expect(lazy.provenance()).toEqual(whole.provenance());
+    expect(seenLazy).toEqual(seenArray);
+    expect(seenLazy).toHaveLength(2);
+  });
+
+  it("needs the previous act for the continuity call, refuses a stitch past the last act, and rejects a bad actCount", async () => {
+    /* MUTATION THAT KILLS THIS: fetch only act i in `actsForBoundary` — act 1
+       stitches with act 0 missing and `smoothActIntroduction` dereferences an
+       undefined previous act. Ran it — red on the /act 1 of 2/ match. */
+    const acts = [makeDeepened("Act One", 1), makeDeepened("Act Two", 2)];
+    const stitcher = new ForayStitcher({ actCount: 2, deepenedAct: (i) => acts[i] }, options(), ctx);
+    await stitcher.stitchNextAct(makeWritten("Act One"));
+    // Act 0 "disappears" from the source: act 1's boundary cannot be smoothed.
+    const mutable: Array<DeepenedAct | undefined> = [...acts];
+    const gone = new ForayStitcher({ actCount: 2, deepenedAct: (i) => mutable[i] }, options(), ctx);
+    await gone.stitchNextAct(makeWritten("Act One"));
+    mutable[0] = undefined;
+    await expect(gone.stitchNextAct(makeWritten("Act Two"))).rejects.toThrow(/act 1 of 2 is not deepened yet/);
+
+    await stitcher.stitchNextAct(makeWritten("Act Two"));
+    await expect(stitcher.stitchNextAct(makeWritten("Act Three"))).rejects.toThrow(/no deepened act at index 2 — 2 act\(s\) were supplied/);
+
+    expect(() => new ForayStitcher({ actCount: -1, deepenedAct: () => undefined }, options(), ctx)).toThrow(/actCount must be a non-negative integer/);
+    expect(() => new ForayStitcher({ actCount: 1.5, deepenedAct: () => undefined }, options(), ctx)).toThrow(/actCount/);
+  });
+});
+
+/** A continuity builder that records each boundary it is asked to smooth and
+ * then defers to the stub. */
+function recordingBuilder(seen: unknown[]): StubContinuityBuilder {
+  const stub = new StubContinuityBuilder();
+  const original = stub.smoothSeam.bind(stub);
+  stub.smoothSeam = async (input, c) => {
+    seen.push(input);
+    return original(input, c);
+  };
+  return stub;
+}

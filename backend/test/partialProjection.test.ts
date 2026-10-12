@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { buildPartialCandidate, type PartialActInfo, type PartialCandidateMeta } from "../src/generation/partialCandidate";
 import {
   buildProjectedItems,
+  planIsIncomplete,
+  planTotalActs,
   projectedRuleOf,
   projectedNarrationSec,
   PROJECTED_RULES,
@@ -12,6 +14,7 @@ import type { FinalizeForayInput, FinalizeForayResult, ForaySlot } from "../src/
 import type { ForayItem } from "../src/generation/forayItems";
 import type { SourcedAct, SourcedBeat } from "../src/types/tapeSourcing";
 import { MODE_CHAR_BANDS } from "../src/types/narration";
+import { showsHeardBeforeAct, showsHeardBeforeEachAct } from "../src/generation/writeNarration";
 
 /**
  * F-79 — a partial candidate is judged on the PROJECTED whole for the rules
@@ -369,5 +372,71 @@ describe("buildPartialCandidate with a projection plan (F-79)", () => {
     expect(legacy.ruleScope.projected).toEqual([]);
     expect(legacy.validation.ok).toBe(false);
     expect(legacy.validation.checkForaysWarnings.some((w) => w.startsWith("F-79:"))).toBe(false);
+  });
+});
+
+describe("buildProjectedItems — GV-46: a plan that covers only the acts sourced so far", () => {
+  it("projects only the sourced later acts and counts the unsourced ones; without totalActs nothing changes", () => {
+    /* MUTATION THAT KILLS THIS: compute `unsourcedActs` from the sourced acts
+       alone (always 0), or project the unsourced acts as empty acts
+       (`projectedActs` counted up to `totalActs`). Either way the counts below
+       go red. Ran both — red. */
+    const whole = plan(laterDistinct);
+    const twoOfThree: PartialProjectionPlan = { ...whole, sourcedActs: whole.sourcedActs.slice(0, 2), totalActs: 3 };
+    const built = buildProjectedItems(partialItems, 0, twoOfThree);
+    expect(built.projectedActs).toBe(1);
+    expect(built.unsourcedActs).toBe(1);
+    expect(built.items.slice(partialItems.length).filter((i) => i.type === "segment")).toHaveLength(10);
+    expect(planIsIncomplete(twoOfThree)).toBe(true);
+
+    const oneOfThree: PartialProjectionPlan = { ...whole, sourcedActs: whole.sourcedActs.slice(0, 1), totalActs: 3 };
+    const nothingLater = buildProjectedItems(partialItems, 0, oneOfThree);
+    expect(nothingLater.items).toEqual(partialItems);
+    expect(nothingLater.projectedActs).toBe(0);
+    expect(nothingLater.unsourcedActs).toBe(2);
+
+    // No totalActs: today's plan, every act sourced.
+    const legacy = buildProjectedItems(partialItems, 0, whole);
+    expect(legacy.unsourcedActs).toBe(0);
+    expect(planIsIncomplete(whole)).toBe(false);
+    expect(planTotalActs(whole)).toBe(3);
+    expect(planIsIncomplete({ ...whole, totalActs: 3 })).toBe(false);
+  });
+
+  it("refuses a totalActs below the sourced act count", () => {
+    /* MUTATION THAT KILLS THIS: drop the bound check in `planTotalActs` —
+       `planIsIncomplete` quietly reads false and a mis-wired caller is never
+       told. Ran it — red. */
+    expect(() => planTotalActs({ ...plan(laterDistinct), totalActs: 2 })).toThrow(/totalActs 2 is below the 3 sourced act/);
+    expect(() => planTotalActs({ ...plan(laterDistinct), totalActs: 3.5 })).toThrow(/totalActs/);
+  });
+});
+
+describe("showsHeardBeforeAct — GV-46: the incremental twin of showsHeardBeforeEachAct", () => {
+  /* Each act's clips name a show by episode, with one episode unnamed (an
+     empty name is not recorded) and two episodes sharing a show. */
+  const showOf = (tape: { itemId: string }): string => (tape.itemId === "ep-c" ? "  " : tape.itemId === "ep-2" ? "Show ep-1" : `Show ${tape.itemId}`);
+
+  it("equals entry i of the whole-Foray function for every act, from the acts before it only", () => {
+    /* MUTATION THAT KILLS THIS: loop `a <= i` (count act i's own clips) — act
+       i's entry then includes its own shows. Or start at `a = 1` — act 0's
+       shows go missing from every later entry. Ran both — red. */
+    const acts = plan(laterDistinct).sourcedActs;
+    const whole = showsHeardBeforeEachAct(acts, showOf);
+    expect(whole[1]!.length).toBeGreaterThan(0);
+    expect(whole[2]!.length).toBeGreaterThan(whole[1]!.length);
+    for (let i = 0; i < acts.length; i++) {
+      expect(showsHeardBeforeAct(acts.slice(0, i), i, showOf)).toEqual(whole[i]);
+      // Later acts in the input are ignored.
+      expect(showsHeardBeforeAct(acts, i, showOf)).toEqual(whole[i]);
+    }
+  });
+
+  it("refuses an act whose earlier acts are not all sourced yet", () => {
+    /* MUTATION THAT KILLS THIS: drop the length check — act 2 is answered from
+       act 0 alone, a wrong (short) list rather than an error. Ran it — red. */
+    const acts = plan(laterDistinct).sourcedActs;
+    expect(() => showsHeardBeforeAct(acts.slice(0, 1), 2, showOf)).toThrow(/act 3 needs acts 1\.\.2 sourced, only 1 are/);
+    expect(() => showsHeardBeforeAct(acts, -1, showOf)).toThrow(/non-negative integer/);
   });
 });

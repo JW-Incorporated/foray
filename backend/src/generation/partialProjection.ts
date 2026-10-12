@@ -96,6 +96,20 @@ import { MODE_CHAR_BANDS, NARRATION_CHARS_PER_SEC } from "../types/narration";
  * abort default stays; it now fires on a failure the finished Foray would
  * also have). And it does not run on the LAST act — that partial is the whole,
  * and the projection would be the same record twice.
+ *
+ * GV-46 (W4-20, R1-04) — A PLAN THAT DOES NOT YET COVER EVERY ACT. The
+ * projection above needs every later act's sourced plan, which ties act 1's
+ * partial to the slowest act's sourcing. A plan may now say how many acts the
+ * Foray has (`PartialProjectionPlan.totalActs`) while carrying only the acts
+ * sourced so far. The unsourced acts are not projected (nothing is invented
+ * for them), and because the projection is then itself a prefix, a share rule
+ * cannot be judged on it either: the candidate's basis is `deferred`
+ * (`deferredVerdict`). The share rules' lines from the partial's own
+ * validation are set aside as warnings (and listed in `supersededOnPartial`),
+ * never errors; the whole-Foray finalize still judges them, and the publish
+ * gate still refuses a Foray that fails them. This is NOT `partialOnlyScope`,
+ * which judges every rule on the partial and would reproduce run 5's false M4
+ * FAIL. Every monotone rule stays strict on the partial, as before.
  */
 
 /** The share-of-whole rules whose verdict is read from the projection. */
@@ -151,6 +165,28 @@ export function projectedRuleOf(error: string): ProjectedRule | null {
 export interface PartialProjectionPlan {
   sourcedActs: SourcedAct[];
   slots: ForaySlot[];
+  /**
+   * GV-46: the Foray's act count, when `sourcedActs` may be a prefix of it
+   * (acts 0..k sourced, the rest still being sourced). Omitted, the plan is
+   * read as covering every act (`sourcedActs.length`), exactly as before.
+   */
+  totalActs?: number;
+}
+
+/** GV-46: the plan's act count — `totalActs` when given, else every act is
+ * taken to be sourced. A `totalActs` below the sourced count is a caller bug. */
+export function planTotalActs(plan: PartialProjectionPlan): number {
+  if (plan.totalActs === undefined) return plan.sourcedActs.length;
+  if (!Number.isInteger(plan.totalActs) || plan.totalActs < plan.sourcedActs.length) {
+    throw new Error(`PartialProjectionPlan: totalActs ${plan.totalActs} is below the ${plan.sourcedActs.length} sourced act(s) (GV-46)`);
+  }
+  return plan.totalActs;
+}
+
+/** GV-46: whether some act of the Foray has no sourced plan yet — the case in
+ * which a share-of-whole rule cannot be judged on any projection. */
+export function planIsIncomplete(plan: PartialProjectionPlan): boolean {
+  return plan.sourcedActs.length < planTotalActs(plan);
 }
 
 export interface ProjectedItems {
@@ -163,6 +199,9 @@ export interface ProjectedItems {
   projectedActs: number;
   projectedTapeSegments: number;
   projectedNarrationItems: number;
+  /** GV-46: later acts the plan has no sourcing for yet, so not projected —
+   * 0 when the plan covers every act. */
+  unsourcedActs: number;
 }
 
 /** narration-craft §0's band midpoint for a mode, at the shared rate. */
@@ -178,6 +217,9 @@ export function projectedNarrationSec(mode: keyof typeof MODE_CHAR_BANDS): numbe
  * slot at the same flat position (`slotsFromSpine` de-duplicates ids, so the
  * title alone is not enough); a plan shorter than the sourced acts falls
  * back to the title's slug, which is what an un-duplicated title gets anyway.
+ *
+ * GV-46: when the plan names more acts (`totalActs`) than it has sourced, the
+ * unsourced acts are not projected; `unsourcedActs` counts them.
  */
 export function buildProjectedItems(partialItems: ForayItem[], actIndex: number, plan: PartialProjectionPlan): ProjectedItems {
   const items: ForayItem[] = [...partialItems];
@@ -241,7 +283,8 @@ export function buildProjectedItems(partialItems: ForayItem[], actIndex: number,
     addedRuntimeSec: Math.round(addedRuntimeSec * 1000) / 1000,
     projectedActs,
     projectedTapeSegments,
-    projectedNarrationItems
+    projectedNarrationItems,
+    unsourcedActs: Math.max(0, planTotalActs(plan) - Math.max(plan.sourcedActs.length, actIndex + 1))
   };
 }
 
@@ -252,11 +295,18 @@ export interface PartialRuleScope {
   /** `projected`: share-of-whole rules read from the projection, the rest
    * from the partial. `whole`: the last act — the partial IS the whole, every
    * rule on it. `partial-only`: no plan was supplied (a caller that predates
-   * F-79, or a test), every rule on the partial as before. */
-  basis: "projected" | "whole" | "partial-only";
+   * F-79, or a test), every rule on the partial as before. `deferred` (GV-46):
+   * the plan does not cover every act yet, so the share-of-whole rules are
+   * judged on neither record — their lines on the partial are warnings, left
+   * to the whole-Foray finalize; every other rule on the partial. */
+  basis: "projected" | "whole" | "partial-only" | "deferred";
   /** Rules whose verdict came from the projection — empty unless `basis`
    * is `projected`. */
   projected: ProjectedRule[];
+  /** GV-46: share-of-whole rules not judged on this partial at all — set only
+   * when `basis` is `deferred`. Absent otherwise, so earlier scopes are
+   * unchanged. */
+  deferred?: ProjectedRule[];
   /** Rules judged on the partial's own items. */
   partial: string[];
   projection: {
@@ -272,8 +322,12 @@ export interface PartialRuleScope {
     warnings: string[];
     /** The partial's own share-rule lines the projection superseded — run
      * 5's `M4 FAIL … 16.7 % of segments and 26.4 % of runtime` would sit
-     * here, not in `validation.checkForaysErrors`. */
+     * here, not in `validation.checkForaysErrors`. Under `deferred` (GV-46),
+     * the same lines, set aside as warnings until the whole is judged. */
     supersededOnPartial: string[];
+    /** GV-46: later acts with no sourced plan yet (not projected). Present
+     * only under `deferred`. */
+    unsourcedActs?: number;
   } | null;
 }
 
@@ -333,6 +387,51 @@ export function mergeProjectedVerdict(
         errors: projection.checkForaysErrors,
         warnings: projection.checkForaysWarnings,
         supersededOnPartial
+      }
+    }
+  };
+}
+
+/**
+ * GV-46: the verdict for a partial whose plan does not cover every act yet.
+ * Every monotone rule's lines stay errors from the partial's own validation;
+ * every share-of-whole rule's lines are set aside — listed in
+ * `supersededOnPartial` and carried as warnings — because no record that
+ * exists yet has the whole Foray's denominator. No projection is finalized:
+ * its share verdict would be a prefix's too, so a second check-forays pass
+ * would buy nothing. `built` supplies the report's counts only.
+ */
+export function deferredVerdict(partial: FinalizeForayValidation, built: ProjectedItems, partialTapeSegments: number, projectedRuntimeSec: number): MergedVerdict {
+  const supersededOnPartial = partial.checkForaysErrors.filter((e) => projectedRuleOf(e) !== null);
+  const checkForaysErrors = partial.checkForaysErrors.filter((e) => projectedRuleOf(e) === null);
+  const scopeLine =
+    `GV-46: ${PROJECTED_RULES.join(", ")} deferred to the whole Foray — ${built.unsourcedActs} later act(s) not sourced yet, ` +
+    `so no projection has the whole's denominator; every other rule judged on the partial (${partialTapeSegments} tape segment(s))` +
+    (supersededOnPartial.length ? `; ${supersededOnPartial.length} share-rule line(s) on the partial set aside as warnings` : "");
+  const validation: FinalizeForayValidation = {
+    ok: checkForaysErrors.length === 0 && partial.checkNarrationErrors.length === 0,
+    checkForaysErrors,
+    checkForaysWarnings: [...partial.checkForaysWarnings, ...supersededOnPartial.map((e) => `deferred (GV-46): ${e}`), scopeLine],
+    checkNarrationErrors: partial.checkNarrationErrors,
+    checkNarrationWarnings: partial.checkNarrationWarnings
+  };
+  return {
+    validation,
+    scope: {
+      basis: "deferred",
+      projected: [],
+      deferred: [...PROJECTED_RULES],
+      partial: [...PARTIAL_RULES],
+      projection: {
+        acts: built.projectedActs,
+        tapeSegments: partialTapeSegments + built.projectedTapeSegments,
+        narrationItems: built.projectedNarrationItems,
+        items: built.items.length,
+        runtimeSec: projectedRuntimeSec,
+        errors: [],
+        warnings: [],
+        supersededOnPartial,
+        unsourcedActs: built.unsourcedActs
       }
     }
   };
