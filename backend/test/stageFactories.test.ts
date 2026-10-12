@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import Module from "node:module";
+import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from "vitest";
 import {
   GENERATION_STAGES,
   RoutingConfigError,
@@ -33,6 +34,14 @@ import { __setChatProviderForTests, chatProviderFor, getChatProvider } from "../
 import { OpenAICompatChatProvider } from "../src/generation/chat/openAICompatProvider";
 import { resolveRouting } from "../src/config/stageRouting";
 import { scriptedProvider } from "./helpers/fakeChatProvider";
+import { env } from "../src/config/env";
+import { AnthropicPromptUnderstander } from "../src/generation/AnthropicPromptUnderstander";
+import { AnthropicExternalResearcher } from "../src/generation/AnthropicExternalResearcher";
+import { AnthropicSpineBuilder } from "../src/generation/AnthropicSpineBuilder";
+import { AnthropicDeepenActBuilder } from "../src/generation/AnthropicDeepenActBuilder";
+import { AnthropicNarrationWriterBuilder } from "../src/generation/AnthropicNarrationWriterBuilder";
+import { AnthropicNarrationVerifierBuilder } from "../src/generation/AnthropicNarrationVerifierBuilder";
+import { AnthropicContinuityBuilder } from "../src/generation/AnthropicContinuityBuilder";
 
 /**
  * GV-37 (W2-08 + the factory half of W7-02; covers R2-21, HW-12, GP-06): the
@@ -43,8 +52,10 @@ import { scriptedProvider } from "./helpers/fakeChatProvider";
  * OFFLINE. Every case injects its env as a source (process.env is never
  * mutated), every local stage gets a scripted ChatProvider through
  * __setChatProviderForTests, and the 'anthropic' registration of every stage
- * is swapped for a sentinel, so no test constructs an Anthropic* builder and
- * nothing touches the network.
+ * is swapped for a sentinel, except in the one block that runs the REAL
+ * 'anthropic' registrations: that block only constructs the Anthropic*
+ * builders (an SDK client is built, no request is ever sent), so nothing
+ * touches the network.
  */
 
 const BASE_URL = "http://litellm.test:4000";
@@ -129,6 +140,86 @@ describe("GV-37: without the routing variables every factory returns what it ret
       expect(all[name], name).toMatchObject({ sentinel: "anthropic", stage });
     }
     expect(provider.requests).toHaveLength(0);
+  });
+});
+
+describe("GV-37: the real legacy 'anthropic' registrations (no sentinel)", () => {
+  /* The sentinel swaps from the top-level beforeEach are undone here so the
+     factories' own 'anthropic' closures run, lazy require() and all.
+     Two test-only adjustments, neither of which replaces the closure:
+     - Under vitest a bare require("./AnthropicX") cannot resolve a .ts file
+       (the compiled build resolves the .js). Module._load is patched for
+       exactly these seven request strings to hand back the module vitest
+       already loaded, the same module the static imports above name, so
+       toBeInstanceOf compares against the class the closure constructed.
+       Any other request string (a mutated or misspelled require) falls
+       through to Node and fails.
+     - The Anthropic* constructors read the module-level env (not the
+       injected source), so the key is set on env for the block and restored
+       after.
+     Constructing builds an SDK client only; no method is called, so no
+     request is sent.
+     MUTATIONS THAT KILL THIS: createSpineBuilder's 'anthropic' closure
+     returning `new StubSpineBuilder()` (red); createDeepenActBuilder's
+     returning a StubDeepenActBuilder (red). */
+  const lazyModules: Record<string, unknown> = {
+    "./AnthropicPromptUnderstander": { AnthropicPromptUnderstander },
+    "./AnthropicExternalResearcher": { AnthropicExternalResearcher },
+    "./AnthropicSpineBuilder": { AnthropicSpineBuilder },
+    "./AnthropicDeepenActBuilder": { AnthropicDeepenActBuilder },
+    "./AnthropicNarrationWriterBuilder": { AnthropicNarrationWriterBuilder },
+    "./AnthropicNarrationVerifierBuilder": { AnthropicNarrationVerifierBuilder },
+    "./AnthropicContinuityBuilder": { AnthropicContinuityBuilder }
+  };
+  type Loader = (request: string, parent: unknown, isMain: boolean) => unknown;
+  const moduleInternals = Module as unknown as { _load: Loader };
+  let originalLoad: Loader;
+  let savedKey: string | undefined;
+
+  beforeAll(() => {
+    originalLoad = moduleInternals._load;
+    moduleInternals._load = function (this: unknown, request, parent, isMain) {
+      if (Object.prototype.hasOwnProperty.call(lazyModules, request)) return lazyModules[request];
+      return originalLoad.call(this, request, parent, isMain);
+    };
+  });
+
+  afterAll(() => {
+    moduleInternals._load = originalLoad;
+  });
+
+  beforeEach(() => {
+    for (const restore of restores) restore();
+    restores = [];
+    savedKey = env.anthropicApiKey;
+    env.anthropicApiKey = "sk-test-never-sent";
+  });
+
+  afterEach(() => {
+    env.anthropicApiKey = savedKey;
+  });
+
+  it("ANTHROPIC_API_KEY and no routing variables: every factory builds its Anthropic class", () => {
+    const all = buildAll({ ANTHROPIC_API_KEY: "sk-test-never-sent" });
+    expect(all.understander).toBeInstanceOf(AnthropicPromptUnderstander);
+    expect(all.researcher).toBeInstanceOf(AnthropicExternalResearcher);
+    expect(all.spine).toBeInstanceOf(AnthropicSpineBuilder);
+    expect(all.deepen).toBeInstanceOf(AnthropicDeepenActBuilder);
+    expect(all.writer).toBeInstanceOf(AnthropicNarrationWriterBuilder);
+    expect(all.verifier).toBeInstanceOf(AnthropicNarrationVerifierBuilder);
+    expect(all.continuity).toBeInstanceOf(AnthropicContinuityBuilder);
+    expect(provider.requests).toHaveLength(0);
+  });
+
+  it("one stage moved to a local lane leaves the other six on their real Anthropic classes", () => {
+    const all = buildAll({ ANTHROPIC_API_KEY: "sk-test-never-sent", FORAY_LLM_BASE_URL: BASE_URL, FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_STAGE_SPINE: "local:spark" });
+    expect(all.spine).toBeInstanceOf(ChatSpineBuilder);
+    expect(all.understander).toBeInstanceOf(AnthropicPromptUnderstander);
+    expect(all.researcher).toBeInstanceOf(AnthropicExternalResearcher);
+    expect(all.deepen).toBeInstanceOf(AnthropicDeepenActBuilder);
+    expect(all.writer).toBeInstanceOf(AnthropicNarrationWriterBuilder);
+    expect(all.verifier).toBeInstanceOf(AnthropicNarrationVerifierBuilder);
+    expect(all.continuity).toBeInstanceOf(AnthropicContinuityBuilder);
   });
 });
 

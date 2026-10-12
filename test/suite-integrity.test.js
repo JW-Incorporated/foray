@@ -3280,7 +3280,7 @@ const BACKEND_FLOORS = {
      pick stub, anthropic (legacy) or a Chat builder on a lane from the routing
      table; the none researcher; one ChatProvider per process. Injected sources,
      a sentinel for every anthropic registration, a scripted provider. */
-  "test/stageFactories.test.ts": 19,
+  "test/stageFactories.test.ts": 21,
   /* GV-15 (docs/roadmap/generation-v2.md, #1286): run configuration — the
      call-time flag readers (decision 5), the pipeline flags and checkpoint
      variant, and the empty gate-config table. One named mutation per test. */
