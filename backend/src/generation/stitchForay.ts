@@ -104,7 +104,19 @@ export interface StitchForayOptions {
     actItemProvenance: ItemProvenance[];
     /** Every act's records so far, 1:1 with `itemsSoFar` (no prelude). */
     provenanceSoFar: ItemProvenance[];
+    /** GV-33: how many of `actItems` (a prefix) were already handed out
+     * through `emitSeamItems` before the act finished; 0 today, since no
+     * production caller streams seams yet. A caller emitting per-item events
+     * emits only the rest. */
+    seamItemsEmitted: number;
   }) => void | Promise<void>;
+  /**
+   * GV-33 (W6-02): fired by `ForayStitcher.emitSeamItems`, so a streamed
+   * writer (R1-06) can hand out an act's items one seam at a time before the
+   * act is whole. Unit-tested with no production caller; the per-item event
+   * contract (`ItemReadyEvent`) does not change when one appears.
+   */
+  onSeamItems?: (info: { actIndex: number; items: ForayItem[]; provenance: ItemProvenance[] }) => void | Promise<void>;
 }
 
 export interface StitchForayResult {
@@ -145,6 +157,9 @@ export class ForayStitcher {
    * by `stitchNextAct`, or recomputed by `acceptStitchedAct` for a banked
    * act, so a resumed act has real provenance rather than none. */
   private readonly actProvenanceLists: ItemProvenance[][] = [];
+  /** GV-33: the current (not yet stitched) act's items already handed out
+   * through `emitSeamItems`, in order. */
+  private seamEmitted: { itemId: string; index: number }[] = [];
 
   constructor(
     private readonly deepenedActs: DeepenedAct[],
@@ -199,6 +214,16 @@ export class ForayStitcher {
     /* GV-21: read off the stitched items BEFORE the push, so the act's first
        index is the items before it plus the prelude. */
     const actItemProvenance = provenanceFor(actStitchedItems, i, this.firstItemIndexOf(i));
+    /* GV-33: items streamed out early must be the act's leading items, or the
+       per-item events already sent describe a different act. */
+    const seamItemsEmitted = this.seamEmitted.length;
+    const seamMismatch = this.seamEmitted.findIndex((e, k) => actItemProvenance[k]?.itemId !== e.itemId || actItemProvenance[k]?.index !== e.index);
+    if (seamMismatch >= 0) {
+      throw new Error(
+        `ForayStitcher: act ${i + 1}'s stitched item ${seamMismatch} is not the seam item emitted for it (${this.seamEmitted[seamMismatch]!.itemId}) (GV-33)`
+      );
+    }
+    this.seamEmitted = [];
     this.actItemLists.push(actItems);
     this.actProvenanceLists.push(actItemProvenance);
 
@@ -215,7 +240,8 @@ export class ForayStitcher {
         itemsSoFar,
         written,
         actItemProvenance,
-        provenanceSoFar: this.provenance()
+        provenanceSoFar: this.provenance(),
+        seamItemsEmitted
       });
     }
 
@@ -240,6 +266,7 @@ export class ForayStitcher {
    */
   acceptStitchedAct(actItems: ForayItem[], written: WrittenAct): void {
     const i = this.actItemLists.length;
+    this.seamEmitted = [];
     const firstIndex = this.firstItemIndexOf(i);
     let provenance = this.actProvenance(i, written);
     const sameIds = provenance.length === actItems.length && provenance.every((p, k) => p.itemId === itemKeyOf(actItems[k]!, firstIndex + k));
@@ -265,6 +292,40 @@ export class ForayStitcher {
     }
     const stitched = stitchAct(written, `act-${i + 1}`, this.options.slotIds?.[i]);
     return provenanceFor(this.withActSeams(i, stitched.items, act.introduction), i, this.firstItemIndexOf(i));
+  }
+
+  /**
+   * GV-33 (W6-02): hands out some of the NEXT act's items before the act is
+   * whole — a streamed writer (R1-06) calls this per seam as each one closes.
+   * No production caller yet; the contract is fixed now so the per-item events
+   * do not change when one appears.
+   *
+   * ORDER IS THE CONTRACT. `actIndex` must be the act the next
+   * `stitchNextAct` will consume; `provenance` is 1:1 with `items`, of that
+   * act, and continues exactly where the previous call for this act stopped
+   * (the first call starts at the act's first item index, prelude counted).
+   * Anything else throws before `onSeamItems` sees it. `stitchNextAct` later
+   * checks these were the act's leading items and reports how many were
+   * already emitted (`seamItemsEmitted`).
+   */
+  async emitSeamItems(actIndex: number, items: ForayItem[], provenance: ItemProvenance[]): Promise<void> {
+    if (actIndex !== this.actItemLists.length) {
+      throw new Error(`ForayStitcher.emitSeamItems: act ${actIndex} is not the act being written (${this.actItemLists.length}) (GV-33)`);
+    }
+    if (items.length !== provenance.length) {
+      throw new Error(`ForayStitcher.emitSeamItems: ${items.length} item(s) but ${provenance.length} provenance record(s) (GV-33)`);
+    }
+    const next = this.firstItemIndexOf(actIndex) + this.seamEmitted.length;
+    provenance.forEach((p, k) => {
+      if (p.index !== next + k || p.actIndex !== actIndex || p.itemId !== itemKeyOf(items[k]!, p.index)) {
+        throw new Error(
+          `ForayStitcher.emitSeamItems: record ${k} (${p.itemId} at ${p.index}, act ${p.actIndex}) is not item ${next + k} of act ${actIndex} (GV-33)`
+        );
+      }
+    });
+    if (items.length === 0) return;
+    this.seamEmitted.push(...provenance.map((p) => ({ itemId: p.itemId, index: p.index })));
+    await this.options.onSeamItems?.({ actIndex, items: [...items], provenance: [...provenance] });
   }
 
   /** GV-21: every act's readiness records so far, 1:1 with `items()`. */

@@ -58,7 +58,9 @@ import { disclosureTemplate, preludeTemplate } from "../types/narration";
 import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 import { resetUsageTracking, getUsageTotals } from "./usageTracking";
 import { buildVeracityMetrics, computeActVeracity, evaluateVeracityGate, type ActVeracity, type VeracityGateResult } from "./veracityMetrics";
-import { preludeProvenance } from "./itemReadiness";
+import { assessAct, DEFAULT_READINESS_POLICY, itemKeyOf, preludeProvenance, type ItemProvenance } from "./itemReadiness";
+import { emitActReady, emitItemReady, readinessNowMs } from "./readiness";
+import type { ItemReadyEvent } from "./deliveryTimeline";
 
 import { createPromptUnderstander } from "./createPromptUnderstander";
 import { createExternalResearcher } from "./createExternalResearcher";
@@ -191,6 +193,23 @@ export interface RunPipelineDeps {
    */
   onActReady?: (candidate: PartialCandidate) => void | Promise<void>;
   /**
+   * GV-33 (W6-02; R1-15, GP-07, MT-01): fired once per item, in playback order
+   * (`index` strictly increasing, the prelude first), the moment the item is
+   * ready — today with its whole act, from the same stitcher wrapper
+   * `onActReady` uses. Optional and independent of `onActReady`: supplying only
+   * this builds NO partial candidate (no finalize runs for it). Servability
+   * comes from GV-21's `assessAct`, which needs no finalize. The batch driver
+   * feeds a `DeliveryTimeline` from it (`report.json`'s `delivery`).
+   */
+  onItemReady?: (ev: ItemReadyEvent) => void | Promise<void>;
+  /**
+   * GV-33: the wall clock (epoch ms) the pipeline's start, `ttlA1Ms` and every
+   * `ItemReadyEvent.readyAtMs` are read from. Defaults to `Date.now`. NOT
+   * called `now`: `options.now` is the deterministic stamp clock `forayIdFor`
+   * seeds from, and this one never touches an id.
+   */
+  wallClockMs?: () => number;
+  /**
    * Per-stage resume (F-17/F-18). Omit it and the pipeline behaves exactly as
    * it did before checkpoints existed: nothing is written, nothing is skipped.
    * Supply it (with `options.checkpointKey`) and every stage's output is
@@ -318,6 +337,15 @@ export interface RunPipelineOptions {
    * own key from here into the stage options that need it (decision 34).
    */
   gates?: Partial<GateConfig>;
+  /**
+   * GV-33 (W6-02): emit the prelude's `ItemReadyEvent` as soon as the spine is
+   * frozen and the Foray's id is minted (everything the prelude needs: the
+   * subject, the overview and the first slot), instead of with act 0's items.
+   * Default false: keep it off until QK-24 covers the overview, which is
+   * written before any tape. Changes only when the event fires; no item, id or
+   * partial candidate moves.
+   */
+  emitPreludeEarly?: boolean;
 }
 
 /** G-32: one act's narration, as the report shows it — the `narrate:<i>`
@@ -938,12 +966,14 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const timings = new StageTimingLog();
   const now = options.now ?? (() => new Date());
   const ctx = { userId: options.userId, sessionId: options.sessionId };
-  // WS-D2: prompt-received clock. `Date.now()`, not `now()` — `now()` is the
+  // WS-D2: prompt-received clock. The wall clock, not `now()` — `now()` is the
   // injected-for-determinism stamp clock (`startedAt`/`generatedAt`, and so
   // `forayIdFor`'s seed), which tests pin to a fixed instant; ttlA1Ms measures
   // real wall time, exactly like `StageTimingLog` does elsewhere in this
-  // module.
-  const pipelineStartMs = Date.now();
+  // module. GV-33: read through `deps.wallClockMs` (default `Date.now`) so a
+  // test can pin the delivery timeline without touching the id's clock.
+  const wallClockMs = deps.wallClockMs ?? (() => Date.now());
+  const pipelineStartMs = wallClockMs();
 
   /* GV-15: the run's flags and gates, resolved ONCE, before any stage runs —
      so a malformed variable fails the run before it spends a call, and no
@@ -1407,6 +1437,53 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const slots = slotsFromSpine(spine);
   const allActTitles = spine.acts.map((a) => a.title);
 
+  /* GV-33 (W6-02): the per-item ready events. `onItemReady` sees each item
+     once, in playback order, the prelude first. The prelude rides with the
+     first act this process stitches unless `options.emitPreludeEarly` sends it
+     here, the first point after the spine where the Foray has its id (the
+     post-spine topic decision above can still stop the run, and spends no
+     model call). Nothing is built when no hook was supplied. */
+  const prelude = preludeItem(intent.subject, spine.overview, slots[0]!.id);
+  let preludeEmitted = false;
+  let nextItemIndex = 0;
+  const emitItem = async (
+    item: ForayItem,
+    prov: Pick<ItemProvenance, "itemId" | "index" | "actIndex" | "check">,
+    servable: boolean,
+    readyAtMs: number,
+    playStartSec: number,
+    durationSec: number,
+    granularity: "act" | "item"
+  ): Promise<void> => {
+    if (prov.index < nextItemIndex) {
+      throw new Error(`runForayPipeline: item ${prov.index} (${prov.itemId}) is ready after item ${nextItemIndex - 1} — events must run in playback order (GV-33)`);
+    }
+    nextItemIndex = prov.index + 1;
+    await deps.onItemReady!({
+      forayId,
+      index: prov.index,
+      itemId: prov.itemId,
+      actIndex: prov.actIndex,
+      check: prov.check,
+      servable,
+      readyAtMs,
+      playStartSec,
+      durationSec,
+      item,
+      granularity
+    });
+  };
+  const emitPrelude = async (readyAtMs: number, pool: SegmentRecord[], granularity: "act" | "item"): Promise<void> => {
+    preludeEmitted = true;
+    if (!deps.onItemReady) return;
+    await emitItem(prelude, preludeProvenance(prelude), true, readyAtMs, 0, runtimeSecFor([prelude], pool), granularity);
+  };
+  if (options.emitPreludeEarly) {
+    const readyAtMs = wallClockMs() - pipelineStartMs;
+    emitItemReady({ itemId: itemKeyOf(prelude, 0), actIndex: -1 });
+    await emitPrelude(readyAtMs, segmentPool, "item");
+  }
+
   /* §4.4 — deepen every act, in parallel across acts, each act checkpointed on
      its own (F-17): an act that succeeded is banked even when a sibling act
      exhausts its retry budget and fails the stage. */
@@ -1582,73 +1659,105 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       continuity: { builder: continuityBuilder },
       /* gen-4: items carry the slot ids `slots` declares, by position. */
       slotIds: slotIdsFromSpine(spine),
-      onActReady: deps.onActReady
-        ? async ({ actIndex, itemsSoFar, provenanceSoFar }) => {
-            if (actIndex === 0) ttlA1Ms = Date.now() - pipelineStartMs;
-            /* The disclosure is prepended here for the SAME reason the
-               whole-Foray path prepends it below: it is a Foray-level
-               obligation stitch has no concept of, and `check-forays.mjs`
-               requires items[0] to be it — a partial candidate is
-               something `finalizeForay` inside `buildPartialCandidate`
-               validates with those same gates, so it needs the same
-               opening item the final candidate gets. */
-            const itemsWithDisclosure = [preludeItem(intent.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
-            /* GV-21: per-item readiness beside the items (never on them), the
-               prelude classified explicitly as index 0. The verdict it feeds
-               (`delivery`) is independent of `validation` and of the refusal
-               below: an unservable act is withheld, never aborts the run. */
-            const itemProvenance = [preludeProvenance(itemsWithDisclosure[0]!), ...provenanceSoFar];
-            const candidate = await buildPartialCandidate(
-              {
-                actIndex,
-                totalActs: allActTitles.length,
-                allActTitles,
-                items: itemsWithDisclosure,
-                slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
-                runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
-                ttlA1Ms,
-                itemProvenance,
-                actVeracity: actVeracity.slice(0, actIndex + 1)
-              },
-              {
-                id: forayId,
-                title,
-                topic,
-                summary,
-                authorId: options.userId,
-                builtAt: startedAt,
-                /* F-71: the same minted tier-2 tape the whole-Foray input
-                   carries below. Without it the partial candidate's own
-                   `finalizeForay` is handed a pool this run's segments are not
-                   in, and reports them as unknown segment ids — a failure of
-                   the input, not of the Foray. */
-                segments: sourced.newSegments,
-                segmentSources: sourced.newSegmentSources,
-                root: options.root,
-                /* F-79: the sourcing plan, so the partial's share-of-whole
-                   rules (M4 above all) are judged on the projected whole
-                   rather than on this act's slice — see partialProjection.ts. */
-                projection: { sourcedActs: sourced.acts, slots }
-              },
-              finalize
-            );
-            await deps.onActReady!(candidate);
-            await dropStaleSourcing(candidate.validation.checkForaysErrors);
-            /* G-30 (manual step 10): the partial-refusal exit. AFTER the
-               callback, so the refused partial is on disk for whoever reads
-               the report; BEFORE `checkpoint.stage` records this act's
-               stitch, so a re-run rebuilds the refused act rather than
-               resuming past it. */
-            if (!candidate.validation.ok && options.refusedPartial === "abort") {
-              throw new RefusedPartialError(
-                actIndex,
-                allActTitles.length,
-                candidate.validation.checkForaysErrors,
-                candidate.validation.checkNarrationErrors
-              );
-            }
+      /* GV-33 (W1-06 + W6-02): the wrapper is ALWAYS constructed, so every
+         run's RunLog carries one act ReadyEvent per stitched act. The per-item
+         events run only when `deps.onItemReady` was supplied; WS-D2's body
+         (ttlA1Ms, the partial candidate and its two finalize runs,
+         dropStaleSourcing, the refusal) runs only when `deps.onActReady` was,
+         exactly as before. A resumed act never reaches this wrapper. */
+      onActReady: async ({ actIndex, actItems, itemsSoFar, actItemProvenance, provenanceSoFar, seamItemsEmitted }) => {
+        const readyAtMs = wallClockMs() - pipelineStartMs;
+        const logReadyMs = readinessNowMs();
+        const preludeRides = !preludeEmitted;
+        const actItemIds = [...(preludeRides ? [itemKeyOf(prelude, 0)] : []), ...actItemProvenance.map((p) => p.itemId)];
+        if (preludeRides) await emitPrelude(readyAtMs, runtimePool, "act");
+        if (deps.onItemReady) {
+          /* GV-21's act verdict, no finalize: an unservable act's items are
+             marked so the timeline pauses there. */
+          const servable = assessAct(actItemProvenance, DEFAULT_READINESS_POLICY, actVeracity[actIndex]).servable;
+          const actStart = itemsSoFar.length - actItems.length;
+          for (let k = seamItemsEmitted; k < actItems.length; k++) {
+            const item = actItems[k]!;
+            const before = [prelude, ...itemsSoFar.slice(0, actStart + k)];
+            await emitItem(item, actItemProvenance[k]!, servable, readyAtMs, runtimeSecFor(before, runtimePool), runtimeSecFor([item], runtimePool), "act");
           }
-        : undefined
+        }
+        if (!deps.onActReady) {
+          emitActReady({ actIndex, itemIds: actItemIds, partialOk: null, ...(logReadyMs !== undefined ? { readyMs: logReadyMs } : {}) });
+          return;
+        }
+        if (actIndex === 0) ttlA1Ms = readyAtMs;
+        /* The disclosure is prepended here for the SAME reason the
+           whole-Foray path prepends it below: it is a Foray-level
+           obligation stitch has no concept of, and `check-forays.mjs`
+           requires items[0] to be it — a partial candidate is
+           something `finalizeForay` inside `buildPartialCandidate`
+           validates with those same gates, so it needs the same
+           opening item the final candidate gets. */
+        const itemsWithDisclosure = [preludeItem(intent.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
+        /* GV-21: per-item readiness beside the items (never on them), the
+           prelude classified explicitly as index 0. The verdict it feeds
+           (`delivery`) is independent of `validation` and of the refusal
+           below: an unservable act is withheld, never aborts the run. */
+        const itemProvenance = [preludeProvenance(itemsWithDisclosure[0]!), ...provenanceSoFar];
+        const candidate = await buildPartialCandidate(
+          {
+            actIndex,
+            totalActs: allActTitles.length,
+            allActTitles,
+            items: itemsWithDisclosure,
+            slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
+            runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
+            ttlA1Ms,
+            itemProvenance,
+            actVeracity: actVeracity.slice(0, actIndex + 1)
+          },
+          {
+            id: forayId,
+            title,
+            topic,
+            summary,
+            authorId: options.userId,
+            builtAt: startedAt,
+            /* F-71: the same minted tier-2 tape the whole-Foray input
+               carries below. Without it the partial candidate's own
+               `finalizeForay` is handed a pool this run's segments are not
+               in, and reports them as unknown segment ids — a failure of
+               the input, not of the Foray. */
+            segments: sourced.newSegments,
+            segmentSources: sourced.newSegmentSources,
+            root: options.root,
+            /* F-79: the sourcing plan, so the partial's share-of-whole
+               rules (M4 above all) are judged on the projected whole
+               rather than on this act's slice — see partialProjection.ts. */
+            projection: { sourcedActs: sourced.acts, slots }
+          },
+          finalize
+        );
+        /* GV-33: stamped when the act was ready, not after the two
+           finalize runs above; the verdict is the partial's. */
+        emitActReady({
+          actIndex,
+          itemIds: actItemIds,
+          partialOk: candidate.validation.ok,
+          ...(logReadyMs !== undefined ? { readyMs: logReadyMs } : {})
+        });
+        await deps.onActReady(candidate);
+        await dropStaleSourcing(candidate.validation.checkForaysErrors);
+        /* G-30 (manual step 10): the partial-refusal exit. AFTER the
+           callback, so the refused partial is on disk for whoever reads
+           the report; BEFORE `checkpoint.stage` records this act's
+           stitch, so a re-run rebuilds the refused act rather than
+           resuming past it. */
+        if (!candidate.validation.ok && options.refusedPartial === "abort") {
+          throw new RefusedPartialError(
+            actIndex,
+            allActTitles.length,
+            candidate.validation.checkForaysErrors,
+            candidate.validation.checkNarrationErrors
+          );
+        }
+      }
     },
     ctx
   );

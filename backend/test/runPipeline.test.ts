@@ -35,6 +35,7 @@ import { FlagValueError } from "../src/generation/generationFlags";
 import { createMessage } from "../src/generation/anthropicCall";
 import { getUsageTotals } from "../src/generation/usageTracking";
 import { makeFakeAnthropicClient, textBlock } from "./helpers/fakeAnthropicClient";
+import { DeliveryTimeline, type ItemReadyEvent } from "../src/generation/deliveryTimeline";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -1454,4 +1455,180 @@ describe("runForayPipeline — per-act servability on partial candidates (GV-21)
       expect(p.acts[0]!.veracity?.ok).toBe(false);
     }
   }, 60_000);
+});
+
+describe("runForayPipeline — item-ready events and RunLog readiness (GV-33)", () => {
+  const multiAct: GenerationRequest = { ...request, duration: "medium" };
+
+  /** A finalize that counts its calls, so a partial build (two finalize runs
+   * per act) cannot hide. */
+  function countingFinalize() {
+    const inner = recordingFinalize();
+    let calls = 0;
+    const fn = async (input: FinalizeForayInput): Promise<FinalizeForayResult> => {
+      calls++;
+      return inner.fn(input);
+    };
+    return { fn, calls: () => calls };
+  }
+
+  it("onItemReady alone: one event per item, indexes 0..n-1 with the prelude first, and no partial finalize", async () => {
+    /* MUTATION THAT KILLS THIS: drop the wrapper's `if (!deps.onActReady)`
+       early return. The partial path then runs without a callback: a partial
+       is finalized and the run fails. Ran it — red. Second: emit the
+       prelude with every act (drop `preludeEmitted = true`). The indexes are
+       then not strictly increasing and the run throws. Ran it — red. */
+    const finalize = countingFinalize();
+    const events: ItemReadyEvent[] = [];
+    const out = await runForayPipeline(multiAct, options, { ...stubDeps(), finalize: finalize.fn, onItemReady: (ev) => void events.push(ev) });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    expect(new Set(events.map((e) => e.actIndex)).size - 1).toBeGreaterThanOrEqual(3);
+    expect(events.map((e) => e.index)).toEqual(out.input.items.map((_it, k) => k));
+    expect(events.map((e) => e.itemId)).toEqual(out.input.items.map((it, k) => itemKeyOf(it, k)));
+    expect(events.map((e) => e.item)).toEqual(out.input.items);
+    expect(events[0]).toMatchObject({ itemId: "prelude", actIndex: -1, check: "prelude", servable: true, playStartSec: 0 });
+    expect(events.every((e) => e.forayId === out.input.id && e.servable && e.granularity === "act")).toBe(true);
+    /* Each item starts where the items before it end, on the listener's
+       clock, and the last one ends at the Foray's runtime (both timed on the
+       run's own pool, minted tier-2 rows included). */
+    events.slice(1).forEach((e, k) => expect(e.playStartSec).toBeCloseTo(events[k]!.playStartSec + events[k]!.durationSec, 2));
+    const last = events[events.length - 1]!;
+    expect(last.playStartSec + last.durationSec).toBeCloseTo(out.input.runtimeSec, 2);
+    expect(events.filter((e) => e.item.type === "segment").every((e) => e.durationSec > 0)).toBe(true);
+    expect(finalize.calls()).toBe(1);
+    expect(out.ttlA1Ms).toBeNull();
+  }, 120_000);
+
+  it("an injected wallClockMs pins readyAtMs per act, the lead is the hand-computed value, and the Foray id does not move", async () => {
+    /* MUTATION THAT KILLS THIS: read the act's ready time from `Date.now()`
+       instead of `deps.wallClockMs`. readyAtMs is then wall time, not the
+       scripted 5 s steps. Ran it — red. */
+    let tick = 0;
+    const wallClockMs = () => 1_000_000 + 5_000 * tick++;
+    const timeline = new DeliveryTimeline();
+    const baseline = await runForayPipeline(multiAct, options, stubDeps());
+    const out = await runForayPipeline(multiAct, options, { ...stubDeps(), wallClockMs, onItemReady: (ev) => timeline.record(ev) });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated" || baseline.outcome !== "generated") return;
+    expect(out.input.id).toBe(baseline.input.id);
+    expect(out.input.items).toEqual(baseline.input.items);
+
+    const events = timeline.events();
+    // The start reads tick 0; act k's wrapper reads tick k + 1: ready at 5 s x (k + 1).
+    for (const e of events) expect(e.readyAtMs).toBe(5_000 * (Math.max(e.actIndex, 0) + 1));
+    /* Playback starts at 5 s with the prelude and act 0. Act 1's first item
+       plays at 5 s + its start and was ready at 10 s; every later act is 5 s
+       later still and further along, so act 1's first item is the minimum. */
+    const act1First = events.find((e) => e.actIndex === 1)!;
+    const later = events.filter((e) => e.actIndex >= 1).map((e) => 5 + e.playStartSec - e.readyAtMs / 1000);
+    expect(timeline.leadReport().minLeadSec).toBeCloseTo(Math.min(...later), 3);
+    expect(timeline.leadReport().minLeadSec).toBeCloseTo(5 + act1First.playStartSec - 10, 3);
+  }, 120_000);
+
+  it("without onActReady the RunLog carries one act ReadyEvent per act, in order, whose ids concatenate to the final items", async () => {
+    /* MUTATION THAT KILLS THIS: construct the stitcher wrapper only when
+       `deps.onActReady` is supplied (the pre-GV-33 code). No ReadyEvent is
+       logged. Ran it — red. Second: leave the prelude out of act 0's ids.
+       The concatenation is then one short. Ran it — red. */
+    const log = new RunLog();
+    const out = await runWithRunLog(log, () => runForayPipeline(multiAct, options, stubDeps()));
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    const ready = log.events("ready");
+    expect(ready.every((r) => r.granularity === "act" && r.partialOk === null)).toBe(true);
+    expect(ready.map((r) => r.actIndex)).toEqual(ready.map((_r, k) => k));
+    expect(ready.length).toBeGreaterThanOrEqual(3);
+    expect(ready.flatMap((r) => r.itemIds)).toEqual(out.input.items.map((it, k) => itemKeyOf(it, k)));
+    expect(ready[0]!.itemIds[0]).toBe("prelude");
+    // Stamped on the log's clock, in order.
+    expect(ready.map((r) => r.readyMs)).toEqual([...ready.map((r) => r.readyMs)].sort((a, b) => a - b));
+  }, 120_000);
+
+  it("with onActReady each act ReadyEvent carries its partial's verdict", async () => {
+    /* MUTATION THAT KILLS THIS: log `partialOk: null` on the partial path
+       too. Every verdict then reads null. Ran it — red. */
+    const log = new RunLog();
+    const partials: PartialCandidate[] = [];
+    const out = await runWithRunLog(log, () => runForayPipeline(multiAct, options, { ...stubDeps(), onActReady: (c) => void partials.push(c) }));
+    expect(out.outcome).toBe("generated");
+    const ready = log.events("ready");
+    expect(ready).toHaveLength(partials.length);
+    expect(ready.map((r) => r.partialOk)).toEqual(partials.map((p) => p.validation.ok));
+    expect(ready.every((r) => r.partialOk === true)).toBe(true);
+  }, 120_000);
+
+  it("a resumed run emits no ReadyEvent and no item event for its banked acts", async () => {
+    /* MUTATION THAT KILLS THIS: log an act ReadyEvent beside
+       `acceptStitchedAct` for a resumed act. The resumed run then logs one
+       event per act. Ran it — red. */
+    const key = "gv-33-resume";
+    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: multiAct.prompt, duration: multiAct.duration, topic: options.topic }));
+    const first = await runForayPipeline(multiAct, { ...options, checkpointKey: key }, { ...stubDeps(), checkpoint: store });
+    expect(first.outcome).toBe("generated");
+
+    const log = new RunLog();
+    const events: ItemReadyEvent[] = [];
+    const second = await runWithRunLog(log, () =>
+      runForayPipeline(multiAct, { ...options, checkpointKey: key }, { ...stubDeps(), checkpoint: store, onItemReady: (ev) => void events.push(ev) })
+    );
+    expect(second.outcome).toBe("generated");
+    expect(log.events("ready")).toEqual([]);
+    expect(events).toEqual([]);
+  }, 120_000);
+
+  it("emitPreludeEarly sends the prelude before deepen, and act 0's ReadyEvent then leaves it out", async () => {
+    /* MUTATION THAT KILLS THIS: ignore `options.emitPreludeEarly`. The
+       prelude then arrives after deepen, with act 0. Ran it — red. */
+    const order: string[] = [];
+    const deepenBuilder = new StubDeepenActBuilder();
+    const realDeepen = deepenBuilder.deepenAct.bind(deepenBuilder);
+    deepenBuilder.deepenAct = async (...args: Parameters<StubDeepenActBuilder["deepenAct"]>) => {
+      order.push("deepen");
+      return realDeepen(...args);
+    };
+    const log = new RunLog();
+    const out = await runWithRunLog(log, () =>
+      runForayPipeline(multiAct, { ...options, emitPreludeEarly: true }, { ...stubDeps(), deepenBuilder, onItemReady: (ev) => void order.push(`item:${ev.index}`) })
+    );
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(order[0]).toBe("item:0");
+    expect(order.filter((o) => o.startsWith("item:"))).toEqual(out.input.items.map((_it, k) => `item:${k}`));
+    const ready = log.events("ready");
+    expect(ready[0]).toMatchObject({ granularity: "item", actIndex: -1, itemIds: ["prelude"] });
+    expect(ready[1]!.itemIds).not.toContain("prelude");
+    expect(ready.flatMap((r) => r.itemIds)).toEqual(out.input.items.map((it, k) => itemKeyOf(it, k)));
+  }, 120_000);
+
+  it("an unservable act 0 marks its items unservable, so the timeline pauses at index 1 and act 0 is no lead sample", async () => {
+    /* MUTATION THAT KILLS THIS: send `servable: true` for every item. The
+       timeline then never pauses. Ran it — red. */
+    const spine = new StubSpineBuilder();
+    const realSpine = spine.buildSpine.bind(spine);
+    let act0Title: string | undefined;
+    spine.buildSpine = async (...args: Parameters<SpineBuilder["buildSpine"]>) => {
+      const built = await realSpine(...args);
+      act0Title = built.acts[0]?.title;
+      return built;
+    };
+    const stub = new StubNarrationVerifierBuilder();
+    const refusing: NarrationVerifierBuilder = {
+      providerName: "stub",
+      verifyAct: async (req, c) => {
+        const result = await stub.verifyAct(req, c);
+        if (req.actTitle !== act0Title) return result;
+        return { ...result, seams: result.seams.map((seam) => ({ ...seam, claimsSupported: false, notes: "rests on nothing held" })) };
+      }
+    } as NarrationVerifierBuilder;
+    const timeline = new DeliveryTimeline();
+    const out = await runForayPipeline(multiAct, options, { ...stubDeps(), spineBuilder: spine, narrationVerifier: refusing, onItemReady: (ev) => timeline.record(ev) });
+    expect(out.outcome).toBe("generated");
+    const events = timeline.events();
+    expect(events.filter((e) => e.actIndex === 0).every((e) => !e.servable)).toBe(true);
+    expect(events.filter((e) => e.actIndex === 1).every((e) => e.servable)).toBe(true);
+    expect(timeline.pausedAtIndex).toBe(1);
+    expect(timeline.leadReport()).toMatchObject({ pausedAtIndex: 1, samples: 0, minLeadSec: null });
+  }, 120_000);
 });

@@ -297,3 +297,62 @@ describe("stitchForay — end-to-end orchestration", () => {
     });
   });
 });
+
+describe("ForayStitcher.emitSeamItems (GV-33)", () => {
+  /** Act 0's items and records, from a reference stitch, so the test hands
+   * emitSeamItems exactly what a streamed writer would. */
+  async function referenceAct0(): Promise<{ items: ForayItem[]; prov: ItemProvenance[] }> {
+    const ref = new ForayStitcher([makeDeepened("Act One", 1), makeDeepened("Act Two", 2)], { continuity: { builder: new StubContinuityBuilder() } }, ctx);
+    const items = await ref.stitchNextAct(makeWritten("Act One"));
+    return { items, prov: ref.provenance() };
+  }
+
+  it("forwards seams in order, then onActReady reports how many of the act's items were already emitted", async () => {
+    /* MUTATION THAT KILLS THIS: drop the contiguity check (`p.index !== next + k`)
+       in emitSeamItems. The out-of-order call below then reaches onSeamItems
+       instead of throwing. Ran it — red. Second: report `seamItemsEmitted: 0`
+       from stitchNextAct. The last assertion goes red. Ran it — red. */
+    const { items, prov } = await referenceAct0();
+    expect(items.length).toBeGreaterThanOrEqual(3);
+    const seen: Array<{ actIndex: number; ids: string[]; indexes: number[] }> = [];
+    const ready: number[] = [];
+    const stitcher = new ForayStitcher(
+      [makeDeepened("Act One", 1), makeDeepened("Act Two", 2)],
+      {
+        continuity: { builder: new StubContinuityBuilder() },
+        onSeamItems: ({ actIndex, items: seamItems, provenance }) =>
+          void seen.push({ actIndex, ids: seamItems.map((it, k) => itemKeyOf(it, provenance[k]!.index)), indexes: provenance.map((p) => p.index) }),
+        onActReady: ({ seamItemsEmitted }) => void ready.push(seamItemsEmitted)
+      },
+      ctx
+    );
+
+    await stitcher.emitSeamItems(0, items.slice(0, 1), prov.slice(0, 1));
+    // Skipping item 2 (index 2) is out of order.
+    await expect(stitcher.emitSeamItems(0, items.slice(2, 3), prov.slice(2, 3))).rejects.toThrow(/not item 2 of act 0/);
+    // The act after the one being written is not this act.
+    await expect(stitcher.emitSeamItems(1, items.slice(1, 2), prov.slice(1, 2))).rejects.toThrow(/not the act being written/);
+    await stitcher.emitSeamItems(0, items.slice(1, 2), prov.slice(1, 2));
+
+    expect(seen).toEqual([
+      { actIndex: 0, ids: [prov[0]!.itemId], indexes: [PRELUDE_ITEM_COUNT] },
+      { actIndex: 0, ids: [prov[1]!.itemId], indexes: [PRELUDE_ITEM_COUNT + 1] }
+    ]);
+
+    const stitched = await stitcher.stitchNextAct(makeWritten("Act One"));
+    expect(stitched).toEqual(items);
+    expect(ready).toEqual([2]);
+  });
+
+  it("refuses a stitched act whose leading items are not the seams already emitted", async () => {
+    /* MUTATION THAT KILLS THIS: delete the seam-mismatch check in
+       stitchNextAct. The act stitches as if the emitted events described it.
+       Ran it — red. */
+    const { items, prov } = await referenceAct0();
+    const stitcher = new ForayStitcher([makeDeepened("Act One", 1), makeDeepened("Act Two", 2)], { continuity: { builder: new StubContinuityBuilder() } }, ctx);
+    // A record that claims index 1 for a different item key (act 0's exit).
+    const last = items[items.length - 1]!;
+    await stitcher.emitSeamItems(0, [last], [{ ...prov[prov.length - 1]!, index: PRELUDE_ITEM_COUNT, itemId: itemKeyOf(last, PRELUDE_ITEM_COUNT) }]);
+    await expect(stitcher.stitchNextAct(makeWritten("Act One"))).rejects.toThrow(/is not the seam item emitted for it/);
+  });
+});
