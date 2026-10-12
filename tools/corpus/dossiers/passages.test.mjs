@@ -53,6 +53,37 @@ test("stripBackMatter cuts at the first References / See also heading", () => {
   const md = "Intro text.\n\n## History\n\nBody.\n\n## See also\n\n- x\n\n## References\n\n1. y";
   assert.equal(stripBackMatter(md), "Intro text.\n\n## History\n\nBody.");
   assert.equal(stripBackMatter("No back matter."), "No back matter.");
+  // Wikipedia's section-edit link after the heading text still cuts.
+  const edit = "Intro text.\n\n## References\\[[edit](/w/index.php?title=Mercury_(planet)&action=edit \"Edit section\")\\]\n\n1. y";
+  assert.equal(stripBackMatter(edit), "Intro text.");
+  assert.equal(stripBackMatter("Intro text.\n\n### Notes [edit]\n\n1. y"), "Intro text.");
+});
+
+test("stripBackMatter keeps body headings that only start with a back-matter word", () => {
+  const md = [
+    "Lead para.",
+    "",
+    "## Sources of fusion fuel",
+    "",
+    "Deuterium comes from seawater and tritium is bred from lithium in the blanket.",
+    "",
+    "## Notes on terminology",
+    "",
+    "More body.",
+    "",
+    "### Bibliography of early tokamak papers",
+    "",
+    "Still body.",
+    "",
+    "## References",
+    "",
+    "1. y",
+  ].join("\n");
+  const kept = stripBackMatter(md);
+  assert.match(kept, /Deuterium comes from seawater/);
+  assert.match(kept, /More body\./);
+  assert.match(kept, /Still body\.$/);
+  assert.ok(!/1\. y/.test(kept), "the real References heading still cuts");
 });
 
 test("splitParagraphs returns exact offsets", () => {

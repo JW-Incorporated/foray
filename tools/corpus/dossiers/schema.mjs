@@ -49,6 +49,11 @@ export const DOSSIER_SCHEMA = {
     label: { type: "string", minLength: 1 },
     built_at: DATE_TIME,
     builder: { enum: BUILDERS },
+    /* Set only by the Qwen selection pass (GV-65, builder 'qwen-select'):
+       the model alias that chose the passages and when it ran. A code-built
+       dossier (builder 'code') carries neither. */
+    model: { type: "string", minLength: 1 },
+    selected_at: DATE_TIME,
     sources: {
       type: "array",
       items: {

@@ -38,7 +38,12 @@ export const MAX_PASSAGE_CHARS = 1500;
    cell, not a passage anyone can quote a fact from. */
 export const MIN_PASSAGE_WORDS = 8;
 
-const BACK_MATTER = /^#{1,6}[ \t]*(?:References|Notes|Notes and references|See also|External links|Further reading|Bibliography|Sources|Citations|Footnotes)\b/im;
+/* The heading must be ONLY one of these names, optionally followed by
+   Wikipedia's section-edit link as turndown writes it
+   ("\[[edit](/w/index.php?...)\]") or a bare "[edit]", so a body heading
+   that merely STARTS with one ("Sources of fusion fuel", "Notes on
+   terminology") keeps its text. */
+const BACK_MATTER = /^#{1,6}[ \t]*(?:References|Notes|Notes and references|See also|External links|Further reading|Bibliography|Sources|Citations|Footnotes)[ \t]*(?:\\?\[(?:\[edit\]\((?:[^()\n]|\([^()\n]*\))*\)|edit)\\?\])?[ \t]*$/im;
 
 /** Drops everything from the first back-matter heading on. */
 export function stripBackMatter(markdown) {

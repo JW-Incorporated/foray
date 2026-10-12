@@ -332,6 +332,12 @@ test("schema.mjs rejects a source without a license, an over-cap passage and a m
   const extra = structuredClone(good);
   extra.summary = "a model's retelling";
   assert.ok(validateDossier(extra).some((e) => /unexpected summary/.test(e)));
+  // The GV-65 selection pass records its model and time; that file validates.
+  const selected = structuredClone(good);
+  Object.assign(selected, { builder: "qwen-select", model: "local-worker", selected_at: "2026-10-13T02:00:00.000Z" });
+  selected.passages[0].contested = true;
+  assert.deepEqual(validateDossier(selected), []);
+  assert.ok(validateDossier({ ...selected, selected_at: "last night" }).some((e) => /selected_at: not a date-time/.test(e)));
 });
 
 test("CLI: --all | --node | --subjects, and an offline end-to-end run records a missing label page", async () => {
