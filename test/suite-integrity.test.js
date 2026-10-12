@@ -2395,6 +2395,8 @@ const FLOORS = {
   "tools/corpus/embeddings.test.mjs": 39,
   "tools/corpus/search.test.mjs": 25,
   "tools/corpus/backfill.test.mjs": 26,
+  "tools/corpus/dossiers/passages.test.mjs": 10, // GV-30 (W3-19, docs/roadmap/generation-v2.md): the passage cap equals the backend's EVIDENCE_MAX_PASSAGE_CHARS, plainText drops link targets/cite markers/[edit]/emphasis and keeps the words, back matter cut at References/See also, exact paragraph offsets, over-cap paragraphs cut greedily on sentence ends, exactly-at-cap kept whole, an over-cap sentence hard-cut at a space, headings/tables/raw HTML are not passages, assertVerbatim refuses a retyped passage/wrong offset/over-cap passage, and the fixture article end to end
+  "tools/corpus/dossiers/build.test.mjs": 10, // GV-30 (W3-19, docs/roadmap/generation-v2.md): fixture article -> schema-valid dossier with url/retrievedAt/raw sha256/license and verbatim passages, robots.txt fetched first with the corpus UA; 404 and robots refusal recorded as missing with no file; 120-passage per-node cap in document order with later seeds unfetched; verbatim refusal writes nothing; manifest merges and drops a stale file; no /w/ or /api/ Wikipedia URL for any real taxonomy node; a /w/ seed refused before any request; seeds.json override/extra rules; schema rejects missing license/over-cap/bad docId/extra keys; CLI --all/--node/--subjects offline end to end
   /* The weekly merge audit (#129, OPS-07). Floored at its full count because it
      is the only check of its class: auto-merge lands bot PRs unread, and this
      is what reports, once a week, which ones nobody read, which touched the
