@@ -1161,7 +1161,14 @@ A declarative table of `{key, env, parse, default}` rows, read once per run
 (`RunPipelineOptions.gates` merged over `readGateConfig()`); the report row carries the resolved
 object as `gates`. It ships empty: each gate card adds its key, variable, default and test in the
 PR that adds the gate, and threads the key into the stage options that need it, so no stage module
-reads `process.env` for a gate. The table refuses a duplicate key or variable name.
+reads `process.env` for a gate. The table refuses a duplicate key or variable name. A defined
+`RunPipelineOptions.gates` value beats the variable; an `undefined` one leaves the variable's value.
+
+**Gates are not in the checkpoint fingerprint (W5-02).** The gate config is deliberately left out of
+`checkpointFingerprint` and `checkpointVariant`: adding it would invalidate every banked run on a gate
+flip. So a run resumed from a checkpoint banked under a different gate mode keeps the banked stages'
+output from that mode; only the stages that run after the resume see the new gate mode. No gate card
+may feed gate keys into the variant, and each gate card tests both its default and its new mode.
 
 | Key | Variable | Default | Owning card |
 | --- | --- | --- | --- |

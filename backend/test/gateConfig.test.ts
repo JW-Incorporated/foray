@@ -67,9 +67,14 @@ describe("defineGateTable", () => {
 });
 
 describe("resolveGateConfig", () => {
-  /* Kills: overrides losing to env, or an undefined override erasing a key. */
+  /* Kills: overrides losing to env (`{ ...overrides, ...readGateConfig(source) }`),
+     an undefined override erasing an env value (dropping the `!== undefined`
+     guard), or resolveGateConfig ignoring its `table`. */
   it("merges overrides over the env, ignoring undefined ones", () => {
     expect(resolveGateConfig({}, {})).toEqual({});
     expect(resolveGateConfig({ extra: 1, gone: undefined } as never, {})).toStrictEqual({ extra: 1 });
+    expect(resolveGateConfig({}, { [TEST_ENV]: "block" }, testTable)).toEqual({ testGate: "block", testBand: 6 });
+    expect((resolveGateConfig({ testGate: "block" } as never, { [TEST_ENV]: "warn" }, testTable) as Record<string, unknown>).testGate).toBe("block");
+    expect((resolveGateConfig({ testGate: undefined } as never, { [TEST_ENV]: "block" }, testTable) as Record<string, unknown>).testGate).toBe("block");
   });
 });

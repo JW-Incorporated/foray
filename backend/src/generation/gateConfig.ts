@@ -17,6 +17,12 @@ import { readFlag, type FlagParser, type FlagSource } from "./generationFlags";
  *
  * Read at call time through `generationFlags.ts` (decision 5): a malformed
  * value throws naming the variable, never its value.
+ *
+ * GATES ARE DELIBERATELY NOT IN THE CHECKPOINT FINGERPRINT (W5-02): never feed
+ * this config into `checkpointVariant`/`checkpointFingerprint`, or every banked
+ * run is invalidated on a gate flip. A run resumed from stages banked under
+ * another gate mode keeps that mode's output, so each gate card tests both its
+ * default and its new mode (generation-architecture.md §12.2).
  */
 
 /* Each gate card adds `key: Type` here. Empty until the first one lands. */
@@ -60,9 +66,16 @@ export function readGateConfig(source: FlagSource = process.env, table: readonly
   return config as GateConfig;
 }
 
-/** `overrides` over `readGateConfig()`, once per run. */
-export function resolveGateConfig(overrides: Partial<GateConfig> = {}, source: FlagSource = process.env): GateConfig {
-  const merged: Record<string, unknown> = { ...readGateConfig(source) };
+/**
+ * `overrides` over `readGateConfig()`, once per run: a defined override beats
+ * the env, and an undefined one leaves the env (or default) value in place.
+ */
+export function resolveGateConfig(
+  overrides: Partial<GateConfig> = {},
+  source: FlagSource = process.env,
+  table: readonly GateTableEntry[] = GATE_TABLE,
+): GateConfig {
+  const merged: Record<string, unknown> = { ...readGateConfig(source, table) };
   for (const [key, value] of Object.entries(overrides)) if (value !== undefined) merged[key] = value;
   return merged as GateConfig;
 }
