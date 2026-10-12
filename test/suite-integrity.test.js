@@ -3181,6 +3181,12 @@ const BACKEND_FLOORS = {
   "test/slotIds.test.ts": 2,
   "test/sourceControlChars.test.ts": 1,
   "test/transcriptLocate.test.ts": 4,
+  /* GV-03 (docs/roadmap/generation-v2.md, #1286): the stage routing table and
+     implementation registry (FORAY_STAGE_<STAGE>=<impl>[:<lane>]) and the
+     lane profiles as config. Pure resolvers over an injected source; one
+     named mutation per test. */
+  "test/stageRouting.test.ts": 24,
+  "test/machineProfiles.test.ts": 11,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
