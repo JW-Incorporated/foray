@@ -1,0 +1,22 @@
+: synthetic stream for GV-40 tests, not a recording
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[{"index":0,"delta":{"reasoning_content":"Synthetic reasoning that must never surface."},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[{"index":0,"delta":{"content":"{\"seam\":1,\"script\":\"Neutral synthetic"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[{"index":0,"delta":{"content":" narration for the first seam.\"}\n{\"seam\""},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[{"index":0,"delta":{"content":":2,\"script\":\"A second line, café"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[{"index":0,"delta":{"content":"-style — with a dash.\"}\n"},"finish_reason":null}]}
+
+: keep-alive
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: {"id":"chatcmpl-synthetic-0001","object":"chat.completion.chunk","created":1760000000,"model":"synthetic-heavy-27b","choices":[],"usage":{"prompt_tokens":321,"completion_tokens":40,"total_tokens":361,"prompt_tokens_details":{"cached_tokens":256}}}
+
+data: [DONE]
+
