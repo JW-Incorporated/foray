@@ -1,0 +1,8 @@
+{
+  "id": "chatcmpl-synthetic-malformed-0004",
+  "object": "chat.completion",
+  "created": 1760000003,
+  "model": "synthetic-heavy-27b",
+  "choices": [],
+  "usage": { "prompt_tokens": 10, "completion_tokens": 0, "total_tokens": 10 }
+}

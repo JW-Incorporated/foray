@@ -2557,7 +2557,7 @@ const BACKEND_FLOORS = {
      allowed to write under `data-local/`, and the added case holds its cache
      to §9.4 the way the evidence cache’s is — podcast words keyed by show id,
      never the claim a search ran for. */
-  "test/promptNoPersistence.test.ts": 5,
+  "test/promptNoPersistence.test.ts": 6, // GV-13 (#1286): the persistence scan walks generation/** recursively (chat/ included), proven by a planted write; 5 -> 6
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -3221,6 +3221,12 @@ const BACKEND_FLOORS = {
      named mutation per test. */
   "test/stageRouting.test.ts": 24,
   "test/machineProfiles.test.ts": 11,
+  /* GV-13 (docs/roadmap/generation-v2.md, #1286): the ChatProvider contract
+     and the non-streaming OpenAI-compatible client (reply mapping, request
+     body, http/timeout/network/malformed/aborted errors, one CallRecord per
+     call, the inert-import guard) plus the scriptedProvider helper. Offline:
+     fakeFetch over synthetic fixtures. */
+  "test/openAICompatProvider.test.ts": 26,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

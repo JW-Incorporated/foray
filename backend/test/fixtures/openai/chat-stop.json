@@ -1,0 +1,14 @@
+{
+  "id": "chatcmpl-synthetic-stop-0001",
+  "object": "chat.completion",
+  "created": 1760000000,
+  "model": "synthetic-heavy-27b",
+  "choices": [
+    {
+      "index": 0,
+      "message": { "role": "assistant", "content": "{\"ok\":true}" },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 42, "completion_tokens": 7, "total_tokens": 49 }
+}
