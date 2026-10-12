@@ -10,16 +10,15 @@ import { targetFor } from "../src/generation/chat/targetFor";
 import { REASK_LINE, type StructuredTarget } from "../src/generation/chat/askStructured";
 import { responseFormatFor } from "../src/generation/chat/jsonSchema";
 import { OpenAICompatChatProvider } from "../src/generation/chat/openAICompatProvider";
-import { AnthropicPromptUnderstander, buildClarityPrompt, buildIntentPrompt } from "../src/generation/AnthropicPromptUnderstander";
-import {
-  AnthropicSpineBuilder,
-  buildSeedFloorInstruction,
-  buildSpineFixInstruction,
-  buildSpinePrompt,
-  spineReplyText
-} from "../src/generation/AnthropicSpineBuilder";
-import { AnthropicDeepenActBuilder, buildDeepenActPrompt } from "../src/generation/AnthropicDeepenActBuilder";
-import { AnthropicContinuityBuilder, buildSmoothPrompt } from "../src/generation/AnthropicContinuityBuilder";
+import { AnthropicPromptUnderstander } from "../src/generation/AnthropicPromptUnderstander";
+import { AnthropicSpineBuilder } from "../src/generation/AnthropicSpineBuilder";
+import { AnthropicDeepenActBuilder } from "../src/generation/AnthropicDeepenActBuilder";
+import { AnthropicContinuityBuilder } from "../src/generation/AnthropicContinuityBuilder";
+import { joinParts, toChatMessages } from "../src/generation/promptLayout";
+import { buildClarityPromptParts, buildIntentPromptParts } from "../src/generation/prompts/understand";
+import { buildSeedFloorInstruction, buildSpineFixInstruction, buildSpinePromptParts, spineReplyText } from "../src/generation/prompts/spine";
+import { buildDeepenActPromptParts } from "../src/generation/prompts/deepen";
+import { buildSmoothPromptParts } from "../src/generation/prompts/continuity";
 import { TruncatedReplyError } from "../src/generation/replyErrors";
 import { DEFAULT_LANE_PROFILES } from "../src/config/machineProfiles";
 import { BUILDER_MAX_TOKENS } from "../src/config/outputBudgets";
@@ -170,7 +169,8 @@ describe("ChatPromptUnderstander: clarity and intent on a ChatProvider", () => {
     const req = provider.requests[0]!;
     expect(req.responseFormat).toBe(responseFormatFor("clarity"));
     expect(req).toMatchObject({ model: "local-heavy", maxTokens: BUILDER_MAX_TOKENS.clarity, thinking: false, label: "prompt-understand" });
-    expect(req.messages).toEqual([{ role: "user", content: buildClarityPrompt("Mercury") }]);
+    /* GV-32: the chat path sends the prompt split, [system: stable, user: the listener's prompt]. */
+    expect(req.messages).toEqual(toChatMessages(buildClarityPromptParts("Mercury")));
     expect(checks).toEqual([expect.objectContaining({ operation: "prompt_clarity", provider: "local:spark", model: "local-heavy", userId: "founder-1", sessionId: "s1" })]);
   });
 
@@ -193,12 +193,17 @@ describe("ChatPromptUnderstander: clarity and intent on a ChatProvider", () => {
     const [first, second] = provider.requests;
     expect(first!.responseFormat).toBe(responseFormatFor("intent"));
     expect(first!).toMatchObject({ maxTokens: BUILDER_MAX_TOKENS.intent, thinking: false });
-    expect(first!.messages).toEqual([{ role: "user", content: buildIntentPrompt("how AI gets built") }]);
+    expect(first!.messages).toEqual(toChatMessages(buildIntentPromptParts("how AI gets built")));
     expect(second!.responseFormat).toBe(responseFormatFor("title_recase"));
     expect(second!).toMatchObject({ maxTokens: BUILDER_MAX_TOKENS.title, thinking: false });
     const anthropicTitleCall = create.mock.calls[1]![0] as { messages: unknown; max_tokens: number };
-    expect(second!.messages).toEqual(anthropicTitleCall.messages);
-    expect(second!.messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+    /* GV-32: the same conversation, except that the chat path opens with the
+       intent prompt split [system, user] exactly as its intent call did,
+       where the Anthropic twin sends the joined prompt as one user turn. */
+    const anthropicTurns = anthropicTitleCall.messages as Array<{ role: string; content: string }>;
+    expect(anthropicTurns[0]).toEqual({ role: "user", content: joinParts(buildIntentPromptParts("how AI gets built")) });
+    expect(second!.messages).toEqual([...first!.messages, ...anthropicTurns.slice(1)]);
+    expect(second!.messages.map((m) => m.role)).toEqual(["system", "user", "assistant", "user"]);
     expect(anthropicTitleCall.max_tokens).toBe(BUILDER_MAX_TOKENS.title);
   });
 
@@ -235,7 +240,7 @@ describe("ChatSpineBuilder: the spine on a ChatProvider", () => {
     const req = provider.requests[0]!;
     expect(req.responseFormat).toBe(responseFormatFor("spine"));
     expect(req).toMatchObject({ maxTokens: BUILDER_MAX_TOKENS.spine, thinking: false, label: "spine", model: "local-heavy" });
-    expect(req.messages).toEqual([{ role: "user", content: buildSpinePrompt(intent, researchShape, "long") }]);
+    expect(req.messages).toEqual(toChatMessages(buildSpinePromptParts(intent, researchShape, "long")));
     expect(checks).toEqual([expect.objectContaining({ operation: "spine_build", provider: "local:spark" })]);
   });
 
@@ -252,12 +257,17 @@ describe("ChatSpineBuilder: the spine on a ChatProvider", () => {
     await new AnthropicSpineBuilder(anthropicGuard, client).buildSpine(intent, researchShape, "medium", { ...ctx, revision });
 
     const sent = provider.requests[0]!.messages;
+    const parts = buildSpinePromptParts(intent, researchShape, "medium");
     expect(sent).toEqual([
-      { role: "user", content: buildSpinePrompt(intent, researchShape, "medium") },
+      ...toChatMessages(parts),
       { role: "assistant", content: spineReplyText(previous) },
       { role: "user", content: buildSpineFixInstruction(revision.violations) }
     ]);
-    expect(sent).toEqual((create.mock.calls[0]![0] as { messages: unknown }).messages);
+    /* GV-32: the Anthropic twin opens with the joined prompt as one user
+       turn; the re-ask turns that follow are the same. */
+    const anthropicSent = (create.mock.calls[0]![0] as { messages: Array<{ role: string; content: string }> }).messages;
+    expect(anthropicSent[0]).toEqual({ role: "user", content: joinParts(parts) });
+    expect(sent.slice(2)).toEqual(anthropicSent.slice(1));
   });
 
   it("the seed-floor re-ask uses buildSeedFloorInstruction for its fix turn", async () => {
@@ -272,9 +282,9 @@ describe("ChatSpineBuilder: the spine on a ChatProvider", () => {
       revision: { previous, violations, attempt: 1, kind: "seed-floor" }
     });
     const sent = provider.requests[0]!.messages;
-    expect(sent).toHaveLength(3);
-    expect(sent[2]).toEqual({ role: "user", content: buildSeedFloorInstruction(violations) });
-    expect(sent[2]!.content).not.toBe(buildSpineFixInstruction(violations));
+    expect(sent).toHaveLength(4);
+    expect(sent[3]).toEqual({ role: "user", content: buildSeedFloorInstruction(violations) });
+    expect(sent[3]!.content).not.toBe(buildSpineFixInstruction(violations));
   });
 
   it("a 'length' finish throws TruncatedReplyError before anything parses it, after one call", async () => {
@@ -330,7 +340,7 @@ describe("ChatDeepenActBuilder: act deepening on a ChatProvider", () => {
     const req = provider.requests[0]!;
     expect(req.responseFormat).toBe(responseFormatFor("deepen_act"));
     expect(req).toMatchObject({ maxTokens: BUILDER_MAX_TOKENS.deepen, thinking: false, label: "deepen-act", model: "local-worker" });
-    expect(req.messages).toEqual([{ role: "user", content: buildDeepenActPrompt(fullSpine, fullSpine.acts[1]!, 1) }]);
+    expect(req.messages).toEqual(toChatMessages(buildDeepenActPromptParts(fullSpine, fullSpine.acts[1]!, 1)));
     expect(checks).toEqual([expect.objectContaining({ operation: "deepen_act", provider: "local:second", model: "local-worker" })]);
   });
 
@@ -379,7 +389,7 @@ describe("ChatContinuityBuilder: act-boundary smoothing on a ChatProvider", () =
     const req = provider.requests[0]!;
     expect(req.responseFormat).toBe(responseFormatFor("continuity_smooth"));
     expect(req).toMatchObject({ maxTokens: BUILDER_MAX_TOKENS.continuity, thinking: false, label: "continuity-smooth" });
-    expect(req.messages).toEqual([{ role: "user", content: buildSmoothPrompt(request) }]);
+    expect(req.messages).toEqual(toChatMessages(buildSmoothPromptParts(request)));
     expect(checks).toEqual([expect.objectContaining({ operation: "continuity_smooth", provider: "local:spark" })]);
   });
 });

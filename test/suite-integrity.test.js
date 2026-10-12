@@ -3343,6 +3343,16 @@ const BACKEND_FLOORS = {
      8 asks in flight, and the code-overlap judge. Offline: FakeJevClient and
      synthetic texts. One named mutation per test. */
   "test/sentenceSupport.test.ts": 18,
+  /* GV-32 (docs/roadmap/generation-v2.md, #1286): the planning prompts as
+     [stable][foray][call] (promptLayout.ts, prompts/*.ts) -- joinParts,
+     toChatMessages, stableStringify; stable byte-identical across unrelated
+     inputs for clarity, intent, spine (two intents x two research maps x three
+     tiers) and continuity; deepen's foray identical for every act; no
+     timestamp, sessionId or checkpoint key in what the Chat builders send;
+     re-asks keep the [system, user] prefix; the line set equals the frozen
+     pre-GV-32 prompts (deepen's act-marker rewrites listed). Offline:
+     scriptedProvider and hand-built fixtures. One named mutation per test. */
+  "test/promptLayout.test.ts": 11,
   /* GV-34 (docs/roadmap/generation-v2.md, #1286): numbers, dates and names
      checked in code against a sentence's sources -- spokenNumberValues (word
      and digit years, decades, percent, scales, ranges, ordinals),
