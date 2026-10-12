@@ -14,7 +14,8 @@
    read with gh):
    - The key is `<show-slug>/<title-slug>-<sha1(guid)[:10]>.json`. The title
      part is optional in foray-db's `_KEY_RE`, and the transcripts/,
-     transcript-originals/ and `_` (probe) prefixes are never legacy keys.
+     transcript-originals/ and `_` (probe) prefixes are never legacy keys;
+     nor is fingerprints/ (inventory.mjs classifies it first).
    - The body is raw faster-whisper output: `meta` (engine, model,
      detected_language, ...) plus `segments[{start, end, text, words[]}]`. It
      carries no show_id, guid or enclosure, and the object has no sha256
@@ -67,8 +68,11 @@ import { createR2Client, getObject, listPrefix, loadR2Credentials } from "./r2-c
 
 /** foray-db `_KEY_RE`, with its named groups. */
 export const LEGACY_KEY_PATTERN = /^(?<show>[a-z0-9][a-z0-9-]*)\/(?:(?<title>.*)-)?(?<hash>[0-9a-f]{10})\.json$/;
-/** Prefixes foray-db's parse_legacy_key refuses before the regex. */
-export const LEGACY_EXCLUDED_PREFIXES = Object.freeze(["transcripts/", "transcript-originals/", "_"]);
+/** Prefixes refused before the regex: foray-db's parse_legacy_key refuses
+    transcripts/, transcript-originals/ and `_`; fingerprints/ is added because
+    inventory.mjs classifies it before its legacy regex, and a fingerprint
+    object named `<x>-<10 hex>.json` would otherwise parse as a legacy key. */
+export const LEGACY_EXCLUDED_PREFIXES = Object.freeze(["transcripts/", "transcript-originals/", "fingerprints/", "_"]);
 export const TRANSCRIPT_SOURCE = "asr-local";
 export const SAMPLE_OUT_DIR = join(ROOT, "data-local", "legacy-sample");
 export const SAMPLE_REPORT_NAME = "legacy-sample-report.json";

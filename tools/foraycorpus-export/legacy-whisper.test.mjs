@@ -57,6 +57,7 @@ test("parseLegacyKey: the key table (accepts the documented shape, rejects farm,
     `transcript-originals/tide-tables/ep-${H_0001}.json`, // farm originals
     `_probe/write-test-${H_0001}.json`, // probe key
     `fingerprints/tide-tables/ep-${H_0001}.json.gz`, // fingerprints, not .json
+    `fingerprints/tide-tables/ep-${H_0001}.json`, // fingerprints with a 10-hex .json name (inventory.mjs: fingerprints)
     "tide-tables/the-copper-kettle.json", // no hash suffix
     "tide-tables/the-copper-kettle-36948ec4.json", // 8 hex
     "tide-tables/the-copper-kettle-36948EC44F.json", // upper-case hex
@@ -264,6 +265,7 @@ const BUCKET = {
   [`transcripts/normalized/470582/ep-${H_0001}.json`]: '{"show_id":"470582","guid":"g","cues":[]}',
   [`transcript-originals/tide-tables/ep-${H_0001}.json`]: OK,
   [`fingerprints/tide-tables/ep-${H_0001}.json.gz`]: "x",
+  [`fingerprints/tide-tables/ep-${H_0002}.json`]: "x",
   [`_probe/write-test-${H_0001}.json`]: OK,
 };
 

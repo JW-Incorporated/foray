@@ -392,8 +392,8 @@ Add one paragraph per module as it lands.
   (`src/forays_corpus/acquisition/legacy_asr_mapper.py`). `parseLegacyKey(key)`
   gives `{key, showSlug, titleSlug, guidSha1_10}` for
   `<show-slug>/[<title-slug>-]<sha1(guid)[:10]>.json` and null for the
-  `transcripts/`, `transcript-originals/` and `_` (probe) prefixes and any key
-  without the 10-hex suffix; its test pins that it agrees with
+  `transcripts/`, `transcript-originals/`, `fingerprints/` and `_` (probe)
+  prefixes and any key without the 10-hex suffix; its test pins that it agrees with
   `inventory.mjs` `classifyKey`'s `legacy-root`. `guidHashes(guid)` is the
   distinct 10-hex sha1 prefixes of the raw and the trimmed guid.
   `resolveLegacyEpisode(legacyKey, candidates[{guid, title}])` returns
