@@ -2964,7 +2964,7 @@ const BACKEND_FLOORS = {
      private status read path. */
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
-  "test/generateForays.test.ts": 5,
+  "test/generateForays.test.ts": 10, // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
   "test/generationStatus.test.ts": 4,
   "test/partialCandidate.test.ts": 6,
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
@@ -3210,6 +3210,12 @@ const BACKEND_FLOORS = {
      named mutation per test. */
   "test/stageRouting.test.ts": 24,
   "test/machineProfiles.test.ts": 11,
+  /* GV-15 (docs/roadmap/generation-v2.md, #1286): run configuration — the
+     call-time flag readers (decision 5), the pipeline flags and checkpoint
+     variant, and the empty gate-config table. One named mutation per test. */
+  "test/generationFlags.test.ts": 8,
+  "test/pipelineFlags.test.ts": 12,
+  "test/gateConfig.test.ts": 7,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

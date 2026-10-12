@@ -1111,3 +1111,58 @@ with product principle #1 — curiosity first, no engagement dark patterns. A re
 optimizes for listens will, given time, produce exactly the content the exploration floor exists to
 prevent. Design the incentive against the principle, or decide the principle bends. Do not discover
 the conflict after it ships.
+
+## 12. Run configuration flags (generation v2)
+
+*Added by GV-15 (`docs/roadmap/generation-v2.md`, #1286). Each later card appends its own row.*
+
+Every generation-v2 behaviour change ships dark: each flag below defaults to today's pipeline, so
+with nothing set the generated output is unchanged. All of them are read at call time through
+`backend/src/generation/generationFlags.ts` (decision 5); a malformed value throws an error that
+names the variable and never its value. None of them lives in `backend/src/config/env.ts`.
+
+Provider choices are not flags: which service answers a stage is chosen only by the stage routing
+table (`FORAY_STAGE_<STAGE>=<impl>[:<lane>]`, `backend/src/config/stageRouting.ts`, GV-03).
+
+### 12.1 Pipeline flags (`backend/src/generation/pipelineFlags.ts`)
+
+Resolved once per run: the batch driver merges the env with `--fast-path` and passes the result to
+`runForayPipeline` as `options.flags`; the report row carries it as `flags`.
+
+| Variable | Field | Default | Under `FORAY_FAST_PATH=1` | Changes the checkpoint variant | Owning card |
+| --- | --- | --- | --- | --- | --- |
+| `FORAY_FAST_PATH` (or `--fast-path`) | `fastPath` | off | on | no (sets the fields below) | GV-15 |
+| `FORAY_SPINE_FOLD_COPY` | `foldSpineCopy` | off | on | yes | GV-67 |
+| `FORAY_SPINE_FOLD_DEEPEN` (`off`/`short`/`all`) | `foldDeepen` | `off` | `short` | yes | GV-86 |
+| `FORAY_PER_ACT_PIPELINE` | `perActPipeline` | off | on | yes | GV-102 |
+| `FORAY_NARRATION_ORDER` (`parallel`/`sequential`) | `narrationOrder` | `parallel` | `sequential` | no | GV-38 |
+| `FORAY_WRITER_STREAM` | `writerStream` | off | on | no | GV-73, GV-84 |
+| `FORAY_ROUND_POLICY` (`default`/`timed`) | `roundPolicy` | `default` | `timed` | no | GV-80 |
+| `FORAY_TIER_RUNTIME_CAP` | `tierRuntimeCap` | off | on | no | GV-89, GV-106 |
+| `FORAY_GATE_TIER_FIT` | `tierFitGate` | off | off | no | GV-106 |
+| `FORAY_SPINE_BEST_OF` (`1`/`2`) | `spineBestOf` | 1 | 1 | no | GV-91 |
+| (no variable) | `spineSeedFloorReasksOnTimedPath` | 1 | 0 | no | GV-100 (short tier, fast path) |
+
+Booleans accept `1`/`0`/`true`/`false`/`on`/`off`. A per-field variable always overrides the
+umbrella. No stage reads these flags yet; each owning card wires its own.
+
+**Checkpoint variant (decision 20).** `checkpointVariant(flags)` is a canonical string of the flags
+that change what a banked stage holds (fold-copy, fold-deepen, per-act), and `undefined` when all of
+them are off. It goes into `checkpointFingerprint` at both call sites, computed from the same merged
+flags: the `FileCheckpointStore` the batch driver builds and the pipeline's `CheckpointSession`. So
+a flag-on run resumes its own banked stages, never a classic run's, and a classic run never loads a
+flag-on run's. With no variant the hashed string is byte-identical to before, so classic banked runs
+keep their fingerprint and `CHECKPOINT_VERSION` does not move. GV-55 joins the local routing into the
+same variant.
+
+### 12.2 Gate config (`backend/src/generation/gateConfig.ts`)
+
+A declarative table of `{key, env, parse, default}` rows, read once per run
+(`RunPipelineOptions.gates` merged over `readGateConfig()`); the report row carries the resolved
+object as `gates`. It ships empty: each gate card adds its key, variable, default and test in the
+PR that adds the gate, and threads the key into the stage options that need it, so no stage module
+reads `process.env` for a gate. The table refuses a duplicate key or variable name.
+
+| Key | Variable | Default | Owning card |
+| --- | --- | --- | --- |
+| (none yet) | | | |

@@ -126,15 +126,24 @@ export interface CheckpointStore {
  * founders generating the same prompt at the same duration are doing the same
  * work, and a run resumed under a different author still produces the same
  * Foray.
+ *
+ * GV-15 (decision 20): `variant` is `checkpointVariant(flags)` from
+ * `pipelineFlags.ts` — set only when a flag that changes what a stage banks
+ * is on — so banked runs never resume across modes. Without one (undefined
+ * or empty) the hashed string is byte-identical to before, so a classic
+ * run keeps its hash and CHECKPOINT_VERSION does not move. Both call sites
+ * (the driver's FileCheckpointStore and the pipeline's session) must pass
+ * the same variant, computed from the same merged flags.
  */
-export function checkpointFingerprint(input: { prompt: string; duration: string; topic?: string | null }): string {
+export function checkpointFingerprint(input: { prompt: string; duration: string; topic?: string | null; variant?: string }): string {
   /* `crypto` only — the other four stub builders in this directory import it
      the same way. Note what is NOT imported here: nothing that can write. The
      §9.4 no-persistence scan over this directory (`promptNoPersistence.test.ts`)
      is why the file half of this module lives in `src/cli/`. */
+  const base = `${input.prompt}\n${input.duration}\n${input.topic ?? ""}`;
   return crypto
     .createHash("sha1")
-    .update(`${input.prompt}\n${input.duration}\n${input.topic ?? ""}`)
+    .update(input.variant ? `${base}\nvariant:${input.variant}` : base)
     .digest("hex")
     .slice(0, 12);
 }
