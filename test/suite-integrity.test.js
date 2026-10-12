@@ -1616,6 +1616,12 @@ const FLOORS = {
      Each test pins a way a swap that lost could read as a swap that won: a
      label mapped to the wrong arm, a keyless guess, a tie counted as a win. */
   "tools/listening/unseal.test.mjs": 11, // GV-08: new -- unseal with/without keys, aggregate on 10 pairs, ties, axis deltas, re-listen, listenByCandidate, key checks, CLI
+  /* GV-36 (W1-17: R2-01, QK-30, MQ-20): the blind listening pack. Each test
+     pins a way the founder's listen stops being blind or stops being the act:
+     a candidate name in the page, the key beside the pack, an A/B order the
+     seed does not decide, an act that runs on, a clip from the wrong row, an
+     outside script, a card the page builds that card.mjs refuses. */
+  "tools/listening/pack.test.mjs": 10, // GV-36: new -- act extraction, clip resolution order + DAI, no candidate/provider/file-name leak, key only under --key-dir + unseal round-trip, same seed byte-identical, out-9 solo, no external URL, page card builder vs validateCard, voice record, CLI refusals
   /* The keyless-run transport (#697). This suite is the ONLY thing in the repo
      that can notice the relay losing a behaviour, and every one of those
      behaviours was bought by a finding that cost a run something: I-23's
