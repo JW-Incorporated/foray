@@ -115,17 +115,77 @@ describe("anthropicCall: gen-14, every reply's usage is recorded, re-asks includ
   });
 });
 
-describe("anthropicCall: the builders cannot drift again", () => {
-  it("no generation module calls messages.create or recordUsage except through anthropicCall.ts", () => {
-    const dir = path.join(__dirname, "..", "src", "generation");
-    const offenders: string[] = [];
-    for (const name of fs.readdirSync(dir)) {
-      if (!name.endsWith(".ts") || name === "anthropicCall.ts" || name === "usageTracking.ts") continue;
-      const src = fs.readFileSync(path.join(dir, name), "utf8");
-      if (/\.messages\.create\(/.test(src)) offenders.push(`${name}: messages.create`);
-      if (/\brecordUsage\(/.test(src)) offenders.push(`${name}: recordUsage`);
+/* GV-19: the structural guard, scanned RECURSIVELY over generation/** (it
+   read only the top level before, so a chat/ module escaped it). Paths are
+   relative to src/generation with forward slashes.
+   - messages.create: only anthropicCall.ts (the Anthropic choke point) and
+     usageTracking.ts, whose doc comment names it (both exempt before GV-19).
+   - recordUsage(: only anthropicCall.ts, usageTracking.ts (its definition)
+     and chat/askStructured.ts.
+   - the bare global fetch(, matched as a whole word: only GV-07's
+     PROVIDER_CALL_SITES (imported, so the two guards cannot drift) plus
+     retrievalClient.ts, pre-listed for GV-29.
+   - .complete( inside chat/**: only chat/askStructured.ts and
+     chat/openAICompatProvider.ts (the rule covers chat/** only). */
+const MESSAGES_CREATE_SITES = ["anthropicCall.ts", "usageTracking.ts"];
+const RECORD_USAGE_SITES = ["anthropicCall.ts", "usageTracking.ts", "chat/askStructured.ts"];
+const FETCH_SITES = [...PROVIDER_CALL_SITES, "retrievalClient.ts"];
+const CHAT_COMPLETE_SITES = ["chat/askStructured.ts", "chat/openAICompatProvider.ts"];
+
+function structuralOffenders(dir: string): string[] {
+  const offenders: string[] = [];
+  const walk = (sub: string): void => {
+    for (const entry of fs.readdirSync(path.join(dir, sub), { withFileTypes: true })) {
+      const rel = sub ? `${sub}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(rel);
+        continue;
+      }
+      if (!entry.name.endsWith(".ts")) continue;
+      const src = fs.readFileSync(path.join(dir, rel), "utf8");
+      if (!MESSAGES_CREATE_SITES.includes(rel) && /\.messages\.create\(/.test(src)) offenders.push(`${rel}: messages.create`);
+      if (!RECORD_USAGE_SITES.includes(rel) && /\brecordUsage\(/.test(src)) offenders.push(`${rel}: recordUsage`);
+      if (!FETCH_SITES.includes(rel) && /\bfetch\(/.test(src)) offenders.push(`${rel}: fetch`);
+      if (rel.startsWith("chat/") && !CHAT_COMPLETE_SITES.includes(rel) && /\.complete\(/.test(src)) offenders.push(`${rel}: .complete`);
     }
-    expect(offenders).toEqual([]);
+  };
+  walk("");
+  return offenders;
+}
+
+describe("anthropicCall: the builders cannot drift again", () => {
+  it("no generation module, chat/ included, calls messages.create, recordUsage, fetch or a chat provider's complete outside its allowlist", () => {
+    expect(structuralOffenders(path.join(__dirname, "..", "src", "generation"))).toEqual([]);
+  });
+
+  it("GV-19: the guard fails on a planted fetch(, recordUsage( or .complete( in a chat/ file and allows each rule's sites", () => {
+    /* MUTATION THAT KILLS THIS: stop recursing into directories (the
+       pre-GV-19 top-level scan), or drop the fetch rule, or apply the
+       .complete( rule outside chat/ too. Ran all three: red. */
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gv19-guard-"));
+    try {
+      fs.mkdirSync(path.join(dir, "chat"));
+      const plant = (rel: string, src: string) => fs.writeFileSync(path.join(dir, ...rel.split("/")), src);
+      plant("chat/sneakyFetch.ts", 'export const go = () => fetch("http://192.0.2.1/v1");\n');
+      plant("chat/sneakyUsage.ts", "export const go = () => recordUsage({ input_tokens: 1 });\n");
+      plant("chat/sneakyComplete.ts", "export const go = (p: any) => p.complete({});\n");
+      plant("chat/sneakyCreate.ts", "export const go = (c: any) => c.messages.create({});\n");
+      plant("writeAct.ts", "export const go = (p: any) => p.complete({});\n");
+      plant("anthropicCall.ts", "recordUsage(x); c.messages.create({}); fetch(u);\n");
+      plant("usageTracking.ts", "export function recordUsage(u: unknown) {}\n");
+      plant("jevClient.ts", "fetch(u);\n");
+      plant("retrievalClient.ts", "fetch(u);\n");
+      plant("chat/openAICompatProvider.ts", "fetch(u); p.complete({});\n");
+      plant("chat/askStructured.ts", "recordUsage(u); p.complete({});\n");
+      expect(structuralOffenders(dir).sort()).toEqual([
+        "chat/sneakyComplete.ts: .complete",
+        "chat/sneakyCreate.ts: messages.create",
+        "chat/sneakyFetch.ts: fetch",
+        "chat/sneakyUsage.ts: recordUsage"
+      ]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

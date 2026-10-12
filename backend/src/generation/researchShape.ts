@@ -17,7 +17,7 @@ import {
   tokenizeForCatalogueQuery,
   type CatalogueData
 } from "./catalogueLookup";
-import { TruncatedReplyError } from "./anthropicCall";
+import { TruncatedReplyError } from "./replyErrors";
 import { resolveTopic } from "./resolveTopic";
 import { familyGateAllows, nodesForArchiveEntry } from "./taxonomyFamily";
 import {
