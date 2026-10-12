@@ -17,7 +17,8 @@
  * no scripts. Verdicts are written to a temp directory, never data-local/.
  *
  * MUTATIONS (each applied to review-queue.mjs, each turned this suite red):
- *   M1  rule 1 (unverifiedPages > 0) deleted from compareRisk
+ *   M1  rule 1 (unverifiedPages > 0) deleted from compareRisk (kills the out-9
+ *       acceptance test on its own, not only the synthetic rule-1 test)
  *   M2  rule 2 flags groundedQuoteRate <= 1 instead of < 1
  *   M3  rule 2 treats a null groundedQuoteRate as < 1
  *   M4  purposeFidelity sorted descending (nulls still worst)
@@ -98,6 +99,13 @@ const CLEAN = { unverifiedPages: 0, groundedQuoteRate: 1, purposeFidelity: 1, ta
 /* ------------------------------------------------------------------ */
 
 test("out-9 plus a synthetic report: the candidate with unverified pages ranks first, whichever dir is named first", () => {
+  /* The synthetic row beats out-9 on every rule except rule 1: it has no
+   * unverified pages, but a groundedQuoteRate below 1, a lower purposeFidelity,
+   * a lower tapeRelevance and more retryRounds. Only rule 1 puts out-9 first. */
+  const { rows: synthetic } = loadDir(REVIEW);
+  const { rows: out9 } = loadDir(OUT9);
+  assert.equal(synthetic[0].veracity.unverifiedPages, 0);
+  assert.ok(compareRisk(synthetic[0], { ...out9[0], veracity: { ...out9[0].veracity, unverifiedPages: 0 } }) < 0, "without rule 1 the synthetic row must rank first");
   for (const dirs of [
     [OUT9, REVIEW],
     [REVIEW, OUT9]
@@ -252,7 +260,7 @@ test("card CLI: every act by default, one with --act, an act that does not exist
   assert.match(all.text, /# synthetic-review-a-5c1e0d · act 1 of 2/);
   assert.match(all.text, /# synthetic-review-a-5c1e0d · act 2 of 2/);
   assert.match(all.text, /narrate time 41\.0 s/);
-  assert.match(all.text, /- tapeRelevance 0\.80 · retryRounds 1 · spineReasks 1/);
+  assert.match(all.text, /- tapeRelevance 0\.80 · retryRounds 9 · spineReasks 1/);
   assert.ok(!all.text.includes(SENTINEL));
   const one = capture(["card", A_ID, "--dir", REVIEW, "--act", "2"]);
   assert.equal(one.result.length, 1);

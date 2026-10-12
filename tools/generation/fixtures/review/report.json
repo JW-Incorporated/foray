@@ -13,10 +13,10 @@
       ],
       "spineReasks": [{ "attempt": 1, "violations": ["act 2 has one slot"] }],
       "veracity": {
-        "groundedQuoteRate": 1,
-        "purposeFidelity": 0.9,
+        "groundedQuoteRate": 0.5,
+        "purposeFidelity": 0.1,
         "tapeRelevance": 0.8,
-        "retryRounds": 1,
+        "retryRounds": 9,
         "unverifiedPages": 0
       },
       "file": "candidate-a.json"
