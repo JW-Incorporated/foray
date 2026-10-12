@@ -1,0 +1,8 @@
+{
+  "show_id": "synthetic-show",
+  "guid": "synthetic-guid-0001",
+  "transcript_source": "asr-local",
+  "cues": [
+    { "start_sec": 0, "end_sec": 3.5, "text": "A body already in the normalized layout is not a whisper doc." }
+  ]
+}

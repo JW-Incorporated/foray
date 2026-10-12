@@ -1,0 +1,72 @@
+{
+  "meta": {
+    "faster_whisper": "1.0.3",
+    "model": "large-v3",
+    "device": "cuda",
+    "compute_type": "float16",
+    "detected_language": "en",
+    "language_probability": 0.97,
+    "duration": 14.2
+  },
+  "segments": [
+    {
+      "id": 0,
+      "start": 0.0,
+      "end": 4.5,
+      "text": " The copper kettle sang twice before the lighthouse keeper woke.",
+      "words": [
+        { "word": " The", "start": 0.0, "end": 0.3, "probability": 0.99 },
+        { "word": " copper", "start": 0.3, "end": 0.8, "probability": 0.98 },
+        { "word": " kettle", "start": 0.8, "end": 1.3, "probability": 0.97 },
+        { "word": " sang", "start": 1.3, "end": 1.7, "probability": 0.96 },
+        { "word": " twice", "start": 1.7, "end": 2.2, "probability": 0.99 },
+        { "word": " before", "start": 2.2, "end": 2.6, "probability": 0.99 },
+        { "word": " the", "start": 2.6, "end": 2.8, "probability": 0.99 },
+        { "word": " lighthouse", "start": 2.8, "end": 3.5, "probability": 0.95 },
+        { "word": " keeper", "start": 3.5, "end": 4.0, "probability": 0.97 },
+        { "word": " woke.", "start": 4.0, "end": 4.5, "probability": 0.98 }
+      ]
+    },
+    {
+      "id": 1,
+      "start": 4.5,
+      "end": 9.25,
+      "text": " Nobody on the island had ever counted the gulls on a Tuesday.",
+      "words": [
+        { "word": " Nobody", "start": 4.5, "end": 5.0, "probability": 0.98 },
+        { "word": " on", "start": 5.0, "end": 5.2, "probability": 0.99 },
+        { "word": " the", "start": 5.2, "end": 5.4, "probability": 0.99 },
+        { "word": " island", "start": 5.4, "end": 5.9, "probability": 0.97 },
+        { "word": " had", "start": 5.9, "end": 6.1, "probability": 0.99 },
+        { "word": " ever", "start": 6.1, "end": 6.4, "probability": 0.98 },
+        { "word": " counted", "start": 6.4, "end": 7.0, "probability": 0.96 },
+        { "word": " the", "start": 7.0, "end": 7.2, "probability": 0.99 },
+        { "word": " gulls", "start": 7.2, "end": 7.7, "probability": 0.94 },
+        { "word": " on", "start": 7.7, "end": 7.9, "probability": 0.99 },
+        { "word": " a", "start": 7.9, "end": 8.0, "probability": 0.99 },
+        { "word": " Tuesday.", "start": 8.0, "end": 9.25, "probability": 0.97 }
+      ]
+    },
+    {
+      "id": 2,
+      "start": 9.25,
+      "end": 14.2,
+      "text": " So she wrote the number on a biscuit tin and waited for spring.",
+      "words": [
+        { "word": " So", "start": 9.25, "end": 9.5, "probability": 0.99 },
+        { "word": " she", "start": 9.5, "end": 9.7, "probability": 0.99 },
+        { "word": " wrote", "start": 9.7, "end": 10.1, "probability": 0.98 },
+        { "word": " the", "start": 10.1, "end": 10.3, "probability": 0.99 },
+        { "word": " number", "start": 10.3, "end": 10.8, "probability": 0.98 },
+        { "word": " on", "start": 10.8, "end": 11.0, "probability": 0.99 },
+        { "word": " a", "start": 11.0, "end": 11.1, "probability": 0.99 },
+        { "word": " biscuit", "start": 11.1, "end": 11.6, "probability": 0.95 },
+        { "word": " tin", "start": 11.6, "end": 11.9, "probability": 0.97 },
+        { "word": " and", "start": 11.9, "end": 12.1, "probability": 0.99 },
+        { "word": " waited", "start": 12.1, "end": 12.6, "probability": 0.98 },
+        { "word": " for", "start": 12.6, "end": 12.8, "probability": 0.99 },
+        { "word": " spring.", "start": 12.8, "end": 14.2, "probability": 0.97 }
+      ]
+    }
+  ]
+}
