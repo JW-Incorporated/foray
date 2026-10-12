@@ -1617,7 +1617,7 @@ const FLOORS = {
      or lean without anyone noticing: a stratum over-filled, a listened prompt
      lost, a reference to a Foray that is gone, strata that change with input
      order, a locked set edited in place, a dry-run report used as a lock. */
-  "tools/generation-bench/golden/golden.test.mjs": 15, // GV-45: new -- committed manifest 50/10/30-10-5-5 + bench flag, references in data/forays.json and every generated Foray listened, duplicate id/prompt, strata and listened counts, unknown key/bench/node/long prompt/stray reference/committed candidate/duration, ambiguous readings, family counting (ancestors+descendants, cue-less rows, unmapped shows), stratum boundaries, strata drift, select determinism, lock round trip + CRLF + edited manifest, lock refusals, CLI lock-once, no transcript text, README run command
+  "tools/generation-bench/golden/golden.test.mjs": 15, // GV-45: new -- committed manifest 50/10/30-10-5-5 + bench flag, references in data/forays.json and every generated Foray listened, duplicate/out-of-range id, duplicate prompt, strata and listened counts, unknown key/bench/node/long prompt/stray reference/committed candidate/duration, ambiguous readings, family counting (ancestors+descendants, cue-less rows, unmapped shows), stratum boundaries, strata drift, select determinism, lock round trip + CRLF + edited manifest, lock refusals, CLI lock-once, no transcript text, README run command
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a

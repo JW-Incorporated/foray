@@ -85,4 +85,4 @@ node tools/generation-bench/golden/validate.mjs --lock <out>/report.json
 ## Live step (founder PC)
 
 1. Run the manifest in stub mode, as described above, with the transcripts on disk. This checks the strata against the 22 shows actually on that disk, which the committed digests do not all cover. For example, g05's medicine shows have no committed digest rows. Then run `validate.mjs --lock <out>/report.json` and commit the lock.
-2. Once the provider layer and the LiteLLM key exist, run all 50 prompts once on the Spark (about 20–25 minutes) to seed `golden-baseline.jsonl` (GV-64).
+2. Once the provider layer and the LiteLLM key exist, and only after GV-90 and GV-93 have merged (decision 31: no batch local generation before the unit caps and the lane scheduler), run all 50 prompts once on the Spark (about 20–25 minutes) to seed `golden-baseline.jsonl` (GV-64).

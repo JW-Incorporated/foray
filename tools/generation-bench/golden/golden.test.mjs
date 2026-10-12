@@ -125,11 +125,19 @@ test("every reference names a Foray in data/forays.json, and every Claude-writte
 /* ------------------------------------------------------------------ */
 
 /* Mutation: `else if (ids.has(e.id))` -> `else if (false)`, or drop
-   `.toLowerCase()` from normalisedPrompt (the case-only duplicate passes). */
-test("the validator refuses a duplicate id and a duplicate prompt, ignoring case and spacing", () => {
+   `.toLowerCase()` from normalisedPrompt (the case-only duplicate passes), or
+   `!allowedIds.has(e.id)` -> `!/^g\d{2}$/.test(e.id)` (g51 and g00 pass). */
+test("the validator refuses a duplicate id, an id outside g01..g50, and a duplicate prompt, ignoring case and spacing", () => {
   const dupId = clone(MANIFEST);
   byId(dupId, "g12").id = "g11";
   assert.match(errorsOf(dupId), /duplicate id g11/);
+
+  for (const stray of ["g51", "g00"]) {
+    const outside = clone(MANIFEST);
+    byId(outside, "g50").id = stray;
+    const errors = errorsOf(outside);
+    assert.ok(errors.includes(`(${stray}): id must be g01..g50`), errors);
+  }
 
   const dupPrompt = clone(MANIFEST);
   byId(dupPrompt, "g12").prompt = `${byId(dupPrompt, "g11").prompt.toUpperCase().replace(/ /g, "  ")}`;
@@ -332,8 +340,12 @@ test("the lock round-trips, ignores line endings, and an edited manifest is refu
   const roundTripped = JSON.parse(JSON.stringify(lock));
   assert.deepEqual(checkLock(MANIFEST_BYTES, roundTripped), []);
 
-  const crlf = Buffer.from(MANIFEST_BYTES.toString("utf8").replace(/\r?\n/g, "\r\n"), "utf8");
-  assert.notEqual(rawSha(crlf), rawSha(MANIFEST_BYTES));
+  /* Both forms are built from a normalised base: on a checkout with
+     core.autocrlf=true the committed file is already CRLF on disk. */
+  const lf = Buffer.from(MANIFEST_BYTES.toString("utf8").replace(/\r\n/g, "\n"), "utf8");
+  const crlf = Buffer.from(lf.toString("utf8").replace(/\n/g, "\r\n"), "utf8");
+  assert.notEqual(rawSha(crlf), rawSha(lf));
+  assert.deepEqual(checkLock(lf, roundTripped), [], "an LF checkout is the same set");
   assert.deepEqual(checkLock(crlf, roundTripped), [], "a CRLF checkout is the same set");
   /* ...and a report written from a CRLF checkout locks the same set. */
   assert.equal(buildLock({ manifestBytes: MANIFEST_BYTES, entries: MANIFEST, report: syntheticReport(crlf, MANIFEST), now }).manifestSha, lock.manifestSha);

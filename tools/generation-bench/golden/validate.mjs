@@ -136,6 +136,7 @@ export function validateManifest(entries, ctx) {
   }
   if (entries.length !== SET_SIZE) errors.push(`the set has ${entries.length} entries; golden-v1 has exactly ${SET_SIZE}`);
 
+  const allowedIds = new Set(expectedIds());
   const ids = new Set();
   const prompts = new Map();
   entries.forEach((e, i) => {
@@ -146,7 +147,7 @@ export function validateManifest(entries, ctx) {
     }
     for (const key of Object.keys(e)) if (!ENTRY_KEYS.includes(key)) errors.push(`${where}: unknown key "${key}"`);
 
-    if (typeof e.id !== "string" || !/^g\d{2}$/.test(e.id)) errors.push(`${where}: id must be g01..g50`);
+    if (typeof e.id !== "string" || !allowedIds.has(e.id)) errors.push(`${where}: id must be g01..g50`);
     else if (ids.has(e.id)) errors.push(`${where}: duplicate id ${e.id}`);
     else ids.add(e.id);
 
