@@ -51,12 +51,19 @@ USAGE
     python tools/narration/render-foray.py --smoke            # 2 short items, CPU, both voices
     python tools/narration/render-foray.py --report out/manifest.json
     python tools/narration/render-foray.py --candidate data-local/runs/<id>/partial.json --items prelude,disclosure
+    python tools/narration/render-foray.py --worker data-local/render-spool --idle-exit 600
 
 GV-11 (docs/roadmap/generation-v2.md): `--candidate PATH` renders a generated
 candidate, a PartialCandidate or a job snapshot (any document with a top-level
 `id` and `items`) without reading data/forays.json; `--items` renders only the
 named narration items; the profile's default voice always renders first, every
 selected line in play order, whatever order `--voices` names.
+
+GV-22: `--worker SPOOL` keeps the G2P and the ORT session resident and renders
+per-item jobs (foray-render-job/1) from a spool directory, minimum (priority,
+enqueued_at) first, staging each finished line for `spool-upload.mjs`. See the
+worker section below. `--once` drains and exits; `--idle-exit SEC` exits when
+idle. The batch modes above are unchanged.
 """
 
 from __future__ import annotations
@@ -727,6 +734,22 @@ def _tool_version(exe: str | None) -> str:
         return "missing"
 
 
+def phonemize_line(P, script: str, entries: list[dict], g2p, vocab: dict) -> dict:
+    """One script -> {chunks, ids, error}: the lexicon first, misaki, then the
+    one chunk rule. An unsingable phoneme or an empty result is an `error`,
+    never a dropped character."""
+    row = {"chunks": [], "ids": [], "error": None}
+    try:
+        res = P.phonemize_script(script.strip(), entries, g2p)
+        row["chunks"] = P.sentence_chunks(res["phonemes"])
+        row["ids"] = [P.ids_for(c, vocab) for c in row["chunks"]]
+        if not row["chunks"]:
+            row["error"] = "phonemized to nothing"
+    except P.UnsingablePhoneme as exc:
+        row["error"] = f"unsingable: {exc}"
+    return row
+
+
 def phonemize_work(work: list[tuple[dict, list[dict]]]) -> tuple[list[dict], dict]:
     """Every selected line -> {foray_id, item, chunks, ids | error}. Done once,
     for all voices, and the G2P freed before the ONNX session loads."""
@@ -742,24 +765,110 @@ def phonemize_work(work: list[tuple[dict, list[dict]]]) -> tuple[list[dict], dic
     lines = []
     for foray, items in work:
         for item in items:
-            row = {"foray_id": foray["id"], "item": item, "chunks": [], "ids": [], "error": None}
-            try:
-                res = P.phonemize_script(item["script"].strip(), entries, g2p)
-                row["chunks"] = P.sentence_chunks(res["phonemes"])
-                row["ids"] = [P.ids_for(c, vocab) for c in row["chunks"]]
-                if not row["chunks"]:
-                    row["error"] = "phonemized to nothing"
-            except P.UnsingablePhoneme as exc:
-                row["error"] = f"unsingable: {exc}"
-            lines.append(row)
+            lines.append({"foray_id": foray["id"], "item": item, **phonemize_line(P, item["script"], entries, g2p, vocab)})
     del g2p
     gc.collect()
     return lines, phon
 
 
-def render_all(args, profile: dict, work: list[tuple[dict, list[dict]]], voices: list[str]) -> int:
+def load_style(path: Path):
+    """A voice's style table, [STYLE_ROWS, STYLE_DIM] float32."""
     import numpy as np
 
+    return np.fromfile(path, dtype=np.float32).reshape(STYLE_ROWS, STYLE_DIM)
+
+
+def synthesize_chunks(session, style, ids_list: list[list[int]], render: dict, reject: dict) -> list:
+    """One Kokoro inference per phoneme chunk, style row `len(ids) - 2`. A
+    non-finite or silent chunk is a RenderError and is never used."""
+    import numpy as np
+
+    audio = []
+    for ci, ids in enumerate(ids_list):
+        row = style[max(0, min(len(ids) - 2, STYLE_ROWS - 1))].reshape(1, STYLE_DIM)
+        a = session.run(None, {
+            "input_ids": np.array([ids], dtype=np.int64),
+            "style": row,
+            "speed": np.array([float(render["speed"])], dtype=np.float32),
+        })[0]
+        a = np.asarray(a, dtype=np.float32).reshape(-1)
+        why = chunk_problem(a, float(reject["min_chunk_peak"]))
+        if why:
+            raise RenderError(f"chunk {ci + 1}/{len(ids_list)}: {why}")
+        audio.append(a)
+    return audio
+
+
+def render_line(session, style, line: dict, profile: dict, pins: dict, out_dir: Path, tmp: Path, ffmpeg: str,
+                ffprobe: str, *, voice: str, lexicon_sha=None, rerender: bool = False, tag: str | None = None) -> dict:
+    """GV-22: one phonemized line in one voice -> its manifest entry.
+
+    This is render_all's per-line body, moved and not changed, so the batch
+    render and the spool worker share one code path. `line` is a phonemize_work
+    row ({foray_id, item, chunks, ids, error}) and `pins` is {"model": the model
+    pin, "voices": {voice: its pin}}. It returns an `unchanged` entry for a
+    line already stamped with this key, a `rendered` entry reused from a
+    matching .m4a and sidecar in `out_dir`, or a newly rendered one (the .m4a
+    and its sidecar are written as soon as the audio exists). Any failure,
+    including the line's own phonemize error, raises RenderError."""
+    item = line["item"]
+    tag = tag or f"{line['foray_id']} / {item['id']} / {voice}"
+    if line.get("error"):
+        raise RenderError(line["error"])
+    render, reject = profile["render"], profile["reject"]
+    default_voice = profile["default_voice"]
+    key = render_key(profile, voice, pins["voices"][voice]["sha256"], pins["model"]["sha256"], line["chunks"])
+    common = dict(
+        foray_id=line["foray_id"], item_id=item["id"], voice=voice, key=key, profile=profile["id"],
+        text_sha256=sha256_text(item["script"]), lexicon_sha=lexicon_sha, chunks=len(line["chunks"]),
+        estimate_sec=estimate_seconds(item["script"], reject["estimate_chars_per_sec"]),
+    )
+    if not rerender and is_unchanged(item, voice, default_voice, key):
+        log(f"{tag}: unchanged ({key})")
+        return manifest_entry(**common, status="unchanged", duration_sec=stamped_duration(item, voice, default_voice))
+    out = out_dir / key
+    sidecar = out.with_suffix(".json")
+    if out.exists() and sidecar.exists():
+        prior = json.loads(sidecar.read_text(encoding="utf-8"))
+        if prior.get("sha256") == sha256_file(out) and prior.get("key") == key:
+            log(f"{tag}: reused {key}")
+            return manifest_entry(**{**prior, **common, "status": "rendered"})
+    t0 = time.perf_counter()
+    audio = synthesize_chunks(session, style, line["ids"], render, reject)
+    speech, pcm = assemble(audio, render)
+    sr = int(render["sample_rate"])
+    speech_sec = round(speech.size / sr, 3)
+    lo, hi = reject["length_ratio"]
+    ratio = speech_sec / common["estimate_sec"] if common["estimate_sec"] else 0
+    if not (lo <= ratio <= hi):
+        raise RenderError(
+            f"spoken length {speech_sec} s is {ratio:.2f}x the {common['estimate_sec']} s estimate, "
+            f"outside [{lo}, {hi}]"
+        )
+    pcm_sec = round(pcm.size / sr, 3)
+    loud = normalize_and_encode(ffmpeg, ffprobe, pcm, out, render, tmp)
+    # duration_sec is what a player decodes (edit list honoured),
+    # and it must agree with the PCM we rendered.
+    duration = loud.pop("decoded_sec")
+    drift = abs(duration - pcm_sec)
+    if drift > float(reject["max_container_drift_sec"]):
+        out.unlink(missing_ok=True)
+        raise RenderError(f"decodes to {duration} s, PCM is {pcm_sec} s ({drift:.3f} s apart)")
+    data = out.read_bytes()
+    container_sec = loud.pop("container_sec")
+    entry = manifest_entry(
+        **common, status="rendered", bytes=len(data), duration_sec=duration,
+        sha256=sha256_bytes(data), speech_sec=speech_sec,
+        container_sec=container_sec, loudness=loud,
+    )
+    sidecar.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    log(f"{tag}: {duration:.3f} s (pcm {pcm_sec}, container {container_sec}), {len(data) / 1000:.0f} kB, "
+        f"{entry['loudness']['output_i']:.1f} LUFS / {entry['loudness']['output_tp']:.1f} dBTP "
+        f"({entry['loudness']['type']}, {entry['loudness']['gain_db']:+.1f} dB, limit {entry['loudness']['limit_db']:.1f} dB) in {time.perf_counter() - t0:.1f} s")
+    return entry
+
+
+def render_all(args, profile: dict, work: list[tuple[dict, list[dict]]], voices: list[str]) -> int:
     ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
     if not ffmpeg or not ffprobe:
         raise RenderError("ffmpeg and ffprobe must be on PATH (apt-get install ffmpeg)")
@@ -785,90 +894,25 @@ def render_all(args, profile: dict, work: list[tuple[dict, list[dict]]], voices:
     out_dir = Path(args.out).resolve() if args.out else DEFAULT_OUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp(prefix="render-", dir=str(out_dir)))
-    render, reject = profile["render"], profile["reject"]
     lexicon_sha = sha256_file(LEXICON_PATH) if LEXICON_PATH.exists() else None
-    default_voice = profile["default_voice"]
+    render_pins = {"model": mpin, "voices": vpins}
     entries: list[dict] = []
     failed: list[dict] = []
     total = len(lines) * len(voices)
     n = 0
     try:
         for voice in voices:
-            style = np.fromfile(voice_paths[voice], dtype=np.float32).reshape(STYLE_ROWS, STYLE_DIM)
+            style = load_style(voice_paths[voice])
             for line in lines:
                 n += 1
                 item = line["item"]
                 tag = f"[{n}/{total}] {line['foray_id']} / {item['id']} / {voice}"
                 base = {"foray_id": line["foray_id"], "item_id": item["id"], "voice": voice}
-                if line["error"]:
-                    failed.append({**base, "error": line["error"]})
-                    log(f"{tag}: FAILED {line['error']}")
-                    continue
-                key = render_key(profile, voice, vpins[voice]["sha256"], mpin["sha256"], line["chunks"])
-                common = dict(
-                    base, key=key, profile=profile["id"], text_sha256=sha256_text(item["script"]),
-                    lexicon_sha=lexicon_sha, chunks=len(line["chunks"]),
-                    estimate_sec=estimate_seconds(item["script"], reject["estimate_chars_per_sec"]),
-                )
-                if not args.rerender and is_unchanged(item, voice, default_voice, key):
-                    entries.append(manifest_entry(**common, status="unchanged",
-                                                  duration_sec=stamped_duration(item, voice, default_voice)))
-                    log(f"{tag}: unchanged ({key})")
-                    continue
-                out = out_dir / key
-                sidecar = out.with_suffix(".json")
-                if out.exists() and sidecar.exists():
-                    prior = json.loads(sidecar.read_text(encoding="utf-8"))
-                    if prior.get("sha256") == sha256_file(out) and prior.get("key") == key:
-                        entries.append(manifest_entry(**{**prior, **common, "status": "rendered"}))
-                        log(f"{tag}: reused {key}")
-                        continue
-                t0 = time.perf_counter()
                 try:
-                    audio = []
-                    for ci, ids in enumerate(line["ids"]):
-                        row = style[max(0, min(len(ids) - 2, STYLE_ROWS - 1))].reshape(1, STYLE_DIM)
-                        a = session.run(None, {
-                            "input_ids": np.array([ids], dtype=np.int64),
-                            "style": row,
-                            "speed": np.array([float(render["speed"])], dtype=np.float32),
-                        })[0]
-                        a = np.asarray(a, dtype=np.float32).reshape(-1)
-                        why = chunk_problem(a, float(reject["min_chunk_peak"]))
-                        if why:
-                            raise RenderError(f"chunk {ci + 1}/{len(line['ids'])}: {why}")
-                        audio.append(a)
-                    speech, pcm = assemble(audio, render)
-                    sr = int(render["sample_rate"])
-                    speech_sec = round(speech.size / sr, 3)
-                    lo, hi = reject["length_ratio"]
-                    ratio = speech_sec / common["estimate_sec"] if common["estimate_sec"] else 0
-                    if not (lo <= ratio <= hi):
-                        raise RenderError(
-                            f"spoken length {speech_sec} s is {ratio:.2f}x the {common['estimate_sec']} s estimate, "
-                            f"outside [{lo}, {hi}]"
-                        )
-                    pcm_sec = round(pcm.size / sr, 3)
-                    loud = normalize_and_encode(ffmpeg, ffprobe, pcm, out, render, tmp)
-                    # duration_sec is what a player decodes (edit list honoured),
-                    # and it must agree with the PCM we rendered.
-                    duration = loud.pop("decoded_sec")
-                    drift = abs(duration - pcm_sec)
-                    if drift > float(reject["max_container_drift_sec"]):
-                        out.unlink(missing_ok=True)
-                        raise RenderError(f"decodes to {duration} s, PCM is {pcm_sec} s ({drift:.3f} s apart)")
-                    data = out.read_bytes()
-                    container_sec = loud.pop("container_sec")
-                    entry = manifest_entry(
-                        **common, status="rendered", bytes=len(data), duration_sec=duration,
-                        sha256=sha256_bytes(data), speech_sec=speech_sec,
-                        container_sec=container_sec, loudness=loud,
-                    )
-                    sidecar.write_text(json.dumps(entry, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-                    entries.append(entry)
-                    log(f"{tag}: {duration:.3f} s (pcm {pcm_sec}, container {container_sec}), {len(data) / 1000:.0f} kB, "
-                        f"{entry['loudness']['output_i']:.1f} LUFS / {entry['loudness']['output_tp']:.1f} dBTP "
-                        f"({entry['loudness']['type']}, {entry['loudness']['gain_db']:+.1f} dB, limit {entry['loudness']['limit_db']:.1f} dB) in {time.perf_counter() - t0:.1f} s")
+                    entries.append(render_line(
+                        session, style, line, profile, render_pins, out_dir, tmp, ffmpeg, ffprobe,
+                        voice=voice, lexicon_sha=lexicon_sha, rerender=args.rerender, tag=tag,
+                    ))
                 except RenderError as exc:
                     failed.append({**base, "error": str(exc)})
                     log(f"{tag}: FAILED {exc}")
@@ -896,6 +940,392 @@ def render_all(args, profile: dict, work: list[tuple[dict, list[dict]]], voices:
     log(f"\n{t['rendered']} rendered, {t['unchanged']} unchanged, {t['failed']} failed; "
         f"{t['duration_sec'] / 60:.1f} min, {t['bytes'] / 1e6:.2f} MB -> {mpath}")
     return 0 if not failed else 1
+
+
+# ==================================================================== worker
+#
+# GV-22 (docs/roadmap/generation-v2.md): a long-lived render worker. The batch
+# render above loads the ~1.3 GB fp32 session once per RUN; a generation run
+# that wants each narration line as soon as its act is written would pay that
+# per ITEM. `--worker SPOOL` loads the profile, the pins, the G2P and the ORT
+# session ONCE and keeps them resident, then renders per-item jobs from a
+# spool directory in priority order:
+#
+#   SPOOL/in/<job_id>.job.json     queued jobs. A producer writes the file
+#                                  elsewhere and RENAMES it in (a half-written
+#                                  job is read as unreadable and fails).
+#   SPOOL/work/<job_id>.job.json   the job being rendered. The claim is a
+#                                  rename from in/, atomic on one local disk,
+#                                  so two workers never render one job.
+#   SPOOL/done/<job_id>.json       {job_id, status, entry | error, timings},
+#                                  written atomically once the job finished.
+#   SPOOL/upload/<job_id>/         a one-entry manifest (manifest-<job_id>.json)
+#                                  and the .m4a at its key path: exactly what
+#                                  upload-narration.mjs takes. spool-upload.mjs
+#                                  pushes it and only then records public_url.
+#   SPOOL/objects/                 the content-addressed render cache (the
+#                                  batch render's --out layout, sidecars and
+#                                  all), so a repeated line is reused.
+#
+# Opt-in: nothing reaches this code without --worker, and the batch render is
+# unchanged. The spool must be on a local disk (the claim is a rename). Never
+# run it with real weights on a machine without the RAM (the Spark, not a 3 GB
+# laptop); the tests drive it with fakes only.
+
+JOB_SCHEMA = "foray-render-job/1"
+JOB_SUFFIX = ".job.json"
+JOB_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+SPOOL_SUBDIRS = ("in", "work", "done", "upload", "objects")
+
+
+def spool_paths(spool) -> dict:
+    """The spool's directories, created if missing."""
+    root = Path(spool)
+    paths = {name: root / name for name in SPOOL_SUBDIRS}
+    for p in paths.values():
+        p.mkdir(parents=True, exist_ok=True)
+    return paths
+
+
+def _job_id_of(path: Path) -> str:
+    return path.name[: -len(JOB_SUFFIX)]
+
+
+def _queued(directory: Path) -> list[Path]:
+    return sorted(
+        p for p in directory.iterdir()
+        if p.is_file() and p.name.endswith(JOB_SUFFIX) and not p.name.startswith(".")
+    )
+
+
+def write_json_atomic(path: Path, obj) -> None:
+    """Write beside the target, then rename over it: a reader sees the old
+    file or the new one, never half of one."""
+    part = path.with_name("." + path.name + ".part")
+    with part.open("w", encoding="utf-8", newline="\n") as fh:
+        fh.write(json.dumps(obj, ensure_ascii=False, indent=2) + "\n")
+    os.replace(part, path)
+
+
+def parse_enqueued_at(value) -> float:
+    """An ISO-8601 timestamp with a zone (JavaScript's toISOString) -> epoch seconds."""
+    from datetime import datetime
+
+    if not isinstance(value, str) or not value.strip():
+        raise RenderError("enqueued_at must be an ISO-8601 timestamp string")
+    text = value.strip()
+    if text[-1] in "Zz":
+        text = text[:-1] + "+00:00"
+    try:
+        stamp = datetime.fromisoformat(text)
+    except ValueError:
+        raise RenderError(f"enqueued_at {value!r} is not an ISO-8601 timestamp")
+    if stamp.tzinfo is None:
+        raise RenderError(f"enqueued_at {value!r} has no time zone")
+    return stamp.timestamp()
+
+
+def validate_job(doc, job_id: str) -> dict:
+    """A foray-render-job/1 document -> the normalized job, or a RenderError
+    naming the first thing wrong with it. The file name is the job id: a
+    document claiming another id, or an id that could escape the spool, is
+    refused."""
+    if not JOB_ID_RE.match(job_id):
+        raise RenderError(f"job file name {job_id!r} is not a safe job id")
+    if not isinstance(doc, dict):
+        raise RenderError("a job is a JSON object")
+    if doc.get("schema") != JOB_SCHEMA:
+        raise RenderError(f"schema is {doc.get('schema')!r}, not {JOB_SCHEMA}")
+    if doc.get("job_id") != job_id:
+        raise RenderError(f"job_id {doc.get('job_id')!r} does not match its file name ({job_id})")
+    for field in ("foray_id", "item_id", "script"):
+        if not isinstance(doc.get(field), str) or not doc[field].strip():
+            raise RenderError(f"{field} must be a non-empty string")
+    voice = doc.get("voice")
+    if voice is not None and (not isinstance(voice, str) or not VOICE_ID_RE.match(voice)):
+        raise RenderError(f"voice {voice!r} is not a Kokoro voice id")
+    priority = doc.get("priority")
+    if not isinstance(priority, int) or isinstance(priority, bool):
+        raise RenderError("priority must be an integer")
+    enqueued = parse_enqueued_at(doc.get("enqueued_at"))
+    lexicon = doc.get("lexicon")
+    if lexicon is None:
+        lexicon = []
+    if not isinstance(lexicon, list) or not all(
+        isinstance(e, dict) and isinstance(e.get("term"), str) and e["term"].strip()
+        and isinstance(e.get("ipa"), str) and e["ipa"].strip()
+        for e in lexicon
+    ):
+        raise RenderError("lexicon must be a list of {term, ipa} strings")
+    return {
+        "job_id": job_id, "foray_id": doc["foray_id"], "item_id": doc["item_id"], "script": doc["script"],
+        "voice": voice, "priority": priority, "enqueued_at": doc["enqueued_at"], "enqueued_epoch": enqueued,
+        "lexicon": [{"term": e["term"], "ipa": e["ipa"]} for e in lexicon],
+    }
+
+
+def _read_json(path: Path):
+    """(document, None), or (None, why it cannot be read)."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8")), None
+    except OSError as exc:
+        return None, f"cannot read the job file ({exc.strerror or exc})"
+    except ValueError as exc:
+        return None, f"the job file is not JSON ({exc})"
+
+
+def queue_order(directory: Path) -> list[Path]:
+    """The queued jobs, minimum (priority, enqueued_at) first, the job id
+    breaking ties. A job that cannot be read or validated sorts first: it is
+    claimed, failed with its reason and out of the way at once."""
+    keyed = []
+    for path in _queued(directory):
+        doc, _ = _read_json(path)
+        try:
+            job = validate_job(doc, _job_id_of(path))
+            key = (1, job["priority"], job["enqueued_epoch"], job["job_id"])
+        except RenderError:
+            key = (0, 0, 0.0, _job_id_of(path))
+        keyed.append((key, path))
+    return [p for _, p in sorted(keyed, key=lambda kp: kp[0])]
+
+
+def claim_next(paths: dict):
+    """Rename the next job into work/: the claim. A job another worker took
+    between the listing and the rename is skipped. Returns the claimed path in
+    work/, or None when the queue is empty."""
+    for path in queue_order(paths["in"]):
+        dest = paths["work"] / path.name
+        try:
+            os.rename(path, dest)
+        except FileNotFoundError:
+            continue
+        return dest
+    return None
+
+
+def recover_spool(paths: dict) -> list[str]:
+    """On start, a job left in work/ was cut off by a crash. It goes back to
+    in/ to render again, unless its done/ record was already written (the crash
+    came after the job finished), in which case the stale claim is dropped so
+    the job is not rendered twice. Returns the re-queued job ids."""
+    requeued = []
+    for path in _queued(paths["work"]):
+        job_id = _job_id_of(path)
+        if (paths["done"] / f"{job_id}.json").exists():
+            path.unlink()
+            continue
+        os.replace(path, paths["in"] / path.name)
+        requeued.append(job_id)
+    return requeued
+
+
+def stage_upload(paths: dict, job_id: str, entry: dict, deps: dict) -> Path:
+    """SPOOL/upload/<job_id>/: manifest-<job_id>.json (a one-entry manifest_doc)
+    and the .m4a at its key path. It is assembled under a dot-name and renamed
+    into place, so spool-upload never sees half a directory."""
+    profile = deps["profile"]
+    src = Path(deps["out_dir"]) / entry["key"]
+    final = paths["upload"] / job_id
+    staging = paths["upload"] / f".{job_id}.staging"
+    shutil.rmtree(staging, ignore_errors=True)
+    dest = staging.joinpath(*entry["key"].split("/"))
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, dest)
+    if sha256_file(dest) != entry["sha256"]:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise RenderError(f"{entry['key']}: the staged copy's sha256 differs from the manifest entry")
+    pins = deps["pins"]
+    voice = entry["voice"]
+    manifest = manifest_doc(
+        profile,
+        {"name": profile["model"], "sha256": pins["model"]["sha256"]},
+        {voice: {"sha256": pins["voices"][voice]["sha256"], "pinned_by": pins["voices"][voice].get("pinned_by")}},
+        deps.get("tools", {}), [entry], [],
+    )
+    write_json_atomic(staging / f"manifest-{job_id}.json", manifest)
+    if final.exists():
+        shutil.rmtree(final)
+    os.rename(staging, final)
+    return final
+
+
+def process_job(job, deps: dict, *, job_id: str) -> dict:
+    """One claimed job -> its done/ record.
+
+    `deps` carries the resident state (profile, pins, session, styles by
+    voice, ffmpeg and ffprobe, the spool paths, out_dir and tmp) and two
+    injectable steps: `phonemize(script, lexicon) -> {chunks, ids, error}` and
+    `render_line` (the batch render's own). `job` is the parsed document, or a
+    string saying why the file could not be read. Any RenderError, a malformed
+    job included, becomes a `failed` record carrying its text, and nothing is
+    staged for upload unless the line rendered."""
+    claimed_at = deps.get("now", time.time)()
+    t0 = time.perf_counter()
+    timings = {"queued_ms": None, "render_ms": None, "audio_sec": None}
+    try:
+        if isinstance(job, str):
+            raise RenderError(job)
+        job = validate_job(job, job_id)
+        timings["queued_ms"] = max(0, int(round((claimed_at - job["enqueued_epoch"]) * 1000)))
+        profile = deps["profile"]
+        voice = job["voice"] or profile["default_voice"]
+        if voice not in deps["styles"]:
+            raise RenderError(f"voice {voice} is not loaded by this worker ({', '.join(deps['styles'])})")
+        ph = deps["phonemize"](job["script"], job["lexicon"])
+        line = {
+            "foray_id": job["foray_id"],
+            "item": {"type": "narration", "id": job["item_id"], "script": job["script"]},
+            "chunks": ph.get("chunks") or [], "ids": ph.get("ids") or [], "error": ph.get("error"),
+        }
+        entry = deps["render_line"](
+            deps.get("session"), deps["styles"][voice], line, profile, deps["pins"], deps["out_dir"], deps["tmp"],
+            deps.get("ffmpeg"), deps.get("ffprobe"), voice=voice, lexicon_sha=deps.get("lexicon_sha"),
+            rerender=False, tag=f"job {job_id}",
+        )
+        if entry.get("status") != "rendered":
+            raise RenderError(f"render_line returned status {entry.get('status')!r}, not rendered")
+        timings["render_ms"] = int(round((time.perf_counter() - t0) * 1000))
+        timings["audio_sec"] = entry.get("duration_sec")
+        stage_upload(deps["spool"], job_id, entry, deps)
+        return {"job_id": job_id, "status": "rendered", "entry": entry, "timings": timings}
+    except RenderError as exc:
+        timings["render_ms"] = int(round((time.perf_counter() - t0) * 1000))
+        return {"job_id": job_id, "status": "failed", "error": str(exc), "timings": timings}
+
+
+def run_worker(spool, deps: dict, *, once: bool = False, idle_exit: float | None = None, poll_sec: float = 0.5,
+               sleep=time.sleep, clock=time.monotonic) -> dict:
+    """The worker loop. It re-queues work/ first, then claims the minimum
+    (priority, enqueued_at) job, renders it, writes done/<job_id>.json, drops
+    the claim, and repeats. `once` drains the queue (jobs enqueued during the
+    drain included) and returns; `idle_exit` returns after that many idle
+    seconds; with neither it runs until it is stopped."""
+    paths = spool_paths(spool)
+    deps = {"out_dir": paths["objects"], **deps, "spool": paths}
+    own_tmp = "tmp" not in deps
+    if own_tmp:
+        deps["tmp"] = Path(tempfile.mkdtemp(prefix="render-", dir=str(paths["objects"])))
+    summary = {"recovered": recover_spool(paths), "rendered": [], "failed": []}
+    for job_id in summary["recovered"]:
+        log(f"worker: re-queued {job_id} (left in work/ by an earlier run)")
+    idle_since = clock()
+    try:
+        while True:
+            claimed = claim_next(paths)
+            if claimed is None:
+                if once:
+                    break
+                if idle_exit is not None and clock() - idle_since >= idle_exit:
+                    break
+                sleep(poll_sec)
+                continue
+            job_id = _job_id_of(claimed)
+            doc, unreadable = _read_json(claimed)
+            record = process_job(unreadable if unreadable else doc, deps, job_id=job_id)
+            write_json_atomic(paths["done"] / f"{job_id}.json", record)
+            claimed.unlink(missing_ok=True)
+            summary[record["status"]].append(job_id)
+            if record["status"] == "rendered":
+                log(f"worker: {job_id} rendered {record['entry']['key']} ({record['timings']['render_ms']} ms)")
+            else:
+                log(f"worker: {job_id} FAILED {record['error']}")
+            idle_since = clock()
+    finally:
+        if own_tmp:
+            shutil.rmtree(deps["tmp"], ignore_errors=True)
+    return summary
+
+
+def make_phonemizer(P=None):
+    """The worker's resident phonemizer: G2P, lexicon and vocab loaded once
+    (phonemize_work frees its G2P; a worker keeps it). A job's own lexicon goes
+    ahead of hard-terms.json, so on the same term the job's IPA wins."""
+    P = P or _load_phonemize()
+    g2p = P.load_backend()
+    entries, vocab = P.load_lexicon(), P.load_vocab()
+    fallback = getattr(g2p, "fallback", None)
+    info = {
+        "g2p": "misaki en-US " + _pkg_version("misaki"),
+        "fallback": "espeak-ng" if fallback is not None else "none",
+        "vocab": P.vocab_sha(vocab),
+    }
+
+    def phonemize(script: str, lexicon=None) -> dict:
+        return phonemize_line(P, script, list(lexicon or []) + list(entries), g2p, vocab)
+
+    return phonemize, info
+
+
+def load_worker_deps(args, profile: dict, voices: list[str]) -> dict:
+    """The heavy half of --worker, loaded once: ffmpeg, the pinned weights, the
+    resident phonemizer, the ORT session and every voice's style table."""
+    ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
+    if not ffmpeg or not ffprobe:
+        raise RenderError("ffmpeg and ffprobe must be on PATH (apt-get install ffmpeg)")
+    pins = read_pins()
+    mpin = model_pin(profile, pins)
+    vpins = {v: voice_pin(v, profile, pins) for v in voices}
+    weights_dir = Path(args.weights_dir).resolve() if args.weights_dir else DEFAULT_WEIGHTS_DIR
+    search = weight_search_dirs([])
+    model_path = ensure_file(profile["model"], mpin, weights_dir / "model", search, not args.no_download)
+    voice_paths = {v: ensure_file(f"{v}.bin", vpins[v], weights_dir / "voices", search, not args.no_download) for v in voices}
+    phonemize, phon = make_phonemizer()
+
+    import onnxruntime as ort
+
+    opts = ort.SessionOptions()
+    opts.intra_op_num_threads = args.threads
+    session = ort.InferenceSession(str(model_path), opts, providers=["CPUExecutionProvider"])
+    return {
+        "profile": profile,
+        "pins": {"model": mpin, "voices": vpins},
+        "session": session,
+        "styles": {v: load_style(voice_paths[v]) for v in voices},
+        "ffmpeg": ffmpeg,
+        "ffprobe": ffprobe,
+        "lexicon_sha": sha256_file(LEXICON_PATH) if LEXICON_PATH.exists() else None,
+        "tools": {
+            "onnxruntime": ort.__version__,
+            "phonemizer": phon,
+            "ffmpeg": _tool_version(ffmpeg),
+            "threads": args.threads,
+            "provider": "CPUExecutionProvider",
+        },
+        "phonemize": phonemize,
+        "render_line": render_line,
+    }
+
+
+def plan_worker(args, profile: dict) -> list[str]:
+    """--worker's refusals, all before anything heavy loads, and the voices it
+    keeps resident (the default voice first)."""
+    if not args.worker:
+        for flag, given in (("--once", args.once), ("--idle-exit", args.idle_exit is not None)):
+            if given:
+                raise RenderError(f"{flag} needs --worker SPOOL")
+        return []
+    for flag, given in (("--forays", args.forays), ("--candidate", args.candidate), ("--items", args.items),
+                        ("--smoke", args.smoke), ("--rerender", args.rerender), ("--manifest", args.manifest),
+                        ("--out", args.out)):
+        if given:
+            raise RenderError(f"--worker takes its jobs from the spool; {flag} is a batch option")
+    if args.idle_exit is not None and not args.idle_exit > 0:
+        raise RenderError("--idle-exit must be a positive number of seconds")
+    voices = _csv(args.voices) or list(profile["voices"])
+    for v in voices:
+        if v not in profile["voices"]:
+            raise RenderError(f"{v} is not a voice in render-profile.json ({', '.join(profile['voices'])})")
+    return voice_order(voices, profile["default_voice"])
+
+
+def cmd_worker(args, profile: dict, voices: list[str]) -> int:
+    deps = load_worker_deps(args, profile, voices)
+    log(f"worker: {profile['id']} resident ({', '.join(voices)}), spool {Path(args.worker).resolve()}")
+    summary = run_worker(Path(args.worker), deps, once=args.once, idle_exit=args.idle_exit)
+    log(f"worker: {len(summary['rendered'])} rendered, {len(summary['failed'])} failed, "
+        f"{len(summary['recovered'])} re-queued at start")
+    return 0
 
 
 # ====================================================================== main
@@ -949,6 +1379,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--rerender", action="store_true", help="render lines data/forays.json already stamps with the same key")
     ap.add_argument("--threads", type=int, default=min(4, os.cpu_count() or 1), help="onnxruntime intra-op threads")
     ap.add_argument("--report", nargs="+", metavar="MANIFEST", help="print a markdown summary of manifest(s) and exit")
+    ap.add_argument("--worker", metavar="SPOOL",
+                    help="GV-22: stay resident and render per-item jobs from SPOOL/in/*.job.json in priority order")
+    ap.add_argument("--once", action="store_true", help="with --worker: drain the spool, then exit")
+    ap.add_argument("--idle-exit", type=float, metavar="SEC", help="with --worker: exit after SEC seconds with nothing queued")
     return ap
 
 
@@ -963,6 +1397,10 @@ def main(argv: list[str]) -> int:
         profile = load_profile()
         if args.check:
             return cmd_check(profile)
+        # GV-22: --worker and its flags are refused or planned before any load.
+        worker_voices = plan_worker(args, profile)
+        if args.worker:
+            return cmd_worker(args, profile, worker_voices)
         # Validate the selection BEFORE anything heavy loads, so a typo'd id
         # costs a second, not a model load.
         work, voices = plan_work(args, profile)
