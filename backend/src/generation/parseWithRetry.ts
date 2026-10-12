@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { recordParse, withCallContext } from "./runLog";
 
 /**
  * Shared parser used by every real Anthropic* provider class
@@ -46,15 +47,22 @@ export async function parseWithRetry<T>(
   errorPrefix = "LLM output",
   reask?: () => Promise<string>
 ): Promise<T> {
+  /* GV-07: each parse outcome is a ParseEvent in the active RunLog (a no-op
+     outside one): {ok, reask:false} for the first reply, {ok, reask:true}
+     for the re-asked one. */
+  let first: T;
   try {
-    return attemptParse(schema, raw);
+    first = attemptParse(schema, raw);
   } catch (firstErr) {
+    recordParse(false, false);
     if (!reask) {
       throw new Error(`${errorPrefix} failed schema validation: ${(firstErr as Error).message}`, { cause: firstErr });
     }
     let retryRaw: string;
     try {
-      retryRaw = await reask();
+      /* Every builder's re-ask request is made inside this closure, so its
+         CallRecord carries reask 'json'. */
+      retryRaw = await withCallContext({ reask: "json" }, () => reask());
     } catch (reaskErr) {
       // The re-ask call itself failed — this can be a transport/API error,
       // OR the `reask` closure's own budgetGuard.checkAndRecord() call
@@ -74,14 +82,20 @@ export async function parseWithRetry<T>(
         { cause: reaskErr }
       );
     }
+    let second: T;
     try {
-      return attemptParse(schema, retryRaw);
+      second = attemptParse(schema, retryRaw);
     } catch (secondErr) {
+      recordParse(false, true);
       throw new Error(`${errorPrefix} failed schema validation after one re-ask: ${(secondErr as Error).message}`, {
         cause: secondErr
       });
     }
+    recordParse(true, true);
+    return second;
   }
+  recordParse(true, false);
+  return first;
 }
 
 /** Strips a wrapping ```/```json fence (models occasionally add one despite

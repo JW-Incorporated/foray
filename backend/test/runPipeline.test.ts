@@ -28,6 +28,9 @@ import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
 import { RunLog, currentCallContext, runWithRunLog, type CallContext } from "../src/generation/runLog";
+import { createMessage } from "../src/generation/anthropicCall";
+import { getUsageTotals } from "../src/generation/usageTracking";
+import { makeFakeAnthropicClient, textBlock } from "./helpers/fakeAnthropicClient";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -1158,5 +1161,116 @@ describe("runForayPipeline under a RunLog (GV-01)", () => {
     /* The act retries once, so two 15 ms refusals ran before the stage gave up. */
     expect(deepen.ms).toBeGreaterThanOrEqual(20);
     expect(log.spanMs()).toBeGreaterThanOrEqual(deepen.ms);
+  }, 60_000);
+});
+
+describe("runForayPipeline under a RunLog: per-call records (GV-07)", () => {
+  /* Test-local builders: each wraps a Stub and ALSO sends one request through
+     the real choke point (createMessage) on a fake client, so the records
+     come from where production records them. The Stubs themselves are not
+     modified. `tokens` sets each run's usage so two runs can be told apart. */
+  function meteredDeps(tokens: { input: number; output: number }) {
+    const base = stubDeps();
+    const { client, create } = makeFakeAnthropicClient([]);
+    create.mockImplementation(async () => ({
+      content: [textBlock("{}")],
+      stop_reason: "end_turn",
+      usage: { input_tokens: tokens.input, output_tokens: tokens.output }
+    }));
+    const call = (label: string) =>
+      createMessage(client, { model: "fake-model", max_tokens: 64, messages: [{ role: "user", content: label }] }, label);
+    const spine = base.spineBuilder;
+    const deepen = base.deepenBuilder;
+    const writer = base.narrationWriter;
+    const verifier = base.narrationVerifier;
+    return {
+      ...base,
+      spineBuilder: {
+        providerName: spine.providerName,
+        buildSpine: async (...args: Parameters<typeof spine.buildSpine>) => {
+          await call("spine");
+          return spine.buildSpine(...args);
+        }
+      },
+      deepenBuilder: {
+        providerName: deepen.providerName,
+        deepenAct: async (...args: Parameters<typeof deepen.deepenAct>) => {
+          await call("deepen");
+          return deepen.deepenAct(...args);
+        }
+      },
+      narrationWriter: {
+        providerName: writer.providerName,
+        writeAct: async (...args: Parameters<typeof writer.writeAct>) => {
+          await call("writer");
+          return writer.writeAct(...args);
+        }
+      },
+      narrationVerifier: {
+        providerName: verifier.providerName,
+        verifyAct: async (...args: Parameters<typeof verifier.verifyAct>) => {
+          await call("verifier");
+          return verifier.verifyAct(...args);
+        }
+      }
+    };
+  }
+
+  it("each stage's requests are recorded with its stage, act, round and role", async () => {
+    /* MUTATION THAT KILLS THIS: drop deepenActs.ts's withCallContext({act:
+       index}) — the deepen records carry no act. Ran it — red. */
+    const log = new RunLog();
+    const out = await runWithRunLog(log, () => runForayPipeline(request, options, meteredDeps({ input: 100, output: 10 })));
+    expect(out.outcome).toBe("generated");
+    const calls = log.calls();
+    expect(calls.map((c) => c.seq)).toEqual(calls.map((_, i) => i));
+
+    const spine = calls.filter((c) => c.label === "spine");
+    expect(spine.map((c) => [c.stage, c.reask])).toEqual([["spine", null]]);
+    const deepen = calls.filter((c) => c.label === "deepen");
+    expect(deepen.length).toBeGreaterThan(0);
+    for (const c of deepen) expect(c).toMatchObject({ stage: "deepen", attempt: 0 });
+    expect(deepen.map((c) => c.act).sort()).toEqual(deepen.map((_, i) => i));
+    const writers = calls.filter((c) => c.label === "writer");
+    expect(writers.length).toBeGreaterThan(0);
+    for (const c of writers) expect(c).toMatchObject({ role: "writer", attempt: 1, provider: "anthropic", model: "fake-model" });
+    for (const c of writers) expect(c.stage).toBe(`narrate:${c.act}`);
+    const verifiers = calls.filter((c) => c.label === "verifier");
+    expect(verifiers.length).toBeGreaterThan(0);
+    for (const c of verifiers) expect(c).toMatchObject({ role: "verifier", attempt: 1 });
+    for (const c of verifiers) expect(c.stage).toBe(`narrate:${c.act}`);
+  }, 60_000);
+
+  it("pipelineTokens is this run's own log total, even with a second run in the same process", async () => {
+    /* Two runs at once, each in its own log, with different usage. The
+       process-wide counter is reset by whichever starts last and sums both,
+       so only the per-run log gives each run its own number.
+
+       MUTATION THAT KILLS THIS: read pipelineTokens from getUsageTotals()
+       again — each run reports the two runs' mixed total. Ran it — red. */
+    const logA = new RunLog();
+    const logB = new RunLog();
+    const [a, b] = await Promise.all([
+      runWithRunLog(logA, () => runForayPipeline(request, options, meteredDeps({ input: 100, output: 10 }))),
+      runWithRunLog(logB, () => runForayPipeline(request, options, meteredDeps({ input: 7, output: 3 })))
+    ]);
+    if (a.outcome !== "generated" || b.outcome !== "generated") throw new Error("both runs should generate");
+    const totalsA = logA.callTotals();
+    const totalsB = logB.callTotals();
+    expect(totalsA.calls).toBeGreaterThan(0);
+    expect(totalsA.promptTokens).toBe(100 * totalsA.calls);
+    expect(totalsB.promptTokens).toBe(7 * totalsB.calls);
+    expect(a.input.meta?.veracity?.pipelineTokens).toBe(totalsA.promptTokens + totalsA.outputTokens);
+    expect(b.input.meta?.veracity?.pipelineTokens).toBe(totalsB.promptTokens + totalsB.outputTokens);
+  }, 120_000);
+
+  it("one run alone: the log total and the process-wide counter agree", async () => {
+    const log = new RunLog();
+    const out = await runWithRunLog(log, () => runForayPipeline(request, options, meteredDeps({ input: 20, output: 2 })));
+    if (out.outcome !== "generated") throw new Error("should generate");
+    const totals = log.callTotals();
+    expect(out.input.meta?.veracity?.pipelineTokens).toBe(totals.promptTokens + totals.outputTokens);
+    expect(getUsageTotals().total).toBe(totals.promptTokens + totals.outputTokens);
+    expect(getUsageTotals().calls).toBe(totals.calls);
   }, 60_000);
 });

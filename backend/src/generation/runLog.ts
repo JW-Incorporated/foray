@@ -275,3 +275,103 @@ export function withCallContext<T>(partial: CallContext, fn: () => T): T {
 export function currentCallContext(): CallContext {
   return { ...(storage.getStore()?.ctx ?? {}) };
 }
+
+/* ---------------------------------------------------------------------------
+   GV-07: one CallRecord per model request, appended at the provider choke
+   point.
+   --------------------------------------------------------------------------- */
+
+/**
+ * The modules allowed to append a CallRecord (paths relative to
+ * src/generation, forward slashes). A model call is recorded where it is
+ * made, never by a builder or a stage: anthropicCall.ts today, plus the
+ * OpenAI-compatible chat provider (GV-13) and the flat Jev client (GV-20),
+ * pre-listed so those cards need no edit here. backend/test/anthropicCall.test.ts
+ * fails when any other generation module calls `recordModelCall`.
+ */
+export const PROVIDER_CALL_SITES: readonly string[] = ["anthropicCall.ts", "chat/openAICompatProvider.ts", "jevClient.ts"];
+
+/**
+ * What a provider knows about one request. Times are on the log's own clock
+ * (`currentRunLog().nowMs()`), so a test that injects `now` into the RunLog
+ * pins them. Every measurement the provider did not take is left out (or
+ * null) and is recorded as null, never 0. The context keys (stage, act,
+ * seam, attempt, role, reask) come from `currentCallContext()`; a provider
+ * may set one explicitly (the Jev client's role 'judge'), which wins.
+ */
+export interface ModelCallInput {
+  provider: string;
+  machine?: string | null;
+  model: string;
+  label: string;
+  startMs: number;
+  endMs: number;
+  queueMs?: number | null;
+  ttftMs?: number | null;
+  promptTokens?: number | null;
+  cachedTokens?: number | null;
+  outputTokens?: number | null;
+  decodeTokPerSec?: number | null;
+  maxTokens?: number | null;
+  outputBudget?: number | null;
+  overBudget?: boolean | null;
+  stopReason?: string | null;
+  jsonValid?: boolean | null;
+  error?: { kind: string; status?: number };
+  stage?: string;
+  act?: number;
+  seam?: string | number;
+  attempt?: number;
+  role?: string;
+  reask?: string;
+}
+
+/**
+ * Appends one CallRecord to the active run's log, merged with the enclosing
+ * call context, and returns it. A no-op returning undefined outside
+ * `runWithRunLog`. `seq` is the record's 0-based position among this log's
+ * calls.
+ */
+export function recordModelCall(input: ModelCallInput): CallRecord | undefined {
+  const log = currentRunLog();
+  if (!log) return undefined;
+  const ctx = currentCallContext();
+  const pick = <T>(explicit: T | undefined, fromCtx: T | undefined): T | null => explicit ?? fromCtx ?? null;
+  const record: CallRecord = {
+    kind: "call",
+    seq: log.calls().length,
+    stage: pick(input.stage, ctx.stage),
+    act: pick(input.act, ctx.act),
+    seam: pick(input.seam, ctx.seam),
+    attempt: pick(input.attempt, ctx.attempt),
+    role: pick(input.role, ctx.role),
+    reask: pick(input.reask, ctx.reask),
+    provider: input.provider,
+    machine: input.machine ?? null,
+    model: input.model,
+    label: input.label,
+    startMs: input.startMs,
+    endMs: input.endMs,
+    ms: input.endMs - input.startMs,
+    queueMs: input.queueMs ?? null,
+    ttftMs: input.ttftMs ?? null,
+    promptTokens: input.promptTokens ?? null,
+    cachedTokens: input.cachedTokens ?? null,
+    outputTokens: input.outputTokens ?? null,
+    decodeTokPerSec: input.decodeTokPerSec ?? null,
+    maxTokens: input.maxTokens ?? null,
+    outputBudget: input.outputBudget ?? null,
+    overBudget: input.overBudget ?? null,
+    stopReason: input.stopReason ?? null,
+    jsonValid: input.jsonValid ?? null,
+    ...(input.error ? { error: { ...input.error } } : {})
+  };
+  log.append(record);
+  return record;
+}
+
+/** Appends a structured reply's parse outcome (GV-07: parseWithRetry). A
+ * no-op outside `runWithRunLog`. */
+export function recordParse(ok: boolean, reask: boolean): void {
+  currentRunLog()?.append({ kind: "parse", ok, reask });
+}

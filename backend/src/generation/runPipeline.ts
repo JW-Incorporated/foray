@@ -1022,6 +1022,17 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      `generateForays.ts`'s batch loop starts the next one). Reset here,
      read after finalize below. */
   resetUsageTracking();
+  /* GV-07: with a RunLog open, the tokens come from this run's own
+     CallRecords (prompt + output, the same two numbers usageTracking sums),
+     so they stay right if two runs ever share a process; with no log they
+     come from the process-wide counter exactly as before. The global counter
+     stays: the report's `calls` still reads it. */
+  const pipelineTokensOfRun = (): number => {
+    const log = currentRunLog();
+    if (!log) return getUsageTotals().total;
+    const totals = log.callTotals();
+    return totals.promptTokens + totals.outputTokens;
+  };
 
   const understander = deps.understander ?? createPromptUnderstander();
   const researcher = deps.researcher ?? createExternalResearcher();
@@ -1772,7 +1783,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
        Zero is a real answer here — the accumulator was passed — so it is
        reported as 0, not as "not counted". */
     seedLostBeats: narrationStats.seedLostBeats ?? 0,
-    pipelineTokens: getUsageTotals().total,
+    pipelineTokens: pipelineTokensOfRun(),
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),
     tapeRelevanceRows: sourced.tapeRelevance,
