@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-10-11T00:00:00.000Z",
+  "dry_run": false,
+  "entries": [
+    {
+      "prompt": "synthetic runlog fixture (GV-17)",
+      "outcome": "generated",
+      "detail": "OK synthetic",
+      "ms": 21000,
+      "elapsedMs": 11000,
+      "driverMs": 11200,
+      "calls": 8,
+      "runLog": "runlogs/synth.1.runlog.jsonl"
+    }
+  ]
+}

@@ -79,6 +79,14 @@
  *   node tools/generation-bench/run.mjs --wide out-9/        # every column, detail included
  *   node tools/generation-bench/run.mjs --wide --cards <store.jsonl> --listen-keys <dir> out-9/
  *
+ * PER-CALL SPEED (GV-17, MT-04..MT-12). A report entry written since GV-01
+ * names its attempt's runlog (`entry.runLog`, relative to the report's own
+ * directory). When that file is there, `runlog.mjs` summarises its
+ * CallRecords and events into the speed detail columns (out_tok, series,
+ * reasks, queue_p50, ttft_p50, cached, prose_tps, code_s, render_x, spark_s)
+ * and the JSONL line gains `calls_by_stage`. No runlog, no speed columns: every
+ * one is absent, never 0 (rule 1).
+ *
  * COLUMN GROUPS. Every column is `core` or `detail`. The printed table and the
  * committed KPI doc show the core columns; `--wide` prints every column; the
  * JSONL always carries every number column. A later measurement lands as a
@@ -102,6 +110,7 @@ import { fileURLToPath } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
 import { DEFAULT_STORE as DEFAULT_LISTEN_CARDS, readCards } from "../listening/card.mjs";
 import { DEFAULT_KEY_DIR as DEFAULT_LISTEN_KEYS, KEY_MISSING, listenByCandidate } from "../listening/unseal.mjs";
+import { SPARK_UNIT, readRunLog, repeatRequests, summarizeRunLog } from "./runlog.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -125,6 +134,8 @@ export const SETTLED = "settled";
  *   from: "derived"    — computed from report fields only (e.g. ms -> minutes)
  *   from: "listening"  — the founder's listening cards (GV-08), unsealed to this
  *                        candidate by tools/listening/unseal.mjs
+ *   from: "runlog"     — the attempt's runlog/1 file beside the report (GV-17),
+ *                        summarised by tools/generation-bench/runlog.mjs
  *
  * `target` is `null` where §1.2 names none. Where it names one, `targetState`
  * is SETTLED or PROPOSED and `targetNote` cites the row or the code that fixes
@@ -361,6 +372,110 @@ export const COLUMNS = [
     width: 10,
     kind: "text",
     targetNote: "MQ-20: date (UTC) of the latest listening card for this candidate; — = nobody has listened"
+  },
+  /* GV-17 (MT-04..MT-10, MT-12): the per-call speed scorecard, read off the
+     attempt's runlog (`entry.runLog`). Detail columns, so the committed KPI
+     table does not change shape; every one is absent without a runlog. */
+  {
+    key: "out_tok",
+    group: "detail",
+    header: "outTok",
+    from: "runlog",
+    width: 6,
+    kind: "number",
+    digits: 0,
+    targetNote: "MT-05: output tokens over every model call of the attempt (per stage in runlog.mjs's outputTokensByStage)"
+  },
+  {
+    key: "series",
+    group: "detail",
+    header: "series",
+    from: "runlog",
+    width: 6,
+    kind: "number",
+    digits: 0,
+    targetNote: "MT-06: calls in series, the longest chain of calls each starting after the previous one ended"
+  },
+  {
+    key: "reasks",
+    group: "detail",
+    header: "reasks",
+    from: "runlog",
+    width: 6,
+    kind: "number",
+    digits: 0,
+    targetNote: "MT-07: repeat requests: JSON re-asks + spine re-asks (structural, seed-floor) + writer rounds after the first + continuations"
+  },
+  {
+    key: "queue_p50",
+    group: "detail",
+    header: "queueP50",
+    from: "runlog",
+    width: 8,
+    kind: "number",
+    digits: 2,
+    targetNote: "MT-04: median seconds a call waited in the server's queue, over the calls that report it"
+  },
+  {
+    key: "ttft_p50",
+    group: "detail",
+    header: "ttftP50",
+    from: "runlog",
+    width: 7,
+    kind: "number",
+    digits: 2,
+    targetNote: "MT-04: median seconds to the first token, over the calls that report it"
+  },
+  {
+    key: "cached",
+    group: "detail",
+    header: "cached",
+    from: "runlog",
+    width: 6,
+    kind: "number",
+    digits: 3,
+    targetNote: "MT-04: cached prompt tokens / prompt tokens, over the calls that report both"
+  },
+  {
+    key: "prose_tps",
+    group: "detail",
+    header: "proseTps",
+    from: "runlog",
+    width: 8,
+    kind: "number",
+    digits: 1,
+    targetNote:
+      "MT-12: the writer's output tok/s over decode time (call ms - ttft); suffixed `e2e` when no writer call reports a ttft and the rate is end to end"
+  },
+  {
+    key: "code_s",
+    group: "detail",
+    header: "code s",
+    from: "runlog",
+    width: 6,
+    kind: "number",
+    digits: 1,
+    targetNote: "MT-08: seconds of code time inside the stages (CodeSpanAggregate events)"
+  },
+  {
+    key: "render_x",
+    group: "detail",
+    header: "renderX",
+    from: "runlog",
+    width: 7,
+    kind: "number",
+    digits: 2,
+    targetNote: "MT-09: seconds of narration audio rendered per second of rendering (RenderSpans)"
+  },
+  {
+    key: "spark_s",
+    group: "detail",
+    header: "spark s",
+    from: "runlog",
+    width: 7,
+    kind: "number",
+    digits: 1,
+    targetNote: "MT-10: Spark seconds charged (reconciled sparkSeconds MeterEvents; a reservation is not a charge)"
   }
 ];
 
@@ -592,6 +707,32 @@ export function loadListening(options = {}) {
 }
 
 /* ------------------------------------------------------------------ */
+/* The attempt's runlog (GV-17)                                        */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Where this entry's runlog is, if it is here. `entry.runLog` is written
+ * RELATIVE to the report's directory (`runlogs/<key>.<attempt>.runlog.jsonl`,
+ * generateForays.ts), so it is resolved against the directory that holds the
+ * report, never the working directory. Null when the entry names none (a
+ * --dry-run, every report before GV-01) or the file was not copied with the
+ * report: the speed columns are then absent, which is what they are.
+ */
+export function runLogPathFor(entry, reportPath) {
+  if (!entry || typeof entry.runLog !== "string" || entry.runLog.trim() === "") return null;
+  const file = path.resolve(path.dirname(path.resolve(reportPath)), entry.runLog);
+  return fs.existsSync(file) ? file : null;
+}
+
+/** The runlog summary for an entry, or null when there is no runlog here. A
+ * runlog that IS here but is not `runlog/1` throws (readRunLog): a broken file
+ * is not a missing one. */
+export function runLogSummaryFor(entry, reportPath) {
+  const file = runLogPathFor(entry, reportPath);
+  return file === null ? null : summarizeRunLog(readRunLog(file).events);
+}
+
+/* ------------------------------------------------------------------ */
 /* One row                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -602,7 +743,7 @@ export function loadListening(options = {}) {
  * `null` means "the run did not do it" or "the file did not say".
  */
 export function rowFor(entry, context = {}) {
-  const { report = {}, runId = "run", clips = null, listening = null } = context;
+  const { report = {}, runId = "run", clips = null, listening = null, runlog = null } = context;
   const v = entry.veracity || {};
   const candidateId = candidateIdFor(entry);
   const heard = listening && candidateId !== null ? listening.get(candidateId) || null : null;
@@ -643,7 +784,20 @@ export function rowFor(entry, context = {}) {
     tokens: num(v.pipelineTokens),
     cost_usd: costUsdFor(entry, report),
     listen: heard ? num(heard.meanOverall) : null,
-    last_listen: heard && typeof heard.lastListenedAt === "string" ? new Date(heard.lastListenedAt).toISOString().slice(0, 10) : null
+    last_listen: heard && typeof heard.lastListenedAt === "string" ? new Date(heard.lastListenedAt).toISOString().slice(0, 10) : null,
+    /* GV-17: the runlog's speed scorecard. Seconds where the summary is in
+       milliseconds; every cell null without a runlog, and null where the
+       runlog carries no record of that kind (rule 1). */
+    out_tok: runlog ? num(runlog.outputTokens) : null,
+    series: runlog ? num(runlog.seriesDepth) : null,
+    reasks: runlog ? num(repeatRequests(runlog.repeatWork)) : null,
+    queue_p50: runlog && num(runlog.queueP50Ms) !== null ? runlog.queueP50Ms / 1000 : null,
+    ttft_p50: runlog && num(runlog.ttftP50Ms) !== null ? runlog.ttftP50Ms / 1000 : null,
+    cached: runlog ? num(runlog.cachedShare) : null,
+    prose_tps: runlog ? num(runlog.prose?.tokPerSec) : null,
+    code_s: runlog && num(runlog.codeMs) !== null ? runlog.codeMs / 1000 : null,
+    render_x: runlog ? num(runlog.renderRealtime) : null,
+    spark_s: runlog ? num(runlog.unitSpend?.[SPARK_UNIT]) : null
   };
   const sources = {};
   for (const col of COLUMNS) {
@@ -659,7 +813,11 @@ export function rowFor(entry, context = {}) {
       prompt: typeof entry.prompt === "string" ? entry.prompt : null,
       detail: typeof entry.detail === "string" ? entry.detail : null,
       clips_measured: clips ? clips.measured : null,
-      candidate_read: Boolean(clips)
+      candidate_read: Boolean(clips),
+      /* GV-17: calls per stage (a meta object, not a column) and what the
+         prose rate is a rate of ("ttft": decode; "e2e": end to end). */
+      calls_by_stage: runlog ? { ...runlog.callsByStage } : null,
+      prose_basis: runlog && num(runlog.prose?.tokPerSec) !== null ? runlog.prose.basis : null
     }
   };
 }
@@ -674,7 +832,8 @@ export function rowsForReport(reportPath, options = {}) {
     const candidateFile = candidatePathFor(entry, reportPath, options.candidatesDir);
     const clips = candidateFile ? clipStats(readJson(candidateFile), pool) : null;
     const id = entries.length > 1 ? `${runId}#${index + 1}` : runId;
-    return rowFor(entry, { report, runId: id, clips, listening: options.listening || null });
+    const runlog = runLogSummaryFor(entry, reportPath);
+    return rowFor(entry, { report, runId: id, clips, listening: options.listening || null, runlog });
   });
 }
 
@@ -687,6 +846,8 @@ export function formatCell(col, row) {
   const value = row.values[col.key];
   if (value === null || value === undefined) return ABSENT;
   if (col.kind === "text") return String(value);
+  /* MT-12: an end-to-end rate is labelled, never printed as a decode rate. */
+  if (col.key === "prose_tps" && row.meta.prose_basis === "e2e") return `${value.toFixed(col.digits)} e2e`;
   const partial =
     col.from === "candidate" &&
     col.key !== "clips" &&
@@ -741,7 +902,11 @@ export function jsonlLine(row) {
     candidate_read: row.meta.candidate_read,
     prompt: row.meta.prompt,
     /* The one text column a diff wants (GV-08): the date of the last listen. */
-    last_listen: row.values.last_listen ?? null
+    last_listen: row.values.last_listen ?? null,
+    /* GV-17: calls per stage as a meta object (not a column), and the basis of
+       prose_tps so a diff never compares a decode rate with an e2e one. */
+    calls_by_stage: row.meta.calls_by_stage ?? null,
+    prose_basis: row.meta.prose_basis ?? null
   });
 }
 
@@ -785,7 +950,9 @@ export function rowFromJsonl(line) {
       prompt: obj.prompt ?? null,
       detail: null,
       clips_measured: obj.clips_measured ?? null,
-      candidate_read: Boolean(obj.candidate_read)
+      candidate_read: Boolean(obj.candidate_read),
+      calls_by_stage: obj.calls_by_stage && typeof obj.calls_by_stage === "object" ? { ...obj.calls_by_stage } : null,
+      prose_basis: obj.prose_basis === "ttft" || obj.prose_basis === "e2e" ? obj.prose_basis : null
     }
   };
 }
