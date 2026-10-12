@@ -1,0 +1,14 @@
+{
+  "id": "chatcmpl-synthetic-length-0002",
+  "object": "chat.completion",
+  "created": 1760000001,
+  "model": "synthetic-worker-35b",
+  "choices": [
+    {
+      "index": 0,
+      "message": { "role": "assistant", "content": "{\"acts\":[{\"title\":\"A synthetic act that never clo" },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": { "prompt_tokens": 120, "completion_tokens": 16, "total_tokens": 136 }
+}

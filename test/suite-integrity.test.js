@@ -1595,7 +1595,12 @@ const FLOORS = {
   /* RAISED 38 -> 40 by F-101: the two first-attempt units are separate
      columns and an undeclared unit is never guessed into one; `tape_share`
      reads the renamed report field and falls back to the old name. */
-  "tools/generation-bench/run.test.mjs": 56, // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  "tools/generation-bench/run.test.mjs": 64, // GV-17 (MT-04..MT-12): the runlog's speed columns are detail (absent on out-4/out-9, never 0), entry.runLog resolves against the report's directory, a missing runlog is absent and a headerless one throws, prose_tps labelled e2e without a ttft, calls_by_stage as JSONL meta, --wide over the synthetic run, the KPI doc's speed legend; 56 -> 64 // GV-08 (MQ-20): listen/lastListen detail columns (absent until a card, mean overall + UTC date with keys, JSONL round trip, skipped without keys, candidate id, flags, KPI doc's MQ-20); 48 -> 56 // GV-04 (TM-10): elapsed time beside the stage sum (span, resumed skip, elapsedMs wins, absent), core/detail groups, --wide, the run-9 baseline round trip, the corrected KPI note; 40 -> 48
+  /* GV-17 (W1-04, MT-04..MT-12): the runlog reader. Each test is one quiet
+     wrong number: parallel calls counted as serial, a re-ask counted twice, a
+     reservation read as spend, a decode rate diluted with end-to-end calls,
+     a 0 standing in for a field no provider reported. */
+  "tools/generation-bench/runlog.test.mjs": 12, // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
@@ -2260,6 +2265,7 @@ const FLOORS = {
   "tools/foraycorpus-export/r2-client.test.mjs": 6, // PKG-11 (docs/roadmap/corpus.md): R2 S3 client on a fake client (continuation-token paging, sha256 metadata, dashboard + HUMAN-ACTIONS #138 credential spellings with redacted toJSON, NO_CREDENTIALS names its sources, WHEN_REQUIRED checksum options, no tracked r2-credentials)
   "tools/foraycorpus-export/show-map.test.mjs": 7, // PKG-12 (docs/roadmap/corpus.md): R2 show directory -> foray show_id map (catalog feed match, breadth apple id, slug dirs, the farm's four pinned slugify examples, unknown -> null, localDirFor = safeKey, first writer wins + collision report)
   "tools/foraycorpus-export/sync-r2.test.mjs": 14, // GV-06 (W3-01, docs/roadmap/generation-v2.md): +6 -- --list-only sends only ListObjectsV2 over the whole bucket and writes only the report, --list-only flag clashes + --min-free-gb bounds, the disk guard refuses before any HEAD or GET and writes nothing, same-size local files are not in needBytes, the 200-write re-check stops with DISK_SPACE, --min-free-gb 0 never asks statfs and --dry-run prints the verdict without stopping; 8 -> 14 // PKG-13 (docs/roadmap/corpus.md): R2 -> data-local mirror on a fake client (mapped dir lands under safeKey(show_id) byte-identical, rerun is skipped_same via sha256 metadata, bucket-root legacy + fingerprints/ keys ignored, bad transcript_source and sha mismatch quarantined, unmapped dir kept + listed, bodies_expected = bodies on disk, --dry-run writes nothing)
+  "tools/foraycorpus-export/legacy-whisper.test.mjs": 10, // GV-23 (W3-02, docs/roadmap/generation-v2.md): legacy whisper JSONs at the bucket root (key table + agreement with inventory.mjs legacy-root, raw + trimmed guid hashes, resolve matched / unmatched with reason / ambiguous on a real 10-hex sha1 collision with the title slug only reported, toNormalizedBody passes bodyShapeError as asr-local with no source_url, words only with keepWords, bad doc + non-finite segments dropped and counted, the sampler GETs exactly n on a fake S3 client, bounded --n)
   "tools/foraycorpus-export/inventory.test.mjs": 6, // GV-06 (W3-01, docs/roadmap/generation-v2.md): R2 list-only inventory + disk guard (classifyKey areas with foray-db _KEY_RE legacy-root and its excluded prefixes, per-area objects/bytes/dirs with unknown size = MAX_OBJECT_BYTES, top_dirs/largest_objects ordering + cap, would_fetch against a tmp mirror via the show map, ensureDiskSpace on bavail*bsize of the nearest existing ancestor, markdown table)
   "tools/foraycorpus-export/catalog-adapter.test.mjs": 8, // PKG-31 (docs/roadmap/corpus.md): breadth-shaped catalogue from the corpus (default-31 rights skip + counts, chart fields + taxonomy_node_ids from the old row else null/[], in_curated only for catalog ids, old 20 keys + 2 additive, minified CLI output that refuses data/; PKG-31-keys-fix: BREADTH_KEYS pinned to the live data/catalog-breadth.json key order, UNION keeps every old row the corpus did not emit (rights-flagged withheld), artist_name/last_charted_at/apple_genre_ids copied from the old row)
   "tools/foraycorpus-export/export.test.mjs": 5, // PKG-08 (docs/roadmap/corpus.md): export CLI end to end on the synthetic fixture (English show + episode counts, a rerun is a new version with 0/0 delta and byte-identical shows.jsonl, one appended higher asset id -> 1 changed, --dry-run leaves outRoot absent, latest.json names the newest Windows-safe version directory)
@@ -2273,6 +2279,7 @@ const FLOORS = {
   "tools/foraycorpus-export/dai-tier.test.mjs": 8, // PKG-16 (docs/roadmap/corpus.md): per-episode DAI tier over tools/segments/ad-pad.mjs (Gastropod 99.5 s paddable copied from padFromProbes, exact-ceiling paddable vs 0.1 s over locate-required, pad 0 ad-free, one usable probe unmeasured n<2, every probe declared 0 unmeasurable no denominator, flightcast untrusted host listed trusted:false, undersized unmeasurable, no reference duration unmeasurable without a throw)
   "tools/passage-index/sources.test.mjs": 5, // GV-09 (W3-05, docs/roadmap/generation-v2.md): stream indexer body sources (local walk order + show_id = dir minus safeKey hash + file stat + unparseable body sent as null, shadowed dirs, R2 dir mapping through show-map with unmapped dirs kept + strays ignored and listing-only, sync-r2 quarantine codes SHA_MISMATCH/BAD_JSON/BAD_SHAPE/NO_BODY persisted and GET_FAILED not, each object fetched once, PATH_ESCAPE at list time, last-listed name wins)
   "tools/passage-index/stream-index.test.mjs": 9, // GV-09 (W3-05, docs/roadmap/generation-v2.md): stream indexer (package script forwards args, parseStreamArgs, R2 --full fetches each object once and groups records by show with an end-show after each and writes only the manifest, delta: unchanged rerun no GET + changed object/etag rebuilds only its show + --show narrowing, quarantine reported/skipped/persisted, disk guard refuses before any GET + estimate + --min-free-gb 0, cue-cache LRU eviction by bytes, local stat parity, spawnIndexer line protocol against a node child)
+  "tools/passage-index/pull-archive.test.mjs": 4, // GV-16 (W3-08, docs/roadmap/generation-v2.md): pull-archive against a fake HTTP server (bearer + gzip + item_id_suffix stripped + atomic write with no tmp left, an HTTP error / bad row / non-JSON / empty archive leaves the old digest byte for byte, parsePullArgs url/token from env or file never argv, serve.mjs entry exists and passes flags through)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2551,7 +2558,7 @@ const BACKEND_FLOORS = {
      allowed to write under `data-local/`, and the added case holds its cache
      to §9.4 the way the evidence cache’s is — podcast words keyed by show id,
      never the claim a search ran for. */
-  "test/promptNoPersistence.test.ts": 5,
+  "test/promptNoPersistence.test.ts": 6, // GV-13 (#1286): the persistence scan walks generation/** recursively (chat/ included), proven by a planted write; 5 -> 6
   "test/property/dedup.property.test.ts": 5,
   "test/property/duration.property.test.ts": 5,
   "test/property/html.property.test.ts": 4,
@@ -2775,6 +2782,16 @@ const BACKEND_FLOORS = {
      apart, anchors by the segment spill rule, deterministic ids keyed by the
      archive guid. */
   "test/passageCutter.test.ts": 8,
+  /* GV-16 (docs/roadmap/generation-v2.md, from W3-08): the retrieval server —
+     /v1/search equals a local FileTranscriptTextIndex search for lineage and
+     'all' scopes (order, scores, idf, zero-hit idf), no query text in logs,
+     non-loopback bind refused without a token, bearer on every /v1 route,
+     stale caches rebuilt only when the cue store can serve them, --shows,
+     reload, and the pull-archive round trip through loadTranscriptArchive;
+     plus the manifest body source that keeps streamed caches fresh with no
+     body on disk. */
+  "test/retrievalServer.test.ts": 11,
+  "test/manifestBodySource.test.ts": 5,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
@@ -2959,6 +2976,11 @@ const BACKEND_FLOORS = {
   /* GV-01 (generation v2): the per-run RunLog — AsyncLocalStorage isolation,
      context merge, injected clock, the runlog/1 JSONL shape. */
   "test/runLog.test.ts": 7,
+  /* GV-17: a stub pipeline under a real RunLog, its toJsonl() read by
+     tools/generation-bench/runlog.mjs: call count, token totals, calls per
+     stage, repeat work and the prose rate agree with the log's own, and every
+     event kind and CallRecord field the reader uses is one the emitter writes. */
+  "test/runLogBenchParity.test.ts": 3, // GV-17: new
   /* WS-D2 streaming publish (generation fix plan 2026-09-09): the partial
      candidate written after each act, the driver's per-act rewrite, and the
      private status read path. */
@@ -3216,6 +3238,12 @@ const BACKEND_FLOORS = {
   "test/generationFlags.test.ts": 8,
   "test/pipelineFlags.test.ts": 12,
   "test/gateConfig.test.ts": 7,
+  /* GV-13 (docs/roadmap/generation-v2.md, #1286): the ChatProvider contract
+     and the non-streaming OpenAI-compatible client (reply mapping, request
+     body, http/timeout/network/malformed/aborted errors, one CallRecord per
+     call, the inert-import guard) plus the scriptedProvider helper. Offline:
+     fakeFetch over synthetic fixtures. */
+  "test/openAICompatProvider.test.ts": 26,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

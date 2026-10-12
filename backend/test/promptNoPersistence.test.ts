@@ -42,19 +42,55 @@ describe("no raw prompt text is persisted anywhere by the §4.0-4.1 stage", () =
      transcripts per beat. What it writes is derived entirely from podcast
      transcripts and a show id — a prompt, a claim and a beat never reach it, and
      the test below holds it to that rather than taking this comment’s word. */
+  /* Exemptions are paths relative to src/generation with forward slashes; the
+     two above sit at the top level. */
   const PERSISTENCE_EXEMPT = new Set(["evidenceCache.ts", "transcriptTextIndex.ts"]);
 
+  const persistenceCallPattern =
+    /\bfs\.(write|append|create)\w*Sync?\b|\blocalStorage\.\w+\(|\bnew Pool\(|\bclient\.query\(|INSERT INTO|localforage\./;
+
+  /* GV-13: scanned RECURSIVELY. The provider layer lives in generation/chat/
+     (and later cards add more subfolders); a flat readdir would let a write
+     there pass unseen. Returns the offending relative paths. */
+  function persistenceOffenders(root: string): { scanned: string[]; offenders: string[] } {
+    const scanned: string[] = [];
+    const offenders: string[] = [];
+    const walk = (dir: string): void => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        if (!entry.name.endsWith(".ts")) continue;
+        const rel = path.relative(root, full).split(path.sep).join("/");
+        scanned.push(rel);
+        if (PERSISTENCE_EXEMPT.has(rel)) continue;
+        if (persistenceCallPattern.test(fs.readFileSync(full, "utf8"))) offenders.push(rel);
+      }
+    };
+    walk(root);
+    return { scanned, offenders: offenders.sort() };
+  }
+
   it("none of the generation-stage source files call a persistence primitive", () => {
-    const files = fs.readdirSync(GENERATION_DIR).filter((f) => f.endsWith(".ts"));
-    expect(files.length).toBeGreaterThan(0);
+    const { scanned, offenders } = persistenceOffenders(GENERATION_DIR);
+    expect(scanned.length).toBeGreaterThan(0);
+    expect(scanned.some((rel) => rel.startsWith("chat/")), "the scan must reach generation/chat/").toBe(true);
+    expect(offenders, "these generation modules must not persist anything").toEqual([]);
+  });
 
-    const persistenceCallPattern =
-      /\bfs\.(write|append|create)\w*Sync?\b|\blocalStorage\.\w+\(|\bnew Pool\(|\bclient\.query\(|INSERT INTO|localforage\./;
-
-    for (const file of files) {
-      if (PERSISTENCE_EXEMPT.has(file)) continue;
-      const contents = fs.readFileSync(path.join(GENERATION_DIR, file), "utf8");
-      expect(contents, `${file} must not persist anything`).not.toMatch(persistenceCallPattern);
+  it("the scan reaches subfolders: a planted fs.writeFileSync in a chat/ file fails it", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-persist-scan-"));
+    try {
+      fs.mkdirSync(path.join(dir, "chat", "deeper"), { recursive: true });
+      fs.writeFileSync(path.join(dir, "clean.ts"), "export const x = 1;\n");
+      fs.writeFileSync(path.join(dir, "evidenceCache.ts"), 'fs.writeFileSync("x", "y");\n');
+      fs.writeFileSync(path.join(dir, "chat", "leaky.ts"), 'import * as fs from "fs";\nfs.writeFileSync("prompt.txt", prompt);\n');
+      fs.writeFileSync(path.join(dir, "chat", "deeper", "appender.ts"), 'fs.appendFileSync("log.txt", reply);\n');
+      expect(persistenceOffenders(dir).offenders).toEqual(["chat/deeper/appender.ts", "chat/leaky.ts"]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 

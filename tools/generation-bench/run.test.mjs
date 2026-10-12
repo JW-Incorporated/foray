@@ -75,6 +75,7 @@ import {
   rowFromJsonl,
   rowsForReport,
   runIdFor,
+  runLogPathFor,
   spanMsOf,
   spliceRows,
   tableColumns,
@@ -92,6 +93,8 @@ const run4 = () => rowsForReport(path.join(FIXTURES, "out-4", "report.json"), { 
 const run9 = () => rowsForReport(path.join(FIXTURES, "out-9", "report.json"), { pool: POOL })[0];
 
 const column = (key) => COLUMNS.find((c) => c.key === key);
+/* GV-17: the runlog's speed columns, in print order. */
+const SPEED_KEYS = ["out_tok", "series", "reasks", "queue_p50", "ttft_p50", "cached", "prose_tps", "code_s", "render_x", "spark_s"];
 const tmpdir = () => fs.mkdtempSync(path.join(os.tmpdir(), "g42a-"));
 
 /* =================================================================== */
@@ -252,6 +255,7 @@ test("nothing in the harness compares a value to a target", () => {
      printing the numbers. */
   const line = JSON.parse(jsonlLine(run9()));
   assert.deepEqual(Object.keys(line).sort(), [
+    "calls_by_stage",
     "candidate_read",
     "clips_measured",
     "generated_at",
@@ -259,6 +263,7 @@ test("nothing in the harness compares a value to a target", () => {
     "metrics",
     "outcome",
     "prompt",
+    "prose_basis",
     "run",
     "sources",
     "valid"
@@ -729,8 +734,9 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
   /* MUTATION: `return COLUMNS` unconditionally in tableColumns() (every column
      in the committed header and the default table). Ran it: red. */
   for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
-  /* GV-08 added the first detail columns; every earlier column stays core. */
-  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), ["listen", "last_listen"]);
+  /* GV-08 added the first detail columns and GV-17 the runlog's speed
+     columns; every earlier column stays core. */
+  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), ["listen", "last_listen", ...SPEED_KEYS]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
   try {
@@ -742,7 +748,7 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
     assert.equal(markdownRow(row).includes("7.3"), false);
     assert.equal(formatTable([row]).includes("probeX"), false, "the default table is core only");
     assert.equal(formatTable([row], { wide: true }).includes("probeX"), true, "--wide prints it");
-    assert.equal(tableColumns({ wide: true }).length, tableColumns().length + 3);
+    assert.equal(tableColumns({ wide: true }).length, tableColumns().length + COLUMNS.filter((c) => c.group === DETAIL).length);
   } finally {
     COLUMNS.pop();
   }
@@ -976,6 +982,158 @@ test("GV-08: the KPI doc defines MQ-20 and says the listening columns are detail
   assert.match(doc, /### MQ-20 · the founder's listen/);
   assert.match(doc, /`listen` \| — \| — \|/);
   assert.match(doc, /`lastListen` \| — \| — \|/);
+});
+
+/* =================================================================== */
+/* GV-17 (MT-04..MT-12). The per-call speed columns, from the runlog    */
+/* =================================================================== */
+
+/* fixtures/runlog-synth is SYNTHETIC: a report whose one entry names
+   `runlogs/synth.1.runlog.jsonl` (relative to the report), and a runlog of 3
+   serial calls, 4 parallel writer calls and 1 stitch call. No prompt or
+   transcript text. tools/generation-bench/runlog.test.mjs pins every number
+   in it; these tests pin how run.mjs reads and prints them. */
+const SYNTH = path.join(FIXTURES, "runlog-synth");
+const synthRow = () => rowsForReport(path.join(SYNTH, "report.json"), { pool: POOL })[0];
+
+/** A report plus a runlog in a temp dir; `calls` are partial CallRecords. */
+function writeRunLogReport(calls) {
+  const dir = tmpdir();
+  fs.mkdirSync(path.join(dir, "runlogs"));
+  const lines = [{ schema: "runlog/1", t0Iso: "2026-10-11T00:00:00.000Z" }, ...calls.map((c, seq) => ({ kind: "call", seq, ...c }))];
+  fs.writeFileSync(path.join(dir, "runlogs", "x.1.runlog.jsonl"), lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+  return writeReport(dir, [{ outcome: "generated", detail: "OK x", ms: 1, runLog: "runlogs/x.1.runlog.jsonl" }]);
+}
+
+test("GV-17: the speed columns are detail columns read from the runlog; the committed KPI header does not change", () => {
+  /* MUTATION: `group: "core"` on out_tok. Ran it: red. */
+  for (const key of SPEED_KEYS) {
+    const col = column(key);
+    assert.ok(col, `${key} is a column`);
+    assert.equal(col.group, DETAIL, `${key} is detail`);
+    assert.equal(col.from, "runlog", `${key} comes from the runlog`);
+    assert.equal(col.kind, "number");
+    assert.equal(col.target, undefined, `${key} grades nothing`);
+  }
+  assert.equal(markdownHeader()[0].includes("outTok"), false);
+});
+
+test("GV-17: out-4 and out-9 carry no runLog, so every speed column prints — and the core row is unchanged", () => {
+  /* MUTATION: `out_tok: runlog ? ... : 0` (or `?? 0` on any speed cell) in
+     rowFor(). Ran it: red. Runs 4-9 predate the runlog; a 0 would read as a
+     run that made no output tokens. */
+  for (const row of [run4(), run9()]) {
+    for (const key of SPEED_KEYS) {
+      assert.equal(row.values[key], null, `${row.values.run}/${key}`);
+      assert.equal(row.sources[key], "absent");
+    }
+    assert.equal(row.meta.calls_by_stage, null);
+    assert.equal(row.meta.prose_basis, null);
+  }
+  const cell = wideCells([]);
+  for (const header of ["outTok", "series", "reasks", "queueP50", "ttftP50", "cached", "proseTps", "code s", "renderX", "spark s"]) {
+    assert.equal(cell(header), ABSENT, header);
+  }
+  assert.match(markdownRow(run9()), /^\| run-9 \| generated \| yes \| 107\.7 \| 44\.6 \|.* 128050 \| — \|$/);
+});
+
+test("GV-17: entry.runLog is resolved against the report's directory, and the synthetic runlog fills every speed column", () => {
+  /* MUTATION: `path.resolve(entry.runLog)` in runLogPathFor() (the working
+     directory, which is the repo root under the suite). Ran it: red — every
+     cell is absent. */
+  const reportPath = path.join(SYNTH, "report.json");
+  const entry = JSON.parse(fs.readFileSync(reportPath, "utf8")).entries[0];
+  assert.equal(runLogPathFor(entry, reportPath), path.join(SYNTH, "runlogs", "synth.1.runlog.jsonl"));
+  const row = synthRow();
+  assert.equal(row.values.run, "runlog-synth");
+  assert.equal(row.values.out_tok, 5150);
+  assert.equal(row.values.series, 5, "3 serial calls, the 4 parallel writers as one link, then stitch");
+  assert.equal(row.values.reasks, 3, "1 JSON re-ask + 2 extra writer rounds");
+  assert.equal(row.values.queue_p50, 0.02);
+  assert.equal(row.values.ttft_p50, 0.4);
+  assert.equal(row.values.cached, 12800 / 18000);
+  assert.equal(row.values.prose_tps, 2550 / 12.4);
+  assert.equal(row.values.code_s, 2.4);
+  assert.equal(row.values.render_x, 4);
+  assert.equal(row.values.spark_s, 20.5, "reconciled charges only; the 10 s reservation is a hold");
+  for (const key of SPEED_KEYS) assert.equal(row.sources[key], "runlog", key);
+  assert.equal(row.meta.prose_basis, "ttft");
+});
+
+test("GV-17: a runLog named but not on disk is absent; a file without the runlog/1 header fails loudly", () => {
+  /* MUTATION: `catch { return null; }` around readRunLog in
+     runLogSummaryFor(). Ran it: red on the headerless file — a broken runlog
+     is not a missing one. SECOND MUTATION: drop the existsSync check in
+     runLogPathFor() (a missing file then throws ENOENT). Ran it: red. */
+  const dir = tmpdir();
+  const missing = writeReport(dir, [{ outcome: "generated", detail: "OK x", ms: 1, runLog: "runlogs/gone.1.runlog.jsonl" }]);
+  const row = rowsForReport(missing, {})[0];
+  assert.equal(row.values.series, null);
+  assert.equal(row.sources.series, "absent");
+  fs.mkdirSync(path.join(dir, "runlogs"));
+  fs.writeFileSync(path.join(dir, "runlogs", "gone.1.runlog.jsonl"), JSON.stringify({ kind: "call" }) + "\n");
+  assert.throws(() => rowsForReport(missing, {}), /no runlog\/1 header/);
+});
+
+test("GV-17: prose_tps is the decode rate when the writer's calls carry a ttft, and is labelled e2e otherwise", () => {
+  /* MUTATION: drop the `e2e` suffix branch in formatCell(). Ran it: red. An
+     end-to-end rate includes queue and prefill; printed bare it reads as a
+     (much slower) decode rate. */
+  const writer = { stage: "narrate:0", role: "writer", attempt: 1, reask: null, startMs: 0, endMs: 2000, ms: 2000, outputTokens: 300 };
+  const e2e = rowsForReport(writeRunLogReport([{ ...writer, ttftMs: null }]), {})[0];
+  assert.equal(e2e.values.prose_tps, 150);
+  assert.equal(e2e.meta.prose_basis, "e2e");
+  assert.equal(formatCell(column("prose_tps"), e2e), "150.0 e2e");
+  const decode = rowsForReport(writeRunLogReport([{ ...writer, ttftMs: 500 }]), {})[0];
+  assert.equal(decode.values.prose_tps, 200);
+  assert.equal(decode.meta.prose_basis, "ttft");
+  assert.equal(formatCell(column("prose_tps"), decode), "200.0");
+  /* The basis survives the JSONL, so a baseline line prints the same label. */
+  const back = rowFromJsonl(jsonlLine(e2e));
+  assert.equal(back.meta.prose_basis, "e2e");
+  assert.equal(formatTable([back], { wide: true }), formatTable([e2e], { wide: true }));
+});
+
+test("GV-17: the JSONL carries calls_by_stage as a meta object, not a column, and round-trips it", () => {
+  /* MUTATION: drop `calls_by_stage` from jsonlLine()'s object. Ran it: red. */
+  const line = JSON.parse(jsonlLine(synthRow()));
+  assert.deepEqual(line.calls_by_stage, { understand: 1, spine: 2, "narrate:0": 1, "narrate:1": 1, "narrate:2": 1, "narrate:3": 1, stitch: 1 });
+  assert.equal("calls_by_stage" in line.metrics, false);
+  assert.equal(COLUMNS.some((c) => c.key === "calls_by_stage"), false);
+  for (const key of SPEED_KEYS) assert.equal(key in line.metrics, true, `${key} is in the JSONL metrics`);
+  assert.equal(line.metrics.series, 5);
+  const back = rowFromJsonl(line);
+  assert.deepEqual(back.meta.calls_by_stage, line.calls_by_stage);
+  assert.equal(formatTable([back], { wide: true }), formatTable([synthRow()], { wide: true }));
+  assert.equal(JSON.parse(jsonlLine(run9())).calls_by_stage, null);
+});
+
+test("GV-17: --wide prints the speed columns for the synthetic run", () => {
+  /* MUTATION: drop `runlog` from the context rowsForReport() hands
+     rowFor(). Ran it: red. */
+  const out = [];
+  main(["--wide", "--format", "table", "--segments", path.join(FIXTURES, "segments.json"), SYNTH], (s) => out.push(s));
+  const lines = out.join("\n").split("\n");
+  const header = lines[0].trim().split(/\s{2,}/);
+  const cells = lines.find((l) => l.trim().startsWith("runlog-synth")).trim().split(/\s{2,}/);
+  const cell = (name) => cells[header.indexOf(name)];
+  assert.equal(cell("outTok"), "5150");
+  assert.equal(cell("series"), "5");
+  assert.equal(cell("reasks"), "3");
+  assert.equal(cell("proseTps"), "205.6");
+  assert.equal(cell("spark s"), "20.5");
+});
+
+test("GV-17: the KPI doc legend names each speed column and its MT id", () => {
+  /* MUTATION: delete the out_tok row from the doc's speed legend. Ran it: red. */
+  const doc = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "generation-kpis.md"), "utf8");
+  assert.match(doc, /### Per-call speed \(GV-17\)/);
+  const ids = { out_tok: "MT-05", series: "MT-06", reasks: "MT-07", queue_p50: "MT-04", ttft_p50: "MT-04", cached: "MT-04", prose_tps: "MT-12", code_s: "MT-08", render_x: "MT-09", spark_s: "MT-10" };
+  for (const key of SPEED_KEYS) {
+    const header = column(key).header;
+    const escaped = header.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.match(doc, new RegExp("\\| `" + escaped + "` \\| — \\| — \\| \\*\\*detail, " + ids[key] + "\\.\\*\\*"), `${header} (${ids[key]})`);
+  }
 });
 
 /* ------------------------------------------------------------------ */
