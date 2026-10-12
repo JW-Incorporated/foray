@@ -2741,6 +2741,13 @@ const BACKEND_FLOORS = {
      form. The two numbers have always differed by two; only this one is the
      floor.) */
   "test/sourceBeats.test.ts": 128,
+  /* GV-18 (docs/roadmap/generation-v2.md, from W4-06): SourcingSession —
+     sourceBeats cut at the act boundary. Act by act equals sourceBeats and the
+     pre-extraction output's digest, act 0 stays deep-frozen while acts 1+ are
+     sourced, exportState/resume survives a JSON round trip at every boundary,
+     and acts out of order throw. (Static count; Vitest reports 12, the
+     round-trip case being one `it(` in a loop over three boundaries.) */
+  "test/sourcingSession.test.ts": 10,
   /* Q-04: the checker's D5 arithmetic mirrored in `d5Pair.ts` — the pair
      clause that replaced F-80's triple — pinned to `check-forays.mjs`'s own
      `d5UniformPairs` row by row (run in a Node subprocess, the only way that
