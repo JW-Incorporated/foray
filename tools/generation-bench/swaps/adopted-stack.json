@@ -1,0 +1,7 @@
+{
+  "schema": "adopted-stack/1",
+  "note": "No non-Anthropic stack has been measured yet. Arm A of every swap experiment is built from this file (GV-75); it stays empty until E0 is measured and a stage swap is adopted through a ledger row (docs/curation/model-swaps.md).",
+  "stages": {},
+  "levers": {},
+  "ledgerRow": null
+}
