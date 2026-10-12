@@ -39,6 +39,26 @@ import { isEntryScript } from "../ci/entry.mjs";
    why it lives in `backend/src/copy/` rather than in this file. */
 import narratorStructure from "../../backend/src/copy/narratorStructure.js";
 const { narratorStructureLeaks, narratorStructureErrors } = narratorStructure;
+/* GV-10 (docs/roadmap/generation-v2.md, decision 16): the spoken-line rules
+   (N7-N9), N21's sentence constants and N24's per-sentence cap are defined once
+   in `backend/src/copy/spokenLine.js`, which the generator and the voice
+   scorecard (`voice-metrics.mjs`) share. Moved verbatim; every name is
+   re-exported below under its existing export name, so importers of this file
+   are unaffected. */
+import spokenLine from "../../backend/src/copy/spokenLine.js";
+export const {
+  REFERENCE_LEAK_RE,
+  BANNED_HEDGES,
+  BANNED_ADJECTIVES,
+  BANNED_OPENERS,
+  SPELLED,
+  SENTENCE_MEAN_WORDS,
+  SENTENCE_MAX_WORDS,
+  SHORT_SENTENCE_WORDS,
+  RHYTHM_TRIGGER_SEC,
+  NUMERIC_FACTS_PER_SENTENCE_MAX,
+  spokenLineErrors,
+} = spokenLine;
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const NARRATION_DIR = path.join("docs", "curation", "narration");
@@ -79,7 +99,8 @@ export const NARRATION_ITEMS_PER_THREAD_MAX = 2;
    expression (it is declared as one numeric_facts entry). */
 export const NUMERIC_FACTS_MIN_CAP = 3;
 export const NUMERIC_FACT_SPACING_SEC = 20;
-export const NUMERIC_FACTS_PER_SENTENCE_MAX = 1;
+/* NUMERIC_FACTS_PER_SENTENCE_MAX (the per-sentence half of this rule) lives in
+   backend/src/copy/spokenLine.js and is re-exported at the top of this file. */
 /** The most numeric facts an item of `sec` seconds may carry: one per 20 s, never fewer than three. */
 export function numericFactsCap(sec) {
   return Math.max(NUMERIC_FACTS_MIN_CAP, Math.floor(sec / NUMERIC_FACT_SPACING_SEC));
@@ -101,64 +122,16 @@ export const PRIMER_NARRATION_SHARE_MAX = 0.75;
 export function forayModeOf(record) {
   return record?.mode === undefined ? DEFAULT_FORAY_MODE : record.mode;
 }
-export const SENTENCE_MEAN_WORDS = [12, 15];
-export const SENTENCE_MAX_WORDS = 25;
-export const SHORT_SENTENCE_WORDS = 6;
-export const RHYTHM_TRIGGER_SEC = 20;
+/* §5d's sentence constants (SENTENCE_MEAN_WORDS, SENTENCE_MAX_WORDS,
+   SHORT_SENTENCE_WORDS, RHYTHM_TRIGGER_SEC), the reference-leak regex, the banned
+   hedge/adjective/opener lists, SPELLED and spokenLineErrors live in
+   backend/src/copy/spokenLine.js (GV-10) and are re-exported at the top. */
 export const MIN_QUOTE_CHARS = 40;
 export const MIN_REASONING_CHARS = 40;
 export const SPANS_PER_SOURCE_WARN = 3;
 
 export const SUPPORT_KINDS = ["quoted", "inference", "self", "blocked"];
 export const LICENCES = ["claim", "attribution", "signpost", "correction", "antecedent", "head"];
-
-/* The founder's ruling, mechanised: "It would be so terrible if the references
-   were read aloud, they should all just be in some accompanying text." A
-   reference is a citation apparatus — a publication, a URL, a retrieval, a
-   scholarly formula. Naming the SPEAKER of adjacent tape is a different rule
-   (segment-length-rules.md X2) and is deliberately not matched here. */
-export const REFERENCE_LEAK_RE =
-  /\bhttps?:\/\/|\bwikipedia\b|\boldid\b|\bet al\b|\baccording to\b|\bdoi\b|\bibid\b|\bop\. ?cit\b|\bas cited\b|\bcites?\b|\bcitation\b|\b\w+\.(?:com|org|net|edu|gov)\b|\bpp?\.\s*\d/i;
-
-/* narration-craft.md §5e. Each has the grammatical shape of an attribution with
-   the attribution deleted, which is how a script manufactures authority out of
-   nothing while sounding careful. */
-export const BANNED_HEDGES = [
-  "some say",
-  "it is believed",
-  "many historians believe",
-  "legend has it",
-  "it is often said",
-  "experts think",
-  "some argue",
-  "it is thought that",
-];
-
-/* narration-craft.md §5c's banned adjectives of significance, in full. (An earlier
-   version of this comment credited §8a, which is the established-craft table, not
-   the register section.) "deep dive" and "delve" come from CLAUDE.md's copy rules. */
-export const BANNED_ADJECTIVES = [
-  "remarkable",
-  "fascinating",
-  "surprising",
-  "extraordinary",
-  "striking",
-  "deep dive",
-  "delve",
-];
-
-/* narration-craft.md §5c's throat-clearing openers. Matched sentence-initially only,
-   because "now" mid-sentence is ordinary English. */
-export const BANNED_OPENERS = ["it turns out", "as it happens", "interestingly", "of course", "now"];
-
-/* Spelled forms, because §5d requires numbers "written as spoken", so a `self`
-   claim's spoken_number reaches the listener as a word. Without this table the
-   artifact-side count and the word the listener hears are unrelated. */
-export const SPELLED = [
-  "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen",
-  "eighteen", "nineteen", "twenty",
-];
 
 /* A claim whose text carries a digit is quantitative whether its author said so
    or not, and a quantitative claim is where an invented figure does its damage.
@@ -171,53 +144,6 @@ const SUPERLATIVE_RE =
 const isStr = (v) => typeof v === "string" && v.trim().length > 0;
 const words = (s) => s.split(/\s+/).filter(Boolean);
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-/**
- * Every rule that applies to a line the listener will hear, in one place.
- *
- * This is a function rather than inline code because there are two producers of
- * spoken words, not one: a beat's `sentences` (level 3) and an item's
- * `seam_sentences` (level 2, written by the parent when it merges). An earlier
- * version checked only the first, so the founder's ruling-3 leak check, the
- * digit rule and the banned lists were all absent from exactly the place a
- * parent agent writes prose.
- *
- * @param {string} text  one spoken sentence
- * @param {string} where a human-readable location for the message
- * @returns {string[]} findings, empty when clean
- */
-export function spokenLineErrors(text, where, opts = {}) {
-  const out = [];
-  if (!isStr(text)) return [`${where}: empty text`];
-
-  /* Ruling 3 (2026-08-19): a reference must never reach the spoken line. */
-  if (REFERENCE_LEAK_RE.test(text))
-    out.push(`${where}: reference apparatus in a spoken line — references live in accompanying text only`);
-
-  /* §5d: numbers are "written as spoken". A numeral is an untested instruction
-     to a TTS voice. */
-  if (/\d/.test(text)) out.push(`${where}: digit in a spoken line; §5d requires numbers written as spoken`);
-
-  const low = text.toLowerCase();
-  for (const h of BANNED_HEDGES) if (low.includes(h)) out.push(`${where}: banned hedge "${h}"`);
-  for (const a of BANNED_ADJECTIVES) if (low.includes(a)) out.push(`${where}: banned adjective "${a}"`);
-
-  /* §5c's throat-clearing openers, sentence-initially only. */
-  for (const o of BANNED_OPENERS) {
-    if (low === o || low.startsWith(o + " ") || low.startsWith(o + ",")) {
-      out.push(`${where}: §5c banned opener "${o}"`);
-      break;
-    }
-  }
-
-  /* §5c permits a rhetorical question only where "the tape answers immediately".
-     In an item with no tape the narrator answers itself, which §5c names as a
-     padding pattern. */
-  if (opts.hasTape === false && /\?\s*$/.test(text.trim()))
-    out.push(`${where}: rhetorical question in a beat with no tape; §5c allows one only where the tape answers it`);
-
-  return out;
-}
 
 /**
  * Q-08: THE NARRATOR NEVER MENTIONS THE FORAY'S OWN STRUCTURE, on a
