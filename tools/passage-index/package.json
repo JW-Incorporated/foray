@@ -1,0 +1,13 @@
+{
+  "name": "foray-passage-index",
+  "private": true,
+  "type": "module",
+  "description": "Stream indexer and passage index (GV-09 onward, docs/roadmap/generation-v2.md): builds the per-show BM25 caches, the episode manifest, staged digest rows and passages from local bodies or the R2 normalized objects, one body in memory at a time. No dependencies of its own: it reuses tools/foraycorpus-export (R2 client, sync rules, show map, disk guard), whose AWS SDK import is lazy, and spawns the backend indexBodies CLI through backend/node_modules' tsx. Writes only under data-local/.",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "//test": "Same contract as tools/corpus and tools/foraycorpus-export: tools/ci/run-suites.mjs invokes this as `npm test -- <files>`, so the script MUST end in `node --test` and forward its arguments (with none, node --test discovers from this directory). --experimental-sqlite is here for the passage store that later cards add (node:sqlite is flagged on Node 22.x). stream-index.test.mjs asserts the forwarding.",
+  "scripts": {
+    "test": "node --experimental-sqlite --test"
+  }
+}
