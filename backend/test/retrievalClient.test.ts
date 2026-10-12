@@ -372,9 +372,11 @@ describe("RemoteRetrieval + PrecomputedTextIndex: prepared answers equal a local
     expect(broken.stats().reasons).toEqual(["episodes: HTTP 500"]);
   });
 
-  it("debug builds check once that the caller's predicate admits exactly the lineage scope", async () => {
-    /* MUTATION THAT KILLS THIS: compare sizes only (the swapped predicate has
-       the same size). Ran it: red. */
+  it("debug builds check once per lineage scope that the caller's predicate admits exactly that scope", async () => {
+    /* MUTATIONS THAT KILL THIS: compare sizes only (the swapped predicate has
+       the same size); verify once per index instead of once per prepareScope
+       (the reused index never checks the second scope, which stays at 1). Ran
+       both: red. */
     const retrieval = client(fakeFetch({ svc: service() }).fetchFn);
     await retrieval.prepareScope(TOPIC);
     await retrieval.prepare([{ scope: "lineage", text: "rome", limit: 8 }]);
@@ -386,6 +388,47 @@ describe("RemoteRetrieval + PrecomputedTextIndex: prepared answers equal a local
     index.search("rome", { limit: 8, isUsable: swapped });
     index.search("rome", { limit: 8, isUsable: swapped });
     expect(retrieval.stats().scopeMismatches).toBe(1);
+    /* The next Foray: a new lineage scope, the same index. The history
+       predicate no longer matches the engineering topic's scope, and the
+       check runs again for it (once). */
+    await retrieval.prepareScope("engineering/energy-fusion");
+    await retrieval.prepare([{ scope: "lineage", text: "rome", limit: 8 }]);
+    index.search("rome", { limit: 8, isUsable: lineageIsUsable });
+    index.search("rome", { limit: 8, isUsable: lineageIsUsable });
+    expect(retrieval.stats().scopeMismatches).toBe(2);
+  });
+
+  it("prepareScope drops the previous Foray's answers: its lineage keys miss and fall back", async () => {
+    /* MUTATION THAT KILLS THIS: remove `this.answers.clear()` from
+       prepareScope (the next topic's lineage search reads the history topic's
+       answer, whose key has no topic in it). Ran it: red. */
+    const retrieval = client(fakeFetch({ svc: service() }).fetchFn);
+    await retrieval.prepareScope(TOPIC);
+    await retrieval.prepare([
+      { scope: "lineage", text: "rome legions", limit: 8 },
+      { scope: "all", text: "rome legions", limit: 8 }
+    ]);
+    expect(retrieval.answerFor("lineage", 8, "rome legions")?.candidates.length).toBe(2);
+    expect(await retrieval.prepareScope("engineering/energy-fusion")).toBe(true);
+    expect(retrieval.answerFor("lineage", 8, "rome legions")).toBeUndefined();
+    expect(retrieval.answerFor("all", 8, "rome legions")).toBeUndefined();
+    expect(retrieval.stats().prepared).toBe(0);
+    const asked: string[] = [];
+    const fallback: TranscriptTextIndex = {
+      enabled: true,
+      search: (q) => {
+        asked.push(q);
+        return [];
+      }
+    };
+    const engineering = (e: TranscriptDigestEntry): boolean => familyGateAllows("engineering/energy-fusion", nodesForArchiveEntry(e));
+    const index = new PrecomputedTextIndex(retrieval, { fallback });
+    expect(index.search("rome legions", { limit: 8, isUsable: engineering })).toEqual([]);
+    expect(asked).toEqual(["rome legions"]);
+    expect(index.stats()).toMatchObject({ hits: 0, misses: 1 });
+    /* Asked again under the new scope, the answer is the engineering show's. */
+    await retrieval.prepare([{ scope: "lineage", text: "rome legions", limit: 8 }]);
+    expect(index.search("rome legions", { limit: 8, isUsable: engineering }).map((c) => c.entry.show_id)).toEqual(["titans-of-nuclear"]);
   });
 });
 
@@ -431,14 +474,34 @@ describe("HydratingCueProvider: bodies fetched ahead, read synchronously", () =>
     expect(fake.calls.filter((c) => c.url.pathname === "/v1/cues").length).toBe(3);
   });
 
-  it("never has more than 8 hydration requests in flight", async () => {
-    /* MUTATION THAT KILLS THIS: start one worker per entry instead of
-       min(concurrency, queue). Ran it: red (20 in flight). */
+  it("never has more than 8 hydration requests in flight, across overlapping hydrate calls, and fetches each body once", async () => {
+    /* MUTATIONS THAT KILL THIS: skip acquireCuesSlot in hydrateOne (20 in
+       flight); restore the old per-call pool of min(concurrency, queue)
+       workers (16 in flight once two calls overlap, and the shared guids are
+       sent twice); drop the bodiesInFlight lookup (the 10 shared guids are
+       requested twice). Ran all three: red. */
     const many: TranscriptDigestEntry[] = Array.from({ length: 20 }, (_, i) => ({ ...ARCHIVE[0]!, guid: `bulk-${i}` }));
     const fake = fakeFetch({ delayMs: 5, route: () => ({ json: { cues: [{ text: "a b c", start_sec: 0, end_sec: 1 }] } }) });
     const retrieval = client(fake.fetchFn);
     expect(await retrieval.hydrate(many)).toBe(20);
     expect(fake.maxInFlight()).toBe(8);
+
+    /* Two calls at once, sharing 10 guids not yet held: still 8 in flight, and
+       the shared ones are fetched by whichever call asked first. */
+    const overlap = fakeFetch({ delayMs: 5, route: () => ({ json: { cues: [{ text: "a b c", start_sec: 0, end_sec: 1 }] } }) });
+    const shared = client(overlap.fetchFn);
+    const first = Array.from({ length: 20 }, (_, i) => ({ ...ARCHIVE[0]!, guid: `o-${i}` }));
+    const second = Array.from({ length: 20 }, (_, i) => ({ ...ARCHIVE[0]!, guid: `o-${i + 10}` }));
+    const [a, b] = await Promise.all([shared.hydrate(first, { pin: false }), shared.hydrate(second)]);
+    expect(a + b).toBe(30);
+    expect(overlap.maxInFlight()).toBe(8);
+    const guids = overlap.calls.map((c) => c.url.searchParams.get("guid"));
+    expect(guids.length).toBe(30);
+    expect(new Set(guids).size).toBe(30);
+    /* A joined body is pinned when the joining call asked for a pin. */
+    expect(shared.stats()).toMatchObject({ hydrated: 30, pinned: 20 });
+    const provider = new HydratingCueProvider(shared);
+    for (const e of [...first, ...second]) expect(provider.getCues(e)).not.toBeNull();
   });
 
   it("pins bodies for the run under a memory bound, evicting least recently used unpinned bodies first", async () => {

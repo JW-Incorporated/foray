@@ -277,9 +277,18 @@ export class RemoteRetrieval {
 
   private scopeIds: { lineage: string | null; all: string | null } = { lineage: null, all: null };
   private lineageKeys: Set<string> | null = null;
+  /** Bumped by every `prepareScope`: which lineage scope a debug check saw. */
+  private scopeGeneration = 0;
   private readonly answers = new Map<string, StoredAnswer>();
   /** Insertion order is recency: the first entry is the least recently used. */
   private readonly bodies = new Map<string, HeldBody>();
+  /* The hydration limit belongs to the INSTANCE, not to one `hydrate` call:
+     /v1/cues requests in flight, the FIFO of fetches waiting for a slot, and
+     the bodies being fetched now (so an overlapping hydrate waits for the same
+     fetch instead of sending a second one). */
+  private cuesInFlight = 0;
+  private readonly cuesWaiters: Array<() => void> = [];
+  private readonly bodiesInFlight = new Map<string, Promise<boolean>>();
 
   private readonly counters = {
     hits: 0,
@@ -382,6 +391,7 @@ export class RemoteRetrieval {
   async prepareScope(topic: string | null, root?: string): Promise<boolean> {
     this.answers.clear();
     this.scopeIds = { lineage: null, all: null };
+    this.scopeGeneration += 1;
     /* The exact predicate of researchShape's subtopic search and
        sourceBeats' usableArchiveEntry; an undefined root is the repo's. */
     const admitted = this.archive.filter((entry) => familyGateAllows(topic, nodesForArchiveEntry(entry, root), root));
@@ -416,6 +426,12 @@ export class RemoteRetrieval {
   /** The entries the lineage scope admits (null before `prepareScope`). */
   lineageEntries(): ReadonlySet<string> | null {
     return this.lineageKeys;
+  }
+
+  /** Which `prepareScope` the lineage scope came from (0 before the first):
+   * PrecomputedTextIndex's debug check runs once per value. */
+  lineageScopeGeneration(): number {
+    return this.scopeGeneration;
   }
 
   /**
@@ -544,16 +560,20 @@ export class RemoteRetrieval {
   /* ------------------------------------------------------------------ */
 
   /**
-   * Fetch the bodies of `entries` (GET /v1/cues), HYDRATE_CONCURRENCY at a
-   * time, gzip-encoded. Duplicates and bodies already held are skipped (and
-   * re-pinned when `pin`). A 404 is recorded as "no body", which is an
-   * answer; a failure is degraded and leaves the entry unhydrated. Pinned
-   * bodies are kept for the run (until `unpinAll`) unless the memory bound
-   * forces them out; resolves the number of bodies fetched.
+   * Fetch the bodies of `entries` (GET /v1/cues), gzip-encoded, with at most
+   * HYDRATE_CONCURRENCY requests in flight ACROSS every overlapping `hydrate`
+   * on this instance. Duplicates and bodies already held are skipped (and
+   * re-pinned when `pin`); a body another `hydrate` is fetching right now is
+   * awaited, not fetched twice (and pinned once it lands, when `pin`). A 404
+   * is recorded as "no body", which is an answer; a failure is degraded and
+   * leaves the entry unhydrated. Pinned bodies are kept for the run (until
+   * `unpinAll`) unless the memory bound forces them out; resolves the number
+   * of bodies THIS call fetched.
    */
   async hydrate(entries: readonly TranscriptDigestEntry[], options: { pin?: boolean } = {}): Promise<number> {
     const pin = options.pin !== false;
-    const queue: TranscriptDigestEntry[] = [];
+    const own: Array<Promise<boolean>> = [];
+    const joined: Array<Promise<void>> = [];
     const seen = new Set<string>();
     for (const entry of entries) {
       const key = keyOfEntry(entry);
@@ -565,24 +585,50 @@ export class RemoteRetrieval {
         this.touch(key, held);
         continue;
       }
-      queue.push(entry);
-    }
-    let fetched = 0;
-    let next = 0;
-    const worker = async (): Promise<void> => {
-      while (next < queue.length) {
-        const entry = queue[next];
-        next += 1;
-        if (entry && (await this.hydrateOne(entry, pin))) fetched += 1;
+      const inFlight = this.bodiesInFlight.get(key);
+      if (inFlight) {
+        joined.push(
+          inFlight.then(() => {
+            const landed = this.bodies.get(key);
+            if (pin && landed) landed.pinned = true;
+          })
+        );
+        continue;
       }
-    };
-    await Promise.all(Array.from({ length: Math.min(this.concurrency, queue.length) }, () => worker()));
-    return fetched;
+      const fetching = this.hydrateOne(entry, pin).finally(() => this.bodiesInFlight.delete(key));
+      this.bodiesInFlight.set(key, fetching);
+      own.push(fetching);
+    }
+    const [results] = await Promise.all([Promise.all(own), Promise.all(joined)]);
+    return results.filter(Boolean).length;
+  }
+
+  /** A /v1/cues slot: taken now if one is free, else after every fetch queued
+   * before this one (FIFO). `releaseCuesSlot` hands it straight to the next
+   * waiter, so the count never dips while fetches are queued. */
+  private async acquireCuesSlot(): Promise<void> {
+    if (this.cuesInFlight < this.concurrency) {
+      this.cuesInFlight += 1;
+      return;
+    }
+    await new Promise<void>((resolve) => this.cuesWaiters.push(resolve));
+  }
+
+  private releaseCuesSlot(): void {
+    const next = this.cuesWaiters.shift();
+    if (next) next();
+    else this.cuesInFlight -= 1;
   }
 
   private async hydrateOne(entry: TranscriptDigestEntry, pin: boolean): Promise<boolean> {
     const query = `show_id=${encodeURIComponent(String(entry.show_id))}&guid=${encodeURIComponent(String(entry.guid))}`;
-    const reply = await this.call("GET", `/v1/cues?${query}`);
+    await this.acquireCuesSlot();
+    let reply: CallResult;
+    try {
+      reply = await this.call("GET", `/v1/cues?${query}`);
+    } finally {
+      this.releaseCuesSlot();
+    }
     const key = keyOfEntry(entry);
     if (!reply.ok) {
       if (reply.status === 404) {
@@ -732,8 +778,8 @@ export class RemoteRetrieval {
 export interface PrecomputedTextIndexOptions {
   /** Where a miss goes. NullTranscriptTextIndex by default. */
   fallback?: TranscriptTextIndex;
-  /** Debug builds: once per scope, check that the caller's isUsable admits
-   * exactly the entries the lineage scope was built from. */
+  /** Debug builds: once per lineage scope (each `prepareScope`), check that
+   * the caller's isUsable admits exactly the entries it was built from. */
   verifyScopes?: boolean;
 }
 
@@ -748,7 +794,8 @@ export class PrecomputedTextIndex implements TranscriptTextIndex {
   readonly enabled = true;
   private readonly fallback: TranscriptTextIndex;
   private readonly verifyScopes: boolean;
-  private lineageVerified = false;
+  /** The lineage scope generation last checked; null before any check. */
+  private verifiedGeneration: number | null = null;
 
   constructor(
     private readonly retrieval: RemoteRetrieval,
@@ -768,9 +815,12 @@ export class PrecomputedTextIndex implements TranscriptTextIndex {
       return this.fallback.search(queryText, options);
     }
     this.retrieval.countSearch(true);
-    if (isUsable && this.verifyScopes && !this.lineageVerified) {
-      this.lineageVerified = true;
-      this.verifyLineage(isUsable);
+    if (isUsable && this.verifyScopes) {
+      const generation = this.retrieval.lineageScopeGeneration();
+      if (generation !== this.verifiedGeneration) {
+        this.verifiedGeneration = generation;
+        this.verifyLineage(isUsable);
+      }
     }
     const kept = isUsable ? answer.candidates.filter((c) => isUsable(c.entry)) : answer.candidates;
     return kept.slice(0, Math.max(0, limit)).map((c, rank) => ({ ...c, rank }));

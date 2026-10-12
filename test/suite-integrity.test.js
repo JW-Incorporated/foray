@@ -2813,7 +2813,7 @@ const BACKEND_FLOORS = {
      degrade without throwing, bodyStat from the manifest, hydration capped at
      8 in flight, pin + LRU memory bound, transcriptSource parity with
      FileTranscriptCueProvider, and no fs write in the module. */
-  "test/retrievalClient.test.ts": 15,
+  "test/retrievalClient.test.ts": 16,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
