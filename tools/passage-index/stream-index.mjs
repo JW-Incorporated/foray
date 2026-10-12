@@ -229,9 +229,10 @@ export class CueCache {
  * The real indexer: ONE backend indexBodies child, spawned through tsx.
  * Returns {send(record), endShow(showId) -> summary line, close() -> {exitCode, problems}}.
  * `command`/`args`/`cwd` replace the tsx launch (tests run a plain node
- * script that speaks the same protocol).
+ * script that speaks the same protocol); `spawnImpl` replaces
+ * child_process.spawn (tests drive the 'exit'/'close' order).
  */
-export function spawnIndexer({ indexRoot, stagedOut, passagesOut = null, command = null, args = null, cwd = BACKEND_DIR, log = (line) => console.log(line) } = {}) {
+export function spawnIndexer({ indexRoot, stagedOut, passagesOut = null, command = null, args = null, cwd = BACKEND_DIR, log = (line) => console.log(line), spawnImpl = spawn } = {}) {
   let argv = args;
   let cmd = command;
   if (!cmd) {
@@ -239,12 +240,15 @@ export function spawnIndexer({ indexRoot, stagedOut, passagesOut = null, command
     cmd = process.execPath;
     argv = [tsx, INDEX_ENTRY, "--index-root", indexRoot, "--staged-out", stagedOut, ...(passagesOut ? ["--passages-out", passagesOut] : [])];
   }
-  const child = spawn(cmd, argv ?? [], { cwd, env: process.env, stdio: ["pipe", "pipe", "inherit"] });
+  const child = spawnImpl(cmd, argv ?? [], { cwd, env: process.env, stdio: ["pipe", "pipe", "inherit"] });
   const problems = [];
   let waiting = null; // {showId, resolve, reject}
   let exited = null;
+  /* 'close', not 'exit': 'exit' can fire while stdout still holds the
+     child's last lines (indexBodies prints its problem: lines just before
+     it exits), and close() must return every one of them. */
   const exitPromise = new Promise((resolve) => {
-    child.on("exit", (code, signal) => {
+    child.on("close", (code, signal) => {
       exited = { code, signal };
       if (waiting) {
         waiting.reject(new StreamIndexError("INDEXER_EXIT", `indexBodies exited (${exitCodeFor(code, signal)}) before ${waiting.showId} was written`));
@@ -359,7 +363,8 @@ export async function streamIndex({
     shows_listed: shows.size,
     rebuilt: [],
     unchanged: full ? 0 : delta.unchanged.length,
-    gone: delta.gone,
+    /* From the full listing: a --show run must not report every other show as gone. */
+    gone: show === null ? delta.gone : showsToRebuild(listing.shows, manifest).gone,
     bodies: 0,
     bodies_planned: bodiesPlanned,
     body_bytes: 0,

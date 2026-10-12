@@ -6,9 +6,11 @@
    test needs backend/node_modules, the network or a credential. */
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
+import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
 
 import { safeKey } from "../foraycorpus-export/config.mjs";
@@ -268,6 +270,14 @@ test("delta: an unchanged rerun issues no GET and opens no indexer; one changed 
     const r5 = await r2Run(bucket, root, { show: GEO }).run();
     assert.deepEqual(r5.rebuilt, ["geology-bites"], "--show by directory name narrows the run");
     assert.deepEqual(bucket.gets(), [key(GEO, "g1.json"), key(GEO, "g2.json")]);
+    assert.deepEqual(r5.gone, [], "--show does not report the shows it skipped as gone");
+
+    /* A show deleted from the source is gone, on a --show run as on a full one. */
+    bucket.objects.delete(key(BAE, "ep-a.json"));
+    bucket.objects.delete(key(BAE, "ep-b.json"));
+    bucket.objects.delete(key(BAE, "ep-c.json"));
+    const r6 = await r2Run(bucket, root, { show: GEO }).run();
+    assert.deepEqual(r6.gone, ["being-an-engineer"]);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -480,4 +490,24 @@ test("spawnIndexer: streams JSONL to the child, waits for each show's summary li
   const dead = spawnIndexer({ command: process.execPath, args: ["-e", "process.stdin.resume(); setTimeout(() => process.exit(3), 50);"], cwd: HERE, log: () => {} });
   await assert.rejects(dead.endShow("s1"), (e) => e.code === "INDEXER_EXIT" || e.code === "EPIPE");
   assert.equal((await dead.close()).exitCode, 3);
+
+  /* close() waits for 'close', not 'exit': Node can emit a child's 'exit'
+     while stdout still holds its last lines, and indexBodies prints its
+     problem: lines just before it exits. The fake child emits 'exit' first,
+     then its last line, then 'close'. Mutation: settle on 'exit' instead of
+     'close' in spawnIndexer and close() returns [] here. */
+  const fake = new EventEmitter();
+  fake.stdin = new PassThrough();
+  fake.stdout = new PassThrough();
+  fake.stdin.resume();
+  fake.stdin.on("finish", () => {
+    fake.emit("exit", 1, null);
+    setTimeout(() => {
+      fake.stdout.end("problem: late line\n");
+      fake.stdout.on("close", () => fake.emit("close", 1, null));
+    }, 20);
+  });
+  const lateClosed = await spawnIndexer({ command: "indexBodies", spawnImpl: () => fake, log: () => {} }).close();
+  assert.equal(lateClosed.exitCode, 1);
+  assert.deepEqual(lateClosed.problems, ["late line"], "close() returns problem: lines that arrive after 'exit'");
 });
