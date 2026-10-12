@@ -1,0 +1,577 @@
+[
+  {
+    "id": "g01",
+    "prompt": "How AI systems really get built and put to work: the practical engineering behind deploying machine learning, from data to production",
+    "duration": "medium",
+    "stratum": "single-show",
+    "listened": true,
+    "nodes": [
+      "engineering/ai-robotics"
+    ],
+    "reference": {
+      "kind": "forays-json",
+      "forayId": "how-ai-actually-gets-built-3b83e1"
+    },
+    "bench": true
+  },
+  {
+    "id": "g02",
+    "prompt": "Beyond the algorithm: why AI systems succeed or fail in production on data engineering, infrastructure and operations more than on the model itself",
+    "duration": "medium",
+    "stratum": "single-show",
+    "listened": true,
+    "nodes": [
+      "engineering/ai-robotics"
+    ],
+    "reference": {
+      "kind": "forays-json",
+      "forayId": "beyond-the-algorithm-engineering-production-ai-s-e6533b"
+    },
+    "bench": true
+  },
+  {
+    "id": "g03",
+    "prompt": "How engineering disasters actually happen: the chains of small decisions behind collapsed bridges, failed dams and machines that broke",
+    "duration": "medium",
+    "stratum": "single-show",
+    "listened": true,
+    "nodes": [
+      "engineering/disasters"
+    ],
+    "reference": {
+      "kind": "forays-json",
+      "forayId": "the-chain-reaction-how-engineering-disasters-rea-25f1b7"
+    },
+    "bench": true
+  },
+  {
+    "id": "g04",
+    "prompt": "What engineers actually do all day: how engineering careers really work, from the first job and the first failure to leading a team, told by working engineers",
+    "duration": "medium",
+    "stratum": "multi-show",
+    "listened": true,
+    "nodes": [
+      "business/careers"
+    ],
+    "reference": {
+      "kind": "forays-json",
+      "forayId": "what-engineers-actually-do-all-day-e08236"
+    },
+    "bench": true
+  },
+  {
+    "id": "g05",
+    "prompt": "How we figured out that germs cause disease — the decades between doctors refusing to wash their hands and germ theory becoming obvious.",
+    "duration": "medium",
+    "stratum": "near-no-supply",
+    "listened": true,
+    "nodes": [
+      "medicine/biology"
+    ],
+    "reference": {
+      "kind": "founder-candidate",
+      "file": "backend/data-local/foray-candidates/how-we-figured-out-that-germs-cause-dise-dd146bc4.json"
+    },
+    "bench": true
+  },
+  {
+    "id": "g06",
+    "prompt": "Cider and wine: what fermentation does to fruit, and where cider makers and winemakers disagree",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": true,
+    "nodes": [
+      "food/fermentation"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g07",
+    "prompt": "How the ground under us keeps changing: moving plates, earthquakes and the slow wearing-down of mountains",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": true,
+    "nodes": [
+      "nature/earth-science"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g08",
+    "prompt": "Fault lines: why things break where they do",
+    "duration": "short",
+    "stratum": "ambiguous",
+    "listened": true,
+    "nodes": [
+      "nature/earth-science",
+      "engineering/disasters"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g09",
+    "prompt": "Why flying got so safe: what air crash investigators learned from each accident",
+    "duration": "short",
+    "stratum": "near-no-supply",
+    "listened": true,
+    "nodes": [
+      "aviation/accidents"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g10",
+    "prompt": "What actually makes a sprinter fast",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": true,
+    "nodes": [
+      "sports"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g11",
+    "prompt": "Why engineers learn more from failure than from success: what investigations, recalls and post-mortems teach the people who build things",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "engineering"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g12",
+    "prompt": "How a safety margin is chosen: the numbers engineers add on purpose, and what happens when someone trims them",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "engineering"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g13",
+    "prompt": "What changes when software starts controlling physical machines, and how engineers learn to trust it",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "engineering"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g14",
+    "prompt": "How engineering teams decide that something is good enough to ship",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "engineering"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g15",
+    "prompt": "Why keeping things running is harder than building them: the hidden work of maintenance",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "engineering"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g16",
+    "prompt": "How mountains are built and worn away again",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "nature/earth-science"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g17",
+    "prompt": "What earthquakes reveal about the inside of the Earth",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "nature/earth-science"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g18",
+    "prompt": "How rivers carve landscapes, and how fast it really happens",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "nature/earth-science"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g19",
+    "prompt": "What it would take to bring large predators back to wild land",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "nature"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g20",
+    "prompt": "How scientists read the deep past from rocks, fossils and ice",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "nature"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g21",
+    "prompt": "How fire, smoke and fermentation changed what people eat",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g22",
+    "prompt": "How a regional food tradition turns into a competition circuit",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g23",
+    "prompt": "The patience behind slow food: barbecue, cider and wine compared",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g24",
+    "prompt": "What makes a cider dry, sweet or sour",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food/drinks"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g25",
+    "prompt": "How a vineyard's weather ends up in the glass",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food/drinks"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g26",
+    "prompt": "Why some drinks get better with age and others go off",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food/drinks"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g27",
+    "prompt": "What wild yeast does that cultured yeast does not",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food/fermentation"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g28",
+    "prompt": "How winemakers and cider makers decide when fermentation is finished",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "food/fermentation"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g29",
+    "prompt": "How elite athletes train for speed without getting hurt",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "sports"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g30",
+    "prompt": "What happens to the body over a long endurance race",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "sports"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g31",
+    "prompt": "How coaches use data to plan an athlete's season",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "sports"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g32",
+    "prompt": "Why people climb the world's highest mountains, and what it costs them",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "adventure/exploration"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g33",
+    "prompt": "What an expedition into remote wilderness actually involves, day to day",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "adventure/exploration"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g34",
+    "prompt": "How mountaineers decide when to turn back",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "adventure"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g35",
+    "prompt": "How people switch careers into engineering later in life",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "business/careers"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g36",
+    "prompt": "What makes a good manager of technical people",
+    "duration": "short",
+    "stratum": "multi-show",
+    "listened": false,
+    "nodes": [
+      "business/careers"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g37",
+    "prompt": "How hospital leaders keep health systems running through staffing shortages",
+    "duration": "short",
+    "stratum": "single-show",
+    "listened": false,
+    "nodes": [
+      "business/management"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g38",
+    "prompt": "How hospitals are actually putting AI to work",
+    "duration": "short",
+    "stratum": "single-show",
+    "listened": false,
+    "nodes": [
+      "news/tech"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g39",
+    "prompt": "How precision manufacturing holds a tolerance of a thousandth of an inch",
+    "duration": "short",
+    "stratum": "single-show",
+    "listened": false,
+    "nodes": [
+      "engineering/precision-mfg"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g40",
+    "prompt": "How a song gets from an idea to a finished record, told by the musicians who made them",
+    "duration": "short",
+    "stratum": "single-show",
+    "listened": false,
+    "nodes": [
+      "music"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g41",
+    "prompt": "What actually happens in a divorce, and why it so often costs so much",
+    "duration": "short",
+    "stratum": "single-show",
+    "listened": false,
+    "nodes": [
+      "society/law"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g42",
+    "prompt": "The science of barbecue: smoke, bark and why low and slow works",
+    "duration": "short",
+    "stratum": "single-show",
+    "listened": false,
+    "nodes": [
+      "food/cooking-science"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g43",
+    "prompt": "What it takes to win a downhill mountain bike race",
+    "duration": "short",
+    "stratum": "single-show",
+    "listened": false,
+    "nodes": [
+      "sports/endurance"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g44",
+    "prompt": "The science of heat",
+    "duration": "short",
+    "stratum": "ambiguous",
+    "listened": false,
+    "nodes": [
+      "food/cooking-science",
+      "nature/earth-science"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g45",
+    "prompt": "Cultures, and how they spread",
+    "duration": "short",
+    "stratum": "ambiguous",
+    "listened": false,
+    "nodes": [
+      "food/fermentation",
+      "culture"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g46",
+    "prompt": "Pitching: how to throw one that works",
+    "duration": "short",
+    "stratum": "ambiguous",
+    "listened": false,
+    "nodes": [
+      "sports",
+      "business/startups"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g47",
+    "prompt": "Training: what actually changes when you train",
+    "duration": "short",
+    "stratum": "ambiguous",
+    "listened": false,
+    "nodes": [
+      "sports/biomechanics",
+      "engineering/ai-robotics"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g48",
+    "prompt": "The history of India: from the Indus Valley cities and the Mauryan and Mughal empires to the British Raj, Partition and the modern republic",
+    "duration": "short",
+    "stratum": "near-no-supply",
+    "listened": false,
+    "nodes": [
+      "history"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g49",
+    "prompt": "How rockets learned to land and fly again",
+    "duration": "short",
+    "stratum": "near-no-supply",
+    "listened": false,
+    "nodes": [
+      "space/rockets"
+    ],
+    "bench": true
+  },
+  {
+    "id": "g50",
+    "prompt": "How forensic science has convicted innocent people",
+    "duration": "short",
+    "stratum": "near-no-supply",
+    "listened": false,
+    "nodes": [
+      "true-crime/justice-forensics"
+    ],
+    "bench": true
+  }
+]

@@ -1612,6 +1612,12 @@ const FLOORS = {
      pass, a band nobody supplied read as a pass, an adopt on an unfrozen
      corpus, a correction that rewrites the row a PR cited, a stale table. */
   "tools/generation-bench/swap-ledger.test.mjs": 27, // GV-35: new -- decideSwap adopt/hold/reject/measured, pairwise win/tie/loss + boundary, axis drop > 0.5, MQ-01+MQ-04, MQ-21 allowance, score.mjs cells unwrapped + stray cell throws, unbanded MQ-02/05 unmeasured, timing slack + resumed/upstream skipped, absent one arm vs both, listened minimum, unfrozen, ledger row refusals, append + supersede, byte-stable table, committed ledger/stack/doc in sync, no network
+  /* GV-45 (W1-14, R2-02, GP-28): golden set v1, the fixed benchmark every
+     later generation change is judged on. Each test is one way it could move
+     or lean without anyone noticing: a stratum over-filled, a listened prompt
+     lost, a reference to a Foray that is gone, strata that change with input
+     order, a locked set edited in place, a dry-run report used as a lock. */
+  "tools/generation-bench/golden/golden.test.mjs": 15, // GV-45: new -- committed manifest 50/10/30-10-5-5 + bench flag, references in data/forays.json and every generated Foray listened, duplicate id/prompt, strata and listened counts, unknown key/bench/node/long prompt/stray reference/committed candidate/duration, ambiguous readings, family counting (ancestors+descendants, cue-less rows, unmapped shows), stratum boundaries, strata drift, select determinism, lock round trip + CRLF + edited manifest, lock refusals, CLI lock-once, no transcript text, README run command
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
