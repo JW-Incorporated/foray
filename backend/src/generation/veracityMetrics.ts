@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 import type { StageTiming } from "./stageTiming";
 import type { EvidencePrefetchMetrics } from "./evidencePrefetch";
-import type { SourcedAct, SourcedSlot, TapeRelevanceInput } from "../types/tapeSourcing";
+import type { SourcedAct, SourcedSlot, SourcingTrace, TapeRelevanceInput } from "../types/tapeSourcing";
 import type { WrittenAct, WrittenBeat } from "./writeNarration";
 import { HANDOFF_SCRIPT, decideConnectiveNarration, pageOfWrittenBeat } from "./writeNarration";
 import { clipOpening, introRestatesClip, planActSeams } from "./actSeams";
@@ -868,6 +868,75 @@ export function computeNarrationCallsPerAct(sourcedActs: SourcedAct[], writerCal
 }
 
 /* ------------------------------------------------------------------ */
+/* tapeYield (MQ-09) and beatCoverage (MQ-11) — GV-26                   */
+/* ------------------------------------------------------------------ */
+
+/** MQ-09: of the beats that WANTED tape, how many got it. */
+export interface TapeYieldResult {
+  /** Beats sourced to tape — one `tapeRelevance` row each. */
+  tapeBeats: number;
+  /** Beats that searched for tape: the tape rows plus the trace rows whose
+   * outcome is `no-tape`. A `skipped:argument` beat never searched (§4.4
+   * tagged it an argument), so it is not in the denominator. */
+  wantedBeats: number;
+  /** `tapeBeats / wantedBeats`; `null` when no beat wanted tape. */
+  rate: number | null;
+  /** Seeded beats whose seed window won the tape (`seedWindowWon`). */
+  seedsPlaced: number;
+  /** Seeded beats that ended as narration because their seed could not be
+   * placed (`seedLost`, F-96). */
+  seedsLost: number;
+}
+
+export interface TapeYieldInput {
+  /** `SourceBeatsResult.tapeRelevance`: one row per tape-sourced beat. */
+  tapeRelevance: TapeRelevanceInput[];
+  /** `SourceBeatsResult.sourcingTrace`: one row per narration-degraded beat. */
+  sourcingTrace: SourcingTrace[];
+  sourcedActs: SourcedAct[];
+}
+
+/**
+ * MQ-09 tape yield, from §4.5's own two partitioning arrays — the only place
+ * that knows which narration beats searched and came back empty-handed
+ * (`no-tape`) versus never searched (`skipped:argument`). Reported, never
+ * gated.
+ */
+export function computeTapeYield(input: TapeYieldInput): TapeYieldResult {
+  const tapeBeats = input.tapeRelevance.length;
+  const noTape = input.sourcingTrace.filter((row) => row.outcome === "no-tape").length;
+  const wantedBeats = tapeBeats + noTape;
+  const seedsPlaced = input.tapeRelevance.filter((row) => row.seedWindowWon === true).length;
+  let seedsLost = 0;
+  for (const act of input.sourcedActs)
+    for (const slot of act.slots) for (const beat of slot.beats) if (beat.sourcing === "narration" && beat.seedLost === true) seedsLost++;
+  return { tapeBeats, wantedBeats, rate: wantedBeats > 0 ? tapeBeats / wantedBeats : null, seedsPlaced, seedsLost };
+}
+
+/** MQ-11: of the narration beats, how many the verifier confirmed the act's
+ * prose carries. */
+export interface BeatCoverageResult {
+  beats: number;
+  carried: number;
+  rate: number;
+}
+
+/**
+ * MQ-11 beat coverage: the share of narration beats carrying a
+ * `verifiedAtAttempt` — the round on which the verifier confirmed the act's
+ * prose carries the beat's claim, the same marks `computeFirstAttemptPassRates`
+ * reads. `null` on the per-page path (no beat carries a per-act mark), by the
+ * same sniff, because a per-page candidate never recorded beat coverage at all.
+ */
+export function computeBeatCoverage(writtenActs: WrittenAct[]): BeatCoverageResult | null {
+  const narrationBeats = allNarrationBeats(writtenActs);
+  const perAct = narrationBeats.some((b) => b.carriedBy !== undefined || b.verifiedAtAttempt !== undefined);
+  if (!perAct) return null;
+  const carried = narrationBeats.filter((b) => b.verifiedAtAttempt !== undefined).length;
+  return { beats: narrationBeats.length, carried, rate: carried / narrationBeats.length };
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -952,6 +1021,14 @@ export interface VeracityMetrics {
    * retrieval it absorbed (`evidencePrefetch.ts`). Absent from a candidate
    * built by a caller that ran no prefetch. */
   retrieval?: EvidencePrefetchMetrics;
+  /** GV-26 (MQ-09): tape yield over the beats that searched for tape. `null`
+   * when the caller passed no `sourcingTrace` (and so the `no-tape` beats
+   * cannot be told from the `skipped:argument` ones); absent on a candidate
+   * built before GV-26. */
+  tapeYield?: TapeYieldResult | null;
+  /** GV-26 (MQ-11): narration beats the verifier confirmed are carried.
+   * `null` on the per-page path; absent on a candidate built before GV-26. */
+  beatCoverage?: BeatCoverageResult | null;
 }
 
 export interface BuildVeracityMetricsInput {
@@ -962,6 +1039,10 @@ export interface BuildVeracityMetricsInput {
    * the gate must score what the gate saw. Absent (older callers, tests), the
    * metric re-derives a coarser root-segment verdict from disk. */
   tapeRelevanceRows?: TapeRelevanceInput[];
+  /** GV-26: §4.5's narration-degraded rows (`SourceBeatsResult.sourcingTrace`).
+   * With `tapeRelevanceRows` it is what MQ-09 `tapeYield` is computed from;
+   * without both, `tapeYield` is `null`. */
+  sourcingTrace?: SourcingTrace[];
   writtenActs: WrittenAct[];
   topic: string;
   writerCalls: number;
@@ -1022,7 +1103,12 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     narrationCallsPerAct: computeNarrationCallsPerAct(input.sourcedActs, input.writerCalls, input.verifierCalls),
     pipelineTokens: input.pipelineTokens,
     stageTimings: input.stageTimings,
-    ...(input.retrieval ? { retrieval: input.retrieval } : {})
+    ...(input.retrieval ? { retrieval: input.retrieval } : {}),
+    tapeYield:
+      input.tapeRelevanceRows && input.sourcingTrace
+        ? computeTapeYield({ tapeRelevance: input.tapeRelevanceRows, sourcingTrace: input.sourcingTrace, sourcedActs: input.sourcedActs })
+        : null,
+    beatCoverage: computeBeatCoverage(input.writtenActs)
   };
 }
 

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { generateOneCandidate, parseArgs, partialCandidateFilename, candidateFilename, type CliArgs } from "../src/cli/generateForays";
+import { batchSummaryText, generateOneCandidate, parseArgs, partialCandidateFilename, candidateFilename, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
+import { evaluateVeracityGate, type VeracityGateResult } from "../src/generation/veracityMetrics";
 import { runForayPipeline } from "../src/generation/runPipeline";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
@@ -426,5 +427,112 @@ describe("GV-15 — run configuration on the batch driver", () => {
       expect(after.fingerprint).toBe(secondMode === "flag-on" ? flagOnFingerprint : classicFingerprint);
       expect(Object.keys(after.stages).sort()).toEqual(firstStages);
     }
+  });
+});
+
+describe("GV-26 — the report row carries the publish gate verdict and MQ-21 publishable", () => {
+  let dir: string;
+  const spec = { prompt: "the history of grilling and barbecue" };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv26-"));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** The stub pipeline, with the outcome's gate verdict overridden — the
+   * stub candidate fails the real gate, so a passing verdict is forced here. */
+  const withGate = (pipeline: typeof runForayPipeline, gate: VeracityGateResult): typeof runForayPipeline =>
+    async (request, options, deps) => {
+      const out = await pipeline(request, options, deps);
+      return out.outcome === "generated" ? { ...out, gate } : out;
+    };
+  const INVALID_FINALIZE = async (input: FinalizeForayInput): Promise<FinalizeForayResult> => ({
+    ...(await FAKE_FINALIZE(input)),
+    validation: { ok: false, checkForaysErrors: ["E1: refused"], checkForaysWarnings: [], checkNarrationErrors: [], checkNarrationWarnings: [] }
+  });
+
+  it("a stub run's row carries gate equal to evaluateVeracityGate(meta.veracity), and a clean run is publishable", async () => {
+    /* MUTATION THAT KILLS THIS: drop `gate` from the row (or write a constant
+       one) — the first assertion goes red. Ran it — red. */
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), { cueProvider, runPipeline: stubPipeline() });
+    const entry = result.entry!;
+    expect(entry.outcome).toBe("generated");
+    expect(entry.gate).toBeDefined();
+    expect(entry.gate).toEqual(evaluateVeracityGate(entry.veracity));
+    expect(entry.gate?.ok).toBe(true);
+    expect(entry.publishable).toBe(true);
+  });
+
+  it("publishable is false whenever the gate fails, and the run line names the first failure", async () => {
+    /* MUTATION THAT KILLS THIS: `publishable: outcome.result.validation.ok` (drop
+       `&& gate.ok`) — the candidate passes the fake validation and the row reads
+       publishable true. Ran it — red. Dropping the `GATE FAIL` suffix from the
+       run line fails the last assertion. */
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const fail: VeracityGateResult = { ok: false, failures: ["2 page(s) were kept without passing verification", "  [Patch] x — y"] };
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: withGate(stubPipeline(), fail)
+    });
+    expect(result.entry?.gate).toEqual(fail);
+    expect(result.entry?.publishable).toBe(false);
+    const runLine = log.mock.calls.map((c) => String(c[0])).find((l) => l.includes("built "));
+    expect(runLine).toMatch(/ GATE FAIL: 2 page\(s\) were kept without passing verification$/);
+  });
+
+  it("publishable is false when validation fails under a passing gate", async () => {
+    /* MUTATION THAT KILLS THIS: `publishable: gate.ok` (drop the validation
+       half) — the invalid candidate reads publishable true. Ran it — red. */
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const pass: VeracityGateResult = { ok: true, failures: [] };
+    /* The fake validator refuses every partial too, so the run is told to go on. */
+    const invalid = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0, continueOnRefusedPartial: true }), {
+      cueProvider,
+      runPipeline: withGate(stubPipeline(INVALID_FINALIZE), pass)
+    });
+    expect(invalid.entry?.outcome).toBe("generated");
+    expect(invalid.entry?.gate?.ok).toBe(true);
+    expect(invalid.entry?.publishable).toBe(false);
+    /* A passing gate adds nothing to the run line. */
+    expect(log.mock.calls.map((c) => String(c[0])).some((l) => l.includes("GATE FAIL"))).toBe(false);
+  });
+
+  it("a row that never generated carries neither gate nor publishable", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: async () => ({ outcome: "rejected", category: "unsafe", explanation: "no", timings: [] })
+    });
+    expect(result.entry?.outcome).toBe("rejected");
+    expect(result.entry && "gate" in result.entry).toBe(false);
+    expect(result.entry && "publishable" in result.entry).toBe(false);
+  });
+
+  it("the batch summary prints how many rows passed every gate without --force", () => {
+    /* MUTATION THAT KILLS THIS: count `gate.ok` rows instead of `publishable`
+       ones — the gate-passing but invalid row is counted and the line reads 2.
+       Ran it — red. */
+    const row = (publishable: boolean | undefined, gateOk?: boolean): ReportEntry => ({
+      prompt: "p",
+      outcome: "generated",
+      detail: "OK x",
+      ms: 0,
+      ...(gateOk !== undefined ? { gate: { ok: gateOk, failures: gateOk ? [] : ["f"] } } : {}),
+      ...(publishable !== undefined ? { publishable } : {})
+    });
+    const line = batchSummaryText({
+      report: [row(true, true), row(false, true), row(false, false), row(undefined)],
+      generated: 1,
+      skipped: 0,
+      aborts: 0,
+      validCount: 3,
+      resumesTotal: 0
+    });
+    expect(line).toBe("1 candidate(s) written, 0 skipped, 0 aborted, 1 did not produce a publishable Foray; 1 passed every gate (publishable without --force)");
   });
 });

@@ -16,7 +16,7 @@ import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
 import { readAuthorIdFlag, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
-import type { VeracityMetrics } from "../generation/veracityMetrics";
+import type { VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
 import type { PublishRecord } from "./publishForay";
 import { env } from "../config/env";
 import { modelSummary } from "../config/models";
@@ -444,6 +444,29 @@ export function runNotifyHook(
   });
 }
 
+/**
+ * The batch's closing line. `validCount` is the rows that passed §4.9
+ * validation (the `OK ` detail); GV-26 adds how many of this run's rows also
+ * passed every publish gate (`publishable`, MQ-21) — the count that could be
+ * published without `--force`.
+ */
+export function batchSummaryText(s: {
+  report: ReportEntry[];
+  generated: number;
+  skipped: number;
+  aborts: number;
+  validCount: number;
+  resumesTotal: number;
+}): string {
+  const gatePassing = s.report.filter((r) => r.publishable === true).length;
+  return (
+    `${s.generated} candidate(s) written, ${s.skipped} skipped, ${s.aborts} aborted, ` +
+    `${s.report.length - s.validCount} did not produce a publishable Foray` +
+    `; ${gatePassing} passed every gate (publishable without --force)` +
+    (s.resumesTotal ? `; ${s.resumesTotal} automatic resume(s)` : "")
+  );
+}
+
 /** One row of `report.json`. `veracity` is WS-B's per-candidate metric block
  * and `ttlA1Ms` is WS-D2's time-to-first-listen; both are optional because
  * neither exists for a rejected, ambiguous or errored prompt. */
@@ -517,6 +540,14 @@ export type ReportEntry = {
   flags?: PipelineFlags;
   /** GV-15: the resolved gate config (empty until the gate cards add keys). */
   gates?: GateConfig;
+  /** GV-26 (decision 33): the publish gate's verdict, evaluated by the
+   * pipeline when the run finished (`evaluateVeracityGate(veracity)`). Only on
+   * a `generated` row. Not to be confused with `gates`, the gate CONFIG. */
+  gate?: VeracityGateResult;
+  /** GV-26 (MQ-21): the candidate passed §4.9 validation AND every publish
+   * gate, so it could be published without `--force`. Only on a `generated`
+   * row. */
+  publishable?: boolean;
 };
 
 /**
@@ -851,11 +882,16 @@ export async function generateOneCandidate(
      the defect — that is what a person reads to decide whether the prompt
      needs changing. */
   const spineReasks = "spineReasks" in outcome ? outcome.spineReasks : [];
+  /* GV-26: the gate verdict the pipeline reached, and MQ-21's run success —
+     validated AND through every gate, i.e. publishable without --force. */
+  const gate = outcome.outcome === "generated" ? outcome.gate : undefined;
+  const gateFail = gate && !gate.ok ? ` GATE FAIL: ${gate.failures[0] ?? "(no reason given)"}` : "";
   console.log(
     `  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}` +
       (ttlA1Ms != null ? ` (ttlA1=${ttlA1Ms}ms)` : "") +
       (spineReasks.length ? ` [spine re-asked ${spineReasks.length}x: ${spineReasks.flatMap((r) => r.violations).join("; ")}]` : "") +
-      (refusedPartials.length ? ` [partial refused at act ${refusedPartials.map((i) => i + 1).join(", ")}; continued]` : "")
+      (refusedPartials.length ? ` [partial refused at act ${refusedPartials.map((i) => i + 1).join(", ")}; continued]` : "") +
+      gateFail
   );
 
   /* WS-B: `meta.veracity` rides along on `outcome.input` for every
@@ -878,6 +914,7 @@ export async function generateOneCandidate(
     ...(spineReasks.length ? { spineReasks } : {}),
     ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,
+    ...(outcome.outcome === "generated" && gate ? { gate, publishable: outcome.result.validation.ok && gate.ok } : {}),
     ...(resumes.length ? { resumes } : {}),
     ...(refusedPartials.length ? { refusedPartials } : {})
   };
@@ -1045,10 +1082,7 @@ async function main(): Promise<void> {
        finished batch; rewritten after, so the report carries the hook's result. */
     writeReport(null);
 
-    const summaryText =
-      `${generated} candidate(s) written, ${skipped} skipped, ${aborts} aborted, ` +
-      `${report.length - publishable} did not produce a publishable Foray` +
-      (resumesTotal ? `; ${resumesTotal} automatic resume(s)` : "");
+    const summaryText = batchSummaryText({ report, generated, skipped, aborts, validCount: publishable, resumesTotal });
     console.log(`\n${summaryText}.`);
 
     let notification: NotificationResult | null = null;
