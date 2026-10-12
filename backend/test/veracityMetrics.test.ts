@@ -12,6 +12,8 @@ import {
   computePurposeRevisedPages,
   computeCallsPerBeat,
   countAttemptedPages,
+  computeTapeYield,
+  computeBeatCoverage,
   buildVeracityMetrics,
   evaluateVeracityGate,
   GATE_MIN_GROUNDED_QUOTE_RATE,
@@ -22,7 +24,7 @@ import {
 import type { WrittenAct, WrittenBeat } from "../src/generation/writeNarration";
 import type { NarratedBeat, Source } from "../src/types/narration";
 import { findHoldingDoc } from "../src/types/narration";
-import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
+import type { SourceBeatsResult, SourcedAct, SourcingTrace, TapePointer, TapeRelevanceInput } from "../src/types/tapeSourcing";
 
 /**
  * WS-B (docs/curation/generation-fix-plan-2026-09-09.md): every metric this
@@ -807,5 +809,115 @@ describe("G-34 — the retry tax is measurable from meta.veracity", () => {
     const veracity = buildVeracityMetrics({ sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 0, verifierCalls: 0, pipelineTokens: 0, stageTimings: [] });
     expect(veracity.narrationCallsPerBeat).toBe(null);
     expect(veracity.callsPerBeat).toBe(null);
+  });
+});
+
+describe("GV-26 — MQ-09 tape yield and MQ-11 beat coverage", () => {
+  function tapeRow(beatIndex: number, overrides: Partial<TapeRelevanceInput> = {}): TapeRelevanceInput {
+    return {
+      actIndex: 0,
+      slotIndex: 0,
+      beatIndex,
+      claim: `t${beatIndex}`,
+      itemId: "item-1",
+      segmentId: "seg#1",
+      tier: 1,
+      taxonomyNodeIds: ["food/grilling-bbq"],
+      families: ["food"],
+      forayTopic: "food/grilling-bbq",
+      forayFamily: "food",
+      onTopic: true,
+      ...overrides
+    };
+  }
+  function traceRow(beatIndex: number, outcome: SourcingTrace["outcome"]): SourcingTrace {
+    return { actIndex: 0, slotIndex: 0, beatIndex, claim: `n${beatIndex}`, outcome, tier1: null, tier2: null };
+  }
+  /** A synthetic `SourceBeatsResult`: three tape beats (one whose seed won),
+   * one beat that searched and found nothing (its seed lost), and one argument
+   * beat that never searched. */
+  function sourceBeatsResult(): Pick<SourceBeatsResult, "acts" | "tapeRelevance" | "sourcingTrace"> {
+    const tape = tapePointer();
+    return {
+      acts: [
+        {
+          title: "Act 1",
+          slots: [
+            {
+              title: "Slot 1",
+              beats: [
+                { sourcing: "tape", claim: "t0", exploration: false, tape },
+                { sourcing: "tape", claim: "t1", exploration: false, tape },
+                { sourcing: "tape", claim: "t2", exploration: false, tape },
+                { sourcing: "narration", claim: "n3", exploration: false, narration: { mode: "Patch", reason: "r" }, seedLost: true },
+                { sourcing: "narration", claim: "n4", exploration: false, narration: { mode: "Carry", reason: "r" } }
+              ]
+            }
+          ]
+        }
+      ],
+      tapeRelevance: [tapeRow(0, { seededEpisode: "ep-1", seedWindowWon: true }), tapeRow(1, { seededEpisode: "ep-2", seedWindowWon: false }), tapeRow(2)],
+      sourcingTrace: [traceRow(3, "no-tape"), traceRow(4, "skipped:argument")]
+    };
+  }
+
+  it("computeTapeYield: 3 tape rows, 1 no-tape, 1 argument -> rate 0.75, with seeds placed and lost", () => {
+    /* MUTATION THAT KILLS THIS: count every trace row in wantedBeats (drop the
+       `outcome === "no-tape"` filter) — the argument beat, which never searched,
+       enters the denominator and the rate reads 0.6. Ran it — red. */
+    const r = sourceBeatsResult();
+    const yieldResult = computeTapeYield({ tapeRelevance: r.tapeRelevance, sourcingTrace: r.sourcingTrace, sourcedActs: r.acts });
+    expect(yieldResult).toEqual({ tapeBeats: 3, wantedBeats: 4, rate: 0.75, seedsPlaced: 1, seedsLost: 1 });
+  });
+
+  it("computeTapeYield is null-rated, not zero, when no beat wanted tape", () => {
+    expect(computeTapeYield({ tapeRelevance: [], sourcingTrace: [traceRow(0, "skipped:argument")], sourcedActs: [] }).rate).toBe(null);
+  });
+
+  it("computeBeatCoverage: the share of narration beats with a verifiedAtAttempt on a per-act candidate, null on a per-page one", () => {
+    /* MUTATION THAT KILLS THIS: count only `verifiedAtAttempt === 1` as carried
+       (the first-attempt reading) — carried drops to 1 and the rate to 1/3.
+       Ran it — red. And dropping the per-act sniff makes the per-page fixture
+       read {beats: 1, carried: 0, rate: 0} instead of null — red too. */
+    const page = narratedBeat();
+    const perAct = actsOf([
+      { ...narrationBeat("c1", page), verifiedAtAttempt: 1 } as WrittenBeat,
+      { sourcing: "narration", claim: "c2", exploration: false, carriedBy: { slot: 0, beat: 0 }, verifiedAtAttempt: 2 },
+      { sourcing: "narration", claim: "c3", exploration: false, carriedBy: { slot: 0, beat: 0 } },
+      { sourcing: "tape", claim: "t", exploration: false, tape: tapePointer() }
+    ]);
+    expect(computeBeatCoverage(perAct)).toEqual({ beats: 3, carried: 2, rate: 2 / 3 });
+    expect(computeBeatCoverage(actsOf([narrationBeat("c1", page)]))).toBe(null);
+  });
+
+  it("buildVeracityMetrics carries tapeYield when given the sourcing trace, null without it, and beatCoverage beside it", () => {
+    /* MUTATION THAT KILLS THIS: drop `tapeYield` (or compute it without the
+       trace) in buildVeracityMetrics — the field reads undefined or the wrong
+       denominator. Ran it — red. */
+    const r = sourceBeatsResult();
+    const base = { sourcedActs: r.acts, writtenActs: [], topic: "food/grilling-bbq", writerCalls: 0, verifierCalls: 0, pipelineTokens: 0, stageTimings: [] };
+    const withTrace = buildVeracityMetrics({ ...base, tapeRelevanceRows: r.tapeRelevance, sourcingTrace: r.sourcingTrace });
+    expect(withTrace.tapeYield?.rate).toBe(0.75);
+    expect(withTrace.beatCoverage).toBe(null);
+    expect(buildVeracityMetrics({ ...base, tapeRelevanceRows: r.tapeRelevance }).tapeYield).toBe(null);
+  });
+
+  it("the gate is unchanged: a tapeYield or beatCoverage of zero refuses nothing", () => {
+    const r = sourceBeatsResult();
+    const clean = buildVeracityMetrics({
+      sourcedActs: [],
+      writtenActs: actsOf([{ sourcing: "narration", claim: "c", exploration: false, carriedBy: { slot: 0, beat: 0 } }]),
+      topic: "t",
+      writerCalls: 0,
+      verifierCalls: 0,
+      pipelineTokens: 0,
+      stageTimings: [],
+      tapeRelevanceRows: [],
+      sourcingTrace: [r.sourcingTrace[0]!]
+    });
+    expect(clean.tapeYield?.rate).toBe(0);
+    expect(clean.beatCoverage?.rate).toBe(0);
+    const failures = evaluateVeracityGate(clean).failures;
+    expect(failures.some((f) => /tapeYield|beatCoverage/.test(f))).toBe(false);
   });
 });

@@ -12,6 +12,7 @@ import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVer
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult } from "../src/generation/finalizeForay";
 import { stitchForay } from "../src/generation/stitchForay";
+import { evaluateVeracityGate } from "../src/generation/veracityMetrics";
 import { checkpointFingerprint } from "../src/generation/checkpoint";
 import { forayIdFor, resetTaxonomyCache } from "../src/generation/resolveTopic";
 import { resetTaxonomyFamilyCache, taxonomyRoot } from "../src/generation/taxonomyFamily";
@@ -258,6 +259,46 @@ describe("runForayPipeline", () => {
     expect(veracity.stageTimings.map((t) => t.name)).toEqual(
       expect.arrayContaining(["understand", "research-shape", "spine", "deepen", "source", "narrate:0", "stitch:0", "finalize"])
     );
+  });
+
+  it("GV-26: the generated outcome carries the publish gate's verdict on its own meta.veracity, and refuses nothing", async () => {
+    /* MUTATION THAT KILLS THIS: return a constant verdict instead of
+       evaluating it — `{ ok: true, failures: [] }` goes red on the refusing
+       run below, `{ ok: false, ... }` on the clean stub run. Ran both — red. */
+    const clean = await runForayPipeline(request, options, stubDeps());
+    expect(clean.outcome).toBe("generated");
+    if (clean.outcome !== "generated") return;
+    expect(clean.gate).toEqual(evaluateVeracityGate(clean.input.meta?.veracity));
+    expect(clean.gate?.ok).toBe(true);
+
+    /* A verifier that confirms no seam: every page is kept unverified (F-51),
+       which the gate refuses — and the run still finishes `generated`. */
+    const stub = new StubNarrationVerifierBuilder();
+    const refusing = {
+      providerName: "stub",
+      verifyAct: async (req: Parameters<NarrationVerifierBuilder["verifyAct"]>[0], ctx: Parameters<NarrationVerifierBuilder["verifyAct"]>[1]) => {
+        const result = await stub.verifyAct(req, ctx);
+        return { ...result, seams: result.seams.map((seam) => ({ ...seam, claimsSupported: false, notes: "rests on nothing held" })) };
+      }
+    } as NarrationVerifierBuilder;
+    const refused = await runForayPipeline(request, options, { ...stubDeps(), narrationVerifier: refusing });
+    expect(refused.outcome).toBe("generated");
+    if (refused.outcome !== "generated") return;
+    expect(refused.gate).toEqual(evaluateVeracityGate(refused.input.meta?.veracity));
+    expect(refused.gate?.ok).toBe(false);
+  }, 120_000);
+
+  it("GV-26: meta.veracity carries MQ-09 tape yield from §4.5's own rows, and MQ-11 beat coverage", async () => {
+    /* MUTATION THAT KILLS THIS: stop passing `sourcingTrace: sourced.sourcingTrace`
+       to buildVeracityMetrics — tapeYield comes back null. Ran it — red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    const veracity = out.input.meta?.veracity;
+    expect(veracity?.tapeYield).not.toBe(null);
+    expect(veracity?.tapeYield?.tapeBeats).toBe(veracity?.tapeRelevanceAnchors.length);
+    expect(veracity?.tapeYield?.wantedBeats).toBeGreaterThanOrEqual(veracity?.tapeYield?.tapeBeats ?? Infinity);
+    expect(veracity && "beatCoverage" in veracity).toBe(true);
   });
 
   it("gives the Foray a house-style title and mints its id from the title as the understander left it (qa 146)", async () => {

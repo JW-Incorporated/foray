@@ -57,7 +57,7 @@ import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate, preludeTemplate } from "../types/narration";
 import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 import { resetUsageTracking, getUsageTotals } from "./usageTracking";
-import { buildVeracityMetrics, computeActVeracity, type ActVeracity } from "./veracityMetrics";
+import { buildVeracityMetrics, computeActVeracity, evaluateVeracityGate, type ActVeracity, type VeracityGateResult } from "./veracityMetrics";
 import { preludeProvenance } from "./itemReadiness";
 
 import { createPromptUnderstander } from "./createPromptUnderstander";
@@ -399,6 +399,14 @@ export type RunPipelineOutcome =
        * timing per act. `generateForays.ts` carries both into `report.json`
        * (`narrationConcurrency`, `narrationActs`). */
       narration: { concurrency: number; acts: NarrationActTiming[] };
+      /** GV-26 (decision 33): the publish gate's verdict on this candidate,
+       * `evaluateVeracityGate(input.meta.veracity)`, evaluated when the run
+       * finishes so a run learns it failed its gates here rather than at
+       * publish. Report-only: nothing is refused on it — `publishForay.ts`
+       * still gates publication. Always set by `runForayPipeline`; optional
+       * only so a hand-built outcome (a test double) need not carry one —
+       * `generateForays.ts` writes no verdict for such an outcome. */
+      gate?: VeracityGateResult;
     };
 
 /**
@@ -1834,8 +1842,14 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),
     tapeRelevanceRows: sourced.tapeRelevance,
+    /* GV-26 (MQ-09): the narration-degraded rows, so tape yield can tell a
+       beat that searched and found nothing from one that never searched. */
+    sourcingTrace: sourced.sourcingTrace,
     root: options.root
   });
+  /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is
+     refused on it — the candidate stays local either way. */
+  const veracityGate = evaluateVeracityGate(veracity);
 
   const input: FinalizeForayInput = {
     id: forayId,
@@ -1874,6 +1888,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     topicDecision,
     timings: timings.all(),
     ttlA1Ms,
-    narration: { concurrency: actConcurrency, acts: narrationActs }
+    narration: { concurrency: actConcurrency, acts: narrationActs },
+    gate: veracityGate
   };
 }

@@ -2630,7 +2630,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 41, // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 43, // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -3006,7 +3006,7 @@ const BACKEND_FLOORS = {
      private status read path. */
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
-  "test/generateForays.test.ts": 10, // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
+  "test/generateForays.test.ts": 15, // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
   "test/generationStatus.test.ts": 6, // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
   "test/partialCandidate.test.ts": 11, // GV-21: delivery attached with items unchanged, the item-count units pinned, no delivery without provenance, misaligned and malformed fallbacks; 6 -> 11 (7 on disk before)
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
@@ -3099,7 +3099,7 @@ const BACKEND_FLOORS = {
   /* RAISED 43 -> 47 by F-101: `computeFirstAttemptPassRates` emits the pages
      and beats units separately and declares which the legacy scalar carries;
      `computeListeningShares` says its denominator in the field name. */
-  "test/veracityMetrics.test.ts": 48, // round-3 audit (L5-generation): arch-drift-2 the publish gate grounds print quotes with findHoldingDoc; 47 -> 48
+  "test/veracityMetrics.test.ts": 53, // GV-26 (generation v2): computeTapeYield (MQ-09, 0.75 on 3 tape / 1 no-tape / 1 argument; null with nothing wanted), computeBeatCoverage (MQ-11, null per-page), buildVeracityMetrics carries both, the gate ignores them; 48 -> 53 // round-3 audit (L5-generation): arch-drift-2 the publish gate grounds print quotes with findHoldingDoc; 47 -> 48
   /* WS-A evidence-first narration (generation fix plan 2026-09-09): the
      per-beat evidence pack (tape cue window + up to three retrieved print
      passages, cached by claim hash) and the mechanical narration rules run 1's
