@@ -66,7 +66,9 @@ import { parseSse } from "./sse";
  *     'aborted';
  *   - the caller's AbortSignal and the timeout cancel the body read, and so
  *     does a consumer that stops iterating early;
- *   - one CallRecord at the end (success, failure or early stop), with
+ *   - one CallRecord at the end (success, failure or early stop; on success
+ *     it is written just before `done` is yielded, so a consumer that stops
+ *     at `done` without calling return() is still recorded), with
  *     queueMs = request sent to response headers (connection plus proxy
  *     admission; SGLang's own queue and prefill land in ttftMs), ttftMs =
  *     request sent to the first content delta, and decodeTokPerSec =
@@ -214,12 +216,13 @@ export class OpenAICompatChatProvider implements ChatProvider {
     const log = currentRunLog();
     const logStartMs = log?.nowMs() ?? 0;
     const startedAt = this.now();
-    const marks: StreamMarks = { logHeadersMs: null, logFirstDeltaMs: null };
+    const marks: StreamMarks = { logHeadersMs: null, logFirstDeltaMs: null, logEndMs: null };
     let rawFinish: string | null = null;
     let usage: ChatUsage | null = null;
     let servedBy: string | null = null;
     let failure: { kind: string; status?: number } | undefined;
     let finished = false;
+    let recorded = false;
     let text = "";
     const body = JSON.stringify({ ...buildRequestBody(req), stream: true, stream_options: { include_usage: true } });
     const scope = this.openScope(req);
@@ -259,8 +262,7 @@ export class OpenAICompatChatProvider implements ChatProvider {
         throw scope.classify(text);
       }
       if (rawFinish === null && !sawDone) throw new ChatProviderError("network", "stream_dropped", { partialText: text });
-      finished = true;
-      yield {
+      const done: ChatStreamEvent = {
         type: "done",
         finishReason: rawFinish === null ? "other" : mapFinishReason(rawFinish),
         usage,
@@ -268,6 +270,16 @@ export class OpenAICompatChatProvider implements ChatProvider {
         requestId,
         timing: { startedAt, firstByteAt, endedAt: this.now() }
       };
+      marks.logEndMs = log?.nowMs() ?? null;
+      finished = true;
+      /* Closed and recorded BEFORE `done` is handed over: a consumer that
+         reads to `done` and never asks again (nor calls return()) leaves the
+         generator suspended at this yield, so `finally` would never run; and
+         the consumer's own time after `done` is not the model's. */
+      recorded = true;
+      scope.close();
+      this.recordStream(req, logStartMs, marks, rawFinish, usage, servedBy, undefined);
+      yield done;
     } catch (err) {
       failure =
         err instanceof ChatProviderError
@@ -282,8 +294,10 @@ export class OpenAICompatChatProvider implements ChatProvider {
         scope.controller.abort();
         failure = { kind: "aborted" };
       }
-      scope.close();
-      this.recordStream(req, logStartMs, marks, rawFinish, usage, servedBy, failure);
+      if (!recorded) {
+        scope.close();
+        this.recordStream(req, logStartMs, marks, rawFinish, usage, servedBy, failure);
+      }
     }
   }
 
@@ -299,7 +313,7 @@ export class OpenAICompatChatProvider implements ChatProvider {
   ): void {
     const log = currentRunLog();
     if (!log) return;
-    const endMs = log.nowMs();
+    const endMs = marks.logEndMs ?? log.nowMs();
     const outputTokens = failure ? null : (usage?.completionTokens ?? null);
     const decodeMs = marks.logFirstDeltaMs === null ? null : endMs - marks.logFirstDeltaMs;
     recordModelCall({
@@ -488,6 +502,10 @@ interface StreamMarks {
   logHeadersMs: number | null;
   /** Log-clock time of the first non-empty content delta. */
   logFirstDeltaMs: number | null;
+  /** Log-clock time the stream finished, taken with the done event's
+   * timing.endedAt; null until then (a failure or early stop ends at the
+   * moment it is recorded). */
+  logEndMs: number | null;
 }
 
 /**

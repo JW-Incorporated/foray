@@ -3298,7 +3298,7 @@ const BACKEND_FLOORS = {
      the body) plus the scriptedProvider stream-script self-test. Offline:
      synthetic SSE fixtures. One named mutation per test. */
   "test/sse.test.ts": 5,
-  "test/openAICompatStream.test.ts": 13,
+  "test/openAICompatStream.test.ts": 14,
   /* GV-19 (docs/roadmap/generation-v2.md, #1286): askStructured, the one
      provider-neutral JSON call (meter, json_schema/json_object/none
      response_format, recordUsage, 'length' refused as TruncatedReplyError

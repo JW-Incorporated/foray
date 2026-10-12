@@ -287,6 +287,57 @@ describe("OpenAICompatChatProvider.stream: reading the stream", () => {
     expect(calls[0]).not.toHaveProperty("error");
     expect(log.toJsonl()).not.toContain(KEY);
   });
+
+  /* Kills: moving the success-path close and record back into `finally`
+     (the manual consumer below then leaves the generator suspended at
+     `yield done`: no CallRecord and the timeout timer still armed; and the
+     for-await consumer's 1 s of work after `done` lands in endMs and the
+     decode rate); and recording before `done` without closing the scope
+     (the timeout timer stays armed). */
+  it("the CallRecord is written and the timer cleared before done is handed over, whatever the consumer does after it", async () => {
+    vi.useFakeTimers({ now: 2_000_000 });
+    const steps = eventSteps("stream-jsonl.txt", 100);
+
+    /* A consumer that pulls with next() until done and never calls return(). */
+    const manualLog = new RunLog();
+    const manual = runWithRunLog(manualLog, async () => {
+      const it = provider(streamServer(steps)).stream(request());
+      for (;;) {
+        const step = await it.next();
+        if (step.done || step.value.type === "done") return step.done ? undefined : step.value;
+      }
+    });
+    /* 10 s covers the reply and stays under the 120 s timeout, so an armed
+       timeout timer would still be counted. */
+    await vi.advanceTimersByTimeAsync(10_000);
+    const manualDone = (await manual) as Extract<ChatStreamEvent, { type: "done" }>;
+    expect(manualDone.type).toBe("done");
+    expect(vi.getTimerCount()).toBe(0);
+    const manualCalls = manualLog.calls();
+    expect(manualCalls).toHaveLength(1);
+    expect(manualCalls[0]).not.toHaveProperty("error");
+    const manualEnd = manualCalls[0]!.endMs;
+    expect(manualEnd).toBe(manualDone.timing.endedAt - 2_000_000);
+
+    /* A for-await consumer that awaits 1 s of its own work on done. */
+    const slowLog = new RunLog();
+    let slowDone: Extract<ChatStreamEvent, { type: "done" }> | undefined;
+    const slow = runWithRunLog(slowLog, async () => {
+      for await (const e of provider(streamServer(steps)).stream(request())) {
+        if (e.type === "done") {
+          slowDone = e;
+          await sleep(1_000);
+        }
+      }
+    });
+    await vi.runAllTimersAsync();
+    await slow;
+    const slowCalls = slowLog.calls();
+    expect(slowCalls).toHaveLength(1);
+    const t0 = slowDone!.timing.startedAt;
+    expect(slowCalls[0]!.endMs).toBe(slowDone!.timing.endedAt - t0);
+    expect(slowCalls[0]!.decodeTokPerSec).toBeCloseTo(40 / ((slowDone!.timing.endedAt - slowDone!.timing.firstByteAt!) / 1000), 6);
+  });
 });
 
 describe("OpenAICompatChatProvider.stream: failures keep the partial text", () => {
