@@ -377,9 +377,27 @@ export function recordModelCall(input: ModelCallInput): CallRecord | undefined {
  * call's stage (label, role, context stage) on the context's tier, and
  * whether the output tokens exceeded it. `off` stamps nothing. The flag is
  * read here, at call time, and only inside a run.
+ *
+ * NEVER THROWS. This runs after the paid reply has returned (and on the
+ * failure path, where a throw would mask the transport error), so a bad
+ * FORAY_OUTPUT_BUDGETS or a stamping fault records the provider-given values
+ * (or null) and carries on. Bad config fails loudly at run start instead
+ * (runPipeline.ts validates the flag before the first stage).
  */
 function budgetStamp(input: ModelCallInput, ctx: CallContext): { outputBudget: number | null; overBudget: boolean | null } {
   const given = { outputBudget: input.outputBudget ?? null, overBudget: input.overBudget ?? null };
+  try {
+    return stampFromConfig(input, ctx, given);
+  } catch {
+    return given;
+  }
+}
+
+function stampFromConfig(
+  input: ModelCallInput,
+  ctx: CallContext,
+  given: { outputBudget: number | null; overBudget: boolean | null }
+): { outputBudget: number | null; overBudget: boolean | null } {
   if (outputBudgetMode() === "off") return given;
   const stamp = stampOutputBudget(
     {

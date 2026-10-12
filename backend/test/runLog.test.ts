@@ -11,6 +11,7 @@ import {
   type StageSpan
 } from "../src/generation/runLog";
 import { FlagValueError } from "../src/generation/generationFlags";
+import { outputBudgetMode } from "../src/config/outputBudgets";
 
 /**
  * GV-01 (docs/roadmap/generation-v2.md): the per-run log every later
@@ -226,7 +227,7 @@ describe("RunLog: output budgets (GV-14)", () => {
     ]);
   });
 
-  it("keeps a provider's own budget, stamps nothing without a tier or under off, and throws on a bad flag at call time", () => {
+  it("keeps a provider's own budget and stamps nothing without a tier or under off", () => {
     /* MUTATION THAT KILLS THIS: ignore the `off` mode (off still stamps 450),
        or let the table override a provider's explicit outputBudget. Ran
        both — red. */
@@ -237,8 +238,6 @@ describe("RunLog: output budgets (GV-14)", () => {
         call(900, { outputBudget: 1000 });
         process.env.FORAY_OUTPUT_BUDGETS = "off";
         call(900);
-        process.env.FORAY_OUTPUT_BUDGETS = "bogus";
-        expect(() => call(900)).toThrow(FlagValueError);
       });
     });
     expect(log.calls().map((c) => [c.outputBudget, c.overBudget])).toEqual([
@@ -248,5 +247,33 @@ describe("RunLog: output budgets (GV-14)", () => {
     ]);
     /* Outside a run the flag is never read: recording is a no-op. */
     expect(call(900)).toBeUndefined();
+  });
+
+  it("never throws on a bad flag while recording: the call is still appended with the provider-given budget fields", () => {
+    /* recordModelCall runs AFTER the paid reply (and on the failure path,
+       where a throw would replace the transport error), so a malformed
+       FORAY_OUTPUT_BUDGETS must not cost the reply. Bad config fails at run
+       start instead (runPipeline.test.ts).
+       MUTATION THAT KILLS THIS: drop the try/catch in budgetStamp (call
+       outputBudgetMode() unguarded) — recordModelCall throws FlagValueError.
+       Ran it — red. */
+    process.env.FORAY_OUTPUT_BUDGETS = "bogus";
+    expect(() => outputBudgetMode()).toThrow(FlagValueError);
+    const log = new RunLog({ now: fakeClock().now });
+    const recorded: Array<CallRecord | undefined> = [];
+    runWithRunLog(log, () =>
+      withCallContext({ stage: "spine", tier: "short" }, () => {
+        recorded.push(call(900));
+        recorded.push(call(900, { outputBudget: 1000, overBudget: false }));
+        recorded.push(call(null, { error: { kind: "transport", status: 503 } }));
+      })
+    );
+    expect(recorded.every((r) => r !== undefined)).toBe(true);
+    expect(log.calls().map((c) => [c.outputBudget, c.overBudget])).toEqual([
+      [null, null],
+      [1000, false],
+      [null, null]
+    ]);
+    expect(log.calls()[2]?.error).toEqual({ kind: "transport", status: 503 });
   });
 });

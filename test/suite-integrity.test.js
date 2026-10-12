@@ -2623,7 +2623,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 38, // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 39, // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 38 -> 39 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -2982,7 +2982,7 @@ const BACKEND_FLOORS = {
   "test/stageTiming.test.ts": 8, // GV-01: a throwing stage is timed (failed: true), spanMsOf; 5 -> 8
   /* GV-01 (generation v2): the per-run RunLog — AsyncLocalStorage isolation,
      context merge, injected clock, the runlog/1 JSONL shape. */
-  "test/runLog.test.ts": 9, // GV-14: outputBudget/overBudget stamped from the stage and tier (provider value wins, off stamps nothing, bad flag throws at call time); 7 -> 9
+  "test/runLog.test.ts": 10, // GV-14 review: a bad FORAY_OUTPUT_BUDGETS never throws while recording (the call is still appended with provider-given budget fields); 9 -> 10 // GV-14: outputBudget/overBudget stamped from the stage and tier (provider value wins, off stamps nothing); 7 -> 9
   /* GV-14 (docs/roadmap/generation-v2.md, #1286): R1-17's stage x tier
      output-token budgets in config/outputBudgets.ts — table completeness, the
      short sum 1,650, the per-seam writer budget, every Anthropic builder label
