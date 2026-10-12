@@ -1641,6 +1641,7 @@ const FLOORS = {
      as pipeline latency. The 12 mutations named in the suite header were each
      applied and observed to fail before it landed. */
   "tools/generation/relay.test.mjs": 33, // round-3 audit (L5): the default port is 8788, not the retired events server's 8787; 32 -> 33 // a leftover reply never answers a new run, web pages and foreign Hosts are refused, /answer and /reset need the run token, header ids cannot escape the queue; 27 -> 32
+  "tools/generation/review-queue.test.mjs": 16, // GV-41: new -- risk order (out-9 + synthetic: unverified pages first; each of the six rules beats the later ones, null-worst, clipOnSubjectRate over tapeRelevance, forayId tiebreak), loadDir/list never carry the prompt, act card play order + segmentSources before the pool + act title + CLI, verdict row (one line, card.mjs-valid scores, file sha) and its refusals, append-only store, validateVerdict, no axis list of its own; 17 mutations red
   /* #703: the corpus-warming launcher. Small on purpose — the work is in
      backend/src/cli/warmTranscriptIndex.ts and pinned by its own suite — but a
      launcher that spawns an entry that no longer exists fails quietly, and a
