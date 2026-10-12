@@ -262,4 +262,49 @@ describe("FileJobSink", () => {
     await expect(stranger.publish(snapshotFrom({ ...JOB, authorId: "someone-else" }, p, 0, AT)!)).rejects.toThrow(/another author/);
     expect(read()).toMatchObject({ authorId: "founder-1", seq: 3 });
   });
+  it("never shrinks the served prefix: a resumed process's prelude-only snapshot does not overwrite a longer row", async () => {
+    /* A new process resuming the same Foray starts from empty progress: its
+       banked acts fire no events, so its first snapshot serves the prelude
+       alone (the walk stops at the gap after it).
+       MUTATION THAT KILLS THIS: drop the floor in publish (`if (this.last &&
+       !extendsServed(this.last, out)) return;`). The second sink writes seq 3
+       with one item over a row serving four. Ran it — red. Also killed:
+       compare lengths only in extendsServed (drop the id check). The
+       divergent snapshot below (another item at index 1) is written. Ran it
+       — red. */
+    const first = new FileJobSink(dir);
+    await first.publish(snapshotFrom(JOB, withEvents(EMPTY_JOB_PROGRESS, event(0), event(1), event(2), event(3)), 0, AT)!);
+    expect(read().items).toHaveLength(4);
+
+    const second = new FileJobSink(dir);
+    await second.publish(snapshotFrom({ ...JOB, jobId: "job-2" }, withEvents(EMPTY_JOB_PROGRESS, event(0), event(4), event(5)), 0, AT)!);
+    expect(read()).toMatchObject({ jobId: "job-1", seq: 1 });
+    expect(read().items).toEqual(ITEMS.slice(0, 4));
+
+    const swapped: ItemReadyEvent = { ...event(1), itemId: "act-1-introduction-rewritten", item: narration("act-1-introduction-rewritten") };
+    await second.publish(snapshotFrom(JOB, withEvents(EMPTY_JOB_PROGRESS, event(0), swapped, event(2), event(3), event(4)), 1, AT)!);
+    expect(read().items).toEqual(ITEMS.slice(0, 4));
+
+    await second.publish(snapshotFrom(JOB, withEvents(EMPTY_JOB_PROGRESS, event(0), event(1), event(2), event(3), event(4), event(5)), 2, AT)!);
+    expect(read()).toMatchObject({ jobId: "job-1", seq: 4 });
+    expect(read().items).toEqual(ITEMS.slice(0, 6));
+  });
+
+  it("a resumed process that publishes nothing closes the carried row when told its Foray id", async () => {
+    /* Every act banked: no hook fires, the sink holds no snapshot, and the
+       row the earlier process left must not read "running" forever.
+       MUTATION THAT KILLS THIS: drop the `target` carry in close. It returns
+       early and the row stays "running" at seq 1. Ran it — red. */
+    await new FileJobSink(dir).publish(snapshotFrom(JOB, withEvents(EMPTY_JOB_PROGRESS, event(0), event(1), event(2)), 0, AT)!);
+    await new FileJobSink(dir, () => new Date(AT)).close("complete", undefined, { forayId: FORAY, authorId: JOB.authorId });
+    expect(read()).toMatchObject({ jobId: "job-1", seq: 2, status: "complete", closed: { outcome: "complete" } });
+    expect(read().items).toHaveLength(3);
+
+    await expect(new FileJobSink(dir).close("failed", "error", { forayId: FORAY, authorId: "someone-else" })).rejects.toThrow(/another author/);
+    expect(read()).toMatchObject({ seq: 2, status: "complete" });
+
+    const other = "another-foray-d4e5f6";
+    await new FileJobSink(dir).close("failed", "error", { forayId: other, authorId: JOB.authorId });
+    expect(fs.readdirSync(dir)).toEqual([`${FORAY}.job.json`]);
+  });
 });

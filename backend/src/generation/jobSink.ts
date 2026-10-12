@@ -122,13 +122,22 @@ export interface JobSnapshot {
   closed?: { outcome: JobCloseOutcome; detail?: string };
 }
 
-/** Where a job row goes. `publish` replaces the row with a newer snapshot;
- * `close` writes the final one with the run's outcome. A sink that was never
- * handed a snapshot has no Foray id to name a row by, so its `close` writes
- * nothing. */
+/** Names the row a `close` closes when the sink was never handed a snapshot:
+ * a resumed process whose acts were all banked fires no hook, but the row an
+ * earlier process left still needs its outcome. */
+export interface JobCloseTarget {
+  forayId: string;
+  authorId: string;
+}
+
+/** Where a job row goes. `publish` replaces the row with a newer snapshot —
+ * never with one that serves fewer or other items than the row already
+ * written (the brief's "`items` only grows"); `close` writes the final one
+ * with the run's outcome. A sink that was never handed a snapshot names its
+ * row by `target`; with neither, its `close` writes nothing. */
 export interface GenerationJobSink {
   publish(s: JobSnapshot): Promise<void>;
-  close(outcome: JobCloseOutcome, detail?: string): Promise<void>;
+  close(outcome: JobCloseOutcome, detail?: string, target?: JobCloseTarget): Promise<void>;
 }
 
 /** The job's fixed fields, known before the run mints its Foray id. */

@@ -834,6 +834,47 @@ describe("GV-44 — --job-dir publishes the job snapshot", () => {
     for (const f of fs.readdirSync(jobDir)) expect(fs.readFileSync(path.join(jobDir, f), "utf8")).not.toContain(PROMPT);
   });
 
+  it("a resumed attempt that publishes nothing still closes the job row the earlier process left", async () => {
+    /* A resumed process whose acts were all banked fires no hook, so its sink
+       holds no snapshot; the row must not read "running" forever. Here the
+       pipeline banks its identity and fails before any act.
+       MUTATION THAT KILLS THIS: drop the checkpoint fallback in closeJob
+       (`[forayId]` alone). lastPartialId is null, close gets no target, and
+       the row stays "running". Ran it — red. */
+    const forayId = "fire-smoke-and-the-long-cook-abc123";
+    const prior = {
+      schema: "foray-job/1",
+      jobId: "job-earlier",
+      forayId,
+      authorId: "founder-1",
+      lane: "catalogue",
+      status: "running",
+      seq: 4,
+      updatedAt: "2026-10-12T09:00:00.000Z",
+      title: "Fire, smoke and the long cook",
+      topic: null,
+      summary: null,
+      acts: [],
+      items: [{ type: "narration", id: "prelude", script: "This Foray was generated.", mode: "marker" }],
+      itemStates: [{ itemId: "prelude", check: "prelude", audio: "pending" }],
+      runtimeSecSoFar: 5,
+      delivery: { servableThrough: 1, itemsGenerated: 1, servableThroughAct: -1, pausedAtIndex: null }
+    };
+    expect(JobSnapshotSchema.safeParse(prior).success).toBe(true);
+    fs.mkdirSync(jobDir, { recursive: true });
+    fs.writeFileSync(path.join(jobDir, `${forayId}.job.json`), `${JSON.stringify(prior)}
+`);
+    const failing: typeof runForayPipeline = async (_request, options, deps = {}) => {
+      await deps.checkpoint!.save(options.checkpointKey!, "identity", { startedAt: "2026-10-12T09:00:00.000Z", forayId, topic: null, topicDecision: null });
+      throw new Error("boom");
+    };
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { jobDir, maxResumes: 0 }), { cueProvider, runPipeline: failing, newJobId: () => "job-later" });
+    expect(result.entry?.outcome).toBe("error");
+    const row = JSON.parse(fs.readFileSync(path.join(jobDir, `${forayId}.job.json`), "utf8")) as JobSnapshot;
+    expect(row).toMatchObject({ jobId: "job-earlier", seq: 5, status: "failed", closed: { outcome: "failed", detail: "error" } });
+    expect(row.items).toHaveLength(1);
+  });
+
   it("writes nothing under --dry-run", async () => {
     /* MUTATION THAT KILLS THIS: open the sink without the `!args.dryRun`
        guard. The dry run writes a job file. Ran it — red. */

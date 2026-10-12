@@ -17,7 +17,7 @@ import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../gene
 import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
 import { FileJobSink } from "./fileJobSink";
-import { EMPTY_JOB_PROGRESS, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity } from "../generation/jobSink";
+import { EMPTY_JOB_PROGRESS, isJobForayId, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity } from "../generation/jobSink";
 import { readAuthorIdFlag, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
 import type { VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
@@ -810,10 +810,15 @@ export async function generateOneCandidate(
       console.warn(`  job: could not publish snapshot ${snapshot.seq}: ${errorMessage(err)}`);
     }
   };
-  const closeJob = async (outcome: JobCloseOutcome, detail?: string): Promise<void> => {
+  const closeJob = async (outcome: JobCloseOutcome, detail: string | undefined, forayId: string | null): Promise<void> => {
     if (!jobSink) return;
     try {
-      await jobSink.close(outcome, detail);
+      /* The row to close when this process published nothing (a resumed
+         attempt whose acts were all banked fires no hook): the run's Foray id,
+         else the one the checkpoint banked. Only a valid job id names a row. */
+      const banked = (checkpointStore.load(checkpointKey)?.stages.identity as { forayId?: unknown } | undefined)?.forayId;
+      const target = [forayId, banked].find(isJobForayId);
+      await jobSink.close(outcome, detail, target ? { forayId: target, authorId: job.authorId } : undefined);
     } catch (err) {
       console.warn(`  job: could not close the job: ${errorMessage(err)}`);
     }
@@ -868,9 +873,9 @@ export async function generateOneCandidate(
     /* GV-44: every return goes through here, so the job row closes once,
        with the same outcome code the notify hook gets ("built",
        "aborted:<reason>", "error", "invalid", "rejected" ...). */
-    if (notifyOutcome === "built") await closeJob("complete");
-    else if (notifyOutcome.startsWith("aborted:")) await closeJob("aborted", notifyOutcome.slice("aborted:".length));
-    else await closeJob("failed", notifyOutcome);
+    if (notifyOutcome === "built") await closeJob("complete", undefined, id);
+    else if (notifyOutcome.startsWith("aborted:")) await closeJob("aborted", notifyOutcome.slice("aborted:".length), id);
+    else await closeJob("failed", notifyOutcome, id);
     const withCalls: ReportEntry = {
       ...entry,
       calls,

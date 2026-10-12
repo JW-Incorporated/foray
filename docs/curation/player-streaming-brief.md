@@ -111,7 +111,9 @@ Notes that matter for the player:
   `"pending"`. `acts` is for display; `items` is what plays.
 - **`seq` is the change signal.** Skip any snapshot whose `seq` is not above the last one
   you applied. A resumed run of the same Foray continues the same job (same `jobId`, `seq`
-  above the file's).
+  above the file's), and the sink never writes a row that serves fewer or other items than
+  the row already there, so "`items` only grows" holds across the restart too; a resumed
+  run that publishes nothing still closes the row it continues.
 - **No prompt, ever.** The schema has no prompt field and is strict; `title`, `topic` and
   `summary` are the understander's copy (§9.4 keeps the title). `closed.detail` is a short
   code (`refused-partial`, `budget-stop`, `error`, `invalid`, ...), never an error message.

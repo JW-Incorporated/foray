@@ -7,6 +7,7 @@ import {
   JobSnapshotSchema,
   type GenerationJobSink,
   type JobCloseOutcome,
+  type JobCloseTarget,
   type JobSnapshot
 } from "../generation/jobSink";
 
@@ -28,10 +29,23 @@ import {
  * the file's — so a poller's "skip anything not newer" rule holds across the
  * restart. A file on disk for the same id but another author is never
  * overwritten.
+ *
+ * THE SERVED PREFIX NEVER SHRINKS (the brief's "`items` only grows"). A
+ * resumed process starts from an empty progress: its banked acts fire no
+ * events, so its first snapshots carry only the prelude (the walk stops at
+ * the gap after it) until its first partial candidate names every item again.
+ * Written over a file that already served N items, with a higher seq, that
+ * would make a poller's row fall to one item and later re-append items it
+ * had queued. So the row already written (the carried file's, then this
+ * sink's own last write) is a FLOOR: a snapshot whose items do not extend it
+ * (shorter, or a different item id at a shared index) is not written, and the
+ * row stays as it was. The carried file also seeds `close`, so a resumed
+ * process that publishes nothing still closes the job it continues.
  */
 export class FileJobSink implements GenerationJobSink {
   private last: JobSnapshot | null = null;
-  /** Set on the first publish: the job on disk this run continues, if any. */
+  /** Set on the first publish (or a targeted close): the job on disk this
+   * run continues, if any. */
   private carried: { jobId: string; seqOffset: number } | null = null;
 
   constructor(
@@ -54,37 +68,57 @@ export class FileJobSink implements GenerationJobSink {
     if (this.last && s.forayId !== this.last.forayId) {
       throw new Error(`FileJobSink: one sink is one job (${this.last.forayId}); refused a snapshot for ${s.forayId}`);
     }
-    if (!this.carried) this.carried = this.continueFrom(file, s);
-    const out: JobSnapshot = { ...s, jobId: this.carried.jobId, seq: s.seq + this.carried.seqOffset };
+    if (!this.carried) this.carry(file, s.authorId, s.jobId);
+    const carried = this.carried!;
+    const out: JobSnapshot = { ...s, jobId: carried.jobId, seq: s.seq + carried.seqOffset };
     if (this.last && out.seq <= this.last.seq) {
       throw new Error(`FileJobSink: seq must strictly increase (got ${out.seq} after ${this.last.seq})`);
     }
+    /* The floor: never write a row that serves less than, or other than, the
+       row already written (see the class comment). */
+    if (this.last && !extendsServed(this.last, out)) return;
     this.write(file, out);
   }
 
-  async close(outcome: JobCloseOutcome, detail?: string): Promise<void> {
+  /**
+   * Writes the final row. `target` names the row when this sink was never
+   * handed a snapshot — a resumed process whose acts were all banked fires no
+   * hook, yet the job file the earlier process left must not read "running"
+   * forever. Without a snapshot and without a file on disk there is no row,
+   * and nothing is written.
+   */
+  async close(outcome: JobCloseOutcome, detail?: string, target?: JobCloseTarget): Promise<void> {
+    if (!this.last && target && !this.carried) this.carry(this.filePathFor(target.forayId), target.authorId, null);
     if (!this.last) return;
     this.write(this.filePathFor(this.last.forayId), closedSnapshot(this.last, outcome, this.clock().toISOString(), detail));
   }
 
-  private continueFrom(file: string, s: JobSnapshot): { jobId: string; seqOffset: number } {
+  /** Reads the job on disk this run continues: its jobId and seq carry over,
+   * and its row becomes `last` (the floor, and what `close` closes). */
+  private carry(file: string, authorId: string, jobId: string | null): void {
+    /* No usable file: a publish starts the job afresh under its own jobId; a
+       targeted close has nothing to continue (and carries nothing). */
+    const fresh = jobId === null ? null : { jobId, seqOffset: 0 };
     let raw: string;
     try {
       raw = fs.readFileSync(file, "utf8");
     } catch {
-      return { jobId: s.jobId, seqOffset: 0 };
+      this.carried = fresh;
+      return;
     }
     let prior: JobSnapshot;
     try {
       prior = JobSnapshotSchema.parse(JSON.parse(raw)) as JobSnapshot;
     } catch {
       /* An unreadable file is replaced: it describes nothing. */
-      return { jobId: s.jobId, seqOffset: 0 };
+      this.carried = fresh;
+      return;
     }
-    if (prior.authorId !== s.authorId) {
+    if (prior.authorId !== authorId) {
       throw new Error(`FileJobSink: ${path.basename(file)} belongs to another author; refused to overwrite it`);
     }
-    return { jobId: prior.jobId, seqOffset: prior.seq };
+    this.carried = { jobId: prior.jobId, seqOffset: prior.seq };
+    this.last = prior;
   }
 
   private write(file: string, snapshot: JobSnapshot): void {
@@ -107,4 +141,11 @@ export class FileJobSink implements GenerationJobSink {
     }
     this.last = JSON.parse(text) as JobSnapshot;
   }
+}
+
+/** True when `next` serves every item `prior` served, in the same order and
+ * under the same ids (only a tail is new). */
+function extendsServed(prior: JobSnapshot, next: JobSnapshot): boolean {
+  if (next.itemStates.length < prior.itemStates.length) return false;
+  return prior.itemStates.every((st, i) => next.itemStates[i]!.itemId === st.itemId);
 }
