@@ -1,0 +1,41 @@
+{
+  "id": "fixture-bridges-hold-7f3a91",
+  "title": "Fixture Alpha: How Bridges Hold",
+  "topic": "fixtures/synthetic",
+  "summary": "A synthetic candidate for the listening-pack tests. Every line is made up; no transcript text.",
+  "runtimeSec": 640,
+  "slots": [
+    { "id": "alpha-slot-load", "title": "Load" },
+    { "id": "alpha-slot-failure", "title": "Failure" }
+  ],
+  "items": [
+    { "type": "narration", "id": "disclosure", "script": "This is a test Foray. Much of it is written by AI.", "mode": "marker" },
+    { "type": "narration", "id": "act-1-introduction", "script": "Act one asks how a bridge carries its own weight.", "mode": "frame" },
+    { "type": "segment", "slot": "alpha-slot-load", "segment_id": "fixture-show-ep1#100" },
+    { "type": "narration", "id": "narration-act-1-0-beat", "script": "Alpha says the load has to go somewhere.", "audio_url": "https://narration.example.test/alpha/beat-0.m4a", "mode": "hinge" },
+    { "type": "jingle", "id": "jingle-cut-act-1-1" },
+    { "type": "segment", "slot": "alpha-slot-load", "segment_id": "fixture-show-ep2#40" },
+    { "type": "narration", "id": "act-1-exit", "script": "Next, what happens when it does not.", "mode": "frame" },
+    { "type": "narration", "id": "act-2-introduction", "script": "Act two is about failure.", "mode": "frame" },
+    { "type": "segment", "slot": "alpha-slot-failure", "segment_id": "fixture-show-ep3#5" },
+    { "type": "narration", "id": "act-2-exit", "script": "That is where alpha ends.", "mode": "frame" }
+  ],
+  "segments": [
+    { "id": "fixture-show-ep1#100", "itemId": "fixture-show-ep1", "startSec": 100, "endSec": 160 }
+  ],
+  "segmentSources": [
+    {
+      "id": "fixture-show-ep1",
+      "show": "Fixture Show",
+      "title": "Episode one",
+      "feed_url": null,
+      "episode_guid": "fixture-guid-1",
+      "audio_url": "https://media.example.test/fixture-show/ep1.mp3",
+      "audio_type": "audio/mpeg",
+      "duration_sec": 1800,
+      "dai_suspected": false,
+      "source": "generation-tier-2"
+    }
+  ],
+  "meta": { "provider": "fixture-provider-alpha", "model": "fixture-model-alpha" }
+}
