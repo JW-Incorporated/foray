@@ -2975,7 +2975,13 @@ const BACKEND_FLOORS = {
   "test/stageTiming.test.ts": 8, // GV-01: a throwing stage is timed (failed: true), spanMsOf; 5 -> 8
   /* GV-01 (generation v2): the per-run RunLog — AsyncLocalStorage isolation,
      context merge, injected clock, the runlog/1 JSONL shape. */
-  "test/runLog.test.ts": 7,
+  "test/runLog.test.ts": 9, // GV-14: outputBudget/overBudget stamped from the stage and tier (provider value wins, off stamps nothing, bad flag throws at call time); 7 -> 9
+  /* GV-14 (docs/roadmap/generation-v2.md, #1286): R1-17's stage x tier
+     output-token budgets in config/outputBudgets.ts — table completeness, the
+     short sum 1,650, the per-seam writer budget, every Anthropic builder label
+     mapped (source grep), the truncation decision, the call-time
+     FORAY_OUTPUT_BUDGETS parse and BUILDER_MAX_TOKENS parity. */
+  "test/outputBudgets.test.ts": 10,
   /* GV-17: a stub pipeline under a real RunLog, its toJsonl() read by
      tools/generation-bench/runlog.mjs: call count, token totals, calls per
      stage, repeat work and the prose rate agree with the log's own, and every

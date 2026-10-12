@@ -1,14 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect } from "vitest";
 import {
   RUNLOG_SCHEMA,
   RunLog,
   currentCallContext,
   currentRunLog,
+  recordModelCall,
   runWithRunLog,
   withCallContext,
   type CallRecord,
   type StageSpan
 } from "../src/generation/runLog";
+import { FlagValueError } from "../src/generation/generationFlags";
 
 /**
  * GV-01 (docs/roadmap/generation-v2.md): the per-run log every later
@@ -189,5 +191,62 @@ describe("RunLog: toJsonl", () => {
     expect(lines[0]).toEqual({ schema: "runlog/1", t0Iso: "2026-10-11T12:00:00.000Z" });
     expect(lines.slice(1).map((e) => e.kind)).toEqual(["stage", "ready", "meter"]);
     expect(lines[1]).toEqual({ kind: "stage", name: "understand", startMs: 0, endMs: 12, ms: 12, status: "ok" });
+  });
+});
+
+describe("RunLog: output budgets (GV-14)", () => {
+  const savedFlag = process.env.FORAY_OUTPUT_BUDGETS;
+  afterEach(() => {
+    if (savedFlag === undefined) delete process.env.FORAY_OUTPUT_BUDGETS;
+    else process.env.FORAY_OUTPUT_BUDGETS = savedFlag;
+  });
+
+  const call = (outputTokens: number | null, extra: Partial<Parameters<typeof recordModelCall>[0]> = {}) =>
+    recordModelCall({ provider: "openai-compat", model: "m", label: "chat-call", startMs: 0, endMs: 5, outputTokens, ...extra });
+
+  it("stamps a short-tier spine call with 900 output tokens as outputBudget 450, overBudget true, by default", () => {
+    /* MUTATION THAT KILLS THIS: drop the budgetStamp spread in
+       recordModelCall (back to the provider's own nulls), or stamp from the
+       wrong tier (ctx.tier ignored -> null). Ran both — red. */
+    delete process.env.FORAY_OUTPUT_BUDGETS;
+    const log = new RunLog({ now: fakeClock().now });
+    runWithRunLog(log, () =>
+      withCallContext({ tier: "short" }, () =>
+        withCallContext({ stage: "spine" }, () => {
+          call(900);
+          call(300);
+          call(null);
+        })
+      )
+    );
+    expect(log.calls().map((c) => [c.outputBudget, c.overBudget])).toEqual([
+      [450, true],
+      [450, false],
+      [450, null]
+    ]);
+  });
+
+  it("keeps a provider's own budget, stamps nothing without a tier or under off, and throws on a bad flag at call time", () => {
+    /* MUTATION THAT KILLS THIS: ignore the `off` mode (off still stamps 450),
+       or let the table override a provider's explicit outputBudget. Ran
+       both — red. */
+    const log = new RunLog({ now: fakeClock().now });
+    runWithRunLog(log, () => {
+      withCallContext({ stage: "spine" }, () => call(900));
+      withCallContext({ stage: "spine", tier: "short" }, () => {
+        call(900, { outputBudget: 1000 });
+        process.env.FORAY_OUTPUT_BUDGETS = "off";
+        call(900);
+        process.env.FORAY_OUTPUT_BUDGETS = "bogus";
+        expect(() => call(900)).toThrow(FlagValueError);
+      });
+    });
+    expect(log.calls().map((c) => [c.outputBudget, c.overBudget])).toEqual([
+      [null, null],
+      [1000, false],
+      [null, null]
+    ]);
+    /* Outside a run the flag is never read: recording is a no-op. */
+    expect(call(900)).toBeUndefined();
   });
 });

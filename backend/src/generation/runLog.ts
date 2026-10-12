@@ -26,6 +26,7 @@
  * imports `withCallContext` from here.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
+import { outputBudgetMode, stampOutputBudget } from "../config/outputBudgets";
 
 export const RUNLOG_SCHEMA = "runlog/1" as const;
 
@@ -360,14 +361,41 @@ export function recordModelCall(input: ModelCallInput): CallRecord | undefined {
     outputTokens: input.outputTokens ?? null,
     decodeTokPerSec: input.decodeTokPerSec ?? null,
     maxTokens: input.maxTokens ?? null,
-    outputBudget: input.outputBudget ?? null,
-    overBudget: input.overBudget ?? null,
+    ...budgetStamp(input, ctx),
     stopReason: input.stopReason ?? null,
     jsonValid: input.jsonValid ?? null,
     ...(input.error ? { error: { ...input.error } } : {})
   };
   log.append(record);
   return record;
+}
+
+/**
+ * GV-14: a record's `outputBudget` and `overBudget`. A value the provider
+ * passed wins. Otherwise, under FORAY_OUTPUT_BUDGETS=report (the default) or
+ * enforce, they are stamped from config/outputBudgets.ts: the budget of the
+ * call's stage (label, role, context stage) on the context's tier, and
+ * whether the output tokens exceeded it. `off` stamps nothing. The flag is
+ * read here, at call time, and only inside a run.
+ */
+function budgetStamp(input: ModelCallInput, ctx: CallContext): { outputBudget: number | null; overBudget: boolean | null } {
+  const given = { outputBudget: input.outputBudget ?? null, overBudget: input.overBudget ?? null };
+  if (outputBudgetMode() === "off") return given;
+  const stamp = stampOutputBudget(
+    {
+      label: input.label,
+      role: input.role ?? ctx.role ?? null,
+      stage: input.stage ?? ctx.stage ?? null,
+      maxTokens: input.maxTokens ?? null,
+      outputTokens: input.outputTokens ?? null
+    },
+    ctx.tier
+  );
+  const outputBudget = given.outputBudget ?? stamp.outputBudget;
+  const outputTokens = input.outputTokens ?? null;
+  const overBudget =
+    given.overBudget ?? (outputBudget !== null && outputTokens !== null ? outputTokens > outputBudget : null);
+  return { outputBudget, overBudget };
 }
 
 /** Appends a structured reply's parse outcome (GV-07: parseWithRetry). A
