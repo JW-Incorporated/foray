@@ -1606,6 +1606,12 @@ const FLOORS = {
      clip counted as a clean cut, tape credited to the wrong show, the report's
      own measurement overridden by a candidate guess, reference drift unseen. */
   "tools/generation-bench/score.test.mjs": 17, // GV-24: new -- synthetic two-show MQ-06/07/08/16/19, show resolution order, pool boundary unknown, absent never 0, out-9 report vs judged/listen, report fields win, MQ-14 tier table, judged file, frozen clip-only null voice, --write/--check drift, committed reference shape, 21 keys, CLI, KPI doc rows
+  /* GV-35 (W7-01, R2-21, GP-27): the model-swap rule and the append-only
+     ledger. Each test is one way a swap that lost could change a default: a
+     tie or loss counted as a win, a metric arm B never measured read as a
+     pass, a band nobody supplied read as a pass, an adopt on an unfrozen
+     corpus, a correction that rewrites the row a PR cited, a stale table. */
+  "tools/generation-bench/swap-ledger.test.mjs": 27, // GV-35: new -- decideSwap adopt/hold/reject/measured, pairwise win/tie/loss + boundary, axis drop > 0.5, MQ-01+MQ-04, MQ-21 allowance, score.mjs cells unwrapped + stray cell throws, unbanded MQ-02/05 unmeasured, timing slack + resumed/upstream skipped, absent one arm vs both, listened minimum, unfrozen, ledger row refusals, append + supersede, byte-stable table, committed ledger/stack/doc in sync, no network
   /* GV-08 (R2-01, QK-30): the founder's listening card and the committed,
      append-only store under docs/ (auto-merge territory). Each test is one
      refusal a deletion would let through: a score of 0 or 6 into MQ-20, a
