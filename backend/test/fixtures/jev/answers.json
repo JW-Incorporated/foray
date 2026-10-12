@@ -335,6 +335,43 @@
         "output_tokens": 9
       }
     },
+    "score_probabilities_extra_key": {
+      "model": "jev-1.13.0",
+      "answers": [
+        {
+          "type": "noul",
+          "noul": 0.7
+        },
+        {
+          "type": "choice",
+          "choice": "o2",
+          "probabilities": {
+            "o1": 0.1,
+            "o2": 0.85,
+            "none": 0.05
+          },
+          "confidence": 0.85
+        },
+        {
+          "type": "score",
+          "score": 3,
+          "legend": "clear",
+          "probabilities": {
+            "0": 0.0,
+            "1": 0.02,
+            "2": 0.08,
+            "3": 0.7,
+            "4": 0.15,
+            "5": 0.05
+          },
+          "confidence": 0.7
+        }
+      ],
+      "usage": {
+        "input_tokens": 512,
+        "output_tokens": 9
+      }
+    },
     "confidence_out_of_range": {
       "model": "jev-1.13.0",
       "answers": [

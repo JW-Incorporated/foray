@@ -132,6 +132,7 @@ describe("parseJevReply: every malformed variant is ok:false with a fixed reason
     ["probabilities_keyed_wrong", "probabilities_mismatch"],
     ["score_out_of_range", "score_out_of_range"],
     ["score_probabilities_wrong_count", "probabilities_mismatch"],
+    ["score_probabilities_extra_key", "probabilities_mismatch"],
     ["confidence_out_of_range", "confidence_out_of_range"],
     ["answer_count_mismatch", "malformed_answers"],
     ["answer_id_mismatch", "answer_id_mismatch"],
@@ -142,7 +143,8 @@ describe("parseJevReply: every malformed variant is ok:false with a fixed reason
        noul accept 1.3; skip the choice-in-criteria check; read the
        probabilities by the reply's own keys with only a count check; let
        score reach `levels`; skip the confidence range check; drop the
-       answer-count check. */
+       answer-count check; drop the probabilities key-count check, so a
+       score reply with an extra level key "5" passes (review finding). */
     expect(Object.keys(fx.corrupted).sort()).toEqual(cases.map(([name]) => name).sort());
     for (const [name, reason] of cases) {
       const res = parseJevReply(JSON.stringify(fx.corrupted[name]), QUESTIONS);
