@@ -203,6 +203,37 @@ export interface ActWriteRequest {
   /** Every prior rejection of the act, in order (F-35), with the per-beat
    * and per-seam notes the verifier gave. */
   retryNote?: string;
+  /** GV-38 (W4-08, QK-26): what plays around this act's seams — its own
+   * introduction and exit, the previous act's exit, the spine's start and
+   * end states, and (act 0) the Foray's overview. Sent only under
+   * FORAY_NARRATION_ORDER=sequential or the fast path; absent, the request
+   * and the prompt are exactly what they were. */
+  frame?: ActFrame;
+}
+
+/**
+ * GV-38: the act frame. Every field is text the listener hears (or the
+ * spine's plan for what they believe) around the seams the writer writes,
+ * none of it the writer's to write. The introduction and exits are deepen
+ * text, unverified (QK-24): the writer is told not to repeat them, which
+ * also keeps their claims from spreading.
+ */
+export interface ActFrame {
+  /** This act's introduction (deepen), which plays before the first seam. */
+  actIntroduction: string;
+  /** This act's exit (deepen), which plays after the last seam. */
+  actExit: string;
+  /** The previous act's exit; absent for act 0. */
+  previousActExit?: string;
+  /** What the listener believes entering the act (spine). */
+  startState: string;
+  /** What the listener should believe leaving the act (spine). */
+  endState: string;
+  /** The prelude's overview (spine); act 0 only. */
+  forayOverview?: string;
+  /** 0-based position of the act in the Foray. */
+  actIndex: number;
+  totalActs: number;
 }
 
 /** F-88's ground, on the act path (F-97): a page of this Foray verified in

@@ -18,10 +18,11 @@ import {
   type NarrationMode,
   type Source
 } from "../types/narration";
-import type { Voice } from "../types/spine";
+import type { DeepenedAct, Spine, Voice } from "../types/spine";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
 import { beatKindOf, createEvidenceGatherer, type AdjacentTape, type EvidenceBeat, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
-import type { GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
+import type { ActFrame, GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
+import type { SpecificsMode } from "./specifics";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import { writeActNarration } from "./writeAct";
 import { planActSeams } from "./actSeams";
@@ -222,6 +223,42 @@ export interface WriteNarrationOptions {
    * concurrent acts. Omitted means "none", which is act 1's answer.
    */
   showsIntroduced?: ReadonlyArray<ReadonlyArray<string>>;
+  /**
+   * GV-38 (W4-08): for each act in `acts` (by position), the act frame its
+   * writer sees on every round (`buildActFrames`). Omitted (the default
+   * driver) means no act's request carries a frame.
+   */
+  frames?: ReadonlyArray<ActFrame | undefined>;
+  /**
+   * GV-34 / decision 34: the run's `specifics` gate (FORAY_SPECIFICS_CHECK,
+   * `GateConfig.specifics`), handed to every act's `writeActNarration`.
+   * Omitted means `report`, the writer's own default.
+   */
+  specifics?: SpecificsMode;
+}
+
+/**
+ * GV-38 (W4-08, QK-26): every act's frame, from the frozen spine and the
+ * deepened acts, by position: act i's own introduction and exit, act i-1's
+ * exit (none for act 0), the spine act's start and end states, and the
+ * spine's overview for act 0 only. Pure. A deepened act without a spine
+ * act at its position (never in a real run) takes its own states.
+ */
+export function buildActFrames(spine: Pick<Spine, "overview" | "acts">, deepened: ReadonlyArray<DeepenedAct>): ActFrame[] {
+  return deepened.map((act, actIndex) => {
+    const planned = spine.acts[actIndex] ?? act;
+    const previous = actIndex > 0 ? deepened[actIndex - 1] : undefined;
+    return {
+      actIntroduction: act.introduction,
+      actExit: act.exit,
+      ...(previous ? { previousActExit: previous.exit } : {}),
+      startState: planned.startState,
+      endState: planned.endState,
+      ...(actIndex === 0 ? { forayOverview: spine.overview } : {}),
+      actIndex,
+      totalActs: deepened.length
+    };
+  });
 }
 
 /** What `writeNarration` counts that a request proxy cannot (G-34). */
@@ -568,7 +605,11 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
               ground: options.ground?.() ?? [],
               /* gen-8: the shows earlier acts introduced, so this act does not
                  re-introduce them by name (Q-09). */
-              ...(options.showsIntroduced?.[actIndex] ? { showsIntroduced: options.showsIntroduced[actIndex] } : {})
+              ...(options.showsIntroduced?.[actIndex] ? { showsIntroduced: options.showsIntroduced[actIndex] } : {}),
+              /* GV-38: the act's frame, when the driver built one. */
+              ...(options.frames?.[actIndex] ? { frame: options.frames[actIndex] } : {}),
+              /* GV-34 / decision 34: the run's specifics gate. */
+              ...(options.specifics ? { specifics: options.specifics } : {})
             },
             voice,
             ctx

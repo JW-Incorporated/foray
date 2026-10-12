@@ -1632,3 +1632,55 @@ describe("runForayPipeline — item-ready events and RunLog readiness (GV-33)", 
     expect(timeline.leadReport()).toMatchObject({ pausedAtIndex: 1, samples: 0, minLeadSec: null });
   }, 120_000);
 });
+
+describe("runForayPipeline — the specifics gate reaches the act writer (GV-34, decision 34; threaded by GV-38)", () => {
+  /** The stub writer, except that round 1 of every act opens its first
+   * written seam with a year no source of the act carries. Under `enforce`
+   * writeAct refuses that sentence in code and re-asks, naming GV-34. */
+  function yearWriter() {
+    const writer = new StubNarrationWriterBuilder();
+    const real = writer.writeAct.bind(writer);
+    const requests: Parameters<NarrationWriterBuilder["writeAct"]>[0][] = [];
+    writer.writeAct = async (req, buildCtx) => {
+      requests.push(req);
+      const reply = await real(req, buildCtx);
+      if (req.retryNote) return reply;
+      const k = reply.seams.findIndex((s) => s.script.trim().length > 0);
+      return { seams: reply.seams.map((s, i) => (i === k ? { ...s, script: `In 1847 the pits were dug. ${s.script}` } : s)) };
+    };
+    return { writer, requests };
+  }
+  const gv34Retries = (requests: Array<{ retryNote?: string }>) => requests.filter((r) => r.retryNote?.includes("GV-34") && r.retryNote.includes('"1847"'));
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it("FORAY_SPECIFICS_CHECK=enforce re-asks the seam in a real run; report (the default) leaves the rounds alone", async () => {
+    /* MUTATION THAT KILLS THIS: drop the threading — leave `specifics` out of
+       the narrate stage's writeNarration options in runPipeline.ts (or out of
+       writeNarration's writeActNarration call). Enforce is then inert again:
+       no GV-34 re-ask. Ran both — red. */
+    const byDefault = yearWriter();
+    const plain = await runForayPipeline(request, options, { ...stubDeps(), narrationWriter: byDefault.writer });
+    expect(plain.outcome).toBe("generated");
+    expect(byDefault.requests.length).toBeGreaterThan(0);
+    expect(gv34Retries(byDefault.requests)).toEqual([]);
+
+    vi.stubEnv("FORAY_SPECIFICS_CHECK", "enforce");
+    const enforced = yearWriter();
+    const out = await runForayPipeline(request, options, { ...stubDeps(), narrationWriter: enforced.writer });
+    expect(out.outcome).toBe("generated");
+    expect(gv34Retries(enforced.requests).length).toBeGreaterThan(0);
+    if (out.outcome === "generated") {
+      for (const item of out.input.items) if (item.type === "narration") expect(item.script ?? "").not.toContain("1847");
+    }
+  }, 120_000);
+
+  it("options.gates.specifics overrides the env the same way", async () => {
+    const enforced = yearWriter();
+    const out = await runForayPipeline(request, { ...options, gates: { specifics: "enforce" } }, { ...stubDeps(), narrationWriter: enforced.writer });
+    expect(out.outcome).toBe("generated");
+    expect(gv34Retries(enforced.requests).length).toBeGreaterThan(0);
+  }, 120_000);
+});
