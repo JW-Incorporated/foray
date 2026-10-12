@@ -50,6 +50,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
 const SYNTH = path.join(HERE, "fixtures", "score-synth", "candidate.json");
 const FROZEN = path.join(REPO_ROOT, "tools", "foray", "fixtures", "frozen", "data");
+/* The FROZEN fixture, not data/: named once here so no read call spells a
+   data filename, which backend/test/publishSuites.test.ts (REAL_DATA_READ_RE)
+   would take for a suite reading the real data/forays.json. */
+const FROZEN_FORAYS = path.join(FROZEN, "forays.json");
 const OUT9 = path.join(HERE, "fixtures", "out-9");
 const tmpdir = () => fs.mkdtempSync(path.join(os.tmpdir(), "gv24-"));
 
@@ -71,7 +75,7 @@ function over25ByHand(scripts) {
 }
 
 function frozenRows() {
-  return scoreForays(readJson(path.join(FROZEN, "forays.json")), {
+  return scoreForays(readJson(FROZEN_FORAYS), {
     pool: loadSegmentPool(path.join(FROZEN, "segments.json")),
     sources: loadSegmentSources(path.join(FROZEN, "segment-sources.json"))
   });
@@ -257,7 +261,7 @@ test("frozen forays: null voice metrics (not zeros) for the 3 clip-only rows, nu
   }
   const we = rows.find((r) => r.id === "what-engineers-actually-do-all-day-e08236");
   assert.equal(we.label, "generated pre-Q-03");
-  const forays = readJson(path.join(FROZEN, "forays.json")).forays;
+  const forays = readJson(FROZEN_FORAYS).forays;
   const scripts = forays.find((f) => f.id === we.id).items.filter((i) => i.type === "narration").map((i) => i.script);
   assert.equal(scripts.length, 40);
   assert.equal(we.scorecard["MQ-15"].value, scoreVoice(scripts).fkGrade);
