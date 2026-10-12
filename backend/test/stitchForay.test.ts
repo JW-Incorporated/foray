@@ -425,6 +425,12 @@ describe("ForayStitcher with an incremental act source (GV-46)", () => {
 
     await stitcher.stitchNextAct(makeWritten("Act Two"));
     await expect(stitcher.stitchNextAct(makeWritten("Act Three"))).rejects.toThrow(/no deepened act at index 2 — 2 act\(s\) were supplied/);
+    /* A source that would answer past actCount is still bounded by it.
+       MUTATION THAT KILLS THIS: drop the `i < acts.actCount` bound on the
+       incremental source — act 2 of a declared 1 stitches. Ran it — red. */
+    const over = new ForayStitcher({ actCount: 1, deepenedAct: (i) => acts[i] }, options(), ctx);
+    await over.stitchNextAct(makeWritten("Act One"));
+    await expect(over.stitchNextAct(makeWritten("Act Two"))).rejects.toThrow(/no deepened act at index 1 — 1 act\(s\) were supplied/);
 
     expect(() => new ForayStitcher({ actCount: -1, deepenedAct: () => undefined }, options(), ctx)).toThrow(/actCount must be a non-negative integer/);
     expect(() => new ForayStitcher({ actCount: 1.5, deepenedAct: () => undefined }, options(), ctx)).toThrow(/actCount/);
