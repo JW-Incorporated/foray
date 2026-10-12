@@ -511,6 +511,167 @@ test("the CLI refuses --candidate with --forays, and an unknown --items id, thro
   });
 });
 
+/* ---------- GV-22: render_all through render_line, unchanged ---------- */
+
+/* render_all with everything heavy faked at the seams render_line uses: a fake
+   onnxruntime module, synthesize_chunks returning one second of samples per
+   chunk, assemble returning sizes, normalize_and_encode writing a few bytes,
+   and a fixed phonemize_work. No numpy, model, misaki or ffmpeg. Four lines:
+   n1 renders, n2 is stamped with its Heart key (unchanged; Echo refuses its
+   length), n3's length is refused, n4 failed phonemizing. Then render_all runs
+   again over the same --out, which reuses both rendered lines from their
+   sidecars. */
+const RENDER_ALL_HARNESS = String.raw`
+import types, pathlib, tempfile, io, contextlib
+ort = types.ModuleType("onnxruntime"); ort.__version__ = "fake-ort"
+class SO: intra_op_num_threads = 0
+class Sess:
+    def __init__(self, *a, **k): pass
+ort.SessionOptions = SO; ort.InferenceSession = Sess
+sys.modules["onnxruntime"] = ort
+tmp = pathlib.Path(tempfile.mkdtemp())
+R.shutil.which = lambda n: "/fake/" + n
+R._tool_version = lambda exe: "fake-tool"
+R.LEXICON_PATH = tmp / "no-lexicon.json"
+R.ensure_file = lambda name, pin, d, s, a: tmp / name
+R.load_style = lambda p: "style"
+R.synthesize_chunks = lambda session, style, ids_list, render, reject: [[0.5] * 24000 for _ in ids_list]
+class Buf:
+    def __init__(self, n): self.size = n
+R.assemble = lambda chunks, render: (Buf(sum(len(c) for c in chunks)), Buf(sum(len(c) for c in chunks) + 24000))
+def fake_encode(ffmpeg, ffprobe, pcm, out, render, tmpd):
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(("audio " + out.name).encode())
+    sec = round(pcm.size / 24000, 3)
+    return {"input_i": -25.0, "input_tp": -6.0, "gain_db": 6.0, "limit_db": 0.0, "output_i": -19.0, "output_tp": -1.5,
+            "type": "linear", "extra_headroom_db": 0.0, "attempts": 1, "decoded_sec": sec, "container_sec": round(sec + 0.021, 3)}
+R.normalize_and_encode = fake_encode
+pins = R.read_pins()
+H = R.voice_pin("af_heart", P, pins)["sha256"]; M = R.model_pin(P, pins)["sha256"]
+c2 = ["ðə fˈɜːst ˈɛnʤən.", "ɪt ɹæn."]
+stamped = "https://audio.jwlabs.ai/" + R.render_key(P, "af_heart", H, M, ["sˈeɪm."])
+items = [
+    {"id": "n1", "script": "The first engine ran almost without a sound."},
+    {"id": "n2", "script": "Same.", "audio_url": stamped, "duration_sec": 1.5},
+    {"id": "n3", "script": "A very long line that the fake renders in one second flat, far shorter than the estimate of it says it should be."},
+    {"id": "n4", "script": "Broken."},
+]
+lines = [
+    {"foray_id": "f1", "item": items[0], "chunks": c2, "ids": [[1, 2], [3]], "error": None},
+    {"foray_id": "f1", "item": items[1], "chunks": ["sˈeɪm."], "ids": [[4]], "error": None},
+    {"foray_id": "f1", "item": items[2], "chunks": ["lˈɔŋ."], "ids": [[5]], "error": None},
+    {"foray_id": "f1", "item": items[3], "chunks": [], "ids": [], "error": "unsingable: x"},
+]
+R.phonemize_work = lambda work: (lines, {"g2p": "fake", "fallback": "none", "vocab": "v"})
+out = tmp / "out"
+def run(extra):
+    buf = io.StringIO()
+    args = R.build_parser().parse_args(["--out", str(out), "--threads", "4", *extra])
+    with contextlib.redirect_stdout(buf):
+        code = R.render_all(args, P, [({"id": "f1"}, items)], ["af_heart", "am_echo"])
+    return code, [l.split(" in ")[0] for l in buf.getvalue().splitlines()][:-1]
+code, log = run([])
+m = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+sidecars = sorted(str(p.relative_to(out)).replace("\\", "/") for p in out.rglob("*.json") if p.name != "manifest.json")
+code2, log2 = run(["--manifest", str(tmp / "m2.json")])
+m2 = json.loads((tmp / "m2.json").read_text(encoding="utf-8"))
+print(json.dumps({"code": code, "manifest": m, "sidecars": sidecars, "log": log, "code2": code2, "same": m2 == m, "log2": log2}))
+`;
+
+/* origin/main's render_all (before GV-22) run through the same fakes, with
+   real numpy and a fake ORT session standing in for synthesize_chunks. */
+const PRE_GV22 = {
+  totals: {"items": 3, "rendered": 2, "unchanged": 1, "failed": 5, "bytes": 148, "duration_sec": 7.5},
+  items: [
+    {"foray_id": "f1", "item_id": "n1", "voice": "af_heart", "status": "rendered", "key": "n/kokoro-fp32-aac64-v1/af_heart/9ef7181c7110f97767b46c6fb4af58f5bb864f1c99fdae7e37aa31cebb664ef5.m4a", "bytes": 74, "duration_sec": 3.0, "sha256": "a3b879c2814ad78435a8102a2b455740670ee8051e4826ce11b11aa22ae19b06", "profile": "kokoro-fp32-aac64-v1", "text_sha256": "941fbcb2110e52f67020b4b7faebd2b3ae381f9aae52e44c7c2e46d4f77c06c9", "lexicon_sha": null, "chunks": 2, "speech_sec": 2.0, "estimate_sec": 2.588, "container_sec": 3.021, "loudness": {"input_i": -25.0, "input_tp": -6.0, "gain_db": 6.0, "limit_db": 0.0, "output_i": -19.0, "output_tp": -1.5, "type": "linear", "extra_headroom_db": 0.0, "attempts": 1}},
+    {"foray_id": "f1", "item_id": "n2", "voice": "af_heart", "status": "unchanged", "key": "n/kokoro-fp32-aac64-v1/af_heart/5dd596370434f63d84904396939f3ef8b2dc0c0c72720414cfc449634f5a395a.m4a", "bytes": null, "duration_sec": 1.5, "sha256": null, "profile": "kokoro-fp32-aac64-v1", "text_sha256": "30b5061f9468a257a0773ac313cd742c8fda549db9ccb228c2ed2067f7dc8715", "lexicon_sha": null, "chunks": 1, "speech_sec": null, "estimate_sec": 0.294, "container_sec": null, "loudness": null},
+    {"foray_id": "f1", "item_id": "n1", "voice": "am_echo", "status": "rendered", "key": "n/kokoro-fp32-aac64-v1/am_echo/38754d16f39e5dc269c8cec0070ef4d2ad68d284393e214cfb3fee9d074db6ef.m4a", "bytes": 74, "duration_sec": 3.0, "sha256": "9628888eb8f45b7743162958e229908c2f503f92273efaf355acadee2bb1a547", "profile": "kokoro-fp32-aac64-v1", "text_sha256": "941fbcb2110e52f67020b4b7faebd2b3ae381f9aae52e44c7c2e46d4f77c06c9", "lexicon_sha": null, "chunks": 2, "speech_sec": 2.0, "estimate_sec": 2.588, "container_sec": 3.021, "loudness": {"input_i": -25.0, "input_tp": -6.0, "gain_db": 6.0, "limit_db": 0.0, "output_i": -19.0, "output_tp": -1.5, "type": "linear", "extra_headroom_db": 0.0, "attempts": 1}},
+  ],
+  failed: [
+    {"foray_id": "f1", "item_id": "n3", "voice": "af_heart", "error": "spoken length 1.0 s is 0.15x the 6.647 s estimate, outside [0.5, 2.0]"},
+    {"foray_id": "f1", "item_id": "n4", "voice": "af_heart", "error": "unsingable: x"},
+    {"foray_id": "f1", "item_id": "n2", "voice": "am_echo", "error": "spoken length 1.0 s is 3.40x the 0.294 s estimate, outside [0.5, 2.0]"},
+    {"foray_id": "f1", "item_id": "n3", "voice": "am_echo", "error": "spoken length 1.0 s is 0.15x the 6.647 s estimate, outside [0.5, 2.0]"},
+    {"foray_id": "f1", "item_id": "n4", "voice": "am_echo", "error": "unsingable: x"},
+  ],
+  sidecars: [
+    "n/kokoro-fp32-aac64-v1/af_heart/9ef7181c7110f97767b46c6fb4af58f5bb864f1c99fdae7e37aa31cebb664ef5.json",
+    "n/kokoro-fp32-aac64-v1/am_echo/38754d16f39e5dc269c8cec0070ef4d2ad68d284393e214cfb3fee9d074db6ef.json",
+  ],
+  log: [
+    "phonemizing 4 narration line(s) from 1 Foray(s)",
+    "[1/8] f1 / n1 / af_heart: 3.000 s (pcm 3.0, container 3.021), 0 kB, -19.0 LUFS / -1.5 dBTP (linear, +6.0 dB, limit 0.0 dB)",
+    "[2/8] f1 / n2 / af_heart: unchanged (n/kokoro-fp32-aac64-v1/af_heart/5dd596370434f63d84904396939f3ef8b2dc0c0c72720414cfc449634f5a395a.m4a)",
+    "[3/8] f1 / n3 / af_heart: FAILED spoken length 1.0 s is 0.15x the 6.647 s estimate, outside [0.5, 2.0]",
+    "[4/8] f1 / n4 / af_heart: FAILED unsingable: x",
+    "[5/8] f1 / n1 / am_echo: 3.000 s (pcm 3.0, container 3.021), 0 kB, -19.0 LUFS / -1.5 dBTP (linear, +6.0 dB, limit 0.0 dB)",
+    "[6/8] f1 / n2 / am_echo: FAILED spoken length 1.0 s is 3.40x the 0.294 s estimate, outside [0.5, 2.0]",
+    "[7/8] f1 / n3 / am_echo: FAILED spoken length 1.0 s is 0.15x the 6.647 s estimate, outside [0.5, 2.0]",
+    "[8/8] f1 / n4 / am_echo: FAILED unsingable: x",
+    "",
+  ],
+  reusedLog: [
+    "phonemizing 4 narration line(s) from 1 Foray(s)",
+    "[1/8] f1 / n1 / af_heart: reused n/kokoro-fp32-aac64-v1/af_heart/9ef7181c7110f97767b46c6fb4af58f5bb864f1c99fdae7e37aa31cebb664ef5.m4a",
+    "[2/8] f1 / n2 / af_heart: unchanged (n/kokoro-fp32-aac64-v1/af_heart/5dd596370434f63d84904396939f3ef8b2dc0c0c72720414cfc449634f5a395a.m4a)",
+    "[3/8] f1 / n3 / af_heart: FAILED spoken length 1.0 s is 0.15x the 6.647 s estimate, outside [0.5, 2.0]",
+    "[4/8] f1 / n4 / af_heart: FAILED unsingable: x",
+    "[5/8] f1 / n1 / am_echo: reused n/kokoro-fp32-aac64-v1/am_echo/38754d16f39e5dc269c8cec0070ef4d2ad68d284393e214cfb3fee9d074db6ef.m4a",
+    "[6/8] f1 / n2 / am_echo: FAILED spoken length 1.0 s is 3.40x the 0.294 s estimate, outside [0.5, 2.0]",
+    "[7/8] f1 / n3 / am_echo: FAILED spoken length 1.0 s is 0.15x the 6.647 s estimate, outside [0.5, 2.0]",
+    "[8/8] f1 / n4 / am_echo: FAILED unsingable: x",
+    "",
+  ],
+};
+
+test("render_all through render_line writes the pre-GV-22 manifest, sidecars and log (refactor equivalence)", () => {
+  /* The pinned values are origin/main's render_all output, before the per-line
+     body moved into render_line. MUTATION: drop a field from the rendered
+     entry, stop writing the sidecar, append a failed line to entries (or an
+     unchanged one to failed), skip the is_unchanged check, or reorder the
+     voice and line loops -> red. */
+  const out = pyJson(RENDER_ALL_HARNESS);
+  assert.equal(out.code, 1, "a failed line still exits 1");
+  assert.equal(out.manifest.kind, "foray-narration-render");
+  assert.deepEqual(out.manifest.tools, {
+    onnxruntime: "fake-ort", phonemizer: { g2p: "fake", fallback: "none", vocab: "v" },
+    ffmpeg: "fake-tool", threads: 4, provider: "CPUExecutionProvider",
+  });
+  assert.deepEqual(Object.keys(out.manifest.voices), ["af_heart", "am_echo"]);
+  assert.deepEqual(out.manifest.totals, PRE_GV22.totals);
+  assert.deepEqual(out.manifest.items, PRE_GV22.items);
+  assert.deepEqual(out.manifest.failed, PRE_GV22.failed);
+  assert.deepEqual(out.sidecars, PRE_GV22.sidecars);
+  assert.deepEqual(out.log, PRE_GV22.log);
+});
+
+test("a second render_all over the same --out reuses each rendered line from its sidecar, manifest unchanged", () => {
+  /* MUTATION: drop the sidecar reuse from render_line, or let the reuse path
+     take the prior entry's status or ids instead of this line's -> the log
+     says rendered (not reused) or the manifest differs. */
+  const out = pyJson(RENDER_ALL_HARNESS);
+  assert.equal(out.code2, 1);
+  assert.equal(out.same, true, "the second manifest differs from the first");
+  assert.deepEqual(out.log2, PRE_GV22.reusedLog);
+});
+
+test("render_line raises the line's own phonemize error and writes nothing", () => {
+  /* The worker and the batch render share render_line, so a refused line must
+     raise (not return a half entry) in both. MUTATION: return a failed entry
+     instead of raising, or compute the key first (an empty-chunks line would
+     raise a different message). */
+  const out = pyJson(
+    `import tempfile,pathlib\n` +
+      `d=pathlib.Path(tempfile.mkdtemp())\n` +
+      `line={"foray_id":"f","item":{"id":"i","script":"S."},"chunks":[],"ids":[],"error":"unsingable: q"}\n` +
+      `try:\n  R.render_line(None,None,line,P,{"model":{"sha256":"0"*64},"voices":{"af_heart":{"sha256":"1"*64}}},d,d,"ff","fp",voice="af_heart"); res="returned"\n` +
+      `except R.RenderError as e:\n  res=str(e)\n` +
+      `print(json.dumps({"res":res,"files":[p.name for p in d.rglob("*")]}))`
+  );
+  assert.equal(out.res, "unsingable: q");
+  assert.deepEqual(out.files, []);
+});
+
 /* ---------- the workflow ---------- */
 
 test("the render workflow holds no credential and cannot write anywhere", () => {
