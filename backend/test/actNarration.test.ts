@@ -37,7 +37,8 @@ import { MODE_CHAR_BANDS, NARRATION_CHARS_PER_SEC, TAPE_SOURCE_MODES, scriptSeco
 import { narratorStructureLeaks } from "../src/copy/narratorStructure";
 import { validateSmoothedSeam } from "../src/generation/smoothSeam";
 import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
-import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, SeamBrief } from "../src/generation/NarrationWriterBuilder";
+import type { ActFrame, ActWriteRequest, ActWriteResult, NarrationBuildContext, SeamBrief } from "../src/generation/NarrationWriterBuilder";
+import { createHash } from "crypto";
 import type { ActVerifyRequest, ActVerifyResult } from "../src/generation/NarrationVerifierBuilder";
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
 import { validateDeepenedAct, type Voice } from "../src/types/spine";
@@ -1715,5 +1716,78 @@ describe("GV-34 — numbers, dates and names are checked in code against the act
     expect(reported.calls.write).toBe(1);
     expect(pagesInOrder(byDefault)[0]!.script.startsWith(YEAR_LINE)).toBe(true);
     expect(pagesInOrder(inReport).map((p) => p.script)).toEqual(pagesInOrder(byDefault).map((p) => p.script));
+  });
+});
+
+describe("GV-38 — the ACT FRAME block in the writer prompt", () => {
+  /* Today's prompt for the F-99 fixture, hashed on origin/main before GV-38
+     (15a17b17). A prompt edit that is meant to change it updates this pin in
+     the same PR; a frame block leaking into an unframed request breaks it. */
+  const UNFRAMED_PROMPT_SHA256 = "858c8f3fb159081089f9818bf00013fed2abb6fe63f8cc02e56fdc9c53b2099f";
+  const frame = (over: Partial<ActFrame> = {}): ActFrame => ({
+    actIntroduction: "Now the walkway itself.",
+    actExit: "Which leaves the question of who signed off.",
+    previousActExit: "That was the design. Then came the build.",
+    startState: "The listener knows the hotel opened in a hurry.",
+    endState: "The listener sees the connection that failed.",
+    actIndex: 1,
+    totalActs: 3,
+    ...over
+  });
+
+  it("without a frame the prompt is byte-identical to today's", () => {
+    /* MUTATION THAT KILLS THIS: emit the frame block unconditionally (an
+       empty frame for an unframed request) — the hash moves. Ran it — red. */
+    expect(createHash("sha256").update(buildActWritePrompt(requestWithMergedClip())).digest("hex")).toBe(UNFRAMED_PROMPT_SHA256);
+  });
+
+  it("with a frame the block carries every field, before the layout, with the frame rules", () => {
+    /* MUTATION THAT KILLS THIS: drop the previous act's exit line from
+       `actFrameBlock`, or place the block after the layout. Ran both — red. */
+    const prompt = buildActWritePrompt({ ...requestWithMergedClip(), frame: frame() });
+    const block = prompt.slice(prompt.indexOf("ACT FRAME"), prompt.indexOf("SEAM s0"));
+    expect(prompt.indexOf("ACT FRAME")).toBeGreaterThan(-1);
+    expect(prompt.indexOf("ACT FRAME")).toBeLessThan(prompt.indexOf("SEAM s0"));
+    expect(block).toContain("act 2 of 3");
+    expect(block).toContain(`the previous act's exit: "That was the design. Then came the build."`);
+    expect(block).toContain(`this act's introduction: "Now the walkway itself."`);
+    expect(block).toContain("entering this act, the listener believes: The listener knows the hotel opened in a hurry.");
+    expect(block).toContain("leaving this act, the listener should believe: The listener sees the connection that failed.");
+    expect(block).toContain(`the act's exit, which plays right after your last seam: "Which leaves the question of who signed off."`);
+    expect(block).toContain("Do not repeat the introduction or the exit");
+    expect(block).toContain("The first seam follows the introduction");
+    expect(block).toContain("The last seam hands into the exit");
+    expect(block).toContain("Do not re-introduce what the previous act established");
+    /* What the listener heard, in play order: previous exit, then this act's introduction. */
+    expect(block.indexOf("the previous act's exit")).toBeLessThan(block.indexOf("this act's introduction"));
+    expect(block).not.toContain("overview");
+  });
+
+  it("act 0's frame carries the overview and no previous exit or re-introduction rule", () => {
+    /* MUTATION THAT KILLS THIS: print the overview line for every act, or the
+       previous-act rule when there is no previous act. Ran it — red. */
+    const prompt = buildActWritePrompt({
+      ...requestWithMergedClip(),
+      frame: frame({ actIndex: 0, previousActExit: undefined, forayOverview: "Why a walkway fell, and who knew." })
+    });
+    expect(prompt).toContain("act 1 of 3");
+    expect(prompt).toContain(`the Foray's overview: "Why a walkway fell, and who knew."`);
+    expect(prompt).not.toContain("the previous act's exit");
+    expect(prompt).not.toContain("Do not re-introduce what the previous act established");
+    /* The frame adds lines; it never edits the unframed prompt's own. */
+    const unframed = buildActWritePrompt(requestWithMergedClip());
+    expect(prompt.replace(/ACT FRAME[\s\S]*?\n\n(?=SEAM s0)/, "")).toBe(unframed);
+  });
+
+  it("writeActNarration sends the frame on every round's request, and none when it is not given", async () => {
+    /* MUTATION THAT KILLS THIS: leave `frame` out of the request in
+       writeAct.ts (or send it on round 1 only). Ran it — red. */
+    const withFrame = builders((reply, _request, round) => (round > 1 ? reply : { seams: reply.seams.map((seam, i) => (i === 0 ? { ...seam, script: `In 1957 the walkway opened to the public. ${seam.script}` } : seam)) }));
+    await writeActNarration(fourBeatsTwoClips(), { writer: withFrame.writer, verifier: withFrame.verifier, evidence: gatherer(), specifics: "enforce", frame: frame() }, voice, ctx);
+    expect(withFrame.requests.length).toBeGreaterThan(1);
+    for (const r of withFrame.requests) expect(r.frame).toEqual(frame());
+    const plain = builders();
+    await writeActNarration(fourBeatsTwoClips(), { writer: plain.writer, verifier: plain.verifier, evidence: gatherer() }, voice, ctx);
+    for (const r of plain.requests) expect(r).not.toHaveProperty("frame");
   });
 });

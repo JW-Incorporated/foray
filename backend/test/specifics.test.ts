@@ -25,6 +25,11 @@ import {
  *      and "The" become names.
  *   5. extractSpecifics without the small-cardinal exemption — "Two workers"
  *      is flagged.
+ *   6. (GV-38) prepareSpecificsSources canonicalising the raw text again
+ *      (no `stripPossessives`) — "Couitt" against a source's "Couitt's" is
+ *      flagged, and so is "McDonald's" against "McDonald's".
+ *   7. (GV-38) extractNames without `stripPossessive` — the sentence's
+ *      "Couitt's" is reported as "Couitt's" and flagged against "Couitt".
  */
 
 const NUMBER_CASES: Array<[string, string, Array<{ value: number; percent?: boolean; decade?: boolean; ordinal?: boolean }>]> = [
@@ -149,5 +154,30 @@ describe("unsupportedSpecifics", () => {
     const script = "In 1964 it closed. Joe Couitt left.";
     expect(unsupportedSpecificsInScript(script, ["joe couitt left in 1964"])).toEqual([]);
     expect(unsupportedSpecificsInScript(script, ["joe couitt left"])).toEqual([{ sentence: "In 1964 it closed.", unsupported: ["1964"] }]);
+  });
+});
+
+describe("GV-38 — a name in the possessive is the same name (GV-34 review)", () => {
+  /* The GV-34 review's false positive: a name is extracted with its 's
+     stripped, but a source's possessive was canonicalised to "couitts", so
+     the plain name was flagged although the source says it. Both sides now
+     compare without the possessive. Mutations 6 and 7 in the header. */
+  const POSSESSIVE_CASES: Array<[string, string, string[], string[]]> = [
+    ["a plain name against a possessive in the source", "Couitt kept the ledger.", ["Couitt's ledger was kept"], []],
+    ["a curly possessive in the source", "Couitt kept the ledger.", ["Couitt’s ledger was kept"], []],
+    ["a possessive name against the plain name in the source", "Couitt's ledger survived.", ["couitt kept it"], []],
+    ["a possessive on both sides", "McDonald's opened a stall.", ["the McDonald's stall"], []],
+    ["a two-word name against a possessive surname", "Joe Couitt kept the ledger.", ["it was Couitt's ledger"], []],
+    ["a different name in the possessive is still flagged", "Couitt kept the ledger.", ["Coutts's ledger"], ["Couitt"]],
+    ["an ordinary contraction is not a name", "Couitt kept it.", ["it's couitt"], []]
+  ];
+  it.each(POSSESSIVE_CASES)("%s", (_label, sentence, sources, expected) => {
+    expect(unsupportedSpecifics(sentence, sources)).toEqual(expected);
+    expect(unsupportedSpecifics(sentence, prepareSpecificsSources(sources))).toEqual(expected);
+  });
+
+  it("numbers are read from the source as written (the strip touches names only)", () => {
+    expect(unsupportedSpecifics("In 1964 Couitt left.", ["Couitt's 1964 exit"])).toEqual([]);
+    expect(unsupportedSpecifics("In 1965 Couitt left.", ["Couitt's 1964 exit"])).toEqual(["1965"]);
   });
 });

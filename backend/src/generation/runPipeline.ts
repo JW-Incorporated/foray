@@ -21,7 +21,7 @@ import { deepenActs } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
-import { createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
+import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
@@ -977,11 +977,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
 
   /* GV-15: the run's flags and gates, resolved ONCE, before any stage runs —
      so a malformed variable fails the run before it spends a call, and no
-     stage re-reads the env behind an options override. Nothing reads a gate
-     key yet (the gate cards thread their own); the flags feed the checkpoint
-     variant below. */
+     stage re-reads the env behind an options override. Each gate card threads
+     its own key (decision 34): `specifics` reaches every act's writer
+     (GV-34, threaded by GV-38); the flags feed the checkpoint variant below
+     and, through `narrationOrder`, the narrate stage. */
   const flags = resolvePipelineFlags(options.flags);
-  void resolveGateConfig(options.gates);
+  const gates = resolveGateConfig(options.gates);
   // GV-14: a malformed FORAY_OUTPUT_BUDGETS throws here, not inside recordModelCall after a paid reply.
   void outputBudgetMode();
 
@@ -1801,7 +1802,14 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      landed: `generateForays.ts` carries `RefusedPartialError.actIndex` and
      `totalActs` into `report.json` as `refusedAtAct`, so a reader can count
      what the ordering cost against what it saved. */
-  const actConcurrency = options.narrationActConcurrency ?? narrationActConcurrency();
+  /* GV-38 (W4-08): narrationOrder 'sequential' writes the acts in act order,
+     one at a time, so act i+1 is written to follow act i — its `ground`
+     holds act i's verified pages — and every act's writer sees its frame
+     (`buildActFrames`). 'parallel' (the default) is G-32's gate, unchanged,
+     and sends no frame unless the fast path is on. */
+  const sequentialNarration = flags.narrationOrder === "sequential";
+  const actFrames = sequentialNarration || flags.fastPath ? buildActFrames(spine, deepened) : undefined;
+  const actConcurrency = sequentialNarration ? 1 : options.narrationActConcurrency ?? narrationActConcurrency();
   const gate = createActGate(actConcurrency);
   /* F-88: which acts' narration has landed, by position, for the synthesis
      pass — it reads the whole Foray's verified pages, and `writeNarration`
@@ -1819,8 +1827,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     return titles?.showTitle ?? sourced.newSegmentSources.find((s) => s.id === tape.itemId)?.show ?? "";
   });
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
-    const p = gate.run(() =>
-      stage(
+    const p = gate.run(async () => {
+      const landed = await stage(
         `narrate:${i}`,
         (raw) => WrittenActSchema.parse(raw) as WrittenAct,
         async () => {
@@ -1850,29 +1858,32 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                  `actConcurrency` acts starting together the first wave sees
                  none; a later act's thesis seam may rest on them. */
               ground: () => verifiedPageSummaries(settledActs),
-              showsIntroduced: [showsBeforeAct[i] ?? []]
+              showsIntroduced: [showsBeforeAct[i] ?? []],
+              /* GV-38: this act's frame, under sequential order or the fast path. */
+              ...(actFrames?.[i] ? { frames: [actFrames[i]] } : {}),
+              /* GV-34 / decision 34: FORAY_SPECIFICS_CHECK reaches the writer,
+                 so `enforce` re-asks a seam in a real run (default `report`). */
+              specifics: gates.specifics
             },
             spine.voice,
             ctx
           );
           return one!;
         }
-      )
-    );
+      );
+      /* GV-38: the act's narration is recorded as landed INSIDE its gate task,
+         before the task returns and the gate starts the next act, so under
+         'sequential' act i+1's `ground` always reads act i's verified pages
+         (a separate `p.then` left that to microtask order). A resumed act
+         lands the same way. Behaviour-neutral for 'parallel'. */
+      settledActs[i] = landed;
+      return landed;
+    });
     /* A rejection here is reported by the ordered loop below when it reaches
        this act (or by `allSettled` on the failure path), never as an
        unhandled rejection in the meantime. `p` itself stays rejected. */
     p.catch(() => undefined);
     return p;
-  });
-
-  narrations.forEach((p, j) => {
-    p.then(
-      (a) => {
-        settledActs[j] = a;
-      },
-      () => undefined
-    );
   });
 
   const written: WrittenAct[] = [];

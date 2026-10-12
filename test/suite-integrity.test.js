@@ -2646,7 +2646,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 50, // GV-33 (generation v2): onItemReady alone fires once per item in order with no partial finalize, an injected wallClockMs pins readyAtMs and the lead without moving the id, one act ReadyEvent per act concatenating to the items, partialOk from the partial, no event for a resumed act, emitPreludeEarly, an unservable act pauses the timeline; 43 -> 50 // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 52, // GV-38 (generation v2, decision 34): the run's GateConfig.specifics reaches writeAct -- FORAY_SPECIFICS_CHECK=enforce (env, or options.gates) re-asks a seam stating an unsourced year in a real run, report leaves the rounds alone; 50 -> 52 // GV-33 (generation v2): onItemReady alone fires once per item in order with no partial finalize, an injected wallClockMs pins readyAtMs and the lead without moving the id, one act ReadyEvent per act concatenating to the items, partialOk from the partial, no event for a resumed act, emitPreludeEarly, an unservable act pauses the timeline; 43 -> 50 // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -3242,7 +3242,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 59, // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
+  "test/actNarration.test.ts": 63, // GV-38 (generation v2): the ACT FRAME block -- an unframed prompt pinned byte-identical by sha256, every frame field before the layout, act 0's overview with no previous-act rule, and writeActNarration sending the frame on every round; 59 -> 63 // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
@@ -3351,7 +3351,16 @@ const BACKEND_FLOORS = {
      unsupportedSpecifics (ASR-lowercase names, longest-token fallback,
      decade-from-year support). Static count 5: three it.each tables of 62
      cases, pinned at >= 40 by the suite's own first test. Pure; no fixtures. */
-  "test/specifics.test.ts": 5,
+  "test/specifics.test.ts": 6, // GV-38 (decision 34 follow-up, GV-34 review): a name in the possessive is the same name -- sources are prepared with 's stripped like the extracted names (an it.each table of 7 and one numbers-untouched test); 5 -> 6
+  /* GV-38 (docs/roadmap/generation-v2.md, W4-08, #1286): the act frame --
+     buildActFrames (own introduction and exit, the previous act's exit, the
+     spine states, the overview for act 0), the frame on every act request
+     under narrationOrder 'sequential' and under the fast path and on none by
+     default, and the sequential order's ground: act i reads exactly the
+     earlier acts' verified pages on each of 20 runs. Stub builders and an
+     in-memory checkpoint (one full medium run, the rest resume the banked
+     prefix); offline. One named mutation per test in the header. */
+  "test/actFrame.test.ts": 5,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

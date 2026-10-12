@@ -18,6 +18,7 @@ import {
 } from "../types/narration";
 import type { EvidenceDoc, EvidenceGatherer, EvidencePack } from "./gatherEvidence";
 import type {
+  ActFrame,
   ActWriteRequest,
   ActWriteResult,
   BeatBrief,
@@ -225,6 +226,11 @@ export interface WriteActOptions {
    * (`veracityMetrics.ts`), not here.
    */
   specifics?: SpecificsMode;
+  /**
+   * GV-38 (W4-08): the act frame, sent on every round's request. Absent
+   * (the default driver) means the request carries no `frame` key at all.
+   */
+  frame?: ActFrame;
 }
 
 interface ClipState {
@@ -418,7 +424,9 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
       clips: clips.map((c) => c.brief),
       documents,
       ...(ground.length > 0 ? { ground: [...ground] } : {}),
-      ...(actRejections.length > 0 ? { retryNote: retryNoteFrom(actRejections) } : {})
+      ...(actRejections.length > 0 ? { retryNote: retryNoteFrom(actRejections) } : {}),
+      /* GV-38: the act frame, on every round. */
+      ...(options.frame ? { frame: options.frame } : {})
     };
     const reply = await withCallContext({ attempt: round, role: "writer" }, () => writer.writeAct(writeRequest, ctx));
 

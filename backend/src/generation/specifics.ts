@@ -480,6 +480,13 @@ function stripPossessive(word: string): string {
   return word.replace(/['’]s$/u, "");
 }
 
+/* `stripPossessive` over a whole text: every word's trailing 's ("Couitt's
+   tapes" gives "Couitt tapes"), so a source and an extracted name compare in
+   the same form. */
+function stripPossessives(text: string): string {
+  return String(text ?? "").replace(/(\p{L})['’]s(?![\p{L}\p{N}])/gu, "$1");
+}
+
 /**
  * The proper nouns a sentence states: runs of capitalised words, connectors
  * allowed between them, possessives stripped. A sentence-initial (or
@@ -597,7 +604,11 @@ export function prepareSpecificsSources(sourceTexts: ReadonlyArray<string>): Pre
       if (n.decade) decades.add(n.value);
       else values.push(n.value);
     }
-    const c = canonicalizeForAnchorMatch(text);
+    /* A name is extracted with its possessive stripped ("Couitt's" gives
+       "Couitt"), so the sources are prepared the same way: canonicalising
+       alone turns a source's "Couitt's" into "couitts", and the name the
+       sentence states would be flagged although the source carries it. */
+    const c = canonicalizeForAnchorMatch(stripPossessives(text));
     if (c) canon.push(c);
   }
   return { kind: "prepared-specifics-sources", values, decades, canonical: ` ${canon.join(" | ")} ` };

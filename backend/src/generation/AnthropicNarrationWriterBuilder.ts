@@ -6,6 +6,7 @@ import { costFor, modelFor } from "../config/models";
 import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { MIN_QUOTE_WORDS } from "../types/narration";
 import type {
+  ActFrame,
   ActWriteRequest,
   ActWriteResult,
   ClipBrief,
@@ -283,6 +284,9 @@ export function buildActWritePrompt(request: ActWriteRequest): string {
     "THE ACT, IN PLAY ORDER. Narration and clips alternate. You write the narration; the clips are real tape and play as they are.",
     "A SEAM is one stretch of narration: it carries the beats listed under it, bridges from the clip before to the clip after, and — when it introduces a clip — opens the listener's ear to it.",
     "",
+    /* GV-38: only when the driver sent a frame — without one the prompt is
+       byte-identical to what it was. */
+    ...(request.frame ? actFrameBlock(request.frame) : []),
     actLayout(request.seams, clips),
     "",
     "HOW TO WRITE",
@@ -312,6 +316,34 @@ export function buildActWritePrompt(request: ActWriteRequest): string {
     JSON_ONLY,
     `{"seams": [{"seamId": string, "script": string, "claims": [${CLAIM_SHAPE}], "usedClaims": [number], "pronunciationHints": [{"word": string, "hint": string}]}]}`
   ].join("\n");
+}
+
+/**
+ * GV-38 (W4-08, QK-26): the ACT FRAME — what the listener has just heard
+ * before the first seam, and where the act must leave them — so the writer
+ * writes this act to follow the one before rather than in isolation. Every
+ * quoted line is already written and plays as it is; the rules keep the
+ * writer from repeating it (which also keeps its unverified claims, QK-24,
+ * from spreading). Ends with a blank line, before the layout.
+ */
+export function actFrameBlock(frame: ActFrame): string[] {
+  return [
+    `ACT FRAME — this is act ${frame.actIndex + 1} of ${frame.totalActs}. The lines quoted here are already written and play around your seams as they are; they are not yours to write.`,
+    "WHAT THE LISTENER HAS JUST HEARD, in order:",
+    ...(frame.forayOverview !== undefined ? [`  the Foray's overview: ${JSON.stringify(frame.forayOverview)}`] : []),
+    ...(frame.previousActExit !== undefined ? [`  the previous act's exit: ${JSON.stringify(frame.previousActExit)}`] : []),
+    `  this act's introduction: ${JSON.stringify(frame.actIntroduction)}`,
+    `  entering this act, the listener believes: ${frame.startState}`,
+    "WHERE THE ACT MUST LEAVE THEM:",
+    `  leaving this act, the listener should believe: ${frame.endState}`,
+    `  the act's exit, which plays right after your last seam: ${JSON.stringify(frame.actExit)}`,
+    "FRAME RULES:",
+    "- Do not repeat the introduction or the exit, or restate what they say.",
+    "- The first seam follows the introduction: pick up where it leaves off, without opening the act again.",
+    "- The last seam hands into the exit: end where the exit can take over.",
+    ...(frame.previousActExit !== undefined ? ["- Do not re-introduce what the previous act established; the listener has just heard it."] : []),
+    ""
+  ];
 }
 
 function actLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
