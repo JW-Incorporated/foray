@@ -1393,8 +1393,10 @@ function growByClaimOverlap(
 /** The first quotable phrase spoken at the span's opening cue. Falls forward
  * into the following cues only when that cue is too short or too generic to
  * yield one — the case a word-level transcript (one or two words per cue)
- * puts every segment in. */
-function startAnchorFor(index: CueIndex, first: number, last: number): string | null {
+ * puts every segment in. Exported, with `endAnchorFor`, for the passage cutter
+ * (GV-12), so a stored passage's anchors follow the same spill rule as a
+ * minted segment's. */
+export function startAnchorFor(index: CueIndex, first: number, last: number): string | null {
   const own = mintStartAnchor(index.words[first]!);
   if (own) return own;
   const spill: string[] = [];
@@ -1403,7 +1405,7 @@ function startAnchorFor(index: CueIndex, first: number, last: number): string | 
 }
 
 /** And the last quotable phrase at the closing cue. */
-function endAnchorFor(index: CueIndex, first: number, last: number): string | null {
+export function endAnchorFor(index: CueIndex, first: number, last: number): string | null {
   const own = mintEndAnchor(index.words[last]!);
   if (own) return own;
   const spill: string[] = [];

@@ -490,13 +490,17 @@ export function thoughtTerms(text: string): string[] {
 
 /* --------------------------------------------------------------- boundaries */
 
+/* Exported for the passage cutter (GV-12, `passageCutter.ts`), which cuts a
+ * whole episode into passages by these same boundary rules. Behaviour is
+ * unchanged; only the visibility moved. */
+
 /** Per-cue boundary facts, computed once. `breakBefore[k]`: the gap before cue
  * `k` is a hole in the tape (`TAPE_CUE_GAP_MAX_SEC`), a hard edge in both
  * directions. `turnBefore[k]`: cue `k` starts a new speaker's turn.
  * `sentenceBefore[k]`: cue `k - 1` ends a sentence and a pause follows, or it
  * was a paragraph-sized cue. Index 0 carries none of the three: the
  * transcript's own edge is handled by the `edges` flag of `boundaryKindAt`. */
-interface CueShape {
+export interface CueShape {
   n: number;
   hasTurns: boolean;
   starts: number[];
@@ -506,7 +510,7 @@ interface CueShape {
   sentenceBefore: boolean[];
 }
 
-function cueShape(index: CueIndex): CueShape {
+export function cueShape(index: CueIndex): CueShape {
   const n = index.cues.length;
   const hasTurns = index.cues.some((c) => typeof c.speaker === "string" && c.speaker.length > 0);
   const breakBefore = new Array<boolean>(n).fill(false);
@@ -552,7 +556,7 @@ function boundaryKindAfter(shape: CueShape, k: number, edges: boolean): TapeBoun
   return boundaryKindAt(shape, k + 1, edges);
 }
 
-interface BoundaryHit {
+export interface BoundaryHit {
   cue: number;
   kind: TapeBoundary;
 }
@@ -560,7 +564,7 @@ interface BoundaryHit {
 /** Walking back from `first`, the nearest cue that starts a turn (with turns)
  * or a sentence, whose start is at or after `floorSec`. With turns, a sentence
  * boundary is the fallback when no turn starts inside the span. */
-function nearestStartBoundary(shape: CueShape, first: number, floorSec: number): BoundaryHit | null {
+export function nearestStartBoundary(shape: CueShape, first: number, floorSec: number): BoundaryHit | null {
   let sentence: BoundaryHit | null = null;
   for (let k = first; k >= 0 && shape.starts[k]! >= floorSec; k--) {
     const kind = boundaryKindAt(shape, k, k === first);
@@ -575,7 +579,7 @@ function nearestStartBoundary(shape: CueShape, first: number, floorSec: number):
 
 /** Walking forward from `last`, the nearest cue that ends a turn or a sentence,
  * whose end is at or before `ceilingSec`. */
-function nearestEndBoundary(shape: CueShape, last: number, ceilingSec: number): BoundaryHit | null {
+export function nearestEndBoundary(shape: CueShape, last: number, ceilingSec: number): BoundaryHit | null {
   let sentence: BoundaryHit | null = null;
   for (let k = last; k < shape.n && shape.ends[k]! <= ceilingSec; k++) {
     const kind = boundaryKindAfter(shape, k, k === last);

@@ -8,6 +8,7 @@ import {
   locateInListing,
   type TranscriptDigestEntry
 } from "../generation/transcriptArchiveLookup";
+import { cutPassageSpans, keyPassages, type PassageSpan } from "../generation/passageCutter";
 import {
   buildShowIndex,
   countTerms,
@@ -34,7 +35,7 @@ import {
  * this box would build, save `builtAt`, and `cacheIsFresh` judges it fresh
  * wherever the body stats it records are the stats the reader sees.
  *
- *     <body stream> | npx tsx src/cli/indexBodies.ts [--index-root DIR] [--staged-out FILE]
+ *     <body stream> | npx tsx src/cli/indexBodies.ts [--index-root DIR] [--staged-out FILE] [--passages-out FILE]
  *
  * INPUT, one JSON record per line on stdin:
  *     {"kind":"body","show_id":"…","fileName":"<name>.json","stat":{"mtimeMs":…,"size":…},"body":{…normalized body…}}
@@ -68,6 +69,15 @@ import {
  * body to disk. It makes no network call and reads no feed: a staged row is
  * searchable only until a later reconcile joins it to its feed.
  *
+ * PASSAGES (GV-12, from W3-23). With `--passages-out`, each body is also cut
+ * into whole-thought passages as it arrives (`passageCutter.ts`, over the same
+ * filtered cues the index counts), and at end-show the passages of every row
+ * that maps onto a body are appended, one JSON passage per line, keyed by the
+ * ARCHIVE row's guid, so a passage's guid is an archive entry's even when the
+ * body records a different one. The passages are buffered per show (they carry
+ * the episode's text) and freed with it. Without the flag nothing is cut and
+ * the run is byte-for-byte what it was.
+ *
  * No pipeline stage calls this; it is a tool, and a refactor-only change to the
  * modules it shares rules with (GV-05 has no flag).
  */
@@ -87,6 +97,8 @@ export interface IndexBodiesOptions {
   committedDigests?: readonly string[];
   /** A show's title for a new row. Defaults to `data/catalog.json`, else the id. */
   showTitle?: (showId: string) => string;
+  /** Where cut passages are appended (GV-12). Unset, no passage is cut. */
+  passagesOut?: string | null;
 }
 
 export interface IndexBodiesShowResult {
@@ -103,6 +115,8 @@ export interface IndexBodiesShowResult {
   /** The cache written, or null when no row had a usable body. */
   file: string | null;
   bytes: number;
+  /** Passages appended to `--passages-out` (0 without the flag). */
+  passages: number;
 }
 
 export interface IndexBodiesResult {
@@ -123,6 +137,9 @@ export interface KeptBody {
   /** Content-word counts over the cues that pass the reading filter; null when
    * none do, which is an episode the index skips. */
   counts: Map<string, number> | null;
+  /** The body cut into passages, not yet keyed to an archive row; null unless
+   * passages were asked for (or when no cue carries a word). */
+  passages: PassageSpan[] | null;
 }
 
 interface ShowState {
@@ -147,17 +164,20 @@ function recordBody(raw: unknown): unknown {
   }
 }
 
-/** One streamed body reduced to what the index and the staged rows need. */
-export function keepBody(fileName: string, stat: TranscriptBodyStat, body: unknown): KeptBody {
+/** One streamed body reduced to what the index and the staged rows need, plus
+ * its passages when `withPassages` is set. */
+export function keepBody(fileName: string, stat: TranscriptBodyStat, body: unknown, withPassages = false): KeptBody {
   const identity = bodyIdentity(body);
   const recorded = body !== null && typeof body === "object" ? (body as { guid?: unknown }).guid : undefined;
   const cues = cuesFromBodyJson(body);
+  const passages = withPassages && cues ? cutPassageSpans(cues) : [];
   return {
     fileName,
     bodyGuid: typeof recorded === "string" ? recorded : null,
     cuesCount: identity ? identity.cues : 0,
     stat: { mtimeMs: stat.mtimeMs, size: stat.size },
-    counts: cues && cues.length > 0 ? countTerms(cues) : null
+    counts: cues && cues.length > 0 ? countTerms(cues) : null,
+    passages: passages.length > 0 ? passages : null
   };
 }
 
@@ -185,6 +205,7 @@ export async function main(
   const archive = opts.archive ?? loadTranscriptArchive();
   const claimedFiles = claimedFilesFromDigests(opts.committedDigests ?? COMMITTED_DIGEST_FILES);
   const titleOf = opts.showTitle ?? catalogueTitles();
+  const passagesOut = opts.passagesOut ?? null;
 
   const shows = new Map<string, ShowState>();
   const results: IndexBodiesShowResult[] = [];
@@ -233,6 +254,26 @@ export async function main(
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- the cache file just written.
       bytes = fs.statSync(file).size;
     }
+    /* Passages, keyed by the archive row each body maps to (the index's own
+       locate rule), in row order. A body two rows map to is cut once and
+       keyed twice; a body no row maps to has no archive guid and no passage. */
+    let passageCount = 0;
+    if (passagesOut !== null) {
+      const lines: string[] = [];
+      for (const row of rows) {
+        const real = locateInListing({ files: state.files, guid: String(row.guid), bodyGuidOf, guidIndex });
+        const spans = real === null ? null : (state.byName.get(real)?.passages ?? null);
+        if (!spans) continue;
+        for (const passage of keyPassages({ show_id: showId, guid: String(row.guid) }, spans)) lines.push(`${JSON.stringify(passage)}\n`);
+      }
+      passageCount = lines.length;
+      if (lines.length > 0) {
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- the passages path (data-local or a caller's).
+        fs.mkdirSync(path.dirname(passagesOut), { recursive: true });
+        // eslint-disable-next-line security/detect-non-literal-fs-filename -- see above.
+        fs.appendFileSync(passagesOut, lines.join(""), "utf8");
+      }
+    }
     if (pending.length > 0) {
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- the staged digest path (data-local or a caller's).
       fs.mkdirSync(path.dirname(stagedOut), { recursive: true });
@@ -248,13 +289,14 @@ export async function main(
       staged: pending.length,
       terms: index ? Object.keys(index.postings).length : 0,
       file,
-      bytes
+      bytes,
+      passages: passageCount
     };
     results.push(result);
     stdout.write(
       index
         ? `${showId}: ${result.bodies} bodies, ${result.docs} of ${result.rows} rows indexed, +${result.staged} staged, ` +
-            `${result.terms} terms, ${mb(bytes)} cache\n`
+            `${result.terms} terms, ${mb(bytes)} cache${passagesOut !== null ? `, ${passageCount} passages` : ""}\n`
         : `${showId}: ${result.bodies} bodies, NO row of ${result.rows} maps to a usable body, no cache written, +${result.staged} staged\n`
     );
   };
@@ -298,7 +340,7 @@ export async function main(
       state = { files: new Map(), byName: new Map() };
       shows.set(showId, state);
     }
-    const kept = keepBody(record.fileName, record.stat, recordBody(record.body));
+    const kept = keepBody(record.fileName, record.stat, recordBody(record.body), passagesOut !== null);
     const lower = record.fileName.toLowerCase();
     const previous = state.files.get(lower);
     if (previous !== undefined && previous !== record.fileName) state.byName.delete(previous);
@@ -318,6 +360,8 @@ export async function main(
 export interface IndexBodiesArgs {
   indexRoot: string;
   stagedOut: string;
+  /** `--passages-out`; null (no passages cut) when absent. */
+  passagesOut: string | null;
 }
 
 export function parseIndexBodiesArgs(argv: readonly string[]): IndexBodiesArgs {
@@ -325,9 +369,11 @@ export function parseIndexBodiesArgs(argv: readonly string[]): IndexBodiesArgs {
     const i = argv.indexOf(flag);
     return i >= 0 && argv[i + 1] ? String(argv[i + 1]) : null;
   };
+  const passagesOut = value("--passages-out");
   return {
     indexRoot: path.resolve(value("--index-root") ?? DEFAULT_INDEX_ROOT),
-    stagedOut: path.resolve(value("--staged-out") ?? DEFAULT_STAGED_OUT)
+    stagedOut: path.resolve(value("--staged-out") ?? DEFAULT_STAGED_OUT),
+    passagesOut: passagesOut === null ? null : path.resolve(passagesOut)
   };
 }
 
