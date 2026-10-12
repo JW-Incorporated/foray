@@ -7,7 +7,7 @@ import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import type { ContinuityBuilder, ContinuityBuildContext, ContinuitySmoothRequest, ContinuitySmoothResult } from "./ContinuityBuilder";
 import { createMessage } from "./anthropicCall";
 import { RawSmoothResultSchema } from "./replySchemas";
-import { NARRATOR_STRUCTURE_RULE } from "../copy/narratorStructure";
+import { buildSmoothPrompt } from "./prompts/continuity";
 
 /**
  * Real §4.8 cross-act continuity smoothing via the Anthropic API,
@@ -106,21 +106,8 @@ export class AnthropicContinuityBuilder implements ContinuityBuilder {
 }
 
 
-export function buildSmoothPrompt(request: ContinuitySmoothRequest): string {
-  return [
-    `You are the continuity editor for an audio documentary ("Foray"), working ONLY at the seam between two acts.`,
-    `The act that just played, "${request.previousActTitle}", ended with this exit line (already played — DO NOT rewrite it, it is given for context only):`,
-    `"""${request.previousActExit}"""`,
-    ``,
-    `The next act, "${request.nextActTitle}", currently opens with this introduction (NOT yet played — this is the ONLY text you may change):`,
-    `"""${request.nextActIntroduction}"""`,
-    ``,
-    `Rewrite the next act's introduction so it genuinely connects to how the previous act ended — a real callback or handoff, not mere concatenation.`,
-    `Keep it a real introduction to "${request.nextActTitle}" — do not drop its own content, only smooth the seam into it.`,
-    `Never mention or restate the previous act's exit text verbatim; reference it naturally.`,
-    NARRATOR_STRUCTURE_RULE,
-    ``,
-    `Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:`,
-    '{"nextIntroduction": string}'
-  ].join("\n");
-}
+/* GV-32 (decision 8): the smoothing prompt (now [stable][call], the rules
+   first) moved to prompts/continuity.ts, which both this builder and its Chat
+   twin import. Re-exported here so existing importers compile until GV-96
+   deletes this module. */
+export { buildSmoothPrompt, buildSmoothPromptParts } from "./prompts/continuity";

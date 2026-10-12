@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { AnthropicSpineBuilder, buildSpinePrompt } from "../src/generation/AnthropicSpineBuilder";
+import { buildSpinePromptParts } from "../src/generation/prompts/spine";
 import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "../src/generation/spineSeeding";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
@@ -331,6 +332,38 @@ describe("AnthropicSpineBuilder — WS-L: the spine prompt sees the tape (F-63)"
       expect(prompt).not.toContain("SEED EVERY ACCOUNT BEAT");
       expect(prompt).not.toContain("Only an argument beat");
       expect(prompt).not.toContain("seed each episodeId ONCE");
+    });
+  });
+
+  /* GV-32 (docs/roadmap/generation-v2.md, #1286) reordered this prompt on
+     purpose: the rules and the reply shape first, byte-identical for every
+     Foray (the cacheable prefix), then this Foray's subject, research map,
+     seeding rules and tier line. Same lines (promptLayout.test.ts proves the
+     line set), new order; these pin the order the Anthropic path sends. */
+  describe("GV-32: the stable rules first, this Foray after them", () => {
+    it("sends ONE user turn: the stable part, a blank line, the foray part", async () => {
+      /* MUTATION THAT KILLS THIS: in buildSpinePrompt, join
+         `[parts.foray, parts.stable]` instead of joinParts(parts). Ran it: red. */
+      const { client, create } = makeFakeAnthropicClient([textBlock(JSON.stringify(rawSpine))]);
+      await new AnthropicSpineBuilder(new BudgetGuard(new InMemoryCostEventSink(), 100), client).buildSpine(intent, shapeWithWindows, "short", ctx);
+      const messages = create.mock.calls[0]![0].messages;
+      expect(messages).toHaveLength(1);
+      const parts = buildSpinePromptParts(intent, shapeWithWindows, "short");
+      expect(messages[0]).toEqual({ role: "user", content: `${parts.stable}\n\n${parts.foray}` });
+      const prompt = String(messages[0].content);
+      expect(prompt.startsWith("For EACH act, give: title, thesis, startState")).toBe(true);
+      expect(prompt.indexOf('"seed"?: {"episodeId": string')).toBeLessThan(prompt.indexOf(`Build the SPINE for an audio documentary ("Foray") on: "${intent.subject}".`));
+      expect(prompt.endsWith("beats total.")).toBe(true);
+    });
+
+    it("keeps the seeding rules after the windows they point at ('the quoted windows above')", () => {
+      /* MUTATION THAT KILLS THIS: in buildSpinePromptParts, put `...seedRule`
+         before the "Research map" line. Ran it: red. */
+      const prompt = buildSpinePrompt(intent, shapeWithWindows, "medium");
+      const window = prompt.indexOf(windowText);
+      expect(window).toBeGreaterThan(0);
+      expect(prompt.indexOf(`Every act must carry at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT} beats`)).toBeGreaterThan(window);
+      expect(prompt.indexOf("Duration tier: medium.")).toBeGreaterThan(prompt.indexOf("the beat seeded from the earlier startSec comes first"));
     });
   });
 });
