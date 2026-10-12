@@ -1569,6 +1569,7 @@ const FLOORS = {
      warns about. That coupling is a feature: these tests fail if the committed
      thread stops being clean. */
   "tools/foray/check-narration.test.mjs": 49,
+  "tools/foray/voice-metrics.test.mjs": 6, // GV-10 (#1286): new -- the voice scorecard is a thin wrapper over backend/src/copy/spokenLine.js (same functions, one import), word-weighted scoreVoice, the frozen what-engineers numbers pinned, over25 cross-checked
   /* The narration pipeline's dry run (#247). Zero slack. Two of its tests are
      the only things standing between this repo and a paid API call: one asserts
      `synthesize()` refuses without a key, and one greps every `.mjs` in
@@ -3170,6 +3171,7 @@ const BACKEND_FLOORS = {
      §4.8, forayItems.ts, the prelude overview, the hand-off). One named
      mutation per test. */
   "test/narratorStructure.test.ts": 13,
+  "test/spokenLine.test.ts": 15, // GV-10 (#1286): new -- the one spoken-line and readability library: check-narration re-exports the moved rules by identity, the splitter, sentence shape, N24's generated-text numeric count, syllables, FK, speakability, filler
   /* Round-3 code audit, lane L5-generation (2026-09-25). One suite per fix
      where the fix had no natural home: the shared Anthropic call helper
      (gen-10/gen-14, and gen-1's answer assembly), finalize refusals and the
