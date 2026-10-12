@@ -2273,6 +2273,7 @@ const FLOORS = {
   "tools/foraycorpus-export/dai-tier.test.mjs": 8, // PKG-16 (docs/roadmap/corpus.md): per-episode DAI tier over tools/segments/ad-pad.mjs (Gastropod 99.5 s paddable copied from padFromProbes, exact-ceiling paddable vs 0.1 s over locate-required, pad 0 ad-free, one usable probe unmeasured n<2, every probe declared 0 unmeasurable no denominator, flightcast untrusted host listed trusted:false, undersized unmeasurable, no reference duration unmeasurable without a throw)
   "tools/passage-index/sources.test.mjs": 5, // GV-09 (W3-05, docs/roadmap/generation-v2.md): stream indexer body sources (local walk order + show_id = dir minus safeKey hash + file stat + unparseable body sent as null, shadowed dirs, R2 dir mapping through show-map with unmapped dirs kept + strays ignored and listing-only, sync-r2 quarantine codes SHA_MISMATCH/BAD_JSON/BAD_SHAPE/NO_BODY persisted and GET_FAILED not, each object fetched once, PATH_ESCAPE at list time, last-listed name wins)
   "tools/passage-index/stream-index.test.mjs": 9, // GV-09 (W3-05, docs/roadmap/generation-v2.md): stream indexer (package script forwards args, parseStreamArgs, R2 --full fetches each object once and groups records by show with an end-show after each and writes only the manifest, delta: unchanged rerun no GET + changed object/etag rebuilds only its show + --show narrowing, quarantine reported/skipped/persisted, disk guard refuses before any GET + estimate + --min-free-gb 0, cue-cache LRU eviction by bytes, local stat parity, spawnIndexer line protocol against a node child)
+  "tools/passage-index/pull-archive.test.mjs": 4, // GV-16 (W3-08, docs/roadmap/generation-v2.md): pull-archive against a fake HTTP server (bearer + gzip + item_id_suffix stripped + atomic write with no tmp left, an HTTP error / bad row / non-JSON / empty archive leaves the old digest byte for byte, parsePullArgs url/token from env or file never argv, serve.mjs entry exists and passes flags through)
   /* The breadth prioritiser and its yield report (#114). Floored for the same
      reason politeness.test.mjs is, and the reason is not hypothetical here
      either: the first draft of `rank-breadth.mjs` had a seed hash that produced
@@ -2775,6 +2776,16 @@ const BACKEND_FLOORS = {
      apart, anchors by the segment spill rule, deterministic ids keyed by the
      archive guid. */
   "test/passageCutter.test.ts": 8,
+  /* GV-16 (docs/roadmap/generation-v2.md, from W3-08): the retrieval server —
+     /v1/search equals a local FileTranscriptTextIndex search for lineage and
+     'all' scopes (order, scores, idf, zero-hit idf), no query text in logs,
+     non-loopback bind refused without a token, bearer on every /v1 route,
+     stale caches rebuilt only when the cue store can serve them, --shows,
+     reload, and the pull-archive round trip through loadTranscriptArchive;
+     plus the manifest body source that keeps streamed caches fresh with no
+     body on disk. */
+  "test/retrievalServer.test.ts": 10,
+  "test/manifestBodySource.test.ts": 5,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —

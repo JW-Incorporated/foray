@@ -105,6 +105,20 @@ export interface TranscriptTextCandidate {
   idf?: ReadonlyMap<string, number>;
 }
 
+/** `searchWithIdf`'s answer: the ranking `search` returns, and the idf map the
+ * search computed — present (possibly empty) even when nothing matched. */
+export interface TranscriptTextSearchResult {
+  candidates: TranscriptTextCandidate[];
+  idf: ReadonlyMap<string, number>;
+}
+
+/** What warming a show cost: its documents, distinct terms and cache bytes. */
+export interface ShowWarmStats {
+  episodes: number;
+  terms: number;
+  bytes: number;
+}
+
 export interface TranscriptTextSearchOptions {
   /** Top N episodes to return. Defaults to `TRANSCRIPT_TEXT_CANDIDATES`. */
   limit?: number;
@@ -225,10 +239,26 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
   }
 
   search(queryText: string, options: TranscriptTextSearchOptions = {}): TranscriptTextCandidate[] {
+    return this.searchWithIdf(queryText, options).candidates;
+  }
+
+  /**
+   * `search`, plus the idf map it scored with even when nothing matched (GV-16,
+   * from W3-08). `search` delegates here, so its output is unchanged; the
+   * retrieval server (`cli/retrievalServer.ts`) calls this directly because a
+   * remote answer with zero candidates must still carry the idf, and `search`
+   * hands back a bare `[]` that has lost it. Every candidate carries the same
+   * map, as before.
+   */
+  searchWithIdf(queryText: string, options: TranscriptTextSearchOptions = {}): TranscriptTextSearchResult {
     const limit = options.limit ?? TRANSCRIPT_TEXT_CANDIDATES;
     const isUsable = options.isUsable ?? (() => true);
     const terms = [...new Set(tokenizeForSourcing(queryText))];
-    if (terms.length === 0 || limit <= 0) return [];
+    /* One idf map for the whole search: BM25's own term weights, and the same
+       numbers tier 2's window search reuses to prefer the rare word (F-61). */
+    const idfByTerm = new Map<string, number>();
+    const none = (): TranscriptTextSearchResult => ({ candidates: [], idf: idfByTerm });
+    if (terms.length === 0 || limit <= 0) return none();
 
     /* Shows first, because the lineage gate is effectively a per-show verdict
        and a show nothing admits must not be indexed at all. */
@@ -237,7 +267,7 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
       const usable = entries.filter((e) => isUsable(e));
       if (usable.length > 0) shows.push({ showId, usable });
     }
-    if (shows.length === 0) return [];
+    if (shows.length === 0) return none();
 
     /* ONE CORPUS, NOT ONE PER SHOW. The indexes are stored per show (that is
        what can be built and invalidated independently), but the idf a candidate
@@ -284,13 +314,10 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
         }
       }
     }
-    if (hits.size === 0 || docCount === 0) return [];
+    if (hits.size === 0 || docCount === 0) return none();
 
     const avgLength = totalLength / docCount;
     const queryTokens = new Set(terms);
-    /* One idf map for the whole search: BM25's own term weights, and the same
-       numbers tier 2's window search reuses to prefer the rare word (F-61). */
-    const idfByTerm = new Map<string, number>();
     for (const term of terms) {
       const n = df.get(term);
       if (n === undefined) continue;
@@ -317,7 +344,7 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
       if (t !== 0) return t;
       return a.entry.guid < b.entry.guid ? -1 : a.entry.guid > b.entry.guid ? 1 : 0;
     });
-    return scored.slice(0, limit).map((c, rank) => ({ ...c, rank }));
+    return { candidates: scored.slice(0, limit).map((c, rank) => ({ ...c, rank })), idf: idfByTerm };
   }
 
   /** The shows this index could search, with how many archive rows each has.
@@ -344,9 +371,31 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
    * holds no more than the index it just wrote (`forget` drops even that), so a
    * full warm of a 5,000-episode corpus never has two shows in memory at once.
    */
-  warmShow(showId: string): { episodes: number; terms: number; bytes: number } | null {
+  warmShow(showId: string): ShowWarmStats | null {
     const index = this.showIndex(showId);
     if (!index) return null;
+    return this.warmStats(showId, index);
+  }
+
+  /**
+   * GV-16: hold a show's index in memory ONLY when its disk cache is fresh —
+   * never build it. Null when there is no cache, or a cache that no longer
+   * describes the bodies `bodyStat` reports (or `cache: false`); nothing is
+   * read through the provider and nothing is written then. The retrieval
+   * server boots through this so a stale show is reported, not silently
+   * rebuilt from bodies the box may not hold; `warmShow` is the rebuild.
+   */
+  warmFromCache(showId: string): ShowWarmStats | null {
+    const held = this.loaded.get(showId);
+    if (held) return this.warmStats(showId, held);
+    if (!this.useCache) return null;
+    const cached = this.readCache(showId);
+    if (!cached || !this.cacheIsFresh(cached, this.groupedByShow().get(showId) ?? [])) return null;
+    this.loaded.set(showId, cached);
+    return this.warmStats(showId, cached);
+  }
+
+  private warmStats(showId: string, index: ShowIndex): ShowWarmStats {
     let bytes = 0;
     try {
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- path derived from a digest show id, slugged by cacheFile.
