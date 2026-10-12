@@ -11,6 +11,7 @@ import {
   locateInListing,
   type TranscriptDigestEntry
 } from "../src/generation/transcriptArchiveLookup";
+import { cutPassages, type Passage } from "../src/generation/passageCutter";
 import { corpusSafeKey, scanNormalizedCorpus } from "../src/generation/transcriptCorpus";
 import { FileTranscriptTextIndex, showIndexCacheFile } from "../src/generation/transcriptTextIndex";
 
@@ -133,7 +134,8 @@ function sink(): { stream: Writable; text: () => string } {
 async function runIndexBodies(
   lines: string[],
   root: string,
-  archive: readonly TranscriptDigestEntry[] = committedRows
+  archive: readonly TranscriptDigestEntry[] = committedRows,
+  passagesOut: string | null = null
 ): Promise<{ result: IndexBodiesResult; out: string; indexRoot: string; stagedOut: string }> {
   const indexRoot = path.join(root, "index");
   const stagedOut = path.join(root, "passage-index", "staged-digest.jsonl");
@@ -143,7 +145,8 @@ async function runIndexBodies(
     stagedOut,
     archive,
     committedDigests: [committedDigest],
-    showTitle: (showId) => showId
+    showTitle: (showId) => showId,
+    passagesOut
   });
   return { result, out: out.text(), indexRoot, stagedOut };
 }
@@ -310,6 +313,57 @@ describe("indexBodies — the streamed cache is the cache FileTranscriptTextInde
     const e = parseIndexBodiesArgs(["--index-root", "x/idx", "--staged-out", "y/s.jsonl"]);
     expect(e.indexRoot).toBe(path.resolve("x/idx"));
     expect(e.stagedOut).toBe(path.resolve("y/s.jsonl"));
+    /* GV-12: no passages unless asked for. */
+    expect(d.passagesOut).toBeNull();
+    expect(e.passagesOut).toBeNull();
+    expect(parseIndexBodiesArgs(["--passages-out", "z/p.jsonl"]).passagesOut).toBe(path.resolve("z/p.jsonl"));
+  });
+
+  it("--passages-out (GV-12): appends each mapped body's passages keyed by the ARCHIVE guid, in row order, and leaves the caches unchanged", async () => {
+    /* MUTATION THAT KILLS THIS: key the passages by the body's own recorded
+       guid (kept.bodyGuid) instead of the archive row's — episode one's
+       passage carries "ep-1-the-permalink-guid", which no archive row has. */
+    const root = path.join(tmp, "passages");
+    const passagesOut = path.join(root, "passage-index", "passages.jsonl");
+    const readPassages = (): Passage[] =>
+      fs
+        .readFileSync(passagesOut, "utf8")
+        .split("\n")
+        .filter((l) => l.length > 0)
+        .map((l) => JSON.parse(l) as Passage);
+    const { result, out, indexRoot } = await runIndexBodies(streamLines(), root, committedRows, passagesOut);
+    expect(result.exitCode).toBe(0);
+    const rows = readPassages();
+    expect(rows.map((p) => `${p.show_id}/${p.guid}`)).toEqual([
+      `${SHOW_A}/${PERMALINK}`,
+      `${SHOW_A}/a2`,
+      `${SHOW_A}/a4`,
+      `${SHOW_A}/Buzzsprout-777`,
+      `${SHOW_B}/b1`,
+      `${SHOW_B}/b2`
+    ]);
+    expect(result.shows.map((s) => s.passages)).toEqual([4, 2]);
+    expect(out).toContain(", 4 passages\n");
+    /* Each row is the cutter's output over the body's filtered cues, keyed by
+       the archive guid: the letter-spaced and backwards cues are not in
+       episode one's text. */
+    const bodyOf = (fileName: string): unknown => JSON.parse(fs.readFileSync(path.join(corpus, `${SHOW_A}-0123456789`, fileName), "utf8"));
+    const one = cutPassages({ show_id: SHOW_A, guid: PERMALINK }, cuesFromBodyJson(bodyOf(`${corpusSafeKey(PERMALINK)}.json`))!);
+    expect(rows[0]).toEqual(one[0]);
+    expect(rows[0]!.text).toBe("semmelweis washed his hands before the delivery ward");
+    const buzz = cutPassages({ show_id: SHOW_A, guid: "Buzzsprout-777" }, cuesFromBodyJson(bodyOf("old-name-a3.json"))!);
+    expect(rows[3]).toEqual(buzz[0]);
+    /* A second run appends the same rows with the same ids. */
+    await runIndexBodies(streamLines(), path.join(root, "again"), committedRows, passagesOut);
+    expect(readPassages().slice(rows.length)).toEqual(rows);
+    /* The caches are the ones a run without the flag writes, and that run
+       says nothing of passages. */
+    const plain = await runIndexBodies(streamLines(), path.join(root, "plain"));
+    expect(plain.out).not.toContain("passages");
+    expect(plain.result.shows.map((s) => s.passages)).toEqual([0, 0]);
+    for (const showId of [SHOW_A, SHOW_B]) {
+      expect(withoutBuiltAt(readCache(indexRoot, showId).raw)).toBe(withoutBuiltAt(readCache(plain.indexRoot, showId).raw));
+    }
   });
 });
 

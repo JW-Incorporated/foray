@@ -2767,6 +2767,11 @@ const BACKEND_FLOORS = {
      body stream equals FileTranscriptTextIndex's own build, is judged fresh by
      it, and stages the rows an offline reconcile writes. */
   "test/indexBodies.test.ts": 10,
+  /* GV-12 (docs/roadmap/generation-v2.md, from W3-23): the passage cutter —
+     whole-thought passages that tile an episode, turn/sentence/cue edges kept
+     apart, anchors by the segment spill rule, deterministic ids keyed by the
+     archive guid. */
+  "test/passageCutter.test.ts": 8,
   /* §4.7 end to end (kanban card t_5a8b77c3): writeNarration() writes one
      page per narration beat (mode budgets, per-claim sources array),
      always through a genuinely separate verifier call (never the writer —
