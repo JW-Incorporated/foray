@@ -6,7 +6,7 @@ import type { DurationTier, Spine } from "../../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "../SpineBuilder";
 import { toChatMessages } from "../promptLayout";
 import { buildSpinePromptParts, spineRevisionTurns } from "../prompts/spine";
-import { RawSpineSchema } from "../replySchemas";
+import { RawSpineSchema, spineFromReply } from "../replySchemas";
 import type { ChatProvider } from "./ChatProvider";
 import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from "./askStructured";
 
@@ -20,8 +20,11 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
  * (GV-32, toChatMessages), so a re-ask and the next Foray reuse the cached
  * prefix; same re-ask turns (spineRevisionTurns: a structural or seed-floor
  * re-ask appends [the refused spine, the fix turn]); same schema (RawSpineSchema, sent as the 'spine' json_schema), same
- * cap (BUILDER_MAX_TOKENS.spine), and the same Spine fields back: subject and
- * angle from the intent, the duration asked for, generatedAt now.
+ * cap (BUILDER_MAX_TOKENS.spine), and the same Spine fields back
+ * (spineFromReply): subject and angle from the intent, the duration asked
+ * for, generatedAt now. GV-67: on the folded path (ctx.listenerPrompt set)
+ * the prompt carries the listener's words, the reply leads with the copy
+ * fields, and subject and angle come from the reply.
  *
  * DARK: constructed only by the stage factories (GV-37) when the spine routes
  * to 'local'. No Anthropic call and no Anthropic module imported: the prompt
@@ -40,25 +43,21 @@ export class ChatSpineBuilder implements SpineBuilder {
   }
 
   async buildSpine(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier, ctx: SpineBuildContext): Promise<Spine> {
+    const folded = ctx.listenerPrompt !== undefined;
     const { value: raw } = await askStructured({
       provider: this.provider,
       target: this.target,
       schemaName: "spine",
       schema: RawSpineSchema,
-      messages: [...toChatMessages(buildSpinePromptParts(intent, researchShape, duration)), ...spineRevisionTurns(ctx.revision)],
+      messages: [
+        ...toChatMessages(buildSpinePromptParts(intent, researchShape, duration, ctx.listenerPrompt)),
+        ...spineRevisionTurns(ctx.revision, folded)
+      ],
       maxTokens: BUILDER_MAX_TOKENS.spine,
       operation: "spine_build",
       budget: { guard: this.budgetGuard, userId: ctx.userId, ...(ctx.sessionId !== undefined ? { sessionId: ctx.sessionId } : {}) },
       label: "spine"
     });
-    return {
-      subject: intent.subject,
-      angle: intent.angle,
-      overview: raw.overview,
-      duration,
-      generatedAt: new Date().toISOString(),
-      voice: raw.voice,
-      acts: raw.acts
-    };
+    return spineFromReply(raw, intent, duration, folded);
   }
 }
