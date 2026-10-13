@@ -8,8 +8,8 @@ import type { SpineReask } from "../generation/buildSpine";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
-import { checkpointFingerprint } from "../generation/checkpoint";
-import { checkpointVariant, resolvePipelineFlags, type PipelineFlags } from "../generation/pipelineFlags";
+import { checkpointFingerprint, checkpointRunVariant } from "../generation/checkpoint";
+import { resolvePipelineFlags, type PipelineFlags } from "../generation/pipelineFlags";
 import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
 import { getUsageTotals } from "../generation/usageTracking";
 import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
@@ -22,8 +22,23 @@ import { readAuthorIdFlag, type ClarityDecider, type GenerationRequest } from ".
 import type { PartialCandidate } from "../generation/partialCandidate";
 import type { VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
 import type { PublishRecord } from "./publishForay";
-import { env } from "../config/env";
 import { modelSummary } from "../config/models";
+import {
+  ALLOW_PROSE_ON_SECOND_ENV,
+  GENERATION_MODE_ENV,
+  GENERATION_STAGES,
+  LLM_BASE_URL_ENV,
+  RoutingConfigError,
+  describeStageAssignments,
+  resolveRouting,
+  routingSummary,
+  stageEnvVar,
+  type GenerationMode,
+  type RoutingSummary,
+  type RoutingTable,
+  type StageAssignment,
+  type StageId
+} from "../config/stageRouting";
 import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
 
 /**
@@ -83,6 +98,7 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *                              [--max-resumes N] [--continue-on-refused-partial]
  *                              [--notify <command>] [--author-id <id>]
  *                              [--job-dir <dir>]
+ *                              [--stage-provider stage=provider[:lane][,...]]
  *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
  *   same default `generate-foray` uses; `--author` still works for one
  *   release and prints a deprecation line)
@@ -101,6 +117,16 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  * (`generation/jobSink.ts`) to `<dir>/<forayId>.job.json` on every act-ready and
  * item-ready event, then closes it with the run's outcome: what a phone may
  * play so far, the servable prefix only, never the prompt. Not under --dry-run.
+ *
+ * `--stage-provider spine=local:second,deepen=local:spark` (GV-55, repeatable)
+ * routes stages for this run exactly as FORAY_STAGE_<STAGE>=<provider>[:<lane>]
+ * would (config/stageRouting.ts, decision 4): the overrides are applied to the
+ * environment before the routing table is resolved, and win over the same
+ * variables already set. A malformed entry exits non-zero naming it. The
+ * MODE/MODELS/STAGES lines state the routing, report.json records it
+ * (`routing`, `generationMode`, and `stageAssignments` per row), and in local
+ * mode (or with any stage overridden) the routing joins the checkpoint
+ * variant, so a resumed run never mixes stages built under another routing.
  */
 
 interface PromptSpec {
@@ -152,6 +178,102 @@ export interface CliArgs {
    * `<forayId>.job.json`. Absent unless given, so the parsed args of a run
    * without it are unchanged and nothing is published. */
   jobDir?: string;
+  /** GV-55: `--stage-provider stage=provider[:lane][,...]`, applied as
+   * FORAY_STAGE_<STAGE> overrides before the routing table is resolved.
+   * Absent unless given, so the parsed args of a run without it are
+   * unchanged. */
+  stageProviders?: Partial<Record<StageId, string>>;
+}
+
+/** A command-line value the driver refuses. `main` prints the message and
+ * exits non-zero before anything runs. */
+export class CliArgError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CliArgError";
+  }
+}
+
+export const STAGE_PROVIDER_FLAG = "--stage-provider";
+
+/**
+ * GV-55: parses every `--stage-provider` value (comma-separated
+ * `stage=provider[:lane]` entries; the flag may repeat). Each entry is checked
+ * against the same rules FORAY_STAGE_<STAGE> is (the stage is known, the
+ * provider is one that stage accepts, the lane exists) by resolving it alone
+ * on a synthetic source, so a typo stops the run here, naming the entry,
+ * rather than inside the first stage. Rules that depend on the real
+ * environment (FORAY_LLM_BASE_URL, the prose lane) are left to the real
+ * resolveRouting, which names the variable.
+ */
+export function parseStageProviders(values: readonly string[]): Partial<Record<StageId, string>> {
+  const out: Partial<Record<StageId, string>> = {};
+  for (const value of values) {
+    for (const raw of value.split(",")) {
+      const entry = raw.trim();
+      const refuse = (why: string): never => {
+        throw new CliArgError(
+          `${STAGE_PROVIDER_FLAG}: "${entry}" ${why}; expected stage=provider[:lane][,...] with stage one of ${GENERATION_STAGES.join(", ")}`
+        );
+      };
+      const eq = entry.indexOf("=");
+      if (eq <= 0) refuse("is not stage=provider[:lane]");
+      const stage = entry.slice(0, eq) as StageId;
+      const spec = entry.slice(eq + 1);
+      if (!(GENERATION_STAGES as readonly string[]).includes(stage)) refuse("names no stage");
+      if (out[stage] !== undefined) refuse("routes a stage a second time");
+      try {
+        resolveRouting({
+          [GENERATION_MODE_ENV]: "stub",
+          [LLM_BASE_URL_ENV]: "http://stage-provider.invalid",
+          [ALLOW_PROSE_ON_SECOND_ENV]: "1",
+          [stageEnvVar(stage)]: spec
+        });
+      } catch (err) {
+        if (err instanceof RoutingConfigError) refuse(`is not a route stage "${stage}" accepts (${err.message})`);
+        throw err;
+      }
+      out[stage] = spec;
+    }
+  }
+  return out;
+}
+
+/** `env` with each `--stage-provider` override set as its FORAY_STAGE_*
+ * variable (a copy; `env` is not touched). */
+export function withStageProviders(env: NodeJS.ProcessEnv, overrides: Partial<Record<StageId, string>> = {}): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = { ...env };
+  for (const [stage, spec] of Object.entries(overrides) as [StageId, string][]) out[stageEnvVar(stage)] = spec;
+  return out;
+}
+
+/** GV-55: the MODE line, then MODELS when a stage is on the legacy
+ * Anthropic builders, then STAGES when any stage is not a stub. With no
+ * routing variable set, the MODE and MODELS lines are today's text. */
+export function modeLines(
+  routing: RoutingTable,
+  caps: { runUsd: number; episodeUsd: number },
+  models: { opus: string; sonnet: string; haiku: string }
+): string[] {
+  const routes = Object.values(routing.routes).filter((r): r is NonNullable<typeof r> => r !== undefined);
+  /* Stub mode with nothing overridden is today's dry run even when a Jev key
+     routes the judge to jev: nothing on the default pipeline calls the judge. */
+  const inert =
+    (routing.mode === "stub" && routing.overridden.length === 0) || routes.every((r) => r.provider === "stub" || r.provider === "none");
+  const metered = `metered by BudgetGuard (run $${caps.runUsd} for this process, per-Foray $${caps.episodeUsd})`;
+  if (inert) return [`MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`];
+  const lines = [
+    routing.mode === "anthropic-legacy" && routing.overridden.length === 0
+      ? `MODE: live — Anthropic builders, ${metered}.`
+      : `MODE: mixed/live — generation mode ${routing.mode} (from ${routing.modeSource}), routed per stage below, ${metered}.`
+  ];
+  if (routes.some((r) => r.provider === "anthropic")) lines.push(`MODELS: opus=${models.opus} sonnet=${models.sonnet} haiku=${models.haiku}`);
+  const summary = routingSummary(routing);
+  const stages = Object.entries(summary.stages).map(([stage, route]) => `${stage}=${route}`);
+  const overridden = summary.overridden.length ? `; overridden: ${summary.overridden.join(", ")}` : "";
+  const llm = summary.llm.baseUrl !== null ? `; llm ${summary.llm.baseUrl} (key ${summary.llm.keyConfigured ? "configured" : "not set"})` : "";
+  lines.push(`STAGES: ${stages.join(", ")}${overridden}${llm}`);
+  return lines;
 }
 
 export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.env): CliArgs {
@@ -170,6 +292,16 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
      relay session) carries its hook without anyone editing the command line;
      an explicit flag wins over it. */
   const notifyEnv = envVars.GENERATION_NOTIFY_CMD?.trim();
+  /* GV-55: every occurrence, so the flag may repeat. A flag with no value
+     is refused rather than read as "no overrides". */
+  const stageProviderValues: string[] = [];
+  argv.forEach((arg, i) => {
+    if (arg !== STAGE_PROVIDER_FLAG) return;
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith("--")) throw new CliArgError(`${STAGE_PROVIDER_FLAG} needs a value: stage=provider[:lane][,...]`);
+    stageProviderValues.push(value);
+  });
+  const stageProviders = stageProviderValues.length ? parseStageProviders(stageProviderValues) : undefined;
   return {
     prompts: get("--prompts") ?? null,
     out: get("--out") ?? path.join("data-local", "foray-candidates"),
@@ -183,7 +315,8 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     continueOnRefusedPartial: argv.includes("--continue-on-refused-partial"),
     notify: get("--notify") ?? (notifyEnv ? notifyEnv : null),
     ...(argv.includes("--fast-path") ? { fastPath: true } : {}),
-    ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {})
+    ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {}),
+    ...(stageProviders ? { stageProviders } : {})
   };
 }
 
@@ -248,6 +381,10 @@ export function batchReportDocument(s: {
   notification: NotificationResult | null;
   corpus: CorpusReport | null;
   prompts: PromptSetIdentity;
+  /** GV-55: the generation mode and the routing summary (no key, no URL
+   * credentials) the batch ran under. */
+  generationMode: GenerationMode;
+  routing: RoutingSummary;
   entries: PriorReportEntry[];
 }): Record<string, unknown> {
   return {
@@ -268,6 +405,10 @@ export function batchReportDocument(s: {
     corpus: s.corpus,
     /* GV-39: the prompt set this batch ran. */
     prompts: s.prompts,
+    /* GV-55 (R2-21): which provider, lane and model served each stage, so a
+       bench row is attributable. */
+    generationMode: s.generationMode,
+    routing: s.routing,
     entries: s.entries
   };
 }
@@ -648,6 +789,10 @@ export type ReportEntry = {
    * understand-clarity stage is routed to Jev
    * (FORAY_STAGE_UNDERSTAND_CLARITY=jev); absent on every other route. */
   clarityDecidedBy?: ClarityDecider;
+  /** GV-55 (from W7-02): per routed stage, the implementation, model and
+   * machine that served it (`describeStageAssignments`), from the routing the
+   * run was resolved under. On every row. */
+  stageAssignments?: Partial<Record<StageId, StageAssignment>>;
 };
 
 /**
@@ -767,9 +912,15 @@ export async function generateOneCandidate(
      and would merge classic and flag-on stages into one file. */
   const flags = resolvePipelineFlags(args.fastPath ? { fastPath: true } : {});
   const gates = resolveGateConfig();
+  /* GV-55: the routing table, resolved once here with the --stage-provider
+     overrides applied (main() also sets them on process.env, which the stage
+     factories read), handed to the pipeline whole like the flags, so the
+     store's and the session's variant agree. */
+  const routing = resolveRouting(withStageProviders(process.env, args.stageProviders));
+  const stageAssignments = describeStageAssignments({ routing });
   const checkpointStore = new FileCheckpointStore(
     path.resolve(args.out),
-    checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, variant: checkpointVariant(flags) })
+    checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, variant: checkpointRunVariant(flags, routing) })
   );
   if (args.noResume) checkpointStore.discard(checkpointKey);
   const resumable = !args.noResume && checkpointStore.load(checkpointKey) !== null;
@@ -889,7 +1040,8 @@ export async function generateOneCandidate(
       ...(spec.id !== undefined ? { promptId: spec.id } : {}),
       ...(runLogRel !== undefined ? { runLog: runLogRel } : {}),
       flags,
-      gates
+      gates,
+      stageAssignments
     };
     if (!notify) return withCalls;
     const notification = await notify({
@@ -941,7 +1093,8 @@ export async function generateOneCandidate(
           sessionId: checkpointKey,
           refusedPartial: args.continueOnRefusedPartial ? "continue" : "abort",
           flags,
-          gates
+          gates,
+          routing
         },
         {
           cueProvider: deps.cueProvider,
@@ -1116,17 +1269,33 @@ export async function generateOneCandidate(
   return { skipped: false, entry: await finishEntry(entry, outcome.outcome === "generated" ? "invalid" : outcome.outcome, id) };
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
+/** The CLI. Exported (GV-55) so a test can prove a refused argument exits
+ * non-zero before anything runs; the script entry below passes process.argv. */
+export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+  let args: CliArgs;
+  try {
+    args = parseArgs(argv);
+  } catch (err) {
+    /* GV-55: a malformed --stage-provider stops the run before anything is
+       read or spent, naming the entry. */
+    if (!(err instanceof CliArgError)) throw err;
+    console.error(err.message);
+    process.exitCode = 1;
+    return;
+  }
   if (!args.prompts) {
     console.error(
       "Usage: npm run generate-forays -- --prompts prompts.json [--out DIR] " +
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
-        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>]"
+        "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
+        "[--stage-provider stage=provider[:lane][,...]]"
     );
     process.exitCode = 1;
     return;
   }
+  /* GV-55: the overrides go into the environment the stage factories read,
+     before anything resolves a route. */
+  Object.assign(process.env, withStageProviders({}, args.stageProviders));
   const batchStartedMs = Date.now();
 
   try {
@@ -1147,18 +1316,12 @@ async function main(): Promise<void> {
        stubs and produced 200 placeholder Forays would look exactly like a
        successful run until someone listened to one. */
     const caps = defaultBudgetGuard.caps();
-    console.log(
-      env.anthropicDryRun
-        ? `MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`
-        : `MODE: live — Anthropic builders, metered by BudgetGuard (run $${caps.runUsd} for this process, per-Foray $${caps.episodeUsd}).`
-    );
     /* Which models a run ACTUALLY used, printed rather than assumed: F-03 was
        found by reading source, which is not where a run's behaviour should have
-       to be looked up. */
-    if (!env.anthropicDryRun) {
-      const models = modelSummary();
-      console.log(`MODELS: opus=${models.opus} sonnet=${models.sonnet} haiku=${models.haiku}`);
-    }
+       to be looked up. GV-55: from the routing table (a misconfigured route
+       throws here, naming its variable, before any prompt runs). */
+    const routing = resolveRouting();
+    for (const line of modeLines(routing, caps, modelSummary())) console.log(line);
     /* G-30: the hands-free policy, stated up front for the same reason the
        mode is — a run that quietly aborted on its first refused partial
        should not be a surprise in the log. */
@@ -1254,6 +1417,8 @@ async function main(): Promise<void> {
             notification,
             corpus,
             prompts: promptSet,
+            generationMode: routing.mode,
+            routing: routingSummary(routing),
             entries
           }),
           null,

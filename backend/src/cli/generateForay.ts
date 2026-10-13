@@ -2,6 +2,7 @@
 import { GenerationRequestSchema, readAuthorIdFlag } from "../types/generation";
 import { createPromptUnderstander } from "../generation/createPromptUnderstander";
 import { understandPrompt } from "../generation/understandPrompt";
+import { resolveRouting, routingSummary, type RoutingTable } from "../config/stageRouting";
 
 /**
  * `npm run generate-foray` — §4.0-4.1's capture surface
@@ -49,6 +50,18 @@ export interface CliArgs {
   authorId: string;
 }
 
+/** GV-55: the understand stages' routes, as the routing table resolves them
+ * (FORAY_STAGE_UNDERSTAND_* over FORAY_GENERATION_MODE), so the run says
+ * which provider, lane and model answered. Never a key or URL credentials
+ * (routingSummary). */
+export function understandRouteLine(routing: RoutingTable = resolveRouting()): string {
+  const stages = routingSummary(routing).stages;
+  return (
+    `UNDERSTAND: mode ${routing.mode}; clarity=${stages["understand.clarity"] ?? "-"}, ` +
+    `intent=${stages["understand.intent"] ?? "-"}, title=${stages["understand.title"] ?? "-"}`
+  );
+}
+
 export function parseArgs(argv: string[]): CliArgs {
   const get = (flag: string): string | undefined => {
     const idx = argv.indexOf(flag);
@@ -83,6 +96,7 @@ async function main(): Promise<void> {
     return;
   }
 
+  console.log(understandRouteLine());
   const understander = createPromptUnderstander();
   const result = await understandPrompt(request.data.prompt, understander, { userId: request.data.author_id });
 

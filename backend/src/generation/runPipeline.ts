@@ -11,8 +11,9 @@ import {
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import { currentRunLog, withCallContext, type StageStatus } from "./runLog";
 import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
-import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "./checkpoint";
-import { checkpointVariant, resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
+import { CheckpointSession, checkpointFingerprint, checkpointRunVariant, type CheckpointStore } from "./checkpoint";
+import { resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
+import { resolveRouting, type RoutingTable } from "../config/stageRouting";
 import { resolveGateConfig, type GateConfig } from "./gateConfig";
 import { outputBudgetMode } from "../config/outputBudgets";
 import { DeepenedActSchema, SpineSchema } from "../types/spine";
@@ -339,6 +340,16 @@ export interface RunPipelineOptions {
    * fingerprint below and its FileCheckpointStore's are the same.
    */
   flags?: Partial<PipelineFlags>;
+  /**
+   * GV-55 (decision 20): the stage routing table this run was resolved under
+   * (`resolveRouting`, after the driver's `--stage-provider` overrides).
+   * Absent, it is resolved from process.env once at the top of the run, the
+   * same source the stage factories read. It joins the checkpoint variant
+   * (`checkpointRunVariant`) only in local mode or with a stage overridden,
+   * so stub and legacy fingerprints are unchanged. The batch driver passes
+   * the table it hashed into its FileCheckpointStore, so the two agree.
+   */
+  routing?: RoutingTable;
   /**
    * GV-15: gate config for this run, merged over `readGateConfig()` once per
    * run. Empty until the gate cards add their keys; each of them threads its
@@ -1009,6 +1020,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      and, through `narrationOrder`, the narrate stage. */
   const flags = resolvePipelineFlags(options.flags);
   const gates = resolveGateConfig(options.gates);
+  const routing = options.routing ?? resolveRouting();
   // GV-14: a malformed FORAY_OUTPUT_BUDGETS throws here, not inside recordModelCall after a paid reply.
   void outputBudgetMode();
 
@@ -1017,11 +1029,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      one code path whether or not the caller wants resume. GV-15: the variant
      keeps a flag-on run and a classic run off each other's banked stages;
      with every semantics-changing flag off it is undefined and the
-     fingerprint is today's. */
+     fingerprint is today's. GV-55: it also carries the narration order and,
+     in local mode, the routing. */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
-    checkpointFingerprint({ prompt: req.prompt, duration: req.duration, topic: options.topic, variant: checkpointVariant(flags) })
+    checkpointFingerprint({ prompt: req.prompt, duration: req.duration, topic: options.topic, variant: checkpointRunVariant(flags, routing) })
   );
   const resumeHint = options.checkpointKey
     ? `Everything finished so far is checkpointed under "${options.checkpointKey}", so a re-run restarts at this stage.`

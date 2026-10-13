@@ -565,6 +565,18 @@ export const COLUMNS = [
     digits: 2,
     targetNote:
       "R1-14 render speed: the report's own realtime factor (`delivery.render.realtimeFactor`, GV-74); renderX is the runlog's reading of the same MT-09"
+  },
+  /* GV-55 (R2-21, from W7-02): which implementation and machine served each
+     stage, compacted (`stackOf`). A text detail column: absent on reports
+     written before the driver recorded `stageAssignments` (runs 4-9). */
+  {
+    key: "stack",
+    group: "detail",
+    header: "stack",
+    from: "report",
+    width: 5,
+    kind: "text",
+    targetNote: "R2-21 attribution: the most common impl@machine, then each stage that differs (`stageAssignments`, GV-55)"
   }
 ];
 
@@ -611,6 +623,27 @@ export function tableColumns(options = {}) {
   if (!options.wide) return COLUMNS.filter((col) => col.group === CORE);
   /* GV-24: the MQ scorecard columns, only when the rows were scored. */
   return options.scorecard ? [...COLUMNS, ...SCORECARD_COLUMNS] : COLUMNS;
+}
+
+/**
+ * GV-55: a row's `stageAssignments` ({stage: {impl, model, machine?}}) as one
+ * compact cell: the most common `impl[@machine]` first (the first stage's on a
+ * tie), then `stage=impl[@machine]` for every stage that differs, in the
+ * report's own stage order. E.g. `local@spark research=none deepen=local@second
+ * judge=jev`. Null when the row carries no assignments (rule 1: absent, never
+ * a guessed stack).
+ */
+export function stackOf(stageAssignments) {
+  if (!stageAssignments || typeof stageAssignments !== "object") return null;
+  const tag = (a) => a.impl + (typeof a.machine === "string" && a.machine ? `@${a.machine}` : "");
+  const entries = Object.entries(stageAssignments).filter(([, a]) => a && typeof a === "object" && typeof a.impl === "string");
+  if (entries.length === 0) return null;
+  const counts = new Map();
+  for (const [, a] of entries) counts.set(tag(a), (counts.get(tag(a)) || 0) + 1);
+  let top = null;
+  for (const [t, n] of counts) if (top === null || n > counts.get(top)) top = t;
+  const rest = entries.filter(([, a]) => tag(a) !== top).map(([stage, a]) => `${stage}=${tag(a)}`);
+  return [top, ...rest].join(" ");
 }
 
 /** What an absent cell prints as. Never `0`, never an empty string — a blank
@@ -950,7 +983,8 @@ export function rowFor(entry, context = {}) {
     render_x: runlog ? num(runlog.renderRealtime) : null,
     spark_s: runlog ? num(runlog.unitSpend?.[SPARK_UNIT]) : null,
     lead15_s: num(delivery?.minLeadSecAt1_5x),
-    render_rtf: num(delivery?.render?.realtimeFactor)
+    render_rtf: num(delivery?.render?.realtimeFactor),
+    stack: stackOf(entry.stageAssignments)
   };
   const sources = {};
   for (const col of COLUMNS) {
@@ -1124,6 +1158,9 @@ export function jsonlLine(row) {
        prose_tps so a diff never compares a decode rate with an e2e one. */
     calls_by_stage: row.meta.calls_by_stage ?? null,
     prose_basis: row.meta.prose_basis ?? null,
+    /* GV-55: the compact stack, only when the row has one, so a line from a
+       report without stageAssignments keeps its shape. */
+    ...(typeof row.values.stack === "string" ? { stack: row.values.stack } : {}),
     /* GV-24: the MQ scorecard, only on a --scorecard row, so a plain line is
        byte-identical to the bench's own. */
     ...(row.scorecard ? { scorecard: row.scorecard } : {})
@@ -1148,7 +1185,8 @@ export function rowFromJsonl(line) {
     outcome: obj.outcome ?? null,
     valid: obj.valid ?? null,
     last_listen: typeof obj.last_listen === "string" ? obj.last_listen : null,
-    tier: typeof obj.tier === "string" && TIERS.includes(obj.tier) ? obj.tier : null
+    tier: typeof obj.tier === "string" && TIERS.includes(obj.tier) ? obj.tier : null,
+    stack: typeof obj.stack === "string" && obj.stack ? obj.stack : null
   };
   for (const col of COLUMNS) {
     if (col.kind === "number") values[col.key] = num(obj.metrics?.[col.key]);
