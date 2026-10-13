@@ -369,6 +369,32 @@ describe("buildPartialCandidate — GV-46: later acts not sourced yet (basis 'de
     expect(candidate.ruleScope.projection?.supersededOnPartial).toEqual([m4]);
   });
 
+  it("a narration failure still refuses a deferred partial", async () => {
+    /* MUTATION THAT KILLS THIS: in `deferredVerdict`, compute `ok` from the
+       check-forays errors alone (drop `&& partial.checkNarrationErrors.length
+       === 0`) — the only check-forays line is the deferred M4 one, set aside,
+       so a partial whose narration failed would be served. Ran it — red. */
+    const narration = 'foray "f-1": narration item 0: FAIL: fixture narration error';
+    const fn = async (input: FinalizeForayInput): Promise<FinalizeForayResult> => ({
+      validation: {
+        ok: false,
+        checkForaysErrors: input.items === actItems ? [m4] : [],
+        checkForaysWarnings: [],
+        checkNarrationErrors: [narration],
+        checkNarrationWarnings: []
+      },
+      forayRecord: undefined,
+      timings: []
+    });
+    const plan: PartialProjectionPlan = { sourcedActs: sourced.slice(0, 1), slots, totalActs: 3 };
+    const candidate = await buildPartialCandidate(info, { ...meta, projection: plan }, fn);
+    expect(candidate.ruleScope.basis).toBe("deferred");
+    expect(candidate.validation.checkForaysErrors).toEqual([]);
+    expect(candidate.validation.checkNarrationErrors).toEqual([narration]);
+    expect(candidate.ruleScope.projection?.supersededOnPartial).toEqual([m4]);
+    expect(candidate.validation.ok).toBe(false);
+  });
+
   it("a plan that covers every act keeps F-79's projected basis, with or without totalActs", async () => {
     /* MUTATION THAT KILLS THIS: treat any plan carrying `totalActs` as
        incomplete — a fully sourced Foray would stop judging its share rules
