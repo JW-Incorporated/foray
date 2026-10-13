@@ -250,9 +250,10 @@ nothing calls it until a screen does, and that wiring waits for the UI revamp.
   `player/foray-queue.test.js`. Neither is a parity-covered suite: appending is a
   JS-lane rule.
 - One thing to know: a part that ends on a narration line reaches its end through the
-  reducer's bridge path. On origin/main, that path speaks a closing line that follows a
-  clip twice before it ends, whether or not a stream is open. The wait starts after the
-  second reading. This card does not change `queue-state.js`.
+  reducer's bridge path. Until #1348 that path spoke a closing line that follows a clip
+  twice before it ended, whether or not a stream was open, and the wait started after the
+  second reading. #1348 fixed it in the JS lane: `queue-state.js` ends the queue when the
+  bridge line is the last item. The native lanes still owe the same port.
 
 ## 4. Known caveat: scoped validation can false-negative
 

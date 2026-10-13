@@ -874,7 +874,7 @@
         "player/parity/fixtures/manager-foray/clip-load.json": "5b5ada8de456dc92c9a3b10a32ba6e05c26dcf3ebe6bfb17ff1959af82d192ca",
         "player/parity/fixtures/manager-foray/jingle.json": "c9016c928cfc2dd0a8c3429124dbc5da2b6775b2161601a3aedaed4b74f4fff2",
         "player/parity/fixtures/manager-foray/narration-skip.json": "8e9192d2b9043c262692080d655aef3589c38b0410dc1122eca3091ead18507f",
-        "player/parity/fixtures/manager-foray/narration.json": "dd05be479486a191ea10810cea5c9da26763ae2d4571551dade5b33439edb401",
+        "player/parity/fixtures/manager-foray/narration.json": "196bb2ac19d4da8947206533a58cb4d671cb6ff053ba0d55e7c416d749f22f37",
         "player/parity/fixtures/manager-foray/real-forays.json": "ce2d584ca45514c92c7a0b9095d4566d40429fb180f17faa352c202c4c88b6f4",
         "player/parity/fixtures/manager-foray/remote-clock.json": "4d5ae3f61ddd232c3caf220b01fdf8bd20f2b465f1659753216ee9a637fc1e3f",
         "player/parity/fixtures/manager-foray/remote-next.json": "e5eaf96acf68a5bc0092e6eaee63115a002ae278232026f3e8380f838c6c6765",
@@ -937,6 +937,9 @@
         "manager-foray/a-script-with-no-synthesiser-fails-cleanly",
         "manager-foray/finished-advances-exactly-once",
         "manager-foray/finished-for-a-bridge-advances-once",
+        "manager-foray/a-closing-line-after-a-clip-is-spoken-once",
+        "manager-foray/a-chain-closing-the-foray-speaks-each-line-once",
+        "manager-foray/a-chain-mid-foray-speaks-each-line-once",
         "manager-foray/a-stray-finished-is-ignored",
         "manager-foray/the-narration-pulse-runs-only-while-speaking",
         "manager-foray/l03-a-spoken-line-is-playing-with-a-rising-clock",
@@ -1433,7 +1436,7 @@
     },
     "queue-state": {
       "files": {
-        "player/parity/fixtures/queue-state/queue-state.json": "0476e86eb9232eba304211b3ced90eb4badb42e3060b292feb45107003ae2fde"
+        "player/parity/fixtures/queue-state/queue-state.json": "8e614366a71abca265974b9fad4d8d064d25096bdc67164717e5ba7c6245ceeb"
       },
       "ids": [
         "queue-state/play-from-idle",
@@ -1446,6 +1449,8 @@
         "queue-state/item-loaded-during-transitioning",
         "queue-state/transitioning-item-ended-next",
         "queue-state/transitioning-item-ended-falls-back-to-to",
+        "queue-state/closing-line-after-a-clip-is-the-bridge",
+        "queue-state/closing-line-finished-ends-the-queue",
         "queue-state/interruption-began-playing",
         "queue-state/interruption-ended-resume",
         "queue-state/resume-item-loaded",

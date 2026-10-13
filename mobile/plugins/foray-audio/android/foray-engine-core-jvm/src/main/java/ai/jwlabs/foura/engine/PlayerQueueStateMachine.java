@@ -119,6 +119,9 @@ public final class PlayerQueueStateMachine {
             }
             // The bridge itself finished: the caller's (possibly re-resolved) next, else the queued `to`.
             case Transitioning s -> {
+                // A TTS `to` IS the bridge that just finished: with no next, the queue is over,
+                // not the line reloaded and said twice (#1348).
+                if (next == null && s.to().kind() == PlayerItemKind.TTS) return to(PlayerQueueState.ENDED, telemetry("queue.ended"));
                 QueueItemRef target = next != null ? next : s.to();
                 return to(new LoadingItem(target, s.to()), PlayerEffect.RESTORE_RATE, new LoadItem(target));
             }

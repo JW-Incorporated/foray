@@ -262,6 +262,66 @@
       }
     },
     {
+      "id": "queue-state/closing-line-after-a-clip-is-the-bridge",
+      "covers": [
+        "queue-state::a closing narration line after a clip ends the queue when it finishes, and is not loaded again (#1348)"
+      ],
+      "note": "A Foray ending [clip, closing line]: the clip ends and the line plays as the bridge, `to` being the line itself.",
+      "call": "reduce",
+      "args": [
+        {
+          "item": {
+            "bounds": { "endSec": 230, "startSec": 120 },
+            "id": "foray#4",
+            "kind": "episode"
+          },
+          "type": "playing"
+        },
+        {
+          "bridged": true,
+          "next": { "bounds": null, "id": "closing-line", "kind": "tts" },
+          "type": "itemEnded"
+        }
+      ],
+      "expect": {
+        "return": [
+          {
+            "from": {
+              "bounds": { "endSec": 230, "startSec": 120 },
+              "id": "foray#4",
+              "kind": "episode"
+            },
+            "to": { "bounds": null, "id": "closing-line", "kind": "tts" },
+            "type": "transitioning"
+          },
+          [{ "type": "resetRateForTTS" }, { "type": "playTransitionTTS" }]
+        ]
+      }
+    },
+    {
+      "id": "queue-state/closing-line-finished-ends-the-queue",
+      "covers": [
+        "queue-state::a closing narration line after a clip ends the queue when it finishes, and is not loaded again (#1348)"
+      ],
+      "note": "Chained: the input is closing-line-after-a-clip-is-the-bridge's resulting state. Nothing follows the line (next = null), so the queue ends; falling back to `to` reloaded the line just spoken (#1348). An episode `to` still falls back (transitioning-item-ended-falls-back-to-to).",
+      "call": "reduce",
+      "args": [
+        {
+          "from": {
+            "bounds": { "endSec": 230, "startSec": 120 },
+            "id": "foray#4",
+            "kind": "episode"
+          },
+          "to": { "bounds": null, "id": "closing-line", "kind": "tts" },
+          "type": "transitioning"
+        },
+        { "bridged": false, "next": null, "type": "itemEnded" }
+      ],
+      "expect": {
+        "return": [{ "type": "ended" }, [{ "message": "queue.ended", "type": "emitTelemetry" }]]
+      }
+    },
+    {
       "id": "queue-state/interruption-began-playing",
       "covers": [
         "queue-state::testInterruptionBeganWhilePlayingSavesPositionAndPauses",

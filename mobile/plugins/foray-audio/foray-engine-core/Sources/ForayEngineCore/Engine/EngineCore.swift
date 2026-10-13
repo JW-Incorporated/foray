@@ -1560,8 +1560,17 @@ public struct EngineCore {
         // ported to the Foray seams): whatever plays next reports its own.
         clearStallLatch()
         switch state.player {
-        case .transitioning:
-            let next = nextItem(from: cursor, skipBridges: true)
+        case .transitioning(_, let to):
+            // The item after the bridge, a narration line included (#1348):
+            // stepping over every TTS item here never spoke the second line of
+            // a chain after a clip, and with the reducer's old `next ?? to` a
+            // line closing the Foray was spoken twice. A chained line loads as
+            // an ordinary item.
+            let next = nextItem(from: cursor, skipBridges: false)
+            // Nothing after the line: the reducer ends the queue (#1348), so the
+            // end is the playing branch's end, rows and session included. Its
+            // own lookup (the same one) finds nothing too.
+            if next == nil && to.kind == .tts { fallthrough }
             // A bridge marks its own seam, so no beat; but narration -> segment
             // DOES get the jingle (§13): the founder's "between podcasts" mark
             // comes after the narrator's line, before the next tape starts.

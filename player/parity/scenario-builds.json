@@ -34,6 +34,25 @@
         {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
       ]
     },
+    "manager-foray/a-chain-closing-the-foray-speaks-each-line-once@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"the first line","duration_sec":0.824,"duration_source":"estimated"},
+        {"id":"nar-2","ord":2,"kind":"tts","audio_url":null,"title":"","script":"the second line","duration_sec":0.882,"duration_source":"estimated"}
+      ]
+    },
+    "manager-foray/a-chain-mid-foray-speaks-each-line-once@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-1","ord":1,"kind":"tts","audio_url":null,"title":"","script":"the first line","duration_sec":0.824,"duration_source":"estimated"},
+        {"id":"nar-2","ord":2,"kind":"tts","audio_url":null,"title":"","script":"the second line","duration_sec":0.882,"duration_source":"estimated"},
+        {"id":"foray-1#3","ord":3,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
     "manager-foray/a-clip-that-fails-twice-is-stepped-over@0": {
       "isLocalFile": false, "allowAdPad": false, "warnings": 0,
       "skipped": [],
@@ -50,6 +69,14 @@
         {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
         {"id":"foray-1#1","ord":1,"kind":"episode","audio_url":"https://cdn.example/other.mp3","start_sec":400,"end_sec":500,"authored_end_sec":500,"ad_pad_applied_sec":0,"source_item_id":"ep-other","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Other","show":"Indie"},
         {"id":"foray-1#2","ord":2,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":700,"end_sec":800,"authored_end_sec":800,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"}
+      ]
+    },
+    "manager-foray/a-closing-line-after-a-clip-is-spoken-once@0": {
+      "isLocalFile": false, "allowAdPad": false, "warnings": 0,
+      "skipped": [],
+      "items": [
+        {"id":"foray-1#0","ord":0,"kind":"episode","audio_url":"https://cdn.example/static.mp3","start_sec":100,"end_sec":210,"authored_end_sec":210,"ad_pad_applied_sec":0,"source_item_id":"ep-static","dai_suspected":false,"seek_map":null,"reference_duration_sec":null,"ad_pad_sec":null,"needs_drift_check":false,"start_anchor":null,"end_anchor":null,"why":"he explains it plainly","title":"Static","show":"Indie"},
+        {"id":"nar-close","ord":1,"kind":"tts","audio_url":null,"title":"","script":"and that is where the fire went out","duration_sec":2.059,"duration_source":"estimated"}
       ]
     },
     "manager-foray/a-copy-with-no-duration-is-skipped@0": {
