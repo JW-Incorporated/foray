@@ -16,7 +16,9 @@ import { DEFAULT_LANE_PROFILES } from "../src/config/machineProfiles";
 import { toChatMessages } from "../src/generation/promptLayout";
 import { buildSpinePromptParts, buildSpineFixInstruction, spineReplyText } from "../src/generation/prompts/spine";
 import { RawSpineSchema, SPINE_COPY_FIELDS, spineFromReply } from "../src/generation/replySchemas";
-import { preSpineIntent, provisionalTitle } from "../src/generation/preSpineIntent";
+import { buildSpineWithReasks } from "../src/generation/buildSpine";
+import { InvalidSpineStructureError } from "../src/generation/spineStructure";
+import { preSpineIntent as preSpineIntentOrNull, provisionalTitle } from "../src/generation/preSpineIntent";
 import { checkpointFingerprint, checkpointRunVariant } from "../src/generation/checkpoint";
 import { resolvePipelineFlags } from "../src/generation/pipelineFlags";
 import { forayIdFor, resetTaxonomyCache } from "../src/generation/resolveTopic";
@@ -27,7 +29,7 @@ import { scriptedProvider } from "./helpers/fakeChatProvider";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
 import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
-import type { GenerationRequest } from "../src/types/generation";
+import type { GenerationRequest, IntentUnderstanding } from "../src/types/generation";
 import type { ResearchShape } from "../src/types/research";
 import { SpineSchema, type Spine } from "../src/types/spine";
 
@@ -48,6 +50,13 @@ const request: GenerationRequest = { prompt: PROMPT, duration: "short", author_i
 const NOW = new Date("2026-10-13T12:00:00.000Z");
 const options = { userId: "founder-1", now: () => NOW, topic: "food/grilling-bbq" };
 const FOLD = { foldSpineCopy: true };
+
+/** preSpineIntent for a prompt that has keywords (every prompt here does). */
+function preSpineIntent(prompt: string): IntentUnderstanding {
+  const intent = preSpineIntentOrNull(prompt);
+  if (intent === null) throw new Error(`expected keywords in ${JSON.stringify(prompt)}`);
+  return intent;
+}
 
 function recordingFinalize() {
   const seen: FinalizeForayInput[] = [];
@@ -79,18 +88,22 @@ function recordingUnderstander() {
   return { understander, calls };
 }
 
-/** The stub spine builder with its reply rewritten by `edit` (null: as is),
- * every context it was handed recorded. */
-function editingSpineBuilder(edit: ((spine: Spine) => Spine) | null = null) {
+/** The stub spine builder with its reply rewritten by `edit` (null: as is;
+ * `call` is 0 on the first call), every intent and context it was handed
+ * recorded. */
+function editingSpineBuilder(edit: ((spine: Spine, call: number) => Spine) | null = null) {
   const builder = new StubSpineBuilder();
   const real = builder.buildSpine.bind(builder);
+  const intents: Array<Parameters<SpineBuilder["buildSpine"]>[0]> = [];
   const contexts: Array<Parameters<SpineBuilder["buildSpine"]>[3]> = [];
   builder.buildSpine = async (...args: Parameters<SpineBuilder["buildSpine"]>) => {
+    const call = contexts.length;
+    intents.push(args[0]);
     contexts.push(args[3]);
     const spine = await real(...args);
-    return edit ? edit(spine) : spine;
+    return edit ? edit(spine, call) : spine;
   };
-  return { builder, contexts };
+  return { builder, intents, contexts };
 }
 
 function deps(overrides: Record<string, unknown> = {}) {
@@ -124,15 +137,20 @@ describe("runForayPipeline with foldSpineCopy: the copy comes from the spine", (
 
   it("hands the spine call the listener's words and the keyword intent, and only on the folded path", async () => {
     /* MUTATION THAT KILLS THIS: build spineCtx as `ctx` on both paths (no
-       listenerPrompt). Ran it: red. */
+       listenerPrompt), or have understandPromptFast return extractIntent's
+       restatement (the spine is then handed the classic intent). Ran both: red. */
     const fold = editingSpineBuilder();
     await runForayPipeline(request, { ...options, flags: FOLD }, deps({ spineBuilder: fold.builder }));
     expect(fold.contexts.length).toBeGreaterThan(0);
     for (const ctx of fold.contexts) expect(ctx.listenerPrompt).toBe(PROMPT);
+    for (const intent of fold.intents) expect(intent).toEqual(preSpineIntent(PROMPT));
 
     const classic = editingSpineBuilder();
     await runForayPipeline(request, options, deps({ spineBuilder: classic.builder }));
     for (const ctx of classic.contexts) expect(ctx).not.toHaveProperty("listenerPrompt");
+    const restated = await new StubPromptUnderstander().extractIntent(PROMPT, { userId: options.userId });
+    expect(classic.intents.length).toBeGreaterThan(0);
+    for (const intent of classic.intents) expect(intent).toEqual(restated);
   });
 
   it("takes the title and summary from the spine reply through forayCopy's clamp and house style, and mints the id from the spine title", async () => {
@@ -170,16 +188,35 @@ describe("runForayPipeline with foldSpineCopy: the copy comes from the spine", (
     expect(out.spine.acts[0]!.startState).toBe(stubCopy.priorKnowledge);
   });
 
-  it("the prelude names spine.subject, not the intent's keyword list", async () => {
-    /* MUTATION THAT KILLS THIS: pass `intent.subject` to preludeItem (any of
-       its three call sites; the final items are checked here, the early
-       prelude below). Ran it: red. */
+  it("the prelude names spine.subject, not the intent's keyword list, at all three places it is built", async () => {
+    /* MUTATION THAT KILLS THIS: pass `intent.subject` to preludeItem at any
+       one of its three call sites: the early prelude onItemReady sees
+       (`const prelude = preludeItem(...)`), the partial candidate's
+       (`itemsWithDisclosure`), or the final items'. Ran each: red. */
     const SUBJECT = "Fire, smoke and the American backyard";
     const { builder } = editingSpineBuilder((spine) => ({ ...spine, subject: SUBJECT }));
-    const out = await runForayPipeline(request, { ...options, flags: FOLD }, deps({ spineBuilder: builder }));
+    const early: Array<{ index: number; item: unknown }> = [];
+    const partials: Array<{ items: unknown[] }> = [];
+    const out = await runForayPipeline(
+      request,
+      { ...options, flags: FOLD, emitPreludeEarly: true },
+      deps({
+        spineBuilder: builder,
+        onItemReady: (ev: { index: number; item: unknown }) => void early.push(ev),
+        onActReady: (candidate: { items: unknown[] }) => void partials.push(candidate)
+      })
+    );
     if (out.outcome !== "generated") throw new Error(`expected generated, got ${out.outcome}`);
+    const expected = preludeItem(SUBJECT, out.spine.overview, out.input.slots[0]!.id);
+    /* The early prelude: the first item event, index 0. */
+    expect(early[0]!.index).toBe(0);
+    expect(early[0]!.item).toEqual(expected);
+    /* The first partial candidate's opening item. */
+    expect(partials.length).toBeGreaterThan(0);
+    expect(partials[0]!.items[0]).toEqual(expected);
+    /* The final candidate's. */
     const prelude = out.input.items[0]!;
-    expect(prelude).toEqual(preludeItem(SUBJECT, out.spine.overview, out.input.slots[0]!.id));
+    expect(prelude).toEqual(expected);
     expect((prelude as { script: string }).script).toContain(`This is a Foray about ${SUBJECT}.`);
     expect((prelude as { script: string }).script).not.toContain(`This is a Foray about ${preSpineIntent(PROMPT).subject}`);
   });
@@ -187,13 +224,26 @@ describe("runForayPipeline with foldSpineCopy: the copy comes from the spine", (
   it("the verbatim prompt appears in no banked checkpoint value, no outcome field and no candidate field", async () => {
     /* MUTATION THAT KILLS THIS: bank `understandPrompt`'s result on the
        folded path (the stub understander restates the prompt verbatim), or
-       put `listenerPrompt` on the shared run context. Ran both: red. */
+       put `listenerPrompt` on the shared run context (a stage after the spine
+       is then handed it). Ran both: red. */
     const flags = resolvePipelineFlags(FOLD);
     const fingerprint = checkpointFingerprint({ prompt: PROMPT, duration: request.duration, topic: options.topic, variant: checkpointRunVariant(flags) });
     const store = new FakeCheckpointStore(fingerprint);
     const finalize = recordingFinalize();
-    const out = await runForayPipeline(request, { ...options, flags: FOLD, checkpointKey: "gv67" }, deps({ finalize: finalize.fn, checkpoint: store }));
+    const deepenBuilder = new StubDeepenActBuilder();
+    const realDeepen = deepenBuilder.deepenAct.bind(deepenBuilder);
+    const deepenContexts: unknown[] = [];
+    deepenBuilder.deepenAct = async (...args: Parameters<StubDeepenActBuilder["deepenAct"]>) => {
+      deepenContexts.push(args[3]);
+      return realDeepen(...args);
+    };
+    const out = await runForayPipeline(request, { ...options, flags: FOLD, checkpointKey: "gv67" }, deps({ finalize: finalize.fn, checkpoint: store, deepenBuilder }));
     if (out.outcome !== "generated") throw new Error(`expected generated, got ${out.outcome}`);
+
+    /* The listener's words reach the spine call only: the run context every
+       other stage is handed never carries them. */
+    expect(deepenContexts.length).toBeGreaterThan(0);
+    for (const ctx of deepenContexts) expect(JSON.stringify(ctx)).not.toContain(PROMPT);
 
     const stages = store.files.get("gv67")!.stages;
     expect(Object.keys(stages)).toEqual(expect.arrayContaining(["understand", "topic", "research-shape", "spine", "identity"]));
@@ -213,18 +263,39 @@ describe("runForayPipeline with foldSpineCopy: the copy comes from the spine", (
 
   it("a folded run resumes its own banked spine to the same title and id", async () => {
     /* MUTATION THAT KILLS THIS: derive the folded copy from the intent rather
-       than the (resumed) spine. Ran it: red. */
+       than the (resumed) spine (`forayCopy(intent)` for the post-spine copy).
+       Ran it: red. */
+    const TITLE = "the pitmaster's long night.";
     const flags = resolvePipelineFlags(FOLD);
     const store = new FakeCheckpointStore(
       checkpointFingerprint({ prompt: PROMPT, duration: request.duration, topic: options.topic, variant: checkpointRunVariant(flags) })
     );
-    const first = await runForayPipeline(request, { ...options, flags: FOLD, checkpointKey: "k" }, deps({ checkpoint: store }));
+    const firstBuilder = editingSpineBuilder((spine) => ({ ...spine, title: TITLE }));
+    const first = await runForayPipeline(request, { ...options, flags: FOLD, checkpointKey: "k" }, deps({ checkpoint: store, spineBuilder: firstBuilder.builder }));
     const spineBuilder = editingSpineBuilder();
     const second = await runForayPipeline(request, { ...options, flags: FOLD, checkpointKey: "k" }, deps({ checkpoint: store, spineBuilder: spineBuilder.builder }));
     if (first.outcome !== "generated" || second.outcome !== "generated") throw new Error("expected both to generate");
+    expect(firstBuilder.contexts.length).toBeGreaterThan(0);
     expect(spineBuilder.contexts).toHaveLength(0);
+    expect(second.input.title).toBe(houseStyleTitle(TITLE));
+    expect(second.input.title).toBe("The pitmaster's long night");
     expect(second.input.title).toBe(first.input.title);
     expect(second.input.id).toBe(first.input.id);
+  });
+
+  it("a folded reply still missing a copy field after the re-asks fails the spine stage with the structural error", async () => {
+    /* MUTATION THAT KILLS THIS: drop foldedCopyIssues from
+       buildSpineWithReasks' issues (the run then publishes forayCopy's
+       `subject: angle` fallback title). Ran it: red. */
+    const { builder, contexts } = editingSpineBuilder((spine) => {
+      const { title: _dropped, ...rest } = spine;
+      return rest;
+    });
+    const run = runForayPipeline(request, { ...options, flags: FOLD, spineStructuralReasks: 1 }, deps({ spineBuilder: builder }));
+    await expect(run).rejects.toBeInstanceOf(InvalidSpineStructureError);
+    await expect(run).rejects.toThrow(/^Spine failed the structural check before deepening \(F-13\), so no deepen call was made: the reply has no "title"/);
+    expect(contexts).toHaveLength(2);
+    expect(contexts[1]!.revision!.violations).toEqual([expect.stringContaining('"title"')]);
   });
 });
 
@@ -275,6 +346,32 @@ describe("runForayPipeline with foldSpineCopy: a stop before the spine", () => {
     if (classic.outcome !== "no-supply") throw new Error(`expected no-supply, got ${classic.outcome}`);
     const intent = await new StubPromptUnderstander().extractIntent(PROMPT, { userId: "founder-1" });
     expect(classic.title).toBe(forayCopy(intent).title);
+  });
+});
+
+describe("runForayPipeline with foldSpineCopy: a stop after the spine", () => {
+  beforeEach(() => {
+    resetTaxonomyCache();
+    resetTaxonomyFamilyCache();
+  });
+  afterEach(() => {
+    resetTaxonomyCache();
+    resetTaxonomyFamilyCache();
+  });
+
+  it("an unresolved-topic outcome carries the spine's title in the house style, not the provisional one", async () => {
+    /* MUTATION THAT KILLS THIS: title the post-spine unresolved-topic stop
+       with `preSpineTitle` (the provisional title). Ran it: red. */
+    const TITLE = "the wubble nobody could place.";
+    const prompt = "qqzzx wubbleflunk zzzqqx";
+    const { builder, contexts } = editingSpineBuilder((spine) => ({ ...spine, title: TITLE }));
+    const out = await runForayPipeline({ ...request, prompt }, { userId: "founder-1", now: options.now, flags: FOLD }, deps({ spineBuilder: builder }));
+    expect(out.outcome).toBe("unresolved-topic");
+    if (out.outcome !== "unresolved-topic") return;
+    expect(contexts.length).toBeGreaterThan(0);
+    expect(out.title).toBe(houseStyleTitle(TITLE));
+    expect(out.title).toBe("The wubble nobody could place");
+    expect(out.title).not.toBe(provisionalTitle(prompt));
   });
 });
 
@@ -342,17 +439,49 @@ describe("the spine builders on the folded path (scripted ChatProvider)", () => 
     expect(buildSpinePromptParts(intent, researchShape, "short").stable).not.toContain("answersDisappointment");
   });
 
-  it("a folded reply that leaves the copy out falls back to the intent's subject and angle and carries no blank field", () => {
-    /* MUTATION THAT KILLS THIS: copy a blank `title` through in
-       spineFromReply (SpineSchema then refuses the banked spine). Ran it: red. */
-    const raw = RawSpineSchema.parse({ ...plan, title: "  ", summary: "" });
-    const spine = spineFromReply(raw, intent, "short", true);
-    expect(spine.subject).toBe(intent.subject);
-    expect(spine.angle).toBe(intent.angle);
-    expect(spine).not.toHaveProperty("title");
-    expect(spine).not.toHaveProperty("summary");
+  /** A plan the structural gate passes for the short tier: the stub's own
+   * acts, as a reply would carry them. */
+  async function passingPlan() {
+    const stub = await new StubSpineBuilder().buildSpine(intent, researchShape, "short", { userId: "u" });
+    return { overview: stub.overview, voice: stub.voice, acts: stub.acts };
+  }
+
+  it("a folded reply that leaves out or blanks a required copy field is re-asked, naming the fields, and never filled from the keyword intent", async () => {
+    /* MUTATION THAT KILLS THIS: drop foldedCopyIssues from
+       buildSpineWithReasks' issues (no re-ask), fall back to `intent.subject`
+       in spineFromReply, or copy a blank `title` through there. Ran each: red. */
+    const passing = await passingPlan();
+    const firstReply = { ...copyReply, subject: undefined, title: "  ", summary: "", ...passing };
+    const provider = scriptedProvider({ complete: [JSON.stringify(firstReply), JSON.stringify({ ...copyReply, ...passing })] });
+    const builder = new ChatSpineBuilder(provider, target, guard);
+
+    /* What the builder makes of the first reply: the missing fields stay
+       missing (blank subject, no title or summary), never the intent's. */
+    const once = spineFromReply(RawSpineSchema.parse(firstReply), intent, "short", true);
+    expect(once.subject).toBe("");
+    expect(once.angle).toBe(copyReply.angle);
+    expect(once).not.toHaveProperty("title");
+    expect(once).not.toHaveProperty("summary");
+
+    const { spine, reasks } = await buildSpineWithReasks(intent, researchShape, "short", builder, { userId: "u", listenerPrompt: PROMPT }, { maxStructuralReasks: 1 });
+    expect(reasks).toHaveLength(1);
+    expect(reasks[0]!.violations).toHaveLength(3);
+    ["subject", "title", "summary"].forEach((field, i) => expect(reasks[0]!.violations[i]).toContain(`"${field}"`));
+    expect(reasks[0]!.violations.join(" ")).not.toContain('"angle"');
+
+    /* The re-ask: the reply as the model wrote it (no subject, title or
+       summary) and the F-86 fix turn naming the fields. */
+    expect(provider.requests).toHaveLength(2);
+    const [assistant, fix] = provider.requests[1]!.messages.slice(-2);
+    expect(fix).toEqual({ role: "user", content: buildSpineFixInstruction(reasks[0]!.violations) });
+    expect(assistant!.role).toBe("assistant");
+    expect(Object.keys(JSON.parse(String(assistant!.content)))).toEqual(["angle", "priorKnowledge", "disappointment", "answersDisappointment", "overview", "voice", "acts"]);
+
+    /* What passed is the second reply's copy, and it parses as a Spine. */
+    expect(spine).toMatchObject(copyReply);
     expect(SpineSchema.safeParse(spine).success).toBe(true);
   });
+
 
   it("a folded re-ask repeats the copy fields first in the assistant turn; a classic re-ask is unchanged", async () => {
     /* MUTATION THAT KILLS THIS: ignore `folded` in spineRevisionTurns. Ran it: red. */

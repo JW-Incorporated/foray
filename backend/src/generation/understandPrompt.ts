@@ -51,8 +51,15 @@ export async function understandPrompt(
  * sourcing keywords, and the spine writes the subject, angle, title and
  * summary later from the listener's own words.
  *
+ * A prompt with no sourcing keyword at all ("is it on?") has no pre-spine
+ * intent (`preSpineIntent` returns null), and the run falls back to the
+ * classic extractIntent call for the topic decision and the research map
+ * rather than send them off on a placeholder subject. The spine still writes
+ * the copy.
+ *
  * Same no-persistence rule as `understandPrompt`: the returned intent holds a
- * keyword list, never the prompt verbatim.
+ * keyword list (or, on the fallback, the understander's restatement), never
+ * the prompt as such.
  */
 export async function understandPromptFast(
   prompt: string,
@@ -62,7 +69,8 @@ export async function understandPromptFast(
   const gate = await safetyThenClarity(prompt, understander, ctx);
   if ("stop" in gate) return gate.stop;
   const decided = gate.decided;
-  return { outcome: "understood", intent: preSpineIntent(prompt), ...decided };
+  const intent = preSpineIntent(prompt) ?? (await understander.extractIntent(prompt, ctx));
+  return { outcome: "understood", intent, ...decided };
 }
 
 /** Safety, then clarity: the half of §4.1 both paths share. Either the

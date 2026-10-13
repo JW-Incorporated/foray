@@ -2540,7 +2540,7 @@ const BACKEND_FLOORS = {
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
      transcript windows and the one seed rule when the research map has them,
      neither when it does not, and the seed the reply carries back. */
-  "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
+  "test/AnthropicSpineBuilder.test.ts": 21, // GV-67 (#1286): +1 -- the folded path on the Anthropic builder: the listener's words with the folded stable half in the one user turn, subject/angle/title/summary from the reply, a folded re-ask's assistant turn repeats the copy first; 20 on disk -> 21 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11; 11 -> 13 // CH2-04: per-process pins (N calls stop at the cap; a fresh guard starts at 0); 13 -> 12 // CH2-04: tier cutoff deleted (tier2/tier0 cases removed, exact), "every operation gets the full run cap" added
   "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
@@ -2625,8 +2625,8 @@ const BACKEND_FLOORS = {
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
   "test/understandPrompt.test.ts": 11, // GV-49 (#1286): +4 -- understandPrompt with the Jev clarity understander injected: a Jev 'clear' goes to intent with no text clarity call, a Jev yes carries the fallback's question and readings, an unsafe prompt never reaches Jev, and the default understander adds no clarityDecidedBy; 7 -> 11
-  "test/preSpineIntent.test.ts": 11, // GV-67 (#1286): new -- the pre-spine intent from the prompt's distinct sourcing keywords (order, 12 cap, sentinels, never verbatim, no-keyword fallback), provisionalTitle (8 keywords, house style), and understandPromptFast (only assessClarity; safety first; the same clarification and clarityDecidedBy)
-  "test/fastPathCopy.test.ts": 12, // GV-67 (#1286): new -- with foldSpineCopy no extractIntent call, the spine call gets the listener's words, title/summary/id come from the spine through forayCopy, the stub's folded copy, the prelude names spine.subject, the prompt is in no banked value, outcome or candidate, a folded resume, the pre-spine no-supply stop carries provisionalTitle, and ChatSpineBuilder's folded prompt, mapping, fallback and re-ask
+  "test/preSpineIntent.test.ts": 15, // GV-67 (#1286): new -- the pre-spine intent from the prompt's distinct sourcing keywords (order, 12 cap, sentinels, not verbatim, null with no keyword), the local Unicode-aware tokenizer (ALL-CAPS "AI" kept, "Björk" and "Gödel" whole, stopwords dropped), provisionalTitle (8 keywords, house style), and understandPromptFast (only assessClarity; a no-keyword prompt falls back to extractIntent; safety first; the same clarification and clarityDecidedBy)
+  "test/fastPathCopy.test.ts": 14, // GV-67 (#1286): new -- with foldSpineCopy no extractIntent call, the spine call gets the listener's words and the keyword intent, title/summary/id come from the spine through forayCopy, the stub's folded copy, the prelude names spine.subject at all three call sites, the prompt is in no banked value, outcome or candidate, a folded resume keeps the spine's title, a reply still missing copy fails the spine stage, the pre-spine no-supply stop carries provisionalTitle, a post-spine unresolved-topic stop carries the spine's title, and ChatSpineBuilder's folded prompt, mapping, missing-copy re-ask and re-ask turn
   /* §4.2's catalogue lookup: concept matching against the semantic index and
     tape-availability counting against discover.json/item-tags.json, both
     proven against a small deterministic fixture catalogue (not the real
@@ -3027,7 +3027,7 @@ const BACKEND_FLOORS = {
   /* F-98: deterministic post-seeding, the seed floor and its one re-ask —
      the scorer and its floor, the M4 ledger an assigned seed faces, the
      summary line, and the re-ask that is kept only when it is better. */
-  "test/postSeedSpine.test.ts": 15,
+  "test/postSeedSpine.test.ts": 16, // GV-67 (#1286): +1 -- on a folded call a seed-floor re-ask reply that dropped a required copy field is refused and the first spine kept; 15 -> 16
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   /* RAISED 5 -> 6 by F-96: the seeding line's merged / pool-short / seedLost
      counts. */

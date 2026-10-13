@@ -91,6 +91,25 @@ export const RawSpineSchema = z.object({
 /** The copy fields a folded spine reply carries, in the order the prompt asks
  * for them (prompts/spine.ts) and the re-ask's assistant turn repeats them. */
 export const SPINE_COPY_FIELDS = ["subject", "angle", "priorKnowledge", "disappointment", "answersDisappointment", "title", "summary"] as const;
+type SpineCopyField = (typeof SPINE_COPY_FIELDS)[number];
+
+/** The copy fields a folded reply carries onto the Spine only when it gave
+ * them: every copy field but subject and angle, which every Spine has. */
+const SPINE_CARRIED_COPY_FIELDS = SPINE_COPY_FIELDS.filter(
+  (field): field is Exclude<SpineCopyField, "subject" | "angle"> => field !== "subject" && field !== "angle"
+);
+
+/**
+ * GV-67: the copy fields a folded reply MUST carry, non-blank. On the folded
+ * path no understander wrote a subject, angle, title or summary, and the only
+ * thing left to fall back to is the pre-spine keyword list, which must never
+ * be spoken (the prelude names the subject) or published (the title and
+ * summary; forayCopy's fallback title is `subject: angle`). So a reply that
+ * leaves one out or blank is a structural violation: `buildSpine.ts` re-asks
+ * it with F-86's re-ask, naming the fields, and fails the stage when it is
+ * still missing (`spineStructure.ts` foldedCopyIssues).
+ */
+export const SPINE_REQUIRED_COPY_FIELDS = ["subject", "angle", "title", "summary"] as const satisfies readonly SpineCopyField[];
 
 /**
  * GV-67: the spine builders' one post-parse step, shared by
@@ -100,11 +119,13 @@ export const SPINE_COPY_FIELDS = ["subject", "angle", "priorKnowledge", "disappo
  * Classic (`folded` false): exactly the Spine the builders always returned,
  * subject and angle from the intent, no copy fields, whatever the reply said.
  *
- * Folded: subject and angle come from the reply (the intent is only a keyword
- * list then), falling back to the intent's only when the reply left them out
- * or blank; priorKnowledge, disappointment, answersDisappointment, title and
- * summary are carried when the reply gave them non-blank, so a banked spine
- * always parses under SpineSchema.
+ * Folded: subject and angle come from the reply and ONLY from it (the intent
+ * is a keyword list then, never to be spoken): one the reply left out or
+ * blank is "" here, which the structural gate refuses and re-asks
+ * (SPINE_REQUIRED_COPY_FIELDS). priorKnowledge, disappointment,
+ * answersDisappointment, title and summary are carried when the reply gave
+ * them non-blank, so a spine that passes the gate always parses under
+ * SpineSchema.
  */
 export function spineFromReply(
   raw: z.infer<typeof RawSpineSchema>,
@@ -128,13 +149,13 @@ export function spineFromReply(
     return trimmed ? trimmed : undefined;
   };
   const copy: Partial<Pick<Spine, "priorKnowledge" | "disappointment" | "answersDisappointment" | "title" | "summary">> = {};
-  for (const field of ["priorKnowledge", "disappointment", "answersDisappointment", "title", "summary"] as const) {
+  for (const field of SPINE_CARRIED_COPY_FIELDS) {
     const value = said(raw[field]);
     if (value !== undefined) copy[field] = value;
   }
   return {
-    subject: said(raw.subject) ?? intent.subject,
-    angle: said(raw.angle) ?? intent.angle,
+    subject: said(raw.subject) ?? "",
+    angle: said(raw.angle) ?? "",
     overview: raw.overview,
     duration,
     generatedAt: new Date().toISOString(),

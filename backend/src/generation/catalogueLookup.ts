@@ -72,17 +72,19 @@ function readJson<T>(relPath: string): T {
   return JSON.parse(raw) as T;
 }
 
+/** `tokenize`'s own stopwords, tuned for short catalogue queries. */
+const QUERY_STOPWORDS: ReadonlySet<string> = new Set([
+  "the", "a", "an", "of", "and", "or", "to", "in", "on", "for", "with",
+  "is", "are", "was", "were", "how", "what", "why", "who", "it", "its",
+  "that", "this", "as", "at", "by", "be", "not"
+]);
+
 /** Splits text into lowercase word tokens, dropping short/stopword-ish noise. */
 function tokenize(text: string): string[] {
-  const STOPWORDS = new Set([
-    "the", "a", "an", "of", "and", "or", "to", "in", "on", "for", "with",
-    "is", "are", "was", "were", "how", "what", "why", "who", "it", "its",
-    "that", "this", "as", "at", "by", "be", "not"
-  ]);
   return text
     .toLowerCase()
     .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 2 && !STOPWORDS.has(w));
+    .filter((w) => w.length > 2 && !QUERY_STOPWORDS.has(w));
 }
 
 /** Public wrapper for `tokenize`, used when a caller has no semantic-index
@@ -120,6 +122,14 @@ const SOURCING_STOPWORDS = new Set([
  * typed by a person ("how to...") keeps its current behaviour. */
 export function tokenizeForSourcing(text: string): string[] {
   return tokenize(text).filter((w) => !SOURCING_STOPWORDS.has(w));
+}
+
+/** Whether `tokenizeForSourcing` drops `word` (already lower-cased) as a
+ * stopword: `tokenize`'s list or the sourcing list. Exported for GV-67's
+ * Unicode-aware pre-spine tokenizer (`preSpineIntent.ts`), which drops the
+ * same words without this module's ASCII split. */
+export function isSourcingStopword(word: string): boolean {
+  return QUERY_STOPWORDS.has(word) || SOURCING_STOPWORDS.has(word);
 }
 
 /** The shortest a term may be to match as a STEM (a prefix of a query word, or

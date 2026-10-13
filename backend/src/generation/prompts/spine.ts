@@ -72,12 +72,14 @@ export function spineRevisionTurns(revision: SpineBuildContext["revision"], fold
 export function spineReplyText(previous: Spine, folded: boolean = false): string {
   if (!folded) return JSON.stringify({ overview: previous.overview, voice: previous.voice, acts: previous.acts });
   /* GV-67: a folded reply led with the copy fields, so its re-ask turn does
-     too, in the order the prompt asked for them (a field the reply left out
-     stays out). */
+     too, in the order the prompt asked for them. A field the reply left out
+     or blank stays out: the turn is what the model wrote, and nothing the
+     pipeline would otherwise have filled in (spineFromReply leaves a missing
+     subject or angle blank, never the keyword intent's). */
   const copy: Record<string, string> = {};
   for (const field of SPINE_COPY_FIELDS) {
     const value = previous[field];
-    if (value !== undefined) copy[field] = value;
+    if (value !== undefined && value.trim() !== "") copy[field] = value;
   }
   return JSON.stringify({ ...copy, overview: previous.overview, voice: previous.voice, acts: previous.acts });
 }

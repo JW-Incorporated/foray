@@ -1,7 +1,8 @@
+import { z } from "zod";
 import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
 import { SpineSchema, validateSpine, type DurationTier, type Spine, type SpineValidationResult } from "../types/spine";
-import { checkSpineStructure, InvalidSpineStructureError } from "./spineStructure";
+import { checkSpineStructure, foldedCopyIssues, InvalidSpineStructureError } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder, SpineRevisionRequest } from "./SpineBuilder";
 import { withCallContext } from "./runLog";
 
@@ -100,6 +101,17 @@ export interface BuildSpineResult {
  * report can carry `spineReasks`; every other caller keeps `buildSpine`'s
  * plain `Spine` return.
  */
+/**
+ * GV-67: the schema a FOLDED reply is parsed with before the gates. The same
+ * as SpineSchema but for a blank subject or angle, which on the folded path
+ * is the reply's own omission (`spineFromReply` never fills it from the
+ * keyword intent): it must reach the structural gate as a re-askable
+ * violation (`foldedCopyIssues`), not end the run as a schema error. Only a
+ * spine that passed that gate leaves `buildSpineWithReasks`, so what the
+ * pipeline banks still parses under SpineSchema.
+ */
+const FoldedReplySpineSchema = SpineSchema.extend({ subject: z.string(), angle: z.string() });
+
 export async function buildSpineWithReasks(
   intent: IntentUnderstanding,
   researchShape: ResearchShape,
@@ -112,6 +124,9 @@ export async function buildSpineWithReasks(
   const seedableEpisodeIds = researchShape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId));
   const reasks: SpineReask[] = [];
   let revision: SpineRevisionRequest | undefined;
+  /* GV-67: a folded call (the spine writes the listener copy) also gates the
+     copy fields the reply must carry. */
+  const folded = ctx.listenerPrompt !== undefined;
 
   for (let attempt = 0; ; attempt++) {
     /* Each iteration is one builder call — the first, then at most `maxReasks`
@@ -127,7 +142,7 @@ export async function buildSpineWithReasks(
     // Schema-validate shape first (catches a builder that returns malformed
     // structure, e.g. a per-act voice field slipping in) before the
     // content-level checks in validateSpine.
-    const spine = SpineSchema.parse(rawSpine);
+    const spine = (folded ? FoldedReplySpineSchema : SpineSchema).parse(rawSpine);
 
     /* Gate 1 stays fail-fast. Counts, claim shape and the exploration floor
        have never refused a real spine (runs 1-7); the refusal F-86 answers
@@ -157,7 +172,7 @@ export async function buildSpineWithReasks(
        F-86: a refusal is re-asked, `maxReasks` times, before it fails the run.
        Only a spine that PASSED leaves this function, so the checkpoint the
        pipeline banks it in never holds a refused one. */
-    const issues = checkSpineStructure(spine, { seedableEpisodeIds });
+    const issues = [...(folded ? foldedCopyIssues(spine) : []), ...checkSpineStructure(spine, { seedableEpisodeIds })];
     if (issues.length === 0) return { spine, reasks };
     if (attempt >= maxReasks) throw new InvalidSpineStructureError(issues);
 
