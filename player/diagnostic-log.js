@@ -59,6 +59,10 @@
  *                and was spoken from its script instead: why, on which path,
  *                the item id, and the file's HOST name only — see
  *                `NARRATION_FALLBACK_REASONS` for why a host is admitted.
+ *   `clip`       (GV-63) how each Foray clip was handled at load — a word from
+ *                `CLIP_PRECISION` and the clip's authored id — so the copied
+ *                record carries a per-Foray "played at authored time vs
+ *                skipped" tally (`clipTallyLines`).
  *
  * ── WHAT IS NEVER RECORDED, BY CONSTRUCTION ────────────────────────────────
  * No audio, no URLs, no listener identity. The rule that guarantees it: a
@@ -620,6 +624,40 @@ const STAGE_ROOTS = new Set([
 export const NARRATION_FALLBACK_REASONS = new Set(["timeout", "network", "decode", "unsupported", "play-rejected", "failed"]);
 export const NARRATION_FALLBACK_AT = new Set(["load", "bridge", "playing"]);
 
+/* ---------- the clip row (GV-63) ----------
+
+   `queue-manager.js` §17: each Foray clip's outcome at load, as
+   `foray.clip.precision kind=<k> item=<id>`. The row keeps two things:
+
+     kind  a word from `CLIP_PRECISION`; any other word and NO row is recorded
+           (a row whose kind is unknown could only mislead the tally)
+     item  the clip's queue id, `<forayId>#<ordinal>` (`foray-queue.js`), each
+           half admitted by shape (`clipItemOf`); the Foray id rides beside it
+           so the report can group without re-parsing
+
+   `static`, `exact` and `padded` are "played at authored time"
+   (`CLIP_AUTHORED_TIME`); `skipped` is ADR-0007's drift refusal, `dropped` a
+   DAI clip the build refused for missing anchors, `load-failed` a clip whose
+   load attempts ran out (§16). */
+export const CLIP_PRECISION = new Set(["static", "exact", "padded", "skipped", "dropped", "load-failed"]);
+export const CLIP_AUTHORED_TIME = new Set(["static", "exact", "padded"]);
+
+/** `{item, forayId}` for a Foray clip's queue id, or null. The id is
+    `<forayId>#<ordinal>`: the Foray id by `dataIdOf`'s shape and the ordinal as
+    digits, rebuilt from the two halves rather than trusted. An id with no `#`
+    is admitted whole by `dataIdOf`, with no Foray to group under. */
+export function clipItemOf(v) {
+  const s = asText(v).trim();
+  const at = s.lastIndexOf("#");
+  if (at < 0) {
+    const item = dataIdOf(s);
+    return item ? { item, forayId: null } : null;
+  }
+  const forayId = dataIdOf(s.slice(0, at));
+  const ord = s.slice(at + 1);
+  return forayId && /^\d{1,5}$/.test(ord) ? { item: `${forayId}#${ord}`, forayId } : null;
+}
+
 /** A host name by shape, or null: lower-case DNS labels only, no port, no
     path, no credentials — so nothing but a host can be stored under it. */
 export function audioHostTokenOf(v) {
@@ -750,6 +788,8 @@ const RE = {
   knownCar: /^route\.autoResume\.knownCar=/,
   restore: /^restore\.index=(\d+)\.position=(\d+)s/,
   narrationFallback: /^narration\.fallback reason=(\S+) at=(\S+) item=(\S+) host=(\S+)/,
+  /* GV-63: queue-manager.js §17, one line per Foray clip outcome. */
+  clipPrecision: /^foray\.clip\.precision kind=(\S+) item=(\S+)/,
   queueEnded: /^queue\.ended/,
 };
 
@@ -1485,6 +1525,15 @@ export class PlayerDiagnostics {
         host: audioHostTokenOf(hit[4]),
         hidden: this._isHidden(),
       });
+      handled = true;
+    }
+
+    hit = RE.clipPrecision.exec(m);
+    if (hit && CLIP_PRECISION.has(hit[1])) {
+      /* GV-63. The kind by vocabulary (a word outside it records nothing),
+         the item by shape (`clipItemOf`), never the text that arrived. */
+      const id = clipItemOf(hit[2]);
+      this.log.record("clip", { kind: hit[1], item: id?.item ?? null, forayId: id?.forayId ?? null });
       handled = true;
     }
 
@@ -2736,6 +2785,8 @@ function lineFor(e) {
     }
     case "transport":
       return `${head} ${e.action} from ${e.source}  hidden=${e.hidden ? "y" : "n"}`;
+    case "clip":
+      return `${head} ${e.kind ?? "?"}  item=${e.item ?? "?"}`;
     case "narration":
       return `${head} ${e.source ?? "?"} ${e.reason ?? "?"} at=${e.at ?? "?"}` +
         `  item=${e.item ?? "?"}  host=${e.host ?? "?"}  hidden=${e.hidden ? "y" : "n"}`;
@@ -3228,6 +3279,58 @@ function engineSection(engine, cleared) {
   return { shown, lines, all: rows };
 }
 
+/**
+ * GV-63: the per-Foray clip tally, one line per Foray, for the founder's
+ * paste (W6-14 reads it into the MQ row):
+ *
+ *   `clips <forayId>: N static, N exact, N padded, N skipped, N dropped, N load-failed; X% at authored time`
+ *
+ * where authored time is static + exact + padded over every clip counted. A
+ * clip counts ONCE, as its newest row: a clip loaded again (a skip back, a
+ * replay, a rebuilt queue's second `dropped`) is still one clip of the Foray.
+ * Foray lines come in the order their first row was recorded.
+ *
+ * The engine lane (`engine` rows since the Clear) has no Foray to group by —
+ * DiagGate withholds an id carrying `#` — and writes a `gate` row only for a
+ * NOTED copy (exact or padded; a static play writes none), a `skip` row with
+ * `event=ladder` for a refusal and `event=load` for exhausted attempts. So it
+ * is one line of its own, its rate over the clips it rowed:
+ *
+ *   `clips engine: N exact|padded, N skipped, N load-failed; X% at authored time (static plays write no row)`
+ */
+export function clipTallyLines(entries, engineRows = []) {
+  const lines = [];
+  const byForay = new Map();
+  const unkeyed = [];
+  for (const e of Array.isArray(entries) ? entries : []) {
+    if (e?.type !== "clip" || !CLIP_PRECISION.has(e.kind)) continue;
+    const fid = e.forayId ?? "?";
+    if (!byForay.has(fid)) byForay.set(fid, new Map());
+    // The newest row wins: a later row for the same item replaces the earlier.
+    if (e.item) byForay.get(fid).set(e.item, e.kind);
+    else unkeyed.push([fid, e.kind]);
+  }
+  const counts = new Map([...byForay.keys()].map((fid) => [fid, Object.fromEntries([...CLIP_PRECISION].map((k) => [k, 0]))]));
+  for (const [fid, items] of byForay) for (const kind of items.values()) counts.get(fid)[kind] += 1;
+  for (const [fid, kind] of unkeyed) counts.get(fid)[kind] += 1;
+  const pct = (part, whole) => (whole ? `${Math.round((100 * part) / whole)}%` : "—");
+  for (const [fid, c] of counts) {
+    const total = [...CLIP_PRECISION].reduce((n, k) => n + c[k], 0);
+    const authored = [...CLIP_AUTHORED_TIME].reduce((n, k) => n + c[k], 0);
+    lines.push(`clips ${fid}: ` + [...CLIP_PRECISION].map((k) => `${c[k]} ${k}`).join(", ") +
+      `; ${pct(authored, total)} at authored time`);
+  }
+  const rows = Array.isArray(engineRows) ? engineRows : [];
+  const noted = rows.filter((r) => r?.kind === "gate" && r.event === "noted").length;
+  const refused = rows.filter((r) => r?.kind === "skip" && r.event === "ladder").length;
+  const failed = rows.filter((r) => r?.kind === "skip" && r.event === "load").length;
+  if (noted + refused + failed) {
+    lines.push(`clips engine: ${noted} exact|padded, ${refused} skipped, ${failed} load-failed;` +
+      ` ${pct(noted, noted + refused + failed)} at authored time (static plays write no row)`);
+  }
+  return lines;
+}
+
 /** The header's phone width (see formatDiagnosticReport). */
 const HEADER_WIDTH = 44;
 
@@ -3521,7 +3624,11 @@ export function formatDiagnosticReport(record, engine = null, { tzOffsetMin = ne
       body.push(lineFor(e));
     }
   }
-  return head.concat(body).join("\n");
+  /* GV-63: the per-Foray clip tally, between the header and the rows. Long
+     lines on purpose: each is one parseable row of the paste, not a header
+     line read on the phone. */
+  const clips = clipTallyLines(entries, engineRows.shown);
+  return head.concat(clips.length ? [...clips, ""] : [], body).join("\n");
 }
 
 /** `2026-09-26`, the UTC day of a wall clock, or null. */
