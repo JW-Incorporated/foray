@@ -3,13 +3,29 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import {
+  anyWarmMode,
+  buildSupplyReport,
   corpusDigestRow,
   FEED_CACHE_MAX_AGE_MS,
   loadFeed,
   mergeCorpusRows,
+  mergeStagedRows,
+  mintRefusal,
   parseWarmArgs,
-  readCorpusDigestRows
+  parseWarmModes,
+  readCorpusDigestRows,
+  readLegacyKeys,
+  readLegacyMapExport,
+  readStagedRows,
+  runFromStaged,
+  runResolveLegacy,
+  runSupplyReport,
+  supplyReportTable,
+  type CatalogueShows,
+  type LegacyMapReport
 } from "../src/cli/warmTranscriptIndex";
+import type { ShowAudioMeta } from "../src/generation/audioSourceLookup";
+import type { TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 
 /**
  * Issue #703 — the warm pass's feed join, which is what decides whether a
@@ -316,5 +332,358 @@ describe("the digest row a feed produces (CH2-06)", () => {
     const { row, mintable } = corpusDigestRow("show-a", "Show A", body("bc"), feed.get("bc"));
     expect(row.feed_duration_sec).toBeUndefined();
     expect(mintable).toBe(false);
+  });
+});
+
+/* GV-53 (docs/roadmap/generation-v2.md, from W3-03): digest rows for streamed
+   episodes. Three opt-in modes, each driven here offline, over the fixtures in
+   test/fixtures/warm/ (a staged digest as GV-05 writes it, and cached feeds
+   keyed by show id) with an injected catalogue, an injected feed cache dir,
+   a tmp corpus digest and a fetch spy that must stay silent offline.
+
+   KILLING MUTATIONS (each run against this suite; see the PR body):
+    G1. --from-staged rewrites a row a COMMITTED digest already describes
+        (drop the claimedFiles test in joinStagedRows).
+    G2. --from-staged downgrades an existing mintable corpus row with a
+        searchable-only re-join (drop the hasFeedMetadata guard).
+    G3. --from-staged prunes other shows' rows (merge by replacing instead of
+        by key).
+    G4. --offline reaches the network (pass `false` for offline to loadFeed).
+    G5. --legacy-map-from loses to the feed (check overrides after the RSS
+        resolution instead of before).
+    G6. a show slug that names no catalogue show is resolved anyway (match the
+        slug by prefix instead of exactly).
+    G7. --supply-report names a later condition first (reorder
+        MINT_CONDITIONS).
+    G8. --supply-report counts a row of a show with no lineage as mintable
+        (drop the lineage check in mintRefusal). */
+const WARM_FIXTURES = path.join(__dirname, "fixtures", "warm");
+const STAGED_FIXTURE = path.join(WARM_FIXTURES, "staged-digest.jsonl");
+const FEED_SAMPLE = JSON.parse(fs.readFileSync(path.join(WARM_FIXTURES, "feed-cache-sample.json"), "utf8")) as Record<string, string>;
+
+const CATALOGUE: CatalogueShows = new Map([
+  ["fixture-show", { title: "Fixture Show", feedUrl: "https://feeds.example.com/fixture.xml" }],
+  ["the-legacy-show-id", { title: "The Legacy Show", feedUrl: "https://feeds.example.com/legacy.xml" }],
+  ["no-feed-show", { title: "No Feed Show", feedUrl: null }],
+  ["no-cache-show", { title: "No Cache Show", feedUrl: "https://feeds.example.com/no-cache.xml" }],
+  ["twin-a", { title: "Twin Show", feedUrl: null }],
+  ["twin-b", { title: "Twin Show!", feedUrl: null }]
+]);
+
+/** A fetch spy that rejects if it is ever reached. */
+const silentFetch = () => vi.fn().mockRejectedValue(new Error("network must not be touched"));
+const okFetch = (body: string) =>
+  vi.fn().mockResolvedValue({ status: 200, ok: true, headers: { get: () => null }, text: async () => body } as unknown as Response);
+
+describe("GV-53 modes — parseWarmModes", () => {
+  it("no mode by default, so the default warm runs unchanged", () => {
+    const modes = parseWarmModes(["--offline", "--show", "a"]);
+    expect(modes).toEqual({ fromStaged: null, resolveLegacy: null, legacyMapFrom: null, supplyReport: false });
+    expect(anyWarmMode(modes)).toBe(false);
+  });
+
+  it("reads each mode and its file, and a flag with no value is no mode", () => {
+    const modes = parseWarmModes(["--from-staged", "s.jsonl", "--resolve-legacy", "k.txt", "--legacy-map-from", "m.json", "--supply-report"]);
+    expect(modes).toEqual({ fromStaged: "s.jsonl", resolveLegacy: "k.txt", legacyMapFrom: "m.json", supplyReport: true });
+    expect(anyWarmMode(parseWarmModes(["--supply-report"]))).toBe(true);
+    expect(parseWarmModes(["--from-staged", "--offline"]).fromStaged).toBeNull();
+  });
+});
+
+describe("GV-53 --from-staged — staged rows joined to their feeds", () => {
+  let dir = "";
+  let cacheDir = "";
+  let committed = "";
+  let corpusDigest = "";
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-staged-"));
+    cacheDir = path.join(dir, "feeds");
+    fs.mkdirSync(cacheDir);
+    fs.writeFileSync(path.join(cacheDir, "fixture-show.xml"), FEED_SAMPLE["fixture-show"]!);
+    committed = path.join(dir, "transcript-digests.json");
+    fs.writeFileSync(
+      committed,
+      JSON.stringify({ transcripts: [{ show_id: "fixture-show", show_title: "Fixture Show", guid: "g-claimed", title: "Committed title", cues: 9 }] })
+    );
+    corpusDigest = path.join(dir, "corpus-digest.json");
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  const run = (extra: Partial<Parameters<typeof runFromStaged>[0]> = {}) =>
+    runFromStaged({
+      stagedFile: STAGED_FIXTURE,
+      corpusDigest,
+      committedDigests: [committed],
+      catalogue: CATALOGUE,
+      feedCacheDir: cacheDir,
+      offline: true,
+      fetchImpl: silentFetch(),
+      ...extra
+    });
+  const rowsByGuid = () => new Map(readCorpusDigestRows(corpusDigest).map((r) => [r.guid, r]));
+
+  it("readStagedRows keeps GV-05's rows and names every line it could not use", () => {
+    const { rows, problems } = readStagedRows(STAGED_FIXTURE);
+    expect(rows.map((r) => r.guid)).toEqual(["g-mint", "g-nofeed", "g-claimed", "u-1", "g-mint"]);
+    expect(problems).toEqual(["line 6: no show_id or guid", "line 7: not JSON", "line 8: no cues"]);
+  });
+
+  it("a feed episode makes a mintable row with enclosure_url and feed_duration_sec; a guid the feed lacks stays searchable only", async () => {
+    const result = await run();
+    const rows = rowsByGuid();
+    expect(rows.get("g-mint")).toEqual({
+      show_id: "fixture-show",
+      show_title: "Fixture Show",
+      guid: "g-mint",
+      title: "Ep 1: Mintable",
+      cues: 40,
+      enclosure_url: "https://cdn.example.com/fixture/g-mint.mp3",
+      feed_duration_sec: 2530
+    });
+    expect(rows.get("g-nofeed")).toEqual({ show_id: "fixture-show", show_title: "Fixture Show", guid: "g-nofeed", title: "g-nofeed", cues: 12 });
+    /* No catalogue row, no feed: searchable only, titled as it was staged. */
+    expect(rows.get("u-1")).toEqual({ show_id: "uncatalogued-show", show_title: "uncatalogued-show", guid: "u-1", title: "u-1", cues: 7 });
+    expect(result.perShow).toEqual([
+      { showId: "fixture-show", added: 2, mintable: 1, searchableOnly: 1 },
+      { showId: "uncatalogued-show", added: 1, mintable: 0, searchableOnly: 1 }
+    ]);
+    expect(result.duplicates).toBe(1);
+    expect(result.problems).toHaveLength(3);
+    const written = JSON.parse(fs.readFileSync(corpusDigest, "utf8")) as { summary: { transcripts: number }; policy: string };
+    expect(written.summary.transcripts).toBe(3);
+    expect(written.policy).toContain("--from-staged");
+  });
+
+  it("a committed row is never overwritten, other shows' rows are kept, and a mintable row is never downgraded", async () => {
+    /* G1, G2, G3. The existing corpus digest holds another show's row and a
+       mintable g-nofeed row from an earlier online join; this offline run's
+       cached feed lacks g-nofeed. */
+    const earlier = {
+      show_id: "fixture-show",
+      show_title: "Fixture Show",
+      guid: "g-nofeed",
+      title: "Ep 2",
+      cues: 12,
+      enclosure_url: "https://cdn.example.com/2.mp3",
+      feed_duration_sec: 900
+    };
+    const other = { show_id: "another-show", show_title: "Another", guid: "a-1", title: "A", cues: 3 };
+    fs.writeFileSync(corpusDigest, JSON.stringify({ transcripts: [earlier, other] }));
+    const result = await run();
+    const rows = rowsByGuid();
+    expect(rows.has("g-claimed")).toBe(false);
+    expect(result.claimed).toBe(1);
+    expect(rows.get("a-1")).toEqual(other);
+    expect(rows.get("g-nofeed")).toEqual(earlier);
+    expect([...rows.keys()]).toEqual(["a-1", "g-mint", "g-nofeed", "u-1"]);
+  });
+
+  it("mergeStagedRows lets a re-join upgrade a searchable-only row", () => {
+    const searchable = { show_id: "s", show_title: "S", guid: "g", title: "g", cues: 1 };
+    const minted = { ...searchable, title: "T", enclosure_url: "https://e.com/g.mp3", feed_duration_sec: 60 };
+    expect(mergeStagedRows([searchable], [minted])).toEqual([minted]);
+    expect(mergeStagedRows([minted], [searchable])).toEqual([minted]);
+  });
+
+  it("--offline makes no network call even when the cache lacks a staged guid; online, that same gap is refetched", async () => {
+    /* G4. Online, the missing g-nofeed forces a conditional refetch of
+       fixture-show's feed (uncatalogued-show has no feed_url, so no call). */
+    const offlineFetch = silentFetch();
+    await run({ fetchImpl: offlineFetch });
+    expect(offlineFetch).not.toHaveBeenCalled();
+
+    const refreshed = FEED_SAMPLE["fixture-show"]!.replace(
+      "</channel>",
+      '<item><title>Ep 2: Found</title><guid>g-nofeed</guid><enclosure url="https://cdn.example.com/fixture/g-nofeed.mp3"/><itunes:duration>900</itunes:duration></item></channel>'
+    );
+    const onlineFetch = okFetch(refreshed);
+    fs.rmSync(corpusDigest, { force: true });
+    const result = await run({ offline: false, fetchImpl: onlineFetch });
+    expect(onlineFetch.mock.calls.map((c) => c[0])).toEqual(["https://feeds.example.com/fixture.xml"]);
+    expect(rowsByGuid().get("g-nofeed")?.feed_duration_sec).toBe(900);
+    expect(result.perShow[0]).toEqual({ showId: "fixture-show", added: 2, mintable: 2, searchableOnly: 0 });
+  });
+});
+
+describe("GV-53 --resolve-legacy — legacy whisper keys to show_id and guid", () => {
+  let dir = "";
+  let cacheDir = "";
+  let keysFile = "";
+  let out = "";
+  const KEYS = {
+    matched: "the-legacy-show/episode-one-965c8d5411.json",
+    ambiguous: "the-legacy-show/f400d5dd07.json",
+    noHash: "the-legacy-show/lost-episode-0123456789.json",
+    noShow: "unknown-show/x-0123456789.json",
+    prefixOnly: "the-legacy/x-965c8d5411.json",
+    noFeed: "no-feed-show/x-abcdefabcd.json",
+    noCache: "no-cache-show/x-abcdefabcd.json",
+    twin: "twin-show/x-abcdefabcd.json",
+    notLegacy: "transcripts/abc/def.json"
+  };
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-legacy-"));
+    cacheDir = path.join(dir, "feeds");
+    fs.mkdirSync(cacheDir);
+    fs.writeFileSync(path.join(cacheDir, "the-legacy-show-id.xml"), FEED_SAMPLE["the-legacy-show-id"]!);
+    keysFile = path.join(dir, "keys.txt");
+    fs.writeFileSync(keysFile, `# legacy keys\n${Object.values(KEYS).join("\n")}\n\n${KEYS.matched}\n`);
+    out = path.join(dir, "legacy-map.json");
+  });
+  afterEach(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+  const resolve = (extra: Partial<Parameters<typeof runResolveLegacy>[0]> = {}) =>
+    runResolveLegacy({ keysFile, out, catalogue: CATALOGUE, feedCacheDir: cacheDir, offline: true, fetchImpl: silentFetch(), ...extra });
+
+  it("readLegacyKeys skips blanks, comments and repeats", () => {
+    expect(readLegacyKeys(keysFile)).toEqual(Object.values(KEYS));
+  });
+
+  it("matches sha1(guid)[:10] through the catalogue title slug, and reports ambiguous and unmatched with reasons", async () => {
+    /* G6. The matched key's hash is sha1("leg-guid-1")[:10]; f400d5dd07 is
+       the shared prefix of the fixture's two brute-forced twin guids. The
+       resolver is GV-23's, loaded by dynamic import from tools/. */
+    const report = await resolve();
+    expect(report.map).toEqual({ [KEYS.matched]: { show_id: "the-legacy-show-id", guid: "leg-guid-1", title: "Episode One", via: "rss" } });
+    expect(report.unresolved).toEqual({
+      [KEYS.ambiguous]: { status: "ambiguous", reason: "guid_hash_multi_episode", show_id: "the-legacy-show-id" },
+      [KEYS.noHash]: { status: "unmatched", reason: "no_episode_for_guid_hash", show_id: "the-legacy-show-id" },
+      [KEYS.noShow]: { status: "unmatched", reason: "show_not_in_catalog", show_id: null },
+      [KEYS.prefixOnly]: { status: "unmatched", reason: "show_not_in_catalog", show_id: null },
+      [KEYS.noFeed]: { status: "unmatched", reason: "no_feed", show_id: "no-feed-show" },
+      [KEYS.noCache]: { status: "unmatched", reason: "no_feed", show_id: "no-cache-show" },
+      [KEYS.twin]: { status: "ambiguous", reason: "show_slug_multi_show", show_id: null },
+      [KEYS.notLegacy]: { status: "unmatched", reason: "not_a_legacy_key", show_id: null }
+    });
+    expect(report.counts).toEqual({
+      keys: 9,
+      byStatus: { matched: 1, ambiguous: 2, unmatched: 6 },
+      byReason: {
+        guid_hash_multi_episode: 1,
+        no_episode_for_guid_hash: 1,
+        show_not_in_catalog: 2,
+        no_feed: 2,
+        show_slug_multi_show: 1,
+        not_a_legacy_key: 1
+      },
+      byVia: { rss: 1, "foray-db": 0 }
+    });
+    expect((JSON.parse(fs.readFileSync(out, "utf8")) as LegacyMapReport).map).toEqual(report.map);
+  });
+
+  it("--legacy-map-from entries override RSS resolution, and resolve keys the feed cannot", async () => {
+    /* G5. */
+    const exported = path.join(dir, "foray-db-map.json");
+    fs.writeFileSync(
+      exported,
+      JSON.stringify([
+        { normalized_key: KEYS.matched, show_id: "the-legacy-show-id", guid: "db-guid-1", title: "From foray-db" },
+        { normalized_key: KEYS.noShow, show_id: "unknown-show", guid: "db-guid-2" },
+        { normalized_key: "bad-row/x-0000000000.json", show_id: "x" }
+      ])
+    );
+    expect([...readLegacyMapExport(exported).keys()]).toEqual([KEYS.matched, KEYS.noShow]);
+    const report = await resolve({ legacyMapFrom: exported });
+    expect(report.map[KEYS.matched]).toEqual({ show_id: "the-legacy-show-id", guid: "db-guid-1", title: "From foray-db", via: "foray-db" });
+    expect(report.map[KEYS.noShow]).toEqual({ show_id: "unknown-show", guid: "db-guid-2", title: "", via: "foray-db" });
+    expect(report.counts.byVia).toEqual({ rss: 0, "foray-db": 2 });
+    /* The keyed-object export shape reads the same. */
+    fs.writeFileSync(exported, JSON.stringify({ [KEYS.noFeed]: { show_id: "no-feed-show", guid: "db-3", title: "T" } }));
+    expect(readLegacyMapExport(exported).get(KEYS.noFeed)).toEqual({ show_id: "no-feed-show", guid: "db-3", title: "T" });
+  });
+
+  it("--offline makes no network call for a show with a feed_url and no cache; online, it would fetch", async () => {
+    /* G4. */
+    const offlineFetch = silentFetch();
+    await resolve({ fetchImpl: offlineFetch });
+    expect(offlineFetch).not.toHaveBeenCalled();
+    const onlineFetch = okFetch("<rss><channel></channel></rss>");
+    await resolve({ offline: false, fetchImpl: onlineFetch });
+    expect(onlineFetch.mock.calls.map((c) => c[0])).toEqual(["https://feeds.example.com/no-cache.xml"]);
+  });
+});
+
+describe("GV-53 --supply-report — searchable vs mintable, per show", () => {
+  const row = (show_id: string, guid: string, extra: Partial<TranscriptDigestEntry> = {}): TranscriptDigestEntry => ({
+    show_id,
+    show_title: show_id,
+    guid,
+    title: `T ${guid}`,
+    cues: 5,
+    ...extra
+  });
+  const full = { enclosure_url: "https://e.com/a.mp3", feed_duration_sec: 600 };
+  const meta = (dai: boolean | null): ShowAudioMeta => ({ dai, feedUrl: null, appleCollectionId: null });
+  const showMeta = new Map<string, ShowAudioMeta>([
+    ["no-dai", meta(null)],
+    ["no-enc", meta(false)],
+    ["no-dur", meta(false)],
+    ["mixed", meta(true)],
+    ["full", meta(false)],
+    ["off-catalogue", meta(false)]
+  ]);
+  const lineage = new Set(["no-dai", "no-enc", "no-dur", "mixed", "full"]);
+  const archive = [
+    row("off-catalogue", "o1", full),
+    row("no-dai", "d1", full),
+    row("no-enc", "e1", { feed_duration_sec: 600 }),
+    row("no-enc", "e2", { enclosure_url: "http://insecure.example.com/e2.mp3", feed_duration_sec: 600 }),
+    row("no-dur", "u1", { enclosure_url: "https://e.com/u1.mp3" }),
+    row("mixed", "m1", full),
+    row("mixed", "m2", { feed_duration_sec: 600 }),
+    row("mixed", "m3", { enclosure_url: "https://e.com/m3.mp3" }),
+    row("mixed", "m4", { ...full, title: " " }),
+    row("full", "f1", full),
+    row("full", "f2", full)
+  ];
+  const opts = { hasLineage: (e: TranscriptDigestEntry) => lineage.has(e.show_id), showMeta, now: () => new Date("2026-10-13T00:00:00Z") };
+
+  it("names the first missing mint condition for each show, and counts searchable and mintable rows", () => {
+    /* G7, G8. */
+    const report = buildSupplyReport(archive, opts);
+    const byShow = Object.fromEntries(report.shows.map((s) => [s.show_id, [s.rows, s.searchable, s.mintable, s.reason_not_mintable]]));
+    expect(byShow).toEqual({
+      "off-catalogue": [1, 0, 0, "not-in-catalog"],
+      "no-dai": [1, 1, 0, "no-dai-verdict"],
+      "no-enc": [2, 2, 0, "no-enclosure"],
+      "no-dur": [1, 1, 0, "no-duration"],
+      mixed: [4, 4, 1, "no-enclosure"],
+      full: [2, 2, 2, null]
+    });
+    expect(report.shows.find((s) => s.show_id === "mixed")?.reasons).toEqual({ "no-enclosure": 1, "no-duration": 1, "no-title": 1 });
+    expect(report.totals).toEqual({ shows: 6, rows: 11, searchable: 10, mintable: 3, searchableOnlyShows: 3 });
+  });
+
+  it("mintRefusal follows the mint order: lineage, DAI verdict, enclosure, duration, title", () => {
+    expect(mintRefusal(row("no-dai", "x"), false, showMeta)).toBe("not-in-catalog");
+    expect(mintRefusal(row("no-dai", "x"), true, showMeta)).toBe("no-dai-verdict");
+    expect(mintRefusal(row("full", "x"), true, showMeta)).toBe("no-enclosure");
+    expect(mintRefusal(row("full", "x", { enclosure_url: "https://e.com/a.mp3?token=s", feed_duration_sec: 5 }), true, showMeta)).toBe("no-enclosure");
+    expect(mintRefusal(row("full", "x", { enclosure_url: "https://e.com/a.mp3" }), true, showMeta)).toBe("no-duration");
+    expect(mintRefusal(row("full", "x", { ...full, title: "" }), true, showMeta)).toBe("no-title");
+    expect(mintRefusal(row("full", "x", full), true, showMeta)).toBeNull();
+  });
+
+  it("prints a table and writes the report as JSON", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-supply-"));
+    try {
+      const out = path.join(dir, "supply-report.json");
+      const report = runSupplyReport({ ...opts, archive, out });
+      expect(JSON.parse(fs.readFileSync(out, "utf8"))).toEqual(report);
+      const table = supplyReportTable(report);
+      expect(table.split("\n")[0]).toMatch(/^show\s+rows\s+searchable\s+mintable\s+first missing$/);
+      expect(table).toMatch(/off-catalogue\s+1\s+0\s+0\s+not-in-catalog/);
+      expect(table).toMatch(/full\s+2\s+2\s+2\s+-/);
+      expect(table).toContain("3 show(s) searchable but unable to supply a clip");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("by default a show with no taxonomy lineage in the repo's catalogue is never searchable", () => {
+    const report = buildSupplyReport([row("gv53-no-such-show", "g", full)], { showMeta });
+    expect(report.shows[0]).toMatchObject({ searchable: 0, mintable: 0, reason_not_mintable: "not-in-catalog" });
   });
 });

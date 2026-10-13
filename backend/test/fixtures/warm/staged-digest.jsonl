@@ -1,0 +1,8 @@
+{"show_id":"fixture-show","show_title":"fixture-show","guid":"g-mint","title":"g-mint","cues":40}
+{"show_id":"fixture-show","show_title":"fixture-show","guid":"g-nofeed","title":"g-nofeed","cues":12}
+{"show_id":"fixture-show","show_title":"fixture-show","guid":"g-claimed","title":"g-claimed","cues":9}
+{"show_id":"uncatalogued-show","show_title":"uncatalogued-show","guid":"u-1","title":"u-1","cues":7}
+{"show_id":"fixture-show","show_title":"fixture-show","guid":"g-mint","title":"g-mint","cues":40}
+{"show_id":"fixture-show","show_title":"fixture-show"}
+not json at all
+{"show_id":"fixture-show","show_title":"fixture-show","guid":"g-empty","title":"g-empty","cues":0}
