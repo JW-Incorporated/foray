@@ -3503,6 +3503,18 @@ const BACKEND_FLOORS = {
      Offline. Counted statically (it.each rows are not counted). One named
      mutation per test. */
   "test/JevPromptUnderstander.test.ts": 13,
+  /* GV-62 (docs/roadmap/generation-v2.md, W7-03, #1286): keep and fork
+     checkpoints -- CHECKPOINT_STAGE_ORDER and stagesAtOrAfter (identity after
+     the spine, unknown stage throws, an unplaceable key is dropped), the
+     runPipeline.ts banked-key scan, the routed-stage map, the fork rule
+     (exact fingerprint, version, stamp request/flags/routes against
+     --rerun-from, no prompt or URL in the stamp), the CLI flags and their
+     refusals, bench-only (benchFlagRefusal and main exits 1), and the driver
+     through generateOneCandidate with counting Stub builders: a kept stamped
+     checkpoint, a seeded --rerun-from narrate run with no understander,
+     spine or deepen call, a fork across a --stage-provider routing, and
+     mismatched or missing seeds recorded as seededFrom: null. Offline. */
+  "test/checkpointFork.test.ts": 17,
   /* GV-61 (docs/roadmap/generation-v2.md, W2-10 + W3-16, #1286): no web
      research on the timed path. noWebResearch: local mode routes research to
      'none', the research-shape fan-out asks nothing under 'none' (one OQ-04

@@ -1,6 +1,6 @@
 import * as crypto from "crypto";
 import { z } from "zod";
-import type { RoutingTable } from "../config/stageRouting";
+import type { RoutingTable, StageId } from "../config/stageRouting";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 
 /**
@@ -167,13 +167,17 @@ export function checkpointFingerprint(input: { prompt: string; duration: string;
 export function routingVariant(routing: RoutingTable | undefined): string | undefined {
   if (routing === undefined) return undefined;
   if (routing.mode !== "local" && routing.overridden.length === 0) return undefined;
-  const stages = Object.entries(routing.routes).map(([stage, route]) => {
-    if (route === undefined) return stage;
-    const at = route.lane ? `@${route.lane}` : "";
-    const fallback = route.fallback ? `>${route.fallback.provider}@${route.fallback.lane}/${route.fallback.model}` : "";
-    return `${stage}=${route.provider}${at}/${route.model}${fallback}`;
-  });
+  const stages = Object.entries(routing.routes).map(([stage, route]) => routeDescriptor(stage, route));
   return `routing=${routing.mode}:${stages.join(",")}`;
+}
+
+/** One routed stage as `routingVariant` spells it (`stage=provider@lane/model`,
+ * with any fallback); the bare stage name when it has no route. */
+function routeDescriptor(stage: string, route: RoutingTable["routes"][StageId]): string {
+  if (route === undefined) return stage;
+  const at = route.lane ? `@${route.lane}` : "";
+  const fallback = route.fallback ? `>${route.fallback.provider}@${route.fallback.lane}/${route.fallback.model}` : "";
+  return `${stage}=${route.provider}${at}/${route.model}${fallback}`;
 }
 
 /**
@@ -201,6 +205,161 @@ export function checkpointRunVariant(
     routingVariant(routing)
   ].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
+}
+
+/* ---------------------------------------------------------------------------
+ * GV-62 (W7-03): keep and fork checkpoints, so a stage-swap arm B reuses arm
+ * A's banked upstream stages byte-for-byte and regenerates only from the
+ * changed stage on. The pure half: the stage order, the cut, and the rule
+ * that says whether a seed may be forked. The driver
+ * (`src/cli/generateForays.ts`) reads and copies the files; nothing here
+ * touches one (§9.4, see the header of this module).
+ * ------------------------------------------------------------------------- */
+
+/**
+ * The stages `runForayPipeline` banks, in the order a run produces them.
+ * `deepen`, `narrate` and `stitch` are banked per act (`deepen:0`,
+ * `narrate:2`, ...) and match by the part before the first colon.
+ *
+ * `identity` sits AFTER `spine`: the post-spine topic fallback (F-91) can
+ * take its topic from the spine, so a rerun from the spine must drop the
+ * identity too. `test/checkpointFork.test.ts` scans `runPipeline.ts` and
+ * fails when it banks a key whose stage is not listed here.
+ */
+export const CHECKPOINT_STAGE_ORDER = ["understand", "topic", "research-shape", "spine", "identity", "deepen", "source", "narrate", "stitch"] as const;
+export type CheckpointStage = (typeof CHECKPOINT_STAGE_ORDER)[number];
+
+export function isCheckpointStage(value: string): value is CheckpointStage {
+  return (CHECKPOINT_STAGE_ORDER as readonly string[]).includes(value);
+}
+
+/** `deepen:3` -> `deepen`; a whole-stage key is its own stage. */
+export function checkpointStageOf(key: CheckpointStageKey): string {
+  const colon = key.indexOf(":");
+  return colon < 0 ? key : key.slice(0, colon);
+}
+
+function stageIndexOrThrow(rerunFrom: string): number {
+  const from = CHECKPOINT_STAGE_ORDER.indexOf(rerunFrom as CheckpointStage);
+  if (from < 0) throw new Error(`unknown checkpoint stage "${rerunFrom}"; expected one of ${CHECKPOINT_STAGE_ORDER.join(", ")}`);
+  return from;
+}
+
+/**
+ * The keys of `keys` whose stage is `rerunFrom` or later, in their given
+ * order: what a fork drops so the run redoes them. A key whose stage is not
+ * in CHECKPOINT_STAGE_ORDER (a shape no current build banks) is dropped too:
+ * redoing work costs time, while resuming something this code cannot place
+ * in the order could hand a stage an output built on the wrong upstream.
+ * Throws on an unknown `rerunFrom`.
+ */
+export function stagesAtOrAfter(keys: readonly CheckpointStageKey[], rerunFrom: string): CheckpointStageKey[] {
+  const from = stageIndexOrThrow(rerunFrom);
+  return keys.filter((key) => {
+    const at = CHECKPOINT_STAGE_ORDER.indexOf(checkpointStageOf(key) as CheckpointStage);
+    return at < 0 || at >= from;
+  });
+}
+
+/**
+ * The FIRST banked stage each routed stage (stageRouting.ts) can change. A
+ * fork may change a stage's route only when the banked stage it feeds is at
+ * or after `--rerun-from`, so everything that route built is rebuilt. Where
+ * a route could reach more than one banked stage the earliest is named, so
+ * the rule errs towards refusing a seed: the title is written by the
+ * understander (`understand.title` names `understand`), and `judge` names
+ * `source`, the earliest stage a support judge could serve.
+ */
+export const ROUTED_STAGE_FIRST_CHECKPOINT: Readonly<Record<StageId, CheckpointStage>> = {
+  "understand.clarity": "understand",
+  "understand.intent": "understand",
+  "understand.title": "understand",
+  research: "research-shape",
+  spine: "spine",
+  "spine-alt": "spine",
+  deepen: "deepen",
+  writer: "narrate",
+  verifier: "narrate",
+  continuity: "stitch",
+  judge: "source"
+};
+
+/**
+ * What a kept bench checkpoint records about the run that built it, so a
+ * later arm can tell whether its banked stages may be forked. Needed because
+ * GV-55 put the routing in the fingerprint: an arm that routes one stage
+ * differently has a different fingerprint, and an exact match alone would
+ * refuse every lane or model swap. Never the prompt (only its hash) and
+ * never a URL or a key (routes carry neither).
+ */
+export const CheckpointForkStampSchema = z.object({
+  /** checkpointFingerprint with no variant: the prompt, duration and topic. */
+  request: z.string(),
+  /** checkpointRunVariant without the routing: the semantics-changing flags
+   * and the narration order (null when none is on). */
+  flags: z.string().nullable(),
+  /** Per routed stage, its route as `routingVariant` spells it. */
+  routes: z.record(z.string())
+});
+export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
+
+export function checkpointForkStamp(input: {
+  prompt: string;
+  duration: string;
+  topic?: string | null;
+  flags: Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder">;
+  routing: RoutingTable;
+}): CheckpointForkStamp {
+  const routes: Record<string, string> = {};
+  for (const [stage, route] of Object.entries(input.routing.routes)) routes[stage] = routeDescriptor(stage, route);
+  return {
+    request: checkpointFingerprint({ prompt: input.prompt, duration: input.duration, topic: input.topic }),
+    flags: checkpointRunVariant(input.flags) ?? null,
+    routes
+  };
+}
+
+/**
+ * Why a seed checkpoint may NOT be forked into this run, or null when it may.
+ *
+ *   - its `version` is not CHECKPOINT_VERSION: refused (half-understood);
+ *   - its fingerprint is this run's: accepted (same request, flags and
+ *     routing);
+ *   - otherwise it must carry a fork stamp (`--keep-checkpoints` writes one)
+ *     for the same request and the same flags, and every routed stage whose
+ *     route differs must feed a banked stage at or after `rerunFrom`, so no
+ *     kept stage was built by a route this run would not use.
+ *
+ * Throws on an unknown `rerunFrom`.
+ */
+export function forkSeedRefusal(
+  seed: { version: number; fingerprint: string; fork?: unknown },
+  run: { fingerprint: string; stamp: CheckpointForkStamp },
+  rerunFrom: string
+): string | null {
+  const from = stageIndexOrThrow(rerunFrom);
+  if (seed.version !== CHECKPOINT_VERSION) return `checkpoint version ${seed.version}, this build reads ${CHECKPOINT_VERSION}`;
+  if (seed.fingerprint === run.fingerprint) return null;
+  const parsed = CheckpointForkStampSchema.safeParse(seed.fork);
+  if (!parsed.success) return "its fingerprint differs and it carries no fork stamp";
+  const stamp = parsed.data;
+  if (stamp.request !== run.stamp.request) return "built for a different prompt, duration or topic";
+  if (stamp.flags !== run.stamp.flags) return `built under other pipeline flags (${stamp.flags ?? "none"}; this run ${run.stamp.flags ?? "none"})`;
+  const stages = [...new Set([...Object.keys(stamp.routes), ...Object.keys(run.stamp.routes)])];
+  for (const stage of stages) {
+    const seedRoute = stamp.routes[stage];
+    const runRoute = run.stamp.routes[stage];
+    if (seedRoute === runRoute) continue;
+    /* A routed stage this build does not know feeds, for all this code can
+       tell, the very first banked stage. */
+    const feeds: CheckpointStage = Object.prototype.hasOwnProperty.call(ROUTED_STAGE_FIRST_CHECKPOINT, stage)
+      ? ROUTED_STAGE_FIRST_CHECKPOINT[stage as StageId]
+      : CHECKPOINT_STAGE_ORDER[0];
+    if (CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {
+      return `stage ${stage} is routed differently (${seedRoute ?? "unrouted"}; this run ${runRoute ?? "unrouted"}) and feeds ${feeds}, before --rerun-from ${rerunFrom}`;
+    }
+  }
+  return null;
 }
 
 /**
