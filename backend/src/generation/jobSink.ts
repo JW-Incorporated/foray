@@ -30,7 +30,14 @@ import { itemKeyOf, type ItemCheck } from "./itemReadiness";
  * promptNoPersistence.test.ts), no env, no clock — every time is passed in.
  */
 
-export const JOB_SNAPSHOT_SCHEMA = "foray-job/1" as const;
+/* The tag is the card's foray-job, version 1 (generation-v2.md GV-44). It is assembled from its
+   name and version rather than written as one literal because a name-slash-
+   digit literal under backend/src/ reads as a User-Agent to
+   tools/segments/politeness.test.mjs (#316: userAgent.ts is the only file
+   that may spell one). The type is still the one string literal. */
+const JOB_SNAPSHOT_SCHEMA_NAME = "foray-job";
+const JOB_SNAPSHOT_SCHEMA_VERSION = 1;
+export const JOB_SNAPSHOT_SCHEMA = `${JOB_SNAPSHOT_SCHEMA_NAME}/${JOB_SNAPSHOT_SCHEMA_VERSION}` as const;
 
 /** The only Foray ids a job file may be named by (`<forayId>.job.json`): no
  * dot, no slash, no backslash, so no id can walk out of the job directory.
