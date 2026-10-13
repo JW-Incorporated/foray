@@ -46,6 +46,19 @@ export interface SpineBuildContext {
    * first call.
    */
   revision?: SpineRevisionRequest;
+  /**
+   * GV-67 (W4-03): the listener's own words, set only on the folded path
+   * (`flags.foldSpineCopy`). The intent is then a keyword list
+   * (`preSpineIntent.ts`), and a builder that honours this field asks the
+   * model for subject, angle, priorKnowledge, disappointment,
+   * answersDisappointment, title and summary first, and returns the Spine's
+   * subject and angle from that reply. Absent on every classic call, which
+   * is then unchanged.
+   *
+   * CALL STACK ONLY: it is never checkpointed, logged or copied onto the
+   * Spine (§4.1's "prompts are discarded").
+   */
+  listenerPrompt?: string;
 }
 
 /** F-86: what a re-ask carries — see `SpineBuildContext.revision`. */

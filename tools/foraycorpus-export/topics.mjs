@@ -102,7 +102,7 @@ export function loadBackendWords(root = ROOT) {
   if (!tokenizeBody.includes(".toLowerCase()") || !tokenizeBody.includes(".split(/[^a-z0-9]+/)") || !tokenizeBody.includes("w.length > 2")) {
     throw new TopicsError("TOKENIZER_CHANGED", "catalogueLookup.ts tokenize() no longer lowercases, splits on /[^a-z0-9]+/ and keeps length > 2; re-port seedTokens()");
   }
-  const stopwords = new Set([...wordSetFromSource(tokenizeBody, "STOPWORDS"), ...wordSetFromSource(lookup, "SOURCING_STOPWORDS")]);
+  const stopwords = new Set([...wordSetFromSource(lookup, "QUERY_STOPWORDS"), ...wordSetFromSource(lookup, "SOURCING_STOPWORDS")]);
   return { stopwords, generic: wordSetFromSource(resolve, "GENERIC_LABEL_WORDS") };
 }
 
