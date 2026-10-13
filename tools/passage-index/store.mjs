@@ -2,10 +2,12 @@
  *
  * A node:sqlite file holding the passages the backend cutter emits (GV-12,
  * indexBodies --passages-out) and their dense vectors, so a semantic arm can
- * find episodes that share no query word with a claim. Nothing reads it yet:
- * the retrieval server picks it up in a later card (W3-09), and the dense arm
- * stays behind the replay gate (W3-15) because tools/corpus measured hybrid
- * losing to keyword on its gold set.
+ * find episodes that share no query word with a claim. The retrieval server
+ * reads it through `createServerPassageStore` (GV-48, W3-09) when started with
+ * --passages-db: mode 'hybrid' and the per-node shortlists (migration 0002).
+ * The client asks for hybrid only under FORAY_RETRIEVAL_MODE=hybrid, which
+ * stays off behind the replay gate (W3-15) because tools/corpus measured
+ * hybrid losing to keyword on its gold set.
  *
  * What it reuses from tools/corpus, all dependency-free:
  * - db.mjs `migrate`, applied to this directory's own migrations/;
@@ -537,4 +539,120 @@ export async function embedQuery(embedder, model, text) {
   const [v] = await embedder.embed([`${model.query_prefix}${text}`]);
   if (!v || v.length !== model.dim) throw new Error(`embedder returned a ${v?.length}-dim query vector but model ${model.name} declares ${model.dim}`);
   return v;
+}
+
+/* ------------------------------------------------- server adapter (GV-48) */
+
+/** The registered row for an embedder's model, or null. Read-only: unlike
+ * registerModel it never inserts, so a server with no vectors yet stays a
+ * reader of the store. */
+export function findModel(db, spec) {
+  const s = normalizeSpec(spec);
+  return db.prepare("SELECT * FROM embedding_models WHERE name = ? AND revision = ?").get(s.name, s.revision) ?? null;
+}
+
+function passageRecord(r) {
+  return {
+    passageId: r.id,
+    show_id: r.show_id,
+    guid: r.guid,
+    startSec: r.start_sec,
+    endSec: r.end_sec,
+    startBoundary: r.start_boundary,
+    endBoundary: r.end_boundary,
+    startAnchor: r.start_anchor ?? null,
+    endAnchor: r.end_anchor ?? null,
+    text: r.text,
+  };
+}
+
+/** Passages by id, in the order asked; an unknown id is skipped. */
+export function getPassages(db, ids) {
+  const stmt = db.prepare("SELECT * FROM passages WHERE id = ?");
+  const out = [];
+  for (const id of ids) {
+    const r = stmt.get(id);
+    if (r) out.push(passageRecord(r));
+  }
+  return out;
+}
+
+/** Every passage of the episodes (`[show_id, guid]` pairs), episode by
+ * episode in the order given, by start time within one. */
+export function passagesForEpisodes(db, episodes) {
+  const stmt = db.prepare("SELECT * FROM passages WHERE show_id = ? AND guid = ? ORDER BY start_sec, id");
+  const out = [];
+  const seen = new Set();
+  for (const e of episodes) {
+    const showId = Array.isArray(e) ? e[0] : e?.show_id;
+    const guid = Array.isArray(e) ? e[1] : e?.guid;
+    const key = `${showId}\u0000${guid}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    for (const r of stmt.all(showId, guid)) out.push(passageRecord(r));
+  }
+  return out;
+}
+
+/** Replace a node's shortlist whole, in one transaction (migration 0002).
+ * `rows` are `{rank, passageId, score}`; ranks must be 0..49 (the table's
+ * CHECK), so a 51st row aborts the whole write and the old rows stay. */
+export function replaceShortlist(db, nodeId, rows, builtAt) {
+  const del = db.prepare("DELETE FROM node_shortlist WHERE node_id = ?");
+  const ins = db.prepare("INSERT INTO node_shortlist (node_id, rank, passage_id, score, built_at) VALUES (?, ?, ?, ?, ?)");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    del.run(nodeId);
+    for (const r of rows) ins.run(nodeId, r.rank, r.passageId, r.score, builtAt);
+    db.exec("COMMIT");
+  } catch (err) {
+    db.exec("ROLLBACK");
+    throw err;
+  }
+}
+
+/** A node's stored rows by rank: `{rank, passageId, score, builtAt}`. */
+export function readShortlist(db, nodeId) {
+  return db
+    .prepare("SELECT rank, passage_id, score, built_at FROM node_shortlist WHERE node_id = ? ORDER BY rank")
+    .all(nodeId)
+    .map((r) => ({ rank: r.rank, passageId: r.passage_id, score: r.score, builtAt: r.built_at }));
+}
+
+/**
+ * The retrieval server's view of the store (backend/src/cli/retrievalServer.ts
+ * `PassageStore` and `QueryEmbedder`). With an embedder, the dense index of
+ * its model is loaded now and again on `reload()` (after a nightly embed);
+ * until the model has vectors, a dense search finds nothing and a query
+ * embedding is refused. Without one there is no query embedder and the dense
+ * search is empty: the shortlist is then lexical only.
+ */
+export function createServerPassageStore(db, { embedder = null } = {}) {
+  let model = null;
+  let index = null;
+  const load = () => {
+    model = embedder ? findModel(db, embedder.model) : null;
+    index = model ? loadDenseIndex(db, model.id) : null;
+  };
+  load();
+  const passageStore = {
+    denseSearch(vector, { episodes = null, k = 10 } = {}) {
+      if (!index || index.chunks === 0) return [];
+      return denseSearch(index, vector, { episodeFilter: episodes, k });
+    },
+    passagesById: (ids) => getPassages(db, ids),
+    passagesForEpisodes: (episodes) => passagesForEpisodes(db, episodes),
+    replaceShortlist: (nodeId, rows, builtAt) => replaceShortlist(db, nodeId, rows, builtAt),
+    readShortlist: (nodeId) => readShortlist(db, nodeId),
+    reload: load,
+  };
+  const queryEmbedder = embedder
+    ? {
+        async embedQuery(text) {
+          if (!model) throw new Error(`model ${embedder.model.name}@${embedder.model.revision} has no vectors in this store yet (run index-db embed)`);
+          return embedQuery(embedder, model, text);
+        },
+      }
+    : null;
+  return { passageStore, queryEmbedder };
 }
