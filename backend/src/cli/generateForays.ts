@@ -8,7 +8,18 @@ import type { SpineReask } from "../generation/buildSpine";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
-import { checkpointFingerprint, checkpointRunVariant } from "../generation/checkpoint";
+import {
+  CHECKPOINT_STAGE_ORDER,
+  CheckpointFileSchema,
+  checkpointFingerprint,
+  checkpointForkStamp,
+  checkpointRunVariant,
+  forkSeedRefusal,
+  isCheckpointStage,
+  stagesAtOrAfter,
+  type CheckpointForkStamp,
+  type CheckpointStage
+} from "../generation/checkpoint";
 import { resolvePipelineFlags, type PipelineFlags } from "../generation/pipelineFlags";
 import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
 import { getUsageTotals } from "../generation/usageTracking";
@@ -99,6 +110,8 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *                              [--notify <command>] [--author-id <id>]
  *                              [--job-dir <dir>]
  *                              [--stage-provider stage=provider[:lane][,...]]
+ *                              [--keep-checkpoints]
+ *                              [--seed-checkpoints <dir> --rerun-from <stage>]
  *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
  *   same default `generate-foray` uses; `--author` still works for one
  *   release and prints a deprecation line)
@@ -127,6 +140,17 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  * (`routing`, `generationMode`, and `stageAssignments` per row), and in local
  * mode (or with any stage overridden) the routing joins the checkpoint
  * variant, so a resumed run never mixes stages built under another routing.
+ *
+ * Checkpoint fork (GV-62, bench prompts only; every spec needs `bench: true`
+ * or the CLI refuses before anything runs, because §9.4 says a listener's
+ * prompt is discarded and its checkpoint must not outlive the run):
+ * `--keep-checkpoints` keeps `<key>.checkpoint.json` beside a finished
+ * candidate (stamped with what built it), and arm B's
+ * `--seed-checkpoints <arm A out> --rerun-from <stage>` copies arm A's file
+ * for the same prompt into its own --out, drops the stages at and after
+ * <stage> (CHECKPOINT_STAGE_ORDER in generation/checkpoint.ts), and so
+ * rebuilds only from the changed stage. A missing or unusable seed is logged
+ * and the prompt runs from scratch; the row records `seededFrom`.
  */
 
 interface PromptSpec {
@@ -135,6 +159,9 @@ interface PromptSpec {
   topic?: string;
   /** GV-01: a stable id for the prompt, reported as `promptId`. */
   id?: string;
+  /** GV-62: a bench prompt (a golden-set or swap-arm prompt, not a
+   * listener's), the only kind whose checkpoint may be kept or seeded. */
+  bench?: boolean;
 }
 
 /** G-30 (a): how many times one prompt resumes itself before the driver
@@ -183,6 +210,14 @@ export interface CliArgs {
    * Absent unless given, so the parsed args of a run without it are
    * unchanged. */
   stageProviders?: Partial<Record<StageId, string>>;
+  /** GV-62: `--keep-checkpoints`, keep a finished bench prompt's checkpoint
+   * (stamped for forking) instead of deleting it. Absent unless given. */
+  keepCheckpoints?: boolean;
+  /** GV-62: `--seed-checkpoints <dir>`, an earlier arm's --out whose kept
+   * checkpoints seed this run. Given only with `rerunFrom`. */
+  seedCheckpoints?: string;
+  /** GV-62: `--rerun-from <stage>`, the first stage a seeded run rebuilds. */
+  rerunFrom?: CheckpointStage;
 }
 
 /** A command-line value the driver refuses. `main` prints the message and
@@ -302,6 +337,7 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     stageProviderValues.push(value);
   });
   const stageProviders = stageProviderValues.length ? parseStageProviders(stageProviderValues) : undefined;
+  const fork = parseForkFlags(argv);
   return {
     prompts: get("--prompts") ?? null,
     out: get("--out") ?? path.join("data-local", "foray-candidates"),
@@ -316,8 +352,60 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     notify: get("--notify") ?? (notifyEnv ? notifyEnv : null),
     ...(argv.includes("--fast-path") ? { fastPath: true } : {}),
     ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {}),
-    ...(stageProviders ? { stageProviders } : {})
+    ...(stageProviders ? { stageProviders } : {}),
+    ...fork
   };
+}
+
+/**
+ * GV-62: `--keep-checkpoints`, `--seed-checkpoints <dir>` and
+ * `--rerun-from <stage>`, each absent unless given. Refused (CliArgError):
+ * a flag with no value, an unknown stage, --rerun-from without
+ * --seed-checkpoints or the other way round, --seed-checkpoints with
+ * --no-resume (which would delete the seeded file) or --dry-run (which runs
+ * without a store), and a seed directory that is the --out directory.
+ */
+function parseForkFlags(argv: string[]): Pick<CliArgs, "keepCheckpoints" | "seedCheckpoints" | "rerunFrom"> {
+  const valueOf = (flag: string): string | undefined => {
+    const i = argv.indexOf(flag);
+    if (i < 0) return undefined;
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith("--") || value.trim() === "") throw new CliArgError(`${flag} needs a value`);
+    return value;
+  };
+  const seed = valueOf("--seed-checkpoints");
+  const rerunFrom = valueOf("--rerun-from");
+  if (rerunFrom !== undefined && !isCheckpointStage(rerunFrom)) {
+    throw new CliArgError(`--rerun-from: "${rerunFrom}" is not a checkpoint stage; expected one of ${CHECKPOINT_STAGE_ORDER.join(", ")}`);
+  }
+  if (rerunFrom !== undefined && seed === undefined) throw new CliArgError("--rerun-from needs --seed-checkpoints <dir>");
+  if (seed !== undefined && rerunFrom === undefined) throw new CliArgError("--seed-checkpoints needs --rerun-from <stage>");
+  if (seed !== undefined && argv.includes("--no-resume")) throw new CliArgError("--seed-checkpoints cannot be used with --no-resume");
+  if (seed !== undefined && argv.includes("--dry-run")) throw new CliArgError("--seed-checkpoints cannot be used with --dry-run (a dry run keeps no checkpoint)");
+  if (seed !== undefined) {
+    const outIndex = argv.indexOf("--out");
+    const out = outIndex >= 0 && argv[outIndex + 1] !== undefined ? argv[outIndex + 1]! : path.join("data-local", "foray-candidates");
+    if (path.resolve(seed) === path.resolve(out)) throw new CliArgError("--seed-checkpoints must name another arm's directory, not this run's --out");
+  }
+  return {
+    ...(argv.includes("--keep-checkpoints") ? { keepCheckpoints: true } : {}),
+    ...(seed !== undefined && rerunFrom !== undefined ? { seedCheckpoints: seed, rerunFrom } : {})
+  };
+}
+
+/**
+ * GV-62: the checkpoint-fork flags are for bench prompts only. Returns why
+ * the run is refused when `--keep-checkpoints` or `--seed-checkpoints` is
+ * given and any prompt about to run lacks `bench: true` (§9.4: a listener's
+ * prompt is discarded, so its checkpoint must never outlive the run), else
+ * null. `main` checks it before anything is resolved or spent.
+ */
+export function benchFlagRefusal(args: Pick<CliArgs, "keepCheckpoints" | "seedCheckpoints">, specs: readonly PromptSpec[]): string | null {
+  const flag = args.keepCheckpoints ? "--keep-checkpoints" : args.seedCheckpoints !== undefined ? "--seed-checkpoints" : null;
+  if (flag === null) return null;
+  const notBench = specs.findIndex((spec) => spec.bench !== true);
+  if (notBench < 0) return null;
+  return `${flag} is for bench prompts only: prompt ${notBench + 1} of ${specs.length} has no "bench": true`;
 }
 
 /** Accepts both file shapes; a bare string is the common case. */
@@ -793,7 +881,15 @@ export type ReportEntry = {
    * machine that served it (`describeStageAssignments`), from the routing the
    * run was resolved under. On every row. */
   stageAssignments?: Partial<Record<StageId, StageAssignment>>;
+  /** GV-62: under `--seed-checkpoints`, the seed this prompt was forked from
+   * (the seed directory as given, the stage it reran from, and the banked
+   * keys it kept), or null when no usable seed existed and the prompt ran
+   * from scratch. Absent without the flag. */
+  seededFrom?: SeededFrom | null;
 };
+
+/** GV-62: a report row's `seededFrom`. */
+export type SeededFrom = { dir: string; rerunFrom: CheckpointStage; stagesKept: string[] };
 
 /**
  * A `report.json` row as read back from disk: any earlier run's shape, plus
@@ -844,6 +940,87 @@ export function mergeReportEntries(prior: readonly PriorReportEntry[], current: 
     merged[i] = { ...entry };
   }
   return merged;
+}
+
+/** GV-62: rewrites a finished bench prompt's checkpoint with the fork stamp
+ * (same temp-and-rename write as FileCheckpointStore). A stamp that cannot be
+ * written leaves the file as it was: a seed without one still forks into an
+ * arm with the same fingerprint. Never throws. */
+function keepCheckpoint(store: FileCheckpointStore, key: string, stamp: CheckpointForkStamp): void {
+  try {
+    const kept = store.load(key);
+    if (!kept) return;
+    const file = store.filePathFor(key);
+    const tmp = `${file}.tmp`;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the driver's own checkpoint path under --out.
+    fs.writeFileSync(tmp, `${JSON.stringify({ ...kept, fork: stamp }, null, 2)}\n`);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    fs.renameSync(tmp, file);
+  } catch (err) {
+    console.warn(`  keep: could not stamp ${store.filePathFor(key)}: ${errorMessage(err)}`);
+  }
+}
+
+/**
+ * GV-62: arm B's fork for one prompt. Reads `<seedDir>/<key>.checkpoint.json`;
+ * when `forkSeedRefusal` accepts it, writes it into this run's store under
+ * this run's fingerprint (without the seed's stamp), then drops every banked
+ * stage at or after `rerunFrom` through `FileCheckpointStore.drop`, so the
+ * pipeline resumes the upstream stages and rebuilds the rest. A missing,
+ * unreadable or refused seed is logged, any checkpoint already in this run's
+ * --out for the key is discarded (the prompt runs from scratch), and the
+ * result is null.
+ */
+export function seedCheckpoint(opts: {
+  seedDir: string;
+  rerunFrom: CheckpointStage;
+  key: string;
+  store: FileCheckpointStore;
+  fingerprint: string;
+  stamp: CheckpointForkStamp;
+  label: string;
+}): SeededFrom | null {
+  const seedFile = path.join(path.resolve(opts.seedDir), `${opts.key}.checkpoint.json`);
+  const unseeded = (why: string): null => {
+    console.log(`  seed   ${opts.label} — no usable seed (${why}); running from scratch`);
+    opts.store.discard(opts.key);
+    return null;
+  };
+  let raw: unknown;
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the operator's own --seed-checkpoints dir and the driver's key.
+    if (!fs.existsSync(seedFile)) return unseeded(`${seedFile} does not exist`);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    raw = JSON.parse(fs.readFileSync(seedFile, "utf8"));
+  } catch (err) {
+    return unseeded(`${seedFile} is unreadable: ${errorMessage(err)}`);
+  }
+  const parsed = CheckpointFileSchema.safeParse(raw);
+  if (!parsed.success) return unseeded(`${seedFile} is not a checkpoint file`);
+  const refusal = forkSeedRefusal(parsed.data, { fingerprint: opts.fingerprint, stamp: opts.stamp }, opts.rerunFrom);
+  if (refusal !== null) return unseeded(`${seedFile}: ${refusal}`);
+  const { fork: _fork, ...seed } = parsed.data as typeof parsed.data & { fork?: unknown };
+  void _fork;
+  const target = opts.store.filePathFor(opts.key);
+  try {
+    const tmp = `${target}.tmp`;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the driver's own checkpoint path under --out.
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    fs.writeFileSync(tmp, `${JSON.stringify({ ...seed, key: opts.key, fingerprint: opts.fingerprint, updatedAt: new Date().toISOString() }, null, 2)}\n`);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    fs.renameSync(tmp, target);
+  } catch (err) {
+    return unseeded(`could not copy it to ${target}: ${errorMessage(err)}`);
+  }
+  const keys = Object.keys(seed.stages);
+  const dropped = stagesAtOrAfter(keys, opts.rerunFrom);
+  opts.store.drop(opts.key, dropped);
+  const stagesKept = keys.filter((key) => !dropped.includes(key));
+  console.log(
+    `  seed   ${opts.label} — from ${opts.seedDir}: kept ${stagesKept.length} stage(s) (${stagesKept.join(", ") || "none"}), rerunning from ${opts.rerunFrom}`
+  );
+  return { dir: opts.seedDir, rerunFrom: opts.rerunFrom, stagesKept };
 }
 
 /**
@@ -918,11 +1095,30 @@ export async function generateOneCandidate(
      store's and the session's variant agree. */
   const routing = resolveRouting(withStageProviders(process.env, args.stageProviders));
   const stageAssignments = describeStageAssignments({ routing });
-  const checkpointStore = new FileCheckpointStore(
-    path.resolve(args.out),
-    checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, variant: checkpointRunVariant(flags, routing) })
-  );
+  const fingerprint = checkpointFingerprint({
+    prompt: spec.prompt,
+    duration: request.duration,
+    topic: spec.topic,
+    variant: checkpointRunVariant(flags, routing)
+  });
+  const checkpointStore = new FileCheckpointStore(path.resolve(args.out), fingerprint);
+  /* GV-62: what a kept checkpoint is stamped with, and what a seed is
+     checked against. */
+  const forkStamp = checkpointForkStamp({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, flags, routing });
   if (args.noResume) checkpointStore.discard(checkpointKey);
+  /* GV-62: arm B's fork, before the resume check below reads the file. */
+  const seededFrom =
+    args.seedCheckpoints !== undefined && args.rerunFrom !== undefined
+      ? seedCheckpoint({
+          seedDir: args.seedCheckpoints,
+          rerunFrom: args.rerunFrom,
+          key: checkpointKey,
+          store: checkpointStore,
+          fingerprint,
+          stamp: forkStamp,
+          label: spec.prompt.slice(0, 60)
+        })
+      : undefined;
   const resumable = !args.noResume && checkpointStore.load(checkpointKey) !== null;
   if (resumable) {
     const stages = Object.keys(checkpointStore.load(checkpointKey)!.stages);
@@ -1041,7 +1237,8 @@ export async function generateOneCandidate(
       ...(runLogRel !== undefined ? { runLog: runLogRel } : {}),
       flags,
       gates,
-      stageAssignments
+      stageAssignments,
+      ...(seededFrom !== undefined ? { seededFrom } : {})
     };
     if (!notify) return withCalls;
     const notification = await notify({
@@ -1248,8 +1445,12 @@ export async function generateOneCandidate(
          for the next reader, and so is the partial candidate: its job (letting
          the requesting listener start early) is done the moment the whole
          Foray exists, and leaving it would just be a second, staler copy of
-         the same content in the output directory. */
-      checkpointStore.discard(checkpointKey);
+         the same content in the output directory.
+         GV-62: under --keep-checkpoints a BENCH prompt's checkpoint stays,
+         stamped so a later arm can fork it (main refused the flag unless
+         every prompt is a bench prompt; the spec is checked again here). */
+      if (args.keepCheckpoints && spec.bench === true) keepCheckpoint(checkpointStore, checkpointKey, forkStamp);
+      else checkpointStore.discard(checkpointKey);
       discardPartial();
     }
     const finished = await finishEntry({ ...entry, file: args.dryRun ? undefined : file }, "built", id);
@@ -1288,7 +1489,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       "Usage: npm run generate-forays -- --prompts prompts.json [--out DIR] " +
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
         "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
-        "[--stage-provider stage=provider[:lane][,...]]"
+        "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>]"
     );
     process.exitCode = 1;
     return;
@@ -1311,6 +1512,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
 
     const { specs, identity: promptSet } = readPromptSet(args.prompts);
     const queue = args.limit ? specs.slice(0, args.limit) : specs;
+    /* GV-62: the fork flags are refused for a listener's prompt before any
+       route is resolved or any model called. */
+    const benchRefusal = benchFlagRefusal(args, queue);
+    if (benchRefusal !== null) {
+      console.error(benchRefusal);
+      process.exitCode = 1;
+      return;
+    }
 
     /* State the mode before doing anything expensive. A run that silently used
        stubs and produced 200 placeholder Forays would look exactly like a
