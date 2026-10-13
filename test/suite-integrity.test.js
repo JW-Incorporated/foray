@@ -1613,6 +1613,12 @@ const FLOORS = {
      pass, a band nobody supplied read as a pass, an adopt on an unfrozen
      corpus, a correction that rewrites the row a PR cited, a stale table. */
   "tools/generation-bench/swap-ledger.test.mjs": 27, // GV-35: new -- decideSwap adopt/hold/reject/measured, pairwise win/tie/loss + boundary, axis drop > 0.5, MQ-01+MQ-04, MQ-21 allowance, score.mjs cells unwrapped + stray cell throws, unbanded MQ-02/05 unmeasured, timing slack + resumed/upstream skipped, absent one arm vs both, listened minimum, unfrozen, ledger row refusals, append + supersede, byte-stable table, committed ledger/stack/doc in sync, no network
+  /* GV-75 (W7-04 + W2-16; R2-21, GP-27): the stage-swap experiment runner.
+     Each test is one way a swap could be decided on the wrong evidence: an arm
+     that falls back to Claude or to a backend default, an arm B that silently
+     ran arm A's stack, a seeded stage timed as if it ran, a blind label mapped
+     to the wrong arm, a card from another experiment counted. */
+  "tools/generation-bench/swap-experiment.test.mjs": 30, // GV-75: new -- backend stage list/lanes/checkpoint order parsed (never counted by hand) + parse refusals + a new backend stage must be set, plan: mode local/every FORAY_STAGE_* explicit/no legacy opt-in, snapshot per committed spec, anthropic/claude/mode/endpoint/key/laneless refusals, unassigned stage, bench flag, exactly-one-stage and lever rules, rerunFrom vs first banked stage, adopted = floor + adopted-stack.json (unmapped lever refused); run: injected spawn with stripped inherited env, --dry-run spawns nothing, anthropic refused before any spawn, failed A stops B, measure runs B only; collect: pairs by prompt, unseeded B dropped, stageAssignments/levers/anthropicCalls/corpus refusals, unfrozen, timing from the changed stage with resumed stages never compared, packs for listened prompts only with no label mapping; decide: adopt/hold/reject/measured rows + table + stack diff, label-to-arm mapping, foreign pack and mismatched key refusals, commit required, CLI; no network/relay
   /* GV-45 (W1-14, R2-02, GP-28): golden set v1, the fixed benchmark every
      later generation change is judged on. Each test is one way it could move
      or lean without anyone noticing: a stratum over-filled, a listened prompt

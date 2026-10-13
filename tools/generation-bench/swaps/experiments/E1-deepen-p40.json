@@ -1,0 +1,11 @@
+{
+  "id": "E1-deepen-p40",
+  "kind": "stage",
+  "stage": "deepen",
+  "armA": "adopted",
+  "armB": { "env": { "FORAY_STAGE_DEEPEN": "local:second" } },
+  "rerunFrom": "deepen",
+  "golden": "tools/generation-bench/golden/golden-v1.json",
+  "expect": { "stageAssignments": { "deepen": { "impl": "local", "machine": "second" } } },
+  "notes": "Deepen moved to the second box (P40, Qwen3.6-35B-A3B). Arm B is seeded from arm A's kept checkpoints and rebuilds from deepen."
+}
