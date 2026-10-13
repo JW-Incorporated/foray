@@ -174,4 +174,13 @@ describe("readJobSnapshot (GV-44)", () => {
     fs.writeFileSync(path.join(dir, `${id}.job.json`), "{not json");
     expect(readJobSnapshot(dir, id, "founder-1")).toEqual({ found: false });
   });
+
+  it("a valid snapshot filed under one id but naming another Foray is not found", () => {
+    /* MUTATION THAT KILLS THIS: drop the `checked.data.forayId !== forayId`
+       guard. A row copied or misfiled under another id is then served as
+       that id's job. */
+    const other = "a-different-foray-2026-09-08";
+    put(`${other}.job.json`, snapshot());
+    expect(readJobSnapshot(dir, other, "founder-1")).toEqual({ found: false });
+  });
 });
