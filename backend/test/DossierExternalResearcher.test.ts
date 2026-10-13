@@ -209,6 +209,25 @@ describe("loading: read-only, once per process, never fatal", () => {
     expect(warn.mock.calls.map((c) => String(c[0])).some((m) => /skipped medicine\.json/.test(m))).toBe(true);
   });
 
+  /* MUTATION THAT KILLS THIS: drop the "directly inside the dossier
+     directory" check (a manifest entry like ../medicine.json reads a file
+     outside it). Ran: red. */
+  it("a manifest file entry outside the dossier directory is skipped and logged; the others still serve", async () => {
+    const outer = tempCopy();
+    temps.push(outer);
+    const dir = path.join(outer, "inner");
+    fs.mkdirSync(dir);
+    for (const f of ["manifest.json", "engineering.json"]) fs.copyFileSync(path.join(FIXTURES, f), path.join(dir, f));
+    const manifest = fixture("manifest.json");
+    (manifest.nodes as Record<string, Json>).medicine!.file = "../medicine.json";
+    fs.writeFileSync(path.join(dir, "manifest.json"), JSON.stringify(manifest));
+    const r = researcher(dir);
+    expect(await r.retrievePassages({ claim: "Jenner tested the smallpox vaccine on James Phipps in 1796", maxPassages: 3, maxChars: 1500 }, ctx)).toEqual([]);
+    const bridge = await r.retrievePassages({ claim: "Wind drove the Tacoma Narrows bridge deck into twisting oscillations", maxPassages: 3, maxChars: 1500 }, ctx);
+    expect(bridge.length).toBeGreaterThan(0);
+    expect(warn.mock.calls.map((c) => String(c[0])).some((m) => /skipped node medicine: its file is not directly inside/.test(m))).toBe(true);
+  });
+
   /* MUTATION THAT KILLS THIS: drop the per-directory cache in set() (read
      on every call). Ran: red (the second call read the emptied directory). */
   it("the directory is read once per process: a later change on disk is not re-read", async () => {
