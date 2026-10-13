@@ -18,13 +18,25 @@ import { LANE_IDS, loadLaneProfiles, type LaneId, type LaneProfile, type LanePro
  * read here, over a generation mode:
  *
  * - FORAY_GENERATION_MODE = stub | local | anthropic-legacy, when set;
- * - otherwise `local` when FORAY_LLM_BASE_URL is set, else `anthropic-legacy`
- *   when ANTHROPIC_API_KEY is set (today's rule, env.ts's anthropicDryRun),
- *   else `stub`.
+ * - otherwise `local` when FORAY_LLM_BASE_URL is set, else `stub`.
+ *
+ * ZERO ANTHROPIC CALLS (GV-68, the founder's rule for the generation
+ * pipeline; docs/roadmap/generation-v2.md "Constraints"). ANTHROPIC_API_KEY no
+ * longer selects a mode: with only a key set, every stage is the Stub, and the
+ * table says the key was ignored (anthropicKeyIgnored, the driver's MODE
+ * line). The legacy Anthropic builders need TWO explicit opt-ins,
+ * FORAY_GENERATION_MODE=anthropic-legacy AND FORAY_ALLOW_ANTHROPIC_LEGACY=1;
+ * an 'anthropic' route (the legacy mode's default, or any FORAY_STAGE_*=anthropic)
+ * without both throws RoutingConfigError naming the rule. env.anthropicDryRun
+ * is NOT changed: enrich/ and buildSession.ts rely on it.
  *
  * With neither FORAY_GENERATION_MODE, FORAY_LLM_BASE_URL nor any
- * FORAY_STAGE_* set, the table reproduces today's per-stage choice exactly:
- * every stage Stub without a key, every stage on its models.ts tier with one.
+ * FORAY_STAGE_* set, every stage is the Stub (the judge fail-closed 'none').
+ *
+ * SHELL-ENV CAVEAT: FORAY_LLM_BASE_URL ALONE switches every stage to local
+ * mode. A dev shell that still exports it from an earlier session runs every
+ * stage on the lanes; pin FORAY_GENERATION_MODE=stub (or unset the variable)
+ * for a stub run (docs/curation/generation-providers.md).
  *
  * PURE AND DARK. resolveRouting reads an injected source (process.env by
  * default) and touches no global state except the registry below, which is
@@ -77,7 +89,14 @@ export const LLM_BASE_URL_ENV = "FORAY_LLM_BASE_URL";
 export const LLM_API_KEY_ENV = "FORAY_LLM_API_KEY";
 export const LLM_API_KEY_FILE_ENV = "FORAY_LLM_API_KEY_FILE";
 export const ALLOW_PROSE_ON_SECOND_ENV = "FORAY_ALLOW_PROSE_ON_SECOND";
-const ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY";
+/** GV-68: the second of the two opt-ins the legacy Anthropic builders need
+ * (the first is FORAY_GENERATION_MODE=anthropic-legacy). */
+export const ALLOW_ANTHROPIC_LEGACY_ENV = "FORAY_ALLOW_ANTHROPIC_LEGACY";
+export const ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY";
+/** GV-68: the rule an 'anthropic' route without both opt-ins breaks, quoted in
+ * every refusal so the error names it. */
+export const ZERO_ANTHROPIC_RULE =
+  "the generation pipeline makes zero Anthropic calls (founder rule, docs/roadmap/generation-v2.md Constraints)";
 /** GV-47: where a Jev key can come from (config/env.ts readJevApiKey). Only
  * their presence is read here, never a key. */
 export const JEV_KEY_ENVS = ["JEV_API_KEY", "JEV_KEY_FILE"] as const;
@@ -98,8 +117,12 @@ export interface StageRoute {
 
 export interface RoutingTable {
   mode: GenerationMode;
-  /** which variable decided the mode ('default' = none of them: stub) */
-  modeSource: "FORAY_GENERATION_MODE" | "FORAY_LLM_BASE_URL" | "ANTHROPIC_API_KEY" | "default";
+  /** which variable decided the mode ('default' = none of them: stub).
+   * GV-68: ANTHROPIC_API_KEY never decides it. */
+  modeSource: "FORAY_GENERATION_MODE" | "FORAY_LLM_BASE_URL" | "default";
+  /** GV-68: ANTHROPIC_API_KEY is set but no stage is routed 'anthropic', so
+   * the key selects nothing (the driver's MODE line says so). */
+  anthropicKeyIgnored: boolean;
   /** one route per stage; 'spine-alt' is absent unless FORAY_STAGE_SPINE_ALT is set */
   routes: Readonly<Partial<Record<StageId, StageRoute>>>;
   /** stages a FORAY_STAGE_* variable set, in GENERATION_STAGES order */
@@ -250,9 +273,31 @@ function readMode(source: NodeJS.ProcessEnv): { mode: GenerationMode; modeSource
     }
     return { mode: explicit as GenerationMode, modeSource: "FORAY_GENERATION_MODE" };
   }
+  /* GV-68: ANTHROPIC_API_KEY no longer selects anthropic-legacy. */
   if (readString(LLM_BASE_URL_ENV, source) !== undefined) return { mode: "local", modeSource: "FORAY_LLM_BASE_URL" };
-  if (readString(ANTHROPIC_API_KEY_ENV, source) !== undefined) return { mode: "anthropic-legacy", modeSource: "ANTHROPIC_API_KEY" };
   return { mode: "stub", modeSource: "default" };
+}
+
+/** GV-68: FORAY_ALLOW_ANTHROPIC_LEGACY is exactly "1" (unset or "0" is off;
+ * any other value is refused, naming the variable). */
+function allowAnthropicLegacy(source: NodeJS.ProcessEnv): boolean {
+  const raw = readString(ALLOW_ANTHROPIC_LEGACY_ENV, source);
+  if (raw === undefined || raw === "0") return false;
+  if (raw === "1") return true;
+  throw new RoutingConfigError(ALLOW_ANTHROPIC_LEGACY_ENV, `Invalid value for environment variable ${ALLOW_ANTHROPIC_LEGACY_ENV}: expected 1 or 0`);
+}
+
+/** GV-68: an 'anthropic' route needs both opt-ins. Throws naming the rule and
+ * the variable still missing (the mode first, then the allow flag). */
+function assertAnthropicLegacyAllowed(stage: StageId, mode: GenerationMode, source: NodeJS.ProcessEnv): void {
+  const allowed = allowAnthropicLegacy(source);
+  if (mode === "anthropic-legacy" && allowed) return;
+  const variable = mode === "anthropic-legacy" ? ALLOW_ANTHROPIC_LEGACY_ENV : GENERATION_MODE_ENV;
+  throw new RoutingConfigError(
+    variable,
+    `Stage "${stage}" is routed to the legacy Anthropic builders, which ${ZERO_ANTHROPIC_RULE}. ` +
+      `A legacy run needs both ${GENERATION_MODE_ENV}=anthropic-legacy and ${ALLOW_ANTHROPIC_LEGACY_ENV}=1`
+  );
 }
 
 function readBaseUrl(source: NodeJS.ProcessEnv): string | null {
@@ -314,7 +359,9 @@ export interface ResolveRoutingOptions {
  *   FORAY_LLM_BASE_URL;
  * - the writer is routed to a lane with allowsProse false, unless
  *   FORAY_ALLOW_PROSE_ON_SECOND=1;
- * - research is routed 'dossier' before an implementation registers it.
+ * - research is routed 'dossier' before an implementation registers it;
+ * - GV-68: any stage is routed 'anthropic' without both
+ *   FORAY_GENERATION_MODE=anthropic-legacy and FORAY_ALLOW_ANTHROPIC_LEGACY=1.
  */
 export function resolveRouting(source: NodeJS.ProcessEnv = process.env, options: ResolveRoutingOptions = {}): RoutingTable {
   const profiles = options.profiles ?? loadLaneProfiles(source);
@@ -340,6 +387,7 @@ export function resolveRouting(source: NodeJS.ProcessEnv = process.env, options:
   for (const stage of GENERATION_STAGES) {
     const route = routes[stage];
     if (route === undefined) continue;
+    if (route.provider === "anthropic") assertAnthropicLegacyAllowed(stage, mode, source);
     const needsLlm = route.provider === "local" || route.fallback !== undefined;
     if (needsLlm && llmBaseUrl === null) {
       throw new RoutingConfigError(
@@ -367,9 +415,11 @@ export function resolveRouting(source: NodeJS.ProcessEnv = process.env, options:
     }
   }
 
+  const anthropicRouted = Object.values(routes).some((r) => r?.provider === "anthropic");
   return Object.freeze({
     mode,
     modeSource,
+    anthropicKeyIgnored: !anthropicRouted && readString(ANTHROPIC_API_KEY_ENV, source) !== undefined,
     routes: Object.freeze(routes),
     overridden: Object.freeze(overridden),
     llmBaseUrl,

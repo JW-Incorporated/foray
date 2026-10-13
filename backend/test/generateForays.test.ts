@@ -2,13 +2,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { batchReportDocument, batchSummaryText, corpusReport, generateOneCandidate, parseArgs, partialCandidateFilename, candidateFilename, readPromptSet, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
+import { anthropicRuleViolation, batchReportDocument, batchSummaryText, corpusReport, generateOneCandidate, main, parseArgs, partialCandidateFilename, candidateFilename, readPromptSet, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
 import { corpusCoverage, corpusFingerprint, corpusSafeKey } from "../src/generation/transcriptCorpus";
 import { TRANSCRIPT_TEXT_INDEX_VERSION } from "../src/generation/transcriptTextIndex";
 import { createHash } from "node:crypto";
 import { evaluateVeracityGate, type VeracityGateResult } from "../src/generation/veracityMetrics";
 import type { ItemReadyEvent } from "../src/generation/deliveryTimeline";
 import { runForayPipeline } from "../src/generation/runPipeline";
+import type Anthropic from "@anthropic-ai/sdk";
+import { createMessage } from "../src/generation/anthropicCall";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
@@ -772,6 +774,7 @@ describe("GV-55 — routing on the report and in the checkpoint fingerprint", ()
       prompts: { file: "p.json", sha256: "0".repeat(64), count: 1 },
       generationMode: routing.mode,
       routing: routingSummary(routing),
+      anthropicCalls: 0,
       entries: []
     });
     const written = JSON.parse(JSON.stringify(doc)) as { generationMode: string; routing: { mode: string; stages: Record<string, string>; overridden: string[] } };
@@ -834,6 +837,7 @@ describe("GV-39 — report.json names the prompt set and the corpus snapshot it 
       prompts: identity,
       generationMode: "stub",
       routing: routingSummary(resolveRouting({})),
+      anthropicCalls: 0,
       entries: []
     });
     fs.writeFileSync(reportPath, `${JSON.stringify(doc, null, 2)}\n`);
@@ -885,6 +889,7 @@ describe("GV-39 — report.json names the prompt set and the corpus snapshot it 
       "prompts",
       "generationMode",
       "routing",
+      "anthropicCalls",
       "entries"
     ]);
   });
@@ -1037,5 +1042,96 @@ describe("GV-44 — --job-dir publishes the job snapshot", () => {
        guard. The dry run writes a job file. Ran it — red. */
     await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { jobDir, dryRun: true, maxResumes: 0 }), { cueProvider, runPipeline: observed([]) });
     expect(fs.existsSync(jobDir)).toBe(false);
+  });
+});
+
+/* GV-68 (the zero-Anthropic rule): report.json carries anthropicCalls per row
+   and at the top, and the batch exits non-zero when any Anthropic request was
+   sent without FORAY_ALLOW_ANTHROPIC_LEGACY=1. The pipeline is the stub one,
+   injected through main()'s test seam; the "Anthropic request" is a real
+   createMessage call on a fake client, so nothing leaves the process. */
+describe("GV-68 — anthropicCalls in report.json and the non-zero exit", () => {
+  let dir: string;
+  let savedExitCode: typeof process.exitCode;
+
+  const writePrompts = (): string => {
+    const file = path.join(dir, "prompts.json");
+    fs.writeFileSync(file, JSON.stringify(["the history of grilling and barbecue"]), "utf8");
+    return file;
+  };
+  const readReport = () =>
+    JSON.parse(fs.readFileSync(path.join(dir, "out", "report.json"), "utf8")) as { anthropicCalls: number; entries: Array<{ anthropicCalls?: number; outcome: string }> };
+
+  /** The stub pipeline without main()'s text index: this checkout has no
+   * warmed corpus, and the research-map refusal (#703) is not under test. */
+  const stubBatchPipeline: typeof runForayPipeline = (request, options, deps) => stubPipeline()(request, options, { ...deps, textIndex: undefined });
+
+  /** One Anthropic request through createMessage, on a fake client. */
+  const sendOneAnthropicRequest = async (): Promise<void> => {
+    const fakeClient = {
+      messages: { create: async () => ({ content: [{ type: "text", text: "{}" }], stop_reason: "end_turn", usage: { input_tokens: 1, output_tokens: 1 } }) }
+    } as unknown as Anthropic;
+    await createMessage(fakeClient, { model: "m", max_tokens: 10, messages: [{ role: "user", content: "x" }] }, "planted");
+  };
+
+  /** The stub pipeline, after sending one Anthropic request. */
+  const pipelineCallingAnthropic: typeof runForayPipeline = async (request, options, deps) => {
+    await sendOneAnthropicRequest();
+    return stubBatchPipeline(request, options, deps);
+  };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-gv68-"));
+    savedExitCode = process.exitCode;
+    process.exitCode = undefined;
+    for (const name of Object.values(PIPELINE_FLAG_ENV)) vi.stubEnv(name, undefined);
+    for (const name of ["FORAY_GENERATION_MODE", "FORAY_LLM_BASE_URL", "ANTHROPIC_API_KEY", "JEV_API_KEY", "JEV_KEY_FILE", "FORAY_ALLOW_ANTHROPIC_LEGACY", "GENERATION_NOTIFY_CMD"]) {
+      vi.stubEnv(name, undefined);
+    }
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    process.exitCode = savedExitCode;
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /* MUTATION: drop `anthropicCalls` from the row finishEntry builds (or from
+     batchReportDocument). Ran each: red. */
+  it("a clean stub batch writes anthropicCalls 0 at the top and on every row, and exits 0", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await main(["--prompts", writePrompts(), "--out", path.join(dir, "out"), "--duration", "short", "--max-resumes", "0"], { runPipeline: stubBatchPipeline });
+    expect(err).not.toHaveBeenCalled();
+    expect(process.exitCode).toBeUndefined();
+    const report = readReport();
+    expect(report.anthropicCalls).toBe(0);
+    expect(report.entries).toHaveLength(1);
+    expect(report.entries[0]!.outcome).toBe("generated");
+    expect(report.entries[0]!.anthropicCalls).toBe(0);
+  });
+
+  /* MUTATION: delete the anthropicRuleViolation check at the end of main()
+     (or count from 0 instead of the batch's starting count, so the row is
+     right and the top level is not). Ran each: red. */
+  it("a batch whose pipeline sent an Anthropic request exits non-zero, after writing anthropicCalls into report.json", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    /* A request this process sent BEFORE the batch is not the batch's. */
+    await sendOneAnthropicRequest();
+    await main(["--prompts", writePrompts(), "--out", path.join(dir, "out"), "--duration", "short", "--max-resumes", "0"], {
+      runPipeline: pipelineCallingAnthropic
+    });
+    expect(process.exitCode).toBe(1);
+    expect(String(err.mock.calls[0]![0])).toMatch(/^ZERO-ANTHROPIC RULE BROKEN: this batch sent 1 Anthropic request/);
+    const report = readReport();
+    expect(report.anthropicCalls).toBe(1);
+    expect(report.entries[0]!.outcome).toBe("generated");
+    expect(report.entries[0]!.anthropicCalls).toBe(1);
+    /* The legacy opt-in is the only way past the check. */
+    expect(anthropicRuleViolation(1, { FORAY_ALLOW_ANTHROPIC_LEGACY: "1" })).toBeNull();
+    expect(anthropicRuleViolation(1, { FORAY_ALLOW_ANTHROPIC_LEGACY: "yes" })).toMatch(/FORAY_ALLOW_ANTHROPIC_LEGACY=1/);
+    expect(anthropicRuleViolation(0, {})).toBeNull();
   });
 });
