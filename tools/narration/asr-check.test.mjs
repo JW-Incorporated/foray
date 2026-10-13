@@ -307,6 +307,13 @@ test("with --hold-flagged, stamp-narration stamps only the unflagged lines and c
     const held = JSON.parse(fs.readFileSync(path.join(dir, "manifest.json"), "utf8"));
     assert.equal(held.items.find((e) => e.item_id === "n-noun").status, "flagged");
 
+    /* MUTATION: CHECKED_STATUSES = new Set(["rendered"]) -> on a later run the held line is skipped,
+       the run exits 0 and n-noun drops out of the FLAGGED report. */
+    const again = runCli([dir, "--source", path.join(dir, "source.json")]);
+    assert.equal(again.status, 1, again.stderr);
+    assert.match(again.stdout, /4 line\(s\) checked/);
+    assert.match(again.stdout, /FLAGGED asr-fixture-draft \/ n-noun/);
+
     const doc = DOC();
     const res = stampForays(doc, [{ file: "manifest.json", manifest: held }], { base: "https://audio.jwlabs.ai", profile: PROFILE });
     const items = doc.forays[0].items;
