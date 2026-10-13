@@ -2,8 +2,8 @@
 /* Stream indexer (GV-09, from W3-05; docs/roadmap/generation-v2.md; covers
    R1-09, GP-09, R2-16).
 
-     node tools/passage-index/stream-index.mjs --source local|r2 [--show x] [--full]
-       [--passages-out f] [--index-root d] [--cue-cache d --cue-cache-gb n]
+     node tools/passage-index/stream-index.mjs --source local|r2|r2-legacy|r2-all [--show x] [--full]
+       [--legacy-map f] [--passages-out f] [--index-root d] [--cue-cache d --cue-cache-gb n]
        [--staged-out f] [--manifest-dir d] [--normalized-root d] [--min-free-gb n]
 
    Builds the per-show BM25 caches, the staged digest rows (and, once GV-12's
@@ -12,6 +12,15 @@
    or the foray-transcriptions bucket streamed from R2 (--source r2). Exactly
    one body is held in memory at a time, so the 1 TB bucket never needs a
    mirror.
+
+   GV-60 (W3-06) adds two opt-in R2 sources; the default stays local.
+   --source r2-legacy streams the legacy faster-whisper JSONs at the bucket
+   root, each resolved through --legacy-map (default
+   data-local/passage-index/legacy-map.json, GV-53's --resolve-legacy output)
+   and converted in memory. --source r2-all streams the normalized objects and
+   the legacy ones together, per show; a legacy duplicate of a farm-normalized
+   episode is dropped at list time. The run's `legacy` block counts the keys
+   skipped by reason (unmatched, ambiguous, no-map) and the duplicates.
 
    1. LIST (sources.mjs): a directory walk, or ListObjectsV2 only.
    2. CHOOSE the shows to rebuild: every listed show with --full, else the
@@ -69,7 +78,7 @@ import { ensureDiskSpace, GB, sizeOrMax } from "../foraycorpus-export/inventory.
 import { createR2Client, loadR2Credentials } from "../foraycorpus-export/r2-client.mjs";
 import { buildShowMap } from "../foraycorpus-export/show-map.mjs";
 import { manifestRow, quarantineRow, readManifest, replaceShow, showsToRebuild, writeManifest } from "./manifest.mjs";
-import { listLocal, listR2Normalized, readLocal, readR2 } from "./sources.mjs";
+import { listLocal, listR2All, listR2Legacy, listR2Normalized, readLegacyMap, readLocal, readR2, readR2Any, readR2Legacy } from "./sources.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolvePath(HERE, "..", "..");
@@ -86,10 +95,11 @@ export const DEFAULT_CUE_CACHE_GB = 20;
 export const POSTINGS_FACTOR = 0.4;
 export const PASSAGES_FACTOR = 1.1;
 export const DISK_SPACE_EXIT_CODE = 2;
-export const SOURCES = Object.freeze(["local", "r2"]);
+export const SOURCES = Object.freeze(["local", "r2", "r2-legacy", "r2-all"]);
+export const DEFAULT_LEGACY_MAP = join(DEFAULT_MANIFEST_DIR, "legacy-map.json");
 
 export const USAGE =
-  "node tools/passage-index/stream-index.mjs --source local|r2 [--show x] [--full] [--passages-out f] [--index-root d]" +
+  "node tools/passage-index/stream-index.mjs --source local|r2|r2-legacy|r2-all [--show x] [--full] [--legacy-map f] [--passages-out f] [--index-root d]" +
   " [--cue-cache d --cue-cache-gb n] [--staged-out f] [--manifest-dir d] [--normalized-root d] [--min-free-gb n]";
 
 export class StreamIndexError extends Error {
@@ -111,6 +121,7 @@ export function parseStreamArgs(argv) {
     stagedOut: DEFAULT_STAGED_OUT,
     manifestDir: DEFAULT_MANIFEST_DIR,
     normalizedRoot: DEFAULT_NORMALIZED_ROOT,
+    legacyMap: DEFAULT_LEGACY_MAP,
     cueCache: null,
     cueCacheGb: DEFAULT_CUE_CACHE_GB,
     minFreeGb: DEFAULT_MIN_FREE_GB,
@@ -141,6 +152,7 @@ export function parseStreamArgs(argv) {
     else if (flag === "--staged-out") args.stagedOut = resolvePath(needsValue());
     else if (flag === "--manifest-dir") args.manifestDir = resolvePath(needsValue());
     else if (flag === "--normalized-root") args.normalizedRoot = resolvePath(needsValue());
+    else if (flag === "--legacy-map") args.legacyMap = resolvePath(needsValue());
     else if (flag === "--cue-cache") args.cueCache = resolvePath(needsValue());
     else if (flag === "--cue-cache-gb") args.cueCacheGb = number(flag, needsValue());
     else if (flag === "--min-free-gb") args.minFreeGb = number(flag, needsValue());
@@ -374,6 +386,7 @@ export async function streamIndex({
     indexer_problems: [],
     cue_cache: null,
     unmapped_dirs: listing.unmappedDirs ?? [],
+    legacy: listing.legacy ?? null,
     shadowed_dirs: listing.shadowedDirs ?? [],
     exitCode: 0,
   };
@@ -424,7 +437,18 @@ export async function streamIndex({
       `bodies=${result.bodies} quarantined=${result.quarantined.length} carried_quarantine=${result.carried_quarantine} ` +
       `gone=${result.gone.length} unmapped_dirs=${result.unmapped_dirs.length}`
   );
+  if (result.legacy) log(legacyLine(result.legacy));
   return result;
+}
+
+/** The legacy source's counts as one log line (the live step posts it). */
+export function legacyLine(legacy) {
+  const skipped = legacy.skipped ?? {};
+  return (
+    `stream-index: legacy keys=${legacy.keys} resolved=${legacy.resolved} ` +
+    `skipped unmatched=${skipped.unmatched ?? 0} ambiguous=${skipped.ambiguous ?? 0} no-map=${skipped["no-map"] ?? 0} ` +
+    `duplicates normalized=${legacy.duplicates?.normalized ?? 0} legacy=${legacy.duplicates?.legacy ?? 0}`
+  );
 }
 
 /* ----------------------------------------------------------------- CLI */
@@ -444,14 +468,32 @@ export async function main(argv) {
   } else {
     const creds = await loadR2Credentials();
     const client = await createR2Client(creds);
-    const { map, collisions } = buildShowMap({
-      queue: readDataJson("transcription-queue.json"),
-      catalog: readDataJson("catalog.json"),
-      breadth: readDataJson("breadth-transcript-yield.json"),
-    });
-    if (collisions.length > 0) console.error(`stream-index: ${collisions.length} show-map collision(s); first writer kept`);
-    list = () => listR2Normalized({ client, bucket: creds.bucket, showMap: map });
-    read = (entry) => readR2(entry, { client, bucket: creds.bucket });
+    const bucket = creds.bucket;
+    let showMap = new Map();
+    if (args.source !== "r2-legacy") {
+      const { map, collisions } = buildShowMap({
+        queue: readDataJson("transcription-queue.json"),
+        catalog: readDataJson("catalog.json"),
+        breadth: readDataJson("breadth-transcript-yield.json"),
+      });
+      if (collisions.length > 0) console.error(`stream-index: ${collisions.length} show-map collision(s); first writer kept`);
+      showMap = map;
+    }
+    let legacyMap = null;
+    if (args.source !== "r2") {
+      legacyMap = readLegacyMap(args.legacyMap);
+      if (!legacyMap) console.error(`stream-index: no legacy map at ${args.legacyMap}; every legacy key counts as no-map`);
+    }
+    if (args.source === "r2") {
+      list = () => listR2Normalized({ client, bucket, showMap });
+      read = (entry) => readR2(entry, { client, bucket });
+    } else if (args.source === "r2-legacy") {
+      list = () => listR2Legacy({ client, bucket, legacyMap });
+      read = (entry) => readR2Legacy(entry, { client, bucket });
+    } else {
+      list = () => listR2All({ client, bucket, showMap, legacyMap });
+      read = (entry) => readR2Any(entry, { client, bucket });
+    }
   }
   return streamIndex({
     list,
