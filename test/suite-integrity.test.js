@@ -2831,6 +2831,14 @@ const BACKEND_FLOORS = {
      body on disk. */
   "test/retrievalServer.test.ts": 17, // GV-48 review: a rebuild whose embedder has no vectors yet is lexical only, not 503; 16 -> 17 // GV-48 adds hybrid mode (append + scope, determinism + no-mode parity) and the node shortlist (rebuild + GET rerank)
   "test/manifestBodySource.test.ts": 5,
+  /* GV-54 (docs/roadmap/generation-v2.md, from W3-24; subsumes corpus PKG-24):
+     the remote cue store behind the retrieval server's --r2 — miss, fetch,
+     cache (no second fetch), forgetShow makes a late body visible, 404 and
+     sha mismatch write nothing, legacy whisper converted to asr-local, the
+     byte-bounded LRU, a failed fetch degrades (503) without throwing, local
+     bodies never fetched, one fetch per episode in flight, the default R2
+     fetcher's 404 mapping, and the --r2 flags. */
+  "test/remoteCueStore.test.ts": 13,
   /* GV-29 (docs/roadmap/generation-v2.md, from W3-10): the backend retrieval
      client — prepared lineage and 'all' answers equal a local search (scores,
      ranks, idf, zero-hit idf), isUsable and limit honoured, unknown episodes
