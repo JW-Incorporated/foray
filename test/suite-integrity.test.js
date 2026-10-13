@@ -3514,7 +3514,21 @@ const BACKEND_FLOORS = {
      not-built error naming FORAY_STAGE_RESEARCH, no 'local' route, no
      FORAY_RESEARCHER). Offline; one named mutation per test. */
   "test/noWebResearch.test.ts": 5,
-  "test/createExternalResearcher.test.ts": 9,
+  "test/createExternalResearcher.test.ts": 9, // GV-69: the dossier row now asserts FORAY_STAGE_RESEARCH=dossier builds the dossier researcher (rewritten in place, count unchanged)
+  /* GV-69 (docs/roadmap/generation-v2.md, W3-21, #1286): the 'dossier'
+     research route. DossierExternalResearcher: synthetic fixture dossiers
+     validate against GV-30's schema.mjs and the zod mirror agrees on broken
+     variants; a matching claim returns the passage titled publication —
+     source title with url; topicNodeIds scopes to the lineage; the
+     matched-terms and idf-share floors each return []; maxPassages and
+     maxChars; research() notes verbatim and controversies from contested
+     passages (unscoped only when they share a word); a missing dir warns
+     once; a schema-failing file is skipped; one read per process; no
+     fetch/http/fs-write in the source; dossierDir() resolution and blank
+     refusal; the routing table builds it; through DefaultEvidenceGatherer a
+     Carry beat's quote passes gateSelectedClaims. Offline; one named
+     mutation per test. */
+  "test/DossierExternalResearcher.test.ts": 15,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

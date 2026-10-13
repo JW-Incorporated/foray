@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "node_id": "engineering",
+  "label": "Engineering",
+  "built_at": "2026-10-01T12:00:00Z",
+  "builder": "code",
+  "sources": [
+    {
+      "sourceId": "9a8b7c6d5e4f",
+      "url": "https://example.org/engineering/tacoma-narrows",
+      "publication": "Example Encyclopedia",
+      "title": "Tacoma Narrows Bridge (synthetic)",
+      "retrievedAt": "2026-10-01T12:00:00Z",
+      "sha256": "ef35ee2fbf0b1463273afbfd3c0041d989b1d00eb19a4c30a0a296f0109535a3",
+      "license": "Synthetic test text (GV-69 fixture)"
+    },
+    {
+      "sourceId": "123456abcdef",
+      "url": "https://example.org/engineering/concrete",
+      "publication": "Example Builders Journal",
+      "title": "",
+      "retrievedAt": "2026-10-01T12:00:00Z",
+      "sha256": "ff298e4c4f975caa25114d524167027dd47275f4bf7e414fce87b993ad12d058",
+      "license": "Synthetic test text (GV-69 fixture)"
+    }
+  ],
+  "passages": [
+    {
+      "docId": "dossier:engineering:9a8b7c6d5e4f:0",
+      "sourceId": "9a8b7c6d5e4f",
+      "text": "The Tacoma Narrows Bridge collapsed on 7 November 1940, only four months after it opened, when wind of about forty miles per hour drove the deck into violent twisting oscillations.",
+      "offset": 0
+    },
+    {
+      "docId": "dossier:engineering:9a8b7c6d5e4f:1",
+      "sourceId": "9a8b7c6d5e4f",
+      "text": "Engineers later traced the failure to aeroelastic flutter, and the replacement bridge used a deeper, stiffer deck truss and open grating to let the wind pass through.",
+      "offset": 185
+    },
+    {
+      "docId": "dossier:engineering:123456abcdef:0",
+      "sourceId": "123456abcdef",
+      "text": "Concrete gains most of its strength by hydration, a chemical reaction between cement and water, and it continues to harden for years after it is poured.",
+      "offset": 0
+    }
+  ],
+  "missing": []
+}

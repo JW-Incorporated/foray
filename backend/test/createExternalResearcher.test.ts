@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { createExternalResearcher } from "../src/generation/createExternalResearcher";
+import { DossierExternalResearcher } from "../src/generation/DossierExternalResearcher";
 import { NullExternalResearcher } from "../src/generation/NullExternalResearcher";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { RoutingConfigError, routeFor } from "../src/config/stageRouting";
 
 /**
  * GV-61 (W3-16 test plan): the research route matrix. FORAY_STAGE_RESEARCH
- * picks none | stub | anthropic | dossier; local mode defaults to 'none'
+ * picks none | stub | anthropic | dossier (built since GV-69); local mode defaults to 'none'
  * (OQ-04); with no routing variable set the choice is today's (Stub without
  * ANTHROPIC_API_KEY, Anthropic with it). There is no FORAY_RESEARCHER
  * variable (decision 4). Offline: the anthropic route is asserted through the
@@ -63,15 +64,15 @@ describe("createExternalResearcher: the research route matrix (GV-61)", () => {
     );
   });
 
-  /* MUTATION THAT KILLS THIS: register a 'dossier' implementation in
-     createExternalResearcher's BUILTINS that builds the Null researcher (a
-     silent stand-in). Ran: red (no throw). */
-  it("FORAY_STAGE_RESEARCH=dossier before the dossier researcher exists throws a clear 'not built' error naming the variable", () => {
-    const err = thrown(() => createExternalResearcher({ FORAY_STAGE_RESEARCH: "dossier" }));
-    expect(err).toBeInstanceOf(RoutingConfigError);
-    expect((err as RoutingConfigError).variable).toBe("FORAY_STAGE_RESEARCH");
-    expect(err.message).toMatch(/not built/);
-    expect(err.message).toContain("FORAY_STAGE_RESEARCH");
+  /* GV-69 replaced GV-61's "not built" row: the dossier researcher is
+     registered now. MUTATION THAT KILLS THIS: register a 'dossier'
+     implementation in createExternalResearcher's BUILTINS that builds the
+     Null researcher (a silent stand-in). Ran: red. */
+  it("FORAY_STAGE_RESEARCH=dossier builds the dossier researcher (GV-69), even with a key present", () => {
+    const researcher = createExternalResearcher({ FORAY_STAGE_RESEARCH: "dossier", ANTHROPIC_API_KEY: "sk-test" });
+    expect(researcher).toBeInstanceOf(DossierExternalResearcher);
+    expect(researcher.providerName).toBe("dossier");
+    expect(typeof researcher.retrievePassages).toBe("function");
   });
 
   /* MUTATION THAT KILLS THIS: allow 'local' for research in ALLOWED_PROVIDERS

@@ -24,6 +24,7 @@ import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWrite
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { NullExternalResearcher } from "../src/generation/NullExternalResearcher";
+import { DossierExternalResearcher } from "../src/generation/DossierExternalResearcher";
 import { ChatPromptUnderstander } from "../src/generation/chat/ChatPromptUnderstander";
 import { ChatSpineBuilder } from "../src/generation/chat/ChatSpineBuilder";
 import { ChatDeepenActBuilder } from "../src/generation/chat/ChatDeepenActBuilder";
@@ -345,10 +346,11 @@ describe("GV-37: a misrouted local stage fails fast, never a Stub", () => {
     expect(modeErr).toBeInstanceOf(RoutingConfigError);
   });
 
-  it("research routed 'dossier' throws the not-built error", () => {
-    const err = thrown(() => createExternalResearcher({ FORAY_STAGE_RESEARCH: "dossier" }));
-    expect(err).toBeInstanceOf(RoutingConfigError);
-    expect(err.message).toMatch(/not built yet/);
+  /* GV-69: the dossier researcher is registered now, so the route builds it
+     (resolveRouting's not-built refusal is held in stageRouting.test.ts with
+     an empty registry). Mutation: drop the 'dossier' built-in. Ran: red. */
+  it("research routed 'dossier' builds the dossier researcher (GV-69)", () => {
+    expect(createExternalResearcher({ FORAY_STAGE_RESEARCH: "dossier" })).toBeInstanceOf(DossierExternalResearcher);
   });
 
   it("a reset registry is re-registered on the next factory call", () => {
