@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-02T03:00:00Z",
+  "nodes": {
+    "medicine": {
+      "label": "Medicine",
+      "file": "medicine.json",
+      "sha256": "d5b26ca6b699792babd05c7f52966a469468f58c883b59830ce0031200256df9",
+      "passages": 5,
+      "sources": 2,
+      "built_at": "2026-10-01T12:00:00Z",
+      "missing": [
+        {
+          "url": "https://example.org/medicine/missing-page",
+          "status": 404,
+          "reason": "not found"
+        }
+      ]
+    },
+    "engineering": {
+      "label": "Engineering",
+      "file": "engineering.json",
+      "sha256": "a668a642d66562a56d47cff61e739587fd609941d27a55ab51781cb4aea7e3a3",
+      "passages": 3,
+      "sources": 2,
+      "built_at": "2026-10-01T12:00:00Z",
+      "missing": []
+    },
+    "arts/opera": {
+      "label": "Opera",
+      "file": null,
+      "sha256": null,
+      "passages": 0,
+      "sources": 0,
+      "built_at": "2026-10-01T12:00:00Z",
+      "missing": [
+        {
+          "url": "https://example.org/arts/opera",
+          "status": -1,
+          "reason": "robots.txt refused"
+        }
+      ]
+    }
+  }
+}

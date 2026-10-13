@@ -1,14 +1,17 @@
 import { instantiateStage } from "../config/stageRouting";
 import { ensureStageImplementations, plainImplementation } from "./chat/providerRegistry";
+import { DossierExternalResearcher } from "./DossierExternalResearcher";
 import type { ExternalResearcher } from "./ExternalResearcher";
 import { NullExternalResearcher } from "./NullExternalResearcher";
 import { StubExternalResearcher } from "./StubExternalResearcher";
 
 /**
  * The research stage's built-ins (GV-37): 'stub', 'anthropic' (legacy web
- * research) and 'none' (NullExternalResearcher, the local-mode default).
- * Research has no 'local' route, and 'dossier' is refused by resolveRouting
- * as not built until GV-69 registers it. The Anthropic class stays behind a
+ * research), 'none' (NullExternalResearcher, the local-mode default) and
+ * 'dossier' (GV-69: DossierExternalResearcher, outside facts from the local
+ * dossiers in generationFlags' dossierDir(), no network; only an explicit
+ * FORAY_STAGE_RESEARCH=dossier routes here). Research has no 'local' route.
+ * The Anthropic class stays behind a
  * lazy require() so importing this module never pulls in the Anthropic SDK
  * construction path.
  */
@@ -19,8 +22,18 @@ const BUILTINS = {
     const { AnthropicExternalResearcher } = require("./AnthropicExternalResearcher") as typeof import("./AnthropicExternalResearcher");
     return new AnthropicExternalResearcher();
   }),
-  none: plainImplementation<ExternalResearcher>(() => new NullExternalResearcher())
+  none: plainImplementation<ExternalResearcher>(() => new NullExternalResearcher()),
+  dossier: plainImplementation<ExternalResearcher>(() => new DossierExternalResearcher())
 };
+
+/* Registered when the module loads, not only when the factory runs:
+   resolveRouting() refuses 'dossier' while the process registry has no entry
+   for it, and real runs resolve the routing table (generateForays' run table
+   and --stage-provider check, runPipeline's routing and createPromptUnderstander)
+   before createExternalResearcher() is ever called. runPipeline imports this
+   module, so FORAY_STAGE_RESEARCH=dossier resolves from the CLI. The call in
+   the factory stays, idempotent, so a reset registry is restored. */
+ensureStageImplementations("research", BUILTINS);
 
 /**
  * The external researcher the routing table picks (FORAY_STAGE_RESEARCH over
@@ -29,10 +42,10 @@ const BUILTINS = {
  *
  * GV-61: the pipeline builds ONE researcher with this and hands it to both
  * §4.2's shape research and the evidence gatherer, so a single route decides
- * whether a run reaches outside at all. FORAY_STAGE_RESEARCH=dossier throws
- * RoutingConfigError naming FORAY_STAGE_RESEARCH ("not built yet") until the
- * dossier researcher (GV-69) registers its 'dossier' implementation here;
- * the refusal lives in resolveRouting so a routing report fails the same way.
+ * whether a run reaches outside at all. FORAY_STAGE_RESEARCH=dossier builds
+ * the dossier researcher (GV-69), registered at module load and again here;
+ * resolveRouting still refuses 'dossier' in a registry where it is not
+ * registered.
  */
 export function createExternalResearcher(source: NodeJS.ProcessEnv = process.env): ExternalResearcher {
   ensureStageImplementations("research", BUILTINS);
