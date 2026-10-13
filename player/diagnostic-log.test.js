@@ -36,6 +36,7 @@ import {
   nowPlayingFieldOf, NOWPLAYING_FIELD_MAX, NOWPLAYING_VIA, SESSION_KINDS, SESSION_PRODUCERS,
   TRANSPORT_SOURCES, TRANSPORT_ACTIONS, REMOTE_COMMANDS, REMOTE_ORIGINS,
   NARRATION_FALLBACK_REASONS, NARRATION_FALLBACK_AT, audioHostTokenOf, DOWNLOAD_OUTCOMES,
+  CLIP_PRECISION, CLIP_AUTHORED_TIME, clipItemOf, clipTallyLines,
 } from "./diagnostic-log.js";
 /* The REAL store for the held-write tests below: whether a row written before a
    slow hydration overwrites the durable ring is a fact about `DurableStore`'s
@@ -2917,6 +2918,93 @@ test("a narration fallback row admits only its vocabulary and a host-shaped host
 test("the narration stages reach an open seam's trail by name", () => {
   assert.equal(stageOf("narration.fallback reason=timeout at=bridge item=n host=h"), "narration.fallback");
   assert.equal(stageOf("prefetch.narration.started n1 hidden=y"), "prefetch.narration.started");
+});
+
+/* ==================================================================== */
+/* GV-63: the clip row and the per-Foray tally                          */
+/* ==================================================================== */
+
+test("GV-63: a clip precision line becomes ONE `clip` row — a vocabulary word and the clip's authored id", () => {
+  /* queue-manager.js §17. MUTATION (run 2026-10-13, red): drop the RE entry,
+     or store `hit[2]` unchecked as the item. */
+  const { log, diag } = mk();
+  assert.equal(diag.note("foray.clip.precision kind=padded item=rome-1#3"), true);
+  const rows = log.entries.filter((e) => e.type === "clip");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].kind, "padded");
+  assert.equal(rows[0].item, "rome-1#3");
+  assert.equal(rows[0].forayId, "rome-1");
+  assert.match(lineOf(log, "clip"), /^#1 +\S+ clip +padded {2}item=rome-1#3$/);
+  assert.equal(stageOf("foray.clip.precision kind=exact item=f#0"), "foray.clip.precision");
+  for (const k of ["static", "exact", "padded", "skipped", "dropped", "load-failed"]) assert.ok(CLIP_PRECISION.has(k), k);
+  assert.deepEqual([...CLIP_AUTHORED_TIME], ["static", "exact", "padded"]);
+});
+
+test("GV-63: a word outside CLIP_PRECISION records no row, and an id that is not a clip id is stored as null", () => {
+  /* MUTATION (run 2026-10-13, red): drop the `CLIP_PRECISION.has` check (an
+     `approximate` row is recorded), or admit the id whole (`has/slash` and
+     the query reach the store). */
+  const { log, diag, store } = mk();
+  assert.equal(diag.note("foray.clip.precision kind=approximate item=f#0"), false);
+  assert.equal(diag.note("foray.clip.precision kind=EXACT item=f#0"), false, "the manager lower-cases; anything else is refused");
+  assert.equal(log.entries.filter((e) => e.type === "clip").length, 0);
+  diag.note("foray.clip.precision kind=skipped item=https://x.test/a.mp3?t=1#2");
+  diag.note("foray.clip.precision kind=skipped item=has/slash");
+  const rows = log.entries.filter((e) => e.type === "clip");
+  assert.deepEqual(rows.map((e) => [e.kind, e.item, e.forayId]), [["skipped", null, null], ["skipped", null, null]]);
+  assert.doesNotMatch(store.getItem(DIAG_KEY), /x\.test|has\/slash/);
+  assert.deepEqual(clipItemOf("f#12"), { item: "f#12", forayId: "f" });
+  assert.deepEqual(clipItemOf("nar-7"), { item: "nar-7", forayId: null });
+  assert.equal(clipItemOf("f#x"), null, "the ordinal is digits");
+  assert.equal(clipItemOf("#3"), null, "a Foray id is required before the #");
+});
+
+test("GV-63: the per-Foray tally — exact, padded and drifted read 67% at authored time, and a static clip counts as authored time", () => {
+  /* The card's acceptance. MUTATIONS (each run 2026-10-13, red): leave
+     `static` out of CLIP_AUTHORED_TIME (Foray b reads 0%); count every row
+     instead of the newest per item (Foray a's replayed clip counts twice);
+     keep the FIRST row per item instead of the newest (Foray a reads 1
+     load-failed, 0 padded, 25%);
+     drop the tally from formatDiagnosticReport (no `clips` line). */
+  const { log, diag } = mk();
+  diag.note("foray.clip.precision kind=dropped item=a#3");
+  diag.note("foray.clip.precision kind=exact item=a#0");
+  diag.note("foray.clip.precision kind=skipped item=a#2");
+  diag.note("foray.clip.precision kind=static item=b#0");
+  diag.note("foray.clip.precision kind=load-failed item=a#1");   // a replay: the newest row wins
+  diag.note("foray.clip.precision kind=padded item=a#1");
+  assert.deepEqual(clipTallyLines(log.entries), [
+    "clips a: 0 static, 1 exact, 1 padded, 1 skipped, 1 dropped, 0 load-failed; 50% at authored time",
+    "clips b: 1 static, 0 exact, 0 padded, 0 skipped, 0 dropped, 0 load-failed; 100% at authored time",
+  ]);
+  const three = mk();
+  for (const [k, i] of [["exact", 0], ["padded", 1], ["skipped", 2]]) three.diag.note(`foray.clip.precision kind=${k} item=rome#${i}`);
+  const text = formatDiagnosticReport(three.log.read(), null, { tzOffsetMin: 0 });
+  assert.equal(text.split("\n").filter((l) => /^#\d+ +\S+ clip /.test(l)).length, 3, "three clip rows");
+  assert.ok(text.includes("\nclips rome: 0 static, 1 exact, 1 padded, 1 skipped, 0 dropped, 0 load-failed; 67% at authored time\n"), text);
+  assert.ok(text.indexOf("clips rome:") < text.indexOf(" clip "), "the tally sits above the rows");
+  assert.doesNotMatch(formatDiagnosticReport(mk().log.read()), /^clips /m, "no clip rows, no tally");
+});
+
+test("GV-63: the engine lane's gate and skip rows are tallied on a line of their own", () => {
+  /* EngineCore writes `gate` (event=noted: an exact or padded copy that
+     plays), `skip` event=ladder (refused) and event=load (attempts ran out).
+     MUTATION (run 2026-10-13, red): read `skip` rows without their event
+     (a load failure counts as a ladder skip), or drop the engine half. */
+  const T0 = Date.UTC(2026, 9, 13, 12, 0, 0);
+  const ring = [
+    { seq: 1, at: T0, kind: "gate", event: "noted", dropped: ["item"] },
+    { seq: 2, at: T0 + 1, kind: "gate", event: "noted", dropped: ["item"] },
+    { seq: 3, at: T0 + 2, kind: "skip", event: "ladder", index: 2, dropped: ["item"] },
+    { seq: 4, at: T0 + 3, kind: "skip", event: "load", index: 3, attempts: 2 },
+    { seq: 5, at: T0 + 4, kind: "seam", observedGapMs: 900, askedGapMs: 900 },
+  ];
+  assert.deepEqual(clipTallyLines([], ring), [
+    "clips engine: 2 exact|padded, 1 skipped, 1 load-failed; 50% at authored time (static plays write no row)",
+  ]);
+  const text = formatDiagnosticReport(mk().log.read(), { decision: { mode: "native", reason: "ok" }, rows: ring }, { tzOffsetMin: 0 });
+  assert.match(text, /^clips engine: 2 exact\|padded, 1 skipped, 1 load-failed; 50% at authored time/m);
+  assert.deepEqual(clipTallyLines([], [ring[4]]), [], "a ring with no gate or skip row adds no line");
 });
 
 /* ---------- A-09: the Android plugin's session rows ---------- */

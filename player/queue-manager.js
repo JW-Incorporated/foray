@@ -267,7 +267,18 @@
    during the load (it fetches quietly, and their play then finds the clip
    ready), but a failed retry while paused is today's stop, because stepping
    to the next item would start it playing. A plain episode, a narration line
-   (§14) and a bridge fail exactly as before. */
+   (§14) and a bridge fail exactly as before.
+
+   ── 17. EACH FORAY CLIP'S PRECISION, FOR THE PHONE'S RECORD (GV-63) ───────
+   One line per clip outcome, `foray.clip.precision kind=<k> item=<id>`, which
+   `diagnostic-log.js` keeps as a `clip` row and tallies per Foray ("played at
+   authored time vs skipped"). The kinds: `static` (the gate passed with no
+   note: a non-DAI clip, or one settled exact at build), `exact` and `padded`
+   (the gate's note, its leading word), `skipped` (a ladder refusal at load),
+   `load-failed` (attempts exhausted, §16) and `dropped` (the build refused a
+   DAI clip without both anchors). Only Foray clips (`_isForayClip`) say it; a
+   narration line, a jingle or a plain episode never does. Telemetry only: no
+   decision reads it and nothing is transmitted (#264). */
 
 import {
   reduce, S, E, itemRef, itemBounds, TTS, END_NATURAL, END_OUT_POINT,
@@ -434,6 +445,11 @@ export const FORAY_CLIP_MAX_SILENCE_SEC = 40;
     a clip lands, and with every new Foray.
     // MEASURE: verdict=P13-clip (NE-38e). Rows: skip kind=load, then a stop cause=load-deadline or load-failed. */
 export const FORAY_CLIP_LOAD_MAX_STEPS = 1;
+
+/** §17: how `foray-queue.js` opens the reason of a DAI clip it dropped for
+    missing anchors (ADR-0007). The queue-manager suite builds through the real
+    `buildForayQueue`, so a reworded reason there turns it red. */
+const DROPPED_FOR_ANCHORS = "DAI source without both anchors";
 
 const nonEmptyStr = (s) => typeof s === "string" && s.trim().length > 0;
 
@@ -958,6 +974,7 @@ export class PlayerQueueManager {
       `.skipped=${report.skipped.length}.warnings=${report.warnings.length}`
     );
     for (const s of report.skipped) this._emit(`foray.segment.skipped[${s.index}]: ${s.reason}`);
+    this._emitDroppedClips(report.skipped);
     for (const w of report.warnings) this._emit(`foray.warning: ${w}`);
     return report;
   }
@@ -1023,7 +1040,9 @@ export class PlayerQueueManager {
     this._emit(`foray.stream.appended.n=${tail.length}`);
     // Only the items this append reached: the prefix's own skips were reported
     // when it was built.
-    for (const s of report.skipped) if (s.index > lastOrd) this._emit(`foray.segment.skipped[${s.index}]: ${s.reason}`);
+    const reached = report.skipped.filter((s) => s.index > lastOrd);
+    for (const s of reached) this._emit(`foray.segment.skipped[${s.index}]: ${s.reason}`);
+    this._emitDroppedClips(reached);
     if (this._awaitingIndex != null && tail.length) {
       const at = this._awaitingIndex;
       this._awaitingIndex = null;
@@ -2158,9 +2177,12 @@ export class PlayerQueueManager {
       const gate = this._segmentGate(item);
       if (!gate.ok) {
         this._emit(`foray.segment.skipped.atLoad ${item.id}: ${gate.reason}`);
+        this._emitClipPrecision("skipped", item);
         return this._skipUnplayableSegment();
       }
       if (gate.note) this._emit(`foray.segment.${item.id}: ${gate.note}`);
+      // §17: `static` with no note; otherwise the note's leading word.
+      this._emitClipPrecision(gate.note ? String(gate.note).split(/\s/, 1)[0].toLowerCase() : "static", item);
       /* The seam beat is spent HERE, between a loaded-and-positioned asset and
          the `itemLoaded` that arms the out-point and starts it. Everything
          expensive already happened, so the remaining silence is the beat and
@@ -2232,10 +2254,12 @@ export class PlayerQueueManager {
     // clip: stop here rather than run through the rest of the Foray.
     if (this._clipLoadSteps >= FORAY_CLIP_LOAD_MAX_STEPS) {
       this._emit(`foray.segment.notStepped ${item.id}: ${this._clipLoadSteps} clip(s) in a row did not load (${why})`);
+      this._emitClipPrecision("load-failed", item);
       return false;
     }
     this._clipLoadSteps += 1;
     this._emit(`foray.segment.skipped.atLoad ${item.id}: did not load in ${attempt} attempts (${why})`);
+    this._emitClipPrecision("load-failed", item);
     await this._skipUnplayableSegment();
     return true;
   }
@@ -2245,6 +2269,22 @@ export class PlayerQueueManager {
       episode has no bounds; a line and a bridge are TTS-kind. */
   _isForayClip(item) {
     return item != null && item.kind !== TTS && boundsOf(item) != null;
+  }
+
+  /** §17: one clip's outcome, for the phone's record. A Foray clip only. */
+  _emitClipPrecision(kind, item) {
+    if (this._isForayClip(item)) this._emit(`foray.clip.precision kind=${kind} item=${item.id}`);
+  }
+
+  /** §17: the build's drops that are clips refused for missing anchors
+      (ADR-0007, `foray-queue.js`), each as a `dropped` clip. Any other drop
+      (an unresolvable item, bad bounds) is a data fault, not a precision. */
+  _emitDroppedClips(skipped) {
+    for (const s of skipped) {
+      if (String(s.reason ?? "").startsWith(DROPPED_FOR_ANCHORS)) {
+        this._emit(`foray.clip.precision kind=dropped item=${s.id}`);
+      }
+    }
   }
 
   /** Is this a §7-item-1 script-only narration item — TTS-kind, a non-empty
