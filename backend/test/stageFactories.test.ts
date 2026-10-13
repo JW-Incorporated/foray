@@ -125,8 +125,10 @@ describe("GV-37: without the routing variables every factory returns what it ret
     expect(all.continuity).toBeInstanceOf(StubContinuityBuilder);
   });
 
-  it("ANTHROPIC_API_KEY alone: every stage is the legacy (anthropic) implementation on its tier", () => {
-    const all = buildAll({ ANTHROPIC_API_KEY: "sk-test" });
+  /* GV-68: ANTHROPIC_API_KEY alone selects the Stub now (stageRouting.test.ts);
+     the legacy builders need both explicit opt-ins. */
+  it("the two legacy opt-ins: every stage is the legacy (anthropic) implementation on its tier", () => {
+    const all = buildAll({ FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1", ANTHROPIC_API_KEY: "sk-test" });
     const stages: Record<keyof typeof all, StageId> = {
       understander: "understand.intent",
       researcher: "research",
@@ -199,8 +201,8 @@ describe("GV-37: the real legacy 'anthropic' registrations (no sentinel)", () =>
     env.anthropicApiKey = savedKey;
   });
 
-  it("ANTHROPIC_API_KEY and no routing variables: every factory builds its Anthropic class", () => {
-    const all = buildAll({ ANTHROPIC_API_KEY: "sk-test-never-sent" });
+  it("the two legacy opt-ins and no stage variables: every factory builds its Anthropic class", () => {
+    const all = buildAll({ FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1", ANTHROPIC_API_KEY: "sk-test-never-sent" });
     expect(all.understander).toBeInstanceOf(AnthropicPromptUnderstander);
     expect(all.researcher).toBeInstanceOf(AnthropicExternalResearcher);
     expect(all.spine).toBeInstanceOf(AnthropicSpineBuilder);
@@ -212,7 +214,7 @@ describe("GV-37: the real legacy 'anthropic' registrations (no sentinel)", () =>
   });
 
   it("one stage moved to a local lane leaves the other six on their real Anthropic classes", () => {
-    const all = buildAll({ ANTHROPIC_API_KEY: "sk-test-never-sent", FORAY_LLM_BASE_URL: BASE_URL, FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_STAGE_SPINE: "local:spark" });
+    const all = buildAll({ ANTHROPIC_API_KEY: "sk-test-never-sent", FORAY_LLM_BASE_URL: BASE_URL, FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1", FORAY_STAGE_SPINE: "local:spark" });
     expect(all.spine).toBeInstanceOf(ChatSpineBuilder);
     expect(all.understander).toBeInstanceOf(AnthropicPromptUnderstander);
     expect(all.researcher).toBeInstanceOf(AnthropicExternalResearcher);
@@ -231,6 +233,7 @@ describe("GV-37: one stage moves to a local lane", () => {
     const all = buildAll({
       ANTHROPIC_API_KEY: "sk-test",
       FORAY_GENERATION_MODE: "anthropic-legacy",
+      FORAY_ALLOW_ANTHROPIC_LEGACY: "1",
       FORAY_LLM_BASE_URL: BASE_URL,
       FORAY_STAGE_SPINE: "local:spark"
     });
@@ -249,8 +252,8 @@ describe("GV-37: one stage moves to a local lane", () => {
     expect(all.writer).toBeInstanceOf(StubNarrationWriterBuilder);
   });
 
-  it("FORAY_STAGE_WRITER=stub with an ANTHROPIC_API_KEY set: the writer is the Stub, the rest resolve as before", () => {
-    const all = buildAll({ ANTHROPIC_API_KEY: "sk-test", FORAY_STAGE_WRITER: "stub" });
+  it("FORAY_STAGE_WRITER=stub in a legacy run: the writer is the Stub, the rest resolve as before", () => {
+    const all = buildAll({ FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1", ANTHROPIC_API_KEY: "sk-test", FORAY_STAGE_WRITER: "stub" });
     expect(all.writer).toBeInstanceOf(StubNarrationWriterBuilder);
     for (const name of ["understander", "researcher", "spine", "deepen", "verifier", "continuity"] as const) {
       expect(all[name], name).toMatchObject({ sentinel: "anthropic" });

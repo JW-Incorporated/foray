@@ -30,6 +30,8 @@ import {
  */
 
 const BASE_URL = "http://litellm.test:4000";
+/** GV-68: the two explicit opt-ins the legacy Anthropic builders need. */
+const LEGACY = { FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1" } as const;
 const SRC = path.resolve(__dirname, "..", "src", "generation");
 
 /** The builder each legacy stage runs today (create*.ts's lazy require). */
@@ -96,13 +98,32 @@ describe("stageRouting — today's choice is the default (GV-03)", () => {
     }
   });
 
+  /* GV-68 REVERSES GV-03's pinned case ('with only ANTHROPIC_API_KEY,
+     resolveRouting reproduces today's per-stage choice exactly'): the key
+     alone selects nothing now, and the table says it was ignored.
+     Mutation: restore readMode's `ANTHROPIC_API_KEY -> anthropic-legacy`
+     line. Ran it: red (mode 'anthropic-legacy'). */
+  it("GV-68: with only ANTHROPIC_API_KEY, every stage is the Stub and the key is flagged as ignored", () => {
+    const table = resolve({ ANTHROPIC_API_KEY: "sk-ant-test" });
+    expect(table.mode).toBe("stub");
+    expect(table.modeSource).toBe("default");
+    expect(table.anthropicKeyIgnored).toBe(true);
+    for (const stage of GENERATION_STAGES) {
+      if (stage === "spine-alt") expect(table.routes[stage]).toBeUndefined();
+      else if (stage === "judge") expect(table.routes[stage]).toEqual({ provider: "none", model: "none" });
+      else expect(table.routes[stage], stage).toEqual({ provider: "stub", model: "stub" });
+    }
+    expect(resolve({}).anthropicKeyIgnored).toBe(false);
+  });
+
   /* Mutation: change LEGACY_TIERS.deepen to 'opus' (or route research to
      sonnet) and the builder's own modelFor line disagrees. */
-  it("with only ANTHROPIC_API_KEY, every stage runs today's Anthropic builder on its models.ts tier", () => {
-    const source = { ANTHROPIC_API_KEY: "sk-ant-test" };
+  it("with both legacy opt-ins, every stage runs today's Anthropic builder on its models.ts tier", () => {
+    const source = { ...LEGACY, ANTHROPIC_API_KEY: "sk-ant-test" };
     const table = resolve(source);
     expect(table.mode).toBe("anthropic-legacy");
-    expect(table.modeSource).toBe("ANTHROPIC_API_KEY");
+    expect(table.modeSource).toBe("FORAY_GENERATION_MODE");
+    expect(table.anthropicKeyIgnored).toBe(false);
     for (const [stage, file] of Object.entries(LEGACY_BUILDER) as [StageId, string][]) {
       const tier = tierInSource(file);
       expect(table.routes[stage], stage).toEqual({ provider: "anthropic", tier, model: resolveModelId(tier, source) });
@@ -114,7 +135,7 @@ describe("stageRouting — today's choice is the default (GV-03)", () => {
   /* Mutation: resolve the legacy model with resolveModelId(tier) (process.env)
      instead of the injected source and the override is ignored. */
   it("FORAY_MODEL_SONNET still swaps the same four stages it swaps today", () => {
-    const table = resolve({ ANTHROPIC_API_KEY: "k", FORAY_MODEL_SONNET: "sonnet-pinned-snapshot" });
+    const table = resolve({ ...LEGACY, ANTHROPIC_API_KEY: "k", FORAY_MODEL_SONNET: "sonnet-pinned-snapshot" });
     const swapped = GENERATION_STAGES.filter((s) => table.routes[s]?.model === "sonnet-pinned-snapshot");
     expect(swapped.sort()).toEqual(["continuity", "deepen", "verifier", "writer"]);
   });
@@ -151,8 +172,8 @@ describe("stageRouting — local mode and per-stage overrides (GV-03)", () => {
 
   /* Mutation: ignore FORAY_STAGE_* outside local mode and the writer stays
      anthropic. */
-  it("an override applies in any mode: FORAY_STAGE_WRITER=stub beside a key", () => {
-    const table = resolve({ ANTHROPIC_API_KEY: "k", FORAY_STAGE_WRITER: "stub" });
+  it("an override applies in any mode: FORAY_STAGE_WRITER=stub in the legacy mode", () => {
+    const table = resolve({ ...LEGACY, ANTHROPIC_API_KEY: "k", FORAY_STAGE_WRITER: "stub" });
     expect(table.routes.writer).toEqual({ provider: "stub", model: "stub" });
     expect(table.routes.spine?.provider).toBe("anthropic");
   });
@@ -268,6 +289,62 @@ describe("stageRouting — refusals name the variable, never the value (GV-03)",
   });
 });
 
+describe("stageRouting — the zero-Anthropic rule (GV-68)", () => {
+  /* Mutation: drop the FORAY_ALLOW_ANTHROPIC_LEGACY half of
+     assertAnthropicLegacyAllowed (`if (mode === "anthropic-legacy") return;`).
+     Ran it: red (the legacy mode resolves with one opt-in). */
+  it("anthropic-legacy without FORAY_ALLOW_ANTHROPIC_LEGACY=1 throws, naming the rule and the variable", () => {
+    for (const allow of [undefined, "0"]) {
+      const source = { FORAY_GENERATION_MODE: "anthropic-legacy", ANTHROPIC_API_KEY: "sk-ant-x", ...(allow ? { FORAY_ALLOW_ANTHROPIC_LEGACY: allow } : {}) };
+      const err = thrown(() => resolve(source));
+      expect(err).toBeInstanceOf(RoutingConfigError);
+      expect((err as RoutingConfigError).variable).toBe("FORAY_ALLOW_ANTHROPIC_LEGACY");
+      expect(err.message).toContain("zero Anthropic calls");
+      expect(err.message).toContain("FORAY_ALLOW_ANTHROPIC_LEGACY=1");
+      expect(err.message).not.toContain("sk-ant-x");
+    }
+  });
+
+  /* Mutation: check the opt-ins only for the legacy MODE (skip routes a
+     FORAY_STAGE_* variable set). Ran it: red (the stage override resolves
+     with no opt-in). */
+  it("an 'anthropic' stage override without both opt-ins throws, in any mode", () => {
+    const cases: [NodeJS.ProcessEnv, string][] = [
+      [{ FORAY_STAGE_SPINE: "anthropic" }, "FORAY_GENERATION_MODE"],
+      [{ FORAY_STAGE_SPINE: "anthropic", FORAY_ALLOW_ANTHROPIC_LEGACY: "1" }, "FORAY_GENERATION_MODE"],
+      [{ FORAY_LLM_BASE_URL: BASE_URL, FORAY_STAGE_WRITER: "anthropic", FORAY_ALLOW_ANTHROPIC_LEGACY: "1", ANTHROPIC_API_KEY: "k" }, "FORAY_GENERATION_MODE"],
+      [{ FORAY_GENERATION_MODE: "stub", FORAY_STAGE_RESEARCH: "anthropic", FORAY_ALLOW_ANTHROPIC_LEGACY: "1" }, "FORAY_GENERATION_MODE"]
+    ];
+    for (const [source, variable] of cases) {
+      const err = thrown(() => resolve(source));
+      expect(err, JSON.stringify(source)).toBeInstanceOf(RoutingConfigError);
+      expect((err as RoutingConfigError).variable).toBe(variable);
+      expect(err.message).toContain("zero Anthropic calls");
+    }
+    /* Both opt-ins: a mixed legacy run (one stage local) still resolves. */
+    const mixed = resolve({ ...LEGACY, FORAY_LLM_BASE_URL: BASE_URL, FORAY_STAGE_SPINE: "local" });
+    expect(mixed.routes.spine?.provider).toBe("local");
+    expect(mixed.routes.writer?.provider).toBe("anthropic");
+  });
+
+  /* Mutation: read FORAY_ALLOW_ANTHROPIC_LEGACY as truthy (any value opts in).
+     Ran it: red ('yes' resolves). */
+  it("FORAY_ALLOW_ANTHROPIC_LEGACY accepts only 1 or 0, naming the variable without its value", () => {
+    const err = thrown(() => resolve({ FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "yesPlease" }));
+    expect((err as RoutingConfigError).variable).toBe("FORAY_ALLOW_ANTHROPIC_LEGACY");
+    expect(err.message).not.toContain("yesPlease");
+  });
+
+  /* Mutation: set anthropicKeyIgnored from the key alone (ignore the routes).
+     Ran it: red (the legacy table says its key was ignored). */
+  it("anthropicKeyIgnored is set only when a key is present and no stage is routed 'anthropic'", () => {
+    expect(resolve({ FORAY_LLM_BASE_URL: BASE_URL, ANTHROPIC_API_KEY: "k" }).anthropicKeyIgnored).toBe(true);
+    expect(resolve({ FORAY_LLM_BASE_URL: BASE_URL }).anthropicKeyIgnored).toBe(false);
+    expect(resolve({ ...LEGACY, ANTHROPIC_API_KEY: "k" }).anthropicKeyIgnored).toBe(false);
+    expect(resolve({ ...LEGACY, ANTHROPIC_API_KEY: "k", FORAY_LLM_BASE_URL: BASE_URL, FORAY_GENERATION_MODE: "local" }).anthropicKeyIgnored).toBe(true);
+  });
+});
+
 describe("stageRouting — logging and the LiteLLM key (GV-03)", () => {
   /* Mutation: put llmBaseUrl into the summary unredacted, or a key field, and
      a secret appears in the JSON. */
@@ -380,8 +457,8 @@ describe("stageRouting — implementation registry (GV-03, from W7-02)", () => {
   it("the test seam swaps one registration and restores it", () => {
     registerStageImplementation("spine", "anthropic", sentinel("real"));
     const restore = __swapStageImplementationForTests("spine", "anthropic", sentinel("sentinel"));
-    expect(instantiateStage("spine", { source: { ANTHROPIC_API_KEY: "k" } })).toEqual({ name: "sentinel" });
+    expect(instantiateStage("spine", { source: { ...LEGACY, ANTHROPIC_API_KEY: "k" } })).toEqual({ name: "sentinel" });
     restore();
-    expect(instantiateStage("spine", { source: { ANTHROPIC_API_KEY: "k" } })).toEqual({ name: "real" });
+    expect(instantiateStage("spine", { source: { ...LEGACY, ANTHROPIC_API_KEY: "k" } })).toEqual({ name: "real" });
   });
 });

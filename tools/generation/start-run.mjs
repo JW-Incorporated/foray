@@ -1,10 +1,20 @@
 #!/usr/bin/env node
-/* The one command that starts a keyless generation run.
+/* The one command that starts a keyless LEGACY (Claude-relay) generation run.
  *
- *     node tools/generation/start-run.mjs -- --prompts prompts.json --duration medium
+ *     node tools/generation/start-run.mjs --legacy-claude -- --prompts prompts.json --duration medium
  *
  * It brings the relay up, points the Anthropic SDK at it, starts the batch
  * driver, and takes the relay back down when the driver exits.
+ *
+ * REFUSED BY DEFAULT (GV-68, docs/roadmap/generation-v2.md). The founder's
+ * rule is that the generation pipeline makes ZERO Anthropic calls, and the
+ * relay is a Claude transport. So this launcher refuses to start anything,
+ * relay included, unless `--legacy-claude` is passed; with it, the driver's
+ * environment also carries both legacy opt-ins the backend demands
+ * (FORAY_GENERATION_MODE=anthropic-legacy and FORAY_ALLOW_ANTHROPIC_LEGACY=1),
+ * and the launcher prints that the run breaks the rule. Local generation runs
+ * the driver directly (`npm run generate-forays` in backend/ with
+ * FORAY_LLM_BASE_URL set; docs/curation/generation-providers.md).
  *
  * WHY THIS EXISTS (issue #697)
  * Starting a run used to be a remembered ritual: rebuild the relay from a
@@ -35,6 +45,12 @@
  * read, written, or required; the value never leaves the machine, because the
  * base URL is 127.0.0.1.
  *
+ * GV-68 CHANGED THE FIRST HALF OF THAT: a key no longer selects the live
+ * builders at all (the backend's stage routing resolves a key-only shell to
+ * the Stub). The two legacy opt-ins select them, and driverEnv sets both. The
+ * placeholder is still set, because each Anthropic builder refuses to
+ * construct without a key (env.anthropicDryRun, unchanged).
+ *
  * WHY `tools/generation/` AND NOT A `backend/package.json` SCRIPT
  *   1. Path policy. `tools/` is ALLOWED in `tools/ci/path-policy.mjs`; `backend/`
  *      is not (only `backend/test/` is). A one-line npm script would drag every
@@ -49,9 +65,9 @@
  * EVERYTHING AFTER `--` GOES TO THE DRIVER UNCHANGED, so anything
  * `generateForays.ts` accepts works here and nothing has to be mirrored:
  *
- *     node tools/generation/start-run.mjs -- --prompts p.json --duration medium --limit 1
- *     node tools/generation/start-run.mjs --port 8899 -- --prompts p.json --dry-run
- *     node tools/generation/start-run.mjs --relay-only        # just the transport
+ *     node tools/generation/start-run.mjs --legacy-claude -- --prompts p.json --duration medium --limit 1
+ *     node tools/generation/start-run.mjs --legacy-claude --port 8899 -- --prompts p.json --dry-run
+ *     node tools/generation/start-run.mjs --legacy-claude --relay-only        # just the transport
  *
  * The floor for this file's suite lives in test/suite-integrity.test.js.
  */
@@ -93,6 +109,7 @@ export function splitArgs(argv) {
     parkTimeoutMs: Number(val("--park-timeout-ms", 0)),
     relayOnly: mine.includes("--relay-only"),
     quiet: mine.includes("--quiet"),
+    legacyClaude: mine.includes("--legacy-claude"),
     driverArgs: driver,
   };
 }
@@ -121,23 +138,59 @@ export function driverEntryFromPackage(pkg) {
   return m[1];
 }
 
+/** GV-68: the rule a relay run breaks, and the two opt-ins the backend's
+ *  stage routing demands before it builds a legacy Anthropic builder. */
+export const ZERO_ANTHROPIC_RULE =
+  "the generation pipeline makes zero Anthropic calls (founder rule, docs/roadmap/generation-v2.md Constraints)";
+export const LEGACY_OPT_INS = Object.freeze({
+  FORAY_GENERATION_MODE: "anthropic-legacy",
+  FORAY_ALLOW_ANTHROPIC_LEGACY: "1",
+});
+
 /**
- * The environment the driver runs in. A pure function so a test can assert both
+ * GV-68: why this launcher will not start, or null when `--legacy-claude` was
+ * passed. Checked before the relay is created, so a refused start leaves no
+ * relay, no queue directory and no driver behind.
+ */
+export function legacyRefusal(args) {
+  if (args.legacyClaude) return null;
+  return (
+    `[start-run] refused: the relay is a Claude transport and ${ZERO_ANTHROPIC_RULE}. ` +
+    "Pass --legacy-claude to start a legacy Claude run anyway (it sets FORAY_GENERATION_MODE=anthropic-legacy and " +
+    "FORAY_ALLOW_ANTHROPIC_LEGACY=1 for the driver). A local run needs no relay: run the driver directly with " +
+    "FORAY_LLM_BASE_URL set (docs/curation/generation-providers.md)."
+  );
+}
+
+/**
+ * The environment the driver runs in. A pure function so a test can assert the
  * rules without starting a process: the base URL always points at the relay,
- * and an EXISTING key is never overwritten (a keyed run through a relay is a
+ * an EXISTING key is never overwritten (a keyed run through a relay is a
  * legitimate thing to want, and clobbering a real key would silently change
- * which transport a run used).
+ * which transport a run used), and GV-68's two legacy opt-ins are set, since
+ * without them the backend resolves every stage to the Stub (a key alone no
+ * longer selects the Anthropic builders). driverEnv is only reached with
+ * `--legacy-claude`.
  */
 export function driverEnv(base, port, placeholder = PLACEHOLDER_KEY) {
   return {
     ...base,
     ANTHROPIC_BASE_URL: `http://127.0.0.1:${port}`,
     ANTHROPIC_API_KEY: base.ANTHROPIC_API_KEY ?? placeholder,
+    ...LEGACY_OPT_INS,
   };
 }
 
 async function main() {
   const args = splitArgs(process.argv.slice(2));
+  /* GV-68: nothing starts without the explicit legacy opt-in. */
+  const refusal = legacyRefusal(args);
+  if (refusal !== null) {
+    console.error(refusal);
+    process.exitCode = 2;
+    return;
+  }
+  console.warn(`[start-run] --legacy-claude: this run BREAKS the zero-Anthropic rule (${ZERO_ANTHROPIC_RULE}).`);
   const relay = createRelay({ dir: args.dir, parkTimeoutMs: args.parkTimeoutMs, quiet: args.quiet });
   const port = await relay.listen(args.port);
 
@@ -159,6 +212,7 @@ async function main() {
   }
 
   const env = driverEnv(process.env, port);
+  console.warn("[start-run] driver env: FORAY_GENERATION_MODE=anthropic-legacy, FORAY_ALLOW_ANTHROPIC_LEGACY=1 (the legacy opt-ins).");
   if (env.ANTHROPIC_API_KEY === PLACEHOLDER_KEY) {
     console.log("[start-run] ANTHROPIC_API_KEY was unset; using the relay placeholder so the LIVE builders are");
     console.log("[start-run] constructed. Without it every create*() returns a Stub and the relay sees no calls.");

@@ -8,10 +8,21 @@ import type { SpineReask } from "../generation/buildSpine";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
-import { checkpointFingerprint, checkpointRunVariant } from "../generation/checkpoint";
+import {
+  CHECKPOINT_STAGE_ORDER,
+  CheckpointFileSchema,
+  checkpointFingerprint,
+  checkpointForkStamp,
+  checkpointRunVariant,
+  forkSeedRefusal,
+  isCheckpointStage,
+  stagesAtOrAfter,
+  type CheckpointForkStamp,
+  type CheckpointStage
+} from "../generation/checkpoint";
 import { resolvePipelineFlags, type PipelineFlags } from "../generation/pipelineFlags";
 import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
-import { getUsageTotals } from "../generation/usageTracking";
+import { anthropicCallCount, getUsageTotals } from "../generation/usageTracking";
 import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
 import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../generation/deliveryTimeline";
 import { spanMsOf } from "../generation/stageTiming";
@@ -24,11 +35,14 @@ import type { VeracityGateResult, VeracityMetrics } from "../generation/veracity
 import type { PublishRecord } from "./publishForay";
 import { modelSummary } from "../config/models";
 import {
+  ALLOW_ANTHROPIC_LEGACY_ENV,
   ALLOW_PROSE_ON_SECOND_ENV,
+  ANTHROPIC_API_KEY_ENV,
   GENERATION_MODE_ENV,
   GENERATION_STAGES,
   LLM_BASE_URL_ENV,
   RoutingConfigError,
+  ZERO_ANTHROPIC_RULE,
   describeStageAssignments,
   resolveRouting,
   routingSummary,
@@ -99,6 +113,8 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *                              [--notify <command>] [--author-id <id>]
  *                              [--job-dir <dir>]
  *                              [--stage-provider stage=provider[:lane][,...]]
+ *                              [--keep-checkpoints]
+ *                              [--seed-checkpoints <dir> --rerun-from <stage>]
  *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
  *   same default `generate-foray` uses; `--author` still works for one
  *   release and prints a deprecation line)
@@ -127,6 +143,17 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  * (`routing`, `generationMode`, and `stageAssignments` per row), and in local
  * mode (or with any stage overridden) the routing joins the checkpoint
  * variant, so a resumed run never mixes stages built under another routing.
+ *
+ * Checkpoint fork (GV-62, bench prompts only; every spec needs `bench: true`
+ * or the CLI refuses before anything runs, because §9.4 says a listener's
+ * prompt is discarded and its checkpoint must not outlive the run):
+ * `--keep-checkpoints` keeps `<key>.checkpoint.json` beside a finished
+ * candidate (stamped with what built it), and arm B's
+ * `--seed-checkpoints <arm A out> --rerun-from <stage>` copies arm A's file
+ * for the same prompt into its own --out, drops the stages at and after
+ * <stage> (CHECKPOINT_STAGE_ORDER in generation/checkpoint.ts), and so
+ * rebuilds only from the changed stage. A missing or unusable seed is logged
+ * and the prompt runs from scratch; the row records `seededFrom`.
  */
 
 interface PromptSpec {
@@ -135,6 +162,9 @@ interface PromptSpec {
   topic?: string;
   /** GV-01: a stable id for the prompt, reported as `promptId`. */
   id?: string;
+  /** GV-62: a bench prompt (a golden-set or swap-arm prompt, not a
+   * listener's), the only kind whose checkpoint may be kept or seeded. */
+  bench?: boolean;
 }
 
 /** G-30 (a): how many times one prompt resumes itself before the driver
@@ -183,6 +213,14 @@ export interface CliArgs {
    * Absent unless given, so the parsed args of a run without it are
    * unchanged. */
   stageProviders?: Partial<Record<StageId, string>>;
+  /** GV-62: `--keep-checkpoints`, keep a finished bench prompt's checkpoint
+   * (stamped for forking) instead of deleting it. Absent unless given. */
+  keepCheckpoints?: boolean;
+  /** GV-62: `--seed-checkpoints <dir>`, an earlier arm's --out whose kept
+   * checkpoints seed this run. Given only with `rerunFrom`. */
+  seedCheckpoints?: string;
+  /** GV-62: `--rerun-from <stage>`, the first stage a seeded run rebuilds. */
+  rerunFrom?: CheckpointStage;
 }
 
 /** A command-line value the driver refuses. `main` prints the message and
@@ -223,8 +261,12 @@ export function parseStageProviders(values: readonly string[]): Partial<Record<S
       if (!(GENERATION_STAGES as readonly string[]).includes(stage)) refuse("names no stage");
       if (out[stage] !== undefined) refuse("routes a stage a second time");
       try {
+        /* GV-68: both legacy opt-ins, so this checks the entry's shape only;
+           whether an 'anthropic' entry may run is the real resolveRouting's
+           call (it needs both opt-ins in the real environment). */
         resolveRouting({
-          [GENERATION_MODE_ENV]: "stub",
+          [GENERATION_MODE_ENV]: "anthropic-legacy",
+          [ALLOW_ANTHROPIC_LEGACY_ENV]: "1",
           [LLM_BASE_URL_ENV]: "http://stage-provider.invalid",
           [ALLOW_PROSE_ON_SECOND_ENV]: "1",
           [stageEnvVar(stage)]: spec
@@ -249,7 +291,9 @@ export function withStageProviders(env: NodeJS.ProcessEnv, overrides: Partial<Re
 
 /** GV-55: the MODE line, then MODELS when a stage is on the legacy
  * Anthropic builders, then STAGES when any stage is not a stub. With no
- * routing variable set, the MODE and MODELS lines are today's text. */
+ * routing variable set, the MODE and MODELS lines are today's text. GV-68:
+ * when ANTHROPIC_API_KEY is set but selects nothing, the MODE line says the
+ * key was ignored and why. */
 export function modeLines(
   routing: RoutingTable,
   caps: { runUsd: number; episodeUsd: number },
@@ -261,11 +305,18 @@ export function modeLines(
   const inert =
     (routing.mode === "stub" && routing.overridden.length === 0) || routes.every((r) => r.provider === "stub" || r.provider === "none");
   const metered = `metered by BudgetGuard (run $${caps.runUsd} for this process, per-Foray $${caps.episodeUsd})`;
-  if (inert) return [`MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`];
+  const ignored = routing.anthropicKeyIgnored ? ` ${anthropicKeyIgnoredNote()}` : "";
+  if (inert) {
+    return [
+      routing.anthropicKeyIgnored
+        ? `MODE: dry-run — stub builders, $0, output is structurally real but editorially empty.${ignored}`
+        : `MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`
+    ];
+  }
   const lines = [
-    routing.mode === "anthropic-legacy" && routing.overridden.length === 0
+    (routing.mode === "anthropic-legacy" && routing.overridden.length === 0
       ? `MODE: live — Anthropic builders, ${metered}.`
-      : `MODE: mixed/live — generation mode ${routing.mode} (from ${routing.modeSource}), routed per stage below, ${metered}.`
+      : `MODE: mixed/live — generation mode ${routing.mode} (from ${routing.modeSource}), routed per stage below, ${metered}.`) + ignored
   ];
   if (routes.some((r) => r.provider === "anthropic")) lines.push(`MODELS: opus=${models.opus} sonnet=${models.sonnet} haiku=${models.haiku}`);
   const summary = routingSummary(routing);
@@ -274,6 +325,30 @@ export function modeLines(
   const llm = summary.llm.baseUrl !== null ? `; llm ${summary.llm.baseUrl} (key ${summary.llm.keyConfigured ? "configured" : "not set"})` : "";
   lines.push(`STAGES: ${stages.join(", ")}${overridden}${llm}`);
   return lines;
+}
+
+/** GV-68: what the MODE line appends when ANTHROPIC_API_KEY selected nothing. */
+export function anthropicKeyIgnoredNote(): string {
+  return (
+    `${ANTHROPIC_API_KEY_ENV} is set and IGNORED: ${ZERO_ANTHROPIC_RULE}; ` +
+    `the legacy builders need ${GENERATION_MODE_ENV}=anthropic-legacy and ${ALLOW_ANTHROPIC_LEGACY_ENV}=1.`
+  );
+}
+
+/**
+ * GV-68: the batch's zero-Anthropic check. A batch that sent any Anthropic
+ * request without FORAY_ALLOW_ANTHROPIC_LEGACY=1 broke the founder's rule, and
+ * the driver exits non-zero after writing report.json (which carries
+ * anthropicCalls, per row and at the top). Returns the message, or null when
+ * the batch is clean or the legacy opt-in was given.
+ */
+export function anthropicRuleViolation(anthropicCalls: number, env: NodeJS.ProcessEnv = process.env): string | null {
+  if (anthropicCalls <= 0) return null;
+  if (env[ALLOW_ANTHROPIC_LEGACY_ENV]?.trim() === "1") return null;
+  return (
+    `ZERO-ANTHROPIC RULE BROKEN: this batch sent ${anthropicCalls} Anthropic request(s) without ${ALLOW_ANTHROPIC_LEGACY_ENV}=1 ` +
+    `(${ZERO_ANTHROPIC_RULE}). report.json records anthropicCalls per row.`
+  );
 }
 
 export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.env): CliArgs {
@@ -302,6 +377,7 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     stageProviderValues.push(value);
   });
   const stageProviders = stageProviderValues.length ? parseStageProviders(stageProviderValues) : undefined;
+  const fork = parseForkFlags(argv);
   return {
     prompts: get("--prompts") ?? null,
     out: get("--out") ?? path.join("data-local", "foray-candidates"),
@@ -316,8 +392,60 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     notify: get("--notify") ?? (notifyEnv ? notifyEnv : null),
     ...(argv.includes("--fast-path") ? { fastPath: true } : {}),
     ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {}),
-    ...(stageProviders ? { stageProviders } : {})
+    ...(stageProviders ? { stageProviders } : {}),
+    ...fork
   };
+}
+
+/**
+ * GV-62: `--keep-checkpoints`, `--seed-checkpoints <dir>` and
+ * `--rerun-from <stage>`, each absent unless given. Refused (CliArgError):
+ * a flag with no value, an unknown stage, --rerun-from without
+ * --seed-checkpoints or the other way round, --seed-checkpoints with
+ * --no-resume (which would delete the seeded file) or --dry-run (which runs
+ * without a store), and a seed directory that is the --out directory.
+ */
+function parseForkFlags(argv: string[]): Pick<CliArgs, "keepCheckpoints" | "seedCheckpoints" | "rerunFrom"> {
+  const valueOf = (flag: string): string | undefined => {
+    const i = argv.indexOf(flag);
+    if (i < 0) return undefined;
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith("--") || value.trim() === "") throw new CliArgError(`${flag} needs a value`);
+    return value;
+  };
+  const seed = valueOf("--seed-checkpoints");
+  const rerunFrom = valueOf("--rerun-from");
+  if (rerunFrom !== undefined && !isCheckpointStage(rerunFrom)) {
+    throw new CliArgError(`--rerun-from: "${rerunFrom}" is not a checkpoint stage; expected one of ${CHECKPOINT_STAGE_ORDER.join(", ")}`);
+  }
+  if (rerunFrom !== undefined && seed === undefined) throw new CliArgError("--rerun-from needs --seed-checkpoints <dir>");
+  if (seed !== undefined && rerunFrom === undefined) throw new CliArgError("--seed-checkpoints needs --rerun-from <stage>");
+  if (seed !== undefined && argv.includes("--no-resume")) throw new CliArgError("--seed-checkpoints cannot be used with --no-resume");
+  if (seed !== undefined && argv.includes("--dry-run")) throw new CliArgError("--seed-checkpoints cannot be used with --dry-run (a dry run keeps no checkpoint)");
+  if (seed !== undefined) {
+    const outIndex = argv.indexOf("--out");
+    const out = outIndex >= 0 && argv[outIndex + 1] !== undefined ? argv[outIndex + 1]! : path.join("data-local", "foray-candidates");
+    if (path.resolve(seed) === path.resolve(out)) throw new CliArgError("--seed-checkpoints must name another arm's directory, not this run's --out");
+  }
+  return {
+    ...(argv.includes("--keep-checkpoints") ? { keepCheckpoints: true } : {}),
+    ...(seed !== undefined && rerunFrom !== undefined ? { seedCheckpoints: seed, rerunFrom } : {})
+  };
+}
+
+/**
+ * GV-62: the checkpoint-fork flags are for bench prompts only. Returns why
+ * the run is refused when `--keep-checkpoints` or `--seed-checkpoints` is
+ * given and any prompt about to run lacks `bench: true` (§9.4: a listener's
+ * prompt is discarded, so its checkpoint must never outlive the run), else
+ * null. `main` checks it before anything is resolved or spent.
+ */
+export function benchFlagRefusal(args: Pick<CliArgs, "keepCheckpoints" | "seedCheckpoints">, specs: readonly PromptSpec[]): string | null {
+  const flag = args.keepCheckpoints ? "--keep-checkpoints" : args.seedCheckpoints !== undefined ? "--seed-checkpoints" : null;
+  if (flag === null) return null;
+  const notBench = specs.findIndex((spec) => spec.bench !== true);
+  if (notBench < 0) return null;
+  return `${flag} is for bench prompts only: prompt ${notBench + 1} of ${specs.length} has no "bench": true`;
 }
 
 /** Accepts both file shapes; a bare string is the common case. */
@@ -385,6 +513,9 @@ export function batchReportDocument(s: {
    * credentials) the batch ran under. */
   generationMode: GenerationMode;
   routing: RoutingSummary;
+  /** GV-68: Anthropic requests this batch's process sent (0 under the
+   * zero-Anthropic rule). */
+  anthropicCalls: number;
   entries: PriorReportEntry[];
 }): Record<string, unknown> {
   return {
@@ -409,6 +540,8 @@ export function batchReportDocument(s: {
        bench row is attributable. */
     generationMode: s.generationMode,
     routing: s.routing,
+    /* GV-68: the zero-Anthropic rule, proved per batch (and per row). */
+    anthropicCalls: s.anthropicCalls,
     entries: s.entries
   };
 }
@@ -793,7 +926,19 @@ export type ReportEntry = {
    * machine that served it (`describeStageAssignments`), from the routing the
    * run was resolved under. On every row. */
   stageAssignments?: Partial<Record<StageId, StageAssignment>>;
+  /** GV-62: under `--seed-checkpoints`, the seed this prompt was forked from
+   * (the seed directory as given, the stage it reran from, and the banked
+   * keys it kept), or null when no usable seed existed and the prompt ran
+   * from scratch. Absent without the flag. */
+  seededFrom?: SeededFrom | null;
+  /** GV-68: Anthropic requests this prompt sent, across every attempt
+   * (createMessage's per-process count, read before and after). 0 under the
+   * zero-Anthropic rule. On every row. */
+  anthropicCalls?: number;
 };
+
+/** GV-62: a report row's `seededFrom`. */
+export type SeededFrom = { dir: string; rerunFrom: CheckpointStage; stagesKept: string[] };
 
 /**
  * A `report.json` row as read back from disk: any earlier run's shape, plus
@@ -844,6 +989,87 @@ export function mergeReportEntries(prior: readonly PriorReportEntry[], current: 
     merged[i] = { ...entry };
   }
   return merged;
+}
+
+/** GV-62: rewrites a finished bench prompt's checkpoint with the fork stamp
+ * (same temp-and-rename write as FileCheckpointStore). A stamp that cannot be
+ * written leaves the file as it was: a seed without one still forks into an
+ * arm with the same fingerprint. Never throws. */
+function keepCheckpoint(store: FileCheckpointStore, key: string, stamp: CheckpointForkStamp): void {
+  try {
+    const kept = store.load(key);
+    if (!kept) return;
+    const file = store.filePathFor(key);
+    const tmp = `${file}.tmp`;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the driver's own checkpoint path under --out.
+    fs.writeFileSync(tmp, `${JSON.stringify({ ...kept, fork: stamp }, null, 2)}\n`);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    fs.renameSync(tmp, file);
+  } catch (err) {
+    console.warn(`  keep: could not stamp ${store.filePathFor(key)}: ${errorMessage(err)}`);
+  }
+}
+
+/**
+ * GV-62: arm B's fork for one prompt. Reads `<seedDir>/<key>.checkpoint.json`;
+ * when `forkSeedRefusal` accepts it, writes it into this run's store under
+ * this run's fingerprint (without the seed's stamp), then drops every banked
+ * stage at or after `rerunFrom` through `FileCheckpointStore.drop`, so the
+ * pipeline resumes the upstream stages and rebuilds the rest. A missing,
+ * unreadable or refused seed is logged, any checkpoint already in this run's
+ * --out for the key is discarded (the prompt runs from scratch), and the
+ * result is null.
+ */
+export function seedCheckpoint(opts: {
+  seedDir: string;
+  rerunFrom: CheckpointStage;
+  key: string;
+  store: FileCheckpointStore;
+  fingerprint: string;
+  stamp: CheckpointForkStamp;
+  label: string;
+}): SeededFrom | null {
+  const seedFile = path.join(path.resolve(opts.seedDir), `${opts.key}.checkpoint.json`);
+  const unseeded = (why: string): null => {
+    console.log(`  seed   ${opts.label} — no usable seed (${why}); running from scratch`);
+    opts.store.discard(opts.key);
+    return null;
+  };
+  let raw: unknown;
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the operator's own --seed-checkpoints dir and the driver's key.
+    if (!fs.existsSync(seedFile)) return unseeded(`${seedFile} does not exist`);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    raw = JSON.parse(fs.readFileSync(seedFile, "utf8"));
+  } catch (err) {
+    return unseeded(`${seedFile} is unreadable: ${errorMessage(err)}`);
+  }
+  const parsed = CheckpointFileSchema.safeParse(raw);
+  if (!parsed.success) return unseeded(`${seedFile} is not a checkpoint file`);
+  const refusal = forkSeedRefusal(parsed.data, { fingerprint: opts.fingerprint, stamp: opts.stamp }, opts.rerunFrom);
+  if (refusal !== null) return unseeded(`${seedFile}: ${refusal}`);
+  const { fork: _fork, ...seed } = parsed.data as typeof parsed.data & { fork?: unknown };
+  void _fork;
+  const target = opts.store.filePathFor(opts.key);
+  try {
+    const tmp = `${target}.tmp`;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- the driver's own checkpoint path under --out.
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    fs.writeFileSync(tmp, `${JSON.stringify({ ...seed, key: opts.key, fingerprint: opts.fingerprint, updatedAt: new Date().toISOString() }, null, 2)}\n`);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    fs.renameSync(tmp, target);
+  } catch (err) {
+    return unseeded(`could not copy it to ${target}: ${errorMessage(err)}`);
+  }
+  const keys = Object.keys(seed.stages);
+  const dropped = stagesAtOrAfter(keys, opts.rerunFrom);
+  opts.store.drop(opts.key, dropped);
+  const stagesKept = keys.filter((key) => !dropped.includes(key));
+  console.log(
+    `  seed   ${opts.label} — from ${opts.seedDir}: kept ${stagesKept.length} stage(s) (${stagesKept.join(", ") || "none"}), rerunning from ${opts.rerunFrom}`
+  );
+  return { dir: opts.seedDir, rerunFrom: opts.rerunFrom, stagesKept };
 }
 
 /**
@@ -918,11 +1144,30 @@ export async function generateOneCandidate(
      store's and the session's variant agree. */
   const routing = resolveRouting(withStageProviders(process.env, args.stageProviders));
   const stageAssignments = describeStageAssignments({ routing });
-  const checkpointStore = new FileCheckpointStore(
-    path.resolve(args.out),
-    checkpointFingerprint({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, variant: checkpointRunVariant(flags, routing) })
-  );
+  const fingerprint = checkpointFingerprint({
+    prompt: spec.prompt,
+    duration: request.duration,
+    topic: spec.topic,
+    variant: checkpointRunVariant(flags, routing)
+  });
+  const checkpointStore = new FileCheckpointStore(path.resolve(args.out), fingerprint);
+  /* GV-62: what a kept checkpoint is stamped with, and what a seed is
+     checked against. */
+  const forkStamp = checkpointForkStamp({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, flags, routing });
   if (args.noResume) checkpointStore.discard(checkpointKey);
+  /* GV-62: arm B's fork, before the resume check below reads the file. */
+  const seededFrom =
+    args.seedCheckpoints !== undefined && args.rerunFrom !== undefined
+      ? seedCheckpoint({
+          seedDir: args.seedCheckpoints,
+          rerunFrom: args.rerunFrom,
+          key: checkpointKey,
+          store: checkpointStore,
+          fingerprint,
+          stamp: forkStamp,
+          label: spec.prompt.slice(0, 60)
+        })
+      : undefined;
   const resumable = !args.noResume && checkpointStore.load(checkpointKey) !== null;
   if (resumable) {
     const stages = Object.keys(checkpointStore.load(checkpointKey)!.stages);
@@ -1008,6 +1253,8 @@ export async function generateOneCandidate(
      stays the pipeline's own stage sum, as before. */
   const startedMs = Date.now();
   let calls = 0;
+  /* GV-68: the per-process Anthropic count when this prompt began. */
+  const anthropicAtStart = anthropicCallCount();
   /* GV-01: one RunLog per attempt, written by THIS module (the pipeline's
      generation/ modules never write files) unless --dry-run. The report row
      names the final attempt's file. */
@@ -1041,7 +1288,9 @@ export async function generateOneCandidate(
       ...(runLogRel !== undefined ? { runLog: runLogRel } : {}),
       flags,
       gates,
-      stageAssignments
+      stageAssignments,
+      anthropicCalls: anthropicCallCount() - anthropicAtStart,
+      ...(seededFrom !== undefined ? { seededFrom } : {})
     };
     if (!notify) return withCalls;
     const notification = await notify({
@@ -1248,8 +1497,12 @@ export async function generateOneCandidate(
          for the next reader, and so is the partial candidate: its job (letting
          the requesting listener start early) is done the moment the whole
          Foray exists, and leaving it would just be a second, staler copy of
-         the same content in the output directory. */
-      checkpointStore.discard(checkpointKey);
+         the same content in the output directory.
+         GV-62: under --keep-checkpoints a BENCH prompt's checkpoint stays,
+         stamped so a later arm can fork it (main refused the flag unless
+         every prompt is a bench prompt; the spec is checked again here). */
+      if (args.keepCheckpoints && spec.bench === true) keepCheckpoint(checkpointStore, checkpointKey, forkStamp);
+      else checkpointStore.discard(checkpointKey);
       discardPartial();
     }
     const finished = await finishEntry({ ...entry, file: args.dryRun ? undefined : file }, "built", id);
@@ -1271,7 +1524,11 @@ export async function generateOneCandidate(
 
 /** The CLI. Exported (GV-55) so a test can prove a refused argument exits
  * non-zero before anything runs; the script entry below passes process.argv. */
-export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+export async function main(
+  argv: string[] = process.argv.slice(2),
+  /** GV-68 test seam: the pipeline each prompt runs (default runForayPipeline). */
+  deps: { runPipeline?: typeof runForayPipeline } = {}
+): Promise<void> {
   let args: CliArgs;
   try {
     args = parseArgs(argv);
@@ -1288,7 +1545,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       "Usage: npm run generate-forays -- --prompts prompts.json [--out DIR] " +
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
         "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
-        "[--stage-provider stage=provider[:lane][,...]]"
+        "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>]"
     );
     process.exitCode = 1;
     return;
@@ -1297,6 +1554,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
      before anything resolves a route. */
   Object.assign(process.env, withStageProviders({}, args.stageProviders));
   const batchStartedMs = Date.now();
+  /* GV-68: the per-process Anthropic count when this batch began. */
+  const anthropicAtBatchStart = anthropicCallCount();
 
   try {
     /* F-04. Run 1 could only be started by setting DAILY_BUDGET_USD=1000 (now
@@ -1311,6 +1570,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
 
     const { specs, identity: promptSet } = readPromptSet(args.prompts);
     const queue = args.limit ? specs.slice(0, args.limit) : specs;
+    /* GV-62: the fork flags are refused for a listener's prompt before any
+       route is resolved or any model called. */
+    const benchRefusal = benchFlagRefusal(args, queue);
+    if (benchRefusal !== null) {
+      console.error(benchRefusal);
+      process.exitCode = 1;
+      return;
+    }
 
     /* State the mode before doing anything expensive. A run that silently used
        stubs and produced 200 placeholder Forays would look exactly like a
@@ -1379,7 +1646,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     );
 
     const { report, generated, skipped } = await generateQueue(queue, (spec) =>
-      generateOneCandidate(spec, args, { cueProvider, textIndex })
+      generateOneCandidate(spec, args, { cueProvider, textIndex, ...(deps.runPipeline ? { runPipeline: deps.runPipeline } : {}) })
     );
 
     /* Count what actually happened, not what the outcome tag says. A run that
@@ -1392,6 +1659,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     const aborts = report.filter((r) => r.outcome === "aborted").length;
     const resumesTotal = report.reduce((sum, r) => sum + (r.resumes?.length ?? 0), 0);
     const callsTotal = report.reduce((sum, r) => sum + (r.calls ?? 0), 0);
+    const anthropicCalls = anthropicCallCount() - anthropicAtBatchStart;
 
     const reportPath = path.join(path.resolve(args.out), "report.json");
     /* backend-rest-7: the batch is re-run in the same --out directory by
@@ -1419,6 +1687,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
             prompts: promptSet,
             generationMode: routing.mode,
             routing: routingSummary(routing),
+            anthropicCalls,
             entries
           }),
           null,
@@ -1451,6 +1720,13 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     if (!args.dryRun) {
       console.log(`Report: ${reportPath}`);
       console.log(`Publish one with: npm run publish-foray -- --input <candidate>.json`);
+    }
+    /* GV-68: after the report is on disk, so the evidence survives the
+       non-zero exit. */
+    const violation = anthropicRuleViolation(anthropicCalls);
+    if (violation !== null) {
+      console.error(violation);
+      process.exitCode = 1;
     }
   } catch (err) {
     /* G-30 (c): a crash is the one outcome I-15 lost entirely — the shell

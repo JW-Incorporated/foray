@@ -296,6 +296,8 @@ public final class EngineConstants {
         public static final String APP_ARTWORK_URL = "icon-512.png";
         /** {@code APP_NAME} */
         public static final String APP_NAME = "4a";
+        /** {@code AWAITING_TITLE} */
+        public static final String AWAITING_TITLE = "Building the next part";
         /** {@code MEDIA_ACTIONS} */
         public static final List<String> MEDIA_ACTIONS = Collections.unmodifiableList(Arrays.asList("play", "pause", "stop", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto"));
         /** {@code NONE} */

@@ -38,9 +38,27 @@
  *
  * NO CREDENTIALS and no network: this edits one JSON file.
  *
+ * CANDIDATE MODE (GV-71, docs/roadmap/generation-v2.md; opt-in, the forays.json
+ * path above is unchanged). `--candidate PATH` stamps a generated candidate
+ * (top-level `id`, `items`, camelCase `runtimeSec`, the file render-foray.py
+ * --candidate rendered from) instead of data/forays.json: `candidateToDoc`
+ * wraps it as a one-Foray draft catalogue, the same `stampForays` stamps it
+ * (every refusal above carries over unchanged: stale script, other profile,
+ * bad base), and the stamped items and restated runtime are written back into
+ * the candidate file. A candidate path that is data/forays.json, or anything
+ * under data/, is refused before anything is read or written: this mode never
+ * touches the published catalogue.
+ *
+ * A STAMPED CANDIDATE CANNOT BE PUBLISHED as is: check-forays refuses rendered
+ * narration (audio_url) on a published Foray while RENDERED_NARRATION_ON_PUBLISHED
+ * is false (tools/foray/check-forays.mjs). The catalogue lane that promotes
+ * candidates must keep a stamped one a draft, or strip its audio_url, until
+ * that flag flips.
+ *
  *     node tools/narration/stamp-narration.mjs --manifest out/            # every manifest*.json in out/
  *     node tools/narration/stamp-narration.mjs --manifest a.json --manifest b.json --base https://audio.jwlabs.ai
  *     node tools/narration/stamp-narration.mjs --manifest out/ --check    # report, write nothing
+ *     node tools/narration/stamp-narration.mjs --manifest out/ --candidate data-local/runs/<id>/candidate.json
  */
 
 import fs from "node:fs";
@@ -107,7 +125,7 @@ const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v)
  * Returns `{ changed, stamped, forays: [{id, runtime_before, runtime_after}], skipped }`.
  * Throws StampError before mutating anything if any line is refused.
  */
-export function stampForays(doc, manifests, { base, profile, allowPublished = false } = {}) {
+export function stampForays(doc, manifests, { base, profile, allowPublished = false, docLabel = "data/forays.json" } = {}) {
   const baseUrl = normalizeBase(base);
   const defaultVoice = profile.default_voice;
   const forays = new Map((doc.forays ?? []).map((f) => [f.id, f]));
@@ -121,7 +139,7 @@ export function stampForays(doc, manifests, { base, profile, allowPublished = fa
     for (const e of manifest.items ?? []) {
       if (e.status !== "rendered" && e.status !== "unchanged") continue;
       const foray = forays.get(e.foray_id);
-      if (!foray) throw new StampError(`${file}: Foray ${e.foray_id} is not in data/forays.json`);
+      if (!foray) throw new StampError(`${file}: Foray ${e.foray_id} is not in ${docLabel}`);
       if (foray.status === "published" && !allowPublished) {
         throw new StampError(
           `${e.foray_id} is PUBLISHED. Phase 1 stamps drafts only: a narration file that fails to load stops the ` +
@@ -203,13 +221,63 @@ export function stampForays(doc, manifests, { base, profile, allowPublished = fa
   return { stamped, forays: out };
 }
 
+/* ---- GV-71: candidate mode ---- */
+
+/** A generated candidate as the one-Foray catalogue `stampForays` takes: the
+    candidate's items, and its camelCase `runtimeSec` as the catalogue's
+    snake_case `runtime_sec` (`stampCandidate` writes both back). Always a
+    draft: a candidate is never a published Foray. */
+export function candidateToDoc(c) {
+  if (!isObject(c) || typeof c.id !== "string" || !c.id) throw new StampError("the candidate has no top-level string `id`");
+  if (!Array.isArray(c.items)) throw new StampError(`candidate ${c.id} has no top-level \`items\` list`);
+  return { forays: [{ id: c.id, status: "draft", items: c.items, runtime_sec: c.runtimeSec }] };
+}
+
+/** Stamp a candidate in place: items from the stamp, `runtimeSec` restated by
+    the rendered delta. Throws StampError, with the candidate untouched, on any
+    refusal `stampForays` makes. */
+export function stampCandidate(candidate, manifests, { base, profile } = {}) {
+  const doc = candidateToDoc(candidate);
+  const res = stampForays(doc, manifests, { base, profile, docLabel: `candidate ${candidate.id}` });
+  const [foray] = doc.forays;
+  candidate.items = foray.items;
+  if (typeof foray.runtime_sec === "number") candidate.runtimeSec = foray.runtime_sec;
+  return res;
+}
+
+const samePathCase = (p) => (process.platform === "win32" ? p.toLowerCase() : p);
+const realOr = (p) => {
+  try {
+    return fs.realpathSync.native(p);
+  } catch {
+    return p;
+  }
+};
+
+/** Refuse a candidate path that is data/forays.json or lies anywhere under
+    data/ (links resolved): this mode never writes the catalogue. Returns the
+    resolved path. */
+export function assertCandidatePath(p, { root = REPO_ROOT } = {}) {
+  if (typeof p !== "string" || !p.trim()) throw new StampError("--candidate needs a path");
+  const resolved = realOr(path.resolve(p));
+  const dataDir = realOr(path.resolve(root, "data"));
+  const rel = path.relative(samePathCase(dataDir), samePathCase(resolved));
+  if (rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel))) {
+    throw new StampError(
+      `--candidate ${p} is under data/ (${resolved}); candidate mode never writes the catalogue or anything beside it`
+    );
+  }
+  return resolved;
+}
+
 function parseArgs(argv) {
-  const a = { manifests: [], base: null, data: null, check: false, allowPublished: false };
+  const a = { manifests: [], base: null, data: null, candidate: null, check: false, allowPublished: false };
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i];
     if (k === "--manifest") a.manifests.push(argv[++i]);
     else if (k === "--base") a.base = argv[++i];
     else if (k === "--data") a.data = argv[++i];
+    else if (k === "--candidate") a.candidate = argv[++i];
     else if (k === "--check") a.check = true;
     else if (k === "--allow-published") a.allowPublished = true;
     else if (k === "--help" || k === "-h") a.help = true;
@@ -221,11 +289,15 @@ function parseArgs(argv) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help || !args.manifests.length) {
-    console.log("Usage: node tools/narration/stamp-narration.mjs --manifest <file|dir> [--manifest ...] [--base URL] [--data data/forays.json] [--check] [--allow-published]");
+    console.log(
+      "Usage: node tools/narration/stamp-narration.mjs --manifest <file|dir> [--manifest ...] [--base URL] " +
+        "[--data data/forays.json | --candidate PATH] [--check] [--allow-published]"
+    );
     return args.help ? 0 : 2;
   }
   const profile = loadProfile();
   const base = args.base ?? process.env.NARRATION_PUBLIC_BASE ?? profile.public_base;
+  if (args.candidate !== null) return stampCandidateFile(args, { base, profile });
   const dataPath = path.resolve(args.data ?? path.join(REPO_ROOT, "data", "forays.json"));
   if (!fs.existsSync(dataPath)) throw new StampError(`no data file at ${dataPath}`);
   const text = fs.readFileSync(dataPath, "utf8");
@@ -236,6 +308,31 @@ async function main() {
   for (const f of res.forays) console.log(`${f.id}: runtime_sec ${f.runtime_before} -> ${f.runtime_after}`);
   console.log(`${res.stamped} line-voice(s) stamped from base ${normalizeBase(base)}; data ${changed ? "CHANGED" : "unchanged"}${args.check ? " (--check: not written)" : ""}`);
   if (changed && !args.check) fs.writeFileSync(dataPath, next);
+  return 0;
+}
+
+/** GV-71: --candidate. The data/ refusal runs first, before any read. */
+function stampCandidateFile(args, { base, profile }) {
+  if (args.data !== null) throw new StampError("--candidate and --data are exclusive");
+  if (args.allowPublished) throw new StampError("--allow-published does not apply to --candidate (a candidate is always a draft)");
+  const candidatePath = assertCandidatePath(args.candidate);
+  if (!fs.existsSync(candidatePath)) throw new StampError(`no candidate file at ${candidatePath}`);
+  const text = fs.readFileSync(candidatePath, "utf8");
+  let candidate;
+  try {
+    candidate = JSON.parse(text);
+  } catch (err) {
+    throw new StampError(`--candidate ${args.candidate} is not JSON (${err.message})`);
+  }
+  const res = stampCandidate(candidate, readManifests(args.manifests), { base, profile });
+  const next = JSON.stringify(candidate, null, 2) + "\n";
+  const changed = next !== text;
+  for (const f of res.forays) console.log(`${f.id}: runtimeSec ${f.runtime_before} -> ${f.runtime_after}`);
+  console.log(
+    `${res.stamped} line-voice(s) stamped from base ${normalizeBase(base)}; candidate ${changed ? "CHANGED" : "unchanged"}` +
+      `${args.check ? " (--check: not written)" : ""}`
+  );
+  if (changed && !args.check) fs.writeFileSync(candidatePath, next);
   return 0;
 }
 

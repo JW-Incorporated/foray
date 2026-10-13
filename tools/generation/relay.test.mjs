@@ -25,6 +25,8 @@
  *         /answer and /reset need the run's token          test 31
  *         a header-derived id cannot escape the queue      test 32
  *         the default port is not the events server's      test 33
+ *   GV-68 the launcher is refused without --legacy-claude,
+ *         and a legacy run carries both opt-ins            tests 24, 34, 35
  *
  * THE HTTP TESTS GO OVER REAL HTTP, on 127.0.0.1 with an ephemeral port, and
  * the file tests write real files into a real temp directory. Nothing about
@@ -59,7 +61,9 @@ import {
   DEFAULT_PORT,
   safeHeaderId,
 } from "./relay.mjs";
-import { splitArgs, driverEnv, driverEntryFromPackage, PLACEHOLDER_KEY, REPO_ROOT } from "./start-run.mjs";
+import { splitArgs, driverEnv, driverEntryFromPackage, legacyRefusal, PLACEHOLDER_KEY, REPO_ROOT } from "./start-run.mjs";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -541,10 +545,18 @@ test("24. the driver is pointed at the relay AND given a key-shaped value", () =
   // `apiKey === undefined`, so every create*() returns a Stub, the driver makes
   // ZERO http calls, and the relay sits empty while the run looks healthy —
   // the exact silent failure this launcher exists to remove.
+  //
+  // GV-68 MUTATION: drop `...LEGACY_OPT_INS` from driverEnv. The backend's
+  // routing then resolves the key-only driver to the Stub (a key alone selects
+  // nothing since GV-68), and the relay sits empty again. Ran it: red.
   const env = driverEnv({ PATH: "/usr/bin" }, 8787);
   assert.equal(env.ANTHROPIC_BASE_URL, "http://127.0.0.1:8787");
   assert.equal(env.ANTHROPIC_API_KEY, PLACEHOLDER_KEY);
+  assert.equal(env.FORAY_GENERATION_MODE, "anthropic-legacy");
+  assert.equal(env.FORAY_ALLOW_ANTHROPIC_LEGACY, "1");
   assert.equal(env.PATH, "/usr/bin", "the rest of the environment is carried through");
+  // An ambient local mode never wins over the launcher's legacy opt-ins.
+  assert.equal(driverEnv({ FORAY_GENERATION_MODE: "local" }, 1).FORAY_GENERATION_MODE, "anthropic-legacy");
 });
 
 test("25. a real key is never clobbered by the placeholder", () => {
@@ -688,4 +700,44 @@ test("33. the relay's default port is 8788, not the retired events server's 8787
   // MUTATION: put DEFAULT_PORT back to 8787, where a stale events-server
   // launcher bound every interface and a relay on 127.0.0.1 answered beside it.
   assert.equal(DEFAULT_PORT, 8788);
+});
+
+/* ------------------------------------- 34-35: GV-68, refused by default */
+
+test("34. --legacy-claude is the only way past the launcher's refusal, which names the rule", () => {
+  // MUTATION: make legacyRefusal return null unconditionally (the relay starts
+  // for anyone, the pre-GV-68 default). Ran it: red.
+  const plain = splitArgs(["--", "--prompts", "p.json"]);
+  assert.equal(plain.legacyClaude, false);
+  const refusal = legacyRefusal(plain);
+  assert.match(refusal, /zero Anthropic calls/);
+  assert.match(refusal, /--legacy-claude/);
+  assert.equal(legacyRefusal(splitArgs(["--relay-only"])) !== null, true, "the bare relay is refused too");
+  const legacy = splitArgs(["--legacy-claude", "--", "--prompts", "p.json"]);
+  assert.equal(legacy.legacyClaude, true);
+  assert.deepEqual(legacy.driverArgs, ["--prompts", "p.json"], "the flag is the launcher's, never the driver's");
+  assert.equal(legacyRefusal(legacy), null);
+  // After `--` the flag belongs to the driver and opts nothing in.
+  assert.equal(splitArgs(["--", "--legacy-claude"]).legacyClaude, false);
+});
+
+test("35. start-run without --legacy-claude exits 2 before the relay exists", () => {
+  // MUTATION: move the refusal check below createRelay(...) in main(). The
+  // relay then creates its queue directory (and listens) before refusing.
+  // Ran it: red (the queue directory exists).
+  const dir = scratchDir();
+  const relayDir = path.join(dir, "relay");
+  try {
+    const script = fileURLToPath(new URL("./start-run.mjs", import.meta.url));
+    const run = spawnSync(process.execPath, [script, "--dir", relayDir, "--port", "0", "--", "--prompts", "p.json"], {
+      encoding: "utf8",
+      timeout: 30_000,
+    });
+    assert.equal(run.status, 2, run.stderr);
+    assert.match(run.stderr, /refused: the relay is a Claude transport/);
+    assert.doesNotMatch(run.stdout, /relay up/);
+    assert.equal(fs.existsSync(relayDir), false, "no relay directory was created");
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
