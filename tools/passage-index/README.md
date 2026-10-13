@@ -13,7 +13,7 @@ directory. Add one section per module as it lands.
 ## Running the tests
 
 ```
-npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs pull-archive.test.mjs store.test.mjs embedder.test.mjs nightly.test.mjs
+npm test --prefix tools/passage-index -- sources.test.mjs stream-index.test.mjs pull-archive.test.mjs store.test.mjs embedder.test.mjs nightly.test.mjs deploy/deploy.test.mjs
 ```
 
 The package has no dependencies. It imports `tools/foraycorpus-export/`
@@ -434,3 +434,36 @@ loopback default; the token from `FORAY_RETRIEVAL_TOKEN` or
 
 Step 2 needs GV-53's `--from-staged`. Until that card lands the warm step
 fails and stops the chain, so the nightly is not scheduled before it.
+
+## deploy/: the Spark deployment kit (GV-66, W3-22)
+
+Templates for running the retrieval server and the nightly chain on the DGX
+Spark. The runbook is `docs/plans/retrieval-on-spark.md`: what runs where, the
+disk and RAM budget, the body transfer from the founder PC, the first build,
+the units, pointing generation at the server, `/healthz`, rollback and
+privacy, with every live step and who runs it. Merging the kit installs
+nothing; D8 applies (Joey installs from a `spark-live` checkout, only the
+founder places secrets and moves the tag).
+
+| File | What it is |
+| --- | --- |
+| `deploy/foray-retrieval.service` | `serve.mjs --host 127.0.0.1 --port 7311 --r2 --cue-cache-gb 50 --passages-db ... --embedder transformers` as `foray`, `MemoryMax=16G`, `ProtectSystem=strict` with only `/var/lib/foray/retrieval` (the repo's `data-local/`, symlinked) writable. |
+| `deploy/foray-index-nightly.service` | One `nightly.mjs --source r2 --url http://127.0.0.1:7311` run at `Nice=10`, `CPUQuota=400%`, idle I/O, `MemoryMax=12G`, so it yields to SGLang (OQ-07). |
+| `deploy/foray-index-nightly.timer` | 03:30 local time, `Persistent=true`. |
+| `deploy/retrieval.env.example` | The variable names for `/etc/foray/retrieval.env` (token file, R2 read-key file, optional `FORAY_EMBED_*`), with no values. |
+| `deploy/deploy.test.mjs` | Parses the units: ExecStart paths exist, argv the real CLIs accept, loopback bind, no secret anywhere in the kit or the runbook, the runbook's live-step table. |
+
+**Loopback only.** The server unit binds 127.0.0.1. The bearer token must
+never travel in plain http to another host, so the server is never bound to
+the LAN address; another box reaches it through TLS on the tailnet
+(`tailscale serve`), and `FORAY_RETRIEVAL_URL` there is that `https://`
+address.
+
+**Known gaps** (runbook): stream-index builds each show from one source, so a
+show with copied bodies and R2 bodies keeps only the last build's; and
+`nightly.mjs` takes only `--source r2|local`, so after an `r2-all` build the
+timer stays off until the nightly accepts `r2-all`.
+
+```
+npm test --prefix tools/passage-index -- deploy/deploy.test.mjs
+```

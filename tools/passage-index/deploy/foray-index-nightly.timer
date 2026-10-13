@@ -1,0 +1,20 @@
+# foray-index-nightly.timer -- run foray-index-nightly.service at 03:30.
+#
+# GV-66 (docs/roadmap/generation-v2.md, from W3-22). 03:30 in the Spark's
+# local time, when the Qwen lane is quietest. Persistent=yes runs a missed
+# night once at boot. A run that is still going when the next one is due is
+# not started twice (systemd does not start an active oneshot again).
+# Enable it only as docs/plans/retrieval-on-spark.md says ("Known gaps").
+
+[Unit]
+Description=Foray nightly retrieval index at 03:30
+Documentation=https://github.com/JW-Incorporated/foray/blob/main/docs/plans/retrieval-on-spark.md
+
+[Timer]
+Unit=foray-index-nightly.service
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

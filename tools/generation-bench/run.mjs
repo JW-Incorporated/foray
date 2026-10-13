@@ -79,6 +79,22 @@
  *   node tools/generation-bench/run.mjs --wide out-9/        # every column, detail included
  *   node tools/generation-bench/run.mjs --wide --cards <store.jsonl> --listen-keys <dir> out-9/
  *   node tools/generation-bench/run.mjs --scorecard --wide out-9/   # + the MQ scorecard (GV-24)
+ *   node tools/generation-bench/run.mjs --golden tools/generation-bench/golden/golden-v1.json out-g/
+ *   node tools/generation-bench/run.mjs --golden <manifest> --headline out-g/
+ *   node tools/generation-bench/run.mjs --golden <manifest> --compare tools/generation-bench/golden-baseline.jsonl out-g/
+ *
+ * THE GOLDEN SET (GV-64, GEN-05; GP-28, R2-02). `--golden <manifest>` joins
+ * each row to its golden prompt by `entry.promptId` (GV-45's `id`, carried by
+ * generateForays.ts) and aggregates per stratum and overall: p50/p90 of
+ * first_s, full_s, elapsed_min and lead_s, the means of the scorecard's MQ
+ * rates, the MQ-21 share, the MQ-20 mean and the out_tok and series medians.
+ * It prints one table and one `golden-summary` JSONL line per run id instead
+ * of the per-row output. `--headline` prints only the five headline numbers
+ * (MT-01, MT-02, MQ-02, MQ-05, MQ-20). `--compare <golden-baseline.jsonl>`
+ * says, per metric and stratum, better, worse or within-band (GOLDEN_BANDS),
+ * and 'absent' when either side lacks the number. It exits 0 whatever it
+ * finds (rule 2); `--fail-on-regression` (kept for G-42b, not to be used until
+ * the bands are re-derived from the noise floor) exits 1 on any 'worse'.
  *
  * THE QUALITY SCORECARD (GV-24, MQ-01..MQ-21). `--scorecard` scores each
  * entry with score.mjs's scoreCandidate (the report entry, the candidate
@@ -128,6 +144,8 @@ import { fileURLToPath } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
 import { DEFAULT_STORE as DEFAULT_LISTEN_CARDS, readCards } from "../listening/card.mjs";
 import { DEFAULT_KEY_DIR as DEFAULT_LISTEN_KEYS, KEY_MISSING, listenByCandidate } from "../listening/unseal.mjs";
+import { STRATA } from "./golden/select.mjs";
+import { manifestSha } from "./golden/validate.mjs";
 import { SPARK_UNIT, readRunLog, repeatRequests, summarizeRunLog } from "./runlog.mjs";
 import { SCORECARD_COLUMNS, judgedPathFor, loadSegmentSources, readJudged, scoreCandidate, scorecardValues } from "./score.mjs";
 
@@ -917,7 +935,7 @@ export function runLogSummaryFor(entry, reportPath) {
  * `null` means "the run did not do it" or "the file did not say".
  */
 export function rowFor(entry, context = {}) {
-  const { report = {}, runId = "run", clips = null, listening = null, runlog = null, scorecard = null } = context;
+  const { report = {}, runId = "run", clips = null, listening = null, runlog = null, scorecard = null, reportRun = null } = context;
   const v = entry.veracity || {};
   const delivery = entry.delivery && typeof entry.delivery === "object" ? entry.delivery : null;
   const candidateId = candidateIdFor(entry);
@@ -1009,7 +1027,13 @@ export function rowFor(entry, context = {}) {
       /* GV-17: calls per stage (a meta object, not a column) and what the
          prose rate is a rate of ("ttft": decode; "e2e": end to end). */
       calls_by_stage: runlog ? { ...runlog.callsByStage } : null,
-      prose_basis: runlog && num(runlog.prose?.tokPerSec) !== null ? runlog.prose.basis : null
+      prose_basis: runlog && num(runlog.prose?.tokPerSec) !== null ? runlog.prose.basis : null,
+      /* GV-64: the golden join (`entry.promptId`, GV-01/GV-45) and the run id
+         the row's report belongs to (without the `#n` entry suffix), so
+         --golden groups a report's rows into one summary. Meta only: no
+         JSONL line carries them, so the per-row output is unchanged. */
+      prompt_id: typeof entry.promptId === "string" && entry.promptId !== "" ? entry.promptId : null,
+      report_run: typeof reportRun === "string" ? reportRun : runId
     }
   };
 }
@@ -1046,7 +1070,7 @@ export function rowsForReport(reportPath, options = {}) {
     const scorecard = options.scorecard
       ? scorecardFor(entry, candidate, candidateFile, { pool, sources: options.segmentSources, listening })
       : null;
-    return rowFor(entry, { report, runId: id, clips, listening, runlog, scorecard });
+    return rowFor(entry, { report, runId: id, reportRun: runId, clips, listening, runlog, scorecard });
   });
 }
 
@@ -1279,6 +1303,339 @@ export function spliceRows(doc, rows) {
 }
 
 /* ------------------------------------------------------------------ */
+/* The golden set: aggregation, headline, compare (GV-64, GEN-05)       */
+/* ------------------------------------------------------------------ */
+
+/** The `kind` of a golden summary line, so a per-row baseline.jsonl passed to
+ * --compare by mistake is refused rather than read as an empty baseline. */
+export const GOLDEN_SUMMARY = "golden-summary";
+
+/** The stratum every joined row of a run sits in, whatever its golden stratum. */
+export const OVERALL = "overall";
+
+/**
+ * The tolerance bands --compare judges a move by (GEN-05). PROPOSED: they were
+ * chosen before any local run, so they may be tighter than LLM noise. The live
+ * step re-derives them from two back-to-back runs of one build (the noise
+ * floor) before anyone uses --fail-on-regression. A move exactly the size of
+ * the band is within it.
+ *
+ *   time    +-15 % of the baseline's value (relative to its magnitude, so a
+ *           negative lead has a band too)
+ *   volume  the time band, for token counts: +-1 token would be no band at all
+ *   rate    +-0.05 absolute (a share in 0..1)
+ *   count   +-1 absolute
+ *   score   +-0.25 absolute on the founder's 1-5 card (MQ-20). The card names
+ *           no band for a score, so this one is the bench's own proposal: half
+ *           the swap rule's 0.5 axis-drop allowance (swap-rule.mjs).
+ */
+export const GOLDEN_BANDS = Object.freeze({
+  time: Object.freeze({ relative: 0.15 }),
+  volume: Object.freeze({ relative: 0.15 }),
+  rate: Object.freeze({ absolute: 0.05 }),
+  count: Object.freeze({ absolute: 1 }),
+  score: Object.freeze({ absolute: 0.25 })
+});
+
+/** Float slack, so a move of exactly the band (0.80 - 0.75, which is
+ * 0.050000000000000044 in floats) reads within it. */
+const BAND_EPSILON = 1e-9;
+
+const pct = (column, q, kind, better, label) => ({ key: `${column}_p${q}`, column, agg: "percentile", q: q / 100, kind, better, label });
+const meanOf = (id, column, label) => ({ key: `${column}_mean`, column, agg: "mean", kind: "rate", better: "higher", label: `${id} ${label}` });
+
+/**
+ * Every aggregate a golden summary carries, in print order. `column` is the
+ * row value it is computed from; `kind` picks the band; `better` is the
+ * direction a move outside the band counts as better. A value a row does not
+ * carry is left out of that aggregate (rule 1): a mean over the rows that have
+ * the number, and absent (null) when none has it.
+ */
+export const GOLDEN_METRICS = Object.freeze(
+  [
+    pct("first_s", 50, "time", "lower", "MT-01 first audio, s"),
+    pct("first_s", 90, "time", "lower", "MT-01 first audio, s"),
+    pct("full_s", 50, "time", "lower", "MT-02 all ready (publishable rows only), s"),
+    pct("full_s", 90, "time", "lower", "MT-02 all ready (publishable rows only), s"),
+    pct("elapsed_min", 50, "time", "lower", "elapsed, min"),
+    pct("elapsed_min", 90, "time", "lower", "elapsed, min"),
+    pct("lead_s", 50, "time", "higher", "MT-11 min lead over the playhead, s"),
+    pct("lead_s", 90, "time", "higher", "MT-11 min lead over the playhead, s"),
+    meanOf("MQ-01", "mq01", "grounded quote rate, mean"),
+    meanOf("MQ-02", "mq02", "supported-sentence rate, mean"),
+    meanOf("MQ-03", "mq03", "attribution accuracy, mean"),
+    meanOf("MQ-05", "mq05", "clip-on-subject rate, mean"),
+    meanOf("MQ-06", "mq06", "clean-cut share, mean"),
+    meanOf("MQ-09", "mq09", "tape yield, mean"),
+    meanOf("MQ-11", "mq11", "beat coverage, mean"),
+    { key: "mq21_share", column: "mq21", agg: "share", kind: "rate", better: "higher", label: "MQ-21 publishable share" },
+    { key: "mq20_mean", column: "listen", agg: "mean", kind: "score", better: "higher", label: "MQ-20 founder's listen, mean overall (1-5)" },
+    pct("out_tok", 50, "volume", "lower", "MT-05 output tokens, median"),
+    pct("series", 50, "count", "lower", "MT-06 calls in series, median")
+  ].map((m) => Object.freeze(m))
+);
+
+/** The five headline numbers --headline prints, in order, read off `overall`. */
+export const HEADLINE = Object.freeze([
+  Object.freeze({ id: "MT-01", key: "first_s_p50", label: "first audio p50, s" }),
+  Object.freeze({ id: "MT-02", key: "full_s_p50", label: "all ready p50, s" }),
+  Object.freeze({ id: "MQ-02", key: "mq02_mean", label: "supported-sentence rate, mean" }),
+  Object.freeze({ id: "MQ-05", key: "mq05_mean", label: "clip-on-subject rate, mean" }),
+  Object.freeze({ id: "MQ-20", key: "mq20_mean", label: "founder's listen, mean overall (1-5)" })
+]);
+
+/**
+ * The q-th quantile (0..1) of the finite values, linearly interpolated between
+ * the two nearest ranks (rank q * (n - 1)), so p50 is the median runlog.mjs's
+ * p50 computes (the mean of the two middle values for an even count). Null
+ * when there are none: no rows is not a 0 s first audio.
+ */
+export function percentile(values, q) {
+  const xs = values.map(num).filter((v) => v !== null).sort((a, b) => a - b);
+  if (xs.length === 0) return null;
+  const rank = q * (xs.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
+  return xs[lo] + (xs[hi] - xs[lo]) * (rank - lo);
+}
+
+/** The mean of the finite values, or null when there are none. */
+export function meanValue(values) {
+  const xs = values.map(num).filter((v) => v !== null);
+  return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+}
+
+/**
+ * A golden manifest (GV-45's `golden-v1.json` shape: an array of
+ * `{ id, stratum, listened, ... }`) as a join table: `byId` maps a prompt id to
+ * `{ stratum, listened }`, `strata` lists the manifest's strata in select.mjs's
+ * order (then any other, sorted). Throws on a manifest that is not an array,
+ * an entry without a string id or stratum, or a repeated id: a join over a
+ * broken manifest would put rows in the wrong stratum quietly.
+ */
+export function loadGoldenManifest(file) {
+  const bytes = fs.readFileSync(file);
+  let entries;
+  try {
+    entries = JSON.parse(bytes.toString("utf8"));
+  } catch (err) {
+    throw new Error(`cannot read ${file}: ${err.message}`);
+  }
+  if (!Array.isArray(entries)) throw new Error(`${file}: a golden manifest is an array of prompt entries`);
+  const byId = new Map();
+  for (const [i, e] of entries.entries()) {
+    if (!e || typeof e.id !== "string" || e.id === "") throw new Error(`${file}: entry ${i + 1} has no id`);
+    if (typeof e.stratum !== "string" || e.stratum === "" || e.stratum === OVERALL) throw new Error(`${file}: ${e.id} has no usable stratum`);
+    if (byId.has(e.id)) throw new Error(`${file}: duplicate id ${e.id}`);
+    byId.set(e.id, { stratum: e.stratum, listened: e.listened === true });
+  }
+  const seen = new Set([...byId.values()].map((e) => e.stratum));
+  const strata = [...STRATA.filter((s) => seen.has(s)), ...[...seen].filter((s) => !STRATA.includes(s)).sort()];
+  return { name: path.basename(file), sha256: manifestSha(bytes), byId, strata };
+}
+
+/** One aggregate over some rows. */
+function aggregate(metric, rows) {
+  const values = rows.map((row) => row.values[metric.column]);
+  if (metric.agg === "percentile") return percentile(values, metric.q);
+  if (metric.agg === "mean") return meanValue(values);
+  /* share: of the rows that say yes or no; a row that says nothing is left out. */
+  const known = values.filter((v) => v === "yes" || v === "no");
+  return known.length ? known.filter((v) => v === "yes").length / known.length : null;
+}
+
+/** `{ n, listened, metrics }` for one stratum's rows. */
+function stratumSummary(rows, manifest) {
+  return {
+    n: rows.length,
+    listened: rows.filter((row) => manifest.byId.get(row.meta.prompt_id)?.listened === true).length,
+    metrics: Object.fromEntries(GOLDEN_METRICS.map((m) => [m.key, aggregate(m, rows)]))
+  };
+}
+
+/**
+ * The golden summaries: one per run id (the report a row came from, in order
+ * of first appearance). Rows join the manifest by `meta.prompt_id`; a row whose
+ * prompt id is missing or not in the manifest is listed in `unmatched` (its id,
+ * or null) and left out of every aggregate, `overall` included, so a stray
+ * ad-hoc prompt cannot move the golden numbers. Every manifest stratum is
+ * present, with `n: 0` and absent metrics when the run has no row in it.
+ */
+export function goldenSummaries(rows, manifest) {
+  const runs = new Map();
+  for (const row of rows) {
+    const run = row.meta?.report_run ?? row.values.run;
+    if (!runs.has(run)) runs.set(run, []);
+    runs.get(run).push(row);
+  }
+  return [...runs].map(([run, runRows]) => {
+    const matched = runRows.filter((row) => manifest.byId.has(row.meta?.prompt_id));
+    const strata = { [OVERALL]: stratumSummary(matched, manifest) };
+    for (const stratum of manifest.strata) {
+      strata[stratum] = stratumSummary(
+        matched.filter((row) => manifest.byId.get(row.meta.prompt_id).stratum === stratum),
+        manifest
+      );
+    }
+    return {
+      kind: GOLDEN_SUMMARY,
+      run,
+      generated_at: runRows[0].meta?.generated_at ?? null,
+      manifest: manifest.name,
+      manifest_sha256: manifest.sha256,
+      rows: runRows.length,
+      matched: matched.length,
+      unmatched: runRows.filter((row) => !manifest.byId.has(row.meta?.prompt_id)).map((row) => row.meta?.prompt_id ?? null),
+      strata
+    };
+  });
+}
+
+/** One `golden-summary` JSONL line: key order as built, numbers as computed
+ * (a renderer that rounded would invent movement for --compare). */
+export function goldenSummaryLine(summary) {
+  return JSON.stringify(summary);
+}
+
+/** A metric's value for a person: absent is ABSENT, never 0. */
+function formatGoldenValue(metric, value) {
+  if (value === null || value === undefined) return ABSENT;
+  const digits = { time: 1, volume: 0, count: 1, rate: 3, score: 2 }[metric.kind];
+  return value.toFixed(digits);
+}
+
+const metricByKey = (key) => GOLDEN_METRICS.find((m) => m.key === key);
+
+/** The human view of one summary: one line per metric, one column per stratum
+ * (overall first), then what each metric is. */
+export function formatGoldenTable(summary) {
+  const strata = Object.keys(summary.strata);
+  const head = ["metric", ...strata];
+  const body = [
+    ["n", ...strata.map((s) => String(summary.strata[s].n))],
+    ["listened", ...strata.map((s) => String(summary.strata[s].listened))],
+    ...GOLDEN_METRICS.map((m) => [m.key, ...strata.map((s) => formatGoldenValue(m, summary.strata[s].metrics[m.key]))])
+  ];
+  const widths = head.map((h, i) => Math.max(h.length, ...body.map((r) => r[i].length)));
+  const line = (cells) => cells.map((c, i) => (i === 0 ? c.padEnd(widths[i]) : c.padStart(widths[i]))).join("  ");
+  const out = [
+    `golden ${summary.run}: ${summary.matched} of ${summary.rows} row(s) joined to ${summary.manifest}` +
+      (summary.unmatched.length ? `; not in the manifest: ${summary.unmatched.map((id) => id ?? "(no promptId)").join(", ")}` : ""),
+    line(head),
+    line(widths.map((w) => "-".repeat(w))),
+    ...body.map(line),
+    "",
+    `${ABSENT} = no row in that stratum carries it (never read as zero).`
+  ];
+  for (const m of GOLDEN_METRICS) out.push(`  ${m.key.padEnd(16)} ${m.label}`);
+  return out.join("\n");
+}
+
+/** The five headline numbers, overall, one line each: exactly five lines per
+ * run, each prefixed with the run id when more than one run is summarised. */
+export function headlineLines(summaries) {
+  const lines = [];
+  for (const summary of summaries) {
+    for (const h of HEADLINE) {
+      const value = formatGoldenValue(metricByKey(h.key), summary.strata[OVERALL]?.metrics?.[h.key]);
+      lines.push(`${summaries.length > 1 ? `${summary.run} ` : ""}${h.id} ${h.label}: ${value}`);
+    }
+  }
+  return lines;
+}
+
+/**
+ * better | worse | within-band | absent for one metric. 'absent' when either
+ * side lacks the number, never 'better' (a metric that vanished did not
+ * improve). Outside the band, the metric's direction decides.
+ */
+export function bandVerdict(metric, baseline, current) {
+  const a = num(baseline);
+  const b = num(current);
+  if (a === null || b === null) return "absent";
+  const band = GOLDEN_BANDS[metric.kind];
+  const tolerance = band.relative !== undefined ? band.relative * Math.abs(a) : band.absolute;
+  const delta = b - a;
+  if (Math.abs(delta) <= tolerance + BAND_EPSILON) return "within-band";
+  return (metric.better === "lower" ? delta < 0 : delta > 0) ? "better" : "worse";
+}
+
+/** The band as a person reads it: `±15%` or `±0.05`. */
+export function bandLabel(metric) {
+  const band = GOLDEN_BANDS[metric.kind];
+  return band.relative !== undefined ? `±${Math.round(band.relative * 100)}%` : `±${band.absolute}`;
+}
+
+/**
+ * The baseline a summary is compared against: the LAST golden-summary line of
+ * the file (the file is append-only; the latest adopted run wins). Null when
+ * the file holds none (it starts empty, until the live step commits the first
+ * 50-prompt run). A line that is not a golden summary throws: a per-row
+ * baseline.jsonl is not a golden baseline.
+ */
+export function readGoldenBaseline(file) {
+  const lines = fs
+    .readFileSync(file, "utf8")
+    .split(/\r?\n/)
+    .filter((l) => l.trim() !== "");
+  let last = null;
+  for (const [i, l] of lines.entries()) {
+    let obj;
+    try {
+      obj = JSON.parse(l);
+    } catch (err) {
+      throw new Error(`${file}:${i + 1}: ${err.message}`);
+    }
+    if (!obj || obj.kind !== GOLDEN_SUMMARY) throw new Error(`${file}:${i + 1}: not a ${GOLDEN_SUMMARY} line`);
+    last = obj;
+  }
+  return last;
+}
+
+/**
+ * Every metric of every stratum either side has, compared: `{ stratum, metric,
+ * baseline, current, band, verdict }`, overall first, then the strata in the
+ * current summary's order, then any only the baseline has. A null baseline
+ * (an empty file) makes every row 'absent'.
+ */
+export function compareGolden(current, baseline) {
+  const strata = Object.keys(current.strata);
+  for (const s of Object.keys(baseline?.strata || {})) if (!strata.includes(s)) strata.push(s);
+  const out = [];
+  for (const stratum of strata) {
+    for (const m of GOLDEN_METRICS) {
+      const a = num(baseline?.strata?.[stratum]?.metrics?.[m.key]);
+      const b = num(current.strata[stratum]?.metrics?.[m.key]);
+      out.push({ stratum, metric: m.key, baseline: a, current: b, band: bandLabel(m), verdict: bandVerdict(m, a, b) });
+    }
+  }
+  return out;
+}
+
+/** The compare as a person reads it, with a note when the two sides ran
+ * different manifests or the baseline is empty, and a tally at the end. */
+export function formatCompare(current, baseline, results) {
+  const out = [
+    baseline
+      ? `golden compare: ${current.run} against baseline ${baseline.run} (bands PROPOSED until re-derived from the noise floor)`
+      : `golden compare: ${current.run}: the baseline holds no ${GOLDEN_SUMMARY} line yet, so every metric is absent`
+  ];
+  if (baseline && baseline.manifest_sha256 !== current.manifest_sha256) {
+    out.push(`  note: the two runs used different golden manifests (${baseline.manifest} vs ${current.manifest}); a move may be the set, not the build`);
+  }
+  const width = Math.max(...results.map((r) => `${r.stratum}/${r.metric}`.length));
+  for (const r of results) {
+    const metric = metricByKey(r.metric);
+    out.push(
+      `  ${`${r.stratum}/${r.metric}`.padEnd(width)}  ${formatGoldenValue(metric, r.baseline).padStart(8)} -> ${formatGoldenValue(metric, r.current).padStart(8)}  ${r.band.padStart(5)}  ${r.verdict}`
+    );
+  }
+  const tally = ["better", "worse", "within-band", "absent"].map((v) => `${v} ${results.filter((r) => r.verdict === v).length}`);
+  out.push(`  ${tally.join(", ")}`);
+  return out.join("\n");
+}
+
+/* ------------------------------------------------------------------ */
 /* CLI                                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -1294,7 +1651,11 @@ export function parseArgs(argv) {
     cards: null,
     listenKeys: null,
     scorecard: false,
-    segmentSources: null
+    segmentSources: null,
+    golden: null,
+    headline: false,
+    compare: null,
+    failOnRegression: false
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -1308,12 +1669,23 @@ export function parseArgs(argv) {
     else if (a === "--wide") args.wide = true;
     else if (a === "--cards") args.cards = argv[++i];
     else if (a === "--listen-keys") args.listenKeys = argv[++i];
+    else if (a === "--golden") args.golden = argv[++i];
+    else if (a === "--headline") args.headline = true;
+    else if (a === "--compare") args.compare = argv[++i];
+    else if (a === "--fail-on-regression") args.failOnRegression = true;
     else if (a.startsWith("--")) throw new Error(`unknown flag ${a}`);
     else args.targets.push(a);
   }
   if (!["both", "table", "jsonl"].includes(args.format)) throw new Error(`unknown --format ${args.format}`);
   if (args.targets.length === 0) throw new Error("usage: node tools/generation-bench/run.mjs <report.json|dir> [...]");
   if (args.runId && args.targets.length > 1) throw new Error("--run-id names one run; pass one report");
+  /* GV-64: the golden views read a manifest; without one there is no stratum. */
+  for (const [flag, on] of [["--headline", args.headline], ["--compare", args.compare !== null], ["--fail-on-regression", args.failOnRegression]]) {
+    if (on && !args.golden) throw new Error(`${flag} needs --golden <manifest>`);
+  }
+  if (args.golden !== null && (typeof args.golden !== "string" || args.golden === "")) throw new Error("--golden needs a manifest path");
+  if (args.compare !== null && (typeof args.compare !== "string" || args.compare === "")) throw new Error("--compare needs a golden-baseline.jsonl path");
+  if (args.failOnRegression && args.compare === null) throw new Error("--fail-on-regression needs --compare <golden-baseline.jsonl>");
   return args;
 }
 
@@ -1323,8 +1695,11 @@ export function collectRows(args) {
     cards: args.cards ? path.resolve(args.cards) : null,
     keyDir: args.listenKeys ? path.resolve(args.listenKeys) : null
   });
+  /* GV-64: the golden aggregates average the scorecard's MQ rates, so a
+     --golden run is always scored. */
+  const scored = Boolean(args.scorecard || args.golden);
   /* GV-24: MQ-07 resolves a clip's show through the segment-sources registry. */
-  const segmentSources = args.scorecard
+  const segmentSources = scored
     ? loadSegmentSources(args.segmentSources ? path.resolve(args.segmentSources) : path.join(REPO_ROOT, "data", "segment-sources.json"))
     : null;
   const rows = [];
@@ -1335,7 +1710,7 @@ export function collectRows(args) {
         candidatesDir: args.candidatesDir,
         pool,
         listening,
-        scorecard: Boolean(args.scorecard),
+        scorecard: scored,
         segmentSources
       })
     );
@@ -1343,9 +1718,48 @@ export function collectRows(args) {
   return rows;
 }
 
+/**
+ * GV-64: the --golden views. Replaces the per-row output: the summary table
+ * and/or one golden-summary line per run id (by --format), or, under
+ * --headline, only the five headline numbers; then the --compare report.
+ * `exitCode` is 0 whatever the compare found (rule 2), unless
+ * --fail-on-regression and some metric is 'worse'.
+ */
+export function goldenMain(args, rows, out) {
+  const manifest = loadGoldenManifest(path.resolve(args.golden));
+  const summaries = goldenSummaries(rows, manifest);
+  if (args.headline) {
+    for (const line of headlineLines(summaries)) out(line);
+  } else {
+    if (args.format === "both" || args.format === "table") out(summaries.map(formatGoldenTable).join("\n\n"));
+    if (args.format === "both") out("");
+    if (args.format === "both" || args.format === "jsonl") for (const summary of summaries) out(goldenSummaryLine(summary));
+  }
+  const comparisons = [];
+  if (args.compare !== null) {
+    const baseline = readGoldenBaseline(path.resolve(args.compare));
+    for (const summary of summaries) {
+      const results = compareGolden(summary, baseline);
+      comparisons.push({ run: summary.run, baseline: baseline ? baseline.run : null, results });
+      out("");
+      out(formatCompare(summary, baseline, results));
+    }
+  }
+  const regressed = comparisons.some((c) => c.results.some((r) => r.verdict === "worse"));
+  return { rows, summaries, comparisons, exitCode: args.failOnRegression && regressed ? 1 : 0 };
+}
+
 export function main(argv, out = console.log) {
   const args = parseArgs(argv);
   const rows = collectRows(args);
+  if (args.golden) {
+    const result = goldenMain(args, rows, out);
+    if (args.append) {
+      const file = path.resolve(args.append);
+      fs.writeFileSync(file, spliceRows(fs.readFileSync(file, "utf8"), rows));
+    }
+    return result;
+  }
   if (args.format === "both" || args.format === "table") out(formatTable(rows, { wide: args.wide, scorecard: args.scorecard }));
   if (args.format === "both") out("");
   if (args.format === "both" || args.format === "jsonl") for (const row of rows) out(jsonlLine(row));
@@ -1358,7 +1772,9 @@ export function main(argv, out = console.log) {
 
 if (isEntryScript(import.meta.url)) {
   try {
-    main(process.argv.slice(2));
+    const result = main(process.argv.slice(2));
+    /* GV-64: only --golden --compare --fail-on-regression ever exits 1. */
+    if (result && !Array.isArray(result) && result.exitCode) process.exit(result.exitCode);
   } catch (err) {
     console.error(String(err.message || err));
     process.exit(2);
