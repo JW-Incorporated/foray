@@ -10,8 +10,23 @@ import type {
   NarrationWriterBuilder,
   SeamBrief,
   SelectedClaim,
+  WriterStreamEvent,
   WrittenSeam
 } from "./NarrationWriterBuilder";
+
+/**
+ * GV-43: how the stub paces `writeActStream`. A test injects a fake clock
+ * (`now`) and a `sleep` that advances it, so a per-seam delay costs no
+ * wall time and every `atMs` is exact.
+ */
+export interface StubWriterStreamOptions {
+  /** Milliseconds before each seam is yielded (default 0: no wait at all). */
+  seamDelayMs?: number;
+  /** Epoch-ms clock `atMs` is measured on (default Date.now). */
+  now?: () => number;
+  /** How a delay is waited out (default: a real timer). */
+  sleep?: (ms: number) => Promise<void>;
+}
 
 /**
  * Deterministic fake narration writer, used whenever ANTHROPIC_API_KEY is
@@ -43,7 +58,18 @@ import type {
 export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
   readonly providerName = "stub";
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {}
+  private readonly seamDelayMs: number;
+  private readonly now: () => number;
+  private readonly sleep: (ms: number) => Promise<void>;
+
+  constructor(
+    private readonly budgetGuard: BudgetGuard = defaultBudgetGuard,
+    streamOptions: StubWriterStreamOptions = {}
+  ) {
+    this.seamDelayMs = streamOptions.seamDelayMs ?? 0;
+    this.now = streamOptions.now ?? (() => Date.now());
+    this.sleep = streamOptions.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  }
 
   /**
    * Q-03: the per-act contract, so `--dry-run` writes per act exactly as
@@ -66,6 +92,24 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
     });
     const clips = new Map(request.clips.map((c) => [c.clipId, c]));
     return { seams: request.seams.map((seam) => stubSeam(seam, clips, request.documents, request.voice.register)) };
+  }
+
+  /**
+   * GV-43: the streamed twin of `writeAct`. The same seams `writeAct`
+   * writes (one budget record: a stream is one call), yielded one at a
+   * time in `request.seams` order, each after the configured per-seam
+   * delay, then one clean `end`. So `collectActStream` of it equals
+   * `writeAct`'s result, and a streamed stage under test sees seams arrive
+   * apart in time without a model.
+   */
+  async *writeActStream(request: ActWriteRequest, ctx: NarrationBuildContext): AsyncGenerator<WriterStreamEvent> {
+    const startedAt = this.now();
+    const { seams } = await this.writeAct(request, ctx);
+    for (const seam of seams) {
+      if (this.seamDelayMs > 0) await this.sleep(this.seamDelayMs);
+      yield { type: "seam", seam, atMs: this.now() - startedAt };
+    }
+    yield { type: "end", stopReason: "end", unfinishedSeamIds: [] };
   }
 }
 

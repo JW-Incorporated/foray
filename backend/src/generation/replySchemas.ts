@@ -130,6 +130,22 @@ export const RawWrittenSeamSchema = z.object({
 export const RawActWriteSchema = z.object({ seams: z.array(RawWrittenSeamSchema) });
 
 /**
+ * GV-43 (W4-09, docs/roadmap/generation-v2.md): ONE SEAM PER LINE. The
+ * streamed writer reply is JSONL -- one seam object per line, in listening
+ * order -- so `seamStream.ts`'s JsonlSeamParser can hand each seam on the
+ * moment its line closes instead of waiting for the whole act's JSON.
+ *
+ * The line variant differs from RawWrittenSeamSchema in one way: every
+ * field is REQUIRED, pronunciationHints included (R2-08's condition). In
+ * the whole-act reply a missing pronunciationHints is defaulted to [] by
+ * toActWriteResult; on a line there is no post-parse step, so the line
+ * says it outright and the parser's seam is a WrittenSeam as parsed.
+ */
+export const RawWrittenSeamLineSchema = RawWrittenSeamSchema.extend({
+  pronunciationHints: z.array(z.object({ word: z.string(), hint: z.string() }))
+});
+
+/**
  * GV-31: the writer's one post-parse step, shared by the Anthropic writer
  * and its Chat twin so both hand writeAct.ts the same ActWriteResult for the
  * same reply. A seam that named no pronunciation hints gets [] (the field is
