@@ -37,7 +37,9 @@
  *   - change the select policy to `using (true)` -> test 5;
  *   - drop `prompt = null,` from claim_generation_job -> test 5;
  *   - drop `skip locked` from the claim -> test 5;
- *   - drop `security definer` from the claim -> test 5.
+ *   - drop `security definer` from the claim -> test 5;
+ *   - add `create policy generation_jobs_peek on public.generation_jobs for select
+ *     using (true);` (no `to` clause, so PUBLIC) -> test 5.
  */
 
 const { test } = require("node:test");
@@ -141,9 +143,15 @@ test("supabase/0007: generation_jobs is author-only, founders-first, cascades wi
   for (const clause of ["(select auth.uid()) = author_id", "status = 'queued'", "lane = 'on-demand'", "seq = 0", "snapshot is null", "worker is null", "exists (select 1 from public.generation_job_authors a where a.author_id = (select auth.uid()))"]) {
     assert.ok(insert[1].includes(clause), `insert policy is missing: ${clause}`);
   }
-  // No policy anywhere in 0007 is for anon or for all.
+  // No policy anywhere in 0007 is for anon, for PUBLIC (no `to` clause) or for
+  // all (no `for`, or `for all`): every one names one verb and `to authenticated`.
   assert.doesNotMatch(sql, /create policy \w+ on public\.\w+ for \w+ to [\w, ]*\banon\b/);
   assert.doesNotMatch(sql, /create policy \w+ on public\.\w+ for all\b/);
+  assert.strictEqual(
+    (sql.match(/create policy \w+ on public\.\w+ for (?:select|insert|update|delete) to authenticated (?:using|with check) \(/g) || []).length,
+    (sql.match(/create policy\b/g) || []).length,
+    "every 0007 policy is `for <verb> to authenticated`"
+  );
   // The claim: one statement that locks with SKIP LOCKED, NULLs the prompt and returns the one it held.
   const claim = /create or replace function public\.claim_generation_job\(p_worker text\) (.*?) \$\$(.*?)\$\$;/.exec(sql);
   assert.ok(claim, "claim_generation_job(p_worker text)");

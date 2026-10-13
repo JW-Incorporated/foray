@@ -28,7 +28,14 @@
  *   - add a delete-own policy -> an author deletes;
  *   - change the cancel policy's with check to `status in ('cancelled', 'queued')`
  *     -> an author re-queues a job;
- *   - add `lane` to the insert column grant -> an author jumps to the catalogue lane.
+ *   - add `lane` to the insert column grant -> an author jumps to the catalogue lane;
+ *   - add `create policy generation_jobs_peek on public.generation_jobs for select
+ *     using (true);` (no `to` clause, so PUBLIC) -> any signed-in user reads every
+ *     author's snapshot (review finding: the strict parser skipped it), and the
+ *     same with `as permissive` or with no `for` -> the verb set check;
+ *   - drop `to authenticated` from generation_jobs_select_own -> the roles check;
+ *   - add `create policy "generation_jobs_peek" on public.generation_jobs ...`
+ *     (a quoted name) -> the parse count no longer matches.
  */
 
 const { test } = require("node:test");
@@ -170,9 +177,14 @@ test("the migration is additive: 0003 exists alongside the applied 0001/0002, wh
 
 test("generation_jobs: an author selects its own rows, inserts if allowlisted, may only cancel, never deletes (GV-59, D9)", () => {
   const sql = sqlOnly(read("backend/migrations/supabase/0007_generation_jobs.sql")).replace(/\s+/g, " ");
-  const pol = [...sql.matchAll(/create policy (\w+) on public\.(\w+) for (\w+) to ([\w, ]+?) (using|with check) \((.*?)\);(?= create| revoke| --|$)/g)].map(
-    ([, name, table, verb, roles, , body]) => ({ name, table, verb, roles: roles.split(/,\s*/), body })
+  // Parsed leniently: Postgres lets `as permissive|restrictive`, `for <verb>` and
+  // `to <roles>` all be omitted, and a policy with no `to` is for PUBLIC (anon
+  // included) and one with no `for` is for ALL. A strict pattern would skip such
+  // a policy silently, so every `create policy` in the file must parse.
+  const pol = [...sql.matchAll(/create policy (\w+) on public\.(\w+)(?: as (\w+))?(?: for (\w+))?(?: to ([\w, ]+?))? (using|with check) \(([^;]*)\);/g)].map(
+    ([, name, table, as, verb, roles, , body]) => ({ name, table, as: as || "permissive", verb: verb || "all", roles: roles ? roles.split(/,\s*/) : ["public"], body })
   );
+  assert.strictEqual(pol.length, (sql.match(/create policy\b/g) || []).length, "every create policy in 0007 is parsed (none hides behind an unusual shape)");
   const jobs = pol.filter((p) => p.table === "generation_jobs");
   assert.deepStrictEqual(jobs.map((p) => p.verb).sort(), ["insert", "select", "update"], "no delete policy, no for-all");
   for (const p of pol) assert.deepStrictEqual(p.roles, ["authenticated"], `${p.name}: for the signed-in author only`);
