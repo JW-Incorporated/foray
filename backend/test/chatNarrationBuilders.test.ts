@@ -8,8 +8,11 @@ import { targetFor } from "../src/generation/chat/targetFor";
 import { responseFormatFor, zodToJsonSchema } from "../src/generation/chat/jsonSchema";
 import { OpenAICompatChatProvider } from "../src/generation/chat/openAICompatProvider";
 import type { ChatRequest } from "../src/generation/chat/ChatProvider";
-import { AnthropicNarrationWriterBuilder, actOutputTokenBudget, buildActWritePrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
-import { AnthropicNarrationVerifierBuilder, buildActVerifyPrompt } from "../src/generation/AnthropicNarrationVerifierBuilder";
+import { AnthropicNarrationWriterBuilder, actOutputTokenBudget } from "../src/generation/AnthropicNarrationWriterBuilder";
+import { AnthropicNarrationVerifierBuilder } from "../src/generation/AnthropicNarrationVerifierBuilder";
+import { toChatMessages } from "../src/generation/promptLayout";
+import { actWritePromptParts } from "../src/generation/prompts/actWrite";
+import { actVerifyPromptParts } from "../src/generation/prompts/actVerify";
 import { RawActVerifySchema, RawActWriteSchema, REPLY_SCHEMAS, toActVerifyResult, toActWriteResult } from "../src/generation/replySchemas";
 import { TruncatedReplyError } from "../src/generation/replyErrors";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
@@ -158,7 +161,9 @@ describe("ChatNarrationWriterBuilder: the act writer on a ChatProvider", () => {
     const req = provider.requests[0]!;
     expect(req.responseFormat).toBe(responseFormatFor("act_write"));
     expect(req).toMatchObject({ model: "local-heavy", maxTokens: actOutputTokenBudget(writeRequest), thinking: false, label: "narration_write_act" });
-    expect(req.messages).toEqual([{ role: "user", content: buildActWritePrompt(writeRequest) }]);
+    /* GV-50: [system: stable, user: foray + call], the same parts the
+       Anthropic writer sends joined as one user turn. */
+    expect(req.messages).toEqual(toChatMessages(actWritePromptParts(writeRequest)));
     expect(checks).toEqual([
       expect.objectContaining({ operation: "narration_write_act", provider: "local:spark", model: "local-heavy", userId: "founder-1", sessionId: "s1" })
     ]);
@@ -240,7 +245,7 @@ describe("ChatNarrationVerifierBuilder: the act verifier on a ChatProvider", () 
     const req = provider.requests[0]!;
     expect(req.responseFormat).toBe(responseFormatFor("act_verify"));
     expect(req).toMatchObject({ model: "local-worker", maxTokens: BUILDER_MAX_TOKENS.verifier, thinking: false, label: "narration-verify" });
-    expect(req.messages).toEqual([{ role: "user", content: buildActVerifyPrompt(verifyRequest) }]);
+    expect(req.messages).toEqual(toChatMessages(actVerifyPromptParts(verifyRequest)));
     expect(checks).toEqual([expect.objectContaining({ operation: "narration_verify", provider: "local:second", model: "local-worker" })]);
   });
 
@@ -353,7 +358,9 @@ describe("runForayPipeline with both Chat narration builders injected (short tie
     const stubVerifier = new StubNarrationVerifierBuilder(recordingGuard().guard as never);
     const provider = scriptedProvider({
       complete: (req: ChatRequest) => {
-        const answer = answers.get(req.messages[0]!.content);
+        /* GV-50: the system message is the same for every call (the
+           cached prefix), so an answer is filed under the whole opening. */
+        const answer = answers.get(JSON.stringify(req.messages.slice(0, 2)));
         if (answer === undefined) throw new Error(`no stub answer filed for this ${req.label} prompt`);
         return answer;
       }
@@ -367,7 +374,7 @@ describe("runForayPipeline with both Chat narration builders injected (short tie
       providerName: chatWriter.providerName,
       async writeAct(req, c) {
         writes.push(req);
-        answers.set(buildActWritePrompt(req), JSON.stringify(await stubWriter.writeAct(req, c)));
+        answers.set(JSON.stringify(toChatMessages(actWritePromptParts(req))), JSON.stringify(await stubWriter.writeAct(req, c)));
         return chatWriter.writeAct(req, c);
       }
     };
@@ -375,7 +382,7 @@ describe("runForayPipeline with both Chat narration builders injected (short tie
       providerName: chatVerifier.providerName,
       async verifyAct(req, c) {
         verifies.push(req);
-        answers.set(buildActVerifyPrompt(req), JSON.stringify(await stubVerifier.verifyAct(req, c)));
+        answers.set(JSON.stringify(toChatMessages(actVerifyPromptParts(req))), JSON.stringify(await stubVerifier.verifyAct(req, c)));
         return chatVerifier.verifyAct(req, c);
       }
     };

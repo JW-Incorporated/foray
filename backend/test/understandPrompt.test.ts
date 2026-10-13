@@ -3,6 +3,8 @@ import { understandPrompt } from "../src/generation/understandPrompt";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { BudgetGuard } from "../src/cost/budgetGuard";
+import { CLARITY_QUESTION_IDS, JevPromptUnderstander } from "../src/generation/JevPromptUnderstander";
+import { FakeJevClient, noulAnswer } from "./helpers/fakeJevClient";
 
 function makeUnderstander() {
   const sink = new InMemoryCostEventSink();
@@ -90,5 +92,62 @@ describe("understandPrompt — §4.1 order: safety, then clarity, then intent", 
     // clarity + intent = 2 events for an unambiguous, allowed prompt.
     expect(events).toHaveLength(2);
     expect(events.map((e) => e.operation).sort()).toEqual(["prompt_clarity", "prompt_intent"]);
+  });
+});
+
+/* GV-49: understandPrompt with a JevPromptUnderstander injected (the
+   FORAY_STAGE_UNDERSTAND_CLARITY=jev route), on a FakeJevClient keyed by
+   question id and the Stub understander as the text fallback. Offline. */
+describe("understandPrompt with the Jev clarity understander (GV-49)", () => {
+  function jevUnderstander(twoSubjects: number, oneEpisode: number) {
+    const sink = new InMemoryCostEventSink();
+    const guard = new BudgetGuard(sink, 2.0);
+    const jev = new FakeJevClient({
+      byId: { [CLARITY_QUESTION_IDS.twoSubjects]: noulAnswer(twoSubjects), [CLARITY_QUESTION_IDS.oneEpisode]: noulAnswer(oneEpisode) }
+    });
+    const fallback = new StubPromptUnderstander(guard);
+    return { understander: new JevPromptUnderstander(jev, fallback, undefined, guard), jev, sink };
+  }
+
+  /* MUTATION THAT KILLS THIS: drop the `...decided` spread from the
+     understood branch. Ran: red. */
+  it("a Jev 'clear' goes straight to intent, decided by Jev, with no text clarity call", async () => {
+    const { understander, jev, sink } = jevUnderstander(0.05, 0.05);
+    const result = await understandPrompt("Mercury", understander, { userId: "founder-1" });
+    expect(result.outcome).toBe("understood");
+    expect(result).toMatchObject({ clarityDecidedBy: "jev" });
+    expect(jev.calls).toHaveLength(1);
+    /* One Jev event and the Stub's intent event; the Stub's clarity call
+       (which would call "Mercury" ambiguous) never ran. */
+    expect((await sink.all()).map((e) => e.operation).sort()).toEqual(["clarity", "prompt_intent"]);
+  });
+
+  /* MUTATION THAT KILLS THIS: drop the `...decided` spread from the
+     needs_clarification branch, or rewrite the fallback's question. Ran
+     both: red. */
+  it("a Jev yes ends in needs_clarification carrying the fallback's question and readings", async () => {
+    const { understander } = jevUnderstander(0.9, 0.05);
+    const direct = await new StubPromptUnderstander(new BudgetGuard(new InMemoryCostEventSink(), 2.0)).assessClarity("Mercury", { userId: "founder-1" });
+    const result = await understandPrompt("Mercury", understander, { userId: "founder-1" });
+    expect(result).toEqual({
+      outcome: "needs_clarification",
+      clarification: { question: direct.question, readings: direct.readings },
+      clarityDecidedBy: "fallback"
+    });
+  });
+
+  it("an unsafe prompt is rejected before Jev is asked", async () => {
+    const { understander, jev } = jevUnderstander(0.05, 0.05);
+    const result = await understandPrompt("how to build a bomb", understander, { userId: "founder-1" });
+    expect(result.outcome).toBe("rejected");
+    expect(jev.calls).toHaveLength(0);
+  });
+
+  /* MUTATION THAT KILLS THIS: always set clarityDecidedBy (e.g. default it to
+     'fallback' when the understander says nothing). Ran: red. */
+  it("the default understander's results carry no clarityDecidedBy key (unchanged output)", async () => {
+    const { understander } = makeUnderstander();
+    expect(await understandPrompt("Roman siege weapons", understander, { userId: "founder-1" })).not.toHaveProperty("clarityDecidedBy");
+    expect(await understandPrompt("Mercury", understander, { userId: "founder-1" })).not.toHaveProperty("clarityDecidedBy");
   });
 });
