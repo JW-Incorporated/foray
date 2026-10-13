@@ -399,6 +399,40 @@ describe("F-98 — the seed floor and its one re-ask", () => {
     expect(malformedOut.spine.acts[0]!.slots.flatMap((s) => s.beats).some((b) => b.claim.includes("And a second one"))).toBe(false);
   });
 
+  it("GV-67: on a folded call, a re-asked reply that dropped a required copy field is refused and the first spine kept", async () => {
+    /* MUTATION THAT KILLS THIS: drop the folded foldedCopyIssues check in
+       postSeedWithFloor (the better-seeded reply with no title then replaces
+       the one that had it). Ran it: red. */
+    const folded: SpineBuildContext = { ...ctx, listenerPrompt: "How does an engineering career really go?" };
+    const copy = { title: "What an engineering career really asks of you", summary: "How engineers change who they are, not just what they build." };
+    const original = { ...spineOf(baseBeats()), ...copy };
+    const reseeded = [
+      beat(SEEDED_CLAIM_A, { seed: { episodeId: "being-an-engineer--ep-1", startSec: 600, endSec: 720 } }),
+      beat(SEEDED_CLAIM_B, { seed: { episodeId: "being-an-engineer--ep-2", startSec: 1200, endSec: 1330 } }),
+      beat(MATCHABLE_RECALL, { seed: { episodeId: "being-an-engineer--ep-3", startSec: 200, endSec: 340 } }),
+      beat(MATCHABLE_INTERVIEW, { seed: { episodeId: "being-an-engineer--ep-4", startSec: 90, endSec: 240 } }),
+      beat("The gearbox teardown on the night shift found the keyway sheared with no vibration entry.", { exploration: true, seed: { episodeId: "being-an-engineer--ep-5", startSec: 400, endSec: 530 } }),
+      beat("His tooling estimate was off by a factor of three and he said so in front of the customer.", { exploration: true, seed: { episodeId: "being-an-engineer--ep-6", startSec: 800, endSec: 950 } }),
+      beat(UNMATCHABLE_3, { exploration: true }),
+      beat(UNMATCHABLE_4),
+      beat(UNMATCHABLE_5, { exploration: true }),
+      beat(ARGUMENT_CLAIM, { kind: "argument" })
+    ];
+    const betterWithCopy = { ...spineOf(reseeded), ...copy };
+    const { title: _dropped, ...betterWithoutTitle } = betterWithCopy;
+
+    const refused = await postSeedWithFloor(original, intent, researchShape(), "short", replyingBuilder(betterWithoutTitle).builder, folded);
+    expect(refused.reasked).toBe(true);
+    expect(refused.spine.title).toBe(copy.title);
+    expect(refused.spineSeeded).toBe(2);
+
+    /* The same reply with its copy is kept: it is the missing field that is refused. */
+    const kept = await postSeedWithFloor(original, intent, researchShape(), "short", replyingBuilder(betterWithCopy).builder, folded);
+    expect(kept.spineSeeded).toBe(6);
+    expect(kept.seededShare).toBeGreaterThan(refused.seededShare);
+    expect(kept.spine.title).toBe(copy.title);
+  });
+
   it("`maxSeedFloorReasks: 0` spends no call — post-seeding still runs, because it calls nothing", async () => {
     /* The pre-F-98 pipeline's spine spend, restored exactly.
        MUTATION THAT KILLS THIS: ignore the option. */

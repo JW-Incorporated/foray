@@ -1,7 +1,7 @@
 import { tokenizeForSourcing } from "./catalogueLookup";
 import { claimTermWeigher, TIER2_WINDOW_MIN_SHARE } from "./transcriptArchiveLookup";
 import { SpineSeedLedger } from "./spineSeeding";
-import { checkSpineStructure } from "./spineStructure";
+import { checkSpineStructure, foldedCopyIssues } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 import { withCallContext } from "./runLog";
 import type { IntentUnderstanding } from "../types/generation";
@@ -373,6 +373,12 @@ export async function postSeedWithFloor(
   /* GV-07: the seed-floor re-ask's model calls are recorded as such (a no-op
      wrapper outside a RunLog). */
   const raw = await withCallContext({ reask: "seed-floor" }, () => builder.buildSpine(intent, researchShape, duration, { ...ctx, revision }));
+  /* GV-67: on a folded call the re-asked reply must carry the listener copy
+     too; one that dropped a required field is refused like any other
+     regression, and the spine that already carried it is kept. */
+  if (ctx.listenerPrompt !== undefined && foldedCopyIssues(raw).length > 0) {
+    return { ...first, reasked: true };
+  }
   const reasked = SpineSchema.parse(raw);
   const seedableEpisodeIds = researchShape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId));
   if (!validateSpine(reasked).valid || checkSpineStructure(reasked, { seedableEpisodeIds }).length > 0) {

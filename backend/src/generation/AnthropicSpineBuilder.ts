@@ -9,7 +9,7 @@ import type { ResearchShape } from "../types/research";
 import type { DurationTier, Spine } from "../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 import { createMessage } from "./anthropicCall";
-import { RawSpineSchema } from "./replySchemas";
+import { RawSpineSchema, spineFromReply } from "./replySchemas";
 import { buildSpinePrompt, spineConversation } from "./prompts/spine";
 
 /**
@@ -63,13 +63,16 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     duration: DurationTier,
     ctx: SpineBuildContext
   ): Promise<Spine> {
-    const promptText = buildSpinePrompt(intent, researchShape, duration);
+    /* GV-67: on the folded path the listener's own words ride in and the
+       reply leads with the copy fields; classic calls are unchanged. */
+    const folded = ctx.listenerPrompt !== undefined;
+    const promptText = buildSpinePrompt(intent, researchShape, duration, ctx.listenerPrompt);
     /* F-86: a structural re-ask is the SAME prompt, the reply the gate refused
        as the assistant's own turn, and one user turn naming what to fix — so
        the model keeps every act, slot and beat the gate did not name and
        changes only the ones it did. A fresh single-turn prompt would cost the
        same Opus call and hand back a different spine with its own defects. */
-    const messages: Anthropic.MessageParam[] = spineConversation(promptText, ctx.revision);
+    const messages: Anthropic.MessageParam[] = spineConversation(promptText, ctx.revision, folded);
     const conversationText = messages.map((m) => (typeof m.content === "string" ? m.content : "")).join("\n");
     const estimatedInputTokens = roughTokenEstimate(conversationText);
     /* Metered the way any spine call is — a re-ask is a whole Opus call, and
@@ -118,15 +121,7 @@ export class AnthropicSpineBuilder implements SpineBuilder {
     };
 
     const raw = await parseWithRetry(RawSpineSchema, textBlock.text, "Anthropic spine output", reask);
-    return {
-      subject: intent.subject,
-      angle: intent.angle,
-      overview: raw.overview,
-      duration,
-      generatedAt: new Date().toISOString(),
-      voice: raw.voice,
-      acts: raw.acts
-    };
+    return spineFromReply(raw, intent, duration, folded);
   }
 }
 

@@ -7,6 +7,7 @@ import {
   countSlots,
   type Spine
 } from "../types/spine";
+import { SPINE_REQUIRED_COPY_FIELDS } from "./replySchemas";
 
 /**
  * The cheap structural gate between §4.3 and §4.4 (generation run 2026-09-09,
@@ -58,7 +59,10 @@ export type SpineStructureIssueCode =
   /* WS-L (F-63): the act carries fewer beats seeded from a research window than
      `SPINE_MIN_SEEDED_BEATS_PER_ACT`, even though the research map quoted
      windows this spine could have been written from. */
-  | "act-below-seeded-beat-floor";
+  | "act-below-seeded-beat-floor"
+  /* GV-67 (W4-03): a folded spine reply (SpineBuildContext.listenerPrompt)
+     left a required copy field out or blank. See `foldedCopyIssues`. */
+  | "folded-copy-missing";
 
 export interface SpineStructureIssue {
   code: SpineStructureIssueCode;
@@ -174,6 +178,23 @@ function withinTolerance(actual: number, [min, max]: [number, number]): boolean 
  */
 export interface SpineStructureOptions {
   seedableEpisodeIds?: Iterable<string>;
+}
+
+/**
+ * GV-67 (W4-03): the folded path's copy gate. On a folded call the spine reply
+ * is the only writer of the subject, angle, title and summary
+ * (SPINE_REQUIRED_COPY_FIELDS); one it left out or blank has nothing to fall
+ * back to but the pre-spine keyword list, which is never spoken or published.
+ * One issue per missing field, each naming it, so F-86's re-ask
+ * (`buildSpineFixInstruction`) tells the model exactly what to write. Only
+ * `buildSpine.ts` and the seed-floor re-ask call this, and only on a folded
+ * call: a classic spine's subject and angle are the understander's.
+ */
+export function foldedCopyIssues(spine: Pick<Spine, (typeof SPINE_REQUIRED_COPY_FIELDS)[number]>): SpineStructureIssue[] {
+  return SPINE_REQUIRED_COPY_FIELDS.filter((field) => !spine[field]?.trim()).map((field) => ({
+    code: "folded-copy-missing" as const,
+    message: `the reply has no "${field}" (missing or blank) — write "${field}" at the top of the reply, before "overview", as the request above asks`
+  }));
 }
 
 /** Every structural defect in one pass, so a re-ask can fix them all at once

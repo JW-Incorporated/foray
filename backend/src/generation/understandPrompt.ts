@@ -1,6 +1,7 @@
 import { checkSafety } from "./safetyCheck";
+import { preSpineIntent } from "./preSpineIntent";
 import type { PromptUnderstander, PromptUnderstandContext } from "./PromptUnderstander";
-import type { UnderstandPromptResult } from "../types/generation";
+import type { ClarityDecider, UnderstandPromptResult } from "../types/generation";
 
 /**
  * §4.1 end to end, in the doc's mandated order: safety, then clarity, then
@@ -34,12 +35,60 @@ export async function understandPrompt(
   understander: PromptUnderstander,
   ctx: PromptUnderstandContext
 ): Promise<UnderstandPromptResult> {
+  const gate = await safetyThenClarity(prompt, understander, ctx);
+  if ("stop" in gate) return gate.stop;
+  const decided = gate.decided;
+
+  const intent = await understander.extractIntent(prompt, ctx);
+  return { outcome: "understood", intent, ...decided };
+}
+
+/**
+ * GV-67 (W4-03): §4.1 on the folded path (`flags.foldSpineCopy`). Safety,
+ * then clarity, in the same order and with the same outcomes as
+ * `understandPrompt`, and then NO extractIntent call (and so no title
+ * re-case call): the intent is `preSpineIntent(prompt)`, the prompt's
+ * sourcing keywords, and the spine writes the subject, angle, title and
+ * summary later from the listener's own words.
+ *
+ * A prompt with no sourcing keyword at all ("is it on?") has no pre-spine
+ * intent (`preSpineIntent` returns null), and the run falls back to the
+ * classic extractIntent call for the topic decision and the research map
+ * rather than send them off on a placeholder subject. The spine still writes
+ * the copy.
+ *
+ * Same no-persistence rule as `understandPrompt`: the returned intent holds a
+ * keyword list (or, on the fallback, the understander's restatement), never
+ * the prompt as such.
+ */
+export async function understandPromptFast(
+  prompt: string,
+  understander: PromptUnderstander,
+  ctx: PromptUnderstandContext
+): Promise<UnderstandPromptResult> {
+  const gate = await safetyThenClarity(prompt, understander, ctx);
+  if ("stop" in gate) return gate.stop;
+  const decided = gate.decided;
+  const intent = preSpineIntent(prompt) ?? (await understander.extractIntent(prompt, ctx));
+  return { outcome: "understood", intent, ...decided };
+}
+
+/** Safety, then clarity: the half of §4.1 both paths share. Either the
+ * terminal outcome (rejected, or needs clarification) or, for a clear
+ * prompt, the clarity provenance to carry onto the understood result. */
+async function safetyThenClarity(
+  prompt: string,
+  understander: PromptUnderstander,
+  ctx: PromptUnderstandContext
+): Promise<{ stop: UnderstandPromptResult } | { decided: { clarityDecidedBy?: ClarityDecider } }> {
   const safety = checkSafety(prompt);
   if (!safety.allowed) {
     // Both are non-null together on a rejection — checkSafety's contract.
     return {
-      outcome: "rejected",
-      rejection: { category: safety.category!, explanation: safety.explanation! }
+      stop: {
+        outcome: "rejected",
+        rejection: { category: safety.category!, explanation: safety.explanation! }
+      }
     };
   }
 
@@ -50,15 +99,15 @@ export async function understandPrompt(
   const decided = clarity.decidedBy !== undefined ? { clarityDecidedBy: clarity.decidedBy } : {};
   if (clarity.ambiguous) {
     return {
-      outcome: "needs_clarification",
-      clarification: {
-        question: clarity.question ?? "Could you say more about what you mean — or something else?",
-        readings: clarity.readings
-      },
-      ...decided
+      stop: {
+        outcome: "needs_clarification",
+        clarification: {
+          question: clarity.question ?? "Could you say more about what you mean — or something else?",
+          readings: clarity.readings
+        },
+        ...decided
+      }
     };
   }
-
-  const intent = await understander.extractIntent(prompt, ctx);
-  return { outcome: "understood", intent, ...decided };
+  return { decided };
 }
