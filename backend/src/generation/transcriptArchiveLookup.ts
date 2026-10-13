@@ -360,6 +360,31 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
   }
 
   /**
+   * GV-54 (docs/roadmap/generation-v2.md, subsumes corpus roadmap PKG-24):
+   * forget everything this provider memoised about one show, so a body
+   * written into its directory after a miss is found on the very next read.
+   *
+   * Every map here remembers a miss: `dirByShow` a show with no directory yet,
+   * `filesByDir` a listing taken before the file existed, `guidIndexByDir` an
+   * index built over that listing, `locatedByKey` a null locate and
+   * `cuesByKey` a null read. The remote cue store (cli/remoteCueStore.ts)
+   * writes fetched bodies into a cache directory this provider reads, and
+   * calls this after each write and each eviction. Nothing else changes: a
+   * provider over a directory nobody writes to never needs it.
+   */
+  forgetShow(showId: string): void {
+    const dir = this.dirByShow.get(showId) ?? null;
+    this.dirByShow.delete(showId);
+    if (dir !== null) {
+      this.filesByDir.delete(dir);
+      this.guidIndexByDir.delete(dir);
+    }
+    const prefix = `${showId}\u0000`;
+    for (const key of [...this.locatedByKey.keys()]) if (key.startsWith(prefix)) this.locatedByKey.delete(key);
+    for (const key of [...this.cuesByKey.keys()]) if (key.startsWith(prefix)) this.cuesByKey.delete(key);
+  }
+
+  /**
    * The provenance the body file itself records (F-78's `transcript_source`).
    * `fetch-transcripts.mjs` writes `source_url: <the digest row's transcript_url>`
    * into every normalized body it produces, and its regenerate path records

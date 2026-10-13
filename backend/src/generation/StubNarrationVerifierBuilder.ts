@@ -8,6 +8,22 @@ import type {
   NarrationVerifierBuilder,
   SeamVerdict
 } from "./NarrationVerifierBuilder";
+import { sentenceVerdictsFor } from "./JevNarrationVerifierBuilder";
+import { CodeOverlapSupportJudge } from "./sentenceSupport";
+
+/** GV-51: the stub's opt-in sentence mode. */
+export interface StubNarrationVerifierOptions {
+  /** Attach per-sentence verdicts (`SeamVerdict.sentences`) judged by
+   * CodeOverlapSupportJudge, so offline pipeline tests see the contract the
+   * Jev verifier fills. Off by default: the verdicts are then exactly
+   * today's. The seam's own answers (claimsSupported, restsOn,
+   * contestedHandled) are the stub's structural ones either way. */
+  emitSentences?: boolean;
+}
+
+/** GV-51: the share of a statement's content words its best source must
+ * hold for the code-overlap judge to call it supported (stub mode only). */
+export const STUB_SENTENCE_MIN_OVERLAP = 0.5;
 
 /**
  * Deterministic fake narration verifier, used whenever ANTHROPIC_API_KEY
@@ -46,7 +62,14 @@ import type {
 export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
   readonly providerName = "stub";
 
-  constructor(private readonly budgetGuard: BudgetGuard = defaultBudgetGuard) {}
+  private readonly emitSentences: boolean;
+
+  constructor(
+    private readonly budgetGuard: BudgetGuard = defaultBudgetGuard,
+    options: StubNarrationVerifierOptions = {}
+  ) {
+    this.emitSentences = options.emitSentences === true;
+  }
 
   /**
    * Q-03: the per-beat question, answered with the structural signal
@@ -67,7 +90,13 @@ export class StubNarrationVerifierBuilder implements NarrationVerifierBuilder {
       dryRun: true,
       sessionId: ctx.sessionId
     });
-    return actVerdictFor(request);
+    const verdict = actVerdictFor(request);
+    if (!this.emitSentences) return verdict;
+    const sentences = await sentenceVerdictsFor(request, new CodeOverlapSupportJudge(), () => STUB_SENTENCE_MIN_OVERLAP);
+    return {
+      beats: verdict.beats,
+      seams: verdict.seams.map((seam) => ({ ...seam, sentences: sentences.get(seam.seamId) ?? [] }))
+    };
   }
 }
 
