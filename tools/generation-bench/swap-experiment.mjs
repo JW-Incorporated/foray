@@ -75,8 +75,11 @@
  * COLLECT REFUSES RATHER THAN GUESSES
  * - Every row of both reports must carry the stageAssignments the plan
  *   implies (impl and machine per stage, plus spec.expect for arm B) and,
- *   when spec.expect.levers is set, matching `levers`. An unimplemented flag
- *   could otherwise make arm B silently equal arm A.
+ *   when spec.expect.levers is set, matching `levers`: arm B the spec's
+ *   values, arm A each named lever on or off as planned (absent = off). An
+ *   unimplemented flag, or a lever flag leaking into arm A, could otherwise
+ *   make arm B silently equal arm A. `run` drops every inherited lever flag an
+ *   arm leaves unset, and the printed commands unset it (env -u).
  * - A row that sent an Anthropic request (anthropicCalls > 0) refuses the
  *   collection. Two arms run on different prompt sets or different corpus
  *   fingerprints are not a pair and are refused.
@@ -148,10 +151,13 @@ export const REFERENCE_LABEL = "reference";
 /** The act a pair is heard on (R2-21: act 1 of both arms). */
 export const LISTEN_ACT = 1;
 
-/** Lever -> the backend flag that switches it. Only levers whose flag exists
- * are mapped (decision 17 names FORAY_WRITER_EXEMPLARS); an adopted stack that
- * turns on an unmapped lever is refused until its card adds the mapping. */
-export const LEVER_ENV = Object.freeze({ exemplars: "FORAY_WRITER_EXEMPLARS" });
+/** Lever -> the backend flag that switches it and that flag's on and off
+ * values. Only levers whose flag exists are mapped (decision 17 names
+ * FORAY_WRITER_EXEMPLARS; GV-99 defines it as off|on, read through
+ * generationFlags.readEnumFlag, which throws on any other value such as "1").
+ * An adopted stack that turns on an unmapped lever is refused until its card
+ * adds the mapping. */
+export const LEVER_ENV = Object.freeze({ exemplars: Object.freeze({ name: "FORAY_WRITER_EXEMPLARS", on: "on", off: "off" }) });
 
 export const MODE_ENV = "FORAY_GENERATION_MODE";
 export const ALLOW_LEGACY_ENV = "FORAY_ALLOW_ANTHROPIC_LEGACY";
@@ -379,18 +385,40 @@ export function adoptedEnv({ floorSpec, stack, contract, ledgerRows = [] }) {
   }
   for (const [lever, value] of Object.entries(stack.levers)) {
     if (value === false || value === null || value === undefined) continue;
-    const name = LEVER_ENV[lever];
-    if (!name) throw new Error(`adopted-stack.json turns on lever "${lever}", which has no backend flag mapped yet (LEVER_ENV)`);
-    env[name] = value === true ? "1" : String(value);
+    const flag = LEVER_ENV[lever];
+    if (!flag) throw new Error(`adopted-stack.json turns on lever "${lever}", which has no backend flag mapped yet (LEVER_ENV)`);
+    env[flag.name] = value === true ? flag.on : String(value);
   }
   return env;
 }
 
-/** The levers an arm's environment turns on, by lever name. */
+/** The levers an arm's environment sets, by lever name: the flag's on value
+ * is true, its off value false. */
 function leversOf(env) {
   const out = {};
-  for (const [lever, name] of Object.entries(LEVER_ENV)) if (env[name] !== undefined) out[lever] = env[name] === "1" ? true : env[name];
+  for (const [lever, flag] of Object.entries(LEVER_ENV)) {
+    const v = env[flag.name];
+    if (v !== undefined) out[lever] = v === flag.on ? true : v === flag.off ? false : v;
+  }
   return out;
+}
+
+/** Whether a lever value, planned or recorded, means the lever ran: absent,
+ * null, false and the flag's off value are off; a record such as GV-99's
+ * {mode, exemplarIds, fileSha} is read by its mode; anything else recorded is
+ * on. */
+export function leverIsOn(value) {
+  if (value === undefined || value === null || value === false || value === "off") return false;
+  if (isPlainObject(value) && "mode" in value) return leverIsOn(value.mode);
+  return true;
+}
+
+/** The lever flags the arm leaves unset: inherited copies are dropped and
+ * unset in the printed commands, so the operator's shell cannot turn one on. */
+function unsetLeverVars(armEnv) {
+  return Object.values(LEVER_ENV)
+    .map((flag) => flag.name)
+    .filter((name) => armEnv?.[name] === undefined);
 }
 
 function reportDir(id, arm) {
@@ -444,6 +472,10 @@ export function planExperiment(spec, options = {}) {
     const missing = contract.stages.filter((s) => env[stageEnvVar(s)] === undefined);
     if (missing.length) problems.push(`arm ${arm} leaves stage(s) unassigned: ${missing.join(", ")}`);
     for (const [k, v] of Object.entries(env)) if (FORBIDDEN_RE.test(`${k}=${v}`)) problems.push(`arm ${arm} ${k} names Anthropic`);
+    for (const flag of Object.values(LEVER_ENV)) {
+      const v = env[flag.name];
+      if (v !== undefined && v !== flag.on && v !== flag.off) problems.push(`arm ${arm} ${flag.name}=${v} is not ${flag.off}|${flag.on}`);
+    }
   }
   if (envA !== null) {
     const stageA = stageEnvOf(envA, contract);
@@ -505,7 +537,8 @@ export function commandsFor(plan) {
     const env = Object.entries(arm.env).map(([k, v]) => `${k}=${v}`).join(" ");
     const args = arm.args.map((a, i) => (i > 0 && ["--prompts", "--out", "--seed-checkpoints"].includes(arm.args[i - 1]) ? `../${a}` : a)).join(" ");
     lines.push(`# arm ${name}`);
-    lines.push(`(cd backend && env -u ${ALLOW_LEGACY_ENV} ${env} npm run generate-forays -- ${args})`);
+    const unset = [ALLOW_LEGACY_ENV, ...unsetLeverVars(arm.env)].map((k) => `-u ${k}`).join(" ");
+    lines.push(`(cd backend && env ${unset} ${env} npm run generate-forays -- ${args})`);
   }
   return lines;
 }
@@ -542,11 +575,13 @@ export function assertArmEnv(env, contract) {
 }
 
 /** The environment an arm is spawned with: the inherited one, minus every
- * FORAY_STAGE_* it carried and the stripped variables, plus the arm's. */
+ * FORAY_STAGE_* it carried, every lever flag the arm leaves unset and the
+ * stripped variables, plus the arm's. */
 export function spawnEnv(inherited, armEnv) {
   const env = {};
+  const unsetLevers = unsetLeverVars(armEnv);
   for (const [k, v] of Object.entries(inherited)) {
-    if (STRIPPED_ENV.includes(k) || k.startsWith("FORAY_STAGE_") || k === MODE_ENV) continue;
+    if (STRIPPED_ENV.includes(k) || k.startsWith("FORAY_STAGE_") || k === MODE_ENV || unsetLevers.includes(k)) continue;
     env[k] = v;
   }
   return { ...env, ...armEnv };
@@ -645,6 +680,27 @@ export function assignmentMismatches(entries, expected, extra = {}, expectLevers
         }
     }
     if (typeof entry.anthropicCalls === "number" && entry.anthropicCalls > 0) problems.push(`${at} sent ${entry.anthropicCalls} Anthropic request(s)`);
+  });
+  return problems;
+}
+
+/** Arm A against every lever spec.expect names, on or off as planned (a lever
+ * arm A does not set is planned off). Arm A's planned value, not the spec's,
+ * is the expectation: a lever flag leaking into arm A would otherwise make it
+ * equal arm B and still pass. */
+export function armALeverMismatches(entries, expectLevers, plannedLevers = {}) {
+  if (expectLevers === undefined) return [];
+  const problems = [];
+  entries.forEach((entry, i) => {
+    const at = `arm A row ${entry.promptId ?? i + 1}`;
+    if (!isPlainObject(entry.levers)) {
+      problems.push(`${at} records no levers`);
+      return;
+    }
+    for (const lever of Object.keys(expectLevers)) {
+      const want = leverIsOn(plannedLevers[lever]);
+      if (leverIsOn(entry.levers[lever]) !== want) problems.push(`${at} lever ${lever}: ${JSON.stringify(entry.levers[lever])}, planned ${want ? "on" : "off"}`);
+    }
   });
   return problems;
 }
@@ -759,7 +815,8 @@ export function collectExperiment(plan, options = {}) {
 
   /* Refuse the whole collection when either arm did not run what was planned. */
   const problems = [
-    ...(measure ? [] : assignmentMismatches(reportA.entries, plan.arms.A.expected, {}, expect.levers !== undefined ? plan.arms.A.levers : undefined, "A")),
+    ...(measure ? [] : armALeverMismatches(reportA.entries, expect.levers, plan.arms.A.levers)),
+    ...(measure ? [] : assignmentMismatches(reportA.entries, plan.arms.A.expected, {}, undefined, "A")),
     ...assignmentMismatches(reportB.entries, plan.arms.B.expected, expect.stageAssignments || {}, expect.levers, "B")
   ];
   if (!measure && reportA.prompts?.sha256 && reportB.prompts?.sha256 && reportA.prompts.sha256 !== reportB.prompts.sha256) {

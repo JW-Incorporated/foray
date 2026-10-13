@@ -28,6 +28,8 @@ import {
   FLOOR_SPEC_ID,
   MODE_ENV,
   REFERENCE_LABEL,
+  LEVER_ENV,
+  armALeverMismatches,
   assertArmEnv,
   collectExperiment,
   decideExperiment,
@@ -40,6 +42,7 @@ import {
   planExperiment,
   readSpec,
   runExperiment,
+  spawnEnv,
   stageEnvVar,
   timingDeltas,
   validateSpec
@@ -304,7 +307,10 @@ test("plan output snapshot for each committed spec", () => {
       const got = plan.arms[arm];
       assert.deepEqual({ source: got.source, env: got.env, args: got.args }, snapshot[id][arm], `${id} arm ${arm}`);
     }
-    assert.equal(plan.commands.filter((l) => l.startsWith("(cd backend && env -u FORAY_ALLOW_ANTHROPIC_LEGACY FORAY_GENERATION_MODE=local ")).length, id === "E0-floor" ? 1 : 2);
+    assert.equal(
+      plan.commands.filter((l) => l.startsWith("(cd backend && env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_WRITER_EXEMPLARS FORAY_GENERATION_MODE=local ")).length,
+      id === "E0-floor" ? 1 : 2
+    );
   }
 });
 
@@ -355,13 +361,21 @@ test("plan refuses an arm B that changes more or less than the spec's one stage,
   );
   assert.throws(() => planExperiment(deepenSpec({ armB: { env: { FORAY_STAGE_DEEPEN: "local:spark" } } }), { root, contract: CONTRACT }), /arm B changes no stage/);
   assert.throws(
-    () => planExperiment(deepenSpec({ armB: { env: { FORAY_STAGE_DEEPEN: "local:second", FORAY_WRITER_EXEMPLARS: "1" } } }), { root, contract: CONTRACT }),
+    () => planExperiment(deepenSpec({ armB: { env: { FORAY_STAGE_DEEPEN: "local:second", FORAY_WRITER_EXEMPLARS: "on" } } }), { root, contract: CONTRACT }),
     /changes no lever; arm B also changes FORAY_WRITER_EXEMPLARS/
   );
   const lever = { id: "T3", kind: "lever", lever: "exemplars", armA: { env: floorEnv() }, armB: { env: { FORAY_STAGE_DEEPEN: "local:second" } }, rerunFrom: null, golden: "golden.json" };
   assert.throws(() => planExperiment(lever, { root, contract: CONTRACT }), /lever experiment changes no stage/);
-  const leverOk = { ...lever, armB: { env: { FORAY_WRITER_EXEMPLARS: "1" } } };
-  assert.equal(planExperiment(leverOk, { root, contract: CONTRACT }).arms.B.levers.exemplars, true);
+  const leverOk = { ...lever, armB: { env: { FORAY_WRITER_EXEMPLARS: "on" } } };
+  const leverPlan = planExperiment(leverOk, { root, contract: CONTRACT });
+  assert.equal(leverPlan.arms.B.levers.exemplars, true);
+  assert.deepEqual(leverPlan.arms.A.levers, {});
+  /* Arm A leaves the lever unset, so its command unsets it; arm B sets it. */
+  assert.match(leverPlan.commands[1], /env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_WRITER_EXEMPLARS FORAY_GENERATION_MODE=local /);
+  assert.match(leverPlan.commands[3], /env -u FORAY_ALLOW_ANTHROPIC_LEGACY FORAY_GENERATION_MODE=local .*FORAY_WRITER_EXEMPLARS=on /);
+  assert.equal(planExperiment({ ...lever, armB: { env: { FORAY_WRITER_EXEMPLARS: "off" } }, armA: { env: { ...floorEnv(), FORAY_WRITER_EXEMPLARS: "on" } } }, { root, contract: CONTRACT }).arms.B.levers.exemplars, false);
+  /* GV-99's flag is off|on through readEnumFlag, which throws on "1". */
+  assert.throws(() => planExperiment({ ...lever, armB: { env: { FORAY_WRITER_EXEMPLARS: "1" } } }, { root, contract: CONTRACT }), /arm B FORAY_WRITER_EXEMPLARS=1 is not off\|on/);
 });
 
 test("plan refuses a rerunFrom after the changed stage's first banked stage, a seeded measure, and a spec id that is not its file name", () => {
@@ -395,7 +409,10 @@ test("the adopted arm is the floor overlaid with adopted-stack.json; an unmapped
     /lever "selfCritique", which has no backend flag mapped/
   );
   const withExemplars = planExperiment(spec, { contract: CONTRACT, stack: { ...EMPTY_STACK, levers: { exemplars: true } }, ledgerRows: [] });
-  assert.equal(withExemplars.arms.A.env.FORAY_WRITER_EXEMPLARS, "1");
+  assert.equal(withExemplars.arms.A.env.FORAY_WRITER_EXEMPLARS, "on", "the backend's enum value, never \"1\"");
+  assert.equal(withExemplars.arms.A.levers.exemplars, true);
+  assert.ok(withExemplars.commands.every((l) => !/FORAY_WRITER_EXEMPLARS=1\b/.test(l)));
+  assert.equal(LEVER_ENV.exemplars.on, "on");
 });
 
 /* ------------------------------------------------------------------ */
@@ -428,6 +445,17 @@ test("run executes each arm through the injected spawn with FORAY_GENERATION_MOD
   assert.equal(calls[0].env.FORAY_STAGE_DEEPEN, "local:spark");
   assert.equal(calls[1].env.FORAY_STAGE_DEEPEN, "local:second");
   assert.deepEqual(calls[1].args.slice(-4), ["--seed-checkpoints", path.join(root, "data-local/swaps/T1-deepen/A"), "--rerun-from", "deepen"]);
+});
+
+test("a lever flag exported in the operator's shell never reaches an arm that leaves it unset", async () => {
+  const { root, plan } = runPlan();
+  const calls = [];
+  const inherited = { PATH: "p", FORAY_WRITER_EXEMPLARS: "on" };
+  await runExperiment(plan, { root, contract: CONTRACT, inherited, out: quiet, spawn: async (call) => (calls.push(call), 0) });
+  assert.deepEqual(calls.map((c) => c.arm), ["A", "B"]);
+  for (const call of calls) assert.equal(call.env.FORAY_WRITER_EXEMPLARS, undefined, `arm ${call.arm}`);
+  assert.equal(spawnEnv(inherited, { FORAY_WRITER_EXEMPLARS: "off" }).FORAY_WRITER_EXEMPLARS, "off", "an arm's own value wins");
+  assert.equal(spawnEnv(inherited, {}).PATH, "p");
 });
 
 test("--dry-run spawns nothing", async () => {
@@ -526,6 +554,18 @@ test("collect refuses when a report's stageAssignments or levers do not match th
     () => collected({ n: 2, spec: deepenSpec({ expect: { levers: { exemplars: true } } }), edit: (e, arm) => (e.levers = { exemplars: arm === "B" ? false : undefined }) }),
     /lever exemplars: false, expected true/
   );
+  /* A lever that leaked into arm A: both arms ran with exemplars on. */
+  const leverSpec = deepenSpec({ expect: { levers: { exemplars: true } } });
+  assert.throws(
+    () => collected({ n: 2, spec: leverSpec, edit: (e) => (e.levers = { exemplars: true }) }),
+    /arm A row p01 lever exemplars: true, planned off/
+  );
+  assert.throws(
+    () => collected({ n: 2, spec: leverSpec, edit: (e) => (e.levers = { exemplars: { mode: "on", exemplarIds: ["x"], fileSha: "s" } }) }),
+    /arm A row p01 lever exemplars: \{"mode":"on".*planned off/
+  );
+  assert.deepEqual(armALeverMismatches([{ promptId: "p01", levers: { exemplars: { mode: "off" } } }, { promptId: "p02", levers: {} }], { exemplars: true }, {}), []);
+  assert.deepEqual(armALeverMismatches([{ promptId: "p01", levers: {} }], { exemplars: true }, { exemplars: true }), ["arm A row p01 lever exemplars: undefined, planned on"]);
   assert.throws(() => collected({ n: 2, edit: (e, arm) => arm === "B" && (e.anthropicCalls = 2) }), /sent 2 Anthropic request\(s\)/);
   assert.throws(() => collected({ n: 2, corpus: { A: "fp-1", B: "fp-2" } }), /different corpora/);
 });
