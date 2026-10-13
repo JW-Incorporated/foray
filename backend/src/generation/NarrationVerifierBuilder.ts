@@ -168,6 +168,43 @@ export interface BeatVerdict {
   restsOn?: string[];
   /** Required when `carried` is false: the note the writer acts on. */
   notes?: string;
+  /** GV-51: the SENTENCE of the act's prose that carries the beat, when a
+   * per-sentence verifier (JevNarrationVerifierBuilder) found it: the seam
+   * and the sentence's index in `SeamVerdict.sentences`. Absent when a clip
+   * carries the beat, or the verifier answers per seam. */
+  carriedBySentence?: { seamId: string; index: number };
+}
+
+/**
+ * GV-51: how a per-sentence verifier read one sentence of a seam. The
+ * sentences are spokenLine.js's `splitSpokenSentences` of the script, in
+ * order; `index` is 0-based within the seam.
+ *
+ *   kind     'statement' (asserts something about the world: narration.ts's
+ *            isStatementSentence), 'question', 'imperative' (a listener
+ *            imperative, or a fragment too short to assert anything) or
+ *            'intro' (names the clip the seam introduces: actSeams.ts's
+ *            introNamesSource).
+ *   verdict  'exempt' for every kind but 'statement'; a statement is
+ *            'supported' (the judge's p reached the answering judge's
+ *            threshold and no specific failed), 'unsupported' or 'unknown'
+ *            (the judge could not be asked).
+ *
+ * Every field is optional on the seam verdict (`SeamVerdict.sentences`), so
+ * the Anthropic, local and stub verifiers stay valid without it. R2-10 cuts
+ * sentences from it; nothing on the default path reads it yet.
+ */
+export interface SentenceVerdict {
+  index: number;
+  text: string;
+  kind: "statement" | "question" | "imperative" | "intro";
+  verdict: "supported" | "unsupported" | "unknown" | "exempt";
+  /** The judge's probability that the sources back the sentence. */
+  p?: number;
+  /** The act sources the sentence rests on (ids into `ActVerifyRequest.sources`). */
+  restsOn?: string[];
+  /** The numbers, years and names no candidate source carries (specifics.ts). */
+  specifics?: string[];
 }
 
 export interface SeamVerdict {
@@ -184,6 +221,8 @@ export interface SeamVerdict {
   /** Required whenever an answer is false — and for an unsupported
    * statement it QUOTES the sentence. */
   notes?: string;
+  /** GV-51: per-sentence verdicts, when the verifier answers per sentence. */
+  sentences?: SentenceVerdict[];
 }
 
 export interface ActVerifyResult {
