@@ -2831,6 +2831,14 @@ const BACKEND_FLOORS = {
      body on disk. */
   "test/retrievalServer.test.ts": 17, // GV-48 review: a rebuild whose embedder has no vectors yet is lexical only, not 503; 16 -> 17 // GV-48 adds hybrid mode (append + scope, determinism + no-mode parity) and the node shortlist (rebuild + GET rerank)
   "test/manifestBodySource.test.ts": 5,
+  /* GV-54 (docs/roadmap/generation-v2.md, from W3-24; subsumes corpus PKG-24):
+     the remote cue store behind the retrieval server's --r2 — miss, fetch,
+     cache (no second fetch), forgetShow makes a late body visible, 404 and
+     sha mismatch write nothing, legacy whisper converted to asr-local, the
+     byte-bounded LRU, a failed fetch degrades (503) without throwing, local
+     bodies never fetched, one fetch per episode in flight, the default R2
+     fetcher's 404 mapping, and the --r2 flags. */
+  "test/remoteCueStore.test.ts": 14,
   /* GV-29 (docs/roadmap/generation-v2.md, from W3-10): the backend retrieval
      client — prepared lineage and 'all' answers equal a local search (scores,
      ranks, idf, zero-hit idf), isUsable and limit honoured, unknown episodes
@@ -3445,6 +3453,19 @@ const BACKEND_FLOORS = {
      collectActStream (equals writeAct, one budget record, throws on a
      missing or early 'end'). Pure; offline. One named mutation per test. */
   "test/seamStream.test.ts": 9,
+  /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
+     verifier -- seamSentences (intro, question, imperative, statement),
+     per-statement support with the specifics check on the same texts (an
+     unsourced year is unsupported at p 0.9), unavailable -> 'unknown', the
+     seam verdict from its sentences (quoted notes, restsOn union, the
+     stub's contested rule), the per-beat choice over sentences and clips
+     (clip carrier, frozen seams as options, the per-judge threshold, the
+     40k split keeping the best carrier), metering through BudgetGuard, the
+     stub's opt-in sentence mode, FORAY_STAGE_VERIFIER=jev routing and its
+     JEV_API_KEY error, and stub writer + Jev verifier end to end through
+     writeNarration. FakeJevClient only; offline. One named mutation per
+     test. */
+  "test/jevNarrationVerifier.test.ts": 16,
   /* GV-50 (docs/roadmap/generation-v2.md, W4-11 + W2-14, #1286): the act
      writer prompt as [stable][foray][call] (prompts/actWrite.ts) -- stable
      byte-identical across acts, rounds 1-3 and two Forays for both output
