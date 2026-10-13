@@ -22,6 +22,8 @@ import { StubNarrationWriterBuilder, stubSeam } from "../src/generation/StubNarr
 import { StubNarrationVerifierBuilder, actVerdictFor } from "../src/generation/StubNarrationVerifierBuilder";
 import { actOutputTokenBudget, assertNotTruncated, buildActWritePrompt } from "../src/generation/AnthropicNarrationWriterBuilder";
 import { buildActVerifyPrompt } from "../src/generation/AnthropicNarrationVerifierBuilder";
+import { actWritePromptParts } from "../src/generation/prompts/actWrite";
+import { actVerifyPromptParts } from "../src/generation/prompts/actVerify";
 import { stitchAct } from "../src/generation/stitchAct";
 import {
   buildVeracityMetrics,
@@ -688,7 +690,11 @@ describe("the per-act prompts", () => {
        line (the writer is again asked to hit a page role — F-97), or drop
        the FROZEN marking (a retry for one seam rewrites them all). */
     const prompt = buildActWritePrompt(request());
-    expect(prompt).toContain('one act ("Act 1")');
+    /* GV-50: the act's title left the role line (the cacheable prefix) for
+       the line that opens the call part. */
+    expect(prompt).toContain('THE ACT YOU ARE WRITING: "Act 1"');
+    expect(prompt).toContain('You are writing the narration of one act of an audio documentary ("Foray")');
+    expect(prompt).not.toContain('one act ("Act 1")');
     expect(prompt).toContain("SEAM s0 — 340-1025 characters — introduces CLIP c0 (introduction: full) — EDIT");
     expect(prompt).not.toMatch(/SEAM s\d — mode/);
     expect(prompt).toContain(`  carries beat b0: ${CLAIMS.b0}`);
@@ -712,6 +718,21 @@ describe("the per-act prompts", () => {
     expect(prompt.indexOf("SEAM s0")).toBeLessThan(prompt.indexOf("CLIP c0"));
     expect(prompt.indexOf("CLIP c0")).toBeLessThan(prompt.indexOf("SEAM s1"));
     expect(prompt).toContain('{"seams": [{"seamId": string, "script": string, "claims": [');
+    /* GV-50 (W4-11): the rules and the reply shape come FIRST (the stable
+       part), then the voice line (foray), then the act (call): title,
+       layout, documents, rejections. MUTATION THAT KILLS THIS: put
+       "HOW TO WRITE" and the rule lists back after the layout in
+       actWritePromptParts (in the call part). Ran it: red. */
+    const parts = actWritePromptParts(request());
+    expect(prompt).toBe(`${parts.stable}\n\n${parts.foray}\n\n${parts.call}`);
+    expect(parts.stable).toContain("HOW TO WRITE");
+    expect(parts.stable).toContain("CLAIMS AND QUOTES");
+    expect(parts.stable).toContain("Copy rules, unchanged and non-negotiable:");
+    expect(parts.foray.startsWith("Voice (decided once for the whole Foray")).toBe(true);
+    const order = ["HOW TO WRITE", "CLAIMS AND QUOTES", "Also list any hard-to-pronounce", '{"seams": [', "Voice (decided once", 'THE ACT YOU ARE WRITING: "Act 1"', "SEAM s0 —", "DOCUMENTS — the only things you may quote:", "REJECTIONS SO FAR:"];
+    const at = order.map((line) => prompt.indexOf(line));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
   });
 
   it("the verifier prompt puts the beats first as the checklist, prints the act's sources ONCE as one set, asks `carried`/`carriedBy`/`restsOn` per beat and support/`restsOn`/contested per seam, marks frozen seams as context, prints every clip's window, and exempts the introduction from the support question", () => {
@@ -747,15 +768,30 @@ describe("the per-act prompts", () => {
     expect(prompt).toContain("SEAM s0 — positioned beats b0 — introduces CLIP c0 (introduction: full)");
     expect(prompt).toContain("  Selected sources: k0");
     expect(prompt).toContain("SEAM s1 — FROZEN (confirmed in an earlier round; context only)");
-    expect(prompt).toContain("For each SEAM to judge (s0; the FROZEN seams are confirmed already");
+    /* GV-50: the judged ids moved out of the questions (now the cacheable
+       prefix) onto their own line in the call part. */
+    expect(prompt).toContain("For each SEAM to judge (named on the SEAMS TO JUDGE line below; the FROZEN seams are confirmed already");
+    expect(prompt).toContain("\nSEAMS TO JUDGE: s0\n");
     expect(prompt).toContain(`  Transcript window:\n${WINDOW_A}`);
     expect(prompt).toContain("carried — does the act's narration (any seam");
-    expect(prompt).toContain("follow from SOME act source above");
+    expect(prompt).toContain("follow from SOME act source below");
     expect(prompt).toContain("QUOTE the sentence in notes");
     expect(prompt).toContain("EXEMPT from this question: the sentences that introduce a clip");
     expect(prompt).toContain('{"beats": [{"beatId": string, "carried": boolean, "carriedBy": string');
     expect(prompt).toContain('"restsOn": string[], "contestedHandled": boolean');
     expect(prompt).toContain(NBS.text);
+    /* GV-50 (W2-14): the questions and the reply shape come FIRST (the
+       stable part), then the act (call); there is no foray part. MUTATION
+       THAT KILLS THIS: move the "Answer two sets of questions." line out of
+       the stable part into the call part, after the layout. Ran it: red. */
+    const parts = actVerifyPromptParts(req);
+    expect(parts.foray).toBe("");
+    expect(prompt).toBe(`${parts.stable}\n\n${parts.call}`);
+    expect(parts.stable).toContain("Answer two sets of questions.");
+    expect(parts.call.startsWith('THE ACT YOU ARE VERIFYING: "Act 1"')).toBe(true);
+    expect(prompt.indexOf('{"beats": [{"beatId"')).toBeLessThan(prompt.indexOf("THE CHECKLIST"));
+    expect(prompt.indexOf("SEAM s1 — FROZEN")).toBeLessThan(prompt.indexOf("SEAMS TO JUDGE: s0"));
+    expect(prompt.indexOf("SEAMS TO JUDGE: s0")).toBeLessThan(prompt.indexOf("DOCUMENTS the claims quote:"));
   });
 
   it("the stub verifier answers per beat with its carrier and what it rests on, a note naming the seam the beat was positioned in, and per seam what it rests on — a declarative seam resting on nothing is refused", () => {
@@ -1722,8 +1758,11 @@ describe("GV-34 — numbers, dates and names are checked in code against the act
 describe("GV-38 — the ACT FRAME block in the writer prompt", () => {
   /* Today's prompt for the F-99 fixture, hashed on origin/main before GV-38
      (15a17b17). A prompt edit that is meant to change it updates this pin in
-     the same PR; a frame block leaking into an unframed request breaks it. */
-  const UNFRAMED_PROMPT_SHA256 = "858c8f3fb159081089f9818bf00013fed2abb6fe63f8cc02e56fdc9c53b2099f";
+     the same PR; a frame block leaking into an unframed request breaks it.
+     GV-50 updated it on purpose (was 858c8f3f...c53b2099f): the prompt is now
+     [stable][foray][call], the same lines reordered with the act title moved
+     off the role line (promptLayout.test.ts's line-set test proves the lines). */
+  const UNFRAMED_PROMPT_SHA256 = "85a969a1e0abe5e636e78953e619050220d8f024c857c1b9ef86006e9ccd16e5";
   const frame = (over: Partial<ActFrame> = {}): ActFrame => ({
     actIntroduction: "Now the walkway itself.",
     actExit: "Which leaves the question of who signed off.",

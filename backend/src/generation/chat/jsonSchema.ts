@@ -27,8 +27,12 @@ import { REPLY_SCHEMAS, type ReplySchemaName } from "../replySchemas";
  * grammar cannot express exactly would let the grammar and the parser
  * disagree about what a valid reply is.
  *
- * Inert until a provider sends `responseFormatFor(...)` as response_format
- * (W2-04); nothing on the default path imports this module.
+ * It sends nothing itself: a schema reaches a model only when a Chat builder
+ * passes `responseFormatFor(...)` through askStructured.ts as response_format
+ * (W2-04). Several modules import it now (askStructured.ts for every Chat
+ * builder, seamStream.ts for the streamed writer's line schema), so the
+ * pipeline loads it whenever a Chat builder or the writer prompt
+ * (prompts/actWrite.ts, GV-50) is loaded.
  */
 
 export type JsonSchemaType = "object" | "array" | "string" | "number" | "boolean" | "null";
