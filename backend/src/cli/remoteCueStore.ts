@@ -444,13 +444,18 @@ export class RemoteCueStore implements ReadThroughCueStore {
        provider: a provider miss would walk the show's whole cache directory
        for recorded guids, once per fetch. */
     const dir = this.cache.dirFor(showId);
+    /* Before ANY use of the name: the cache check below is an existsSync on
+       <root>/<dir>/<fileName>, so an escaping name must never reach it. */
+    if (unsafeName(row.fileName) || unsafeName(dir)) {
+      this.logger.error("cue-fetch-refused", { show: showId, reason: "PATH_ESCAPE" });
+      return { status: "refused", reason: "PATH_ESCAPE" };
+    }
     if (this.cache.has(dir, row.fileName)) {
       this.cache.touch(dir, row.fileName);
       return { status: "cached" };
     }
     const origin = remoteOrigin(row);
     if (!origin) return { status: "absent", reason: "NOT_REMOTE" };
-    if (unsafeName(row.fileName) || unsafeName(dir)) return this.refuse(showId, origin, "PATH_ESCAPE");
 
     const started = this.now();
     let fetched: FetchedObject | null;

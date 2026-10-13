@@ -196,6 +196,25 @@ describe("GV-54 remote cue store — fetch once, then read from the cache", () =
     expect(r2.gets).toHaveLength(1);
   });
 
+  it("a manifest file name that escapes the cache is refused before the cache is even asked", async () => {
+    /* MUTATION THAT KILLS THIS: drop the unsafeName guard, or move it after
+       the cache check — "../../outside.json" then names a real file beside
+       the cache root and the store answers "cached" for it. */
+    const d = freshDirs();
+    const bytes = normalizedBytes("ep-esc", "Escape");
+    const outside = path.join(path.dirname(d.cacheRoot), "outside.json");
+    fs.writeFileSync(outside, bytes);
+    const r2 = bucket({ [keyOf("ep-esc")]: { bytes, sha256Meta: sha(bytes) } });
+    const logger = capturedLogger();
+    const s = store(d, r2.fetchBody, 10_000_000, logger);
+    const r = { ...row("ep-esc", "r2", keyOf("ep-esc"), bytes), fileName: "../../outside.json" };
+    expect(await s.ensureBody(entry("ep-esc"), r)).toEqual({ status: "refused", reason: "PATH_ESCAPE" });
+    expect(r2.gets).toEqual([]);
+    expect(filesUnder(d.cacheRoot)).toEqual([]);
+    expect(fs.readFileSync(outside).equals(bytes)).toBe(true);
+    expect(logger.events).toContainEqual(expect.objectContaining({ level: "error", event: "cue-fetch-refused", reason: "PATH_ESCAPE" }));
+  });
+
   it("a sha mismatch is not cached and not served; the next request fetches again", async () => {
     /* MUTATION THAT KILLS THIS: remove the sha256-metadata comparison — the
        corrupt bytes are written and served. */

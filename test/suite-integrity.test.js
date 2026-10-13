@@ -2838,7 +2838,7 @@ const BACKEND_FLOORS = {
      byte-bounded LRU, a failed fetch degrades (503) without throwing, local
      bodies never fetched, one fetch per episode in flight, the default R2
      fetcher's 404 mapping, and the --r2 flags. */
-  "test/remoteCueStore.test.ts": 13,
+  "test/remoteCueStore.test.ts": 14,
   /* GV-29 (docs/roadmap/generation-v2.md, from W3-10): the backend retrieval
      client — prepared lineage and 'all' answers equal a local search (scores,
      ranks, idf, zero-hit idf), isUsable and limit honoured, unknown episodes
