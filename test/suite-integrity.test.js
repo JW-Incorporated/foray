@@ -3414,7 +3414,7 @@ const BACKEND_FLOORS = {
      re-asks keep the [system, user] prefix; the line set equals the frozen
      pre-GV-32 prompts (deepen's act-marker rewrites listed). Offline:
      scriptedProvider and hand-built fixtures. One named mutation per test. */
-  "test/promptLayout.test.ts": 11,
+  "test/promptLayout.test.ts": 15, // GV-50 (generation v2): the act writer and verifier prompts -- the line set equals the frozen pre-GV-50 prompts (the role lines, the seams-to-judge header and "above" rewrites listed), and the Chat writer and verifier send [system: stable, user: foray + call] with one system message for every act and round and a re-ask that keeps it; 11 -> 15
   /* GV-34 (docs/roadmap/generation-v2.md, #1286): numbers, dates and names
      checked in code against a sentence's sources -- spokenNumberValues (word
      and digit years, decades, percent, scales, ranges, ordinals),
@@ -3458,6 +3458,18 @@ const BACKEND_FLOORS = {
      writeNarration. FakeJevClient only; offline. One named mutation per
      test. */
   "test/jevNarrationVerifier.test.ts": 16,
+  /* GV-50 (docs/roadmap/generation-v2.md, W4-11 + W2-14, #1286): the act
+     writer prompt as [stable][foray][call] (prompts/actWrite.ts) -- stable
+     byte-identical across acts, rounds 1-3 and two Forays for both output
+     contracts, foray identical across one Foray's acts and rounds, a retry
+     differing only in call, buildActWritePrompt as the joined 'json' parts;
+     the voice slot empty by default and a supplied block at the end of
+     stable, byte-stable; the 'jsonl' contract naming every required field of
+     WRITTEN_SEAM_JSON_SCHEMA and differing from 'json' only in the contract;
+     the verifier's stable identical across unrelated Forays with the judged
+     seams and every clip window only in call; no Anthropic import in the
+     prompt modules. Pure; offline. One named mutation per test. */
+  "test/actWritePrompt.test.ts": 11,
   /* GV-49 (docs/roadmap/generation-v2.md, W4-02, #1286): the Jev clarity
      understander -- one Jev request with the two noul questions
      (two-subjects, one-episode) and only the prompt and product line in the

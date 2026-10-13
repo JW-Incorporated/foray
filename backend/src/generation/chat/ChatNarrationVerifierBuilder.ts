@@ -1,7 +1,8 @@
 import { BUILDER_MAX_TOKENS } from "../../config/outputBudgets";
 import { defaultBudgetGuard } from "../../cost/budgetGuard";
-import { buildActVerifyPrompt } from "../AnthropicNarrationVerifierBuilder";
 import type { ActVerifyRequest, ActVerifyResult, NarrationBuildContext, NarrationVerifierBuilder } from "../NarrationVerifierBuilder";
+import { toChatMessages } from "../promptLayout";
+import { actVerifyPromptParts } from "../prompts/actVerify";
 import { RawActVerifySchema, toActVerifyResult } from "../replySchemas";
 import type { ChatProvider } from "./ChatProvider";
 import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from "./askStructured";
@@ -9,8 +10,11 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
 /**
  * GV-31 (docs/roadmap/generation-v2.md, from W2-07; covers R2-21, GP-06,
  * HW-12, R1-18): §4.7 act verification on a ChatProvider, the twin of
- * AnthropicNarrationVerifierBuilder: the same prompt (buildActVerifyPrompt,
- * the beats as the checklist and the act's sources as one set), the same
+ * AnthropicNarrationVerifierBuilder: the same prompt (prompts/actVerify.ts,
+ * the beats as the checklist and the act's sources as one set; GV-50 sends it
+ * as toChatMessages(actVerifyPromptParts), [system: the questions and the
+ * reply shape; user: this act], so the system message is the prefix every
+ * act, round and Foray shares), the same
  * schema (RawActVerifySchema, sent as the 'act_verify' json_schema), the same
  * cap (BUILDER_MAX_TOKENS.verifier) and the same post-parse mapping
  * (toActVerifyResult).
@@ -22,8 +26,8 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
  * Jev verifier (R1-07).
  *
  * DARK: constructed only by the stage factories (GV-37) when the verifier
- * routes to 'local'. No Anthropic call; the Anthropic module is imported for
- * its prompt text only (decision 8).
+ * routes to 'local'. No Anthropic call, and (GV-50) no Anthropic module
+ * import: the prompt text lives in prompts/actVerify.ts (decision 8).
  */
 export class ChatNarrationVerifierBuilder implements NarrationVerifierBuilder {
   /** `local:<lane>` (targetFor). */
@@ -43,7 +47,7 @@ export class ChatNarrationVerifierBuilder implements NarrationVerifierBuilder {
       target: this.target,
       schemaName: "act_verify",
       schema: RawActVerifySchema,
-      messages: [{ role: "user", content: buildActVerifyPrompt(request) }],
+      messages: toChatMessages(actVerifyPromptParts(request)),
       maxTokens: BUILDER_MAX_TOKENS.verifier,
       operation: "narration_verify",
       budget: { guard: this.budgetGuard, userId: ctx.userId, ...(ctx.sessionId !== undefined ? { sessionId: ctx.sessionId } : {}) },
