@@ -1,5 +1,13 @@
 import { z } from "zod";
-import { GenerationRequestSchema, IntentUnderstandingSchema, SAFETY_CATEGORIES, type GenerationRequest, type UnderstandPromptResult } from "../types/generation";
+import {
+  CLARITY_DECIDERS,
+  GenerationRequestSchema,
+  IntentUnderstandingSchema,
+  SAFETY_CATEGORIES,
+  type ClarityDecider,
+  type GenerationRequest,
+  type UnderstandPromptResult
+} from "../types/generation";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import { currentRunLog, withCallContext, type StageStatus } from "./runLog";
 import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
@@ -362,10 +370,20 @@ export interface NarrationActTiming {
 export type RunPipelineOutcome =
   /** §4.0 safety refused the prompt. */
   | { outcome: "rejected"; category: string; explanation: string; timings: StageTiming[] }
-  /** §4.1 could not read the prompt one way; a human has to disambiguate. */
-  | { outcome: "needs-clarification"; question: string; readings: string[]; timings: StageTiming[] }
+  /** §4.1 could not read the prompt one way; a human has to disambiguate.
+   * GV-49: `clarityDecidedBy` (on this and every later outcome) is set only
+   * on a 'jev' clarity route: 'jev' when Jev's two yes/no answers decided,
+   * 'fallback' when the text understander did. Absent otherwise. */
+  | { outcome: "needs-clarification"; question: string; readings: string[]; timings: StageTiming[]; clarityDecidedBy?: ClarityDecider }
   /** The pipeline ran but no taxonomy node could be resolved — nothing is published. */
-  | { outcome: "unresolved-topic"; title: string; candidates: TopicCandidate[]; spineReasks: SpineReask[]; timings: StageTiming[] }
+  | {
+      outcome: "unresolved-topic";
+      title: string;
+      candidates: TopicCandidate[];
+      spineReasks: SpineReask[];
+      timings: StageTiming[];
+      clarityDecidedBy?: ClarityDecider;
+    }
   /** F-91: a topic resolved, but no candidate topic's family admits enough of
    * the archive to source a beat from (`chooseTopic` said `no-supply`). The
    * run stops BEFORE the spine — before any Opus or Sonnet call — because
@@ -382,6 +400,7 @@ export type RunPipelineOutcome =
       stoppedBefore: "spine" | "deepen";
       spineReasks: SpineReask[];
       timings: StageTiming[];
+      clarityDecidedBy?: ClarityDecider;
     }
   /** §4.5 sourced every beat to narration (F-65). A Foray with no tape cannot
    * pass §4.9, so the run stops before paying for narration. `sourcing` is
@@ -393,6 +412,7 @@ export type RunPipelineOutcome =
       topicDecision: PipelineTopicDecision;
       spineReasks: SpineReask[];
       timings: StageTiming[];
+      clarityDecidedBy?: ClarityDecider;
     }
   /** A Foray was built. `validation.ok` says whether it may be published. */
   | {
@@ -435,6 +455,8 @@ export type RunPipelineOutcome =
        * only so a hand-built outcome (a test double) need not carry one —
        * `generateForays.ts` writes no verdict for such an outcome. */
       gate?: VeracityGateResult;
+      /** GV-49: who decided clarity, on a 'jev' clarity route only. */
+      clarityDecidedBy?: ClarityDecider;
     };
 
 /**
@@ -710,6 +732,9 @@ function slotCountThroughAct(spine: Spine, actIndex: number): number {
  * nothing pointing back at the file. See `CheckpointSession`.
  * ------------------------------------------------------------------------ */
 
+/* GV-49: `clarityDecidedBy` is optional, so an understand checkpoint banked
+   before it existed (or on any non-jev route) still parses, and one banked on
+   a jev route keeps it on resume (a plain z.object would strip it). */
 const UnderstandCheckpointSchema = z.union([
   z.object({
     outcome: z.literal("rejected"),
@@ -717,9 +742,10 @@ const UnderstandCheckpointSchema = z.union([
   }),
   z.object({
     outcome: z.literal("needs_clarification"),
-    clarification: z.object({ question: z.string(), readings: z.array(z.string()) })
+    clarification: z.object({ question: z.string(), readings: z.array(z.string()) }),
+    clarityDecidedBy: z.enum(CLARITY_DECIDERS).optional()
   }),
-  z.object({ outcome: z.literal("understood"), intent: IntentUnderstandingSchema })
+  z.object({ outcome: z.literal("understood"), intent: IntentUnderstandingSchema, clarityDecidedBy: z.enum(CLARITY_DECIDERS).optional() })
 ]);
 
 /* Mirrors `TapeRelevanceInput` (types/tapeSourcing.ts, WS-C): the rows WS-B's
@@ -1180,12 +1206,17 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       timings: timings.all()
     };
   }
+  /* GV-49: carried onto every later outcome, only when the understander set
+     it (a 'jev' clarity route), so a default run's outcome is unchanged. */
+  const clarityTag: { clarityDecidedBy?: ClarityDecider } =
+    understood.clarityDecidedBy !== undefined ? { clarityDecidedBy: understood.clarityDecidedBy } : {};
   if (understood.outcome === "needs_clarification") {
     return {
       outcome: "needs-clarification",
       question: understood.clarification.question,
       readings: understood.clarification.readings,
-      timings: timings.all()
+      timings: timings.all(),
+      ...clarityTag
     };
   }
 
@@ -1288,7 +1319,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         topicDecision,
         stoppedBefore: "spine",
         spineReasks: [],
-        timings: timings.all()
+        timings: timings.all(),
+        ...clarityTag
       };
     }
   }
@@ -1394,7 +1426,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         title,
         candidates: decided.candidates.length > 0 ? decided.candidates : preSpineCandidates,
         spineReasks,
-        timings: timings.all()
+        timings: timings.all(),
+        ...clarityTag
       };
     }
     console.log(`  ${topicDecisionLine(topicDecision, basis)} [resolved with the spine's act titles]`);
@@ -1406,7 +1439,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         topicDecision,
         stoppedBefore: "deepen",
         spineReasks,
-        timings: timings.all()
+        timings: timings.all(),
+        ...clarityTag
       };
     }
     topic = topicDecision.topic;
@@ -1563,7 +1597,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     0
   );
   if (tapeBeats === 0) {
-    return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, timings: timings.all() };
+    return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, timings: timings.all(), ...clarityTag };
   }
 
   /* G-35 — EVERY PAGE'S EVIDENCE, IN ONE FAN-OUT, BEFORE ANY ACT IS WRITTEN.
@@ -2020,6 +2054,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     timings: timings.all(),
     ttlA1Ms,
     narration: { concurrency: actConcurrency, acts: narrationActs },
-    gate: veracityGate
+    gate: veracityGate,
+    ...clarityTag
   };
 }
