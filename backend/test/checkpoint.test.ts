@@ -157,7 +157,8 @@ describe("checkpointRunVariant (GV-55)", () => {
       {},
       { ANTHROPIC_API_KEY: "sk-ant-synthetic" },
       { FORAY_GENERATION_MODE: "stub" },
-      { FORAY_GENERATION_MODE: "anthropic-legacy" },
+      /* GV-68: the legacy mode needs both opt-ins. */
+      { FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1" },
       { JEV_API_KEY: "jev-synthetic" },
       { ANTHROPIC_API_KEY: "sk-ant-synthetic", JEV_API_KEY: "jev-synthetic" }
     ];
@@ -190,8 +191,14 @@ describe("checkpointRunVariant (GV-55)", () => {
   /* Kills: guarding on `mode === "local"` alone (a legacy run with one stage
      routed local would resume the Claude-built stage under it). */
   it("joins the routing when a stub or legacy run overrides a stage", () => {
-    const legacy = resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic" });
-    const legacyLocalSpine = resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic", FORAY_LLM_BASE_URL: LLM, FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_STAGE_SPINE: "local" });
+    const legacy = resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic", FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1" });
+    const legacyLocalSpine = resolveRouting({
+      ANTHROPIC_API_KEY: "sk-ant-synthetic",
+      FORAY_LLM_BASE_URL: LLM,
+      FORAY_GENERATION_MODE: "anthropic-legacy",
+      FORAY_ALLOW_ANTHROPIC_LEGACY: "1",
+      FORAY_STAGE_SPINE: "local"
+    });
     expect(routingVariant(legacy)).toBeUndefined();
     expect(routingVariant(legacyLocalSpine)).toContain("spine=local@spark/");
     expect(fp(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, legacyLocalSpine))).not.toBe(TODAY);

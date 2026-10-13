@@ -22,7 +22,7 @@ import {
 } from "../generation/checkpoint";
 import { resolvePipelineFlags, type PipelineFlags } from "../generation/pipelineFlags";
 import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
-import { getUsageTotals } from "../generation/usageTracking";
+import { anthropicCallCount, getUsageTotals } from "../generation/usageTracking";
 import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
 import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../generation/deliveryTimeline";
 import { spanMsOf } from "../generation/stageTiming";
@@ -35,11 +35,14 @@ import type { VeracityGateResult, VeracityMetrics } from "../generation/veracity
 import type { PublishRecord } from "./publishForay";
 import { modelSummary } from "../config/models";
 import {
+  ALLOW_ANTHROPIC_LEGACY_ENV,
   ALLOW_PROSE_ON_SECOND_ENV,
+  ANTHROPIC_API_KEY_ENV,
   GENERATION_MODE_ENV,
   GENERATION_STAGES,
   LLM_BASE_URL_ENV,
   RoutingConfigError,
+  ZERO_ANTHROPIC_RULE,
   describeStageAssignments,
   resolveRouting,
   routingSummary,
@@ -258,8 +261,12 @@ export function parseStageProviders(values: readonly string[]): Partial<Record<S
       if (!(GENERATION_STAGES as readonly string[]).includes(stage)) refuse("names no stage");
       if (out[stage] !== undefined) refuse("routes a stage a second time");
       try {
+        /* GV-68: both legacy opt-ins, so this checks the entry's shape only;
+           whether an 'anthropic' entry may run is the real resolveRouting's
+           call (it needs both opt-ins in the real environment). */
         resolveRouting({
-          [GENERATION_MODE_ENV]: "stub",
+          [GENERATION_MODE_ENV]: "anthropic-legacy",
+          [ALLOW_ANTHROPIC_LEGACY_ENV]: "1",
           [LLM_BASE_URL_ENV]: "http://stage-provider.invalid",
           [ALLOW_PROSE_ON_SECOND_ENV]: "1",
           [stageEnvVar(stage)]: spec
@@ -284,7 +291,9 @@ export function withStageProviders(env: NodeJS.ProcessEnv, overrides: Partial<Re
 
 /** GV-55: the MODE line, then MODELS when a stage is on the legacy
  * Anthropic builders, then STAGES when any stage is not a stub. With no
- * routing variable set, the MODE and MODELS lines are today's text. */
+ * routing variable set, the MODE and MODELS lines are today's text. GV-68:
+ * when ANTHROPIC_API_KEY is set but selects nothing, the MODE line says the
+ * key was ignored and why. */
 export function modeLines(
   routing: RoutingTable,
   caps: { runUsd: number; episodeUsd: number },
@@ -296,11 +305,18 @@ export function modeLines(
   const inert =
     (routing.mode === "stub" && routing.overridden.length === 0) || routes.every((r) => r.provider === "stub" || r.provider === "none");
   const metered = `metered by BudgetGuard (run $${caps.runUsd} for this process, per-Foray $${caps.episodeUsd})`;
-  if (inert) return [`MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`];
+  const ignored = routing.anthropicKeyIgnored ? ` ${anthropicKeyIgnoredNote()}` : "";
+  if (inert) {
+    return [
+      routing.anthropicKeyIgnored
+        ? `MODE: dry-run — stub builders, $0, output is structurally real but editorially empty.${ignored}`
+        : `MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`
+    ];
+  }
   const lines = [
-    routing.mode === "anthropic-legacy" && routing.overridden.length === 0
+    (routing.mode === "anthropic-legacy" && routing.overridden.length === 0
       ? `MODE: live — Anthropic builders, ${metered}.`
-      : `MODE: mixed/live — generation mode ${routing.mode} (from ${routing.modeSource}), routed per stage below, ${metered}.`
+      : `MODE: mixed/live — generation mode ${routing.mode} (from ${routing.modeSource}), routed per stage below, ${metered}.`) + ignored
   ];
   if (routes.some((r) => r.provider === "anthropic")) lines.push(`MODELS: opus=${models.opus} sonnet=${models.sonnet} haiku=${models.haiku}`);
   const summary = routingSummary(routing);
@@ -309,6 +325,30 @@ export function modeLines(
   const llm = summary.llm.baseUrl !== null ? `; llm ${summary.llm.baseUrl} (key ${summary.llm.keyConfigured ? "configured" : "not set"})` : "";
   lines.push(`STAGES: ${stages.join(", ")}${overridden}${llm}`);
   return lines;
+}
+
+/** GV-68: what the MODE line appends when ANTHROPIC_API_KEY selected nothing. */
+export function anthropicKeyIgnoredNote(): string {
+  return (
+    `${ANTHROPIC_API_KEY_ENV} is set and IGNORED: ${ZERO_ANTHROPIC_RULE}; ` +
+    `the legacy builders need ${GENERATION_MODE_ENV}=anthropic-legacy and ${ALLOW_ANTHROPIC_LEGACY_ENV}=1.`
+  );
+}
+
+/**
+ * GV-68: the batch's zero-Anthropic check. A batch that sent any Anthropic
+ * request without FORAY_ALLOW_ANTHROPIC_LEGACY=1 broke the founder's rule, and
+ * the driver exits non-zero after writing report.json (which carries
+ * anthropicCalls, per row and at the top). Returns the message, or null when
+ * the batch is clean or the legacy opt-in was given.
+ */
+export function anthropicRuleViolation(anthropicCalls: number, env: NodeJS.ProcessEnv = process.env): string | null {
+  if (anthropicCalls <= 0) return null;
+  if (env[ALLOW_ANTHROPIC_LEGACY_ENV]?.trim() === "1") return null;
+  return (
+    `ZERO-ANTHROPIC RULE BROKEN: this batch sent ${anthropicCalls} Anthropic request(s) without ${ALLOW_ANTHROPIC_LEGACY_ENV}=1 ` +
+    `(${ZERO_ANTHROPIC_RULE}). report.json records anthropicCalls per row.`
+  );
 }
 
 export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.env): CliArgs {
@@ -473,6 +513,9 @@ export function batchReportDocument(s: {
    * credentials) the batch ran under. */
   generationMode: GenerationMode;
   routing: RoutingSummary;
+  /** GV-68: Anthropic requests this batch's process sent (0 under the
+   * zero-Anthropic rule). */
+  anthropicCalls: number;
   entries: PriorReportEntry[];
 }): Record<string, unknown> {
   return {
@@ -497,6 +540,8 @@ export function batchReportDocument(s: {
        bench row is attributable. */
     generationMode: s.generationMode,
     routing: s.routing,
+    /* GV-68: the zero-Anthropic rule, proved per batch (and per row). */
+    anthropicCalls: s.anthropicCalls,
     entries: s.entries
   };
 }
@@ -886,6 +931,10 @@ export type ReportEntry = {
    * keys it kept), or null when no usable seed existed and the prompt ran
    * from scratch. Absent without the flag. */
   seededFrom?: SeededFrom | null;
+  /** GV-68: Anthropic requests this prompt sent, across every attempt
+   * (createMessage's per-process count, read before and after). 0 under the
+   * zero-Anthropic rule. On every row. */
+  anthropicCalls?: number;
 };
 
 /** GV-62: a report row's `seededFrom`. */
@@ -1204,6 +1253,8 @@ export async function generateOneCandidate(
      stays the pipeline's own stage sum, as before. */
   const startedMs = Date.now();
   let calls = 0;
+  /* GV-68: the per-process Anthropic count when this prompt began. */
+  const anthropicAtStart = anthropicCallCount();
   /* GV-01: one RunLog per attempt, written by THIS module (the pipeline's
      generation/ modules never write files) unless --dry-run. The report row
      names the final attempt's file. */
@@ -1238,6 +1289,7 @@ export async function generateOneCandidate(
       flags,
       gates,
       stageAssignments,
+      anthropicCalls: anthropicCallCount() - anthropicAtStart,
       ...(seededFrom !== undefined ? { seededFrom } : {})
     };
     if (!notify) return withCalls;
@@ -1472,7 +1524,11 @@ export async function generateOneCandidate(
 
 /** The CLI. Exported (GV-55) so a test can prove a refused argument exits
  * non-zero before anything runs; the script entry below passes process.argv. */
-export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+export async function main(
+  argv: string[] = process.argv.slice(2),
+  /** GV-68 test seam: the pipeline each prompt runs (default runForayPipeline). */
+  deps: { runPipeline?: typeof runForayPipeline } = {}
+): Promise<void> {
   let args: CliArgs;
   try {
     args = parseArgs(argv);
@@ -1498,6 +1554,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
      before anything resolves a route. */
   Object.assign(process.env, withStageProviders({}, args.stageProviders));
   const batchStartedMs = Date.now();
+  /* GV-68: the per-process Anthropic count when this batch began. */
+  const anthropicAtBatchStart = anthropicCallCount();
 
   try {
     /* F-04. Run 1 could only be started by setting DAILY_BUDGET_USD=1000 (now
@@ -1588,7 +1646,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     );
 
     const { report, generated, skipped } = await generateQueue(queue, (spec) =>
-      generateOneCandidate(spec, args, { cueProvider, textIndex })
+      generateOneCandidate(spec, args, { cueProvider, textIndex, ...(deps.runPipeline ? { runPipeline: deps.runPipeline } : {}) })
     );
 
     /* Count what actually happened, not what the outcome tag says. A run that
@@ -1601,6 +1659,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     const aborts = report.filter((r) => r.outcome === "aborted").length;
     const resumesTotal = report.reduce((sum, r) => sum + (r.resumes?.length ?? 0), 0);
     const callsTotal = report.reduce((sum, r) => sum + (r.calls ?? 0), 0);
+    const anthropicCalls = anthropicCallCount() - anthropicAtBatchStart;
 
     const reportPath = path.join(path.resolve(args.out), "report.json");
     /* backend-rest-7: the batch is re-run in the same --out directory by
@@ -1628,6 +1687,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
             prompts: promptSet,
             generationMode: routing.mode,
             routing: routingSummary(routing),
+            anthropicCalls,
             entries
           }),
           null,
@@ -1660,6 +1720,13 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     if (!args.dryRun) {
       console.log(`Report: ${reportPath}`);
       console.log(`Publish one with: npm run publish-foray -- --input <candidate>.json`);
+    }
+    /* GV-68: after the report is on disk, so the evidence survives the
+       non-zero exit. */
+    const violation = anthropicRuleViolation(anthropicCalls);
+    if (violation !== null) {
+      console.error(violation);
+      process.exitCode = 1;
     }
   } catch (err) {
     /* G-30 (c): a crash is the one outcome I-15 lost entirely — the shell
