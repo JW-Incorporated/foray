@@ -79,6 +79,7 @@ import {
   runLogPathFor,
   spanMsOf,
   spliceRows,
+  stackOf,
   tableColumns,
   targetFor,
   targetLabel,
@@ -749,8 +750,15 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
      in the committed header and the default table). Ran it: red. */
   for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
   /* GV-08 added the first detail columns and GV-17 the runlog's speed
-     columns; every earlier column stays core. */
-  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), ["listen", "last_listen", ...SPEED_KEYS, "lead15_s", "render_rtf"]);
+     columns; every earlier column stays core. GV-55 adds the stack. */
+  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), [
+    "listen",
+    "last_listen",
+    ...SPEED_KEYS,
+    "lead15_s",
+    "render_rtf",
+    "stack"
+  ]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
   try {
@@ -1438,4 +1446,65 @@ test("GV-52: the KPI doc's targets table names MT-01, MT-02 and MT-11 with per-t
   const roadmap = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "foray-to-spec-roadmap.md"), "utf8");
   assert.match(roadmap, /\*\*R1-16 \(GV-52\): the time targets are split by tier\.\*\*/);
   assert.match(roadmap, /generation-kpis\.md#delivery-and-the-per-tier-targets-gv-52-r1-16/);
+});
+
+/* GV-55 (R2-21, from W7-02): the driver records `stageAssignments` on every
+   report row ({stage: {impl, model, machine?}}); the bench shows it as one
+   compact `stack` detail cell. */
+const LOCAL_ASSIGNMENTS = {
+  "understand.clarity": { impl: "local", model: "qwen-spark", machine: "spark" },
+  "understand.intent": { impl: "local", model: "qwen-spark", machine: "spark" },
+  "understand.title": { impl: "local", model: "qwen-spark", machine: "spark" },
+  research: { impl: "none", model: "none" },
+  spine: { impl: "local", model: "qwen-second", machine: "second" },
+  deepen: { impl: "local", model: "qwen-spark", machine: "spark" },
+  writer: { impl: "local", model: "qwen-spark", machine: "spark" },
+  verifier: { impl: "local", model: "qwen-spark", machine: "spark" },
+  continuity: { impl: "local", model: "qwen-spark", machine: "spark" },
+  judge: { impl: "jev", model: "jev" }
+};
+
+test("GV-55: stackOf names the common impl@machine first, then every stage that differs, in the report's stage order", () => {
+  /* MUTATION: drop the `@${a.machine}` suffix in stackOf's tag (spine on the
+     second box then reads as the majority 'local' and vanishes). Ran it: red. */
+  assert.equal(stackOf(LOCAL_ASSIGNMENTS), "local@spark research=none spine=local@second judge=jev");
+  /* An all-stub run is one word; an all-legacy run likewise. */
+  const all = (impl) => Object.fromEntries(Object.keys(LOCAL_ASSIGNMENTS).map((stage) => [stage, { impl, model: impl }]));
+  assert.equal(stackOf(all("stub")), "stub");
+  assert.equal(stackOf({ ...all("anthropic"), judge: { impl: "none", model: "none" } }), "anthropic judge=none");
+  /* Rule 1: nothing recorded is absent, never a guessed stack. */
+  assert.equal(stackOf(undefined), null);
+  assert.equal(stackOf({}), null);
+  assert.equal(stackOf({ spine: { model: "x" } }), null, "an assignment without impl is not read");
+});
+
+test("GV-55: the stack column is detail, shows on a row with stageAssignments, and is absent on out-4 and out-9", () => {
+  /* MUTATION: `stack: stackOf(entry.stageAssignments) ?? "stub"` in rowFor.
+     Ran it: red (out-4/out-9 then claim a stack they never recorded). */
+  assert.equal(column("stack").group, DETAIL);
+  assert.equal(column("stack").kind, "text");
+  assert.equal(markdownHeader()[0].includes("stack"), false, "the committed KPI table is unchanged");
+  for (const row of [run4(), run9()]) {
+    assert.equal(row.values.stack, null, row.values.run);
+    assert.equal(row.sources.stack, "absent");
+    assert.equal(formatCell(column("stack"), row), ABSENT);
+    assert.equal("stack" in JSON.parse(jsonlLine(row)), false, "an older report's JSONL line gains no stack key");
+  }
+  const row = rowFor({ prompt: "p", outcome: "generated", detail: "OK x", stageAssignments: LOCAL_ASSIGNMENTS }, { runId: "run-l" });
+  assert.equal(row.values.stack, "local@spark research=none spine=local@second judge=jev");
+  assert.equal(row.sources.stack, "report");
+  const wide = formatTable([row], { wide: true });
+  assert.match(wide, /local@spark research=none spine=local@second judge=jev/);
+  assert.equal(formatTable([row]).includes("local@spark"), false, "the default table prints core columns only");
+});
+
+test("GV-55: the JSONL carries the stack and a baseline line round-trips it", () => {
+  /* MUTATION: drop the `stack` spread from jsonlLine(). Ran it: red. */
+  const row = rowFor({ prompt: "p", outcome: "generated", detail: "OK x", stageAssignments: LOCAL_ASSIGNMENTS }, { runId: "run-l" });
+  const line = JSON.parse(jsonlLine(row));
+  assert.equal(line.stack, row.values.stack);
+  const back = rowFromJsonl(line);
+  assert.equal(back.values.stack, row.values.stack);
+  assert.equal(formatTable([back], { wide: true }), formatTable([row], { wide: true }));
+  assert.equal(rowFromJsonl({ run: "run-x", metrics: {}, sources: {} }).values.stack, null);
 });

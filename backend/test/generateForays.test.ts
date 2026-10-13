@@ -19,7 +19,8 @@ import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVer
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
-import { CheckpointSession, checkpointFingerprint } from "../src/generation/checkpoint";
+import { CheckpointSession, checkpointFingerprint, checkpointRunVariant } from "../src/generation/checkpoint";
+import { resolveRouting, routingSummary } from "../src/config/stageRouting";
 import { FAST_PATH_PIPELINE_FLAGS, PIPELINE_FLAG_ENV, checkpointVariant, readPipelineFlags, type FoldDeepen } from "../src/generation/pipelineFlags";
 import { readGateConfig } from "../src/generation/gateConfig";
 import { JobSnapshotSchema, type JobSnapshot } from "../src/generation/jobSink";
@@ -382,11 +383,13 @@ describe("GV-15 — run configuration on the batch driver", () => {
       fingerprints.add(sessionFingerprint);
       if (combo.fastPath) {
         /* --fast-path reached both sites as the umbrella, not as a bare field. */
-        expect(sessionFingerprint).toBe(checkpointFingerprint({ prompt: spec.prompt, duration: "short", variant: checkpointVariant(FAST_PATH_PIPELINE_FLAGS) }));
+        /* GV-55: the fast path narrates in order, so its variant also names
+           the narration order (and no longer shares foldCopy+short+perAct's). */
+        expect(sessionFingerprint).toBe(checkpointFingerprint({ prompt: spec.prompt, duration: "short", variant: checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS) }));
       }
     }
-    /* 12 env combinations, and --fast-path shares foldCopy+short+perAct's. */
-    expect(fingerprints.size).toBe(12);
+    /* 12 env combinations, plus --fast-path's own (sequential narration). */
+    expect(fingerprints.size).toBe(13);
     expect(fingerprints.has(checkpointFingerprint({ prompt: spec.prompt, duration: "short" }))).toBe(true);
   });
 
@@ -630,6 +633,156 @@ describe("GV-33 — the report row carries the delivery timeline", () => {
   });
 });
 
+/* GV-55 (decision 20, R2-21): the routing a run was resolved under reaches
+   the report (top-level `routing` and `generationMode`, per-row
+   `stageAssignments`) and joins the checkpoint variant at BOTH sites in local
+   mode. Local mode here is FORAY_LLM_BASE_URL set to a synthetic URL with
+   every builder a Stub injected through the pipeline's deps, so no stage
+   factory runs and nothing opens a connection. */
+describe("GV-55 — routing on the report and in the checkpoint fingerprint", () => {
+  let dir: string;
+  const LLM = "http://litellm.test:4000";
+  const spec = { prompt: "the history of grilling and barbecue" };
+
+  class CountingSpineBuilder extends StubSpineBuilder {
+    calls = 0;
+    override async buildSpine(...args: Parameters<StubSpineBuilder["buildSpine"]>): ReturnType<StubSpineBuilder["buildSpine"]> {
+      this.calls++;
+      return super.buildSpine(...args);
+    }
+  }
+  class KilledAfterSpine extends StubDeepenActBuilder {
+    override async deepenAct(): Promise<never> {
+      throw new Error("killed after spine");
+    }
+  }
+
+  const checkpointFile = (): string => path.join(dir, `${candidateFilename(spec.prompt).replace(/\.json$/, "")}.checkpoint.json`);
+  const readCheckpoint = (): { fingerprint: string; stages: Record<string, unknown> } => JSON.parse(fs.readFileSync(checkpointFile(), "utf8"));
+  const run = (spine: CountingSpineBuilder, killAfterSpine: boolean, overrides: Partial<CliArgs> = {}) => {
+    const seen: { routing?: unknown }[] = [];
+    const result = generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0, ...overrides }), {
+      cueProvider,
+      runPipeline: (request, options, deps) => {
+        seen.push({ routing: options.routing });
+        return stubPipeline()(request, options, { ...deps, spineBuilder: spine, ...(killAfterSpine ? { deepenBuilder: new KilledAfterSpine() } : {}) });
+      }
+    });
+    return { result, seen };
+  };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv55-"));
+    for (const name of Object.values(PIPELINE_FLAG_ENV)) vi.stubEnv(name, undefined);
+    for (const name of ["FORAY_GENERATION_MODE", "FORAY_LLM_BASE_URL", "ANTHROPIC_API_KEY", "JEV_API_KEY", "JEV_KEY_FILE", "FORAY_STAGE_SPINE", "FORAY_STAGE_DEEPEN"]) {
+      vi.stubEnv(name, undefined);
+    }
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /* MUTATION: drop `stageAssignments` from the row finishEntry builds. Ran it: red. */
+  it("a stub run's row carries stageAssignments: every stage stub, the judge fail-closed", async () => {
+    const { result } = run(new CountingSpineBuilder(), false);
+    const entry = (await result).entry!;
+    expect(entry.outcome).toBe("generated");
+    expect(entry.stageAssignments?.spine).toEqual({ impl: "stub", model: "stub" });
+    expect(entry.stageAssignments?.writer).toEqual({ impl: "stub", model: "stub" });
+    expect(entry.stageAssignments?.judge).toEqual({ impl: "none", model: "none" });
+    expect(entry.stageAssignments?.["spine-alt"]).toBeUndefined();
+  });
+
+  /* MUTATION: resolve the driver's routing from process.env alone (drop
+     withStageProviders): the --stage-provider override never reaches the
+     pipeline or the row. Ran it: red. */
+  it("--stage-provider reaches the pipeline's routing and the row's stageAssignments", async () => {
+    vi.stubEnv("FORAY_LLM_BASE_URL", LLM);
+    const { result, seen } = run(new CountingSpineBuilder(), false, { stageProviders: { spine: "local:second", deepen: "local:spark" } });
+    const entry = (await result).entry!;
+    expect(entry.outcome).toBe("generated");
+    const routing = seen[0]!.routing as ReturnType<typeof resolveRouting>;
+    expect(routing.mode).toBe("local");
+    expect(routing.routes.spine).toMatchObject({ provider: "local", lane: "second" });
+    expect(routing.routes.deepen).toMatchObject({ provider: "local", lane: "spark" });
+    expect(entry.stageAssignments?.spine).toMatchObject({ impl: "local", machine: "second" });
+    expect(entry.stageAssignments?.deepen).toMatchObject({ impl: "local", machine: "spark" });
+    expect(entry.stageAssignments?.research).toEqual({ impl: "none", model: "none" });
+  });
+
+  /* MUTATION: hash `checkpointVariant(flags)` at runPipeline.ts's session
+     (no routing), or drop `routing` from the options the driver passes (the
+     session then resolves process.env without the --stage-provider
+     override). Each: the session's fingerprint no longer equals the file's.
+     Ran both: red. */
+  it("the store and session fingerprints are equal under a local routing, and differ between routings", async () => {
+    vi.stubEnv("FORAY_LLM_BASE_URL", LLM);
+    const open = vi.spyOn(CheckpointSession, "open");
+    const prints = new Set<string>();
+    for (const stageProviders of [undefined, { spine: "local:second" } as const]) {
+      fs.rmSync(checkpointFile(), { force: true });
+      open.mockClear();
+      const { result } = run(new CountingSpineBuilder(), true, stageProviders ? { stageProviders } : {});
+      expect((await result).entry?.outcome).toBe("error");
+      const sessionFingerprint = open.mock.calls[0]![2];
+      expect(readCheckpoint().fingerprint).toBe(sessionFingerprint);
+      prints.add(sessionFingerprint);
+    }
+    expect(prints.size).toBe(2);
+    const classic = checkpointFingerprint({ prompt: spec.prompt, duration: "short" });
+    expect(prints.has(classic)).toBe(false);
+    const localDefault = checkpointRunVariant(readPipelineFlags({}), resolveRouting({ FORAY_LLM_BASE_URL: LLM }));
+    expect(prints.has(checkpointFingerprint({ prompt: spec.prompt, duration: "short", variant: localDefault }))).toBe(true);
+  });
+
+  /* MUTATION: `routingVariant` returning undefined in local mode (the
+     routing never joins the variant). Ran it: red: the local run resumes the
+     stub-built spine. */
+  it("a local run never resumes a spine banked by a stub run, and resumes its own", async () => {
+    const stubSpine = new CountingSpineBuilder();
+    expect((await run(stubSpine, true).result).entry?.outcome).toBe("error");
+    expect(stubSpine.calls).toBe(1);
+    expect(readCheckpoint().fingerprint).toBe(checkpointFingerprint({ prompt: spec.prompt, duration: "short" }));
+
+    vi.stubEnv("FORAY_LLM_BASE_URL", LLM);
+    const localSpine = new CountingSpineBuilder();
+    expect((await run(localSpine, true).result).entry?.outcome).toBe("error");
+    expect(localSpine.calls).toBe(1);
+
+    const resumed = new CountingSpineBuilder();
+    expect((await run(resumed, false).result).entry?.outcome).toBe("generated");
+    expect(resumed.calls).toBe(0);
+  });
+
+  /* MUTATION: drop `generationMode` or `routing` from batchReportDocument. Ran it: red. */
+  it("report.json carries routing and generationMode, with no credential", () => {
+    const routing = resolveRouting({ FORAY_LLM_BASE_URL: "http://user:secret@litellm.test:4000/v1", FORAY_STAGE_SPINE: "local:second" });
+    const doc = batchReportDocument({
+      generatedAt: "2026-10-13T00:00:00.000Z",
+      maxResumes: 3,
+      continueOnRefusedPartial: false,
+      resumes: 0,
+      aborts: 0,
+      notify: null,
+      notification: null,
+      corpus: null,
+      prompts: { file: "p.json", sha256: "0".repeat(64), count: 1 },
+      generationMode: routing.mode,
+      routing: routingSummary(routing),
+      entries: []
+    });
+    const written = JSON.parse(JSON.stringify(doc)) as { generationMode: string; routing: { mode: string; stages: Record<string, string>; overridden: string[] } };
+    expect(written.generationMode).toBe("local");
+    expect(written.routing.mode).toBe("local");
+    expect(written.routing.stages.spine).toMatch(/^local:second /);
+    expect(written.routing.overridden).toEqual(["spine"]);
+    expect(JSON.stringify(doc)).not.toContain("secret");
+  });
+});
+
 describe("GV-39 — report.json names the prompt set and the corpus snapshot it ran against", () => {
   let dir: string;
   beforeEach(() => {
@@ -679,6 +832,8 @@ describe("GV-39 — report.json names the prompt set and the corpus snapshot it 
       notification: null,
       corpus,
       prompts: identity,
+      generationMode: "stub",
+      routing: routingSummary(resolveRouting({})),
       entries: []
     });
     fs.writeFileSync(reportPath, `${JSON.stringify(doc, null, 2)}\n`);
@@ -728,6 +883,8 @@ describe("GV-39 — report.json names the prompt set and the corpus snapshot it 
       "notification",
       "corpus",
       "prompts",
+      "generationMode",
+      "routing",
       "entries"
     ]);
   });

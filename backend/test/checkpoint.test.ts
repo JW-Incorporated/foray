@@ -4,7 +4,9 @@ import * as os from "os";
 import * as path from "path";
 import { z } from "zod";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
-import { CheckpointSession, checkpointFingerprint, type CheckpointStore } from "../src/generation/checkpoint";
+import { CheckpointSession, checkpointFingerprint, checkpointRunVariant, routingVariant, type CheckpointStore } from "../src/generation/checkpoint";
+import { CLASSIC_PIPELINE_FLAGS, FAST_PATH_PIPELINE_FLAGS, checkpointVariant } from "../src/generation/pipelineFlags";
+import { resolveRouting } from "../src/config/stageRouting";
 import { FileCheckpointStore } from "../src/cli/checkpointStore";
 
 /**
@@ -132,6 +134,91 @@ describe("checkpointFingerprint", () => {
     expect(checkpointFingerprint(base)).not.toBe(checkpointFingerprint({ ...base, duration: "long" }));
     expect(checkpointFingerprint(base)).not.toBe(checkpointFingerprint({ ...base, prompt: "q" }));
     expect(checkpointFingerprint(base)).not.toBe(checkpointFingerprint({ ...base, topic: "food/grilling-bbq" }));
+  });
+});
+
+/* GV-55 (decision 20, R2-21): the routing joins the ONE checkpoint variant,
+   only in local mode or with a stage overridden, and the narration order
+   joins it when sequential (orchestrator's follow-up to the wave 5/6
+   reviews). Every routing table here is resolved from an injected source:
+   nothing reads process.env and nothing opens a connection. */
+describe("checkpointRunVariant (GV-55)", () => {
+  const input = { prompt: "the history of grilling", duration: "medium", topic: "food/grilling-bbq" };
+  /** The pre-GV-15 hash of `input` (pinned in pipelineFlags.test.ts too). */
+  const TODAY = "1f8c63c986bd";
+  const LLM = "http://user:secret@litellm.test:4000/v1?token=abc";
+  const fp = (variant: string | undefined): string => checkpointFingerprint({ ...input, variant });
+
+  /* Kills: joining the routing in every mode (`routingVariant` without its
+     mode/overridden guard): every stub and legacy banked run would stop
+     resuming. */
+  it("is unchanged for stub and legacy inputs: the fingerprint is today's value", () => {
+    const sources: NodeJS.ProcessEnv[] = [
+      {},
+      { ANTHROPIC_API_KEY: "sk-ant-synthetic" },
+      { FORAY_GENERATION_MODE: "stub" },
+      { FORAY_GENERATION_MODE: "anthropic-legacy" },
+      { JEV_API_KEY: "jev-synthetic" },
+      { ANTHROPIC_API_KEY: "sk-ant-synthetic", JEV_API_KEY: "jev-synthetic" }
+    ];
+    for (const source of sources) {
+      const routing = resolveRouting(source);
+      expect(routingVariant(routing), JSON.stringify(source)).toBeUndefined();
+      expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, routing), JSON.stringify(source)).toBeUndefined();
+      expect(fp(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, routing)), JSON.stringify(source)).toBe(TODAY);
+    }
+    expect(fp(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS))).toBe(TODAY);
+  });
+
+  /* Kills: a routing string without the lane (spine on the second box would
+     resume the Spark's banked spine), or no routing part at all. */
+  it("differs between two local routings, and from the stub run", () => {
+    const spark = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
+    const second = resolveRouting({ FORAY_LLM_BASE_URL: LLM, FORAY_STAGE_SPINE: "local:second" });
+    const jevClarity = resolveRouting({ FORAY_LLM_BASE_URL: LLM, FORAY_STAGE_UNDERSTAND_CLARITY: "jev" });
+    const prints = [undefined, spark, second, jevClarity].map((r) => fp(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, r)));
+    expect(new Set(prints).size).toBe(4);
+    expect(prints[0]).toBe(TODAY);
+    /* The same table resolves to the same variant: a run resumes its own stages. */
+    expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, resolveRouting({ FORAY_LLM_BASE_URL: LLM }))).toBe(
+      checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, spark)
+    );
+    expect(routingVariant(second)).toContain("spine=local@second/");
+    expect(routingVariant(spark)).toMatch(/^routing=local:/);
+  });
+
+  /* Kills: guarding on `mode === "local"` alone (a legacy run with one stage
+     routed local would resume the Claude-built stage under it). */
+  it("joins the routing when a stub or legacy run overrides a stage", () => {
+    const legacy = resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic" });
+    const legacyLocalSpine = resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic", FORAY_LLM_BASE_URL: LLM, FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_STAGE_SPINE: "local" });
+    expect(routingVariant(legacy)).toBeUndefined();
+    expect(routingVariant(legacyLocalSpine)).toContain("spine=local@spark/");
+    expect(fp(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, legacyLocalSpine))).not.toBe(TODAY);
+  });
+
+  /* Kills: a routing string built from the summary's llm field or the raw
+     table (the base URL may carry credentials). */
+  it("never carries the base URL or its credentials", () => {
+    const variant = routingVariant(resolveRouting({ FORAY_LLM_BASE_URL: LLM, FORAY_LLM_API_KEY: "sk-litellm-synthetic" }))!;
+    for (const secret of ["secret", "litellm.test", "token", "sk-litellm-synthetic", "user:"]) expect(variant).not.toContain(secret);
+  });
+
+  /* Kills: leaving narrationOrder out of the variant (a sequential run would
+     resume acts a parallel run narrated), or encoding it as "differs from the
+     default" (a later default flip would move every banked fingerprint). */
+  it("joins the narration order when sequential, and leaves today's parallel out", () => {
+    const sequential = { ...CLASSIC_PIPELINE_FLAGS, narrationOrder: "sequential" as const };
+    expect(checkpointRunVariant(sequential)).toBe("narration=sequential");
+    expect(fp(checkpointRunVariant(sequential))).not.toBe(TODAY);
+    expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, narrationOrder: "parallel" })).toBeUndefined();
+    /* The fast path: GV-15's flag variant, then the order, then (local) the routing. */
+    const local = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
+    expect(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS)).toBe(`${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential`);
+    expect(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS, local)).toBe(
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|${routingVariant(local)}`
+    );
+    expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, local)).toBe(routingVariant(local));
   });
 });
 

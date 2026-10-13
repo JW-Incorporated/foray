@@ -2,8 +2,18 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { parseArgs, candidateFilename, mergeReportEntries, readPriorReportEntries } from "../src/cli/generateForays";
-import { parseArgs as parseSingleArgs } from "../src/cli/generateForay";
+import {
+  CliArgError,
+  main,
+  modeLines,
+  parseArgs,
+  candidateFilename,
+  mergeReportEntries,
+  readPriorReportEntries,
+  withStageProviders
+} from "../src/cli/generateForays";
+import { parseArgs as parseSingleArgs, understandRouteLine } from "../src/cli/generateForay";
+import { resolveRouting } from "../src/config/stageRouting";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { defaultCostEventSink, InMemoryCostEventSink } from "../src/cost/costEvents";
 import { DEFAULT_AUTHOR_ID, readAuthorIdFlag } from "../src/types/generation";
@@ -203,5 +213,106 @@ describe("author id flag and default (B2-14)", () => {
     }
     expect(new Set((await sink.all()).map((e) => e.userId))).toEqual(new Set([DEFAULT_AUTHOR_ID]));
     expect(await guard.spentThisRun()).toBe(1);
+  });
+});
+
+/* GV-55 (R2-21, HW-12): `--stage-provider stage=provider[:lane][,...]` routes
+   stages for one run exactly as FORAY_STAGE_<STAGE> would, and the run states
+   its routing. Every routing table is resolved from an injected source;
+   nothing here reaches a model or the network. */
+describe("generateForays --stage-provider (GV-55)", () => {
+  const LLM = "http://user:secret@litellm.test:4000/v1";
+  afterEach(() => {
+    vi.restoreAllMocks();
+    process.exitCode = undefined;
+  });
+
+  /* MUTATION: read only the first entry of a comma list (`value.split(",")`
+     -> `[value.split(",")[0]]`). Ran it: red (deepen is never routed). */
+  it("parses spine=local:second,deepen=local:spark, repeats merge, and adds nothing without it", () => {
+    const args = parseArgs(["--prompts", "p.json", "--stage-provider", "spine=local:second,deepen=local:spark"]);
+    expect(args.stageProviders).toEqual({ spine: "local:second", deepen: "local:spark" });
+    expect(parseArgs(["--prompts", "p.json", "--stage-provider", "spine=local:second", "--stage-provider", "research=none"]).stageProviders).toEqual({
+      spine: "local:second",
+      research: "none"
+    });
+    expect("stageProviders" in parseArgs(["--prompts", "p.json"])).toBe(false);
+  });
+
+  /* MUTATION: `out[stage] = spec` -> `out[stage.toUpperCase()]` in
+     withStageProviders' loop (the variable is never set). Ran it: red. */
+  it("is applied as FORAY_STAGE_* overrides before resolveRouting, winning over the same variable already set", () => {
+    const { stageProviders } = parseArgs(["--prompts", "p.json", "--stage-provider", "spine=local:second,deepen=local:spark"]);
+    const env = { FORAY_LLM_BASE_URL: LLM, FORAY_STAGE_SPINE: "local:spark" };
+    const source = withStageProviders(env, stageProviders);
+    expect(source.FORAY_STAGE_SPINE).toBe("local:second");
+    expect(source.FORAY_STAGE_DEEPEN).toBe("local:spark");
+    expect(env.FORAY_STAGE_SPINE).toBe("local:spark");
+    const routing = resolveRouting(source);
+    expect(routing.routes.spine).toMatchObject({ provider: "local", lane: "second" });
+    expect(routing.routes.deepen).toMatchObject({ provider: "local", lane: "spark" });
+    expect(routing.overridden).toEqual(["spine", "deepen"]);
+  });
+
+  /* MUTATION: drop the per-entry resolveRouting check in parseStageProviders
+     (a provider the stage does not accept, or an unknown lane, then passes
+     the parse). Ran it: red. */
+  it("refuses a malformed entry, naming it", () => {
+    const bad = ["spine", "=local", "nostage=local", "spine=bogus", "spine=local:moon", "judge=anthropic", "research=local", "spine=local:spark:x"];
+    for (const entry of bad) {
+      let thrown: unknown;
+      try {
+        parseArgs(["--prompts", "p.json", "--stage-provider", entry]);
+      } catch (err) {
+        thrown = err;
+      }
+      expect(thrown, entry).toBeInstanceOf(CliArgError);
+      expect((thrown as Error).message, entry).toContain(`"${entry}"`);
+      expect((thrown as Error).message).toContain("--stage-provider");
+    }
+    expect(() => parseArgs(["--prompts", "p.json", "--stage-provider", "spine=local,spine=stub"])).toThrow(/"spine=stub" routes a stage a second time/);
+    expect(() => parseArgs(["--prompts", "p.json", "--stage-provider"])).toThrow(CliArgError);
+    expect(() => parseArgs(["--stage-provider", "--prompts", "p.json"])).toThrow(/needs a value/);
+  });
+
+  /* MUTATION: drop the CliArgError catch in main (the refusal then rejects
+     main's promise instead of exiting 1 with the message). Ran it: red. */
+  it("a malformed value exits non-zero naming it, before anything runs", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    await main(["--prompts", "does-not-exist.json", "--stage-provider", "spine=bogus"]);
+    expect(process.exitCode).toBe(1);
+    expect(String(err.mock.calls[0]![0])).toMatch(/--stage-provider: "spine=bogus"/);
+    expect(log).not.toHaveBeenCalled();
+    expect(process.env.FORAY_STAGE_SPINE).toBeUndefined();
+  });
+
+  /* MUTATION: always print the mixed/live line (a stub run then claims to be
+     live). Ran it: red. */
+  it("MODE keeps today's lines for stub and legacy, says mixed/live and prints STAGES when routed, never a credential", () => {
+    const caps = { runUsd: 50, episodeUsd: 5 };
+    const models = { opus: "o-1", sonnet: "s-1", haiku: "h-1" };
+    expect(modeLines(resolveRouting({}), caps, models)).toEqual([
+      "MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty."
+    ]);
+    const legacy = modeLines(resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic" }), caps, models);
+    expect(legacy[0]).toBe("MODE: live — Anthropic builders, metered by BudgetGuard (run $50 for this process, per-Foray $5).");
+    expect(legacy[1]).toBe("MODELS: opus=o-1 sonnet=s-1 haiku=h-1");
+    const local = modeLines(resolveRouting({ FORAY_LLM_BASE_URL: LLM, FORAY_STAGE_SPINE: "local:second" }), caps, models);
+    expect(local[0]).toMatch(/^MODE: mixed\/live — generation mode local \(from FORAY_LLM_BASE_URL\)/);
+    expect(local.some((l) => l.startsWith("MODELS:"))).toBe(false);
+    const stages = local.find((l) => l.startsWith("STAGES: "))!;
+    expect(stages).toContain("spine=local:second");
+    expect(stages).toContain("research=none");
+    expect(stages).toContain("overridden: spine");
+    expect(stages).not.toContain("secret");
+  });
+
+  /* MUTATION: print the intent route under `clarity=`. Ran it: red. */
+  it("generate-foray prints its understand route", () => {
+    expect(understandRouteLine(resolveRouting({}))).toBe("UNDERSTAND: mode stub; clarity=stub, intent=stub, title=stub");
+    const line = understandRouteLine(resolveRouting({ FORAY_LLM_BASE_URL: LLM, FORAY_STAGE_UNDERSTAND_CLARITY: "jev" }));
+    expect(line).toMatch(/^UNDERSTAND: mode local; clarity=jev, intent=local:spark \S+, title=local:spark \S+$/);
+    expect(line).not.toContain("secret");
   });
 });

@@ -1,5 +1,7 @@
 import * as crypto from "crypto";
 import { z } from "zod";
+import type { RoutingTable } from "../config/stageRouting";
+import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 
 /**
  * Per-stage resume for ONE Foray (generation run 2026-09-09, findings F-17 and
@@ -127,9 +129,11 @@ export interface CheckpointStore {
  * work, and a run resumed under a different author still produces the same
  * Foray.
  *
- * GV-15 (decision 20): `variant` is `checkpointVariant(flags)` from
- * `pipelineFlags.ts` — set only when a flag that changes what a stage banks
- * is on — so banked runs never resume across modes. Without one (undefined
+ * GV-15 (decision 20): `variant` is `checkpointRunVariant(flags, routing)`
+ * below (GV-55: `checkpointVariant(flags)` from `pipelineFlags.ts`, the
+ * narration order and the local routing) — set only when a flag that changes
+ * what a stage banks is on, or the run is routed off today's stages — so
+ * banked runs never resume across modes. Without one (undefined
  * or empty) the hashed string is byte-identical to before, so a classic
  * run keeps its hash and CHECKPOINT_VERSION does not move. Both call sites
  * (the driver's FileCheckpointStore and the pipeline's session) must pass
@@ -146,6 +150,57 @@ export function checkpointFingerprint(input: { prompt: string; duration: string;
     .update(input.variant ? `${base}\nvariant:${input.variant}` : base)
     .digest("hex")
     .slice(0, 12);
+}
+
+/**
+ * GV-55 (decision 20): the routing part of the checkpoint variant, or
+ * `undefined` when the run is on today's routing. A run is on today's routing
+ * when its generation mode is `stub` or `anthropic-legacy` and no
+ * FORAY_STAGE_* variable (or `--stage-provider`) overrode a stage; that keeps
+ * every stub and legacy fingerprint byte-identical, so banked runs survive.
+ *
+ * In local mode, or with any stage overridden, it names every routed stage's
+ * implementation, lane and model (in GENERATION_STAGES order, the table's own
+ * key order), so a local run never resumes a Claude-built or differently
+ * routed stage. Never a URL or a key: the table's routes carry neither.
+ */
+export function routingVariant(routing: RoutingTable | undefined): string | undefined {
+  if (routing === undefined) return undefined;
+  if (routing.mode !== "local" && routing.overridden.length === 0) return undefined;
+  const stages = Object.entries(routing.routes).map(([stage, route]) => {
+    if (route === undefined) return stage;
+    const at = route.lane ? `@${route.lane}` : "";
+    const fallback = route.fallback ? `>${route.fallback.provider}@${route.fallback.lane}/${route.fallback.model}` : "";
+    return `${stage}=${route.provider}${at}/${route.model}${fallback}`;
+  });
+  return `routing=${routing.mode}:${stages.join(",")}`;
+}
+
+/**
+ * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
+ * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
+ * same merged flags and the same routing table:
+ *
+ *     [checkpointVariant(flags), narration order, routingVariant(routing)]
+ *       .filter(Boolean).join("|")
+ *
+ * The narration order joins it only when it is `sequential` (orchestrator's
+ * follow-up to the wave 5/6 reviews): a resumed run can then never mix acts
+ * narrated in order with acts narrated all at once, and today's `parallel`
+ * adds nothing, so the classic fingerprint is unchanged. The part is the
+ * value, not "differs from the default", so flipping the default later does
+ * not move any banked file's fingerprint. Undefined when every part is.
+ */
+export function checkpointRunVariant(
+  flags: Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder">,
+  routing?: RoutingTable
+): string | undefined {
+  const parts = [
+    checkpointVariant(flags),
+    flags.narrationOrder === "sequential" ? "narration=sequential" : undefined,
+    routingVariant(routing)
+  ].filter((p): p is string => Boolean(p));
+  return parts.length ? parts.join("|") : undefined;
 }
 
 /**
