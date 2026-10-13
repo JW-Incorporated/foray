@@ -230,13 +230,18 @@ describe("GV-62 the fork rule", () => {
   /* MUTATION: compare against `<=` instead of `<` (a writer swap could not
      fork from narrate). Ran it: red. MUTATION: drop the per-route loop
      (a spine swap would fork from narrate and keep the old spine). Ran it:
-     red. */
+     red. MUTATION: map writer to "stitch" in ROUTED_STAGE_FIRST_CHECKPOINT
+     (a writer swap could fork from stitch and keep the old narration). Ran
+     it: red. */
   it("accepts a stamped seed whose differing routes all feed stages at or after --rerun-from, and refuses one that feeds a kept stage", () => {
     const a = local();
     const writerSwap = local({ FORAY_STAGE_WRITER: "local:second" });
     const spineSwap = local({ FORAY_STAGE_SPINE: "local:second" });
     expect(stampOf(a).routes.writer).not.toBe(stampOf(writerSwap).routes.writer);
     expect(forkSeedRefusal(seedOf(stampOf(a)), { fingerprint: "b", stamp: stampOf(writerSwap) }, "narrate")).toBeNull();
+    expect(forkSeedRefusal(seedOf(stampOf(a)), { fingerprint: "b", stamp: stampOf(writerSwap) }, "stitch")).toMatch(
+      /stage writer is routed differently .* feeds narrate, before --rerun-from stitch/
+    );
     expect(forkSeedRefusal(seedOf(stampOf(a)), { fingerprint: "b", stamp: stampOf(spineSwap) }, "narrate")).toMatch(
       /stage spine is routed differently .* feeds spine, before --rerun-from narrate/
     );
