@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { runForayPipeline, slotsFromSpine, runtimeSecFor, forayCopy, clampWords, MAX_COPY_WORDS } from "../src/generation/runPipeline";
+import { runForayPipeline, slotsFromSpine, runtimeSecFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -22,7 +22,7 @@ import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
 import { slugifySlotTitle } from "../src/generation/forayItems";
 import { INTERNAL_VOCABULARY, titleStyleProblems } from "../src/copy/rules";
-import type { DeepenedAct, Spine } from "../src/types/spine";
+import { SpineSchema, type DeepenedAct, type Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
 import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
@@ -1748,5 +1748,59 @@ describe("runForayPipeline — the shared researcher and its topic scope (GV-61)
     expect(out.outcome).toBe("unresolved-topic");
     expect(spineContexts.length).toBeGreaterThan(0);
     for (const seen of spineContexts) expect("topicNodeIds" in seen).toBe(false);
+  });
+});
+
+/**
+ * GV-67 (W4-03): the fold-copy path is dark. With `foldSpineCopy` off (the
+ * default) the run is the one main has always run: the understander writes
+ * the intent, the copy comes from it, the prelude names the same subject and
+ * the spine carries none of the new fields. The folded path has its own suite
+ * (fastPathCopy.test.ts).
+ */
+describe("runForayPipeline — flag off, GV-67 changes nothing", () => {
+  it("the classic prelude is byte-identical to the one built from the understander's subject", async () => {
+    /* MUTATION THAT KILLS THIS: pass `spine.angle` to the final preludeItem
+       call. Ran it: red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    if (out.outcome !== "generated") throw new Error("expected the stub run to generate");
+    const intent = await new StubPromptUnderstander().extractIntent(request.prompt, { userId: options.userId });
+    expect(out.spine.subject).toBe(intent.subject);
+    expect(out.input.items[0]).toEqual(preludeItem(intent.subject, out.spine.overview, out.input.slots[0]!.id));
+  });
+
+  it("the classic spine carries no copy field, and its title and id come from the understander's intent", async () => {
+    /* MUTATION THAT KILLS THIS: hand the spine call `listenerPrompt` on the
+       classic path (the stub then writes the copy fields and the title moves).
+       Ran it: red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    if (out.outcome !== "generated") throw new Error("expected the stub run to generate");
+    for (const field of ["priorKnowledge", "disappointment", "answersDisappointment", "title", "summary"]) {
+      expect(out.spine, field).not.toHaveProperty(field);
+    }
+    const intent = await new StubPromptUnderstander().extractIntent(request.prompt, { userId: options.userId });
+    expect(out.input.title).toBe(forayCopy(intent).title);
+    expect(out.input.id).toBe(forayIdFor(forayCopy(intent).mintedFrom, options.now().toISOString()));
+  });
+
+  it("a spine banked without the new fields still parses and resumes to the same Foray", async () => {
+    /* MUTATION THAT KILLS THIS: make `title` required in SpineSchema. Ran it: red. */
+    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic: options.topic }));
+    const first = await runForayPipeline(request, { ...options, checkpointKey: "gv67-classic" }, { ...stubDeps(), checkpoint: store });
+    const banked = store.files.get("gv67-classic")!.stages.spine as Record<string, unknown>;
+    expect(Object.keys(banked).sort()).toEqual(["acts", "angle", "duration", "generatedAt", "overview", "subject", "voice"]);
+    expect(SpineSchema.safeParse(banked).success).toBe(true);
+    let spineCalls = 0;
+    const spineBuilder = new StubSpineBuilder();
+    const real = spineBuilder.buildSpine.bind(spineBuilder);
+    spineBuilder.buildSpine = async (...args: Parameters<SpineBuilder["buildSpine"]>) => {
+      spineCalls++;
+      return real(...args);
+    };
+    const second = await runForayPipeline(request, { ...options, checkpointKey: "gv67-classic" }, { ...stubDeps(), spineBuilder, checkpoint: store });
+    if (first.outcome !== "generated" || second.outcome !== "generated") throw new Error("expected both to generate");
+    expect(spineCalls).toBe(0);
+    expect(second.input.id).toBe(first.input.id);
+    expect(second.input.title).toBe(first.input.title);
   });
 });
