@@ -1,13 +1,18 @@
+import { env } from "../config/env";
 import {
   instantiateStage,
   resolveRouting,
   RoutingConfigError,
   stageEnvVar,
+  type StageBuildContext,
+  type StageImplementation,
   type StageRoute
 } from "../config/stageRouting";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import { ChatPromptUnderstander } from "./chat/ChatPromptUnderstander";
 import { ensureStageImplementations, localImplementation, plainImplementation } from "./chat/providerRegistry";
+import { createJevClient } from "./jevClient";
+import { JevPromptUnderstander } from "./JevPromptUnderstander";
 import type { PromptUnderstandContext, PromptUnderstander } from "./PromptUnderstander";
 import { StubPromptUnderstander } from "./StubPromptUnderstander";
 
@@ -29,6 +34,41 @@ const BUILTINS = {
 };
 
 const UNDERSTAND_STAGES = ["understand.clarity", "understand.intent", "understand.title"] as const;
+
+/** What the clarity stage's 'jev' implementation builds: a wrapper that puts
+ * Jev's two yes/no questions in front of the text understander the routing
+ * table picks for the rest of §4.1 (its fallback). */
+export type JevClarityWrapper = (fallback: PromptUnderstander) => PromptUnderstander;
+
+/** The variable a 'jev' clarity route without a key names (JEV_KEY_FILE is
+ * read too; config/env.ts readJevApiKey). */
+const JEV_KEY_ENV = "JEV_API_KEY";
+
+/**
+ * GV-49: the 'jev' implementation of the understand-clarity stage
+ * (FORAY_STAGE_UNDERSTAND_CLARITY=jev, or jev:<lane> for GV-47's Qwen judge on
+ * <lane> behind Jev when Jev is down). The Jev client is GV-20's, built by
+ * createJevClient from this route, so the jev / jev:<lane> semantics are the
+ * judge stage's exactly. Without a Jev key (JEV_API_KEY or JEV_KEY_FILE) it
+ * throws RoutingConfigError naming JEV_API_KEY: a misrouted stage fails at
+ * pipeline start and never quietly answers with the default understander.
+ */
+const JEV_CLARITY: StageImplementation<JevClarityWrapper> = {
+  create: (ctx: StageBuildContext) => {
+    if (env.jevApiKey === undefined) {
+      throw new RoutingConfigError(
+        JEV_KEY_ENV,
+        `${stageEnvVar("understand.clarity")} routes the clarity check to Jev but no Jev key is set (${JEV_KEY_ENV} or JEV_KEY_FILE)`
+      );
+    }
+    const jev = createJevClient({ routing: { ...ctx.routing, routes: { ...ctx.routing.routes, judge: ctx.route } } });
+    return (fallback) => new JevPromptUnderstander(jev, fallback);
+  },
+  describe: (ctx: StageBuildContext) => ({
+    model: ctx.route.model,
+    ...(ctx.route.fallback ? { machine: ctx.route.fallback.lane } : {})
+  })
+};
 
 function sameRoute(a: StageRoute | undefined, b: StageRoute | undefined): boolean {
   return a !== undefined && b !== undefined && a.provider === b.provider && a.lane === b.lane && a.model === b.model;
@@ -68,6 +108,12 @@ class SplitPromptUnderstander implements PromptUnderstander {
  * one throws RoutingConfigError naming FORAY_STAGE_UNDERSTAND_TITLE rather
  * than being silently ignored.
  *
+ * GV-49: FORAY_STAGE_UNDERSTAND_CLARITY=jev (or jev:<lane>) returns a
+ * JevPromptUnderstander over that intent understander: one Jev request with
+ * two yes/no questions decides clarity, and the intent understander answers
+ * when Jev says yes or is unavailable. Without a Jev key it throws
+ * RoutingConfigError naming JEV_API_KEY.
+ *
  * With none of the routing variables set this is today's choice exactly:
  * StubPromptUnderstander without ANTHROPIC_API_KEY, AnthropicPromptUnderstander
  * with it. A 'local' route without FORAY_LLM_BASE_URL throws
@@ -76,6 +122,7 @@ class SplitPromptUnderstander implements PromptUnderstander {
  */
 export function createPromptUnderstander(source: NodeJS.ProcessEnv = process.env): PromptUnderstander {
   for (const stage of UNDERSTAND_STAGES) ensureStageImplementations(stage, BUILTINS);
+  ensureStageImplementations("understand.clarity", { jev: JEV_CLARITY });
   const routing = resolveRouting(source);
   const intentRoute = routing.routes["understand.intent"];
   if (!sameRoute(routing.routes["understand.title"], intentRoute)) {
@@ -86,6 +133,11 @@ export function createPromptUnderstander(source: NodeJS.ProcessEnv = process.env
     );
   }
   const intent = instantiateStage<PromptUnderstander>("understand.intent", { routing });
+  /* GV-49: a 'jev' clarity route wraps the intent understander, which is
+     Jev's fallback for clarity and still answers extractIntent. */
+  if (routing.routes["understand.clarity"]?.provider === "jev") {
+    return instantiateStage<JevClarityWrapper>("understand.clarity", { routing })(intent);
+  }
   if (sameRoute(routing.routes["understand.clarity"], intentRoute)) return intent;
   const clarity = instantiateStage<PromptUnderstander>("understand.clarity", { routing });
   return new SplitPromptUnderstander(clarity, intent);
