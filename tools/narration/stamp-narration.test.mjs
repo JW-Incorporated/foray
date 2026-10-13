@@ -307,7 +307,9 @@ test("the CLI stamps a candidate file twice (CHANGED, then unchanged) and refuse
       assert.match(r.stderr, /under data\//);
     }
     assert.equal(fs.existsSync(path.join(ROOT, "data", "candidate-under-data.json")), false);
-    if (dataBefore) assert.ok(fs.readFileSync(dataPath).equals(dataBefore), "data/forays.json must not change");
+    /* Bytes only: the verdict does not depend on what the catalogue holds, so
+       this is not a real-data suite for the publish gate (G-21c). */
+    if (dataBefore) assert.ok(fs.readFileSync(dataPath).equals(dataBefore), "the real catalogue must not change");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
