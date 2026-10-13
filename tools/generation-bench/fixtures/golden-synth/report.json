@@ -1,0 +1,188 @@
+{
+  "generated_at": "2026-10-13T00:00:00.000Z",
+  "dry_run": false,
+  "entries": [
+    {
+      "promptId": "g06",
+      "prompt": "synthetic golden fixture (GV-64): g06",
+      "outcome": "generated",
+      "detail": "OK synthetic g06",
+      "ms": 170000,
+      "elapsedMs": 85000,
+      "calls": 12,
+      "duration": "short",
+      "gate": {
+        "ok": true,
+        "failures": []
+      },
+      "publishable": true,
+      "delivery": {
+        "granularity": "act",
+        "items": 9,
+        "firstItemReadyMs": 18000,
+        "firstServableMs": 20000,
+        "allItemsReadyMs": 80000,
+        "minLeadSec": 40,
+        "minLeadSecAt1_5x": 20,
+        "itemsBelow30s": 0,
+        "pausedAtIndex": null,
+        "unknownDurations": 0
+      },
+      "veracity": {
+        "groundedQuoteRate": 1,
+        "supportedSentenceRate": 0.9,
+        "clipOnSubjectRate": 0.8
+      }
+    },
+    {
+      "promptId": "g11",
+      "prompt": "synthetic golden fixture (GV-64): g11",
+      "outcome": "generated",
+      "detail": "OK synthetic g11",
+      "ms": 184000,
+      "elapsedMs": 92000,
+      "calls": 12,
+      "duration": "short",
+      "gate": {
+        "ok": true,
+        "failures": []
+      },
+      "publishable": true,
+      "delivery": {
+        "granularity": "act",
+        "items": 9,
+        "firstItemReadyMs": 24000,
+        "firstServableMs": 26000,
+        "allItemsReadyMs": 88000,
+        "minLeadSec": 30,
+        "minLeadSecAt1_5x": 10,
+        "itemsBelow30s": 0,
+        "pausedAtIndex": null,
+        "unknownDurations": 0
+      },
+      "veracity": {
+        "groundedQuoteRate": 1,
+        "supportedSentenceRate": 0.8,
+        "clipOnSubjectRate": 0.6
+      }
+    },
+    {
+      "promptId": "g12",
+      "prompt": "synthetic golden fixture (GV-64): g12",
+      "outcome": "generated",
+      "detail": "INVALID synthetic g12: gate failed",
+      "ms": 220000,
+      "elapsedMs": 110000,
+      "calls": 12,
+      "duration": "short",
+      "gate": {
+        "ok": false,
+        "failures": [
+          "synthetic gate failure"
+        ]
+      },
+      "publishable": false,
+      "delivery": {
+        "granularity": "act",
+        "items": 9,
+        "firstItemReadyMs": 30000,
+        "firstServableMs": 32000,
+        "allItemsReadyMs": 100000,
+        "minLeadSec": 10,
+        "minLeadSecAt1_5x": -10,
+        "itemsBelow30s": 0,
+        "pausedAtIndex": null,
+        "unknownDurations": 0
+      },
+      "veracity": {
+        "groundedQuoteRate": 0.5,
+        "supportedSentenceRate": 0.7
+      }
+    },
+    {
+      "promptId": "g37",
+      "prompt": "synthetic golden fixture (GV-64): g37",
+      "outcome": "generated",
+      "detail": "OK synthetic g37",
+      "ms": 150000,
+      "elapsedMs": 75000,
+      "calls": 12,
+      "duration": "short",
+      "gate": {
+        "ok": true,
+        "failures": []
+      },
+      "publishable": true,
+      "delivery": {
+        "granularity": "act",
+        "items": 9,
+        "firstItemReadyMs": 16000,
+        "firstServableMs": 18000,
+        "allItemsReadyMs": 70000,
+        "minLeadSec": 50,
+        "minLeadSecAt1_5x": 30,
+        "itemsBelow30s": 0,
+        "pausedAtIndex": null,
+        "unknownDurations": 0
+      },
+      "veracity": {
+        "groundedQuoteRate": 1,
+        "supportedSentenceRate": 0.95,
+        "clipOnSubjectRate": 0.9
+      }
+    },
+    {
+      "promptId": "g44",
+      "prompt": "synthetic golden fixture (GV-64): g44",
+      "outcome": "generated",
+      "detail": "INVALID synthetic g44: gate failed",
+      "ms": 120000,
+      "elapsedMs": 60000,
+      "calls": 12,
+      "duration": "short",
+      "gate": {
+        "ok": false,
+        "failures": [
+          "synthetic gate failure"
+        ]
+      },
+      "publishable": false,
+      "veracity": {
+        "supportedSentenceRate": 0.5,
+        "clipOnSubjectRate": 0.4
+      }
+    },
+    {
+      "promptId": "g48",
+      "prompt": "synthetic golden fixture (GV-64): g48",
+      "outcome": "generated",
+      "detail": "OK synthetic g48",
+      "ms": 250000,
+      "elapsedMs": 125000,
+      "calls": 12,
+      "duration": "short",
+      "gate": {
+        "ok": true,
+        "failures": []
+      },
+      "publishable": true,
+      "delivery": {
+        "granularity": "act",
+        "items": 9,
+        "firstItemReadyMs": 38000,
+        "firstServableMs": 40000,
+        "allItemsReadyMs": 120000,
+        "minLeadSec": -5,
+        "minLeadSecAt1_5x": -25,
+        "itemsBelow30s": 0,
+        "pausedAtIndex": null,
+        "unknownDurations": 0
+      },
+      "veracity": {
+        "groundedQuoteRate": 1,
+        "supportedSentenceRate": 0.6,
+        "clipOnSubjectRate": 0.5
+      }
+    }
+  ]
+}
