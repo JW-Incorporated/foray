@@ -288,11 +288,16 @@ describe("generateForays --stage-provider (GV-55)", () => {
   });
 
   /* MUTATION: always print the mixed/live line (a stub run then claims to be
-     live). Ran it: red. */
+     live). Ran it: red. MUTATION: drop the stub-mode clause of `inert` (a stub
+     run with a Jev key, whose judge defaults to jev, then claims to be
+     mixed/live). Ran it: red. */
   it("MODE keeps today's lines for stub and legacy, says mixed/live and prints STAGES when routed, never a credential", () => {
     const caps = { runUsd: 50, episodeUsd: 5 };
     const models = { opus: "o-1", sonnet: "s-1", haiku: "h-1" };
     expect(modeLines(resolveRouting({}), caps, models)).toEqual([
+      "MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty."
+    ]);
+    expect(modeLines(resolveRouting({ JEV_API_KEY: "jev-synthetic" }), caps, models)).toEqual([
       "MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty."
     ]);
     const legacy = modeLines(resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic" }), caps, models);

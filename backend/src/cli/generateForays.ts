@@ -256,7 +256,10 @@ export function modeLines(
   models: { opus: string; sonnet: string; haiku: string }
 ): string[] {
   const routes = Object.values(routing.routes).filter((r): r is NonNullable<typeof r> => r !== undefined);
-  const inert = routes.every((r) => r.provider === "stub" || r.provider === "none");
+  /* Stub mode with nothing overridden is today's dry run even when a Jev key
+     routes the judge to jev: nothing on the default pipeline calls the judge. */
+  const inert =
+    (routing.mode === "stub" && routing.overridden.length === 0) || routes.every((r) => r.provider === "stub" || r.provider === "none");
   const metered = `metered by BudgetGuard (run $${caps.runUsd} for this process, per-Foray $${caps.episodeUsd})`;
   if (inert) return [`MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty.`];
   const lines = [
