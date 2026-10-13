@@ -311,7 +311,10 @@ export function readJudgeReply(
       if (!isRecord(raw)) throw new Unreadable();
       switch (q.type) {
         case "noul": {
-          if (logprobs && logprobs.length > 0 && typeof raw.holds === "boolean") {
+          /* Branch on the reply's shape, not on logprobs arriving: a logprobs
+             lane asks for {holds}, and a server that drops the logprobs
+             parameter still answers in that shape. */
+          if (typeof raw.holds === "boolean") {
             const dist = fromLogprobs(q.id, "holds", ["true", "false"]);
             if (dist) return { id: q.id, type: "noul", noul: dist["true"] ?? 0 };
             calibrated = false;

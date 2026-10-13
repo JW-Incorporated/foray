@@ -633,6 +633,17 @@ function createHttpOrNull(opts: Partial<HttpJevClientOptions>): JevClient {
   });
 }
 
+/**
+ * Jev itself, ignoring the routing table: HttpJevClient when a key is present
+ * (the option, else JEV_API_KEY, else JEV_KEY_FILE), else NullJevClient. For
+ * jevSmoke.ts (the Jev card's live step), which must reach Jev on any machine
+ * whatever FORAY_GENERATION_MODE, FORAY_LLM_BASE_URL or FORAY_STAGE_JUDGE say;
+ * generation uses createJevClient.
+ */
+export function createDirectJevClient(opts: Partial<HttpJevClientOptions> = {}): JevClient {
+  return createHttpOrNull(opts);
+}
+
 /** The Qwen judge on `lane`, with that lane's structured-output mode,
  * logprobs flag and concurrency. */
 function createQwenJudge(routing: RoutingTable, lane: NonNullable<StageRoute["lane"]>, model: string, opts: CreateJevClientOptions): QwenJudgeClient {

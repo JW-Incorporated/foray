@@ -1,4 +1,4 @@
-import { createJevClient, HttpJevClient } from "../generation/jevClient";
+import { createDirectJevClient, HttpJevClient } from "../generation/jevClient";
 import type { JevQuestion, JevResult, JevState } from "../generation/jevTypes";
 
 /**
@@ -12,7 +12,8 @@ import type { JevQuestion, JevResult, JevState } from "../generation/jevTypes";
  *   npx tsx backend/src/cli/jevSmoke.ts [--runs 5]
  *
  * Needs JEV_API_KEY or JEV_KEY_FILE; without one it exits 1 and sends
- * nothing. The state is synthetic: no prompt, transcript or listener text
+ * nothing. It asks Jev directly whatever the judge route
+ * (FORAY_STAGE_JUDGE, FORAY_GENERATION_MODE, FORAY_LLM_BASE_URL) says. The state is synthetic: no prompt, transcript or listener text
  * leaves the machine. The key is never printed.
  */
 
@@ -62,7 +63,9 @@ function parseRuns(argv: string[]): number {
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const runs = parseRuns(argv);
-  const client = createJevClient();
+  /* Jev itself, not the routed judge (GV-47): in local mode the routed judge is
+     FallbackJudgeClient or the Qwen judge, and the routing table can throw. */
+  const client = createDirectJevClient();
   if (!(client instanceof HttpJevClient)) {
     console.error("jevSmoke: no Jev key. Set JEV_API_KEY or JEV_KEY_FILE; nothing was sent.");
     return 1;

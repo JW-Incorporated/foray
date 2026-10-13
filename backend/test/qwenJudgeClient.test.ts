@@ -210,6 +210,22 @@ describe("QwenJudgeClient: probabilities", () => {
     expect(r.answers[0]).toMatchObject({ choice: "s2", probabilities: { s1: 0.2, s2: 0.6, none: 0.2 } });
   });
 
+  it("a logprobs lane whose server sends no logprobs still reads the {holds} noul, uncalibrated", async () => {
+    /* MUTATION THAT KILLS THIS: read `holds` only when logprobs arrived (the
+       pre-fix guard `logprobs && logprobs.length > 0 && ...`; the reply then
+       falls through to the absent `noul` and is malformed). Ran it: red. */
+    const reply: ScriptedReply = {
+      text: JSON.stringify({ answers: { supported: { holds: true } } }),
+      finishReason: "stop",
+      model: "qwen3.6-35b-a3b",
+      usage: { promptTokens: 100, completionTokens: 9, cachedTokens: null, reasoningTokens: null }
+    };
+    const { client } = judge([reply], { model: "local-heavy", lane: "spark", logprobs: true });
+    const r = expectOk(await ask(client, [QUESTIONS[0]!]));
+    expect(r.calibrated).toBe(false);
+    expect(r.answers).toEqual([{ id: "supported", type: "noul", noul: 1 }]);
+  });
+
   it("distributionAt refuses tokens that do not spell the text", () => {
     /* MUTATION THAT KILLS THIS: drop the token-concatenation check. Ran it: red. */
     const tokens = [{ token: "3", logprob: Math.log(0.6), top: [{ token: "4", logprob: Math.log(0.4) }] }];

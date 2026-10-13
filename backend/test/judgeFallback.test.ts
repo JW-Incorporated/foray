@@ -290,3 +290,55 @@ describe("meteredJevClient: the judge tag and the charge follow the judge that a
     expect(events.at(-1)).toMatchObject({ model: "local-worker", estimatedUsd: 0 });
   });
 });
+
+describe("jevSmoke (the Jev live step) asks Jev itself, whatever the judge route", () => {
+  const saved = { ...process.env };
+  const ENV_NAMES = ["JEV_API_KEY", "JEV_KEY_FILE", "FORAY_LLM_BASE_URL", "FORAY_GENERATION_MODE", "FORAY_STAGE_JUDGE", "ANTHROPIC_API_KEY"];
+  beforeEach(() => {
+    for (const name of ENV_NAMES) delete process.env[name];
+    vi.spyOn(console, "log").mockImplementation(() => undefined);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    process.env = { ...saved };
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /* A global fetch that records the URL and refuses: nothing leaves the machine. */
+  function refusingFetch(): string[] {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", (url: string) => {
+      urls.push(url);
+      return Promise.reject(new Error("offline test: no network"));
+    });
+    return urls;
+  }
+
+  it.each([
+    ["local mode by FORAY_LLM_BASE_URL (the routed judge is FallbackJudgeClient)", { FORAY_LLM_BASE_URL: BASE_URL }],
+    ["FORAY_GENERATION_MODE=local without a base URL (routing would throw)", { FORAY_GENERATION_MODE: "local" }]
+  ])("%s: with a key it sends to Jev, not 'no Jev key'", async (_label, extra) => {
+    /* MUTATION THAT KILLS THIS: call the routed createJevClient() in
+       jevSmoke.ts again (first row: FallbackJudgeClient, so 'no Jev key' and
+       no request; second row: RoutingConfigError). Ran it: red. */
+    Object.assign(process.env, { JEV_API_KEY: KEY }, extra);
+    const urls = refusingFetch();
+    const { main } = await import("../src/cli/jevSmoke");
+    expect(await main(["--runs", "1"])).toBe(1);
+    expect(urls).toHaveLength(3);
+    expect(urls.every((u) => u === "https://api.typesafe.ai/v1/systemone")).toBe(true);
+    expect(console.error).not.toHaveBeenCalledWith(expect.stringContaining("no Jev key"));
+  });
+
+  it("without a key it exits 1 and sends nothing", async () => {
+    /* MUTATION THAT KILLS THIS: drop the HttpJevClient check in jevSmoke.ts
+       (NullJevClient would be asked). Ran it: red. */
+    process.env.FORAY_LLM_BASE_URL = BASE_URL;
+    const urls = refusingFetch();
+    const { main } = await import("../src/cli/jevSmoke");
+    expect(await main(["--runs", "1"])).toBe(1);
+    expect(urls).toHaveLength(0);
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining("no Jev key"));
+  });
+});
