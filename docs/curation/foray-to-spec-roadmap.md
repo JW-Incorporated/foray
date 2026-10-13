@@ -174,6 +174,19 @@ Targets are the fix plan's (§0 table and WS-D), plus three rows marked
 deck?" column is the honest one: where the deck's own analysis says a target
 is out of reach, it names the founder decision that re-baselines it.
 
+**R1-16 (GV-52): the time targets are split by tier.** The first two rows'
+single targets (Act 1 playable ≤ 30 s, finished Foray ≤ 6 min) are superseded
+in the bench by per-tier targets on the report's delivery timeline: first
+audio ≤ 30 s short and ≤ 40 s medium (MT-01), the whole Foray ready ≤ 90 s
+short and ≤ 4 min medium, counted only when the candidate passed every gate
+(MT-02), and a lead over the playhead of ≥ 30 s (MT-11). Short first audio and
+both whole-Foray targets are settled as the orchestrator's adopted reading of
+the 30 s KPI (OQ-03; decision 15 of `docs/roadmap/generation-v2.md`, #1286);
+medium first audio and the lead stay proposed until a founder ruling, and long
+has no target. The per-tier table and its provenance are in
+[generation-kpis.md](generation-kpis.md#delivery-and-the-per-tier-targets-gv-52-r1-16);
+the rows below keep their history.
+
 | Metric | Best measured so far | Target | Reachable with this deck? | Cards |
 |---|---|---|---|---|
 | Prompt → Act 1 playable (`ttlA1Ms`) | 18.1 min on the relay (attempt 5, `report.json`) | ≤ 30 s p50 at API latency (fix plan WS-D) | **No.** [estimated] today's stage graph keyed: 3.5–9 min; after every M/S change in Phase 3: **1.5–3 min**, floor = spine + deepen + one write round ≈ 90–180 s. 30–45 s needs an Act-1 fast path (G-38), a design ruling Wyatt has not made → **D6 re-baseline: accept ≤ 3 min p50 for this deck, or fund G-38** | G-32…G-38 |
