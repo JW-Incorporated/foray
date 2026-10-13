@@ -13,6 +13,8 @@ import {
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
+import { evidenceWholeClip } from "./generationFlags";
+import { canonicalizeForAnchorMatch } from "../types/anchorText";
 import { leadingNounPhrase } from "../types/spine";
 import { tapeDocIdFor, type EvidenceDoc as HeldEvidenceDoc } from "../types/narration";
 import type { TapePointer } from "../types/tapeSourcing";
@@ -75,6 +77,16 @@ export const EVIDENCE_MAX_PASSAGE_CHARS = 1500;
  * (F-94/Q-01). `cueWindowText` therefore keeps the clip whole and shrinks
  * the padding to fit (gen-2); only a clip over the cap by itself is cut. */
 export const EVIDENCE_MAX_TAPE_CHARS = 3000;
+/** GV-76 (`FORAY_EVIDENCE_WHOLE_CLIP`): the cap on a page's OWN tape
+ * document in whole-clip mode. About 44 minutes at 15 chars/s, above
+ * `TAPE_WINDOW_MAX_SEC` (1,800 s), so the cut path stays a safety net
+ * rather than the norm it is at 3,000 chars. */
+export const EVIDENCE_WHOLE_CLIP_MAX_CHARS = 40000;
+/** GV-76: an ADJACENT clip's document in whole-clip mode is its head (how
+ * it opens, what an Intro is written from) and its tail (how it ends, what
+ * a bridge after a long clip picks up from), joined by `TAPE_GAP_MARK`. */
+export const EVIDENCE_ADJACENT_HEAD_CHARS = 1500;
+export const EVIDENCE_ADJACENT_TAIL_CHARS = 3000;
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
@@ -183,6 +195,22 @@ export interface EvidenceBeat {
 
 export interface EvidenceGatherer {
   gather(beat: EvidenceBeat, ctx: ExternalResearchContext): Promise<EvidencePack>;
+  /** GV-76 (QK-27): how many tape documents this gatherer built and how many
+   * of them were cut. Optional: a fake or a wrapper that builds none leaves
+   * it out, and the report then carries no tape counts. */
+  tapeEvidenceMetrics?(): TapeEvidenceMetrics;
+}
+
+/** GV-76 (QK-27): the tape documents a run's gatherer built, and how many of
+ * them hold only an excerpt of their clip (text ends with `TAPE_CUT_MARK`).
+ * QK-27 is `tapeDocsCut / tapeDocsBuilt`. Counted with the flag off too, so
+ * the report measures today's cut rate before the default flips. An
+ * adjacent document in whole-clip mode (head and tail joined by
+ * `TAPE_GAP_MARK`) is a designed summary, not a cut, and is not counted as
+ * one. */
+export interface TapeEvidenceMetrics {
+  tapeDocsBuilt: number;
+  tapeDocsCut: number;
 }
 
 /** An empty pack for the beat — used as the honest fallback when nothing
@@ -424,6 +452,9 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
   /** A budget refusal a losing query met after its race had returned. Held
    * here and thrown by the next gather, so it is never swallowed (gen-5). */
   private deferredBudgetError: unknown = undefined;
+  /** GV-76 (QK-27): tape documents built, and those cut (TAPE_CUT_MARK). */
+  private tapeDocsBuilt = 0;
+  private tapeDocsCut = 0;
 
   constructor(options: EvidenceGathererOptions = {}) {
     this.researcher = options.researcher ?? createExternalResearcher();
@@ -438,12 +469,16 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     if (this.deferredBudgetError !== undefined) throw this.deferredBudgetError;
     const beatKind = beatKindOf(beat);
     const pack: EvidencePack = { purpose: beat.claim, beatKind, docs: [] };
+    /* GV-76: read once per gather, at call time, so one pack is never half
+       whole-clip and half excerpt, and a malformed value fails every gather
+       (not only the ones that hold tape). */
+    const whole = evidenceWholeClip();
 
     // An argument beat gets print only — there is no moment on tape that
     // is the argument, and anchoring one to tape is what produced run 1's
     // off-topic anchors (F-33/F-38, WS-C).
     if (beat.tape && beatKind === "account") {
-      const tapeEvidence = this.tapeEvidenceFor(beat.tape);
+      const tapeEvidence = this.tapeEvidenceFor(beat.tape, { whole, adjacent: false });
       if (tapeEvidence) {
         pack.tape = tapeEvidence.context;
         if (tapeEvidence.doc) pack.docs.push(tapeEvidence.doc);
@@ -475,7 +510,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
           held.tapePosition = position;
           continue;
         }
-        const window = this.tapeEvidenceFor(pointer);
+        const window = this.tapeEvidenceFor(pointer, { whole, adjacent: true });
         if (window?.doc) pack.docs.push({ ...window.doc, tapePosition: position });
       }
     }
@@ -521,7 +556,26 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     return this.archive;
   }
 
-  private tapeEvidenceFor(tape: TapePointer): { context: TapeContext; doc: EvidenceDoc | null } | null {
+  /** GV-76 (QK-27): what `tapeEvidenceMetrics` reports. */
+  tapeEvidenceMetrics(): TapeEvidenceMetrics {
+    return { tapeDocsBuilt: this.tapeDocsBuilt, tapeDocsCut: this.tapeDocsCut };
+  }
+
+  /**
+   * A tape document for `tape`. `mode.whole` is `FORAY_EVIDENCE_WHOLE_CLIP`;
+   * `mode.adjacent` says the clip is a neighbour of the page (F-82) rather
+   * than the page's own.
+   *
+   * Flag off: today's window, the clip padded by `EVIDENCE_TAPE_WINDOW_SEC`
+   * and capped at `EVIDENCE_MAX_TAPE_CHARS`, for both.
+   *
+   * Flag on (GV-76): the page's OWN clip keeps its 90 s pre-roll (so
+   * `actSeams.clipOpening` still finds the start anchor where it expects it)
+   * and is capped at `EVIDENCE_WHOLE_CLIP_MAX_CHARS`, i.e. whole; an
+   * ADJACENT clip is the clip alone, head and tail (`headAndTail`), because
+   * what a page beside it needs is how it opens and how it ends.
+   */
+  private tapeEvidenceFor(tape: TapePointer, mode: { whole: boolean; adjacent: boolean }): { context: TapeContext; doc: EvidenceDoc | null } | null {
     const entry = findDigestForItem(tape.itemId, this.loadedArchive(), this.loadedCatalogue());
     const titles = titlesForItem(tape.itemId, this.loadedCatalogue(), entry);
     if (!titles) return null;
@@ -537,8 +591,13 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     const cues = entry ? this.cueProvider.getCues(entry) : null;
     if (!cues) return { context, doc: null };
 
-    const text = cueWindowText(cues, tape.startSec, tape.endSec);
+    let text: string;
+    if (!mode.whole) text = cueWindowText(cues, tape.startSec, tape.endSec);
+    else if (mode.adjacent) text = headAndTail(cueWindowText(cues, tape.startSec, tape.endSec, 0, { maxChars: Number.POSITIVE_INFINITY }));
+    else text = cueWindowText(cues, tape.startSec, tape.endSec, EVIDENCE_TAPE_WINDOW_SEC, { maxChars: EVIDENCE_WHOLE_CLIP_MAX_CHARS });
     if (!text) return { context, doc: null };
+    this.tapeDocsBuilt += 1;
+    if (text.endsWith(TAPE_CUT_MARK)) this.tapeDocsCut += 1;
 
     return {
       context,
@@ -734,8 +793,13 @@ export function cueWindowText(
   cues: TranscriptCue[],
   startSec: number,
   endSec: number,
-  windowSec: number = EVIDENCE_TAPE_WINDOW_SEC
+  windowSec: number = EVIDENCE_TAPE_WINDOW_SEC,
+  opts: { maxChars?: number } = {}
 ): string {
+  /* GV-76: the cap is a parameter, so whole-clip mode can raise it; the
+     default is today's EVIDENCE_MAX_TAPE_CHARS, and the logic below is
+     gen-2's, unchanged. */
+  const maxChars = opts.maxChars ?? EVIDENCE_MAX_TAPE_CHARS;
   /* gen-2 (round-3 audit): the CLIP [startSec, endSec] is always kept whole.
      The cap used to cut the joined window from the end, so on a clip longer
      than about 100 s (most of them since F-94/Q-01) the verifier and the
@@ -755,13 +819,13 @@ export function cueWindowText(
     return parts.join(" ").replace(/\s+/g, " ").trim();
   };
   const joined = textOf(windowSec);
-  if (joined.length <= EVIDENCE_MAX_TAPE_CHARS) return joined;
+  if (joined.length <= maxChars) return joined;
   let lo = 0;
   let hi = Math.max(0, Math.floor(windowSec));
-  if (textOf(0).length <= EVIDENCE_MAX_TAPE_CHARS) {
+  if (textOf(0).length <= maxChars) {
     while (lo < hi) {
       const mid = Math.ceil((lo + hi) / 2);
-      if (textOf(mid).length <= EVIDENCE_MAX_TAPE_CHARS) lo = mid;
+      if (textOf(mid).length <= maxChars) lo = mid;
       else hi = mid - 1;
     }
     return textOf(lo);
@@ -770,7 +834,7 @@ export function cueWindowText(
   // a word boundary (a half-word would make a legitimate quote at the end
   // unmatchable), with a mark so no reader takes the cut for the clip's end.
   const clip = textOf(0);
-  const cut = clip.slice(0, EVIDENCE_MAX_TAPE_CHARS - TAPE_CUT_MARK.length);
+  const cut = clip.slice(0, maxChars - TAPE_CUT_MARK.length);
   const lastSpace = cut.lastIndexOf(" ");
   return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}${TAPE_CUT_MARK}`;
 }
@@ -778,6 +842,110 @@ export function cueWindowText(
 /** Appended when a clip's own transcript is longer than the tape cap and had
  * to be cut (gen-2). */
 export const TAPE_CUT_MARK = " [transcript cut: the clip runs on]";
+
+/** GV-76: joins an adjacent clip's head to its tail in whole-clip mode, so
+ * no reader takes the two for one continuous stretch of speech. */
+export const TAPE_GAP_MARK = " [transcript gap: the clip runs on] ";
+
+/**
+ * GV-76: a clip's head and tail, joined by `TAPE_GAP_MARK` — the document a
+ * page holds for a NEIGHBOURING clip in whole-clip mode. The head is how the
+ * clip opens (an Intro is written from it); the tail is how it ends (what a
+ * bridge after a long clip picks up from). A text that fits in both is
+ * returned whole, with no mark. Both cuts land on word boundaries, so a
+ * quote of whole words near either end still resolves.
+ */
+export function headAndTail(
+  text: string,
+  headChars: number = EVIDENCE_ADJACENT_HEAD_CHARS,
+  tailChars: number = EVIDENCE_ADJACENT_TAIL_CHARS
+): string {
+  const t = String(text ?? "");
+  if (t.length <= headChars + TAPE_GAP_MARK.length + tailChars) return t;
+  let head = t.slice(0, headChars);
+  if (t[headChars] !== " ") {
+    const space = head.lastIndexOf(" ");
+    if (space > 0) head = head.slice(0, space);
+  }
+  let tail = t.slice(t.length - tailChars);
+  if (t[t.length - tailChars - 1] !== " ") {
+    const space = tail.indexOf(" ");
+    if (space >= 0) tail = tail.slice(space + 1);
+  }
+  return `${head.trimEnd()}${TAPE_GAP_MARK}${tail.trimStart()}`;
+}
+
+/** GV-76: the default size of `sliceAroundQuote`'s window — about 2k tokens,
+ * what a narrow judge (the verifier and Jev lanes, LM-23) is given. */
+export const EVIDENCE_QUOTE_SLICE_CHARS = 8000;
+
+/**
+ * GV-76: at most `maxChars` of `text`, centred on where `quote` is spoken,
+ * for a judge whose context cannot hold a whole-clip document. The quote is
+ * found verbatim first, then on its canonical words
+ * (`canonicalizeForAnchorMatch`, so case, punctuation and apostrophes are
+ * forgiven); a quote that is not in the text gives the head. A text that
+ * already fits is returned whole. Edges land on word boundaries and never
+ * inside the quote. Not wired to any judge yet: the verifier still gets the
+ * whole document until its workstream adopts this.
+ */
+export function sliceAroundQuote(text: string, quote: string, maxChars: number = EVIDENCE_QUOTE_SLICE_CHARS): string {
+  const t = String(text ?? "");
+  const cap = Math.max(0, Math.floor(maxChars));
+  if (t.length <= cap) return t;
+  const span = quoteSpan(t, quote);
+  if (!span) {
+    let head = t.slice(0, cap);
+    if (t[cap] !== " ") {
+      const space = head.lastIndexOf(" ");
+      if (space > 0) head = head.slice(0, space);
+    }
+    return head.trimEnd();
+  }
+  const [start, end] = span;
+  if (end - start >= cap) return t.slice(start, start + cap);
+  let from = Math.round((start + end) / 2 - cap / 2);
+  from = Math.max(0, Math.min(from, t.length - cap));
+  let to = from + cap;
+  if (from > 0 && t[from - 1] !== " ") {
+    const space = t.indexOf(" ", from);
+    if (space >= 0 && space < start) from = space + 1;
+  }
+  if (to < t.length && t[to] !== " ") {
+    const space = t.lastIndexOf(" ", to - 1);
+    if (space >= end) to = space;
+  }
+  return t.slice(from, to).trim();
+}
+
+/** Where `quote` sits in `text` as [start, end) character offsets: verbatim,
+ * else on canonical words mapped back to the text's own tokens; `null` when
+ * it is not there. */
+function quoteSpan(text: string, quote: string): [number, number] | null {
+  const q = String(quote ?? "").trim();
+  if (!q) return null;
+  const exact = text.indexOf(q);
+  if (exact >= 0) return [exact, exact + q.length];
+  const needle = canonicalizeForAnchorMatch(q).split(" ").filter(Boolean);
+  if (needle.length === 0) return null;
+  const words: Array<{ word: string; start: number; end: number }> = [];
+  for (const match of text.matchAll(/\S+/g)) {
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    for (const word of canonicalizeForAnchorMatch(match[0]).split(" ")) if (word) words.push({ word, start, end });
+  }
+  for (let i = 0; i + needle.length <= words.length; i++) {
+    let hit = true;
+    for (let j = 0; j < needle.length; j++) {
+      if (words[i + j]!.word !== needle[j]) {
+        hit = false;
+        break;
+      }
+    }
+    if (hit) return [words[i]!.start, words[i + needle.length - 1]!.end];
+  }
+  return null;
+}
 
 /**
  * Finds the transcript digest entry for a tape item id. Two id families

@@ -97,6 +97,18 @@ export function readBooleanFlag(name: string, fallback: boolean, source: FlagSou
   return readFlag(name, booleanParser, fallback, source);
 }
 
+/** GV-76 (R2-12, QK-27): judge a page against its whole clip rather than a
+ * 3,000-character excerpt of it. */
+export const EVIDENCE_WHOLE_CLIP_ENV = "FORAY_EVIDENCE_WHOLE_CLIP";
+
+/** GV-76: `FORAY_EVIDENCE_WHOLE_CLIP=1` builds a page's OWN tape document
+ * from the whole clip (`EVIDENCE_WHOLE_CLIP_MAX_CHARS`) and an ADJACENT
+ * clip's document from its head and tail (`gatherEvidence.ts`). Default off:
+ * today's 3,000-character window, byte for byte. */
+export function evidenceWholeClip(source: FlagSource = process.env): boolean {
+  return readBooleanFlag(EVIDENCE_WHOLE_CLIP_ENV, false, source);
+}
+
 /** The repository root (backend/src/generation -> three levels up). */
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 

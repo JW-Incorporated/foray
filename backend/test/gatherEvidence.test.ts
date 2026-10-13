@@ -9,7 +9,13 @@ import {
   TAPE_CUT_MARK,
   EVIDENCE_MAX_PRINT_PASSAGES,
   EVIDENCE_TAPE_WINDOW_SEC,
+  EVIDENCE_ADJACENT_HEAD_CHARS,
+  EVIDENCE_ADJACENT_TAIL_CHARS,
+  EVIDENCE_WHOLE_CLIP_MAX_CHARS,
+  TAPE_GAP_MARK,
   beatKindOf,
+  headAndTail,
+  sliceAroundQuote,
   claimHash,
   cueWindowText,
   createEvidenceGatherer,
@@ -23,8 +29,10 @@ import { StubExternalResearcher } from "../src/generation/StubExternalResearcher
 import { BudgetExceededError } from "../src/cost/budgetGuard";
 import { EMPTY_EVIDENCE_TTL_MS, emptyEvidenceTtlMs, readEvidenceCache, writeEvidenceCache } from "../src/generation/evidenceCache";
 import { NullExternalResearcher } from "../src/generation/NullExternalResearcher";
-import { findHoldingDoc } from "../src/types/narration";
+import { findHoldingDoc, tapeDocIdFor } from "../src/types/narration";
 import { leadingNounPhrase } from "../src/types/spine";
+import { clipOpening } from "../src/generation/actSeams";
+import { EVIDENCE_WHOLE_CLIP_ENV, FlagValueError } from "../src/generation/generationFlags";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult, PassageRetrievalRequest, RetrievedPassage } from "../src/generation/ExternalResearcher";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
@@ -951,5 +959,211 @@ describe("GV-61: printSkipped marks a content page whose pack holds no print doc
     const pack = await gatherer(new NullExternalResearcher()).gather({ claim: "the bakestone came first", tape, requiresEvidence: true }, ctx);
     expect(pack.docs.map((d) => d.kind)).toEqual(["tape"]);
     expect(pack.printSkipped).toBeUndefined();
+  });
+});
+
+/* GV-76 (R2-12, QK-27): FORAY_EVIDENCE_WHOLE_CLIP. A page is written and
+   judged against its whole clip rather than the first ~190 s of it, an
+   adjacent clip is held as its head and tail, and the run counts how many
+   tape documents were only an excerpt. */
+describe("GV-76: whole clip window as evidence (FORAY_EVIDENCE_WHOLE_CLIP)", () => {
+  const CLIP_START = 1000;
+  const CLIP_END = 2800; // a 30-minute clip, TAPE_WINDOW_MAX_SEC long
+  const FIRST_LINE = "So here is where the whole story starts.";
+  const MINUTE_12 = "The bridge was rated for twelve tonnes and carried twenty.";
+  const LAST_LINE = "And that is how the whole thing finally ended.";
+  const PRE_ROLL = "pre-roll chatter before the clip";
+
+  /* One cue per second of ~15 chars (measured speech), 90 s of pre-roll and
+     post-roll around the clip, and three sentences a test can look for. */
+  function longClipCues(): TranscriptCue[] {
+    const cues: TranscriptCue[] = [];
+    for (let sec = CLIP_START - EVIDENCE_TAPE_WINDOW_SEC; sec < CLIP_END + EVIDENCE_TAPE_WINDOW_SEC; sec++) {
+      let text = `w${sec} said this.`;
+      if (sec === CLIP_START - 60) text = PRE_ROLL;
+      if (sec === CLIP_START) text = FIRST_LINE;
+      if (sec === CLIP_START + 720) text = MINUTE_12;
+      if (sec === CLIP_END - 1) text = LAST_LINE;
+      cues.push({ text, start_sec: sec, end_sec: sec + 0.9 });
+    }
+    /* A short clip far away, for the counter tests: never over any cap. */
+    cues.push({ text: "A short clip that fits in any window.", start_sec: 5000, end_sec: 5010 });
+    return cues;
+  }
+
+  const longTape: TapePointer = {
+    segmentId: `bread-from-home--griddle-bakestone#${CLIP_START}`,
+    itemId: "bread-from-home--griddle-bakestone",
+    startSec: CLIP_START,
+    endSec: CLIP_END,
+    startAnchor: "so here is where the whole story starts",
+    endAnchor: "how the whole thing finally ended",
+    tier: 1,
+    confidence: "high"
+  };
+  const shortTape: TapePointer = {
+    segmentId: "bread-from-home--griddle-bakestone#5000",
+    itemId: "bread-from-home--griddle-bakestone",
+    startSec: 5000,
+    endSec: 5010,
+    startAnchor: "a short clip that fits",
+    endAnchor: "in any window",
+    tier: 1,
+    confidence: "high"
+  };
+
+  async function withFlag<T>(value: string | undefined, run: () => Promise<T>): Promise<T> {
+    const previous = process.env[EVIDENCE_WHOLE_CLIP_ENV];
+    if (value === undefined) delete process.env[EVIDENCE_WHOLE_CLIP_ENV];
+    else process.env[EVIDENCE_WHOLE_CLIP_ENV] = value;
+    try {
+      return await run();
+    } finally {
+      if (previous === undefined) delete process.env[EVIDENCE_WHOLE_CLIP_ENV];
+      else process.env[EVIDENCE_WHOLE_CLIP_ENV] = previous;
+    }
+  }
+
+  const ownDoc = (pack: { docs: Array<{ docId: string; text: string }> }, pointer: TapePointer) =>
+    pack.docs.find((d) => d.docId === tapeDocIdFor(pointer.segmentId));
+
+  /* MUTATION THAT KILLS THIS: default the flag on
+     (`readBooleanFlag(EVIDENCE_WHOLE_CLIP_ENV, true, source)`): the unset
+     run then holds the clip's last sentence and no cut mark. Ran: red. */
+  it("flag unset: today's excerpt, capped at EVIDENCE_MAX_TAPE_CHARS and marked as cut", async () => {
+    const pack = await withFlag(undefined, () => gatherer(new NullExternalResearcher(), longClipCues()).gather({ claim: "the bridge", tape: longTape }, ctx));
+    const doc = ownDoc(pack, longTape)!;
+    expect(doc.text.length).toBeLessThanOrEqual(EVIDENCE_MAX_TAPE_CHARS);
+    expect(doc.text.endsWith(TAPE_CUT_MARK)).toBe(true);
+    expect(doc.text).not.toContain(LAST_LINE);
+  });
+
+  /* MUTATION THAT KILLS THIS: build the own document with the default cap in
+     whole-clip mode (drop `{ maxChars: EVIDENCE_WHOLE_CLIP_MAX_CHARS }`).
+     Ran: red (no last sentence, no minute-12 quote, cut mark present).
+     And: build it with no pre-roll (`windowSec` 0). Ran: red (no pre-roll). */
+  it("flag set: a 30-minute clip's document holds its last sentence and a minute-12 quote, with its pre-roll", async () => {
+    const pack = await withFlag("1", () => gatherer(new NullExternalResearcher(), longClipCues()).gather({ claim: "the bridge", tape: longTape }, ctx));
+    const doc = ownDoc(pack, longTape)!;
+    expect(doc.text.length).toBeGreaterThan(EVIDENCE_MAX_TAPE_CHARS);
+    expect(doc.text.length).toBeLessThanOrEqual(EVIDENCE_WHOLE_CLIP_MAX_CHARS);
+    expect(doc.text).toContain(LAST_LINE);
+    expect(doc.text).toContain(MINUTE_12);
+    expect(doc.text).toContain(PRE_ROLL);
+    expect(doc.text).not.toContain(TAPE_CUT_MARK.trim());
+    expect(doc.text).not.toContain(TAPE_GAP_MARK.trim());
+  });
+
+  /* MUTATION THAT KILLS THIS: hand the own clip `headAndTail` too (treat
+     every tape document as adjacent). Ran: red (the opening survives in the
+     head, but the minute-12 quote and pre-roll are gone; this pins that the
+     opening the Intro rules read is found in the whole document). */
+  it("flag set: actSeams.clipOpening finds the start anchor in the whole-clip document", async () => {
+    const pack = await withFlag("1", () => gatherer(new NullExternalResearcher(), longClipCues()).gather({ claim: "the bridge", tape: longTape }, ctx));
+    const doc = ownDoc(pack, longTape)!;
+    const opening = clipOpening(doc.text, longTape.startAnchor);
+    expect(opening.startsWith(FIRST_LINE)).toBe(true);
+    expect(doc.text).toContain(MINUTE_12);
+  });
+
+  /* MUTATION THAT KILLS THIS: build an adjacent clip's document like the own
+     one (the whole clip, no `headAndTail`). Ran: red (no gap mark, and a
+     document far over head + tail). Flag off it stays today's capped window. */
+  it("flag set: an adjacent clip's document is its head and tail, holding its last sentences and the gap mark", async () => {
+    const beat = { claim: "the bridge page after the long clip", adjacentTape: { previous: longTape } };
+    const on = await withFlag("1", () => gatherer(new NullExternalResearcher(), longClipCues()).gather(beat, ctx));
+    const prev = ownDoc(on, longTape)!;
+    expect(on.docs.find((d) => d.docId === prev.docId)?.tapePosition).toBe("previous");
+    expect(prev.text).toContain(TAPE_GAP_MARK.trim());
+    expect(prev.text).toContain(LAST_LINE);
+    expect(prev.text.startsWith(FIRST_LINE)).toBe(true);
+    expect(prev.text).not.toContain(PRE_ROLL);
+    expect(prev.text.length).toBeLessThanOrEqual(EVIDENCE_ADJACENT_HEAD_CHARS + TAPE_GAP_MARK.length + EVIDENCE_ADJACENT_TAIL_CHARS);
+
+    const off = await withFlag(undefined, () => gatherer(new NullExternalResearcher(), longClipCues()).gather(beat, ctx));
+    const offPrev = ownDoc(off, longTape)!;
+    expect(offPrev.text).not.toContain(LAST_LINE);
+    expect(offPrev.text.endsWith(TAPE_CUT_MARK)).toBe(true);
+  });
+
+  /* MUTATION THAT KILLS THIS: count every built document as cut (drop the
+     `endsWith(TAPE_CUT_MARK)` test), or never count a cut. Ran: red both
+     ways (2/2 and 2/0 where 2/1 is expected flag off). */
+  it("tapeDocsCut counts only cut documents; tapeDocsBuilt counts every tape document built", async () => {
+    const beat = { claim: "the bridge", tape: longTape, adjacentTape: { next: shortTape } };
+    const offGatherer = gatherer(new NullExternalResearcher(), longClipCues());
+    expect(offGatherer.tapeEvidenceMetrics()).toEqual({ tapeDocsBuilt: 0, tapeDocsCut: 0 });
+    await withFlag(undefined, () => offGatherer.gather(beat, ctx));
+    expect(offGatherer.tapeEvidenceMetrics()).toEqual({ tapeDocsBuilt: 2, tapeDocsCut: 1 });
+
+    const onGatherer = gatherer(new NullExternalResearcher(), longClipCues());
+    await withFlag("1", () => onGatherer.gather({ claim: "the page after", adjacentTape: { previous: longTape, next: shortTape } }, ctx));
+    /* A head-and-tail document is a designed summary, not a cut. */
+    expect(onGatherer.tapeEvidenceMetrics()).toEqual({ tapeDocsBuilt: 2, tapeDocsCut: 0 });
+  });
+
+  /* MUTATION THAT KILLS THIS: read the flag with `Boolean(process.env...)`
+     instead of the fail-fast reader. Ran: red (no throw). */
+  it("a malformed FORAY_EVIDENCE_WHOLE_CLIP fails the gather, naming the variable and not its value", async () => {
+    const err = await withFlag("sometimes", () => gatherer(new NullExternalResearcher(), longClipCues()).gather({ claim: "the bridge", tape: longTape }, ctx)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(FlagValueError);
+    expect((err as Error).message).toContain(EVIDENCE_WHOLE_CLIP_ENV);
+    expect((err as Error).message).not.toContain("sometimes");
+  });
+
+  /* MUTATION THAT KILLS THIS: ignore `opts.maxChars` (always cap at
+     EVIDENCE_MAX_TAPE_CHARS). Ran: red. */
+  it("cueWindowText's maxChars option raises the cap and leaves the default path alone", () => {
+    const cues = longClipCues();
+    const whole = cueWindowText(cues, CLIP_START, CLIP_END, EVIDENCE_TAPE_WINDOW_SEC, { maxChars: EVIDENCE_WHOLE_CLIP_MAX_CHARS });
+    expect(whole).toContain(LAST_LINE);
+    expect(whole).toContain(PRE_ROLL);
+    expect(cueWindowText(cues, CLIP_START, CLIP_END)).toBe(cueWindowText(cues, CLIP_START, CLIP_END, EVIDENCE_TAPE_WINDOW_SEC, {}));
+    /* The gen-2 cut path still runs under a raised cap, just later. */
+    const small = cueWindowText(cues, CLIP_START, CLIP_END, EVIDENCE_TAPE_WINDOW_SEC, { maxChars: 5000 });
+    expect(small.length).toBeLessThanOrEqual(5000);
+    expect(small.endsWith(TAPE_CUT_MARK)).toBe(true);
+  });
+
+  /* MUTATION THAT KILLS THIS: return the text untouched in headAndTail.
+     Ran: red. */
+  it("headAndTail keeps a text that fits whole and cuts a long one on word boundaries", () => {
+    expect(headAndTail("short text")).toBe("short text");
+    const words = Array.from({ length: 2000 }, (_, i) => `word${i}`).join(" ");
+    const out = headAndTail(words, 100, 200);
+    const [head, tail] = out.split(TAPE_GAP_MARK);
+    expect(out.length).toBeLessThanOrEqual(100 + TAPE_GAP_MARK.length + 200);
+    expect(head!.startsWith("word0 ")).toBe(true);
+    expect(tail!.endsWith("word1999")).toBe(true);
+    for (const w of [...head!.split(" "), ...tail!.split(" ")]) expect(w).toMatch(/^word\d+$/);
+  });
+
+  /* MUTATION THAT KILLS THIS: always return the head (drop the quote
+     search). Ran: red (the minute-12 quote is ~11,000 chars in). And: drop
+     the canonical fallback (verbatim only). Ran: red on the re-cased,
+     re-punctuated quote. */
+  it("sliceAroundQuote returns at most maxChars, centred on the quote, verbatim or canonical", () => {
+    const text = cueWindowText(longClipCues(), CLIP_START, CLIP_END, EVIDENCE_TAPE_WINDOW_SEC, { maxChars: EVIDENCE_WHOLE_CLIP_MAX_CHARS });
+    const slice = sliceAroundQuote(text, MINUTE_12);
+    expect(slice.length).toBeLessThanOrEqual(8000);
+    expect(slice).toContain(MINUTE_12);
+    expect(slice).not.toContain(FIRST_LINE);
+    expect(slice).not.toContain(LAST_LINE);
+
+    const loose = sliceAroundQuote(text, "the BRIDGE was rated for twelve tonnes, and carried twenty", 2000);
+    expect(loose.length).toBeLessThanOrEqual(2000);
+    expect(loose).toContain(MINUTE_12);
+
+    const tiny = sliceAroundQuote(text, LAST_LINE, 300);
+    expect(tiny.length).toBeLessThanOrEqual(300);
+    expect(tiny).toContain(LAST_LINE);
+  });
+
+  it("sliceAroundQuote falls back to the head for a quote not in the text, and returns a short text whole", () => {
+    const text = cueWindowText(longClipCues(), CLIP_START, CLIP_END, 0, { maxChars: EVIDENCE_WHOLE_CLIP_MAX_CHARS });
+    const head = sliceAroundQuote(text, "nobody ever said this", 500);
+    expect(head.length).toBeLessThanOrEqual(500);
+    expect(head.startsWith(FIRST_LINE)).toBe(true);
+    expect(sliceAroundQuote("a short window", "short", 8000)).toBe("a short window");
   });
 });
