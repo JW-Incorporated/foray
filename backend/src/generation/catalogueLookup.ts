@@ -73,7 +73,7 @@ function readJson<T>(relPath: string): T {
 }
 
 /** `tokenize`'s own stopwords, tuned for short catalogue queries. */
-const QUERY_STOPWORDS: ReadonlySet<string> = new Set([
+const QUERY_STOPWORDS = new Set([
   "the", "a", "an", "of", "and", "or", "to", "in", "on", "for", "with",
   "is", "are", "was", "were", "how", "what", "why", "who", "it", "its",
   "that", "this", "as", "at", "by", "be", "not"
