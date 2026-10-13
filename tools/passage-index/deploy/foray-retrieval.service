@@ -1,0 +1,57 @@
+# foray-retrieval.service -- the retrieval server on the DGX Spark.
+#
+# GV-66 (docs/roadmap/generation-v2.md, from W3-22; covers GP-09, R1-09).
+# Runbook: docs/plans/retrieval-on-spark.md. Runs tools/passage-index/serve.mjs
+# (GV-16), which starts backend/src/cli/retrievalServer.ts through
+# backend/node_modules' tsx. The BM25 index is resident; bodies that are only
+# in R2 are read through the remote cue store (--r2, GV-54) into a 50 GB cue
+# cache; the passage store (GV-28) and the query embedder serve the dense arm
+# and the node shortlists (GV-48).
+#
+# LOOPBACK ONLY. The server binds 127.0.0.1. The bearer token must never cross
+# a network in plain http, so this unit never binds the LAN address
+# (192.168.0.72) or 0.0.0.0. Generation on the Spark talks to
+# http://127.0.0.1:7311; any other box reaches it only through TLS on the
+# tailnet (`tailscale serve`, see the runbook), which proxies to this loopback
+# port. tools/passage-index/deploy/deploy.test.mjs pins the bind.
+#
+# NO SECRET IN THIS FILE. FORAY_RETRIEVAL_TOKEN_FILE and R2_CREDENTIALS_FILE
+# come from /etc/foray/retrieval.env (names: retrieval.env.example), and the
+# files they name hold the values. Only the founder places them (D8).
+#
+# PATHS. The checkout at /opt/foray is root-owned and read-only (ProtectSystem=
+# strict). Every tool writes under the repo's data-local/, so
+# /opt/foray/data-local is a symlink to /var/lib/foray/retrieval, the one
+# writable directory. serve.mjs starts the server with cwd backend/, so every
+# path flag below is absolute.
+#
+# Installed by copying, never by linking: a unit change reaches the Spark only
+# when someone re-copies it from a checkout of the spark-live tag (D8).
+
+[Unit]
+Description=Foray retrieval server (BM25 + passages, loopback, GV-66)
+Documentation=https://github.com/JW-Incorporated/foray/blob/main/docs/plans/retrieval-on-spark.md
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=foray
+Group=foray
+UMask=0027
+WorkingDirectory=/opt/foray
+EnvironmentFile=/etc/foray/retrieval.env
+Environment=NODE_OPTIONS=--max-old-space-size=12288
+ExecStart=/usr/bin/node tools/passage-index/serve.mjs --host 127.0.0.1 --port 7311 --r2 --cue-cache-gb 50 --passages-db /opt/foray/data-local/passage-index/passages.db --embedder transformers
+Restart=on-failure
+RestartSec=30
+Nice=5
+MemoryMax=16G
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/foray/retrieval
+
+[Install]
+WantedBy=multi-user.target

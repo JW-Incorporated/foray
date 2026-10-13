@@ -1,0 +1,44 @@
+# foray-index-nightly.service -- one run of the nightly retrieval chain.
+#
+# GV-66 (docs/roadmap/generation-v2.md, from W3-22). Started by
+# foray-index-nightly.timer at 03:30. Runs tools/passage-index/nightly.mjs
+# (GV-48): stream-index the R2 delta, warm --from-staged, index-db ingest and
+# embed, then POST /v1/reload and /v1/shortlist/rebuild to the loopback server
+# (foray-retrieval.service). Runbook: docs/plans/retrieval-on-spark.md.
+#
+# THE SPARK IS SHARED (OQ-07): SGLang serves the Qwen lane and goes first. This
+# run yields: Nice=10, a 400% CPU quota, idle I/O class and a memory cap.
+# CPUQuota= and MemoryMax= are enforced because this is a SYSTEM unit
+# (/etc/systemd/system).
+#
+# --source r2, not r2-all: nightly.mjs accepts only r2 or local. The runbook's
+# "Known gaps" says when this timer may be enabled.
+#
+# NO SECRET IN THIS FILE. The token (reload, shortlist) and the R2 read key
+# (stream-index) come from /etc/foray/retrieval.env, which names the files
+# that hold them. The server URL is loopback, so the token never leaves the box.
+
+[Unit]
+Description=Foray nightly retrieval index (stream-index delta, embed, reload, shortlists)
+Documentation=https://github.com/JW-Incorporated/foray/blob/main/docs/plans/retrieval-on-spark.md
+After=network-online.target foray-retrieval.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=foray
+Group=foray
+UMask=0027
+WorkingDirectory=/opt/foray
+EnvironmentFile=/etc/foray/retrieval.env
+ExecStart=/usr/bin/node tools/passage-index/nightly.mjs --source r2 --url http://127.0.0.1:7311 --embedder transformers
+TimeoutStartSec=8h
+Nice=10
+CPUQuota=400%
+IOSchedulingClass=idle
+MemoryMax=12G
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/foray/retrieval
