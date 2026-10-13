@@ -184,6 +184,28 @@
    does do something — it starts the episode over — and `"none"` at the end of
    the last episode took the whole transport off the car.
 
+   ── 4b. A STREAM WAITING FOR ITS NEXT PART (GV-70) ────────────────────────
+
+   A Foray still being generated plays from its first servable items, and the
+   queue grows as generation catches up (GV-57, `queue-manager.js`'s
+   `forayStreamWaiting`). When playback outruns generation the reducer lands in
+   `ended`, which for a Foray reports `"none"` (above) — the lock screen would
+   clear, or keep showing the last clip with no transport, and a listener with
+   the phone in a pocket has no way to tell a wait from a finish.
+
+   So the view takes one more field, `awaiting: true`, and with it:
+
+     - the title says `AWAITING_TITLE` ("Building the next part"), because the
+       thing on the display is no longer the clip that just ended;
+     - the transport reports `"paused"`, not `"none"`: the Foray has not ended,
+       it resumes by itself when the next part lands, and a paused state keeps
+       the session (and the car's display) alive across the wait.
+
+   Everything else — artist, album, artwork, the position — is the view's as
+   before. Without `awaiting` (strictly `true`), the output is exactly what it
+   was. The wording is product copy, lock-screen only: the founder or Joey may
+   reword it in this one constant.
+
    ── 5. ARTWORK ────────────────────────────────────────────────────────────
 
    MediaSession artwork is fetched by the browser on the OS's behalf, so it is
@@ -218,6 +240,10 @@ import { isNum } from "./guards.js";
 export const NONE = "none";
 export const PAUSED = "paused";
 export const PLAYING = "playing";
+
+/** The title while a streamed Foray waits for its next part (§4b, GV-70).
+    Product copy, lock-screen only. */
+export const AWAITING_TITLE = "Building the next part";
 
 /** `04_VOICE_AUDIO_SPEC.md`'s "±30/15 s seek", and the same numbers
     `player/client.js` puts on the in-page buttons. */
@@ -493,11 +519,17 @@ export function mediaPositionState({
  * @param {boolean} [view.inSeamGap]  the 0.5 s authored beat between segments
  * @param {boolean} [view.ended]      the item finished
  * @param {boolean} [view.foray]      the item is a Foray (its own end rule, §4)
+ * @param {boolean} [view.awaiting]   a streamed Foray is waiting for its next
+ *   part (§4b): paused, never none, whatever `ended` says
  */
 export function mediaPlaybackState({
   hasItem = false, playing = false, inSeamGap = false, ended = false, foray = false,
+  awaiting = false,
 } = {}) {
   if (!hasItem) return NONE;
+  /* §4b (GV-70). Before `ended`: the wait IS an `ended` reducer state, and a
+     Foray's end rule would report none and clear the transport mid-Foray. */
+  if (awaiting === true) return PAUSED;
   /* Checked before `playing` on purpose. A finished FORAY reports none (§4: a
      play button that cannot do anything is worse than none — the argument of
      2026-08, and the one docs/ios-lock-screen.md still rules by). A finished
@@ -517,11 +549,17 @@ export function mediaPlaybackState({
  * Everything the bridge needs, in one pure call, so `client.js` gathers live
  * values and decides nothing.
  *
+ * `view.awaiting === true` is the §4b wait of a streamed Foray: the title
+ * becomes `AWAITING_TITLE` and the state paused. Any other value leaves the
+ * view exactly as it was.
+ *
  * @returns {{ metadata: object, positionState: object|null, playbackState: string }}
  */
 export function mediaSessionView(view = {}) {
+  const awaiting = view.awaiting === true;
+  const metadata = mediaMetadata(view);
   return {
-    metadata: mediaMetadata(view),
+    metadata: awaiting ? { ...metadata, title: AWAITING_TITLE } : metadata,
     positionState: mediaPositionState(view),
     playbackState: mediaPlaybackState({
       hasItem: Boolean(view.item),
@@ -529,6 +567,7 @@ export function mediaSessionView(view = {}) {
       inSeamGap: Boolean(view.inSeamGap),
       ended: Boolean(view.ended),
       foray: Boolean(view.foray),
+      awaiting,
     }),
   };
 }

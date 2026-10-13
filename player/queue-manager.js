@@ -1011,7 +1011,10 @@ export class PlayerQueueManager {
 
   /** True while playback has run off the end of an open stream and is waiting
       for the next part. A surface reads this to skip the end-of-Foray
-      finalisation (the finished mark) for a Foray that has not ended. */
+      finalisation (the finished mark) for a Foray that has not ended. It is
+      also the lock screen's `awaiting` (GV-70, media-session.js §4b): the
+      media view built while this is true says "Building the next part" and
+      reports paused instead of a finished Foray's none. */
   get forayStreamWaiting() { return this._awaitingIndex != null; }
 
   /**

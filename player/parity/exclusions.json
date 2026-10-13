@@ -758,6 +758,22 @@
     "update writes metadata, playback state and position": {
       "reason": "webview-only",
       "why": "The bridge's write of metadata, playbackState and setPositionState to navigator.mediaSession. createMediaSession wraps navigator.mediaSession inside the WebView; in native mode the page writes no navigator.mediaSession (plan §3 A-2) and NowPlayingPublisher/RemoteSurface talk to MPNowPlayingInfoCenter and MPRemoteCommandCenter through the NE-18 seams, whose recording fakes carry their own XCTests."
+    },
+    "GV-70: a streamed Foray waiting for its next part says 'Building the next part' and reports paused": {
+      "reason": "webview-only",
+      "why": "A streamed Foray's wait for its next part (GV-57/GV-70). Streaming is refused in the native lane: the native engine has no append command (engine-contract.js COMMANDS) and client.js's facade refuses a stream there, so a native Foray never waits for a next part and the engine need never reimplement this lock-screen state."
+    },
+    "GV-70: the wait changes only the title — artist, album, artwork and position are the view's own": {
+      "reason": "webview-only",
+      "why": "A streamed Foray's wait for its next part (GV-57/GV-70). Streaming is refused in the native lane: the native engine has no append command (engine-contract.js COMMANDS) and client.js's facade refuses a stream there, so a native Foray never waits for a next part and the engine need never reimplement this lock-screen state."
+    },
+    "GV-70: without awaiting === true the view is byte-identical to today": {
+      "reason": "webview-only",
+      "why": "A streamed Foray's wait for its next part (GV-57/GV-70). Streaming is refused in the native lane: the native engine has no append command (engine-contract.js COMMANDS) and client.js's facade refuses a stream there, so a native Foray never waits for a next part and the engine need never reimplement this lock-screen state."
+    },
+    "GV-70: mediaPlaybackState — the wait is paused over ended and playing, and nothing loaded is still none": {
+      "reason": "webview-only",
+      "why": "A streamed Foray's wait for its next part (GV-57/GV-70). Streaming is refused in the native lane: the native engine has no append command (engine-contract.js COMMANDS) and client.js's facade refuses a stream there, so a native Foray never waits for a next part and the engine need never reimplement this lock-screen state."
     }
   },
   "playback-rate": {
