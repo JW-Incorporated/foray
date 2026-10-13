@@ -224,6 +224,12 @@ test("the runbook lists --check, --smoke, the GB10 bench, the spark-live tag and
      --check or --smoke step, or the spark-live tag -> red; rename a unit file
      without the runbook -> red. */
   const readme = fs.readFileSync(path.join(HERE, "README.md"), "utf8");
+  /* misaki's G2P pip-installs spaCy's en_core_web_sm at first load when it is
+     missing; the venv is root-owned and the worker runs ProtectSystem=strict,
+     so the model must go into /opt/foray-venv at install time, pinned.
+     MUTATION: drop the en_core_web_sm install line, unpin it, or install it
+     into a venv other than /opt/foray-venv -> red. */
+  assert.match(readme, /sudo \/opt\/foray-venv\/bin\/pip install \\\s*\n\s*"en_core_web_sm @ https:\/\/github\.com\/explosion\/spacy-models\/releases\/download\/en_core_web_sm-3\.8\.0\/en_core_web_sm-3\.8\.0-py3-none-any\.whl"/);
   assert.match(readme, /render-foray\.py --check/);
   assert.match(readme, /render-foray\.py --smoke/);
   assert.match(readme, /bench-narration\.py --only torch-cuda,ort-cpu/);

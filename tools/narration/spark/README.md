@@ -65,7 +65,12 @@ Run every command as an admin on the Spark. Paths are fixed by the unit files.
    ```sh
    sudo python3 -m venv /opt/foray-venv
    sudo /opt/foray-venv/bin/pip install -r /opt/foray/tools/narration/requirements.txt
+   sudo /opt/foray-venv/bin/pip install \
+     "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+   sudo -u foray-render /opt/foray-venv/bin/python -c "import en_core_web_sm"   # after step 4; must print nothing
    ```
+
+   The second line installs spaCy's `en_core_web_sm`, pinned to the wheel the voice audition uses ([`docs/bundled-voice-plan.md`](../../../docs/bundled-voice-plan.md)). misaki's G2P needs it, and when it is missing misaki tries to pip-install it the first time a G2P loads. That cannot work here. The venv is owned by root, so neither service user can install into it, and the worker runs with `ProtectSystem=strict`, which makes `/opt` read-only. Without the model, `--smoke` fails, and the worker fails at startup and restarts every 30 s. `--check` does not look for the model, so `ready to render.` does not prove it is there. The `import en_core_web_sm` line does. Run it once the users from step 4 exist, and before the smoke.
 
    Do not install torch into this venv. The benchmark below uses its own environment.
 
