@@ -416,6 +416,65 @@ Label-as-title misses niche or ambiguous nodes (most `X & Y` labels have no
 article of that name); the live build's `missing` lists say which, and
 `seeds.json` fills them in a reviewed PR.
 
+### Selection pass by a local Qwen (`dossiers/qwen-select.mjs`)
+
+GV-65 (W3-20): an OPT-IN second pass in which a local Qwen chooses and flags
+passages and never writes text. Nothing runs it by default; GV-69 reads
+whichever dossier is on disk, and `builder` (`code` or `qwen-select`) says
+which pass made it.
+
+```
+node tools/corpus/dossiers/qwen-select.mjs --all                   # every node in manifest.json with a file
+node tools/corpus/dossiers/qwen-select.mjs --node engineering/energy-fusion
+    [--dir <dir>] [--taxonomy <file>] [--force] [--max-prompt-tokens 12000] [--timeout-ms 600000]
+```
+
+- **Model access** (`dossiers/llm.mjs`, a minimal OpenAI-compatible fetch
+  client, no SDK): one POST to `${FORAY_LLM_BASE_URL}/v1/chat/completions`
+  with `Authorization: Bearer` FORAY_LLM_API_KEY (or the trimmed contents of
+  FORAY_LLM_API_KEY_FILE): the SAME variables the backend reads, so the one
+  Foray key from #1163 is placed once. Its only variable of its own is
+  `FORAY_DOSSIER_MODEL` (default `local-worker`, the LiteLLM alias of the P40
+  lane, run overnight). Use the dedicated Foray LiteLLM virtual key, outside
+  the terminal-qwen callback scope. Every request sends
+  `response_format: {type:'json_schema', json_schema:{name:'dossier_select', ...}}`
+  and `chat_template_kwargs: {enable_thinking:false}` (lane A2 runs
+  `--reasoning-parser qwen3`, and LiteLLM's `drop_params` can drop a param
+  silently, so the reply is validated again on receipt). No retries; the key
+  is never logged or put in an error.
+- **Prompt.** The node label, a few subject sentences (its parent's label and
+  taxonomy terms) and the passages numbered `[1]..[n]` in document order,
+  each shown whole, until about 12k tokens (estimated at 3.5 chars/token; the
+  P40 runs `-c 65536 --parallel 1`). Passages past the budget get no number,
+  so they cannot be kept; the selection record counts them as `unseen`.
+- **Reply** `{keep:int[], contested:int[], about_subject:int[]}`, applied by
+  code: a number outside `1..shown` (or not an integer) refuses the whole
+  reply; passages not in `keep` are dropped; kept passages are copied
+  unchanged (checked field by field before writing); a kept passage in
+  `contested` gets `contested: true`; the dossier's `builder` becomes
+  `qwen-select` with `model` (the alias sent) and `selected_at`. Sources are
+  kept as they are.
+- **Files**, in `data-local/dossiers/` next to the dossier:
+  `<node>.code.json` is the code-built file's exact bytes, kept for the
+  golden-set comparison; `<node>.select.json` records the kept, dropped,
+  contested and `about_subject` docIds, `unseen`, timing and usage, for the
+  spot-check; `manifest.json`'s entry gets the selected file's sha256 and
+  passage count.
+- **Failure keeps the code-built dossier.** A transport error, a reply that is
+  not JSON or not the schema, an out-of-range number, a reply cut at
+  `max_tokens`, or a `keep` that keeps nothing leaves the dossier, the
+  manifest and the code copy untouched.
+- **Resumable per node** (P40 XID faults can stall a run): a dossier already
+  `qwen-select` is skipped, each node is written as soon as it is done, and a
+  rerun continues. `--force` reselects from `<node>.code.json`. Three
+  transport failures in a row stop the run; rerun once the lane is back.
+
+The live run (every node against `local-worker` overnight, then a spot-check
+of ten nodes' kept and dropped lists) waits on the Foray LiteLLM key and the
+founder's go-ahead on #1163. Rebuilding a node with `build.mjs` replaces its
+selected dossier with a fresh code-built one, which the next selection run
+picks up.
+
 ## Tests
 
 ```
