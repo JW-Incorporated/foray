@@ -1,0 +1,305 @@
+import { describe, it, expect } from "vitest";
+import {
+  audioReadyFor,
+  audioStateFor,
+  NarrationRenderTracker,
+  RENDER_JOB_ID_PATTERN,
+  renderJobIdFor,
+  renderJobsFor,
+  renderReportOf,
+  renderResultFromDone,
+  type NarrationRenderClient,
+  type RenderJob,
+  type RenderResult
+} from "../src/generation/narrationRender";
+import { EMPTY_JOB_PROGRESS, JobSnapshotSchema, progressWithEvent, snapshotFrom, type JobIdentity, type JobProgress } from "../src/generation/jobSink";
+import type { ItemReadyEvent } from "../src/generation/deliveryTimeline";
+import type { ForayItem } from "../src/generation/forayItems";
+import type { ItemCheck } from "../src/generation/itemReadiness";
+
+/**
+ * GV-74 (docs/roadmap/generation-v2.md, #1286; from W6-07): the backend render
+ * stage — render jobs from item-ready events in play order, the audio state
+ * folded into the job snapshot (phone voice first), and the report's
+ * `delivery.render` block. Offline: a fake render client, a fake clock (every
+ * time is on the event or the done record), hand-built events. Each test names
+ * the mutation it kills; every one was run against the source and went red.
+ */
+
+const FORAY = "the-history-of-grilling-a1b2c3";
+const JOB: JobIdentity = { jobId: "job-1", authorId: "founder-1", lane: "catalogue" };
+const AT = "2026-10-13T10:00:00.000Z";
+const URL_BASE = "https://narration.example.test/n";
+
+const narration = (id: string, script = `Line ${id}.`): ForayItem => ({ type: "narration", id, script, mode: "frame" });
+const segment = (id: string): ForayItem => ({ type: "segment", segment_id: id });
+
+/** prelude, act 0 (intro, tape, exit), act 1 (intro, tape, exit). */
+const ITEMS: ForayItem[] = [
+  narration("prelude", "This Foray was generated."),
+  narration("act-1-introduction"),
+  segment("show-a--ep-1#10"),
+  narration("act-1-exit"),
+  narration("act-2-introduction"),
+  segment("show-b--ep-2#20"),
+  narration("act-2-exit")
+];
+const ACT_OF = [-1, 0, 0, 0, 1, 1, 1];
+const idOf = (item: ForayItem): string => (item.type === "segment" ? item.segment_id : (item as { id: string }).id);
+const checkOf = (item: ForayItem, i: number): ItemCheck => (i === 0 ? "prelude" : item.type === "segment" ? "tape" : "unchecked-seam");
+
+/** The fake clock: item i is ready at 1 s x i (ms since the attempt began). */
+function event(index: number, servable = true): ItemReadyEvent {
+  const item = ITEMS[index]!;
+  return {
+    forayId: FORAY,
+    index,
+    itemId: idOf(item),
+    actIndex: ACT_OF[index]!,
+    check: checkOf(item, index),
+    servable,
+    readyAtMs: 1000 * index,
+    playStartSec: 50 * index,
+    durationSec: 50,
+    item,
+    granularity: "act"
+  };
+}
+
+/** A fake client: records every enqueue call and answers `results()` with
+ * whatever the test put in `done`. */
+class FakeRenderClient implements NarrationRenderClient {
+  readonly calls: RenderJob[][] = [];
+  done: RenderResult[] = [];
+  async enqueue(jobs: RenderJob[]): Promise<void> {
+    this.calls.push(jobs.map((j) => ({ ...j })));
+  }
+  async results(): Promise<RenderResult[]> {
+    return this.done.map((r) => ({ ...r }));
+  }
+  get enqueued(): RenderJob[] {
+    return this.calls.flat();
+  }
+}
+
+const rendered = (job: RenderJob, extra: Partial<RenderResult> = {}): RenderResult => ({
+  jobId: job.jobId,
+  itemId: job.itemId,
+  status: "rendered",
+  key: `n/${job.itemId}.m4a`,
+  publicUrl: `${URL_BASE}/${job.itemId}.m4a`,
+  audioSec: 10,
+  renderMs: 2000,
+  queuedMs: 500,
+  ...extra
+});
+const failed = (job: RenderJob): RenderResult => ({ jobId: job.jobId, itemId: job.itemId, status: "failed", renderMs: 100, queuedMs: 0 });
+
+const allEvents = (): ItemReadyEvent[] => ITEMS.map((_it, i) => event(i));
+const progressOf = (evs: ItemReadyEvent[]): JobProgress => evs.reduce((p, ev) => progressWithEvent(p, ev), EMPTY_JOB_PROGRESS);
+
+describe("renderJobsFor and the tracker — jobs in play order", () => {
+  it("enqueues jobs in item-index order, narration only, and the first narration item has the lowest priority", async () => {
+    /* MUTATION THAT KILLS THIS: set `priority` to the act index (ev.actIndex)
+       instead of the item index. The prelude reads -1 and both act-0 lines
+       share one priority, so the priorities are not the item indices. Ran it
+       — red. Also killed: drop the `item.type !== "narration"` guard (tape
+       segments become jobs). Ran it — red. */
+    const client = new FakeRenderClient();
+    const tracker = new NarrationRenderTracker(client);
+    tracker.beginAttempt();
+    for (const ev of allEvents()) await tracker.onItemReady(ev);
+    const jobs = client.enqueued;
+    expect(jobs.map((j) => j.itemId)).toEqual(["prelude", "act-1-introduction", "act-1-exit", "act-2-introduction", "act-2-exit"]);
+    expect(jobs.map((j) => j.priority)).toEqual([0, 1, 3, 4, 6]);
+    expect(Math.min(...jobs.map((j) => j.priority))).toBe(jobs[0]!.priority);
+    for (const j of jobs) {
+      expect(j.jobId).toMatch(RENDER_JOB_ID_PATTERN);
+      expect(j.forayId).toBe(FORAY);
+      expect(j.script).toBe((ITEMS.find((it) => idOf(it) === j.itemId) as { script: string }).script);
+    }
+  });
+
+  it("makes no job for an unservable item, and never enqueues the same line twice", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `!ev.servable` early return. The
+       unservable act-2 line becomes a job. Ran it — red. Also killed: drop
+       the `!this.tracked.has(j.jobId)` filter (a resumed attempt re-emitting
+       the prelude enqueues it again). Ran it — red. */
+    expect(renderJobsFor(event(4, false))).toEqual([]);
+    expect(renderJobsFor(event(2))).toEqual([]);
+    const client = new FakeRenderClient();
+    const tracker = new NarrationRenderTracker(client);
+    tracker.beginAttempt();
+    await tracker.onItemReady(event(0));
+    tracker.beginAttempt();
+    await tracker.onItemReady(event(0));
+    await tracker.onItemReady(event(4, false));
+    expect(client.enqueued.map((j) => j.itemId)).toEqual(["prelude"]);
+  });
+
+  it("job ids are id-safe, stable for the same line and new for a rewritten one", () => {
+    /* MUTATION THAT KILLS THIS: leave the script out of the hashed text. A
+       rewritten line keeps its id and is never rendered again. Ran it — red. */
+    const a = renderJobIdFor(FORAY, 3, "act-1-exit", "One line.");
+    expect(renderJobIdFor(FORAY, 3, "act-1-exit", "One line.")).toBe(a);
+    expect(renderJobIdFor(FORAY, 3, "act-1-exit", "Another line.")).not.toBe(a);
+    expect(renderJobIdFor("../../etc/passwd", 0, "x", "y")).toMatch(RENDER_JOB_ID_PATTERN);
+    expect(renderJobIdFor("x".repeat(200), 0, "x", "y")).toMatch(RENDER_JOB_ID_PATTERN);
+  });
+});
+
+describe("audio state — phone voice first", () => {
+  const job = renderJobsFor(event(1))[0]!;
+
+  it("a failed render or an un-uploaded file reads phone-voice; only a confirmed upload reads rendered", () => {
+    /* MUTATION THAT KILLS THIS: return "rendered" for any rendered status,
+       public URL or not. The un-uploaded file reads "rendered". Ran it — red. */
+    expect(audioStateFor(job.itemId, [failed(job)], "phone-voice-first")).toBe("phone-voice");
+    expect(audioStateFor(job.itemId, [failed(job)], "await-render")).toBe("phone-voice");
+    expect(audioStateFor(job.itemId, [rendered(job, { publicUrl: undefined })], "await-render")).toBe("phone-voice");
+    expect(audioStateFor(job.itemId, [rendered(job)], "phone-voice-first")).toBe("rendered");
+    expect(audioStateFor(job.itemId, [], "phone-voice-first")).toBe("phone-voice");
+    expect(audioStateFor(job.itemId, [], "await-render")).toBe("pending");
+  });
+
+  it("await-render holds readiness until a result arrives; phone-voice-first does not", () => {
+    /* MUTATION THAT KILLS THIS: make audioStateFor ignore the policy (no
+       result reads "pending" under both). phone-voice-first then holds first
+       audio. Ran it — red. */
+    expect(audioReadyFor(job.itemId, [], "phone-voice-first")).toBe(true);
+    expect(audioReadyFor(job.itemId, [], "await-render")).toBe(false);
+    expect(audioReadyFor(job.itemId, [failed(job)], "await-render")).toBe(true);
+    expect(audioReadyFor(job.itemId, [rendered(job)], "await-render")).toBe(true);
+  });
+});
+
+describe("snapshotFrom with the render stage's results", () => {
+  const jobs = allEvents().flatMap((ev) => renderJobsFor(ev));
+  const byItem = (id: string): RenderJob => jobs.find((j) => j.itemId === id)!;
+
+  it("without render results the snapshot is GV-44's: every item pending, no audio_url", () => {
+    /* MUTATION THAT KILLS THIS: default `audio` to a phone-voice-first
+       JobAudio inside snapshotFrom. The default row's items read
+       "phone-voice". Ran it — red. */
+    const s = snapshotFrom(JOB, progressOf(allEvents()), 0, AT)!;
+    expect(s.itemStates.every((st) => st.audio === "pending")).toBe(true);
+    expect(JSON.stringify(s)).not.toContain("audio_url");
+  });
+
+  it("a failed render marks the item phone-voice and the item still appears, without audio_url", () => {
+    /* MUTATION THAT KILLS THIS: hold an item whose render failed (treat
+       "phone-voice" like "pending" in servablePrefix). The failed line and
+       everything after it leave the row. Ran it — red. */
+    const results = [rendered(byItem("prelude")), failed(byItem("act-1-introduction"))];
+    for (const policy of ["phone-voice-first", "await-render"] as const) {
+      const s = snapshotFrom(JOB, progressOf(allEvents().slice(0, 3)), 0, AT, { policy, results })!;
+      expect(s.items.map(idOf)).toEqual(["prelude", "act-1-introduction", "show-a--ep-1#10"]);
+      expect(s.itemStates[1]).toEqual({ itemId: "act-1-introduction", check: "unchecked-seam", audio: "phone-voice" });
+      expect(s.items[1]).not.toHaveProperty("audio_url");
+      expect(s.items[0]).toEqual({ ...ITEMS[0], audio_url: `${URL_BASE}/prelude.m4a` });
+      expect(s.itemStates[0]).toEqual({ itemId: "prelude", check: "prelude", audio: "rendered", audioKey: "n/prelude.m4a" });
+      expect(JobSnapshotSchema.safeParse(s).success).toBe(true);
+    }
+  });
+
+  it("await-render holds the prefix at the first narration line with no result; phone-voice-first serves it", () => {
+    /* MUTATION THAT KILLS THIS: drop the `state === "pending"` hold in
+       servablePrefix. await-render serves act 1's exit before its render
+       answered. Ran it — red. */
+    const results = [rendered(byItem("prelude")), rendered(byItem("act-1-introduction"))];
+    const held = snapshotFrom(JOB, progressOf(allEvents()), 0, AT, { policy: "await-render", results })!;
+    expect(held.items.map(idOf)).toEqual(["prelude", "act-1-introduction", "show-a--ep-1#10"]);
+    expect(held.delivery).toMatchObject({ servableThrough: 3, itemsGenerated: 7, pausedAtIndex: 3 });
+    expect(JobSnapshotSchema.safeParse(held).success).toBe(true);
+
+    const first = snapshotFrom(JOB, progressOf(allEvents()), 0, AT, { policy: "phone-voice-first", results })!;
+    expect(first.items).toHaveLength(7);
+    expect(first.itemStates.filter((st) => st.audio === "phone-voice").map((st) => st.itemId)).toEqual(["act-1-exit", "act-2-introduction", "act-2-exit"]);
+    expect(first.delivery?.pausedAtIndex).toBeNull();
+  });
+
+  it("never writes audio_url unless the done record carries public_url", () => {
+    /* MUTATION THAT KILLS THIS: in renderResultFromDone, fall back to the
+       entry key as the public URL when public_url is missing. The
+       un-uploaded line gets an audio_url. Ran it — red. Also killed: drop
+       isPublicAudioUrl's http(s) check (a `file:` URL reaches the row). Ran
+       it — red. */
+    const prelude = byItem("prelude");
+    const intro = byItem("act-1-introduction");
+    const done = (job: RenderJob, extra: Record<string, unknown> = {}) => ({
+      job_id: job.jobId,
+      status: "rendered",
+      entry: { key: `n/${job.itemId}.m4a`, duration_sec: 4.2 },
+      timings: { queued_ms: 10, render_ms: 900, audio_sec: 4.2 },
+      ...extra
+    });
+    const noUrl = renderResultFromDone(prelude, done(prelude))!;
+    const badUrl = renderResultFromDone(intro, done(intro, { public_url: "file:///tmp/x.m4a" }))!;
+    expect(noUrl).not.toHaveProperty("publicUrl");
+    expect(badUrl).not.toHaveProperty("publicUrl");
+    const s = snapshotFrom(JOB, progressOf(allEvents().slice(0, 2)), 0, AT, { policy: "await-render", results: [noUrl, badUrl] })!;
+    expect(s.items).toHaveLength(2);
+    expect(JSON.stringify(s)).not.toContain("audio_url");
+    expect(s.itemStates.map((st) => st.audio)).toEqual(["phone-voice", "phone-voice"]);
+
+    const uploaded = renderResultFromDone(prelude, done(prelude, { public_url: `${URL_BASE}/prelude.m4a` }))!;
+    expect(uploaded).toMatchObject({ status: "rendered", publicUrl: `${URL_BASE}/prelude.m4a`, key: "n/prelude.m4a", audioSec: 4.2, renderMs: 900, queuedMs: 10 });
+    expect(renderResultFromDone(prelude, done(intro))).toBeNull();
+    expect(renderResultFromDone(prelude, { job_id: prelude.jobId, status: "failed", error: "boom", timings: {} })).toEqual({ jobId: prelude.jobId, itemId: "prelude", status: "failed" });
+    /* A failed record that somehow carries a URL still writes none. */
+    expect(renderResultFromDone(prelude, { job_id: prelude.jobId, status: "failed", public_url: `${URL_BASE}/x.m4a` })).not.toHaveProperty("publicUrl");
+  });
+
+  it("the schema takes an http(s) audio_url on a narration item only", () => {
+    /* MUTATION THAT KILLS THIS: widen the segment schema too (or drop the
+       URL regex). A segment with audio_url, or a non-URL, validates. Ran it
+       — red. */
+    const s = snapshotFrom(JOB, progressOf(allEvents().slice(0, 3)), 0, AT, { policy: "phone-voice-first", results: [rendered(byItem("prelude"))] })!;
+    expect(JobSnapshotSchema.safeParse(s).success).toBe(true);
+    expect(JobSnapshotSchema.safeParse({ ...s, items: [s.items[0], s.items[1], { ...s.items[2], audio_url: `${URL_BASE}/x.m4a` }] }).success).toBe(false);
+    expect(JobSnapshotSchema.safeParse({ ...s, items: [{ ...s.items[0], audio_url: "not a url" }, s.items[1], s.items[2]] }).success).toBe(false);
+  });
+});
+
+describe("renderReportOf — delivery.render (MT-09)", () => {
+  it("is populated from fake results: first rendered time, narration and render seconds, realtime factor, failures", async () => {
+    /* MUTATION THAT KILLS THIS: leave the queued time out of firstRenderedMs
+       (enqueue + render only). The first rendered line reads 500 ms early.
+       Ran it — red. Also killed: count failed jobs' render time into
+       renderWallSec. Ran it — red. */
+    const client = new FakeRenderClient();
+    const tracker = new NarrationRenderTracker(client);
+    tracker.beginAttempt();
+    for (const ev of allEvents()) await tracker.onItemReady(ev);
+    const [prelude, intro, exit] = client.enqueued;
+    client.done = [
+      rendered(prelude!, { audioSec: 6, renderMs: 3000, queuedMs: 500 }),
+      rendered(intro!, { audioSec: 30, renderMs: 6000, queuedMs: 2000, publicUrl: undefined }),
+      failed(exit!),
+      /* another run's record in the same spool: never counted */
+      { jobId: "someone-else.i0.0000000000000000", itemId: "prelude", status: "rendered", audioSec: 999, renderMs: 1 }
+    ];
+    await tracker.refresh();
+    expect(tracker.results).toHaveLength(3);
+    expect(tracker.report()).toEqual({ firstRenderedMs: 3500, narrationSec: 36, renderWallSec: 9, realtimeFactor: 4, failed: 1 });
+  });
+
+  it("nothing rendered reads null times and zero seconds, never a made-up factor", () => {
+    expect(renderReportOf([], [], 1)).toEqual({ firstRenderedMs: null, narrationSec: 0, renderWallSec: 0, realtimeFactor: null, failed: 0 });
+  });
+
+  it("firstRenderedMs counts only the final attempt's jobs (an earlier attempt's clock started elsewhere)", () => {
+    /* MUTATION THAT KILLS THIS: drop the `tracked.attempt === finalAttempt`
+       condition. Attempt 1's prelude (at 3.5 s on ITS clock) wins. Ran it —
+       red. */
+    const [p] = renderJobsFor(event(0));
+    const [i] = renderJobsFor(event(1));
+    const tracked = [
+      { job: p!, enqueuedAtMs: 0, attempt: 1 },
+      { job: i!, enqueuedAtMs: 20_000, attempt: 2 }
+    ];
+    const r = renderReportOf(tracked, [rendered(p!, { renderMs: 3000, queuedMs: 500 }), rendered(i!, { renderMs: 1000, queuedMs: 0 })], 2);
+    expect(r.firstRenderedMs).toBe(21_000);
+    expect(r.narrationSec).toBe(20);
+  });
+});
