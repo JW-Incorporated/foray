@@ -1,4 +1,5 @@
 import type { WrittenSeam } from "./NarrationWriterBuilder";
+import { zodToJsonSchema, type JsonSchema } from "./chat/jsonSchema";
 import { RawWrittenSeamLineSchema } from "./replySchemas";
 
 /**
@@ -43,6 +44,16 @@ import { RawWrittenSeamLineSchema } from "./replySchemas";
  * Pure and synchronous; no I/O, no clock. Nothing on the default path calls
  * it: the stream is consumed only behind W4-10's flag.
  */
+
+/** The JSON Schema of one streamed seam line (seamId, script, claims[],
+ * usedClaims[], pronunciationHints[], all required), converted once by
+ * chat/jsonSchema.ts's zodToJsonSchema (decision 11: no hand-built schema).
+ * It is a per-LINE schema, so it is not in REPLY_SCHEMAS, whose entries are
+ * whole replies sent as a json_schema response_format. It lives here, not in
+ * replySchemas.ts, because chat/jsonSchema.ts imports replySchemas.ts: a
+ * module-level conversion there runs before jsonSchema.ts has initialised
+ * whenever jsonSchema.ts is loaded first (an import cycle). */
+export const WRITTEN_SEAM_JSON_SCHEMA: JsonSchema = zodToJsonSchema(RawWrittenSeamLineSchema);
 
 export type SeamLineEvent =
   | { type: "seam"; seam: WrittenSeam }

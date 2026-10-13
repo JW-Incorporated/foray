@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import fc from "fast-check";
-import { JsonlSeamParser, type SeamLineEvent } from "../src/generation/seamStream";
-import { RawWrittenSeamLineSchema, WRITTEN_SEAM_JSON_SCHEMA } from "../src/generation/replySchemas";
+import { JsonlSeamParser, WRITTEN_SEAM_JSON_SCHEMA, type SeamLineEvent } from "../src/generation/seamStream";
+import { RawWrittenSeamLineSchema } from "../src/generation/replySchemas";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
 import { collectActStream, type ActWriteRequest, type WriterStreamEvent, type WrittenSeam } from "../src/generation/NarrationWriterBuilder";
 import type { EvidenceDoc } from "../src/generation/gatherEvidence";
