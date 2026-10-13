@@ -11,8 +11,10 @@
  * streams transcript bodies instead of holding them; each runs alone, and the
  * default warm above is unchanged:
  *
- *     node tools/generation/warm-transcript-index.mjs --from-staged data-local/passage-index/staged-digest.jsonl [--offline]
+ *     node tools/generation/warm-transcript-index.mjs --from-staged [data-local/passage-index/staged-digest.jsonl] [--offline]
  *         join GV-05's staged rows to their feeds into corpus-digest.json
+ *         (no file: that default path; a bare --resolve-legacy or
+ *         --legacy-map-from exits 2 and never falls through to the default warm)
  *     node tools/generation/warm-transcript-index.mjs --resolve-legacy keys.txt [--legacy-map-from map.json] [--offline]
  *         legacy whisper keys -> data-local/passage-index/legacy-map.json
  *     node tools/generation/warm-transcript-index.mjs --supply-report

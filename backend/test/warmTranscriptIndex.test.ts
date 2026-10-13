@@ -6,6 +6,7 @@ import {
   anyWarmMode,
   buildSupplyReport,
   corpusDigestRow,
+  DEFAULT_STAGED_DIGEST,
   FEED_CACHE_MAX_AGE_MS,
   loadFeed,
   mergeCorpusRows,
@@ -20,6 +21,7 @@ import {
   runFromStaged,
   runResolveLegacy,
   runSupplyReport,
+  runWarmModes,
   supplyReportTable,
   type CatalogueShows,
   type LegacyMapReport
@@ -378,15 +380,50 @@ const okFetch = (body: string) =>
 describe("GV-53 modes — parseWarmModes", () => {
   it("no mode by default, so the default warm runs unchanged", () => {
     const modes = parseWarmModes(["--offline", "--show", "a"]);
-    expect(modes).toEqual({ fromStaged: null, resolveLegacy: null, legacyMapFrom: null, supplyReport: false });
+    expect(modes).toEqual({ fromStaged: null, resolveLegacy: null, legacyMapFrom: null, supplyReport: false, errors: [] });
     expect(anyWarmMode(modes)).toBe(false);
   });
 
-  it("reads each mode and its file, and a flag with no value is no mode", () => {
+  it("reads each mode and its file", () => {
     const modes = parseWarmModes(["--from-staged", "s.jsonl", "--resolve-legacy", "k.txt", "--legacy-map-from", "m.json", "--supply-report"]);
-    expect(modes).toEqual({ fromStaged: "s.jsonl", resolveLegacy: "k.txt", legacyMapFrom: "m.json", supplyReport: true });
+    expect(modes).toEqual({ fromStaged: "s.jsonl", resolveLegacy: "k.txt", legacyMapFrom: "m.json", supplyReport: true, errors: [] });
     expect(anyWarmMode(parseWarmModes(["--supply-report"]))).toBe(true);
-    expect(parseWarmModes(["--from-staged", "--offline"]).fromStaged).toBeNull();
+  });
+
+  /* Review finding on GV-53: a bare mode flag used to parse as "no mode", so
+     `--from-staged --offline` (or `--from-staged $STAGED` with STAGED empty)
+     fell into the default warm, whose full reconcile rewrote corpus-digest.json
+     from the normalized dir alone, empty on a streamed box. */
+  it("a bare --from-staged reads the default staged digest; it is never no mode", () => {
+    for (const argv of [["--from-staged", "--offline"], ["--from-staged"], ["--from-staged", ""]]) {
+      const modes = parseWarmModes(argv);
+      expect(modes.fromStaged).toBe(DEFAULT_STAGED_DIGEST);
+      expect(modes.errors).toEqual([]);
+      expect(anyWarmMode(modes)).toBe(true);
+    }
+  });
+
+  it("a bare --resolve-legacy or --legacy-map-from, or --legacy-map-from alone, is refused; never no mode", () => {
+    const bareKeys = parseWarmModes(["--resolve-legacy", "--offline"]);
+    expect(bareKeys.errors).toEqual(["--resolve-legacy needs a keys file (one legacy key per line)"]);
+    expect(anyWarmMode(bareKeys)).toBe(true);
+    const bareMap = parseWarmModes(["--resolve-legacy", "k.txt", "--legacy-map-from"]);
+    expect(bareMap.errors).toEqual(["--legacy-map-from needs foray-db's mapping export (a JSON file)"]);
+    const mapAlone = parseWarmModes(["--legacy-map-from", "m.json", "--offline"]);
+    expect(mapAlone.errors).toEqual(["--legacy-map-from only applies with --resolve-legacy <keys.txt>"]);
+    expect(anyWarmMode(mapAlone)).toBe(true);
+  });
+
+  it("runWarmModes refuses a malformed mode with exit 2 and runs nothing", async () => {
+    const missing = path.join(os.tmpdir(), `foray-no-such-staged-${process.pid}.jsonl`);
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      /* Were the refusal skipped, --from-staged would read this missing file and throw. */
+      const code = await runWarmModes({ fromStaged: missing, resolveLegacy: null, legacyMapFrom: null, supplyReport: false, errors: ["x"] }, true);
+      expect(code).toBe(2);
+    } finally {
+      quiet.mockRestore();
+    }
   });
 });
 

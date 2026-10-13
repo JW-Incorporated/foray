@@ -529,11 +529,12 @@ function writeCorpusDigest(rows: TranscriptDigestEntry[], file: string = CORPUS_
  * joiner. The Postgres join of the original card is dropped: pg-row-source.mjs
  * has no enclosure column.
  *
- *   --from-staged <staged-digest.jsonl>  GV-05's streamed index build stages
+ *   --from-staged [<staged-digest.jsonl>]  GV-05's streamed index build stages
  *       one searchable-only row per new body (titled by its guid, no feed).
  *       This joins those rows to their show's feed, per show, and merges them
  *       into corpus-digest.json. It replaces the normalized-dir scan, so it
- *       works on a box that holds no bodies at all.
+ *       works on a box that holds no bodies at all. With no file it reads
+ *       DEFAULT_STAGED_DIGEST, where the streamed build stages by default.
  *   --resolve-legacy <keys.txt>  legacy faster-whisper keys
  *       (`<show-slug>/<title-slug>-<sha1(guid)[:10]>.json`, GV-06's listing)
  *       to {show_id, guid, title}, through the catalogue title slug, the
@@ -550,35 +551,55 @@ export const DEFAULT_STAGED_DIGEST = path.join(REPO_ROOT, "data-local", "passage
 export const DEFAULT_LEGACY_MAP = path.join(REPO_ROOT, "data-local", "passage-index", "legacy-map.json");
 export const DEFAULT_SUPPLY_REPORT = path.join(REPO_ROOT, "data-local", "passage-index", "supply-report.json");
 
-/** The three GV-53 modes and their inputs, as `parseWarmArgs` reads them. */
+/** The three GV-53 modes and their inputs, as `parseWarmModes` reads them. */
 export interface WarmModeArgs {
   fromStaged: string | null;
   resolveLegacy: string | null;
   legacyMapFrom: string | null;
   supplyReport: boolean;
+  /** Mode flags given without a usable value or out of place. A run with any
+   * refuses outright (exit 2): it must never fall through to the default
+   * warm, whose full reconcile rewrites corpus-digest.json from the
+   * normalized dir alone, which is empty on a streamed box. */
+  errors: string[];
 }
 
-/** The value after `flag`, or null when the flag is absent or has none. */
+/** The value after `flag` ("" when the flag is absent), or null when the flag
+ * is present with no value: the next token is missing, empty or another flag. */
 function flagValue(argv: readonly string[], flag: string): string | null {
   const i = argv.indexOf(flag);
-  const value = i >= 0 ? argv[i + 1] : undefined;
-  return value === undefined || value.startsWith("--") ? null : String(value);
+  if (i < 0) return "";
+  const value = argv[i + 1];
+  return value === undefined || value === "" || value.startsWith("--") ? null : String(value);
 }
 
 /** The GV-53 modes in `argv`. Kept apart from `parseWarmArgs` so the default
- * warm's parsed shape is what it always was. */
+ * warm's parsed shape is what it always was. Routing is on a flag's presence,
+ * not its value: a bare `--from-staged` reads the file GV-05's streamed build
+ * stages by default (DEFAULT_STAGED_DIGEST); a bare `--resolve-legacy` or
+ * `--legacy-map-from`, or `--legacy-map-from` without `--resolve-legacy`, is
+ * an error, never "no mode". */
 export function parseWarmModes(argv: readonly string[]): WarmModeArgs {
+  const errors: string[] = [];
+  const staged = flagValue(argv, "--from-staged");
+  const legacy = flagValue(argv, "--resolve-legacy");
+  const mapFrom = flagValue(argv, "--legacy-map-from");
+  if (legacy === null) errors.push("--resolve-legacy needs a keys file (one legacy key per line)");
+  if (mapFrom === null) errors.push("--legacy-map-from needs foray-db's mapping export (a JSON file)");
+  if (mapFrom !== "" && legacy === "") errors.push("--legacy-map-from only applies with --resolve-legacy <keys.txt>");
   return {
-    fromStaged: flagValue(argv, "--from-staged"),
-    resolveLegacy: flagValue(argv, "--resolve-legacy"),
-    legacyMapFrom: flagValue(argv, "--legacy-map-from"),
-    supplyReport: argv.includes("--supply-report")
+    fromStaged: staged === "" ? null : (staged ?? DEFAULT_STAGED_DIGEST),
+    resolveLegacy: legacy || null,
+    legacyMapFrom: mapFrom || null,
+    supplyReport: argv.includes("--supply-report"),
+    errors
   };
 }
 
-/** Whether any GV-53 mode was asked for (the default warm runs otherwise). */
+/** Whether any GV-53 mode was asked for, including a malformed one (the
+ * default warm runs only when none was). */
 export function anyWarmMode(modes: WarmModeArgs): boolean {
-  return modes.fromStaged !== null || modes.resolveLegacy !== null || modes.supplyReport;
+  return modes.fromStaged !== null || modes.resolveLegacy !== null || modes.supplyReport || modes.errors.length > 0;
 }
 
 /** A catalogue as `catalogueShows` returns it; injectable for tests. */
@@ -1068,8 +1089,15 @@ export function runSupplyReport(
 }
 
 /** The GV-53 modes, in dependency order: legacy keys (independent), staged
- * rows (which change the archive), then the report over that archive. */
-async function runWarmModes(modes: WarmModeArgs, offline: boolean): Promise<void> {
+ * rows (which change the archive), then the report over that archive. Returns
+ * the exit code: 2, with nothing run or written, when a mode flag was
+ * malformed (`WarmModeArgs.errors`); 0 otherwise. */
+export async function runWarmModes(modes: WarmModeArgs, offline: boolean): Promise<number> {
+  if (modes.errors.length > 0) {
+    for (const error of modes.errors) console.error(`warm-transcript-index: ${error}`);
+    console.error("nothing was run: a mode flag never falls through to the default warm.");
+    return 2;
+  }
   const rel = (file: string) => path.relative(REPO_ROOT, file).replace(/\\/g, "/");
   if (modes.resolveLegacy !== null) {
     console.log(`resolving legacy keys in ${modes.resolveLegacy}${modes.legacyMapFrom ? ` (foray-db mapping ${modes.legacyMapFrom} first)` : ""}...`);
@@ -1098,6 +1126,7 @@ async function runWarmModes(modes: WarmModeArgs, offline: boolean): Promise<void
     console.log(supplyReportTable(report));
     console.log(`  wrote ${rel(DEFAULT_SUPPLY_REPORT)}`);
   }
+  return 0;
 }
 
 function mb(bytes: number): string {
@@ -1110,7 +1139,7 @@ async function main(): Promise<void> {
      index (GV-05 already built its caches), so the default warm is skipped. */
   const modes = parseWarmModes(process.argv.slice(2));
   if (anyWarmMode(modes)) {
-    await runWarmModes(modes, args.offline);
+    process.exitCode = await runWarmModes(modes, args.offline);
     return;
   }
   const startedAt = Date.now();
