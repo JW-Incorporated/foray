@@ -36,8 +36,11 @@ describe("createExternalResearcher: the research route matrix (GV-61)", () => {
   /* MUTATION THAT KILLS THIS: have buildRoute return provider 'stub' for an
      anthropic spec. Ran: red (this and the FORAY_STAGE_RESEARCH=anthropic
      row). */
-  it("no routing variable with ANTHROPIC_API_KEY: the anthropic route, exactly as today", () => {
-    expect(routeFor("research", { ANTHROPIC_API_KEY: "sk-test" })?.provider).toBe("anthropic");
+  /* GV-68: ANTHROPIC_API_KEY alone selects the Stub now; the anthropic route
+     needs both legacy opt-ins. */
+  it("the two legacy opt-ins and no stage variable: the anthropic route", () => {
+    expect(routeFor("research", { ANTHROPIC_API_KEY: "sk-test" })?.provider).toBe("stub");
+    expect(routeFor("research", { FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1", ANTHROPIC_API_KEY: "sk-test" })?.provider).toBe("anthropic");
   });
 
   /* MUTATION THAT KILLS THIS: build the Stub for the 'none' built-in. Ran:
@@ -54,7 +57,7 @@ describe("createExternalResearcher: the research route matrix (GV-61)", () => {
   });
 
   it("FORAY_STAGE_RESEARCH=anthropic routes to the legacy web researcher", () => {
-    expect(routeFor("research", { FORAY_STAGE_RESEARCH: "anthropic", ANTHROPIC_API_KEY: "sk-test" })?.provider).toBe("anthropic");
+    expect(routeFor("research", { FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1", FORAY_STAGE_RESEARCH: "anthropic", ANTHROPIC_API_KEY: "sk-test" })?.provider).toBe("anthropic");
   });
 
   it("local mode defaults research to 'none' (OQ-04), and FORAY_STAGE_RESEARCH overrides it", () => {

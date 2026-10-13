@@ -252,6 +252,8 @@ public enum EngineConstants {
         public static let appArtworkUrl: String = "icon-512.png"
         /// `APP_NAME`
         public static let appName: String = "4a"
+        /// `AWAITING_TITLE`
+        public static let awaitingTitle: String = "Building the next part"
         /// `MEDIA_ACTIONS`
         public static let mediaActions: [String] = ["play", "pause", "stop", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto"]
         /// `NONE`

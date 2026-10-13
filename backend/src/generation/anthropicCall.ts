@@ -1,6 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { TruncatedReplyError } from "./replyErrors";
-import { recordUsage } from "./usageTracking";
+import { countAnthropicCall, recordUsage } from "./usageTracking";
 import { currentRunLog, recordModelCall, withCallContext } from "./runLog";
 
 /**
@@ -28,6 +28,9 @@ export async function createMessage(
   options: { allowTruncated?: boolean } = {}
 ): Promise<Anthropic.Message> {
   const startMs = currentRunLog()?.nowMs() ?? 0;
+  /* GV-68: counted before the request goes out, so a failed request still
+     counts against the zero-Anthropic rule (report.json anthropicCalls). */
+  countAnthropicCall();
   let response: Anthropic.Message;
   try {
     response = await client.messages.create(params);

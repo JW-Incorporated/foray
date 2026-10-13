@@ -37,7 +37,7 @@ import {
   mediaPositionState, mediaPlaybackState, mediaSessionView,
   mediaSessionActions, createMediaSession, narrationCredit,
   MEDIA_ACTIONS, APP_ARTWORK_URL, APP_NAME, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
-  NONE, PAUSED, PLAYING,
+  NONE, PAUSED, PLAYING, AWAITING_TITLE,
 } from "./media-session.js";
 import { PlayerQueueManager, __resetInstanceForTests } from "./queue-manager.js";
 import { resolveForay, indexSegments, indexSources, findForay } from "./foray-resolve.js";
@@ -666,6 +666,92 @@ test("mediaSessionView carries the seam-gap flag THROUGH — not just mediaPlayb
 test("mediaSessionView carries the ended flag through, so a finished Foray still clears the slot", () => {
   assert.equal(mediaSessionView({ item: SEG, playing: true, ended: true, foray: true }).playbackState, NONE);
   assert.equal(mediaSessionView({ item: SEG, playing: true, ended: false, foray: true }).playbackState, PLAYING);
+});
+
+/* GV-70 (§4b): a streamed Foray that has run off the end of what is generated
+   so far. The reducer is in `ended` and the manager's `forayStreamWaiting` is
+   true; the view gets `awaiting: true`. Every one of these is excluded from
+   parity as webview-only: streaming is refused in the native lane (GV-57). */
+
+test("GV-70: a streamed Foray waiting for its next part says 'Building the next part' and reports paused", () => {
+  /* The wait IS an `ended` reducer state, so without §4b the Foray end rule
+     reports none and the lock screen clears mid-Foray.
+     KILLING MUTATIONS: drop the title override in `mediaSessionView`; drop
+     `if (awaiting === true) return PAUSED;`; move it below the `ended` check;
+     stop passing `awaiting` from `mediaSessionView` to `mediaPlaybackState`. */
+  assert.equal(AWAITING_TITLE, "Building the next part");
+  const view = mediaSessionView({
+    item: SEG, nextItem: null, forayTitle: "The history of grilling", foray: true,
+    index: 11, total: 12, durationSec: 1500, positionSec: 1500,
+    playing: false, ended: true, awaiting: true,
+  });
+  assert.equal(view.metadata.title, "Building the next part");
+  assert.equal(view.playbackState, PAUSED);
+});
+
+test("GV-70: the wait changes only the title — artist, album, artwork and position are the view's own", () => {
+  /* KILLING MUTATION: build the awaiting metadata from scratch (say
+     `{ title: AWAITING_TITLE, artist: "", album: APP_NAME, artwork: [] }`). */
+  const base = {
+    item: SEG, forayTitle: "The history of grilling", foray: true, index: 11, total: 12,
+    showArtworkUrl: APPLE, durationSec: 1500, positionSec: 1490, ended: true,
+  };
+  const before = mediaSessionView(base);
+  const waiting = mediaSessionView({ ...base, awaiting: true });
+  assert.deepEqual(waiting.metadata, { ...before.metadata, title: AWAITING_TITLE });
+  assert.deepEqual(Object.keys(waiting.metadata), Object.keys(before.metadata));
+  assert.deepEqual(waiting.positionState, before.positionState);
+  assert.equal(before.playbackState, NONE, "precondition: without the wait this is a finished Foray");
+});
+
+test("GV-70: without awaiting === true the view is byte-identical to today", () => {
+  /* Every shipped Foray's every item, and the fixture's own states, rendered with
+     no `awaiting`, with `awaiting: false` and with truthy non-true values: the
+     serialised view must not move by a byte, and must equal the three pieces
+     composed the way `mediaSessionView` composed them before GV-70.
+     KILLING MUTATIONS: apply the title override unconditionally; read
+     `view.awaiting` as truthy (`Boolean(view.awaiting)`) rather than `=== true`. */
+  const legacy = (v) => ({
+    metadata: mediaMetadata(v),
+    positionState: mediaPositionState(v),
+    playbackState: mediaPlaybackState({
+      hasItem: Boolean(v.item), playing: Boolean(v.playing), inSeamGap: Boolean(v.inSeamGap),
+      ended: Boolean(v.ended), foray: Boolean(v.foray),
+    }),
+  });
+  const views = [];
+  for (const id of REAL_IDS) {
+    const r = realResolved(id);
+    r.playable.forEach((item, index) => {
+      views.push({
+        item, nextItem: r.playable[index + 1] ?? null, forayTitle: r.title, foray: true,
+        index, total: r.playable.length, durationSec: r.totalSec, positionSec: 0,
+        playing: index % 2 === 0, ended: index === r.playable.length - 1,
+      });
+    });
+  }
+  views.push({ item: SEG, playing: false, ended: true, foray: true });
+  views.push({ item: SEG, playing: false, inSeamGap: true });
+  views.push({});
+  assert.ok(views.length > 10, "precondition: there are real Foray views to compare");
+  for (const v of views) {
+    const want = JSON.stringify(legacy(v));
+    assert.equal(JSON.stringify(mediaSessionView(v)), want);
+    for (const awaiting of [false, undefined, null, 1, "true", {}]) {
+      assert.equal(JSON.stringify(mediaSessionView({ ...v, awaiting })), want, `awaiting: ${JSON.stringify(awaiting)}`);
+    }
+  }
+});
+
+test("GV-70: mediaPlaybackState — the wait is paused over ended and playing, and nothing loaded is still none", () => {
+  /* KILLING MUTATIONS: drop `if (awaiting === true) return PAUSED;` (the ended
+     Foray reports none); put it above `if (!hasItem) return NONE;` (an empty
+     player would offer a play button over nothing). */
+  assert.equal(mediaPlaybackState({ hasItem: true, ended: true, foray: true, awaiting: true }), PAUSED);
+  assert.equal(mediaPlaybackState({ hasItem: true, playing: true, awaiting: true }), PAUSED);
+  assert.equal(mediaPlaybackState({ hasItem: true, inSeamGap: true, awaiting: true }), PAUSED);
+  assert.equal(mediaPlaybackState({ hasItem: false, awaiting: true }), NONE);
+  assert.equal(mediaPlaybackState({ hasItem: true, ended: true, foray: true, awaiting: false }), NONE);
 });
 
 test("mediaSessionView carries the item through to both the metadata and hasItem", () => {

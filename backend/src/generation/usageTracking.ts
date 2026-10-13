@@ -79,3 +79,21 @@ export function getUsageTotals(): TokenUsageTotals {
     calls: totalCalls
   };
 }
+
+/* GV-68 (the zero-Anthropic rule, docs/roadmap/generation-v2.md): a
+   PER-PROCESS count of Anthropic requests. Unlike the totals above it is never
+   reset (resetUsageTracking leaves it alone), so a driver reads it before and
+   after a prompt and reports the difference, and a whole batch can prove it
+   made none. createMessage (anthropicCall.ts) counts every request it sends,
+   before sending, so a request that fails still counts. */
+let anthropicCalls = 0;
+
+/** Called by createMessage once per Anthropic request, before it is sent. */
+export function countAnthropicCall(): void {
+  anthropicCalls += 1;
+}
+
+/** Anthropic requests this process has sent so far (GV-68). */
+export function anthropicCallCount(): number {
+  return anthropicCalls;
+}

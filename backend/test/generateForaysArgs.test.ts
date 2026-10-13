@@ -300,7 +300,22 @@ describe("generateForays --stage-provider (GV-55)", () => {
     expect(modeLines(resolveRouting({ JEV_API_KEY: "jev-synthetic" }), caps, models)).toEqual([
       "MODE: dry-run (no ANTHROPIC_API_KEY) — stub builders, $0, output is structurally real but editorially empty."
     ]);
-    const legacy = modeLines(resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic" }), caps, models);
+    /* GV-68: the legacy builders need both opt-ins; a key alone is a dry
+       run whose MODE line says the key was ignored. MUTATION: drop the
+       anthropicKeyIgnored branch of modeLines. Ran it: red. */
+    const ignored = modeLines(resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic" }), caps, models);
+    expect(ignored).toHaveLength(1);
+    expect(ignored[0]).toMatch(/^MODE: dry-run — stub builders, \$0/);
+    expect(ignored[0]).toContain("ANTHROPIC_API_KEY is set and IGNORED");
+    expect(ignored[0]).toContain("FORAY_ALLOW_ANTHROPIC_LEGACY=1");
+    expect(ignored[0]).not.toContain("sk-ant-synthetic");
+    const ignoredLocal = modeLines(resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic", FORAY_LLM_BASE_URL: LLM }), caps, models);
+    expect(ignoredLocal[0]).toMatch(/^MODE: mixed\/live — generation mode local .*ANTHROPIC_API_KEY is set and IGNORED/);
+    const legacy = modeLines(
+      resolveRouting({ ANTHROPIC_API_KEY: "sk-ant-synthetic", FORAY_GENERATION_MODE: "anthropic-legacy", FORAY_ALLOW_ANTHROPIC_LEGACY: "1" }),
+      caps,
+      models
+    );
     expect(legacy[0]).toBe("MODE: live — Anthropic builders, metered by BudgetGuard (run $50 for this process, per-Foray $5).");
     expect(legacy[1]).toBe("MODELS: opus=o-1 sonnet=s-1 haiku=h-1");
     const local = modeLines(resolveRouting({ FORAY_LLM_BASE_URL: LLM, FORAY_STAGE_SPINE: "local:second" }), caps, models);
