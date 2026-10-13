@@ -34,8 +34,8 @@ that. `--experimental-sqlite` is in the script for the passage store
 ## stream-index.mjs: the stream indexer (GV-09, W3-05)
 
 ```
-node tools/passage-index/stream-index.mjs --source local|r2 [--show x] [--full]
-  [--passages-out f] [--index-root d] [--cue-cache d --cue-cache-gb n]
+node tools/passage-index/stream-index.mjs --source local|r2|r2-legacy|r2-all [--show x] [--full]
+  [--legacy-map f] [--passages-out f] [--index-root d] [--cue-cache d --cue-cache-gb n]
   [--staged-out f] [--manifest-dir d] [--normalized-root d] [--min-free-gb n]
 ```
 
@@ -52,6 +52,8 @@ The steps of a run:
 
 1. **List.** `--source local` walks the normalized tree. `--source r2` lists
    `transcripts/normalized/` with ListObjectsV2 only, and nothing else.
+   `--source r2-legacy` lists the bucket root for the legacy whisper keys,
+   and `--source r2-all` lists both (below).
 2. **Choose shows.** With `--full`, every listed show is rebuilt. Otherwise
    only the shows that changed since the last run are rebuilt: a file was
    added or removed, or a file's size or etag changed (mtime when there is no
@@ -84,6 +86,48 @@ that show. Each R2 directory is mapped to a foray show_id with
 keeps its R2 name, exactly as `sync-r2.mjs` handles it, and is reported.
 `stat.mtimeMs` is the object's LastModified.
 
+**Legacy whisper bodies (GV-60, W3-06).** Before the transcript farm, an
+earlier ASR lane left 7,531 faster-whisper JSONs at the bucket root
+(`<show-slug>/<title-slug>-<sha1(guid)[:10]>.json`). They are indexed in
+place, converted in memory, with no local body file and no mirror. Both
+sources are opt-in; the default source stays `local`.
+
+- `--source r2-legacy` lists the bucket root (ListObjectsV2 only) and keeps
+  the keys `parseLegacyKey` (`tools/foraycorpus-export/legacy-whisper.mjs`,
+  GV-23) accepts. Farm keys (`transcripts/`), `fingerprints/`,
+  `transcript-originals/` and `_` probe keys are never legacy.
+- Each key is resolved through `--legacy-map` (default
+  `data-local/passage-index/legacy-map.json`, written by
+  `warm-transcript-index.mjs --resolve-legacy`, GV-53) to `{show_id, guid}`.
+  A key the map does not resolve is skipped and counted by reason:
+  `unmatched` or `ambiguous` (the map's own verdict), or `no-map` (the map
+  does not list the key, or there is no map file). Two legacy keys that
+  resolve to one episode keep the first listed (`duplicates.legacy`).
+- The object is fetched once and run through `convertWhisperDoc` and
+  `toNormalizedBody`: `transcript_source: "asr-local"`, never a `source_url`.
+  It is sent as `<localDirFor(show_id)>/<safeKey(guid)>.json`, the exact
+  name the backend's locate rule (`corpusSafeKey(guid).json`) looks for.
+  `stat` is the object's own `{size, mtimeMs: LastModified}` and the
+  manifest origin is `{kind: "legacy", key, etag, sha256}`, so an etag
+  change re-streams the show. The cue cache holds the converted bytes.
+- A legacy object that fails is quarantined: `BAD_JSON`,
+  `LEGACY_SHAPE:<code>` (not a whisper doc), `BAD_SHAPE:<field>`, and the
+  GET codes above.
+- `--source r2-all` lists `transcripts/normalized/`, then the root, and
+  merges them per show. When one (show_id, guid) is in both, the
+  farm-normalized body wins: the legacy duplicate is dropped at list time
+  (`duplicates.normalized`) and never fetched, so an episode is indexed once
+  and the next run's delta does not see a file without a manifest row.
+- The run prints one line with the counts:
+  `stream-index: legacy keys= resolved= skipped unmatched= ambiguous= no-map= duplicates normalized= legacy=`.
+
+Use `r2-all` on a corpus that has both. Do not alternate `r2` and
+`r2-legacy` on one index: each rebuilds a show from its own source only, so
+the second run would replace the show's postings and manifest rows with half
+of its episodes. Whisper bodies carry no speaker labels, so turn boundaries
+degrade to sentence boundaries (tapeExtent already falls back that way).
+Regenerate the legacy map before each nightly, or it goes stale.
+
 **Local bodies.** The walk is the listing `FileTranscriptCueProvider` makes:
 every `*.json` file, with the show_id taken from the directory name minus its
 `-<10 hex>` suffix. `stat` is the file's own stat, so the caches are fresh to
@@ -94,7 +138,8 @@ a local `FileTranscriptTextIndex`.
 - `episodes.jsonl` has one row per streamed body:
   `{show_id, fileName, bodyGuid, cues, lastEndSec, size, mtimeMs, origin, indexedAt}`.
   `origin` is `{kind: "local", key: "<dir>/<file>", sha256}` or
-  `{kind: "r2", key, etag, sha256}`.
+  `{kind: "r2", key, etag, sha256}` or `{kind: "legacy", key, etag, sha256}`
+  (the sha256 of the whisper object, not of the converted body).
 - `quarantine.jsonl` has one row per object refused for a reason the same
   bytes would give again: `{show_id, fileName, size, mtimeMs, origin, reason, at}`.
   It keeps an unchanged bad object from re-streaming its whole show every
@@ -125,6 +170,8 @@ again. Readers keep the first row per guid.
   (`R2_CREDENTIALS_FILE`, see `tools/foraycorpus-export/README.md`), then
   nightly. The Spark is shared (OQ-07), so run it niced, for example
   `nice -n 10 node tools/passage-index/stream-index.mjs --source r2`.
+- With the legacy map built (GV-53), `--source r2-all --full` once, then
+  nightly, replaces `--source r2`.
 - The tsx child needs `backend/node_modules` on the machine that runs it.
 
 Re-streaming a whole show costs up to about 306 MB for the largest show.
