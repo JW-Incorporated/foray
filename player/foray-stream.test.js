@@ -35,9 +35,8 @@ const QUEUE_OPTIONS = { resolveItem: (id) => CATALOGUE[id] ?? null };
 
 const PRELUDE = { type: "narration", id: "prelude", script: "This Foray was made by a machine and has not been reviewed.", mode: "marker", slot: "a1s1" };
 /* Each part ends on a clip. (A part that ends on a narration line reaches the
-   end through the reducer's bridge path, which on origin/main speaks a closing
-   line after a clip twice before it ends -- a queue-state behaviour this card
-   leaves alone; the wait then starts after the second reading.) */
+   end through the reducer's bridge path, which spoke a closing line after a
+   clip twice before it ended until #1348 fixed it in queue-state.js.) */
 const ACT1 = [
   { type: "segment", item_id: "ep-a", start_sec: 100, end_sec: 190, why: "the origin", slot: "a1s1" },
   { type: "narration", id: "n-1", script: "That was the origin. Here is the first cook.", mode: "hinge", slot: "a1s2" },

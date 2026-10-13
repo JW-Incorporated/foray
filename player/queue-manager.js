@@ -3295,7 +3295,12 @@ export class PlayerQueueManager {
       this._emit(`item.ended.outPoint ${item?.id ?? "?"}@${Math.round(item?.end_sec ?? 0)}s`);
     }
     if (this.state.type === "transitioning") {
-      const next = this._nextItem(this._cursor(), true);
+      // The item after the bridge, a narration line included (#1348). This
+      // used to step over every TTS item, the Swift transition-bridge rule: the
+      // second line of a chain after a clip was never spoken, and with the
+      // reducer's old `next ?? to` fallback a chain or a line closing the
+      // Foray was spoken twice. A chained line loads as an ordinary item.
+      const next = this._nextItem(this._cursor(), false);
       // A bridge marks its own seam, so no beat — but narration -> segment
       // DOES get the jingle (§13): the founder's "between podcasts" mark comes
       // after the narrator has said their line, before the next tape starts.

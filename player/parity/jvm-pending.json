@@ -14,7 +14,8 @@
     "manager-remainder/the-clip-after-a-spoken-line-is-warmed-when-the-line-starts": "A-40",
     "manager-remainder/the-last-item-warms-nothing": "A-40",
     "manager-remainder/the-window-warms-the-next-segment-at-its-in-point": "A-40",
-    "manager-remainder/with-no-beat-the-next-clip-is-still-warmed": "A-40"
+    "manager-remainder/with-no-beat-the-next-clip-is-still-warmed": "A-40",
+    "queue-state/closing-line-finished-ends-the-queue": "A-41"
   },
   "families": {
     "contract": "A-28",
