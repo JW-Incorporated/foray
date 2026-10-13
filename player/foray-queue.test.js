@@ -8,7 +8,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration,
+  buildForayQueue, forayRuntimeSec, itemRuntimeSec, narrationDuration, appendableTail,
   NARRATION_CHARS_PER_SEC, NARRATION_FALLBACK_SEC,
   DURATION_MEASURED, DURATION_ESTIMATED, DURATION_FALLBACK,
   SEGMENT, NARRATION, JINGLE, JINGLE_ASSET_URL, JINGLE_DURATION_SEC,
@@ -513,4 +513,64 @@ test("OQ-6: a jingle item counts on the Foray clock for exactly as long as its a
      authored foray-clock fixture. */
   assert.equal(JINGLE_DURATION_SEC, INTERLUDE_DURATION_SEC);
   assert.equal(JINGLE_DURATION_SEC, 3.0);
+});
+
+/* ---------- appendableTail (GV-57): a streamed Foray's next part ---------- */
+
+/** A streamed Foray as its job snapshots deliver it: each `items` is the
+    previous one plus a tail. Duplicate narration ids are in it on purpose, so
+    the de-duplication against earlier items is part of what must stay stable. */
+const STREAMED = [
+  { type: NARRATION, id: "prelude", script: SCRIPT_5S },
+  seg(),
+  { type: NARRATION, id: "n-1", script: SCRIPT_5S },
+  seg({ start_sec: 300, end_sec: 360 }),
+  { type: NARRATION, id: "n-1", script: SCRIPT_5S },
+  seg({ item_id: "no-audio" }),
+  { type: JINGLE },
+  seg({ start_sec: 500, end_sec: 590 }),
+];
+const built = (n) => buildForayQueue({ id: "stream", items: STREAMED.slice(0, n) }, { resolveItem });
+
+test("appendableTail returns only what the longer build adds, and part by part it converges on the whole build", () => {
+  /* MUTATION THAT KILLS THIS: return `next` instead of `next.slice(prev.length)`
+     -- the queue doubles on the first append. */
+  let queue = built(2).items.slice();
+  for (const n of [3, 5, 8]) {
+    const tail = appendableTail(queue, built(n));
+    assert.equal(tail.length, built(n).items.length - queue.length);
+    queue = queue.concat(tail);
+  }
+  assert.deepStrictEqual(queue, built(STREAMED.length).items);
+  // The repeated narration id kept the number its position gives it.
+  assert.equal(queue[4].id, "stream#4");
+  assert.deepStrictEqual(appendableTail(queue, built(STREAMED.length).items), [], "nothing new is an empty tail");
+});
+
+test("appendableTail throws when a queued item's content changed in the rebuild", () => {
+  /* MUTATION THAT KILLS THIS: compare ids only (drop the canonical-content
+     check) -- a rewritten line behind the playhead would pass as a prefix. */
+  const queue = built(3).items;
+  const rewritten = STREAMED.slice(0, 5).map((it, i) => (i === 2 ? { ...it, script: "x".repeat(40) } : it));
+  const next = buildForayQueue({ id: "stream", items: rewritten }, { resolveItem });
+  assert.throws(() => appendableTail(queue, next), /item 2 \(n-1\) changed between builds/);
+});
+
+test("appendableTail throws when a queued id moved, or the rebuild is shorter than the queue", () => {
+  /* MUTATION THAT KILLS THIS: drop the length check -- a shorter rebuild
+     returns an empty tail and a truncated stream reads as "nothing new". */
+  const queue = built(5).items;
+  assert.throws(() => appendableTail(queue, built(3)), /fewer than the 5 queued/);
+  const reordered = [STREAMED[0], STREAMED[2], STREAMED[1], ...STREAMED.slice(3, 6)];
+  const next = buildForayQueue({ id: "stream", items: reordered }, { resolveItem });
+  assert.throws(() => appendableTail(queue, next), /item 1 is "n-1" in the rebuild, "stream#1" in the queue/);
+  assert.throws(() => appendableTail(queue, buildForayQueue({ id: "other", items: STREAMED.slice(0, 6) }, { resolveItem })), /item 1/);
+});
+
+test("appendableTail compares content whatever order a build wrote its keys in", () => {
+  /* MUTATION THAT KILLS THIS: compare with a plain JSON.stringify -- the same
+     item with its fields in another order reads as changed. */
+  const queue = built(3).items;
+  const shuffled = built(5).items.map((item) => Object.fromEntries(Object.entries(item).reverse()));
+  assert.equal(appendableTail(queue, shuffled).length, built(5).items.length - queue.length);
 });

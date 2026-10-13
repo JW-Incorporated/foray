@@ -482,3 +482,64 @@ export function buildForayQueue(foray, opts = {}) {
 export function forayRuntimeSec(items) {
   return (items ?? []).reduce((total, i) => total + itemRuntimeSec(i), 0);
 }
+
+/* ── Appending a streamed Foray (GV-57) ────────────────────────────────────
+
+   A Foray being generated arrives as a run of job snapshots
+   (docs/curation/player-streaming-brief.md §1), and each one's `items` is the
+   previous one's plus a tail. The brief's §3.3 offers two ways to turn that
+   into queue entries without colliding with the ids already queued; this is
+   option (a): rebuild the WHOLE item list with `buildForayQueue`, check that
+   the rebuild still starts with exactly what is queued, and hand back only
+   the rest.
+
+   Why a rebuild and not a `startIndex` option: a queue id is `${forayId}#${i}`
+   for a segment and the authored id (de-duplicated against EVERYTHING before
+   it) for narration, so the only build that numbers a new item correctly is a
+   build that has seen every earlier item. A Foray is a few dozen items, so a
+   rebuild per snapshot costs nothing.
+
+   Why the check: the brief promises that `items` only grows, but the player
+   must not take that on trust. A prefix that changed means the snapshot is not
+   the queue's continuation (another job, a re-cut act, a different resolver),
+   and appending its tail would put a listener somewhere nobody authored. So a
+   mismatch THROWS, before anything is appended. */
+
+/** One queue item as a canonical string: keys sorted, so two builds of the
+    same item compare equal whatever order their fields were written in. */
+function canonical(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((k) => `${JSON.stringify(k)}:${canonical(value[k])}`).join(",")}}`;
+  }
+  return JSON.stringify(value === undefined ? null : value);
+}
+
+/**
+ * The queue items a rebuilt Foray adds after the ones already queued.
+ *
+ * @param {object[]} prevBuiltItems  the queue as it stands (a previous build's
+ *   `items`, possibly already appended to)
+ * @param {object[]|{items: object[]}} nextBuilt  `buildForayQueue` over the
+ *   FULL, longer item list, or its `items`
+ * @returns {object[]} the new tail, possibly empty
+ * @throws when the rebuild is shorter than the queue, or any queued item's id
+ *   or content differs from the rebuild's item at the same position
+ */
+export function appendableTail(prevBuiltItems, nextBuilt) {
+  const prev = Array.isArray(prevBuiltItems) ? prevBuiltItems : [];
+  const next = Array.isArray(nextBuilt) ? nextBuilt : Array.isArray(nextBuilt?.items) ? nextBuilt.items : null;
+  if (!next) throw new Error("appendableTail: the rebuild has no items");
+  if (next.length < prev.length) {
+    throw new Error(`appendableTail: the rebuild has ${next.length} items, fewer than the ${prev.length} queued`);
+  }
+  for (let i = 0; i < prev.length; i++) {
+    if (prev[i]?.id !== next[i]?.id) {
+      throw new Error(`appendableTail: item ${i} is ${JSON.stringify(next[i]?.id)} in the rebuild, ${JSON.stringify(prev[i]?.id)} in the queue`);
+    }
+    if (canonical(prev[i]) !== canonical(next[i])) {
+      throw new Error(`appendableTail: item ${i} (${prev[i].id}) changed between builds`);
+    }
+  }
+  return next.slice(prev.length);
+}

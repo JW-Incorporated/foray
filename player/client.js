@@ -1912,6 +1912,10 @@ function persistForayProgress({ force = false } = {}) {
      forced write that refused is the defect; a throttled tick that refused is
      noise, which is the other reason this is gated on `force`. */
   const note = (fields) => { if (force) diag.resumeWrite({ forayId: id, index: foray.index, ...fields }); };
+  /* GV-57: `ended` while a streamed Foray waits for its next part is not the
+     end of the Foray, so it is not marked finished; the stream's close (or the
+     append that resumes it) settles the state again. */
+  if (manager?.forayStreamWaiting === true) return;
   if (manager?.state?.type === "ended") {
     /* Once. `render()` can run again while the queue sits ended, and a forced
        write per repaint would churn the durable tier for a row that says the
@@ -6359,6 +6363,54 @@ const ForayPlayer = {
     }
     render();
   },
+
+  /**
+   * Play a Foray while it is still being generated (GV-57,
+   * docs/curation/player-streaming-brief.md §3): poll its job snapshots, start
+   * from the first servable items, append each later part without touching
+   * what is playing, and wait at the end until the next part arrives.
+   *
+   * JS LANE ONLY. The native engine has no append command (engine-contract.js
+   * COMMANDS), so in the native lane this refuses with a telemetry line and
+   * returns null rather than handing the engine a Foray that would end at its
+   * first part.
+   *
+   * `follow` is `followForayStream` from player/foray-stream.js, passed in by
+   * the caller rather than imported here: an import adds a module to this
+   * file's boot closure, and with it a modulepreload line in index.html
+   * (test/boot-path.test.js perf-1), which the UI freeze does not allow. The
+   * card that wires a screen to this (after the revamp) makes it a static
+   * import and adds that line. Nothing calls this yet, and the page's Foray
+   * state (the bar, the running order, the resume row) is that card's too.
+   *
+   * @param {Function} fetchSnapshot  async () => JobSnapshot | null | {status}
+   * @param {object} [opts]
+   * @param {Function} [opts.follow]  foray-stream.js `followForayStream`
+   * @returns the follower, or null when refused
+   */
+  followForayStream(fetchSnapshot, { follow = null, ...opts } = {}) {
+    const again = () => ForayPlayer.followForayStream(fetchSnapshot, { follow, ...opts });
+    if (engineMode === null) return engineModeReady.then(again);
+    if (engineMode === "native") {
+      onTelemetry("foray.stream.refused lane=native — streaming appends to the JS queue; the native engine has no append command");
+      return null;
+    }
+    if (typeof follow !== "function") {
+      onTelemetry("foray.stream.refused — no follower was passed (player/foray-stream.js followForayStream)");
+      return null;
+    }
+    if (!ensureBooted()) return null;
+    // Called from a tap, like `play`: spend the gesture before anything waits.
+    backend.notePlayGesture();
+    if (interlude) interlude.prime();
+    // Leaving whatever was playing is a flush, as in `play` and `playForay`.
+    flushPositions();
+    foray = null;
+    setSkipButtonMode(false);
+    if (forayStream) forayStream.stop();
+    forayStream = follow({ lane: engineMode, manager, telemetry: onTelemetry, fetchSnapshot, ...opts });
+    return forayStream;
+  },
 };
 
 /* RESTART_WINDOW_SEC, SEEK_INSIDE_END_SEC and `sourceOffsetFor` moved to
@@ -6372,6 +6424,9 @@ function clampIndex(index, length) {
   const n = Number.isInteger(index) ? index : 0;
   return Math.min(Math.max(0, n), Math.max(0, length - 1));
 }
+
+/** The follower `followForayStream` started, so a second call replaces it. */
+let forayStream = null;
 
 /** Inside a Foray the sheet shows its previous/next-clip row; the ±15/30 s
     pair keeps its glyphs and its names in both modes (persona 58 — they used

@@ -279,7 +279,7 @@ import {
   currentItem as focusOf, sameRef as sameItemRef,
 } from "./queue-state.js";
 import { segmentLoadGate } from "./seek-policy.js";
-import { buildForayQueue } from "./foray-queue.js";
+import { buildForayQueue, appendableTail } from "./foray-queue.js";
 import { seamGapSec, describeSeam, SEAM_GAP_SEC, AUTO_ADVANCE } from "./seam-gap.js";
 import { normalizeRate, isRate, DEFAULT_RATE } from "./playback-rate.js";
 import { interludeEligible, describeInterlude, INTERLUDE_CEILING_SEC } from "./interlude.js";
@@ -677,6 +677,13 @@ export class PlayerQueueManager {
     this._loadedId = null;
     /** Set by setQueueFromForay; consulted by the load-time ladder. */
     this._forayOptions = { isLocalFile: false, allowAdPad: false };
+    /** GV-57: a Foray still being generated is on the queue and more of it may
+        be appended (`setForayStreamOpen`). False by default, and a new queue
+        closes it, so every queue that is not a stream ends as it always has. */
+    this._streamOpen = false;
+    /** GV-57: the index the next appended item will take, set when playback
+        ran off the end of an open stream; `null` when not waiting. */
+    this._awaitingIndex = null;
     /** The listener's chosen speed (§12). The ONE place it lives: the backend's
         `_pendingRate` is a cache of whatever it was last told, and the button's
         label is painted from here, so a divergence between them is not
@@ -906,6 +913,7 @@ export class PlayerQueueManager {
       `queue.built.single-item` predates CH-30 and is kept as the diagnostics
       stream has always carried it. */
   setQueueFromPick(picked) {
+    this._closeForayStreamForNewQueue();
     this.queue = picked ? [picked] : [];
     this.currentIndex = -1;
     this._emit(`queue.built.single-item.n=${this.queue.length}`);
@@ -915,6 +923,7 @@ export class PlayerQueueManager {
   /** Set an explicit queue, as given. Used by cold-launch restore, where the
       queue is whatever it was, not whatever a pick would build today. */
   loadQueue(items) {
+    this._closeForayStreamForNewQueue();
     this.queue = (items || []).filter(Boolean);
     this.currentIndex = -1;
   }
@@ -962,6 +971,94 @@ export class PlayerQueueManager {
     }
     await this.play(0);
     return report;
+  }
+
+  /* ---------- a Foray still being generated (GV-57) ----------
+
+     docs/curation/player-streaming-brief.md §3. A streamed Foray starts from
+     its first servable items (`setQueueFromForay` + `play(0)`), and each later
+     job snapshot's longer `items` is APPENDED: the queue grows at its end and
+     nothing already loaded or playing is touched — not `currentIndex`, not the
+     playing ref, not an item's content. When playback catches up with
+     generation, the reducer lands in `ended` as it always does (queue-state is
+     a recorded parity family and is left alone); `_handle` notes that the
+     stream is still open and records where to resume, and the next append
+     resumes there by itself.
+
+     JS lane only: the native engine has no append command
+     (engine-contract.js COMMANDS), so `client.js`'s facade refuses there. The
+     driver is `player/foray-stream.js`; no surface calls it yet (UI freeze). */
+
+  /** Whether more of the queued Foray may still arrive. */
+  get forayStreamOpen() { return this._streamOpen; }
+
+  /** True while playback has run off the end of an open stream and is waiting
+      for the next part. A surface reads this to skip the end-of-Foray
+      finalisation (the finished mark) for a Foray that has not ended. */
+  get forayStreamWaiting() { return this._awaitingIndex != null; }
+
+  /**
+   * Append what a longer copy of the queued Foray adds. Rebuilds the whole
+   * Foray, checks the rebuild starts with exactly the queue (`appendableTail`),
+   * and pushes only the tail. A mismatch throws BEFORE anything is appended,
+   * so the queue is left as it was. If playback was waiting at the end of an
+   * open stream, the first appended item plays.
+   *
+   * @param {object} foray  `{ id, title, items }` — the FULL item list so far
+   * @param {object} [opts] the same build options `setQueueFromForay` took
+   * @returns {Promise<number>} how many items were appended
+   */
+  async appendForayItems(foray, opts = {}) {
+    const report = buildForayQueue(foray, opts);
+    const tail = appendableTail(this.queue, report);
+    const bounded = tail.filter((i) => boundsOf(i));
+    if (bounded.length && !this._outPointCapable) {
+      throw new Error(
+        "this backend has no setOutPoint(); a Foray cannot play on it — " +
+        `${bounded.length} of ${tail.length} appended items carry an out-point`
+      );
+    }
+    const lastOrd = this.queue.length ? this.queue[this.queue.length - 1].ord : -1;
+    this.queue.push(...tail);
+    this._emit(`foray.stream.appended.n=${tail.length}`);
+    // Only the items this append reached: the prefix's own skips were reported
+    // when it was built.
+    for (const s of report.skipped) if (s.index > lastOrd) this._emit(`foray.segment.skipped[${s.index}]: ${s.reason}`);
+    if (this._awaitingIndex != null && tail.length) {
+      const at = this._awaitingIndex;
+      this._awaitingIndex = null;
+      this._emit(`foray.stream.resumed at=${at}`);
+      await this.play(at);
+    }
+    return tail.length;
+  }
+
+  /**
+   * Open or close the stream. Open: reaching the end of the queue waits for
+   * the next part instead of ending the Foray. Closed (the job completed or
+   * failed): an end is an end; a player already waiting stays ended and says
+   * why, and the surface is told the state settled so it can finish the Foray.
+   *
+   * @param {boolean} open
+   * @param {object} [opts]
+   * @param {string} [opts.reason]  why it closed: "complete" | "failed" | ...
+   */
+  setForayStreamOpen(open, { reason = "closed" } = {}) {
+    this._streamOpen = open === true;
+    if (this._streamOpen || this._awaitingIndex == null) return;
+    this._awaitingIndex = null;
+    this._emit(`foray.stream.ended reason=${reason}`);
+    if (this._onStateSettled && !this._disposed) {
+      try { this._onStateSettled(this.state); } catch (_) { /* a surface must never break the player */ }
+    }
+  }
+
+  /** A new queue is not the stream's continuation: whatever it was waiting
+      for, it no longer is. Silent — the caller's own telemetry says what the
+      new queue is. */
+  _closeForayStreamForNewQueue() {
+    this._streamOpen = false;
+    this._awaitingIndex = null;
   }
 
   /* ---------- transport ----------
@@ -1413,7 +1510,18 @@ export class PlayerQueueManager {
   async _handle(event) {
     if (this._disposed) return;
     const [next, effects] = reduce(this.state, event);
+    const was = this.state.type;
     this.state = next;
+    /* GV-57: the end of an OPEN stream is a wait, not the end of the Foray.
+       Set before the effects run and before `onStateSettled`, so a surface
+       that repaints from the settled state already reads `forayStreamWaiting`
+       and skips the finished mark. Any move out of `ended` (a resume, a press)
+       is no longer waiting. */
+    if (next.type !== "ended") this._awaitingIndex = null;
+    else if (was !== "ended" && this._streamOpen) {
+      this._awaitingIndex = this.queue.length;
+      this._emit(`foray.stream.waiting at=${this._awaitingIndex}`);
+    }
     /* Counted, not a boolean: `_perform` re-enters this method (a load dispatches
        `itemLoaded`, a failed one dispatches `error`), so a flag would be cleared
        by the inner frame while the outer one still had effects to run.
