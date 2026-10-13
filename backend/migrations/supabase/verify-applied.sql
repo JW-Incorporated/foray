@@ -153,7 +153,24 @@ with expected(migration, kind, tbl, name, alt) as (
     ('supabase/0006_event_retention.sql', 'function', null, 'public.prune_empty_anonymous_users()', null),
     ('supabase/0006_event_retention.sql', 'not_client_callable', null, 'public.prune_empty_anonymous_users()', null),
     ('supabase/0006_event_retention.sql', 'cron_job', null, 'foray-prune-events-90d', null),
-    ('supabase/0006_event_retention.sql', 'cron_job', null, 'foray-prune-anon-shells-90d', null)
+    ('supabase/0006_event_retention.sql', 'cron_job', null, 'foray-prune-anon-shells-90d', null),
+
+    -- supabase 0007: generation_jobs, the on-demand job row (GV-59, D9)
+    ('supabase/0007_generation_jobs.sql', 'table', 'public.generation_job_authors', null, null),
+    ('supabase/0007_generation_jobs.sql', 'rls', 'public.generation_job_authors', null, null),
+    ('supabase/0007_generation_jobs.sql', 'policy', 'public.generation_job_authors', 'generation_job_authors_select_own', null),
+    ('supabase/0007_generation_jobs.sql', 'table', 'public.generation_jobs', null, null),
+    ('supabase/0007_generation_jobs.sql', 'rls', 'public.generation_jobs', null, null),
+    ('supabase/0007_generation_jobs.sql', 'policy', 'public.generation_jobs', 'generation_jobs_select_own', null),
+    ('supabase/0007_generation_jobs.sql', 'policy', 'public.generation_jobs', 'generation_jobs_insert_allowlisted', null),
+    ('supabase/0007_generation_jobs.sql', 'policy', 'public.generation_jobs', 'generation_jobs_cancel_own', null),
+    ('supabase/0007_generation_jobs.sql', 'function', null, 'public.generation_jobs_before_update()', null),
+    ('supabase/0007_generation_jobs.sql', 'not_client_callable', null, 'public.generation_jobs_before_update()', null),
+    ('supabase/0007_generation_jobs.sql', 'trigger', 'public.generation_jobs', 'generation_jobs_before_update', null),
+    ('supabase/0007_generation_jobs.sql', 'function', null, 'public.claim_generation_job(text)', null),
+    ('supabase/0007_generation_jobs.sql', 'not_client_callable', null, 'public.claim_generation_job(text)', null),
+    ('supabase/0007_generation_jobs.sql', 'index', null, 'public.generation_jobs_queued_idx', null),
+    ('supabase/0007_generation_jobs.sql', 'index', null, 'public.generation_jobs_author_created_at_idx', null)
 ),
 checked as (
   select

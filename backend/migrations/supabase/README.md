@@ -20,6 +20,7 @@ test before any real user data lands (ADR-0005 → Risks).
 | `0004_rls_shows_catalog.sql` | PKG-02 (S-09), PR #1045 review: public read-only RLS on `shows_catalog` (portable 0017); deny-all RLS on `show_id_map` (portable 0018). Apply after 0017-0019, as part of gate G2. `test/supabase-rls-coverage.test.js` fails if a table any portable migration creates has no RLS here. **Not applied to production.** |
 | `0005_content_reports.sql` | PH2-10: the `content_reports` table behind the Report sheet (App Store Guideline 1.2). RLS: insert-own, select-own, delete-own for `authenticated`; no update policy; column grants so a client may insert only `user_id, target_kind, target_id, reasons, note` and select only `user_id`, so no client can read a report. Needs only 0001-0002, so it can be applied alone. Pinned by `test/supabase-content-reports.test.js`. **Not applied to production** (HUMAN-ACTIONS #116). |
 | `0006_event_retention.sql` | Founder ruling HA #13 (retention): enables `pg_cron` and schedules two daily jobs by name. `foray-prune-events-90d` deletes `events` rows whose server-stamped `ts` is over 90 days old; `foray-prune-anon-shells-90d` removes anonymous `auth.users` rows (plus their `app_users`/`learning_cursor` rows) that are over 90 days idle with no events, no linked identity and no derived state (this retires HA #14). Both functions are `SECURITY DEFINER`, pinned `search_path`, revoked from `anon`/`authenticated`. Idempotent; rollback in the file header. Pinned by `test/supabase-event-retention.test.js`. Needs only 0001-0003, so it does not wait for 0004 or 0005. **Not applied to production** (HUMAN-ACTIONS #116). |
+| `0007_generation_jobs.sql` | GV-59 (D9, `docs/roadmap/generation-v2.md`): the on-demand job row. `generation_jobs` (author_id → `auth.users` ON DELETE CASCADE; status queued/claimed/running/complete/failed/cancelled; tier; lane; prompt; snapshot jsonb, GV-44's `foray-job/1`; seq) plus the founder allowlist `generation_job_authors`. RLS: an author selects its own rows (never the prompt or worker columns), inserts a queued on-demand job only when allowlisted, and may update only `status`, only to `cancelled`; no delete. `claim_generation_job(text)` (SECURITY DEFINER, service role only) locks the oldest queued job with SKIP LOCKED, marks it claimed and returns the prompt while NULLing it in the same statement; a trigger and a CHECK keep a prompt off every non-queued row. Needs only 0001-0002. Pinned by `test/supabase-rls-coverage.test.js`, `test/supabase-rls-verbs.test.js` and `test/data-deletion.test.js`. **Not applied to production.** |
 
 ## Which migrations are applied? (`verify-applied.sql`)
 
@@ -93,3 +94,38 @@ returns 2 rows, both `active = true`.
 
 **Roll back.** The file header lists the `cron.unschedule` and `drop function`
 statements. Rows already deleted do not come back.
+
+## Generation jobs (0007): apply, allowlist, check
+
+**Apply.** Supabase dashboard → the 4a project → **SQL editor**: paste
+`0007_generation_jobs.sql`, read it, run it. It is idempotent and needs only
+0001-0002. Then run `verify-applied.sql`: the `supabase/0007_generation_jobs.sql`
+row reads `yes`. This is the founder's step (GV-59 live step); nothing in the
+repo applies it.
+
+**Allowlist (D9: founders first).** Only a listed author can queue a job:
+
+```sql
+insert into public.generation_job_authors (author_id, note) values ('<auth uid>', 'founder');
+```
+
+**The prompt.** It is held in the row only while the job is `queued`.
+`claim_generation_job` hands it to the worker and NULLs it in the same
+statement; the `generation_jobs_before_update` trigger NULLs it on any other
+move out of `queued` (a cancel, a failure), and the
+`generation_jobs_prompt_only_while_queued` CHECK makes a prompt on any other
+status impossible. A client can never read the column back.
+
+**The worker.** The Spark worker (GV-105) connects with the service-role key
+(D8) and calls `rpc/claim_generation_job`; execute is revoked from `anon` and
+`authenticated`. It writes snapshots through `backend/src/cli/supabaseJobSink.ts`,
+one guarded PATCH per snapshot (`seq=lt.<n>`, status `claimed` or `running`),
+so a stale snapshot or a cancelled job is never overwritten.
+
+**Deletion.** `author_id ... references auth.users(id) on delete cascade` removes
+an author's jobs and allowlist row when the account is deleted. Delete my data
+(app.js `SB_USER_TABLES`) does not reach this table yet: app.js is UI-frozen and
+no client writes the table; `test/data-deletion.test.js` holds that ledger.
+
+**Roll back.** The file header lists the `drop` statements. Dropped jobs do not
+come back.

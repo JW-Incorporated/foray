@@ -30,6 +30,11 @@
  *   - drop the "Which migrations are applied?" section from the README -> test 5;
  *   - drop step 0 from HUMAN-ACTIONS #116, or renumber it to 1 -> test 6;
  *   - drop `verify-applied.sql` from #116's **Worked if:** line -> test 6.
+ * GV-59 (2026-10-13, supabase/0007_generation_jobs.sql):
+ *   - delete the claim_generation_job(text) not_client_callable row from
+ *     verify-applied.sql -> test 1;
+ *   - narrow createdBy's function pattern back to `\(\)` (no arguments) ->
+ *     test 7 (test 1 alone would stay green: the claim would go unseen).
  */
 
 const { test } = require("node:test");
@@ -55,6 +60,17 @@ function migrations() {
   return [...PORTABLE, ...supa.map((n) => `supabase/${n}`)];
 }
 
+/** `public.f` + `p_a text, b int` -> `public.f(text,int)`; a bare type list
+    (as a REVOKE spells it) passes through. */
+function signature(fn, args) {
+  const types = args
+    .split(",")
+    .map((a) => a.trim())
+    .filter(Boolean)
+    .map((a) => (/^[a-z_]\w* [a-z]/.test(a) ? a.slice(a.indexOf(" ") + 1) : a));
+  return `${fn}(${types.join(",")})`;
+}
+
 /** Every object a migration creates, as {kind, tbl, name}. */
 function createdBy(label) {
   const sql = flat(sqlOnly(read(`${MIG}/${label}`))).toLowerCase();
@@ -77,8 +93,11 @@ function createdBy(label) {
   for (const m of sql.matchAll(/create table if not exists (?:public\.)?(\w+)/g)) add("table", `public.${m[1]}`);
   for (const m of sql.matchAll(/alter table public\.(\w+) enable row level security/g)) add("rls", `public.${m[1]}`);
   for (const m of sql.matchAll(/create policy (\w+) on public\.(\w+)/g)) add("policy", `public.${m[2]}`, m[1]);
-  for (const m of sql.matchAll(/create (?:or replace )?function (public\.\w+)\(\)/g)) add("function", null, `${m[1]}()`);
-  for (const m of sql.matchAll(/revoke execute on function (public\.\w+)\(\) from anon, authenticated/g)) add("not_client_callable", null, `${m[1]}()`);
+  /* A function is named as to_regprocedure reads it: its argument TYPES, the
+     parameter names dropped (0007's claim_generation_job(p_worker text) is
+     public.claim_generation_job(text)). */
+  for (const m of sql.matchAll(/create (?:or replace )?function (public\.\w+)\(([^)]*)\)/g)) add("function", null, signature(m[1], m[2]));
+  for (const m of sql.matchAll(/revoke execute on function (public\.\w+)\(([^)]*)\) from anon, authenticated/g)) add("not_client_callable", null, signature(m[1], m[2]));
   for (const m of sql.matchAll(/create trigger (\w+) (?:before|after) \w+ on (\w+\.\w+)/g)) add("trigger", m[2], m[1]);
   for (const m of sql.matchAll(/create (?:unique )?index if not exists (\w+) on public\./g)) add("index", null, `public.${m[1]}`);
   for (const m of sql.matchAll(/create extension if not exists (\w+)/g)) add("extension", null, m[1]);
@@ -169,4 +188,17 @@ test("HUMAN-ACTIONS #116 starts with the verify-applied.sql paste as step 0", ()
   const worked = /^\*\*Worked if:\*\* ([^\n]*)/m.exec(section[1]);
   assert.ok(worked, "#116 has a Worked if line");
   assert.match(worked[1], /`verify-applied\.sql` reads `yes`/);
+});
+
+test("a function that takes arguments is checked by its type signature (0007's claim)", () => {
+  /* to_regprocedure needs the argument types, so the row must say
+     public.claim_generation_job(text); a parser that saw only `()` functions
+     would let the claim and its revoke go unchecked. */
+  const objects = createdBy("supabase/0007_generation_jobs.sql");
+  const fn = (kind) => objects.filter((o) => o.kind === kind).map((o) => o.name).sort();
+  assert.deepStrictEqual(fn("function"), ["public.claim_generation_job(text)", "public.generation_jobs_before_update()"]);
+  assert.deepStrictEqual(fn("not_client_callable"), ["public.claim_generation_job(text)", "public.generation_jobs_before_update()"]);
+  assert.strictEqual(signature("public.f", "p_a text, b integer"), "public.f(text,integer)");
+  assert.strictEqual(signature("public.f", "text"), "public.f(text)");
+  assert.strictEqual(signature("public.f", ""), "public.f()");
 });

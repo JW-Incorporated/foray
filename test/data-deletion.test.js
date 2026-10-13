@@ -788,6 +788,57 @@ test("a per-user table exempted for having no client writer is in the schema, an
   }
 });
 
+/** Every column, in either migration directory, that references auth.users:
+    {table, column, cascade}. */
+function schemaAuthUserRefs() {
+  const out = [];
+  for (const sub of ["backend/migrations", "backend/migrations/supabase"]) {
+    for (const f of fs.readdirSync(path.join(ROOT, sub)).filter((n) => n.endsWith(".sql")).sort()) {
+      const sql = read(`${sub}/${f}`).replace(/--[^\n]*/g, "");
+      for (const m of sql.matchAll(/create table if not exists\s+(?:public\.)?([a-z_]+)\s*\(([\s\S]*?)\n\);/g)) {
+        for (const c of m[2].matchAll(/^\s*([a-z_]+)\s[^\n]*\breferences auth\.users\s*\(id\)([^\n]*)/gm)) {
+          out.push({ table: m[1], column: c[1], cascade: /\bon delete cascade\b/.test(c[0]) });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** Per-listener tables whose owner column is NOT user_id, so Delete my data's
+    `?user_id=eq.<uid>` DELETE cannot reach them. Their rows go when the account
+    goes (ON DELETE CASCADE on the owner column), and only while no shipped code
+    writes them: app.js is UI-frozen, so a client writer would have to join
+    SB_USER_TABLES (and this ledger would be wrong) first. */
+const ACCOUNT_CASCADE_ONLY = {
+  generation_jobs: "supabase/0007 (GV-59, D9): an author's on-demand jobs; no client queues one yet (UI freeze), so the owner column is author_id and account deletion cascades",
+  generation_job_authors: "supabase/0007 (GV-59, D9): the founder allowlist, written by a founder in the SQL editor; a listed author's row cascades with the account",
+};
+
+test("a table owned through an auth.users reference other than user_id cascades with the account, is in the ledger, and no shipped code names it", () => {
+  /* GV-59: generation_jobs is user data, so this suite must SEE it go with the
+     account (the cascade), not exempt it. Derived from the schema, both ways:
+     a new non-user_id owner column fails until it is ledgered, a ledgered
+     table that disappears fails, and a reference without the cascade fails.
+     Mutations this kills (each run, 2026-10-13):
+     - drop `on delete cascade` from generation_jobs.author_id -> red;
+     - delete the generation_jobs entry from ACCOUNT_CASCADE_ONLY -> red;
+     - add a 'generation_jobs' literal to app.js -> red (a client now uses it). */
+  const refs = schemaAuthUserRefs();
+  const key = (r) => `${r.table}.${r.column}`;
+  assert.ok(refs.some((r) => key(r) === "content_reports.user_id"), "the auth.users scan found nothing (it must read backend/migrations/supabase/)");
+  assert.deepStrictEqual(refs.filter((r) => !r.cascade).map(key), [], "every reference to auth.users must cascade, or deleting the account leaves the row (or fails)");
+  const others = [...new Set(refs.filter((r) => r.column !== "user_id").map((r) => r.table))].sort();
+  assert.deepStrictEqual(others, Object.keys(ACCOUNT_CASCADE_ONLY).sort(),
+    "a table owned by a column other than user_id is out of Delete my data's reach: ledger it in ACCOUNT_CASCADE_ONLY with its cascade, or key it by user_id");
+  for (const rel of shippedSources()) {
+    for (const table of Object.keys(ACCOUNT_CASCADE_ONLY)) {
+      assert.ok(!codeOnly(read(rel)).includes(table),
+        `${rel} now names ${table}: a client uses it, so Delete my data must reach it (SB_USER_TABLES plus a delete-own policy), not only the account cascade`);
+    }
+  }
+});
+
 test("one authenticated DELETE per table, filtered to this account's own uid", async () => {
   const { arm, ui, deletes } = await mount({ seed: { cp_sb_session: sessionRow() } });
   await arm();

@@ -24,6 +24,20 @@
  *     -> test 2 fails (show_id_map must stay deny-all);
  *   - put "founder question 31" back in DECISIONS.md or STATE.md -> test 3 fails;
  *   - drop the supabase/0004 mention from either coupling paragraph -> test 3 fails.
+ *
+ * GV-59 (supabase/0007_generation_jobs.sql, D9) adds tests 4 and 5. Mutations
+ * that kill them (each run by hand, 2026-10-13):
+ *   - delete `alter table public.generation_jobs enable row level security;`
+ *     from 0007 -> tests 4 and 5;
+ *   - delete `revoke all on public.generation_job_authors from anon, authenticated;`
+ *     -> test 4;
+ *   - drop `on delete cascade` from generation_jobs.author_id -> test 5;
+ *   - drop the `exists (select 1 from public.generation_job_authors ...)` clause
+ *     from the insert policy -> test 5;
+ *   - change the select policy to `using (true)` -> test 5;
+ *   - drop `prompt = null,` from claim_generation_job -> test 5;
+ *   - drop `skip locked` from the claim -> test 5;
+ *   - drop `security definer` from the claim -> test 5.
  */
 
 const { test } = require("node:test");
@@ -90,4 +104,59 @@ test("the S-09 G1/G2 coupling text cites question 6 (Postgres for shows) and nam
     assert.doesNotMatch(para, /founder question 31/, `${doc}: question 31 is Rights flags`);
     assert.match(para, /backend\/migrations\/supabase\/0004_rls_shows_catalog\.sql/, `${doc}: G2 must name the RLS companion`);
   }
+});
+
+/** `create table if not exists public.<t>` in one supabase/ file. */
+const supaTablesIn = (sql) => [...sql.matchAll(/create table if not exists (?:public\.)?([a-z_][a-z0-9_]*)/g)].map((m) => m[1]);
+
+test("every table a supabase/ migration creates has RLS on in that same file, and starts from no client grants", () => {
+  /* 0005 and 0007 create tables of their own (Supabase-only, they reference
+     auth.users). Neither the portable scan above nor any later file covers
+     them, so the file that creates a table must switch RLS on for it and
+     revoke Supabase's default anon/authenticated grants before granting back. */
+  const created = [];
+  for (const f of sqlFiles(SUPA)) {
+    const sql = sqlOnly(fs.readFileSync(path.join(SUPA, f), "utf8"));
+    for (const t of supaTablesIn(sql)) {
+      created.push(t);
+      assert.match(sql, new RegExp(`alter table public\.${t} enable row level security;`), `${f}: ${t} has no RLS in the file that creates it`);
+      assert.match(sql, new RegExp(`revoke all on public\.${t} from anon, authenticated;`), `${f}: ${t} keeps Supabase's default client grants`);
+    }
+  }
+  for (const t of ["content_reports", "generation_jobs", "generation_job_authors"]) assert.ok(created.includes(t), `the scan must see ${t}`);
+});
+
+test("supabase/0007: generation_jobs is author-only, founders-first, cascades with the account, and the claim discards the prompt (GV-59, D9)", () => {
+  const sql = sqlOnly(read("backend/migrations/supabase/0007_generation_jobs.sql")).replace(/\s+/g, " ");
+  // RLS on both tables.
+  for (const t of ["generation_jobs", "generation_job_authors"]) assert.match(sql, new RegExp(`alter table public\.${t} enable row level security;`));
+  // The owner column cascades with the account, on both tables.
+  assert.match(sql, /create table if not exists public\.generation_jobs \( id uuid primary key default gen_random_uuid\(\), author_id uuid not null references auth\.users\(id\) on delete cascade,/);
+  assert.match(sql, /create table if not exists public\.generation_job_authors \( author_id uuid primary key references auth\.users\(id\) on delete cascade,/);
+  // An author selects its own rows, and only them.
+  assert.match(sql, /create policy generation_jobs_select_own on public\.generation_jobs for select to authenticated using \(\(select auth\.uid\(\)\) = author_id\);/);
+  // An author inserts only as itself, only a fresh queued on-demand job, and only when allowlisted.
+  const insert = /create policy generation_jobs_insert_allowlisted on public\.generation_jobs for insert to authenticated with check \((.*?)\);/.exec(sql);
+  assert.ok(insert, "the allowlist insert policy");
+  for (const clause of ["(select auth.uid()) = author_id", "status = 'queued'", "lane = 'on-demand'", "seq = 0", "snapshot is null", "worker is null", "exists (select 1 from public.generation_job_authors a where a.author_id = (select auth.uid()))"]) {
+    assert.ok(insert[1].includes(clause), `insert policy is missing: ${clause}`);
+  }
+  // No policy anywhere in 0007 is for anon or for all.
+  assert.doesNotMatch(sql, /create policy \w+ on public\.\w+ for \w+ to [\w, ]*\banon\b/);
+  assert.doesNotMatch(sql, /create policy \w+ on public\.\w+ for all\b/);
+  // The claim: one statement that locks with SKIP LOCKED, NULLs the prompt and returns the one it held.
+  const claim = /create or replace function public\.claim_generation_job\(p_worker text\) (.*?) \$\$(.*?)\$\$;/.exec(sql);
+  assert.ok(claim, "claim_generation_job(p_worker text)");
+  assert.match(claim[1], /\bsecurity definer\b/);
+  assert.match(claim[1], /set search_path = public, pg_temp/);
+  assert.match(claim[2], /where j\.status = 'queued'/);
+  assert.match(claim[2], /for update skip locked/);
+  assert.match(claim[2], /set status = 'claimed', prompt = null,/);
+  assert.match(claim[2], /returning g\.id, g\.author_id, g\.tier, g\.lane, picked\.prompt/);
+  assert.strictEqual((claim[2].match(/;/g) || []).length, 1, "the claim is ONE statement: the prompt is returned by the update that NULLs it");
+  assert.match(claim[2], /^ with picked as \(.*\) update public\.generation_jobs g .*; $/, "one WITH ... UPDATE ... RETURNING");
+  assert.match(sql, /revoke execute on function public\.claim_generation_job\(text\) from anon, authenticated, public;/);
+  // And no other path keeps a prompt past 'queued'.
+  assert.match(sql, /constraint generation_jobs_prompt_only_while_queued check \(prompt is null or status = 'queued'\)/);
+  assert.match(sql, /if new\.status <> 'queued' then new\.prompt := null; end if;/);
 });

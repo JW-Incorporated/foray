@@ -15,6 +15,20 @@
  * use is granted to it.
  *
  * Static: no database. Applying 0003 to the live project is founder Q3.
+ *
+ * GV-59 (supabase/0007_generation_jobs.sql, D9) adds the last test: the job
+ * row has no client in app.js yet (UI freeze), so its verbs are pinned to the
+ * card's rule instead -- an author selects its own rows, inserts only when
+ * allowlisted, updates only status and only to 'cancelled', never deletes --
+ * and the column grants are pinned exactly. Mutations that kill it (each run
+ * by hand, 2026-10-13):
+ *   - add `prompt` to the select column grant -> the prompt is readable back;
+ *   - widen the update grant to `update (status, snapshot)` -> an author
+ *     rewrites the snapshot the phone plays;
+ *   - add a delete-own policy -> an author deletes;
+ *   - change the cancel policy's with check to `status in ('cancelled', 'queued')`
+ *     -> an author re-queues a job;
+ *   - add `lane` to the insert column grant -> an author jumps to the catalogue lane.
  */
 
 const { test } = require("node:test");
@@ -152,4 +166,31 @@ test("events.ts is stamped by the server on insert, so a client clock cannot fre
 test("the migration is additive: 0003 exists alongside the applied 0001/0002, which are untouched by it", () => {
   const names = fs.readdirSync(path.join(ROOT, "backend/migrations/supabase")).filter((n) => n.endsWith(".sql")).sort();
   assert.deepStrictEqual(names.slice(0, 3), ["0001_auth_and_rls.sql", "0002_linter_findings.sql", "0003_rls_least_privilege.sql"]);
+});
+
+test("generation_jobs: an author selects its own rows, inserts if allowlisted, may only cancel, never deletes (GV-59, D9)", () => {
+  const sql = sqlOnly(read("backend/migrations/supabase/0007_generation_jobs.sql")).replace(/\s+/g, " ");
+  const pol = [...sql.matchAll(/create policy (\w+) on public\.(\w+) for (\w+) to ([\w, ]+?) (using|with check) \((.*?)\);(?= create| revoke| --|$)/g)].map(
+    ([, name, table, verb, roles, , body]) => ({ name, table, verb, roles: roles.split(/,\s*/), body })
+  );
+  const jobs = pol.filter((p) => p.table === "generation_jobs");
+  assert.deepStrictEqual(jobs.map((p) => p.verb).sort(), ["insert", "select", "update"], "no delete policy, no for-all");
+  for (const p of pol) assert.deepStrictEqual(p.roles, ["authenticated"], `${p.name}: for the signed-in author only`);
+  assert.deepStrictEqual(pol.filter((p) => p.table === "generation_job_authors").map((p) => p.verb), ["select"], "the allowlist is read-own only; founders write it as postgres");
+
+  const cancel = jobs.find((p) => p.verb === "update");
+  assert.match(cancel.body.trim(), /^\(select auth\.uid\(\)\) = author_id and status in \('queued', 'claimed', 'running'\) \) with check \( \(select auth\.uid\(\)\) = author_id and status = 'cancelled'$/,
+    "an open job of one's own, and only to 'cancelled'");
+
+  // Column grants, exactly: what an author may write, read and change.
+  assert.match(sql, /revoke all on public\.generation_jobs from anon, authenticated;/);
+  const grants = [...sql.matchAll(/grant (\w+) \(([^)]*)\) on public\.generation_jobs to authenticated;/g)].map(([, verb, cols]) => [verb, cols.split(/,\s*/).sort()]);
+  assert.deepStrictEqual(Object.fromEntries(grants), {
+    insert: ["author_id", "prompt", "tier"],
+    select: ["author_id", "claimed_at", "created_at", "id", "lane", "seq", "snapshot", "status", "tier", "updated_at"],
+    update: ["status"],
+  });
+  assert.doesNotMatch(sql, /grant (?:all|delete|truncate|insert|select|update)\b(?! \()[^;]* on public\.generation_jobs to/, "no table-wide grant to a client");
+  assert.doesNotMatch(sql, /grant [^;]* on public\.generation_jobs to [^;]*\banon\b/);
+  assert.match(sql, /grant select \(author_id\) on public\.generation_job_authors to authenticated;/);
 });
