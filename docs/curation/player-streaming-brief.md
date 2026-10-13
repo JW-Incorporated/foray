@@ -25,128 +25,159 @@ payload shape that file has, and what a player would do with it once a real serv
 short of that, a direct file read on a machine that already has the candidate directory —
 Path A in the Desktop plan) can serve it to a listener.
 
-## 1. The payload — `PartialCandidate`
+## 1. The payload — `JobSnapshot` (GV-44)
 
-Defined in `backend/src/generation/partialCandidate.ts`. One JSON object, rewritten in
-place every time an act finishes:
+Updated for GV-44 (`docs/roadmap/generation-v2.md`, #1286; decision 32). The player no
+longer reads the `PartialCandidate`: that file is the CLI's own per-act record (validation,
+slots, the whole item list so far) and stays on disk for the founder. What a phone reads is
+the **job snapshot**, defined in `backend/src/generation/jobSink.ts` and pinned by its zod
+`JobSnapshotSchema` (strict: an unknown key fails, and there is no `prompt` field). One JSON
+object, rewritten on every act-ready and every item-ready event:
 
 ```ts
-interface PartialCandidate {
-  id: string;                 // the eventual data/forays.json id
-  title: string;
-  topic: string;               // a data/taxonomy.json node
-  summary: string;
-  status: "partial" | "complete";        // top-level: "complete" once every act is "ready"
-  visibility: "private";                 // ALWAYS — never the shared catalogue (see §3)
-  authorId: string;                      // the requesting listener; the auth check (§3)
-  acts: Array<{ index: number; title: string; status: "ready" | "pending" }>;
-  slots: Array<{ id: string; title: string }>;   // cumulative — only acts finished so far
-  items: ForayItem[];                            // cumulative, disclosure item ALREADY first
-  runtimeSec: number;                             // cumulative, listener's clock
-  ttlA1Ms: number | null;      // prompt received -> Act 1 ready; set once, never changes after
-  builtAt: string;              // ISO — when the generation run started
-  updatedAt: string;            // ISO — when THIS write happened (use to detect staleness)
-  validation: {                 // check-forays.mjs/check-narration.mjs run on the items-so-far
-    ok: boolean;
-    checkForaysErrors: string[];
-    checkForaysWarnings: string[];
-    checkNarrationErrors: string[];
-    checkNarrationWarnings: string[];
+interface JobSnapshot {
+  schema: "foray-job/1";
+  jobId: string;                // random per run, never derived from the prompt
+  forayId: string;              // the eventual data/forays.json id; /^[a-z0-9-]{1,120}$/
+  authorId: string;             // the requesting listener; the auth check (§2)
+  lane: "on-demand" | "catalogue";
+  status: "running" | "complete" | "failed";
+  seq: number;                  // strictly increasing per job file
+  updatedAt: string;            // ISO, when THIS snapshot was written
+  title: string | null;         // the understander's copy; null until act 1 is stitched
+  topic: string | null;         // a data/taxonomy.json node
+  summary: string | null;
+  acts: Array<{ index: number; title: string; status: "ready" | "pending"; servable: boolean }>;
+  items: ForayItem[];           // ONLY the servable prefix, disclosure first (see below)
+  itemStates: Array<{           // 1:1 with items
+    itemId: string;
+    check: "verified" | "unverified" | "unchecked-seam" | "tape" | "jingle" | "prelude";
+    audio: "pending" | "rendered" | "phone-voice";
+    audioKey?: string;
+  }>;
+  runtimeSecSoFar: number;      // seconds of Foray made so far, servable or not
+  delivery?: {
+    servableThrough: number;    // always items.length: an ITEM COUNT, prelude included
+    itemsGenerated: number;     // items made so far, servable or not (a count, no ids)
+    servableThroughAct: number; // last act inside the prefix, or -1
+    pausedAtIndex: number | null; // the made-but-unservable item the prefix stops at
   };
+  closed?: { outcome: "complete" | "failed" | "aborted"; detail?: string }; // detail is a short code
 }
 ```
 
-Worked example — a "medium" Foray (4 acts), the file's content right after Act 2 lands:
+Worked example — a "medium" Foray (4 acts) right after Act 2 is stitched, with Act 2 holding
+a page the verifier did not pass:
 
 ```json
 {
-  "id": "the-history-of-grilling-and-barbecue-...",
-  "title": "The history of grilling and barbecue",
-  "topic": "food/grilling-bbq",
-  "summary": "the history of grilling and barbecue",
-  "status": "partial",
-  "visibility": "private",
+  "schema": "foray-job/1",
+  "jobId": "6f1c0a52-3d7e-4f0b-9c64-0b8f6f1e2a10",
+  "forayId": "fire-smoke-and-the-long-cook-1a2b3c",
   "authorId": "founder-1",
+  "lane": "catalogue",
+  "status": "running",
+  "seq": 23,
+  "updatedAt": "2026-10-12T10:00:11.000Z",
+  "title": "Fire, smoke and the long cook",
+  "topic": "food/grilling-bbq",
+  "summary": "How people learned to cook with smoke.",
   "acts": [
-    { "index": 0, "title": "Act 1: The origin", "status": "ready" },
-    { "index": 1, "title": "Act 2: How it actually works", "status": "ready" },
-    { "index": 2, "title": "Act 3: The part nobody expects", "status": "pending" },
-    { "index": 3, "title": "Act 4: The controversy", "status": "pending" }
+    { "index": 0, "title": "Act 1: The origin", "status": "ready", "servable": true },
+    { "index": 1, "title": "Act 2: How it actually works", "status": "ready", "servable": false },
+    { "index": 2, "title": "Act 3: The part nobody expects", "status": "pending", "servable": false },
+    { "index": 3, "title": "Act 4: The controversy", "status": "pending", "servable": false }
   ],
-  "items": [ /* disclosure, then every act-1 and act-2 item, in play order */ ],
-  "runtimeSec": 940.2,
-  "ttlA1Ms": 4963,
-  "builtAt": "2026-09-08T22:57:04.000Z",
-  "updatedAt": "2026-09-08T22:57:11.000Z",
-  "validation": { "ok": true, "checkForaysErrors": [], "checkForaysWarnings": [], "checkNarrationErrors": [], "checkNarrationWarnings": [] }
+  "items": [ /* the disclosure, then act 1's items, in play order — nothing of act 2 */ ],
+  "itemStates": [ /* one per item: { "itemId": "prelude", "check": "prelude", "audio": "pending" }, ... */ ],
+  "runtimeSecSoFar": 940.2,
+  "delivery": { "servableThrough": 12, "itemsGenerated": 21, "servableThroughAct": 0, "pausedAtIndex": 12 }
 }
 ```
 
 Notes that matter for the player:
 
-- **`items` is always a valid PREFIX of the eventual whole-Foray `items` array**, in the
-  same order, same shape as `data/forays.json` (`type: "segment" | "narration" | "jingle"`
-  — see `backend/src/generation/forayItems.ts`). The disclosure item is always `items[0]`.
-  Nothing is ever reordered or rewritten once written — only appended.
-- **`acts[].status` never regresses.** Once an act is `"ready"` it stays `"ready"` on
-  every later rewrite of the file. Only later acts flip from `"pending"` to `"ready"`.
-- **`ttlA1Ms` is set once** (the first time `acts[0]` goes `"ready"`) and carried
-  unchanged on every subsequent rewrite — it is not "time since last update."
-- **`validation` is real, scoped-down `check-forays.mjs`/`check-narration.mjs` output**
-  run against only the items written so far (see caveat in §4) — not a preview of the
-  final whole-Foray verdict.
+- **The player plays `items` and nothing else.** `items` is exactly the leading servable
+  prefix of the eventual whole-Foray `items` array (`delivery.servableThrough` items,
+  disclosure first, same shape as `data/forays.json`). An act that is not servable (GV-21:
+  an unverified page, the hand-off line, an ungrounded quote, a misaligned item list) stops
+  the prefix there, and nothing from or after it is in the snapshot, not even as an id —
+  even when later acts are ready.
+- **`items` only grows.** A later snapshot's `items` starts with every item of an earlier
+  one, in the same order; only the tail is new. The prefix can stand still for a long time
+  (a paused act) and then jump.
+- **`items` can run ahead of `acts`.** Item events arrive before the act they belong to is
+  recorded, so `items` may hold the opening items of an act that `acts[]` still shows as
+  `"pending"`. `acts` is for display; `items` is what plays.
+- **`seq` is the change signal.** Skip any snapshot whose `seq` is not above the last one
+  you applied. A resumed run of the same Foray continues the same job (same `jobId`, `seq`
+  above the file's), and the sink never writes a row that serves fewer or other items than
+  the row already there, so "`items` only grows" holds across the restart too; a resumed
+  run that publishes nothing still closes the row it continues.
+- **No prompt, ever.** The schema has no prompt field and is strict; `title`, `topic` and
+  `summary` are the understander's copy (§9.4 keeps the title). `closed.detail` is a short
+  code (`refused-partial`, `budget-stop`, `error`, `invalid`, ...), never an error message.
+- **`audio` is `"pending"` for every item today.** The render cards (W6-07, GV-74) stamp
+  `rendered` with an `audioKey`, or `phone-voice` when the phone speaks the script itself.
 
 ## 2. Where the file lives today, and where a real endpoint would read it from
 
-Today (CLI-only, Path A): `generateForays.ts` writes it to
-`<out>/<slug>-<hash>.partial.json`, next to the eventual final candidate
-(`<slug>-<hash>.json`), inside whatever `--out` directory the run used (default
-`data-local/foray-candidates/`). It is **deleted** once the whole Foray finishes and the
-real candidate file is written successfully — its only job is covering the gap before
-that.
+Today (CLI-only, Path A): `npm run generate-forays -- ... --job-dir <dir>` publishes the
+job to `<dir>/<forayId>.job.json` (`backend/src/cli/fileJobSink.ts`). Without `--job-dir`
+nothing is published (the flag is off by default), and `--dry-run` writes nothing. Every
+write is atomic (a temporary file in the same directory, then a rename), so a reader never
+sees half a snapshot, and every snapshot is checked against `JobSnapshotSchema` before it
+is written. Unlike the partial candidate, the job file is **kept** when the run ends: its
+last write carries `closed` and a final `status`. A Supabase row (W6-18, GV-59) replaces
+the file later behind the same `GenerationJobSink` interface, with the same payload.
 
-`backend/src/generation/generationStatus.ts` exports `readPartialCandidate(candidateDir,
-forayId, requestingUserId)` — the READ logic a future `GET /generation/:id/status` route
-calls. It scans `<candidateDir>/*.partial.json` for the one whose `id` matches (not by
-filename — a listener/player only ever knows the Foray id, never the CLI's internal
-slug+hash), and returns one of:
+`backend/src/generation/generationStatus.ts` exports `readJobSnapshot(jobDir, forayId,
+requestingUserId)` — the READ logic a future `GET /generation/:id` route calls. It reads
+exactly one file, `<jobDir>/<forayId>.job.json`, named by the id itself; it never lists the
+directory. It returns one of:
 
 ```ts
-type GenerationStatusOutcome =
-  | { found: false }
+type JobSnapshotOutcome =
+  | { found: false; refused?: "invalid-id" }
   | { found: true; authorized: false }
-  | { found: true; authorized: true; candidate: PartialCandidate };
+  | { found: true; authorized: true; snapshot: JobSnapshot };
 ```
 
-**The `authorized` check is the ENTIRE privacy enforcement for `visibility: "private"`.**
-It compares `candidate.authorId` to the caller's own id. A real HTTP handler's job is
-just: authenticate the caller, call `readPartialCandidate(dir, forayId, callerId)`, map
-`found:false` → 404, `authorized:false` → 403 (or 404 — do not distinguish the two in the
-response; a 403 confirms the id exists, which is itself a small leak), `authorized:true`
-→ 200 with `candidate`. Nothing about `PartialCandidate`'s shape needs to change for
-that; this is a routing exercise once Path B's four founder decisions land.
+- An id that fails `/^[a-z0-9-]{1,120}$/` (`../x`, a slash, a dot) is refused before any
+  path is built.
+- A missing file, unparseable JSON, a document that fails `JobSnapshotSchema`, or one that
+  names another Foray id reads as not found: an unvalidated document is never served.
+- **The `authorized` check is the privacy enforcement.** It compares the snapshot's
+  `authorId` to the caller's own id. A real handler authenticates the caller, calls
+  `readJobSnapshot(dir, forayId, callerId)`, and answers `found:false` (refused or not)
+  and `authorized:false` the same way, 404 (a 403 confirms the id exists, which is itself a
+  small leak); `authorized:true` → 200 with `snapshot`.
+
+The older `readPartialCandidate(candidateDir, forayId, requestingUserId)` is kept for its
+existing callers, unchanged. Its header used to claim it never lists the directory; it
+does — it parses every `<candidateDir>/*.partial.json` to find the id, because the partial
+file is named by the prompt's slug and hash, which a caller holding only the Foray id
+cannot rebuild. New callers use `readJobSnapshot`.
 
 ## 3. The append contract — what the player does with it
 
-This is the piece WS-D2 left for Hermes to build (no `app.js`/`player/*.js` changes
-shipped with this brief). The target behavior, per `generation-architecture.md` §1.4/§6:
+This is the piece left for the player owner to build (no `app.js`/`player/*.js` changes
+ship with this brief). The target behavior, per `generation-architecture.md` §1.4/§6:
 
-1. **Playback starts the moment `acts[0].status === "ready"`.** Do not wait for
-   `status: "complete"`. Build the queue from `items` as it stands at that point (see
-   `player/foray-queue.js`'s `buildForayQueue` — it already turns a Foray's `items` array
-   into a player queue; a partial candidate's `items` prefix is a valid input to it
-   as-is, since it is always disclosure-first and well-formed for every item written so
-   far).
-2. **Poll (or subscribe, once a real service exists) on some interval** — a few seconds
-   is plenty; `updatedAt` tells you whether the response actually changed before you do
-   any work. Compare `updatedAt` (or just `items.length`) to the last response you
-   applied; skip the append step entirely if nothing changed.
-3. **When `items.length` grows, append ONLY the new tail to the live queue — never
-   rebuild it, never touch `currentIndex` or anything already loaded/playing.** The new
-   items are `response.items.slice(previousItems.length)`. This is the "without
-   interrupting playback" requirement: appending to the end of an array the player is
-   walking forward through does not affect what is currently loaded or what plays next
-   until the listener actually reaches that point.
+1. **Playback starts the moment `items` holds more than the disclosure.** Do not wait for
+   `status: "complete"`, and do not look at `acts[]` to decide: `items` is already only
+   what may play. Build the queue from `items` (see `player/foray-queue.js`'s
+   `buildForayQueue` — a snapshot's `items` is a valid input to it as-is, since it is
+   always disclosure-first and well-formed).
+2. **Poll (or subscribe, once a real service exists) on some interval** — a few seconds is
+   plenty. Compare `seq` to the last snapshot you applied and skip the append step entirely
+   if it is not higher.
+3. **When `items.length` grows, append ONLY the new tail to the live queue — never rebuild
+   it, never touch `currentIndex` or anything already loaded/playing.** The new items are
+   `snapshot.items.slice(previousItems.length)`. This is the "without interrupting
+   playback" requirement: appending to the end of an array the player is walking forward
+   through does not affect what is currently loaded or what plays next until the listener
+   actually reaches that point.
    - **Id collisions.** `buildForayQueue` derives each queue item's id from its position
      in the Foray's OWN `items` array (`${forayId}#${index}`, `player/foray-queue.js`).
      If you re-run `buildForayQueue` on just the new tail in isolation, its internal
@@ -155,21 +186,22 @@ shipped with this brief). The target behavior, per `generation-architecture.md` 
      `items.length` (simplest, and correct — this is a `<110`-item array even for a long
      Foray, so re-deriving the whole queue each poll is cheap), or (b) if you want a true
      incremental append without rebuilding, `buildForayQueue` will need a `startIndex`
-     option so id numbering continues correctly — that is a real, small change to
-     `player/foray-queue.js`, not yet made; flag it back to this workstream (or just make
-     it — it is a two-line, backward-compatible addition, default `startIndex: 0`) before
-     wiring option (b).
-4. **Stop polling once `status === "complete"`.** At that point every act is `"ready"`
-   and the queue is exactly the whole Foray's `items` array. The player is now
-   listening to unpublished, private, generated content — remind the listener (a badge,
-   a line of copy) that this Foray has not gone through the founder-reviewed publish
-   step (§1.3) and is not yet in the shared catalogue. Nothing about playback changes
-   when the founder-reviewed PR eventually lands and it becomes a catalogue Foray — see
-   §5.
-5. **`validation.ok === false` at any point is informational, not fatal to playback** —
-   see the caveat in §4. Surface it in a debug/dev view if useful; do not block playback
-   on it, since the SAME content may validate cleanly once every act is in (a false
-   negative here is expected, not a bug to chase).
+     option so id numbering continues correctly — a real, small change to
+     `player/foray-queue.js`, not yet made (default `startIndex: 0`).
+   - **Reaching the end of `items` while `status === "running"`** means the next part is
+     not servable yet (still being made, or paused at an unservable act): wait, do not end
+     the Foray (W6-04, GV-57; the lock-screen state is GV-70).
+4. **Stop polling once `status !== "running"`.** `"complete"` means the run finished and
+   the snapshot is final; `"failed"` (with `closed.outcome` `"failed"` or `"aborted"`)
+   means nothing more will be appended — play what `items` holds and end there. Either way
+   the listener is hearing unpublished, private, generated content — remind them (a badge,
+   a line of copy) that this Foray has not gone through the founder-reviewed publish step
+   (§1.3) and is not in the shared catalogue.
+5. **The servable prefix replaces "validation is advisory".** The old payload asked the
+   player to treat `validation.ok === false` as informational and play on. The snapshot
+   carries no validation at all: the backend has already cut `items` at the first act that
+   may not be served, so there is nothing for the player to judge and no flag to honour.
+   An item in `items` may play; anything else is not in the payload.
 
 ## 4. Known caveat: scoped validation can false-negative
 
@@ -185,34 +217,37 @@ a real verdict.
 
 ## 5. Acceptance test (what "done" looks like on the player side)
 
-No API key, no real HTTP service needed — everything above is exercisable against a
-`PartialCandidate` fixture (see `backend/test/generateForays.test.ts` for the backend-side
-version of this same idea, driving the real pipeline with stub builders). A player-side
+No API key, no real HTTP service needed — everything above is exercisable against
+`JobSnapshot` fixtures (see `backend/test/jobSink.test.ts` and the GV-44 block of
+`backend/test/generateForays.test.ts` for the backend-side version, the latter driving the
+real pipeline with stub builders and reading the job file after every event). A player-side
 acceptance test should:
 
-1. Start with a `PartialCandidate` fixture where `acts[0].status === "ready"`,
-   `acts[1..].status === "pending"`, `status: "partial"`. Build a queue from `items` and
-   start playback (or a fake/mock player backend — this repo already has fakes for this,
-   see `player/*.test.js`'s existing backend stubs).
-2. Advance to a SECOND fixture representing the same Foray after Act 2 finishes
-   (`acts[1].status` now `"ready"`, `items` longer by that act's own items, same `id`,
-   `updatedAt` advanced). Apply it. Assert:
+1. Start with a snapshot fixture, `status: "running"`, whose `items` holds the disclosure
+   and act 1's items. Build a queue from `items` and start playback (or a fake/mock player
+   backend — `player/*.test.js` already has backend stubs).
+2. Apply a SECOND snapshot of the same job with a higher `seq` and a longer `items` (act 2's
+   items appended). Assert:
    - the queue's length grew by exactly the new items' count;
    - every item that was already in the queue is byte-identical, same array position
      (nothing got rebuilt/reordered);
    - if something is currently playing, it is UNCHANGED (same id, same play position) —
      the append must not touch playback state;
-   - the new items are reachable (the player can advance into them) once the listener
-     gets there.
-3. Advance to a THIRD, `status: "complete"` fixture. Assert the queue now equals
-   `buildForayQueue(fullForay).items` exactly (same content as if the whole Foray had
-   been loaded from `data/forays.json` in one shot) — a streamed-in Foray and a
-   loaded-whole one must converge to the identical queue.
-4. A fixture whose `authorId` does not match the "current listener" must never reach the
-   player at all — that check belongs on whatever calls `readPartialCandidate`
-   (`generationStatus.ts`), not in player code, but the acceptance suite should still
-   assert the player never crashes/misbehaves if handed a 403/404 instead of a candidate
-   (i.e., "no partial to append yet" is a normal, silent state, not an error state).
+   - the new items are reachable once the listener gets there.
+3. Apply a snapshot whose `seq` is NOT higher than the last one applied (a stale or replayed
+   response). Assert nothing changes.
+4. Reach the end of `items` while `status === "running"` (a paused prefix: `acts[1]`
+   ready but not servable, `delivery.pausedAtIndex === items.length`). Assert the player
+   waits rather than ending the Foray, and never plays anything not in `items`.
+5. Apply a final `status: "complete"` snapshot. Assert the queue now equals
+   `buildForayQueue({ ...foray, items: snapshot.items }).items` exactly — a streamed-in
+   Foray and one loaded from the same `items` in one shot must converge to the identical
+   queue — and that polling stops. A `status: "failed"` snapshot also stops polling and
+   ends playback after the last item.
+6. A response for another listener's job never reaches the player — that check belongs on
+   whatever calls `readJobSnapshot` (`generationStatus.ts`), not in player code — but the
+   suite should still assert the player neither crashes nor misbehaves when handed a 404
+   instead of a snapshot ("no snapshot yet" is a normal, silent state, not an error state).
 
 ## Open questions this brief surfaces but does not answer
 

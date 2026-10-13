@@ -3046,8 +3046,8 @@ const BACKEND_FLOORS = {
      private status read path. */
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
-  "test/generateForays.test.ts": 22, // GV-39 (generation v2): readPromptSet hashes the file bytes it parsed, a non-dry report carries prompts {file, sha256, count} and corpus.fingerprint when bodies exist, corpus stays null with no corpus directory; 19 -> 22 // GV-33 (generation v2): the report row's delivery block for a fresh run (lead at 1x and 1.5x), resumed:true with no lead, one event per item from the real stub pipeline, no delivery on a non-generated row; 15 -> 19 // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
-  "test/generationStatus.test.ts": 6, // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
+  "test/generateForays.test.ts": 27, // GV-44 (generation v2): --job-dir parsed and absent without it, a stub run writes <forayId>.job.json with a strictly increasing seq ending complete, the raw prompt in no job file, a resumed attempt that publishes nothing closes the carried row, nothing under --dry-run; 22 -> 27 // GV-39 (generation v2): readPromptSet hashes the file bytes it parsed, a non-dry report carries prompts {file, sha256, count} and corpus.fingerprint when bodies exist, corpus stays null with no corpus directory; 19 -> 22 // GV-33 (generation v2): the report row's delivery block for a fresh run (lead at 1x and 1.5x), resumed:true with no lead, one event per item from the real stub pipeline, no delivery on a non-generated row; 15 -> 19 // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
+  "test/generationStatus.test.ts": 9, // GV-44: readJobSnapshot refuses ids failing the regex (../x), refuses another author's job, reads exactly <forayId>.job.json and never an unvalidated document; 6 -> 9 // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
   "test/partialCandidate.test.ts": 11, // GV-21: delivery attached with items unchanged, the item-count units pinned, no delivery without provenance, misaligned and malformed fallbacks; 6 -> 11 (7 on disk before)
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
      share-of-whole rules (M4, D2-end, D4-share) and on itself for every
@@ -3341,6 +3341,17 @@ const BACKEND_FLOORS = {
      granularity) and the report block (fresh, resumed, empty). Offline,
      synthetic events. */
   "test/deliveryTimeline.test.ts": 11,
+  /* GV-44 (docs/roadmap/generation-v2.md, #1286; W6-03): the job snapshot --
+     the prefix rule (an unservable act stops it even with later acts ready;
+     events alone stop at an unservable item and at a gap; the act verdict
+     wins inside the partial and events extend past it), seq, the strict
+     schema with no prompt field, closedSnapshot's short-code detail, the
+     Foray id regex -- and FileJobSink (atomic write, strictly increasing
+     seq, schema gate, close with no row, a resumed run continuing the job,
+     another author's file kept, the served prefix never shrinking under a
+     resumed process, a targeted close of the carried row). Offline,
+     hand-built fixtures. */
+  "test/jobSink.test.ts": 14,
   /* GV-20 (docs/roadmap/generation-v2.md, #1286): the typed Jev client —
      reply validation (every malformed variant), transport categories, the
      key never leaking, one CallRecord per ask, BudgetGuard metering, the
