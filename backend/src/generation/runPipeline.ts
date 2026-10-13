@@ -80,7 +80,8 @@ import { createNarrationVerifierBuilder } from "./createNarrationVerifierBuilder
 import { createContinuityBuilder } from "./createContinuityBuilder";
 
 import type { PromptUnderstander } from "./PromptUnderstander";
-import type { ExternalResearcher } from "./ExternalResearcher";
+import type { ExternalResearchContext, ExternalResearcher } from "./ExternalResearcher";
+import { taxonomyLineage } from "./taxonomyFamily";
 import type { SpineBuilder } from "./SpineBuilder";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
@@ -1002,7 +1003,15 @@ export async function runForayPipeline(
 async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOptions, deps: RunPipelineDeps): Promise<RunPipelineOutcome> {
   const timings = new StageTimingLog();
   const now = options.now ?? (() => new Date());
-  const ctx = { userId: options.userId, sessionId: options.sessionId };
+  /* GV-61: the one context every stage is called with. Typed as the research
+     context so the resolved topic's lineage (`topicNodeIds`) can ride on it to
+     the researcher, set below once the topic decision resolves. */
+  const ctx: ExternalResearchContext = { userId: options.userId, sessionId: options.sessionId };
+  const scopeResearchToTopic = (resolved: string | null): void => {
+    if (!resolved) return;
+    const lineage = taxonomyLineage(resolved, options.root);
+    if (lineage.length > 0) ctx.topicNodeIds = lineage;
+  };
   // WS-D2: prompt-received clock. The wall clock, not `now()` — `now()` is the
   // injected-for-determinism stamp clock (`startedAt`/`generatedAt`, and so
   // `forayIdFor`'s seed), which tests pin to a fixed instant; ttlA1Ms measures
@@ -1343,6 +1352,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   /* Null only when the pre-spine text resolved nothing — the post-spine
      fallback below then gets the act titles' help, as it always did. */
   let topic: string | null = topicDecision.topic;
+  /* GV-61 (W3-16 item 4): the researcher is scoped by the resolved topic's
+     lineage from here on; an unresolved topic leaves the context unscoped. */
+  scopeResearchToTopic(topic);
 
   /* §4.2 — research to establish shape. The map is filtered by the SAME topic
      §4.5 will gate on (F-11, F-91): before F-91 this stage resolved its own,
@@ -1457,6 +1469,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       };
     }
     topic = topicDecision.topic;
+    scopeResearchToTopic(topic);
   }
 
   /* WS-D2 (fix plan, "D2 (streaming publish)") needs four Foray-level facts
@@ -1622,8 +1635,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      skips the slots it will not narrate again (`skipSlot`). See
      `evidencePrefetch.ts` for why the seeded claims are not started during
      deepen. */
+  /* GV-61 (W2-10 item 4): the gatherer is built with the pipeline's OWN
+     researcher, so the one research route (FORAY_STAGE_RESEARCH) governs both
+     §4.2's shape research and this stage's print evidence: a 'none' run makes
+     no retrieval here either. It used to build a second researcher from
+     createExternalResearcher(). */
   const evidence = new PrefetchingEvidenceGatherer(
-    deps.evidence ?? createEvidenceGatherer(deps.cueProvider ? { cueProvider: deps.cueProvider } : {})
+    deps.evidence ?? createEvidenceGatherer({ researcher, ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}) })
   );
   await timed("evidence", () =>
     evidence.prefetch(sourced.acts, ctx, {
@@ -2016,6 +2034,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
        Zero is a real answer here — the accumulator was passed — so it is
        reported as 0, not as "not counted". */
     seedLostBeats: narrationStats.seedLostBeats ?? 0,
+    /* GV-61: content pages written with no print document (OQ-04's trade,
+       measured). Zero is a real answer: the accumulator was passed. */
+    printEvidenceSkipped: narrationStats.printSkipped ?? 0,
     pipelineTokens: pipelineTokensOfRun(),
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),

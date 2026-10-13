@@ -13,6 +13,7 @@ import {
   claimHash,
   cueWindowText,
   createEvidenceGatherer,
+  evidenceCacheDirFor,
   findDigestForItem,
   retryQueryFor,
   RETRY_QUERY_MAX_WORDS,
@@ -20,7 +21,8 @@ import {
 } from "../src/generation/gatherEvidence";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { BudgetExceededError } from "../src/cost/budgetGuard";
-import { EMPTY_EVIDENCE_TTL_MS, emptyEvidenceTtlMs, readEvidenceCache } from "../src/generation/evidenceCache";
+import { EMPTY_EVIDENCE_TTL_MS, emptyEvidenceTtlMs, readEvidenceCache, writeEvidenceCache } from "../src/generation/evidenceCache";
+import { NullExternalResearcher } from "../src/generation/NullExternalResearcher";
 import { findHoldingDoc } from "../src/types/narration";
 import { leadingNounPhrase } from "../src/types/spine";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
@@ -837,5 +839,117 @@ describe("resolving a tape item to the episode whose transcript we hold", () => 
       showTitle: "Bread From Home",
       episodeTitle: "The griddle and the bakestone"
     });
+  });
+});
+
+/**
+ * GV-61 (decision 12, W3-16 item 5; OQ-04): the evidence cache holds web
+ * text, so only the web researcher may touch it. A 'none' run must never be
+ * answered by a Haiku document an older run left behind, and no researcher
+ * but 'anthropic' reads or writes data-local/evidence by default.
+ */
+describe("GV-61: the evidence cache belongs to the anthropic researcher alone", () => {
+  const ROOT_CACHE = path.join(__dirname, "..", "..", "data-local", "evidence");
+
+  /* MUTATION THAT KILLS THIS: drop the `providerName === "none"` line from
+     evidenceCacheDirFor, so an explicit cacheDir is honoured for 'none' too.
+     Ran: red (the pre-seeded Haiku document came back as a print doc; the
+     explicit-cacheDir row below goes red too). */
+  it("a 'none' gatherer returns no print doc even from a temp cache pre-seeded with a Haiku-shaped document for the claim", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-evidence-none-"));
+    try {
+      const claim = "the bakestone came before the griddle in every farmhouse kitchen";
+      writeEvidenceCache(dir, claimHash(claim), [
+        {
+          docId: `print:${claimHash(claim)}-1`,
+          kind: "print",
+          title: "A Haiku web search result",
+          url: "https://example.org/old-web-text",
+          retrievedAt: "2026-09-09T12:00:00.000Z",
+          text: "The bakestone came before the griddle in every farmhouse kitchen, a web page said."
+        }
+      ]);
+      const g = new DefaultEvidenceGatherer({ researcher: new NullExternalResearcher(), cacheDir: dir, catalogue: CATALOGUE, transcriptArchive: [] });
+      const pack = await g.gather({ claim, requiresEvidence: true }, ctx);
+      expect(pack.docs.filter((d) => d.kind === "print")).toEqual([]);
+      /* And nothing new was written beside the seeded file. */
+      expect(fs.readdirSync(dir)).toEqual([`${claimHash(claim)}.json`]);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  /* MUTATION THAT KILLS THIS: restore the pre-GV-61 default
+     (`providerName === "stub" ? null : root`). Ran: red ('none', 'dossier'
+     and 'fake' each defaulted to data-local/evidence). */
+  it("only 'anthropic' defaults to data-local/evidence; every other researcher defaults to no cache", () => {
+    expect(evidenceCacheDirFor("anthropic", undefined)).toBe(path.resolve(ROOT_CACHE));
+    for (const name of ["stub", "none", "dossier", "fake", "local:spark"]) {
+      expect(evidenceCacheDirFor(name, undefined), name).toBeNull();
+    }
+  });
+
+  /* MUTATION THAT KILLS THIS: drop `if (cacheDir !== undefined) return
+     cacheDir;` so the provider default always wins. Ran: red. */
+  it("an explicit cacheDir is honoured for every researcher but 'none'", () => {
+    expect(evidenceCacheDirFor("fake", "/tmp/x")).toBe("/tmp/x");
+    expect(evidenceCacheDirFor("anthropic", null)).toBeNull();
+    expect(evidenceCacheDirFor("none", "/tmp/x")).toBeNull();
+  });
+
+  /* MUTATION THAT KILLS THIS: the pre-GV-61 default above. Ran: red (the
+     second gather was a cache hit; the finally removes the file it wrote). */
+  it("a non-anthropic researcher with no cacheDir never reads or writes data-local/evidence", async () => {
+    const claim = "a claim only GV-61's cache rule decides the fate of";
+    const seeded = path.join(ROOT_CACHE, `${claimHash(claim)}.json`);
+    expect(fs.existsSync(seeded)).toBe(false);
+    const retriever = new FakeRetriever([{ title: "A local passage", text: "Some locally held wording." }]);
+    try {
+      const g = createEvidenceGatherer({ researcher: retriever, catalogue: CATALOGUE, transcriptArchive: [] });
+      await g.gather({ claim, requiresEvidence: true }, ctx);
+      await g.gather({ claim, requiresEvidence: true }, ctx);
+      /* No cache: the second gather asked again, and nothing landed on disk. */
+      expect(retriever.calls.filter((c) => c.claim === claim)).toHaveLength(2);
+      expect(fs.existsSync(seeded)).toBe(false);
+    } finally {
+      /* Under a mutation that restores the old default the file WOULD land;
+         never leave it behind in the checkout's data-local/. */
+      fs.rmSync(seeded, { force: true });
+    }
+  });
+});
+
+/**
+ * GV-61 (W2-10 item 6): unmet demand for print text is marked on the pack,
+ * so `writeNarration` can count it into `veracity.printEvidenceSkipped`.
+ */
+describe("GV-61: printSkipped marks a content page whose pack holds no print doc", () => {
+  /* MUTATION THAT KILLS THIS: make withPrintSkipped a no-op (return the pack
+     untouched). Ran: red (printSkipped undefined for the 'none' content page). */
+  it("a content page under 'none' is marked; a connective page is not", async () => {
+    const g = gatherer(new NullExternalResearcher());
+    const content = await g.gather({ claim: "a claim the page has to carry", requiresEvidence: true }, ctx);
+    const connective = await g.gather({ claim: "a connective line" }, ctx);
+    expect(content.printSkipped).toBe(1);
+    expect(connective.printSkipped).toBeUndefined();
+  });
+
+  /* MUTATION THAT KILLS THIS: mark every requiresEvidence pack, print or
+     not. Ran: red. */
+  it("a content page whose retrieval found print is not marked", async () => {
+    const pack = await gatherer(new FakeRetriever([{ title: "A paper", text: "Real wording." }])).gather(
+      { claim: "a claim the page has to carry", requiresEvidence: true },
+      ctx
+    );
+    expect(pack.docs.some((d) => d.kind === "print")).toBe(true);
+    expect(pack.printSkipped).toBeUndefined();
+  });
+
+  /* MUTATION THAT KILLS THIS: mark the own-window early return too
+     (`return withPrintSkipped(pack, beat)`). Ran: red. */
+  it("a page whose own tape window is its evidence asked for no print, so it is not marked (F-69)", async () => {
+    const pack = await gatherer(new NullExternalResearcher()).gather({ claim: "the bakestone came first", tape, requiresEvidence: true }, ctx);
+    expect(pack.docs.map((d) => d.kind)).toEqual(["tape"]);
+    expect(pack.printSkipped).toBeUndefined();
   });
 });

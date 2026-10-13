@@ -146,6 +146,15 @@ export interface EvidencePack {
    * verdict: a memo (PrefetchingEvidenceGatherer) must not keep it, so the
    * next asker retries. Absent means retrieval answered (or was not asked). */
   retrievalFailed?: true;
+  /** GV-61 (W2-10 item 6): 1 when this beat's page CARRIES content
+   * (`requiresEvidence`) and the pack holds no print document: demand for
+   * outside text that went unmet, most often because the research route is
+   * 'none' (OQ-04). `writeNarration` sums it per page into
+   * `NarrationWriteStats.printSkipped`, reported as
+   * `veracity.printEvidenceSkipped`. Measured, never gated. Absent when the
+   * demand was met or there was none (a connective page, or a page whose own
+   * tape window is its evidence, F-69, and so never asks for print). */
+  printSkipped?: number;
 }
 
 export interface EvidenceBeat {
@@ -370,6 +379,34 @@ function firstNonEmpty(outcomes: Promise<RetrievalOutcome>[]): Promise<Retrieval
   });
 }
 
+/**
+ * GV-61 (decision 12, W3-16 item 5): the evidence cache a gatherer reads and
+ * writes. The cache holds web text, so only the web researcher may use it:
+ *
+ * - 'anthropic' keeps today's root, `data-local/evidence`, by default;
+ * - every other researcher defaults to NO cache. A stub's "passages" are
+ *   fixtures (nothing to save, nothing to save it from), and a local
+ *   researcher (the dossier route, GV-69) answers from bytes already on disk,
+ *   so neither reads `data-local/evidence`, and no Haiku web document left
+ *   there by an older run can replay into a local Foray;
+ * - 'none' never caches, even when a caller passes a directory: a route that
+ *   asks nothing outside must never be answered from the web's old answers.
+ *
+ * An explicit `cacheDir` (a test's temp dir, or `null`) is honoured for every
+ * researcher but 'none'.
+ */
+export function evidenceCacheDirFor(providerName: string, cacheDir: string | null | undefined): string | null {
+  if (providerName === "none") return null;
+  if (cacheDir !== undefined) return cacheDir;
+  return providerName === "anthropic" ? path.join(REPO_ROOT, "data-local", "evidence") : null;
+}
+
+/** GV-61: marks unmet demand on a content page's pack (`printSkipped`). */
+function withPrintSkipped(pack: EvidencePack, beat: EvidenceBeat): EvidencePack {
+  if (beat.requiresEvidence === true && !pack.docs.some((doc) => doc.kind === "print")) pack.printSkipped = 1;
+  return pack;
+}
+
 export class DefaultEvidenceGatherer implements EvidenceGatherer {
   private readonly researcher: ExternalResearcher;
   /** Public and readonly so a caller can PROVE it got the provider it
@@ -394,11 +431,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
     this.catalogue = options.catalogue ?? null;
     this.archive = options.transcriptArchive ?? null;
     this.now = options.now ?? (() => new Date());
-    /* A stub researcher's "passages" are fixtures, not retrievals: there
-       is nothing to save and nothing to save it FROM, so a dry-run never
-       writes to the cache (and a test run never writes to data-local/). */
-    const defaultDir = this.researcher.providerName === "stub" ? null : path.join(REPO_ROOT, "data-local", "evidence");
-    this.cacheDir = options.cacheDir === undefined ? defaultDir : options.cacheDir;
+    this.cacheDir = evidenceCacheDirFor(this.researcher.providerName, options.cacheDir);
   }
 
   async gather(beat: EvidenceBeat, ctx: ExternalResearchContext): Promise<EvidencePack> {
@@ -468,12 +501,14 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
      * When it does not — no cue body on this machine, so `tapeEvidenceFor`
      * returned a context and no document — the beat still needs text from
      * somewhere, and the retrieval below runs exactly as it did. */
+    /* GV-61: a page holding its own window asked for no print, so it is no
+       unmet demand (printSkipped stays absent). */
     if (ownWindowHeld) return pack;
 
     const print = await this.printEvidenceFor(beat.claim, ctx, beat.requiresEvidence === true);
     for (const doc of print.docs) pack.docs.push(doc);
     if (print.failed) pack.retrievalFailed = true;
-    return pack;
+    return withPrintSkipped(pack, beat);
   }
 
   private loadedCatalogue(): CatalogueData {
@@ -686,7 +721,9 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
 /** Same stub/real split every other collaborator uses: the researcher
  * behind it is `createExternalResearcher()`, which is the Stub whenever
  * ANTHROPIC_API_KEY is absent — so a dry-run still produces a
- * structurally real pack (documents with text, quotes that resolve). */
+ * structurally real pack (documents with text, quotes that resolve).
+ * `runPipeline` passes its OWN researcher (GV-61), so the one research route
+ * governs both §4.2's shape research and this stage's print evidence. */
 export function createEvidenceGatherer(options: EvidenceGathererOptions = {}): EvidenceGatherer {
   return new DefaultEvidenceGatherer(options);
 }

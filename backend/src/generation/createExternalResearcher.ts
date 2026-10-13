@@ -26,6 +26,13 @@ const BUILTINS = {
  * The external researcher the routing table picks (FORAY_STAGE_RESEARCH over
  * FORAY_GENERATION_MODE). With none of the routing variables set this is
  * today's choice exactly: Stub without ANTHROPIC_API_KEY, Anthropic with it.
+ *
+ * GV-61: the pipeline builds ONE researcher with this and hands it to both
+ * §4.2's shape research and the evidence gatherer, so a single route decides
+ * whether a run reaches outside at all. FORAY_STAGE_RESEARCH=dossier throws
+ * RoutingConfigError naming FORAY_STAGE_RESEARCH ("not built yet") until the
+ * dossier researcher (GV-69) registers its 'dossier' implementation here;
+ * the refusal lives in resolveRouting so a routing report fails the same way.
  */
 export function createExternalResearcher(source: NodeJS.ProcessEnv = process.env): ExternalResearcher {
   ensureStageImplementations("research", BUILTINS);

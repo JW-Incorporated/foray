@@ -17,6 +17,15 @@ export interface ExternalResearchResult {
 export interface ExternalResearchContext {
   userId: string;
   sessionId?: string;
+  /**
+   * GV-61 (W3-16 item 4): the resolved Foray topic's taxonomy lineage
+   * (`taxonomyLineage`: the node, its ancestors and its descendants), set by
+   * `runPipeline` once the topic decision resolves. A researcher that holds
+   * per-node material (the dossier researcher, GV-69) scopes its lookups by
+   * it. Absent while the topic is unresolved, and for any caller that never
+   * decides a topic: absent means "unscoped", never "matches nothing".
+   */
+  topicNodeIds?: string[];
 }
 
 /**
