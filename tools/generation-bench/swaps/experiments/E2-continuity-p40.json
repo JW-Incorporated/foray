@@ -1,0 +1,11 @@
+{
+  "id": "E2-continuity-p40",
+  "kind": "stage",
+  "stage": "continuity",
+  "armA": "adopted",
+  "armB": { "env": { "FORAY_STAGE_CONTINUITY": "local:second" } },
+  "rerunFrom": "stitch",
+  "golden": "tools/generation-bench/golden/golden-v1.json",
+  "expect": { "stageAssignments": { "continuity": { "impl": "local", "machine": "second" } } },
+  "notes": "Continuity moved to the second box (P40, Qwen3.6-35B-A3B). Continuity first feeds the stitch checkpoint, so arm B reruns from stitch."
+}
