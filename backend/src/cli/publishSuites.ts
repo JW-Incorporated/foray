@@ -112,7 +112,14 @@ export const REAL_DATA_SUITES: readonly string[] = [
      passage from the REAL `data/forays.json` (the page reads live narration
      at render time), so a publish that changes a narration shape the picker
      mishandles is refused here rather than found on the founder's PC. */
-  "tools/narration/render-audition.test.mjs"
+  "tools/narration/render-audition.test.mjs",
+  /* Added 2026-10-13 with the suite itself (GV-45, golden set v1). It reads
+     the REAL `data/forays.json` to check that every golden reference names a
+     Foray that exists, so it is a genuine reader and listed rather than
+     rewritten to avoid the read. A publish ADDS a Foray, so it cannot turn
+     this red; it is here because G-21c's rule is "every real-data suite
+     runs". Offline and cheap (fifteen tests over two JSON files). */
+  "tools/generation-bench/golden/golden.test.mjs"
 ];
 
 /**
