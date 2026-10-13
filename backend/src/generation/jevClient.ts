@@ -1,5 +1,8 @@
-import { env } from "../config/env";
+import { env, readString } from "../config/env";
+import { resolveRouting, type RoutingTable, type StageRoute } from "../config/stageRouting";
 import type { BudgetGuard } from "../cost/budgetGuard";
+import type { ChatProvider } from "./chat/ChatProvider";
+import { chatProviderFor } from "./chat/providerRegistry";
 import {
   JEV_CHOICE_MAX_OPTIONS,
   JEV_CHOICE_MIN_OPTIONS,
@@ -15,8 +18,10 @@ import {
   type JevQuestion,
   type JevResult,
   type JevState,
-  type JevUsage
+  type JevUsage,
+  type JudgeId
 } from "./jevTypes";
+import { QwenJudgeClient, type QwenJudgeClientOptions } from "./qwenJudgeClient";
 import { currentRunLog, recordModelCall } from "./runLog";
 
 /**
@@ -54,7 +59,26 @@ import { currentRunLog, recordModelCall } from "./runLog";
  *
  * meteredJevClient meters every ask through BudgetGuard (the one place Jev
  * spend is checked); createJevPool bounds fan-out. Per-Foray Jev-call caps
- * are GV-90's; the Qwen-judge fallback is GV-47's.
+ * are GV-90's.
+ *
+ * GV-47 (OQ-05, decision 7): the judge is ROUTED. createJevClient reads the
+ * routing table's 'judge' stage (FORAY_STAGE_JUDGE=jev|jev:<lane>|local:<lane>|none,
+ * config/stageRouting.ts) and returns:
+ *   - none            NullJevClient: fail-closed, every consumer reads
+ *                     {ok:false} as 'not passed';
+ *   - local:<lane>    the Qwen judge (qwenJudgeClient.ts) on that lane;
+ *   - jev             HttpJevClient (NullJevClient without a key);
+ *   - jev:<lane>      FallbackJudgeClient(Jev, the Qwen judge on <lane>) with
+ *                     a circuit breaker; the Qwen judge alone when there is
+ *                     no Jev key.
+ * Local mode's default is jev with a local:second fallback; outside local
+ * mode it is jev when a Jev key exists, else none. There is no
+ * FORAY_JUDGE_FALLBACK variable (decision 4). Every answer is tagged with
+ * the judge that gave it, so thresholds are read per judge (gateConfig.ts).
+ *
+ * qwenJudgeClient.ts imports this file's validator and pool, and
+ * createJevClient builds a QwenJudgeClient: the two modules import each
+ * other, which is safe because neither uses the other at load time.
  *
  * PRIVACY / RETENTION (RQ-04). Jev is hosted off-network: every ask sends its
  * `state` and question text to TypeSafe (LM-25). OQ-05's adopted default
@@ -446,13 +470,158 @@ function errorKind(error: JevError): { kind: string; status?: number } {
   return { kind: error.category, ...(error.httpStatus !== undefined ? { status: error.httpStatus } : {}) };
 }
 
+/* ---------------------------------------------------------------------------
+   GV-47: the fallback judge and its circuit breaker.
+   --------------------------------------------------------------------------- */
+
+export const DEFAULT_BREAKER_FAILURES_TO_OPEN = 3;
+export const DEFAULT_BREAKER_COOL_OFF_MS = 60_000;
+
+export interface CircuitBreakerOptions {
+  /** Consecutive primary outages (timeout, http, network) that open it. */
+  failuresToOpen?: number;
+  /** How long an open breaker sends every ask straight to the fallback. */
+  coolOffMs?: number;
+  /** Epoch-milliseconds clock (a fake one in tests). */
+  now?: () => number;
+}
+
+export type BreakerState = "closed" | "open" | "half-open";
+
 /**
- * The client generation uses: HttpJevClient when a key is present (the
- * option, else env: JEV_API_KEY, else JEV_KEY_FILE), else NullJevClient.
- * Base URL, model and budget default to FORAY_JEV_BASE_URL, FORAY_JEV_MODEL
- * and FORAY_JEV_BUDGET_MS, then to this file's constants.
+ * W2-12's breaker. Closed: the primary is asked. After `failuresToOpen`
+ * consecutive outages it opens for `coolOffMs`, and the primary is not asked
+ * at all. When the cool-off ends it is half-open: the next ask tries the
+ * primary again; a success closes it, an outage re-opens it for another
+ * cool-off. A malformed reply is not an outage (the primary answered), so it
+ * neither opens nor closes the breaker.
  */
-export function createJevClient(opts: Partial<HttpJevClientOptions> = {}): JevClient {
+export class CircuitBreaker {
+  readonly failuresToOpen: number;
+  readonly coolOffMs: number;
+  private readonly now: () => number;
+  private failures = 0;
+  private openUntil: number | null = null;
+
+  constructor(opts: CircuitBreakerOptions = {}) {
+    this.failuresToOpen = opts.failuresToOpen ?? DEFAULT_BREAKER_FAILURES_TO_OPEN;
+    this.coolOffMs = opts.coolOffMs ?? DEFAULT_BREAKER_COOL_OFF_MS;
+    if (!(Number.isInteger(this.failuresToOpen) && this.failuresToOpen > 0)) throw new Error("CircuitBreaker: failuresToOpen must be a positive integer");
+    if (!(Number.isFinite(this.coolOffMs) && this.coolOffMs >= 0)) throw new Error("CircuitBreaker: coolOffMs must be a non-negative number");
+    this.now = opts.now ?? Date.now;
+  }
+
+  get state(): BreakerState {
+    if (this.openUntil === null) return "closed";
+    return this.now() < this.openUntil ? "open" : "half-open";
+  }
+
+  /** False while open: the primary must not be asked. */
+  allowsPrimary(): boolean {
+    return this.state !== "open";
+  }
+
+  recordSuccess(): void {
+    this.failures = 0;
+    this.openUntil = null;
+  }
+
+  recordOutage(): void {
+    this.failures += 1;
+    if (this.failures >= this.failuresToOpen) this.openUntil = this.now() + this.coolOffMs;
+  }
+}
+
+/** The primary failures that send an ask to the fallback (W5-19): the judge
+ * could not be reached or did not answer in time. A malformed reply, a
+ * missing key and a caller's own cancel never fall back. */
+export function isJudgeOutage(result: JevResult): boolean {
+  if (result.ok) return false;
+  const { category, reason } = result.error;
+  if (category === "timeout") return reason !== "aborted";
+  return category === "http" || category === "network";
+}
+
+export interface JudgeFallbackInfo {
+  purpose: string;
+  /** 'breaker_open' when the primary was skipped, else the primary's error reason. */
+  reason: string;
+  breaker: BreakerState;
+}
+
+export interface FallbackJudgeClientOptions {
+  /** Called once per ask the fallback answers. */
+  onFallback?: (info: JudgeFallbackInfo) => void;
+  breaker?: CircuitBreakerOptions;
+  /** The tag the fallback's results carry when it sets none (default 'qwen'). */
+  fallbackJudge?: JudgeId;
+}
+
+/**
+ * Asks `primary` (Jev) and, on an outage only, `fallback` (the Qwen judge),
+ * behind a CircuitBreaker. Every result is tagged with the judge that
+ * produced it: 'jev' for the primary's answers and for failures that do not
+ * fall back, the fallback's tag otherwise.
+ */
+export class FallbackJudgeClient implements JevClient {
+  readonly breaker: CircuitBreaker;
+  private readonly fallbackJudge: JudgeId;
+
+  constructor(
+    readonly primary: JevClient,
+    readonly fallback: JevClient,
+    private readonly opts: FallbackJudgeClientOptions = {}
+  ) {
+    this.breaker = new CircuitBreaker(opts.breaker);
+    this.fallbackJudge = opts.fallbackJudge ?? "qwen";
+  }
+
+  /** The judge the next ask goes to first. */
+  nextJudge(): JudgeId {
+    return this.breaker.allowsPrimary() ? "jev" : this.fallbackJudge;
+  }
+
+  async ask(state: JevState, questions: readonly JevQuestion[], opts: JevAskOptions): Promise<JevResult> {
+    if (!this.breaker.allowsPrimary()) return this.askFallback(state, questions, opts, "breaker_open");
+    const result = await this.primary.ask(state, questions, opts);
+    if (result.ok) {
+      this.breaker.recordSuccess();
+      return { ...result, judge: "jev" };
+    }
+    if (!isJudgeOutage(result) || opts.signal?.aborted) return { ...result, judge: "jev" };
+    this.breaker.recordOutage();
+    return this.askFallback(state, questions, opts, result.error.reason);
+  }
+
+  private async askFallback(state: JevState, questions: readonly JevQuestion[], opts: JevAskOptions, reason: string): Promise<JevResult> {
+    this.opts.onFallback?.({ purpose: opts.purpose, reason, breaker: this.breaker.state });
+    const result = await this.fallback.ask(state, questions, opts);
+    return { ...result, judge: result.judge ?? this.fallbackJudge };
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The routed client.
+   --------------------------------------------------------------------------- */
+
+export interface CreateJevClientOptions extends Partial<HttpJevClientOptions> {
+  /** A resolved routing table; when given, `source` is not read for routing. */
+  routing?: RoutingTable;
+  /** Where the routing variables and the LiteLLM key come from (process.env by default). */
+  source?: NodeJS.ProcessEnv;
+  /** The Qwen judge's ChatProvider (default: the process's, chatProviderFor). */
+  chatProvider?: ChatProvider;
+  /** Options for the Qwen judge (timeout, max tokens, clock). */
+  qwen?: Pick<QwenJudgeClientOptions, "budgetMs" | "maxTokens" | "now">;
+  breaker?: CircuitBreakerOptions;
+  onFallback?: (info: JudgeFallbackInfo) => void;
+}
+
+/** HttpJevClient when a key is present (the option, else env: JEV_API_KEY,
+ * else JEV_KEY_FILE), else NullJevClient. Base URL, model and budget default
+ * to FORAY_JEV_BASE_URL, FORAY_JEV_MODEL and FORAY_JEV_BUDGET_MS, then to
+ * this file's constants. */
+function createHttpOrNull(opts: Partial<HttpJevClientOptions>): JevClient {
   const apiKey = opts.apiKey ?? env.jevApiKey;
   if (!nonEmpty(apiKey)) return new NullJevClient();
   return new HttpJevClient({
@@ -461,6 +630,60 @@ export function createJevClient(opts: Partial<HttpJevClientOptions> = {}): JevCl
     baseUrl: opts.baseUrl ?? env.jevBaseUrl ?? JEV_DEFAULT_BASE_URL,
     model: opts.model ?? env.jevModel ?? JEV_PINNED_MODEL,
     budgetMs: opts.budgetMs ?? env.jevBudgetMs
+  });
+}
+
+/**
+ * Jev itself, ignoring the routing table: HttpJevClient when a key is present
+ * (the option, else JEV_API_KEY, else JEV_KEY_FILE), else NullJevClient. For
+ * jevSmoke.ts (the Jev card's live step), which must reach Jev on any machine
+ * whatever FORAY_GENERATION_MODE, FORAY_LLM_BASE_URL or FORAY_STAGE_JUDGE say;
+ * generation uses createJevClient.
+ */
+export function createDirectJevClient(opts: Partial<HttpJevClientOptions> = {}): JevClient {
+  return createHttpOrNull(opts);
+}
+
+/** The Qwen judge on `lane`, with that lane's structured-output mode,
+ * logprobs flag and concurrency. */
+function createQwenJudge(routing: RoutingTable, lane: NonNullable<StageRoute["lane"]>, model: string, opts: CreateJevClientOptions): QwenJudgeClient {
+  const profile = routing.profiles[lane];
+  return new QwenJudgeClient({
+    provider: opts.chatProvider ?? chatProviderFor(routing, opts.source ?? process.env),
+    model,
+    lane,
+    structuredOutput: profile.structuredOutput,
+    logprobs: profile.logprobs,
+    maxConcurrent: profile.maxConcurrent,
+    ...opts.qwen
+  });
+}
+
+/**
+ * The judge generation uses, chosen by the routing table's 'judge' route
+ * (see the module comment). Throws RoutingConfigError (naming the variable,
+ * never its value) for a malformed FORAY_STAGE_JUDGE or a local route
+ * without FORAY_LLM_BASE_URL. An `apiKey` option counts as a Jev key when
+ * the route is resolved here.
+ */
+export function createJevClient(opts: CreateJevClientOptions = {}): JevClient {
+  const { routing: given, source = process.env, chatProvider: _provider, qwen: _qwen, breaker: _breaker, onFallback: _onFallback, ...httpOpts } = opts;
+  void [_provider, _qwen, _breaker, _onFallback];
+  const keyed = nonEmpty(opts.apiKey) && readString("JEV_API_KEY", source) === undefined ? { ...source, JEV_API_KEY: opts.apiKey } : source;
+  const routing = given ?? resolveRouting(keyed);
+  const route = routing.routes.judge;
+  /* Fail-closed: no route, or 'none', is a judge that never passes anything. */
+  if (route === undefined || route.provider === "none") return new NullJevClient();
+  if (route.provider === "local" && route.lane !== undefined) return createQwenJudge(routing, route.lane, route.model, opts);
+  if (route.provider !== "jev") return new NullJevClient();
+  const jev = createHttpOrNull(httpOpts);
+  if (route.fallback === undefined) return jev;
+  const qwen = createQwenJudge(routing, route.fallback.lane, route.fallback.model, opts);
+  /* No Jev key: Jev can never answer, so the Qwen judge answers alone. */
+  if (jev instanceof NullJevClient) return qwen;
+  return new FallbackJudgeClient(jev, qwen, {
+    ...(opts.breaker ? { breaker: opts.breaker } : {}),
+    ...(opts.onFallback ? { onFallback: opts.onFallback } : {})
   });
 }
 
@@ -490,7 +713,8 @@ export interface MeteredJevClientOptions {
   sessionId?: string;
   /** The model named on the cost event (defaults to FORAY_JEV_MODEL, then the pinned model). */
   model?: string;
-  /** Called after every ask that ran (R1-14 per-call records, R1-19 Jev-call caps). */
+  /** Called after every ask that ran (R1-14 per-call records, R1-19 Jev-call
+   * caps), tagged with the judge that answered (GV-47). */
   onCall?: (info: JevCallInfo) => void;
 }
 
@@ -504,16 +728,25 @@ export interface MeteredJevClientOptions {
  */
 export function meteredJevClient(client: JevClient, opts: MeteredJevClientOptions): JevClient {
   const model = opts.model ?? env.jevModel ?? JEV_PINNED_MODEL;
+  /* GV-47: an ask is charged to the judge it goes to first. The Qwen judge
+     (routed alone, or behind an open breaker) runs on a local lane: one $0
+     event on that lane, never a Jev charge. */
+  const localJudge = (): QwenJudgeClient | null => {
+    if (client instanceof QwenJudgeClient) return client;
+    if (client instanceof FallbackJudgeClient && client.nextJudge() !== "jev" && client.fallback instanceof QwenJudgeClient) return client.fallback;
+    return null;
+  };
   return {
     async ask(state, questions, askOpts) {
       if (!(client instanceof NullJevClient)) {
+        const local = localJudge();
         await opts.guard.checkAndRecord({
           userId: opts.userId,
-          provider: "jev",
-          model,
+          provider: local ? local.providerName : "jev",
+          model: local ? local.model : model,
           operation: askOpts.purpose,
           tokensInput: Math.ceil(jevInputChars(state, questions) / 4),
-          estimatedUsd: estimateJevUsd(state, questions),
+          estimatedUsd: local ? 0 : estimateJevUsd(state, questions),
           ...(opts.sessionId !== undefined ? { sessionId: opts.sessionId } : {})
         });
       }
@@ -525,7 +758,7 @@ export function meteredJevClient(client: JevClient, opts: MeteredJevClientOption
         latencyMs: result.latencyMs,
         usage: result.ok ? result.usage : null,
         requestId: result.ok ? result.requestId : null,
-        judge: "jev"
+        judge: result.judge ?? "jev"
       });
       return result;
     }

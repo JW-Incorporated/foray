@@ -3333,6 +3333,25 @@ const BACKEND_FLOORS = {
      pool, FakeJevClient, the endpoint guard and the Jev env variables.
      Offline: fakeFetch over synthetic fixtures. One named mutation per test. */
   "test/jevClient.test.ts": 34,
+  /* GV-47 (docs/roadmap/generation-v2.md, #1286; OQ-05): the Qwen judge
+     behind the JevClient interface -- each question type round-trips into a
+     JevResult, the per-question-set json_schema, thinking off, the
+     json_object/none lanes, a wire-level replay, every malformed reply is
+     {ok:false, malformed}, renormalised self-reports, logprob-derived
+     probabilities (calibrated) and the ambiguous-token fallback, transport
+     categories, the own timeout, a caller's cancel and the lane concurrency.
+     Offline: a scripted ChatProvider over synthetic OpenAI-format bodies.
+     Counted statically (it.each rows are not counted). One named mutation
+     per test. */
+  "test/qwenJudgeClient.test.ts": 14,
+  /* GV-47: the judge fallback -- falls back on timeout, 503 and network
+     only, tags every answer jev|qwen, the circuit breaker on a fake clock
+     (3 outages open it for coolOffMs, half-open probe, success closes),
+     the judge route (jev when a key exists outside local mode, jev with a
+     local:second fallback in local mode, local:<lane>, none), the
+     fail-closed contract, per-judge thresholds and the metered judge tag;
+     jevSmoke asks Jev itself whatever the route (review fix). */
+  "test/judgeFallback.test.ts": 16,
   /* GV-25 (docs/roadmap/generation-v2.md, #1286): the Chat twins of the
      planning builders (understander, spine, deepen, continuity) and
      targetFor — parity with each Anthropic twin for the same reply, the

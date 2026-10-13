@@ -1,0 +1,427 @@
+{
+  "_comment": "GV-47: SYNTHETIC OpenAI-format chat.completion bodies, as LiteLLM would return them for the Qwen judge (qwenJudgeClient.ts). Hand-made from the schema; no prompt, transcript or listener text, and not a recording: the card's live step (calibrateJudges --judge qwen with the Foray LiteLLM key) replaces or adds sanitized recorded bodies. The logprob bodies' tokens concatenate exactly to their content.",
+  "state": {
+    "sentence": "The lighthouse was automated in 1990.",
+    "sources": {
+      "o1": "A synthetic passage about keepers.",
+      "o2": "A synthetic passage saying the light was automated in 1990."
+    }
+  },
+  "questions": [
+    {
+      "id": "supported",
+      "type": "noul",
+      "instructions": "Does a source back the sentence?",
+      "criteria": {
+        "true": "A source states what the sentence claims.",
+        "false": "No source states what the sentence claims."
+      }
+    },
+    {
+      "id": "best_passage",
+      "type": "choice",
+      "instructions": "Which source makes the sentence's claim?",
+      "criteria": {
+        "o1": {
+          "what": "source o1"
+        },
+        "o2": {
+          "what": "source o2"
+        },
+        "none": {
+          "what": "no source makes this claim"
+        }
+      }
+    },
+    {
+      "id": "clarity",
+      "type": "score",
+      "instructions": "How clearly does the sentence read aloud?",
+      "criteria": [
+        "unreadable",
+        "hard to follow",
+        "acceptable",
+        "clear",
+        "very clear"
+      ]
+    }
+  ],
+  "ambiguousQuestion": {
+    "id": "rests_on",
+    "type": "choice",
+    "instructions": "Which source does the sentence rest on?",
+    "criteria": {
+      "s1": {
+        "what": "source s1"
+      },
+      "s2": {
+        "what": "source s2"
+      },
+      "none": {
+        "what": "no source"
+      }
+    }
+  },
+  "replies": {
+    "all": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"noul\":0.8},\"best_passage\":{\"choice\":\"o2\",\"probabilities\":{\"o1\":0.1,\"o2\":0.85,\"none\":0.05}},\"clarity\":{\"score\":3,\"probabilities\":{\"0\":0,\"1\":0,\"2\":0.1,\"3\":0.7,\"4\":0.2}}}}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "selfReportedUnnormalised": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"noul\":0.8},\"best_passage\":{\"choice\":\"o2\",\"probabilities\":{\"o1\":0.5,\"o2\":1.0,\"none\":0.5}},\"clarity\":{\"score\":3,\"probabilities\":{\"0\":0,\"1\":0,\"2\":0.1,\"3\":0.7,\"4\":0.2}}}}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "malformedJson": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "Sure! Here is my verdict: {answers"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "choiceNotInCriteria": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"noul\":0.8},\"best_passage\":{\"choice\":\"o3\",\"probabilities\":{\"o1\":0.1,\"o2\":0.85,\"none\":0.05}},\"clarity\":{\"score\":3,\"probabilities\":{\"0\":0,\"1\":0,\"2\":0.1,\"3\":0.7,\"4\":0.2}}}}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "missingAnswer": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"noul\":0.8},\"best_passage\":{\"choice\":\"o2\",\"probabilities\":{\"o1\":0.1,\"o2\":0.85,\"none\":0.05}}}}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "noulOutOfRange": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"noul\":1.4},\"best_passage\":{\"choice\":\"o2\",\"probabilities\":{\"o1\":0.1,\"o2\":0.85,\"none\":0.05}},\"clarity\":{\"score\":3,\"probabilities\":{\"0\":0,\"1\":0,\"2\":0.1,\"3\":0.7,\"4\":0.2}}}}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "probabilitiesMismatch": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"noul\":0.8},\"best_passage\":{\"choice\":\"o2\",\"probabilities\":{\"o1\":0.1,\"o2\":0.85,\"none\":0.05}},\"clarity\":{\"score\":3,\"probabilities\":{\"0\":0.2,\"3\":0.8}}}}"
+          },
+          "finish_reason": "stop"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "truncated": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"noul\":0.8},\"best_passage\":{\"choice"
+          },
+          "finish_reason": "length"
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "logprobs": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"supported\":{\"holds\":true},\"best_passage\":{\"choice\":\"o2\",\"probabilities\":{\"o1\":0.05,\"o2\":0.9,\"none\":0.05}},\"clarity\":{\"score\":3,\"probabilities\":{\"0\":0,\"1\":0,\"2\":0,\"3\":1,\"4\":0}}}}"
+          },
+          "finish_reason": "stop",
+          "logprobs": {
+            "content": [
+              {
+                "token": "{\"answers\":{\"supported\":{\"holds\":",
+                "logprob": 0.0,
+                "top_logprobs": [
+                  {
+                    "token": "{\"answers\":{\"supported\":{\"holds\":",
+                    "logprob": 0.0
+                  }
+                ]
+              },
+              {
+                "token": "true",
+                "logprob": -0.10536051565782628,
+                "top_logprobs": [
+                  {
+                    "token": "true",
+                    "logprob": -0.10536051565782628
+                  },
+                  {
+                    "token": "false",
+                    "logprob": -2.3025850929940455
+                  }
+                ]
+              },
+              {
+                "token": "},\"best_passage\":{\"choice\":\"",
+                "logprob": 0.0,
+                "top_logprobs": [
+                  {
+                    "token": "},\"best_passage\":{\"choice\":\"",
+                    "logprob": 0.0
+                  }
+                ]
+              },
+              {
+                "token": "o2",
+                "logprob": -0.35667494393873245,
+                "top_logprobs": [
+                  {
+                    "token": "o2",
+                    "logprob": -0.35667494393873245
+                  },
+                  {
+                    "token": "o1",
+                    "logprob": -1.6094379124341003
+                  },
+                  {
+                    "token": "none",
+                    "logprob": -2.3025850929940455
+                  }
+                ]
+              },
+              {
+                "token": "\",\"probabilities\":{\"o1\":0.05,\"o2\":0.9,\"none\":0.05}},\"clarity\":{\"score\":",
+                "logprob": 0.0,
+                "top_logprobs": [
+                  {
+                    "token": "\",\"probabilities\":{\"o1\":0.05,\"o2\":0.9,\"none\":0.05}},\"clarity\":{\"score\":",
+                    "logprob": 0.0
+                  }
+                ]
+              },
+              {
+                "token": "3",
+                "logprob": -0.616186139423817,
+                "top_logprobs": [
+                  {
+                    "token": "3",
+                    "logprob": -0.616186139423817
+                  },
+                  {
+                    "token": "4",
+                    "logprob": -1.3093333199837622
+                  },
+                  {
+                    "token": "x",
+                    "logprob": -2.3025850929940455
+                  },
+                  {
+                    "token": "2",
+                    "logprob": -2.4079456086518722
+                  }
+                ]
+              },
+              {
+                "token": ",\"probabilities\":{\"0\":0,\"1\":0,\"2\":0,\"3\":1,\"4\":0}}}}",
+                "logprob": 0.0,
+                "top_logprobs": [
+                  {
+                    "token": ",\"probabilities\":{\"0\":0,\"1\":0,\"2\":0,\"3\":1,\"4\":0}}}}",
+                    "logprob": 0.0
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    },
+    "ambiguousLogprobs": {
+      "id": "chatcmpl-synthetic",
+      "object": "chat.completion",
+      "created": 1760000000,
+      "model": "qwen3.6-35b-a3b",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "{\"answers\":{\"rests_on\":{\"choice\":\"s2\",\"probabilities\":{\"s1\":0.2,\"s2\":0.6,\"none\":0.2}}}}"
+          },
+          "finish_reason": "stop",
+          "logprobs": {
+            "content": [
+              {
+                "token": "{\"answers\":{\"rests_on\":{\"choice\":\"",
+                "logprob": 0.0,
+                "top_logprobs": [
+                  {
+                    "token": "{\"answers\":{\"rests_on\":{\"choice\":\"",
+                    "logprob": 0.0
+                  }
+                ]
+              },
+              {
+                "token": "s",
+                "logprob": -0.2231435513142097,
+                "top_logprobs": [
+                  {
+                    "token": "s",
+                    "logprob": -0.2231435513142097
+                  },
+                  {
+                    "token": "none",
+                    "logprob": -1.6094379124341003
+                  }
+                ]
+              },
+              {
+                "token": "2",
+                "logprob": -0.5108256237659907,
+                "top_logprobs": [
+                  {
+                    "token": "2",
+                    "logprob": -0.5108256237659907
+                  },
+                  {
+                    "token": "1",
+                    "logprob": -0.916290731874155
+                  }
+                ]
+              },
+              {
+                "token": "\",\"probabilities\":{\"s1\":0.2,\"s2\":0.6,\"none\":0.2}}}}",
+                "logprob": 0.0,
+                "top_logprobs": [
+                  {
+                    "token": "\",\"probabilities\":{\"s1\":0.2,\"s2\":0.6,\"none\":0.2}}}}",
+                    "logprob": 0.0
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "usage": {
+        "prompt_tokens": 412,
+        "completion_tokens": 37,
+        "total_tokens": 449
+      }
+    }
+  }
+}

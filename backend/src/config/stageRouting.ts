@@ -60,7 +60,10 @@ export type StageId = (typeof GENERATION_STAGES)[number];
 /** Implementation ids a route may name. stub, anthropic (legacy) and local
  * are the factories' built-ins (GV-37); none and dossier are research routes
  * (GV-61, GV-69); jev serves clarity, the verifier and the judge (GV-49,
- * GV-51, GV-47). */
+ * GV-51, GV-47). On the judge stage (GV-47), local:<lane> is the Qwen judge
+ * (generation/qwenJudgeClient.ts), jev:<lane> is Jev with the Qwen judge on
+ * <lane> as its fallback, and none is fail-closed (createJevClient returns
+ * NullJevClient). */
 export const STAGE_PROVIDERS = ["stub", "anthropic", "local", "none", "jev", "dossier"] as const;
 
 export type StageProvider = (typeof STAGE_PROVIDERS)[number];
@@ -75,6 +78,9 @@ export const LLM_API_KEY_ENV = "FORAY_LLM_API_KEY";
 export const LLM_API_KEY_FILE_ENV = "FORAY_LLM_API_KEY_FILE";
 export const ALLOW_PROSE_ON_SECOND_ENV = "FORAY_ALLOW_PROSE_ON_SECOND";
 const ANTHROPIC_API_KEY_ENV = "ANTHROPIC_API_KEY";
+/** GV-47: where a Jev key can come from (config/env.ts readJevApiKey). Only
+ * their presence is read here, never a key. */
+export const JEV_KEY_ENVS = ["JEV_API_KEY", "JEV_KEY_FILE"] as const;
 
 export interface StageRoute {
   provider: StageProvider;
@@ -178,7 +184,8 @@ interface RouteSpec {
 }
 
 /** Local-mode defaults. research 'none' (OQ-04: no web research on the timed
- * path); judge jev with a local:second fallback (OQ-05). */
+ * path); judge jev with a local:second fallback (OQ-05, GV-47: the Qwen judge
+ * on the second box answers when Jev cannot). */
 const LOCAL_MODE_DEFAULTS: Readonly<Partial<Record<StageId, RouteSpec>>> = Object.freeze({
   "understand.clarity": { provider: "local", lane: "spark" },
   "understand.intent": { provider: "local", lane: "spark" },
@@ -192,11 +199,18 @@ const LOCAL_MODE_DEFAULTS: Readonly<Partial<Record<StageId, RouteSpec>>> = Objec
   judge: { provider: "jev", lane: "second" }
 });
 
-function defaultSpec(stage: StageId, mode: GenerationMode): RouteSpec | undefined {
+/** True when JEV_API_KEY or JEV_KEY_FILE is set in `source` (presence only). */
+export function jevKeyConfigured(source: NodeJS.ProcessEnv): boolean {
+  return JEV_KEY_ENVS.some((name) => readString(name, source) !== undefined);
+}
+
+function defaultSpec(stage: StageId, mode: GenerationMode, source: NodeJS.ProcessEnv): RouteSpec | undefined {
   if (stage === "spine-alt") return undefined;
-  /* No judge runs today, so outside local mode the judge route is 'none'
-     (GV-47 decides its non-local default once the Jev client exists). */
-  if (stage === "judge" && mode !== "local") return { provider: "none" };
+  /* GV-47: outside local mode the judge is Jev when a Jev key exists, with no
+     fallback, else 'none' (fail-closed: an unjudged gate never passes).
+     Nothing on the default pipeline asks the judge yet, so this changes no
+     run. */
+  if (stage === "judge" && mode !== "local") return jevKeyConfigured(source) ? { provider: "jev" } : { provider: "none" };
   if (mode === "stub") return { provider: "stub" };
   if (mode === "anthropic-legacy") return { provider: "anthropic" };
   return LOCAL_MODE_DEFAULTS[stage];
@@ -317,7 +331,7 @@ export function resolveRouting(source: NodeJS.ProcessEnv = process.env, options:
       spec = parseSpec(stage, raw);
       overridden.push(stage);
     } else {
-      spec = defaultSpec(stage, mode);
+      spec = defaultSpec(stage, mode, source);
     }
     if (spec === undefined) continue;
     routes[stage] = buildRoute(stage, spec, source, profiles);
