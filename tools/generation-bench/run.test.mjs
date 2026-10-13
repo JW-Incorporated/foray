@@ -1472,6 +1472,12 @@ test("GV-55: stackOf names the common impl@machine first, then every stage that 
   const all = (impl) => Object.fromEntries(Object.keys(LOCAL_ASSIGNMENTS).map((stage) => [stage, { impl, model: impl }]));
   assert.equal(stackOf(all("stub")), "stub");
   assert.equal(stackOf({ ...all("anthropic"), judge: { impl: "none", model: "none" } }), "anthropic judge=none");
+  /* A tie keeps the first stage's tag first. MUTATION: `n >= counts.get(top)`
+     in stackOf (the last tied tag wins). Ran it: red. */
+  assert.equal(
+    stackOf({ spine: { impl: "local", model: "a", machine: "spark" }, deepen: { impl: "stub", model: "stub" } }),
+    "local@spark deepen=stub"
+  );
   /* Rule 1: nothing recorded is absent, never a guessed stack. */
   assert.equal(stackOf(undefined), null);
   assert.equal(stackOf({}), null);
