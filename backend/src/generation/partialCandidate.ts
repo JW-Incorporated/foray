@@ -5,8 +5,10 @@ import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult, type 
 import {
   buildProjectedItems,
   countTapeSegments,
+  deferredVerdict,
   mergeProjectedVerdict,
   partialOnlyScope,
+  planIsIncomplete,
   type PartialProjectionPlan,
   type PartialRuleScope
 } from "./partialProjection";
@@ -184,6 +186,9 @@ export interface PartialCandidateMeta {
    * the one-act slice. Run-level, like `segments`: known before any page is
    * written. Optional, so a caller without it (and every test written before
    * F-79) gets exactly today's behaviour — every rule on the partial.
+   *
+   * GV-46: a plan whose `totalActs` exceeds its sourced acts (later acts still
+   * being sourced) gives the `deferred` basis — see `partialProjection.ts`.
    */
   projection?: PartialProjectionPlan;
   /** GV-21: the readiness policy. Default `DEFAULT_READINESS_POLICY`
@@ -236,7 +241,18 @@ export async function buildPartialCandidate(info: PartialActInfo, meta: PartialC
      project, and every rule's verdict already came from it. */
   let validation: FinalizeForayValidation = result.validation;
   let ruleScope: PartialRuleScope;
-  if (meta.projection && status === "partial") {
+  if (meta.projection && status === "partial" && planIsIncomplete(meta.projection)) {
+    /* GV-46 — some later act has no sourced plan yet, so no record that
+       exists has the whole Foray's denominator: the share rules are deferred
+       to the whole-Foray finalize (their lines here become warnings), every
+       monotone rule stays strict, and no projection is finalized. NOT
+       `partialOnlyScope`, which would refuse on run 5's false M4 FAIL. */
+    const built = buildProjectedItems(info.items, info.actIndex, meta.projection);
+    const projectedRuntimeSec = Math.round((info.runtimeSec + built.addedRuntimeSec) * 1000) / 1000;
+    const deferred = deferredVerdict(result.validation, built, countTapeSegments(info.items), projectedRuntimeSec);
+    validation = deferred.validation;
+    ruleScope = deferred.scope;
+  } else if (meta.projection && status === "partial") {
     const built = buildProjectedItems(info.items, info.actIndex, meta.projection);
     const projectedRuntimeSec = Math.round((info.runtimeSec + built.addedRuntimeSec) * 1000) / 1000;
     const projected = await finalize(

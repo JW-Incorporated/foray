@@ -549,13 +549,40 @@ export function showsHeardBeforeEachAct(acts: ReadonlyArray<SourcedAct>, showOf:
   const heard: string[] = [];
   for (const act of acts) {
     before.push([...heard]);
-    for (const plan of planActSeams(act)) {
-      if (!plan.introduces) continue;
-      const show = showOf(plan.introduces.tape).trim();
-      if (show) heard.push(show);
-    }
+    heard.push(...showsIntroducedBy(act, showOf));
   }
   return before;
+}
+
+/**
+ * GV-46 (W4-20): the incremental twin of `showsHeardBeforeEachAct` — act `i`'s
+ * entry computed from the acts sourced so far, so act `i` can be narrated
+ * before later acts are sourced. Equal to `showsHeardBeforeEachAct(acts)[i]`
+ * for any `sourcedActsSoFar` that holds at least acts `0..i-1` (later acts are
+ * ignored: what act `i` has heard depends only on the acts before it).
+ */
+export function showsHeardBeforeAct(sourcedActsSoFar: ReadonlyArray<SourcedAct>, i: number, showOf: (tape: TapePointer) => string): string[] {
+  if (!Number.isInteger(i) || i < 0) {
+    throw new Error(`showsHeardBeforeAct: act index must be a non-negative integer, got ${i} (GV-46)`);
+  }
+  if (sourcedActsSoFar.length < i) {
+    throw new Error(`showsHeardBeforeAct: act ${i + 1} needs acts 1..${i} sourced, only ${sourcedActsSoFar.length} are (GV-46)`);
+  }
+  const heard: string[] = [];
+  for (let a = 0; a < i; a++) heard.push(...showsIntroducedBy(sourcedActsSoFar[a]!, showOf));
+  return heard;
+}
+
+/** The shows an act's clips introduce, in play order (empty names dropped) —
+ * the one step both functions above take per act. */
+function showsIntroducedBy(act: SourcedAct, showOf: (tape: TapePointer) => string): string[] {
+  const shows: string[] = [];
+  for (const plan of planActSeams(act)) {
+    if (!plan.introduces) continue;
+    const show = showOf(plan.introduces.tape).trim();
+    if (show) shows.push(show);
+  }
+  return shows;
 }
 
 export async function writeNarration(acts: SourcedAct[], options: WriteNarrationOptions, voice: Voice, ctx: NarrationBuildContext): Promise<WrittenAct[]> {

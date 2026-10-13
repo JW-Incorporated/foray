@@ -8,6 +8,8 @@ import type { StitchedItem } from "../src/types/stitching";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
 import type { ForayItem } from "../src/generation/forayItems";
 import type { MintedSegmentSource } from "../src/generation/audioSourceLookup";
+import { PARTIAL_RULES, PROJECTED_RULES, type PartialProjectionPlan } from "../src/generation/partialProjection";
+import type { SourcedAct } from "../src/types/tapeSourcing";
 
 /**
  * `finalizeForay` itself is exercised by `finalizeForay.test.ts` (and, on a
@@ -274,5 +276,168 @@ describe("buildPartialCandidate", () => {
       const broken = { ...candidate, delivery: { ...candidate.delivery!, servableThrough: undefined as unknown as number } };
       expect(servableView(broken)).toEqual([]);
     });
+  });
+});
+
+describe("buildPartialCandidate — GV-46: later acts not sourced yet (basis 'deferred')", () => {
+  /* Act 0 of 3 has three segments, two from one episode — 66.7 % of the
+     partial's segments, an M4 share failure on the prefix that the whole
+     Foray (whose later acts are not even sourced yet) may well dilute. */
+  const m4 = 'foray "f-1": M4 FAIL: "ep-a" is 66.7 % of segments and 66.7 % of runtime, over the 25 % cap';
+  const d1 = 'foray "f-1": D1 FAIL: 9 segment starts inside a 600 s window (budget 8 for a 30.0-minute Foray)';
+  const actItems: ForayItem[] = [
+    ...items,
+    { type: "segment", segment_id: "ep-a#1", slot: "s1" },
+    { type: "segment", segment_id: "ep-a#2", slot: "s1" },
+    { type: "segment", segment_id: "ep-b#1", slot: "s1" }
+  ];
+  const tape = (segmentId: string, itemId: string) => ({
+    sourcing: "tape" as const,
+    claim: `claim ${segmentId}`,
+    exploration: false,
+    tape: { segmentId, itemId, startSec: 0, endSec: 120, startAnchor: "start words", endAnchor: "end words", tier: 1 as const, confidence: "high" as const }
+  });
+  const act = (title: string, ids: Array<[string, string]>): SourcedAct => ({ title, slots: [{ title: `${title} slot`, beats: ids.map(([s, e]) => tape(s, e)) }] });
+  const sourced: SourcedAct[] = [
+    act("Act 1", [["ep-a#1", "ep-a"], ["ep-a#2", "ep-a"], ["ep-b#1", "ep-b"]]),
+    act("Act 2", [["ep-c#1", "ep-c"]]),
+    act("Act 3", [["ep-d#1", "ep-d"]])
+  ];
+  const slots = [{ id: "s1", title: "Act 1 slot" }, { id: "s2", title: "Act 2 slot" }, { id: "s3", title: "Act 3 slot" }];
+  const info: PartialActInfo = {
+    actIndex: 0,
+    totalActs: 3,
+    allActTitles: ["Act 1", "Act 2", "Act 3"],
+    items: actItems,
+    slots: [slots[0]!],
+    runtimeSec: 360,
+    ttlA1Ms: 1000
+  };
+  /** The stand-in checker: the M4 line on any record (the projection here is
+   * no bigger a denominator than the partial), plus `extra` on the partial. */
+  function checker(extra: string[] = []) {
+    const seen: FinalizeForayInput[] = [];
+    const fn = async (input: FinalizeForayInput): Promise<FinalizeForayResult> => {
+      seen.push(input);
+      const checkForaysErrors = [m4, ...(input.items === actItems ? extra : [])];
+      return {
+        validation: { ok: false, checkForaysErrors, checkForaysWarnings: ["fixture warning"], checkNarrationErrors: [], checkNarrationWarnings: [] },
+        forayRecord: undefined,
+        timings: []
+      };
+    };
+    return { fn, seen };
+  }
+
+  it("a share rule that fails on the prefix of an act-0-of-3 partial with only act 0 sourced is not refused; its line is set aside in supersededOnPartial", async () => {
+    /* MUTATION THAT KILLS THIS: route the incomplete plan to
+       `partialOnlyScope("partial-only")` (every rule on the partial) — the M4
+       line refuses the partial, run 5's false FAIL again. Or delete the
+       deferred branch so the plan takes the F-79 projected path — the
+       projection is the same prefix, its M4 line is taken, and the partial is
+       refused. Ran both — red. */
+    const plan: PartialProjectionPlan = { sourcedActs: sourced.slice(0, 1), slots, totalActs: 3 };
+    const c = checker();
+    const candidate = await buildPartialCandidate(info, { ...meta, projection: plan }, c.fn);
+
+    expect(candidate.validation.ok).toBe(true);
+    expect(candidate.validation.checkForaysErrors).toEqual([]);
+    expect(candidate.ruleScope.basis).toBe("deferred");
+    expect(candidate.ruleScope.projected).toEqual([]);
+    expect(candidate.ruleScope.deferred).toEqual([...PROJECTED_RULES]);
+    expect(candidate.ruleScope.partial).toEqual([...PARTIAL_RULES]);
+    expect(candidate.ruleScope.projection?.supersededOnPartial).toEqual([m4]);
+    expect(candidate.ruleScope.projection?.unsourcedActs).toBe(2);
+    expect(candidate.ruleScope.projection?.acts).toBe(0);
+    /* The line is a warning now, not dropped; the partial's own warnings stay. */
+    expect(candidate.validation.checkForaysWarnings[0]).toBe("fixture warning");
+    expect(candidate.validation.checkForaysWarnings).toContain(`deferred (GV-46): ${m4}`);
+    expect(candidate.validation.checkForaysWarnings.some((w) => /^GV-46: M4, D2-end, D4-share deferred to the whole Foray — 2 later act\(s\) not sourced yet/.test(w))).toBe(true);
+    /* No projection is finalized — one check-forays pass, the partial's. */
+    expect(c.seen).toHaveLength(1);
+    expect(candidate.status).toBe("partial");
+  });
+
+  it("a monotone rule still refuses a deferred partial", async () => {
+    /* MUTATION THAT KILLS THIS: in `deferredVerdict`, set every check-forays
+       line aside (or compute `ok` from the narration errors alone) — a D1
+       failure, which no later act can clear, would be served. Ran it — red. */
+    const plan: PartialProjectionPlan = { sourcedActs: sourced.slice(0, 1), slots, totalActs: 3 };
+    const candidate = await buildPartialCandidate(info, { ...meta, projection: plan }, checker([d1]).fn);
+    expect(candidate.validation.ok).toBe(false);
+    expect(candidate.validation.checkForaysErrors).toEqual([d1]);
+    expect(candidate.ruleScope.projection?.supersededOnPartial).toEqual([m4]);
+  });
+
+  it("a narration failure still refuses a deferred partial", async () => {
+    /* MUTATION THAT KILLS THIS: in `deferredVerdict`, compute `ok` from the
+       check-forays errors alone (drop `&& partial.checkNarrationErrors.length
+       === 0`) — the only check-forays line is the deferred M4 one, set aside,
+       so a partial whose narration failed would be served. Ran it — red. */
+    const narration = 'foray "f-1": narration item 0: FAIL: fixture narration error';
+    const fn = async (input: FinalizeForayInput): Promise<FinalizeForayResult> => ({
+      validation: {
+        ok: false,
+        checkForaysErrors: input.items === actItems ? [m4] : [],
+        checkForaysWarnings: [],
+        checkNarrationErrors: [narration],
+        checkNarrationWarnings: []
+      },
+      forayRecord: undefined,
+      timings: []
+    });
+    const plan: PartialProjectionPlan = { sourcedActs: sourced.slice(0, 1), slots, totalActs: 3 };
+    const candidate = await buildPartialCandidate(info, { ...meta, projection: plan }, fn);
+    expect(candidate.ruleScope.basis).toBe("deferred");
+    expect(candidate.validation.checkForaysErrors).toEqual([]);
+    expect(candidate.validation.checkNarrationErrors).toEqual([narration]);
+    expect(candidate.ruleScope.projection?.supersededOnPartial).toEqual([m4]);
+    expect(candidate.validation.ok).toBe(false);
+  });
+
+  it("a narration failure still refuses a fully sourced (projected) partial", async () => {
+    /* MUTATION THAT KILLS THIS: in `projectedVerdict`, compute `ok` from the
+       check-forays errors alone (drop `&& partial.checkNarrationErrors.length
+       === 0`) — the partial's M4 line is set aside and the projection passes,
+       so a partial whose narration failed would be served. Ran it — red. */
+    const narration = 'foray "f-1": narration item 0: FAIL: fixture narration error';
+    const seen: FinalizeForayInput[] = [];
+    const fn = async (input: FinalizeForayInput): Promise<FinalizeForayResult> => {
+      seen.push(input);
+      return {
+        validation: {
+          ok: false,
+          checkForaysErrors: input.items === actItems ? [m4] : [],
+          checkForaysWarnings: [],
+          checkNarrationErrors: [narration],
+          checkNarrationWarnings: []
+        },
+        forayRecord: undefined,
+        timings: []
+      };
+    };
+    const plan: PartialProjectionPlan = { sourcedActs: sourced, slots, totalActs: 3 };
+    const candidate = await buildPartialCandidate(info, { ...meta, projection: plan }, fn);
+    expect(candidate.ruleScope.basis).toBe("projected");
+    expect(seen).toHaveLength(2);
+    expect(candidate.validation.checkForaysErrors).toEqual([]);
+    expect(candidate.validation.checkNarrationErrors).toEqual([narration]);
+    expect(candidate.ruleScope.projection?.supersededOnPartial).toEqual([m4]);
+    expect(candidate.validation.ok).toBe(false);
+  });
+
+  it("a plan that covers every act keeps F-79's projected basis, with or without totalActs", async () => {
+    /* MUTATION THAT KILLS THIS: treat any plan carrying `totalActs` as
+       incomplete — a fully sourced Foray would stop judging its share rules
+       on the projection. Ran it — red (basis 'deferred', one finalize call). */
+    for (const plan of [{ sourcedActs: sourced, slots, totalActs: 3 }, { sourcedActs: sourced, slots }] as PartialProjectionPlan[]) {
+      const c = checker();
+      const candidate = await buildPartialCandidate(info, { ...meta, projection: plan }, c.fn);
+      expect(candidate.ruleScope.basis).toBe("projected");
+      expect(candidate.ruleScope.deferred).toBeUndefined();
+      expect(c.seen).toHaveLength(2);
+      /* The stand-in fails M4 on the projection too, so the projected verdict refuses. */
+      expect(candidate.validation.ok).toBe(false);
+    }
   });
 });

@@ -124,6 +124,28 @@ export interface StitchForayResult {
 }
 
 /**
+ * GV-46 (W4-20, R1-04): the acts a `ForayStitcher` stitches, handed in one at
+ * a time rather than as the whole Foray's `DeepenedAct[]` up front. §4.4's
+ * deepening of act N+1 is then no longer an input to stitching act N, so act 1
+ * can be stitched (and its partial candidate checked) while later acts are
+ * still being deepened.
+ *
+ * `actCount` is the Foray's act count (the frozen spine's, §6.1), the
+ * stitcher's `totalActs`. `deepenedAct(i)` returns act `i`'s `DeepenedAct`
+ * once it exists and `undefined` until then; it must return the same act on
+ * every call (the ORIGINAL act — continuity reads the previous act's original
+ * exit, never a smoothed copy).
+ */
+export interface IncrementalDeepenedActs {
+  actCount: number;
+  deepenedAct: (i: number) => DeepenedAct | undefined;
+}
+
+/** What a `ForayStitcher` is built from: the whole-Foray array, as before, or
+ * the incremental source above. */
+export type StitcherActs = DeepenedAct[] | IncrementalDeepenedActs;
+
+/**
  * §4.8 driven ONE ACT AT A TIME (F-66, docs/curation/generation-run-
  * 2026-09-09.md). `stitchForay` below is this class in a loop and stays
  * the whole-Foray entry point; a caller that has act N's narration in hand
@@ -161,11 +183,58 @@ export class ForayStitcher {
    * through `emitSeamItems`, in order. */
   private seamEmitted: { itemId: string; index: number }[] = [];
 
+  /** GV-46: the Foray's act count — the array's length, or the incremental
+   * source's `actCount`. */
+  readonly totalActs: number;
+  /** GV-46: the array form, kept as-is so a whole-Foray caller's continuity
+   * call receives exactly the array it always did. `null` for the
+   * incremental form. */
+  private readonly actArray: DeepenedAct[] | null;
+  private readonly actSource: (i: number) => DeepenedAct | undefined;
+
   constructor(
-    private readonly deepenedActs: DeepenedAct[],
+    acts: StitcherActs,
     private readonly options: StitchForayOptions,
     private readonly ctx: ContinuityBuildContext
-  ) {}
+  ) {
+    if (Array.isArray(acts)) {
+      this.actArray = acts;
+      this.totalActs = acts.length;
+      this.actSource = (i) => acts[i];
+    } else {
+      if (!Number.isInteger(acts.actCount) || acts.actCount < 0) {
+        throw new Error(`ForayStitcher: actCount must be a non-negative integer, got ${acts.actCount} (GV-46)`);
+      }
+      this.actArray = null;
+      this.totalActs = acts.actCount;
+      this.actSource = (i) => (i >= 0 && i < acts.actCount ? acts.deepenedAct(i) : undefined);
+    }
+  }
+
+  /** GV-46: act `i`'s `DeepenedAct`, or a throw naming why it is not there —
+   * past the Foray's last act, or (incremental form) not deepened yet. */
+  private deepenedAct(i: number): DeepenedAct {
+    const act = this.actSource(i);
+    if (act) return act;
+    if (this.actArray || i < 0 || i >= this.totalActs) {
+      throw new Error(`ForayStitcher: no deepened act at index ${i} — ${this.totalActs} act(s) were supplied`);
+    }
+    throw new Error(`ForayStitcher: act ${i + 1} of ${this.totalActs} is not deepened yet (GV-46)`);
+  }
+
+  /** The acts `smoothActIntroduction` reads for boundary `i`: act `i` and,
+   * after the first, act `i - 1`. The array form passes its own array, as it
+   * always has; the incremental form a sparse array holding just those two,
+   * so the continuity call sees the same two acts at the same indexes. */
+  private actsForBoundary(i: number): DeepenedAct[] {
+    const current = this.deepenedAct(i);
+    const previous = i > 0 ? this.deepenedAct(i - 1) : undefined;
+    if (this.actArray) return this.actArray;
+    const window = new Array<DeepenedAct>(i + 1);
+    if (previous) window[i - 1] = previous;
+    window[i] = current;
+    return window;
+  }
 
   /** How many acts are stitched (or accepted) so far — the index the next
    * `stitchNextAct` call will consume. */
@@ -182,10 +251,10 @@ export class ForayStitcher {
    */
   async stitchNextAct(written: WrittenAct): Promise<ForayItem[]> {
     const i = this.actItemLists.length;
-    const act = this.deepenedActs[i];
-    if (!act) {
-      throw new Error(`ForayStitcher: no deepened act at index ${i} — ${this.deepenedActs.length} act(s) were supplied`);
-    }
+    /* GV-46: act i, and act i-1 for the continuity call, must exist by now —
+       an incremental source throws here if either is not deepened yet. */
+    const boundaryActs = this.actsForBoundary(i);
+    const act = this.deepenedAct(i);
     const actLabel = `act-${i + 1}`;
 
     // (b) Cross-act continuity for THIS boundary — see the module doc
@@ -193,7 +262,7 @@ export class ForayStitcher {
     // within-act stitching's item assembly reads it, and
     // `smoothActIntroduction` for why one boundary at a time is the same
     // work in the same order.
-    const introduction = await smoothActIntroduction(this.deepenedActs, i, this.options.continuity, this.ctx);
+    const introduction = await smoothActIntroduction(boundaryActs, i, this.options.continuity, this.ctx);
 
     // (a) Within-act deterministic stitching.
     const stitched = stitchAct(written, actLabel, this.options.slotIds?.[i]);
@@ -235,7 +304,7 @@ export class ForayStitcher {
       await this.options.onActReady({
         actIndex: i,
         actTitle: act.title,
-        totalActs: this.deepenedActs.length,
+        totalActs: this.totalActs,
         actItems,
         itemsSoFar,
         written,
@@ -286,10 +355,7 @@ export class ForayStitcher {
    * call is made. Valid for any act up to the next one to be stitched.
    */
   actProvenance(i: number, written: WrittenAct): ItemProvenance[] {
-    const act = this.deepenedActs[i];
-    if (!act) {
-      throw new Error(`ForayStitcher: no deepened act at index ${i} — ${this.deepenedActs.length} act(s) were supplied`);
-    }
+    const act = this.deepenedAct(i);
     const stitched = stitchAct(written, `act-${i + 1}`, this.options.slotIds?.[i]);
     return provenanceFor(this.withActSeams(i, stitched.items, act.introduction), i, this.firstItemIndexOf(i));
   }
@@ -347,7 +413,7 @@ export class ForayStitcher {
   /** The act's stitched body wrapped in its seams — shared by `stitchNextAct`
    * and `actProvenance` so the two cannot disagree on what an act's items are. */
   private withActSeams(i: number, body: StitchedItem[], introduction: string): StitchedItem[] {
-    const act = this.deepenedActs[i]!;
+    const act = this.deepenedAct(i);
     const actLabel = `act-${i + 1}`;
     const actSlotIds = this.options.slotIds?.[i];
     const firstSlotId = actSlotIds?.[0];
