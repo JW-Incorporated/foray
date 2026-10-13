@@ -93,6 +93,24 @@ test("testItemEndedAfterTransitioningFallsBackToQueuedToWhenNoNextGiven", () => 
   assert.deepStrictEqual(effects, [F.restoreRate(), F.loadItem(episodeB)]);
 });
 
+test("a closing narration line after a clip ends the queue when it finishes, and is not loaded again (#1348)", () => {
+  /* A Foray that ends [clip, closing line]. The clip ends, the line is the
+     bridge (`to` is the line itself, the manager's model), and when the line
+     finishes there is nothing after it: the manager says so with next = null.
+     Falling back to `to` here reloaded the line that had just been spoken, so
+     the listener heard it twice before the Foray ended.
+     MUTATION: drop the TTS guard in handleItemEnded's transitioning branch —
+     the state reads loadingItem(closing-line) with a loadItem for it. */
+  const clip = itemRef("foray#4", EPISODE, { startSec: 120, endSec: 230 });
+  const closingLine = itemRef("closing-line", TTS);
+  const [bridging] = reduce(S.playing(clip), E.itemEnded(closingLine, true));
+  assert.deepStrictEqual(bridging, S.transitioning(clip, closingLine), "precondition: the line plays as the bridge");
+  const [state, effects] = reduce(bridging, E.itemEnded(null, false));
+  assert.deepStrictEqual(state, S.ended());
+  assert.deepStrictEqual(effects, [F.emitTelemetry("queue.ended")]);
+  assert.ok(!effects.some((e) => e.type === "loadItem"), "the closing line is not loaded a second time");
+});
+
 /* ---------- interruption: phone call declined / answered / long ---------- */
 
 test("testInterruptionBeganWhilePlayingSavesPositionAndPauses", () => {

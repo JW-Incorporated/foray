@@ -445,6 +445,13 @@ public enum PlayerQueueStateMachine {
             return (.loadingItem(target: next, previous: current), [.loadItem(next)])
 
         case .transitioning(_, let to):
+            // A `to` that is itself a TTS item IS the bridge that just
+            // finished (the queue's own narration line). With no `next` there
+            // is nothing after it, so the queue is over; falling back to `to`
+            // would reload the line just spoken and say it twice (#1348).
+            if next == nil && to.kind == .tts {
+                return (.ended, [.emitTelemetry("queue.ended")])
+            }
             // The bridge TTS itself finished; move into the real next item.
             // Trust the caller-provided `next` if given (the manager may
             // have re-resolved it, e.g. because of a skip that arrived

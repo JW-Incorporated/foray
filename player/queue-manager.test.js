@@ -1101,6 +1101,64 @@ test("a `finished` event for a bridge item (mid-Foray) also advances exactly onc
   assert.ok(backend.loads().includes("load:foray-1#2"), `expected the segment after the bridge, got ${backend.loads()}`);
 });
 
+test("a closing line after a clip is spoken once, and the Foray ends (#1348)", async () => {
+  /* The clip ends, the closing line is the bridge, and nothing follows it. The
+     reducer used to fall back to the bridge's own `to` and reload the line, so
+     it was spoken twice before the Foray reached `ended`.
+     MUTATION: drop the TTS guard in queue-state.js handleItemEnded's
+     transitioning branch — `calls` reads the line twice. */
+  const tts = fakeTts();
+  const { m } = make({ tts });
+  await m.playForay(foray([
+    fseg(),
+    { type: "narration", id: "nar-close", script: "and that is where the fire went out" },
+  ]), { resolveItem });
+  await m._handleBackendItemEnded(END_OUT_POINT); // the clip ends, the line speaks
+  assert.equal(m.state.type, "transitioning", "precondition: the closing line is the bridge");
+
+  tts.finish();
+  await tick();
+  await tick();
+  assert.equal(m.state.type, "ended", "the Foray is over once the closing line has been said");
+  assert.deepStrictEqual(tts.calls.map((c) => c.text), ["and that is where the fire went out"], "said once");
+});
+
+test("a narration chain after a clip speaks every line once, in order (#1348)", async () => {
+  /* After a bridge the next item is the next QUEUE item, a line included. The
+     lookup used to step over every TTS item there (the Swift transition-bridge
+     rule), so the second line of a chain after a clip was never spoken
+     mid-Foray, and at the end of a Foray each line was spoken twice.
+     MUTATION: look up the item after a bridge with skipBridges = true — the
+     second line is never spoken (mid-Foray) or the chain ends early. */
+  for (const tail of [[], [fseg({ start_sec: 400, end_sec: 500 })]]) {
+    const tts = fakeTts();
+    const { m, backend } = make({ tts });
+    await m.playForay(foray([
+      fseg(),
+      { type: "narration", id: "nar-1", script: "the first line" },
+      { type: "narration", id: "nar-2", script: "the second line" },
+      ...tail,
+    ]), { resolveItem });
+    await m._handleBackendItemEnded(END_OUT_POINT); // the clip ends, line 1 is the bridge
+    tts.finish();                                  // line 1 ends
+    await tick();
+    await tick();
+    assert.equal(m.state.type, "playing", `line 2 plays after line 1 (tail ${tail.length})`);
+    assert.equal(m.currentIndex, 2);
+    tts.finish();                                  // line 2 ends
+    await tick();
+    await tick();
+    assert.deepStrictEqual(tts.calls.map((c) => c.text), ["the first line", "the second line"], `each line once (tail ${tail.length})`);
+    if (tail.length) {
+      assert.equal(m.currentIndex, 3, "then the clip after the chain");
+      assert.ok(backend.loads().includes("load:foray-1#3"), `got ${backend.loads()}`);
+    } else {
+      assert.equal(m.state.type, "ended", "and a chain that closes the Foray ends it");
+    }
+    m.dispose();
+  }
+});
+
 test("a `finished` event while nothing is speaking is ignored, not a crash", async () => {
   const tts = fakeTts();
   const { m } = make({ tts });

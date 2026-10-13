@@ -1033,6 +1033,11 @@ export interface VeracityMetrics {
    * retry loop deliberately did not spend two more rounds on; the fix is
    * at seeding. `null` when the caller did not count them. */
   seedLostBeats: number | null;
+  /** GV-61 (W2-10 item 6): content pages written with no print document in
+   * their evidence pack (`NarrationWriteStats.printSkipped`): demand for
+   * outside text that went unmet, the OQ-04 trade under the 'none' research
+   * route. Measured, never gated. Absent when the caller did not count it. */
+  printEvidenceSkipped?: number;
   pagesDropped: number;
   /** F-51: pages kept with `verified: false`. Any is a publish stop. */
   unverifiedPages: number;
@@ -1118,6 +1123,9 @@ export interface BuildVeracityMetricsInput {
   /** F-99: `writeAct`'s own count of beats closed as seed-lost. Optional
    * for older callers; reported as `null` rather than guessed at zero. */
   seedLostBeats?: number;
+  /** GV-61: `writeNarration`'s count of content pages with no print
+   * document. Optional; omitted, the metric is absent. */
+  printEvidenceSkipped?: number;
   pipelineTokens: number;
   stageTimings: StageTiming[];
   /** G-35: carried through verbatim when the caller ran a prefetch. */
@@ -1157,6 +1165,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     narrationCalls: { writer: input.writerCalls, verifier: input.verifierCalls },
     retryRounds: typeof input.retryRounds === "number" ? input.retryRounds : null,
     seedLostBeats: typeof input.seedLostBeats === "number" ? input.seedLostBeats : null,
+    ...(typeof input.printEvidenceSkipped === "number" ? { printEvidenceSkipped: input.printEvidenceSkipped } : {}),
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,

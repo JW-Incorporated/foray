@@ -412,6 +412,16 @@ async function fanOutExternalResearch(
   researcher: ExternalResearcher,
   ctx: ExternalResearchContext
 ): Promise<Map<string, { notes: string; controversies: string[] }>> {
+  /* GV-61 (OQ-04: clip transcripts only on the timed path, outside facts only
+     from precomputed dossiers). The 'none' research route asks nothing: no
+     subtopic is looked up, so none is marked externally researched and none
+     carries an empty note that reads as "researched, found nothing". */
+  if (researcher.providerName === "none") {
+    console.log(
+      `researchShape: external research skipped for ${gaps.length} catalogue-gap subtopic(s): the research route is 'none' (OQ-04: no web research on the timed path)`
+    );
+    return new Map();
+  }
   const results = await Promise.all(
     gaps.map(async ({ seed }) => {
       try {

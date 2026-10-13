@@ -903,6 +903,384 @@
       }
     },
     {
+      "id": "manager-foray/a-closing-line-after-a-clip-is-spoken-once",
+      "covers": [
+        "queue-manager::a closing line after a clip is spoken once, and the Foray ends (#1348)"
+      ],
+      "note": "#1348: [clip, closing line]. The line is the bridge; its finished ends the Foray, and it is never spoken again.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                {
+                  "type": "narration",
+                  "id": "nar-close",
+                  "script": "and that is where the fire went out"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "tts.speak:and that is where the fire went out@1"
+            ],
+            "playhead": "nar-close",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "ended",
+            "ops": [],
+            "playhead": "nar-close",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-close",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "tts.speak:and that is where the fire went out@1"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-chain-closing-the-foray-speaks-each-line-once",
+      "covers": [
+        "queue-manager::a narration chain after a clip speaks every line once, in order (#1348)"
+      ],
+      "note": "#1348: [clip, line, line]. After the bridge the next item is the second line (an ordinary load), and its finished ends the Foray: each line once.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "script": "the first line" },
+                { "type": "narration", "id": "nar-2", "script": "the second line" }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "second-line" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "ended" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "tts.speak:the first line@1"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "second-line",
+            "ops": ["tts.speak:the second line@1"],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "ended",
+            "ops": [],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "ended"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "end",
+            "ops": [],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "ended"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "tts.speak:the first line@1",
+          "tts.speak:the second line@1"
+        ]
+      }
+    },
+    {
+      "id": "manager-foray/a-chain-mid-foray-speaks-each-line-once",
+      "covers": [
+        "queue-manager::a narration chain after a clip speaks every line once, in order (#1348)"
+      ],
+      "note": "#1348: [clip, line, line, clip]. The second line used to be stepped over (the after-a-bridge lookup skipped every TTS item); now it plays, then the clip after the chain.",
+      "setup": {
+        "target": "manager",
+        "catalogue": {
+          "ep-static": {
+            "id": "ep-static",
+            "audio_url": "https://cdn.example/static.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Static",
+            "show": "Indie"
+          },
+          "ep-other": {
+            "id": "ep-other",
+            "audio_url": "https://cdn.example/other.mp3",
+            "dai_suspected": false,
+            "duration_sec": 3600,
+            "title": "Other",
+            "show": "Indie"
+          },
+          "ep-dai": {
+            "id": "ep-dai",
+            "audio_url": "https://cdn.example/dai.mp3",
+            "dai_suspected": true,
+            "duration_sec": 2501,
+            "title": "Stitched",
+            "show": "Big"
+          }
+        },
+        "tts": true
+      },
+      "steps": [
+        {
+          "call": "playForay",
+          "args": [
+            {
+              "id": "foray-1",
+              "title": "Fire",
+              "items": [
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 100,
+                  "end_sec": 210,
+                  "why": "he explains it plainly"
+                },
+                { "type": "narration", "id": "nar-1", "script": "the first line" },
+                { "type": "narration", "id": "nar-2", "script": "the second line" },
+                {
+                  "type": "segment",
+                  "item_id": "ep-static",
+                  "start_sec": 400,
+                  "end_sec": 500,
+                  "why": "he explains it plainly"
+                }
+              ]
+            }
+          ]
+        },
+        { "deck": "time", "sec": 210 },
+        { "deck": "ended", "reason": "outPoint" },
+        { "checkpoint": "bridge" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "second-line" },
+        { "tts": "finish" },
+        { "settle": 1 },
+        { "checkpoint": "tape" }
+      ],
+      "expect": {
+        "checkpoints": [
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 1,
+            "name": "bridge",
+            "ops": [
+              "load:foray-1#0@100",
+              "rate:1",
+              "outPoint:210",
+              "play",
+              "tts.speak:the first line@1"
+            ],
+            "playhead": "nar-1",
+            "rate": 1,
+            "state": "transitioning"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 2,
+            "name": "second-line",
+            "ops": ["tts.speak:the second line@1"],
+            "playhead": "nar-2",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "tape",
+            "ops": ["load:foray-1#3@400", "rate:1", "outPoint:500", "play"],
+            "playhead": "foray-1#3",
+            "rate": 1,
+            "state": "playing"
+          },
+          {
+            "inInterlude": false,
+            "inSeamGap": false,
+            "index": 3,
+            "name": "end",
+            "ops": [],
+            "playhead": "foray-1#3",
+            "rate": 1,
+            "state": "playing"
+          }
+        ],
+        "ops": [
+          "load:foray-1#0@100",
+          "rate:1",
+          "outPoint:210",
+          "play",
+          "tts.speak:the first line@1",
+          "tts.speak:the second line@1",
+          "load:foray-1#3@400",
+          "rate:1",
+          "outPoint:500",
+          "play"
+        ]
+      }
+    },
+    {
       "id": "manager-foray/a-stray-finished-is-ignored",
       "covers": [
         "queue-manager::a `finished` event while nothing is speaking is ignored, not a crash"

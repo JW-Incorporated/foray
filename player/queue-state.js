@@ -407,6 +407,12 @@ function handleItemEnded(state, next, bridged) {
       return [S.loadingItem(next, state.item), [F.loadItem(next)]];
 
     case "transitioning": {
+      // A `to` that is itself a TTS item IS the bridge that just finished (the
+      // manager's model: the bridge is the queue's own narration line). With
+      // no `next` there is nothing after it, so the queue is over; falling
+      // back to `to` would reload the line just spoken and say it twice
+      // (#1348, a closing line after a clip).
+      if (!next && state.to.kind === TTS) return [S.ended(), [F.emitTelemetry("queue.ended")]];
       // The bridge TTS finished; move into the real next item. Trust a
       // caller-provided `next` (the manager may have re-resolved it, e.g. a
       // skip arrived during the bridge), else fall back to the queued `to`.
