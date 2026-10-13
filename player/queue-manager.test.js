@@ -1677,6 +1677,80 @@ test("a Foray with nothing playable makes no noise", async () => {
   assert.ok(log.some((t) => /empty — every item was skipped/.test(t)));
 });
 
+/* ---------- §17 (GV-63): each Foray clip's precision, for the phone's record ----------
+
+   One `foray.clip.precision kind=<k> item=<id>` line per clip outcome, which
+   diagnostic-log.js keeps as a `clip` row and tallies per Foray. Telemetry
+   only; the engine lane is tallied from its own gate/skip rows (parity
+   exclusions, webview-only). */
+
+const precisionLines = (log) => log.filter((t) => t.startsWith("foray.clip.precision "));
+
+test("GV-63: each Foray clip's outcome at load is one precision line — exact, padded, skipped and static", async () => {
+  /* MUTATIONS (each run 2026-10-13, red): emit `static` for every passed gate
+     (drop the note's leading word) -> exact/padded read static; delete the
+     `skipped` emission at the ladder refusal -> the drifted clip has no line;
+     drop the `_isForayClip` guard in `_emitClipPrecision` -> the plain
+     episode below says `static`. */
+  const { m, backend, log } = make({ backend: { durationById: {
+    "foray-1#0": 2510,      // the reference copy's ad load: exact
+    "foray-1#1": 2561,      // 60 s of drift inside a 100 s pad: padded
+    "foray-1#2": 2700,      // 200 s of drift, no pad: skipped at load
+  } } });
+  await m.playForay(foray([
+    fdai(), fdai({ start_sec: 300, end_sec: 400, ad_pad_sec: 100 }), fdai({ start_sec: 500, end_sec: 600 }),
+    fseg({ item_id: "ep-other", start_sec: 20, end_sec: 90 }),
+  ]), { resolveItem, allowAdPad: true });
+  backend.currentTime = 210;
+  await backend.onItemEnded("outPoint");
+  await tick();
+  backend.currentTime = 500;
+  await backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(m.currentIndex, 3, `the static clip plays after the drifted one was skipped: ${log}`);
+  assert.deepEqual(precisionLines(log), [
+    "foray.clip.precision kind=exact item=foray-1#0",
+    "foray.clip.precision kind=padded item=foray-1#1",
+    "foray.clip.precision kind=skipped item=foray-1#2",
+    "foray.clip.precision kind=static item=foray-1#3",
+  ]);
+
+  const plain = make();
+  plain.m.loadQueue([ep("a")]);
+  await plain.m.play(0);
+  assert.equal(plain.m.state.type, "playing");
+  assert.deepEqual(precisionLines(plain.log), [], "a plain episode is not a Foray clip");
+});
+
+test("GV-63: a no-anchor DAI drop is a `dropped` clip at build, and a clip whose loads run out is `load-failed`", async () => {
+  /* MUTATIONS (each run 2026-10-13, red): drop `_emitDroppedClips` from
+     setQueueFromForay -> no dropped line; match every drop rather than the
+     anchors reason -> the unresolvable item says `dropped` too; delete the
+     `load-failed` emission where §16 steps over -> no line for #1; delete it
+     at the notStepped stop -> no line for #2. */
+  const built = make();
+  await built.m.playForay(foray([
+    fseg(), fdai({ start_anchor: "" }), fseg({ item_id: "ghost" }),
+  ]), { resolveItem });
+  assert.deepEqual(precisionLines(built.log), [
+    "foray.clip.precision kind=dropped item=foray-1#1",
+    "foray.clip.precision kind=static item=foray-1#0",
+  ], `only the anchors drop is a clip outcome: ${built.log}`);
+
+  const h = make({ backend: { failLoadFor: ["foray-1#1", "foray-1#2"] } });
+  await h.m.playForay(foray([fseg(), fseg({ item_id: "ep-other", start_sec: 400, end_sec: 500 }),
+    fseg({ start_sec: 700, end_sec: 800 })]), { resolveItem });
+  h.backend.currentTime = 210;
+  await h.backend.onItemEnded("outPoint");
+  await tick();
+  assert.equal(h.m.state.type, "idle", "the second clip in a row stops the Foray (§16)");
+  assert.deepEqual(precisionLines(h.log), [
+    "foray.clip.precision kind=static item=foray-1#0",
+    "foray.clip.precision kind=load-failed item=foray-1#1",
+    "foray.clip.precision kind=load-failed item=foray-1#2",
+  ]);
+});
+
 /* ---------- the seam beat (docs/curation/segment-length-rules.md §6b) -------
 
    Foray #1 carries no narration, so all 31 of its transitions are unbridged
