@@ -1,0 +1,88 @@
+{
+  "generated_at": "2026-10-13T00:00:00.000Z",
+  "dry_run": false,
+  "entries": [
+    {
+      "prompt": "synthetic delivery fixture (GV-52): short, publishable",
+      "outcome": "generated",
+      "detail": "OK synthetic short",
+      "ms": 140000,
+      "elapsedMs": 88000,
+      "calls": 9,
+      "duration": "short",
+      "gate": { "ok": true, "failures": [] },
+      "publishable": true,
+      "delivery": {
+        "granularity": "item",
+        "items": 9,
+        "firstItemReadyMs": 21500,
+        "firstServableMs": 24800,
+        "allItemsReadyMs": 86400,
+        "minLeadSec": 41.25,
+        "minLeadSecAt1_5x": 12.5,
+        "itemsBelow30s": 0,
+        "pausedAtIndex": null,
+        "unknownDurations": 0,
+        "render": { "firstRenderedMs": 26100, "narrationSec": 210, "renderWallSec": 50, "realtimeFactor": 4.2, "failed": 0 }
+      }
+    },
+    {
+      "prompt": "synthetic delivery fixture (GV-52): medium, publishable",
+      "outcome": "generated",
+      "detail": "OK synthetic medium",
+      "ms": 400000,
+      "elapsedMs": 231000,
+      "calls": 21,
+      "duration": "medium",
+      "gate": { "ok": true, "failures": [] },
+      "publishable": true,
+      "delivery": {
+        "granularity": "act",
+        "items": 23,
+        "firstItemReadyMs": 33000,
+        "firstServableMs": 38200,
+        "allItemsReadyMs": 229700,
+        "minLeadSec": -6.5,
+        "minLeadSecAt1_5x": -48,
+        "itemsBelow30s": 3,
+        "pausedAtIndex": null,
+        "unknownDurations": 1
+      }
+    },
+    {
+      "prompt": "synthetic delivery fixture (GV-52): short, gate failed",
+      "outcome": "generated",
+      "detail": "OK synthetic gate failed",
+      "ms": 150000,
+      "elapsedMs": 95000,
+      "calls": 10,
+      "duration": "short",
+      "gate": { "ok": false, "failures": ["1 page(s) were kept without passing verification"] },
+      "publishable": false,
+      "delivery": {
+        "granularity": "act",
+        "items": 8,
+        "firstItemReadyMs": 27000,
+        "firstServableMs": 29000,
+        "allItemsReadyMs": 93000,
+        "minLeadSec": 18,
+        "minLeadSecAt1_5x": -4.5,
+        "itemsBelow30s": 2,
+        "pausedAtIndex": 5,
+        "unknownDurations": 0
+      }
+    },
+    {
+      "prompt": "synthetic delivery fixture (GV-52): long, resumed",
+      "outcome": "generated",
+      "detail": "OK synthetic long resumed",
+      "ms": 900000,
+      "elapsedMs": 610000,
+      "calls": 30,
+      "duration": "long",
+      "gate": { "ok": true, "failures": [] },
+      "publishable": true,
+      "delivery": { "granularity": "act", "items": 4, "resumed": true }
+    }
+  ]
+}

@@ -43,8 +43,12 @@ harness; it is not something a run can pass or fail yet.
 | Column | Target | Settled? | Where it comes from |
 |---|---|---|---|
 | `stageSum m` | — | — | `entry.ms`: the SUM of the stage durations, so concurrent acts are counted once each (TM-10). Not wall time; the key stays `wall_min` so the baseline stays comparable |
-| `elapsed m` | ≤ 6 min p50 | **proposed (D0)** | §1.2 prompt → finished, validated Foray, keyed after Phase 3. First stage start to last stage end: the report's `elapsedMs` when it carries one, else the span of `veracity.stageTimings` (stages marked `resumed` left out) |
-| `ttlA1 m` | ≤ 0.5 min p50 | settled | §1.2 prompt → Act 1 playable (fix plan WS-D); §1.2 itself says the deck cannot reach it and names **D6** as the re-baseline |
+| `elapsed m` | — | superseded by R1-16 | First stage start to last stage end: the report's `elapsedMs` when it carries one, else the span of `veracity.stageTimings` (stages marked `resumed` left out). §1.2's *proposed* ≤ 6 min p50 (prompt → finished Foray) is replaced by the per-tier whole-Foray-ready target on `allReady s` (GV-52) |
+| `ttlA1 m` | — | superseded by R1-16 | §1.2 prompt → Act 1 playable, kept as its own **act-level** row. Its ≤ 0.5 min p50 target (fix plan WS-D) is replaced by the per-tier first-audio target on `1stAudio s` (GV-52) |
+| `tier` | — | — | The duration tier the prompt ran at (`entry.duration`, GV-01). It picks the row's targets for the three columns below; `—` on every report before GV-01 |
+| `1stAudio s` | per tier | see below | **MT-01.** Seconds from the attempt's start to the first servable item (`delivery.firstServableMs`, GV-33). Phone voice first, so the first servable item is first audio |
+| `allReady s` | per tier | see below | **MT-02.** Seconds until every item was ready (`delivery.allItemsReadyMs`), **only when `entry.publishable` is true** (GV-26): a candidate whose gate failed was never ready, so the cell is `—` (not ready: gate failed) even when the report carries the time |
+| `minLead s` | per tier | see below | **MT-11.** The smallest lead of generation over the playhead at 1x (`delivery.minLeadSec`): how many seconds before the listener reached an item it was ready. Negative is a stall |
 | `tapeSh` | — | — | NOT §1.2's row (F-101): the report's tape ÷ (tape + narration) |
 | `tape/rt` | ≥ 0.70 | **proposed (D0)** | §1.2 **tape share of runtime** — the row's own denominator |
 | `clip mean` / `clip max` | — | — | Q-01 cuts a clip to a thought inside 60–1,800 s; no §1.2 target |
@@ -164,8 +168,44 @@ column) and `prose_basis`.
 | `renderX` | — | — | **detail, MT-09.** Seconds of narration audio rendered per second of rendering (`RenderSpan` events) |
 | `spark s` | — | — | **detail, MT-10.** Spark seconds charged: reconciled `sparkSeconds` meter events. A reservation is a hold, not a charge (meters land with GV-90) |
 
-No target is proposed for any of them here: the per-tier speed targets are
-GV-52's, and this card only measures.
+No target is proposed for any of them here: the per-tier time targets are
+GV-52's (the delivery section below), and this card only measures.
+
+### Delivery and the per-tier targets (GV-52, R1-16)
+
+Every report entry written since GV-33 carries a `delivery` block: the
+attempt's delivery timeline (`backend/src/generation/deliveryTimeline.ts`,
+decision 14 of `docs/roadmap/generation-v2.md`), with the time the first item,
+the first servable item and the last item were ready and the smallest lead over
+the playhead at 1x and 1.5x. The bench reads it into three **core** columns and
+two **detail** ones. A report with no `delivery` block (runs 4–9) prints `—` in
+every one, and so does a resumed attempt, whose banked acts fired no events.
+
+R1-16 replaces the single `ttlA1` ≤ 0.5 min and `elapsed` ≤ 6 min targets with
+targets split by tier, chosen per row by its `tier`. The table below is
+`TIER_TARGETS` in `run.mjs`; the legend prints it as `per tier` plus one
+`targets (s):` line per column.
+
+| MT | Column | Short | Medium | Long |
+|---|---|---|---|---|
+| MT-01 | `1stAudio s` | ≤ 30 s (settled) | ≤ 40 s (**proposed**) | — |
+| MT-02 | `allReady s` | ≤ 90 s (settled) | ≤ 4 min / 240 s (settled) | — |
+| MT-11 | `minLead s` | ≥ 30 s (**proposed**) | ≥ 30 s (**proposed**) | — |
+
+**Provenance.** The settled cells are the orchestrator's adopted reading of the
+"about 30 seconds" KPI (OQ-03): 30 s to first audio on the short tier and the
+whole Foray ready within 90 s (short) or 4 min (medium), recorded as decision
+15 of `docs/roadmap/generation-v2.md` (#1286). They rest on that recorded
+adoption under the founder-async rule, not on a founder sentence, so a later
+founder ruling flips a cell to proposed with a one-line change to
+`TIER_TARGETS`. Medium first audio ≤ 40 s and lead ≥ 30 s stay **proposed**
+(printed with `?`) until a founder ruling. Long has no target. As everywhere in
+this table, nothing grades a row against them.
+
+| Column | Target | Settled? | Where it comes from |
+|---|---|---|---|
+| `lead1.5x s` | — | — | **detail, MT-11 at 1.5x.** The smallest lead over the playhead when the listener plays at 1.5x (`delivery.minLeadSecAt1_5x`) |
+| `render RTF` | — | — | **detail, R1-14.** The report's own render realtime factor (`delivery.render.realtimeFactor`), which the backend render stage (GV-74) adds; `—` until it lands. `renderX` above is the runlog's reading of the same MT-09 |
 
 ### The quality scorecard (GV-24, MQ-01..MQ-21)
 
@@ -227,15 +267,15 @@ listening cards before anything gates on it.
 
 ## The trend
 
-| run | outcome | valid | stageSum m | elapsed m | ttlA1 m | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| run | outcome | valid | stageSum m | elapsed m | ttlA1 m | tier | 1stAudio s | allReady s | minLead s | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 <!-- bench:rows:begin -->
-| run-4 | no-tape | no | 4.4 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
-| run-5 | generated | no | 40.6 | — | 0.1 | 49 | — | — | — | — | — | — | — | — | — | 0.67 | 2 | — | — | — | — | 100380 | — |
-| run-6 | generated | yes | 55.0 | — | 21.2 | 72 | — | 0.598 | 11 | 142.6 | 237.8 | — | — | — | — | 0.73 | 4 | — | — | — | 0.80 | 128592 | — |
-| run-7 | generated | yes | 63.9 | — | 20.4 | 84 | — | 0.595 | 10 | 102.5 | 181.4 | — | — | — | — | 0.55 | 10 | — | — | — | 1.03 | 156534 | — |
-| run-8 | generated | yes | 91.1 | — | 34.0 | 78 | — | 0.776 | 16 | 122.3 | 176.7 | — | — | — | — | 0.68 | 4 | 7 | — | — | 1.13 | 239347 | — |
-| run-9 | generated | yes | 107.7 | 44.6 | 38.7 | 69 | 0.684 | 0.557 | 10 | 107.5 | 188.3 | 0.86 | 0.316 | — | — | 0.05 | 8 | 0 | — | 0 | 0.55 | 128050 | — |
+| run-4 | no-tape | no | 4.4 | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| run-5 | generated | no | 40.6 | — | 0.1 | — | — | — | — | 49 | — | — | — | — | — | — | — | — | — | 0.67 | 2 | — | — | — | — | 100380 | — |
+| run-6 | generated | yes | 55.0 | — | 21.2 | — | — | — | — | 72 | — | 0.598 | 11 | 142.6 | 237.8 | — | — | — | — | 0.73 | 4 | — | — | — | 0.80 | 128592 | — |
+| run-7 | generated | yes | 63.9 | — | 20.4 | — | — | — | — | 84 | — | 0.595 | 10 | 102.5 | 181.4 | — | — | — | — | 0.55 | 10 | — | — | — | 1.03 | 156534 | — |
+| run-8 | generated | yes | 91.1 | — | 34.0 | — | — | — | — | 78 | — | 0.776 | 16 | 122.3 | 176.7 | — | — | — | — | 0.68 | 4 | 7 | — | — | 1.13 | 239347 | — |
+| run-9 | generated | yes | 107.7 | 44.6 | 38.7 | — | — | — | — | 69 | 0.684 | 0.557 | 10 | 107.5 | 188.3 | 0.86 | 0.316 | — | — | 0.05 | 8 | 0 | — | 0 | 0.55 | 128050 | — |
 <!-- bench:rows:end -->
 
 ## Provenance of the backfilled rows (runs 4–9)
@@ -277,5 +317,9 @@ are recorded here rather than reconciled by hand:
 - **`ttlA1 m` agrees with the ledger on every run that quotes it** (21.2, 20.4,
   34.0 min for runs 6, 7, 8). Run 5's 0.1 min is the artefact the ledger names:
   act 1 was banked, so the resumed run had a playable partial immediately.
+- **`tier`, `1stAudio s`, `allReady s` and `minLead s` are `—` on every
+  row** (GV-52): runs 4–9 predate both the tier field (GV-01) and the
+  `delivery` block (GV-33). The rows are otherwise exactly what they were; the
+  four cells sit after `ttlA1 m`.
 - **Cost is `—` on every row** and will stay that way until a keyed run records
   `usage`. §1.2's cost row is an estimate, and D0 is where it stops being one.

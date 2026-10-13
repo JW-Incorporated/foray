@@ -95,6 +95,16 @@
  * and the JSONL line gains `calls_by_stage`. No runlog, no speed columns: every
  * one is absent, never 0 (rule 1).
  *
+ * DELIVERY AND THE SPLIT PER-TIER TARGETS (GV-52, R1-16; MT-01, MT-02,
+ * MT-11). A report entry written since GV-33 carries a `delivery` block (the
+ * DeliveryTimeline). The bench reads it into `1stAudio s` (first servable
+ * item), `allReady s` (every item ready, ONLY when `entry.publishable` is true:
+ * a candidate whose gate failed was never ready), `minLead s` (lead over the
+ * playhead at 1x), and the detail columns `lead1.5x s` and `render RTF`. Their
+ * targets are chosen by the row's tier (`entry.duration`, the `tier` column)
+ * from TIER_TARGETS, which replaces the single ttlA1 <= 0.5 min and elapsed
+ * <= 6 min targets. No delivery block, no cells: every one is absent.
+ *
  * COLUMN GROUPS. Every column is `core` or `detail`. The printed table and the
  * committed KPI doc show the core columns; `--wide` prints every column; the
  * JSONL always carries every number column. A later measurement lands as a
@@ -183,10 +193,10 @@ export const COLUMNS = [
     width: 9,
     kind: "number",
     digits: 1,
-    target: 6,
-    targetState: PROPOSED,
+    /* GV-52 (R1-16): the old <= 6 min p50 target is superseded by the per-tier
+       whole-Foray-ready target on `full_s`; this column is the clock, no target. */
     targetNote:
-      "§1.2 prompt -> finished Foray, <= 6 min p50 keyed (proposed, D0); first stage start to last stage end (`elapsedMs` when the report carries it)"
+      "first stage start to last stage end (`elapsedMs` when the report carries it); its <= 6 min target is superseded by R1-16 (allReady s, per tier)"
   },
   {
     key: "ttl_a1_min",
@@ -196,9 +206,57 @@ export const COLUMNS = [
     width: 7,
     kind: "number",
     digits: 1,
-    target: 0.5,
-    targetState: SETTLED,
-    targetNote: "§1.2 prompt -> act 1 playable, <= 30 s p50 (fix plan WS-D; D6 re-baseline pending)"
+    /* GV-52 (R1-16): kept as its own, act-level row; the 0.5 min target moved
+       to `first_s` (first audio), split by tier. */
+    targetNote: "§1.2 prompt -> act 1 playable (act-level); its 0.5 min target is superseded by R1-16 (1stAudio s, per tier)"
+  },
+  /* GV-52 (R1-16; MT-01, MT-02, MT-11): the delivery columns, read off the
+     report's `delivery` block (GV-33's DeliveryTimeline, decision 14), with
+     targets chosen by the row's tier (TIER_TARGETS). Core, so the committed
+     table carries them; runs 4-9 predate the block and print the dash. */
+  {
+    key: "tier",
+    group: "core",
+    header: "tier",
+    from: "report",
+    width: 6,
+    kind: "text",
+    targetNote: "the duration tier the prompt ran at (`entry.duration`, GV-01); picks the row's per-tier targets"
+  },
+  {
+    key: "first_s",
+    group: "core",
+    header: "1stAudio s",
+    from: "derived",
+    width: 10,
+    kind: "number",
+    digits: 1,
+    perTier: true,
+    targetNote:
+      "MT-01: seconds from the attempt's start to the first servable item (`delivery.firstServableMs`); phone voice first, so the first servable item is first audio"
+  },
+  {
+    key: "full_s",
+    group: "core",
+    header: "allReady s",
+    from: "derived",
+    width: 10,
+    kind: "number",
+    digits: 1,
+    perTier: true,
+    targetNote:
+      "MT-02: seconds until every item was ready (`delivery.allItemsReadyMs`), only when `entry.publishable` is true; otherwise — (not ready: gate failed)"
+  },
+  {
+    key: "lead_s",
+    group: "core",
+    header: "minLead s",
+    from: "report",
+    width: 9,
+    kind: "number",
+    digits: 1,
+    perTier: true,
+    targetNote: "MT-11: the smallest lead of generation over the playhead at 1x (`delivery.minLeadSec`); negative = a stall"
   },
   { key: "calls", header: "calls", from: "report", width: 5, kind: "number", digits: 0, group: "core" },
   {
@@ -485,8 +543,61 @@ export const COLUMNS = [
     kind: "number",
     digits: 1,
     targetNote: "MT-10: Spark seconds charged (reconciled sparkSeconds MeterEvents; a reservation is not a charge)"
+  },
+  /* GV-52: the delivery block's detail columns. */
+  {
+    key: "lead15_s",
+    group: "detail",
+    header: "lead1.5x s",
+    from: "report",
+    width: 10,
+    kind: "number",
+    digits: 1,
+    targetNote: "MT-11 at 1.5x playback: the smallest lead over the playhead (`delivery.minLeadSecAt1_5x`)"
+  },
+  {
+    key: "render_rtf",
+    group: "detail",
+    header: "render RTF",
+    from: "report",
+    width: 10,
+    kind: "number",
+    digits: 2,
+    targetNote:
+      "R1-14 render speed: the report's own realtime factor (`delivery.render.realtimeFactor`, GV-74); renderX is the runlog's reading of the same MT-09"
   }
 ];
+
+/**
+ * GV-52 (R1-16): the split per-tier targets, in seconds, for the delivery
+ * columns. Replaces the single ttlA1 <= 0.5 min and elapsed <= 6 min targets.
+ *
+ * SETTLED rests on the orchestrator's adopted reading of the 30 s KPI (OQ-03),
+ * recorded as decision 15 of docs/roadmap/generation-v2.md (#1286): short
+ * first audio <= 30 s and the whole Foray ready <= 90 s short / <= 240 s
+ * medium. Medium first audio <= 40 s and lead >= 30 s stay PROPOSED until a
+ * founder ruling. A later ruling flips a state here in one line. Long has no
+ * target. Nothing compares a value to these (rule 2).
+ */
+export const TIER_TARGETS = {
+  short: {
+    first_s: { target: 30, targetState: SETTLED },
+    full_s: { target: 90, targetState: SETTLED },
+    lead_s: { target: 30, targetState: PROPOSED }
+  },
+  medium: {
+    first_s: { target: 40, targetState: PROPOSED },
+    full_s: { target: 240, targetState: SETTLED },
+    lead_s: { target: 30, targetState: PROPOSED }
+  }
+};
+
+/** Where TIER_TARGETS' states come from, for the legend. */
+export const TIER_TARGET_NOTE =
+  "orchestrator's adopted reading of the 30 s KPI (OQ-03; docs/roadmap/generation-v2.md decision 15; #1286); ? = proposed until a founder ruling";
+
+/** The tiers a row can carry (`entry.duration`, GV-01). */
+export const TIERS = ["short", "medium", "long"];
 
 /** Column groups. A `core` column is in the committed KPI table
  * (markdownHeader / markdownRow) and the default printed table; a `detail`
@@ -549,6 +660,18 @@ export function num(value) {
 export function minutes(ms) {
   const v = num(ms);
   return v === null ? null : v / 60000;
+}
+
+/** GV-52: milliseconds to seconds, or null when there were none. */
+export function seconds(ms) {
+  const v = num(ms);
+  return v === null ? null : v / 1000;
+}
+
+/** GV-52: the row's tier (`entry.duration`, GV-01), or null when the report
+ * names none (every report before GV-01) or names one this bench does not know. */
+export function tierOf(entry) {
+  return typeof entry?.duration === "string" && TIERS.includes(entry.duration) ? entry.duration : null;
 }
 
 /**
@@ -763,6 +886,7 @@ export function runLogSummaryFor(entry, reportPath) {
 export function rowFor(entry, context = {}) {
   const { report = {}, runId = "run", clips = null, listening = null, runlog = null, scorecard = null } = context;
   const v = entry.veracity || {};
+  const delivery = entry.delivery && typeof entry.delivery === "object" ? entry.delivery : null;
   const candidateId = candidateIdFor(entry);
   const heard = listening && candidateId !== null ? listening.get(candidateId) || null : null;
   const values = {
@@ -775,6 +899,15 @@ export function rowFor(entry, context = {}) {
        timings; reports with neither (runs 4-8) are absent. */
     elapsed_min: minutes(num(entry.elapsedMs) ?? spanMsOf(v.stageTimings)),
     ttl_a1_min: minutes(entry.ttlA1Ms),
+    /* GV-52: the tier and the delivery block (GV-33). Seconds where the block
+       is in milliseconds; absent without the block, and absent on a resumed
+       attempt, which carries no first-item times (rule 1). */
+    tier: tierOf(entry),
+    first_s: seconds(delivery?.firstServableMs),
+    /* MT-02 counts only a Foray that could ship: a candidate whose gate failed
+       was never "ready", however late its last item arrived. */
+    full_s: entry.publishable === true ? seconds(delivery?.allItemsReadyMs) : null,
+    lead_s: num(delivery?.minLeadSec),
     calls: num(entry.calls),
     /* F-101 put the denominator in the name; runs 4–9 carry the old one. The
        two are the same quantity, so reading either is a rename, not a guess. */
@@ -815,7 +948,9 @@ export function rowFor(entry, context = {}) {
     prose_tps: runlog ? num(runlog.prose?.tokPerSec) : null,
     code_s: runlog && num(runlog.codeMs) !== null ? runlog.codeMs / 1000 : null,
     render_x: runlog ? num(runlog.renderRealtime) : null,
-    spark_s: runlog ? num(runlog.unitSpend?.[SPARK_UNIT]) : null
+    spark_s: runlog ? num(runlog.unitSpend?.[SPARK_UNIT]) : null,
+    lead15_s: num(delivery?.minLeadSecAt1_5x),
+    render_rtf: num(delivery?.render?.realtimeFactor)
   };
   const sources = {};
   for (const col of COLUMNS) {
@@ -900,8 +1035,41 @@ export function formatCell(col, row) {
   return value.toFixed(col.digits) + (partial ? "*" : "");
 }
 
-/** The target cell of the legend: settled targets plain, proposed with `?`. */
+/** GV-52: one per-tier target as the legend prints it — plain when settled,
+ * `?` when proposed. */
+function tierTargetText(t) {
+  return t.targetState === PROPOSED ? `${t.target}?` : String(t.target);
+}
+
+/**
+ * GV-52: the target that applies to this column ON THIS ROW, chosen by the
+ * row's tier: `{ target, targetState }`, or null when the column has no target
+ * for that tier (long, or a row whose report names no tier). A column with a
+ * single target returns it whatever the row. Never compares (rule 2).
+ */
+export function targetFor(col, row) {
+  if (col.perTier) {
+    const tier = row?.values?.tier;
+    const t = typeof tier === "string" && Object.hasOwn(TIER_TARGETS, tier) ? TIER_TARGETS[tier][col.key] : undefined;
+    return t ? { target: t.target, targetState: t.targetState } : null;
+  }
+  if (col.target === undefined || col.target === null) return null;
+  return { target: col.target, targetState: col.targetState };
+}
+
+/** GV-52: a per-tier column's targets across the tiers, e.g.
+ * `short 30, medium 40?, long none`. */
+export function tierTargetsLabel(col) {
+  return TIERS.map((tier) => {
+    const t = TIER_TARGETS[tier]?.[col.key];
+    return `${tier} ${t ? tierTargetText(t) : "none"}`;
+  }).join(", ");
+}
+
+/** The target cell of the legend: settled targets plain, proposed with `?`;
+ * a per-tier column (GV-52) prints `per tier`. */
 export function targetLabel(col) {
+  if (col.perTier) return "per tier";
   if (col.target === undefined || col.target === null) return "";
   const n = col.digits === 0 ? String(col.target) : col.target.toFixed(col.digits);
   return col.targetState === PROPOSED ? `${n}?` : n;
@@ -928,7 +1096,10 @@ export function formatTable(rows, options = {}) {
     const note = col.targetNote || "";
     if (!target && !note) continue;
     out.push(`  ${col.header.padEnd(9)} ${(target || "no target").padEnd(10)} ${note}`);
+    /* GV-52: a per-tier column names every tier's target, in seconds. */
+    if (col.perTier) out.push(`  ${"".padEnd(9)} ${"".padEnd(10)} targets (s): ${tierTargetsLabel(col)}`);
   }
+  if (columns.some((col) => col.perTier)) out.push(`  per tier: ${TIER_TARGET_NOTE}`);
   return out.join("\n");
 }
 
@@ -947,6 +1118,8 @@ export function jsonlLine(row) {
     prompt: row.meta.prompt,
     /* The one text column a diff wants (GV-08): the date of the last listen. */
     last_listen: row.values.last_listen ?? null,
+    /* GV-52: the tier, so a baseline line keeps the row's per-tier targets. */
+    tier: row.values.tier ?? null,
     /* GV-17: calls per stage as a meta object (not a column), and the basis of
        prose_tps so a diff never compares a decode rate with an e2e one. */
     calls_by_stage: row.meta.calls_by_stage ?? null,
@@ -974,7 +1147,8 @@ export function rowFromJsonl(line) {
     run: obj.run,
     outcome: obj.outcome ?? null,
     valid: obj.valid ?? null,
-    last_listen: typeof obj.last_listen === "string" ? obj.last_listen : null
+    last_listen: typeof obj.last_listen === "string" ? obj.last_listen : null,
+    tier: typeof obj.tier === "string" && TIERS.includes(obj.tier) ? obj.tier : null
   };
   for (const col of COLUMNS) {
     if (col.kind === "number") values[col.key] = num(obj.metrics?.[col.key]);

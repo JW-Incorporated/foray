@@ -80,7 +80,12 @@ import {
   spanMsOf,
   spliceRows,
   tableColumns,
+  targetFor,
   targetLabel,
+  tierOf,
+  tierTargetsLabel,
+  seconds,
+  TIER_TARGETS,
   ROWS_BEGIN,
   ROWS_END
 } from "./run.mjs";
@@ -207,10 +212,13 @@ test("the proposed targets are exactly the §1.2 rows marked *proposed*, on the 
      and read 0.684 on run 9 where the row's own quantity read 0.557. Grading a
      proposed founder target against the flattering number is the defect F-101
      is about. Ran it — red here and in the target-label test. */
+  /* GV-52 (R1-16): elapsed_min's <= 6 min and ttl_a1_min's 0.5 min targets
+     are superseded by the per-tier delivery targets (TIER_TARGETS), so
+     neither column carries a single target any more. */
   const proposed = COLUMNS.filter((c) => c.targetState === PROPOSED).map((c) => c.key).sort();
-  assert.deepEqual(proposed, ["cost_usd", "elapsed_min", "narration_share", "pages_per_seam", "tape_of_runtime"]);
+  assert.deepEqual(proposed, ["cost_usd", "narration_share", "pages_per_seam", "tape_of_runtime"]);
   const settled = COLUMNS.filter((c) => c.targetState === SETTLED).map((c) => c.key).sort();
-  assert.deepEqual(settled, ["calls_per_beat", "first_pass_pages", "intro_restates", "tokens", "ttl_a1_min", "unverified"]);
+  assert.deepEqual(settled, ["calls_per_beat", "first_pass_pages", "intro_restates", "tokens", "unverified"]);
   /* The 80 % first-attempt target is §1.2's "first-attempt PAGE pass rate", so
      it sits on the pages column and on neither of the other two. */
   assert.equal(column("first_pass_beats").target, undefined);
@@ -231,7 +239,9 @@ test("every column with a target declares whether it is settled, and vice versa"
 test("a proposed target prints with `?` and a settled one prints plain", () => {
   /* MUTATION: `return n` (drop the `?`) in targetLabel(). */
   assert.equal(targetLabel(column("tape_of_runtime")), "0.700?");
-  assert.equal(targetLabel(column("elapsed_min")), "6.0?");
+  assert.equal(targetLabel(column("elapsed_min")), "", "GV-52: the 6 min target is superseded by R1-16");
+  assert.equal(targetLabel(column("ttl_a1_min")), "", "GV-52: the 0.5 min target is superseded by R1-16");
+  assert.equal(targetLabel(column("first_s")), "per tier");
   assert.equal(targetLabel(column("wall_min")), "", "TM-10: the stage sum is not wall time and grades against nothing");
   assert.equal(targetLabel(column("first_pass_pages")), "0.80");
   assert.equal(targetLabel(column("tape_share")), "", "F-101: the report's tape/(tape+narration) grades against nothing");
@@ -267,6 +277,7 @@ test("nothing in the harness compares a value to a target", () => {
     "prose_basis",
     "run",
     "sources",
+    "tier",
     "valid"
   ]);
   const table = formatTable([run9()]);
@@ -471,7 +482,9 @@ test("an absent cell prints the dash and never a zero", () => {
   const table = formatTable([run4(), run9()]);
   const run4Line = table.split("\n").find((l) => l.trim().startsWith("run-4"));
   assert.equal(run4Line.includes("0"), false, `run 4's row must contain no zeros: ${run4Line}`);
-  assert.equal((run4Line.match(/—/g) || []).length, 20);
+  /* GV-52 added four core columns (tier, 1stAudio s, allReady s, minLead s),
+     all absent on run 4: 20 + 4. */
+  assert.equal((run4Line.match(/—/g) || []).length, 24);
 });
 
 test("the machine line is one line per run, and absent metrics survive as null", () => {
@@ -737,7 +750,7 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
   for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
   /* GV-08 added the first detail columns and GV-17 the runlog's speed
      columns; every earlier column stays core. */
-  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), ["listen", "last_listen", ...SPEED_KEYS]);
+  assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), ["listen", "last_listen", ...SPEED_KEYS, "lead15_s", "render_rtf"]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
   try {
@@ -805,7 +818,8 @@ test("the KPI doc no longer calls the stage sum the driver's elapsed time", () =
      found wrong: entry.ms is a sum over concurrent stages. */
   const doc = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "generation-kpis.md"), "utf8");
   assert.equal(/wall m` is the driver's own per-prompt elapsed/.test(doc), false);
-  assert.match(doc, /\| `elapsed m` \| ≤ 6 min p50 \| \*\*proposed \(D0\)\*\* \|/);
+  /* GV-52 (R1-16): the 6 min target is superseded by the per-tier one. */
+  assert.match(doc, /\| `elapsed m` \| — \| superseded by R1-16 \|/);
   assert.match(doc, /\| `stageSum m` \| — \| — \|/);
 });
 
@@ -1223,3 +1237,205 @@ function writeReport(dir, entries) {
   fs.writeFileSync(file, JSON.stringify({ generated_at: "2026-09-12T00:00:00.000Z", dry_run: false, entries }));
   return file;
 }
+
+/* =================================================================== */
+/* GV-52 (R1-16; MT-01, MT-02, MT-11) — delivery columns, per-tier      */
+/* targets                                                              */
+/* =================================================================== */
+
+const DELIVERY = path.join(FIXTURES, "delivery");
+/* The synthetic report: #1 short publishable (with a render block), #2
+   medium publishable, #3 short whose gate failed, #4 long and resumed. */
+const deliveryRows = () => rowsForReport(path.join(DELIVERY, "report.json"), { pool: POOL });
+const DELIVERY_CORE = ["tier", "first_s", "full_s", "lead_s"];
+const DELIVERY_DETAIL = ["lead15_s", "render_rtf"];
+
+test("GV-52: a short row's first-audio target is 30 s and a medium row's is 40 s; long and tierless rows have none", () => {
+  /* MUTATION: `TIER_TARGETS.short[col.key]` in targetFor() (every row read as
+     short). Ran it: red — the medium row reads 30. */
+  const [short, medium, , long] = deliveryRows();
+  assert.equal(short.values.tier, "short");
+  assert.equal(medium.values.tier, "medium");
+  assert.deepEqual(targetFor(column("first_s"), short), { target: 30, targetState: SETTLED });
+  assert.deepEqual(targetFor(column("first_s"), medium), { target: 40, targetState: PROPOSED });
+  assert.deepEqual(targetFor(column("full_s"), short), { target: 90, targetState: SETTLED });
+  assert.deepEqual(targetFor(column("full_s"), medium), { target: 240, targetState: SETTLED });
+  assert.deepEqual(targetFor(column("lead_s"), short), { target: 30, targetState: PROPOSED });
+  assert.deepEqual(targetFor(column("lead_s"), medium), { target: 30, targetState: PROPOSED });
+  assert.equal(targetFor(column("first_s"), long), null, "long has no target");
+  assert.equal(targetFor(column("first_s"), run9()), null, "run 9's report names no tier");
+  /* A single-target column is the same whatever the row. */
+  assert.deepEqual(targetFor(column("tokens"), short), { target: 50000, targetState: SETTLED });
+  assert.equal(targetFor(column("clips"), short), null);
+});
+
+test("GV-52: the split targets follow decision 15 — short first audio and whole-Foray targets settled, medium first audio and lead proposed", () => {
+  /* MUTATION: `targetState: SETTLED` on medium.first_s (laundering the
+     proposed 40 s into a settled one). Ran it: red. */
+  assert.deepEqual(TIER_TARGETS, {
+    short: {
+      first_s: { target: 30, targetState: SETTLED },
+      full_s: { target: 90, targetState: SETTLED },
+      lead_s: { target: 30, targetState: PROPOSED }
+    },
+    medium: {
+      first_s: { target: 40, targetState: PROPOSED },
+      full_s: { target: 240, targetState: SETTLED },
+      lead_s: { target: 30, targetState: PROPOSED }
+    }
+  });
+  /* A per-tier column carries no single target, so the
+     target-and-targetState agreement holds and nothing reads it as settled. */
+  for (const key of ["first_s", "full_s", "lead_s"]) {
+    assert.equal(column(key).perTier, true, key);
+    assert.equal(column(key).target, undefined, key);
+    assert.equal(column(key).targetState, undefined, key);
+  }
+  assert.equal(tierTargetsLabel(column("first_s")), "short 30, medium 40?, long none");
+  assert.equal(tierTargetsLabel(column("full_s")), "short 90, medium 240, long none");
+  assert.equal(tierTargetsLabel(column("lead_s")), "short 30?, medium 30?, long none");
+});
+
+test("GV-52: full_s is absent for a row whose gate failed, even when elapsedMs and allItemsReadyMs exist", () => {
+  /* MUTATION: drop the `entry.publishable === true ?` guard in rowFor() (full_s
+     = allItemsReadyMs whatever the gate said). Ran it: red. */
+  const [short, medium, failed] = deliveryRows();
+  assert.equal(short.values.full_s, 86.4);
+  assert.equal(medium.values.full_s, 229.7);
+  assert.equal(failed.values.full_s, null);
+  assert.equal(failed.sources.full_s, "absent");
+  assert.equal(formatCell(column("full_s"), failed), ABSENT);
+  /* The row's own clock and first audio are still printed: only MT-02 waits
+     on the gate. */
+  assert.equal(failed.values.elapsed_min, 95000 / 60000);
+  assert.equal(failed.values.first_s, 29);
+  assert.equal(failed.values.lead_s, 18);
+  /* A row that does not say it is publishable is not ready either. */
+  const dir = tmpdir();
+  const entry = {
+    outcome: "generated",
+    detail: "OK x",
+    ms: 1,
+    duration: "short",
+    delivery: { granularity: "act", items: 1, allItemsReadyMs: 5000, firstServableMs: 1000 }
+  };
+  const row = rowsForReport(writeReport(dir, [entry]), { pool: POOL })[0];
+  assert.equal(row.values.full_s, null);
+  assert.equal(row.values.first_s, 1);
+});
+
+test("GV-52: the synthetic delivery report prints the four columns, and the legend names the per-tier targets", () => {
+  /* MUTATION: read `entry.veracity.delivery` instead of `entry.delivery` in
+     rowFor(). Ran it: red — every delivery cell is —. */
+  const out = [];
+  main(["--wide", "--format", "table", "--segments", path.join(FIXTURES, "segments.json"), DELIVERY], (s) => out.push(s));
+  const text = out.join("\n");
+  const lines = text.split("\n");
+  const header = lines[0].trim().split(/\s{2,}/);
+  const cellsOf = (run) => lines.find((l) => l.trim().startsWith(run)).trim().split(/\s{2,}/);
+  const cell = (run, name) => cellsOf(run)[header.indexOf(name)];
+  assert.equal(cell("delivery#1", "tier"), "short");
+  assert.equal(cell("delivery#1", "1stAudio s"), "24.8");
+  assert.equal(cell("delivery#1", "allReady s"), "86.4");
+  assert.equal(cell("delivery#1", "minLead s"), "41.3");
+  assert.equal(cell("delivery#1", "lead1.5x s"), "12.5");
+  assert.equal(cell("delivery#1", "render RTF"), "4.20");
+  assert.equal(cell("delivery#2", "tier"), "medium");
+  assert.equal(cell("delivery#2", "minLead s"), "-6.5", "a stall prints negative, never clamped");
+  assert.equal(cell("delivery#2", "render RTF"), ABSENT, "no render block yet (GV-74)");
+  assert.equal(cell("delivery#3", "allReady s"), ABSENT, "gate failed");
+  /* The legend: per tier, every tier's target, and the provenance. */
+  assert.match(text, /1stAudio s per tier/);
+  assert.match(text, /targets \(s\): short 30, medium 40\?, long none/);
+  assert.match(text, /targets \(s\): short 90, medium 240, long none/);
+  assert.match(text, /targets \(s\): short 30\?, medium 30\?, long none/);
+  assert.match(text, /per tier: orchestrator's adopted reading of the 30 s KPI \(OQ-03; docs\/roadmap\/generation-v2\.md decision 15; #1286\)/);
+  assert.match(text, /not ready: gate failed/);
+  assert.equal(/\b(PASS|FAIL|BAD|regressed|over target|under target)\b/.test(text), false, "no verdict is rendered");
+});
+
+test("GV-52: out-4 and out-9 carry no delivery block, so every delivery column is — and never 0; a resumed attempt is — too", () => {
+  /* MUTATION: `lead_s: num(delivery?.minLeadSec) ?? 0` (or `?? 0` on any
+     delivery cell). Ran it: red. SECOND MUTATION: an `?? seconds(entry.elapsedMs)`
+     fallback on full_s (the resumed row then reads 610 s). Ran it: red. */
+  for (const row of [run4(), run9()]) {
+    for (const key of [...DELIVERY_CORE, ...DELIVERY_DETAIL]) {
+      assert.equal(row.values[key], null, `${row.values.run}/${key}`);
+      assert.equal(row.sources[key], "absent");
+      assert.equal(formatCell(column(key), row), ABSENT);
+    }
+  }
+  const resumed = deliveryRows()[3];
+  assert.equal(resumed.values.tier, "long");
+  for (const key of ["first_s", "full_s", "lead_s", "lead15_s", "render_rtf"]) assert.equal(resumed.values[key], null, `resumed/${key}`);
+  /* Sources name the column's producer when there is a number. */
+  const short = deliveryRows()[0];
+  assert.equal(short.sources.first_s, "derived");
+  assert.equal(short.sources.lead_s, "report");
+  assert.equal(short.sources.tier, "report");
+  /* An unknown tier string is no tier, not a guessed one. */
+  assert.equal(tierOf({ duration: "epic" }), null);
+  assert.equal(tierOf({}), null);
+  assert.equal(seconds(undefined), null);
+});
+
+test("GV-52: the core columns gain tier and the three delivery columns, after ttlA1; lead at 1.5x and render RTF are detail", () => {
+  /* MUTATION: `group: "detail"` on first_s (the committed table then drops
+     the first-audio column). Ran it: red. */
+  for (const key of DELIVERY_CORE) assert.equal(column(key).group, CORE, key);
+  for (const key of DELIVERY_DETAIL) assert.equal(column(key).group, DETAIL, key);
+  assert.match(markdownHeader()[0], /\| ttlA1 m \| tier \| 1stAudio s \| allReady s \| minLead s \| calls \|/);
+});
+
+test("GV-52: JSONL carries the tier and the delivery metrics, and a line round-trips to the same wide table", () => {
+  /* MUTATION: drop `tier` from jsonlLine(). Ran it: red — the round-tripped
+     row loses its tier and so its per-tier targets. */
+  for (const row of deliveryRows()) {
+    const line = JSON.parse(jsonlLine(row));
+    assert.equal(line.tier, row.values.tier);
+    for (const key of ["first_s", "full_s", "lead_s", "lead15_s", "render_rtf"]) {
+      assert.equal(key in line.metrics, true, key);
+      assert.equal(line.metrics[key], row.values[key], `${row.values.run}/${key}`);
+    }
+    const back = rowFromJsonl(line);
+    assert.equal(back.values.tier, row.values.tier);
+    assert.deepEqual(targetFor(column("first_s"), back), targetFor(column("first_s"), row));
+    assert.equal(formatTable([back], { wide: true }), formatTable([row], { wide: true }));
+  }
+  /* A baseline line written before GV-52 has no tier: absent, not a guess. */
+  const old = rowFromJsonl({ run: "run-x", metrics: {}, sources: {} });
+  assert.equal(old.values.tier, null);
+  assert.equal(old.sources.tier, "absent");
+  assert.equal(old.sources.first_s, "absent");
+});
+
+test("GV-52: runs 4-9 render unchanged apart from the four new absent cells after ttlA1", () => {
+  /* MUTATION: move `tier` before `stageSum m` in COLUMNS. Ran it: red. The
+     committed run-9 row from before GV-52 is pinned verbatim; removing the four
+     new cells gives it back. */
+  const lines = fs
+    .readFileSync(path.join(HERE, "baseline.jsonl"), "utf8")
+    .split("\n")
+    .filter((l) => l.trim());
+  const nine = markdownRow(rowFromJsonl(lines[5]));
+  const before =
+    "| run-9 | generated | yes | 107.7 | 44.6 | 38.7 | 69 | 0.684 | 0.557 | 10 | 107.5 | 188.3 | 0.86 | 0.316 | — | — | 0.05 | 8 | 0 | — | 0 | 0.55 | 128050 | — |";
+  const cells = nine.split(" | ");
+  assert.deepEqual(cells.slice(6, 10), ["—", "—", "—", "—"]);
+  assert.equal([...cells.slice(0, 6), ...cells.slice(10)].join(" | "), before);
+});
+
+test("GV-52: the KPI doc's targets table names MT-01, MT-02 and MT-11 with per-tier values and their provenance", () => {
+  /* MUTATION: delete the MT-01 row from the doc's per-tier table. Ran it: red. */
+  const doc = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "generation-kpis.md"), "utf8");
+  assert.match(doc, /### Delivery and the per-tier targets \(GV-52, R1-16\)/);
+  assert.match(doc, /\| MT-01 \| `1stAudio s` \| ≤ 30 s \(settled\) \| ≤ 40 s \(\*\*proposed\*\*\) \| — \|/);
+  assert.match(doc, /\| MT-02 \| `allReady s` \| ≤ 90 s \(settled\) \| ≤ 4 min \/ 240 s \(settled\) \| — \|/);
+  assert.match(doc, /\| MT-11 \| `minLead s` \| ≥ 30 s \(\*\*proposed\*\*\) \| ≥ 30 s \(\*\*proposed\*\*\) \| — \|/);
+  assert.match(doc, /decision\s+15 of `docs\/roadmap\/generation-v2\.md` \(#1286\)/);
+  assert.match(doc, /\| `ttlA1 m` \| — \| superseded by R1-16 \|/);
+  /* The roadmap's §1.2 records the split and points at the table. */
+  const roadmap = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "foray-to-spec-roadmap.md"), "utf8");
+  assert.match(roadmap, /\*\*R1-16 \(GV-52\): the time targets are split by tier\.\*\*/);
+  assert.match(roadmap, /generation-kpis\.md#delivery-and-the-per-tier-targets-gv-52-r1-16/);
+});
