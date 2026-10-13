@@ -19,7 +19,9 @@ import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { stampForays, normalizeBase, loadProfile, readManifests, StampError } from "./stamp-narration.mjs";
+import {
+  stampForays, normalizeBase, loadProfile, readManifests, StampError, candidateToDoc, stampCandidate, assertCandidatePath,
+} from "./stamp-narration.mjs";
 import { narrationDuration } from "../../player/foray-queue.js";
 import { billableText } from "../narrate/billable.mjs";
 import { checkForays } from "../foray/check-forays.mjs";
@@ -192,6 +194,120 @@ test("the CLI stamps a copy of the frozen forays file, then reports it unchanged
     assert.equal(r2.status, 0, r2.stderr);
     assert.match(r2.stdout, /data unchanged/);
     assert.equal(fs.readFileSync(dataPath, "utf8"), after1);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+/* ---- GV-71: --candidate (docs/roadmap/generation-v2.md) ---- */
+
+/** A generated candidate built from the frozen narrated draft: camelCase
+    `runtimeSec`, no `status`, no `runtime_sec`, like generateForays writes it.
+    Its id is in no catalogue, so a build whose --candidate fell through to the
+    data/forays.json path refuses (Foray not found) instead of stamping data/. */
+const CANDIDATE = `${DRAFT}-candidate`;
+function candidateFixture() {
+  const f = structuredClone(fixtureFile("forays").forays.find((x) => x.id === DRAFT));
+  return { id: CANDIDATE, title: f.title, items: f.items, runtimeSec: f.runtime_sec };
+}
+
+test("a candidate is stamped in place: audio_url and duration_sec on its lines, runtimeSec restated by the rendered delta", () => {
+  /* The candidate is camelCase, stampForays snake_case; the adapter bridges
+     both ways. MUTATION: candidateToDoc reads c.runtime_sec (no restatement),
+     or stampCandidate never writes runtimeSec back. */
+  const c = candidateFixture();
+  const before = c.runtimeSec;
+  const est = c.items.filter((i) => i.type === "narration").reduce((a, i) => a + narrationDuration(i).sec, 0);
+  const doc = { forays: [{ id: c.id, items: structuredClone(c.items) }] };
+  const m = fakeManifest(doc, CANDIDATE);
+  const heartSum = m.items.filter((e) => e.voice === "af_heart").reduce((a, e) => a + e.duration_sec, 0);
+  assert.deepEqual(candidateToDoc(c), { forays: [{ id: c.id, status: "draft", items: c.items, runtime_sec: before }] });
+  const res = stampCandidate(c, [{ file: "m", manifest: m }], { base: BASE, profile: PROFILE });
+  assert.equal(res.stamped, m.items.length);
+  for (const it of c.items.filter((i) => i.type === "narration")) {
+    const heart = m.items.find((e) => e.item_id === it.id && e.voice === "af_heart");
+    assert.equal(it.audio_url, `${BASE}/${heart.key}`);
+    assert.equal(it.duration_sec, heart.duration_sec);
+  }
+  assert.ok(Math.abs(c.runtimeSec - (before + heartSum - est)) < 0.002, `${c.runtimeSec} vs ${before + heartSum - est}`);
+  assert.notEqual(c.runtimeSec, before);
+  assert.equal("runtime_sec" in c, false, "the candidate keeps its camelCase field only");
+  assert.equal("status" in c, false, "the draft status is the adapter's, never written to the candidate");
+});
+
+test("a candidate with a stale script is refused exactly as forays.json is, and is left untouched", () => {
+  /* The text_sha256 refusal carries over. MUTATION: stampCandidate writes
+     runtimeSec or items before stampForays validates, or the sha check is skipped. */
+  const c = candidateFixture();
+  const m = fakeManifest({ forays: [{ id: c.id, items: c.items }] }, CANDIDATE);
+  c.items.filter((i) => i.type === "narration").at(-1).script += " Edited.";
+  const snapshot = JSON.stringify(c);
+  assert.throws(() => stampCandidate(c, [{ file: "m", manifest: m }], { base: BASE, profile: PROFILE }), /script changed since it was rendered/);
+  assert.equal(JSON.stringify(c), snapshot);
+});
+
+test("a candidate path that is data/forays.json or under data/ is refused; data-local/ and elsewhere are not", () => {
+  /* MUTATION: drop assertCandidatePath, or test it with a string prefix
+     (data-local/ would then be refused) or only against data/forays.json. */
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "stamp-cand-root-"));
+  try {
+    fs.mkdirSync(path.join(tmp, "data", "nested"), { recursive: true });
+    fs.writeFileSync(path.join(tmp, "data", "forays.json"), "{}");
+    for (const bad of [
+      path.join(tmp, "data", "forays.json"),
+      path.join(tmp, "data", "nested", "candidate.json"),
+      path.join(tmp, "data"),
+      path.join(tmp, "x", "..", "data", "c.json"),
+    ]) {
+      assert.throws(() => assertCandidatePath(bad, { root: tmp }), /under data\//, bad);
+    }
+    for (const ok of [path.join(tmp, "data-local", "c.json"), path.join(tmp, "candidate.json"), path.join(tmp, "datax", "c.json")]) {
+      assert.equal(assertCandidatePath(ok, { root: tmp }), path.resolve(ok));
+    }
+    /* The real repo: data/forays.json itself, by a relative path. */
+    assert.throws(() => assertCandidatePath(path.relative(process.cwd(), path.join(ROOT, "data", "forays.json"))), /under data\//);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("the CLI stamps a candidate file twice (CHANGED, then unchanged) and refuses data/forays.json without writing it", () => {
+  /* Executes the real entry point. MUTATION: --candidate falls through to the
+     forays.json path, the data/ refusal runs after the write, or a second run rewrites. */
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "stamp-cand-"));
+  try {
+    const c = candidateFixture();
+    const candPath = path.join(tmp, "candidate.json");
+    fs.writeFileSync(candPath, JSON.stringify(c, null, 2) + "\n");
+    const mdir = path.join(tmp, "out");
+    fs.mkdirSync(mdir);
+    fs.writeFileSync(path.join(mdir, "manifest-all.json"), JSON.stringify(fakeManifest({ forays: [{ id: c.id, items: c.items }] }, CANDIDATE)));
+    const env = { ...process.env, NARRATION_PUBLIC_BASE: BASE };
+    const run = (target) => spawnSync(process.execPath, [CLI, "--manifest", mdir, "--candidate", target], { encoding: "utf8", env });
+    const r1 = run(candPath);
+    assert.equal(r1.status, 0, r1.stderr);
+    assert.match(r1.stdout, /candidate CHANGED/);
+    const after1 = JSON.parse(fs.readFileSync(candPath, "utf8"));
+    assert.ok(after1.items.some((i) => i.type === "narration" && typeof i.audio_url === "string"));
+    assert.notEqual(after1.runtimeSec, c.runtimeSec);
+    const text1 = fs.readFileSync(candPath, "utf8");
+    const r2 = run(candPath);
+    assert.equal(r2.status, 0, r2.stderr);
+    assert.match(r2.stdout, /candidate unchanged/);
+    assert.equal(fs.readFileSync(candPath, "utf8"), text1);
+
+    /* data/forays.json itself runs with --check as well, so a build that lost
+       the refusal fails here without writing the real catalogue; the refusal
+       comes before --check is consulted. */
+    const dataPath = path.join(ROOT, "data", "forays.json");
+    const dataBefore = fs.existsSync(dataPath) ? fs.readFileSync(dataPath) : null;
+    for (const [target, extra] of [[dataPath, ["--check"]], [path.join(ROOT, "data", "candidate-under-data.json"), []]]) {
+      const r = spawnSync(process.execPath, [CLI, "--manifest", mdir, "--candidate", target, ...extra], { encoding: "utf8", env });
+      assert.equal(r.status, 2, r.stdout);
+      assert.match(r.stderr, /under data\//);
+    }
+    assert.equal(fs.existsSync(path.join(ROOT, "data", "candidate-under-data.json")), false);
+    if (dataBefore) assert.ok(fs.readFileSync(dataPath).equals(dataBefore), "data/forays.json must not change");
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
