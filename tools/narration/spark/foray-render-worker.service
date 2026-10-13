@@ -1,0 +1,49 @@
+# foray-render-worker.service -- the narration render worker on the DGX Spark.
+#
+# GV-58 (docs/roadmap/generation-v2.md; #862). Runs `render-foray.py --worker`
+# (GV-22): Kokoro-82M fp32 through onnxruntime on the CPU, the G2P and the ORT
+# session resident, per-item jobs taken from the spool in priority order and
+# each finished line staged under SPOOL/upload/ for foray-render-upload.timer.
+#
+# NO CREDENTIALS. This unit reads no secret and names none: it has no
+# EnvironmentFile=, no LoadCredential= and no key in any Environment=. The R2
+# write token belongs to the upload user only (foray-render-upload.service).
+# tools/narration/spark/unit.test.mjs pins that, the spool path and the
+# bounded threads.
+#
+# The Spark's CPU is shared with SGLang's host processes (the Qwen lane), so
+# the worker is bounded three ways: 4 onnxruntime intra-op threads (--threads),
+# 4 OpenMP threads, and a 400% CPU quota at Nice=10. CPUQuota= and MemoryMax=
+# are enforced because this is a SYSTEM unit (/etc/systemd/system); a user unit
+# gets them only with cgroup delegation. tools/narration/spark/README.md.
+#
+# Installed by copying, never by linking: a unit change reaches the Spark only
+# when someone re-copies it from a checkout of the spark-live tag (D8).
+
+[Unit]
+Description=Foray narration render worker (Kokoro fp32, CPU, bounded)
+Documentation=https://github.com/JW-Incorporated/foray/blob/main/tools/narration/spark/README.md
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=foray-render
+Group=foray
+UMask=0007
+WorkingDirectory=/opt/foray
+Environment=OMP_NUM_THREADS=4
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/foray-venv/bin/python tools/narration/render-foray.py --worker /var/lib/foray/render-spool --threads 4 --weights-dir /var/lib/foray/narration-weights --no-download
+Restart=on-failure
+RestartSec=30
+Nice=10
+CPUQuota=400%
+MemoryMax=6G
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/foray
+
+[Install]
+WantedBy=multi-user.target

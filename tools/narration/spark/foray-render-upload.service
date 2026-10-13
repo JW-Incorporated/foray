@@ -1,0 +1,32 @@
+# foray-render-upload.service -- push what the render worker staged to R2.
+#
+# GV-58 (docs/roadmap/generation-v2.md; #862). Started by
+# foray-render-upload.timer. Runs spool-upload.mjs (GV-22) over the worker's
+# spool: each staged line is verified, handed to the governed
+# upload-narration.mjs, and only after a confirmed upload is its public_url
+# written into SPOOL/done/<job_id>.json.
+#
+# NO CREDENTIALS IN THIS FILE. upload-narration.mjs reads the founder's R2
+# write token from ~/.foray/r2-narration.env of the user this runs as
+# (foray-upload, so /home/foray-upload/.foray/r2-narration.env, chmod 600).
+# Only the founder places that file (D8, HUMAN-ACTIONS #119/#120/#121).
+# The render worker runs as a different user and cannot read it.
+
+[Unit]
+Description=Foray narration upload (spool -> R2 foray-narration)
+Documentation=https://github.com/JW-Incorporated/foray/blob/main/tools/narration/spark/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=foray-upload
+Group=foray
+UMask=0007
+WorkingDirectory=/opt/foray
+ExecStart=/usr/bin/node tools/narration/spool-upload.mjs /var/lib/foray/render-spool
+Nice=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/foray/render-spool
