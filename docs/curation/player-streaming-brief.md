@@ -161,8 +161,8 @@ cannot rebuild. New callers use `readJobSnapshot`.
 
 ## 3. The append contract — what the player does with it
 
-This is the piece left for the player owner to build (no `app.js`/`player/*.js` changes
-ship with this brief). The target behavior, per `generation-architecture.md` §1.4/§6:
+The target behavior, per `generation-architecture.md` §1.4/§6. GV-57 built the JS-lane
+half of it (§3a below); no screen calls it yet.
 
 1. **Playback starts the moment `items` holds more than the disclosure.** Do not wait for
    `status: "complete"`, and do not look at `acts[]` to decide: `items` is already only
@@ -202,6 +202,57 @@ ship with this brief). The target behavior, per `generation-architecture.md` §1
    carries no validation at all: the backend has already cut `items` at the first act that
    may not be served, so there is nothing for the player to judge and no flag to honour.
    An item in `items` may play; anything else is not in the payload.
+
+## 3a. What GV-57 built (JS lane, no screen yet)
+
+GV-57 (`docs/roadmap/generation-v2.md`, #1286) implements §3 in the player modules, dark:
+nothing calls it until a screen does, and that wiring waits for the UI revamp.
+
+- **`appendableTail(prevBuiltItems, nextBuilt)`** (`player/foray-queue.js`): option (a)
+  of §3.3. The caller rebuilds the whole Foray with `buildForayQueue`; this checks that
+  every queued item is still there, same id and same content (keys compared in a fixed
+  order), and returns only the new tail. A rebuild that is shorter, or that changed or
+  moved any queued item, THROWS before anything is appended. No `startIndex` option was
+  added.
+- **`PlayerQueueManager`** (`player/queue-manager.js`): `appendForayItems(foray, opts)`
+  rebuilds, takes `appendableTail`, pushes the tail and emits
+  `foray.stream.appended.n=<k>`. It never touches `currentIndex`, the playing ref or any
+  queued item. `setForayStreamOpen(open, { reason })` defaults to closed, and every new
+  queue (`setQueueFromForay`, `setQueueFromPick`, `loadQueue`) closes it again. The
+  reducer (`queue-state.js`, a recorded parity family) is unchanged: when it lands in
+  `ended` with the stream open, `_handle` records the next index, emits
+  `foray.stream.waiting at=<n>`, and `forayStreamWaiting` reads true. That is what makes
+  `client.js` skip the finished mark. The next append that adds items resumes there by
+  itself (`foray.stream.resumed at=<n>`). If the stream closes while the player waits,
+  it emits `foray.stream.ended reason=<r>`, stays ended and tells the surface the state
+  settled.
+- **`createForayStreamFollower({ fetchSnapshot, manager, intervalMs = 3000, schedule,
+  queueOptions, telemetry })`** (`player/foray-stream.js`) is the poll loop of §3.2-3.4:
+  - It skips any snapshot whose `seq` is not above the last one applied.
+  - The first snapshot with items calls `setQueueFromForay`, then `play(0)`, then
+    `setForayStreamOpen(true)`. Later snapshots call `appendForayItems`.
+  - `complete` or `failed` closes the stream and stops polling.
+  - A 403, a 404 or an empty answer is a silent "nothing yet".
+  - A snapshot for another Foray, or one whose prefix changed, stops the follower and
+    leaves the queue as it was.
+- **`ForayPlayer.followForayStream(fetchSnapshot, { follow })`** (`player/client.js`) is
+  JS-lane only. The native engine has no append command (`engine-contract.js`
+  `COMMANDS`), so in the native lane it refuses with a `foray.stream.refused lane=native`
+  telemetry line and returns null. The caller passes `follow` (foray-stream.js's
+  `followForayStream`). It is not imported, because an import would add a module to
+  client.js's boot closure and so a modulepreload line to `index.html`
+  (`test/boot-path.test.js` perf-1), and the UI freeze does not allow that edit. The card
+  that wires a screen makes it a static import and adds the line. That card also owns the
+  page's Foray state for a stream (the bar, the running order, the resume row, the lock
+  screen's "Building the next part", GV-70).
+- Tests: `player/foray-stream.test.js` (a real manager on `player/parity/fakes.js`, three
+  snapshot fixtures, §5 end to end) and the `appendableTail` block of
+  `player/foray-queue.test.js`. Neither is a parity-covered suite: appending is a
+  JS-lane rule.
+- One thing to know: a part that ends on a narration line reaches its end through the
+  reducer's bridge path. On origin/main, that path speaks a closing line that follows a
+  clip twice before it ends, whether or not a stream is open. The wait starts after the
+  second reading. This card does not change `queue-state.js`.
 
 ## 4. Known caveat: scoped validation can false-negative
 
@@ -257,9 +308,8 @@ acceptance test should:
   is still worthwhile — it is real, testable work independent of that gate — but wiring
   it to an actual fetch/poll loop in `app.js` is blocked on that infrastructure decision,
   not on anything in this brief.
-- **`buildForayQueue`'s `startIndex` option** (§3, item 3b) — a small, real change to
-  `player/foray-queue.js` if Hermes wants true incremental append instead of "rebuild
-  from the full array and diff." Flagged, not built, by this workstream.
+- **`buildForayQueue`'s `startIndex` option** (§3, item 3b) — not built: GV-57 chose
+  option (a), rebuild and check the prefix (§3a).
 - **The mobile shell.** Everything above is written against the web player
   (`player/*.js`, `app.js`). Whether/how a poll-and-append loop behaves under the iOS/
   Android shell (background/lock-screen playback continuing while polling happens, or
