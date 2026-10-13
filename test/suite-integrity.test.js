@@ -2608,7 +2608,7 @@ const BACKEND_FLOORS = {
   /* #703: the warm pass's feed parsing, which is what decides whether a
      reconciled episode comes out SEARCHABLE only or also MINTABLE — a duration
      read as 58 rather than 3501 makes an episode rank and then yield nothing. */
-  "test/warmTranscriptIndex.test.ts": 20, // round-3 L6 (2026-09-25): backend-rest-8/-14: --show merges the corpus digest; bounded, expiring feed cache; 13 -> 20 // CH2-06 (2026-10-07): +7 digest-row/guid-parity pins and +2 RED pins (&#038; title, 12:75 duration), -9 deleted with the private parseFeedEpisodes/parseDuration they tested; 20 -> 27 -> 20
+  "test/warmTranscriptIndex.test.ts": 38, // round-3 L6 (2026-09-25): backend-rest-8/-14: --show merges the corpus digest; bounded, expiring feed cache; 13 -> 20 // CH2-06 (2026-10-07): +7 digest-row/guid-parity pins and +2 RED pins (&#038; title, 12:75 duration), -9 deleted with the private parseFeedEpisodes/parseDuration they tested; 20 -> 27 -> 20 // GV-53 (2026-10-13): +15 for --from-staged (feed join, committed rows never rewritten, no downgrade, offline silent), --resolve-legacy (slug->show, sha1 prefix match/ambiguous/unmatched reasons, --legacy-map-from wins) and --supply-report (first missing mint condition); 20 -> 35 // GV-53 review: +3 (bare --from-staged reads the default staged digest; bare/orphan --resolve-legacy/--legacy-map-from refused; runWarmModes exits 2 running nothing); 35 -> 38
   /* Generation pipeline §4.0-4.1 (kanban card t_825eee4c): §3's input
      schema, `author_id` required and carried from day one per §1.3. */
   "test/generationRequest.test.ts": 5,
@@ -2619,7 +2619,7 @@ const BACKEND_FLOORS = {
   /* Generation pipeline §4.1 end to end: safety, then clarity, then intent,
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
-  "test/understandPrompt.test.ts": 7,
+  "test/understandPrompt.test.ts": 11, // GV-49 (#1286): +4 -- understandPrompt with the Jev clarity understander injected: a Jev 'clear' goes to intent with no text clarity call, a Jev yes carries the fallback's question and readings, an unsafe prompt never reaches Jev, and the default understander adds no clarityDecidedBy; 7 -> 11
   /* §4.2's catalogue lookup: concept matching against the semantic index and
     tape-availability counting against discover.json/item-tags.json, both
     proven against a small deterministic fixture catalogue (not the real
@@ -3458,6 +3458,20 @@ const BACKEND_FLOORS = {
      writeNarration. FakeJevClient only; offline. One named mutation per
      test. */
   "test/jevNarrationVerifier.test.ts": 16,
+  /* GV-49 (docs/roadmap/generation-v2.md, W4-02, #1286): the Jev clarity
+     understander -- one Jev request with the two noul questions
+     (two-subjects, one-episode) and only the prompt and product line in the
+     state; both below threshold is not ambiguous with no fallback call; at
+     or above either threshold the fallback answers once, unchanged, and can
+     overrule; every Jev failure (and a throwing client) falls back, a budget
+     stop propagates; metered through BudgetGuard; extractIntent delegates;
+     the synthetic clarity replies through FakeJevClient and HttpJevClient on
+     fakeFetch; the 'jev' / 'jev:<lane>' route in createPromptUnderstander
+     (RoutingConfigError naming JEV_API_KEY without a key); runForayPipeline
+     carries clarityDecidedBy and resumes an old understand checkpoint.
+     Offline. Counted statically (it.each rows are not counted). One named
+     mutation per test. */
+  "test/JevPromptUnderstander.test.ts": 13,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

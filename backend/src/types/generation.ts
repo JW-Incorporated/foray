@@ -77,7 +77,18 @@ export const ClarityResultSchema = z.object({
   readings: z.array(z.string()).max(3),
   question: z.string().nullable()
 });
-export type ClarityResult = z.infer<typeof ClarityResultSchema>;
+/** GV-49: who decided a clarity verdict when the understand-clarity route is
+ * 'jev' (FORAY_STAGE_UNDERSTAND_CLARITY=jev): 'jev' when both of Jev's
+ * yes/no answers fell below threshold and no text model was called,
+ * 'fallback' when the text understander answered (Jev said yes, or Jev was
+ * unavailable). Absent on every other route, so a default run's results and
+ * reports are unchanged. */
+export const CLARITY_DECIDERS = ["jev", "fallback"] as const;
+export type ClarityDecider = (typeof CLARITY_DECIDERS)[number];
+
+/** The schema is a model's reply shape and stays as it was; `decidedBy` is
+ * set in code only (JevPromptUnderstander), never parsed from a reply. */
+export type ClarityResult = z.infer<typeof ClarityResultSchema> & { decidedBy?: ClarityDecider };
 
 /** §4.1's structured understanding. All four fields required; `disappointment`
  * is called out in the doc as weighted most heavily of the four. */
@@ -103,5 +114,10 @@ export type IntentUnderstanding = z.infer<typeof IntentUnderstandingSchema>;
  * is populated, matching `outcome`. */
 export type UnderstandPromptResult =
   | { outcome: "rejected"; rejection: { category: SafetyCategory; explanation: string } }
-  | { outcome: "needs_clarification"; clarification: { question: string; readings: string[] } }
-  | { outcome: "understood"; intent: IntentUnderstanding };
+  | {
+      outcome: "needs_clarification";
+      clarification: { question: string; readings: string[] };
+      /** GV-49: set only on a 'jev' clarity route (see ClarityDecider). */
+      clarityDecidedBy?: ClarityDecider;
+    }
+  | { outcome: "understood"; intent: IntentUnderstanding; clarityDecidedBy?: ClarityDecider };

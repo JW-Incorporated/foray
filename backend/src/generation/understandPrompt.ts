@@ -44,16 +44,21 @@ export async function understandPrompt(
   }
 
   const clarity = await understander.assessClarity(prompt, ctx);
+  /* GV-49: who decided the clarity verdict, carried only when the
+     understander said (a 'jev' clarity route); every other understander
+     leaves it unset, so the result is exactly what it was. */
+  const decided = clarity.decidedBy !== undefined ? { clarityDecidedBy: clarity.decidedBy } : {};
   if (clarity.ambiguous) {
     return {
       outcome: "needs_clarification",
       clarification: {
         question: clarity.question ?? "Could you say more about what you mean — or something else?",
         readings: clarity.readings
-      }
+      },
+      ...decided
     };
   }
 
   const intent = await understander.extractIntent(prompt, ctx);
-  return { outcome: "understood", intent };
+  return { outcome: "understood", intent, ...decided };
 }

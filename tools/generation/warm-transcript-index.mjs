@@ -7,6 +7,19 @@
  *     node tools/generation/warm-transcript-index.mjs --reconcile-only
  *     node tools/generation/warm-transcript-index.mjs --build-only
  *
+ * GV-53 (docs/roadmap/generation-v2.md) adds three opt-in modes for a box that
+ * streams transcript bodies instead of holding them; each runs alone, and the
+ * default warm above is unchanged:
+ *
+ *     node tools/generation/warm-transcript-index.mjs --from-staged [data-local/passage-index/staged-digest.jsonl] [--offline]
+ *         join GV-05's staged rows to their feeds into corpus-digest.json
+ *         (no file: that default path; a bare --resolve-legacy or
+ *         --legacy-map-from exits 2 and never falls through to the default warm)
+ *     node tools/generation/warm-transcript-index.mjs --resolve-legacy keys.txt [--legacy-map-from map.json] [--offline]
+ *         legacy whisper keys -> data-local/passage-index/legacy-map.json
+ *     node tools/generation/warm-transcript-index.mjs --supply-report
+ *         per show: searchable vs mintable, and the first missing mint condition
+ *
  * WHY THIS EXISTS (issue #703)
  * On 2026-09-14 a Foray about germ theory was sourced from six *Geology Bites*
  * episodes on banded iron formations and *Being an Engineer* on toothpaste

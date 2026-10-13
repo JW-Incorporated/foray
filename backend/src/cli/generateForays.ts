@@ -18,7 +18,7 @@ import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
 import { FileJobSink } from "./fileJobSink";
 import { EMPTY_JOB_PROGRESS, isJobForayId, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity } from "../generation/jobSink";
-import { readAuthorIdFlag, type GenerationRequest } from "../types/generation";
+import { readAuthorIdFlag, type ClarityDecider, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
 import type { VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
 import type { PublishRecord } from "./publishForay";
@@ -643,6 +643,11 @@ export type ReportEntry = {
    * carries `resumed: true` and no lead or first-item times, the `ttlA1Ms`
    * rule. Only on a `generated` row; absent stays absent, never zero. */
   delivery?: DeliveryReport;
+  /** GV-49: who decided the clarity check, `jev` (Jev's two yes/no answers,
+   * no text model call) or `fallback` (the text understander). Only when the
+   * understand-clarity stage is routed to Jev
+   * (FORAY_STAGE_UNDERSTAND_CLARITY=jev); absent on every other route. */
+  clarityDecidedBy?: ClarityDecider;
 };
 
 /**
@@ -1077,6 +1082,7 @@ export async function generateOneCandidate(
     veracity,
     ...(outcome.outcome === "generated" && gate ? { gate, publishable: outcome.result.validation.ok && gate.ok } : {}),
     ...(delivery ? { delivery } : {}),
+    ...(outcome.outcome !== "rejected" && outcome.clarityDecidedBy !== undefined ? { clarityDecidedBy: outcome.clarityDecidedBy } : {}),
     ...(resumes.length ? { resumes } : {}),
     ...(refusedPartials.length ? { refusedPartials } : {})
   };
