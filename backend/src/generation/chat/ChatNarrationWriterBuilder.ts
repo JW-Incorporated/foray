@@ -1,6 +1,8 @@
 import { defaultBudgetGuard } from "../../cost/budgetGuard";
-import { actOutputTokenBudget, buildActWritePrompt } from "../AnthropicNarrationWriterBuilder";
+import { actOutputTokenBudget } from "../AnthropicNarrationWriterBuilder";
 import type { ActWriteRequest, ActWriteResult, NarrationBuildContext, NarrationWriterBuilder } from "../NarrationWriterBuilder";
+import { toChatMessages } from "../promptLayout";
+import { actWritePromptParts } from "../prompts/actWrite";
 import { RawActWriteSchema, toActWriteResult } from "../replySchemas";
 import type { ChatProvider } from "./ChatProvider";
 import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from "./askStructured";
@@ -8,8 +10,12 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
 /**
  * GV-31 (docs/roadmap/generation-v2.md, from W2-07; covers R2-21, GP-06,
  * HW-12, R1-18): §4.7 act writing on a ChatProvider, the twin of
- * AnthropicNarrationWriterBuilder: the same prompt (buildActWritePrompt, the
- * whole act in one call), the same schema (RawActWriteSchema, sent as the
+ * AnthropicNarrationWriterBuilder: the same prompt (prompts/actWrite.ts, the
+ * whole act in one call; GV-50 sends it as toChatMessages(actWritePromptParts),
+ * [system: the rules, the reply contract and the voice slot; user: the voice
+ * line + this act], so the system message is the prefix every act, round and
+ * Foray shares, where the Anthropic writer sends the same parts joined), the
+ * same schema (RawActWriteSchema, sent as the
  * 'act_write' json_schema), the same per-act budget (actOutputTokenBudget,
  * sized from the act's seam bands, floor 12000) and the same post-parse
  * mapping (toActWriteResult). writeAct.ts's quote checks, verifier rounds and
@@ -45,7 +51,7 @@ export class ChatNarrationWriterBuilder implements NarrationWriterBuilder {
       target: this.target,
       schemaName: "act_write",
       schema: RawActWriteSchema,
-      messages: [{ role: "user", content: buildActWritePrompt(request) }],
+      messages: toChatMessages(actWritePromptParts(request)),
       maxTokens: actOutputTokenBudget(request),
       operation: "narration_write_act",
       budget: { guard: this.budgetGuard, userId: ctx.userId, ...(ctx.sessionId !== undefined ? { sessionId: ctx.sessionId } : {}) },

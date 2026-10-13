@@ -8,6 +8,14 @@ import { ChatPromptUnderstander } from "../src/generation/chat/ChatPromptUnderst
 import { ChatSpineBuilder } from "../src/generation/chat/ChatSpineBuilder";
 import { ChatDeepenActBuilder } from "../src/generation/chat/ChatDeepenActBuilder";
 import { ChatContinuityBuilder } from "../src/generation/chat/ChatContinuityBuilder";
+import { ChatNarrationWriterBuilder } from "../src/generation/chat/ChatNarrationWriterBuilder";
+import { ChatNarrationVerifierBuilder } from "../src/generation/chat/ChatNarrationVerifierBuilder";
+import { actWritePromptParts } from "../src/generation/prompts/actWrite";
+import { actVerifyPromptParts } from "../src/generation/prompts/actVerify";
+import type { ActFrame, ActWriteRequest, ClipBrief, SeamBrief } from "../src/generation/NarrationWriterBuilder";
+import type { ActSourceBrief, ActVerifyRequest, VerifyClipBrief } from "../src/generation/NarrationVerifierBuilder";
+import type { EvidenceDoc } from "../src/generation/gatherEvidence";
+import { MIN_QUOTE_WORDS } from "../src/types/narration";
 import type { StructuredTarget } from "../src/generation/chat/askStructured";
 import type { ChatMessage } from "../src/generation/chat/ChatProvider";
 import { NARRATOR_STRUCTURE_RULE } from "../src/copy/narratorStructure";
@@ -401,6 +409,201 @@ describe("GV-32: a content-preserving reorder (every pre-GV-32 instruction line 
 });
 
 /* ------------------------------------------------------------------------
+ * GV-50 (W4-11 + W2-14): the act writer's and verifier's prompts as
+ * [stable][foray][call] (prompts/actWrite.ts, prompts/actVerify.ts).
+ * ---------------------------------------------------------------------- */
+
+const actVoice = { style: "plain", register: "a well-read friend", sentenceRhythm: "short, then long", narratorPresence: "light" };
+const actFrameFixture: ActFrame = {
+  actIntroduction: "Now the walkway itself.",
+  actExit: "Which leaves the question of who signed off.",
+  previousActExit: "That was the design. Then came the build.",
+  startState: "knows the hotel opened in a hurry",
+  endState: "sees the connection that failed",
+  actIndex: 1,
+  totalActs: 3
+};
+const actClips: ClipBrief[] = [
+  {
+    clipId: "c0",
+    segmentId: "seg-a",
+    itemId: "item-a",
+    show: "Engineering Disasters",
+    title: "The Hyatt collapse",
+    docId: "tape:seg-a",
+    opening: "So the first thing to understand is the drawings.",
+    durationSec: 120.4,
+    intro: "full",
+    carries: [
+      { beatId: "b1", claim: "A guest explains the rod change." },
+      { beatId: "b2", claim: "And why nobody caught it." }
+    ]
+  },
+  { clipId: "c1", segmentId: "seg-b", itemId: "item-b", show: "Engineering Disasters", title: "After", opening: "", durationSec: 60, intro: "light", showFirstHeard: false }
+];
+const actDocs: EvidenceDoc[] = [
+  { docId: "d0", kind: "print", title: "NBS report", url: "https://example.org/nbs", text: "The connection as built carried double the load.\nIt failed at the fourth floor." },
+  { docId: "tape:seg-a", kind: "tape", title: "Engineering Disasters — The Hyatt collapse", text: "So the first thing to understand is the drawings." },
+  { docId: "page:a0-s0-b0", kind: "page", title: "This Foray, page a0-s0-b0", text: "The hotel opened in 1980." }
+];
+const actSeams = (retry: boolean): SeamBrief[] => [
+  {
+    seamId: "s0",
+    beats: [
+      { beatId: "b0", claim: "The hotel opened in a hurry.", mode: "Patch", kind: "account", seedLost: true },
+      { beatId: "b3", claim: "Speed mattered more than review.", mode: "Patch", kind: "argument" }
+    ],
+    introduces: "c0",
+    intro: "full",
+    band: [200, 600],
+    ...(retry ? { previousScript: "The hotel opened fast.", notes: "the prose does not carry beat b3" } : {})
+  },
+  { seamId: "s1", beats: [], follows: "c0", introduces: "c1", intro: "light", band: [30, 260], ...(retry ? { previousScript: "Same voice.", frozen: true } : {}) }
+];
+/** Unframed, act 1's frame and act 0's frame (with the overview), each on round 1 and on a retry. */
+function actWriteRequests(): ActWriteRequest[] {
+  const out: ActWriteRequest[] = [];
+  for (const frame of [undefined, actFrameFixture, { ...actFrameFixture, actIndex: 0, previousActExit: undefined, forayOverview: "Why a walkway fell." }])
+    for (const retry of [false, true])
+      out.push({
+        actTitle: frame ? "The walkway" : "Act 1",
+        voice: actVoice,
+        seams: actSeams(retry),
+        clips: actClips,
+        documents: actDocs,
+        ...(retry ? { retryNote: "Attempt 1 was rejected for: the prose does not carry beat b3." } : {}),
+        ...(frame ? { frame } : {})
+      });
+  return out;
+}
+const actSources: ActSourceBrief[] = [
+  { id: "k0", kind: "claim", claimText: "who speaks", quote: "the drawings", publication: "Engineering Disasters", contested: false, selectedBy: "s0", docId: "tape:seg-a" },
+  { id: "k1", kind: "claim", claimText: "double the load", quote: "carried double the load", publication: "NBS report", contested: true, selectedBy: "s0", docId: "d0" },
+  { id: "k2", kind: "claim", claimText: "opened in 1980", quote: "The hotel opened in 1980.", publication: "This Foray, page a0-s0-b0", contested: false, docId: "page:a0-s0-b0" },
+  { id: "c0", kind: "clip", claimText: "what is said in clip c0", publication: "Engineering Disasters", contested: false, docId: "tape:seg-a" },
+  { id: "p0", kind: "page", claimText: "The hotel opened in 1980.", publication: "This Foray, page a0-s0-b0", contested: false, docId: "page:a0-s0-b0" }
+];
+/** A round with s0 to judge and one with s0 frozen, each with beats on the checklist and with none. */
+function actVerifyRequests(): ActVerifyRequest[] {
+  const clips: VerifyClipBrief[] = actClips.map((c, i) => ({ ...c, windowText: i === 0 ? "So the first thing to understand is the drawings." : "" }));
+  const out: ActVerifyRequest[] = [];
+  for (const frozen of [false, true])
+    for (const beats of [actSeams(false)[0]!.beats, []])
+      out.push({
+        actTitle: frozen ? "The walkway" : "Act 1",
+        voice: actVoice,
+        beats,
+        seams: [
+          { seamId: "s0", script: "The hotel opened fast.\nThen the party.", selected: ["k0", "k1"], carries: ["b0"], introduces: "c0", intro: "full", ...(frozen ? { frozen: true } : {}) },
+          { seamId: "s1", script: "Same voice.", selected: [], carries: [], follows: "c0", introduces: "c1", intro: "light" }
+        ],
+        clips,
+        sources: actSources,
+        documents: actDocs
+      });
+  return out;
+}
+
+describe("GV-50: the act prompts are a content-preserving reorder (every pre-GV-50 instruction line is still sent)", () => {
+  it("the writer sends the legacy lines except the role line, which lost the act title to the call part", () => {
+    /* MUTATION THAT KILLS THIS: delete the "A SEAM is one stretch of
+       narration..." line from the call part. Ran it: red. Second: drop the
+       "Also list any hard-to-pronounce..." line from writeStable. Ran it: red. */
+    for (const request of actWriteRequests()) {
+      const now = lineSet(joinParts(actWritePromptParts(request)));
+      const before = lineSet(legacyBuildActWritePrompt(request));
+      expect(minus(before, now)).toEqual([
+        `You are writing the narration of one act ("${request.actTitle}") of an audio documentary ("Foray") — the whole act at once, as one voice telling one story.`
+      ]);
+      expect(minus(now, before).sort()).toEqual(
+        [
+          `You are writing the narration of one act of an audio documentary ("Foray") — the whole act at once, as one voice telling one story.`,
+          `THE ACT YOU ARE WRITING: "${request.actTitle}"`
+        ].sort()
+      );
+    }
+  });
+
+  it("the verifier sends the legacy lines except the role line, the seams-to-judge header and the word 'above', each rewritten on purpose and listed here", () => {
+    /* MUTATION THAT KILLS THIS: drop the `SEAMS TO JUDGE: ...` line from the
+       verifier's call part (the judged ids then reach the model nowhere).
+       Ran it: red. Second: delete "Do NOT check whether a quote exists..."
+       from VERIFY_STABLE. Ran it: red. */
+    for (const request of actVerifyRequests()) {
+      const judged = request.seams.filter((s) => !s.frozen).map((s) => s.seamId).join(", ") || "none";
+      const now = lineSet(joinParts(actVerifyPromptParts(request)));
+      const before = lineSet(legacyBuildActVerifyPrompt(request));
+      expect(minus(before, now).sort()).toEqual(
+        [
+          `You are the FACT-VERIFICATION pass for the narration of one act ("${request.actTitle}") of an audio documentary ("Foray"). You did NOT write it.`,
+          `2. For each SEAM to judge (${judged}; the FROZEN seams are confirmed already — do not answer for them):`,
+          "   claimsSupported — does every statement the script makes about the world follow from SOME act source above — this seam's selected claims,"
+        ].sort()
+      );
+      expect(minus(now, before).sort()).toEqual(
+        [
+          `You are the FACT-VERIFICATION pass for the narration of one act of an audio documentary ("Foray"). You did NOT write it.`,
+          `THE ACT YOU ARE VERIFYING: "${request.actTitle}"`,
+          "2. For each SEAM to judge (named on the SEAMS TO JUDGE line below; the FROZEN seams are confirmed already — do not answer for them):",
+          "   claimsSupported — does every statement the script makes about the world follow from SOME act source below — this seam's selected claims,",
+          `SEAMS TO JUDGE: ${judged}`
+        ].sort()
+      );
+    }
+  });
+});
+
+describe("GV-50: the Chat writer and verifier send [system: stable, user: foray + call]", () => {
+  const target: StructuredTarget = { providerName: "local:spark", model: "local-heavy", structuredOutput: "json_schema", usdPerMtokIn: 0, usdPerMtokOut: 0 };
+  const guard = { checkAndRecord: async () => undefined };
+  const writeReply = '{"seams": [{"seamId": "s0", "script": "The hotel opened fast.", "claims": [], "usedClaims": []}, {"seamId": "s1", "script": "", "claims": [], "usedClaims": []}]}';
+  const verifyReply = '{"beats": [], "seams": []}';
+
+  it("every act and round opens with the same system message, and the messages are toChatMessages of the parts", async () => {
+    /* MUTATION THAT KILLS THIS: in ChatNarrationWriterBuilder.writeAct, send
+       `[{ role: "user", content: buildActWritePrompt(request) }]` (the
+       pre-GV-50 single turn) instead of toChatMessages(actWritePromptParts).
+       Ran it: red. Second: the same in ChatNarrationVerifierBuilder. Ran it: red. */
+    const ctx = { userId: "u1", sessionId: "s1-2026-10-13-walkway" };
+    const writes = actWriteRequests();
+    const writerProvider = scriptedProvider({ complete: writes.map(() => writeReply) });
+    const writer = new ChatNarrationWriterBuilder(writerProvider, target, guard);
+    for (const r of writes) await writer.writeAct(r, ctx);
+    const verifies = actVerifyRequests();
+    const verifierProvider = scriptedProvider({ complete: verifies.map(() => verifyReply) });
+    const verifier = new ChatNarrationVerifierBuilder(verifierProvider, target, guard);
+    for (const r of verifies) await verifier.verifyAct(r, ctx);
+
+    expect(writerProvider.requests).toHaveLength(writes.length);
+    expect(verifierProvider.requests).toHaveLength(verifies.length);
+    writerProvider.requests.forEach((req, i) => expect(req.messages).toEqual(toChatMessages(actWritePromptParts(writes[i]!))));
+    verifierProvider.requests.forEach((req, i) => expect(req.messages).toEqual(toChatMessages(actVerifyPromptParts(verifies[i]!))));
+    for (const provider of [writerProvider, verifierProvider]) {
+      expect(new Set(provider.requests.map((r) => r.messages[0]!.content)).size).toBe(1);
+      for (const req of provider.requests) {
+        expect(req.messages.map((m) => m.role)).toEqual(["system", "user"]);
+        for (const m of req.messages) {
+          expect(m.content).not.toMatch(ISO_TIMESTAMP_RE);
+          expect(m.content).not.toContain(ctx.sessionId);
+        }
+      }
+    }
+  });
+
+  it("a JSON re-ask keeps the writer's prefix: the re-ask opens with the first call's exact [system, user]", async () => {
+    /* MUTATION THAT KILLS THIS: in ChatNarrationWriterBuilder.writeAct, send
+       `[{ role: "user", content: buildActWritePrompt(request) }]` — the
+       opening is then one user turn, not toChatMessages(parts). Ran it: red. */
+    const provider = scriptedProvider({ complete: ["not json", writeReply] });
+    await new ChatNarrationWriterBuilder(provider, target, guard).writeAct(actWriteRequests()[1]!, { userId: "u1" });
+    const [first, reask] = provider.requests;
+    expect(first!.messages).toEqual(toChatMessages(actWritePromptParts(actWriteRequests()[1]!)));
+    expect(reask!.messages.slice(0, 2)).toEqual(first!.messages);
+    expect(reask!.messages.length).toBeGreaterThan(2);
+  });
+});
+
+/* ------------------------------------------------------------------------
  * LEGACY PROMPTS, FROZEN: the pre-GV-32 builders copied verbatim from
  * AnthropicPromptUnderstander.ts, AnthropicSpineBuilder.ts,
  * AnthropicDeepenActBuilder.ts and AnthropicContinuityBuilder.ts at
@@ -715,4 +918,257 @@ function legacyBuildSmoothPrompt(request: ContinuitySmoothRequest): string {
     `Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:`,
     '{"nextIntroduction": string}'
   ].join("\n");
+}
+
+/* ------------------------------------------------------------------------
+ * GV-50's LEGACY ACT PROMPTS, FROZEN: the pre-GV-50 buildActWritePrompt
+ * (with actFrameBlock, actLayout and their rule lists) and
+ * buildActVerifyPrompt (with actSourceEntry and actVerifyLayout), copied
+ * from AnthropicNarrationWriterBuilder.ts and
+ * AnthropicNarrationVerifierBuilder.ts at origin/main f6e129e9 (renamed
+ * legacy*, code comments dropped), so the GV-50 line-set tests above compare
+ * against the words the pipeline sent before the reorder. Never edit them to
+ * make a test pass.
+ * ---------------------------------------------------------------------- */
+const LEGACY_JSON_ONLY = "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:";
+const LEGACY_CLAIM_SHAPE = '{"claimText": string, "quote": string, "docId": string, "contested": boolean}';
+
+function legacyVoiceLine(request: { voice: ActWriteRequest["voice"] }): string {
+  const voice = request.voice;
+  return (
+    `Voice (decided once for the whole Foray — do not vary it): style: ${voice.style}; register: ${voice.register}; ` +
+    `sentence rhythm: ${voice.sentenceRhythm}; narrator presence: ${voice.narratorPresence}`
+  );
+}
+
+const LEGACY_ACT_CLAIM_RULES = [
+  `A quote must be copied character for character out of the document you name, and must be at least ${MIN_QUOTE_WORDS} words or one whole sentence.`,
+  "Never quote a beat's claim, a clip's opening as printed in the layout, or this prompt: they are direction, not documents.",
+  "A statement about a CLIP — what it is about, who is speaking, what was said in it — rests on that clip's transcript window (its docId is on the CLIP line).",
+  "Select it as a claim with that docId and either a short phrase of the clip's own words as the quote or an empty quote (\"\"); the whole window is that source, so the word minimum does not apply to it.",
+  "Never back a statement about a clip with an outside publication.",
+  "A statement about the world beyond the clips rests on a print document, or on a VERIFIED PAGE of this Foray when one is listed: select the claim and copy the span. If no document supports a claim worth making, do not make it.",
+  "THE ACT'S SOURCES ARE ONE SET. Every claim any seam selects, every clip's window and every verified page listed can support a statement in ANY seam: a bridge that restates what the clip before it established, or sets up the clip after it, rests on those windows and need not select a claim of its own. Select each claim ONCE, on the seam that first makes it; the verifier reads the whole act's sources.",
+  "If the documents contradict or complicate a beat, write the tension: that carries the beat.",
+  '"contested" means reputable sources actively disagree about the fact itself — not that you are unsure.',
+  "Every quote is checked by machine against the document you name after you answer; a quote that is not found there is discarded together with the seam's script."
+];
+
+const LEGACY_ACT_PROSE_RULES = [
+  "One voice, one story. The beats are the checklist the prose must carry, not its template: make each beat's point where it belongs, in your own words, joined to what comes before and after it. A beat may be carried in any seam, and by what a clip itself says.",
+  "Never announce a beat, never list the beats, never say what the next clip is going to say.",
+  NARRATOR_STRUCTURE_RULE,
+  "A seam that follows a clip may restate what that clip said once, in the act's own words — then move on.",
+  "Introductions, by the weight given on the SEAM line:",
+  "  full  — one or two sentences: who is speaking (name and role, as the tape or the episode title gives them) and on which show, and what to listen for. Write it from the clip's OPENING as printed on its CLIP line — what the listener is about to hear — never from the point the clip goes on to make. Do not repeat the clip's first sentences.",
+  "The FIRST clip from a show says the show's name (Q-09) — its CLIP line says when that is: \"first clip from this show\". Say it however the sentence wants it; there is no formula, and the same sentence twice in one Foray is worse than not saying it at all. When the line says the show has already been introduced, do NOT name it again: refer back lightly (\"back with the same guest\", \"the engineer from earlier\") or say nothing about the show at all.",
+  "  light — the same guest and show as the clip before: one clause at most, or nothing.",
+  "  none  — the host introduces the guest in the clip itself: add nothing about who is speaking.",
+  "A seam with no beats and a light or none introduction may return an empty script: the clips then run together.",
+  "A beat marked SEED LOST was written from a stretch of tape this Foray does NOT play and no document was found for: carry it only as far as the act's sources go. Never attribute a specific incident, number or quotation to anyone that beat's claim names — say what the sources DO say, or turn the beat into a question and hand off.",
+  "One CLIP can carry more than one beat: when its line says it carries several, the tape makes those points itself — introduce it once and do not narrate what it is about to say.",
+  "Each seam's script MUST land inside the character band on its SEAM line. Longer is not better: narration is at most a quarter of the listening.",
+  "List, per seam, the indices of the claims its script asserts (usedClaims).",
+  "NEVER assert what the record does or does not contain — no \"nobody wrote it down\", \"there is no record of\", \"the file doesn't say\", \"we still don't know\" — unless a quote you selected says exactly that. Say what a source DOES say instead: not \"the plan nobody wrote down\" but \"the plan that lived in people's heads, as he tells it\"; not \"the report never explains why\" but \"the report names the drawing, and stops there\" (only if it does), or leave the point out.",
+  "",
+  "Copy rules, unchanged and non-negotiable:",
+  "- Never say: fascinating, deep dive, delve, explores.",
+  "- No vulgar or gratuitously edgy content; register is a well-read friend, not a shock jock.",
+  "- Never speak a URL, a citation, or a number a listener cannot hold in their head while driving.",
+  "- If a claim is marked contested, the script must say the point is disputed."
+];
+
+function legacyBuildActWritePrompt(request: ActWriteRequest): string {
+  const clips = new Map(request.clips.map((c) => [c.clipId, c]));
+  return [
+    `You are writing the narration of one act ("${request.actTitle}") of an audio documentary ("Foray") — the whole act at once, as one voice telling one story.`,
+    legacyVoiceLine(request),
+    "",
+    "THE ACT, IN PLAY ORDER. Narration and clips alternate. You write the narration; the clips are real tape and play as they are.",
+    "A SEAM is one stretch of narration: it carries the beats listed under it, bridges from the clip before to the clip after, and — when it introduces a clip — opens the listener's ear to it.",
+    "",
+    ...(request.frame ? legacyActFrameBlock(request.frame) : []),
+    legacyActLayout(request.seams, clips),
+    "",
+    "HOW TO WRITE",
+    ...LEGACY_ACT_PROSE_RULES,
+    "",
+    "CLAIMS AND QUOTES",
+    ...LEGACY_ACT_CLAIM_RULES,
+    "",
+    "DOCUMENTS — the only things you may quote:",
+    request.documents
+      .map(
+        (doc) =>
+          `--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${doc.kind === "tape" ? " | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)" : doc.kind === "page" ? " | a VERIFIED PAGE of this same Foray, from an earlier act — quote one of its whole sentences" : ""}\n${doc.text}`
+      )
+      .join("\n\n"),
+    "",
+    ...(request.retryNote
+      ? [
+          `REJECTIONS SO FAR: ${request.retryNote}`,
+          "Seams marked FROZEN are verified: return each one's script VERBATIM and select no claims for it. Seams marked EDIT carry their previous script and a `fix` line:",
+          "EDIT only those, to answer their notes — add a missed beat where it belongs, drop or re-source an unsupported sentence, replace an assertion about the record with what a source says — and keep every sentence that was not objected to.",
+          ""
+        ]
+      : []),
+    "Also list any hard-to-pronounce or foreign words with a plain-English pronunciation hint.",
+    "",
+    LEGACY_JSON_ONLY,
+    `{"seams": [{"seamId": string, "script": string, "claims": [${LEGACY_CLAIM_SHAPE}], "usedClaims": [number], "pronunciationHints": [{"word": string, "hint": string}]}]}`
+  ].join("\n");
+}
+
+function legacyActFrameBlock(frame: ActFrame): string[] {
+  return [
+    `ACT FRAME — this is act ${frame.actIndex + 1} of ${frame.totalActs}. The lines quoted here are already written and play around your seams as they are; they are not yours to write.`,
+    "WHAT THE LISTENER HAS JUST HEARD, in order:",
+    ...(frame.forayOverview !== undefined ? [`  the Foray's overview: ${JSON.stringify(frame.forayOverview)}`] : []),
+    ...(frame.previousActExit !== undefined ? [`  the previous act's exit: ${JSON.stringify(frame.previousActExit)}`] : []),
+    `  this act's introduction: ${JSON.stringify(frame.actIntroduction)}`,
+    `  entering this act, the listener believes: ${frame.startState}`,
+    "WHERE THE ACT MUST LEAVE THEM:",
+    `  leaving this act, the listener should believe: ${frame.endState}`,
+    `  the act's exit, which plays right after your last seam: ${JSON.stringify(frame.actExit)}`,
+    "FRAME RULES:",
+    "- Do not repeat the introduction or the exit, or restate what they say.",
+    "- The first seam follows the introduction: pick up where it leaves off, without opening the act again.",
+    "- The last seam hands into the exit: end where the exit can take over.",
+    ...(frame.previousActExit !== undefined ? ["- Do not re-introduce what the previous act established; the listener has just heard it."] : []),
+    ""
+  ];
+}
+
+function legacyActLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
+  const lines: string[] = [];
+  for (const seam of seams) {
+    const edges: string[] = [];
+    if (seam.follows) edges.push(`follows CLIP ${seam.follows}`);
+    if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
+    lines.push(`SEAM ${seam.seamId} — ${seam.band[0]}-${seam.band[1]} characters${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}${seam.frozen ? " — FROZEN" : seam.previousScript !== undefined ? " — EDIT" : ""}`);
+    if (seam.beats.length === 0) lines.push("  carries no beat — the introduction only, or nothing");
+    for (const beat of seam.beats) {
+      lines.push(`  carries beat ${beat.beatId}${beat.kind === "argument" ? " (an argument — what it means)" : ""}: ${beat.claim}`);
+      if (beat.seedLost) {
+        lines.push(
+          `    SEED LOST — beat ${beat.beatId}'s tape was not available: do not attribute specifics to anyone this claim names; say only what the act's sources say, or hand off.`
+        );
+      }
+    }
+    if (seam.frozen && seam.previousScript !== undefined) {
+      lines.push(`  FROZEN — verified; return this script verbatim, with no claims: ${JSON.stringify(seam.previousScript)}`);
+    } else if (seam.previousScript !== undefined) {
+      lines.push(`  previous script: ${JSON.stringify(seam.previousScript)}`);
+      if (seam.notes) lines.push(`  fix: ${seam.notes}`);
+    }
+    if (seam.introduces) {
+      const clip = clips.get(seam.introduces);
+      if (clip) {
+        const carried = clip.carries ?? [];
+        lines.push(
+          `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape` +
+            (clip.docId ? ` (document ${clip.docId})` : " (no transcript window is held)") +
+            (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}` : "") +
+            (clip.show
+              ? clip.showFirstHeard === false
+                ? ` — ${clip.show} has already been introduced in this Foray: do not name it again`
+                : " — FIRST CLIP FROM THIS SHOW: say its name"
+              : "")
+        );
+        if (carried.length > 1) for (const beat of carried) lines.push(`  it carries beat ${beat.beatId}: ${beat.claim}`);
+        lines.push(clip.opening ? `  it opens: ${JSON.stringify(clip.opening)}` : "  its opening is not held — introduce it from the show and episode only");
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
+function legacyBuildActVerifyPrompt(request: ActVerifyRequest): string {
+  const clips = new Map(request.clips.map((c) => [c.clipId, c]));
+  const judged = request.seams.filter((s) => !s.frozen).map((s) => s.seamId);
+  return [
+    `You are the FACT-VERIFICATION pass for the narration of one act ("${request.actTitle}") of an audio documentary ("Foray"). You did NOT write it.`,
+    "",
+    "THE CHECKLIST — the beats to judge this round (each must be carried somewhere in the act):",
+    ...(request.beats.length > 0
+      ? request.beats.flatMap((b) =>
+          b.seedLost
+            ? [
+                `  ${b.beatId}: ${b.claim}`,
+                `    SEED LOST — the tape this claim was written from is NOT in this act and nothing was retrieved for it. Judge it carried when the prose makes as much of its point as the act's sources support; do NOT demand the names, numbers or incidents that only the missing tape could supply. If the act's sources do not reach the point at all, say exactly that in notes.`
+              ]
+            : [`  ${b.beatId}: ${b.claim}`]
+        )
+      : ["  (none — every beat is already confirmed)"]),
+    "",
+    "THE ACT'S SOURCES — one set for the whole act. Any statement in any seam may rest on any of these, not only the ones the seam selected:",
+    ...request.sources.map(legacyActSourceEntry),
+    "",
+    "THE ACT, IN PLAY ORDER — narration seams and the clips of real tape between them:",
+    legacyActVerifyLayout(request, clips),
+    "",
+    "Answer two sets of questions.",
+    "1. For each BEAT on the checklist: carried — does the act's narration (any seam, frozen ones included, not only the one the beat was positioned in)",
+    "   or one of its clips make the beat's point, resting on an act source (a selected claim, a clip's window, a verified page)? A beat is carried when",
+    "   a listener would hear its point made, in whatever words. It is NOT carried when no seam or clip makes the point, or a seam makes it and nothing",
+    "   in the act's sources supports it. When carried, say by which seam or clip (carriedBy: \"s1\" or \"c0\") and on which sources it rests (restsOn).",
+    "   When not carried, say in notes which seam it belongs in and what is missing, in one sentence a writer can act on.",
+    `2. For each SEAM to judge (${judged.join(", ") || "none"}; the FROZEN seams are confirmed already — do not answer for them):`,
+    "   claimsSupported — does every statement the script makes about the world follow from SOME act source above — this seam's selected claims,",
+    "   another seam's, any clip's transcript window, any verified page? A bridge that restates what the clip before it established, or sets up",
+    "   the clip after it, is supported by those windows. Judge a statement about a clip against that clip's window as printed on its CLIP line.",
+    "   Then list in restsOn the ids of the sources the seam's statements actually rest on — required whenever claimsSupported is true and the",
+    "   script states anything; a seam that only asks a question or hands off to the listener rests on nothing and lists none.",
+    "   When a statement is NOT supported, QUOTE the sentence in notes, and say what no source covers.",
+    "   EXEMPT from this question: the sentences that introduce a clip — who is speaking, the show, the episode — which are checked by",
+    "   structure against the segment's source row before you are called. Do not fail a seam for them.",
+    "   contestedHandled — read the sources: if reputable sources actively disagree about something the script asserts, the script must",
+    "   say the point is disputed, in any natural wording. If nothing is genuinely contested, this is true.",
+    "",
+    "Do NOT check whether a quote exists in its source — that was already proven mechanically before you were called.",
+    "",
+    "DOCUMENTS the claims quote:",
+    request.documents.filter((d) => d.kind !== "tape").map((d) => `  --- ${d.title}${d.url ? ` | ${d.url}` : ""}\n${d.text}`).join("\n") || "  (none — every source is a clip's window)",
+    "",
+    "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
+    '{"beats": [{"beatId": string, "carried": boolean, "carriedBy": string (the seam or clip id, when carried), "restsOn": string[] (source ids, when carried), "notes": string (required and specific whenever carried is false)}], ' +
+      '"seams": [{"seamId": string, "claimsSupported": boolean, "restsOn": string[], "contestedHandled": boolean, "notes": string (required whenever an answer is false; quote the unsupported sentence)}]}'
+  ].join("\n");
+}
+
+function legacyActSourceEntry(s: ActSourceBrief): string {
+  const contested = s.contested ? " [marked contested]" : "";
+  if (s.kind === "clip") return `  ${s.id}: the transcript window of CLIP ${s.docId === s.id ? s.id : s.id} — ${s.claimText} (printed under the clip below)`;
+  if (s.kind === "page") return `  ${s.id}: a VERIFIED PAGE of this Foray from an earlier act — "${s.claimText}" (${s.publication})`;
+  const from = s.selectedBy ? ` (selected by seam ${s.selectedBy})` : "";
+  if (s.publication.startsWith("This Foray, page")) return `  ${s.id}${from}: claim="${s.claimText}" quote="${s.quote ?? ""}" from a verified page — ${s.publication}${contested}`;
+  if (s.docId.startsWith("tape:")) return `  ${s.id}${from} [TAPE]: claim="${s.claimText}"${s.quote ? ` echoes="${s.quote}"` : ""} — judge against the window of the clip it names (${s.publication})${contested}`;
+  return `  ${s.id}${from}: claim="${s.claimText}" quote="${s.quote ?? ""}" publication="${s.publication}"${contested}`;
+}
+
+function legacyActVerifyLayout(request: ActVerifyRequest, clips: Map<string, VerifyClipBrief>): string {
+  const lines: string[] = [];
+  for (const seam of request.seams) {
+    const edges: string[] = [];
+    if (seam.follows) edges.push(`follows CLIP ${seam.follows}`);
+    if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
+    lines.push(
+      `SEAM ${seam.seamId}${seam.frozen ? " — FROZEN (confirmed in an earlier round; context only)" : ""}${seam.carries.length > 0 ? ` — positioned beats ${seam.carries.join(", ")}` : " — no beat positioned here"}${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}`
+    );
+    lines.push(`  Script:\n${seam.script}`);
+    lines.push(`  Selected sources: ${seam.selected.length > 0 ? seam.selected.join(", ") : "(none — it may rest on the act's other sources)"}`);
+    if (seam.introduces) {
+      const clip = clips.get(seam.introduces);
+      if (clip) {
+        const carried = clip.carries ?? [];
+        lines.push(
+          `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape${clip.docId ? ` (${clip.docId})` : ""}` +
+            (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}, judged against this one window` : "")
+        );
+        if (carried.length > 1) for (const beat of carried) lines.push(`  it carries beat ${beat.beatId}: ${beat.claim}`);
+        lines.push(`  Transcript window:\n${clip.windowText || "    (the window is not held — treat any statement about this clip as unsupported)"}`);
+      }
+    }
+  }
+  return lines.join("\n");
 }
