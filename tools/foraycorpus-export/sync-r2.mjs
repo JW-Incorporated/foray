@@ -40,7 +40,10 @@
       not match the bytes quarantines SHA_MISMATCH and nothing is written.
    3. Normalized bodies are parsed and validated: `show_id` and `guid`
       strings, `cues` an array whose every cue has numeric `start_sec` /
-      `end_sec` and string `text`, `transcript_source` absent, null or in
+      `end_sec` and string `text` (and, optionally, `words`: an array of
+      {text, start, end} with string text, finite times, start <= end and
+      starts that never go backwards; GV-56), `transcript_source` absent,
+      null or in
       TRANSCRIPT_SOURCES (imported from tools/segments/merge-segments.mjs,
       THE ONE LIST; never copied). A failure quarantines BAD_JSON or
       BAD_SHAPE:<field>. Raw objects are not parsed.
@@ -209,6 +212,24 @@ export function bodyPath(out, kind, localDir, file) {
   return full;
 }
 
+/** GV-56 (docs/roadmap/generation-v2.md): a cue's optional per-word timings,
+    the input pause snapping needs. In shape when it is an array of
+    {text, start, end} with string `text`, finite numeric times, start <= end,
+    and each start at or after the previous word's start. The same rule
+    tools/segments/transcript-normalize.mjs applies before it emits `words`. */
+function wordsInShape(words) {
+  if (!Array.isArray(words)) return false;
+  let prevStart = -Infinity;
+  for (const w of words) {
+    if (w === null || typeof w !== "object" || typeof w.text !== "string") return false;
+    if (typeof w.start !== "number" || !Number.isFinite(w.start)) return false;
+    if (typeof w.end !== "number" || !Number.isFinite(w.end)) return false;
+    if (w.end < w.start || w.start < prevStart) return false;
+    prevStart = w.start;
+  }
+  return true;
+}
+
 /** null when the parsed body is in shape, else the first bad field. */
 export function bodyShapeError(body) {
   if (body === null || typeof body !== "object" || Array.isArray(body)) return "body";
@@ -221,6 +242,7 @@ export function bodyShapeError(body) {
     if (typeof cue.start_sec !== "number" || !Number.isFinite(cue.start_sec)) return `cues[${i}].start_sec`;
     if (typeof cue.end_sec !== "number" || !Number.isFinite(cue.end_sec)) return `cues[${i}].end_sec`;
     if (typeof cue.text !== "string") return `cues[${i}].text`;
+    if (cue.words !== undefined && !wordsInShape(cue.words)) return `cues[${i}].words`;
   }
   if (body.transcript_source !== undefined && body.transcript_source !== null && !TRANSCRIPT_SOURCES.has(body.transcript_source)) {
     return "transcript_source";

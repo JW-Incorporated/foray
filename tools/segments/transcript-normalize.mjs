@@ -46,6 +46,16 @@
    3. Missing end times. Podcasting 2.0 JSON often ships `startTime` only. We
       close each cue at the next cue's start rather than dropping it, and say so.
 
+   WORD TIMINGS (GV-56, docs/roadmap/generation-v2.md). A JSON segment that
+   carries `words` (whisper's word_timestamps shape {word, start, end}, or
+   {text, start, end}) passes them to its cue as `words: [{text, start, end}]`,
+   the input pause snapping needs. They are kept only when they line up with
+   the cue text one-for-one (each word cleaned like the text, joined by single
+   spaces, equals the cue text) and their times pass the same rule
+   tools/foraycorpus-export/sync-r2.mjs checks; otherwise that cue's words are
+   dropped with a warning. A cue with no words gets no `words` key, so bodies
+   without words are byte-identical to before.
+
    Pure, dependency-free, no network, no filesystem — like the rest of tools/.
    Fixtures for the formats live in ./fixtures, tests in
    ./transcript-normalize.test.mjs.                                            */
@@ -242,6 +252,32 @@ function findSegments(root) {
   return null;
 }
 
+/** A segment's word timings as [{text, start, end}], or null when it has none
+    (the key is absent, null or not an array). `false` when they are present
+    but unusable: a word with no readable text or time, a word whose cleaned
+    text holds a space, start after end, a start before the previous word's,
+    or words that do not join to the cue text. */
+function segmentWords(seg, cueText) {
+  const raw = seg.words;
+  if (!Array.isArray(raw)) return null;
+  const words = [];
+  let prevStart = -Infinity;
+  for (const w of raw) {
+    if (w == null || typeof w !== "object") return false;
+    const rawText = typeof w.word === "string" ? w.word : w.text;
+    if (typeof rawText !== "string") return false;
+    const { text } = cleanText([rawText], { markup: false });
+    const start = parseTimestamp(w.start);
+    const end = parseTimestamp(w.end);
+    if (!text || text.includes(" ") || start == null || end == null) return false;
+    if (end < start || start < prevStart) return false;
+    prevStart = start;
+    words.push({ text, start, end });
+  }
+  if (words.map((w) => w.text).join(" ") !== cueText) return false;
+  return words;
+}
+
 function parseJson(body, warnings) {
   let data;
   try {
@@ -262,6 +298,7 @@ function parseJson(body, warnings) {
 
   const cues = [];
   let unreadable = 0;
+  let badWords = 0;
   for (const seg of segments) {
     if (seg == null || typeof seg !== "object") {
       unreadable += 1;
@@ -275,14 +312,19 @@ function parseJson(body, warnings) {
     const rawText = firstKey(seg, TEXT_KEYS);
     const { text } = cleanText([typeof rawText === "string" ? rawText : rawText == null ? "" : String(rawText)], { markup: false });
     const declaredSpeaker = firstKey(seg, SPEAKER_KEYS);
-    cues.push({
+    const cue = {
       start_sec: start,
       end_sec: parseTimestamp(firstKey(seg, END_KEYS)),
       text,
       speaker: (typeof declaredSpeaker === "string" ? declaredSpeaker.trim() : "") || null,
-    });
+    };
+    const words = text ? segmentWords(seg, text) : null;
+    if (words) cue.words = words;
+    else if (words === false) badWords += 1;
+    cues.push(cue);
   }
   if (unreadable) warnings.push(`${unreadable} JSON segment(s) had no readable start time and were dropped`);
+  if (badWords) warnings.push(`${badWords} JSON segment(s) carried word timings that were unreadable or did not line up with the text; their words were dropped`);
   return cues;
 }
 
@@ -369,6 +411,14 @@ function dedupeRolling(cues, warnings) {
       continue;
     }
     cue.text = rest;
+    // The trim is by word, so word timings that line up one-for-one with the
+    // text lose the same leading words; any that do not line up are dropped
+    // rather than left pointing at text the cue no longer has (GV-56).
+    if (cue.words) {
+      const kept = cue.words.length === words.length ? cue.words.slice(overlap) : null;
+      if (kept && kept.map((w) => w.text).join(" ") === rest) cue.words = kept;
+      else delete cue.words;
+    }
     stripped += 1;
     out.push(cue);
   }
@@ -413,10 +463,12 @@ function reportOverlaps(cues, warnings) {
  *                            a hint only, the body wins when they disagree
  * @param {{dedupe?: boolean}} [options] `dedupe: false` keeps rolling-caption
  *                            repetition, for callers that want the raw cues
- * @returns {{cues: Array<{start_sec: number, end_sec: number, text: string, speaker: string|null}>, warnings: string[]}}
+ * @returns {{cues: Array<{start_sec: number, end_sec: number, text: string, speaker: string|null, words?: Array<{text: string, start: number, end: number}>}>, warnings: string[]}}
  *
  * `speaker` is additive: null for the formats that cannot express it, so a
  * consumer that only reads start/end/text sees the same shape everywhere.
+ * `words` is optional and present only on JSON cues whose segment carried
+ * word timings that line up with the text (see WORD TIMINGS above).
  *
  * Never throws.
  */

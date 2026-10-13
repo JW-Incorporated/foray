@@ -390,3 +390,36 @@ test("(n) --min-free-gb 0 skips the guard; --dry-run prints but never stops", as
   assert.ok(lines.some((l) => /disk guard WOULD REFUSE .*dry run, not enforced/.test(l)));
   assert.equal(existsSync(dryOut), false);
 });
+
+/* (o) GV-56 (docs/roadmap/generation-v2.md): a cue may carry optional
+   per-word timings `words: [{text, start, end}]`. A body with valid words is
+   written byte-identical; a non-monotonic word array, a non-array `words`,
+   a non-string word text and a null word end (JSON cannot carry Infinity)
+   each quarantine
+   BAD_SHAPE:cues[0].words and are absent on disk.
+   Mutations that turn this red: drop the `cue.words` line from
+   bodyShapeError (every bad body is written); drop the `w.start < prevStart`
+   test in wordsInShape (the non-monotonic body is written). */
+test("(o) optional cues[].words: valid words pass, bad words quarantine as cues[0].words", async (t) => {
+  const out = tmp(t);
+  const cueWith = (words) => [{ start_sec: 0, end_sec: 2, text: "hi there", words }];
+  const good = body("ep-w1", { cues: cueWith([{ text: "hi", start: 0, end: 0.4 }, { text: "there", start: 0.5, end: 1.1 }]) });
+  const bad = {
+    "backwards.json": cueWith([{ text: "hi", start: 0.5, end: 0.9 }, { text: "there", start: 0.2, end: 1.1 }]),
+    "not-array.json": cueWith({ text: "hi", start: 0, end: 1 }),
+    "number-text.json": cueWith([{ text: 7, start: 0, end: 1 }]),
+    "null-end.json": cueWith([{ text: "hi", start: 0, end: null }]),
+  };
+  const client = fakeClient([
+    { key: key(R2_DIR, "good.json"), body: good },
+    ...Object.entries(bad).map(([file, cues]) => ({ key: key(R2_DIR, file), body: body(file, { cues }) })),
+  ]);
+  const { state } = await run(client, out);
+  assert.deepEqual(
+    state.quarantined.map((q) => q.key).sort(),
+    Object.keys(bad).map((file) => key(R2_DIR, file)).sort(),
+  );
+  for (const q of state.quarantined) assert.equal(q.reason, "BAD_SHAPE:cues[0].words");
+  assert.ok(Buffer.from(good).equals(readFileSync(join(out, "normalized", LOCAL_DIR, "good.json"))), "the body with words lands byte-identical");
+  for (const file of Object.keys(bad)) assert.equal(existsSync(join(out, "normalized", LOCAL_DIR, file)), false, file);
+});

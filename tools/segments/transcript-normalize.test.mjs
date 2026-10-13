@@ -381,3 +381,78 @@ test("cue text entities go through the shared decoder", () => {
   const r = normalize(body, "text/vtt");
   assert.equal(r.cues[0].text, "it\u2019s \u201cfine\u201d & \ufffd ok");
 });
+
+/* ------------------------------------------------------------ word timings */
+
+/* GV-56 (docs/roadmap/generation-v2.md): whisper's word_timestamps JSON. Each
+   segment carries `words: [{word, start, end, probability}]`, the word text
+   with whisper's leading space. */
+const whisperJson = (segments) => JSON.stringify({ text: "ignored", segments, language: "en" });
+const W = (word, start, end) => ({ word, start, end, probability: 0.9 });
+
+/* Mutations that turn this red: drop `if (words) cue.words = words;` in
+   parseJson (no cue carries words); keep `word` as the key (push
+   `{word: text, start, end}`; the words no longer join to the text). */
+test("whisper-style JSON words reach the cue as {text, start, end} and join to the cue text", () => {
+  const r = normalize(
+    whisperJson([
+      { start: 0, end: 2.4, text: " Hello there, friend.", words: [W(" Hello", 0, 0.4), W(" there,", 0.4, 0.9), W(" friend.", 1.0, 2.4)] },
+      { start: 2.4, end: 4, text: " Concrete sets slowly.", words: [W(" Concrete", 2.4, 3.0), W(" sets", 3.0, 3.3), W(" slowly.", 3.3, 4.0)] },
+    ]),
+    "application/json",
+  );
+  assertShape(r);
+  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.cues[0].words, [
+    { text: "Hello", start: 0, end: 0.4 },
+    { text: "there,", start: 0.4, end: 0.9 },
+    { text: "friend.", start: 1, end: 2.4 },
+  ]);
+  for (const c of r.cues) assert.equal(c.words.map((w) => w.text).join(" "), c.text);
+});
+
+/* Rolling-caption trimming drops the cue's leading repeated words, so its
+   word timings must lose the same words.
+   Mutation that turns this red: delete the `if (cue.words) {...}` block in
+   dedupeRolling (the trimmed cue keeps all five words). */
+test("an overlap-trimmed cue's words are trimmed in step with its text", () => {
+  const r = normalize(
+    whisperJson([
+      { start: 0, end: 2, text: "we went to the store", words: [W("we", 0, 0.3), W("went", 0.3, 0.6), W("to", 0.6, 0.8), W("the", 0.8, 1), W("store", 1, 2)] },
+      { start: 2, end: 4, text: "to the store and bought", words: [W("to", 2, 2.2), W("the", 2.2, 2.4), W("store", 2.4, 3), W("and", 3, 3.4), W("bought", 3.4, 4)] },
+    ]),
+    "application/json",
+  );
+  assertShape(r);
+  assert.equal(r.cues[1].text, "and bought");
+  assert.deepEqual(r.cues[1].words, [
+    { text: "and", start: 3, end: 3.4 },
+    { text: "bought", start: 3.4, end: 4 },
+  ]);
+  assert.equal(r.cues[0].words.length, 5, "the cue before the trim is untouched");
+});
+
+/* Words that go backwards in time or do not line up with the text are dropped
+   for that cue (with a warning), never kept half-right; a body without words
+   is exactly what it was before GV-56: no `words` key, no new warning.
+   Mutations that turn this red: drop the `start < prevStart` test in
+   segmentWords (the backwards words are kept); drop the join check against
+   the cue text (the misaligned words are kept). */
+test("unusable words are dropped per cue; a body without words is unchanged", () => {
+  const segments = [
+    { start: 0, end: 1, text: "one two", words: [W("one", 0.5, 0.6), W("two", 0.1, 0.9)] },
+    { start: 1, end: 2, text: "three four", words: [W("three", 1, 1.4), W("for", 1.4, 2)] },
+    { start: 2, end: 3, text: "five six", words: [W("five", 2, 2.4), W("six", 2.4, 3)] },
+  ];
+  const r = normalize(whisperJson(segments), "application/json");
+  assertShape(r);
+  assert.deepEqual(r.cues.map((c) => Object.hasOwn(c, "words")), [false, false, true]);
+  assert.deepEqual(r.warnings, ["2 JSON segment(s) carried word timings that were unreadable or did not line up with the text; their words were dropped"]);
+
+  const bare = normalize(whisperJson(segments.map(({ words, ...seg }) => seg)), "application/json");
+  assert.deepEqual(bare.warnings, []);
+  assert.deepEqual(JSON.parse(JSON.stringify(r.cues)).map(({ words, ...c }) => c), bare.cues);
+  for (const name of ["podcasting20-basic.json", "podcasting20-variants.json", "webvtt-basic.vtt", "webvtt-rolling.vtt", "srt-basic.srt"]) {
+    assert.ok(!JSON.stringify(normalize(fixture(name)).cues).includes('"words"'), name);
+  }
+});
