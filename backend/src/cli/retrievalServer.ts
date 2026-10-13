@@ -40,6 +40,14 @@ import {
   type CueStore,
   type EpisodeManifestRow
 } from "../generation/manifestBodySource";
+import {
+  createR2BodyFetcher,
+  CueCacheDir,
+  DEFAULT_CUE_CACHE_GB,
+  GB,
+  isReadThroughCueStore,
+  RemoteCueStore
+} from "./remoteCueStore";
 
 /**
  * THE RETRIEVAL SERVER (GV-16; roadmap docs/roadmap/generation-v2.md, from
@@ -48,6 +56,7 @@ import {
  *     node tools/passage-index/serve.mjs [--host 127.0.0.1] [--port 7311] [--shows a,b]
  *       [--index-root DIR] [--manifest FILE] [--normalized-root DIR]
  *       [--passages-db FILE [--embedder stub|transformers|openai]]
+ *       [--r2 [--cue-cache DIR] [--cue-cache-gb N]]
  *
  * WHY A RESIDENT PROCESS. Every generation process used to load each show's
  * BM25 cache on first search (and needed the transcript bodies on its own
@@ -74,7 +83,8 @@ import {
  * A show that is not resident is never searched, so a query can never trigger
  * a build inside a request.
  *
- * HTTP JSON API (node:http only; no outbound request is ever made):
+ * HTTP JSON API (node:http only; no outbound request is made, except the R2
+ * body fetch of REMOTE BODIES below, and that only with --r2):
  *   POST /v1/scopes  {episodes: [[show_id, guid], ...] | "all"} -> {scopeId, episodes, unknown}
  *                    held in memory for 2 h after last use. Lineage is
  *                    decided by the CLIENT (familyGateAllows /
@@ -85,7 +95,9 @@ import {
  *                    idf {term: weight}, present even with zero candidates.
  *   GET  /v1/episodes  [{show_id, guid, size, mtimeMs, transcript_source}] for
  *                    every archive row that maps to a body (manifest row).
- *   GET  /v1/cues?show_id=&guid=  {cues, transcript_source} or 404.
+ *   GET  /v1/cues?show_id=&guid=  {cues, transcript_source} or 404. With
+ *                    --r2 (GV-54) a body that is only in R2 is fetched first
+ *                    (see REMOTE BODIES below); 503 when that fetch failed.
  *   GET  /v1/archive   {generated_at, transcripts}: the archive rows exactly
  *                    as loaded (tools/passage-index/pull-archive.mjs).
  *   GET  /healthz      {indexVersion, shows, episodes, archiveGeneratedAt}.
@@ -116,6 +128,18 @@ import {
  *                    boundaries, anchors), reranked against `query` by cosine,
  *                    or by BM25 over the passage text with no embedder.
  *
+ * REMOTE BODIES (GV-54, from W3-24; subsumes docs/roadmap/corpus.md PKG-24).
+ * Only with --r2: the cue store is a `RemoteCueStore` (cli/remoteCueStore.ts)
+ * that reads the local normalized directory, then the --cue-cache directory
+ * (default data-local/passage-index/cue-cache, bounded by --cue-cache-gb,
+ * default 20), then GETs the manifest row's origin key from R2 into that
+ * cache. The index's body source is synchronous, so /v1/cues AWAITS that
+ * fetch before it reads the cues through it. A missing object answers 404, a
+ * failed fetch (no R2 key on this box, a network error) 503; neither stops the
+ * server. This is the one outbound request the process can make, and only
+ * with --r2. Without --r2 the store is the FileTranscriptCueProvider below,
+ * exactly as before.
+ *
  * AUTH. Bearer FORAY_RETRIEVAL_TOKEN (or the file named by
  * FORAY_RETRIEVAL_TOKEN_FILE). The default bind is 127.0.0.1; any other bind
  * is REFUSED without a token. With a token set, every /v1 route needs it.
@@ -140,6 +164,8 @@ export const DEFAULT_PORT = 7311;
 export const DEFAULT_INDEX_ROOT = path.join(REPO_ROOT, "data-local", "transcripts", "index");
 export const DEFAULT_MANIFEST = path.join(REPO_ROOT, "data-local", "passage-index", "episodes.jsonl");
 export const DEFAULT_NORMALIZED_ROOT = path.join(REPO_ROOT, "data-local", "transcripts", "normalized");
+/** The remote cue store's cache directory (GV-54), used only with --r2. */
+export const DEFAULT_CUE_CACHE = path.join(REPO_ROOT, "data-local", "passage-index", "cue-cache");
 /** How long a scope lives after its last use. */
 export const SCOPE_TTL_MS = 2 * 60 * 60 * 1000;
 /** Request-size and shape bounds: a scope of every episode of a large corpus is
@@ -844,18 +870,46 @@ export class RetrievalService {
   }
 
   /** An archive episode's cues and provenance; 404 when the episode or its
-   * body is unknown. */
+   * body is unknown. Reads only what is on this box (see `fetchCues`). */
   cues(showId: unknown, guid: unknown): { cues: unknown[]; transcript_source: string | null } {
+    const snapshot = this.snapshot;
+    return this.cuesOf(snapshot, this.entryOf(snapshot, showId, guid));
+  }
+
+  /**
+   * GET /v1/cues (GV-54): `cues`, after the cue store has brought the body
+   * onto this box when it can (a read-through store, --r2). The fetch is
+   * awaited here because the body source the index reads is synchronous. A
+   * failed fetch is 503 (the client records it as degraded and may ask
+   * again); a missing or refused object falls through to the 404 of `cues`.
+   * A plain store (no --r2) is read exactly as `cues` reads it.
+   */
+  async fetchCues(showId: unknown, guid: unknown): Promise<{ cues: unknown[]; transcript_source: string | null }> {
+    const snapshot = this.snapshot;
+    const entry = this.entryOf(snapshot, showId, guid);
+    const store = snapshot.cueStore;
+    if (isReadThroughCueStore(store)) {
+      const outcome = await store.ensureBody(entry, snapshot.manifest ? snapshot.manifest.rowFor(entry) : null);
+      if (outcome.status === "failed") throw new HttpError(503, "the remote body fetch failed; try again later");
+    }
+    return this.cuesOf(snapshot, entry);
+  }
+
+  private entryOf(snapshot: Snapshot, showId: unknown, guid: unknown): TranscriptDigestEntry {
     if (typeof showId !== "string" || typeof guid !== "string" || showId.length === 0 || guid.length === 0) {
       throw new HttpError(400, "show_id and guid are required");
     }
-    const entry = this.snapshot.byKey.get(keyOf(showId, guid));
+    const entry = snapshot.byKey.get(keyOf(showId, guid));
     if (!entry) throw new HttpError(404, "unknown episode");
-    const cues = this.snapshot.bodies.getCues(entry);
+    return entry;
+  }
+
+  private cuesOf(snapshot: Snapshot, entry: TranscriptDigestEntry): { cues: unknown[]; transcript_source: string | null } {
+    const cues = snapshot.bodies.getCues(entry);
     if (!cues) throw new HttpError(404, "no body for this episode");
     let source: string | null;
     try {
-      source = this.snapshot.bodies.transcriptSource ? this.snapshot.bodies.transcriptSource(entry) : null;
+      source = snapshot.bodies.transcriptSource ? snapshot.bodies.transcriptSource(entry) : null;
     } catch {
       throw new HttpError(500, "the body states a transcript_source outside the vocabulary");
     }
@@ -1040,7 +1094,7 @@ export function createRetrievalHttpServer(options: RetrievalHttpOptions): http.S
           return { status: 200, payload: episodes };
         }
         case "/v1/cues": {
-          const out = service.cues(url.searchParams.get("show_id"), url.searchParams.get("guid"));
+          const out = await service.fetchCues(url.searchParams.get("show_id"), url.searchParams.get("guid"));
           fields.cues = out.cues.length;
           return { status: 200, payload: out };
         }
@@ -1118,6 +1172,12 @@ export interface RetrievalServerArgs {
   passagesDb: string | null;
   /** The query embedder kind (tools/passage-index/embedder.mjs); null: none. */
   embedder: string | null;
+  /** GV-54: serve bodies that are only in R2 through the remote cue store. */
+  r2: boolean;
+  /** The remote cue store's cache directory (only with --r2). */
+  cueCache: string;
+  /** Its byte bound, in GB (1e9 bytes, as the stream indexer counts). */
+  cueCacheGb: number;
 }
 
 /** tools/passage-index/embedder.mjs EMBEDDER_KINDS. */
@@ -1140,6 +1200,12 @@ export function parseRetrievalServerArgs(argv: readonly string[]): RetrievalServ
   }
   const passagesDb = value("--passages-db");
   if (embedder !== null && passagesDb === null) throw new Error("--embedder needs --passages-db");
+  const cueCacheText = value("--cue-cache");
+  const cueCacheGbText = value("--cue-cache-gb");
+  const r2 = argv.includes("--r2");
+  if (!r2 && (cueCacheText !== null || cueCacheGbText !== null)) throw new Error("--cue-cache and --cue-cache-gb need --r2");
+  const cueCacheGb = cueCacheGbText === null ? DEFAULT_CUE_CACHE_GB : Number(cueCacheGbText);
+  if (!Number.isFinite(cueCacheGb) || cueCacheGb <= 0) throw new Error(`--cue-cache-gb must be a number > 0, got ${cueCacheGbText}`);
   const portText = value("--port");
   const port = portText === null ? DEFAULT_PORT : Number(portText);
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`--port must be 0..65535, got ${portText}`);
@@ -1151,7 +1217,10 @@ export function parseRetrievalServerArgs(argv: readonly string[]): RetrievalServ
     manifest: path.resolve(value("--manifest") ?? DEFAULT_MANIFEST),
     normalizedRoot: path.resolve(value("--normalized-root") ?? DEFAULT_NORMALIZED_ROOT),
     passagesDb: passagesDb === null ? null : path.resolve(passagesDb),
-    embedder
+    embedder,
+    r2,
+    cueCache: path.resolve(cueCacheText ?? DEFAULT_CUE_CACHE),
+    cueCacheGb
   };
 }
 
@@ -1227,6 +1296,10 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
   assertBindAllowed(args.host, token);
   const dense = await loadPassageStore(args);
   if (dense) logger.info("passage-store", { embedder: args.embedder ?? "none" });
+  /* GV-54: one fetcher for the process (its R2 client is built on first use;
+     with no key on this box each fetch fails and is answered 503). */
+  const fetchBody = args.r2 ? createR2BodyFetcher() : null;
+  if (fetchBody) logger.info("remote-cue-store", { cueCache: args.cueCache, cueCacheGb: args.cueCacheGb });
   const service = new RetrievalService({
     loadArchive: loadArchiveFresh,
     loadManifest: () => {
@@ -1234,7 +1307,15 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
       if (read && read.skipped > 0) logger.error("manifest-lines-skipped", { skipped: read.skipped });
       return read ? read.rows : null;
     },
-    createCueStore: () => new FileTranscriptCueProvider(args.normalizedRoot),
+    createCueStore: () =>
+      fetchBody
+        ? new RemoteCueStore({
+            normalizedRoot: args.normalizedRoot,
+            cache: new CueCacheDir(args.cueCache, args.cueCacheGb * GB),
+            fetchBody,
+            logger
+          })
+        : new FileTranscriptCueProvider(args.normalizedRoot),
     indexRoot: args.indexRoot,
     shows: args.shows,
     logger,
