@@ -2963,11 +2963,12 @@ test("GV-63: the per-Foray tally — exact, padded and drifted read 67% at autho
   /* The card's acceptance. MUTATIONS (each run 2026-10-13, red): leave
      `static` out of CLIP_AUTHORED_TIME (Foray b reads 0%); count every row
      instead of the newest per item (Foray a's replayed clip counts twice);
+     keep the FIRST row per item instead of the newest (Foray a reads 1
+     load-failed, 0 padded, 25%);
      drop the tally from formatDiagnosticReport (no `clips` line). */
   const { log, diag } = mk();
   diag.note("foray.clip.precision kind=dropped item=a#3");
   diag.note("foray.clip.precision kind=exact item=a#0");
-  diag.note("foray.clip.precision kind=padded item=a#1");
   diag.note("foray.clip.precision kind=skipped item=a#2");
   diag.note("foray.clip.precision kind=static item=b#0");
   diag.note("foray.clip.precision kind=load-failed item=a#1");   // a replay: the newest row wins
