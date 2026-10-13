@@ -88,7 +88,22 @@ import {
   seconds,
   TIER_TARGETS,
   ROWS_BEGIN,
-  ROWS_END
+  ROWS_END,
+  GOLDEN_BANDS,
+  GOLDEN_METRICS,
+  HEADLINE,
+  bandLabel,
+  bandVerdict,
+  compareGolden,
+  formatCompare,
+  formatGoldenTable,
+  goldenSummaries,
+  goldenSummaryLine,
+  headlineLines,
+  loadGoldenManifest,
+  meanValue,
+  percentile,
+  readGoldenBaseline
 } from "./run.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -1513,4 +1528,328 @@ test("GV-55: the JSONL carries the stack and a baseline line round-trips it", ()
   assert.equal(back.values.stack, row.values.stack);
   assert.equal(formatTable([back], { wide: true }), formatTable([row], { wide: true }));
   assert.equal(rowFromJsonl({ run: "run-x", metrics: {}, sources: {} }).values.stack, null);
+});
+
+/* =================================================================== */
+/* GV-64 (GEN-05; GP-28, R2-02): --golden, --headline, --compare        */
+/* =================================================================== */
+
+/* The synthetic golden report: 6 entries joined by promptId to golden-v1.json
+   across all 4 strata. multi-show g06 (listened), g11, g12 (gate failed, no
+   clip-on-subject rate); single-show g37; ambiguous g44 (no delivery block);
+   near-no-supply g48 (a negative lead). Every value below is hand-computed
+   from the fixture, not read back from the code. */
+const GOLDEN_SYNTH = path.join(FIXTURES, "golden-synth");
+const GOLDEN_MANIFEST = path.join(HERE, "golden", "golden-v1.json");
+const NO_KEYS = path.join(os.tmpdir(), "gv64-no-listen-keys-here");
+const goldenRows = (runId) => rowsForReport(path.join(GOLDEN_SYNTH, "report.json"), { pool: POOL, scorecard: true, ...(runId ? { runId } : {}) });
+const goldenOf = (rows = goldenRows()) => goldenSummaries(rows, loadGoldenManifest(GOLDEN_MANIFEST));
+const close = (actual, expected, label) => assert.ok(Math.abs(actual - expected) < 1e-9, `${label}: ${actual} != ${expected}`);
+const runGolden = (argv) => {
+  const out = [];
+  const result = main(["--golden", GOLDEN_MANIFEST, "--listen-keys", NO_KEYS, "--segments", path.join(FIXTURES, "segments.json"), ...argv, GOLDEN_SYNTH], (s) => out.push(s));
+  return { out, result };
+};
+/* A baseline file holding one summary, for --compare. */
+const baselineFile = (summary) => {
+  const file = path.join(tmpdir(), "golden-baseline.jsonl");
+  fs.writeFileSync(file, `${goldenSummaryLine(summary)}\n`);
+  return file;
+};
+const withMetric = (summary, stratum, key, value) => {
+  const copy = JSON.parse(goldenSummaryLine(summary));
+  copy.strata[stratum].metrics[key] = value;
+  return copy;
+};
+
+test("GV-64: percentile interpolates between ranks, so p50 is runlog's median; nothing is null", () => {
+  /* MUTATION: `xs[Math.round(rank)]` in percentile (nearest rank). Ran it:
+     red -- p90 of 20/26/32 reads 32, not 30.8. */
+  close(percentile([32, 20, 26], 0.9), 30.8, "p90");
+  close(percentile([20, 26, 32], 0.5), 26, "odd p50");
+  close(percentile([80, 88], 0.5), 84, "even p50 is the mean of the middle two");
+  close(percentile([80, 88], 0.9), 87.2, "p90 of two");
+  assert.equal(percentile([], 0.5), null);
+  assert.equal(percentile([null, undefined, "7"], 0.5), null, "a value no row carries is not 0");
+  close(meanValue([0.8, null, 0.6]), 0.7, "a mean skips the row that lacks the value");
+  assert.equal(meanValue([]), null);
+});
+
+test("GV-64: per-stratum p50/p90 and means on the synthetic golden report match the hand-computed values", () => {
+  /* MUTATION: `.map((v) => num(v) ?? 0)` in meanValue (an absent rate read
+     as 0). Ran it: red -- multi-show mq05_mean drops from 0.7 to 0.467.
+     MUTATION: drop the stratum filter in goldenSummaries (every stratum gets
+     every row). Ran it: red. */
+  const [summary] = goldenOf();
+  assert.equal(summary.kind, "golden-summary");
+  assert.equal(summary.run, "golden-synth");
+  assert.deepEqual(Object.keys(summary.strata), ["overall", "multi-show", "single-show", "ambiguous", "near-no-supply"]);
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(summary.strata).map(([s, v]) => [s, [v.n, v.listened]])),
+    { overall: [6, 1], "multi-show": [3, 1], "single-show": [1, 0], ambiguous: [1, 0], "near-no-supply": [1, 0] }
+  );
+  const multi = summary.strata["multi-show"].metrics;
+  close(multi.first_s_p50, 26, "multi first p50");
+  close(multi.first_s_p90, 30.8, "multi first p90");
+  /* g12's gate failed, so its allItemsReadyMs never counts (GV-52's rule). */
+  close(multi.full_s_p50, 84, "multi full p50");
+  close(multi.full_s_p90, 87.2, "multi full p90");
+  close(multi.elapsed_min_p50, 92000 / 60000, "multi elapsed p50");
+  close(multi.lead_s_p50, 30, "multi lead p50");
+  close(multi.lead_s_p90, 38, "multi lead p90");
+  close(multi.mq01_mean, (1 + 1 + 0.5) / 3, "multi MQ-01");
+  close(multi.mq02_mean, 0.8, "multi MQ-02");
+  close(multi.mq05_mean, 0.7, "multi MQ-05 over the two rows that carry it");
+  close(multi.mq21_share, 2 / 3, "multi MQ-21");
+  const single = summary.strata["single-show"].metrics;
+  close(single.first_s_p50, 18, "single first p50");
+  close(single.first_s_p90, 18, "single first p90");
+  const amb = summary.strata.ambiguous.metrics;
+  assert.equal(amb.first_s_p50, null, "no delivery block: absent, not 0");
+  assert.equal(amb.lead_s_p90, null);
+  close(amb.elapsed_min_p50, 1, "ambiguous elapsed");
+  assert.equal(amb.mq21_share, 0);
+  close(summary.strata["near-no-supply"].metrics.lead_s_p50, -5, "a stall stays negative");
+  const all = summary.strata.overall.metrics;
+  close(all.first_s_p50, 26, "overall first p50");
+  close(all.first_s_p90, 36.8, "overall first p90");
+  close(all.full_s_p50, 84, "overall full p50");
+  close(all.mq05_mean, (0.8 + 0.6 + 0.9 + 0.4 + 0.5) / 5, "overall MQ-05");
+  /* Nothing in the fixture carries these: absent, every stratum. */
+  for (const s of Object.values(summary.strata)) {
+    for (const key of ["mq03_mean", "mq06_mean", "mq09_mean", "mq11_mean", "mq20_mean", "out_tok_p50", "series_p50"]) {
+      assert.equal(s.metrics[key], null, key);
+    }
+  }
+});
+
+test("GV-64: MQ-20 is the mean listen, out_tok and series are medians, and the listened count follows the manifest", () => {
+  /* MUTATION: `listened: rows.length` in stratumSummary. Ran it: red. */
+  const row = (id, values) => ({ values: { run: `r#${id}`, ...values }, meta: { prompt_id: id, report_run: "r" } });
+  const [summary] = goldenOf([
+    row("g01", { listen: 4, out_tok: 9000, series: 7 }),
+    row("g04", { listen: 3, out_tok: 11000, series: 5 }),
+    row("g11", { out_tok: 10000, series: 6 })
+  ]);
+  const all = summary.strata.overall;
+  assert.equal(all.listened, 2, "g01 and g04 are listened prompts; g11 is not");
+  close(all.metrics.mq20_mean, 3.5, "MQ-20 over the rows that carry a listen");
+  close(all.metrics.out_tok_p50, 10000, "out_tok median");
+  close(all.metrics.series_p50, 6, "series median");
+  close(summary.strata["single-show"].metrics.mq20_mean, 4, "g01 is single-show");
+});
+
+test("GV-64: a row whose promptId is missing or not in the manifest is listed as unmatched and moves no aggregate", () => {
+  /* MUTATION: aggregate `overall` over runRows instead of matched. Ran it:
+     red -- the stray 1 s first audio drags the overall p50 down. */
+  const rows = goldenRows();
+  const stray = rowFor({ prompt: "ad hoc", outcome: "generated", detail: "OK", duration: "short", publishable: true, delivery: { firstServableMs: 1000 } }, { runId: "golden-synth#7", reportRun: "golden-synth" });
+  const foreign = rowFor({ promptId: "x99", prompt: "other set", delivery: { firstServableMs: 1000 } }, { runId: "golden-synth#8", reportRun: "golden-synth" });
+  const [summary] = goldenOf([...rows, stray, foreign]);
+  assert.equal(summary.rows, 8);
+  assert.equal(summary.matched, 6);
+  assert.deepEqual(summary.unmatched, [null, "x99"]);
+  close(summary.strata.overall.metrics.first_s_p50, 26, "overall first p50 unchanged");
+  assert.equal(summary.strata.overall.n, 6);
+  assert.match(formatGoldenTable(summary), /6 of 8 row\(s\) joined to golden-v1\.json; not in the manifest: \(no promptId\), x99/);
+});
+
+test("GV-64: one golden-summary line per run id, the report's entries grouped under it", () => {
+  /* MUTATION: group by `row.values.run` (the `#n` entry id) in
+     goldenSummaries. Ran it: red -- 12 summaries, one per entry. */
+  const summaries = goldenOf([...goldenRows("run-a"), ...goldenRows("run-b")]);
+  assert.deepEqual(summaries.map((s) => s.run), ["run-a", "run-b"]);
+  const { out } = runGolden(["--format", "jsonl"]);
+  assert.equal(out.length, 1, "one run id, one line");
+  const line = JSON.parse(out[0]);
+  assert.equal(line.kind, "golden-summary");
+  assert.equal(line.manifest, "golden-v1.json");
+  assert.match(line.manifest_sha256, /^[0-9a-f]{64}$/);
+  assert.deepEqual(line, JSON.parse(goldenSummaryLine(goldenOf()[0])));
+});
+
+test("GV-64: --headline prints exactly the five headline numbers, MT-01, MT-02, MQ-02, MQ-05, MQ-20", () => {
+  /* MUTATION: add `{ id: "MT-11", key: "lead_s_p50", ... }` to HEADLINE. Ran
+     it: red. MUTATION: print the summary table under --headline too. Ran it:
+     red. */
+  assert.deepEqual(HEADLINE.map((h) => h.id), ["MT-01", "MT-02", "MQ-02", "MQ-05", "MQ-20"]);
+  const { out } = runGolden(["--headline"]);
+  assert.deepEqual(out, [
+    "MT-01 first audio p50, s: 26.0",
+    "MT-02 all ready p50, s: 84.0",
+    "MQ-02 supported-sentence rate, mean: 0.742",
+    "MQ-05 clip-on-subject rate, mean: 0.640",
+    `MQ-20 founder's listen, mean overall (1-5): ${ABSENT}`
+  ]);
+  /* Two runs: five lines each, prefixed with the run id. */
+  const two = headlineLines(goldenOf([...goldenRows("run-a"), ...goldenRows("run-b")]));
+  assert.equal(two.length, 10);
+  assert.equal(two[5], "run-b MT-01 first audio p50, s: 26.0");
+});
+
+test("GV-64: --compare flags a 30% first_s slowdown as worse, a 5% one as within band, and a 30% speed-up as better", () => {
+  /* MUTATION: `better: "higher"` on the first_s metrics. Ran it: red -- the
+     slowdown reads better. MUTATION: the relative band taken off the CURRENT
+     value. Ran it: red -- 26 against 26/1.15 then reads within band. */
+  const [current] = goldenOf();
+  const metric = GOLDEN_METRICS.find((m) => m.key === "first_s_p50");
+  assert.equal(bandVerdict(metric, 20, 26), "worse", "26 s is 30% slower than 20 s");
+  assert.equal(bandVerdict(metric, 20, 21), "within-band", "5% slower");
+  assert.equal(bandVerdict(metric, 26, 26 * 0.85 - 0.01), "better", "just past 15% faster");
+  assert.equal(bandVerdict(metric, 26 / 1.15, 26 + 0.01), "worse", "just past 15% of the baseline");
+  let baseline = withMetric(current, "overall", "first_s_p50", 20);
+  baseline = withMetric(baseline, "multi-show", "first_s_p50", 26 / 1.05);
+  baseline = withMetric(baseline, "single-show", "first_s_p50", 18 / 0.7);
+  const results = compareGolden(current, baseline);
+  const verdict = (stratum, key) => results.find((r) => r.stratum === stratum && r.metric === key).verdict;
+  assert.equal(verdict("overall", "first_s_p50"), "worse");
+  assert.equal(verdict("multi-show", "first_s_p50"), "within-band");
+  assert.equal(verdict("single-show", "first_s_p50"), "better");
+  assert.equal(verdict("overall", "mq02_mean"), "within-band", "an identical number is within band");
+  assert.equal(results.length, GOLDEN_METRICS.length * 5, "every metric of every stratum");
+  /* Through the CLI: the line says the numbers, the band and the verdict. */
+  const { out, result } = runGolden(["--format", "jsonl", "--compare", baselineFile(baseline)]);
+  const text = out.join("\n");
+  assert.match(text, /golden compare: golden-synth against baseline golden-synth/);
+  assert.match(text, /overall\/first_s_p50\s+20\.0 ->\s+26\.0\s+±15%\s+worse/);
+  assert.match(text, /multi-show\/first_s_p50\s+24\.8 ->\s+26\.0\s+±15%\s+within-band/);
+  assert.equal(result.exitCode, 0, "non-grading: a worse metric still exits 0 (rule 2)");
+});
+
+test("GV-64: a metric either side lacks is 'absent', never 'better'", () => {
+  /* MUTATION: `const b = num(current) ?? 0` in bandVerdict. Ran it: red -- a
+     first audio that vanished reads as a 0 s first audio, 'better'. */
+  const time = GOLDEN_METRICS.find((m) => m.key === "first_s_p50");
+  const rate = GOLDEN_METRICS.find((m) => m.key === "mq02_mean");
+  assert.equal(bandVerdict(time, 20, null), "absent");
+  assert.equal(bandVerdict(time, null, 20), "absent");
+  assert.equal(bandVerdict(rate, null, 0.9), "absent");
+  assert.equal(bandVerdict(rate, 0.5, undefined), "absent");
+  const [current] = goldenOf();
+  const results = compareGolden(current, withMetric(current, "ambiguous", "first_s_p50", 25));
+  assert.equal(results.find((r) => r.stratum === "ambiguous" && r.metric === "first_s_p50").verdict, "absent");
+  /* A stratum only one side has is absent throughout. */
+  const extra = JSON.parse(goldenSummaryLine(current));
+  extra.strata.legacy = { n: 1, listened: 0, metrics: { first_s_p50: 10 } };
+  const legacy = compareGolden(current, extra).filter((r) => r.stratum === "legacy");
+  assert.equal(legacy.length, GOLDEN_METRICS.length);
+  assert.ok(legacy.every((r) => r.verdict === "absent"));
+  /* An empty baseline file: every metric absent, nothing better. */
+  assert.ok(compareGolden(current, null).every((r) => r.verdict === "absent"));
+});
+
+test("GV-64: the bands are times ±15% relative, rates ±0.05 absolute, counts ±1, and a move of exactly the band is within it", () => {
+  /* MUTATION: drop BAND_EPSILON (`Math.abs(delta) <= tolerance`). Ran it:
+     red -- 0.75 -> 0.80 is 0.050000000000000044 in floats and reads better. */
+  assert.deepEqual(GOLDEN_BANDS.time, { relative: 0.15 });
+  assert.deepEqual(GOLDEN_BANDS.rate, { absolute: 0.05 });
+  assert.deepEqual(GOLDEN_BANDS.count, { absolute: 1 });
+  const rate = GOLDEN_METRICS.find((m) => m.key === "mq05_mean");
+  const count = GOLDEN_METRICS.find((m) => m.key === "series_p50");
+  const lead = GOLDEN_METRICS.find((m) => m.key === "lead_s_p50");
+  assert.equal(bandVerdict(rate, 0.75, 0.8), "within-band", "exactly the band");
+  assert.equal(bandVerdict(rate, 0.8, 0.85), "within-band");
+  assert.equal(bandVerdict(rate, 0.8, 0.86), "better");
+  assert.equal(bandVerdict(rate, 0.8, 0.74), "worse");
+  assert.equal(bandVerdict(count, 5, 6), "within-band");
+  assert.equal(bandVerdict(count, 5, 7), "worse", "more calls in series is slower");
+  /* Lead is better higher, and a negative baseline still has a band. */
+  assert.equal(bandVerdict(lead, -20, -18), "within-band");
+  assert.equal(bandVerdict(lead, -20, -10), "better");
+  assert.equal(bandVerdict(lead, 30, 20), "worse");
+  /* Every metric has a band and a direction. */
+  for (const m of GOLDEN_METRICS) {
+    assert.ok(GOLDEN_BANDS[m.kind], m.key);
+    assert.ok(["lower", "higher"].includes(m.better), m.key);
+  }
+  assert.equal(bandLabel(lead), "±15%");
+  assert.equal(bandLabel(rate), "±0.05");
+});
+
+test("GV-64: --compare exits 0 unless --fail-on-regression, which exits 1 only on a worse metric", () => {
+  /* MUTATION: `exitCode: regressed ? 1 : 0` (ignoring the flag). Ran it: red. */
+  const [current] = goldenOf();
+  const slower = baselineFile(withMetric(current, "overall", "first_s_p50", 20));
+  assert.equal(runGolden(["--format", "jsonl", "--compare", slower]).result.exitCode, 0);
+  assert.equal(runGolden(["--format", "jsonl", "--compare", slower, "--fail-on-regression"]).result.exitCode, 1);
+  const same = baselineFile(current);
+  assert.equal(runGolden(["--format", "jsonl", "--compare", same, "--fail-on-regression"]).result.exitCode, 0);
+  /* The flags need their context. MUTATION: delete the --golden check in
+     parseArgs. Ran it: red. */
+  assert.throws(() => parseArgs(["--headline", "out-9"]), /--headline needs --golden/);
+  assert.throws(() => parseArgs(["--compare", "b.jsonl", "out-9"]), /--compare needs --golden/);
+  assert.throws(() => parseArgs(["--golden", "m.json", "--fail-on-regression", "out-9"]), /--fail-on-regression needs --compare/);
+});
+
+test("GV-64: the committed golden-baseline.jsonl starts empty, and a per-row baseline is refused as one", () => {
+  /* MUTATION: skip non-summary lines in readGoldenBaseline. Ran it: red --
+     the per-row baseline.jsonl reads as an empty golden baseline. */
+  const committed = path.join(HERE, "golden-baseline.jsonl");
+  assert.equal(fs.readFileSync(committed, "utf8"), "");
+  assert.equal(readGoldenBaseline(committed), null);
+  const { out, result } = runGolden(["--format", "jsonl", "--compare", committed]);
+  assert.match(out.join("\n"), /the baseline holds no golden-summary line yet, so every metric is absent/);
+  assert.equal(result.exitCode, 0);
+  assert.throws(() => readGoldenBaseline(path.join(HERE, "baseline.jsonl")), /baseline\.jsonl:1: not a golden-summary line/);
+  /* The last summary line of an append-only file is the baseline. */
+  const [current] = goldenOf();
+  const file = path.join(tmpdir(), "two.jsonl");
+  fs.writeFileSync(file, `${goldenSummaryLine({ ...current, run: "old" })}\n${goldenSummaryLine({ ...current, run: "new" })}\n`);
+  assert.equal(readGoldenBaseline(file).run, "new");
+  /* A manifest change is named, not hidden. */
+  const moved = { ...JSON.parse(goldenSummaryLine(current)), manifest: "golden-v2.json", manifest_sha256: "0".repeat(64) };
+  assert.match(formatCompare(current, moved, compareGolden(current, moved)), /different golden manifests \(golden-v2\.json vs golden-v1\.json\)/);
+});
+
+test("GV-64: a broken manifest throws rather than joining rows into the wrong stratum", () => {
+  /* MUTATION: drop the duplicate-id check in loadGoldenManifest. Ran it: red. */
+  const dir = tmpdir();
+  const write = (name, value) => {
+    const file = path.join(dir, name);
+    fs.writeFileSync(file, JSON.stringify(value));
+    return file;
+  };
+  assert.throws(() => loadGoldenManifest(write("obj.json", { prompts: [] })), /an array of prompt entries/);
+  assert.throws(() => loadGoldenManifest(write("noid.json", [{ stratum: "multi-show" }])), /entry 1 has no id/);
+  assert.throws(() => loadGoldenManifest(write("nostratum.json", [{ id: "g01" }])), /g01 has no usable stratum/);
+  assert.throws(() => loadGoldenManifest(write("overall.json", [{ id: "g01", stratum: "overall" }])), /g01 has no usable stratum/);
+  assert.throws(() => loadGoldenManifest(write("dup.json", [{ id: "g01", stratum: "a" }, { id: "g01", stratum: "b" }])), /duplicate id g01/);
+  const manifest = loadGoldenManifest(GOLDEN_MANIFEST);
+  assert.deepEqual(manifest.strata, ["multi-show", "single-show", "ambiguous", "near-no-supply"]);
+  assert.equal(manifest.byId.size, 50);
+});
+
+test("GV-64: without --golden the bench's lines are unchanged; with it the rows are scored and the per-row output is replaced", () => {
+  /* MUTATION: put `prompt_id` into jsonlLine. Ran it: red -- every committed
+     baseline line would change. */
+  const rows = rowsForReport(path.join(GOLDEN_SYNTH, "report.json"), { pool: POOL });
+  assert.equal(rows[0].meta.prompt_id, "g06");
+  assert.equal(rows[0].meta.report_run, "golden-synth");
+  assert.equal("prompt_id" in JSON.parse(jsonlLine(rows[0])), false);
+  assert.equal("report_run" in JSON.parse(jsonlLine(rows[0])), false);
+  const plain = [];
+  const result = main(["--format", "jsonl", "--listen-keys", NO_KEYS, GOLDEN_SYNTH], (s) => plain.push(s));
+  assert.ok(Array.isArray(result), "the default main still returns the rows");
+  assert.equal(plain.length, 6);
+  assert.equal("scorecard" in JSON.parse(plain[0]), false);
+  /* MUTATION: `scored = Boolean(args.scorecard)` in collectRows. Ran it: red
+     -- every MQ mean is absent under --golden without --scorecard. */
+  const { out, result: golden } = runGolden([]);
+  assert.equal(golden.rows.length, 6);
+  assert.ok(golden.rows[0].scorecard, "a --golden run is scored");
+  assert.match(out[0], /^golden golden-synth: 6 of 6 row\(s\) joined to golden-v1\.json\n/);
+  assert.match(out.join("\n"), /mq02_mean\s+0\.742\s+0\.800\s+0\.950\s+0\.500\s+0\.600/);
+  assert.equal(JSON.parse(out.at(-1)).kind, "golden-summary");
+});
+
+test("GV-64: the KPI doc records the golden aggregates, the headline and the band table", () => {
+  /* MUTATION: delete the `rate` row from the doc's band table. Ran it: red. */
+  const doc = fs.readFileSync(path.join(REPO_ROOT, "docs", "curation", "generation-kpis.md"), "utf8");
+  assert.match(doc, /### The golden set: aggregates, headline and compare \(GV-64, GEN-05\)/);
+  assert.match(doc, /\| time \| ±15 % relative to the baseline \|/);
+  assert.match(doc, /\| rate \| ±0\.05 absolute \|/);
+  assert.match(doc, /\| count \| ±1 absolute \|/);
+  assert.match(doc, /MT-01, MT-02, MQ-02, MQ-05 and MQ-20/);
+  assert.match(doc, /--fail-on-regression/);
+  for (const m of GOLDEN_METRICS) assert.ok(doc.includes(`\`${m.key}\``), `the doc names ${m.key}`);
 });

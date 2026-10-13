@@ -265,6 +265,77 @@ metric whose producer is a later card says which.
 Every score is a heuristic or a judgement to calibrate against the founder's
 listening cards before anything gates on it.
 
+### The golden set: aggregates, headline and compare (GV-64, GEN-05)
+
+Every row of the trend table below is one Foray. A golden-set run (GV-45's
+`tools/generation-bench/golden/golden-v1.json`: 50 prompts in four strata, 10
+of them listened) is 50 rows, and a change is judged on the set, not on one
+prompt. `run.mjs --golden <manifest>` turns a run's rows into one comparable
+result per stratum and overall:
+
+```
+node tools/generation-bench/run.mjs --golden tools/generation-bench/golden/golden-v1.json <out-dir>
+node tools/generation-bench/run.mjs --golden <manifest> --headline <out-dir>
+node tools/generation-bench/run.mjs --golden <manifest> --compare tools/generation-bench/golden-baseline.jsonl <out-dir>
+```
+
+- **Join.** Each report entry joins its golden prompt by `entry.promptId` (the
+  manifest's `id`, which `generate-forays` carries into the report). A row
+  whose `promptId` is missing or not in the manifest is listed as unmatched
+  and left out of every aggregate, `overall` included.
+
+**Aggregates**, one cell per stratum and `overall`. A row that does not carry
+a value is left out of that aggregate, and a cell no row carries is `—`:
+
+| Aggregate | What it is |
+|---|---|
+| `first_s_p50`, `first_s_p90` | MT-01: p50 / p90 of `1stAudio s` |
+| `full_s_p50`, `full_s_p90` | MT-02: p50 / p90 of `allReady s` (publishable rows only, as in the column) |
+| `elapsed_min_p50`, `elapsed_min_p90` | p50 / p90 of `elapsed m` |
+| `lead_s_p50`, `lead_s_p90` | MT-11: p50 / p90 of `minLead s` |
+| `mq01_mean`, `mq02_mean`, `mq03_mean`, `mq05_mean`, `mq06_mean`, `mq09_mean`, `mq11_mean` | means of the scorecard's MQ rates (GV-24; a `--golden` run is always scored) |
+| `mq21_share` | MQ-21: the share of rows that were publishable, over the rows that say |
+| `mq20_mean` | MQ-20: the mean `listen` (the founder's mean `overall`, 1-5) |
+| `out_tok_p50`, `series_p50` | MT-05 and MT-06 medians, from the runlog (GV-17) |
+
+Percentiles interpolate between the two nearest ranks (rank q x (n - 1)), so
+p50 is the median `runlog.mjs` computes.
+
+- **Output.** A table (metrics down, strata across) and one `golden-summary`
+  JSONL line per run id (`--format table|jsonl|both`). The per-row lines and
+  the committed table above do not change: without `--golden` the bench's
+  output is byte-identical.
+- **Headline.** `--headline` prints exactly the five headline numbers, overall:
+  MT-01, MT-02, MQ-02, MQ-05 and MQ-20 (`first_s_p50`, `full_s_p50`,
+  `mq02_mean`, `mq05_mean`, `mq20_mean`).
+- **Compare.** `--compare <golden-baseline.jsonl>` reads the file's last
+  `golden-summary` line as the baseline and prints, per metric and stratum,
+  `better`, `worse` or `within-band`, and `absent` when either side lacks the
+  number (a metric that vanished is never `better`). The direction is lower
+  for times, token volume and calls in series, higher for lead, rates and the
+  listen. When the two runs used different manifests the compare says so.
+- **Not a gate.** `--compare` exits 0 whatever it finds (rule 2).
+  `--fail-on-regression` exits 1 on any `worse`; it is kept for G-42b and is
+  not to be used until the bands below are re-derived from the noise floor.
+
+**The bands** (`GOLDEN_BANDS` in `run.mjs`). All **proposed**: they were
+chosen before any local run and may be tighter than LLM noise. A move exactly
+the size of the band is within it.
+
+| Kind | Band | Metrics |
+|---|---|---|
+| time | ±15 % relative to the baseline | `first_s`, `full_s`, `elapsed_min`, `lead_s` (relative to the baseline's magnitude, so a negative lead has a band) |
+| volume | ±15 % relative to the baseline | `out_tok_p50`: the time band, because ±1 token would be no band at all |
+| rate | ±0.05 absolute | the MQ rate means and `mq21_share` |
+| count | ±1 absolute | `series_p50` |
+| score | ±0.25 absolute | `mq20_mean` on the 1-5 card. The card (GEN-05) names no band for a score; this is the bench's own proposal, half the swap rule's 0.5 axis-drop allowance (`swap-rule.mjs`) |
+
+**The baseline.** `tools/generation-bench/golden-baseline.jsonl` starts empty,
+so a compare against it today reads every metric `absent`. After the first
+50-prompt run, its summary line is committed there (the live step). Before
+anyone uses `--fail-on-regression`, two back-to-back runs of one build measure
+the noise floor and the bands are re-derived from it.
+
 ## The trend
 
 | run | outcome | valid | stageSum m | elapsed m | ttlA1 m | tier | 1stAudio s | allReady s | minLead s | calls | tapeSh | tape/rt | clips | clip mean | clip max | pg/seam | narrSh | 1stPg | 1stBt | 1stPass? | unver | synth | seedLost | introRe | call/bt | tokens | cost $ |
