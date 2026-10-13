@@ -1,0 +1,21 @@
+# foray-render-upload.timer -- run foray-render-upload.service every 30 s.
+#
+# GV-58 (docs/roadmap/generation-v2.md; #862). A rendered line is playable on
+# the phone only once its done record carries public_url, which spool-upload
+# writes after a confirmed upload; a short interval keeps that close behind the
+# render. A run with nothing staged does nothing. A failed upload leaves the
+# staged directory for the next run.
+
+[Unit]
+Description=Upload staged Foray narration every 30 s
+Documentation=https://github.com/JW-Incorporated/foray/blob/main/tools/narration/spark/README.md
+
+[Timer]
+Unit=foray-render-upload.service
+OnActiveSec=30s
+OnBootSec=2min
+OnUnitInactiveSec=30s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
