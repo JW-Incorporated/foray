@@ -252,7 +252,8 @@ export interface RetrievalServiceOptions {
   /** The dense arm and the shortlists (GV-48): absent, mode 'hybrid' and the
    * shortlist routes answer 503 and the BM25 routes are unchanged. */
   passageStore?: PassageStore | null;
-  /** Absent: no hybrid search, and a shortlist is lexical only. */
+  /** Absent: no hybrid search, and a shortlist is lexical only (as it is when
+   * the embedder's model has no vectors yet). */
   queryEmbedder?: QueryEmbedder | null;
   loadTaxonomy?: () => ShortlistTaxonomy;
   lineage?: LineageGate;
@@ -671,7 +672,8 @@ export class RetrievalService {
    *   2. every passage of the pool, ranked twice: BM25 over the passage text
    *      (with the episode search's corpus idf) and cosine to the query;
    *   3. the two rankings fused by RRF; the top SHORTLIST_SIZE are stored.
-   * Without an embedder step 2 is the BM25 ranking alone. A node whose lineage
+   * Without an embedder, or when the query embedding fails (the model has no
+   * vectors yet), step 2 is the BM25 ranking alone. A node whose lineage
    * admits nothing is stored empty. Yields to the event loop between nodes.
    */
   async rebuildShortlist(nodes?: unknown): Promise<ShortlistBuild> {
@@ -729,7 +731,17 @@ export class RetrievalService {
       rank: c.rank
     }));
     const inAdmitted = (h: { show_id: string; guid: string }): boolean => admitted.has(keyOf(h.show_id, h.guid));
-    const vector = embedder ? await this.embed(embedder, query) : null;
+    let vector: ArrayLike<number> | null = null;
+    if (embedder) {
+      try {
+        vector = await embedder.embedQuery(query);
+      } catch (error) {
+        /* The embedder's model has no vectors in this store yet (or the
+           embedder failed): this node's shortlist is lexical only, not a 503.
+           The log gets the error class, never the query. */
+        this.options.logger.error("shortlist-embed-failed", { error: error instanceof Error ? error.name : typeof error, fallback: "lexical" });
+      }
+    }
     const denseHits = vector
       ? store.denseSearch(vector, { episodes: [...admitted].map(splitKey), k: SHORTLIST_DENSE_PASSAGES }).filter(inAdmitted)
       : [];

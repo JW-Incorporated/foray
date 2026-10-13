@@ -895,6 +895,43 @@ describe("retrievalServer — the per-taxonomy-node shortlist (GV-48)", () => {
     expect((await call(base, "POST", "/v1/shortlist/rebuild", { nodes: ["nope"] })).status).toBe(400);
   });
 
+  it("an embedder whose model has no vectors yet: the rebuild is 200 and lexical only, still lineage-admitted and capped at 50", async () => {
+    /* MUTATION THAT KILLS THIS: let the query-embedding failure propagate from
+       shortlistFor (the rebuild answers 503). Ran it — red. */
+    const logger = capturedLogger();
+    const noVectors: QueryEmbedder = {
+      embedQuery: async () => Promise.reject(new Error("model stub@1 has no vectors in this store yet (run index-db embed)"))
+    };
+    const store = fakeStore([...cuePassages(), ...extra()], { ignoreFilter: true });
+    const service = new RetrievalService(
+      serviceOptions(indexRoot, { logger, passageStore: store, queryEmbedder: noVectors, loadTaxonomy: () => TAXONOMY, lineage: LINEAGE })
+    );
+    const reply = await call(await serve(service, logger), "POST", "/v1/shortlist/rebuild", {});
+    expect(reply.status).toBe(200);
+    expect(reply.json as ShortlistBuild).toMatchObject({ nodes: 4, empty: ["arts"] });
+
+    const showOf = (passageId: string): string => (passageId.startsWith("extra:") ? SHOW_A : (passageId.split(":")[0] as string));
+    const medicine = store.shortlists.get("medicine") ?? [];
+    expect(medicine).toHaveLength(SHORTLIST_SIZE);
+    expect([...new Set(medicine.map((r) => showOf(r.passageId)))].sort()).toEqual([SHOW_A, SHOW_C]);
+    const science = store.shortlists.get("science") ?? [];
+    expect(science.length).toBeGreaterThan(0);
+    expect(science.every((r) => showOf(r.passageId) === SHOW_B)).toBe(true);
+    expect(store.shortlists.get("arts")).toEqual([]);
+
+    /* Exactly the rows a server with no embedder stores. */
+    const lexStore = fakeStore([...cuePassages(), ...extra()], { ignoreFilter: true });
+    const lexical = new RetrievalService(serviceOptions(indexRoot, { logger: capturedLogger(), passageStore: lexStore, loadTaxonomy: () => TAXONOMY, lineage: LINEAGE }));
+    expect((await call(await serve(lexical, logger), "POST", "/v1/shortlist/rebuild", {})).status).toBe(200);
+    const strip = (m: Map<string, ShortlistRow[]>): Record<string, unknown> =>
+      Object.fromEntries([...m].map(([node, rows]) => [node, rows.map(({ rank, passageId, score }) => ({ rank, passageId, score }))]));
+    expect(strip(store.shortlists)).toEqual(strip(lexStore.shortlists));
+
+    /* Logged by class, never the query or the error's message. */
+    expect(logger.events("error").some((e) => e.event === "shortlist-embed-failed" && e.error === "Error")).toBe(true);
+    expect(logger.lines.join("\n")).not.toMatch(/miasma|no vectors/);
+  });
+
   it("GET reranks the stored rows against the query by cosine with an embedder, by BM25 without one, and returns text, seconds, boundaries and anchors", async () => {
     /* MUTATION THAT KILLS THIS: ignore `query` and return the stored order
        (the cholera passage is not first). Ran it — red. */

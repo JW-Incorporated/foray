@@ -2823,7 +2823,7 @@ const BACKEND_FLOORS = {
      reload, and the pull-archive round trip through loadTranscriptArchive;
      plus the manifest body source that keeps streamed caches fresh with no
      body on disk. */
-  "test/retrievalServer.test.ts": 16, // GV-48 adds hybrid mode (append + scope, determinism + no-mode parity) and the node shortlist (rebuild + GET rerank)
+  "test/retrievalServer.test.ts": 17, // GV-48 review: a rebuild whose embedder has no vectors yet is lexical only, not 503; 16 -> 17 // GV-48 adds hybrid mode (append + scope, determinism + no-mode parity) and the node shortlist (rebuild + GET rerank)
   "test/manifestBodySource.test.ts": 5,
   /* GV-29 (docs/roadmap/generation-v2.md, from W3-10): the backend retrieval
      client — prepared lineage and 'all' answers equal a local search (scores,
