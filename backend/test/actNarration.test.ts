@@ -13,6 +13,7 @@ import {
   hostIntroducesGuest,
   introNamesShow,
   introNamesSource,
+  introOnlyFirstSeam,
   introRestatesClip,
   planActSeams,
   seamBand,
@@ -555,6 +556,41 @@ describe("actSeams — the plan and the Intro rules", () => {
     expect(seams.map((s) => seamMode(s))).toEqual(["Patch", "Patch", "Patch"]);
     expect(seamMode({ beats: [] })).toBe("Intro");
     expect(seamMode({ beats: [{ ...seams[0]!.beats[0]!, mode: "Carry" }] })).toBe("Carry");
+  });
+
+  it("GV-73: introOnlyFirstSeam moves s0's beats into the seam after its clip only when s0 introduces a clip, and every beat stays in exactly one seam", () => {
+    /* MUTATION THAT KILLS THIS: move s0's beats without checking that s0
+       introduces a clip (the no-tape act loses its only seam's beats), or
+       append them after the next seam's own beats (b3 then leads the seam
+       and the earlier claims are spoken last), or drop the `next > 0`
+       guard (the last-clip act's beats vanish into s0's own copy). */
+    const beatsOf = (plans: ReturnType<typeof planActSeams>) => plans.map((s) => [s.seamId, s.beats.map((b) => b.beatId), s.follows?.clipId ?? null, s.introduces?.clipId ?? null]);
+    const moved = introOnlyFirstSeam(planActSeams(fourBeatsTwoClips()));
+    expect(beatsOf(moved)).toEqual([
+      ["s0", [], null, "c0"],
+      ["s1", ["b0", "b1", "b3"], "c0", "c1"],
+      ["s2", ["b5"], "c1", null]
+    ]);
+    /* Case B: the seam after the clip is a beatless Intro into the next clip. */
+    expect(beatsOf(introOnlyFirstSeam(planActSeams(threeClipsIntroOnly())))).toEqual([
+      ["s0", [], null, "c0"],
+      ["s1", ["b0"], "c0", "c1"],
+      ["s2", ["b3"], "c1", null]
+    ]);
+    /* planActSeams' invariant survives: each narration beat in exactly one seam. */
+    for (const act of [fourBeatsTwoClips(), threeClipsIntroOnly()]) {
+      const ids = introOnlyFirstSeam(planActSeams(act)).flatMap((s) => s.beats.map((b) => b.beatId));
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids.sort()).toEqual(planActSeams(act).flatMap((s) => s.beats.map((b) => b.beatId)).sort());
+    }
+    /* Nothing moves: no tape (s0 introduces nothing), a clip first (s0 has no
+       beats), and a last clip with nothing after it (no seam to move into). */
+    const noTape: SourcedAct = { title: "N", slots: [{ title: "S", beats: [narration(CLAIMS.b0), narration(CLAIMS.b1)] }] };
+    const clipFirst: SourcedAct = { title: "C", slots: [{ title: "S", beats: [tape("x", TAPE_A), narration(CLAIMS.b1)] }] };
+    const clipLast: SourcedAct = { title: "L", slots: [{ title: "S", beats: [narration(CLAIMS.b0), tape("x", TAPE_A)] }] };
+    for (const act of [noTape, clipFirst, clipLast]) {
+      expect(beatsOf(introOnlyFirstSeam(planActSeams(act)))).toEqual(beatsOf(planActSeams(act)));
+    }
   });
 
   it("a seam's band is the largest floor among its beats and the sum of their ceilings plus an Intro, capped at the 150 s soft max", () => {

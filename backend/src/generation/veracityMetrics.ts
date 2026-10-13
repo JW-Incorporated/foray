@@ -1038,6 +1038,18 @@ export interface VeracityMetrics {
    * outside text that went unmet, the OQ-04 trade under the 'none' research
    * route. Measured, never gated. Absent when the caller did not count it. */
   printEvidenceSkipped?: number;
+  /**
+   * GV-73 (W4-10; R1-06, GP-05): the streamed writer path's early release
+   * (`writeAct.ts`'s `streamRound`). `seamsReleasedEarly`: seams checked as
+   * their line closed and released ahead of the act's verifier;
+   * `releasedThenRefused`: released seams the act's verifier then refused
+   * (should read 0); `firstSeamCheckedMs`: the earliest a first seam was
+   * released, ms since its act's stream began, `null` when none was. All
+   * three absent unless FORAY_WRITER_STREAM (or the fast path) streamed.
+   */
+  seamsReleasedEarly?: number;
+  releasedThenRefused?: number;
+  firstSeamCheckedMs?: number | null;
   pagesDropped: number;
   /** F-51: pages kept with `verified: false`. Any is a publish stop. */
   unverifiedPages: number;
@@ -1126,6 +1138,11 @@ export interface BuildVeracityMetricsInput {
   /** GV-61: `writeNarration`'s count of content pages with no print
    * document. Optional; omitted, the metric is absent. */
   printEvidenceSkipped?: number;
+  /** GV-73: the streamed path's counts (`NarrationWriteStats`). Omitted (the
+   * default, unstreamed run), all three fields are absent from the report. */
+  seamsReleasedEarly?: number;
+  releasedThenRefused?: number;
+  firstSeamCheckedMs?: number;
   pipelineTokens: number;
   stageTimings: StageTiming[];
   /** G-35: carried through verbatim when the caller ran a prefetch. */
@@ -1166,6 +1183,13 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     retryRounds: typeof input.retryRounds === "number" ? input.retryRounds : null,
     seedLostBeats: typeof input.seedLostBeats === "number" ? input.seedLostBeats : null,
     ...(typeof input.printEvidenceSkipped === "number" ? { printEvidenceSkipped: input.printEvidenceSkipped } : {}),
+    ...(typeof input.seamsReleasedEarly === "number"
+      ? {
+          seamsReleasedEarly: input.seamsReleasedEarly,
+          releasedThenRefused: input.releasedThenRefused ?? 0,
+          firstSeamCheckedMs: typeof input.firstSeamCheckedMs === "number" ? input.firstSeamCheckedMs : null
+        }
+      : {}),
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,

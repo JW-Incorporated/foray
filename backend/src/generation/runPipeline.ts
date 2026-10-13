@@ -87,7 +87,7 @@ import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
-import type { NarrationWriteStats, WrittenAct } from "./writeNarration";
+import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
 import { loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
@@ -212,6 +212,15 @@ export interface RunPipelineDeps {
    * feeds a `DeliveryTimeline` from it (`report.json`'s `delivery`).
    */
   onItemReady?: (ev: ItemReadyEvent) => void | Promise<void>;
+  /**
+   * GV-73 (W4-10; R1-15): fired when the streamed writer path
+   * (FORAY_WRITER_STREAM, or the fast path, with a writer that streams)
+   * releases a seam early -- checked as its line closed, ahead of its act's
+   * verifier -- with the act's index in the Foray. For the delivery
+   * workstream: a signal, not permission to play (serving waits for the
+   * per-act veracity gate). Never fires on the default path.
+   */
+  onSeamChecked?: (event: SeamCheckedEvent) => void;
   /**
    * GV-33: the wall clock (epoch ms) the pipeline's start, `ttlA1Ms` and every
    * `ItemReadyEvent.readyAtMs` are read from. Defaults to `Date.now`. NOT
@@ -1939,7 +1948,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
               ...(actFrames?.[i] ? { frames: [actFrames[i]] } : {}),
               /* GV-34 / decision 34: FORAY_SPECIFICS_CHECK reaches the writer,
                  so `enforce` re-asks a seam in a real run (default `report`). */
-              specifics: gates.specifics
+              specifics: gates.specifics,
+              /* GV-73: FORAY_WRITER_STREAM (or the fast path) streams the
+                 writer's reply; early releases reach deps.onSeamChecked with
+                 this act's index (`writeNarration` sees one act, index 0). */
+              ...(flags.writerStream ? { streamSeams: true } : {}),
+              ...(deps.onSeamChecked ? { onSeamChecked: (event: SeamCheckedEvent) => deps.onSeamChecked!({ ...event, actIndex: i }) } : {})
             },
             spine.voice,
             ctx
@@ -2037,6 +2051,15 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     /* GV-61: content pages written with no print document (OQ-04's trade,
        measured). Zero is a real answer: the accumulator was passed. */
     printEvidenceSkipped: narrationStats.printSkipped ?? 0,
+    /* GV-73: the streamed path's early releases, only when it ran -- the
+       default run's report is unchanged. */
+    ...(narrationStats.seamsReleasedEarly !== undefined
+      ? {
+          seamsReleasedEarly: narrationStats.seamsReleasedEarly,
+          releasedThenRefused: narrationStats.releasedThenRefused ?? 0,
+          ...(narrationStats.firstSeamCheckedMs !== undefined ? { firstSeamCheckedMs: narrationStats.firstSeamCheckedMs } : {})
+        }
+      : {}),
     pipelineTokens: pipelineTokensOfRun(),
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),

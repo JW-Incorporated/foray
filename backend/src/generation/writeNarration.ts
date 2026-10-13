@@ -235,6 +235,37 @@ export interface WriteNarrationOptions {
    * Omitted means `report`, the writer's own default.
    */
   specifics?: SpecificsMode;
+  /**
+   * GV-73 (W4-10): write each act through the writer's streamed reply
+   * (`writeActStream`) when it has one -- FORAY_WRITER_STREAM or the fast
+   * path, set by the driver. Omitted or false, or a writer without the
+   * method, is today's one-shot `writeAct`, unchanged.
+   */
+  streamSeams?: boolean;
+  /**
+   * GV-73: fired when a streamed seam is released early (checked as its line
+   * closed, before the act's verifier has read the act). `actIndex` is the
+   * act's position in `acts`. A signal for the delivery workstream, never
+   * permission to play (the per-act veracity gate decides that).
+   */
+  onSeamChecked?: (event: SeamCheckedEvent) => void;
+}
+
+/**
+ * GV-73 (W4-10; R1-06, R1-15): one seam released early on the streamed path.
+ * `verifiedBy` is `code` for a claim-free introduction cleared by the
+ * mechanical rules alone, `verifier` for a seam a per-seam verifier
+ * confirmed. `atMs` is when its line closed, in milliseconds since the act's
+ * stream began, on the writer's clock.
+ */
+export interface SeamCheckedEvent {
+  actIndex: number;
+  seamId: string;
+  script: string;
+  verifiedBy: "code" | "verifier";
+  /** The clip the seam introduces, when it introduces one. */
+  clipId?: string;
+  atMs: number;
 }
 
 /**
@@ -287,6 +318,20 @@ export interface NarrationWriteStats {
    * nothing rather than a guessed zero.
    */
   printSkipped?: number;
+  /**
+   * GV-73 (W4-10): on the streamed writer path only (`streamSeams`), the
+   * seams released early -- checked as their line closed, ahead of the act's
+   * verifier -- summed over the run. Absent on the default path, so its
+   * report is unchanged.
+   */
+  seamsReleasedEarly?: number;
+  /** GV-73: released seams the act's verifier then refused. They are not
+   * edited (they may already be playing); their beats go to the next seam
+   * that is still open. Should read 0. Streamed path only. */
+  releasedThenRefused?: number;
+  /** GV-73: the earliest any act's first seam was released, in milliseconds
+   * since that act's stream began. Absent when no seam was released. */
+  firstSeamCheckedMs?: number;
 }
 
 /**
@@ -646,7 +691,11 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
               /* GV-38: the act's frame, when the driver built one. */
               ...(options.frames?.[actIndex] ? { frame: options.frames[actIndex] } : {}),
               /* GV-34 / decision 34: the run's specifics gate. */
-              ...(options.specifics ? { specifics: options.specifics } : {})
+              ...(options.specifics ? { specifics: options.specifics } : {}),
+              /* GV-73: the streamed writer path and its early-release signal,
+                 with this act's position. */
+              ...(options.streamSeams ? { streamSeams: true } : {}),
+              ...(options.onSeamChecked ? { actIndex, onSeamChecked: options.onSeamChecked } : {})
             },
             voice,
             ctx

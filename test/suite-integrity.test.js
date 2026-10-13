@@ -3271,7 +3271,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 63, // GV-38 (generation v2): the ACT FRAME block -- an unframed prompt pinned byte-identical by sha256, every frame field before the layout, act 0's overview with no previous-act rule, and writeActNarration sending the frame on every round; 59 -> 63 // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
+  "test/actNarration.test.ts": 64, // GV-73 (generation v2): introOnlyFirstSeam moves s0's beats past its clip only when s0 introduces one and a seam follows it, every beat in exactly one seam; 63 -> 64 // GV-38 (generation v2): the ACT FRAME block -- an unframed prompt pinned byte-identical by sha256, every frame field before the layout, act 0's overview with no previous-act rule, and writeActNarration sending the frame on every round; 59 -> 63 // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
@@ -3471,6 +3471,16 @@ const BACKEND_FLOORS = {
      collectActStream (equals writeAct, one budget record, throws on a
      missing or early 'end'). Pure; offline. One named mutation per test. */
   "test/seamStream.test.ts": 9,
+  /* GV-73 (docs/roadmap/generation-v2.md, W4-10, #1286): the streamed act
+     writer -- s0 released on code checks before the last seam arrives,
+     streamed and one-shot acts equal, a released seam frozen in later
+     rounds and counted when refused, verifySeam releasing a claim-bearing
+     seam, beats handed on from a released seam, onSeamChecked act indexes,
+     moved beats placed after the clip, a token-cap cut and a stall keeping
+     finished seams and re-asking only the rest, the idle (not whole-stream)
+     bound, the end-event contract, and the report fields only when
+     streamed. Offline; fake clock or scripted streams. */
+  "test/actStreaming.test.ts": 13,
   /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
      verifier -- seamSentences (intro, question, imperative, statement),
      per-statement support with the specifics check on the same texts (an
