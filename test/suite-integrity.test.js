@@ -3482,7 +3482,7 @@ const BACKEND_FLOORS = {
      finished seams and re-asking only the rest, the idle (not whole-stream)
      bound, the end-event contract, and the report fields only when
      streamed. Offline; fake clock or scripted streams. */
-  "test/actStreaming.test.ts": 13,
+  "test/actStreaming.test.ts": 14,
   /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
      verifier -- seamSentences (intro, question, imperative, statement),
      per-statement support with the specifics check on the same texts (an

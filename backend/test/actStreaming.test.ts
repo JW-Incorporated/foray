@@ -45,6 +45,9 @@ import type { Voice } from "../src/types/spine";
  *      fields (the default report changes).
  *  10. writeAct.ts settleReleased: hand no beat on (a beat a released seam
  *      leaves uncarried is never asked for again).
+ *  11. writeAct.ts releaseProbe: ask verifySeam only when the seam selected
+ *      claims (`if (gated.claims.length > 0)`; a beat-bearing seam resting
+ *      on a clip window alone is released with no verifier).
  */
 
 const voice: Voice = { style: "well-read friend", register: "conversational", sentenceRhythm: "varied", narratorPresence: "medium" };
@@ -351,6 +354,38 @@ describe("GV-73 — the streamed act writer releases a code-checked introduction
     ]);
     expect(stats.seamsReleasedEarly).toBe(2);
     expect(stats.releasedThenRefused).toBe(0);
+  });
+
+  it("a beat-bearing seam that selects no claim is still not released on code alone: it needs verifySeam", async () => {
+    /* MUTATION 11 (the release rule asks for verifySeam only when the seam
+       selected claims: `if (gated.claims.length > 0)`) kills this: s1 rests
+       on c1's held window alone (actSourceCount >= 1), passes the code gate
+       with claims: [], and is released and signalled with its beats checked
+       by no verifier. */
+    const stripS1 = (reply: ActWriteResult, _request: ActWriteRequest, call: number): ActWriteResult =>
+      call === 1 ? { seams: reply.seams.map((s) => (s.seamId === "s1" ? { ...s, claims: [], usedClaims: [] } : s)) } : reply;
+
+    const plain = builders({ mutate: stripS1 });
+    const run = await writeOne(fourBeatsTwoClips(), plain, { streamSeams: true }, ["B"]);
+    const s1 = plain.replies[0]!.seams.find((s) => s.seamId === "s1")!;
+    expect(s1.claims).toEqual([]);
+    expect(plain.requests[0]!.seams.find((s) => s.seamId === "s1")!.beats.length).toBeGreaterThan(0);
+    expect(run.checked.map((e) => e.seamId)).toEqual(["s0"]);
+    expect(run.stats.seamsReleasedEarly).toBe(1);
+
+    /* With a verifySeam that refuses, s1 is asked about and still held. */
+    const b = builders({ mutate: stripS1 });
+    const asked: string[] = [];
+    const verifier = Object.assign(b.verifier, {
+      verifySeam: async (request: SeamVerifyRequest): Promise<SeamVerifyResult> => {
+        asked.push(request.seam.seamId);
+        return { confirmed: false };
+      }
+    });
+    const refused = await writeOne(fourBeatsTwoClips(), { ...b, verifier }, { streamSeams: true }, ["B"]);
+    expect(asked).toContain("s1");
+    expect(refused.checked.map((e) => e.seamId)).toEqual(["s0"]);
+    expect(refused.stats.seamsReleasedEarly).toBe(1);
   });
 
   it("a beat a released seam leaves uncarried is handed to the next open seam, which the retry asks for it", async () => {
