@@ -3445,6 +3445,19 @@ const BACKEND_FLOORS = {
      collectActStream (equals writeAct, one budget record, throws on a
      missing or early 'end'). Pure; offline. One named mutation per test. */
   "test/seamStream.test.ts": 9,
+  /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
+     verifier -- seamSentences (intro, question, imperative, statement),
+     per-statement support with the specifics check on the same texts (an
+     unsourced year is unsupported at p 0.9), unavailable -> 'unknown', the
+     seam verdict from its sentences (quoted notes, restsOn union, the
+     stub's contested rule), the per-beat choice over sentences and clips
+     (clip carrier, frozen seams as options, the per-judge threshold, the
+     40k split keeping the best carrier), metering through BudgetGuard, the
+     stub's opt-in sentence mode, FORAY_STAGE_VERIFIER=jev routing and its
+     JEV_API_KEY error, and stub writer + Jev verifier end to end through
+     writeNarration. FakeJevClient only; offline. One named mutation per
+     test. */
+  "test/jevNarrationVerifier.test.ts": 16,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
