@@ -1,3 +1,4 @@
+import * as path from "path";
 import type { z } from "zod";
 
 /**
@@ -94,4 +95,29 @@ export function readNumberFlag(name: string, schema: z.ZodType<number>, fallback
 
 export function readBooleanFlag(name: string, fallback: boolean, source: FlagSource = process.env): boolean {
   return readFlag(name, booleanParser, fallback, source);
+}
+
+/** The repository root (backend/src/generation -> three levels up). */
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
+
+/** GV-69: where the dossier researcher (FORAY_STAGE_RESEARCH=dossier) reads
+ * the topic dossiers GV-30 builds. */
+export const DOSSIER_DIR_ENV = "FORAY_DOSSIER_DIR";
+/** The build's own output directory (tools/corpus/dossiers/build.mjs). */
+export const DEFAULT_DOSSIER_DIR = path.join(REPO_ROOT, "data-local", "dossiers");
+
+/** A directory path. A relative path is resolved against the repository
+ * root, the root the default lives under, so the backend CLI (run from
+ * backend/) and a tool run from the root read the same directory. */
+const directoryParser: FlagParser<string> = {
+  parse: (raw) => path.resolve(REPO_ROOT, raw),
+  expected: "a directory path"
+};
+
+/** GV-69: the dossier directory, an absolute path. Unset gives
+ * DEFAULT_DOSSIER_DIR; an empty or whitespace-only value throws naming
+ * FORAY_DOSSIER_DIR. The directory is not checked here: a missing one is the
+ * dossier researcher's single warning, not a configuration error. */
+export function dossierDir(source: FlagSource = process.env): string {
+  return readFlag(DOSSIER_DIR_ENV, directoryParser, DEFAULT_DOSSIER_DIR, source);
 }

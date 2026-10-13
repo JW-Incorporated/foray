@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "node_id": "medicine",
+  "label": "Medicine",
+  "built_at": "2026-10-01T12:00:00Z",
+  "builder": "qwen-select",
+  "model": "local-worker",
+  "selected_at": "2026-10-02T03:00:00Z",
+  "sources": [
+    {
+      "sourceId": "a1b2c3d4e5f6",
+      "url": "https://example.org/medicine/edward-jenner",
+      "publication": "Example Encyclopedia",
+      "title": "Edward Jenner (synthetic)",
+      "retrievedAt": "2026-10-01T12:00:00Z",
+      "sha256": "61ea2a8760cc16477992fa926a480dda9c86d84627bcfd480004a591cf753cb4",
+      "license": "Synthetic test text (GV-69 fixture)"
+    },
+    {
+      "sourceId": "0f1e2d3c4b5a",
+      "url": "https://example.org/medicine/smallpox-eradication",
+      "publication": "Example Health Review",
+      "title": "The end of smallpox (synthetic)",
+      "retrievedAt": "2026-10-01T12:00:00Z",
+      "sha256": "61dd7c220bd859c27809034fb7e9ef0de4fc433a8b6bf52f05b1eaa6a486233b",
+      "license": "Synthetic test text (GV-69 fixture)"
+    }
+  ],
+  "passages": [
+    {
+      "docId": "dossier:medicine:a1b2c3d4e5f6:0",
+      "sourceId": "a1b2c3d4e5f6",
+      "text": "Edward Jenner tested his smallpox vaccine in 1796 by inoculating a boy named James Phipps with material taken from a cowpox lesion on the hand of a milkmaid. When Phipps was later exposed to smallpox, he did not fall ill.",
+      "offset": 0
+    },
+    {
+      "docId": "dossier:medicine:a1b2c3d4e5f6:1",
+      "sourceId": "a1b2c3d4e5f6",
+      "text": "Vaccination spread quickly across Europe in the early nineteenth century. Several governments made smallpox vaccination compulsory for infants within a few decades of the first trials.",
+      "offset": 230
+    },
+    {
+      "docId": "dossier:medicine:0f1e2d3c4b5a:0",
+      "sourceId": "0f1e2d3c4b5a",
+      "text": "The World Health Organization certified the global eradication of smallpox in 1980, after an intensified campaign that relied on surveillance and ring vaccination around every new case.",
+      "offset": 0
+    },
+    {
+      "docId": "dossier:medicine:0f1e2d3c4b5a:1",
+      "sourceId": "0f1e2d3c4b5a",
+      "text": "Historians still debate how much credit Jenner deserves, since farmers such as Benjamin Jesty had deliberately used cowpox to protect their families from smallpox more than twenty years earlier.",
+      "offset": 190,
+      "contested": true
+    },
+    {
+      "docId": "dossier:medicine:0f1e2d3c4b5a:2",
+      "sourceId": "0f1e2d3c4b5a",
+      "text": "Penicillin was discovered by Alexander Fleming in 1928 when he noticed that a mould contaminating a culture plate had killed the surrounding bacteria.",
+      "offset": 400
+    }
+  ],
+  "missing": [
+    {
+      "url": "https://example.org/medicine/missing-page",
+      "status": 404,
+      "reason": "not found"
+    }
+  ]
+}
