@@ -277,6 +277,16 @@ export interface NarrationWriteStats {
    * that passes no accumulator reports `null` rather than a guessed zero.
    */
   seedLostBeats?: number;
+  /**
+   * GV-61 (W2-10 item 6): content pages (`requiresEvidence`) whose evidence
+   * pack held no print document (`EvidencePack.printSkipped`), one per page
+   * gathered for writing. The OQ-04 trade measured: under the 'none'
+   * research route Patch and Carry pages lose their web passages until
+   * dossiers exist. Reported as `veracity.printEvidenceSkipped`; measured,
+   * never gated. Optional: a caller that passes no accumulator reports
+   * nothing rather than a guessed zero.
+   */
+  printSkipped?: number;
 }
 
 /**
@@ -590,7 +600,7 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
   if (writer === (verifier as unknown as NarrationWriterBuilder)) {
     throw new Error("writeNarration: writer and verifier must be distinct builder instances (§4.7 rule 2 — verification must never be the writer)");
   }
-  const evidence = evidenceGathererFor(options);
+  const evidence = countingPrintSkipped(evidenceGathererFor(options), options.stats);
 
   /* G-32: every act is written in parallel, through a gate of
      `actConcurrency`. Nothing in one act's narration depends on another
@@ -663,6 +673,23 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
   );
   if (firstFailure !== null) throw firstFailure;
   return settled.map((s) => (s as PromiseFulfilledResult<WrittenAct>).value);
+}
+
+/**
+ * GV-61: the gatherer the acts are written with, summing each gathered pack's
+ * `printSkipped` into `stats.printSkipped`. Counted per gather (one per page
+ * an act writes), so two pages that share one memoised pack count twice, as
+ * two pages short of print. No accumulator, no wrapper.
+ */
+function countingPrintSkipped(evidence: EvidenceGatherer, stats: NarrationWriteStats | undefined): EvidenceGatherer {
+  if (!stats) return evidence;
+  return {
+    gather: async (beat, ctx) => {
+      const pack = await evidence.gather(beat, ctx);
+      if (pack.printSkipped) stats.printSkipped = (stats.printSkipped ?? 0) + pack.printSkipped;
+      return pack;
+    }
+  };
 }
 
 /**

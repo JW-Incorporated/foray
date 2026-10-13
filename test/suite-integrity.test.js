@@ -2657,7 +2657,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 52, // GV-38 (generation v2, decision 34): the run's GateConfig.specifics reaches writeAct -- FORAY_SPECIFICS_CHECK=enforce (env, or options.gates) re-asks a seam stating an unsourced year in a real run, report leaves the rounds alone; 50 -> 52 // GV-33 (generation v2): onItemReady alone fires once per item in order with no partial finalize, an injected wallClockMs pins readyAtMs and the lead without moving the id, one act ReadyEvent per act concatenating to the items, partialOk from the partial, no event for a resumed act, emitPreludeEarly, an unservable act pauses the timeline; 43 -> 50 // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 55, // GV-61 (generation v2): the evidence stage retrieves through the injected deps.researcher, ctx.topicNodeIds is the resolved topic's lineage, absent while the topic is unresolved; 52 -> 55 // GV-38 (generation v2, decision 34): the run's GateConfig.specifics reaches writeAct -- FORAY_SPECIFICS_CHECK=enforce (env, or options.gates) re-asks a seam stating an unsourced year in a real run, report leaves the rounds alone; 50 -> 52 // GV-33 (generation v2): onItemReady alone fires once per item in order with no partial finalize, an injected wallClockMs pins readyAtMs and the lead without moving the id, one act ReadyEvent per act concatenating to the items, partialOk from the partial, no event for a resumed act, emitPreludeEarly, an unservable act pauses the timeline; 43 -> 50 // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -3162,7 +3162,7 @@ const BACKEND_FLOORS = {
      queries now run concurrently (latched retriever proves the overlap, first
      non-empty answer wins) and F-77 says what emptiness may be cached — only a
      confirmed "two queries, nothing", for EVIDENCE_EMPTY_TTL_MS. */
-  "test/gatherEvidence.test.ts": 45, // round-3 audit (L5-generation): gen-2 the clip is kept whole in the tape window; gen-5 a failed retrieval is flagged and a budget stop propagates; 37 -> 45
+  "test/gatherEvidence.test.ts": 54, // GV-61 (generation v2, decision 12): a 'none' gatherer ignores a pre-seeded cache, only anthropic defaults to data-local/evidence, an explicit cacheDir is honoured but for none, no default cache for a non-anthropic researcher; printSkipped on a content page with no print doc (not connective, not own-window); 45 -> 54 (47 on disk before it) // round-3 audit (L5-generation): gen-2 the clip is kept whole in the tape window; gen-5 a failed retrieval is flagged and a budget stop propagates; 37 -> 45
   /* G-35's prefetch stage (evidencePrefetch.ts): every page's evidence in one
      bounded fan-out after `source`, memoised so writeNarration makes zero
      retrieval calls; the concurrency cap is proven with latches. */
@@ -3501,6 +3501,18 @@ const BACKEND_FLOORS = {
      Offline. Counted statically (it.each rows are not counted). One named
      mutation per test. */
   "test/JevPromptUnderstander.test.ts": 13,
+  /* GV-61 (docs/roadmap/generation-v2.md, W2-10 + W3-16, #1286): no web
+     research on the timed path. noWebResearch: local mode routes research to
+     'none', the research-shape fan-out asks nothing under 'none' (one OQ-04
+     skip line) and still fans out otherwise, a whole 'none' run makes zero
+     research()/retrievePassages() calls and completes, and
+     veracity.printEvidenceSkipped counts the content pages left without
+     print. createExternalResearcher: the research route matrix (stub, none,
+     anthropic via the routing table only, local-mode default, dossier's
+     not-built error naming FORAY_STAGE_RESEARCH, no 'local' route, no
+     FORAY_RESEARCHER). Offline; one named mutation per test. */
+  "test/noWebResearch.test.ts": 5,
+  "test/createExternalResearcher.test.ts": 9,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

@@ -15,7 +15,8 @@ import { stitchForay } from "../src/generation/stitchForay";
 import { evaluateVeracityGate } from "../src/generation/veracityMetrics";
 import { checkpointFingerprint } from "../src/generation/checkpoint";
 import { forayIdFor, resetTaxonomyCache } from "../src/generation/resolveTopic";
-import { resetTaxonomyFamilyCache, taxonomyRoot } from "../src/generation/taxonomyFamily";
+import { resetTaxonomyFamilyCache, taxonomyLineage, taxonomyRoot } from "../src/generation/taxonomyFamily";
+import type { ExternalResearchContext, PassageRetrievalRequest } from "../src/generation/ExternalResearcher";
 import type { TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import type { GenerationRequest } from "../src/types/generation";
@@ -1683,4 +1684,69 @@ describe("runForayPipeline — the specifics gate reaches the act writer (GV-34,
     expect(out.outcome).toBe("generated");
     expect(gv34Retries(enforced.requests).length).toBeGreaterThan(0);
   }, 120_000);
+});
+
+/**
+ * GV-61: one researcher governs both §4.2 and the evidence stage, and it is
+ * scoped by the resolved topic's lineage (W3-16 item 4).
+ */
+describe("runForayPipeline — the shared researcher and its topic scope (GV-61)", () => {
+  /* Records every context it is called with; answers like the Stub. */
+  class RecordingResearcher extends StubExternalResearcher {
+    retrieveContexts: ExternalResearchContext[] = [];
+    override async retrievePassages(req: PassageRetrievalRequest, researchCtx: ExternalResearchContext) {
+      this.retrieveContexts.push({ ...researchCtx });
+      return super.retrievePassages(req, researchCtx);
+    }
+  }
+
+  /* MUTATION THAT KILLS THIS: build the evidence gatherer from
+     createExternalResearcher() again (drop `researcher` from the
+     createEvidenceGatherer call). The injected researcher then sees no
+     retrieval at all. Ran: red (0 retrieve calls). */
+  it("an injected deps.researcher is the one the evidence stage retrieves through", async () => {
+    const researcher = new RecordingResearcher();
+    const out = await runForayPipeline(request, options, { ...stubDeps(), researcher });
+    expect(out.outcome).toBe("generated");
+    expect(researcher.retrieveContexts.length).toBeGreaterThan(0);
+  });
+
+  /* MUTATION THAT KILLS THIS: drop the scopeResearchToTopic(topic) call after
+     the pre-spine topic decision. Ran: red (topicNodeIds undefined on every
+     retrieval context). */
+  it("ctx.topicNodeIds is the resolved topic's lineage once the topic decision resolves", async () => {
+    const researcher = new RecordingResearcher();
+    await runForayPipeline(request, options, { ...stubDeps(), researcher });
+    const lineage = taxonomyLineage("food/grilling-bbq");
+    expect(lineage).toContain("food/grilling-bbq");
+    expect(researcher.retrieveContexts.length).toBeGreaterThan(0);
+    for (const seen of researcher.retrieveContexts) expect(seen.topicNodeIds).toEqual(lineage);
+  });
+
+  /* MUTATION THAT KILLS THIS: scope an unresolved topic to an empty lineage
+     (`if (!resolved) { ctx.topicNodeIds = []; return; }`). Ran: red. */
+  it("ctx.topicNodeIds is absent while the topic is unresolved", async () => {
+    const understander = {
+      providerName: "test-unmatchable",
+      assessClarity: async () => ({ ambiguous: false as const }),
+      extractIntent: async () => ({ subject: "qqzzx wubbleflunk", angle: "zzzqqx", priorKnowledge: "none", disappointment: "none" })
+    };
+    const spineContexts: Array<Record<string, unknown>> = [];
+    const stub = new StubSpineBuilder();
+    const spineBuilder: SpineBuilder = {
+      providerName: stub.providerName,
+      buildSpine: (intent, shape, duration, spineCtx) => {
+        spineContexts.push({ ...spineCtx });
+        return stub.buildSpine(intent, shape, duration, spineCtx);
+      }
+    };
+    const out = await runForayPipeline(
+      { ...request, prompt: "qqzzx wubbleflunk zzzqqx" },
+      { userId: "founder-1", now: options.now },
+      { ...stubDeps(), understander: understander as never, spineBuilder }
+    );
+    expect(out.outcome).toBe("unresolved-topic");
+    expect(spineContexts.length).toBeGreaterThan(0);
+    for (const seen of spineContexts) expect("topicNodeIds" in seen).toBe(false);
+  });
 });
