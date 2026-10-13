@@ -64,6 +64,11 @@ per-item jobs (foray-render-job/1) from a spool directory, minimum (priority,
 enqueued_at) first, staging each finished line for `spool-upload.mjs`. See the
 worker section below. `--once` drains and exits; `--idle-exit SEC` exits when
 idle. The batch modes above are unchanged.
+
+GV-72: `--report` also prints one loudness line per Foray (min/max output_i,
+the spread in LU, max output_tp) and flags a spread over 1.0 LU. The Whisper
+round trip that checks each rendered line's words is asr-transcribe.py then
+asr-check.mjs, run by hand; nothing here calls them.
 """
 
 from __future__ import annotations
@@ -368,6 +373,43 @@ def manifest_doc(profile: dict, model: dict, voices: dict, tools: dict, entries:
     }
 
 
+#: GV-72: a Foray whose lines' integrated loudness spans more than this is
+#: flagged in the report. Each line is normalized on its own (one gain to the
+#: target, normalize_and_encode), so a wide spread means the limiter or the
+#: true-peak retries pulled some lines down, and the listener hears it.
+LOUDNESS_SPREAD_MAX_LU = 1.0
+
+
+def loudness_spread_lines(manifest: dict) -> list[str]:
+    """GV-72: one line per Foray: min/max output_i over its measured lines
+    (every voice), the spread in LU and the max output_tp. A spread over
+    LOUDNESS_SPREAD_MAX_LU is flagged. Lines with no measurement (an
+    `unchanged` line was not rendered in this run) are left out."""
+    per: dict[str, dict] = {}
+    for e in manifest.get("items", []):
+        loud = e.get("loudness")
+        if not isinstance(loud, dict):
+            continue
+        i, tp = loud.get("output_i"), loud.get("output_tp")
+        if not (_finite_str(i) and _finite_str(tp)):
+            continue
+        r = per.setdefault(e["foray_id"], {"i": [], "tp": []})
+        r["i"].append(float(i))
+        r["tp"].append(float(tp))
+    out = []
+    for fid, r in per.items():
+        lo, hi = min(r["i"]), max(r["i"])
+        # Rounded before the comparison, so a float step (-15.6 - -16.6 =
+        # 1.0000000000000018) is not flagged as over 1.0 while printing 1.00.
+        spread = round(hi - lo, 2)
+        flag = f" **SPREAD OVER {LOUDNESS_SPREAD_MAX_LU:.1f} LU**" if spread > LOUDNESS_SPREAD_MAX_LU else ""
+        out.append(
+            f"- Loudness {fid}: {len(r['i'])} line(s), output_i {lo:.1f} to {hi:.1f} LUFS, "
+            f"spread {spread:.2f} LU, max output_tp {max(r['tp']):.1f} dBTP{flag}"
+        )
+    return out
+
+
 def report_markdown(manifest: dict) -> str:
     """A table for $GITHUB_STEP_SUMMARY: per Foray and voice, items, minutes, MB."""
     rows: dict[tuple[str, str], dict] = {}
@@ -388,6 +430,9 @@ def report_markdown(manifest: dict) -> str:
         lines.append(
             f"| {fid} | {voice} | {r['items']} | {r['unchanged']} | {r['sec'] / 60:.1f} | {r['bytes'] / 1e6:.2f} | {kbps:.0f} |"
         )
+    spread = loudness_spread_lines(manifest)
+    if spread:
+        lines += [""] + spread
     t = manifest.get("totals", {})
     lines += ["", f"Total: {t.get('items', 0)} lines, {t.get('duration_sec', 0) / 60:.1f} min, "
                   f"{t.get('bytes', 0) / 1e6:.2f} MB rendered, {t.get('failed', 0)} failed."]

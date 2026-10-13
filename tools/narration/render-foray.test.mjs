@@ -326,6 +326,65 @@ test("--report renders a manifest as a markdown table", () => {
   }
 });
 
+/* ---------- GV-72: the per-Foray loudness spread ---------- */
+
+const loudEntry = (fid, id, voice, i, tp, status = "rendered") => ({
+  foray_id: fid, item_id: id, voice, status, bytes: 64000, duration_sec: 8,
+  loudness: { input_i: -24, input_tp: -6, gain_db: 5, limit_db: 0, output_i: i, output_tp: tp, type: "gain", extra_headroom_db: 0, attempts: 1 },
+});
+
+test("--report prints a loudness spread line per Foray and flags a spread over 1 LU", () => {
+  /* MUTATION: drop the spread lines from report_markdown -> no "Loudness" line;
+     MUTATION: take max output_tp as min -> f2's -1.2 dBTP reads -2.0. */
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "rf-"));
+  try {
+    const items = [
+      loudEntry("f1", "a", "af_heart", -19.2, -1.8),
+      loudEntry("f1", "b", "af_heart", -18.9, -1.6),
+      loudEntry("f1", "b", "am_echo", -18.6, -1.7),
+      { foray_id: "f1", item_id: "c", voice: "af_heart", status: "unchanged", duration_sec: 4, loudness: null },
+      loudEntry("f2", "a", "af_heart", -19.0, -2.0),
+      loudEntry("f2", "b", "af_heart", -20.4, -1.2),
+      { foray_id: "f3", item_id: "a", voice: "af_heart", status: "unchanged", duration_sec: 4, loudness: null },
+    ];
+    const m = {
+      kind: "foray-narration-render", version: 1, profile: PROFILE.id,
+      totals: { items: items.length, rendered: 5, unchanged: 2, failed: 0, bytes: 320000, duration_sec: 48 },
+      items, failed: [],
+    };
+    const p = path.join(tmp, "manifest.json");
+    fs.writeFileSync(p, JSON.stringify(m));
+    const r = runCli(["--report", p]);
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /^- Loudness f1: 3 line\(s\), output_i -19\.2 to -18\.6 LUFS, spread 0\.60 LU, max output_tp -1\.6 dBTP$/m);
+    assert.match(r.stdout, /^- Loudness f2: 2 line\(s\), output_i -20\.4 to -19\.0 LUFS, spread 1\.40 LU, max output_tp -1\.2 dBTP \*\*SPREAD OVER 1\.0 LU\*\*$/m);
+    assert.doesNotMatch(r.stdout, /Loudness f3/, "a Foray with no measured line has no spread line");
+    assert.equal((r.stdout.match(/SPREAD OVER/g) || []).length, 1);
+    /* the table is unchanged */
+    assert.match(r.stdout, /\| f1 \| af_heart \| 3 \| 1 \| 0\.3 \| 0\.13 \| 51 \|/);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test("a spread of exactly 1 LU is not flagged, and a non-finite measurement is left out", () => {
+  /* MUTATION: flag spread >= LOUDNESS_SPREAD_MAX_LU -> the exact 1.0 LU Foray is flagged. */
+  const items = [
+    loudEntry("f1", "a", "af_heart", -19.5, -1.5),
+    loudEntry("f1", "b", "af_heart", -18.5, -1.5),
+    loudEntry("f1", "c", "af_heart", "nan", -1.5),
+    /* -15.6 - -16.6 is 1.0000000000000018 in floating point: still 1.00 LU, not over */
+    loudEntry("f2", "a", "af_heart", -16.6, -1.5),
+    loudEntry("f2", "b", "af_heart", -15.6, -1.5),
+  ];
+  const res = pyJson(`print(json.dumps({"max":R.LOUDNESS_SPREAD_MAX_LU,"lines":R.loudness_spread_lines({"items":${JSON.stringify(items)}})}))`);
+  assert.equal(res.max, 1.0);
+  assert.deepEqual(res.lines, [
+    "- Loudness f1: 2 line(s), output_i -19.5 to -18.5 LUFS, spread 1.00 LU, max output_tp -1.5 dBTP",
+    "- Loudness f2: 2 line(s), output_i -16.6 to -15.6 LUFS, spread 1.00 LU, max output_tp -1.5 dBTP",
+  ]);
+});
+
 /* ---------- GV-11: a candidate, per item, default voice first ---------- */
 
 /* A PartialCandidate as runPipeline writes it (backend/src/generation/
