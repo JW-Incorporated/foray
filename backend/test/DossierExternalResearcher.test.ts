@@ -251,6 +251,24 @@ describe("routing and the directory flag", () => {
     expect((err as FlagValueError).variable).toBe("FORAY_DOSSIER_DIR");
   });
 
+  /* MUTATION THAT KILLS THIS: remove the top-level registration in
+     createExternalResearcher.ts (leave only the call inside the factory).
+     Fresh module instances (vi.resetModules) so earlier factory calls in this
+     file cannot have registered 'dossier' already. Ran: red. */
+  it("importing the factory module registers 'dossier': resolveRouting accepts it before the factory is ever called", async () => {
+    vi.resetModules();
+    const routing = await import("../src/config/stageRouting");
+    expect(routing.isStageImplementationRegistered("research", "dossier")).toBe(false);
+    await import("../src/generation/createExternalResearcher");
+    expect(routing.resolveRouting({ FORAY_STAGE_RESEARCH: "dossier" }).routes.research?.provider).toBe("dossier");
+    /* a reset registry is restored by the factory's own idempotent call */
+    routing.__resetStageRegistryForTests();
+    const { createExternalResearcher: freshFactory } = await import("../src/generation/createExternalResearcher");
+    expect(() => routing.resolveRouting({ FORAY_STAGE_RESEARCH: "dossier" })).toThrow(routing.RoutingConfigError);
+    expect(freshFactory({ FORAY_STAGE_RESEARCH: "none" }).providerName).toBe("none");
+    expect(routing.resolveRouting({ FORAY_STAGE_RESEARCH: "dossier" }).routes.research?.provider).toBe("dossier");
+  });
+
   /* MUTATION THAT KILLS THIS: build the Null researcher for the 'dossier'
      built-in. Ran: red. */
   it("FORAY_STAGE_RESEARCH=dossier builds the dossier researcher, reading FORAY_DOSSIER_DIR", () => {

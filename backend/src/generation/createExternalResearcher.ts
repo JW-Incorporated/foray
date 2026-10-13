@@ -26,6 +26,15 @@ const BUILTINS = {
   dossier: plainImplementation<ExternalResearcher>(() => new DossierExternalResearcher())
 };
 
+/* Registered when the module loads, not only when the factory runs:
+   resolveRouting() refuses 'dossier' while the process registry has no entry
+   for it, and real runs resolve the routing table (generateForays' run table
+   and --stage-provider check, runPipeline's routing and createPromptUnderstander)
+   before createExternalResearcher() is ever called. runPipeline imports this
+   module, so FORAY_STAGE_RESEARCH=dossier resolves from the CLI. The call in
+   the factory stays, idempotent, so a reset registry is restored. */
+ensureStageImplementations("research", BUILTINS);
+
 /**
  * The external researcher the routing table picks (FORAY_STAGE_RESEARCH over
  * FORAY_GENERATION_MODE). With none of the routing variables set this is
@@ -34,8 +43,9 @@ const BUILTINS = {
  * GV-61: the pipeline builds ONE researcher with this and hands it to both
  * §4.2's shape research and the evidence gatherer, so a single route decides
  * whether a run reaches outside at all. FORAY_STAGE_RESEARCH=dossier builds
- * the dossier researcher (GV-69), registered here; resolveRouting still
- * refuses 'dossier' in a registry where it is not registered.
+ * the dossier researcher (GV-69), registered at module load and again here;
+ * resolveRouting still refuses 'dossier' in a registry where it is not
+ * registered.
  */
 export function createExternalResearcher(source: NodeJS.ProcessEnv = process.env): ExternalResearcher {
   ensureStageImplementations("research", BUILTINS);

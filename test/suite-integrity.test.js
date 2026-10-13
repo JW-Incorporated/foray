@@ -3525,10 +3525,12 @@ const BACKEND_FLOORS = {
      passages (unscoped only when they share a word); a missing dir warns
      once; a schema-failing file is skipped; one read per process; no
      fetch/http/fs-write in the source; dossierDir() resolution and blank
-     refusal; the routing table builds it; through DefaultEvidenceGatherer a
+     refusal; the routing table builds it; importing the factory module
+     registers 'dossier' so resolveRouting accepts it before the factory
+     runs (review fix); through DefaultEvidenceGatherer a
      Carry beat's quote passes gateSelectedClaims. Offline; one named
      mutation per test. */
-  "test/DossierExternalResearcher.test.ts": 15,
+  "test/DossierExternalResearcher.test.ts": 16,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
