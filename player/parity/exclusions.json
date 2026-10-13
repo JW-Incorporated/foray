@@ -948,6 +948,14 @@
     "CH3-12: a downloaded copy that will not load lands idle after one load — the JS lane's stream fallback is the page's": {
       "reason": "webview-only",
       "why": "In the JS lane a downloaded file that will not load is streamed by the PAGE (client.js degradeLocalPlay reads this idle landing; test/downloads.test.js). The native engine streams it by itself, because the page may be asleep when the file fails (CH3-12, R4-03): EngineCore's fallBackToStream, pinned by identically named unit tests on both cores (EngineCoreTests.testADownloadThatWillNotOpenFallsBackToItsStreamOnce, EngineCoreTest.aDownloadThatWillNotOpenFallsBackToItsStreamOnce), so the manager's no-retry is a web-lane arrangement the engine deliberately does not copy."
+    },
+    "GV-63: each Foray clip's outcome at load is one precision line — exact, padded, skipped and static": {
+      "reason": "webview-only",
+      "why": "The JS manager's telemetry line for a Foray clip's outcome at load (GV-63, queue-manager.js §17), which diagnostic-log.js keeps as a `clip` row and tallies per Foray in the page's copied record. A diagnostic line only: no transition, load or audible outcome reads it. The native engine records the same outcomes in its own ring (EngineCore's `gate` row for a noted copy, `skip` with event ladder or load), and diagnostic-log.js clipTallyLines tallies the engine lane from those rows, so nothing here is a rule the engine reimplements."
+    },
+    "GV-63: a no-anchor DAI drop is a `dropped` clip at build, and a clip whose loads run out is `load-failed`": {
+      "reason": "webview-only",
+      "why": "The JS manager's telemetry line for a Foray clip's outcome at load (GV-63, queue-manager.js §17), which diagnostic-log.js keeps as a `clip` row and tallies per Foray in the page's copied record. A diagnostic line only: no transition, load or audible outcome reads it. The native engine records the same outcomes in its own ring (EngineCore's `gate` row for a noted copy, `skip` with event ladder or load), and diagnostic-log.js clipTallyLines tallies the engine lane from those rows, so nothing here is a rule the engine reimplements."
     }
   },
   "queue-state": {
