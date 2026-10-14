@@ -134,9 +134,16 @@ enum EngineBoot {
         // NE-32: two decks with a prepared standby, behind `deckPairEnabled`
         // (on since NE-37, above); off, M1's one deck. Either way the deck's
         // `outPoint` rows go into the ring.
+        // Car cold resume (founder report 2026-10-14): either way the main
+        // deck starts a whole episode on buffer, not on preroll, and a resume
+        // may attach where its redirects ended last time (ResolvedSources,
+        // kept inside the restore record by the store). The preview deck
+        // below does neither: it plays a few seconds of a voice.
+        let resolvedSources = store.attachResolvedSources()
         let deck: DeckDriving = config.deckPairEnabled
-            ? DeckPair.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) })
-            : AVDeck(config: AVDeck.Config(sessionIsActive: sessionIsActive, diag: { store.diag($0) }))
+            ? DeckPair.make(sessionIsActive: sessionIsActive, diag: { store.diag($0) }, resolvedSources: resolvedSources)
+            : AVDeck(config: AVDeck.Config(sessionIsActive: sessionIsActive, diag: { store.diag($0) })
+                .forMainDeck(resolvedSources: resolvedSources))
         // NE-47: the voice picker's rendered preview plays on a deck of its
         // own (the page sends a `url` only once the picker offers rendered
         // voices, so until then this deck never loads anything). Its rows

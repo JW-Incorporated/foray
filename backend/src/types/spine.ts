@@ -38,6 +38,34 @@ export const DURATION_SHAPE_BUDGETS: Record<DurationTier, { acts: [number, numbe
  * it is only fine within this fraction of the nearest edge. */
 export const SHAPE_TOLERANCE = 0.15;
 
+/**
+ * GV-89 (docs/roadmap/generation-v2.md, W4-14; decision 24): each tier's
+ * RUNTIME target in seconds, beside its shape counts. The committed spec's
+ * duration table (generation-architecture.md §3: short ~15 min, medium
+ * ~60 min, long up to ~180 min), in one table, so moving short to 10 min
+ * after the golden-set listen is a one-line change here.
+ */
+export const DURATION_RUNTIME_TARGET_SEC: Record<DurationTier, number> = {
+  short: 900,
+  medium: 3600,
+  long: 10800
+};
+
+/** GV-89: the runtime tolerance is §8's, the same one the shape budgets use. */
+export const TIER_RUNTIME_TOLERANCE = SHAPE_TOLERANCE;
+
+/**
+ * GV-89: a tier's runtime band `[min, max]` in whole seconds, the target
+ * ± `TIER_RUNTIME_TOLERANCE` (short: [765, 1035]). The upper bound is hard
+ * (the post-spine check re-asks a plan that cannot fit under it, and GV-106's
+ * sourcing ceiling enforces it). The lower bound is reported only: a thin
+ * topic may undershoot (§9.3's thin-topic ruling).
+ */
+export function tierRuntimeBand(tier: DurationTier): [number, number] {
+  const target = DURATION_RUNTIME_TARGET_SEC[tier];
+  return [Math.round(target * (1 - TIER_RUNTIME_TOLERANCE)), Math.round(target * (1 + TIER_RUNTIME_TOLERANCE))];
+}
+
 /** Floor from product principle #1 (§4.3 / §8): at least this fraction of
  * beats must be marked exploration. A floor, not a target — more is fine. */
 export const EXPLORATION_FLOOR = 0.3;

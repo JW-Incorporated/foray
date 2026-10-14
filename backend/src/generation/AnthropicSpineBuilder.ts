@@ -128,8 +128,11 @@ export class AnthropicSpineBuilder implements SpineBuilder {
 /* GV-32 (decision 8): the spine prompt (now [stable][foray], rules first),
    the re-ask conversation and the fix turns moved to prompts/spine.ts, which
    both this builder and its Chat twin import. Re-exported here so existing
-   importers compile until GV-96 deletes this module. */
+   importers compile until GV-96 deletes this module. GV-89: the runtime
+   re-ask's fix turn (revision.kind 'runtime') is selected by the same
+   spineConversation this builder sends, so it needs no branch of its own. */
 export {
+  buildRuntimeFixInstruction,
   buildSeedFloorInstruction,
   buildSpineFixInstruction,
   buildSpinePrompt,

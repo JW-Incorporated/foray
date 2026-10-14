@@ -134,8 +134,11 @@ final class DeckPair: DeckDriving {
     }
 
     /// The production pair: two AVDecks on one shared `AssetCache`, so a
-    /// deck never cancels the other's asset load.
-    static func make(sessionIsActive: @escaping () -> Bool, diag: @escaping (DiagEntry) -> Void) -> DeckPair {
+    /// deck never cancels the other's asset load. Both start a whole episode
+    /// on buffer rather than on preroll, and share the boot's resolved
+    /// sources (car cold resume, 2026-10-14; AVDeck's header).
+    static func make(sessionIsActive: @escaping () -> Bool, diag: @escaping (DiagEntry) -> Void,
+                     resolvedSources: ResolvedSources? = nil) -> DeckPair {
         let cache = AssetCache()
         func deck() -> AVDeck {
             AVDeck(config: AVDeck.Config(
@@ -143,7 +146,8 @@ final class DeckPair: DeckDriving {
                 makeAsset: { [unowned cache] url, precise in cache.asset(for: url, preciseTiming: precise) },
                 cancelsAssetLoading: false,
                 diag: diag,
-                assetFailed: { [unowned cache] asset in cache.forget(asset) }))
+                assetFailed: { [unowned cache] asset in cache.forget(asset) })
+                .forMainDeck(resolvedSources: resolvedSources))
         }
         return DeckPair(deck(), deck(), config: Config(diag: diag), assetCache: cache)
     }
