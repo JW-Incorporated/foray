@@ -30,6 +30,7 @@ import {
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
 import { corpusCoverage } from "./transcriptCorpus";
+import { codeSpanSync } from "./codeSpans";
 import { NullTranscriptTextIndex, type TranscriptTextIndex } from "./transcriptTextIndex";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
 
@@ -294,8 +295,15 @@ interface TapeWindowResult {
  * `usedEpisodes` is the map-wide ledger of episodes an earlier subtopic already
  * quoted (G-24 R3, see `RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC`): those are skipped
  * here and the ones this subtopic keeps are added to it.
+ *
+ * GV-85: timed as 'research.tapeWindows' (inclusive of its index searches and
+ * transcript reads); inert outside a run log.
  */
 function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeWindowDeps, usedEpisodes: Set<string>): TapeWindowResult {
+  return codeSpanSync("research.tapeWindows", () => tapeWindowsForUntimed(seed, tape, deps, usedEpisodes));
+}
+
+function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps: TapeWindowDeps, usedEpisodes: Set<string>): TapeWindowResult {
   if (!deps.textIndex.enabled) {
     return { windows: [], unavailable: "no transcript text index on this machine, so nothing could be quoted", episodesMatched: 0 };
   }

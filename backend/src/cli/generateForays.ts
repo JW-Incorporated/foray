@@ -24,6 +24,7 @@ import { resolvePipelineFlags, type PipelineFlags } from "../generation/pipeline
 import { resolveGateConfig, type GateConfig } from "../generation/gateConfig";
 import { anthropicCallCount, getUsageTotals } from "../generation/usageTracking";
 import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
+import { flushCodeSpans } from "../generation/codeSpans";
 import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../generation/deliveryTimeline";
 import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
@@ -1379,6 +1380,9 @@ export async function generateOneCandidate(
      names the final attempt's file. */
   let runLogRel: string | undefined;
   const writeRunLog = (log: RunLog, attempt: number): void => {
+    /* GV-85: the attempt's code-time aggregates (one per stage and name) go
+       into the log before it is serialised; runPipeline never flushes. */
+    flushCodeSpans(log);
     if (args.dryRun) return;
     const rel = `runlogs/${checkpointKey}.${attempt}.runlog.jsonl`;
     try {

@@ -2825,7 +2825,7 @@ const BACKEND_FLOORS = {
      dark Becker's episodes and the sigma-nutrition cover page that was served
      as tape on a germ-theory Foray. */
   "test/transcriptCorpus.test.ts": 26, // GV-39 (generation v2): corpusFingerprint is order-free, moves on one row's sha256, on a size-only row's bytes and on a body removed from disk, gives no-body corpora rows 0 and the empty sha256, and carries indexVersion and extra; the suite stood at 20 against 19, so the floor is set exact: 19 -> 26
-  "test/transcriptTextIndex.test.ts": 13,
+  "test/transcriptTextIndex.test.ts": 14, // GV-85 (generation v2): inside a run log a search emits 'index.load' (once per show) and 'index.search' (per call) aggregates under the context stage, with the same candidates as outside one; 13 -> 14
   /* GV-05 (docs/roadmap/generation-v2.md): the per-show BM25 cache built from a
      body stream equals FileTranscriptTextIndex's own build, is judged fresh by
      it, and stages the rows an offline reconcile writes. */
@@ -3630,6 +3630,16 @@ const BACKEND_FLOORS = {
      before onActReady(act 0) pinned at 8 calls through recordingDeps' virtual
      clock, deterministic across runs. Offline; one named mutation per test. */
   "test/criticalPath.test.ts": 13,
+  /* GV-85 (docs/roadmap/generation-v2.md, W1-05; MT-08, R1-14): code-time
+     spans below stage level. codeSpanSync/codeSpan/codeHit are inert outside
+     a run log (same value, same promise, same throw, no clock read);
+     inside one they aggregate {count, totalMs, maxMs} per (stage, name),
+     nested spans reported inclusive, a
+     throwing or rejecting function still recorded, an async span timed until
+     it settles; flushCodeSpans appends at most one CodeSpanAggregate per
+     (stage, name) however often it runs, keeps two logs apart and serialises
+     into runlog/1. Offline; one named mutation per test. */
+  "test/codeSpans.test.ts": 10,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

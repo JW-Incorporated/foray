@@ -3,6 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
 import { canonicalizeForAnchorMatch } from "../types/anchorText";
+import { codeHit, codeSpanSync } from "./codeSpans";
 import { corpusSafeKey, isLetterSpacedCue } from "./transcriptCorpus";
 import { TranscriptSourceSchema, type TapeBoundary, type TranscriptSource } from "../types/tapeSourcing";
 
@@ -327,6 +328,8 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
       const held = this.cuesByKey.get(key) ?? null;
       this.cuesByKey.delete(key);
       this.cuesByKey.set(key, held);
+      /* GV-85: counted, not timed — a Map hit costs less than a clock read. */
+      codeHit("transcript.cacheHit");
       return held;
     }
     const result = this.readCuesUncached(entry);
@@ -344,14 +347,19 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
    * reads EVERY body of a show once (thousands, for a big show), and used to
    * pin all of them in `cuesByKey` for the rest of the batch; it reads through
    * here instead.
+   *
+   * GV-85: timed as 'transcript.read' (locate plus parse); inert outside a
+   * run log.
    */
   readCuesUncached(entry: TranscriptDigestEntry): TranscriptCue[] | null {
-    try {
-      const file = this.locate(String(entry.show_id), String(entry.guid));
-      return file ? readCues(file) : null;
-    } catch {
-      return null;
-    }
+    return codeSpanSync("transcript.read", () => {
+      try {
+        const file = this.locate(String(entry.show_id), String(entry.guid));
+        return file ? readCues(file) : null;
+      } catch {
+        return null;
+      }
+    });
   }
 
   /** How many parsed cue arrays the provider holds right now (tests). */

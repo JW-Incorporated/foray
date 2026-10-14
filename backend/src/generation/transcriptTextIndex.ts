@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { tokenizeForSourcing } from "./catalogueLookup";
+import { codeSpanSync } from "./codeSpans";
 import {
   FileTranscriptCueProvider,
   loadTranscriptArchive,
@@ -249,8 +250,15 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
    * remote answer with zero candidates must still carry the idf, and `search`
    * hands back a bare `[]` that has lost it. Every candidate carries the same
    * map, as before.
+   *
+   * GV-85: timed as 'index.search' (inclusive of any 'index.load' it
+   * triggers); inert outside a run log.
    */
   searchWithIdf(queryText: string, options: TranscriptTextSearchOptions = {}): TranscriptTextSearchResult {
+    return codeSpanSync("index.search", () => this.searchWithIdfUntimed(queryText, options));
+  }
+
+  private searchWithIdfUntimed(queryText: string, options: TranscriptTextSearchOptions): TranscriptTextSearchResult {
     const limit = options.limit ?? TRANSCRIPT_TEXT_CANDIDATES;
     const isUsable = options.isUsable ?? (() => true);
     const terms = [...new Set(tokenizeForSourcing(queryText))];
@@ -429,15 +437,21 @@ export class FileTranscriptTextIndex implements TranscriptTextIndex {
 
   /** The show's index: from memory, else from a cache whose every body still
    * has the mtime+size it was built from, else built now. Null when the show
-   * has no bodies on this machine — the ordinary case in a checkout. */
+   * has no bodies on this machine — the ordinary case in a checkout.
+   *
+   * GV-85: a load that is not already in memory (disk cache read, freshness
+   * check, build and cache write) is timed as 'index.load', inclusive of the
+   * 'transcript.read's a build does; the in-memory hit is not timed. */
   private showIndex(showId: string): ShowIndex | null {
     if (this.loaded.has(showId)) return this.loaded.get(showId) ?? null;
-    const entries = this.groupedByShow().get(showId) ?? [];
-    const cached = this.useCache ? this.readCache(showId) : null;
-    const index = cached && this.cacheIsFresh(cached, entries) ? cached : this.build(showId, entries);
-    if (index && index !== cached && this.useCache) this.writeCache(showId, index);
-    this.loaded.set(showId, index);
-    return index;
+    return codeSpanSync("index.load", () => {
+      const entries = this.groupedByShow().get(showId) ?? [];
+      const cached = this.useCache ? this.readCache(showId) : null;
+      const index = cached && this.cacheIsFresh(cached, entries) ? cached : this.build(showId, entries);
+      if (index && index !== cached && this.useCache) this.writeCache(showId, index);
+      this.loaded.set(showId, index);
+      return index;
+    });
   }
 
   /**
