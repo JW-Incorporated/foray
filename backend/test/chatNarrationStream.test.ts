@@ -13,6 +13,7 @@ import { actWritePromptParts, seamEditPromptParts } from "../src/generation/prom
 import { toChatMessages } from "../src/generation/promptLayout";
 import { collectActStream, type ActWriteRequest, type NarrationBuildContext, type SeamEditRequest, type WriterStreamEvent, type WrittenSeam } from "../src/generation/NarrationWriterBuilder";
 import type { EvidenceDoc } from "../src/generation/gatherEvidence";
+import { DEFAULT_WRITER_STREAM_IDLE_MS, drainWriterStream } from "../src/generation/writeAct";
 import { DEFAULT_LANE_PROFILES } from "../src/config/machineProfiles";
 import type { StageRoute } from "../src/config/stageRouting";
 import type { CostEventInput } from "../src/cost/costEvents";
@@ -59,6 +60,13 @@ import { scriptedProvider, type ScriptedStream } from "./helpers/fakeChatProvide
  *      fixture's seams in order under random chunk sizes".
  *  14. editSeams: push '\n' before end() whatever the finish reason -> "a
  *      seam edit cut at its cap".
+ *  15. DEFAULT_STREAM_CHUNK_IDLE_MS back to 120_000 (equal to writeAct's
+ *      bound) -> "under writeAct's drain with the default bounds" and "the
+ *      idle bound is between chunks".
+ *  16. writeActStream returns the bare streamAct generator (its return()
+ *      queued behind the pending read, no immediate abort) -> "under
+ *      writeAct's drain with the default bounds" (the request is still open
+ *      at writeAct's bound).
  */
 
 const FIXTURE = path.join(__dirname, "fixtures", "local", "writer-act-stream.jsonl");
@@ -254,7 +262,30 @@ describe("GV-84: writeActStream, one JSONL call per act", () => {
     const result = await pending;
     expect(result.seams).toEqual(FIXTURE_SEAMS);
     expect(result.stopReason).toBe("end");
-    expect(DEFAULT_STREAM_CHUNK_IDLE_MS).toBe(120_000);
+    /* A backstop: strictly longer than writeAct.ts's bound, so under
+       writeAct the stall is always writeAct's graceful cut. */
+    expect(DEFAULT_STREAM_CHUNK_IDLE_MS).toBeGreaterThan(DEFAULT_WRITER_STREAM_IDLE_MS);
+  });
+
+  it("under writeAct's drain with the default bounds, a stall right after a line closes is writeAct's graceful 'stalled' cut, and the request is aborted at once", async () => {
+    vi.useFakeTimers();
+    const firstLineEnd = REPLY.indexOf("\n") + 1;
+    /* The first chunk closes s0's line; then the provider goes silent. */
+    const stalled: ScriptedStream = { chunks: [{ text: REPLY.slice(0, firstLineEnd) }, { text: REPLY.slice(firstLineEnd), delayMs: 600_000 }] };
+    const provider = scriptedProvider({ stream: [stalled] });
+    const writer = new ChatNarrationWriterBuilder(provider, sparkTarget, recordingGuard().guard);
+    const seen: string[] = [];
+    const outcome = drainWriterStream(writer.writeActStream!(actRequest(), ctx), DEFAULT_WRITER_STREAM_IDLE_MS, (seam) => seen.push(seam.seamId)).then(
+      (drained) => ({ drained }),
+      (err: unknown) => ({ err })
+    );
+    await vi.advanceTimersByTimeAsync(DEFAULT_WRITER_STREAM_IDLE_MS);
+    const result = await outcome;
+    expect(result).toEqual({ drained: { stopReason: "stalled", unfinishedSeamIds: [] } });
+    expect(seen).toEqual(["s0"]);
+    /* writeAct's stall frees the lane now, not at the builder's backstop. */
+    expect((provider.requests[0] as ChatRequest).signal!.aborted).toBe(true);
+    await vi.runAllTimersAsync();
   });
 
   it("a stalled stream is aborted at the idle bound: the finished seams arrive, then a 'timeout' error with the partial text", async () => {

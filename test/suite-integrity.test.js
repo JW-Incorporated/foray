@@ -3555,7 +3555,7 @@ const BACKEND_FLOORS = {
      their read-only neighbours, their clips and their documents, with
      seamEditMaxTokens; no Anthropic SDK import. Offline: scriptedProvider
      streams and fake timers. One named mutation per test. */
-  "test/chatNarrationStream.test.ts": 16,
+  "test/chatNarrationStream.test.ts": 17,
   /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
      verifier -- seamSentences (intro, question, imperative, statement),
      per-statement support with the specifics check on the same texts (an

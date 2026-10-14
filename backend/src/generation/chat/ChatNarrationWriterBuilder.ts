@@ -110,9 +110,18 @@ export function seamEditMaxTokens(request: Pick<SeamEditRequest, "seams">): numb
  * (chat/openAICompatProvider.ts), and writeAct.ts's streamIdleTimeoutMs
  * bounds the gap between SEAMS but cannot cancel a read the provider is
  * blocked in; this bound is between CHUNKS and cancels the HTTP request, so
- * a stalled Spark lane is freed. The same 120 s as writeAct.ts's default.
+ * a stalled Spark lane is freed.
+ *
+ * A BACKSTOP, strictly longer than writeAct.ts's DEFAULT_WRITER_STREAM_IDLE_MS
+ * (120 s): under writeAct the stall is writeAct's to call. Its graceful
+ * 'stalled' cut keeps the finished seams and re-asks the rest, and its
+ * iterator.return() aborts the request at once (`abortable`). With equal
+ * bounds this timer, registered first when writeAct resumes the stream,
+ * fired first, and its 'stream_idle' throw failed the narration instead of
+ * cutting the act. This bound only decides for a consumer with no bound of
+ * its own.
  */
-export const DEFAULT_STREAM_CHUNK_IDLE_MS = 120_000;
+export const DEFAULT_STREAM_CHUNK_IDLE_MS = 150_000;
 
 export interface ChatWriterStreamOptions {
   /** Epoch-ms clock each seam's `atMs` is measured on (default Date.now). */
@@ -153,7 +162,7 @@ export class ChatNarrationWriterBuilder implements NarrationWriterBuilder {
     if (!(Number.isFinite(idle) && idle > 0)) throw new Error("ChatNarrationWriterBuilder: chunkIdleTimeoutMs must be a positive number");
     this.chunkIdleMs = idle;
     if (typeof provider.stream === "function") {
-      this.writeActStream = (request, ctx) => this.streamAct(request, ctx);
+      this.writeActStream = (request, ctx) => this.abortable(request, ctx);
     }
   }
 
@@ -194,12 +203,37 @@ export class ChatNarrationWriterBuilder implements NarrationWriterBuilder {
     return { seams };
   }
 
+  /**
+   * GV-84: `streamAct` behind an iterator whose return() (and throw())
+   * aborts the request AT ONCE. A generator's own return() is queued while a
+   * next() is pending, so a consumer that gives up mid-read (writeAct.ts's
+   * stall) would not free the lane until the builder's own idle bound fired;
+   * the abort ends the provider's read now, the generator unwinds, and the
+   * queued return() then settles.
+   */
+  private abortable(request: ActWriteRequest, ctx: NarrationBuildContext): AsyncIterableIterator<WriterStreamEvent> {
+    const controller = new AbortController();
+    const events = this.streamAct(request, ctx, controller);
+    const iterator: AsyncIterableIterator<WriterStreamEvent> = {
+      next: () => events.next(),
+      return: (value?: unknown) => {
+        controller.abort();
+        return events.return(value as undefined);
+      },
+      throw: (err?: unknown) => {
+        controller.abort();
+        return events.throw(err);
+      },
+      [Symbol.asyncIterator]: () => iterator
+    };
+    return iterator;
+  }
+
   /** GV-84: the streamed act (see the class comment and `writeActStream`). */
-  private async *streamAct(request: ActWriteRequest, ctx: NarrationBuildContext): AsyncGenerator<WriterStreamEvent> {
+  private async *streamAct(request: ActWriteRequest, ctx: NarrationBuildContext, controller: AbortController): AsyncGenerator<WriterStreamEvent> {
     const messages = toChatMessages(actWritePromptParts(request, { output: "jsonl" }));
     const maxTokens = streamedActMaxTokens(request);
     await this.budgetGuard.checkAndRecord(this.costEvent(WRITE_ACT_OPERATION, messages, maxTokens, ctx));
-    const controller = new AbortController();
     const chatRequest: ChatRequest = { ...this.chatRequest(messages, maxTokens, WRITE_ACT_OPERATION), signal: controller.signal };
     const startedAt = this.now();
     const parser = new JsonlSeamParser();
