@@ -466,4 +466,50 @@ describe("GV-82 — await-render is bounded (GV-74 review)", () => {
     expect(DEFAULT_AWAIT_RENDER_CAP_MS).toBe(30_000);
     expect(() => new NarrationRenderTracker(client, "await-render", { awaitRenderCapMs: Number.NaN })).toThrow(/awaitRenderCapMs/);
   });
+
+  it("a job whose enqueue throws is bounded too: pending before the cap, phone-voice at it, and a later event still retries the enqueue", async () => {
+    /* The driver catches a failed enqueue and only warns, so no worker can
+       ever answer that job. MUTATION THAT KILLS THIS: record enqueuedWallMs
+       only after `await this.client.enqueue(fresh)` returns (the pre-fix
+       order). The intro has no start time, stays pending at 5000 ms. Ran it
+       — red. Also killed: set `tracked` before the enqueue (the retry sees
+       the job as already enqueued and sends nothing). Ran it — red. */
+    let now = 1_000_000;
+    class ThrowOnceClient extends FakeRenderClient {
+      failNext = false;
+      override async enqueue(jobs: RenderJob[]): Promise<void> {
+        if (this.failNext) {
+          this.failNext = false;
+          throw new Error("spool dir is not writable");
+        }
+        return super.enqueue(jobs);
+      }
+    }
+    const client = new ThrowOnceClient();
+    const tracker = new NarrationRenderTracker(client, "await-render", { awaitRenderCapMs: 5_000, nowMs: () => now });
+    tracker.beginAttempt();
+    await tracker.onItemReady(event(0));
+    const [preludeJob] = client.enqueued;
+    client.failNext = true;
+    await expect(tracker.onItemReady(event(1))).rejects.toThrow(/not writable/);
+    client.done = [rendered(preludeJob!)];
+    await tracker.refresh();
+    const progress = progressOf(allEvents().slice(0, 2));
+
+    now += 4_999;
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("pending");
+    expect(snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!.items).toHaveLength(1);
+
+    now += 1;
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("phone-voice");
+    const served = snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!;
+    expect(served.itemStates.map((st) => st.audio)).toEqual(["rendered", "phone-voice"]);
+
+    // A later event for the same line retries the enqueue (the failed job was
+    // never tracked), and the cap keeps its first-attempt clock.
+    const retried = await tracker.onItemReady(event(1));
+    expect(retried).toHaveLength(1);
+    expect(client.enqueued.map((j) => j.itemId)).toEqual([preludeJob!.itemId, "act-1-introduction"]);
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("phone-voice");
+  });
 });

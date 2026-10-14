@@ -381,8 +381,9 @@ export function renderReportOf(jobs: readonly TrackedRenderJob[], results: reado
  * await-render, waits for the new render).
  *
  * BOUNDED WAIT (GV-82, from the GV-74 review). Under await-render, a current
- * job with no result `awaitRenderCapMs` after its enqueue (the tracker's own
- * clock) reads as a `failed` result with `timedOut: true` in `results`, so
+ * job with no result `awaitRenderCapMs` after its first enqueue attempt (the
+ * tracker's own clock; a failed enqueue counts, since no worker can answer
+ * it) reads as a `failed` result with `timedOut: true` in `results`, so
  * the snapshot serves the item on the phone voice instead of holding the
  * prefix forever. A real result that arrives later replaces it. The report
  * counts only real results. TODO(GV-82 gap): the driver publishes its last
@@ -429,12 +430,14 @@ export class NarrationRenderTracker {
     for (const job of jobs) this.currentJob.set(job.itemId, job.jobId);
     const fresh = jobs.filter((j) => !this.tracked.has(j.jobId));
     if (!fresh.length) return [];
-    await this.client.enqueue(fresh);
+    // The cap's clock starts at the FIRST enqueue attempt, before the call: a
+    // job whose enqueue throws (the driver only warns) never reaches a worker,
+    // so without a start time the item would wait forever under await-render.
+    // It stays untracked, so a later event for the same line still retries.
     const at = this.nowMs();
-    for (const job of fresh) {
-      this.tracked.set(job.jobId, { job, enqueuedAtMs: ev.readyAtMs, attempt: this.attempt });
-      this.enqueuedWallMs.set(job.jobId, at);
-    }
+    for (const job of fresh) if (!this.enqueuedWallMs.has(job.jobId)) this.enqueuedWallMs.set(job.jobId, at);
+    await this.client.enqueue(fresh);
+    for (const job of fresh) this.tracked.set(job.jobId, { job, enqueuedAtMs: ev.readyAtMs, attempt: this.attempt });
     return fresh;
   }
 

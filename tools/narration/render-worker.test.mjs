@@ -376,7 +376,9 @@ test("the resident phonemizer loads the G2P once; a job's lexicon fills terms ha
      curated IPA wins (merge_lexicon). MUTATION: put the job lexicon ahead of
      the file's entries again -> the job's fəɹˈeɪ wins on Foray; load the
      backend inside phonemize() -> two loads; ignore the job lexicon -> the
-     Gdansk chunks equal the no-lexicon ones. */
+     Gdansk chunks equal the no-lexicon ones; merge_lexicon(entries, lexicon,
+     None) in make_phonemizer -> the bad Lodz hint is accepted and the line
+     fails UnsingablePhoneme (c.error set). */
   const out = py(
     `Pm=R._load_phonemize()\n` +
       `loads=[]\n` +
@@ -386,7 +388,8 @@ test("the resident phonemizer loads the G2P once; a job's lexicon fills terms ha
       `ph,info=R.make_phonemizer(Pm)\n` +
       `a=ph("Foray in Gdansk today.", [{"term":"Foray","ipa":"fəɹˈeɪ"},{"term":"Gdansk","ipa":"ɡədˈænsk"}])\n` +
       `b=ph("Foray in Gdansk today.", [])\n` +
-      `out({"a":a,"b":b,"loads":len(loads),"fallback":info["fallback"]})`
+      `c=ph("Foray in Gdansk and Lodz today.", [{"term":"Gdansk","ipa":"ɡədˈænsk"},{"term":"Lodz","ipa":"gwˈuʤ"}])\n` +
+      `out({"a":a,"b":b,"c":c,"loads":len(loads),"fallback":info["fallback"]})`
   );
   assert.equal(out.a.error, null);
   assert.equal(out.b.error, null);
@@ -399,6 +402,15 @@ test("the resident phonemizer loads the G2P once; a job's lexicon fills terms ha
   assert.equal(typeof out.a.lexicon_extra_sha, "string");
   assert.equal(out.a.lexicon_rejected, null);
   assert.deepEqual(Object.keys(out.b).sort(), ["chunks", "error", "ids"], "a job with no lexicon phonemizes exactly as before");
+  // The live path (job.lexicon -> spool -> worker), not only batch mode: an
+  // out-of-vocab hint is dropped and recorded, the line still phonemizes and
+  // the valid pin still applies.
+  assert.equal(out.c.error, null);
+  assert.equal(out.c.lexicon_rejected.length, 1, JSON.stringify(out.c.lexicon_rejected));
+  assert.equal(out.c.lexicon_rejected[0].term, "Lodz");
+  assert.match(out.c.lexicon_rejected[0].reason, /'g' \(U\+0067\)/);
+  assert.ok(out.c.chunks.join(" ").includes("ɡədˈænsk"), JSON.stringify(out.c.chunks));
+  assert.ok(!out.c.chunks.join(" ").includes("gwˈuʤ"), JSON.stringify(out.c.chunks));
   assert.equal(out.loads, 1);
   assert.equal(out.fallback, "none");
 });
