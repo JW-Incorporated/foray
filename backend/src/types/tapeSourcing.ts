@@ -357,7 +357,49 @@ export interface TapeRelevanceInput {
   /** F-96: the beat rides in an earlier beat's clip, extended to cover it;
    * the position of that beat (see `SourcedBeat.mergedInto`). */
   mergedInto?: { slot: number; beat: number };
+  /**
+   * GV-79 (MQ-05): the clip-on-subject scorer's two Scores for the clip this
+   * beat PLAYS (the placed, extended span), or why it could not be scored.
+   * Set only when FORAY_CLIP_JUDGE is not `off` (`clipJudge.ts`); absent on
+   * every default run, and on a merged beat (`mergedInto`), whose clip is
+   * scored once on its carrier's row.
+   */
+  clipScores?: ClipScoreOutcome;
+  /** GV-79: the scored text was the clip's first EVIDENCE_MAX_TAPE_CHARS
+   * characters only (`cueWindowText` cut it), so the scores read the start
+   * of a long clip. Absent when the whole clip was read. */
+  windowTruncated?: true;
 }
+
+/**
+ * GV-79 (MQ-05): which judge produced a clip's Scores. `jev` and `qwen`
+ * answer through the JevClient interface (GV-47); `code` is the keyless
+ * proxy (`CodeProxyClipJudge`), always labelled so it is never read as a
+ * model's verdict.
+ */
+export const CLIP_JUDGE_IDS = ["jev", "qwen", "code"] as const;
+export type ClipJudgeId = (typeof CLIP_JUDGE_IDS)[number];
+
+/** GV-79: two 5-level Scores (0..4) for one placed clip: how much it is
+ * about the listener's subject, and how directly it makes the beat's claim. */
+export const ClipScoresSchema = z
+  .object({
+    subject: z.number().min(0).max(4),
+    claim: z.number().min(0).max(4),
+    confidence: z.number().min(0).max(1).optional(),
+    judge: z.enum(CLIP_JUDGE_IDS)
+  })
+  .strict();
+export type ClipScores = z.infer<typeof ClipScoresSchema>;
+
+/** GV-79: a clip the judge could not score, with a fixed reason
+ * (`no-transcript`, `no-window`, or the judge's own error reason). Counted
+ * as `unscored`, never as a pass. */
+export const ClipUnavailableSchema = z.object({ unavailable: z.string().min(1) }).strict();
+export type ClipUnavailable = z.infer<typeof ClipUnavailableSchema>;
+
+export const ClipScoreOutcomeSchema = z.union([ClipScoresSchema, ClipUnavailableSchema]);
+export type ClipScoreOutcome = z.infer<typeof ClipScoreOutcomeSchema>;
 
 /**
  * WHY A BEAT GOT NO TAPE (finding F-49).

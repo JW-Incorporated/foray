@@ -11,6 +11,7 @@ import { phraseIsInWindow } from "../types/anchorText";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
+import type { ClipJudgeId, ClipScores } from "../types/tapeSourcing";
 
 /**
  * WS-B (docs/curation/generation-fix-plan-2026-09-09.md §WS-B): "the AI
@@ -995,6 +996,78 @@ export function computeSpecificsUnsupported(writtenActs: WrittenAct[]): Specific
 }
 
 /* ------------------------------------------------------------------ */
+/* clipOnSubject (GV-79, W5-03; MQ-05)                                  */
+/* ------------------------------------------------------------------ */
+
+/** GV-79: the level both Scores must reach for a clip to count as on
+ * subject when the judge has no per-judge key (the `code` proxy); Jev and
+ * Qwen read `clipLevel.<judge>` from the gate config (GV-47, `clipLevelFor`
+ * in clipJudge.ts). The card's "subject >= 3 AND claim >= 3". PROPOSED
+ * until GV-103 calibrates. */
+export const CLIP_ON_SUBJECT_LEVEL = 3;
+
+/** GV-79: whether one clip's Scores both reach `level`. */
+export function clipOnSubject(scores: ClipScores, level: number): boolean {
+  return scores.subject >= level && scores.claim >= level;
+}
+
+/** A scored clip below the on-subject level, for the human spot-check. */
+export interface OffSubjectClip {
+  itemId: string;
+  segmentId: string;
+  claim: string;
+  scores: ClipScores;
+}
+
+export interface ClipOnSubjectResult {
+  /** Share of SCORED clips whose subject AND claim Scores both reach their
+   * judge's level. `null` when nothing was scored: unmeasured, never 1. */
+  rate: number | null;
+  scored: number;
+  /** Clips the judge could not score (no transcript, Jev unavailable). In
+   * neither the numerator nor the denominator. */
+  unscored: number;
+  /** Which judge scored them: one id, `mixed` when a fallback changed judges
+   * mid-run, `null` when nothing was scored. */
+  judge: ClipJudgeId | "mixed" | null;
+  offSubject: OffSubjectClip[];
+}
+
+/**
+ * GV-79: the clip-on-subject rate from §4.5's rows carrying the clip judge's
+ * Scores (`scoreClips.ts`). A merged beat's row carries none (its clip is
+ * scored on its carrier's row), and a row without `clipScores` was not
+ * offered to the judge; neither is counted. `levelFor` is the per-judge
+ * level both Scores must reach (default `CLIP_ON_SUBJECT_LEVEL`, 3, the
+ * card's "subject >= 3 AND claim >= 3"). Reported, never gated here (the
+ * publish gate is GV-118's).
+ */
+export function computeClipOnSubject(
+  rows: readonly TapeRelevanceInput[],
+  levelFor: (judge: ClipJudgeId) => number = () => CLIP_ON_SUBJECT_LEVEL
+): ClipOnSubjectResult {
+  let scored = 0;
+  let unscored = 0;
+  let passed = 0;
+  const judges = new Set<ClipJudgeId>();
+  const offSubject: OffSubjectClip[] = [];
+  for (const row of rows) {
+    const outcome = row.clipScores;
+    if (outcome === undefined || row.mergedInto) continue;
+    if ("unavailable" in outcome) {
+      unscored++;
+      continue;
+    }
+    scored++;
+    judges.add(outcome.judge);
+    if (clipOnSubject(outcome, levelFor(outcome.judge))) passed++;
+    else offSubject.push({ itemId: row.itemId, segmentId: row.segmentId, claim: row.claim, scores: outcome });
+  }
+  const judge = judges.size === 0 ? null : judges.size === 1 ? [...judges][0]! : "mixed";
+  return { rate: scored > 0 ? passed / scored : null, scored, unscored, judge, offSubject };
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -1111,6 +1184,15 @@ export interface VeracityMetrics {
   specificsUnsupported?: number | null;
   /** GV-34: the flagged sentences, each with what it stated unsupported. */
   specificsDetails?: SpecificsPageNote[];
+  /** GV-79 (MQ-05): share of scored clips the clip judge put on the
+   * listener's subject AND on their beat's claim (`computeClipOnSubject`).
+   * `null` when no clip was scored. All three fields are absent unless
+   * FORAY_CLIP_JUDGE ran (shadow mode); reported, never gated here. */
+  clipOnSubjectRate?: number | null;
+  /** GV-79: the judge behind the rate (`code` is the keyless proxy). */
+  clipOnSubjectJudge?: ClipJudgeId | "mixed" | null;
+  /** GV-79: scored and unscored counts and the off-subject clips, named. */
+  clipOnSubjectDetails?: { scored: number; unscored: number; offSubject: OffSubjectClip[] };
 }
 
 export interface BuildVeracityMetricsInput {
@@ -1152,6 +1234,11 @@ export interface BuildVeracityMetricsInput {
    * `specificsUnsupported: null`; `report` (the default) and `enforce`
    * compute it. */
   specifics?: SpecificsMode;
+  /** GV-79: present only when the clip judge ran (FORAY_CLIP_JUDGE not
+   * `off`); `tapeRelevanceRows` then carry its Scores. `levelFor` is the
+   * per-judge on-subject level (`clipLevelFor`). Omitted, no clip field is
+   * added, so a default run's report is unchanged. */
+  clipOnSubject?: { levelFor?: (judge: ClipJudgeId) => number };
 }
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
@@ -1164,6 +1251,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
   const shares = computeListeningShares(input.sourcedActs, input.writtenActs);
   const firstAttempt = computeFirstAttemptPassRates(input.writtenActs);
   const specifics = (input.specifics ?? "report") === "off" ? null : computeSpecificsUnsupported(input.writtenActs);
+  const clips = input.clipOnSubject ? computeClipOnSubject(input.tapeRelevanceRows ?? [], input.clipOnSubject.levelFor) : null;
 
   return {
     groundedQuoteRate: grounded.rate,
@@ -1213,7 +1301,14 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
         : null,
     beatCoverage: computeBeatCoverage(input.writtenActs),
     specificsUnsupported: specifics ? specifics.count : null,
-    specificsDetails: specifics ? specifics.details : []
+    specificsDetails: specifics ? specifics.details : [],
+    ...(clips
+      ? {
+          clipOnSubjectRate: clips.rate,
+          clipOnSubjectJudge: clips.judge,
+          clipOnSubjectDetails: { scored: clips.scored, unscored: clips.unscored, offSubject: clips.offSubject }
+        }
+      : {})
   };
 }
 

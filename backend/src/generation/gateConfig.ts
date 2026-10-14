@@ -41,6 +41,18 @@ export interface GateConfig {
    */
   specifics: SpecificsMode;
 
+  /**
+   * GV-79 (W5-03, MQ-05): FORAY_CLIP_JUDGE = off|shadow|enforce, default
+   * `off`. Whether every placed clip is scored, off the timed path, for how
+   * much it is about the listener's subject and how directly it makes its
+   * beat's claim (`clipJudge.ts`, `scoreClips.ts`), and the result reported
+   * as `meta.veracity.clipOnSubjectRate`. `shadow` records and reports;
+   * `enforce` does the same today and is reserved for the publish gate's
+   * card (GV-118, W5-06), which reads it. `off` runs nothing and the report
+   * carries none of the fields.
+   */
+  clipJudge: ClipJudgeMode;
+
   /*
    * GV-47 (OQ-05, W2-12 + W5-19): PER-JUDGE thresholds. Jev and the Qwen
    * judge answer through one interface (jevClient.ts), but their
@@ -66,6 +78,10 @@ export interface GateConfig {
   /** FORAY_CLIP_LEVEL_QWEN: the same, for the Qwen judge. Default 3, PROPOSED. */
   "clipLevel.qwen": number;
 }
+
+/** GV-79: the clip judge's modes (FORAY_CLIP_JUDGE). */
+export const CLIP_JUDGE_MODES = ["off", "shadow", "enforce"] as const;
+export type ClipJudgeMode = (typeof CLIP_JUDGE_MODES)[number];
 
 /** GV-47: the thresholds that are kept per judge. */
 export const JUDGE_THRESHOLD_NAMES = ["supportMinP", "clipLevel"] as const;
@@ -101,6 +117,7 @@ const clipLevelParser = numberParser(z.number().int().min(0).max(4), "an integer
 /** The gate table. Each gate card appends its row. */
 export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
   { key: "specifics", env: "FORAY_SPECIFICS_CHECK", parse: enumParser(SPECIFICS_MODES), default: "report" } satisfies GateTableEntry<SpecificsMode>,
+  { key: "clipJudge", env: "FORAY_CLIP_JUDGE", parse: enumParser(CLIP_JUDGE_MODES), default: "off" } satisfies GateTableEntry<ClipJudgeMode>,
   { key: "supportMinP.jev", env: "FORAY_SUPPORT_MIN_P_JEV", parse: probabilityParser, default: 0.5 } satisfies GateTableEntry<number>,
   { key: "supportMinP.qwen", env: "FORAY_SUPPORT_MIN_P_QWEN", parse: probabilityParser, default: 0.7 } satisfies GateTableEntry<number>,
   { key: "clipLevel.jev", env: "FORAY_CLIP_LEVEL_JEV", parse: clipLevelParser, default: 3 } satisfies GateTableEntry<number>,

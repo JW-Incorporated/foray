@@ -17,7 +17,11 @@ import type { SpineBuilder } from "../src/generation/SpineBuilder";
 import type { PromptUnderstander } from "../src/generation/PromptUnderstander";
 import type { DeepenActBuilder } from "../src/generation/DeepenActBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
-import { RunLog, runWithRunLog } from "../src/generation/runLog";
+import { RunLog, currentCallContext, runWithRunLog } from "../src/generation/runLog";
+import type { ClipJudge, ClipQuestion } from "../src/generation/clipJudge";
+import { loadCatalogueData } from "../src/generation/catalogueLookup";
+import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
+import { loadTranscriptArchive, type TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
 
 /**
@@ -516,5 +520,102 @@ describe("per-act servability survives a resume (GV-21)", () => {
     expect(resumedAct1.acts[0]!.veracity).toBeDefined();
     expect(resumedAct1.acts[0]!.veracity).toEqual(freshAct1.acts[0]!.veracity);
     expect(resumedAct1.acts[0]!.served).toBe(freshAct1.acts[0]!.served);
+  }, 120_000);
+});
+
+/**
+ * GV-79 (W5-03, MQ-05): the `clip-scores` stage resumes like every other.
+ * The pool's items have no transcript digest on a checkout, so each gets a
+ * synthetic digest row and catalogue title, and the cue provider answers
+ * only inside the `clip-scores` stage (the run is inside a RunLog so the
+ * call context is live): sourcing and narration see no transcript, exactly
+ * as in every other stub run. The judge is scripted and counts its calls.
+ */
+describe("GV-79 clip-scores checkpoint", () => {
+  const SHADOW = { clipJudge: "shadow" as const };
+  const at = () => new Date("2026-09-09T00:00:00Z");
+
+  function clipFixture() {
+    const ids = [...new Set(loadSegmentPool().map((seg) => seg.item_id))];
+    const title = (id: string) => `Pitmaster smoke stories ${id.replace(/[^a-z0-9]+/gi, " ")}`;
+    const real = loadCatalogueData();
+    return {
+      transcriptArchive: [
+        ...loadTranscriptArchive(),
+        ...ids.map((id) => ({ show_id: id.includes("--") ? id.slice(0, id.indexOf("--")) : id, show_title: "x", guid: `gv79-${id}`, title: title(id), cues: 10 }))
+      ],
+      clipCatalogue: { ...real, items: [...ids.map((id) => ({ id, show: "x", title: title(id), topics: [], hook: "" })), ...real.items] },
+      cueProvider: {
+        getCues: (entry: TranscriptDigestEntry) =>
+          currentCallContext().stage === "clip-scores" && entry.guid.startsWith("gv79-")
+            ? [{ start_sec: 0, end_sec: 1_000_000, text: "Pitmasters argue about smoke, wood and low heat for barbecue brisket." }]
+            : null
+      }
+    };
+  }
+
+  function countingJudge(): ClipJudge & { calls: number; questions: number } {
+    const judge = {
+      name: "counting",
+      calls: 0,
+      questions: 0,
+      async score(qs: readonly ClipQuestion[]) {
+        judge.calls++;
+        judge.questions += qs.length;
+        return new Map(qs.map((q, i) => [q.key, { subject: i === 0 ? 1 : 4, claim: 4, judge: "jev" as const }]));
+      }
+    };
+    return judge;
+  }
+
+  const run = (gates: { clipJudge: "off" | "shadow" }, deps: Record<string, unknown>) =>
+    runWithRunLog(new RunLog(), () =>
+      runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, gates }, { ...deps, finalize: fakeFinalize().fn } as never)
+    );
+
+  /* MUTATION THAT KILLS THIS: feed `gates.clipJudge` into the checkpoint
+     variant (gates are never fingerprinted, W5-02): the judge-off file no
+     longer matches and every stage is paid for again. Ran it: red. */
+  it("a checkpoint banked before GV-79 (judge off) resumes under shadow: only the clip scores are new work", async () => {
+    const store = new FakeCheckpointStore(FP);
+    const fixture = clipFixture();
+    const first = countingDeps();
+    const off = await run({ clipJudge: "off" }, { ...first.deps, ...fixture, checkpoint: store, clipJudge: countingJudge() });
+    expect(off.outcome).toBe("generated");
+    expect(store.stageKeys(KEY)).not.toContain("clip-scores");
+
+    const second = countingDeps();
+    const judge = countingJudge();
+    const resumed = await run(SHADOW, { ...second.deps, ...fixture, checkpoint: store, clipJudge: judge });
+    if (resumed.outcome !== "generated" || off.outcome !== "generated") throw new Error("expected both to generate");
+    expect(second.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+    expect(judge.calls).toBe(1);
+    expect(judge.questions).toBeGreaterThan(0);
+    expect(store.stageKeys(KEY)).toContain("clip-scores");
+    expect(resumed.input.items).toEqual(off.input.items);
+    expect(resumed.input.meta!.veracity!.clipOnSubjectDetails?.scored).toBe(judge.questions);
+  }, 120_000);
+
+  /* MUTATION THAT KILLS THIS: run the scorer outside `stage` (no
+     checkpoint). Ran it: red (the resumed run asks the judge again). */
+  it("a checkpoint with clip-scores banked resumes with zero judge calls and the same report", async () => {
+    const store = new FakeCheckpointStore(FP);
+    const fixture = clipFixture();
+    const firstJudge = countingJudge();
+    const first = await run(SHADOW, { ...countingDeps().deps, ...fixture, checkpoint: store, clipJudge: firstJudge });
+    expect(firstJudge.calls).toBe(1);
+    expect(store.stageKeys(KEY)).toContain("clip-scores");
+
+    const judge = countingJudge();
+    const resumed = await run(SHADOW, { ...countingDeps().deps, ...fixture, checkpoint: store, clipJudge: judge });
+    if (first.outcome !== "generated" || resumed.outcome !== "generated") throw new Error("expected both to generate");
+    expect(judge.calls).toBe(0);
+    expect(resumed.timings.find((t) => t.name === "clip-scores")?.resumed).toBe(true);
+    const v1 = first.input.meta!.veracity!;
+    const v2 = resumed.input.meta!.veracity!;
+    expect(v2.clipOnSubjectRate).toBe(v1.clipOnSubjectRate);
+    expect(v2.clipOnSubjectDetails).toEqual(v1.clipOnSubjectDetails);
+    expect(v1.clipOnSubjectRate).toBeLessThan(1);
+    expect(resumed.tapeRelevance).toEqual(first.tapeRelevance);
   }, 120_000);
 });
