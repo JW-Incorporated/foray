@@ -1293,6 +1293,24 @@ describe("GV-74 — --render-spool enqueues narration and folds audio into deliv
     expect(JSON.stringify(candidate)).not.toContain("audio_url");
   });
 
+  it("without --job-dir the run still reads the render results once at the end: delivery.render is filled", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `else await refreshRender()` branch
+       at the end of generateOneCandidate. With no job sink nothing else ever
+       reads the results, so delivery.render stays all zeros. Ran it — red. */
+    const client = new InstantRenderClient(new Set(["prelude"]));
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { renderSpool: spool, maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: stubPipeline(),
+      renderClient: client
+    });
+    expect(result.entry?.outcome).toBe("generated");
+    expect(fs.existsSync(jobDir)).toBe(false);
+    expect(client.enqueued.length).toBeGreaterThan(1);
+    const render = result.entry?.delivery?.render;
+    expect(render).toMatchObject({ failed: 1, realtimeFactor: 5, narrationSec: 5 * (client.enqueued.length - 1) });
+    expect(render!.narrationSec).toBeGreaterThan(0);
+  });
+
   it("rendered and uploaded lines reach the job row with audio_url, a failed one stays phone-voice, and delivery.render is filled", async () => {
     /* MUTATION THAT KILLS THIS: pass no `audio` to snapshotFrom in
        publishJob. The row's items carry no audio_url and every state reads

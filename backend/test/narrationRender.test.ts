@@ -146,6 +146,59 @@ describe("renderJobsFor and the tracker — jobs in play order", () => {
     expect(renderJobIdFor("../../etc/passwd", 0, "x", "y")).toMatch(RENDER_JOB_ID_PATTERN);
     expect(renderJobIdFor("x".repeat(200), 0, "x", "y")).toMatch(RENDER_JOB_ID_PATTERN);
   });
+  it("a resumed attempt that rewrites a line never serves the old line's render; await-render waits for the new one", async () => {
+    /* MUTATION THAT KILLS THIS: in NarrationRenderTracker's `results`, return
+       every tracked result (drop the current-job filter). The rewritten
+       prelude is served with the OLD line's audio_url and audioKey, and reads
+       "rendered" under await-render. Ran it — red. Also killed: in report(),
+       pass every tracked job and result (the superseded render counts into
+       narrationSec). Ran it — red. Also killed: set the item's current job
+       only for a fresh job (the line rewritten back to its first script keeps
+       pointing at the second job). Ran it — red. */
+    const client = new FakeRenderClient();
+    const tracker = new NarrationRenderTracker(client);
+    tracker.beginAttempt();
+    const first: ItemReadyEvent = { ...event(0), item: narration("prelude", "Old line.") };
+    await tracker.onItemReady(first);
+    const oldJob = client.enqueued[0]!;
+    client.done = [rendered(oldJob, { publicUrl: `${URL_BASE}/old.m4a`, key: "k-old", audioSec: 4, renderMs: 1000, queuedMs: 0 })];
+    await tracker.refresh();
+    expect(tracker.results.map((r) => r.jobId)).toEqual([oldJob.jobId]);
+
+    /* Attempt 2 re-runs the act and re-emits the prelude, rewritten. */
+    tracker.beginAttempt();
+    const second: ItemReadyEvent = { ...event(0), item: narration("prelude", "New rewritten line.") };
+    await tracker.onItemReady(second);
+    const newJob = client.enqueued[1]!;
+    expect(newJob.jobId).not.toBe(oldJob.jobId);
+    expect(tracker.results).toEqual([]);
+    await tracker.refresh();
+    expect(tracker.results).toEqual([]);
+    const progress = progressOf([first, second]);
+    const served = snapshotFrom(JOB, progress, 0, AT, { policy: "phone-voice-first", results: tracker.results })!;
+    expect(served.items[0]).toEqual(second.item);
+    expect(served.items[0]).not.toHaveProperty("audio_url");
+    expect(served.itemStates[0]).toEqual({ itemId: "prelude", check: "prelude", audio: "phone-voice" });
+    expect(audioStateFor("prelude", tracker.results, "await-render")).toBe("pending");
+    const held = snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!;
+    expect(held.items).toEqual([]);
+    expect(held.delivery?.pausedAtIndex).toBe(0);
+    expect(tracker.report()).toEqual({ firstRenderedMs: null, narrationSec: 0, renderWallSec: 0, realtimeFactor: null, failed: 0 });
+
+    /* The new line's render answers: served with its own audio. */
+    client.done = [...client.done, rendered(newJob, { publicUrl: `${URL_BASE}/new.m4a`, key: "k-new", audioSec: 6, renderMs: 2000, queuedMs: 0 })];
+    await tracker.refresh();
+    const after = snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!;
+    expect(after.items[0]).toEqual({ ...second.item, audio_url: `${URL_BASE}/new.m4a` });
+    expect(after.itemStates[0]).toMatchObject({ audio: "rendered", audioKey: "k-new" });
+    expect(tracker.report()).toMatchObject({ narrationSec: 6, renderWallSec: 2 });
+
+    /* Attempt 3 re-emits the first script: its job is current again, nothing is enqueued twice. */
+    tracker.beginAttempt();
+    await tracker.onItemReady(first);
+    expect(client.enqueued).toHaveLength(2);
+    expect(tracker.results.map((r) => r.jobId)).toEqual([oldJob.jobId]);
+  });
 });
 
 describe("audio state — phone voice first", () => {

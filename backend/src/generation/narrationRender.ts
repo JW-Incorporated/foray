@@ -141,8 +141,9 @@ export function renderJobsFor(ev: ItemReadyEvent, opts: { lexicon?: readonly Ren
   ];
 }
 
-/** The latest result for an item (the last in the list wins: a re-render
- * after a rewrite supersedes the earlier one). */
+/** The latest result for an item (the last in the list wins). Matched by
+ * item id only: the caller hands in results for each item's CURRENT line
+ * (`NarrationRenderTracker.results`), never a superseded line's. */
 export function resultFor(itemId: string, results: readonly RenderResult[]): RenderResult | undefined {
   for (let i = results.length - 1; i >= 0; i--) if (results[i]!.itemId === itemId) return results[i];
   return undefined;
@@ -282,10 +283,21 @@ export function renderReportOf(jobs: readonly TrackedRenderJob[], results: reado
  * a job already enqueued (same id) is never enqueued again. The driver calls
  * `beginAttempt` per pipeline attempt, `onItemReady` per item event and
  * `refresh` before it reads the results. An enqueue failure throws to the
- * caller (which warns: a render never costs the Foray) and records nothing.
+ * caller (which warns: a render never costs the Foray) and tracks no job.
+ *
+ * ONE LINE, ONE JOB. Results are folded by item id (`resultFor`), so the
+ * tracker serves only the results of each item's CURRENT job: the job of the
+ * last event that item had. A resumed attempt can re-emit an item with a
+ * rewritten script (a new job id); the old line's render is then dropped
+ * from `results` and from the report, so the phone never plays audio that
+ * does not match the line's text — it speaks the new script (or, under
+ * await-render, waits for the new render).
  */
 export class NarrationRenderTracker {
   private readonly tracked = new Map<string, TrackedRenderJob>();
+  /** itemId -> the job id of that item's latest event (absent when the
+   * latest event made no job: an unservable or empty line). */
+  private readonly currentJob = new Map<string, string>();
   private latest: RenderResult[] = [];
   private attempt = 0;
 
@@ -298,31 +310,44 @@ export class NarrationRenderTracker {
     this.attempt++;
   }
 
-  /** Enqueues the event's jobs that are not enqueued yet; returns them. */
+  /** Enqueues the event's jobs that are not enqueued yet; returns them. The
+   * event's line becomes the item's current one before the enqueue, so a
+   * failed enqueue still never serves an older line's audio. */
   async onItemReady(ev: ItemReadyEvent): Promise<RenderJob[]> {
-    const fresh = renderJobsFor(ev).filter((j) => !this.tracked.has(j.jobId));
+    const jobs = renderJobsFor(ev);
+    this.currentJob.delete(ev.itemId);
+    for (const job of jobs) this.currentJob.set(job.itemId, job.jobId);
+    const fresh = jobs.filter((j) => !this.tracked.has(j.jobId));
     if (!fresh.length) return [];
     await this.client.enqueue(fresh);
     for (const job of fresh) this.tracked.set(job.jobId, { job, enqueuedAtMs: ev.readyAtMs, attempt: this.attempt });
     return fresh;
   }
 
+  private isCurrent(jobId: string, itemId: string): boolean {
+    return this.currentJob.get(itemId) === jobId;
+  }
+
   /** Reads the client's results, keeping only this prompt's jobs. */
   async refresh(): Promise<readonly RenderResult[]> {
     const all = await this.client.results();
     this.latest = all.filter((r) => this.tracked.has(r.jobId));
-    return this.latest;
+    return this.results;
   }
 
+  /** The results of each item's current job only (see ONE LINE, ONE JOB). */
   get results(): readonly RenderResult[] {
-    return this.latest;
+    return this.latest.filter((r) => this.isCurrent(r.jobId, r.itemId));
   }
 
   get jobs(): TrackedRenderJob[] {
     return [...this.tracked.values()];
   }
 
+  /** `delivery.render` over each item's current job: a superseded line's
+   * render (or failure) is not the Foray's narration. */
   report(): RenderReport {
-    return renderReportOf(this.jobs, this.latest, this.attempt);
+    const current = this.jobs.filter((t) => this.isCurrent(t.job.jobId, t.job.itemId));
+    return renderReportOf(current, this.results, this.attempt);
   }
 }
