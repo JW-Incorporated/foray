@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "built_at": "2026-10-14T00:00:00.000Z",
+  "provenance": "fixture",
+  "label_schema_version": 1,
+  "entries": {
+    "111": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "fixture",
+      "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
+      "display_title": "x",
+      "blurb": "Long-form retellings of medieval sieges, one campaign per season.",
+      "display_copy_ok": true,
+      "model": "fixture",
+      "tier": 1
+    },
+    "222": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "fixture",
+      "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
+      "display_title": "x",
+      "blurb": "A weekly feed show about urban gardening and soil.",
+      "display_copy_ok": true,
+      "model": "fixture",
+      "tier": 1
+    },
+    "333": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "fixture",
+      "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
+      "display_title": "x",
+      "blurb": "Blurb Network presents short   essays on   maps and the people who drew them.",
+      "display_copy_ok": true,
+      "model": "fixture",
+      "tier": 1
+    },
+    "555": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "fixture",
+      "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
+      "display_title": "x",
+      "blurb": "Four-episode miniseries on lighthouse keepers.",
+      "display_copy_ok": true,
+      "model": "fixture",
+      "tier": 1
+    },
+    "999": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "fixture",
+      "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
+      "display_title": "x",
+      "blurb": "Shop talk about lathes, mills and fixtures.",
+      "display_copy_ok": true,
+      "model": "fixture",
+      "tier": 1
+    }
+  }
+}

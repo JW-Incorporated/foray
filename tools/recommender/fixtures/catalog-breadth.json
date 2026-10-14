@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "built_at": "2026-10-14T00:00:00.000Z",
+  "source": "fixture",
+  "shows": [
+    {
+      "apple_collection_id": 111,
+      "title": "Archive Show",
+      "feed_url": "https://example.invalid/111.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "Megacorp Audio Network",
+      "episode_count": 300,
+      "explicit": false,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 3,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": false,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "history"
+      ]
+    },
+    {
+      "apple_collection_id": 222,
+      "title": "Feed Show",
+      "feed_url": "https://example.invalid/222.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "Injection Studios Ltd",
+      "episode_count": 40,
+      "explicit": true,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 12,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": false,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "history"
+      ]
+    },
+    {
+      "apple_collection_id": 333,
+      "title": "Blurb Show",
+      "feed_url": "https://example.invalid/333.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "Blurb Network",
+      "episode_count": 40,
+      "explicit": false,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 77,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": false,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "history"
+      ]
+    },
+    {
+      "apple_collection_id": 444,
+      "title": "Title Only",
+      "feed_url": "https://example.invalid/444.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "Lonely Publisher",
+      "episode_count": 40,
+      "explicit": false,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 150,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": false,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "history"
+      ]
+    },
+    {
+      "apple_collection_id": 555,
+      "title": "Four Episodes",
+      "feed_url": "https://example.invalid/555.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "Four Corp Audio",
+      "episode_count": 40,
+      "explicit": false,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 8,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": false,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "history"
+      ]
+    },
+    {
+      "apple_collection_id": 999,
+      "title": "Tinkerer Hour",
+      "feed_url": "https://example.invalid/999.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "Shop Talk Media",
+      "episode_count": 40,
+      "explicit": false,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 40,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": true,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "science"
+      ]
+    }
+  ]
+}
