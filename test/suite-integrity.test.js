@@ -3136,8 +3136,10 @@ const BACKEND_FLOORS = {
   "test/spineStructure.test.ts": 19,
   /* F-86: the spine is re-asked once with the structural violations named
      before the run fails — pipeline banks only the passing spine, the
-     re-ask is metered and reported, `SPINE_STRUCTURAL_REASKS` caps it. */
-  "test/spineReask.test.ts": 7,
+     re-ask is metered and reported, `SPINE_STRUCTURAL_REASKS` caps it.
+     Raised from 7 by GV-89 review: a folded runtime re-ask reply that fails
+     the folded-copy gate is dropped and the spine passed in is kept. */
+  "test/spineReask.test.ts": 8,
   /* WS-C: §4.5's topic gate (taxonomyFamily.ts). A family is a node's LINEAGE
      in data/taxonomy.json — itself, its ancestors, its descendants — not a
      shared first path segment, which would put every sibling trade in scope of

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   buildSpine,
   buildSpineWithReasks,
+  reaskForRuntime,
   spineStructuralReasks,
   SPINE_STRUCTURAL_REASKS_ENV,
   DEFAULT_SPINE_STRUCTURAL_REASKS
@@ -541,6 +542,36 @@ describe("GV-89 — the post-spine runtime check re-asks only a spine that canno
     await new ChatSpineBuilder(provider, target, { checkAndRecord: async () => undefined }).buildSpine(intent, researchShape, "short", { ...ctx, revision });
     expect(provider.requests[0]!.messages.slice(-2)).toEqual(turns);
     expect(spineConversation("prompt", revision).slice(1)).toEqual(turns);
+  });
+});
+
+describe("GV-89 — a folded runtime re-ask reply must pass the folded-copy gate", () => {
+  it("mutation: when folded, a runtime re-ask reply missing the folded title and summary is dropped, the spine passed in is kept, and the re-ask is still recorded as 'runtime'", async () => {
+    /* MUTATION THAT KILLS THIS: drop `foldedCopyIssues(reply)` from the
+       issues in reaskForRuntime (leave only checkSpineStructure). The reply
+       below then passes every other gate and fits, so it replaces the spine
+       with no title or summary for the listener copy. Ran it: red. */
+    const overrun = runtimeSpine(RUNTIME_CLAIMS.map((_, i) => ({ ...runtimeBeat(i, true), seedSource: "spine" as const })));
+    const folded = { ...ctx, listenerPrompt: "the history of grilling and barbecue" };
+
+    /* Control: the same reply WITH the folded copy is accepted, so the drop
+       below is the copy gate's and nothing else's. */
+    const withCopy: Spine = { ...fittingPlan, title: "Smoke, Sauce and Steel", summary: "How backyard grilling grew out of pits and factories." };
+    const accepting = new RecordingSpineBuilder([withCopy]);
+    const accepted = await reaskForRuntime(overrun, intent, runtimeShape, "short", accepting, folded);
+    expect(accepted.accepted).toBe(true);
+
+    /* fittingPlan carries subject and angle but no title or summary. */
+    const builder = new RecordingSpineBuilder([fittingPlan]);
+    const out = await reaskForRuntime(overrun, intent, runtimeShape, "short", builder, folded);
+
+    expect(builder.calls).toHaveLength(1);
+    expect(builder.calls[0]!.revision?.kind).toBe("runtime");
+    expect(builder.calls[0]!.listenerPrompt).toBe(folded.listenerPrompt);
+    expect(out.accepted).toBe(false);
+    expect(out.spine).toBe(overrun);
+    expect(out.reask).toMatchObject({ attempt: 1, kind: "runtime" });
+    expect(out.reask!.violations[0]).toMatch(/^the plan's minimum runtime is \d+ s/);
   });
 });
 
