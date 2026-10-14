@@ -26,6 +26,8 @@ import { resolveRouting, routingSummary } from "../src/config/stageRouting";
 import { FAST_PATH_PIPELINE_FLAGS, PIPELINE_FLAG_ENV, checkpointVariant, readPipelineFlags, type FoldDeepen } from "../src/generation/pipelineFlags";
 import { readGateConfig } from "../src/generation/gateConfig";
 import { JobSnapshotSchema, type JobSnapshot } from "../src/generation/jobSink";
+import { SpoolRenderClient, renderJobDocument } from "../src/cli/spoolRenderClient";
+import type { NarrationRenderClient, RenderJob, RenderResult } from "../src/generation/narrationRender";
 import type { PromptUnderstandContext } from "../src/generation/PromptUnderstander";
 import type { IntentUnderstanding } from "../src/types/generation";
 
@@ -1133,5 +1135,272 @@ describe("GV-68 — anthropicCalls in report.json and the non-zero exit", () => 
     expect(anthropicRuleViolation(1, { FORAY_ALLOW_ANTHROPIC_LEGACY: "1" })).toBeNull();
     expect(anthropicRuleViolation(1, { FORAY_ALLOW_ANTHROPIC_LEGACY: "yes" })).toMatch(/FORAY_ALLOW_ANTHROPIC_LEGACY=1/);
     expect(anthropicRuleViolation(0, {})).toBeNull();
+  });
+});
+
+/* GV-74 (docs/roadmap/generation-v2.md, #1286; from W6-07): --render-spool
+   puts narration rendering inside the run. Offline: the spool is a tmpdir
+   (no worker runs, so no done record appears unless a test writes one), and
+   the fold-back tests use a fake render client that answers at once. */
+describe("GV-74 — --render-spool enqueues narration and folds audio into delivery", () => {
+  let dir: string;
+  let spool: string;
+  let jobDir: string;
+  const PROMPT = "tell me the whole story of grilling and barbecue please";
+  const URL_BASE = "https://narration.example.test/n";
+  /* The understander's copy differs from the prompt (as GV-44's test does),
+     so the prompt can only reach a job file if something carries it. */
+  class RetitlingUnderstander extends StubPromptUnderstander {
+    override async extractIntent(prompt: string, ctx: PromptUnderstandContext): Promise<IntentUnderstanding> {
+      const intent = await super.extractIntent(prompt, ctx);
+      return { ...intent, subject: "Fire, smoke and the long cook", priorKnowledge: "Knows the word.", disappointment: "Stays on the surface." };
+    }
+  }
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv74-"));
+    spool = path.join(dir, "spool");
+    jobDir = path.join(dir, "jobs");
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** Answers every job at once: rendered and uploaded, except the item ids
+   * in `failing`. `never` answers nothing (a worker that is not running). */
+  class InstantRenderClient implements NarrationRenderClient {
+    readonly enqueued: RenderJob[] = [];
+    constructor(
+      private readonly failing: ReadonlySet<string> = new Set(),
+      private readonly never = false
+    ) {}
+    async enqueue(jobs: RenderJob[]): Promise<void> {
+      this.enqueued.push(...jobs);
+    }
+    async results(): Promise<RenderResult[]> {
+      if (this.never) return [];
+      return this.enqueued.map((j) =>
+        this.failing.has(j.itemId)
+          ? { jobId: j.jobId, itemId: j.itemId, status: "failed" as const, renderMs: 50, queuedMs: 0 }
+          : { jobId: j.jobId, itemId: j.itemId, status: "rendered" as const, key: `n/${j.jobId}.m4a`, publicUrl: `${URL_BASE}/${j.jobId}.m4a`, audioSec: 5, renderMs: 1000, queuedMs: 250 }
+      );
+    }
+  }
+
+  const readJobs = (): JobSnapshot[] =>
+    fs.existsSync(jobDir)
+      ? fs
+          .readdirSync(jobDir)
+          .filter((f) => f.endsWith(".job.json"))
+          .map((f) => JSON.parse(fs.readFileSync(path.join(jobDir, f), "utf8")) as JobSnapshot)
+      : [];
+  /** The stub pipeline; after every item hook the driver awaited, the job
+   * row as it then stood is recorded. */
+  const observed =
+    (seen: JobSnapshot[]): typeof runForayPipeline =>
+    (request, options, deps = {}) =>
+      stubPipeline()(request, options, {
+        ...deps,
+        onItemReady: async (ev) => {
+          await deps.onItemReady?.(ev);
+          seen.push(...readJobs());
+        }
+      });
+  type CandidateFile = { id: string; items: Array<{ type: string; id?: string; script?: string }> };
+  const narrationIndices = (c: CandidateFile): number[] => c.items.flatMap((it, i) => (it.type === "narration" ? [i] : []));
+
+  it("parses --render-spool and --audio-policy, adds nothing without them, and refuses a bad policy or a policy alone", () => {
+    /* MUTATION THAT KILLS THIS: always set `renderSpool` (or default
+       `audioPolicy`) in parseRenderFlags. Every run would render, or a run
+       without the flag would carry a policy. Ran it — red. Also killed: drop
+       the "--audio-policy needs --render-spool" refusal. Ran it — red. */
+    const a = parseArgs(["--prompts", "p.json", "--render-spool", "data-local/spool", "--audio-policy", "await-render"]);
+    expect(a.renderSpool).toBe("data-local/spool");
+    expect(a.audioPolicy).toBe("await-render");
+    const plain = parseArgs(["--prompts", "p.json"]);
+    expect("renderSpool" in plain).toBe(false);
+    expect("audioPolicy" in plain).toBe(false);
+    expect("audioPolicy" in parseArgs(["--prompts", "p.json", "--render-spool", "s"])).toBe(false);
+    expect(() => parseArgs(["--prompts", "p.json", "--render-spool", "s", "--audio-policy", "loud"])).toThrow(/--audio-policy: "loud"/);
+    expect(() => parseArgs(["--prompts", "p.json", "--audio-policy", "await-render"])).toThrow(/needs --render-spool/);
+    expect(() => parseArgs(["--prompts", "p.json", "--render-spool"])).toThrow(/--render-spool needs a value/);
+  });
+
+  it("SpoolRenderClient writes foray-render-job/1 files into in/ and reads back only its own done records", async () => {
+    /* MUTATION THAT KILLS THIS: in results(), read every file in done/
+       instead of this client's job ids. Another run's record is folded into
+       this Foray. Ran it — red. Also killed: drop the done/ check in
+       enqueue (a finished job is queued again). Ran it — red. */
+    const clock = (): Date => new Date("2026-10-13T10:00:00.000Z");
+    const client = new SpoolRenderClient(spool, clock);
+    const jobs: RenderJob[] = [
+      { jobId: "f-abc.i0.0123456789abcdef", forayId: "f-abc", itemId: "prelude", script: "This Foray was generated.", priority: 0 },
+      { jobId: "f-abc.i3.0123456789abcdee", forayId: "f-abc", itemId: "act-1-exit", script: "And then the smoke.", priority: 3, lexicon: [{ term: "Kansas", ipa: "kænzəs" }] }
+    ];
+    await client.enqueue(jobs);
+    expect(fs.readdirSync(path.join(spool, "in")).sort()).toEqual(jobs.map((j) => `${j.jobId}.job.json`).sort());
+    const doc = JSON.parse(fs.readFileSync(path.join(spool, "in", `${jobs[1]!.jobId}.job.json`), "utf8"));
+    expect(doc).toEqual({
+      schema: "foray-render-job/1",
+      job_id: jobs[1]!.jobId,
+      foray_id: "f-abc",
+      item_id: "act-1-exit",
+      script: "And then the smoke.",
+      priority: 3,
+      enqueued_at: "2026-10-13T10:00:00.000Z",
+      lexicon: [{ term: "Kansas", ipa: "kænzəs" }]
+    });
+    expect(renderJobDocument(jobs[0]!, clock())).not.toHaveProperty("lexicon");
+    expect(await client.results()).toEqual([]);
+
+    /* The worker claims job 0 and finishes it; spool-upload confirms it. */
+    fs.mkdirSync(path.join(spool, "done"), { recursive: true });
+    fs.unlinkSync(path.join(spool, "in", `${jobs[0]!.jobId}.job.json`));
+    fs.writeFileSync(
+      path.join(spool, "done", `${jobs[0]!.jobId}.json`),
+      JSON.stringify({ job_id: jobs[0]!.jobId, status: "rendered", entry: { key: "n/p.m4a", duration_sec: 3 }, timings: { queued_ms: 5, render_ms: 700, audio_sec: 3 }, public_url: `${URL_BASE}/p.m4a` })
+    );
+    fs.writeFileSync(path.join(spool, "done", "other-run.i0.ffffffffffffffff.json"), JSON.stringify({ job_id: "other-run.i0.ffffffffffffffff", status: "rendered", entry: { key: "x" }, timings: {} }));
+    expect(await client.results()).toEqual([{ jobId: jobs[0]!.jobId, itemId: "prelude", status: "rendered", key: "n/p.m4a", publicUrl: `${URL_BASE}/p.m4a`, audioSec: 3, renderMs: 700, queuedMs: 5 }]);
+    await client.enqueue([jobs[0]!]);
+    expect(fs.existsSync(path.join(spool, "in", `${jobs[0]!.jobId}.job.json`))).toBe(false);
+    expect(fs.readdirSync(path.join(spool, "in")).filter((f) => f.startsWith("."))).toEqual([]);
+  });
+
+  it("a stub run with --render-spool queues one job per narration item, priority = item index, no prompt in any job", async () => {
+    /* MUTATION THAT KILLS THIS: drop the render.onItemReady call from the
+       onItemReady hook. in/ stays empty. Ran it — red. */
+    const retitled: typeof runForayPipeline = (request, options, deps = {}) => stubPipeline()(request, options, { ...deps, understander: new RetitlingUnderstander() });
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { renderSpool: spool, maxResumes: 0 }), { cueProvider, runPipeline: retitled });
+    expect(result.entry?.outcome).toBe("generated");
+    const candidate = JSON.parse(fs.readFileSync(result.file!, "utf8")) as CandidateFile;
+    const docs = fs
+      .readdirSync(path.join(spool, "in"))
+      .map((f) => JSON.parse(fs.readFileSync(path.join(spool, "in", f), "utf8")) as { priority: number; item_id: string; script: string; foray_id: string });
+    docs.sort((x, y) => x.priority - y.priority);
+    expect(docs.length).toBeGreaterThan(1);
+    expect(docs.map((d) => d.priority)).toEqual(narrationIndices(candidate));
+    expect(docs.map((d) => d.item_id)).toEqual(narrationIndices(candidate).map((i) => candidate.items[i]!.id));
+    expect(docs.map((d) => d.script)).toEqual(narrationIndices(candidate).map((i) => candidate.items[i]!.script));
+    for (const d of docs) expect(d.foray_id).toBe(candidate.id);
+    for (const f of fs.readdirSync(path.join(spool, "in"))) expect(fs.readFileSync(path.join(spool, "in", f), "utf8")).not.toContain(PROMPT);
+    /* No worker answered: the render block says so, it does not invent numbers. */
+    expect(result.entry?.delivery?.render).toEqual({ firstRenderedMs: null, narrationSec: 0, renderWallSec: 0, realtimeFactor: null, failed: 0 });
+    /* The candidate itself carries no audio: stamping is GV-71's tool, never the run. */
+    expect(JSON.stringify(candidate)).not.toContain("audio_url");
+  });
+
+  it("without --job-dir the run still reads the render results once at the end: delivery.render is filled", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `else await refreshRender()` branch
+       at the end of generateOneCandidate. With no job sink nothing else ever
+       reads the results, so delivery.render stays all zeros. Ran it — red. */
+    const client = new InstantRenderClient(new Set(["prelude"]));
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { renderSpool: spool, maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: stubPipeline(),
+      renderClient: client
+    });
+    expect(result.entry?.outcome).toBe("generated");
+    expect(fs.existsSync(jobDir)).toBe(false);
+    expect(client.enqueued.length).toBeGreaterThan(1);
+    const render = result.entry?.delivery?.render;
+    expect(render).toMatchObject({ failed: 1, realtimeFactor: 5, narrationSec: 5 * (client.enqueued.length - 1) });
+    expect(render!.narrationSec).toBeGreaterThan(0);
+  });
+
+  it("rendered and uploaded lines reach the job row with audio_url, a failed one stays phone-voice, and delivery.render is filled", async () => {
+    /* MUTATION THAT KILLS THIS: pass no `audio` to snapshotFrom in
+       publishJob. The row's items carry no audio_url and every state reads
+       "pending". Ran it — red. */
+    const seen: JobSnapshot[] = [];
+    const client = new InstantRenderClient(new Set(["prelude"]));
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { renderSpool: spool, jobDir, maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: observed(seen),
+      renderClient: client,
+      newJobId: () => "job-render"
+    });
+    expect(result.entry?.outcome).toBe("generated");
+    const candidate = JSON.parse(fs.readFileSync(result.file!, "utf8")) as CandidateFile;
+    const final = JSON.parse(fs.readFileSync(path.join(jobDir, `${candidate.id}.job.json`), "utf8")) as JobSnapshot;
+    expect(final.status).toBe("complete");
+    expect(JobSnapshotSchema.safeParse(final).success).toBe(true);
+    const narr = narrationIndices(candidate);
+    expect(narr.length).toBe(client.enqueued.length);
+    expect(final.items.length).toBe(candidate.items.length);
+    let failedLines = 0;
+    final.items.forEach((item, i) => {
+      const state = final.itemStates[i]!;
+      if (item.type !== "narration") {
+        expect(state.audio).toBe("pending");
+        return;
+      }
+      const job = client.enqueued.find((j) => j.itemId === state.itemId)!;
+      if (state.itemId === "prelude") {
+        failedLines++;
+        expect(state.audio).toBe("phone-voice");
+        expect(item).not.toHaveProperty("audio_url");
+      } else {
+        expect(state.audio).toBe("rendered");
+        expect((item as { audio_url?: string }).audio_url).toBe(`${URL_BASE}/${job.jobId}.m4a`);
+        expect(state.audioKey).toBe(`n/${job.jobId}.m4a`);
+      }
+    });
+    expect(failedLines).toBe(1);
+    const okLines = narr.length - failedLines;
+    const firstOk = client.enqueued.find((j) => j.itemId !== "prelude")!;
+    const readyAt = result.entry!.delivery!.firstItemReadyMs;
+    expect(readyAt).not.toBeNull();
+    const render = result.entry?.delivery?.render;
+    expect(render).toMatchObject({ narrationSec: 5 * okLines, renderWallSec: okLines, realtimeFactor: 5, failed: 1 });
+    /* The first rendered line: its item's readyAtMs + 250 ms queued + 1 s render. */
+    expect(render?.firstRenderedMs).toBeGreaterThanOrEqual(1250);
+    expect(firstOk.priority).toBeGreaterThan(0);
+  });
+
+  it("await-render holds narration out of the row until its render answers; phone-voice-first serves it at once", async () => {
+    /* MUTATION THAT KILLS THIS: hand snapshotFrom the default policy instead
+       of render.policy. await-render then serves the prelude before any
+       render answered. Ran it — red. */
+    const held: JobSnapshot[] = [];
+    await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { renderSpool: spool, audioPolicy: "await-render", jobDir, maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: observed(held),
+      renderClient: new InstantRenderClient(new Set(), true)
+    });
+    expect(held.length).toBeGreaterThan(0);
+    for (const s of held) {
+      expect(s.items).toEqual([]);
+      expect(s.delivery?.pausedAtIndex).toBe(0);
+    }
+
+    const out2 = path.join(dir, "second");
+    const jobDir2 = path.join(dir, "jobs2");
+    const served: JobSnapshot[] = [];
+    const observe2: typeof runForayPipeline = (request, options, deps = {}) =>
+      stubPipeline()(request, options, {
+        ...deps,
+        onItemReady: async (ev) => {
+          await deps.onItemReady?.(ev);
+          for (const f of fs.readdirSync(jobDir2)) served.push(JSON.parse(fs.readFileSync(path.join(jobDir2, f), "utf8")) as JobSnapshot);
+        }
+      });
+    await generateOneCandidate({ prompt: PROMPT }, baseArgs(out2, { renderSpool: path.join(dir, "spool2"), jobDir: jobDir2, maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: observe2,
+      renderClient: new InstantRenderClient(new Set(), true)
+    });
+    expect(served[0]!.items).toHaveLength(1);
+    expect(served[0]!.itemStates[0]).toMatchObject({ itemId: "prelude", audio: "phone-voice" });
+  });
+
+  it("writes nothing to the spool under --dry-run", async () => {
+    /* MUTATION THAT KILLS THIS: build the tracker without the `!args.dryRun`
+       guard. The dry run queues jobs. Ran it — red. */
+    await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { renderSpool: spool, dryRun: true, maxResumes: 0 }), { cueProvider, runPipeline: stubPipeline() });
+    expect(fs.existsSync(spool)).toBe(false);
   });
 });

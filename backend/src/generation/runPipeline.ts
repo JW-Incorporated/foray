@@ -22,7 +22,8 @@ import { ResearchShapeSchema } from "../types/research";
 import { ForayItemSchema } from "./forayItems";
 import { NarratedBeatSchema } from "../types/narration";
 
-import { understandPrompt } from "./understandPrompt";
+import { understandPrompt, understandPromptFast } from "./understandPrompt";
+import { provisionalTitle } from "./preSpineIntent";
 import { buildResearchShape } from "./researchShape";
 import { buildSpineWithReasks, type SpineReask } from "./buildSpine";
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
@@ -82,12 +83,12 @@ import { createContinuityBuilder } from "./createContinuityBuilder";
 import type { PromptUnderstander } from "./PromptUnderstander";
 import type { ExternalResearchContext, ExternalResearcher } from "./ExternalResearcher";
 import { taxonomyLineage } from "./taxonomyFamily";
-import type { SpineBuilder } from "./SpineBuilder";
+import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
-import type { NarrationWriteStats, WrittenAct } from "./writeNarration";
+import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
 import { loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
@@ -212,6 +213,15 @@ export interface RunPipelineDeps {
    * feeds a `DeliveryTimeline` from it (`report.json`'s `delivery`).
    */
   onItemReady?: (ev: ItemReadyEvent) => void | Promise<void>;
+  /**
+   * GV-73 (W4-10; R1-15): fired when the streamed writer path
+   * (FORAY_WRITER_STREAM, or the fast path, with a writer that streams)
+   * releases a seam early -- checked as its line closed, ahead of its act's
+   * verifier -- with the act's index in the Foray. For the delivery
+   * workstream: a signal, not permission to play (serving waits for the
+   * per-act veracity gate). Never fires on the default path.
+   */
+  onSeamChecked?: (event: SeamCheckedEvent) => void;
   /**
    * GV-33: the wall clock (epoch ms) the pipeline's start, `ttlA1Ms` and every
    * `ItemReadyEvent.readyAtMs` are read from. Defaults to `Date.now`. NOT
@@ -1218,7 +1228,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const understood = await stage<UnderstandPromptResult>(
     "understand",
     (raw) => UnderstandCheckpointSchema.parse(raw) as UnderstandPromptResult,
-    () => understandPrompt(req.prompt, understander, ctx)
+    /* GV-67: with the spine writing the copy (`foldSpineCopy`), §4.1 is
+       safety and clarity only, and the intent is the prompt's keywords. */
+    () => (flags.foldSpineCopy ? understandPromptFast : understandPrompt)(req.prompt, understander, ctx)
   );
   if (understood.outcome === "rejected") {
     return {
@@ -1245,20 +1257,27 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const intent = understood.intent;
 
   /* THE FORAY'S COPY, from the intent alone — hoisted ahead of the topic
-     decision below because a stop there has to name the Foray it refused. */
-  const { title, summary, mintedFrom, clamped: clampedCopy, rewritten: rewrittenCopy, styled: styledCopy, unstyled: unstyledCopy } = forayCopy(intent);
-  for (const what of clampedCopy) {
-    console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — the understander ignored its length instruction (F-64)`);
-  }
-  for (const what of rewrittenCopy) {
-    console.warn(`runPipeline: ${what} used the pipeline's own words and was rewritten — the understander ignored its vocabulary instruction`);
-  }
-  for (const what of styledCopy) {
-    console.warn(`runPipeline: ${what} was put in the title house style (no closing period, a capital first letter)`);
-  }
-  for (const what of unstyledCopy) {
-    console.warn(`runPipeline: ${what} — the understander ignored its sentence-case instruction, and check-forays will warn on the title`);
-  }
+     decision below because a stop there has to name the Foray it refused.
+     GV-67: on the folded path the copy is the spine's, so it is derived after
+     the spine stage (below); a stop before the spine names the Foray by its
+     provisional title, the prompt's first keywords in the house style. */
+  const reportCopy = (copy: ReturnType<typeof forayCopy>, writer: string): void => {
+    for (const what of copy.clamped) {
+      console.warn(`runPipeline: ${what} exceeded the ${MAX_COPY_WORDS}-word copy rule and was clamped — ${writer} ignored its length instruction (F-64)`);
+    }
+    for (const what of copy.rewritten) {
+      console.warn(`runPipeline: ${what} used the pipeline's own words and was rewritten — ${writer} ignored its vocabulary instruction`);
+    }
+    for (const what of copy.styled) {
+      console.warn(`runPipeline: ${what} was put in the title house style (no closing period, a capital first letter)`);
+    }
+    for (const what of copy.unstyled) {
+      console.warn(`runPipeline: ${what} — ${writer} ignored its sentence-case instruction, and check-forays will warn on the title`);
+    }
+  };
+  const intentCopy = flags.foldSpineCopy ? null : forayCopy(intent);
+  if (intentCopy) reportCopy(intentCopy, "the understander");
+  const preSpineTitle = intentCopy ? intentCopy.title : provisionalTitle(req.prompt);
 
   /* THE FORAY'S TOPIC, DECIDED HERE — BEFORE THE RESEARCH MAP AND THE SPINE
      (F-91). It used to be resolved after the spine, from a text that included
@@ -1336,7 +1355,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     if (topicDecision.reason === "no-supply") {
       return {
         outcome: "no-supply",
-        title,
+        title: preSpineTitle,
         reason: noSupplyReason(topicDecision, basis),
         topicDecision,
         stoppedBefore: "spine",
@@ -1369,8 +1388,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         researcher,
         ctx,
         root: options.root,
-        /* F-67: the listener's own words join the topic text. */
-        prompt: req.prompt,
+        /* F-67: the listener's own words join the topic text. GV-67: not on
+           the folded path, where the stage's only use of them (the topic is
+           always passed, so it is the subject-tape probe's query) would bank
+           the prompt verbatim in this checkpoint; the intent's subject and
+           angle already carry the prompt's keywords to that query. */
+        ...(flags.foldSpineCopy ? {} : { prompt: req.prompt }),
         topic,
         /* WS-L (F-63): the same text index and cue provider §4.5 sources with,
            handed to §4.2 so the map carries what the tape SAYS about each
@@ -1395,11 +1418,16 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      the counts in the line itself are read off the banked spine's `seedSource`
      marks and are therefore right either way. */
   let seedFloorReasked = false;
+  /* GV-67: on the folded path the spine call (and its re-asks) is handed the
+     listener's own words, to write the subject, angle and copy from. A copy of
+     the run context, so the prompt reaches no other stage, and it is never
+     banked: the checkpoint holds the spine the call returned. */
+  const spineCtx: SpineBuildContext = flags.foldSpineCopy ? { ...ctx, listenerPrompt: req.prompt } : ctx;
   const spine = await stage(
     "spine",
     (raw) => SpineSchema.parse(raw),
     async () => {
-      const built = await buildSpineWithReasks(intent, researchShape, req.duration, spineBuilder, ctx, {
+      const built = await buildSpineWithReasks(intent, researchShape, req.duration, spineBuilder, spineCtx, {
         ...(options.spineStructuralReasks !== undefined ? { maxStructuralReasks: options.spineStructuralReasks } : {}),
         onReask: (reask) =>
           console.log(
@@ -1412,7 +1440,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
          will use: a resume must not re-decide the seeds, and the seed is what
          decides where the tape comes from. `postSeedSpine.ts` owns both halves;
          the only thing that happens here is the logging. */
-      const seeded = await postSeedWithFloor(built.spine, intent, researchShape, req.duration, spineBuilder, ctx, {
+      const seeded = await postSeedWithFloor(built.spine, intent, researchShape, req.duration, spineBuilder, spineCtx, {
         ...(options.spineSeedFloorReasks !== undefined ? { maxSeedFloorReasks: options.spineSeedFloorReasks } : {}),
         onReask: ({ share, violations }) =>
           console.log(
@@ -1425,6 +1453,21 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     }
   );
   console.log(`  ${summarizeSeedFloor(spine, seedFloorReasked)}`);
+
+  /* GV-67: the folded path's copy, from the spine reply through the same
+     clamp, listener-word and house-style code (no title re-case re-ask; a
+     title still in Title Case is reported in `unstyled`, as today). The id is
+     minted from its `mintedFrom` below, as on the classic path. */
+  const copy =
+    intentCopy ??
+    forayCopy({
+      subject: spine.subject,
+      angle: spine.angle,
+      ...(spine.title !== undefined ? { title: spine.title } : {}),
+      ...(spine.summary !== undefined ? { summary: spine.summary } : {})
+    });
+  if (!intentCopy) reportCopy(copy, "the spine");
+  const { title, summary, mintedFrom } = copy;
 
   /* THE POST-SPINE FALLBACK (F-91). Until F-91 the topic was resolved HERE —
      the first point where both the intent and the frozen spine existed — from
@@ -1515,7 +1558,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      here, the first point after the spine where the Foray has its id (the
      post-spine topic decision above can still stop the run, and spends no
      model call). Nothing is built when no hook was supplied. */
-  const prelude = preludeItem(intent.subject, spine.overview, slots[0]!.id);
+  /* GV-67: the prelude names the SPINE's subject. On a classic run it equals
+     the intent's (every builder copies it); on the folded path the intent's
+     is a keyword list, which must never be spoken. */
+  const prelude = preludeItem(spine.subject, spine.overview, slots[0]!.id);
   let preludeEmitted = false;
   let nextItemIndex = 0;
   const emitItem = async (
@@ -1771,7 +1817,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
            something `finalizeForay` inside `buildPartialCandidate`
            validates with those same gates, so it needs the same
            opening item the final candidate gets. */
-        const itemsWithDisclosure = [preludeItem(intent.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
+        const itemsWithDisclosure = [preludeItem(spine.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
         /* GV-21: per-item readiness beside the items (never on them), the
            prelude classified explicitly as index 0. The verdict it feeds
            (`delivery`) is independent of `validation` and of the refusal
@@ -1939,7 +1985,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
               ...(actFrames?.[i] ? { frames: [actFrames[i]] } : {}),
               /* GV-34 / decision 34: FORAY_SPECIFICS_CHECK reaches the writer,
                  so `enforce` re-asks a seam in a real run (default `report`). */
-              specifics: gates.specifics
+              specifics: gates.specifics,
+              /* GV-73: FORAY_WRITER_STREAM (or the fast path) streams the
+                 writer's reply; early releases reach deps.onSeamChecked with
+                 this act's index (`writeNarration` sees one act, index 0). */
+              ...(flags.writerStream ? { streamSeams: true } : {}),
+              ...(deps.onSeamChecked ? { onSeamChecked: (event: SeamCheckedEvent) => deps.onSeamChecked!({ ...event, actIndex: i }) } : {})
             },
             spine.voice,
             ctx
@@ -2013,7 +2064,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      Foray-level obligation, not an act's content, and stitch has no concept of
      "the whole Foray" to attach it to. Prepending also keeps it out of the
      runtime sum below by construction — it is a spoken marker, not tape. */
-  const items = [preludeItem(intent.subject, spine.overview, slots[0]!.id), ...stitchedItems];
+  const items = [preludeItem(spine.subject, spine.overview, slots[0]!.id), ...stitchedItems];
 
   /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
      it) and before `finalize` runs, so `meta.veracity` rides along on
@@ -2037,6 +2088,15 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     /* GV-61: content pages written with no print document (OQ-04's trade,
        measured). Zero is a real answer: the accumulator was passed. */
     printEvidenceSkipped: narrationStats.printSkipped ?? 0,
+    /* GV-73: the streamed path's early releases, only when it ran -- the
+       default run's report is unchanged. */
+    ...(narrationStats.seamsReleasedEarly !== undefined
+      ? {
+          seamsReleasedEarly: narrationStats.seamsReleasedEarly,
+          releasedThenRefused: narrationStats.releasedThenRefused ?? 0,
+          ...(narrationStats.firstSeamCheckedMs !== undefined ? { firstSeamCheckedMs: narrationStats.firstSeamCheckedMs } : {})
+        }
+      : {}),
     pipelineTokens: pipelineTokensOfRun(),
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),

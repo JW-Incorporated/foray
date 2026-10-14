@@ -1,6 +1,8 @@
 import { z, type ZodTypeAny } from "zod";
 import type { ActWriteResult } from "./NarrationWriterBuilder";
 import type { ActVerifyResult } from "./NarrationVerifierBuilder";
+import type { IntentUnderstanding } from "../types/generation";
+import type { DurationTier, Spine } from "../types/spine";
 
 /**
  * Every JSON reply schema the generation builders parse a model's answer
@@ -68,7 +70,100 @@ export const VoiceSchema = z.object({
   sentenceRhythm: z.string(),
   narratorPresence: z.string()
 });
-export const RawSpineSchema = z.object({ overview: z.string(), voice: VoiceSchema, acts: z.array(SpineActSchema) });
+/* GV-67 (W4-03): on the folded path the spine reply also carries the listener
+   copy the understander used to write (subject, angle, priorKnowledge,
+   disappointment, answersDisappointment, title, summary), asked for first.
+   Optional, so a classic reply (and every reply recorded before them) parses
+   exactly as before; `spineFromReply` reads them only on a folded call. */
+export const RawSpineSchema = z.object({
+  subject: z.string().optional(),
+  angle: z.string().optional(),
+  priorKnowledge: z.string().optional(),
+  disappointment: z.string().optional(),
+  answersDisappointment: z.string().optional(),
+  title: z.string().optional(),
+  summary: z.string().optional(),
+  overview: z.string(),
+  voice: VoiceSchema,
+  acts: z.array(SpineActSchema)
+});
+
+/** The copy fields a folded spine reply carries, in the order the prompt asks
+ * for them (prompts/spine.ts) and the re-ask's assistant turn repeats them. */
+export const SPINE_COPY_FIELDS = ["subject", "angle", "priorKnowledge", "disappointment", "answersDisappointment", "title", "summary"] as const;
+type SpineCopyField = (typeof SPINE_COPY_FIELDS)[number];
+
+/** The copy fields a folded reply carries onto the Spine only when it gave
+ * them: every copy field but subject and angle, which every Spine has. */
+const SPINE_CARRIED_COPY_FIELDS = SPINE_COPY_FIELDS.filter(
+  (field): field is Exclude<SpineCopyField, "subject" | "angle"> => field !== "subject" && field !== "angle"
+);
+
+/**
+ * GV-67: the copy fields a folded reply MUST carry, non-blank. On the folded
+ * path no understander wrote a subject, angle, title or summary, and the only
+ * thing left to fall back to is the pre-spine keyword list, which must never
+ * be spoken (the prelude names the subject) or published (the title and
+ * summary; forayCopy's fallback title is `subject: angle`). So a reply that
+ * leaves one out or blank is a structural violation: `buildSpine.ts` re-asks
+ * it with F-86's re-ask, naming the fields, and fails the stage when it is
+ * still missing (`spineStructure.ts` foldedCopyIssues).
+ */
+export const SPINE_REQUIRED_COPY_FIELDS = ["subject", "angle", "title", "summary"] as const satisfies readonly SpineCopyField[];
+
+/**
+ * GV-67: the spine builders' one post-parse step, shared by
+ * AnthropicSpineBuilder and its Chat twin so both hand the pipeline the same
+ * Spine for the same reply.
+ *
+ * Classic (`folded` false): exactly the Spine the builders always returned,
+ * subject and angle from the intent, no copy fields, whatever the reply said.
+ *
+ * Folded: subject and angle come from the reply and ONLY from it (the intent
+ * is a keyword list then, never to be spoken): one the reply left out or
+ * blank is "" here, which the structural gate refuses and re-asks
+ * (SPINE_REQUIRED_COPY_FIELDS). priorKnowledge, disappointment,
+ * answersDisappointment, title and summary are carried when the reply gave
+ * them non-blank, so a spine that passes the gate always parses under
+ * SpineSchema.
+ */
+export function spineFromReply(
+  raw: z.infer<typeof RawSpineSchema>,
+  intent: IntentUnderstanding,
+  duration: DurationTier,
+  folded: boolean
+): Spine {
+  if (!folded) {
+    return {
+      subject: intent.subject,
+      angle: intent.angle,
+      overview: raw.overview,
+      duration,
+      generatedAt: new Date().toISOString(),
+      voice: raw.voice,
+      acts: raw.acts
+    };
+  }
+  const said = (text: string | undefined): string | undefined => {
+    const trimmed = text?.trim();
+    return trimmed ? trimmed : undefined;
+  };
+  const copy: Partial<Pick<Spine, "priorKnowledge" | "disappointment" | "answersDisappointment" | "title" | "summary">> = {};
+  for (const field of SPINE_CARRIED_COPY_FIELDS) {
+    const value = said(raw[field]);
+    if (value !== undefined) copy[field] = value;
+  }
+  return {
+    subject: said(raw.subject) ?? "",
+    angle: said(raw.angle) ?? "",
+    overview: raw.overview,
+    duration,
+    generatedAt: new Date().toISOString(),
+    voice: raw.voice,
+    acts: raw.acts,
+    ...copy
+  };
+}
 
 /* ---------- act deepening (AnthropicDeepenActBuilder) ---------- */
 

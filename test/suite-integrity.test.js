@@ -1613,6 +1613,12 @@ const FLOORS = {
      pass, a band nobody supplied read as a pass, an adopt on an unfrozen
      corpus, a correction that rewrites the row a PR cited, a stale table. */
   "tools/generation-bench/swap-ledger.test.mjs": 27, // GV-35: new -- decideSwap adopt/hold/reject/measured, pairwise win/tie/loss + boundary, axis drop > 0.5, MQ-01+MQ-04, MQ-21 allowance, score.mjs cells unwrapped + stray cell throws, unbanded MQ-02/05 unmeasured, timing slack + resumed/upstream skipped, absent one arm vs both, listened minimum, unfrozen, ledger row refusals, append + supersede, byte-stable table, committed ledger/stack/doc in sync, no network
+  /* GV-75 (W7-04 + W2-16; R2-21, GP-27): the stage-swap experiment runner.
+     Each test is one way a swap could be decided on the wrong evidence: an arm
+     that falls back to Claude or to a backend default, an arm B that silently
+     ran arm A's stack, a seeded stage timed as if it ran, a blind label mapped
+     to the wrong arm, a card from another experiment counted. */
+  "tools/generation-bench/swap-experiment.test.mjs": 31, // GV-75: new -- backend stage list/lanes/checkpoint order parsed (never counted by hand) + parse refusals + a new backend stage must be set, plan: mode local/every FORAY_STAGE_* explicit/no legacy opt-in, snapshot per committed spec, anthropic/claude/mode/endpoint/key/laneless refusals, unassigned stage, bench flag, exactly-one-stage and lever rules, rerunFrom vs first banked stage, adopted = floor + adopted-stack.json (unmapped lever refused, exemplars written as the off|on enum, "1" refused); run: injected spawn with stripped inherited env, an inherited lever flag never reaches an arm that leaves it unset, --dry-run spawns nothing, anthropic refused before any spawn, failed A stops B, measure runs B only; collect: pairs by prompt, unseeded B dropped, stageAssignments/levers (arm A on/off as planned)/anthropicCalls/corpus refusals, unfrozen, timing from the changed stage with resumed stages never compared, packs for listened prompts only with no label mapping; decide: adopt/hold/reject/measured rows + table + stack diff, label-to-arm mapping, foreign pack and mismatched key refusals, commit required, CLI; no network/relay
   /* GV-45 (W1-14, R2-02, GP-28): golden set v1, the fixed benchmark every
      later generation change is judged on. Each test is one way it could move
      or lean without anyone noticing: a stratum over-filled, a listened prompt
@@ -2396,6 +2402,7 @@ const FLOORS = {
   "tools/transcribe/decode-compare.test.mjs": 31,
   "tools/transcribe/ad-inflation.test.mjs": 49, // DAI-01: the ranged-GET trust rule (HUMAN-ACTIONS #24); 46 -> 49
   "tools/transcribe/anchor-match.test.mjs": 10, // DAI-11: new -- fuzzy anchor location over ASR cues (G-41 locate step, pure half)
+  "tools/transcribe/anchor-resolve-report.test.mjs": 9, // GV-78: new -- offline anchor-resolution report per Foray (simulated ad shift) + pasted phone-record clip rows
   /* The transcription work order. Zero slack, because what it guards is not
      logic but a PROMISE MADE TO A MACHINE THAT IS ALREADY RUNNING: a worker box
      consumes data/transcription-queue.json in rank order, so any change that
@@ -2540,7 +2547,7 @@ const BACKEND_FLOORS = {
   /* Raised from 8 by WS-L (F-63): what actually reaches the model — the quoted
      transcript windows and the one seed rule when the research map has them,
      neither when it does not, and the seed the reply carries back. */
-  "test/AnthropicSpineBuilder.test.ts": 18, // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
+  "test/AnthropicSpineBuilder.test.ts": 21, // GV-67 (#1286): +1 -- the folded path on the Anthropic builder: the listener's words with the folded stable half in the one user turn, subject/angle/title/summary from the reply, a folded re-ask's assistant turn repeats the copy first; 20 on disk -> 21 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 11 -> 18 (17 on disk before it)
   "test/archetypes.test.ts": 7,
   "test/budgetGuard.test.ts": 12, // round-3 L6 (2026-09-25): backend-rest-13: check-and-record serialised under concurrency; 6 -> 11; 11 -> 13 // CH2-04: per-process pins (N calls stop at the cap; a fresh guard starts at 0); 13 -> 12 // CH2-04: tier cutoff deleted (tier2/tier0 cases removed, exact), "every operation gets the full run cap" added
   "test/buildCorpusTerms.test.ts": 4, // PKG-26 (docs/roadmap/corpus.md §3): corpus df table + per-episode top-k tf-idf terms — rare beats common, alpha ties, k cap, df drops singletons
@@ -2625,6 +2632,8 @@ const BACKEND_FLOORS = {
      in that order, with no retry loop on rejection and never more than one
      clarify round. */
   "test/understandPrompt.test.ts": 11, // GV-49 (#1286): +4 -- understandPrompt with the Jev clarity understander injected: a Jev 'clear' goes to intent with no text clarity call, a Jev yes carries the fallback's question and readings, an unsafe prompt never reaches Jev, and the default understander adds no clarityDecidedBy; 7 -> 11
+  "test/preSpineIntent.test.ts": 15, // GV-67 (#1286): new -- the pre-spine intent from the prompt's distinct sourcing keywords (order, 12 cap, sentinels, not verbatim, null with no keyword), the local Unicode-aware tokenizer (ALL-CAPS "AI" kept, "Björk" and "Gödel" whole, stopwords dropped), provisionalTitle (8 keywords, house style), and understandPromptFast (only assessClarity; a no-keyword prompt falls back to extractIntent; safety first; the same clarification and clarityDecidedBy)
+  "test/fastPathCopy.test.ts": 14, // GV-67 (#1286): new -- with foldSpineCopy no extractIntent call, the spine call gets the listener's words and the keyword intent, title/summary/id come from the spine through forayCopy, the stub's folded copy, the prelude names spine.subject at all three call sites, the prompt is in no banked value, outcome or candidate, a folded resume keeps the spine's title, a reply still missing copy fails the spine stage, the pre-spine no-supply stop carries provisionalTitle, a post-spine unresolved-topic stop carries the spine's title, and ChatSpineBuilder's folded prompt, mapping, missing-copy re-ask and re-ask turn
   /* §4.2's catalogue lookup: concept matching against the semantic index and
     tape-availability counting against discover.json/item-tags.json, both
     proven against a small deterministic fixture catalogue (not the real
@@ -2660,7 +2669,7 @@ const BACKEND_FLOORS = {
      carry stops `no-supply` with the spine builder never called; run 8's
      prompt proceeds under the engineering candidate that carries *Being an
      Engineer*; a resolution with supply is left alone and recorded `best`. */
-  "test/runPipeline.test.ts": 55, // GV-61 (generation v2): the evidence stage retrieves through the injected deps.researcher, ctx.topicNodeIds is the resolved topic's lineage, absent while the topic is unresolved; 52 -> 55 // GV-38 (generation v2, decision 34): the run's GateConfig.specifics reaches writeAct -- FORAY_SPECIFICS_CHECK=enforce (env, or options.gates) re-asks a seam stating an unsourced year in a real run, report leaves the rounds alone; 50 -> 52 // GV-33 (generation v2): onItemReady alone fires once per item in order with no partial finalize, an injected wallClockMs pins readyAtMs and the lead without moving the id, one act ReadyEvent per act concatenating to the items, partialOk from the partial, no event for a resumed act, emitPreludeEarly, an unservable act pauses the timeline; 43 -> 50 // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
+  "test/runPipeline.test.ts": 58, // GV-67 (generation v2): with foldSpineCopy off the prelude is byte-identical to the understander-subject one, the classic spine carries no copy field and its title and id come from the intent, and a spine banked without the new fields parses and resumes to the same Foray; 55 -> 58 // GV-61 (generation v2): the evidence stage retrieves through the injected deps.researcher, ctx.topicNodeIds is the resolved topic's lineage, absent while the topic is unresolved; 52 -> 55 // GV-38 (generation v2, decision 34): the run's GateConfig.specifics reaches writeAct -- FORAY_SPECIFICS_CHECK=enforce (env, or options.gates) re-asks a seam stating an unsourced year in a real run, report leaves the rounds alone; 50 -> 52 // GV-33 (generation v2): onItemReady alone fires once per item in order with no partial finalize, an injected wallClockMs pins readyAtMs and the lead without moving the id, one act ReadyEvent per act concatenating to the items, partialOk from the partial, no event for a resumed act, emitPreludeEarly, an unservable act pauses the timeline; 43 -> 50 // GV-26 (generation v2): the generated outcome carries evaluateVeracityGate's verdict (clean stub passes, refusing verifier fails), and meta.veracity carries MQ-09 tapeYield and MQ-11 beatCoverage; 41 -> 43 // GV-14 review: a malformed FORAY_OUTPUT_BUDGETS rejects the run with FlagValueError before any builder is called; 40 -> 41 // GV-21 (generation v2): every partial carries delivery aligned 1:1 with its items; a verifier refusing act 0's seams makes act 0 unservable without touching validation or the abort policy; 38 -> 40 // GV-07 (generation v2): per-stage CallRecords from test-local createMessage-calling builders, and pipelineTokens from the run's own log (two concurrent runs, one run alone); 35 -> 38 // GV-01 (generation v2): RunLog spans per stage with stage/act/tier on the call context, and a failed span from a throwing stage; 33 -> 35 // title house style (2026-09-24, qa 146): forayCopy styles and reports; the pipeline titles in the style and mints the id from the pre-style title; 31 -> 33 // L8 review (2026-09-23): INTERNAL_VOCABULARY reaches the generator — prompt rule + toListenerWords scrub in forayCopy/slotsFromSpine; 16 -> 31 (28 on disk before it)
   /* §4.3's spine types: SpineSchema (strict, no per-act voice field),
      isClaimShaped (claim- vs topic-shaped beats), and validateSpine
      (§3's shape budgets with ±15% tolerance, the ~30% exploration
@@ -3025,7 +3034,7 @@ const BACKEND_FLOORS = {
   /* F-98: deterministic post-seeding, the seed floor and its one re-ask —
      the scorer and its floor, the M4 ledger an assigned seed faces, the
      summary line, and the re-ask that is kept only when it is better. */
-  "test/postSeedSpine.test.ts": 15,
+  "test/postSeedSpine.test.ts": 16, // GV-67 (#1286): +1 -- on a folded call a seed-floor re-ask reply that dropped a required copy field is refused and the first spine kept; 15 -> 16
   /* G-25: spine seeding ledger (M4-derived caps) and seed order. */
   /* RAISED 5 -> 6 by F-96: the seeding line's merged / pool-short / seedLost
      counts. */
@@ -3059,7 +3068,7 @@ const BACKEND_FLOORS = {
      private status read path. */
   /* Requirements §8.10 raised this from 4: the driver passes the checkpoint
      key as `sessionId`, which is the only thing that arms EPISODE_BUDGET_USD. */
-  "test/generateForays.test.ts": 34, // GV-68 (generation v2): a clean stub batch writes anthropicCalls 0 at the top and on every row, a batch that sent an Anthropic request exits non-zero after writing anthropicCalls; 32 -> 34 // GV-55: the row carries stageAssignments, --stage-provider reaches the pipeline routing and the row, store and session fingerprints equal under a local routing and different between routings, a local run never resumes a stub-banked spine, report.json routing + generationMode; 27 -> 32 // GV-44 (generation v2): --job-dir parsed and absent without it, a stub run writes <forayId>.job.json with a strictly increasing seq ending complete, the raw prompt in no job file, a resumed attempt that publishes nothing closes the carried row, nothing under --dry-run; 22 -> 27 // GV-39 (generation v2): readPromptSet hashes the file bytes it parsed, a non-dry report carries prompts {file, sha256, count} and corpus.fingerprint when bodies exist, corpus stays null with no corpus directory; 19 -> 22 // GV-33 (generation v2): the report row's delivery block for a fresh run (lead at 1x and 1.5x), resumed:true with no lead, one event per item from the real stub pipeline, no delivery on a non-generated row; 15 -> 19 // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
+  "test/generateForays.test.ts": 41, // GV-74 review: without --job-dir the run still reads the render results once at the end, so delivery.render is filled; 40 -> 41 // GV-74 (generation v2): --render-spool/--audio-policy parsed, absent adds nothing, a bad or lone policy refused; SpoolRenderClient writes foray-render-job/1 files into in/ and reads back only its own done records; a stub run queues one job per narration item at priority = item index with no prompt in any job; rendered+uploaded lines reach the job row with audio_url, a failed one stays phone-voice, delivery.render filled; await-render holds the row while phone-voice-first serves; nothing under --dry-run; 34 -> 40 // GV-68 (generation v2): a clean stub batch writes anthropicCalls 0 at the top and on every row, a batch that sent an Anthropic request exits non-zero after writing anthropicCalls; 32 -> 34 // GV-55: the row carries stageAssignments, --stage-provider reaches the pipeline routing and the row, store and session fingerprints equal under a local routing and different between routings, a local run never resumes a stub-banked spine, report.json routing + generationMode; 27 -> 32 // GV-44 (generation v2): --job-dir parsed and absent without it, a stub run writes <forayId>.job.json with a strictly increasing seq ending complete, the raw prompt in no job file, a resumed attempt that publishes nothing closes the carried row, nothing under --dry-run; 22 -> 27 // GV-39 (generation v2): readPromptSet hashes the file bytes it parsed, a non-dry report carries prompts {file, sha256, count} and corpus.fingerprint when bodies exist, corpus stays null with no corpus directory; 19 -> 22 // GV-33 (generation v2): the report row's delivery block for a fresh run (lead at 1x and 1.5x), resumed:true with no lead, one event per item from the real stub pipeline, no delivery on a non-generated row; 15 -> 19 // GV-26 (generation v2): report row gate equals evaluateVeracityGate(veracity), publishable needs validation AND gate, GATE FAIL on the run line, no verdict on a non-generated row, batch summary counts publishable rows; 10 -> 15 // GV-15: --fast-path, report row flags/gates, checkpoint variant equal at both fingerprint sites, flag-on resume and no cross-mode resume; 5 -> 10
   "test/generationStatus.test.ts": 9, // GV-44: readJobSnapshot refuses ids failing the regex (../x), refuses another author's job, reads exactly <forayId>.job.json and never an unvalidated document; 6 -> 9 // GV-21: a stored partial is served only as its servable prefix; one without delivery is served whole; 4 -> 6
   "test/partialCandidate.test.ts": 11, // GV-21: delivery attached with items unchanged, the item-count units pinned, no delivery without provenance, misaligned and malformed fallbacks; 6 -> 11 (7 on disk before)
   /* F-79: a partial candidate is judged on the PROJECTED whole for the
@@ -3271,7 +3280,7 @@ const BACKEND_FLOORS = {
      sentence quoted; the verifier re-checks only what changed; F-88's ground
      reaches the act; the validator's zero-source rules are act-scoped.
      One named mutation per test. */
-  "test/actNarration.test.ts": 63, // GV-38 (generation v2): the ACT FRAME block -- an unframed prompt pinned byte-identical by sha256, every frame field before the layout, act 0's overview with no previous-act rule, and writeActNarration sending the frame on every round; 59 -> 63 // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
+  "test/actNarration.test.ts": 64, // GV-73 (generation v2): introOnlyFirstSeam moves s0's beats past its clip only when s0 introduces one and a seam follows it, every beat in exactly one seam; 63 -> 64 // GV-38 (generation v2): the ACT FRAME block -- an unframed prompt pinned byte-identical by sha256, every frame field before the layout, act 0's overview with no previous-act rule, and writeActNarration sending the frame on every round; 59 -> 63 // GV-34 (generation v2): FORAY_SPECIFICS_CHECK enforce re-asks a seam stating a year no act source carries, passes it when a clip window says it, and report leaves rounds and text unchanged; 56 -> 59 // GV-07 (generation v2): the writer and verifier run under their round and role; 55 -> 56 // CH2-07 (B1-09): every MODE_CHAR_BANDS band and the 17 chars/s rate pinned to check-narration.mjs; 54 -> 55
   /* Generator vocabulary (2026-09-24). Wyatt, on the audit's persona 65 (the
      narrator says "this act", "Act one", "two acts back" aloud): "Accept the
      ones that are currently there; update our foray generation scripting to
@@ -3371,6 +3380,17 @@ const BACKEND_FLOORS = {
      resumed process, a targeted close of the carried row). Offline,
      hand-built fixtures. */
   "test/jobSink.test.ts": 14,
+  /* GV-74 (docs/roadmap/generation-v2.md, #1286; from W6-07): the backend
+     render stage -- jobs from item-ready events in item-index order (narration
+     only, servable only, never twice, id-safe content-hashed ids), the audio
+     state (failed or un-uploaded reads phone-voice, only a confirmed
+     public_url reads rendered, no result reads pending only under
+     await-render), the snapshot fold (GV-44's row unchanged without results,
+     a failed line still served without audio_url, await-render holding the
+     prefix, audio_url only from a done record's http(s) public_url, the
+     widened strict schema) and delivery.render from fake results. Offline:
+     a fake client and a fake clock. */
+  "test/narrationRender.test.ts": 14, // GV-74 review: a resumed attempt that rewrites a line never serves the old line's render (no audio_url; await-render waits for the new one); 13 -> 14
   /* GV-59 (docs/roadmap/generation-v2.md, #1286; from W6-18; D9): the
      Supabase job sink against a fake PostgREST -- one guarded PATCH per
      snapshot with seq rising, no prompt in any body, a stale publish and a
@@ -3471,6 +3491,16 @@ const BACKEND_FLOORS = {
      collectActStream (equals writeAct, one budget record, throws on a
      missing or early 'end'). Pure; offline. One named mutation per test. */
   "test/seamStream.test.ts": 9,
+  /* GV-73 (docs/roadmap/generation-v2.md, W4-10, #1286): the streamed act
+     writer -- s0 released on code checks before the last seam arrives,
+     streamed and one-shot acts equal, a released seam frozen in later
+     rounds and counted when refused, verifySeam releasing a claim-bearing
+     seam, beats handed on from a released seam, onSeamChecked act indexes,
+     moved beats placed after the clip, a token-cap cut and a stall keeping
+     finished seams and re-asking only the rest, the idle (not whole-stream)
+     bound, the end-event contract, and the report fields only when
+     streamed. Offline; fake clock or scripted streams. */
+  "test/actStreaming.test.ts": 15,
   /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
      verifier -- seamSentences (intro, question, imperative, statement),
      per-statement support with the specifics check on the same texts (an

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { AnthropicSpineBuilder, buildSpinePrompt } from "../src/generation/AnthropicSpineBuilder";
-import { buildSpinePromptParts } from "../src/generation/prompts/spine";
+import { buildSpinePromptParts, spineReplyText } from "../src/generation/prompts/spine";
+import { SPINE_COPY_FIELDS } from "../src/generation/replySchemas";
 import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "../src/generation/spineSeeding";
 import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
@@ -365,5 +366,75 @@ describe("AnthropicSpineBuilder — WS-L: the spine prompt sees the tape (F-63)"
       expect(prompt.indexOf(`Every act must carry at least ${SPINE_MIN_SEEDED_BEATS_PER_ACT} beats`)).toBeGreaterThan(window);
       expect(prompt.indexOf("Duration tier: medium.")).toBeGreaterThan(prompt.indexOf("the beat seeded from the earlier startSec comes first"));
     });
+  });
+});
+
+/* GV-67 (W4-03): the folded path on the Anthropic builder. Same fake client,
+   no network: the folded prompt goes out as the one user turn, the copy comes
+   back from the reply, and a folded re-ask repeats the copy in its assistant
+   turn. The Chat twin has the same tests in fastPathCopy.test.ts. */
+describe("AnthropicSpineBuilder — GV-67: the folded path (listenerPrompt set)", () => {
+  const LISTENER = "Tell me how the Ford Motor Company ended up selling charcoal, of all things!";
+  const intent: IntentUnderstanding = {
+    subject: "ford motor company ended selling charcoal",
+    angle: "ford motor company ended selling charcoal",
+    priorKnowledge: "not yet known: decided by the spine",
+    disappointment: "not yet known: decided by the spine"
+  };
+  const researchShape: ResearchShape = {
+    subject: intent.subject,
+    angle: intent.angle,
+    generatedAt: "2026-10-13T00:00:00.000Z",
+    subtopics: [],
+    nonObviousAngle: null,
+    externalGapsResearched: []
+  };
+  const copy = {
+    subject: "Ford's charcoal briquettes",
+    angle: "a waste-disposal scheme that became a cookout staple",
+    priorKnowledge: "knows Kingsford as a grilling brand",
+    disappointment: "a brand history with no Ford in it",
+    answersDisappointment: "Every act follows the sawdust from the Ford plant.",
+    title: "How Ford's sawdust became your charcoal",
+    summary: "Why a car maker's scrap pile ended up in every backyard grill."
+  };
+  const plan = {
+    overview: "We follow the sawdust from the plant floor to the backyard, told by the people who were there.",
+    voice: { style: "s", register: "r", sentenceRhythm: "sr", narratorPresence: "np" },
+    acts: [{ title: "Act 1", thesis: "t", startState: "s", endState: "e", slots: [{ title: "slot", beats: [{ claim: "Ford sold charcoal.", exploration: false }] }] }]
+  };
+  const guard = () => new BudgetGuard(new InMemoryCostEventSink(), 100);
+
+  it("sends the listener's words with the folded stable half, takes subject, angle, title and summary from the reply, and a folded re-ask repeats the copy first", async () => {
+    /* MUTATION THAT KILLS THIS: drop ctx.listenerPrompt from the builder's
+       buildSpinePrompt call, or pass `folded` false to spineFromReply or to
+       spineConversation. Ran each: red. */
+    const { client, create } = makeFakeAnthropicClient([textBlock(JSON.stringify({ ...copy, ...plan }))]);
+    const spine = await new AnthropicSpineBuilder(guard(), client).buildSpine(intent, researchShape, "short", { userId: "u1", listenerPrompt: LISTENER });
+
+    const messages = create.mock.calls[0]![0].messages;
+    expect(messages).toHaveLength(1);
+    const parts = buildSpinePromptParts(intent, researchShape, "short", LISTENER);
+    expect(messages[0]).toEqual({ role: "user", content: `${parts.stable}\n\n${parts.foray}` });
+    const user = String(messages[0].content);
+    expect(user).toContain(`"${LISTENER}"`);
+    expect(user.startsWith("A listener's own request is quoted below.")).toBe(true);
+    expect(user).not.toContain(buildSpinePromptParts(intent, researchShape, "short").stable);
+    expect(user).not.toContain("not yet known");
+
+    expect(spine.subject).toBe(copy.subject);
+    expect(spine.angle).toBe(copy.angle);
+    expect(spine.title).toBe(copy.title);
+    expect(spine.summary).toBe(copy.summary);
+    expect(spine).toMatchObject(copy);
+
+    /* The re-ask: the refused reply, copy first, as the assistant's turn. */
+    const reask = makeFakeAnthropicClient([textBlock(JSON.stringify({ ...copy, ...plan }))]);
+    const revision = { previous: spine, violations: ["act 1: no endState"], attempt: 1 };
+    await new AnthropicSpineBuilder(guard(), reask.client).buildSpine(intent, researchShape, "short", { userId: "u1", listenerPrompt: LISTENER, revision });
+    const sent = reask.create.mock.calls[0]![0].messages;
+    expect(sent).toHaveLength(3);
+    expect(sent[1]).toEqual({ role: "assistant", content: spineReplyText(spine, true) });
+    expect(Object.keys(JSON.parse(String(sent[1].content))).slice(0, 7)).toEqual([...SPINE_COPY_FIELDS]);
   });
 });
