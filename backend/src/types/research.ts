@@ -69,7 +69,13 @@ export const ResearchTapeWindowSchema = z.object({
   /** The window's idf-weighted overlap with the subtopic's terms
    * (`selectTapeWindow`'s own score). Comparable within one subtopic's list,
    * which is all the ranking it is used for. */
-  score: z.number()
+  score: z.number(),
+  /** GV-87: the archive row's `show_id`, the key the per-show quota
+   * (`FORAY_RESEARCH_SHOW_QUOTA`) counts by. Set only when the quota is on, so
+   * the default map is unchanged; optional, so a checkpoint written without it
+   * still parses. In the schema rather than added after it because zod strips
+   * unknown keys, and a checkpoint reload would drop it. */
+  showId: z.string().min(1).optional()
 });
 export type ResearchTapeWindow = z.infer<typeof ResearchTapeWindowSchema>;
 
@@ -130,7 +136,14 @@ export const SubtopicCandidateSchema = z.object({
    * Defaulted to 0 like every other field added to a checkpointed schema: a
    * research-shape checkpoint written before #703 still parses.
    */
-  tapeEpisodesMatched: z.number().int().min(0).optional()
+  tapeEpisodesMatched: z.number().int().min(0).optional(),
+  /**
+   * GV-87: the shows `tapeWindows` quote, in the order their best window
+   * appears, for the spine's soft variety line. Set only when the per-show
+   * quota (`FORAY_RESEARCH_SHOW_QUOTA`) is on; optional so a checkpoint written
+   * without it still parses, and in the schema so a reload keeps it.
+   */
+  offeredShows: z.array(z.string()).optional()
 });
 export type SubtopicCandidate = z.infer<typeof SubtopicCandidateSchema>;
 

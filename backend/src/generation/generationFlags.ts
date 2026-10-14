@@ -133,3 +133,25 @@ const directoryParser: FlagParser<string> = {
 export function dossierDir(source: FlagSource = process.env): string {
   return readFlag(DOSSIER_DIR_ENV, directoryParser, DEFAULT_DOSSIER_DIR, source);
 }
+
+/** GV-87 (W3-13, QK-21): the per-show quota on a research-map subtopic's
+ * tape windows (`researchShape.ts`). */
+export const RESEARCH_SHOW_QUOTA_ENV = "FORAY_RESEARCH_SHOW_QUOTA";
+
+/** A share of a subtopic's windows: a number in (0, 1]. */
+const showQuotaParser: FlagParser<number> = {
+  parse: (raw) => {
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 && value <= 1 ? value : undefined;
+  },
+  expected: "a number in (0, 1]"
+};
+
+/** GV-87: `FORAY_RESEARCH_SHOW_QUOTA=<share>` caps any one show at
+ * ceil(share * 6) of a subtopic's six windows, so the spine is offered tape
+ * from two or three shows when the archive has them. Unset gives `undefined`:
+ * off, today's map byte for byte. 0, a negative, a value over 1 or a
+ * non-number throws naming the variable. */
+export function researchShowQuota(source: FlagSource = process.env): number | undefined {
+  return readFlag<number | undefined>(RESEARCH_SHOW_QUOTA_ENV, showQuotaParser, undefined, source);
+}
