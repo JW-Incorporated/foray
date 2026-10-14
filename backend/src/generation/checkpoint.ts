@@ -225,8 +225,24 @@ export function checkpointRunVariant(
  * take its topic from the spine, so a rerun from the spine must drop the
  * identity too. `test/checkpointFork.test.ts` scans `runPipeline.ts` and
  * fails when it banks a key whose stage is not listed here.
+ *
+ * `clip-scores` (GV-79, banked only with FORAY_CLIP_JUDGE on) sits right
+ * after `source`: it is built from the sourced clips and the spine alone, so
+ * a rerun from `source` or earlier rebuilds it and a rerun from `narrate`
+ * keeps it.
  */
-export const CHECKPOINT_STAGE_ORDER = ["understand", "topic", "research-shape", "spine", "identity", "deepen", "source", "narrate", "stitch"] as const;
+export const CHECKPOINT_STAGE_ORDER = [
+  "understand",
+  "topic",
+  "research-shape",
+  "spine",
+  "identity",
+  "deepen",
+  "source",
+  "clip-scores",
+  "narrate",
+  "stitch"
+] as const;
 export type CheckpointStage = (typeof CHECKPOINT_STAGE_ORDER)[number];
 
 export function isCheckpointStage(value: string): value is CheckpointStage {

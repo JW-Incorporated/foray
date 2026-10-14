@@ -10,14 +10,21 @@ import {
 } from "../types/generation";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import { currentRunLog, withCallContext, type StageStatus } from "./runLog";
-import { BudgetStopError, EpisodeBudgetExceededError, findBudgetError } from "../cost/budgetGuard";
+import { BudgetStopError, EpisodeBudgetExceededError, defaultBudgetGuard, findBudgetError } from "../cost/budgetGuard";
 import { CheckpointSession, checkpointFingerprint, checkpointRunVariant, type CheckpointStore } from "./checkpoint";
 import { resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
 import { resolveRouting, type RoutingTable } from "../config/stageRouting";
 import { resolveGateConfig, type GateConfig } from "./gateConfig";
 import { outputBudgetMode } from "../config/outputBudgets";
 import { DeepenedActSchema, SpineSchema } from "../types/spine";
-import { NewSegmentSchema, SourcedActSchema, TapeBoundarySchema, TapePointerSchema, TranscriptionQueueCandidateSchema } from "../types/tapeSourcing";
+import {
+  ClipScoreOutcomeSchema,
+  NewSegmentSchema,
+  SourcedActSchema,
+  TapeBoundarySchema,
+  TapePointerSchema,
+  TranscriptionQueueCandidateSchema
+} from "../types/tapeSourcing";
 import { ResearchShapeSchema } from "../types/research";
 import { ForayItemSchema } from "./forayItems";
 import { NarratedBeatSchema } from "../types/narration";
@@ -35,7 +42,7 @@ import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBefor
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
-import { loadCatalogueData } from "./catalogueLookup";
+import { loadCatalogueData, type CatalogueData } from "./catalogueLookup";
 import { ForayStitcher } from "./stitchForay";
 import {
   finalizeForay,
@@ -68,6 +75,9 @@ import { disclosureTemplate, preludeTemplate } from "../types/narration";
 import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 import { resetUsageTracking, getUsageTotals } from "./usageTracking";
 import { buildVeracityMetrics, computeActVeracity, evaluateVeracityGate, type ActVeracity, type VeracityGateResult } from "./veracityMetrics";
+import { clipLevelFor, createClipJudge, subjectSentenceFor, type ClipJudge } from "./clipJudge";
+import { applyClipScores, scoreSourcedClips, type ClipScoreRecord } from "./scoreClips";
+import { createJevClient } from "./jevClient";
 import { assessAct, DEFAULT_READINESS_POLICY, itemKeyOf, preludeProvenance, type ItemProvenance } from "./itemReadiness";
 import { emitActReady, emitItemReady, readinessNowMs } from "./readiness";
 import type { ItemReadyEvent } from "./deliveryTimeline";
@@ -89,7 +99,7 @@ import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder } f
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
-import { loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
+import { NullTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
 import type { Spine } from "../types/spine";
@@ -140,6 +150,18 @@ export interface RunPipelineDeps {
   continuityBuilder?: ContinuityBuilder;
   /** §4.5 tier-2: supplies real cue text so a beat can be anchored to tape. */
   cueProvider?: TranscriptCueProvider;
+  /**
+   * GV-79 (W5-03): the clip-on-subject judge the `clip-scores` stage asks,
+   * used only when FORAY_CLIP_JUDGE (`gates.clipJudge`) is not `off`.
+   * Defaults to `createClipJudge`: Jev (metered through the default budget
+   * guard, pooled) when the judge route has a client that can answer, else
+   * the keyless code proxy. Injectable so a test can script and count it.
+   */
+  clipJudge?: ClipJudge;
+  /** GV-79: the catalogue the `clip-scores` stage resolves a clip's
+   * transcript digest through (`findDigestForItem`). Defaults to
+   * `loadCatalogueData()`; read by that stage only. */
+  clipCatalogue?: CatalogueData;
   /**
    * F-91: the digest archive the topic decision measures supply against and
    * §4.5 then sources from — ONE array for both, so the count and the gate see
@@ -811,8 +833,25 @@ const TapeRelevanceInputSchema = z.object({
      the beat whose clip a merged beat rides in. Optional: a checkpoint
      written before F-96 still resumes. */
   poolCutShortBySec: z.number().optional(),
-  mergedInto: z.object({ slot: z.number().int().nonnegative(), beat: z.number().int().nonnegative() }).optional()
+  mergedInto: z.object({ slot: z.number().int().nonnegative(), beat: z.number().int().nonnegative() }).optional(),
+  /* GV-79: the clip judge's Scores and the truncation mark. Optional, so a
+     checkpoint written before GV-79 still resumes (no CHECKPOINT_VERSION
+     bump, the WS-L precedent above). `source` banks rows without them; the
+     Scores are banked under `clip-scores` and merged onto the rows later. */
+  clipScores: ClipScoreOutcomeSchema.optional(),
+  windowTruncated: z.literal(true).optional()
 });
+
+/* GV-79: the `clip-scores` stage's output, one record per scored row
+   (`scoreClips.ts`'s `ClipScoreRecord`), banked so a resume never re-pays
+   the judge. */
+const ClipScoresCheckpointSchema = z.array(
+  z.object({
+    key: z.string().min(1),
+    clipScores: ClipScoreOutcomeSchema,
+    windowTruncated: z.literal(true).optional()
+  })
+);
 
 /* Mirrors `SourcingTrace` (types/tapeSourcing.ts, F-49): why each narrated beat
    got no tape. Checkpointed with the stage for the same reason `tapeRelevance`
@@ -1136,7 +1175,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const dropStaleSourcing = async (checkForaysErrors: readonly string[]): Promise<void> => {
     if (!checkpoint.wasResumed("source")) return;
     if (!checkForaysErrors.some(isMintedPoolCollisionError)) return;
-    const dropped = await checkpoint.drop((name) => name === "source" || name.startsWith("narrate:") || name.startsWith("stitch:"));
+    const dropped = await checkpoint.drop(
+      (name) => name === "source" || name === "clip-scores" || name.startsWith("narrate:") || name.startsWith("stitch:")
+    );
     console.warn(
       `runForayPipeline: the resumed sourcing collides with the committed segment pool; dropped ${dropped.length} banked stage(s) (${dropped.join(", ")}) so the next attempt re-sources (gen-12)`
     );
@@ -1672,6 +1713,36 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, timings: timings.all(), ...clarityTag };
   }
 
+  /* GV-79 (W5-03, MQ-05) — THE CLIP-ON-SUBJECT SCORES, OFF THE TIMED PATH.
+     With FORAY_CLIP_JUDGE on, every clip the Foray plays is scored against
+     the listener's subject sentence and its beat's claim, in a checkpointed
+     stage STARTED here and awaited only just before the veracity metrics,
+     so first audio never waits on the judge, and a resume never re-pays it.
+     Off (the default), nothing starts and nothing below changes. The judge
+     is built inside the stage, so a resumed stage builds none. */
+  const clipScoresPending: Promise<ClipScoreRecord[]> | null =
+    gates.clipJudge === "off"
+      ? null
+      : stage(
+          "clip-scores",
+          (raw) => ClipScoresCheckpointSchema.parse(raw) as ClipScoreRecord[],
+          async () =>
+            scoreSourcedClips(sourced, {
+              cueProvider: deps.cueProvider ?? new NullTranscriptCueProvider(),
+              transcriptArchive: archive,
+              catalogue: deps.clipCatalogue ?? loadCatalogueData(),
+              judge:
+                deps.clipJudge ??
+                createClipJudge(gates, createJevClient({ routing }), {
+                  meter: { guard: defaultBudgetGuard, userId: options.userId, ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}) }
+                }),
+              subjectSentence: subjectSentenceFor(spine, intent)
+            })
+        );
+  /* A run that fails before the await below must not also leave an
+     unhandled rejection behind; the await still rethrows it. */
+  clipScoresPending?.catch(() => undefined);
+
   /* G-35 — EVERY PAGE'S EVIDENCE, IN ONE FAN-OUT, BEFORE ANY ACT IS WRITTEN.
      Retrieval used to sit inside each act's narration, serial with the acts
      around it; now the whole Foray's packs are gathered here, bounded by
@@ -2074,6 +2145,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   /* G-35: printed now, when the hit rate is finally known, and carried into
      `report.json` through `meta.veracity.retrieval`. */
   console.log(`  ${evidence.summaryLine()}`);
+  /* GV-79: the clip-scores stage, awaited only now. Off, the rows are
+     §4.5's own, untouched. */
+  const tapeRelevanceRows = clipScoresPending ? applyClipScores(sourced.tapeRelevance, await clipScoresPending) : sourced.tapeRelevance;
   const veracity = buildVeracityMetrics({
     sourcedActs: sourced.acts,
     writtenActs: written,
@@ -2100,7 +2174,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     pipelineTokens: pipelineTokensOfRun(),
     stageTimings: timings.all(),
     retrieval: evidence.metrics(),
-    tapeRelevanceRows: sourced.tapeRelevance,
+    tapeRelevanceRows,
+    /* GV-79: the clip-on-subject rate, only when the judge ran. */
+    ...(clipScoresPending ? { clipOnSubject: { levelFor: (judge: Parameters<typeof clipLevelFor>[1]) => clipLevelFor(gates, judge) } } : {}),
     /* GV-26 (MQ-09): the narration-degraded rows, so tape yield can tell a
        beat that searched and found nothing from one that never searched. */
     sourcingTrace: sourced.sourcingTrace,
@@ -2143,7 +2219,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     result,
     spine,
     spineReasks,
-    tapeRelevance: sourced.tapeRelevance,
+    tapeRelevance: tapeRelevanceRows,
     topicDecision,
     timings: timings.all(),
     ttlA1Ms,

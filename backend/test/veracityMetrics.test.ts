@@ -15,6 +15,8 @@ import {
   computeTapeYield,
   computeBeatCoverage,
   computeSpecificsUnsupported,
+  computeClipOnSubject,
+  CLIP_ON_SUBJECT_LEVEL,
   buildVeracityMetrics,
   evaluateVeracityGate,
   GATE_MIN_GROUNDED_QUOTE_RATE,
@@ -1000,5 +1002,81 @@ describe("GV-34 — specificsUnsupported is computed from each page's own held e
     expect(b.specificsUnsupported).toBe(a.specificsUnsupported);
     expect(b.specificsDetails).toEqual(a.specificsDetails);
     expect(a.specificsUnsupported).toBe(1);
+  });
+});
+
+describe("GV-79 — clipOnSubject: the clip judge's Scores, aggregated (MQ-05)", () => {
+  function row(beatIndex: number, extra: Partial<TapeRelevanceInput> = {}): TapeRelevanceInput {
+    return {
+      actIndex: 0,
+      slotIndex: 0,
+      beatIndex,
+      claim: `claim ${beatIndex}`,
+      itemId: `item-${beatIndex}`,
+      segmentId: `seg-${beatIndex}`,
+      tier: 2,
+      taxonomyNodeIds: ["health/medicine"],
+      families: ["health"],
+      forayTopic: "health/medicine",
+      forayFamily: "health",
+      onTopic: true,
+      ...extra
+    };
+  }
+  const scores = (subject: number, claim: number, judge: "jev" | "qwen" | "code" = "jev") => ({ subject, claim, judge });
+
+  /* MUTATION THAT KILLS THIS: pass on subject >= 3 alone (drop the claim
+     half). Ran it: red (the 4/1 clip passes, rate 2/3). */
+  it("rate is the share of scored clips with subject >= 3 AND claim >= 3; failing clips are named", () => {
+    const rows = [
+      row(0, { clipScores: scores(4, 4) }),
+      row(1, { clipScores: scores(0, 2) }),
+      row(2, { clipScores: scores(4, 1) })
+    ];
+    const r = computeClipOnSubject(rows);
+    expect(CLIP_ON_SUBJECT_LEVEL).toBe(3);
+    expect(r.rate).toBeCloseTo(1 / 3, 10);
+    expect(r.offSubject).toEqual([
+      { itemId: "item-1", segmentId: "seg-1", claim: "claim 1", scores: scores(0, 2) },
+      { itemId: "item-2", segmentId: "seg-2", claim: "claim 2", scores: scores(4, 1) }
+    ]);
+    expect(r.judge).toBe("jev");
+  });
+
+  /* MUTATION THAT KILLS THIS: count an unavailable row as scored (or as a
+     pass). Ran it: red (rate 1/2, or 1 on the all-unscored case). */
+  it("an unanswered clip counts as unscored, and all-unscored is null, never 1", () => {
+    const some = computeClipOnSubject([row(0, { clipScores: scores(3, 3) }), row(1, { clipScores: { unavailable: "http_503" } })]);
+    expect(some).toMatchObject({ rate: 1, scored: 1, unscored: 1 });
+    const none = computeClipOnSubject([row(0, { clipScores: { unavailable: "no_key" } }), row(1, { clipScores: { unavailable: "network" } })]);
+    expect(none).toMatchObject({ rate: null, scored: 0, unscored: 2, judge: null });
+  });
+
+  it("ignores rows the judge was never offered and merged beats; names a mixed judge; reads each judge's level", () => {
+    const rows = [
+      row(0, { clipScores: scores(2, 2, "qwen") }),
+      row(1, { clipScores: scores(2, 2, "code") }),
+      row(2),
+      row(3, { mergedInto: { slot: 0, beat: 0 }, clipScores: scores(0, 0) })
+    ];
+    const r = computeClipOnSubject(rows, (judge) => (judge === "qwen" ? 2 : 3));
+    expect(r).toMatchObject({ scored: 2, unscored: 0, judge: "mixed" });
+    expect(r.rate).toBe(0.5);
+    expect(r.offSubject.map((c) => c.itemId)).toEqual(["item-1"]);
+  });
+
+  /* MUTATION THAT KILLS THIS: always spread the clip fields into the
+     metrics. Ran it: red (the default report gains three keys). */
+  it("buildVeracityMetrics adds the three fields only when the judge ran: a default report is unchanged", () => {
+    const tape = tapePointer({ segmentId: "s#1", itemId: "s" });
+    const sourced: SourcedAct[] = [{ title: "Act 1", slots: [{ title: "Slot 1", beats: [{ sourcing: "tape", claim: "c1", exploration: false, tape }] }] }];
+    const base = { sourcedActs: sourced, writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, pipelineTokens: 0, stageTimings: [] };
+    const plain = buildVeracityMetrics({ ...base, tapeRelevanceRows: [row(0)] });
+    expect("clipOnSubjectRate" in plain || "clipOnSubjectJudge" in plain || "clipOnSubjectDetails" in plain).toBe(false);
+    const judged = buildVeracityMetrics({ ...base, tapeRelevanceRows: [row(0, { clipScores: scores(1, 4, "code") })], clipOnSubject: {} });
+    expect(judged.clipOnSubjectRate).toBe(0);
+    expect(judged.clipOnSubjectJudge).toBe("code");
+    expect(judged.clipOnSubjectDetails).toEqual({ scored: 1, unscored: 0, offSubject: [expect.objectContaining({ itemId: "item-0" })] });
+    expect(judged.tapeRelevance).toBe(1);
   });
 });

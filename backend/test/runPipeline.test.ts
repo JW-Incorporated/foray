@@ -37,6 +37,10 @@ import { createMessage } from "../src/generation/anthropicCall";
 import { getUsageTotals } from "../src/generation/usageTracking";
 import { makeFakeAnthropicClient, textBlock } from "./helpers/fakeAnthropicClient";
 import { DeliveryTimeline, type ItemReadyEvent } from "../src/generation/deliveryTimeline";
+import { PRE_SPINE_SENTINEL, preSpineIntent } from "../src/generation/preSpineIntent";
+import { loadCatalogueData, type CatalogueData } from "../src/generation/catalogueLookup";
+import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
+import { loadTranscriptArchive } from "../src/generation/transcriptArchiveLookup";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -1803,4 +1807,178 @@ describe("runForayPipeline — flag off, GV-67 changes nothing", () => {
     expect(second.input.id).toBe(first.input.id);
     expect(second.input.title).toBe(first.input.title);
   });
+});
+
+/**
+ * GV-79 (W5-03, MQ-05): the clip-on-subject scorer, shadow mode. Off (the
+ * default) nothing starts; on, a checkpointed `clip-scores` stage starts
+ * after sourcing and is awaited only before the veracity metrics.
+ *
+ * The stub run's tape is tier-1 pool cuts with no transcript wired, so the
+ * test's cue provider hands back synthetic cues ONLY inside the `clip-scores`
+ * stage (read from the call context): sourcing, evidence and narration see
+ * no transcript, exactly as in every other stub run, and the judge sees a
+ * passage. Every judge is scripted; nothing reaches Jev or a network model.
+ */
+describe("runForayPipeline — GV-79 clip-on-subject scorer (shadow mode)", () => {
+  const clipOnlyCues = {
+    getCues: (entry: TranscriptDigestEntry) =>
+      currentCallContext().stage === "clip-scores" && entry.guid.startsWith("gv79-")
+        ? [{ start_sec: 0, end_sec: 1_000_000, text: "Pitmasters argue about smoke, wood and low heat for barbecue brisket." }]
+        : null
+  };
+  /* The pool's items have no transcript digest on a checkout, so each gets a
+     synthetic digest row (a show the catalogue does not list, so the lineage
+     gate never admits it to sourcing) and a catalogue title the clip stage's
+     lookup can match it by. Built once: the same deps for every run below. */
+  let clipDeps: { transcriptArchive: TranscriptDigestEntry[]; clipCatalogue: CatalogueData; cueProvider: typeof clipOnlyCues } | null = null;
+  function clipFixture() {
+    if (clipDeps) return clipDeps;
+    const ids = [...new Set(loadSegmentPool().map((seg) => seg.item_id))];
+    const title = (id: string) => `Pitmaster smoke stories ${id.replace(/[^a-z0-9]+/gi, " ")}`;
+    const real = loadCatalogueData();
+    clipDeps = {
+      transcriptArchive: [
+        ...loadTranscriptArchive(),
+        ...ids.map((id) => ({ show_id: id.includes("--") ? id.slice(0, id.indexOf("--")) : id, show_title: "x", guid: `gv79-${id}`, title: title(id), cues: 10 }))
+      ],
+      clipCatalogue: { ...real, items: [...ids.map((id) => ({ id, show: "x", title: title(id), topics: [], hook: "" })), ...real.items] },
+      cueProvider: clipOnlyCues
+    };
+    return clipDeps;
+  }
+  /** One run inside a RunLog, so the call context (and the stage name the
+   * cue provider reads) is live. */
+  const run = (...args: Parameters<typeof runForayPipeline>) => runWithRunLog(new RunLog(), () => runForayPipeline(...args));
+
+  type Asked = { subjectSentence: string; claim: string; windowText: string; key: string };
+  function scriptedJudge(answer: (q: Asked) => { subject: number; claim: number } = () => ({ subject: 4, claim: 4 })) {
+    const calls: Asked[][] = [];
+    let release: () => void = () => undefined;
+    let gate: Promise<void> | null = null;
+    return {
+      name: "scripted",
+      calls,
+      /** Holds every score() until the returned opener is called. */
+      hold(): () => void {
+        gate = new Promise<void>((resolve) => (release = resolve));
+        return () => release();
+      },
+      async score(qs: readonly Asked[]) {
+        calls.push([...qs]);
+        if (gate) await gate;
+        return new Map(qs.map((q) => [q.key, { ...answer(q), judge: "jev" as const }]));
+      }
+    };
+  }
+
+  /* MUTATION THAT KILLS THIS: start the stage whatever `gates.clipJudge`
+     says. Ran it: red (the judge is asked and the fields appear). */
+  it("off (the default): no clip-scores stage, no judge call, no new field; shadow leaves the Foray as it was", async () => {
+    const judge = scriptedJudge();
+    const off = await run(request, options, { ...stubDeps(), ...clipFixture(), clipJudge: judge });
+    const shadow = await run(
+      request,
+      { ...options, gates: { clipJudge: "shadow" } },
+      { ...stubDeps(), ...clipFixture(), clipJudge: scriptedJudge() }
+    );
+    if (off.outcome !== "generated" || shadow.outcome !== "generated") throw new Error("expected both to generate");
+    expect(judge.calls).toHaveLength(0);
+    expect(off.timings.some((t) => t.name === "clip-scores")).toBe(false);
+    const veracity = off.input.meta!.veracity!;
+    for (const field of ["clipOnSubjectRate", "clipOnSubjectJudge", "clipOnSubjectDetails"]) expect(veracity, field).not.toHaveProperty(field);
+    expect(off.tapeRelevance.some((r) => "clipScores" in r || "windowTruncated" in r)).toBe(false);
+    /* Shadow mode measures; it changes nothing the listener gets. */
+    expect(shadow.input.items).toEqual(off.input.items);
+    expect(shadow.input.segments).toEqual(off.input.segments);
+    const withoutScores = shadow.tapeRelevance.map((row) => {
+      const copy: Record<string, unknown> = { ...row };
+      delete copy.clipScores;
+      delete copy.windowTruncated;
+      return copy;
+    });
+    expect(withoutScores).toEqual(off.tapeRelevance);
+  }, 120_000);
+
+  /* MUTATION THAT KILLS THIS: pass `sourced.tapeRelevance` (not the scored
+     rows) to buildVeracityMetrics. Ran it: red (scored 0, rate null). */
+  it("shadow: every placed clip is scored against the spine's subject sentence, recorded on the rows and reported", async () => {
+    const judge = scriptedJudge((q) => (q.key === "0:0:0" ? { subject: 1, claim: 4 } : { subject: 4, claim: 4 }));
+    const out = await run(
+      request,
+      { ...options, gates: { clipJudge: "shadow" } },
+      { ...stubDeps(), ...clipFixture(), clipJudge: judge }
+    );
+    if (out.outcome !== "generated") throw new Error("expected the stub run to generate");
+    expect(judge.calls).toHaveLength(1);
+    const asked = judge.calls[0]!;
+    const clips = out.tapeRelevance.filter((r) => !r.mergedInto);
+    expect(asked.map((q) => q.key)).toEqual(clips.map((r) => `${r.actIndex}:${r.slotIndex}:${r.beatIndex}`));
+    expect(asked.every((q) => q.subjectSentence === `${out.spine.subject} (${out.spine.angle})`)).toBe(true);
+    expect(clips.every((r) => r.clipScores !== undefined)).toBe(true);
+    const veracity = out.input.meta!.veracity!;
+    expect(veracity.clipOnSubjectJudge).toBe("jev");
+    expect(veracity.clipOnSubjectDetails?.scored).toBe(clips.length);
+    expect(veracity.clipOnSubjectRate).toBeCloseTo((clips.length - 1) / clips.length, 10);
+    expect(veracity.clipOnSubjectDetails?.offSubject.map((c) => c.claim)).toEqual([clips[0]!.claim]);
+    expect(out.timings.some((t) => t.name === "clip-scores")).toBe(true);
+  }, 120_000);
+
+  /* MUTATION THAT KILLS THIS: `await` the clip-scores stage where it starts.
+     Ran it: red (the held judge waits for narration, narration waits for the
+     judge, and the run never finishes: the test times out). */
+  it("is off the timed path: a judge still pending does not delay the narrate:0 start", async () => {
+    const judge = scriptedJudge();
+    const open = judge.hold();
+    const writer = new StubNarrationWriterBuilder();
+    const realWrite = writer.writeAct.bind(writer);
+    let narrationStartedWhileJudgePending = false;
+    writer.writeAct = async (...args: Parameters<StubNarrationWriterBuilder["writeAct"]>) => {
+      if (judge.calls.length === 1) narrationStartedWhileJudgePending = true;
+      open();
+      return realWrite(...args);
+    };
+    const out = await run(
+      request,
+      { ...options, gates: { clipJudge: "shadow" } },
+      { ...stubDeps(), narrationWriter: writer, ...clipFixture(), clipJudge: judge }
+    );
+    if (out.outcome !== "generated") throw new Error("expected the stub run to generate");
+    expect(narrationStartedWhileJudgePending).toBe(true);
+    const at = (name: string) => out.timings.find((t) => t.name === name)!;
+    const clip = at("clip-scores");
+    const narrate = at("narrate:0");
+    expect(Date.parse(clip.startedAt)).toBeLessThanOrEqual(Date.parse(narrate.startedAt));
+    expect(Date.parse(clip.startedAt) + clip.ms).toBeGreaterThanOrEqual(Date.parse(narrate.startedAt));
+    expect(out.input.meta!.veracity!.clipOnSubjectRate).toBe(1);
+  }, 120_000);
+
+  /* MUTATION THAT KILLS THIS: build the sentence from the understood intent
+     (`subjectSentenceFor(null, intent)`). Ran it: red (the keyword list
+     reaches the judge). */
+  it("fold-on: the judge gets spine.subject (spine.angle), never the keyword intent or its sentinel", async () => {
+    const judge = scriptedJudge();
+    const stub = new StubSpineBuilder();
+    const spineBuilder = {
+      providerName: stub.providerName,
+      buildSpine: async (...args: Parameters<SpineBuilder["buildSpine"]>) => ({
+        ...(await stub.buildSpine(...args)),
+        subject: "Barbecue in America",
+        angle: "how smoke and low heat made a regional craft"
+      })
+    } as SpineBuilder;
+    const out = await run(
+      request,
+      { ...options, flags: { foldSpineCopy: true }, gates: { clipJudge: "shadow" } },
+      { ...stubDeps(), spineBuilder, ...clipFixture(), clipJudge: judge }
+    );
+    if (out.outcome !== "generated") throw new Error("expected the folded stub run to generate");
+    const sentences = [...new Set(judge.calls.flat().map((q) => q.subjectSentence))];
+    expect(sentences).toEqual(["Barbecue in America (how smoke and low heat made a regional craft)"]);
+    const keywords = preSpineIntent(request.prompt)!.subject;
+    for (const s of sentences) {
+      expect(s).not.toContain(keywords);
+      expect(s).not.toContain(PRE_SPINE_SENTINEL);
+    }
+  }, 120_000);
 });
