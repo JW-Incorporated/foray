@@ -3549,6 +3549,21 @@ const BACKEND_FLOORS = {
      editSeams, and the stub's editSeams. Stub builders over a ten-clip
      fixture; offline. One named mutation per test. */
   "test/roundPolicy.test.ts": 8,
+  /* GV-84 (docs/roadmap/generation-v2.md, W4-19, #1286): the streamed act
+     writer and the seam edit on ChatNarrationWriterBuilder --
+     writeActStream yields the JSONL fixture's seams in order under random
+     chunkings and as each line closes, the jsonl contract on the W4-11
+     prefix with streamedActMaxTokens and no response_format, a finish
+     'length' keeping the finished seams (end() never guesses) and a 'stop'
+     reply missing its last newline, a bad line costing its seam only, the
+     between-chunk idle bound (a slow healthy stream kept, a stalled one
+     aborted with its partial text), an early stop or a provider drop
+     cancelling the request, no writeActStream without provider.stream;
+     editSeams on the byte-identical prefix holding only the failing seams,
+     their read-only neighbours, their clips and their documents, with
+     seamEditMaxTokens; no Anthropic SDK import. Offline: scriptedProvider
+     streams and fake timers. One named mutation per test. */
+  "test/chatNarrationStream.test.ts": 17,
   /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
      verifier -- seamSentences (intro, question, imperative, statement),
      per-statement support with the specifics check on the same texts (an
