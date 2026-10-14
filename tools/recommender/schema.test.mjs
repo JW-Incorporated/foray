@@ -20,6 +20,7 @@ import {
   MAX_REASON_CHARS,
   capConfidence,
   nullAudioScoresUnlessTranscript,
+  schemaForShow,
   validateClientFile,
   validateRatingsFile,
   validateResultsFile,
@@ -246,4 +247,34 @@ test("the client file's f string has one digit per persona", () => {
   assert.ok(codes(validateClientFile(doc)).includes("fit_string_length"));
   doc.shows["curated-show"] = { f: "503", x: 1, t: "s", chart_rank: 3 };
   assert.ok(codes(validateClientFile(doc)).includes("unknown_field"), "nothing beyond f, x and t reaches the client");
+});
+
+test("schemaForShow lists exactly the given persona ids as required", () => {
+  /* RV-20. MUTATION (run red): in schemaForShow, set the personas object's
+     `required: []` -- a strict json_schema reply could then leave a persona
+     out and the grammar would allow it. Also pins that the schema is built
+     from the same field lists the validator checks (a show entry of the
+     fixture has exactly the schema's required keys), and the tier rules. */
+  const ids = ["p-light", "p-history"];
+  const schema = schemaForShow(ids, { tier: "show-metadata" });
+  const personas = schema.properties.personas;
+  assert.deepEqual(personas.required, ids);
+  assert.deepEqual(Object.keys(personas.properties), ids);
+  assert.equal(personas.additionalProperties, false);
+  assert.equal(schema.additionalProperties, false);
+  const show = validResults().results["1000000001"];
+  assert.deepEqual([...schema.required].sort(), Object.keys(show).sort());
+  const rating = personas.properties["p-light"];
+  assert.deepEqual([...rating.required].sort(), Object.keys(show.personas["p-light"]).sort());
+  assert.equal(rating.additionalProperties, false);
+  assert.equal(rating.properties.reason.maxLength, MAX_REASON_CHARS);
+  // show-metadata: no audio score, no host count, confidence capped at 0.5.
+  assert.deepEqual(rating.properties.host_style, { type: "null" });
+  assert.deepEqual(schema.properties.host_count, { type: "null" });
+  assert.equal(rating.properties.confidence.maximum, 0.5);
+  // transcript: audio scores allowed (or null), confidence up to 1.
+  const t = schemaForShow(["p-history"], { tier: "transcript" }).properties.personas;
+  assert.deepEqual(t.required, ["p-history"]);
+  assert.deepEqual(t.properties["p-history"].properties.ad_load.type, ["integer", "null"]);
+  assert.equal(t.properties["p-history"].properties.confidence.maximum, 1);
 });

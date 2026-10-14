@@ -99,6 +99,64 @@ export function capConfidence(value, tier) {
   return Math.max(0, Math.min(Number(value), cap));
 }
 
+/* ---------- the per-show reply schema of a direct-model rater (RV-20) ---------- */
+
+/** The JSON Schema of ONE show's entry in a results file (`results.<show_key>`),
+    for a rater that answers one show per call through an OpenAI-compatible
+    `response_format: { type: "json_schema", strict: true }` (the dormant Qwen
+    path, qwen-rate.mjs). Generated from the constants above so it cannot drift
+    from `validateResultsFile`; strict mode wants every property required and
+    no other allowed, so optional values are typed nullable instead.
+
+    `personas` lists exactly `personaIds`, each required (in the order given),
+    and nothing else. With `tier`, the schema also carries the tier's rules:
+    the audio sub-scores and `host_count` are typed null unless the tier is
+    `transcript`, and `confidence` is capped at the tier's ceiling. A grammar
+    that honours the schema then cannot emit what the validator refuses; the
+    caller still validates every reply, because a server may drop the schema
+    (llm.mjs header). `personas` and the per-show texts are nullable so the
+    rater can decline a show with `not_rated_because`, as an agent may. */
+export function schemaForShow(personaIds, { tier = null } = {}) {
+  const ids = [...new Set(Array.from(personaIds ?? [], String))];
+  const transcript = tier === "transcript";
+  const cap = Object.prototype.hasOwnProperty.call(CONFIDENCE_CAP, tier) ? CONFIDENCE_CAP[tier] : 1;
+  const score = { type: "integer", minimum: 1, maximum: 5 };
+  const audio = transcript ? { type: ["integer", "null"], minimum: 1, maximum: 5 } : { type: "null" };
+  const unit = { type: "number", minimum: 0, maximum: 1 };
+  const ratingProps = {
+    fit: score,
+    return_prob: unit,
+    ...Object.fromEntries(SUBSCORES.map((k) => [k, AUDIO_SUBSCORES.includes(k) ? audio : score])),
+    confidence: { type: "number", minimum: 0, maximum: cap },
+    reason: { type: "string", minLength: 1, maxLength: MAX_REASON_CHARS },
+  };
+  const rating = { type: "object", additionalProperties: false, required: [...PERSONA_RATING_FIELDS], properties: ratingProps };
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [...RESULTS_SHOW_KEYS],
+    properties: {
+      evidence_tier: { type: "string", enum: [...EVIDENCE_TIERS] },
+      summary: { type: ["string", "null"], maxLength: MAX_SUMMARY_CHARS },
+      format: { type: ["string", "null"], enum: [...FORMATS, null] },
+      host_count: transcript ? { type: ["integer", "null"], minimum: 1, maximum: 50 } : { type: "null" },
+      flags: {
+        type: "object",
+        additionalProperties: false,
+        required: [...FLAGS],
+        properties: Object.fromEntries(FLAGS.map((f) => [f, { type: "boolean" }])),
+      },
+      not_rated_because: { type: ["string", "null"] },
+      personas: {
+        type: ["object", "null"],
+        additionalProperties: false,
+        required: ids,
+        properties: Object.fromEntries(ids.map((id) => [id, rating])),
+      },
+    },
+  };
+}
+
 /* ---------- copy check on the listener-facing reason ---------- */
 
 /** The copy problems in a listener-facing reason, as codes. The same lists the
