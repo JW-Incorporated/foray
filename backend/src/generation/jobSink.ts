@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { ForayItemSchema, type ForayItem } from "./forayItems";
+import { ForayJingleItemSchema, ForayNarrationItemSchema, ForaySegmentItemSchema, type ForayItem, type ForayNarrationItem } from "./forayItems";
 import type { ItemReadyEvent } from "./deliveryTimeline";
 import { servableThroughAct, servableView, type PartialCandidate } from "./partialCandidate";
 import { itemKeyOf, type ItemCheck } from "./itemReadiness";
+import { audioStateFor, resultFor, type AudioPolicy, type RenderResult } from "./narrationRender";
 
 /**
  * GV-44 (docs/roadmap/generation-v2.md, #1286; from W6-03; covers R1-15, GP-07;
@@ -79,9 +80,27 @@ export interface JobItemState {
   itemId: string;
   check: ItemCheck;
   /** "pending" until a render card stamps the item (W6-07); "phone-voice"
-   * when the phone speaks the script itself. */
+   * when the phone speaks the script itself. With the render stage on
+   * (GV-74, `JobAudio`), a narration item reads `audioStateFor`: "rendered"
+   * once its upload is confirmed, "phone-voice" otherwise, and "pending"
+   * only under `await-render` before its render has a result. */
   audio: JobAudioState;
+  /** GV-74: the rendered object's key, on a "rendered" item. */
   audioKey?: string;
+}
+
+/** GV-74: a narration item as a snapshot serves it — `audio_url` set ONLY
+ * from a render result's confirmed `public_url` (`audioStateFor` reads
+ * "rendered"). Without one the phone speaks the script. */
+export type JobNarrationItem = ForayNarrationItem & { audio_url?: string };
+export type JobSnapshotItem = ForayItem | JobNarrationItem;
+
+/** GV-74: the render stage's state, handed to `snapshotFrom` when the run
+ * renders narration (`--render-spool`). Absent, the snapshot is exactly
+ * GV-44's: every item "pending", no `audio_url`. */
+export interface JobAudio {
+  policy: AudioPolicy;
+  results: readonly RenderResult[];
 }
 
 export interface JobDeliverySummary {
@@ -95,7 +114,9 @@ export interface JobDeliverySummary {
    * the latest partial's `delivery.acts`), or -1. */
   servableThroughAct: number;
   /** The index of the generated item the prefix stops at because it is not
-   * servable; null when the prefix stops only because nothing more is made. */
+   * servable — or, under GV-74's `await-render`, a narration item whose
+   * render has no result yet; null when the prefix stops only because
+   * nothing more is made. */
   pausedAtIndex: number | null;
 }
 
@@ -118,7 +139,7 @@ export interface JobSnapshot {
   acts: JobSnapshotAct[];
   /** ONLY `items[0..delivery.servableThrough)`, prelude first. The player
    * plays these and nothing else. */
-  items: ForayItem[];
+  items: JobSnapshotItem[];
   /** 1:1 with `items`. */
   itemStates: JobItemState[];
   /** Seconds of Foray the run has made so far (listener's clock, prelude
@@ -191,7 +212,7 @@ const round3 = (n: number): number => Math.round(n * 1000) / 1000;
  * So a later act that is ready never reaches `items` while an earlier act is
  * unservable or missing.
  */
-function servablePrefix(progress: JobProgress): { items: ForayItem[]; states: JobItemState[]; pausedAtIndex: number | null; generated: number } {
+function servablePrefix(progress: JobProgress, audio?: JobAudio): { items: JobSnapshotItem[]; states: JobItemState[]; pausedAtIndex: number | null; generated: number } {
   const partialItems = progress.partial?.items ?? [];
   const partialServable = progress.partial ? servableView(progress.partial).length : 0;
   const deliveryChecks = progress.partial?.delivery?.items ?? [];
@@ -199,7 +220,7 @@ function servablePrefix(progress: JobProgress): { items: ForayItem[]; states: Jo
   const maxEvent = progress.events.reduce((m, e) => Math.max(m, e.index + 1), 0);
   const generated = Math.max(partialItems.length, maxEvent);
 
-  const items: ForayItem[] = [];
+  const items: JobSnapshotItem[] = [];
   const states: JobItemState[] = [];
   let pausedAtIndex: number | null = null;
   for (let i = 0; i < generated; i++) {
@@ -227,10 +248,25 @@ function servablePrefix(progress: JobProgress): { items: ForayItem[]; states: Jo
     } else {
       break;
     }
+    const key = itemId ?? itemKeyOf(item, i);
+    if (audio && item.type === "narration") {
+      /* GV-74: a narration item's audio. Under await-render an item whose
+         render has no result yet holds the prefix; phone-voice-first never
+         holds it (first audio never waits on a render). */
+      const state = audioStateFor(key, audio.results, audio.policy);
+      if (state === "pending") {
+        pausedAtIndex = i;
+        break;
+      }
+      const r = state === "rendered" ? resultFor(key, audio.results) : undefined;
+      items.push(r?.publicUrl ? { ...item, audio_url: r.publicUrl } : item);
+      states.push({ itemId: key, check: check ?? "unverified", audio: state, ...(r?.key ? { audioKey: r.key } : {}) });
+      continue;
+    }
     items.push(item);
     /* A partial without `delivery` (pre-GV-21) and no event: the item is
        served as servableView serves it, labelled conservatively. */
-    states.push({ itemId: itemId ?? itemKeyOf(item, i), check: check ?? "unverified", audio: "pending" });
+    states.push({ itemId: key, check: check ?? "unverified", audio: "pending" });
   }
   return { items, states, pausedAtIndex, generated };
 }
@@ -238,13 +274,14 @@ function servablePrefix(progress: JobProgress): { items: ForayItem[]; states: Jo
 /**
  * The snapshot of a job's progress, numbered `prevSeq + 1`. Null until the
  * run has minted its Foray id (no row can be named before it). `updatedAt` is
- * passed in: this module reads no clock.
+ * passed in: this module reads no clock. `audio` (GV-74) folds the render
+ * stage's results in; without it the snapshot is unchanged.
  */
-export function snapshotFrom(job: JobIdentity, progress: JobProgress, prevSeq: number, updatedAt: string): JobSnapshot | null {
+export function snapshotFrom(job: JobIdentity, progress: JobProgress, prevSeq: number, updatedAt: string, audio?: JobAudio): JobSnapshot | null {
   const forayId = progress.partial?.id ?? progress.forayId;
   if (!forayId) return null;
   const partial = progress.partial;
-  const prefix = servablePrefix(progress);
+  const prefix = servablePrefix(progress, audio);
 
   const acts: JobSnapshotAct[] = (partial?.acts ?? []).map((a) => ({
     index: a.index,
@@ -300,6 +337,14 @@ export function closedSnapshot(last: JobSnapshot, outcome: JobCloseOutcome, upda
   };
 }
 
+/** GV-74: a snapshot item — GV-44's strict item schemas, the narration one
+ * widened by an optional http(s) `audio_url` (still strict). */
+const JobSnapshotItemSchema = z.discriminatedUnion("type", [
+  ForaySegmentItemSchema,
+  ForayNarrationItemSchema.extend({ audio_url: z.string().regex(/^https?:\/\/\S+$/).optional() }),
+  ForayJingleItemSchema
+]);
+
 const JobItemStateSchema = z
   .object({
     itemId: z.string().min(1),
@@ -337,7 +382,7 @@ export const JobSnapshotSchema = z
         })
         .strict()
     ),
-    items: z.array(ForayItemSchema),
+    items: z.array(JobSnapshotItemSchema),
     itemStates: z.array(JobItemStateSchema),
     runtimeSecSoFar: z.number().nonnegative(),
     delivery: z

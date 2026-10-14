@@ -28,6 +28,8 @@ import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../gene
 import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
 import { FileJobSink } from "./fileJobSink";
+import { SpoolRenderClient } from "./spoolRenderClient";
+import { AUDIO_POLICIES, DEFAULT_AUDIO_POLICY, isAudioPolicy, NarrationRenderTracker, type AudioPolicy, type NarrationRenderClient, type RenderReport } from "../generation/narrationRender";
 import { EMPTY_JOB_PROGRESS, isJobForayId, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity } from "../generation/jobSink";
 import { readAuthorIdFlag, type ClarityDecider, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
@@ -112,6 +114,7 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *                              [--max-resumes N] [--continue-on-refused-partial]
  *                              [--notify <command>] [--author-id <id>]
  *                              [--job-dir <dir>]
+ *                              [--render-spool <dir> [--audio-policy phone-voice-first|await-render]]
  *                              [--stage-provider stage=provider[:lane][,...]]
  *                              [--keep-checkpoints]
  *                              [--seed-checkpoints <dir> --rerun-from <stage>]
@@ -133,6 +136,18 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  * (`generation/jobSink.ts`) to `<dir>/<forayId>.job.json` on every act-ready and
  * item-ready event, then closes it with the run's outcome: what a phone may
  * play so far, the servable prefix only, never the prompt. Not under --dry-run.
+ *
+ * `--render-spool <dir>` (GV-74, off by default) renders narration inside the
+ * run: every servable narration item, the moment it is ready, becomes a
+ * `RENDER_JOB_SCHEMA` file in `<dir>/in/` (priority = its item index, so the
+ * resident worker, render-foray.py `--worker <dir>`, renders in play order),
+ * and the worker's `<dir>/done/` records fold back into the job snapshot (an
+ * item's `audio_url` only from a done record's confirmed `public_url`) and
+ * into the row's `delivery.render`. `--audio-policy` (needs --render-spool)
+ * is `phone-voice-first` by default — first audio never waits on a render,
+ * the phone speaks any line without a file — or `await-render`, which holds
+ * a narration line out of the job snapshot until its render has a result (a
+ * failed render falls back to the phone voice). Not under --dry-run.
  *
  * `--stage-provider spine=local:second,deepen=local:spark` (GV-55, repeatable)
  * routes stages for this run exactly as FORAY_STAGE_<STAGE>=<provider>[:<lane>]
@@ -208,6 +223,13 @@ export interface CliArgs {
    * `<forayId>.job.json`. Absent unless given, so the parsed args of a run
    * without it are unchanged and nothing is published. */
   jobDir?: string;
+  /** GV-74: `--render-spool <dir>`, GV-22's spool the render stage writes
+   * jobs into and reads done records from. Absent unless given, so the
+   * parsed args of a run without it are unchanged and nothing is rendered. */
+  renderSpool?: string;
+  /** GV-74: `--audio-policy`, only with `renderSpool`. Absent means
+   * `phone-voice-first`. */
+  audioPolicy?: AudioPolicy;
   /** GV-55: `--stage-provider stage=provider[:lane][,...]`, applied as
    * FORAY_STAGE_<STAGE> overrides before the routing table is resolved.
    * Absent unless given, so the parsed args of a run without it are
@@ -378,6 +400,7 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
   });
   const stageProviders = stageProviderValues.length ? parseStageProviders(stageProviderValues) : undefined;
   const fork = parseForkFlags(argv);
+  const render = parseRenderFlags(argv);
   return {
     prompts: get("--prompts") ?? null,
     out: get("--out") ?? path.join("data-local", "foray-candidates"),
@@ -393,7 +416,32 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     ...(argv.includes("--fast-path") ? { fastPath: true } : {}),
     ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {}),
     ...(stageProviders ? { stageProviders } : {}),
-    ...fork
+    ...fork,
+    ...render
+  };
+}
+
+/**
+ * GV-74: `--render-spool <dir>` and `--audio-policy <policy>`, each absent
+ * unless given. Refused (CliArgError): either flag with no value, a policy
+ * that is not one of AUDIO_POLICIES, and --audio-policy without
+ * --render-spool (it would silently do nothing).
+ */
+function parseRenderFlags(argv: string[]): Pick<CliArgs, "renderSpool" | "audioPolicy"> {
+  const valueOf = (flag: string): string | undefined => {
+    const i = argv.indexOf(flag);
+    if (i < 0) return undefined;
+    const value = argv[i + 1];
+    if (value === undefined || value.startsWith("--") || value.trim() === "") throw new CliArgError(`${flag} needs a value`);
+    return value;
+  };
+  const renderSpool = valueOf("--render-spool");
+  const policy = valueOf("--audio-policy");
+  if (policy !== undefined && !isAudioPolicy(policy)) throw new CliArgError(`--audio-policy: "${policy}" is not one of ${AUDIO_POLICIES.join(", ")}`);
+  if (policy !== undefined && renderSpool === undefined) throw new CliArgError("--audio-policy needs --render-spool <dir>");
+  return {
+    ...(renderSpool !== undefined ? { renderSpool } : {}),
+    ...(policy !== undefined && isAudioPolicy(policy) ? { audioPolicy: policy } : {})
   };
 }
 
@@ -916,7 +964,15 @@ export type ReportEntry = {
    * not time. A resumed attempt (a banked `stitch:<i>` fired no events)
    * carries `resumed: true` and no lead or first-item times, the `ttlA1Ms`
    * rule. Only on a `generated` row; absent stays absent, never zero. */
-  delivery?: DeliveryReport;
+  delivery?: DeliveryReport & {
+    /** GV-74 (MT-09): the render stage's numbers, only under
+     * `--render-spool`: when the first rendered line came back (ms since the
+     * attempt started, read against `firstServableMs`), seconds of narration
+     * rendered, render seconds, their ratio and the failed jobs. Read when
+     * the run ends: under phone-voice-first the run does not wait for the
+     * worker, so lines still rendering are not in it. */
+    render?: RenderReport;
+  };
   /** GV-49: who decided the clarity check, `jev` (Jev's two yes/no answers,
    * no text model call) or `fallback` (the text understander). Only when the
    * understand-clarity stage is routed to Jev
@@ -1102,6 +1158,9 @@ export async function generateOneCandidate(
     /** GV-44: the job id the snapshot sink is opened with (default a random
      * UUID per prompt, never derived from the prompt). */
     newJobId?: () => string;
+    /** GV-74: the render client `--render-spool` uses (default a
+     * SpoolRenderClient over that directory). Ignored without the flag. */
+    renderClient?: NarrationRenderClient;
   }
 ): Promise<CandidateResult> {
   const runPipeline = deps.runPipeline ?? runForayPipeline;
@@ -1200,9 +1259,27 @@ export async function generateOneCandidate(
   const job: JobIdentity = { jobId: (deps.newJobId ?? randomUUID)(), authorId: args.authorId, lane: "catalogue" };
   let jobProgress = EMPTY_JOB_PROGRESS;
   let jobSeq = 0;
+  /* GV-74 (W6-07): the render stage. One tracker per prompt, kept across
+     resume attempts like the job sink, so a line already enqueued is never
+     enqueued twice. Nothing is opened without --render-spool, and nothing
+     under --dry-run. A render failure never costs the Foray: it is a
+     warning, and the phone speaks the line. */
+  const render =
+    args.renderSpool && !args.dryRun
+      ? new NarrationRenderTracker(deps.renderClient ?? new SpoolRenderClient(path.resolve(args.renderSpool), now), args.audioPolicy ?? DEFAULT_AUDIO_POLICY)
+      : null;
+  const refreshRender = async (): Promise<void> => {
+    if (!render) return;
+    try {
+      await render.refresh();
+    } catch (err) {
+      console.warn(`  render: could not read render results: ${errorMessage(err)}`);
+    }
+  };
   const publishJob = async (): Promise<void> => {
     if (!jobSink) return;
-    const snapshot = snapshotFrom(job, jobProgress, jobSeq, now().toISOString());
+    await refreshRender();
+    const snapshot = snapshotFrom(job, jobProgress, jobSeq, now().toISOString(), render ? { policy: render.policy, results: render.results } : undefined);
     if (!snapshot) return;
     try {
       await jobSink.publish(snapshot);
@@ -1318,6 +1395,7 @@ export async function generateOneCandidate(
        attempt's banked acts fire nothing, so its timeline is its own. */
     timeline = new DeliveryTimeline();
     const attemptTimeline = timeline;
+    render?.beginAttempt();
     const attempt = resumes.length + 1;
     const runAttempt: typeof runPipeline = (req, opts, pipelineDeps) =>
       runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length }, () => runPipeline(req, opts, pipelineDeps)));
@@ -1352,6 +1430,13 @@ export async function generateOneCandidate(
           onActReady,
           onItemReady: async (ev) => {
             attemptTimeline.record(ev);
+            if (render) {
+              try {
+                await render.onItemReady(ev);
+              } catch (err) {
+                console.warn(`  render: could not enqueue item ${ev.index}: ${errorMessage(err)}`);
+              }
+            }
             if (jobSink) {
               jobProgress = progressWithEvent(jobProgress, ev);
               await publishJob();
@@ -1468,7 +1553,14 @@ export async function generateOneCandidate(
   /* GV-33: the final attempt's delivery timeline. Resumed when any act's
      stitch came off the checkpoint: that act fired no events. */
   const stitchResumed = outcome.timings.some((t) => /^stitch:\d+$/.test(t.name) && t.resumed === true);
-  const delivery = outcome.outcome === "generated" ? deliveryReportOf(timeline, stitchResumed) : undefined;
+  const timelineDelivery = outcome.outcome === "generated" ? deliveryReportOf(timeline, stitchResumed) : undefined;
+  /* GV-74: the render results as they stand when the run ends, into the job
+     row (one more snapshot, so the closed row carries them) and the report. */
+  if (render && outcome.outcome === "generated") {
+    if (jobSink) await publishJob();
+    else await refreshRender();
+  }
+  const delivery = timelineDelivery && render ? { ...timelineDelivery, render: render.report() } : timelineDelivery;
   const entry: ReportEntry = {
     prompt: spec.prompt,
     outcome: outcome.outcome,
@@ -1545,6 +1637,7 @@ export async function main(
       "Usage: npm run generate-forays -- --prompts prompts.json [--out DIR] " +
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
         "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
+        "[--render-spool <dir> [--audio-policy phone-voice-first|await-render]] " +
         "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>]"
     );
     process.exitCode = 1;
