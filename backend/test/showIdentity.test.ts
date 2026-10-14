@@ -92,31 +92,45 @@ describe("GV-83 — showKeyForItem's resolution order", () => {
 
   const entry: TranscriptDigestEntry = { show_id: "1202593158", show_title: "A Breadth Show", guid: "g1", title: "Episode One", cues: 10 };
 
-  /* MUTATION THAT KILLS THIS: drop the archive branch of showKeyForItem
-     (the minted item filed under a title then keys by that title, not its
-     archive show_id). Ran it: red. */
+  function mintedRow(id: string, guid: string): MintedSegmentSource {
+    return {
+      id,
+      show: "The Grill Coach",
+      title: "Other",
+      feed_url: null,
+      episode_guid: guid,
+      audio_url: "https://example.invalid/a.mp3",
+      audio_type: "audio/mpeg",
+      duration_sec: 100,
+      dai_suspected: false,
+      source: "generation-tier-2"
+    };
+  }
+
+  /* MUTATIONS THAT KILL THIS (each ran, red): (a) drop the archive branch of
+     showKeyForItem; (b) drop the legacy fallback in archiveIndex
+     (`if (!index.has(legacy)) index.set(legacy, entry.show_id);`); (c) drop
+     the derived-id loop in archiveIndex. Every id below also has a title row
+     ("The Grill Coach"), so an id the archive does not answer keys as
+     `title:the grill coach`, never falling through to the id prefix (which is
+     the archive show_id itself for a `<show_id>--<slug>` id). */
   it("a minted item resolves to its archive entry's show_id, by derived or legacy id", () => {
     const root = stagedRoot();
     const suffixed: TranscriptDigestEntry = { ...entry, guid: "g2", item_id_suffix: "ab12" };
     const archive = [suffixed];
-    expect(showKeyForItem(deriveItemId(suffixed), { archive, root })).toBe("1202593158");
-    expect(showKeyForItem(legacyItemId(suffixed), { archive, root })).toBe("1202593158");
+    const derivedId = deriveItemId(suffixed);
+    const legacyId = legacyItemId(suffixed);
+    expect(derivedId).not.toBe(legacyId);
+    const titledRows = [mintedRow(derivedId, "g2"), mintedRow(legacyId, "g2")];
+    /* Control: without the archive, both ids key by their title row. */
+    expect(showKeyForItem(derivedId, { newSegmentSources: titledRows, root })).toBe("title:the grill coach");
+    expect(showKeyForItem(legacyId, { newSegmentSources: titledRows, root })).toBe("title:the grill coach");
+    /* With it, the archive answers both, the legacy id included. */
+    expect(showKeyForItem(derivedId, { archive, newSegmentSources: titledRows, root })).toBe("1202593158");
+    expect(showKeyForItem(legacyId, { archive, newSegmentSources: titledRows, root })).toBe("1202593158");
     /* The archive outranks a title row filed under the same id. */
     const titled: TranscriptDigestEntry = { show_id: "geology-bites", show_title: "x", guid: "g3", title: "Other", cues: 1 };
-    const minted: MintedSegmentSource[] = [
-      {
-        id: deriveItemId(titled),
-        show: "The Grill Coach",
-        title: "Other",
-        feed_url: null,
-        episode_guid: "g3",
-        audio_url: "https://example.invalid/a.mp3",
-        audio_type: "audio/mpeg",
-        duration_sec: 100,
-        dai_suspected: false,
-        source: "generation-tier-2"
-      }
-    ];
+    const minted: MintedSegmentSource[] = [mintedRow(deriveItemId(titled), "g3")];
     expect(showKeyForItem(deriveItemId(titled), { archive: [titled], newSegmentSources: minted, root })).toBe("geology-bites");
     /* Without the archive, the run's own minted source row names the show. */
     expect(showKeyForItem(deriveItemId(titled), { newSegmentSources: minted, root })).toBe("title:the grill coach");
