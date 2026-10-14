@@ -69,7 +69,10 @@ final class AVDeckTests: XCTestCase {
         timers: VirtualDeckTimers? = nil,
         makeAsset: ((URL, Bool) -> AVURLAsset)? = nil,
         idleClockMs: (() -> Double)? = nil,
-        forcesLoadProgress: Bool? = nil
+        forcesLoadProgress: Bool? = nil,
+        startsEpisodesOnBuffer: Bool = false,
+        resolvedSources: ResolvedSources? = nil,
+        forcesStartBuffer: Bool? = nil
     ) -> AVDeck {
         var config = AVDeck.Config(
             loadDeadlineSec: deadlineSec,
@@ -85,6 +88,9 @@ final class AVDeckTests: XCTestCase {
         config.diag = { [unowned self] in self.diags.append($0) }
         if let idleClockMs { config.idleClockMs = idleClockMs }
         config.forcesLoadProgress = forcesLoadProgress
+        config.startsEpisodesOnBuffer = startsEpisodesOnBuffer
+        config.resolvedSources = resolvedSources
+        config.forcesStartBuffer = forcesStartBuffer
         let deck = AVDeck(config: config)
         deck.onEvent = { [unowned self] event in
             // Timestamped in the log, so a slow CI load shows WHERE it was slow.
@@ -1239,6 +1245,212 @@ final class AVDeckTests: XCTestCase {
         XCTAssertEqual(late, [], "the load the reset interrupted still reported")
         XCTAssertNil(deck.reading.positionSec)
         XCTAssertNil(deck.player.currentItem)
+    }
+
+    // MARK: - Car cold resume (founder report 2026-10-14)
+
+    /// The `deck` rows of one kind, in order.
+    private func rowsOfKind(_ kind: String) -> [DiagEntry] {
+        diags.filter { $0.kind == "deck" && $0[field: "kind"] == .string(kind) }
+    }
+
+    private func markKeys(_ row: DiagEntry?) -> [String] {
+        guard case let .object(members)? = row?[field: "marks"] else { return [] }
+        return members.map(\.key)
+    }
+
+    /// THE FIX FOR THE CAR'S 4.5 s OF PREROLL: on a deck that starts episodes
+    /// on buffer (production's), a whole episode is ready once its start
+    /// buffer is in after the zero-tolerance seek, with NO preroll, still
+    /// silent until play; its first play is `playImmediately`, a later one an
+    /// ordinary play. The core reads `.ready(prerolled: false)` as it always
+    /// has (the ordinary load's fallback reports the same).
+    /// TO SEE IT FAIL: in `gateSeekCompleted`, skip the `startsOnBuffer`
+    /// branch (the episode prerolls: `prerolled` true, a `preroll` primitive);
+    /// or set `atOnce` to false in `applyRateAndPlay` (no `play immediately`).
+    func testAnEpisodeStartsOnBufferWithNoPreroll() throws {
+        deck.send(.unload)
+        deck = makeDeck(startsEpisodesOnBuffer: true)
+        guard let ready = loadAndWaitReady(try fixture("click-cbr", "mp3"), token: 1, startSec: 7.3, precise: false)
+        else { return }
+        XCTAssertFalse(ready.prerolled, "an episode must not wait for a preroll")
+        XCTAssertEqual(ready.landedSec, 7.3, accuracy: 0.1, "the zero-tolerance seek still lands the resume point")
+        let attach = try XCTUnwrap(deck.primitives.lastIndex(of: "attach"), "\(deck.primitives)")
+        let ops = Array(deck.primitives[attach...])
+        XCTAssertNotNil(ops.firstIndex(of: "seek 7.300"), "\(ops)")
+        XCTAssertFalse(ops.contains { $0.hasPrefix("preroll") }, "\(ops)")
+        XCTAssertEqual(markKeys(rowsOfKind("ready").last).last, "buffer", "\(diags)")
+        XCTAssertEqual(deck.player.rate, 0, "ready is still silent until play")
+
+        deck.send(.play)
+        XCTAssertTrue(deck.primitives.last?.hasPrefix("play immediately") ?? false, "\(deck.primitives)")
+        XCTAssertEqual(deck.player.rate, 1)
+        waitPlaying(1)
+        deck.send(.pause)
+        deck.send(.play)
+        let last = deck.primitives.last ?? ""
+        XCTAssertTrue(last.hasPrefix("play") && !last.contains("immediately"), "only the first play starts at once: \(last)")
+    }
+
+    /// A Foray clip on the same deck keeps the preroll: its start is a seam.
+    /// TO SEE IT FAIL: drop `!bounded` from `isEpisodeLoad`.
+    func testAForayClipStillPrerollsOnADeckThatStartsEpisodesOnBuffer() throws {
+        deck.send(.unload)
+        deck = makeDeck(startsEpisodesOnBuffer: true)
+        deck.send(.loadURL(token: 1, url: try fixture("click-cbr", "mp3"), startSec: 7.3, preciseTiming: true, bounded: true))
+        guard let ready = readyEvent(1) else { return }
+        XCTAssertTrue(ready.prerolled, "\(deck.primitives)")
+        XCTAssertEqual(deck.primitives.filter { $0.hasPrefix("preroll") }.count, 1, "\(deck.primitives)")
+        deck.send(.play)
+        XCTAssertFalse(deck.primitives.last?.contains("immediately") ?? true, "\(deck.primitives)")
+    }
+
+    /// The rule, every branch, without a network.
+    /// TO SEE IT FAIL: drop the `likelyToKeepUp || bufferFull` line, flip the
+    /// threshold comparison, or drop the "the rest of the item is in" line.
+    func testTheStartBufferRule() {
+        func reached(_ ahead: Double, remaining: Double? = 3000, keepUp: Bool = false, full: Bool = false) -> Bool {
+            AVDeck.startBufferReached(bufferedAheadSec: ahead, remainingSec: remaining, likelyToKeepUp: keepUp,
+                                      bufferFull: full, thresholdSec: AVDeck.defaultStartBufferSec)
+        }
+        XCTAssertFalse(reached(0))
+        XCTAssertFalse(reached(1.0), "the 2026-10-13 deadline had 1.0 s buffered")
+        XCTAssertTrue(reached(2.0))
+        XCTAssertTrue(reached(0, keepUp: true))
+        XCTAssertTrue(reached(0.5, full: true))
+        XCTAssertTrue(reached(1.2, remaining: 1.2), "the rest of the item is buffered")
+        XCTAssertFalse(reached(0, remaining: 0), "nothing buffered is never enough by itself")
+        XCTAssertFalse(reached(.nan))
+        XCTAssertEqual(AVDeck.defaultStartBufferSec, 2)
+        XCTAssertEqual(AVDeck.defaultStartBufferWaitSec, 3)
+    }
+
+    /// A start buffer that does not come is waited for `startBufferWaitSec`
+    /// from the landed seek, not to the 20 s deadline: then the episode is
+    /// ready unprimed and plays the ordinary way (stall-waiting on), which is
+    /// never slower than the preroll it replaced. A seek during the wait
+    /// seeks again and waits there.
+    /// TO SEE IT FAIL: drop the cap's `config.after(...)` in
+    /// `awaitStartBuffer` (no timer is armed, the load waits to the
+    /// deadline); or drop the re-seek in `seek(to:)` (it lands at 5 s, not 11).
+    func testTheStartBufferWaitIsCappedAndASeekDuringItSeeksAgain() throws {
+        let timers = VirtualDeckTimers()
+        deck.send(.unload)
+        deck = makeDeck(timers: timers, startsEpisodesOnBuffer: true, forcesStartBuffer: false)
+        deck.send(.loadURL(token: 4, url: try fixture("click", "wav"), startSec: 5, preciseTiming: true))
+        let capArmed = { timers.pending.contains { $0.sec == AVDeck.defaultStartBufferWaitSec } }
+        XCTAssertTrue(spin(until: capArmed), "the start-buffer wait armed no cap: \(deck.primitives)")
+        XCTAssertFalse(events.contains { if case .ready = $0 { return true }; return false }, "\(events)")
+
+        deck.send(.seek(toSec: 11))
+        XCTAssertFalse(capArmed(), "the old wait's cap must go with it")
+        XCTAssertTrue(spin(until: capArmed), "no new wait after the second seek: \(deck.primitives)")
+        XCTAssertNotNil(deck.primitives.firstIndex(of: "seek 11.000"), "\(deck.primitives)")
+
+        timers.advance(ms: AVDeck.defaultStartBufferWaitSec * 1000 - 1)
+        XCTAssertFalse(events.contains { if case .ready = $0 { return true }; return false }, "the cap fired early")
+        timers.advance(ms: 1)
+        let hit = events.first { if case .ready(4, _, _, _) = $0 { return true }; return false }
+        guard case let .ready(_, landed, prerolled, _)? = hit else { return XCTFail("no ready at the cap: \(events)") }
+        XCTAssertFalse(prerolled)
+        XCTAssertEqual(landed, 11, accuracy: 0.1)
+        XCTAssertEqual(markKeys(rowsOfKind("ready").last).last, "bufferCap", "\(diags)")
+        XCTAssertFalse(deck.primitives.contains { $0.hasPrefix("preroll") }, "\(deck.primitives)")
+        deck.send(.play)
+        let last = deck.primitives.last ?? ""
+        XCTAssertTrue(last.hasPrefix("play") && !last.contains("immediately"), "a capped start is an ordinary play: \(last)")
+    }
+
+    /// A RESUME attaches where the source's redirects ended last time (here a
+    /// bundled file stands in for the CDN, the original for a prefix that does
+    /// not resolve), and the load is still the core's: `loadedURL` is the
+    /// original, the row says `resolved=true`. A play from the top attaches
+    /// the original whatever is stored (corner case #1).
+    /// TO SEE IT FAIL: pass `mayResolve: false` from `load` (the original
+    /// does not resolve: the load fails), or attach the resolved address for
+    /// a start of 0 (`eligible` without `startSec > 0`).
+    func testAResumeAttachesWhereItsRedirectsEnded() throws {
+        let file = try fixture("click-cbr", "mp3")
+        let original = "https://dts.podtrac.invalid/redirect.mp3/traffic.libsyn.invalid/ep.mp3"
+        let sources = ResolvedSources(entries: [ResolvedSources.Entry(from: original, to: file.absoluteString,
+                                                                      atMs: Date().timeIntervalSince1970 * 1000)])
+        deck.send(.unload)
+        deck = makeDeck(startsEpisodesOnBuffer: true, resolvedSources: sources)
+        deck.send(.load(token: 1, itemId: "ep", url: original, startSec: 7.3, preciseTiming: false))
+        guard let ready = readyEvent(1) else { return }
+        XCTAssertEqual(ready.landedSec, 7.3, accuracy: 0.1)
+        XCTAssertEqual(deck.loadedURL, original, "the load's identity is its own URL")
+        XCTAssertTrue(deck.primitives.contains("attach resolved"), "\(deck.primitives)")
+        XCTAssertEqual(rowsOfKind("attach").last?[field: "resolved"], .bool(true))
+        XCTAssertEqual(rowsOfKind("ready").last?[field: "resolved"], .bool(true))
+        for row in rowsOfKind("attach") + rowsOfKind("ready") {
+            XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
+        }
+
+        deck.send(.unload)
+        diags.removeAll()
+        deck = makeDeck(startsEpisodesOnBuffer: true, resolvedSources: sources)
+        deck.send(.load(token: 2, itemId: "ep", url: original, startSec: 0, preciseTiming: false))
+        let fresh = try XCTUnwrap(rowsOfKind("attach").last, "\(diags)")
+        XCTAssertEqual(fresh[field: "resolved"], .bool(false), "a play from the top goes through the prefix")
+        XCTAssertEqual(fresh[field: "host"], .string("dts.podtrac.invalid"))
+        deck.send(.unload)
+    }
+
+    /// A resolved address that fails before ready falls back to the load's
+    /// own URL ON THE SAME TOKEN: the core sees one load and a ready, never a
+    /// failure, the rows say `fallback`, and the address is forgotten so no
+    /// later resume tries it again.
+    /// TO SEE IT FAIL: drop the fallback branch in `fail(...)` (the core gets
+    /// `.failed`), or its `forget` (the entry survives).
+    func testAFailedResolvedAttachFallsBackToTheOriginalOnTheSameToken() throws {
+        let file = try fixture("click-cbr", "mp3")
+        let gone = "file:///nonexistent-\(UUID().uuidString)/gone.mp3"
+        let sources = ResolvedSources(entries: [ResolvedSources.Entry(from: file.absoluteString, to: gone,
+                                                                      atMs: Date().timeIntervalSince1970 * 1000)])
+        deck.send(.unload)
+        deck = makeDeck(startsEpisodesOnBuffer: true, resolvedSources: sources)
+        deck.send(.loadURL(token: 1, url: file, startSec: 7.3, preciseTiming: false))
+        guard let ready = readyEvent(1) else { return }
+        XCTAssertEqual(ready.landedSec, 7.3, accuracy: 0.1)
+        XCTAssertFalse(events.contains { if case .failed = $0 { return true }; return false }, "\(events)")
+        XCTAssertEqual(rowsOfKind("fallback").count, 1, "\(diags)")
+        XCTAssertEqual(rowsOfKind("attach").map { $0[field: "resolved"] }, [.bool(true), .bool(false)])
+        XCTAssertEqual(rowsOfKind("attach").last?[field: "cold"], .string("fallback"))
+        XCTAssertTrue(sources.entries.isEmpty, "a failed address is forgotten")
+        for row in rowsOfKind("fallback") {
+            XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
+        }
+    }
+
+    /// To the core the fallback is the SAME load: it lands where the core
+    /// last asked (a seek sent while the resolved attempt was in flight), and
+    /// it runs inside what is left of the first attempt's deadline, not a new
+    /// one, so P-13 still bounds the silence in the car; its ready row counts
+    /// from the first attach and marks the fallback.
+    /// TO SEE IT FAIL: build the fallback's args with `fallback.startSec`
+    /// (it lands at 7.3, not 11), or pass `startedAtMs: nil` (a fresh 40 s
+    /// deadline, and an `elapsedMs` that forgets the first 5 s).
+    func testAFallbackKeepsTheLoadsStartAndDeadline() throws {
+        let timers = VirtualDeckTimers()
+        let file = try fixture("click-cbr", "mp3")
+        let gone = "file:///nonexistent-\(UUID().uuidString)/gone.mp3"
+        let sources = ResolvedSources(entries: [ResolvedSources.Entry(from: file.absoluteString, to: gone,
+                                                                      atMs: Date().timeIntervalSince1970 * 1000)])
+        deck.send(.unload)
+        deck = makeDeck(timers: timers, resolvedSources: sources)
+        deck.send(.loadURL(token: 1, url: file, startSec: 7.3, preciseTiming: false))
+        deck.send(.seek(toSec: 11))
+        // Every AVFoundation callback hops to main, so the resolved attempt
+        // cannot have failed yet: these 5 s pass inside it.
+        timers.advance(ms: 5000)
+        XCTAssertTrue(spin(until: { !self.rowsOfKind("fallback").isEmpty }), "no fallback: \(diags)")
+        XCTAssertEqual(timers.pending.map(\.sec), [AVDeckTests.testDeadlineSec - 5],
+                       "the fallback must run inside what is left of the first deadline")
+        guard let ready = readyEvent(1) else { return }
+        XCTAssertEqual(ready.landedSec, 11, accuracy: 0.1, "the fallback forgot the core's seek")
+        XCTAssertGreaterThanOrEqual(ready.elapsedMs, 5000, "elapsed counts from the first attach")
+        XCTAssertTrue(markKeys(rowsOfKind("ready").last).contains("fallback"), "\(diags)")
     }
 }
 

@@ -37,8 +37,8 @@ export interface SpineTurn {
  * F-86 / F-98: the spine call's conversation. A first call is the prompt
  * alone; a re-ask (`revision` present) is [prompt, the refused reply as the
  * assistant's own turn, one user turn naming what to fix], the fix turn being
- * the seed-floor instruction for a `seed-floor` re-ask and the structural one
- * otherwise. Shared by the Anthropic builder and its Chat twin (GV-25), so the
+ * the seed-floor instruction for a `seed-floor` re-ask, the runtime one for a
+ * `runtime` re-ask (GV-89) and the structural one otherwise. Shared by the Anthropic builder and its Chat twin (GV-25), so the
  * two cannot ask a re-ask differently: the Anthropic builder opens with the
  * joined prompt as one user turn (this function), the Chat builder with
  * toChatMessages(parts) (GV-32), and both append spineRevisionTurns. A fresh
@@ -57,11 +57,17 @@ export function spineRevisionTurns(revision: SpineBuildContext["revision"], fold
   if (!revision) return [];
   return [
     { role: "assistant", content: spineReplyText(revision.previous, folded) },
-    {
-      role: "user",
-      content: revision.kind === "seed-floor" ? buildSeedFloorInstruction(revision.violations) : buildSpineFixInstruction(revision.violations)
-    }
+    { role: "user", content: revisionInstruction(revision) }
   ];
+}
+
+/** The fix turn for each re-ask kind: seed-floor and runtime (GV-89) have
+ * their own; structural (the default, and every revision written before the
+ * field) keeps F-86's. */
+function revisionInstruction(revision: NonNullable<SpineBuildContext["revision"]>): string {
+  if (revision.kind === "seed-floor") return buildSeedFloorInstruction(revision.violations);
+  if (revision.kind === "runtime") return buildRuntimeFixInstruction(revision.violations);
+  return buildSpineFixInstruction(revision.violations);
 }
 
 /**
@@ -101,6 +107,34 @@ export function buildSpineFixInstruction(violations: string[]): string {
     "Every beat claim is ONE sentence (one full stop, at most 60 words); no claim appears twice; every act",
     "has a startState and an endState. Respond with ONLY the complete corrected JSON object, the same shape",
     "as before, no markdown fences, no other text."
+  ].join("\n");
+}
+
+/**
+ * GV-89 (W4-14): the one user turn a RUNTIME re-ask adds, next to F-86's
+ * structural turn and in the same idiom (the whole prompt is still in the
+ * conversation and the model's own reply is the assistant turn). The reply is
+ * structurally fine, but its seeds already commit the Foray to more tape than
+ * the tier's ceiling holds, so no later stage can make it fit. The first
+ * violation names the overrun; the rest name each seed window and its length.
+ *
+ * The ask is to DROP OR MERGE beats, and to keep the seeds it keeps exactly as
+ * they are: a re-ask that rewrote seeds would undo the post-seeding the
+ * windows were checked by, and a seed moved to a window that does not say the
+ * claim is refused by sourcing one stage later. Exported for tests.
+ */
+export function buildRuntimeFixInstruction(violations: string[]): string {
+  return [
+    "Your previous spine is structurally fine, but it cannot fit this tier's runtime: every quoted window a beat",
+    "is seeded from plays for at least its own length, and together they already overrun the tier's ceiling.",
+    ...violations.map((v) => `- ${v}`),
+    "",
+    "DROP OR MERGE BEATS until the plan fits: fewer seeded windows, or two beats from the same window merged",
+    "into one. Keep the seeds you keep exactly as they are (the same episodeId, startSec and endSec), never",
+    "invent or move a window, and stay inside the tier's act, slot and beat counts with the exploration floor",
+    "met. Every claim is still ONE sentence, and the voice stays as it was.",
+    "",
+    "Respond with ONLY the complete JSON object, the same shape as before, no markdown fences, no other text."
   ].join("\n");
 }
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   buildSpine,
   buildSpineWithReasks,
+  reaskForRuntime,
   spineStructuralReasks,
   SPINE_STRUCTURAL_REASKS_ENV,
   DEFAULT_SPINE_STRUCTURAL_REASKS
@@ -22,9 +23,20 @@ import { BudgetGuard } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
 import { makeFakeAnthropicClient, textBlock } from "./helpers/fakeAnthropicClient";
-import { allBeats, type Spine } from "../src/types/spine";
+import { allBeats, type DurationTier, type Spine } from "../src/types/spine";
 import type { IntentUnderstanding, GenerationRequest } from "../src/types/generation";
 import type { ResearchShape } from "../src/types/research";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { generateOneCandidate, parseArgs } from "../src/cli/generateForays";
+import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
+import { ChatSpineBuilder } from "../src/generation/chat/ChatSpineBuilder";
+import { targetFor } from "../src/generation/chat/targetFor";
+import { DEFAULT_LANE_PROFILES } from "../src/config/machineProfiles";
+import { buildRuntimeFixInstruction, spineConversation, spineRevisionTurns } from "../src/generation/prompts/spine";
+import type { SpineBuildContext, SpineBuilder } from "../src/generation/SpineBuilder";
+import { scriptedProvider } from "./helpers/fakeChatProvider";
 
 /**
  * F-86 (generation run 7 attempt 2, 2026-09-11 ~13:00Z, engineering
@@ -281,5 +293,312 @@ describe("F-86 — the spine is re-asked once with the structural violations nam
     expect(text).toMatch(/ONE sentence/);
     expect(text).toMatch(/no markdown fences/);
     expect(text.split("\n").length).toBeLessThan(12);
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   GV-89 (W4-14): the post-spine runtime check in the pipeline, under
+   FORAY_TIER_RUNTIME_CAP, and the runtime fix turn the builders send.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+const RUNTIME_CLAIMS = [
+  "Pitmasters in Lockhart smoked brisket over post oak for fourteen hours.",
+  "Ford turned sawdust from Model T body shops into charcoal briquettes.",
+  "Kingsford bought the briquette plant from Ford after the war.",
+  "Kansas City sauce leaned on molasses and tomato for its sweetness.",
+  "Carolina whole hog cooks mopped the pig with vinegar and red pepper.",
+  "Memphis rib joints rubbed their racks with paprika before the dry smoke.",
+  "Weber built the kettle grill from a cut marine buoy in Chicago.",
+  "Argentine asado cooks raked embers under parrilla grates of iron.",
+  "Korean galbi marinated short ribs in pear juice and soy.",
+  "Japanese yakitori chefs fanned binchotan under skewered chicken."
+];
+const RUNTIME_UNRELATED = [
+  "Suburban patios signalled prosperity during postwar housing booms.",
+  "Hardware stores marketed lighter fluid aggressively nationwide.",
+  "Television cooking programmes popularized outdoor entertaining.",
+  "Propane tanks displaced older backyard stoves gradually."
+];
+
+/** The research map the runtime fixtures are written against: ten 120 s
+ * windows from ten episodes, each window's text one of RUNTIME_CLAIMS. */
+const runtimeShape: ResearchShape = {
+  subject: "the history of grilling",
+  angle: "how regional craft and industry met at the grill",
+  generatedAt: "2026-10-14T00:00:00.000Z",
+  subtopics: [
+    {
+      label: "barbecue",
+      source: "literal-term",
+      tape: { signal: "strong", itemCount: 10, showCount: 1, exampleItemIds: [] },
+      controversies: [],
+      externalNotes: null,
+      externallyResearched: false,
+      windowsUnavailable: null,
+      tapeWindows: RUNTIME_CLAIMS.map((text, i) => ({
+        episodeId: `ep-${i}`,
+        showTitle: "Smoke Talk",
+        episodeTitle: `Episode ${i}`,
+        startSec: 100,
+        endSec: 220,
+        text,
+        score: 1
+      }))
+    }
+  ],
+  nonObviousAngle: null,
+  externalGapsResearched: []
+};
+
+type RuntimeBeat = Spine["acts"][number]["slots"][number]["beats"][number];
+
+function runtimeBeat(i: number, seed: boolean): RuntimeBeat {
+  return { claim: RUNTIME_CLAIMS[i]!, exploration: i % 3 === 0, ...(seed ? { seed: { episodeId: `ep-${i}`, startSec: 100, endSec: 220 } } : {}) };
+}
+
+function runtimeSpine(beats: RuntimeBeat[]): Spine {
+  const half = Math.ceil(beats.length / 2);
+  return {
+    subject: "the history of grilling",
+    angle: "how regional craft and industry met at the grill",
+    overview: "Smoke, sauce and steel: how a handful of backyard habits travelled the world and back.",
+    duration: "short",
+    generatedAt: "2026-10-14T00:00:00.000Z",
+    voice: { style: "curious", register: "conversational", sentenceRhythm: "varied", narratorPresence: "light" },
+    acts: [
+      {
+        title: "Act 1: Smoke and fire",
+        thesis: "Grilling grew out of industry as much as out of regional craft.",
+        startState: "The listener thinks of grilling as a timeless backyard habit.",
+        endState: "The listener sees the factories and pits behind it.",
+        slots: [
+          { title: "Pits and sauces", beats: beats.slice(0, half) },
+          { title: "Kettles and coals", beats: beats.slice(half) }
+        ]
+      }
+    ]
+  };
+}
+
+/** As the model wrote it: 4 beats seeded, 6 unseeded whose claims are word
+ * for word what a window says. It FITS as written (480 s of tape + 120 s of
+ * narration); post-seeding attaches the other 6 windows and it no longer
+ * does (1,200 s of tape). */
+const fitsUntilPostSeeded = runtimeSpine(RUNTIME_CLAIMS.map((_, i) => runtimeBeat(i, i < 4)));
+/** 8 beats, 4 seeded and 4 no window speaks to: fits after post-seeding too. */
+const fittingPlan = runtimeSpine([
+  ...[0, 1, 2, 3].map((i) => runtimeBeat(i, true)),
+  ...RUNTIME_UNRELATED.map((claim, i) => ({ claim, exploration: i % 2 === 0 }))
+]);
+
+/** The recording spine builder: scripted replies in order, every context kept. */
+class RecordingSpineBuilder implements SpineBuilder {
+  readonly providerName = "recording";
+  readonly calls: SpineBuildContext[] = [];
+  constructor(private readonly replies: Spine[]) {}
+  async buildSpine(_i: IntentUnderstanding, _r: ResearchShape, _d: DurationTier, ctx: SpineBuildContext): Promise<Spine> {
+    this.calls.push(ctx);
+    const next = this.replies.shift();
+    if (!next) throw new Error("RecordingSpineBuilder: no reply left");
+    return next;
+  }
+}
+
+describe("GV-89 — the post-spine runtime check re-asks only a spine that cannot fit (FORAY_TIER_RUNTIME_CAP)", () => {
+  const request: GenerationRequest = {
+    prompt: "the history of grilling and barbecue",
+    duration: "short",
+    author_id: "founder-1",
+    visibility: "catalogue"
+  };
+  const topic = "food/grilling-bbq";
+  const finalize = async (input: FinalizeForayInput): Promise<FinalizeForayResult> =>
+    ({
+      validation: { ok: true, checkForaysErrors: [], checkForaysWarnings: [], checkNarrationErrors: [], checkNarrationWarnings: [] },
+      forayRecord: { id: input.id, generated: true } as never,
+      timings: []
+    }) as unknown as FinalizeForayResult;
+
+  /** A store with the research map already banked, so §4.3 is asked against
+   * the fixture's windows (the stub researcher quotes none). */
+  function storeWithMap(key: string): FakeCheckpointStore {
+    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic }));
+    store.save(key, "research-shape", runtimeShape);
+    return store;
+  }
+
+  async function run(spineBuilder: SpineBuilder, store: FakeCheckpointStore, key: string, tierRuntimeCap: boolean) {
+    return runForayPipeline(
+      request,
+      { userId: "founder-1", now: () => new Date("2026-10-14T08:00:00.000Z"), topic, checkpointKey: key, flags: { tierRuntimeCap } },
+      {
+        understander: new StubPromptUnderstander(),
+        researcher: new StubExternalResearcher(),
+        spineBuilder,
+        deepenBuilder: new StubDeepenActBuilder(),
+        narrationWriter: new StubNarrationWriterBuilder(),
+        narrationVerifier: new StubNarrationVerifierBuilder(),
+        continuityBuilder: new StubContinuityBuilder(),
+        finalize,
+        checkpoint: store
+      }
+    );
+  }
+
+  it("mutation: with the cap on, a spine that post-seeding pushes over the ceiling is re-asked exactly once, recorded as a 'runtime' re-ask, and the kept plan is banked", async () => {
+    /* MUTATION THAT KILLS THIS: run the runtime check on `built.spine` (before
+       postSeedWithFloor) instead of on the post-seeded spine. The plan as
+       written fits, so no re-ask is made. Ran it: red. */
+    const builder = new RecordingSpineBuilder([fitsUntilPostSeeded, fittingPlan]);
+    const store = storeWithMap("gv89-on");
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      const out = await run(builder, store, "gv89-on", true);
+      expect(builder.calls).toHaveLength(2);
+      expect(builder.calls[1]!.revision?.kind).toBe("runtime");
+      expect("spineReasks" in out).toBe(true);
+      if (!("spineReasks" in out)) return;
+      expect(out.spineReasks).toHaveLength(1);
+      expect(out.spineReasks[0]).toMatchObject({ attempt: 1, kind: "runtime" });
+      expect(out.spineReasks[0]!.violations[0]).toMatch(/^the plan's minimum runtime is \d+ s — 10 distinct seeded window\(s\) at 1200 s/);
+
+      /* The banked spine is the plan that fits, and the report carries its numbers. */
+      const banked = store.files.get("gv89-on")!.stages["spine"] as Spine;
+      expect(allBeats(banked)).toHaveLength(8);
+      expect(out.spineRuntime).toBeDefined();
+      expect(out.spineRuntime!.lowerBoundSec).toBeLessThanOrEqual(1035);
+      expect(out.spineRuntime!.estimateSec).toBeGreaterThanOrEqual(out.spineRuntime!.lowerBoundSec);
+
+      const lines = log.mock.calls.map((c) => String(c[0]));
+      expect(lines.some((l) => /re-asking once to drop or merge beats \(GV-89\)/.test(l))).toBe(true);
+      expect(lines.some((l) => /^ {2}spine runtime: lower bound \d+s, estimate \d+s, tier band \[765,1035\]$/.test(l))).toBe(true);
+
+      /* A RESUMED spine reports no re-asks (F-86) and spends no call, and
+         reports the same runtime numbers, read off the banked spine. */
+      const resumedBuilder = new RecordingSpineBuilder([]);
+      const resumed = await run(resumedBuilder, store, "gv89-on", true);
+      expect(resumedBuilder.calls).toHaveLength(0);
+      if (!("spineReasks" in resumed)) throw new Error("resumed run stopped before the spine");
+      expect(resumed.spineReasks).toEqual([]);
+      expect(resumed.spineRuntime).toEqual(out.spineRuntime);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("mutation: with the cap off (the default), the same spine is not re-asked, but its runtime is still reported", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `flags.tierRuntimeCap` test in the
+       spine stage. The default run then spends a second spine call. Ran it: red. */
+    const builder = new RecordingSpineBuilder([fitsUntilPostSeeded]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      const out = await run(builder, storeWithMap("gv89-off"), "gv89-off", false);
+      expect(builder.calls).toHaveLength(1);
+      if (!("spineReasks" in out)) throw new Error("run stopped before the spine");
+      expect(out.spineReasks).toEqual([]);
+      expect(out.spineRuntime!.lowerBoundSec).toBeGreaterThanOrEqual(1200);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("mutation: with the cap on, a short spine whose lower bound fits makes no extra call", async () => {
+    /* MUTATION THAT KILLS THIS: re-ask whenever the cap is on (drop the
+       `spineCannotFit` return in reaskForRuntime). The recording builder then
+       shows two calls. Ran it: red. */
+    const builder = new RecordingSpineBuilder([fittingPlan]);
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      const out = await run(builder, storeWithMap("gv89-fits"), "gv89-fits", true);
+      expect(builder.calls).toHaveLength(1);
+      if (!("spineReasks" in out)) throw new Error("run stopped before the spine");
+      expect(out.spineReasks).toEqual([]);
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it("mutation: both spine builders send buildRuntimeFixInstruction as the fix turn of a 'runtime' re-ask", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `runtime` branch in prompts/spine.ts's
+       revisionInstruction (the structural fix turn is then sent). Ran it: red. */
+    const violations = ["the plan's minimum runtime is 1205 s", 'act 1, slot 1, beat 1: seeded from [ep-0 100-220s], at least 120 s of tape — "x"'];
+    const revision = { previous: fittingPlan, violations, attempt: 1, kind: "runtime" as const };
+    const turns = spineRevisionTurns(revision);
+    expect(turns).toEqual([
+      { role: "assistant", content: spineReplyText(fittingPlan) },
+      { role: "user", content: buildRuntimeFixInstruction(violations) }
+    ]);
+    expect(turns[1]!.content).not.toBe(buildSpineFixInstruction(violations));
+    expect(turns[1]!.content).toMatch(/DROP OR MERGE BEATS/);
+    expect(turns[1]!.content).toMatch(/Keep the seeds you keep exactly as they are/);
+    for (const v of violations) expect(turns[1]!.content).toContain(`- ${v}`);
+
+    /* The Chat builder (decision 9: the only Qwen spine class) appends exactly
+       those turns; the Anthropic builder sends spineConversation, which is
+       built from the same function. */
+    const reply = JSON.stringify({ overview: fittingPlan.overview, voice: fittingPlan.voice, acts: fittingPlan.acts });
+    const provider = scriptedProvider({ complete: [reply] });
+    const target = targetFor({ provider: "local", lane: "spark", model: "local-heavy" }, DEFAULT_LANE_PROFILES.spark);
+    await new ChatSpineBuilder(provider, target, { checkAndRecord: async () => undefined }).buildSpine(intent, researchShape, "short", { ...ctx, revision });
+    expect(provider.requests[0]!.messages.slice(-2)).toEqual(turns);
+    expect(spineConversation("prompt", revision).slice(1)).toEqual(turns);
+  });
+});
+
+describe("GV-89 — a folded runtime re-ask reply must pass the folded-copy gate", () => {
+  it("mutation: when folded, a runtime re-ask reply missing the folded title and summary is dropped, the spine passed in is kept, and the re-ask is still recorded as 'runtime'", async () => {
+    /* MUTATION THAT KILLS THIS: drop `foldedCopyIssues(reply)` from the
+       issues in reaskForRuntime (leave only checkSpineStructure). The reply
+       below then passes every other gate and fits, so it replaces the spine
+       with no title or summary for the listener copy. Ran it: red. */
+    const overrun = runtimeSpine(RUNTIME_CLAIMS.map((_, i) => ({ ...runtimeBeat(i, true), seedSource: "spine" as const })));
+    const folded = { ...ctx, listenerPrompt: "the history of grilling and barbecue" };
+
+    /* Control: the same reply WITH the folded copy is accepted, so the drop
+       below is the copy gate's and nothing else's. */
+    const withCopy: Spine = { ...fittingPlan, title: "Smoke, Sauce and Steel", summary: "How backyard grilling grew out of pits and factories." };
+    const accepting = new RecordingSpineBuilder([withCopy]);
+    const accepted = await reaskForRuntime(overrun, intent, runtimeShape, "short", accepting, folded);
+    expect(accepted.accepted).toBe(true);
+
+    /* fittingPlan carries subject and angle but no title or summary. */
+    const builder = new RecordingSpineBuilder([fittingPlan]);
+    const out = await reaskForRuntime(overrun, intent, runtimeShape, "short", builder, folded);
+
+    expect(builder.calls).toHaveLength(1);
+    expect(builder.calls[0]!.revision?.kind).toBe("runtime");
+    expect(builder.calls[0]!.listenerPrompt).toBe(folded.listenerPrompt);
+    expect(out.accepted).toBe(false);
+    expect(out.spine).toBe(overrun);
+    expect(out.reask).toMatchObject({ attempt: 1, kind: "runtime" });
+    expect(out.reask!.violations[0]).toMatch(/^the plan's minimum runtime is \d+ s/);
+  });
+});
+
+describe("GV-89 — generateForays writes spineRuntime into the report row", () => {
+  it("mutation: an outcome that reached the spine carries spineRuntime into report.json's row; one that did not has none", async () => {
+    /* MUTATION THAT KILLS THIS: leave the spineRuntime spread out of the
+       report entry in generateOneCandidate. Ran it: red. */
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-gv89-"));
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      const args = parseArgs(["--out", dir, "--duration", "short", "--dry-run"], {});
+      const spineRuntime = { lowerBoundSec: 1205, estimateSec: 1290 };
+      const reached = await generateOneCandidate({ prompt: "gv-89 reached the spine" }, args, {
+        cueProvider: new FileTranscriptCueProvider(),
+        runPipeline: async () => ({ outcome: "unresolved-topic", title: "t", candidates: [], spineReasks: [], spineRuntime, timings: [] })
+      });
+      expect(reached.entry?.spineRuntime).toEqual(spineRuntime);
+
+      const rejected = await generateOneCandidate({ prompt: "gv-89 never reached the spine" }, args, {
+        cueProvider: new FileTranscriptCueProvider(),
+        runPipeline: async () => ({ outcome: "rejected", category: "c", explanation: "e", timings: [] })
+      });
+      expect(rejected.entry).toBeDefined();
+      expect(rejected.entry).not.toHaveProperty("spineRuntime");
+    } finally {
+      log.mockRestore();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

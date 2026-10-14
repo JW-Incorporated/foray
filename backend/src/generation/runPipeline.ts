@@ -32,7 +32,8 @@ import { NarratedBeatSchema } from "../types/narration";
 import { understandPrompt, understandPromptFast } from "./understandPrompt";
 import { provisionalTitle } from "./preSpineIntent";
 import { buildResearchShape } from "./researchShape";
-import { buildSpineWithReasks, type SpineReask } from "./buildSpine";
+import { buildSpineWithReasks, reaskForRuntime, type SpineReask } from "./buildSpine";
+import { spineRuntimeLine, spineRuntimeOf, type SpineRuntime } from "./tierRuntime";
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
 import { deepenActs, foldsDeepen } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
@@ -426,6 +427,9 @@ export type RunPipelineOutcome =
       title: string;
       candidates: TopicCandidate[];
       spineReasks: SpineReask[];
+      /** GV-89: the spine's runtime bound and estimate (`tierRuntime.ts`). Set on
+       * every outcome that reached the spine; absent on a pre-spine stop. */
+      spineRuntime?: SpineRuntime;
       timings: StageTiming[];
       clarityDecidedBy?: ClarityDecider;
     }
@@ -444,6 +448,8 @@ export type RunPipelineOutcome =
       topicDecision: PipelineTopicDecision;
       stoppedBefore: "spine" | "deepen";
       spineReasks: SpineReask[];
+      /** GV-89: see the `unresolved-topic` outcome's field. */
+      spineRuntime?: SpineRuntime;
       timings: StageTiming[];
       clarityDecidedBy?: ClarityDecider;
     }
@@ -456,6 +462,8 @@ export type RunPipelineOutcome =
       sourcing: string[];
       topicDecision: PipelineTopicDecision;
       spineReasks: SpineReask[];
+      /** GV-89: see the `unresolved-topic` outcome's field. */
+      spineRuntime?: SpineRuntime;
       timings: StageTiming[];
       clarityDecidedBy?: ClarityDecider;
       /** GV-86: see the `generated` outcome's field. */
@@ -472,6 +480,8 @@ export type RunPipelineOutcome =
        * on a resume (the banked spine is the one that passed). Carried into
        * `report.json` as `spineReasks`. */
       spineReasks: SpineReask[];
+      /** GV-89: see the `unresolved-topic` outcome's field. */
+      spineRuntime?: SpineRuntime;
       /** WS-C: one row per tape-sourced beat, carrying the topic gate's own
        * verdict on the anchor it took (see `TapeRelevanceInput`). Surfaced here
        * because §4.5 is the only stage that knows all of it at once, and
@@ -1528,10 +1538,27 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
           )
       });
       seedFloorReasked = seeded.reasked;
-      return seeded.spine;
+      /* GV-89 (W4-14): THE POST-SPINE RUNTIME CHECK, where seeds are final
+         (post-seeding's count toward the bound) and still inside the stage, so
+         the checkpoint banks the spine the check kept and a resume re-asks
+         nothing. Under FORAY_TIER_RUNTIME_CAP only: a plan whose minimum
+         runtime is over the tier's ceiling is re-asked once, recorded in
+         spineReasks with kind 'runtime'. Off, nothing here runs. */
+      if (!flags.tierRuntimeCap) return seeded.spine;
+      const fitted = await reaskForRuntime(seeded.spine, intent, researchShape, req.duration, spineBuilder, spineCtx, {
+        onReask: (reask) =>
+          console.log(`  spine: the plan cannot fit the ${req.duration} tier — re-asking once to drop or merge beats (GV-89): ${reask.violations[0]}`)
+      });
+      if (fitted.reask) spineReasks = [...spineReasks, fitted.reask];
+      return fitted.spine;
     }
   );
   console.log(`  ${summarizeSeedFloor(spine, seedFloorReasked)}`);
+  /* GV-89: the plan's runtime bound and estimate, on every run that reached
+     the spine (report-only; computed from the frozen spine, so a resumed run
+     reports what the run that banked it did). */
+  const spineRuntime: SpineRuntime = spineRuntimeOf(spine);
+  console.log(`  ${spineRuntimeLine(spineRuntime, req.duration)}`);
 
   /* GV-67: the folded path's copy, from the spine reply through the same
      clamp, listener-word and house-style code (no title re-case re-ask; a
@@ -1573,6 +1600,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         title,
         candidates: decided.candidates.length > 0 ? decided.candidates : preSpineCandidates,
         spineReasks,
+        spineRuntime,
         timings: timings.all(),
         ...clarityTag
       };
@@ -1586,6 +1614,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         topicDecision,
         stoppedBefore: "deepen",
         spineReasks,
+        spineRuntime,
         timings: timings.all(),
         ...clarityTag
       };
@@ -1756,7 +1785,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     0
   );
   if (tapeBeats === 0) {
-    return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, timings: timings.all(), ...clarityTag, ...deepenFoldedTag };
+    return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, spineRuntime, timings: timings.all(), ...clarityTag, ...deepenFoldedTag };
   }
 
   /* GV-79 (W5-03, MQ-05) — THE CLIP-ON-SUBJECT SCORES, OFF THE TIMED PATH.
@@ -2271,6 +2300,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     result,
     spine,
     spineReasks,
+    spineRuntime,
     tapeRelevance: tapeRelevanceRows,
     topicDecision,
     timings: timings.all(),
