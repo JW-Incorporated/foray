@@ -126,11 +126,18 @@ describe("anthropicCall: gen-14, every reply's usage is recorded, re-asks includ
      PROVIDER_CALL_SITES (imported, so the two guards cannot drift) plus
      retrievalClient.ts, pre-listed for GV-29.
    - .complete( inside chat/**: only chat/askStructured.ts and
-     chat/openAICompatProvider.ts (the rule covers chat/** only). */
+     chat/openAICompatProvider.ts (the rule covers chat/** only).
+   - GV-84: chat/ChatNarrationWriterBuilder.ts may call recordUsage( and a
+     provider's .complete( too. Its streamed act (provider.stream) and its
+     seam edit cannot go through askStructured, which refuses a reply cut at
+     its cap, while both keep the seams that finished (TRUNCATION_POLICY
+     'narrate.act': keep-finished-seams) and read JSONL, not one JSON object.
+     Each call meters its budget guard before it sends and records its usage
+     after, as askStructured does. */
 const MESSAGES_CREATE_SITES = ["anthropicCall.ts", "usageTracking.ts"];
-const RECORD_USAGE_SITES = ["anthropicCall.ts", "usageTracking.ts", "chat/askStructured.ts"];
+const RECORD_USAGE_SITES = ["anthropicCall.ts", "usageTracking.ts", "chat/askStructured.ts", "chat/ChatNarrationWriterBuilder.ts"];
 const FETCH_SITES = [...PROVIDER_CALL_SITES, "retrievalClient.ts"];
-const CHAT_COMPLETE_SITES = ["chat/askStructured.ts", "chat/openAICompatProvider.ts"];
+const CHAT_COMPLETE_SITES = ["chat/askStructured.ts", "chat/openAICompatProvider.ts", "chat/ChatNarrationWriterBuilder.ts"];
 
 function structuralOffenders(dir: string): string[] {
   const offenders: string[] = [];
