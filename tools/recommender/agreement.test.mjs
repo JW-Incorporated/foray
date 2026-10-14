@@ -263,6 +263,11 @@ test("loadResults reads only the batches ratings.json lists as merged", (t) => {
   writeFileSync(join(dir, "rating-results-b4.json"), JSON.stringify(resultsDoc({ batch_id: "b2", pass: 2, shows: { s1: { a: [5, 0.5] } } })));
   const docs = loadResults(dir, ratingsDoc({ s1: { a: 3 } }, { merged: ["b1", "b4"] }));
   assert.deepEqual(docs.map((d) => d.batch_id), ["b1"]);
+  /* MUTATION (run red): read only ratings.json's ledger -- an isolated batch,
+     which RV-09 records in ratings-isolated.json's merged_batches, is dropped. */
+  writeFileSync(join(dir, "rating-results-b5.json"), JSON.stringify(resultsDoc({ batch_id: "b5", pass: 1, mode: "isolated:a", shows: { s1: { a: [3, 0.5] } } })));
+  const withIso = loadResults(dir, ratingsDoc({ s1: { a: 3 } }, { merged: ["b1"] }), ratingsDoc({ s1: { a: 3 } }, { merged: ["b5"] }));
+  assert.deepEqual(withIso.map((d) => d.batch_id), ["b1", "b5"]);
   assert.equal(loadResults(join(dir, "absent"), {}), null);
 });
 

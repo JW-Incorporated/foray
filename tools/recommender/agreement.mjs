@@ -24,8 +24,9 @@
    persona (RV-02), so test-retest and per-batch drift cannot be read from it:
    they read the per-batch results files the agents wrote
    (data-local/recommender/results/rating-results-<batch_id>.json, never
-   committed), keeping only the batches ratings.json lists in
-   `merged_batches` so a refused file never counts.
+   committed), keeping only the batches ratings.json (joint) or
+   ratings-isolated.json (isolated) lists in `merged_batches`, skipped by
+   file name before parsing, so a refused file never counts.
 
    No model call, no network: this module reads local JSON and writes one
    markdown file. */
@@ -661,12 +662,14 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
-/** The merged joint and isolated results files in `dir` (only batches
-    `ratings.merged_batches` lists, when it has that ledger). Null when the
-    directory does not exist. */
-export function loadResults(dir, ratings) {
+/** The merged joint and isolated results files in `dir`: only batches the
+    `merged_batches` ledgers list (ratings.json for joint batches,
+    ratings-isolated.json for isolated ones, as RV-09 records them), when
+    either has that ledger. Null when the directory does not exist. */
+export function loadResults(dir, ratings, isolated = null) {
   if (!dir || !fs.existsSync(dir)) return null;
-  const merged = Array.isArray(ratings && ratings.merged_batches) ? new Set(ratings.merged_batches) : null;
+  const ledgers = [ratings, isolated].filter((d) => d && Array.isArray(d.merged_batches));
+  const merged = ledgers.length ? new Set(ledgers.flatMap((d) => d.merged_batches)) : null;
   const docs = [];
   for (const name of fs.readdirSync(dir).sort()) {
     const m = /^rating-results-(.+)\.json$/.exec(name);
@@ -704,7 +707,7 @@ export function main(argv = process.argv.slice(2), { root = ROOT, log = console.
     }
   }
   const resultsDir = args.results === undefined ? path.join(root, "data-local", "recommender", "results") : args.results === null ? null : resolve(args.results);
-  const results = loadResults(resultsDir, ratings);
+  const results = loadResults(resultsDir, ratings, isolated);
 
   const outPath = resolve(args.out);
   const current = fs.existsSync(outPath) ? fs.readFileSync(outPath, "utf8") : null;
