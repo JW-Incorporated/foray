@@ -2,6 +2,7 @@ import { loadTaxonomyNodes, type ResolveTopicResult, type TopicCandidate } from 
 import { tokenizeForCatalogueQuery } from "./catalogueLookup";
 import { familyGateAllows, nodesForArchiveEntry, nodesForPoolSegment, type PoolSegmentLike } from "./taxonomyFamily";
 import type { TranscriptDigestEntry } from "./transcriptArchiveLookup";
+import { codeSpanSync } from "./codeSpans";
 
 /**
  * F-91 — SUPPLY-AWARE TOPIC RESOLUTION (docs/curation/generation-run-2026-09-09.md).
@@ -246,8 +247,17 @@ export function consideredTopicIds(resolved: ResolveTopicResult, options: { root
  * `nodesForArchiveEntry`) and pool segments through tier 1's
  * (`nodesForPoolSegment`). One pass over each per candidate, an entry's nodes
  * resolved once and shared across candidates.
+ *
+ * GV-85: timed as 'supply.measure'; inert outside a run log.
  */
 export function measureTopicSupply(
+  candidates: ReadonlyArray<TopicCandidate | string>,
+  options: MeasureTopicSupplyOptions
+): TopicSupplyMap {
+  return codeSpanSync("supply.measure", () => measureTopicSupplyUntimed(candidates, options));
+}
+
+function measureTopicSupplyUntimed(
   candidates: ReadonlyArray<TopicCandidate | string>,
   options: MeasureTopicSupplyOptions
 ): TopicSupplyMap {

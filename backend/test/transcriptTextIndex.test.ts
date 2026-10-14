@@ -11,6 +11,8 @@ import {
   type TranscriptTextIndex
 } from "../src/generation/transcriptTextIndex";
 import type { TranscriptCue, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
+import { flushCodeSpans } from "../src/generation/codeSpans";
+import { RunLog, runWithRunLog, withCallContext } from "../src/generation/runLog";
 
 /**
  * WS-H (docs/curation/generation-fix-plan-2026-09-09.md; findings F-06, F-49).
@@ -296,5 +298,39 @@ describe("transcriptTextIndex — the Null implementation is what CI runs", () =
     const index: TranscriptTextIndex = new NullTranscriptTextIndex();
     expect(index.enabled).toBe(false);
     expect(index.search("anything at all about production machine learning")).toEqual([]);
+  });
+});
+
+describe("transcriptTextIndex — code-time spans (GV-85, MT-08)", () => {
+  it("emits 'index.load' and 'index.search' aggregates inside a run log, and returns the same candidates as outside one", () => {
+    const archive = [entry("a", "Episode 41"), entry("b", "Episode 42")];
+    const bodies = new FakeBodySource();
+    bodies.set("a", ["today we are talking about container orchestration and deployment pipelines"]);
+    bodies.set("b", ["the labels in that benchmark were wrong more often than anyone admitted"]);
+    withTempIndexRoot((dir) => {
+      const outside = new FileTranscriptTextIndex({ archive, bodies, indexRoot: dir, cache: false });
+      const expected = outside.search("benchmark labels wrong").map((c) => [c.entry.guid, c.score]);
+
+      const index = new FileTranscriptTextIndex({ archive, bodies, indexRoot: dir, cache: false });
+      const log = new RunLog();
+      const got = runWithRunLog(log, () =>
+        withCallContext({ stage: "research-shape" }, () => {
+          const first = index.search("benchmark labels wrong");
+          index.search("container orchestration");
+          return first;
+        })
+      );
+      expect(got.map((c) => [c.entry.guid, c.score])).toEqual(expected);
+      /* Nothing in the log until the CLI flushes it. */
+      expect(log.events("code")).toEqual([]);
+      flushCodeSpans(log);
+      const byName = new Map(log.events("code").map((e) => [e.name, e]));
+      /* MUTATION: drop the codeSpanSync('index.search') wrapper in searchWithIdf. Ran it: red. */
+      expect(byName.get("index.search")).toMatchObject({ kind: "code", stage: "research-shape", count: 2 });
+      /* One show, loaded once: the second search hits the in-memory index, which is not timed.
+         MUTATION: drop the codeSpanSync('index.load') wrapper in showIndex. Ran it: red. */
+      expect(byName.get("index.load")).toMatchObject({ kind: "code", stage: "research-shape", count: 1 });
+      expect(byName.get("index.search")!.totalMs).toBeGreaterThanOrEqual(byName.get("index.load")!.totalMs);
+    });
   });
 });

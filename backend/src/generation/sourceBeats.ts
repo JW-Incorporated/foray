@@ -211,6 +211,7 @@ import {
   type TranscriptTextIndex
 } from "./transcriptTextIndex";
 import { tokenizeForSourcing } from "./catalogueLookup";
+import { codeSpanSync } from "./codeSpans";
 import { placementEscapesD5Pair } from "./d5Pair";
 import { extendToThought, thoughtTerms, type ThoughtExtent } from "./tapeExtent";
 
@@ -352,9 +353,13 @@ export interface SourceBeatsOptions {
  * ones this function has always used and the result is identical.
  */
 export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOptions = {}): SourceBeatsResult {
-  const session = new SourcingSession(options);
-  deepenedActs.forEach((act, actIndex) => session.sourceAct(act, actIndex));
-  return session.result(deepenedActs);
+  /* GV-85: timed as 'sourcing.all', inclusive of everything below it; stays
+     synchronous, and inert outside a run log. */
+  return codeSpanSync("sourcing.all", () => {
+    const session = new SourcingSession(options);
+    deepenedActs.forEach((act, actIndex) => session.sourceAct(act, actIndex));
+    return session.result(deepenedActs);
+  });
 }
 
 /**
@@ -1619,8 +1624,13 @@ class Tier2Walk {
   }
 
   /** Walks `list` in `mode`; returns the accepted resolution or `null`. The
-   * search pass ends with the deferred second chance. */
+   * search pass ends with the deferred second chance. GV-85: timed as
+   * 'sourcing.tier2'; inert outside a run log. */
   run(list: Tier2Candidate[], mode: Tier2WalkMode): BeatResolution | null {
+    return codeSpanSync("sourcing.tier2", () => this.runUntimed(list, mode));
+  }
+
+  private runUntimed(list: Tier2Candidate[], mode: Tier2WalkMode): BeatResolution | null {
     const { beat, state } = this;
     const claim = beat.claim;
     const seedPass = mode === "seed-window";
