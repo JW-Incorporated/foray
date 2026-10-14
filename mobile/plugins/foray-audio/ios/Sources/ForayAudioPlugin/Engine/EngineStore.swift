@@ -44,6 +44,16 @@ final class EngineStore: EngineOutput {
     /// Copy paste are the same bytes.
     var onLiveRow: ((DiagRow) -> Void)?
 
+    /// Where resumed episodes' redirects ended (car cold resume, 2026-10-14):
+    /// kept INSIDE the restore record's key as its `sources` member, not
+    /// under a key of its own (ResolvedSources' header says why). Made by
+    /// `attachResolvedSources()` at the boot; nil until then, and the record
+    /// is then written exactly as the core serialised it.
+    private(set) var resolvedSources: ResolvedSources?
+    /// The record the core last asked for, so a change of sources can be
+    /// written into it without waiting for the core's next write.
+    private var lastRestore: RestoreRecord?
+
     init(defaults: UserDefaults = .standard, diagnostics: EngineDiagnostics) {
         self.defaults = defaults
         self.diagnostics = diagnostics
@@ -118,6 +128,39 @@ final class EngineStore: EngineOutput {
         return nil
     }
 
+    // MARK: - Resolved sources (car cold resume, 2026-10-14)
+
+    /// The boot's one `ResolvedSources`, seeded from the stored record (a cold
+    /// launch is how a car's play arrives), and written back into the record
+    /// whenever a deck changes it.
+    func attachResolvedSources(wallMs: @escaping () -> Double = { Date().timeIntervalSince1970 * 1000 })
+        -> ResolvedSources {
+        let raw = string(.restore)
+        let sources = ResolvedSources(entries: ResolvedSources.entries(inRecord: raw), wallMs: wallMs)
+        lastRestore = lastRestore ?? RestoreRecord.parse(raw)
+        sources.onChange = { [weak self] in self?.rewriteRestore() }
+        resolvedSources = sources
+        return sources
+    }
+
+    /// The stored text of `record`: the core's serialisation, plus the
+    /// `sources` member when there are any. A relinquished record carries
+    /// none (it promises nothing to restore), and neither does a record the
+    /// store cannot re-read as an object.
+    func restoreText(_ record: RestoreRecord?) -> String? {
+        guard let record else { return nil }
+        let text = record.serialized()
+        guard record.mode != .relinquished, let node = resolvedSources?.node,
+              let members = (try? JSONNode.parse(text))?.members else { return text }
+        return JSWriter.stringify(.object(members.filter { $0.key != ResolvedSources.recordKey }
+                                          + [JSONMember(ResolvedSources.recordKey, node)]))
+    }
+
+    private func rewriteRestore() {
+        guard let lastRestore, lastRestore.mode != .relinquished else { return }
+        set(restoreText(lastRestore), for: .restore)
+    }
+
     // MARK: - Route resume's known routes (NE-38rs)
 
     /// `ForayEngine.knownRoutes`, or nil for none or a value this build
@@ -164,6 +207,10 @@ final class EngineStore: EngineOutput {
     /// Returns what it removed, so the caller and the tests can enumerate it.
     @discardableResult
     func purge() -> [String] {
+        // Nothing the decks learnt survives either, and nothing is written
+        // back: `clear()` does not call `onChange`.
+        resolvedSources?.clear()
+        lastRestore = nil
         var removed: [String] = []
         for rawKey in defaults.dictionaryRepresentation().keys.sorted()
         where EngineKeys.sharedRowKey(rawKey: rawKey) != nil || EngineKeys.isPrivate(rawKey: rawKey) {
@@ -195,7 +242,8 @@ final class EngineStore: EngineOutput {
     }
 
     func writeRestore(_ record: RestoreRecord?) {
-        set(record?.serialized(), for: .restore)
+        lastRestore = record
+        set(restoreText(record), for: .restore)
     }
 
     func diag(_ entry: DiagEntry) {

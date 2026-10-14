@@ -43,6 +43,45 @@ import os
 /// buffers on play. What it must never do is loop on a flaky pipeline while
 /// the car waits for sound.
 ///
+/// ── AN EPISODE STARTS ON BUFFER, NOT ON PREROLL (car report 2026-10-14) ───
+///
+/// The founder's car pressed play, iOS cold-launched 4a to resume an episode
+/// at 3839 s, and the route stayed silent: 6.4 s to the duration and the
+/// seek, then 4.5 s more of PREROLL (marks `{"duration":6406,"seek":6437,
+/// "preroll":10888}`). At 6.7 s the car gave the route to Spotify. The day
+/// before, the same resume hit the 20 s deadline at `step=preroll` with 1 s
+/// buffered. Preroll primes the pipeline so that a SEAM sounds on cue; an
+/// episode load has no seam to hit, only a listener waiting for sound.
+///
+/// So with `Config.startsEpisodesOnBuffer` (ON in production: DeckPair.make
+/// and EngineBoot's lone deck; OFF by default so the gate tests above keep
+/// pinning the preroll path), a load of a WHOLE EPISODE (unbounded, clip
+/// class) replaces step 5: after the zero-tolerance seek it is ready as soon
+/// as `startBufferSec` of media is buffered at the start (or the item says it
+/// will keep up, or its buffer is full, or the rest of the item is in), with
+/// no preroll, and its first `play` is `playImmediately(atRate:)`: sound from
+/// what is buffered, instead of AVFoundation's wait for "likely to keep up".
+/// If the buffer is not there `startBufferWaitSec` after the seek landed, it
+/// is ready anyway, unprimed, and plays the ordinary way (stall-waiting on):
+/// never slower than the preroll it replaced, which had no cap but the
+/// deadline. A Foray clip and a narration line keep the preroll: their start
+/// is a seam. `.ready(prerolled: false)` is what the ordinary load already
+/// reports, so the core is unchanged. (Android's ExoDeck has no preroll: its
+/// READY is Media3's buffer threshold already, so there is nothing to port.)
+///
+/// ── A RESUME MAY ATTACH WHERE THE REDIRECTS ENDED (ResolvedSources) ──────
+///
+/// With `Config.resolvedSources`, a cold attach for a RESUME of a whole
+/// episode attaches the address the original's redirect chain ended at the
+/// last time this device fetched it (within 24 h), and falls back to the
+/// original on the same token if that attach fails before it is ready. The
+/// rules, and why a fresh play never does this, are ResolvedSources'. The
+/// deck learns the address from the item's access log on any episode load
+/// through the original (`deck kind=resolved host=`), and its rows say which
+/// it attached (`deck kind=attach resolved=`) and when it fell back (`deck
+/// kind=fallback`). `loadedURL` stays the load's own URL either way: what
+/// "the same source" means to the core and the pair does not change.
+///
 /// ── THE OUT-POINT, IN THREE LAYERS (NE-32; plan §4.3 P-2) ─────────────────
 ///
 /// A bounded item (a Foray segment) stops at its out-point, never early, and
@@ -189,6 +228,22 @@ final class AVDeck: DeckDriving {
     /// (what this limit cost): NE-38e verdict `reuse-idle`, NE-38f.
     static let defaultReuseMaxIdleSec: Double = 600 // MEASURE: verdict=reuse-idle (NE-38e). Rows: deck kind=reuse idleSec= then failed/deadline/stalled within 30 s, deck kind=attach cold=stale idleSec=.
 
+    /// An episode load is ready once this much media is buffered at its start
+    /// (see "AN EPISODE STARTS ON BUFFER"). PROVISIONAL, 2 s: enough that
+    /// `playImmediately` does not start, starve and stall at once, and just
+    /// under Media3's default start threshold (2.5 s), which is what ExoDeck's
+    /// READY already waits for on Android. Settled by the ready rows' `marks`
+    /// (`seek` to `buffer`) and by a `stalled` row within 10 s of a
+    /// `play immediately` on the same token.
+    static let defaultStartBufferSec: Double = 2 // MEASURE: car cold resume 2026-10-14. Rows: deck kind=ready marks.buffer, deck kind=stalled within 10 s of the token's ready.
+
+    /// The cap on that wait, from the moment the seek landed: past it the
+    /// episode is ready unprimed and plays the ordinary way. PROVISIONAL, 3 s:
+    /// below the 4.5 s the founder's preroll took, so the cap alone never
+    /// makes a start slower than before. Settled by ready rows whose marks
+    /// carry `bufferCap` instead of `buffer`.
+    static let defaultStartBufferWaitSec: Double = 3 // MEASURE: car cold resume 2026-10-14. Rows: deck kind=ready marks.bufferCap.
+
     /// Bound on `primitives`, the test-visible log of AVPlayer calls.
     private static let primitiveCap = 256
 
@@ -287,6 +342,21 @@ final class AVDeck: DeckDriving {
         /// becomes ready. What a progressing load then DOES (lapse, continue,
         /// detach) is the real code either way.
         var forcesLoadProgress: Bool? = nil
+        /// A whole episode starts on buffer, not on preroll (see the header).
+        /// OFF here; the production decks turn it on (DeckPair.make, EngineBoot).
+        var startsEpisodesOnBuffer = false
+        /// See `defaultStartBufferSec` / `defaultStartBufferWaitSec`.
+        var startBufferSec: Double = AVDeck.defaultStartBufferSec
+        var startBufferWaitSec: Double = AVDeck.defaultStartBufferWaitSec
+        /// Whether the start buffer is there, in place of the item's own
+        /// reading. nil in production. A Simulator test's stand-in for a
+        /// network item whose buffer has not filled, which a bundled file
+        /// (fully buffered at once) cannot be; what the deck then DOES (wait,
+        /// cap, play the ordinary way) is the real code.
+        var forcesStartBuffer: Bool? = nil
+        /// Where a resumed episode's redirects ended (ResolvedSources); nil:
+        /// every load attaches its own URL.
+        var resolvedSources: ResolvedSources? = nil
 
         init(
             loadDeadlineSec: Double = AVDeck.defaultLoadDeadlineSec,
@@ -324,6 +394,18 @@ final class AVDeck: DeckDriving {
             self.reuseMaxIdleSec = reuseMaxIdleSec
             self.idleClockMs = idleClockMs
             self.assetFailed = assetFailed
+        }
+
+        /// The production main deck (DeckPair.make's two, EngineBoot's lone
+        /// one): a whole episode starts on buffer, and a resume may attach
+        /// where its redirects ended (car cold resume, 2026-10-14). The one
+        /// place both are turned on; the preview deck and the tests' decks
+        /// keep the defaults.
+        func forMainDeck(resolvedSources: ResolvedSources?) -> Config {
+            var config = self
+            config.startsEpisodesOnBuffer = true
+            config.resolvedSources = resolvedSources
+            return config
         }
 
         /// The P-13 deadline, in seconds, of a load of this class (NE-38):
@@ -451,6 +533,34 @@ final class AVDeck: DeckDriving {
     /// on main; a same-source retry continues the load (`continueInFlight`),
     /// and anything else leaves it to be detached exactly as before.
     private var lapsed: (token: DeckToken, stage: Stage)?
+
+    /// The current load is a whole episode on a deck that starts episodes on
+    /// buffer: its gate waits for the start buffer instead of prerolling.
+    private var startsOnBuffer = false
+    /// Set when that gate found its buffer: the next play is
+    /// `playImmediately`. Spent by that play; any new load clears it.
+    private var startsAtOnce = false
+    /// The start-buffer wait's KVO (the item's loaded ranges, keep-up and
+    /// full flags) and its cap. Dropped with the item and at ready.
+    private var bufferObservations: [NSKeyValueObservation] = []
+    private var bufferCap: DispatchWorkItem?
+    /// The attached item was made from a resolved source (ResolvedSources),
+    /// not the load's own URL; and the load to repeat on the original if that
+    /// attach fails before ready.
+    private var attachedResolved = false
+    private var resolvedFallback: LoadArgs?
+    /// This item has already reported where its redirects ended.
+    private var capturedSource = false
+
+    /// A cold attach's arguments, as `load` received them.
+    private struct LoadArgs {
+        let token: DeckToken
+        let url: String?
+        let startSec: Double
+        let preciseTiming: Bool
+        let deadlineClass: DeckDeadlineClass
+        let bounded: Bool
+    }
 
     /// NE-32: the out-point watch (`DeckPolicy.outPointStep`'s state), the
     /// boundary observer (layer 2), the watchdog's one timer (layer 3), and
@@ -650,12 +760,24 @@ final class AVDeck: DeckDriving {
             reuse(token: newToken, startSec: startSec, idleSec: idleSec, deadlineClass: newClass)
             return
         }
+        attach(LoadArgs(token: newToken, url: urlString, startSec: startSec, preciseTiming: preciseTiming,
+                        deadlineClass: newClass, bounded: bounded),
+               cold: cold ?? "no-item", idleSec: idleSec, mayResolve: true)
+    }
+
+    /// A cold load: a new item for `args`, under its token. `mayResolve`
+    /// lets a resume attach where its redirects ended last time
+    /// (ResolvedSources); the fallback after such an attach failed passes
+    /// false, so it attaches the load's own URL.
+    private func attach(_ args: LoadArgs, cold: String, idleSec: Double?, mayResolve: Bool) {
+        let newToken = args.token
+        let urlString = args.url
         detachItem()
         generation += 1
         token = newToken
-        deadlineClass = newClass
+        deadlineClass = args.deadlineClass
         stage = .loading
-        targetStartSec = max(0, startSec)
+        targetStartSec = max(0, args.startSec)
         gateAttempts = 0
         durationKnown = false
         reachedEnd = false
@@ -666,19 +788,30 @@ final class AVDeck: DeckDriving {
         reusedItem = false
         gateStep = "duration"
         gateMarks = []
+        startsOnBuffer = config.startsEpisodesOnBuffer && Self.isEpisodeLoad(bounded: args.bounded, deadlineClass: args.deadlineClass)
         // The core hands the page's `audio_url` through as it is (nil for an
         // item with no audio of its own). Anything that is not an absolute
         // URL fails THIS load, under its token, so the core's failure path
         // runs; it is never an exception in the car.
-        guard let url = urlString.flatMap({ URL(string: $0) }), url.scheme != nil else {
+        guard let urlString, let url = URL(string: urlString), url.scheme != nil else {
             stage = .failed
             record("no-url")
             deckRow("failed", newToken, [JSONMember("where", .string("no-url")), classField])
             emit(.failed(token: newToken, message: "no-url"))
             return
         }
+        // A resume may attach where this URL's redirects ended (the header,
+        // and ResolvedSources for when and why). The load's identity stays
+        // its own URL (`loadedURL`), whichever address the item was made from.
+        let resolved = mayResolve
+            ? config.resolvedSources?.target(for: urlString, startSec: targetStartSec, bounded: args.bounded,
+                                             deadlineClass: args.deadlineClass).flatMap { URL(string: $0) }
+            : nil
+        let source = resolved ?? url
+        attachedResolved = resolved != nil
+        resolvedFallback = resolved != nil ? args : nil
 
-        let asset = config.makeAsset(url, preciseTiming)
+        let asset = config.makeAsset(source, args.preciseTiming)
         let item = AVPlayerItem(asset: asset)
         // Plan §4.3: time-domain stretching is the speech-quality algorithm
         // at 1.25-2x; the default (`.spectral` on iOS 15+) smears voices.
@@ -686,24 +819,33 @@ final class AVDeck: DeckDriving {
         self.asset = asset
         self.item = item
         loadedURL = urlString
-        loadedPreciseTiming = preciseTiming
-        loadedBounded = bounded
+        loadedPreciseTiming = args.preciseTiming
+        loadedBounded = args.bounded
         noteLive()
         observe(item: item, generation: generation)
         armDeadline(generation: generation)
-        record("attach")
+        record(attachedResolved ? "attach resolved" : "attach")
         deckRow("attach", newToken, [
             JSONMember("startSec", Self.secNode(targetStartSec)),
-            JSONMember("precise", .bool(preciseTiming)),
-            JSONMember("host", Self.hostNode(url.host)),
+            JSONMember("precise", .bool(args.preciseTiming)),
+            // The host the item was made from: the CDN's when it was resolved.
+            JSONMember("host", Self.hostNode(source.host)),
             // Why this load did not keep the held item (`no-item` when there
-            // was none), and how long that item had been idle.
-            JSONMember("cold", .string(cold ?? "no-item")),
+            // was none, `fallback` for the original after a resolved attach
+            // failed), and how long that item had been idle.
+            JSONMember("cold", .string(cold)),
             JSONMember("idleSec", Self.secNode(idleSec)),
+            JSONMember("resolved", .bool(attachedResolved)),
             classField
         ])
         player.replaceCurrentItem(with: item)
         loadDuration(of: asset, generation: generation)
+    }
+
+    /// A whole episode: no bounds, and not a narration line. The loads that
+    /// start on buffer (the header) and may be resumed from a resolved source.
+    static func isEpisodeLoad(bounded: Bool, deadlineClass: DeckDeadlineClass) -> Bool {
+        !bounded && deadlineClass == .clip
     }
 
     /// `DeckPolicy.sameSourceIsSeek` from what this deck holds: the same URL
@@ -820,6 +962,7 @@ final class AVDeck: DeckDriving {
         reusedItem = true
         gateStep = "readiness"
         gateMarks = []
+        startsOnBuffer = config.startsEpisodesOnBuffer && Self.isEpisodeLoad(bounded: loadedBounded, deadlineClass: newClass)
         noteLive()
         guard let item else { return }
         // The out-point lives on the item; `load` already dropped it
@@ -907,7 +1050,86 @@ final class AVDeck: DeckDriving {
             notReady(cause: "seek-interrupted")
             return
         }
+        // An episode on a deck that starts episodes on buffer: no preroll
+        // (the header, "AN EPISODE STARTS ON BUFFER").
+        if startsOnBuffer {
+            awaitStartBuffer()
+            return
+        }
         prerollWhenReady()
+    }
+
+    // MARK: - The episode gate: the start buffer instead of the preroll
+
+    /// After the gate's seek landed: ready now if the start buffer is there,
+    /// else watch the item until it is, capped at `startBufferWaitSec`.
+    private func awaitStartBuffer() {
+        guard stage == .gating, let item else { return }
+        gateStep = "buffer"
+        if startBufferReached() {
+            startFromBuffer(capped: false)
+            return
+        }
+        let gen = generation
+        let recheck: () -> Void = { [weak self] in
+            DispatchQueue.main.async { self?.startBufferChanged(generation: gen) }
+        }
+        bufferObservations = [
+            item.observe(\.loadedTimeRanges, options: [.new]) { _, _ in recheck() },
+            item.observe(\.isPlaybackLikelyToKeepUp, options: [.new]) { _, _ in recheck() },
+            item.observe(\.isPlaybackBufferFull, options: [.new]) { _, _ in recheck() }
+        ]
+        let cap = DispatchWorkItem { [weak self] in
+            guard let self, gen == self.generation, self.stage == .gating, self.gateStep == "buffer" else { return }
+            self.startFromBuffer(capped: true)
+        }
+        bufferCap = cap
+        config.after(config.startBufferWaitSec, cap)
+    }
+
+    private func startBufferChanged(generation gen: Int) {
+        guard gen == generation, stage == .gating, gateStep == "buffer", startBufferReached() else { return }
+        startFromBuffer(capped: false)
+    }
+
+    /// Ready, unprimed. With the buffer in, the first play starts at once
+    /// (`playImmediately`); at the cap it plays the ordinary way, waiting to
+    /// minimize stalls, exactly as the ordinary load's fallback does.
+    private func startFromBuffer(capped: Bool) {
+        stopBufferWatch()
+        mark(capped ? "bufferCap" : "buffer")
+        becomeReady(prerolled: false, startsAtOnce: !capped)
+    }
+
+    private func stopBufferWatch() {
+        bufferObservations.forEach { $0.invalidate() }
+        bufferObservations = []
+        bufferCap?.cancel()
+        bufferCap = nil
+    }
+
+    /// `startBufferReached(...)` for the attached item at the gate's start.
+    private func startBufferReached() -> Bool {
+        if let forced = config.forcesStartBuffer { return forced }
+        guard let item else { return false }
+        return Self.startBufferReached(
+            bufferedAheadSec: bufferedAhead(of: targetStartSec) ?? 0,
+            remainingSec: itemDurationSec.map { Swift.max(0, $0 - targetStartSec) },
+            likelyToKeepUp: item.isPlaybackLikelyToKeepUp,
+            bufferFull: item.isPlaybackBufferFull,
+            thresholdSec: config.startBufferSec)
+    }
+
+    /// The rule, pure, so an XCTest pins every branch without a network: the
+    /// item says it will keep up, or its buffer is full, or `thresholdSec` is
+    /// buffered at the start, or everything from the start to the end is.
+    static func startBufferReached(bufferedAheadSec: Double, remainingSec: Double?, likelyToKeepUp: Bool,
+                                   bufferFull: Bool, thresholdSec: Double) -> Bool {
+        if likelyToKeepUp || bufferFull { return true }
+        guard bufferedAheadSec.isFinite, bufferedAheadSec > 0 else { return false }
+        if bufferedAheadSec >= thresholdSec { return true }
+        if let remainingSec, remainingSec.isFinite, bufferedAheadSec >= remainingSec - layerSlackSec { return true }
+        return false
     }
 
     /// Step 5, and THE ONLY CALLER OF `preroll(` in the plugins and the core
@@ -985,10 +1207,14 @@ final class AVDeck: DeckDriving {
         }
     }
 
-    private func becomeReady(prerolled: Bool) {
+    /// `startsAtOnce` is set BEFORE `.ready` goes out: the core answers a
+    /// ready with its play in the same turn, on this stack.
+    private func becomeReady(prerolled: Bool, startsAtOnce atOnce: Bool = false) {
         guard let token else { return }
         deadline?.cancel()
         deadline = nil
+        stopBufferWatch()
+        startsAtOnce = atOnce
         stage = .ready
         gateStep = "ready"
         noteLive()
@@ -1004,8 +1230,10 @@ final class AVDeck: DeckDriving {
             JSONMember("marks", .object(gateMarks)),
             JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: landed))),
             JSONMember("likelyToKeepUp", item.map { JSONNode.bool($0.isPlaybackLikelyToKeepUp) } ?? .null),
+            JSONMember("resolved", .bool(attachedResolved)),
             classField
         ])
+        captureResolvedSource()
         emit(.ready(
             token: token,
             landedSec: landed,
@@ -1042,8 +1270,12 @@ final class AVDeck: DeckDriving {
             JSONMember("bufferedAheadSec", Self.secNode(bufferedAhead(of: targetStartSec))),
             JSONMember("marks", .object(gateMarks)),
             // §16: whether a retry of this source in the core's answer keeps it.
-            JSONMember("progressed", .bool(progressed))
+            JSONMember("progressed", .bool(progressed)),
+            JSONMember("resolved", .bool(attachedResolved))
         ] + accessFields() + errorLogFields())
+        // A resolved address that hung is not tried again: the core's retry,
+        // and every later resume, attaches the load's own URL.
+        if attachedResolved, let url = loadedURL { config.resolvedSources?.forget(from: url) }
         // Why, as the core's closed token (NE-39n), read while the item and
         // its error log are still attached.
         let cause = Self.fallbackCause(error: nil, log: lastErrorLogEvent(), deadline: true)
@@ -1117,14 +1349,25 @@ final class AVDeck: DeckDriving {
     /// The only place this type starts audio. The rate is re-applied on EVERY
     /// play (plan §4.3), because AVPlayer resets it: `play()` uses 1.0 on
     /// iOS 15, and a replaced item or an interruption drops `rate` to 0.
+    ///
+    /// An episode whose gate found its start buffer (`startsAtOnce`) starts
+    /// with `playImmediately(atRate:)`: sound from what is buffered now,
+    /// rather than `play()`'s wait until AVFoundation judges the item likely
+    /// to keep up. Once: a later play is an ordinary one.
     private func applyRateAndPlay() {
+        let atOnce = startsAtOnce
+        startsAtOnce = false
         if #available(iOS 16.0, *) {
             player.defaultRate = rate
-            record("play defaultRate=\(rate)")
-            player.play()
+            record(atOnce ? "play immediately defaultRate=\(rate)" : "play defaultRate=\(rate)")
+            atOnce ? player.playImmediately(atRate: rate) : player.play()
         } else {
-            record("play rate=\(rate)")
-            player.rate = rate
+            record(atOnce ? "play immediately rate=\(rate)" : "play rate=\(rate)")
+            if atOnce {
+                player.playImmediately(atRate: rate)
+            } else {
+                player.rate = rate
+            }
         }
     }
 
@@ -1173,6 +1416,12 @@ final class AVDeck: DeckDriving {
         case .loading, .gating:
             // Before `.ready`, a seek moves the start: the gate lands there.
             targetStartSec = target
+            // An episode already waiting for its start buffer has landed its
+            // seek: it seeks again, and waits for the buffer THERE.
+            if stage == .gating, gateStep == "buffer" {
+                stopBufferWatch()
+                gateSeek()
+            }
         case .ready:
             guard let token else { return }
             reachedEnd = false
@@ -1264,6 +1513,7 @@ final class AVDeck: DeckDriving {
 
     /// Drop the item's observers (KVO and notifications), keeping the item.
     private func unobserveItem() {
+        stopBufferWatch()
         itemObservations.forEach { $0.invalidate() }
         itemObservations = []
         itemNotifications.forEach { NotificationCenter.default.removeObserver($0) }
@@ -1282,6 +1532,10 @@ final class AVDeck: DeckDriving {
         asset = nil
         item = nil
         loadedURL = nil
+        startsAtOnce = false
+        attachedResolved = false
+        resolvedFallback = nil
+        capturedSource = false
     }
 
     private func playerStatusChanged() {
@@ -1480,6 +1734,23 @@ final class AVDeck: DeckDriving {
     /// the localized sentence, which DiagGate would refuse anyway.
     private func fail(generation gen: Int, message: String, where step: String, error: Error?) {
         guard gen == generation, stage != .failed, let token else { return }
+        if attachedResolved, let original = loadedURL {
+            // The resolved address failed: it is never tried again for this
+            // source, and a load that had not reached `.ready` repeats on the
+            // load's own URL, on the same token. The core sees one load.
+            config.resolvedSources?.forget(from: original)
+            if stage != .ready, let fallback = resolvedFallback, fallback.token == token {
+                deckRow("fallback", token, [
+                    JSONMember("where", .string(step)),
+                    JSONMember("step", .string(gateStep)),
+                    JSONMember("afterMs", .number(Double(msSinceLoadStarted())))
+                ] + Self.errorFields(error) + accessFields() + errorLogFields())
+                if let asset { config.assetFailed(asset) }
+                record("fallback")
+                attach(fallback, cold: "fallback", idleSec: nil, mayResolve: false)
+                return
+            }
+        }
         deadline?.cancel()
         deadline = nil
         stage = .failed
@@ -1651,6 +1922,21 @@ final class AVDeck: DeckDriving {
     private func accessLogged(generation gen: Int) {
         guard gen == generation, let token else { return }
         deckRow("access", token, accessFields())
+        captureResolvedSource()
+    }
+
+    /// An episode loaded through its own URL: where its redirects ended, from
+    /// the item's access log, is kept for a later resume (ResolvedSources).
+    /// Once per item. The row names the host only; the address stays here.
+    private func captureResolvedSource() {
+        guard !capturedSource, !attachedResolved, let sources = config.resolvedSources, let token,
+              Self.isEpisodeLoad(bounded: loadedBounded, deadlineClass: deadlineClass),
+              let original = loadedURL,
+              let uri = item?.accessLog()?.events.last(where: { $0.uri != nil })?.uri,
+              let resolved = ResolvedSources.candidate(from: original, accessURI: uri) else { return }
+        capturedSource = true
+        sources.remember(from: original, to: resolved)
+        deckRow("resolved", token, [JSONMember("host", Self.hostNode(URLComponents(string: resolved)?.host))])
     }
 
     private func errorLogged(generation gen: Int) {
