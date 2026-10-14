@@ -1,0 +1,499 @@
+{
+  "source": "docs/roadmap/recommender-v1.md",
+  "verified_against": "e8ca46d8",
+  "tracking_issue": 1380,
+  "cards": [
+    {
+      "id": "RV-01",
+      "title": "Persona rating profiles v1: 13 personas on why/how/form axes, operational statements, 3+3 example shows",
+      "wave": 1,
+      "size": "M",
+      "depends_on": [],
+      "files": [
+        "data/recommender/persona-profiles.json (new)",
+        "docs/curation/persona-profiles-v1.md (new)",
+        "tools/recommender/profiles.mjs (new)",
+        "tools/recommender/profiles.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Orchestrator reviews the 13 profiles before wave 2. Ids fixed in the card; seed_persona_id maps to data/personas.json ids (D11). FLOORS profiles.test.mjs: 6."
+    },
+    {
+      "id": "RV-02",
+      "title": "Rubric v1, the three file shapes (schema.mjs), and the progress file (progress.mjs)",
+      "wave": 1,
+      "size": "S",
+      "depends_on": [],
+      "files": [
+        "docs/curation/rating-rubric-v1.md (new)",
+        "tools/recommender/schema.mjs (new)",
+        "tools/recommender/schema.test.mjs (new)",
+        "tools/recommender/progress.mjs (new)",
+        "tools/recommender/progress.test.mjs (new)",
+        "tools/recommender/README.md (new)",
+        "data/recommender/rating-progress.json (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Defines results file, ratings.json and ratings-client.json shapes once (D10). Audio sub-scores null without transcript; confidence caps 0.5/0.7. FLOORS schema 9, progress 6."
+    },
+    {
+      "id": "RV-03",
+      "title": "Evidence pack builder: tiers, stripping, datamarking, injection pre-scan, transcript windows",
+      "wave": 1,
+      "size": "S",
+      "depends_on": [],
+      "files": [
+        "tools/recommender/evidence.mjs (new)",
+        "tools/recommender/evidence.test.mjs (new)",
+        "tools/recommender/fixtures/catalog.json (new)",
+        "tools/recommender/fixtures/catalog-breadth.json (new)",
+        "tools/recommender/fixtures/breadth-classification.json (new)",
+        "tools/recommender/fixtures/episode-archive.json (new)",
+        "tools/recommender/fixtures/rss/ (new)",
+        "tools/recommender/fixtures/transcripts/normalized/ (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Strips chart_rank, artist_name, in_curated, dai (D7). Datamark U+02C6. Reads data-local/recommender/rss/<key>.json (RV-04's layout) and data-local/transcripts/normalized via tools/passage-index/sources.mjs. FLOORS 9."
+    },
+    {
+      "id": "RV-04",
+      "title": "RSS metadata enrichment for curated and breadth shows (polite, cached in data-local)",
+      "wave": 1,
+      "size": "S",
+      "depends_on": [],
+      "files": [
+        "tools/recommender/enrich-rss.mjs (new)",
+        "tools/recommender/enrich-rss.test.mjs (new)",
+        "tools/recommender/fixtures/feed.xml (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "politeness.mjs UA/awaitHostSlot/waitBeforeRetry; parseFeed/episodeOf from tools/harvest-episodes.mjs; never audio. Live fetch from the founder PC, not alongside Joey's crawler (#140). FLOORS 6."
+    },
+    {
+      "id": "RV-05",
+      "title": "R2 transcript sampler (dormant until the R2 read key)",
+      "wave": 1,
+      "size": "S",
+      "depends_on": [],
+      "files": [
+        "tools/recommender/sample-r2.mjs (new)",
+        "tools/recommender/sample-r2.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Gated on #1163 item 17.3. Exit 2 without credentials. Uses tools/foraycorpus-export/r2-client.mjs and writes the local normalized layout. FLOORS 5."
+    },
+    {
+      "id": "RV-06",
+      "title": "DECISIONS entry, roadmap README row, the roadmap files committed",
+      "wave": 1,
+      "size": "XS",
+      "depends_on": [],
+      "files": [
+        "docs/DECISIONS.md",
+        "docs/roadmap/README.md",
+        "docs/roadmap/recommender-v1.md (new)",
+        "docs/roadmap/recommender-v1.cards.json (new)",
+        "docs/roadmap/recommender-v1.waves.json (new)"
+      ],
+      "governed": true,
+      "ui_touch": false,
+      "notes": "docs/DECISIONS.md is DENIED: founder-approved label (orchestrator applies). Records D1, D2, D3, D7, D8, D11, D12 and the W9 six-persona note."
+    },
+    {
+      "id": "RV-07",
+      "title": "Stratified gold-set sampler: pilot, gold, retest and holdout flags",
+      "wave": 2,
+      "size": "S",
+      "depends_on": ["RV-03"],
+      "files": [
+        "tools/recommender/sample.mjs (new)",
+        "tools/recommender/sample.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Strata: taxonomy root, evidence tier, DAI, chart band, length band; seeded; position-shuffled; --extend keeps rows and roles; holdout never overlaps retest/isolated. FLOORS 7."
+    },
+    {
+      "id": "RV-08",
+      "title": "prepare-rating-batch.mjs: joint and isolated batches, persona shuffle, reservations, shards",
+      "wave": 2,
+      "size": "S",
+      "depends_on": ["RV-01", "RV-02", "RV-03"],
+      "files": [
+        "tools/recommender/prepare-rating-batch.mjs (new)",
+        "tools/recommender/prepare-rating-batch.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Writes data-local/recommender/batches/rating-batch-<id>.json with profiles_sha256 and per-show persona_order; reserves via progress.mjs; --shard i/n by fnv1a32. FLOORS 7."
+    },
+    {
+      "id": "RV-09",
+      "title": "merge-rating-results.mjs: validate, merge newest-wins, --check, reasons to data-local",
+      "wave": 2,
+      "size": "S",
+      "depends_on": ["RV-02"],
+      "files": [
+        "tools/recommender/merge-rating-results.mjs (new)",
+        "tools/recommender/merge-rating-results.test.mjs (new)",
+        "data/recommender/ratings.json (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Only writer of data/recommender/ratings.json. Refuses a results file whole on any problem; idempotent per batch_id; full reasons to data-local/recommender/reasons/<batch>.jsonl, only top_reason kept (D7). FLOORS 8."
+    },
+    {
+      "id": "RV-10",
+      "title": "Runner prompt persona-rate-batch.md and the planned-routine row in runners.md",
+      "wave": 2,
+      "size": "S",
+      "depends_on": ["RV-01", "RV-02"],
+      "files": [
+        "docs/agents/runner-prompts/persona-rate-batch.md (new)",
+        "docs/agents/runners.md"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Orchestrator reviews the prompt. Agent reads three files, writes one results file, runs merge; no other tool. Routine row is 'Planned', not created."
+    },
+    {
+      "id": "RV-11",
+      "title": "agreement.mjs: alpha, Spearman, within-node tau, test-retest, joint-vs-isolated, persona differentiation, drift",
+      "wave": 2,
+      "size": "S",
+      "depends_on": ["RV-02"],
+      "files": [
+        "tools/recommender/agreement.mjs (new)",
+        "tools/recommender/agreement.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Pure statistics with hand-checked fixtures (Krippendorff's published example); CLI rewrites a report block with --check. FLOORS 9."
+    },
+    {
+      "id": "RV-12",
+      "title": "embed.mjs: evidence-pack embeddings via the passage-index Embedder (stub / transformers / openai)",
+      "wave": 2,
+      "size": "S",
+      "depends_on": ["RV-03"],
+      "files": [
+        "tools/recommender/embed.mjs (new)",
+        "tools/recommender/embed.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Keyless live path: cd tools/corpus/embed && npm install (bge-small 384-dim on CPU). Output data-local/recommender/embeddings/. FLOORS 5."
+    },
+    {
+      "id": "RV-13",
+      "title": "Pilot run: ~300 shows, 5-agent pool, retest and isolation checks, pilot report, go/no-go",
+      "wave": 3,
+      "size": "S",
+      "depends_on": ["RV-07", "RV-08", "RV-09", "RV-10", "RV-11", "RV-12"],
+      "files": [
+        "tools/recommender/README.md",
+        "data/recommender/ratings.json",
+        "data/recommender/rating-progress.json",
+        "data/recommender/gold-set.json (new)",
+        "data/recommender/ratings-isolated.json (new)",
+        "docs/research/persona-ratings-pilot-2026-10.md (new)"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "ORCHESTRATOR STEP. ~44 batches, ~3.5M tokens (estimated), half a day of a <=5-agent local pool. Measures the real tokens of the first three batches. Writes go/no-go for RV-19."
+    },
+    {
+      "id": "RV-14",
+      "title": "student.mjs: ridge regression from features to the rating vector, with the gate",
+      "wave": 3,
+      "size": "M",
+      "depends_on": ["RV-11", "RV-12"],
+      "files": [
+        "tools/recommender/student.mjs (new)",
+        "tools/recommender/student.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Dependency-free closed-form ridge; never predicts host_style/production/ad_load; gate alpha>=0.80 fit, >=0.67 sub-scores, Spearman>=0.75, within-node tau>=0.6. FLOORS 7."
+    },
+    {
+      "id": "RV-16",
+      "title": "player/recommender.js: persona mixture from interests, prior, shrinkage, blend, DAI penalty",
+      "wave": 3,
+      "size": "S",
+      "depends_on": ["RV-01", "RV-02"],
+      "files": [
+        "player/recommender.js (new)",
+        "player/recommender.test.js (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Pure ESM; no storage, fetch, DOM or logEvent (a test greps the source). rankWithPrior changes order within a list only, so the stretch floor is untouched by construction. FLOORS 9."
+    },
+    {
+      "id": "RV-17",
+      "title": "player/recommender-feedback.js: local observations from cp_* keys (completion, history, saved; follows off)",
+      "wave": 3,
+      "size": "S",
+      "depends_on": [],
+      "files": [
+        "player/recommender-feedback.js (new)",
+        "player/recommender-feedback.test.js (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "No new cp_ key, nothing sent (D5 checked against privacy-policy.md rows 128/129/131/142). useFollows defaults false because the cp_starred_shows row (139) promises follows never change what is surfaced; RV-24 queues the wording. FLOORS 8."
+    },
+    {
+      "id": "RV-18",
+      "title": "Jev rater path (dormant until the Jev key)",
+      "wave": 3,
+      "size": "S",
+      "depends_on": ["RV-02", "RV-03"],
+      "files": [
+        "tools/recommender/jev-rate.mjs (new)",
+        "tools/recommender/jev-rate.test.mjs (new)",
+        "tools/recommender/fixtures/jev-reply.json (new)",
+        "tools/recommender/merge-rating-results.mjs",
+        "tools/recommender/merge-rating-results.test.mjs",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Gated on #1163 item 17.2. Score questions with 5 anchored levels; metadata only (no transcript windows leave). Adds --into to merge (default ratings.json). FLOORS jev-rate 6; merge 8 -> 9."
+    },
+    {
+      "id": "RV-20",
+      "title": "Qwen rater path via LiteLLM (dormant until the LiteLLM key)",
+      "wave": 3,
+      "size": "S",
+      "depends_on": ["RV-08", "RV-09"],
+      "files": [
+        "tools/recommender/qwen-rate.mjs (new)",
+        "tools/recommender/qwen-rate.test.mjs (new)",
+        "tools/recommender/fixtures/qwen-reply.json (new)",
+        "tools/recommender/fixtures/qwen-bad.json (new)",
+        "tools/recommender/schema.mjs",
+        "tools/recommender/schema.test.mjs",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Gated on #1163 item 17.1. tools/corpus/dossiers/llm.mjs createChatClient; json_schema response_format; alias FORAY_RECOMMENDER_MODEL default local-heavy. Same batch in, same results file out. FLOORS qwen-rate 6; schema 9 -> 10."
+    },
+    {
+      "id": "RV-15",
+      "title": "build-ratings-client.mjs: the 40 KB client projection, --check drift test",
+      "wave": 4,
+      "size": "S",
+      "depends_on": ["RV-09", "RV-13"],
+      "files": [
+        "tools/recommender/build-ratings-client.mjs (new)",
+        "tools/recommender/build-ratings-client.test.mjs (new)",
+        "data/recommender/ratings-client.json (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Curated 229 only in v1; digit-per-persona f string; CLIENT_BUDGET_BYTES 40 KB pinned by a real-data test; not fetched by app.js until RV-27 (zero bundle). FLOORS 5."
+    },
+    {
+      "id": "RV-19",
+      "title": "Gold-set run: 3,000-5,000 shows, three passes on 500, sharded pool or routines",
+      "wave": 4,
+      "size": "S",
+      "depends_on": ["RV-13"],
+      "files": [
+        "data/recommender/gold-set.json",
+        "data/recommender/ratings.json",
+        "data/recommender/rating-progress.json",
+        "docs/agents/runners.md",
+        "docs/research/persona-ratings-gold-2026-10.md (new)"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "ORCHESTRATOR STEP, after RV-13's go. ~200 batches, ~20M tokens (estimated) for 3,000; 2-4 calendar days of a 5-agent pool, or ~2 weeks on five routines (fallback). batchDrift > 0.3 triggers the pairwise-calibration backlog item."
+    },
+    {
+      "id": "RV-21",
+      "title": "Offline eval: persona prior vs chart, node overlap and archetype_fit; coverage and skew audit; report",
+      "wave": 4,
+      "size": "S",
+      "depends_on": ["RV-13", "RV-16"],
+      "files": [
+        "tools/recommender/eval.mjs (new)",
+        "test/recommender-eval.test.js (new)",
+        "docs/research/persona-ratings-eval-2026-10.md (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "similar-shows-eval pattern; first measurement, no floors on the eval numbers yet; chart-rank correlation expected near zero (leak check). FLOORS 5."
+    },
+    {
+      "id": "RV-22",
+      "title": "Foray supply report per persona (candidate prompts for the catalogue lane)",
+      "wave": 4,
+      "size": "XS",
+      "depends_on": ["RV-09"],
+      "files": [
+        "tools/recommender/foray-supply.mjs (new)",
+        "tools/recommender/foray-supply.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "A report only; generation lanes (GV-81) untouched; writes nothing under data/. FLOORS 3."
+    },
+    {
+      "id": "RV-23",
+      "title": "Events contract and migration for show_followed / show_unfollowed and completion fields on finished (dark)",
+      "wave": 4,
+      "size": "S",
+      "depends_on": [],
+      "files": [
+        "backend/src/types/events.ts",
+        "backend/src/curation/interestLearning.ts",
+        "backend/migrations/0018_events_follow_types.sql (new; check the next free number)",
+        "backend/migrations/supabase/README.md",
+        "backend/test/<events schema suite>.ts",
+        "backend/test/interestLearning.test.ts",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": true,
+      "ui_touch": false,
+      "notes": "backend/src and backend/migrations are DENIED: founder-approved label (orchestrator applies). Migration applied by the founder in the SQL editor (pattern #116). Nothing emits the types until RV-27 and the legal text. BACKEND_FLOORS +4."
+    },
+    {
+      "id": "RV-24",
+      "title": "#1163 item: privacy wording for follows (local and sent), completion and impressions",
+      "wave": 5,
+      "size": "XS",
+      "depends_on": ["RV-23"],
+      "files": [],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "ORCHESTRATOR STEP: posts the item with draft sentences and recommended defaults (follows sent: no for now; percent/eff_len_sec: yes; censored/resumed: hold). No legal text is committed by any card. Parks RV-17 useFollows and RV-27's event cases."
+    },
+    {
+      "id": "RV-25",
+      "title": "Student gate on the 500 held-out shows and prediction over the 26k; ratings-predicted.json",
+      "wave": 5,
+      "size": "S",
+      "depends_on": ["RV-14", "RV-19"],
+      "files": [
+        "tools/recommender/predict.mjs (new)",
+        "tools/recommender/predict.test.mjs (new)",
+        "data/recommender/student-model.json (new)",
+        "data/recommender/ratings-predicted.json (new)",
+        "docs/research/persona-ratings-student-2026-10.md (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "--predict refuses when the gate failed; holdout never trains; gold-rated and none-tier shows excluded; audio sub-scores always null; --check binds model to gold set and predictions to model. FLOORS 6."
+    },
+    {
+      "id": "RV-28",
+      "title": "player/feedback-events.js: pure completion and follow payload builders (effective duration, buckets, censoring)",
+      "wave": 5,
+      "size": "S",
+      "depends_on": ["RV-23"],
+      "files": [
+        "player/feedback-events.js (new)",
+        "player/feedback-events.test.js (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Mirrors RV-23's contract keys (a key-set test reads events.ts as text); nothing emitted (no logEvent). FLOORS 5."
+    },
+    {
+      "id": "RV-29",
+      "title": "Persona pruning to v1.1 from the gold-set differentiation numbers",
+      "wave": 5,
+      "size": "XS",
+      "depends_on": ["RV-19"],
+      "files": [
+        "data/recommender/persona-profiles.json",
+        "docs/curation/persona-profiles-v1.md",
+        "tools/recommender/profiles.mjs",
+        "tools/recommender/profiles.test.mjs",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "ORCHESTRATOR STEP: pairs with fit correlation >= 0.85 merged, top-persona share < 3% pruned; pruned/merged_into fields; expected 8-10 kept of 13. profiles FLOORS 6 -> 7."
+    },
+    {
+      "id": "RV-26",
+      "title": "Anomaly and injection audit: ratings far from the student or the node mean, reasons with instruction-like text",
+      "wave": 6,
+      "size": "XS",
+      "depends_on": ["RV-25"],
+      "files": [
+        "tools/recommender/anomaly.mjs (new)",
+        "tools/recommender/anomaly.test.mjs (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "Writes data-local/recommender/anomalies.json; a batch with > 20% anomalies is re-rated. FLOORS 4."
+    },
+    {
+      "id": "RV-30",
+      "title": "Client projection v2: budgeted breadth top-N from predicted ratings",
+      "wave": 6,
+      "size": "XS",
+      "depends_on": ["RV-15", "RV-25"],
+      "files": [
+        "tools/recommender/build-ratings-client.mjs",
+        "tools/recommender/build-ratings-client.test.mjs",
+        "data/recommender/ratings-client.json",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": false,
+      "notes": "--include breadth-top:N under the same 40 KB budget; tier digit p for predicted rows; curated shows never duplicated by their breadth twin. build-ratings-client FLOORS 5 -> 7."
+    },
+    {
+      "id": "RV-27",
+      "title": "app.js wiring behind RECOMMENDER_PRIOR = false: fetch, mixture, seam A/B/C blend, event cases",
+      "wave": "parked",
+      "size": "S",
+      "depends_on": ["RV-15", "RV-16", "RV-17", "RV-23", "RV-24"],
+      "files": [
+        "app.js",
+        "player/client.js",
+        "tools/mobile/prepare-webdir.mjs",
+        "tools/similar-eval/similar-shows.mjs",
+        "docs/research/similar-shows-eval-2026-10.md",
+        "test/show-page.test.js",
+        "test/home-v2-real-data.test.js",
+        "test/recommender-wiring.test.js (new)",
+        "test/suite-integrity.test.js"
+      ],
+      "governed": false,
+      "ui_touch": true,
+      "notes": "PARKED until Joey's revamp lands or the founder grants an exemption on #1380. The ONE app.js card (D5): a code constant, not a cp_ key; seam B (branchChain order) and seam C (similarShows third key; mirror pasted, floors must hold); seam A untouched; toEventRow cases only after RV-24's legal PR lands. FLOORS 5."
+    }
+  ]
+}
