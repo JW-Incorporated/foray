@@ -15,13 +15,32 @@
  * thousand. runPipeline never flushes; the CLI (`cli/generateForays.ts`)
  * flushes each attempt's log just before it serialises it.
  *
- * INCLUSIVE, NOT EXCLUSIVE. Spans nest and each one reports its own wall time,
- * children included: `index.load` includes the `transcript.read`s a cold build
- * does, `index.search` includes the `index.load` it triggers, `sourcing.tier2`
- * includes its searches and `sourcing.all` includes everything under it. So
- * the totals of different names in one stage are NOT additive; read each name
- * on its own, or take the outermost one (`sourcing.all`) for the stage's code
- * time.
+ * INCLUSIVE `totalMs`, EXCLUSIVE `selfMs`. Spans nest. `totalMs` and `maxMs`
+ * are each span's own wall time, children included: `index.load` includes the
+ * `transcript.read`s a cold build does, `index.search` includes the
+ * `index.load` it triggers, `sourcing.tier2` includes its searches and
+ * `sourcing.all` includes everything under it. So the `totalMs` of different
+ * names in one stage are NOT additive; read each name on its own. `selfMs` is
+ * the exclusive time: each span's wall time minus the wall time of its DIRECT
+ * children (spans that opened and closed inside it). For sync spans the
+ * `selfMs` of every name in a stage ARE additive, and their sum is the stage's
+ * code time with nothing counted twice — what the bench's MT-08 `code_s` sums
+ * (tools/generation-bench/runlog.mjs).
+ *
+ * HOW SELF TIME IS KEPT. Each log keeps a stack of open frames. A sync span
+ * (`codeSpanSync`) pushes a frame, runs, pops it, and adds its wall time to
+ * the frame below (its parent's child time). Sync spans cannot interleave —
+ * nothing else runs until `fn` returns — so the stack is exact for them and
+ * the top frame is always the innermost span on the current call stack.
+ *
+ * THE ASYNC RULE. Concurrent async spans interleave across awaits, so an async
+ * span (`codeSpan`) never attributes children across an await. Its frame is on
+ * the stack only while `fn()` runs synchronously, up to the promise it
+ * returns: its `selfMs` is its `totalMs` (call to settle) minus the sync spans
+ * that ran in that synchronous part, and only that synchronous part's wall
+ * time is credited to its parent. A span that runs after one of its awaits is
+ * NOT subtracted from it, so an async span's `selfMs` can overlap other spans'
+ * time. Every span in the pipeline today is sync.
  *
  * INERT OUTSIDE A RUN. With no `runWithRunLog` active every helper just runs
  * its function and returns exactly what it returned (or throws exactly what it
@@ -43,6 +62,14 @@ interface LogSpans {
   byKey: Map<string, CodeSpanAggregate>;
   /** The aggregates already appended to the log. */
   flushed: Set<CodeSpanAggregate>;
+  /** The spans open on this log right now, innermost last (see "HOW SELF
+   * TIME IS KEPT"). */
+  open: Frame[];
+}
+
+/** One open span: the wall time of the direct children that closed in it. */
+interface Frame {
+  childMs: number;
 }
 
 /** Per-log state. A WeakMap, so a log that is dropped takes its spans with it
@@ -59,7 +86,7 @@ function nowMs(): number {
 function spansFor(log: RunLog): LogSpans {
   let spans = spansByLog.get(log);
   if (!spans) {
-    spans = { byKey: new Map(), flushed: new Set() };
+    spans = { byKey: new Map(), flushed: new Set(), open: [] };
     spansByLog.set(log, spans);
   }
   return spans;
@@ -70,7 +97,7 @@ function aggregateFor(log: RunLog, stage: string | null, name: string): CodeSpan
   const key = JSON.stringify([stage, name]);
   let agg = spans.byKey.get(key);
   if (!agg) {
-    agg = { kind: "code", stage, name, count: 0, totalMs: 0, maxMs: 0 };
+    agg = { kind: "code", stage, name, count: 0, totalMs: 0, selfMs: 0, maxMs: 0 };
     spans.byKey.set(key, agg);
   }
   return agg;
@@ -80,11 +107,31 @@ function currentStage(): string | null {
   return currentCallContext().stage ?? null;
 }
 
-function record(log: RunLog, stage: string | null, name: string, startMs: number): void {
-  const ms = Math.max(0, nowMs() - startMs);
+/** Pushes a new frame onto the log's stack of open spans. */
+function openFrame(spans: LogSpans): Frame {
+  const frame: Frame = { childMs: 0 };
+  spans.open.push(frame);
+  return frame;
+}
+
+/** Takes `frame` off the stack and credits `ms` to the frame now on top: the
+ * span that `frame` ran inside, if any. */
+function closeFrame(spans: LogSpans, frame: Frame, ms: number): void {
+  const at = spans.open.lastIndexOf(frame);
+  if (at >= 0) spans.open.splice(at, 1);
+  const parent = spans.open[spans.open.length - 1];
+  if (parent) parent.childMs += ms;
+}
+
+function elapsedSince(startMs: number): number {
+  return Math.max(0, nowMs() - startMs);
+}
+
+function record(log: RunLog, stage: string | null, name: string, ms: number, childMs: number): void {
   const agg = aggregateFor(log, stage, name);
   agg.count += 1;
   agg.totalMs += ms;
+  agg.selfMs += Math.max(0, ms - childMs);
   if (ms > agg.maxMs) agg.maxMs = ms;
 }
 
@@ -94,11 +141,15 @@ export function codeSpanSync<T>(name: string, fn: () => T): T {
   const log = currentRunLog();
   if (!log) return fn();
   const stage = currentStage();
+  const spans = spansFor(log);
+  const frame = openFrame(spans);
   const start = nowMs();
   try {
     return fn();
   } finally {
-    record(log, stage, name, start);
+    const ms = elapsedSince(start);
+    closeFrame(spans, frame, ms);
+    record(log, stage, name, ms, frame.childMs);
   }
 }
 
@@ -109,28 +160,35 @@ export function codeSpan<T>(name: string, fn: () => Promise<T>): Promise<T> {
   const log = currentRunLog();
   if (!log) return fn();
   const stage = currentStage();
+  const spans = spansFor(log);
+  const frame = openFrame(spans);
   const start = nowMs();
   let pending: Promise<T>;
   try {
     pending = fn();
   } catch (err) {
-    record(log, stage, name, start);
+    const ms = elapsedSince(start);
+    closeFrame(spans, frame, ms);
+    record(log, stage, name, ms, frame.childMs);
     throw err;
   }
+  /* THE ASYNC RULE: the frame comes off at the end of the synchronous part, so
+     `frame.childMs` is final here and nothing after an await is attributed. */
+  closeFrame(spans, frame, elapsedSince(start));
   return pending.then(
     (value) => {
-      record(log, stage, name, start);
+      record(log, stage, name, elapsedSince(start), frame.childMs);
       return value;
     },
     (err: unknown) => {
-      record(log, stage, name, start);
+      record(log, stage, name, elapsedSince(start), frame.childMs);
       throw err;
     }
   );
 }
 
 /** Counts one occurrence of `name` in the current stage without timing it
- * (its aggregate's totalMs and maxMs stay 0). A no-op outside a run. */
+ * (its aggregate's totalMs, selfMs and maxMs stay 0). A no-op outside a run. */
 export function codeHit(name: string): void {
   const log = currentRunLog();
   if (!log) return;

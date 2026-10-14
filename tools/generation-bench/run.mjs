@@ -540,7 +540,7 @@ export const COLUMNS = [
     width: 6,
     kind: "number",
     digits: 1,
-    targetNote: "MT-08: seconds of code time inside the stages (CodeSpanAggregate events)"
+    targetNote: "MT-08: seconds of code time inside the stages (CodeSpanAggregate events, exclusive selfMs summed so nested spans count once)"
   },
   {
     key: "render_x",

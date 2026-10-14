@@ -1601,7 +1601,7 @@ const FLOORS = {
      wrong number: parallel calls counted as serial, a re-ask counted twice, a
      reservation read as spend, a decode rate diluted with end-to-end calls,
      a 0 standing in for a field no provider reported. */
-  "tools/generation-bench/runlog.test.mjs": 12, // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
+  "tools/generation-bench/runlog.test.mjs": 14, // GV-85 follow-up (MT-08): codeMsByStage sums exclusive selfMs over a nested fixture (45, not the 146 of inclusive totals), an event without selfMs falls back to totalMs; 12 -> 14 // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
   /* GV-24 (W1-11, MQ-01..MQ-21): the quality scorecard. Each test is one
      quiet wrong number: a clip-only Foray scored as a voice of zero, a pool
      clip counted as a clean cut, tape credited to the wrong show, the report's
@@ -3638,8 +3638,13 @@ const BACKEND_FLOORS = {
      throwing or rejecting function still recorded, an async span timed until
      it settles; flushCodeSpans appends at most one CodeSpanAggregate per
      (stage, name) however often it runs, keeps two logs apart and serialises
-     into runlog/1. Offline; one named mutation per test. */
-  "test/codeSpans.test.ts": 10,
+     into runlog/1. Offline; one named mutation per test.
+     GV-85 follow-up (MT-08): selfMs is exclusive — five nested sync levels
+     (a throwing read among them) give self times that sum to the outermost
+     total; an async span subtracts only the sync children of its synchronous
+     part and credits only that part to its parent, never across an await;
+     10 -> 12. */
+  "test/codeSpans.test.ts": 12,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
