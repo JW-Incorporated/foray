@@ -1,0 +1,133 @@
+{
+  "_comment": "RV-20: OpenAI chat-completions replies the qwen-rate path must refuse for a show-metadata show rated for comfort-companion and mechanism-hunter. Each one is recorded as not_rated_because qwen_reply_invalid with no ratings, and the run goes on. Synthetic, written by hand; no model was called.",
+  "malformed": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "Mechanism hunter would love it: 5. Comfort companion: 2."
+        }
+      }
+    ]
+  },
+  "not_an_object": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "[1, 2, 3]"
+        }
+      }
+    ]
+  },
+  "fit_as_string": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"comfort-companion\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"},\"mechanism-hunter\":{\"fit\":\"5\",\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.45,\"reason\":\"Each episode traces one failure from the evidence to its root cause, naming the part that broke.\"}}}"
+        }
+      }
+    ]
+  },
+  "missing_persona": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"mechanism-hunter\":{\"fit\":5,\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.45,\"reason\":\"Each episode traces one failure from the evidence to its root cause, naming the part that broke.\"}}}"
+        }
+      }
+    ]
+  },
+  "unknown_persona": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"comfort-companion\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"},\"mechanism-hunter\":{\"fit\":5,\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.45,\"reason\":\"Each episode traces one failure from the evidence to its root cause, naming the part that broke.\"},\"sharp-comedy\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"}}}"
+        }
+      }
+    ]
+  },
+  "audio_score_on_metadata": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"comfort-companion\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"},\"mechanism-hunter\":{\"fit\":5,\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":4,\"production\":null,\"ad_load\":null,\"confidence\":0.45,\"reason\":\"Each episode traces one failure from the evidence to its root cause, naming the part that broke.\"}}}"
+        }
+      }
+    ]
+  },
+  "confidence_over_cap": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"comfort-companion\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"},\"mechanism-hunter\":{\"fit\":5,\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.9,\"reason\":\"Each episode traces one failure from the evidence to its root cause, naming the part that broke.\"}}}"
+        }
+      }
+    ]
+  },
+  "banned_word_reason": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"comfort-companion\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"},\"mechanism-hunter\":{\"fit\":5,\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.45,\"reason\":\"A fascinating tour of industrial accidents.\"}}}"
+        }
+      }
+    ]
+  },
+  "extra_field": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"comfort-companion\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"},\"mechanism-hunter\":{\"fit\":5,\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.45,\"reason\":\"Each episode traces one failure from the evidence to its root cause, naming the part that broke.\"}},\"chart_rank\":3}"
+        }
+      }
+    ]
+  },
+  "truncated": {
+    "model": "local-heavy",
+    "choices": [
+      {
+        "index": 0,
+        "finish_reason": "length",
+        "message": {
+          "role": "assistant",
+          "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"ha"
+        }
+      }
+    ]
+  }
+}
