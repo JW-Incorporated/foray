@@ -1,0 +1,157 @@
+{
+  "show_id": "tx-show-0123456789",
+  "guid": "https-example-invalid-ep-b-deddb10878",
+  "transcript_source": "asr-local",
+  "cues": [
+    {
+      "start_sec": 0,
+      "end_sec": 55,
+      "text": "b0 cue words"
+    },
+    {
+      "start_sec": 60,
+      "end_sec": 115,
+      "text": "b1 cue words"
+    },
+    {
+      "start_sec": 120,
+      "end_sec": 175,
+      "text": "b2 cue words"
+    },
+    {
+      "start_sec": 180,
+      "end_sec": 235,
+      "text": "b3 cue words"
+    },
+    {
+      "start_sec": 240,
+      "end_sec": 295,
+      "text": "b4 cue words"
+    },
+    {
+      "start_sec": 300,
+      "end_sec": 355,
+      "text": "b5 cue words"
+    },
+    {
+      "start_sec": 360,
+      "end_sec": 415,
+      "text": "b6 cue words"
+    },
+    {
+      "start_sec": 420,
+      "end_sec": 475,
+      "text": "b7 cue words"
+    },
+    {
+      "start_sec": 480,
+      "end_sec": 535,
+      "text": "b8 cue words"
+    },
+    {
+      "start_sec": 540,
+      "end_sec": 595,
+      "text": "b9 cue words"
+    },
+    {
+      "start_sec": 600,
+      "end_sec": 655,
+      "text": "b10 cue words"
+    },
+    {
+      "start_sec": 660,
+      "end_sec": 715,
+      "text": "b11 cue words"
+    },
+    {
+      "start_sec": 720,
+      "end_sec": 775,
+      "text": "b12 cue words"
+    },
+    {
+      "start_sec": 780,
+      "end_sec": 835,
+      "text": "b13 cue words"
+    },
+    {
+      "start_sec": 840,
+      "end_sec": 895,
+      "text": "b14 cue words"
+    },
+    {
+      "start_sec": 900,
+      "end_sec": 955,
+      "text": "b15 cue words"
+    },
+    {
+      "start_sec": 960,
+      "end_sec": 1015,
+      "text": "b16 cue words"
+    },
+    {
+      "start_sec": 1020,
+      "end_sec": 1075,
+      "text": "b17 cue words"
+    },
+    {
+      "start_sec": 1080,
+      "end_sec": 1135,
+      "text": "b18 cue words"
+    },
+    {
+      "start_sec": 1140,
+      "end_sec": 1195,
+      "text": "b19 cue words"
+    },
+    {
+      "start_sec": 1200,
+      "end_sec": 1255,
+      "text": "b20 cue words"
+    },
+    {
+      "start_sec": 1260,
+      "end_sec": 1315,
+      "text": "b21 cue words"
+    },
+    {
+      "start_sec": 1320,
+      "end_sec": 1375,
+      "text": "b22 cue words"
+    },
+    {
+      "start_sec": 1380,
+      "end_sec": 1435,
+      "text": "b23 cue words"
+    },
+    {
+      "start_sec": 1440,
+      "end_sec": 1495,
+      "text": "b24 cue words"
+    },
+    {
+      "start_sec": 1500,
+      "end_sec": 1555,
+      "text": "b25 cue words"
+    },
+    {
+      "start_sec": 1560,
+      "end_sec": 1615,
+      "text": "b26 cue words"
+    },
+    {
+      "start_sec": 1620,
+      "end_sec": 1675,
+      "text": "b27 cue words"
+    },
+    {
+      "start_sec": 1680,
+      "end_sec": 1735,
+      "text": "b28 cue words"
+    },
+    {
+      "start_sec": 1740,
+      "end_sec": 1795,
+      "text": "b29 cue words"
+    }
+  ]
+}
