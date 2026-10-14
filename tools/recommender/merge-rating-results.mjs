@@ -42,8 +42,10 @@
    ISOLATED MODE (`isolated:<persona_id>`, RV-11's joint-vs-isolated check)
    merges into data/recommender/ratings-isolated.json, never ratings.json. Each
    persona's array there is newest-wins (one isolated rating per persona), and
-   an isolated batch releases its reservations but does not mark a pass rated:
-   it is a side measurement, not one of the show's three joint passes.
+   an isolated batch releases its reservations and marks its pass rated only
+   under its own progress keys (`<show_key>@isolated:<persona_id>`, RV-08's
+   progressKey): it is a side measurement, not one of the show's three joint
+   passes, and the record stops the same isolated shows being offered again.
 
    IDEMPOTENT per batch_id: a merged batch id is recorded in `merged_batches`;
    merging it again changes no rating, re-applying only the (idempotent)
@@ -59,6 +61,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
+import { progressKey } from "./prepare-rating-batch.mjs";
 import { loadProgress, markRated, release, saveProgress, serializeProgress, STALE_MS } from "./progress.mjs";
 import {
   AUDIO_SUBSCORES,
@@ -340,7 +343,14 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
 
   const settleProgress = () => {
     const released = release(progress, results.batch_id);
-    if (!isolated && Number.isInteger(results.pass)) markRated(progress, batchKeys, { pass: results.pass, batchId: results.batch_id });
+    // An isolated batch is recorded under the keys RV-08 reserved it by
+    // (`<show_key>@isolated:<persona_id>`), never the show's own joint key: it is
+    // not one of the joint passes, but without the record prepare-rating-batch
+    // would offer the same isolated shows again after every merge.
+    if (Number.isInteger(results.pass)) {
+      const keys = isolated ? batchKeys.map((k) => progressKey(k, results.mode)) : batchKeys;
+      markRated(progress, keys, { pass: results.pass, batchId: results.batch_id });
+    }
     if (serializeProgress(progress) !== progressBefore) saveProgress(progressPath, progress);
     return released;
   };

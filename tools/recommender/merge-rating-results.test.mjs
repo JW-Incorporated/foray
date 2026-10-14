@@ -29,6 +29,7 @@ import {
   serializeRatings,
   skeletonRatings,
 } from "./merge-rating-results.mjs";
+import { eligibleShows, progressKey } from "./prepare-rating-batch.mjs";
 import { RUBRIC_VERSION, validateRatingsFile } from "./schema.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -355,7 +356,14 @@ test("isolated results never enter ratings.json", (t) => {
   assert.equal(report.released, 3);
   const progress = readJson(join(root, PROGRESS_PATH));
   assert.deepEqual(progress.in_flight, {});
-  assert.deepEqual(progress.rated, {}, "an isolated batch is not one of the show's joint passes");
+  // mutation: in settleProgress, `if (Number.isInteger(results.pass))` -> `if (!isolated && Number.isInteger(results.pass))` -> rated stays {} and the isolated shows are offered again
+  // mutation: map the isolated keys with `(k) => k` -> the shows' joint pass 1 is recorded
+  const keys = batch.shows.map((p) => p.show_key);
+  assert.deepEqual(Object.keys(progress.rated).sort(), keys.map((k) => progressKey(k, batch.mode)).sort(), "recorded under the isolated keys only, never the joint ones");
+  for (const k of keys) assert.deepEqual(progress.rated[progressKey(k, batch.mode)].passes, [1]);
+  const set = { shows: keys.map((show_key) => ({ show_key, roles: ["pilot", "isolated"] })) };
+  assert.deepEqual(eligibleShows(set, progress, { role: "pilot", pass: 1, mode: batch.mode }), [], "a merged isolated batch is not offered again");
+  assert.deepEqual(eligibleShows(set, progress, { role: "pilot", pass: 1, mode: "joint" }), keys, "the shows' joint pass 1 is still open");
   assert.ok(existsSync(reasonsPathFor(batch.batch_id, root)), "the reasons file name is Windows-safe despite the ':'");
 });
 
