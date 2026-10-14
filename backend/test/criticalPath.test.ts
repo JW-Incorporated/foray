@@ -306,7 +306,9 @@ describe("the stub baseline chain before act 0 is ready (GV-123, TM-05)", () => 
   it("pins the classic default path's serial chain on the short tier: at least 6 calls", async () => {
     /* MUTATIONS THAT KILL THIS (each ran red here): in recordingDeps.ts,
        advance the clock by the latency instead of sleeping it (a counter
-       clock, so the 16 parallel prefetch calls read as serial);
+       clock: the chain stays 8 calls with the same ids, because parallel
+       calls still share a start time and overlap, but firstReadyMs reads
+       26000 instead of 19000);
        SETTLE_TURNS = 0 (the clock moves before concurrent work has
        registered its sleep); and dropping the deepenBuilder row from
        INSTRUMENTED_METHODS (the pinned chain loses its deepen link). */
@@ -338,8 +340,10 @@ describe("the stub baseline chain before act 0 is ready (GV-123, TM-05)", () => 
  *   assessClarity, extractIntent      understand (safety, then intent)
  *   buildSpine                        spine
  *   deepenAct@a0                      deepen (one act, so no parallelism)
- *   retrievePassages x2               the evidence prefetch: 16 pages at the
- *                                     default concurrency of 10, two waves
+ *   retrievePassages x2               the evidence prefetch, 9 pages (16
+ *                                     retrievePassages calls, two queries per
+ *                                     content page) at the default
+ *                                     concurrency of 6, two waves
  *   writeAct@a0, verifyAct@a0         the act, one round
  *
  * firstReadyMs is the sum of the scripted latencies along the chain
