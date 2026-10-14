@@ -8,9 +8,12 @@ import type { RunPipelineDeps } from "../../src/generation/runPipeline";
  * on every machine.
  *
  * VIRTUAL TIME, NOT A COUNTER. A clock that simply added each call's latency
- * would make every call look serial, and the chain would count parallel work
- * (the per-act deepen calls, say) as several waits. Here each wrapped call,
- * once its builder has answered, SLEEPS its stage's latency in virtual time.
+ * would stack the ends of parallel work (the evidence prefetch, say): calls
+ * that start together still share a start time and overlap, so the chain's
+ * length and ids need not change, but each later end lands after every
+ * earlier latency, so the time to act 0 grows (on the stub baseline,
+ * firstReadyMs reads 26000 instead of 19000). Here each wrapped call, once
+ * its builder has answered, SLEEPS its stage's latency in virtual time.
  * The clock only moves when every pending piece of work is asleep: after a
  * few event-loop turns with nothing new, it jumps to the earliest wake-up and
  * resolves that one sleeper. Two calls that start together therefore end
