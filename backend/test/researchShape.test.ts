@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   buildResearchShape,
+  selectWithShowQuota,
   SUBJECT_TAPE_FLOOR,
   tapeSignalFor,
   RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC,
@@ -17,7 +18,8 @@ import {
   selectTapeWindow
 } from "../src/generation/transcriptArchiveLookup";
 import { tokenizeForSourcing } from "../src/generation/catalogueLookup";
-import type { ResearchTapeWindow } from "../src/types/research";
+import { ResearchShapeSchema, type ResearchTapeWindow } from "../src/types/research";
+import { FlagValueError, RESEARCH_SHOW_QUOTA_ENV, researchShowQuota } from "../src/generation/generationFlags";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
@@ -934,3 +936,204 @@ describe("buildResearchShape — #703: the map is checked against its own subjec
   });
 });
 
+
+describe("GV-87: the per-show quota on a subtopic's tape windows (FORAY_RESEARCH_SHOW_QUOTA)", () => {
+  /* A synthetic two-show archive. "Fusion Weekly" says the subtopic's terms the
+     most, so with no quota it takes all six windows; "Energy Talk" says them
+     less, and only a quota offers it to the spine. */
+  const weekly = (n: number): TranscriptDigestEntry => ({
+    show_id: "fusion-weekly",
+    show_title: "Fusion Weekly",
+    guid: `fw-${n}`,
+    title: `Weekly ${n}`,
+    cues: 3,
+    feed_duration_sec: 3600
+  });
+  const talk = (n: number): TranscriptDigestEntry => ({
+    show_id: "energy-talk",
+    show_title: "Energy Talk",
+    guid: `et-${n}`,
+    title: `Talk ${n}`,
+    cues: 3,
+    feed_duration_sec: 3600
+  });
+  const weeklyCues: TranscriptCue[] = [
+    { text: "fusion in a tokamak is the whole show today and the tokamak is the hard part", start_sec: 0, end_sec: 50 },
+    { text: "fusion reactors need the tokamak to hold the plasma long enough for fusion to pay", start_sec: 50, end_sec: 100 },
+    { text: "so every tokamak group measures fusion gain before anything else", start_sec: 100, end_sec: 150 }
+  ];
+  const talkCues: TranscriptCue[] = [
+    { text: "the grid is changing fast and storage is the story most people miss", start_sec: 0, end_sec: 50 },
+    { text: "fusion comes up now and then but solar and wind are what is being built", start_sec: 50, end_sec: 100 },
+    { text: "and the batteries are what make the rest of it work at night", start_sec: 100, end_sec: 150 }
+  ];
+
+  function archiveOf(weeklies: number, talks: number) {
+    const archive = [
+      ...Array.from({ length: weeklies }, (_, i) => weekly(i)),
+      ...Array.from({ length: talks }, (_, i) => talk(i))
+    ];
+    const cuesByGuid: Record<string, TranscriptCue[]> = Object.fromEntries(
+      archive.map((e) => [e.guid, e.show_id === "fusion-weekly" ? weeklyCues : talkCues])
+    );
+    const bodies: TranscriptBodySource = {
+      getCues: (entry) => cuesByGuid[entry.guid] ?? null,
+      bodyStat: (entry) => (cuesByGuid[entry.guid] ? { mtimeMs: 1, size: 1 } : null)
+    };
+    const cueProvider: TranscriptCueProvider = { getCues: (entry) => cuesByGuid[entry.guid] ?? null };
+    /* `cache: false`: nothing in a test may touch the disk cache. */
+    return { textIndex: new FileTranscriptTextIndex({ archive, bodies, cache: false }), cueProvider };
+  }
+
+  async function fusionMap(quota: string | undefined, weeklies: number, talks: number) {
+    if (quota === undefined) delete process.env[RESEARCH_SHOW_QUOTA_ENV];
+    else process.env[RESEARCH_SHOW_QUOTA_ENV] = quota;
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      ...archiveOf(weeklies, talks)
+    });
+    return { shape, fusion: shape.subtopics.find((s) => s.label === "Fusion")! };
+  }
+
+  const showsOf = (windows: ResearchTapeWindow[]) => windows.map((w) => w.showTitle);
+  const count = (xs: string[], x: string) => xs.filter((y) => y === x).length;
+
+  afterEach(() => {
+    delete process.env[RESEARCH_SHOW_QUOTA_ENV];
+  });
+
+  it("with the flag unset, the map is today's: the top six by score, no showId and no offeredShows key", async () => {
+    /* MUTATION THAT KILLS THIS: set `showId` on every window regardless of the
+       flag (drop the `deps.showQuota !== undefined` condition in
+       `tapeWindowsForUntimed`). Ran it — red. */
+    const { shape, fusion } = await fusionMap(undefined, 8, 4);
+    expect(fusion.tapeWindows.length).toBe(RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
+    expect(showsOf(fusion.tapeWindows).every((s) => s === "Fusion Weekly")).toBe(true);
+    const json = JSON.stringify(shape.subtopics);
+    expect(json).not.toContain("showId");
+    expect(json).not.toContain("offeredShows");
+  });
+
+  it("with quota 0.6 and two shows, no show contributes more than 4 of 6 windows when the other show has enough", async () => {
+    /* MUTATION THAT KILLS THIS: keep `windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC)`
+       whatever the quota (ignore `deps.showQuota` at the cut). Ran it — red:
+       six Fusion Weekly windows. */
+    const { fusion } = await fusionMap("0.6", 8, 4);
+    const shows = showsOf(fusion.tapeWindows);
+    expect(shows.length).toBe(6);
+    expect(count(shows, "Fusion Weekly")).toBe(4);
+    expect(count(shows, "Energy Talk")).toBe(2);
+    /* Rank order kept: the stronger show's windows still lead. */
+    expect(fusion.tapeWindows.map((w) => w.showId)).toEqual([
+      "fusion-weekly",
+      "fusion-weekly",
+      "fusion-weekly",
+      "fusion-weekly",
+      "energy-talk",
+      "energy-talk"
+    ]);
+    expect(fusion.offeredShows).toEqual(["fusion-weekly", "energy-talk"]);
+    expect(new Set(fusion.tapeWindows.map((w) => w.episodeId)).size).toBe(6);
+  });
+
+  it("backfills from the skipped windows when the other show runs out, so the quota never costs a window", async () => {
+    /* MUTATION THAT KILLS THIS: drop the backfill loop in `selectWithShowQuota`.
+       Ran it — red: 4 windows, not 6. */
+    const { fusion } = await fusionMap("0.5", 8, 1);
+    const shows = showsOf(fusion.tapeWindows);
+    expect(shows.length).toBe(6);
+    expect(count(shows, "Energy Talk")).toBe(1);
+    expect(count(shows, "Fusion Weekly")).toBe(5);
+  });
+
+  it("spends only the kept windows: an episode the quota skipped under one subtopic is quoted under the next", async () => {
+    /* MUTATION THAT KILLS THIS: spend every candidate window, not the kept ones
+       (`for (const w of windows) usedEpisodes.add(w.episodeId)` in
+       `tapeWindowsForUntimed`). Ran it — red: "Plasma" is left with no window,
+       the Fusion Weekly episodes the quota skipped spent under "Fusion". */
+    process.env[RESEARCH_SHOW_QUOTA_ENV] = "0.6";
+    const base = tapeFixtureCatalogue();
+    /* A second subtopic whose terms only Fusion Weekly speaks ("tokamak",
+       "plasma"), walked after "Fusion". */
+    const catalogue: CatalogueData = {
+      ...base,
+      itemTags: Object.fromEntries(base.items.map((it) => [it.id, ["fusion", "tokamak", "plasma"]])),
+      concepts: { ...base.concepts, plasma: { terms: ["plasma", "tokamak"], topics: ["engineering/energy-fusion"], related: [] } }
+    };
+    const run = async () => {
+      const { guard } = guardAndSink();
+      return buildResearchShape(makeIntent(), {
+        researcher: new StubExternalResearcher(guard),
+        ctx: { userId: "founder-1" },
+        catalogue,
+        topic: null,
+        ...archiveOf(8, 4)
+      });
+    };
+    const shape = await run();
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    const plasma = shape.subtopics.find((s) => s.label === "Plasma")!;
+    expect(count(showsOf(fusion.tapeWindows), "Fusion Weekly")).toBe(4);
+    /* The Fusion Weekly episodes "Fusion" ranked in its top six with no quota
+       but dropped with it. */
+    delete process.env[RESEARCH_SHOW_QUOTA_ENV];
+    const unquotedTop = (await run()).subtopics.find((s) => s.label === "Fusion")!.tapeWindows.map((w) => w.episodeId);
+    const kept = new Set(fusion.tapeWindows.map((w) => w.episodeId));
+    const skipped = unquotedTop.filter((id) => !kept.has(id));
+    expect(skipped.length).toBe(2);
+    const plasmaIds = plasma.tapeWindows.map((w) => w.episodeId);
+    for (const id of skipped) expect(plasmaIds).toContain(id);
+    /* And still one window per episode across the map (G-24 R3). */
+    const all = shape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId));
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("with one show, the quota changes nothing", async () => {
+    const off = await fusionMap(undefined, 8, 0);
+    const on = await fusionMap("0.6", 8, 0);
+    expect(on.fusion.tapeWindows.map((w) => ({ ...w, showId: undefined }))).toEqual(off.fusion.tapeWindows);
+    expect(on.fusion.tapeWindows.every((w) => w.showId === "fusion-weekly")).toBe(true);
+    expect(on.fusion.offeredShows).toEqual(["fusion-weekly"]);
+  });
+
+  it("a checkpointed research shape round-trips showId and offeredShows", async () => {
+    /* MUTATIONS THAT KILL THIS: remove `showId` from `ResearchTapeWindowSchema`,
+       or `offeredShows` from `SubtopicCandidateSchema` (zod strips unknown keys
+       on the reload). Ran both — red. */
+    const { shape } = await fusionMap("0.6", 8, 4);
+    const reloaded = ResearchShapeSchema.parse(JSON.parse(JSON.stringify(shape)));
+    expect(reloaded).toEqual(shape);
+    const fusion = reloaded.subtopics.find((s) => s.label === "Fusion")!;
+    expect(fusion.tapeWindows.some((w) => w.showId === "energy-talk")).toBe(true);
+    expect(fusion.offeredShows).toEqual(["fusion-weekly", "energy-talk"]);
+    /* And a checkpoint written before GV-87 still parses, with neither field. */
+    const before = ResearchShapeSchema.parse(JSON.parse(JSON.stringify((await fusionMap(undefined, 8, 4)).shape)));
+    expect(before.subtopics.every((s) => s.offeredShows === undefined)).toBe(true);
+  });
+
+  it("selectWithShowQuota: greedy in rank order, then backfill, keeping rank order", () => {
+    const w = (episodeId: string, showId: string) => ({ episodeId, showId });
+    const ranked = [w("a1", "A"), w("a2", "A"), w("a3", "A"), w("b1", "B"), w("a4", "A"), w("c1", "C")];
+    expect(selectWithShowQuota(ranked, { max: 4, perShowMax: 2 }).map((x) => x.episodeId)).toEqual(["a1", "a2", "b1", "c1"]);
+    expect(selectWithShowQuota(ranked, { max: 5, perShowMax: 1 }).map((x) => x.episodeId)).toEqual(["a1", "a2", "a3", "b1", "c1"]);
+    const oneShow = [w("a1", "A"), w("a2", "A"), w("a3", "A")];
+    expect(selectWithShowQuota(oneShow, { max: 2, perShowMax: 1 })).toEqual(oneShow.slice(0, 2));
+  });
+
+  it("reads FORAY_RESEARCH_SHOW_QUOTA at call time: unset is off, (0, 1] is a share, anything else throws naming the variable", () => {
+    /* MUTATION THAT KILLS THIS: accept 0 (`value >= 0`) in the parser. Ran it — red. */
+    expect(researchShowQuota({})).toBeUndefined();
+    expect(researchShowQuota({ [RESEARCH_SHOW_QUOTA_ENV]: "0.6" })).toBe(0.6);
+    expect(researchShowQuota({ [RESEARCH_SHOW_QUOTA_ENV]: " 1 " })).toBe(1);
+    for (const bad of ["0", "-0.5", "1.5", "lots", "", "Infinity"]) {
+      expect(() => researchShowQuota({ [RESEARCH_SHOW_QUOTA_ENV]: bad })).toThrow(FlagValueError);
+      expect(() => researchShowQuota({ [RESEARCH_SHOW_QUOTA_ENV]: bad })).toThrow(RESEARCH_SHOW_QUOTA_ENV);
+    }
+    /* The offending value is never part of the message. */
+    expect(() => researchShowQuota({ [RESEARCH_SHOW_QUOTA_ENV]: "lots" })).not.toThrow(/lots/);
+  });
+});

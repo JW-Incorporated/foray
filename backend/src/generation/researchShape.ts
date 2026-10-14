@@ -31,6 +31,7 @@ import {
 } from "./transcriptArchiveLookup";
 import { corpusCoverage } from "./transcriptCorpus";
 import { codeSpanSync } from "./codeSpans";
+import { researchShowQuota } from "./generationFlags";
 import { NullTranscriptTextIndex, type TranscriptTextIndex } from "./transcriptTextIndex";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
 
@@ -259,6 +260,9 @@ interface TapeWindowDeps {
    * topic the F-11 concept filter above is keyed on. Null makes the gate inert. */
   topic: string | null;
   root: string | undefined;
+  /** GV-87: `FORAY_RESEARCH_SHOW_QUOTA`, read once per map at call time.
+   * Undefined (the default) keeps today's top-six cut and adds no field. */
+  showQuota: number | undefined;
 }
 
 interface TapeWindowResult {
@@ -367,7 +371,9 @@ function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps
       startSec: Number(window.startSec.toFixed(1)),
       endSec: Number(window.endSec.toFixed(1)),
       text,
-      score: Number(window.score.toFixed(3))
+      score: Number(window.score.toFixed(3)),
+      /* GV-87: only with the quota on, so the default map gains no key. */
+      ...(deps.showQuota !== undefined ? { showId: String(candidate.entry.show_id) } : {})
     });
   }
 
@@ -386,9 +392,58 @@ function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps
   /* Best window first; ties by episode id so a replay of the same archive
      produces the same prompt, byte for byte. */
   windows.sort((a, b) => b.score - a.score || (a.episodeId < b.episodeId ? -1 : a.episodeId > b.episodeId ? 1 : 0));
-  const kept = windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
+  const kept =
+    deps.showQuota === undefined
+      ? windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC)
+      : selectWithShowQuota(windows, {
+          max: RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC,
+          perShowMax: Math.ceil(deps.showQuota * RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC)
+        });
+  /* Only the kept windows are spent: an episode the quota skipped is still free
+     for the next subtopic. */
   for (const w of kept) usedEpisodes.add(w.episodeId);
   return { windows: kept, unavailable: null, episodesMatched: candidates.length };
+}
+
+/**
+ * GV-87 (W3-13, QK-21): AT MOST `perShowMax` WINDOWS FROM ANY ONE SHOW, WHEN
+ * THERE IS ANOTHER SHOW TO TAKE THE PLACE.
+ *
+ * The top-six cut above takes the six best windows, and on an archive where one
+ * show talks the most about a subject that is six windows from one show: the
+ * spine is offered one conversation's voice, and its seeds become clips from
+ * that show only. This keeps F-72's rule (a seed window is text the spine
+ * actually read) and changes only WHICH windows it reads.
+ *
+ * `windows` must already be in rank order (score, then episodeId). A greedy
+ * pass keeps a window unless its show already holds `perShowMax` of the kept
+ * ones; if fewer than `max` were kept, the skipped windows backfill in rank
+ * order, so the quota never costs the spine a window, only reorders which ones
+ * it gets. The result keeps rank order. One show (or none named) among the
+ * candidates: the plain top-`max` cut, so the quota changes nothing there.
+ *
+ * The trade is intended: a weaker window from a second show can displace a
+ * stronger one from the first, and the replay (GV-88) measures it.
+ *
+ * A window with no `showId` counts as its own show.
+ */
+export function selectWithShowQuota<T extends { episodeId: string; showId?: string }>(
+  windows: readonly T[],
+  options: { max: number; perShowMax: number }
+): T[] {
+  const showOf = (w: T): string => w.showId ?? `\u0000${w.episodeId}`;
+  if (new Set(windows.map(showOf)).size < 2) return windows.slice(0, options.max);
+  const keep = new Set<number>();
+  const perShow = new Map<string, number>();
+  windows.forEach((w, i) => {
+    if (keep.size >= options.max) return;
+    const n = perShow.get(showOf(w)) ?? 0;
+    if (n >= options.perShowMax) return;
+    perShow.set(showOf(w), n + 1);
+    keep.add(i);
+  });
+  for (let i = 0; i < windows.length && keep.size < options.max; i++) keep.add(i);
+  return windows.filter((_, i) => keep.has(i));
 }
 
 /**
@@ -633,7 +688,8 @@ export async function buildResearchShape(
     textIndex: options.textIndex ?? new NullTranscriptTextIndex(),
     cueProvider: options.cueProvider ?? new NullTranscriptCueProvider(),
     topic,
-    root: options.root
+    root: options.root,
+    showQuota: researchShowQuota()
   };
 
   /* #703 ASK 3: THE FLOOR, AND IT RUNS BEFORE THE STAGE'S ONE PAID CALL.
@@ -702,7 +758,9 @@ export async function buildResearchShape(
       externallyResearched: external !== undefined,
       tapeWindows: windows.windows,
       windowsUnavailable: windows.unavailable,
-      tapeEpisodesMatched: windows.episodesMatched
+      tapeEpisodesMatched: windows.episodesMatched,
+      /* GV-87: the shows this subtopic offers the spine, best first. */
+      ...(windowDeps.showQuota !== undefined ? { offeredShows: offeredShowsOf(windows.windows) } : {})
     };
   });
 
@@ -716,6 +774,11 @@ export async function buildResearchShape(
     corpus: coverage,
     subjectTape
   };
+}
+
+/** GV-87: each show the windows quote, once, in the order of its best window. */
+function offeredShowsOf(windows: readonly ResearchTapeWindow[]): string[] {
+  return [...new Set(windows.flatMap((w) => (w.showId !== undefined ? [w.showId] : [])))];
 }
 
 /**
