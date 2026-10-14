@@ -387,3 +387,78 @@ test("--check passes the committed skeleton and fails a bad file or a stale rese
   writeJson(join(root, RATINGS_PATH), { ...skeletonRatings(), shows: { x: { evidence_tier: "none" } } });
   assert.ok(runCheck({ root, now: NOW }).length > 0);
 });
+
+/* RV-18: --into and the metadata-only (jev-) rater. */
+
+/** resultsDoc with every persona reason "" and `model`. */
+function textlessResults(batch, model) {
+  const results = resultsDoc(batch);
+  results.model = model;
+  for (const show of Object.values(results.results)) for (const r of Object.values(show.personas ?? {})) r.reason = "";
+  return results;
+}
+
+test("an empty reason is accepted only for jev- models", (t) => {
+  // mutation: in emptyReasonPaths, drop `|| !isMetadataOnlyModel(results.model)` (accept always) -> the claude-sonnet file merges
+  // mutation: in runMerge's shapeProblems, `return true;` (no side-file allowance) -> merged_reason_missing refuses the jev file's empty top_reason
+  const root = makeRoot(t);
+  const batch = batchDoc(root);
+  const sideProgress = join(root, "data/recommender/rating-progress-jev.json");
+  writeJson(sideProgress, { in_flight: {}, rated: {} });
+
+  const claudePath = stage(root, batch, textlessResults(batch, "claude-sonnet"), { reserve: false });
+  const refused = runMerge({ resultsPath: claudePath, root, now: NOW, into: "ratings-jev.json" });
+  assert.equal(refused.ok, false);
+  assert.deepEqual([...new Set(refused.problems.map((p) => p.code))], ["reason_missing"]);
+  assert.equal(refused.problems.length, 4, "every empty reason of a non-jev model is a problem");
+  assert.equal(existsSync(join(root, "data/recommender/ratings-jev.json")), false);
+
+  const jevPath = stage(root, batch, textlessResults(batch, "jev-1.13.0"), { reserve: false });
+  const merged = runMerge({ resultsPath: jevPath, root, now: NOW, into: "ratings-jev.json" });
+  assert.deepEqual(merged.problems, []);
+  assert.equal(merged.ok, true);
+  const side = readJson(join(root, "data/recommender/ratings-jev.json"));
+  assert.equal(side.shows["curated-show"].top_reason, "");
+  assert.equal(side.shows["1000000001"].top_reason, "");
+});
+
+test("jev- results merge only --into their own ratings and progress files", (t) => {
+  // mutation: drop the `metadata_only_into_gold` refusal -> the jev ratings land in ratings.json
+  // mutation: `const progressPath = join(root, PROGRESS_PATH);` (ignore --into) -> the Claude pass 1 record refuses the merge (pass_already_rated)
+  // mutation: `const tier = fromPack;` for every model -> the transcript pack's show is recorded as transcript though Jev never saw the windows
+  const root = makeRoot(t);
+  const batch = batchDoc(root);
+  const results = textlessResults(batch, "jev-1.13.0");
+  const curated = results.results["curated-show"];
+  curated.evidence_tier = "episode-metadata";
+  curated.host_count = null;
+  for (const r of Object.values(curated.personas)) Object.assign(r, { host_style: null, production: null, ad_load: null, confidence: 0.6 });
+  const resultsPath = stage(root, batch, results, { reserve: false });
+
+  // The gold shows already carry a Claude pass 1 in the main progress file.
+  const mainProgress = { in_flight: {}, rated: Object.fromEntries(KEYS.map((k) => [k, { last_batch_id: "claude-batch", passes: [1] }])) };
+  writeJson(join(root, PROGRESS_PATH), mainProgress);
+  const mainBefore = readFileSync(join(root, PROGRESS_PATH), "utf8");
+  const sideProgressPath = join(root, "data/recommender/rating-progress-jev.json");
+  writeJson(sideProgressPath, { in_flight: Object.fromEntries(KEYS.map((k) => [k, { batch_id: batch.batch_id, reserved_at: NOW.toISOString() }])), rated: {} });
+
+  const gold = runMerge({ resultsPath, root, now: NOW });
+  assert.equal(gold.ok, false);
+  assert.deepEqual(gold.problems.map((p) => p.code), ["metadata_only_into_gold"]);
+  assert.equal(existsSync(join(root, RATINGS_PATH)), false, "ratings.json untouched");
+
+  const side = runMerge({ resultsPath, root, now: NOW, into: "ratings-jev.json" });
+  assert.deepEqual(side.problems, []);
+  assert.equal(side.ok, true);
+  assert.equal(side.report.released, 3);
+  const ratings = readJson(join(root, "data/recommender/ratings-jev.json"));
+  assert.equal(ratings.shows["curated-show"].evidence_tier, "episode-metadata", "the weaker declared tier wins for a metadata-only rater");
+  assert.deepEqual(ratings.shows["curated-show"].personas["p-history"].slice(6), [null, null, null, 0.6]);
+  assert.equal(readFileSync(join(root, PROGRESS_PATH), "utf8"), mainBefore, "the Claude progress file is untouched");
+  const sideProgress = readJson(sideProgressPath);
+  assert.deepEqual(sideProgress.in_flight, {});
+  for (const k of KEYS) assert.deepEqual(sideProgress.rated[k].passes, [1]);
+
+  assert.equal(main(["--results", resultsPath, "--into", "ratings-isolated.json"], { root, now: NOW, log: () => {}, out: () => {} }), 2, "another writer's file is refused");
+  assert.equal(main(["--check", "--into", "ratings-jev.json"], { root, now: NOW, log: () => {}, out: () => {} }), 2);
+});
