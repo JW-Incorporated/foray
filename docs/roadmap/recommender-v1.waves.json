@@ -1,0 +1,60 @@
+{
+  "source": "docs/roadmap/recommender-v1.md",
+  "verified_against": "e8ca46d8",
+  "rules": {
+    "max_cards_per_wave": 6,
+    "shared_file_exemption": ["test/suite-integrity.test.js"],
+    "note": "No two cards in a wave edit the same existing file; a card sits in a wave only after every card it depends on is in an earlier wave. Orchestrator-step cards are listed so the waves are honest about non-code work."
+  },
+  "waves": [
+    {
+      "n": 1,
+      "cards": ["RV-01", "RV-02", "RV-03", "RV-04", "RV-05", "RV-06"],
+      "why": "Foundations with no dependencies and no keys: personas, rubric and file shapes, evidence builder, RSS enrichment, the dormant R2 sampler, the decision record. Startable today.",
+      "needs_keys": false,
+      "human_step": "Orchestrator reviews the 13 persona profiles (RV-01) before wave 2 starts; applies founder-approved to RV-06 (docs/DECISIONS.md). RV-04's live fetch of the 229 curated feeds runs from the founder PC."
+    },
+    {
+      "n": 2,
+      "cards": ["RV-07", "RV-08", "RV-09", "RV-10", "RV-11", "RV-12"],
+      "why": "The rating loop built offline against fixtures: sampler, prepare, merge, runner prompt, agreement statistics, embeddings.",
+      "needs_keys": false,
+      "human_step": "Orchestrator reviews the runner prompt (RV-10) with the profiles open. RV-12's live step installs the transformers runtime (cd tools/corpus/embed && npm install; no key)."
+    },
+    {
+      "n": 3,
+      "cards": ["RV-13", "RV-14", "RV-16", "RV-17", "RV-18", "RV-20"],
+      "why": "The pilot runs (orchestrator) while the student, the two pure client modules and the two dormant rater paths are built offline.",
+      "needs_keys": false,
+      "human_step": "RV-13 is the orchestrator's: sample the pilot, run a <=5-agent local pool over ~44 batches (~3.5M tokens estimated), merge, run agreement.mjs, write go/no-go in docs/research/persona-ratings-pilot-2026-10.md. RV-18 and RV-20 ship dormant (keys #1163 17.2 / 17.1)."
+    },
+    {
+      "n": 4,
+      "cards": ["RV-15", "RV-19", "RV-21", "RV-22", "RV-23"],
+      "why": "After the pilot's go: the gold run, the client projection, the offline eval, the Foray supply report, the dark event contract.",
+      "needs_keys": false,
+      "human_step": "RV-19 is the orchestrator's (gold set, ~200 batches, ~20M tokens estimated, 2-4 days of pool time). RV-23 needs founder-approved (backend/src, backend/migrations) and a founder-applied migration. The R2 key, if it has arrived, feeds RV-05 into RV-19."
+    },
+    {
+      "n": 5,
+      "cards": ["RV-24", "RV-25", "RV-28", "RV-29"],
+      "why": "The legal item (quoting RV-23's merged field names); the student is gated on the 500 holdout and predicts over the 26k; the payload builders; persona pruning from the gold numbers.",
+      "needs_keys": false,
+      "human_step": "RV-24 is the orchestrator's (#1163 post with draft sentences and recommended defaults). RV-29 is the orchestrator's (reads the differentiation table in the gold report, prunes to 8-10 personas)."
+    },
+    {
+      "n": 6,
+      "cards": ["RV-26", "RV-30"],
+      "why": "Audits over the predicted set; the client projection grows a budgeted breadth slice.",
+      "needs_keys": false,
+      "human_step": null
+    },
+    {
+      "n": "parked",
+      "cards": ["RV-27"],
+      "why": "The one app.js card (D5): fetch, mixture, seam B/C blend and the event cases, behind RECOMMENDER_PRIOR = false.",
+      "needs_keys": false,
+      "human_step": "Joey's revamp lands, or the founder grants a UI-freeze exemption on #1380; the toEventRow half additionally waits on the founder's legal PR from RV-24."
+    }
+  ]
+}
