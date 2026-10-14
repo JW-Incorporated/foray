@@ -95,6 +95,10 @@ interface Corpus {
   cuesByGuid: Map<string, TranscriptCue[]>;
   denseEntry: TranscriptDigestEntry;
   denseClaim: string;
+  /** Every claim spoken in each episode, by guid. */
+  claimsByGuid: Map<string, string[]>;
+  /** The seeded beats, with the episode guid their seed names. */
+  seeded: Array<{ key: string; guid: string }>;
 }
 
 function buildCorpus(): Corpus {
@@ -122,6 +126,7 @@ function buildCorpus(): Corpus {
   let ordinal = 0;
   let dealt = 0;
   let denseClaim = "";
+  const seeded: Array<{ key: string; guid: string }> = [];
   const acts = raw.acts.map((act, a) => ({
     ...act,
     slots: act.slots.map((slot, s) => ({
@@ -144,6 +149,7 @@ function buildCorpus(): Corpus {
         spoken.set(entry, mine);
         /* Each claim sits after 60 s of filler and 160 s past the previous one. */
         const startSec = 60 + (mine.length - 1) * 240;
+        if (beat.seed) seeded.push({ key, guid: entry.guid });
         return beat.seed
           ? {
               ...rest,
@@ -191,6 +197,10 @@ function buildCorpus(): Corpus {
     cuesByGuid,
     denseEntry: archive.find((e) => e.guid === denseEntry.guid)!,
     denseClaim,
+    claimsByGuid: new Map(
+      [...spoken].map(([entry, claims]) => [entry.guid, claims]),
+    ),
+    seeded,
   };
 }
 
@@ -278,8 +288,8 @@ const runArgv = (extra: string[] = []): string[] => [
 /* ------------------------------------------------------------------ */
 
 interface FakeOptions {
-  /** bm25 answers no candidate for this claim (the keyword arm misses it). */
-  dropFor?: string;
+  /** bm25 answers no candidate for these claims (the keyword arm misses them). */
+  dropFor?: ReadonlySet<string>;
   /** hybrid answers this episode for this claim as dense-only. */
   dense?: { claim: string; entry: TranscriptDigestEntry };
 }
@@ -318,7 +328,9 @@ function fakeServer(options: FakeOptions = {}): {
         results: results.map((r, i) => {
           const text = queries[i]!.text;
           let candidates: Array<Record<string, unknown>> =
-            text === options.dropFor ? [] : r.candidates.map((c) => ({ ...c }));
+            options.dropFor?.has(text)
+              ? []
+              : r.candidates.map((c) => ({ ...c }));
           if (mode === "hybrid") {
             candidates = candidates.map((c) => ({ ...c, via: "bm25" }));
             if (options.dense && text === options.dense.claim) {
@@ -473,8 +485,9 @@ describe("replaySourcing: the CLI replays sourcing alone, offline", () => {
 
   it("a remote bm25 replay prepares the exact questions sourcing asks: no miss, no hydration miss, the same beats as local", async () => {
     /* MUTATION THAT KILLS THIS: prepare claims at limit 1 or skip the act
-       theses, or hydrate only the candidates (seeds then miss). Ran the
-       thesis one: red on misses. */
+       theses. Ran the thesis one: red on misses. (Hydrating only the
+       candidates does NOT fail this one, since every seeded episode is also a
+       candidate here; the next test guards the seed hydration.) */
     const local = (await main(runArgv(), { env: {}, ...quiet })).report!;
     const server = fakeServer();
     const remote = (
@@ -496,12 +509,42 @@ describe("replaySourcing: the CLI replays sourcing alone, offline", () => {
     expect(compareReplays(local, remote).verdict).toBe("pass");
   });
 
+  it("a remote replay hydrates a seeded episode no candidate names, so its seed window still wins", async () => {
+    /* MUTATION THAT KILLS THIS: hydrate only the candidates and the title
+       match (drop the seed/pool loop in remoteRetrieval). Ran it: red on
+       seedWindowWon. */
+    const { key, guid } = corpus.seeded[0]!;
+    const server = fakeServer({
+      dropFor: new Set(corpus.claimsByGuid.get(guid)),
+    });
+    const remote = (
+      await main(runArgv(), {
+        env: remoteEnv(),
+        fetchFn: server.fetchFn,
+        ...quiet,
+      })
+    ).report!;
+    /* The episode is reachable only through the seed: no beat's candidates
+       name it. */
+    expect(
+      remote.beats.some((b) => b.candidates.some((c) => c.guid === guid)),
+    ).toBe(false);
+    const beat = remote.beats.find((b) => b.key === key)!;
+    expect(beat.seeded).toBe(true);
+    expect(beat.seedWindowWon).toBe(true);
+    expect(beat.sourcing).toBe("tape");
+    expect(remote.retrievalStats).toMatchObject({
+      misses: 0,
+      hydrationMisses: 0,
+    });
+  });
+
   it("hybrid: a dense-only rescue of an unseeded beat passes the hybrid gate against the bm25 arm that missed it", async () => {
     /* MUTATION THAT KILLS THIS: answer every remote candidate's via as 'bm25'
        instead of reading hintsFor, or count a dense win only when the beat is
        seeded. Ran the first: red on the winner's via. */
     const options = {
-      dropFor: corpus.denseClaim,
+      dropFor: new Set([corpus.denseClaim]),
       dense: { claim: corpus.denseClaim, entry: corpus.denseEntry },
     };
     const base = (

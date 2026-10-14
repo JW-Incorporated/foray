@@ -3676,10 +3676,11 @@ const BACKEND_FLOORS = {
      strict-field refusals, recall@8. replaySourcing: main() over a synthetic
      two-show corpus with run-2 attempt 6's structure (deterministic, exact
      summary), --out and compare's exit codes, a remote bm25 replay equal to
-     the local one with no miss, a dense-only rescue passing the hybrid gate,
+     the local one with no miss, a seeded episode no candidate names still
+     hydrated so its seed window wins, a dense-only rescue passing the hybrid gate,
      and the argument refusals. Offline; one named mutation per test. */
   "test/replayCompare.test.ts": 8,
-  "test/replaySourcing.test.ts": 5,
+  "test/replaySourcing.test.ts": 6,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
