@@ -94,6 +94,7 @@ describe("codeSpans — aggregation per (stage, name)", () => {
       name: "index.search",
       count: 2,
       totalMs: 10,
+      selfMs: 10,
       maxMs: 7
     });
     expect(find(log, "source", "index.load")).toMatchObject({ count: 1, totalMs: 2, maxMs: 2 });
@@ -116,6 +117,55 @@ describe("codeSpans — aggregation per (stage, name)", () => {
     /* MUTATION: exclusive time — a module-level stack of child time, each span
        records its wall time minus its children's. Ran it: red (totalMs 3). */
     expect(find(log, null, "index.search")).toMatchObject({ totalMs: 8 });
+  });
+
+  it("reports self time exclusively: nested sync self times add up to the outermost total", () => {
+    /* The pipeline's real nesting, one stage: sourcing.all > sourcing.tier2 >
+       index.search > index.load > transcript.read, with work at every level,
+       a second search that hits a warm index, and a read that throws. */
+    const log = new RunLog();
+    runWithRunLog(log, () =>
+      withCallContext({ stage: "source" }, () =>
+        codeSpanSync("sourcing.all", () => {
+          t += 1;
+          codeSpanSync("sourcing.tier2", () => {
+            t += 2;
+            codeSpanSync("index.search", () => {
+              t += 3;
+              codeSpanSync("index.load", () => {
+                t += 4;
+                codeSpanSync("transcript.read", takes(5, 0));
+                expect(() =>
+                  codeSpanSync("transcript.read", () => {
+                    t += 6;
+                    throw new Error("unreadable");
+                  })
+                ).toThrow("unreadable");
+                t += 7;
+              });
+            });
+            codeSpanSync("index.search", takes(8, 0));
+          });
+          t += 9;
+        })
+      )
+    );
+    flushCodeSpans(log);
+    const events = codeEvents(log);
+    const outer = find(log, "source", "sourcing.all")!;
+    expect(outer).toMatchObject({ totalMs: 45, selfMs: 10 });
+    expect(find(log, "source", "sourcing.tier2")).toMatchObject({ totalMs: 35, selfMs: 2 });
+    /* Two searches: 25 (3 own + 22 under load) and 8 (warm, all own). */
+    expect(find(log, "source", "index.search")).toMatchObject({ count: 2, totalMs: 33, selfMs: 11, maxMs: 25 });
+    expect(find(log, "source", "index.load")).toMatchObject({ totalMs: 22, selfMs: 11 });
+    /* A leaf's self time is its total; the throwing read still counts. */
+    expect(find(log, "source", "transcript.read")).toMatchObject({ count: 2, totalMs: 11, selfMs: 11 });
+    /* MUTATION: closeFrame stops crediting the parent (drop
+       `if (parent) parent.childMs += ms`), so selfMs === totalMs everywhere.
+       Ran it: red (sum 146, outer selfMs 45). The inclusive totals sum to 146
+       for 45 ms of wall time; the self times sum to exactly 45. */
+    expect(events.reduce((sum, e) => sum + e.selfMs, 0)).toBe(outer.totalMs);
+    expect(events.reduce((sum, e) => sum + e.totalMs, 0)).toBe(146);
   });
 
   it("records a span whose function throws, and rethrows the same error", () => {
@@ -172,6 +222,45 @@ describe("codeSpans — the async variant", () => {
   });
 });
 
+describe("codeSpans — the async self-time rule", () => {
+  it("subtracts only the sync children of an async span's synchronous part, never across an await", async () => {
+    const log = new RunLog();
+    let release!: () => void;
+    let done!: Promise<void>;
+    runWithRunLog(log, () => {
+      done = codeSpanSync("sourcing.all", () => {
+        t += 1;
+        const pending = codeSpan("supply.measure", () => {
+          /* The synchronous part: a sync child is attributed. */
+          codeSpanSync("index.search", takes(4, 0));
+          t += 2;
+          return new Promise<void>((r) => (release = r)).then(() => {
+            /* After an await: NOT attributed to supply.measure (it could
+               belong to any span in flight), so it is not subtracted. */
+            codeSpanSync("index.load", takes(5, 0));
+          });
+        });
+        t += 3;
+        return pending;
+      });
+    });
+    /* The sync outer span closed at t=10, before the promise settled. */
+    t += 10;
+    release();
+    await done;
+    flushCodeSpans(log);
+    expect(find(log, null, "index.search")).toMatchObject({ totalMs: 4, selfMs: 4 });
+    expect(find(log, null, "index.load")).toMatchObject({ totalMs: 5, selfMs: 5 });
+    /* Call (t=1) to settle (t=25) is 24; minus the 4 ms sync child only. */
+    expect(find(log, null, "supply.measure")).toMatchObject({ count: 1, totalMs: 24, selfMs: 20 });
+    /* The outer sync span is credited only the async span's synchronous part
+       (6 ms), not the time after its await: 10 - 6 = 4.
+       MUTATION: leave the async frame on the stack until it settles (close
+       it in the .then). Ran it: red. */
+    expect(find(log, null, "sourcing.all")).toMatchObject({ totalMs: 10, selfMs: 4 });
+  });
+});
+
 describe("codeSpans — flush", () => {
   it("appends at most one aggregate per (stage, name), however often it is called", () => {
     const log = new RunLog();
@@ -224,6 +313,6 @@ describe("codeSpans — flush", () => {
       .split("\n")
       .map((l) => JSON.parse(l) as Record<string, unknown>);
     expect(lines).toHaveLength(2);
-    expect(lines[1]).toEqual({ kind: "code", stage: "source", name: "sourcing.all", count: 2, totalMs: 10, maxMs: 6 });
+    expect(lines[1]).toEqual({ kind: "code", stage: "source", name: "sourcing.all", count: 2, totalMs: 10, selfMs: 10, maxMs: 6 });
   });
 });
