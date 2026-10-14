@@ -2654,7 +2654,7 @@ const BACKEND_FLOORS = {
      seconds and F-68 confines §4.5's search to them), so it is now sized against
      `narration-craft.md` §0's own mean floor rather than against prompt length
      alone — asserted on the constants and measured on a real window. */
-  "test/researchShape.test.ts": 18,
+  "test/researchShape.test.ts": 39, // GV-87: the per-show quota (FORAY_RESEARCH_SHOW_QUOTA) — off is today's map, 0.6 caps a show at 4 of 6, backfill, one show unchanged, checkpoint round-trip, the selector and the flag reader; 18 -> 39 (the suite already ran 32)
   /* The §4.0-§4.9 orchestrator (runPipeline.ts). Floored because it is the ONLY
      suite that exercises the chain as a chain: every stage has its own tests and
      all of them stayed green while nothing joined the stages together, which is
