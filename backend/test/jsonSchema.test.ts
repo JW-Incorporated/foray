@@ -8,6 +8,7 @@ import {
   RawActVerifySchema,
   RawActWriteSchema,
   RawDeepenedActSchema,
+  RawSpineFoldDeepenSchema,
   RawSpineSchema,
   type ReplySchemaName
 } from "../src/generation/replySchemas";
@@ -98,6 +99,13 @@ const SAMPLES: Record<ReplySchemaName, unknown> = {
       }))
     }))
   },
+  /* GV-86: the folded-deepen spine reply carries the recorded deepen output
+     itself as its acts (introduction and exit per act, kind per beat). */
+  spine_fold_deepen: {
+    overview: "From the notebook to the pager.",
+    voice: { style: "plain", register: "conversational", sentenceRhythm: "short, then long", narratorPresence: "light" },
+    acts: deepenFixture.acts
+  },
   deepen_act: deepenFixture.acts[0],
   continuity_smooth: { nextIntroduction: "Which brings us to the pager." },
   act_write: {
@@ -131,12 +139,14 @@ describe("replySchemas registry", () => {
       "intent",
       "title_recase",
       "spine",
+      "spine_fold_deepen",
       "deepen_act",
       "continuity_smooth",
       "act_write",
       "act_verify"
     ]);
     expect(REPLY_SCHEMAS.spine).toBe(RawSpineSchema);
+    expect(REPLY_SCHEMAS.spine_fold_deepen).toBe(RawSpineFoldDeepenSchema);
     expect(REPLY_SCHEMAS.deepen_act).toBe(RawDeepenedActSchema);
     expect(REPLY_SCHEMAS.act_write).toBe(RawActWriteSchema);
     expect(REPLY_SCHEMAS.act_verify).toBe(RawActVerifySchema);

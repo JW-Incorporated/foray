@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import { BUILDER_MAX_TOKENS } from "../../config/outputBudgets";
 import { defaultBudgetGuard } from "../../cost/budgetGuard";
 import type { IntentUnderstanding } from "../../types/generation";
@@ -6,7 +7,7 @@ import type { DurationTier, Spine } from "../../types/spine";
 import type { SpineBuildContext, SpineBuilder } from "../SpineBuilder";
 import { toChatMessages } from "../promptLayout";
 import { buildSpinePromptParts, spineRevisionTurns } from "../prompts/spine";
-import { RawSpineSchema, spineFromReply } from "../replySchemas";
+import { RawSpineFoldDeepenSchema, RawSpineSchema, spineFromReply } from "../replySchemas";
 import type { ChatProvider } from "./ChatProvider";
 import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from "./askStructured";
 
@@ -24,7 +25,10 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
  * (spineFromReply): subject and angle from the intent, the duration asked
  * for, generatedAt now. GV-67: on the folded path (ctx.listenerPrompt set)
  * the prompt carries the listener's words, the reply leads with the copy
- * fields, and subject and angle come from the reply.
+ * fields, and subject and angle come from the reply. GV-86: on the
+ * folded-deepen path (ctx.foldDeepen) the prompt asks for each act's
+ * introduction and exit and each beat's kind, and the reply is held to
+ * 'spine_fold_deepen' (RawSpineFoldDeepenSchema) instead of 'spine'.
  *
  * DARK: constructed only by the stage factories (GV-37) when the spine routes
  * to 'local'. No Anthropic call and no Anthropic module imported: the prompt
@@ -44,13 +48,16 @@ export class ChatSpineBuilder implements SpineBuilder {
 
   async buildSpine(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier, ctx: SpineBuildContext): Promise<Spine> {
     const folded = ctx.listenerPrompt !== undefined;
-    const { value: raw } = await askStructured({
+    /* GV-86: the folded-deepen call asks for, and is held to, the act and
+       beat fields deepen would add; a classic call sends today's schema. */
+    const foldDeepen = ctx.foldDeepen === true;
+    const { value: raw } = await askStructured<z.infer<typeof RawSpineFoldDeepenSchema>>({
       provider: this.provider,
       target: this.target,
-      schemaName: "spine",
-      schema: RawSpineSchema,
+      schemaName: foldDeepen ? "spine_fold_deepen" : "spine",
+      schema: foldDeepen ? RawSpineFoldDeepenSchema : RawSpineSchema,
       messages: [
-        ...toChatMessages(buildSpinePromptParts(intent, researchShape, duration, ctx.listenerPrompt)),
+        ...toChatMessages(buildSpinePromptParts(intent, researchShape, duration, ctx.listenerPrompt, foldDeepen)),
         ...spineRevisionTurns(ctx.revision, folded)
       ],
       maxTokens: BUILDER_MAX_TOKENS.spine,

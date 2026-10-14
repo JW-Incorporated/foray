@@ -1,8 +1,9 @@
-import type { Act, DeepenedAct, Slot, Spine } from "../types/spine";
+import type { Act, DeepenedAct, DurationTier, Slot, Spine } from "../types/spine";
 import { DeepenedActSchema, validateDeepenedAct } from "../types/spine";
 import type { DeepenActBuilder, DeepenActContext } from "./DeepenActBuilder";
 import { toNarrationWords } from "../copy/narratorStructure";
 import { withCallContext } from "./runLog";
+import type { FoldDeepen } from "./pipelineFlags";
 
 /**
  * THE ARGUMENT CAP (finding F-49).
@@ -277,6 +278,49 @@ function spokenIntroductionAndExit(deepened: DeepenedAct, actTitle: string): Dee
   return { ...deepened, introduction: introduction.text, exit: exit.text };
 }
 
+/**
+ * GV-86 (docs/roadmap/generation-v2.md, W4-05): §4.4 FOLDED INTO THE SPINE.
+ *
+ * On the folded-deepen path (FORAY_SPINE_FOLD_DEEPEN) the spine reply already
+ * carries each act's introduction and exit and each beat's kind, written in
+ * the deepen prompt's own rules (prompts/deepen.ts). This takes such an act as
+ * deepened, with no deepen call, through the same gates a deepen reply faces:
+ *
+ *   - null unless the act carries both an introduction and an exit (the
+ *     caller then makes the act's usual deepen call);
+ *   - DeepenedActSchema, then validateDeepenedAct against the act itself;
+ *   - on a refusal, the last-attempt repair deepenOneActWithRetry applies
+ *     (spokenIntroductionAndExit) once, and validation again; still refused,
+ *     null (one deepen call, never a failed run);
+ *   - on success, the same tail as a deepen reply: slot titles pinned, seeds
+ *     carried, argument beats capped.
+ *
+ * Known limit: deepen also refines slots and beats; a folded act keeps the
+ * spine's beats as written.
+ */
+export function deepenedFromSpineAct(act: Act): DeepenedAct | null {
+  if (act.introduction === undefined || act.exit === undefined) return null;
+  const parsed = DeepenedActSchema.safeParse({ ...act });
+  if (!parsed.success) return null;
+  let deepened = parsed.data;
+  if (!validateDeepenedAct(act, deepened).valid) {
+    deepened = spokenIntroductionAndExit(deepened, act.title);
+    if (!validateDeepenedAct(act, deepened).valid) return null;
+  }
+  return capArgumentBeats(carryBeatSeeds(act, pinSlotTitles(act, deepened)));
+}
+
+/**
+ * GV-86: whether the spine carries the deepen fields for a run of this tier:
+ * never ('off', the default), on the short tier only ('short', which the
+ * FORAY_FAST_PATH umbrella sets), or on every tier ('all'). runPipeline.ts
+ * asks the spine for them and passes `fromSpine` to deepenActs exactly when
+ * this is true.
+ */
+export function foldsDeepen(foldDeepen: FoldDeepen, duration: DurationTier): boolean {
+  return foldDeepen === "all" || (foldDeepen === "short" && duration === "short");
+}
+
 async function deepenOneActWithRetry(
   spine: Spine,
   act: Act,
@@ -339,6 +383,19 @@ export interface DeepenActsOptions {
   /** Called with each act as soon as it is built and validated — never for a
    * resumed one, which is already stored. */
   onActDeepened?: (index: number, act: DeepenedAct) => void | Promise<void>;
+  /**
+   * GV-86: the acts whose spine reply carries the deepen fields. For those
+   * indexes the act is taken from the spine (`deepenedFromSpineAct`) with no
+   * deepen call; when that returns null (a field missing, or refused even
+   * after the repair) the act falls back to the builder, so a spine that
+   * omitted the fields costs one deepen call, not a failure. Checked before
+   * `resume`: the fold is a pure function of the banked spine, so a resumed
+   * run folds the same acts and reports them the same way. A folded act is
+   * still banked under deepen:<i> (`onActDeepened`) unless it is already.
+   */
+  fromSpine?: (index: number) => boolean;
+  /** GV-86: called with the index of each act taken from the spine. */
+  onActFolded?: (index: number) => void;
 }
 
 export async function deepenActs(
@@ -348,6 +405,14 @@ export async function deepenActs(
   options: DeepenActsOptions = {}
 ): Promise<DeepenedAct[]> {
   const calls = spine.acts.map(async (act, index) => {
+    if (options.fromSpine?.(index)) {
+      const folded = deepenedFromSpineAct(act);
+      if (folded) {
+        options.onActFolded?.(index);
+        if (!options.resume?.(index)) await options.onActDeepened?.(index, folded);
+        return folded;
+      }
+    }
     const resumed = options.resume?.(index);
     /* A resumed act goes through the cap too. It is idempotent, so an act
        checkpointed after this rule existed comes back untouched; an act

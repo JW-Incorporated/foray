@@ -179,7 +179,18 @@ export const ActSchema = z
     startState: z.string().trim().min(1),
     /** What the listener should believe leaving the act. */
     endState: z.string().trim().min(1),
-    slots: z.array(SlotSchema).min(1)
+    slots: z.array(SlotSchema).min(1),
+    /**
+     * GV-86 (docs/roadmap/generation-v2.md, W4-05): on the folded-deepen path
+     * (`FORAY_SPINE_FOLD_DEEPEN`) the spine reply also writes each act's
+     * introduction and exit, which §4.4 otherwise adds, so `deepenActs.ts`
+     * can take the act as deepened without a deepen call
+     * (`deepenedFromSpineAct`). Optional, so every classic spine and every
+     * spine banked before them parses unchanged; `DeepenedActSchema` below
+     * overrides both as required, so its contract is unchanged.
+     */
+    introduction: z.string().trim().min(1).optional(),
+    exit: z.string().trim().min(1).optional()
   })
   .strict();
 export type Act = z.infer<typeof ActSchema>;

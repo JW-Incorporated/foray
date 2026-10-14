@@ -88,6 +88,45 @@ export const RawSpineSchema = z.object({
   acts: z.array(SpineActSchema)
 });
 
+/* GV-86 (W4-05): the folded-deepen spine reply, sent as its own json_schema
+   ('spine_fold_deepen') only when SpineBuildContext.foldDeepen is set, so the
+   classic 'spine' schema and grammar stay byte-identical. Each beat may carry
+   `kind` (the deepen reply's enum) and each act its `introduction` and `exit`.
+   All three are optional: a reply that leaves them out costs that act one
+   deepen call (deepenActs.ts falls back), never the spine a re-ask. */
+export const SpineFoldDeepenBeatSchema = SpineBeatSchema.extend({ kind: z.enum(["account", "argument"]).optional() });
+export const SpineFoldDeepenSlotSchema = SpineSlotSchema.extend({ beats: z.array(SpineFoldDeepenBeatSchema) });
+export const SpineFoldDeepenActSchema = SpineActSchema.extend({
+  slots: z.array(SpineFoldDeepenSlotSchema),
+  introduction: z.string().optional(),
+  exit: z.string().optional()
+});
+export const RawSpineFoldDeepenSchema = RawSpineSchema.extend({ acts: z.array(SpineFoldDeepenActSchema) });
+
+/**
+ * GV-86: a folded-deepen act's introduction or exit that came back blank is
+ * dropped here, so the act parses under ActSchema (where both are non-blank
+ * when present) and deepenActs.ts falls back to a deepen call for it, rather
+ * than the blank string failing the spine's schema and ending the run.
+ * Returns `acts` itself when no act has a blank one, which a classic reply
+ * (whose schema strips both fields) never has.
+ */
+function withoutBlankDeepenFields<A extends { introduction?: string; exit?: string }>(acts: A[]): A[] {
+  const blank = (text: string | undefined): boolean => text !== undefined && text.trim() === "";
+  if (!acts.some((act) => blank(act.introduction) || blank(act.exit))) return acts;
+  return acts.map((act) => {
+    if (!blank(act.introduction) && !blank(act.exit)) return act;
+    const { introduction, exit, ...rest } = act;
+    return { ...rest, ...(blank(introduction) ? {} : { introduction }), ...(blank(exit) ? {} : { exit }) } as A;
+  });
+}
+
+/** A reply's acts as the Spine carries them: GV-86's blank deepen fields
+ * dropped, otherwise the reply's own array. */
+function replyActs(raw: z.infer<typeof RawSpineSchema> | z.infer<typeof RawSpineFoldDeepenSchema>): Spine["acts"] {
+  return withoutBlankDeepenFields(raw.acts as z.infer<typeof SpineFoldDeepenActSchema>[]);
+}
+
 /** The copy fields a folded spine reply carries, in the order the prompt asks
  * for them (prompts/spine.ts) and the re-ask's assistant turn repeats them. */
 export const SPINE_COPY_FIELDS = ["subject", "angle", "priorKnowledge", "disappointment", "answersDisappointment", "title", "summary"] as const;
@@ -126,9 +165,13 @@ export const SPINE_REQUIRED_COPY_FIELDS = ["subject", "angle", "title", "summary
  * answersDisappointment, title and summary are carried when the reply gave
  * them non-blank, so a spine that passes the gate always parses under
  * SpineSchema.
+ *
+ * Either way, a folded-deepen reply (GV-86, RawSpineFoldDeepenSchema) keeps
+ * each act's introduction and exit and each beat's kind on the Spine's acts,
+ * a blank introduction or exit dropped (withoutBlankDeepenFields).
  */
 export function spineFromReply(
-  raw: z.infer<typeof RawSpineSchema>,
+  raw: z.infer<typeof RawSpineSchema> | z.infer<typeof RawSpineFoldDeepenSchema>,
   intent: IntentUnderstanding,
   duration: DurationTier,
   folded: boolean
@@ -141,7 +184,7 @@ export function spineFromReply(
       duration,
       generatedAt: new Date().toISOString(),
       voice: raw.voice,
-      acts: raw.acts
+      acts: replyActs(raw)
     };
   }
   const said = (text: string | undefined): string | undefined => {
@@ -160,7 +203,7 @@ export function spineFromReply(
     duration,
     generatedAt: new Date().toISOString(),
     voice: raw.voice,
-    acts: raw.acts,
+    acts: replyActs(raw),
     ...copy
   };
 }
@@ -299,6 +342,7 @@ export type ReplySchemaName =
   | "intent"
   | "title_recase"
   | "spine"
+  | "spine_fold_deepen"
   | "deepen_act"
   | "continuity_smooth"
   | "act_write"
@@ -309,6 +353,7 @@ export const REPLY_SCHEMAS: Readonly<Record<ReplySchemaName, ZodTypeAny>> = Obje
   intent: IntentSchema,
   title_recase: TitleRecaseSchema,
   spine: RawSpineSchema,
+  spine_fold_deepen: RawSpineFoldDeepenSchema,
   deepen_act: RawDeepenedActSchema,
   continuity_smooth: RawSmoothResultSchema,
   act_write: RawActWriteSchema,

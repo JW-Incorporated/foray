@@ -34,7 +34,7 @@ import { provisionalTitle } from "./preSpineIntent";
 import { buildResearchShape } from "./researchShape";
 import { buildSpineWithReasks, type SpineReask } from "./buildSpine";
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
-import { deepenActs } from "./deepenActs";
+import { deepenActs, foldsDeepen } from "./deepenActs";
 import { sourceBeats, summarizeSourcing } from "./sourceBeats";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
@@ -458,6 +458,8 @@ export type RunPipelineOutcome =
       spineReasks: SpineReask[];
       timings: StageTiming[];
       clarityDecidedBy?: ClarityDecider;
+      /** GV-86: see the `generated` outcome's field. */
+      deepenFolded?: number[];
     }
   /** A Foray was built. `validation.ok` says whether it may be published. */
   | {
@@ -502,6 +504,11 @@ export type RunPipelineOutcome =
       gate?: VeracityGateResult;
       /** GV-49: who decided clarity, on a 'jev' clarity route only. */
       clarityDecidedBy?: ClarityDecider;
+      /** GV-86: the acts (0-based, ascending) §4.4 took from the spine with
+       * no deepen call. Set only when FORAY_SPINE_FOLD_DEEPEN is in force for
+       * the run's tier (empty when every act fell back to its deepen call);
+       * absent otherwise. Carried into `report.json` as `deepenFolded`. */
+      deepenFolded?: number[];
     };
 
 /**
@@ -1487,7 +1494,14 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      listener's own words, to write the subject, angle and copy from. A copy of
      the run context, so the prompt reaches no other stage, and it is never
      banked: the checkpoint holds the spine the call returned. */
-  const spineCtx: SpineBuildContext = flags.foldSpineCopy ? { ...ctx, listenerPrompt: req.prompt } : ctx;
+  /* GV-86: with FORAY_SPINE_FOLD_DEEPEN in force for this tier the spine call
+     (and its re-asks) also writes each act's introduction and exit and each
+     beat's kind, and §4.4 takes those acts from the spine (`fromSpine`). */
+  const foldDeepen = foldsDeepen(flags.foldDeepen, req.duration);
+  const spineCtx: SpineBuildContext =
+    flags.foldSpineCopy || foldDeepen
+      ? { ...ctx, ...(flags.foldSpineCopy ? { listenerPrompt: req.prompt } : {}), ...(foldDeepen ? { foldDeepen: true } : {}) }
+      : ctx;
   const spine = await stage(
     "spine",
     (raw) => SpineSchema.parse(raw),
@@ -1670,12 +1684,20 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   /* §4.4 — deepen every act, in parallel across acts, each act checkpointed on
      its own (F-17): an act that succeeded is banked even when a sibling act
      exhausts its retry budget and fails the stage. */
+  /* GV-86: on the folded-deepen path an act whose spine reply carries its
+     introduction and exit is taken as deepened with no deepen call; one that
+     does not costs its usual call. `deepenFolded` names the acts taken from
+     the spine (0-based), and is set only on that path. */
+  const deepenFolded: number[] = [];
   const deepened = await timed("deepen", () =>
     deepenActs(spine, deepenBuilder, ctx, {
       resume: (index) => checkpoint.resumeSync(`deepen:${index}`, (raw) => DeepenedActSchema.parse(raw)),
-      onActDeepened: (index, act) => checkpoint.save(`deepen:${index}`, act)
+      onActDeepened: (index, act) => checkpoint.save(`deepen:${index}`, act),
+      ...(foldDeepen ? { fromSpine: () => true, onActFolded: (index: number) => deepenFolded.push(index) } : {})
     })
   );
+  deepenFolded.sort((a, b) => a - b);
+  const deepenFoldedTag = foldDeepen ? { deepenFolded } : {};
 
   /* §4.5-4.6 — source each beat against tape, then resolve the pointer. Purely
      deterministic and keyless: no LLM call happens in here at all. The cue
@@ -1734,7 +1756,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     0
   );
   if (tapeBeats === 0) {
-    return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, timings: timings.all(), ...clarityTag };
+    return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, timings: timings.all(), ...clarityTag, ...deepenFoldedTag };
   }
 
   /* GV-79 (W5-03, MQ-05) — THE CLIP-ON-SUBJECT SCORES, OFF THE TIMED PATH.
@@ -2255,6 +2277,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     ttlA1Ms,
     narration: { concurrency: actConcurrency, acts: narrationActs },
     gate: veracityGate,
-    ...clarityTag
+    ...clarityTag,
+    ...deepenFoldedTag
   };
 }

@@ -482,6 +482,164 @@ exports[`zodToJsonSchema over REPLY_SCHEMAS > converts every reply schema, each 
 }
 `;
 
+exports[`zodToJsonSchema over REPLY_SCHEMAS > converts every reply schema, each pinned by its own snapshot > spine_fold_deepen 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "acts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "endState": {
+            "type": "string",
+          },
+          "exit": {
+            "type": "string",
+          },
+          "introduction": {
+            "type": "string",
+          },
+          "slots": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "beats": {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "claim": {
+                        "type": "string",
+                      },
+                      "exploration": {
+                        "type": "boolean",
+                      },
+                      "kind": {
+                        "enum": [
+                          "account",
+                          "argument",
+                        ],
+                        "type": "string",
+                      },
+                      "seed": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "endSec": {
+                            "type": "number",
+                          },
+                          "episodeId": {
+                            "type": "string",
+                          },
+                          "startSec": {
+                            "type": "number",
+                          },
+                        },
+                        "required": [
+                          "episodeId",
+                          "startSec",
+                          "endSec",
+                        ],
+                        "type": "object",
+                      },
+                    },
+                    "required": [
+                      "claim",
+                      "exploration",
+                    ],
+                    "type": "object",
+                  },
+                  "type": "array",
+                },
+                "title": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "title",
+                "beats",
+              ],
+              "type": "object",
+            },
+            "type": "array",
+          },
+          "startState": {
+            "type": "string",
+          },
+          "thesis": {
+            "type": "string",
+          },
+          "title": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "title",
+          "thesis",
+          "startState",
+          "endState",
+          "slots",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "angle": {
+      "type": "string",
+    },
+    "answersDisappointment": {
+      "type": "string",
+    },
+    "disappointment": {
+      "type": "string",
+    },
+    "overview": {
+      "type": "string",
+    },
+    "priorKnowledge": {
+      "type": "string",
+    },
+    "subject": {
+      "type": "string",
+    },
+    "summary": {
+      "type": "string",
+    },
+    "title": {
+      "type": "string",
+    },
+    "voice": {
+      "additionalProperties": false,
+      "properties": {
+        "narratorPresence": {
+          "type": "string",
+        },
+        "register": {
+          "type": "string",
+        },
+        "sentenceRhythm": {
+          "type": "string",
+        },
+        "style": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "style",
+        "register",
+        "sentenceRhythm",
+        "narratorPresence",
+      ],
+      "type": "object",
+    },
+  },
+  "required": [
+    "overview",
+    "voice",
+    "acts",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`zodToJsonSchema over REPLY_SCHEMAS > converts every reply schema, each pinned by its own snapshot > title_recase 1`] = `
 {
   "additionalProperties": false,

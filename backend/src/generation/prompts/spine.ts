@@ -3,6 +3,7 @@ import type { IntentUnderstanding } from "../../types/generation";
 import type { ResearchShape } from "../../types/research";
 import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTier, type Spine } from "../../types/spine";
 import { joinParts, type PromptParts } from "../promptLayout";
+import { DEEPEN_KIND_RULE, INTRODUCTION_EXIT_RULES, numberedRule } from "./deepen";
 import type { SpineBuildContext } from "../SpineBuilder";
 import { SPINE_COPY_FIELDS } from "../replySchemas";
 import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "../spineSeeding";
@@ -193,12 +194,17 @@ function tapeFitPhrase(subtopic: ResearchShape["subtopics"][number]): string {
  * tier. Exported for tests and for measuring the prompt's size against a real
  * research map (G-25 records it): the words that reach the model are the
  * whole of WS-L and G-25, so they are asserted on directly.
+ *
+ * GV-86: `foldDeepen` (SpineBuildContext.foldDeepen) adds the folded-deepen
+ * contract to `stable`: each act's introduction and exit and each beat's
+ * kind. False (the default) keeps the pre-GV-86 bytes.
  */
 export function buildSpinePromptParts(
   intent: IntentUnderstanding,
   researchShape: ResearchShape,
   duration: DurationTier,
-  listenerPrompt?: string
+  listenerPrompt?: string,
+  foldDeepen: boolean = false
 ): PromptParts {
   const budget = DURATION_SHAPE_BUDGETS[duration];
   const subtopicLines = researchShape.subtopics
@@ -287,7 +293,7 @@ export function buildSpinePromptParts(
           `This Foray disappoints if: ${intent.disappointment}`
         ];
   return {
-    stable: listenerPrompt !== undefined ? SPINE_STABLE_FOLDED : SPINE_STABLE,
+    stable: spineStable(listenerPrompt !== undefined, foldDeepen),
     foray: [
       ...opening,
       "",
@@ -305,8 +311,14 @@ export function buildSpinePromptParts(
 
 /** The legacy single-string spine prompt: stable, a blank line, foray. The
  * Anthropic builder sends it as one user turn. */
-export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier, listenerPrompt?: string): string {
-  return joinParts(buildSpinePromptParts(intent, researchShape, duration, listenerPrompt));
+export function buildSpinePrompt(
+  intent: IntentUnderstanding,
+  researchShape: ResearchShape,
+  duration: DurationTier,
+  listenerPrompt?: string,
+  foldDeepen: boolean = false
+): string {
+  return joinParts(buildSpinePromptParts(intent, researchShape, duration, listenerPrompt, foldDeepen));
 }
 
 /** The rules both static halves share: everything before the reply shape. */
@@ -335,20 +347,53 @@ const SPINE_RULE_LINES = [
   "you would tell a friend before pressing play. NEVER say how many acts or parts there are, never say",
   "\"this Foray has\", and never mention acts, beats or segments at all: the listener cannot see a",
   "running order and does not need one. A machine checks that after you answer.",
-  `The overview is SPOKEN. ${NARRATOR_STRUCTURE_RULE}`,
-  "",
-  "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:"
+  `The overview is SPOKEN. ${NARRATOR_STRUCTURE_RULE}`
 ];
 
-/** The reply shape from the overview on: overview, voice and the acts. */
-const SPINE_PLAN_SHAPE =
-  '"overview": string, "voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
-  '"acts": [{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-  '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, ' +
-  '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}]}]}';
+/** The line that opens the reply shape. */
+const SPINE_REPLY_LINE = "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:";
 
-/** The spine prompt's static half: built once, the same bytes for every Foray. */
-const SPINE_STABLE = [...SPINE_RULE_LINES, `{${SPINE_PLAN_SHAPE}`].join("\n");
+/**
+ * GV-86 (W4-05): the folded-deepen contract. With FORAY_SPINE_FOLD_DEEPEN in
+ * force for the tier, the spine also writes what §4.4 would add to each act
+ * (its introduction and exit) and tags every beat's kind, in the deepen
+ * prompt's own rules (prompts/deepen.ts DEEPEN_KIND_RULE and
+ * INTRODUCTION_EXIT_RULES, one constant for both prompts), so deepenActs.ts
+ * can take the act as deepened without a deepen call.
+ */
+const SPINE_FOLD_DEEPEN_LINES = [
+  "",
+  "For EACH act, also write the two spoken lines the deepening pass would otherwise add, and tag every beat:",
+  ...numberedRule(1, DEEPEN_KIND_RULE),
+  ...numberedRule(2, INTRODUCTION_EXIT_RULES[0]!),
+  ...numberedRule(3, INTRODUCTION_EXIT_RULES[1]!),
+  ...numberedRule(4, INTRODUCTION_EXIT_RULES[2]!)
+];
+
+/** The reply shape from the overview on: overview, voice and the acts. On the
+ * folded-deepen path each beat also carries `kind` and each act its
+ * `introduction` and `exit`; otherwise these are the pre-GV-86 bytes. */
+function spinePlanShape(foldDeepen: boolean): string {
+  return (
+    '"overview": string, "voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
+    '"acts": [{"title": string, "thesis": string, "startState": string, "endState": string, ' +
+    '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, ' +
+    (foldDeepen ? '"kind": "account" | "argument", ' : "") +
+    '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}]' +
+    (foldDeepen ? ', "introduction": string, "exit": string' : "") +
+    "}]}"
+  );
+}
+
+/** The rules up to the reply shape, with the folded-deepen contract when asked. */
+function spineContract(foldDeepen: boolean): string[] {
+  return [...SPINE_RULE_LINES, ...(foldDeepen ? SPINE_FOLD_DEEPEN_LINES : []), "", SPINE_REPLY_LINE];
+}
+
+/** A classic static half: the contract, then the reply shape. */
+function classicStable(foldDeepen: boolean): string {
+  return [...spineContract(foldDeepen), `{${spinePlanShape(foldDeepen)}`].join("\n");
+}
 
 /**
  * GV-67 (W4-03): the folded path's static half. No extractIntent call ran, so
@@ -359,7 +404,7 @@ const SPINE_STABLE = [...SPINE_RULE_LINES, `{${SPINE_PLAN_SHAPE}`].join("\n");
  * classic half and the same reply shape, the seven copy fields leading it.
  * The same bytes for every folded Foray.
  */
-const SPINE_STABLE_FOLDED = [
+const SPINE_FOLDED_COPY_LINES = [
   "A listener's own request is quoted below. Before the acts, decide what this Foray is, and write these",
   "seven fields FIRST in your reply:",
   "- subject: the concrete subject of the Foray, as a short noun phrase of at most 8 words —",
@@ -379,9 +424,30 @@ const SPINE_STABLE_FOLDED = [
   "  listener's. A machine checks that after you answer.",
   "",
   "Then build the spine.",
-  "",
-  ...SPINE_RULE_LINES,
-  '{"subject": string, "angle": string, "priorKnowledge": string, "disappointment": string, ' +
-    '"answersDisappointment": string, "title": string, "summary": string, ' +
-    SPINE_PLAN_SHAPE
-].join("\n");
+  ""
+];
+
+/** A folded-copy static half: the copy fields first, then the contract and
+ * the reply shape with the seven copy fields leading it. */
+function foldedCopyStable(foldDeepen: boolean): string {
+  return [
+    ...SPINE_FOLDED_COPY_LINES,
+    ...spineContract(foldDeepen),
+    '{"subject": string, "angle": string, "priorKnowledge": string, "disappointment": string, ' +
+      '"answersDisappointment": string, "title": string, "summary": string, ' +
+      spinePlanShape(foldDeepen)
+  ].join("\n");
+}
+
+/** The four static halves, each built once: classic or folded copy (GV-67),
+ * with or without the folded-deepen contract (GV-86). */
+const SPINE_STABLE = classicStable(false);
+const SPINE_STABLE_FOLDED = foldedCopyStable(false);
+const SPINE_STABLE_FOLD_DEEPEN = classicStable(true);
+const SPINE_STABLE_FOLDED_FOLD_DEEPEN = foldedCopyStable(true);
+
+/** The static half for one call. Same bytes for every Foray of one kind. */
+function spineStable(foldCopy: boolean, foldDeepen: boolean): string {
+  if (foldCopy) return foldDeepen ? SPINE_STABLE_FOLDED_FOLD_DEEPEN : SPINE_STABLE_FOLDED;
+  return foldDeepen ? SPINE_STABLE_FOLD_DEEPEN : SPINE_STABLE;
+}
