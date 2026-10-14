@@ -240,15 +240,23 @@ export const NarrationAttemptRecordSchema = z
   .strict();
 export type NarrationAttemptRecord = z.infer<typeof NarrationAttemptRecordSchema>;
 
-/** §4.7's pronunciation-control hint, per hard/foreign word. Nothing
- * consumes this yet (§9.1 owns the actual TTS-facing mechanism) — the
- * field exists so the data shape does not need retrofitting later. */
+/** §4.7's pronunciation-control hint, per hard/foreign word. GV-82
+ * (docs/roadmap/generation-v2.md, from W6-11): a hint that carries `ipa`
+ * becomes a run-local render lexicon entry (`narrationRender.lexiconFromHints`
+ * -> the render job's `lexicon` -> render-foray.py's `merge_lexicon`); a hint
+ * without it changes nothing, exactly as before. */
 export const PronunciationHintSchema = z
   .object({
     word: z.string().trim().min(1),
     /** Plain-English or phonetic guide — deliberately untyped beyond
-     * "non-empty string", since §9.1 has not chosen a notation yet. */
-    hint: z.string().trim().min(1)
+     * "non-empty string". */
+    hint: z.string().trim().min(1),
+    /** GV-82: the word in the misaki/Kokoro phoneme alphabet, the notation
+     * hard-terms.json's `ipa` already uses. Validated against the model's id
+     * table at render time (render-foray.py): an entry with a symbol outside
+     * it is dropped and recorded in the manifest's `lexicon_rejected`, never
+     * the line. Optional, so every existing writer output still parses. */
+    ipa: z.string().trim().min(1).optional()
   })
   .strict();
 export type PronunciationHint = z.infer<typeof PronunciationHintSchema>;

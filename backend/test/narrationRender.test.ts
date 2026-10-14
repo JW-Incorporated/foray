@@ -2,6 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   audioReadyFor,
   audioStateFor,
+  DEFAULT_AWAIT_RENDER_CAP_MS,
+  isPublicAudioUrl,
+  lexiconFromHints,
   NarrationRenderTracker,
   RENDER_JOB_ID_PATTERN,
   renderJobIdFor,
@@ -16,6 +19,7 @@ import { EMPTY_JOB_PROGRESS, JobSnapshotSchema, progressWithEvent, snapshotFrom,
 import type { ItemReadyEvent } from "../src/generation/deliveryTimeline";
 import type { ForayItem } from "../src/generation/forayItems";
 import type { ItemCheck } from "../src/generation/itemReadiness";
+import { PronunciationHintSchema, type PronunciationHint } from "../src/types/narration";
 
 /**
  * GV-74 (docs/roadmap/generation-v2.md, #1286; from W6-07): the backend render
@@ -275,8 +279,9 @@ describe("snapshotFrom with the render stage's results", () => {
     /* MUTATION THAT KILLS THIS: in renderResultFromDone, fall back to the
        entry key as the public URL when public_url is missing. The
        un-uploaded line gets an audio_url. Ran it — red. Also killed: drop
-       isPublicAudioUrl's http(s) check (a `file:` URL reaches the row). Ran
-       it — red. */
+       isPublicAudioUrl's scheme check (a `file:` URL reaches the row). Ran
+       it — red. GV-82 (GV-74 review): https only — loosen the regex back to
+       `https?` and the cleartext `http://` URL reaches the row. Ran it — red. */
     const prelude = byItem("prelude");
     const intro = byItem("act-1-introduction");
     const done = (job: RenderJob, extra: Record<string, unknown> = {}) => ({
@@ -288,12 +293,17 @@ describe("snapshotFrom with the render stage's results", () => {
     });
     const noUrl = renderResultFromDone(prelude, done(prelude))!;
     const badUrl = renderResultFromDone(intro, done(intro, { public_url: "file:///tmp/x.m4a" }))!;
+    const exit = byItem("act-1-exit");
+    const httpUrl = renderResultFromDone(exit, done(exit, { public_url: "http://narration.example.test/n/act-1-exit.m4a" }))!;
     expect(noUrl).not.toHaveProperty("publicUrl");
     expect(badUrl).not.toHaveProperty("publicUrl");
-    const s = snapshotFrom(JOB, progressOf(allEvents().slice(0, 2)), 0, AT, { policy: "await-render", results: [noUrl, badUrl] })!;
-    expect(s.items).toHaveLength(2);
+    expect(httpUrl).not.toHaveProperty("publicUrl");
+    expect(isPublicAudioUrl("http://narration.example.test/n/x.m4a")).toBe(false);
+    expect(isPublicAudioUrl(`${URL_BASE}/x.m4a`)).toBe(true);
+    const s = snapshotFrom(JOB, progressOf(allEvents().slice(0, 4)), 0, AT, { policy: "await-render", results: [noUrl, badUrl, httpUrl] })!;
+    expect(s.items).toHaveLength(4);
     expect(JSON.stringify(s)).not.toContain("audio_url");
-    expect(s.itemStates.map((st) => st.audio)).toEqual(["phone-voice", "phone-voice"]);
+    expect(s.itemStates.filter((st) => st.audio !== "pending").map((st) => st.audio)).toEqual(["phone-voice", "phone-voice", "phone-voice"]);
 
     const uploaded = renderResultFromDone(prelude, done(prelude, { public_url: `${URL_BASE}/prelude.m4a` }))!;
     expect(uploaded).toMatchObject({ status: "rendered", publicUrl: `${URL_BASE}/prelude.m4a`, key: "n/prelude.m4a", audioSec: 4.2, renderMs: 900, queuedMs: 10 });
@@ -354,5 +364,152 @@ describe("renderReportOf — delivery.render (MT-09)", () => {
     const r = renderReportOf(tracked, [rendered(p!, { renderMs: 3000, queuedMs: 500 }), rendered(i!, { renderMs: 1000, queuedMs: 0 })], 2);
     expect(r.firstRenderedMs).toBe(21_000);
     expect(r.narrationSec).toBe(20);
+  });
+});
+
+describe("GV-82 — pronunciation hints into the job's render lexicon", () => {
+  const GDANSK: PronunciationHint = { word: "Gdansk", hint: "guh-DANSK", ipa: "ɡədˈænsk" };
+
+  it("PronunciationHintSchema takes an optional ipa and still takes every pre-GV-82 hint", () => {
+    /* MUTATION THAT KILLS THIS: make `ipa` required. The writer's existing
+       {word, hint} output stops parsing. Ran it — red. Also killed: drop
+       `ipa` from the strict schema (the IPA hint is refused as an unknown
+       key). Ran it — red. Also killed: drop `.min(1)` (an empty ipa parses
+       and would reach the render job). Ran it — red. */
+    expect(PronunciationHintSchema.safeParse({ word: "koji", hint: "KOH-jee" }).success).toBe(true);
+    expect(PronunciationHintSchema.parse({ word: "Gdansk", hint: "guh-DANSK", ipa: " ɡədˈænsk " })).toEqual({ word: "Gdansk", hint: "guh-DANSK", ipa: "ɡədˈænsk" });
+    expect(PronunciationHintSchema.safeParse({ word: "Gdansk", hint: "x", ipa: "  " }).success).toBe(false);
+    expect(PronunciationHintSchema.safeParse({ word: "Gdansk", hint: "x", ipa: "ɡ", extra: 1 }).success).toBe(false);
+  });
+
+  it("renderJobsFor maps every hint with ipa into job.lexicon; hints without it change nothing, job id included", async () => {
+    /* MUTATION THAT KILLS THIS: map hints without ipa too (lexiconFromHints
+       drops the `!ipa` guard). The plain hint becomes a pin with an empty
+       IPA. Ran it — red. Also killed: hash the lexicon into the job id even
+       when it is empty (a hint-free job's id moves from today's). Ran it —
+       red. Also killed: leave the lexicon out of the job id (a line whose
+       pins changed keeps its old id and is never re-rendered). Ran it —
+       red. Also killed: in the tracker's onItemReady, ignore
+       opts.pronunciationHints (the enqueued job has no lexicon). Ran it —
+       red. */
+    const ev = event(1);
+    const plain = renderJobsFor(ev)[0]!;
+    expect(plain).not.toHaveProperty("lexicon");
+    /* origin/main's id for this line before GV-82 (computed with that file). */
+    expect(plain.jobId).toBe("the-history-of-grilling-a1b2c3.i1.b0a914135defdd02");
+    expect(renderJobIdFor(FORAY, 1, "act-1-introduction", "Line act-1-introduction.", [])).toBe(plain.jobId);
+    const noIpa = renderJobsFor(ev, { pronunciationHints: [{ word: "koji", hint: "KOH-jee" }] })[0]!;
+    expect(noIpa).toEqual(plain);
+
+    const hinted = renderJobsFor(ev, {
+      pronunciationHints: [{ word: "koji", hint: "KOH-jee" }, GDANSK, { word: "gdansk", hint: "dup", ipa: "ɡdˈænsk" }, { word: " Lodz ", hint: "WOOJ", ipa: " wˈuʤ " }]
+    })[0]!;
+    expect(hinted.lexicon).toEqual([
+      { term: "Gdansk", ipa: "ɡədˈænsk" },
+      { term: "Lodz", ipa: "wˈuʤ" }
+    ]);
+    expect(hinted.jobId).not.toBe(plain.jobId);
+    expect(hinted.jobId).toMatch(RENDER_JOB_ID_PATTERN);
+    expect(renderJobsFor(ev, { pronunciationHints: [GDANSK] })[0]!.jobId).toBe(renderJobIdFor(FORAY, 1, "act-1-introduction", "Line act-1-introduction.", [{ term: "Gdansk", ipa: "ɡədˈænsk" }]));
+    expect(lexiconFromHints(undefined)).toEqual([]);
+    /* An explicit lexicon entry for a term wins over a hint for the same term. */
+    expect(renderJobsFor(ev, { lexicon: [{ term: "GDANSK", ipa: "ɡdˈænsk" }], pronunciationHints: [GDANSK] })[0]!.lexicon).toEqual([{ term: "GDANSK", ipa: "ɡdˈænsk" }]);
+
+    const client = new FakeRenderClient();
+    const tracker = new NarrationRenderTracker(client);
+    tracker.beginAttempt();
+    await tracker.onItemReady(ev, { pronunciationHints: [GDANSK] });
+    await tracker.onItemReady(event(3));
+    expect(client.enqueued.map((j) => j.lexicon)).toEqual([[{ term: "Gdansk", ipa: "ɡədˈænsk" }], undefined]);
+  });
+});
+
+describe("GV-82 — await-render is bounded (GV-74 review)", () => {
+  it("an unanswered job holds the item until the cap, then reads phone-voice; a late real result still wins; phone-voice-first never times out", async () => {
+    /* MUTATION THAT KILLS THIS: drop the timed-out results from the
+       `results` getter. The intro stays pending past the cap. Ran it — red.
+       Also killed: compare `now - at > cap` (the item still waits at exactly
+       the cap). Ran it — red. Also killed: report() over `results` (the
+       timeout counts as a failed render). Ran it — red. Also killed: drop the
+       policy check (phone-voice-first results carry a made-up failure). Ran
+       it — red. */
+    let now = 1_000_000;
+    const client = new FakeRenderClient();
+    const tracker = new NarrationRenderTracker(client, "await-render", { awaitRenderCapMs: 5_000, nowMs: () => now });
+    tracker.beginAttempt();
+    for (const ev of allEvents().slice(0, 2)) await tracker.onItemReady(ev);
+    const [preludeJob, introJob] = client.enqueued;
+    client.done = [rendered(preludeJob!)];
+    await tracker.refresh();
+    const progress = progressOf(allEvents().slice(0, 2));
+
+    now += 4_999;
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("pending");
+    expect(snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!.items).toHaveLength(1);
+
+    now += 1;
+    expect(tracker.results.find((r) => r.itemId === "act-1-introduction")).toEqual({ jobId: introJob!.jobId, itemId: "act-1-introduction", status: "failed", timedOut: true });
+    const served = snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!;
+    expect(served.items).toHaveLength(2);
+    expect(served.itemStates.map((st) => st.audio)).toEqual(["rendered", "phone-voice"]);
+    expect(tracker.report().failed).toBe(0);
+
+    client.done = [...client.done, rendered(introJob!)];
+    await tracker.refresh();
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("rendered");
+    expect(tracker.results.some((r) => r.timedOut)).toBe(false);
+
+    const free = new NarrationRenderTracker(new FakeRenderClient(), "phone-voice-first", { awaitRenderCapMs: 0, nowMs: () => now });
+    free.beginAttempt();
+    await free.onItemReady(event(1));
+    expect(free.results).toEqual([]);
+    expect(DEFAULT_AWAIT_RENDER_CAP_MS).toBe(30_000);
+    expect(() => new NarrationRenderTracker(client, "await-render", { awaitRenderCapMs: Number.NaN })).toThrow(/awaitRenderCapMs/);
+  });
+
+  it("a job whose enqueue throws is bounded too: pending before the cap, phone-voice at it, and a later event still retries the enqueue", async () => {
+    /* The driver catches a failed enqueue and only warns, so no worker can
+       ever answer that job. MUTATION THAT KILLS THIS: record enqueuedWallMs
+       only after `await this.client.enqueue(fresh)` returns (the pre-fix
+       order). The intro has no start time, stays pending at 5000 ms. Ran it
+       — red. Also killed: set `tracked` before the enqueue (the retry sees
+       the job as already enqueued and sends nothing). Ran it — red. */
+    let now = 1_000_000;
+    class ThrowOnceClient extends FakeRenderClient {
+      failNext = false;
+      override async enqueue(jobs: RenderJob[]): Promise<void> {
+        if (this.failNext) {
+          this.failNext = false;
+          throw new Error("spool dir is not writable");
+        }
+        return super.enqueue(jobs);
+      }
+    }
+    const client = new ThrowOnceClient();
+    const tracker = new NarrationRenderTracker(client, "await-render", { awaitRenderCapMs: 5_000, nowMs: () => now });
+    tracker.beginAttempt();
+    await tracker.onItemReady(event(0));
+    const [preludeJob] = client.enqueued;
+    client.failNext = true;
+    await expect(tracker.onItemReady(event(1))).rejects.toThrow(/not writable/);
+    client.done = [rendered(preludeJob!)];
+    await tracker.refresh();
+    const progress = progressOf(allEvents().slice(0, 2));
+
+    now += 4_999;
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("pending");
+    expect(snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!.items).toHaveLength(1);
+
+    now += 1;
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("phone-voice");
+    const served = snapshotFrom(JOB, progress, 0, AT, { policy: "await-render", results: tracker.results })!;
+    expect(served.itemStates.map((st) => st.audio)).toEqual(["rendered", "phone-voice"]);
+
+    // A later event for the same line retries the enqueue (the failed job was
+    // never tracked), and the cap keeps its first-attempt clock.
+    const retried = await tracker.onItemReady(event(1));
+    expect(retried).toHaveLength(1);
+    expect(client.enqueued.map((j) => j.itemId)).toEqual([preludeJob!.itemId, "act-1-introduction"]);
+    expect(audioStateFor("act-1-introduction", tracker.results, "await-render")).toBe("phone-voice");
   });
 });

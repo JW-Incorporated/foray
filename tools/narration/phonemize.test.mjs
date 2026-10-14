@@ -161,6 +161,69 @@ test("the plan is deterministic across runs — the card's own acceptance", () =
   assert.deepEqual(once.map((h) => h.term), ["asado", "braai", "barbacoa", "sake"]);
 });
 
+/* ---------- GV-82: run-local entries (the writer's IPA hints) ---------- */
+
+test("merge_lexicon: a curated entry with ipa wins, a hint fills only an unpinned term, the first hint wins a tie", () => {
+  /* GV-82 (docs/roadmap/generation-v2.md, from W6-11): hard-terms.json is the
+     hand-audited source and a writer's hint is a Qwen guess, so the curated
+     IPA is never overridden. A curated term whose ipa is null pins nothing
+     (82 of 83 are), so a hint may fill it.
+     MUTATION: drop the `key in pinned` check -> "SAKE" is accepted and the
+     curated sake loses its precedence. MUTATION: put the accepted entries
+     ahead of the curated ones -> `entries` no longer starts with the file.
+     MUTATION: compare terms case-sensitively -> "SAKE" slips past the pin.
+     MUTATION: treat a null-ipa curated term as pinned -> koji is shadowed. */
+  const curated = [{ term: "sake", ipa: "ˈsɑːkeɪ" }, { term: "koji", ipa: null }];
+  const extra = [
+    { term: "SAKE", ipa: "sˈeɪk" },
+    { term: "koji", ipa: "kˈoʊʤi" },
+    { term: "Gdansk", ipa: "ɡədˈænsk" },
+    { term: "gdansk", ipa: "ɡdˈænsk" },
+  ];
+  const out = pyJson(`print(json.dumps(P.merge_lexicon(${lit(curated)}, ${lit(extra)}, P.load_vocab())))`);
+  assert.deepEqual(out.accepted, [{ term: "koji", ipa: "kˈoʊʤi" }, { term: "Gdansk", ipa: "ɡədˈænsk" }]);
+  assert.deepEqual(out.shadowed, [{ term: "SAKE", ipa: "sˈeɪk" }, { term: "gdansk", ipa: "ɡdˈænsk" }]);
+  assert.deepEqual(out.rejected, []);
+  assert.deepEqual(out.entries, [...curated, ...out.accepted], "curated first and unchanged, then the accepted hints");
+  /* No extras at all: the curated list comes back as it was. */
+  const none = pyJson(`print(json.dumps(P.merge_lexicon(${lit(curated)}, [], P.load_vocab())))`);
+  assert.deepEqual(none, { entries: curated, accepted: [], rejected: [], shadowed: [] });
+});
+
+test("merge_lexicon: an ipa with a symbol outside the Kokoro vocab is rejected with the symbol named; the rest still apply", () => {
+  /* ASCII "g" is not in the model's table (the vocab's g is U+0261 "ɡ"): the
+     likeliest slip a model makes writing IPA. Rendering it would make
+     `ids_for` refuse the whole LINE, so the entry is dropped and recorded.
+     MUTATION: skip the `ids_for` check -> the bad entry is accepted. MUTATION:
+     raise instead of recording -> python fails. */
+  const extra = [
+    { term: "Gdansk", ipa: "gədˈænsk" },
+    { term: "click", ipa: "ǂa" },
+    { term: "Lodz", ipa: "wˈuʤ" },
+    { term: "", ipa: "ə" },
+  ];
+  const out = pyJson(`print(json.dumps(P.merge_lexicon([], ${lit(extra)}, P.load_vocab())))`);
+  assert.deepEqual(out.accepted, [{ term: "Lodz", ipa: "wˈuʤ" }]);
+  assert.deepEqual(out.rejected.map((r) => r.term), ["Gdansk", "click", ""]);
+  assert.match(out.rejected[0].reason, /outside the Kokoro vocab: 'g' \(U\+0067\)/);
+  assert.match(out.rejected[1].reason, /U\+01C2/);
+  assert.match(out.rejected[2].reason, /not a \{term, ipa\} pair/);
+});
+
+test("plan_overrides over the merged lexicon plans the accepted hint and keeps the curated IPA on a shared term", () => {
+  /* The substitution is the same function for both sources: what the merge
+     accepted is planned, what it shadowed is not.
+     MUTATION: merge by appending the extras ahead of the curated list with no
+     shadow check -> sake is planned with the hint's sˈeɪk. */
+  const curated = [{ term: "sake", ipa: "ˈsɑːkeɪ" }];
+  const extra = [{ term: "sake", ipa: "sˈeɪk" }, { term: "Gdansk", ipa: "ɡədˈænsk" }];
+  const out = pyJson(
+    `m=P.merge_lexicon(${lit(curated)}, ${lit(extra)}, P.load_vocab())\n` +
+      `print(json.dumps(P.plan_overrides("Sake in Gdansk, and more sake.", m["entries"])))`
+  );
+  assert.deepEqual(out.map((h) => [h.term, h.ipa]), [["sake", "ˈsɑːkeɪ"], ["Gdansk", "ɡədˈænsk"], ["sake", "ˈsɑːkeɪ"]]);
+});
+
 /* ---------- the estimate ---------- */
 
 test("est_sec is narration-craft's 17 characters per second, and nothing else", () => {

@@ -16,6 +16,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import fs from "node:fs";
 import os from "node:os";
+import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
@@ -698,7 +699,9 @@ test("render_all through render_line writes the pre-GV-22 manifest, sidecars and
   });
   assert.deepEqual(Object.keys(out.manifest.voices), ["af_heart", "am_echo"]);
   assert.deepEqual(out.manifest.totals, PRE_GV22.totals);
-  assert.deepEqual(out.manifest.items, PRE_GV22.items);
+  /* GV-82 appended two ENTRY_KEYS; with no run-local lexicon both are null on
+     every line, and every pinned field is unchanged. */
+  assert.deepEqual(out.manifest.items, PRE_GV22.items.map((e) => ({ ...e, lexicon_extra_sha: null, lexicon_rejected: null })));
   assert.deepEqual(out.manifest.failed, PRE_GV22.failed);
   assert.deepEqual(out.sidecars, PRE_GV22.sidecars);
   assert.deepEqual(out.log, PRE_GV22.log);
@@ -747,4 +750,155 @@ test("the render workflow holds no credential and cannot write anywhere", () => 
   assert.match(code, /- "render\/\*\*"/);
   assert.match(code, /retention-days: 30/);
   assert.match(code, /render-foray\.py/);
+});
+
+/* ---------- GV-82: run-local pronunciation pins ---------- */
+
+test("ENTRY_KEYS order is pinned, GV-82's lexicon_extra_sha and lexicon_rejected appended last", () => {
+  /* Manifests are read by stamp, upload and asr-check, and the card's risk
+     says to move this order only deliberately. MUTATION: insert the two new
+     keys anywhere but the end, or drop one -> red. */
+  const out = pyJson(`print(json.dumps(list(R.ENTRY_KEYS)))`);
+  assert.deepEqual(out, [
+    "foray_id", "item_id", "voice", "status", "key", "bytes", "duration_sec", "sha256", "profile",
+    "text_sha256", "lexicon_sha", "chunks", "speech_sec", "estimate_sec", "container_sec", "loudness",
+    "lexicon_extra_sha", "lexicon_rejected",
+  ]);
+});
+
+/* render_all with the REAL phonemize_work (merge, plan, chunk rule, vocab
+   ids) and a fake G2P that says "ə" per word, a temp hard-terms.json pinning
+   `sake`, and fake ORT/ffmpeg as above. Run once without and once with
+   --lexicon-extra. */
+const LEXICON_EXTRA_HARNESS = String.raw`
+import types, pathlib, tempfile, io, contextlib, hashlib
+ort = types.ModuleType("onnxruntime"); ort.__version__ = "fake-ort"
+class SO: intra_op_num_threads = 0
+class Sess:
+    def __init__(self, *a, **k): pass
+ort.SessionOptions = SO; ort.InferenceSession = Sess
+sys.modules["onnxruntime"] = ort
+tmp = pathlib.Path(tempfile.mkdtemp())
+R.shutil.which = lambda n: "/fake/" + n
+R._tool_version = lambda exe: "fake-tool"
+lex = tmp / "hard-terms.json"
+lex.write_text(json.dumps({"entries": [{"term": "sake", "ipa": "ˈsɑːkeɪ"}, {"term": "koji", "ipa": None}]}, ensure_ascii=False), encoding="utf-8")
+R.LEXICON_PATH = lex
+R.ensure_file = lambda name, pin, d, s, a: tmp / name
+R.load_style = lambda p: "style"
+R.synthesize_chunks = lambda session, style, ids_list, render, reject: [[0.5] * 24000 for _ in ids_list]
+class Buf:
+    def __init__(self, n): self.size = n
+R.assemble = lambda chunks, render: (Buf(sum(len(c) for c in chunks)), Buf(sum(len(c) for c in chunks) + 24000))
+def fake_encode(ffmpeg, ffprobe, pcm, out, render, tmpd):
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(("audio " + out.name).encode())
+    sec = round(pcm.size / 24000, 3)
+    return {"input_i": -25.0, "input_tp": -6.0, "gain_db": 6.0, "limit_db": 0.0, "output_i": -19.0, "output_tp": -1.5,
+            "type": "linear", "extra_headroom_db": 0.0, "attempts": 1, "decoded_sec": sec, "container_sec": round(sec + 0.021, 3)}
+R.normalize_and_encode = fake_encode
+Pm = R._load_phonemize()
+Pm.load_backend = lambda: (lambda text: (" ".join("ə" for _ in text.split()), []))
+_load_lexicon = Pm.load_lexicon
+Pm.load_lexicon = lambda *a, **k: _load_lexicon(R.LEXICON_PATH)
+R._load_phonemize = lambda: Pm
+captured = []
+_pw = R.phonemize_work
+def spy(work, *rest):
+    res = _pw(work, *rest)
+    captured.append({l["item"]["id"]: l["chunks"] for l in res[0]})
+    return res
+R.phonemize_work = spy
+extra = tmp / "extra.json"
+extra.write_text(json.dumps([
+    {"term": "Gdansk", "ipa": "ɡədˈænsk"},
+    {"term": "SAKE", "ipa": "sˈeɪk"},
+    {"term": "Lodz", "ipa": "gwˈuʤ"},
+], ensure_ascii=False), encoding="utf-8")
+items = [
+    {"id": "n1", "script": "The port of Gdansk is old."},
+    {"id": "n2", "script": "Sake was poured here."},
+    {"id": "n3", "script": "Lodz at night, then home."},
+]
+def run(name, more):
+    buf = io.StringIO()
+    args = R.build_parser().parse_args(["--out", str(tmp / name), "--voices", "af_heart", *more])
+    with contextlib.redirect_stdout(buf):
+        code = R.render_all(args, P, [({"id": "f1"}, items)], ["af_heart"])
+    m = json.loads((tmp / name / "manifest.json").read_text(encoding="utf-8"))
+    return {"code": code, "items": {e["item_id"]: e for e in m["items"]}, "failed": m["failed"], "log": buf.getvalue().splitlines()}
+base = run("base", [])
+hinted = run("hinted", ["--lexicon-extra", str(extra)])
+print(json.dumps({"base": base, "hinted": hinted, "chunks": captured,
+                  "lexsha": hashlib.sha256(lex.read_bytes()).hexdigest()}))
+`;
+
+test("--lexicon-extra: a valid hint re-keys only its line; a bad ipa is dropped and recorded; the curated pin wins; lexicon_sha stays the file's", () => {
+  /* The card's acceptance, end to end through render_all, the real
+     merge_lexicon and phonemize_line. MUTATIONS (each turns this red):
+     merge the extras AHEAD of the curated list without the pin check -> n2's
+     chunks and key move to the hint's sˈeɪk; record every rejection on every
+     line -> n1 carries Lodz; drop lexicon_extra_sha/lexicon_rejected from
+     render_line's common fields -> both read null; hash hard-terms.json plus
+     the extras into lexicon_sha -> lexicon_sha moves; raise on a bad ipa ->
+     the run fails. */
+  const out = pyJson(LEXICON_EXTRA_HARNESS);
+  const { base, hinted } = out;
+  assert.equal(base.code, 0);
+  assert.equal(hinted.code, 0, "a rejected hint never fails the render");
+  assert.deepEqual(hinted.failed, []);
+  assert.deepEqual(Object.keys(hinted.items).sort(), ["n1", "n2", "n3"]);
+
+  /* Gdansk: chunks and key change on n1, and on no other line. */
+  assert.ok(out.chunks[1].n1.join(" ").includes("ɡədˈænsk"), JSON.stringify(out.chunks[1].n1));
+  assert.ok(!out.chunks[0].n1.join(" ").includes("ɡədˈænsk"));
+  assert.notEqual(hinted.items.n1.key, base.items.n1.key);
+  assert.equal(hinted.items.n2.key, base.items.n2.key, "the curated sake pin wins over the hint's SAKE");
+  assert.equal(hinted.items.n3.key, base.items.n3.key, "the rejected Lodz hint changes nothing");
+  assert.deepEqual(out.chunks[1].n2, out.chunks[0].n2);
+  assert.ok(out.chunks[1].n2.join(" ").includes("ˈsɑːkeɪ"));
+
+  /* lexicon_extra_sha: the applied run-local entries, n1 only. */
+  const sha = (s) => crypto.createHash("sha256").update(s, "utf8").digest("hex");
+  assert.equal(hinted.items.n1.lexicon_extra_sha, sha(JSON.stringify([{ ipa: "ɡədˈænsk", term: "Gdansk" }])));
+  assert.equal(hinted.items.n2.lexicon_extra_sha, null);
+  assert.equal(hinted.items.n3.lexicon_extra_sha, null);
+  for (const e of Object.values(base.items)) {
+    assert.equal(e.lexicon_extra_sha, null);
+    assert.equal(e.lexicon_rejected, null);
+  }
+
+  /* lexicon_rejected: on the line that holds the term, naming the symbol. */
+  assert.equal(hinted.items.n1.lexicon_rejected, null);
+  assert.equal(hinted.items.n2.lexicon_rejected, null);
+  assert.equal(hinted.items.n3.lexicon_rejected.length, 1);
+  assert.equal(hinted.items.n3.lexicon_rejected[0].term, "Lodz");
+  assert.match(hinted.items.n3.lexicon_rejected[0].reason, /'g' \(U\+0067\)/);
+  assert.ok(hinted.log.some((l) => l.startsWith("lexicon-extra: rejected 'Lodz'")), hinted.log.join("\n"));
+
+  /* lexicon_sha keeps its meaning: sha256 of hard-terms.json, both runs. */
+  for (const run of [base, hinted]) for (const e of Object.values(run.items)) assert.equal(e.lexicon_sha, out.lexsha);
+});
+
+test("--lexicon-extra: a malformed file is refused before any load, and --worker refuses it as a batch option", () => {
+  /* MUTATION: accept a non-list document -> render_all reaches ffmpeg's
+     lookup (which raises "loaded"); drop --lexicon-extra from plan_worker's
+     batch list -> the worker plans with a flag it ignores. */
+  const out = pyJson(
+    `import tempfile,pathlib\n` +
+      `d=pathlib.Path(tempfile.mkdtemp()); bad=d/"bad.json"; bad.write_text('{"entries": 3}', encoding="utf-8")\n` +
+      `ok=d/"ok.json"; ok.write_text('{"entries": [{"term": "a", "ipa": "ə"}]}', encoding="utf-8")\n` +
+      `def boom(n):\n  raise AssertionError("loaded")\n` +
+      `R.shutil.which=boom\n` +
+      `res={}\n` +
+      `try:\n  R.render_all(R.build_parser().parse_args(["--lexicon-extra",str(bad)]),P,[],["af_heart"]); res["bad"]="ran"\n` +
+      `except R.RenderError as e:\n  res["bad"]=str(e)\n` +
+      `res["ok"]=R.load_lexicon_extra(ok)\n` +
+      `try:\n  R.plan_worker(R.build_parser().parse_args(["--worker",str(d),"--lexicon-extra",str(ok)]),P); res["worker"]="planned"\n` +
+      `except R.RenderError as e:\n  res["worker"]=str(e)\n` +
+      `print(json.dumps(res))`
+  );
+  assert.match(out.bad, /--lexicon-extra .*expected a list/);
+  assert.deepEqual(out.ok, [{ term: "a", ipa: "ə" }]);
+  assert.match(out.worker, /--lexicon-extra is a batch option/);
 });

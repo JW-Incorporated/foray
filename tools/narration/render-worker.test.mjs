@@ -369,11 +369,16 @@ test(`validate_job takes ${SCHEMA_V1} and names what is wrong with anything else
   assert.deepEqual(out.ok.lexicon, [{ term: "Foray", ipa: "fəɹˈeɪ" }]);
 });
 
-test("the resident phonemizer loads the G2P once and puts a job's lexicon ahead of hard-terms.json", () => {
+test("the resident phonemizer loads the G2P once; a job's lexicon fills terms hard-terms.json does not pin, and the file wins a shared term", () => {
   /* Real phonemize.py (lexicon substitution, chunking, vocab ids) with a fake
-     G2P that says "ə" for any text. MUTATION: append the job lexicon after the
-     file's entries -> the file's IPA wins on the shared term; load the backend
-     inside phonemize() -> two loads; ignore the job lexicon -> same chunks. */
+     G2P that says "ə" for any text. GV-82 (docs/roadmap/generation-v2.md)
+     reversed GV-22's order: a job's lexicon is the writer's hints, and the
+     curated IPA wins (merge_lexicon). MUTATION: put the job lexicon ahead of
+     the file's entries again -> the job's fəɹˈeɪ wins on Foray; load the
+     backend inside phonemize() -> two loads; ignore the job lexicon -> the
+     Gdansk chunks equal the no-lexicon ones; merge_lexicon(entries, lexicon,
+     None) in make_phonemizer -> the bad Lodz hint is accepted and the line
+     fails UnsingablePhoneme (c.error set). */
   const out = py(
     `Pm=R._load_phonemize()\n` +
       `loads=[]\n` +
@@ -381,15 +386,60 @@ test("the resident phonemizer loads the G2P once and puts a job's lexicon ahead 
       `Pm.load_backend=backend\n` +
       `Pm.load_lexicon=lambda *a, **k: [{"term":"Foray","ipa":"fˈɔːɹeɪ"}]\n` +
       `ph,info=R.make_phonemizer(Pm)\n` +
-      `a=ph("Foray today.", [{"term":"Foray","ipa":"fəɹˈeɪ"}])\n` +
-      `b=ph("Foray today.", [])\n` +
-      `out({"a":a,"b":b,"loads":len(loads),"fallback":info["fallback"]})`
+      `a=ph("Foray in Gdansk today.", [{"term":"Foray","ipa":"fəɹˈeɪ"},{"term":"Gdansk","ipa":"ɡədˈænsk"}])\n` +
+      `b=ph("Foray in Gdansk today.", [])\n` +
+      `c=ph("Foray in Gdansk and Lodz today.", [{"term":"Gdansk","ipa":"ɡədˈænsk"},{"term":"Lodz","ipa":"gwˈuʤ"}])\n` +
+      `out({"a":a,"b":b,"c":c,"loads":len(loads),"fallback":info["fallback"]})`
   );
   assert.equal(out.a.error, null);
   assert.equal(out.b.error, null);
-  assert.ok(out.a.chunks.join(" ").includes("fəɹˈeɪ"), JSON.stringify(out.a.chunks));
+  assert.ok(out.a.chunks.join(" ").includes("fˈɔːɹeɪ"), JSON.stringify(out.a.chunks));
+  assert.ok(!out.a.chunks.join(" ").includes("fəɹˈeɪ"), JSON.stringify(out.a.chunks));
+  assert.ok(out.a.chunks.join(" ").includes("ɡədˈænsk"), JSON.stringify(out.a.chunks));
   assert.ok(out.b.chunks.join(" ").includes("fˈɔːɹeɪ"), JSON.stringify(out.b.chunks));
+  assert.ok(!out.b.chunks.join(" ").includes("ɡədˈænsk"), JSON.stringify(out.b.chunks));
   assert.notDeepEqual(out.a.ids, out.b.ids);
+  assert.equal(typeof out.a.lexicon_extra_sha, "string");
+  assert.equal(out.a.lexicon_rejected, null);
+  assert.deepEqual(Object.keys(out.b).sort(), ["chunks", "error", "ids"], "a job with no lexicon phonemizes exactly as before");
+  // The live path (job.lexicon -> spool -> worker), not only batch mode: an
+  // out-of-vocab hint is dropped and recorded, the line still phonemizes and
+  // the valid pin still applies.
+  assert.equal(out.c.error, null);
+  assert.equal(out.c.lexicon_rejected.length, 1, JSON.stringify(out.c.lexicon_rejected));
+  assert.equal(out.c.lexicon_rejected[0].term, "Lodz");
+  assert.match(out.c.lexicon_rejected[0].reason, /'g' \(U\+0067\)/);
+  assert.ok(out.c.chunks.join(" ").includes("ɡədˈænsk"), JSON.stringify(out.c.chunks));
+  assert.ok(!out.c.chunks.join(" ").includes("gwˈuʤ"), JSON.stringify(out.c.chunks));
   assert.equal(out.loads, 1);
   assert.equal(out.fallback, "none");
+});
+
+test("process_job hands the job lexicon to phonemize and carries lexicon_extra_sha and lexicon_rejected onto the line render_line gets", () => {
+  /* GV-82: render_line reads both fields off the line into the manifest
+     entry, so the worker's line must carry them (null when phonemize says
+     nothing). MUTATION: drop the two fields from process_job's line -> both
+     read None; pass no lexicon to phonemize -> the seen lexicon is None. */
+  const out = py(
+    `seen={}\n` +
+      `def ph(script, lexicon=None):\n` +
+      `  seen.setdefault("lexicon", []).append(lexicon)\n` +
+      `  row={"chunks":["ə."],"ids":[[0,1,0]],"error":None}\n` +
+      `  if lexicon: row.update({"lexicon_extra_sha":"s"*64,"lexicon_rejected":[{"term":"Lodz","ipa":"g","reason":"r"}]})\n` +
+      `  return row\n` +
+      `def rl(session, style, line, *a, **k):\n` +
+      `  seen.setdefault("lines", []).append({k2: line.get(k2) for k2 in ("lexicon_extra_sha","lexicon_rejected")})\n` +
+      `  raise R.RenderError("captured")\n` +
+      `job={"schema":"${SCHEMA_V1}","job_id":"j1","foray_id":"f","item_id":"i","script":"Lodz and Gdansk.","priority":1,` +
+      `"enqueued_at":"2026-10-11T11:00:00.000Z","lexicon":[{"term":"Gdansk","ipa":"ɡədˈænsk"}]}\n` +
+      `a=R.process_job(job, DEPS(phonemize=ph, render_line=rl, out_dir=None, tmp=None), job_id="j1")\n` +
+      `b=R.process_job({**job,"lexicon":[]}, DEPS(phonemize=ph, render_line=rl, out_dir=None, tmp=None), job_id="j1")\n` +
+      `out({"seen":seen,"a":a["status"],"b":b["status"]})`
+  );
+  assert.deepEqual(out.seen.lexicon, [[{ term: "Gdansk", ipa: "ɡədˈænsk" }], []]);
+  assert.deepEqual(out.seen.lines, [
+    { lexicon_extra_sha: "s".repeat(64), lexicon_rejected: [{ term: "Lodz", ipa: "g", reason: "r" }] },
+    { lexicon_extra_sha: null, lexicon_rejected: null },
+  ]);
+  assert.deepEqual([out.a, out.b], ["failed", "failed"]);
 });
