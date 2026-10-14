@@ -1,0 +1,16 @@
+{
+  "_comment": "RV-18: a SYNTHETIC Jev /v1/systemone reply body for one show rated for the two test personas p-history and p-light, shaped like backend/test/fixtures/jev/answers.json (answers keyed by question id; score levels 0-based; probabilities keyed '0'..'n-1'). Not a recording: there is no Jev key yet (#1163 item 17.2). The live step replaces or adds a sanitized recorded body.",
+  "model": "jev-1.13.0",
+  "answers": {
+    "p-history.fit": { "type": "score", "score": 4, "legend": "Among this listener's favourite shows; would recommend it to a friend with the same taste.", "probabilities": { "0": 0.01, "1": 0.02, "2": 0.07, "3": 0.2, "4": 0.7 }, "confidence": 0.8 },
+    "p-history.return": { "type": "score", "score": 3, "legend": null, "probabilities": { "0": 0.02, "1": 0.08, "2": 0.15, "3": 0.5, "4": 0.25 }, "confidence": 0.6 },
+    "p-light.fit": { "type": "score", "score": 0, "legend": "Would not finish one episode.", "probabilities": { "0": 0.6, "1": 0.25, "2": 0.1, "3": 0.04, "4": 0.01 }, "confidence": 0.3 },
+    "p-light.return": { "type": "score", "score": 0, "legend": null, "probabilities": { "0": 0.7, "1": 0.2, "2": 0.06, "3": 0.03, "4": 0.01 }, "confidence": 0.5 },
+    "show.topic_fit": { "type": "score", "score": 3, "legend": null, "probabilities": { "0": 0.05, "1": 0.1, "2": 0.2, "3": 0.45, "4": 0.2 }, "confidence": 0.55 },
+    "show.depth": { "type": "score", "score": 3.6, "legend": null, "probabilities": { "0": 0.02, "1": 0.05, "2": 0.13, "3": 0.3, "4": 0.5 }, "confidence": 0.5 },
+    "show.accessibility": { "type": "score", "score": 1.4, "legend": null, "probabilities": { "0": 0.2, "1": 0.35, "2": 0.3, "3": 0.1, "4": 0.05 }, "confidence": 0.4 },
+    "show.binge_vs_dip": { "type": "score", "score": 2, "legend": null, "probabilities": { "0": 0.1, "1": 0.2, "2": 0.4, "3": 0.2, "4": 0.1 }, "confidence": 0.45 },
+    "show.format": { "type": "choice", "choice": "narrative", "probabilities": { "interview": 0.1, "monologue": 0.05, "panel": 0.05, "narrative": 0.7, "news": 0.02, "mixed": 0.08 }, "confidence": 0.7 }
+  },
+  "usage": { "input_tokens": 1840, "output_tokens": 54 }
+}
