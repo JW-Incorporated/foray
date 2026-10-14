@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
+  <channel>
+    <title>Fixture Roads</title>
+    <link>https://fixture.test/</link>
+    <description><![CDATA[<p>A <em>slow-travel</em> show: two hosts &amp; one long road, every week.</p>]]></description>
+    <itunes:summary>Summary text that loses to the description.</itunes:summary>
+    <itunes:author>Do Not Show This Network</itunes:author>
+    <item>
+      <title>Episode 3: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-3</guid>
+      <pubDate>Thu, 03 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>33:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-3.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/3</link>
+      <description><![CDATA[<p>Episode 3 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 1: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-1</guid>
+      <pubDate>Tue, 01 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>31:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-1.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/1</link>
+      <description><![CDATA[<p>Episode 1 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 2: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-2</guid>
+      <pubDate>Wed, 02 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>32:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-2.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/2</link>
+      <description><![CDATA[<p>Episode 2 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 12: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-12</guid>
+      <pubDate>Sat, 12 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>42:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-12.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/12</link>
+      <description><![CDATA[<p>This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose. This episode runs long on purpose.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 4: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-4</guid>
+      <pubDate>Fri, 04 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>34:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-4.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/4</link>
+      <description><![CDATA[<p>Episode 4 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 5: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-5</guid>
+      <pubDate>Sat, 05 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>35:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-5.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/5</link>
+      <description><![CDATA[<p>Episode 5 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 6: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-6</guid>
+      <pubDate>Sun, 06 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>36:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-6.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/6</link>
+      <description><![CDATA[<p>Episode 6 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 7: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-7</guid>
+      <pubDate>Mon, 07 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>37:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-7.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/7</link>
+      <description><![CDATA[<p>Episode 7 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 8: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-8</guid>
+      <pubDate>Tue, 08 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>38:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-8.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/8</link>
+      <description><![CDATA[<p>Episode 8 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 9: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-9</guid>
+      <pubDate>Wed, 09 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>39:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-9.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/9</link>
+      <description><![CDATA[<p>Episode 9 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 10: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-10</guid>
+      <pubDate>Thu, 10 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>40:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-10.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/10</link>
+      <description><![CDATA[<p>Episode 10 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+    <item>
+      <title>Episode 11: Notes from the road</title>
+      <guid isPermaLink="false">fixture-ep-11</guid>
+      <pubDate>Fri, 11 Sep 2026 09:00:00 GMT</pubDate>
+      <itunes:duration>41:00</itunes:duration>
+      <enclosure url="https://media.fixture.test/audio/ep-11.mp3" length="1000" type="audio/mpeg"/>
+      <link>https://fixture.test/episodes/11</link>
+      <description><![CDATA[<p>Episode 11 &amp; friends talk <b>slow travel</b>.</p>]]></description>
+    </item>
+  </channel>
+</rss>
