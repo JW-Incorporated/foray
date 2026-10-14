@@ -2,6 +2,50 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-13 — Two lanes for generated Forays: on-demand behind code gates, the catalogue through review (GV-81)
+
+**Source.** The founder's direction that every issue on the Foray Generation
+Baseline doc be fixed (issue #1286; the package is
+`docs/roadmap/generation-v2.md`, card GV-81, from W6-17). It applies two
+rulings already on record: **D7** and **D9** of the 2026-09-28 entry below
+(Wyatt, 2026-09-28: "Defaults"), and the interim HA #31 recorded in the
+2026-09-30 entry ("founder-only prompting, `hold` on every catalogue Foray").
+Nothing new is ruled here; this entry records how the code holds the two lanes
+apart.
+
+**The rule.**
+- **On-demand is founder-only (D9).** An on-demand Foray is served to the
+  founder who asked for it through the job snapshot (`generation/jobSink.ts`,
+  GV-44): only its servable prefix (`delivery.servableThrough` items), behind
+  the code gates (GV-21's per-act servability, which blocks an unverified page,
+  plus `check-forays.mjs`), and later behind Jev's gates as they land. It is
+  never written to `data/forays.json` as an on-demand Foray.
+- **The catalogue is a held PR (D7).** Every catalogue Foray reaches
+  `data/forays.json` only through `publish-foray`'s pull request with the
+  `hold` label, which the founder lifts. `--force` still implies `hold`.
+- **Promotion from on-demand to the catalogue needs a review.**
+  `generate-forays --lane on-demand` stamps `meta.lane` on the candidate.
+  `publish-foray` refuses such a candidate, with or without `--force`, unless
+  `--review-verdict <verdicts.jsonl>` holds a `pass` verdict for every act of
+  that Foray id, each given on the sha-256 of the exact candidate file
+  (`laneCheck` in `backend/src/cli/publishForay.ts`). The latest verdict per act
+  counts, so a later `fail` or `fix` withdraws a `pass`. A promoted Foray then
+  goes through the same held PR as any catalogue Foray.
+- **Review verdicts are labelled calibration data.** The rows written by
+  `tools/generation/review-queue.mjs verdict` (GV-41) are the founder's per-act
+  judgements, labelled for calibrating the gates (decision 35 of the package).
+  They live in `data-local/review/verdicts.jsonl`, are never committed, and
+  are not a publish record.
+
+**Defaults.** Without `--lane` a run is in the catalogue lane and writes
+exactly what it wrote before: no `lane` on the report row or the candidate, and
+the job row reads `catalogue`. A catalogue candidate publishes exactly as
+before.
+
+**Not ruled here.** Letting anyone other than a founder hear unreviewed
+generated Forays (widening the on-demand lane) is a founder product and legal
+ruling, gated by HA #31's Guideline 1.2 preconditions.
+
 ## 2026-10-10 (ADR-0008 open question 2: the pad ships before the locate step)
 
 **Ruling.** Founder, `docs/roadmap/README.md` question 15 (dai D5/OQ2), verbatim:

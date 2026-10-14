@@ -5,6 +5,7 @@ import type { ForayItem } from "./forayItems";
 import type { NewSegment } from "../types/tapeSourcing";
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import type { VeracityMetrics } from "./veracityMetrics";
+import type { JobLane } from "./jobSink";
 import { mintedWhyErrors } from "./mintedSegmentCopy";
 import { SEGMENT_START_TOLERANCE_SEC, segmentAtStart, startsCoincide } from "./segmentPoolLookup";
 
@@ -89,8 +90,14 @@ export interface FinalizeForayInput {
    * scope to extend). It rides along on `FinalizeForayInput` purely so
    * `generateForays.ts` writes it into the candidate JSON on disk
    * ("`meta.veracity` on every candidate") and `publishForay.ts` can read
-   * it back to gate the PR. */
-  meta?: { veracity: VeracityMetrics };
+   * it back to gate the PR.
+   *
+   * GV-81: `lane` is the run's `--lane` (`generateForays.ts`), written only
+   * when the flag was given; absent reads as `catalogue`. Like `veracity` it
+   * is never written into `forayRecord`. `publishForay.ts`'s `laneCheck`
+   * refuses an `on-demand` candidate without a pass review verdict for every
+   * act of these exact bytes. */
+  meta?: { veracity: VeracityMetrics; lane?: JobLane };
   /**
    * The segments §4.5 tier 2 MINTED for this Foray, and the source rows that
    * make them playable (`sourceBeats.ts`, `audioSourceLookup.ts`).

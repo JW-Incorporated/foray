@@ -1404,3 +1404,72 @@ describe("GV-74 — --render-spool enqueues narration and folds audio into deliv
     expect(fs.existsSync(spool)).toBe(false);
   });
 });
+
+/* GV-81 (generation v2, from W6-17): `--lane on-demand|catalogue`. Given, the
+   lane goes onto every report row, the candidate's meta.lane and the job row;
+   absent, nothing is written and the job row reads catalogue, as before. */
+describe("GV-81 — --lane on the report row, the candidate and the job row", () => {
+  let dir: string;
+  let jobDir: string;
+  const PROMPT = "tell me the whole story of grilling and barbecue please";
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv81-"));
+    jobDir = path.join(dir, "jobs");
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  const jobRow = (): JobSnapshot => {
+    const files = fs.readdirSync(jobDir).filter((f) => f.endsWith(".job.json"));
+    expect(files).toHaveLength(1);
+    return JSON.parse(fs.readFileSync(path.join(jobDir, files[0]!), "utf8")) as JobSnapshot;
+  };
+
+  it("parses --lane, adds nothing without it, and refuses a value that is not a lane", () => {
+    /* MUTATION THAT KILLS THIS: default `lane` to "catalogue" in parseArgs.
+       Every run would write lane onto its rows and candidates. Ran it — red. */
+    expect(parseArgs(["--prompts", "p.json", "--lane", "on-demand"]).lane).toBe("on-demand");
+    expect(parseArgs(["--prompts", "p.json", "--lane", "catalogue"]).lane).toBe("catalogue");
+    expect("lane" in parseArgs(["--prompts", "p.json"])).toBe(false);
+    expect(() => parseArgs(["--prompts", "p.json", "--lane", "ondemand"])).toThrow(/--lane: "ondemand" is not one of/);
+    expect(() => parseArgs(["--prompts", "p.json", "--lane"])).toThrow(/--lane needs a value/);
+  });
+
+  it("an on-demand run carries lane on the report row, meta.lane on the candidate and lane on the job row", async () => {
+    /* MUTATION THAT KILLS THIS: keep the job identity's lane at "catalogue"
+       (ignore args.lane). The job row reads catalogue. Ran it — red. Also
+       killed: drop the lane from finishEntry (the row has none), and write
+       outcome.input unchanged (no meta.lane). Ran both — red. */
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { lane: "on-demand", jobDir, maxResumes: 0 }), { cueProvider, runPipeline: stubPipeline() });
+    expect(result.entry?.outcome).toBe("generated");
+    expect(result.entry?.lane).toBe("on-demand");
+    const written = JSON.parse(fs.readFileSync(result.file!, "utf8")) as FinalizeForayInput;
+    expect(written.meta?.lane).toBe("on-demand");
+    expect(Object.keys(written.meta ?? {})).toEqual(["veracity", "lane"]);
+    expect(jobRow().lane).toBe("on-demand");
+  });
+
+  it("without --lane the row and the candidate carry no lane and the job row reads catalogue", async () => {
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { jobDir, maxResumes: 0 }), { cueProvider, runPipeline: stubPipeline() });
+    expect(result.entry?.outcome).toBe("generated");
+    expect(result.entry).not.toHaveProperty("lane");
+    const written = JSON.parse(fs.readFileSync(result.file!, "utf8")) as FinalizeForayInput;
+    expect(Object.keys(written.meta ?? {})).toEqual(["veracity"]);
+    expect(jobRow().lane).toBe("catalogue");
+  });
+
+  it("a row that never generated still carries the run's lane", async () => {
+    /* The lane is the run's, so a stopped prompt's row names it too. */
+    const failing: typeof runForayPipeline = async () => {
+      throw new Error("boom");
+    };
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { lane: "on-demand", maxResumes: 0 }), { cueProvider, runPipeline: failing });
+    expect(result.entry?.outcome).toBe("error");
+    expect(result.entry?.lane).toBe("on-demand");
+  });
+});

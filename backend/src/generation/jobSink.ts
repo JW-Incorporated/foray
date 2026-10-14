@@ -56,7 +56,24 @@ export function jobSnapshotFilename(forayId: string): string {
   return `${forayId}.job.json`;
 }
 
-export type JobLane = "on-demand" | "catalogue";
+/** GV-81: the two lanes. `on-demand` is a founder's private Foray, served
+ * only through its servable prefix (this snapshot) and never written to
+ * data/forays.json without a pass verdict per act; `catalogue` is the held
+ * publish PR (D7). The one list both the schema and `--lane` read. */
+export const JOB_LANES = ["on-demand", "catalogue"] as const;
+export type JobLane = (typeof JOB_LANES)[number];
+
+export function isJobLane(v: unknown): v is JobLane {
+  return typeof v === "string" && (JOB_LANES as readonly string[]).includes(v);
+}
+
+/** GV-81 (GV-74 review, #1366): a snapshot's narration `audio_url` is https
+ * only. The 2026-07-26 ruling (docs/DECISIONS.md: an http enclosure is
+ * upgraded to https, not dropped), the web CSP's `media-src https:` and iOS
+ * ATS all refuse plain http, so an http URL would be a line the phone cannot
+ * play. One pattern, read by the schema and by the fold below. */
+export const JOB_AUDIO_URL_PATTERN = /^https:\/\/\S+$/;
+
 export type JobStatus = "running" | "complete" | "failed";
 export type JobCloseOutcome = "complete" | "failed" | "aborted";
 export type JobAudioState = "pending" | "rendered" | "phone-voice";
@@ -259,6 +276,14 @@ function servablePrefix(progress: JobProgress, audio?: JobAudio): { items: JobSn
         break;
       }
       const r = state === "rendered" ? resultFor(key, audio.results) : undefined;
+      /* GV-81: only an https file is served. A rendered line whose public URL
+         is plain http is served without it, as phone-voice, so the row stays
+         valid and the phone speaks the line rather than failing to load it. */
+      if (r && !(r.publicUrl && JOB_AUDIO_URL_PATTERN.test(r.publicUrl))) {
+        items.push(item);
+        states.push({ itemId: key, check: check ?? "unverified", audio: "phone-voice" });
+        continue;
+      }
       items.push(r?.publicUrl ? { ...item, audio_url: r.publicUrl } : item);
       states.push({ itemId: key, check: check ?? "unverified", audio: state, ...(r?.key ? { audioKey: r.key } : {}) });
       continue;
@@ -338,10 +363,11 @@ export function closedSnapshot(last: JobSnapshot, outcome: JobCloseOutcome, upda
 }
 
 /** GV-74: a snapshot item — GV-44's strict item schemas, the narration one
- * widened by an optional http(s) `audio_url` (still strict). */
+ * widened by an optional `audio_url` (still strict). GV-81: https only
+ * (`JOB_AUDIO_URL_PATTERN`). */
 const JobSnapshotItemSchema = z.discriminatedUnion("type", [
   ForaySegmentItemSchema,
-  ForayNarrationItemSchema.extend({ audio_url: z.string().regex(/^https?:\/\/\S+$/).optional() }),
+  ForayNarrationItemSchema.extend({ audio_url: z.string().regex(JOB_AUDIO_URL_PATTERN).optional() }),
   ForayJingleItemSchema
 ]);
 
@@ -365,7 +391,7 @@ export const JobSnapshotSchema = z
     jobId: z.string().min(1).max(200),
     forayId: z.string().regex(JOB_FORAY_ID_PATTERN),
     authorId: z.string().min(1),
-    lane: z.enum(["on-demand", "catalogue"]),
+    lane: z.enum(JOB_LANES),
     status: z.enum(["running", "complete", "failed"]),
     seq: z.number().int().positive(),
     updatedAt: z.string().min(1),
