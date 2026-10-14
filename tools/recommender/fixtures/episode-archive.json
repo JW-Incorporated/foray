@@ -1,0 +1,227 @@
+{
+  "version": 1,
+  "built_at": "2026-10-14T00:00:00.000Z",
+  "source": "fixture",
+  "shows": [
+    {
+      "apple_collection_id": 111,
+      "title": "Archive Show",
+      "feed_url": "https://example.invalid/111.xml",
+      "chart_rank_overall": 3,
+      "episode_count_in_feed": 300,
+      "feed_capped_suspect": false,
+      "harvested_at": "2026-10-01T00:00:00.000Z",
+      "episodes": [
+        {
+          "guid": "Siege-0",
+          "title": "Siege episode 0",
+          "published_at": "2026-09-30",
+          "duration_min": 40,
+          "enclosure_url": "https://example.invalid/Siege-0.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "The siege of town 0, told   from the walls. Megacorp Audio Network thanks its sponsors."
+        },
+        {
+          "guid": "Siege-1",
+          "title": "Siege episode 1",
+          "published_at": "2026-09-23",
+          "duration_min": 41,
+          "enclosure_url": "https://example.invalid/Siege-1.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "The siege of town 1, told   from the walls. Megacorp Audio Network thanks its sponsors."
+        },
+        {
+          "guid": "Siege-2",
+          "title": "Siege episode 2",
+          "published_at": "2026-09-16",
+          "duration_min": 42,
+          "enclosure_url": "https://example.invalid/Siege-2.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "The siege of town 2, told   from the walls. Megacorp Audio Network thanks its sponsors."
+        },
+        {
+          "guid": "Siege-3",
+          "title": "Siege episode 3",
+          "published_at": "2026-09-09",
+          "duration_min": 43,
+          "enclosure_url": "https://example.invalid/Siege-3.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "The siege of town 3, told   from the walls. Megacorp Audio Network thanks its sponsors."
+        },
+        {
+          "guid": "Siege-4",
+          "title": "Siege episode 4",
+          "published_at": "2026-09-02",
+          "duration_min": 44,
+          "enclosure_url": "https://example.invalid/Siege-4.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "The siege of town 4, told   from the walls. Megacorp Audio Network thanks its sponsors."
+        },
+        {
+          "guid": "Siege-5",
+          "title": "Siege episode 5",
+          "published_at": "2026-08-26",
+          "duration_min": 45,
+          "enclosure_url": "https://example.invalid/Siege-5.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "The siege of town 5, told   from the walls. Megacorp Audio Network thanks its sponsors."
+        }
+      ]
+    },
+    {
+      "apple_collection_id": 555,
+      "title": "Four Episodes",
+      "feed_url": "https://example.invalid/555.xml",
+      "chart_rank_overall": 8,
+      "episode_count_in_feed": 6,
+      "feed_capped_suspect": false,
+      "harvested_at": "2026-10-01T00:00:00.000Z",
+      "episodes": [
+        {
+          "guid": "Keeper-0",
+          "title": "Keeper episode 0",
+          "published_at": "2026-09-30",
+          "duration_min": 40,
+          "enclosure_url": "https://example.invalid/Keeper-0.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Keeper 0 and the long night."
+        },
+        {
+          "guid": "Keeper-1",
+          "title": "Keeper episode 1",
+          "published_at": "2026-09-23",
+          "duration_min": 41,
+          "enclosure_url": "https://example.invalid/Keeper-1.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Keeper 1 and the long night."
+        },
+        {
+          "guid": "Keeper-2",
+          "title": "Keeper episode 2",
+          "published_at": "2026-09-16",
+          "duration_min": 42,
+          "enclosure_url": "https://example.invalid/Keeper-2.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Keeper 2 and the long night."
+        },
+        {
+          "guid": "Keeper-3",
+          "title": "Keeper episode 3",
+          "published_at": "2026-09-09",
+          "duration_min": 43,
+          "enclosure_url": "https://example.invalid/Keeper-3.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Keeper 3 and the long night."
+        },
+        {
+          "guid": "Keeper-4",
+          "title": "Keeper episode 4",
+          "published_at": "2026-09-02",
+          "duration_min": 44,
+          "enclosure_url": "https://example.invalid/Keeper-4.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": ""
+        },
+        {
+          "guid": "Keeper-5",
+          "title": "Keeper episode 5",
+          "published_at": "2026-08-26",
+          "duration_min": 45,
+          "enclosure_url": "https://example.invalid/Keeper-5.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": ""
+        }
+      ]
+    },
+    {
+      "apple_collection_id": 999,
+      "title": "Tinkerer Hour",
+      "feed_url": "https://example.invalid/tx.xml",
+      "chart_rank_overall": 40,
+      "episode_count_in_feed": 120,
+      "feed_capped_suspect": false,
+      "harvested_at": "2026-10-01T00:00:00.000Z",
+      "episodes": [
+        {
+          "guid": "https://example.invalid/ep-a",
+          "title": "Episode A title",
+          "published_at": "2026-09-30",
+          "duration_min": 40,
+          "enclosure_url": "https://example.invalid/Shop-0.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Shop project a: a fixture for the mill."
+        },
+        {
+          "guid": "https://example.invalid/ep-b",
+          "title": "Episode B title",
+          "published_at": "2026-09-23",
+          "duration_min": 41,
+          "enclosure_url": "https://example.invalid/Shop-1.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Shop project b: a fixture for the mill."
+        },
+        {
+          "guid": "https://example.invalid/ep-c",
+          "title": "Episode C title",
+          "published_at": "2026-09-16",
+          "duration_min": 42,
+          "enclosure_url": "https://example.invalid/Shop-2.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Shop project c: a fixture for the mill."
+        },
+        {
+          "guid": "https://example.invalid/ep-d",
+          "title": "Episode D title",
+          "published_at": "2026-09-09",
+          "duration_min": 43,
+          "enclosure_url": "https://example.invalid/Shop-3.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Shop project d: a fixture for the mill."
+        },
+        {
+          "guid": "https://example.invalid/ep-e",
+          "title": "Episode E title",
+          "published_at": "2026-09-02",
+          "duration_min": 44,
+          "enclosure_url": "https://example.invalid/Shop-4.mp3",
+          "link": null,
+          "episode": null,
+          "season": null,
+          "description": "Shop project e: a fixture for the mill."
+        }
+      ]
+    }
+  ]
+}
