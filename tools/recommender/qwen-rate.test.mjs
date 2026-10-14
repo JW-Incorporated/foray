@@ -18,13 +18,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { runMerge } from "./merge-rating-results.mjs";
+import { intoPaths, runMerge } from "./merge-rating-results.mjs";
 import {
   DEFAULT_MODEL,
   MAX_REPLY_TOKENS,
+  QWEN_INTO,
+  QWEN_PROGRESS_PATH,
   REPLY_INVALID,
   SCHEMA_NAME,
   main,
+  mergeHint,
   rateBatch,
   resultsPathFor,
 } from "./qwen-rate.mjs";
@@ -195,8 +198,14 @@ test("the request has json_schema, the rubric first and enable_thinking false", 
   assert.ok(user.includes(s.batch.persona_order[first.show_key].join(", ")));
   // The system prefix is identical for every show of the batch.
   assert.ok(calls.every((c) => c.body.messages[0].content === system));
-  // The run ends by naming the merge into the Qwen ratings file, not ratings.json.
-  assert.match(logs.join("\n"), /merge-rating-results\.mjs --results .* --into data\/recommender\/ratings-qwen\.json/);
+  // The run ends by naming the merge into the Qwen ratings file, not ratings.json,
+  // with an --into RV-18's merge accepts. MUTATION (run red): print the
+  // repo-relative path data/recommender/ratings-qwen.json -- intoPaths refuses it.
+  const into = /merge-rating-results\.mjs --results .* --into (\S+)/.exec(logs.join("\n"))?.[1];
+  assert.equal(into, QWEN_INTO);
+  assert.deepEqual(intoPaths(into), { ratings: "data/recommender/ratings-qwen.json", progress: QWEN_PROGRESS_PATH, side: true });
+  // An isolated batch is not merged into a side file (the merge refuses it).
+  assert.doesNotMatch(mergeHint({ mode: "isolated:mechanism-hunter", resultsPath: "r.json", batchPath: "b.json" }), /--into/);
 
   // An isolated batch shows the rater that one persona's profile only.
   const iso = seed({ mode: "isolated:mechanism-hunter" });

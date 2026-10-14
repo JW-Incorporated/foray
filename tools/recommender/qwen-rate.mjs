@@ -49,8 +49,15 @@
 
    MERGE. When every batch show is in the file, the script prints the merge
    command and runs nothing itself: Qwen ratings go to their own file through
-   the merge's `--into` flag (RV-18), never into the agent-rated
-   data/recommender/ratings.json.
+   the merge's `--into ratings-qwen.json` (RV-18: a bare file name, which
+   resolves to data/recommender/ratings-qwen.json and settles reservations in
+   data/recommender/rating-progress-qwen.json), never into the agent-rated
+   data/recommender/ratings.json. So a Qwen batch is prepared against that
+   progress file (prepare-rating-batch.mjs --progress
+   data/recommender/rating-progress-qwen.json), and a Qwen pass neither
+   blocks nor satisfies an agent pass. An ISOLATED batch is not merged (the
+   merge takes isolated results only into ratings-isolated.json, which holds
+   the agent passes); the script names the results file to compare instead.
 
    Exit codes: 0 every show written; 1 stopped early or refused (bad batch,
    profiles hash mismatch, foreign results file); 2 usage, or no LiteLLM
@@ -73,7 +80,11 @@ export const MAX_REPLY_TOKENS = 2_500;
 export const MAX_TRANSPORT_FAILURES = 3;
 export const REPLY_INVALID = "qwen_reply_invalid";
 export const RESULTS_DIR = "data-local/recommender/results";
-export const QWEN_RATINGS_PATH = "data/recommender/ratings-qwen.json";
+/** The merge's `--into` for Qwen results: a bare name, as RV-18's intoPaths
+    takes it (data/recommender/ratings-qwen.json, settled in the progress
+    file below). */
+export const QWEN_INTO = "ratings-qwen.json";
+export const QWEN_PROGRESS_PATH = "data/recommender/rating-progress-qwen.json";
 export const KEY_POINTER = "#1163 item 17.1 (the Foray LiteLLM key: set FORAY_LLM_BASE_URL and FORAY_LLM_API_KEY or FORAY_LLM_API_KEY_FILE)";
 
 /** Profile fields that are for the app's mixture model, not for a rater
@@ -375,8 +386,20 @@ export async function main(argv = process.argv.slice(2), { env = process.env, ro
     log("incomplete: rerun the same command to resume");
     return 1;
   }
-  log(`complete. Merge into the Qwen ratings (never the agent-rated ratings.json):\n  node tools/recommender/merge-rating-results.mjs --results ${resultsPath} --batch ${batchPath} --into ${QWEN_RATINGS_PATH}`);
+  log(mergeHint({ mode: out.doc.mode, resultsPath, batchPath }));
   return 0;
+}
+
+/** What to do with a complete results file: a joint batch merges into the
+    Qwen side file with RV-18's `--into` (a bare name; a path is refused by
+    intoPaths); an isolated one is not merged (the merge refuses isolated
+    results into a side file, and ratings-isolated.json holds the agent
+    passes). */
+export function mergeHint({ mode, resultsPath, batchPath }) {
+  if (String(mode ?? "joint").startsWith("isolated:")) {
+    return `complete. Isolated Qwen results are not merged (the merge takes isolated results only into ratings-isolated.json, which holds the agent passes); compare ${resultsPath} with the agent's isolated ratings instead.`;
+  }
+  return `complete. Merge into the Qwen ratings (never the agent-rated ratings.json; prepare Qwen batches with --progress ${QWEN_PROGRESS_PATH}):\n  node tools/recommender/merge-rating-results.mjs --results ${resultsPath} --batch ${batchPath} --into ${QWEN_INTO}`;
 }
 
 if (isEntryScript(import.meta.url)) {
