@@ -1422,6 +1422,36 @@ final class AVDeckTests: XCTestCase {
             XCTAssertNil(DiagGate.admit(row)?[field: DiagGate.droppedField], "the gate dropped part of \(row)")
         }
     }
+
+    /// To the core the fallback is the SAME load: it lands where the core
+    /// last asked (a seek sent while the resolved attempt was in flight), and
+    /// it runs inside what is left of the first attempt's deadline, not a new
+    /// one, so P-13 still bounds the silence in the car; its ready row counts
+    /// from the first attach and marks the fallback.
+    /// TO SEE IT FAIL: build the fallback's args with `fallback.startSec`
+    /// (it lands at 7.3, not 11), or pass `startedAtMs: nil` (a fresh 40 s
+    /// deadline, and an `elapsedMs` that forgets the first 5 s).
+    func testAFallbackKeepsTheLoadsStartAndDeadline() throws {
+        let timers = VirtualDeckTimers()
+        let file = try fixture("click-cbr", "mp3")
+        let gone = "file:///nonexistent-\(UUID().uuidString)/gone.mp3"
+        let sources = ResolvedSources(entries: [ResolvedSources.Entry(from: file.absoluteString, to: gone,
+                                                                      atMs: Date().timeIntervalSince1970 * 1000)])
+        deck.send(.unload)
+        deck = makeDeck(timers: timers, resolvedSources: sources)
+        deck.send(.loadURL(token: 1, url: file, startSec: 7.3, preciseTiming: false))
+        deck.send(.seek(toSec: 11))
+        // Every AVFoundation callback hops to main, so the resolved attempt
+        // cannot have failed yet: these 5 s pass inside it.
+        timers.advance(ms: 5000)
+        XCTAssertTrue(spin(until: { !self.rowsOfKind("fallback").isEmpty }), "no fallback: \(diags)")
+        XCTAssertEqual(timers.pending.map(\.sec), [AVDeckTests.testDeadlineSec - 5],
+                       "the fallback must run inside what is left of the first deadline")
+        guard let ready = readyEvent(1) else { return }
+        XCTAssertEqual(ready.landedSec, 11, accuracy: 0.1, "the fallback forgot the core's seek")
+        XCTAssertGreaterThanOrEqual(ready.elapsedMs, 5000, "elapsed counts from the first attach")
+        XCTAssertTrue(markKeys(rowsOfKind("ready").last).contains("fallback"), "\(diags)")
+    }
 }
 
 /// AVDeck's timers and clock in virtual time (`Config.after`, `Config.nowMs`).

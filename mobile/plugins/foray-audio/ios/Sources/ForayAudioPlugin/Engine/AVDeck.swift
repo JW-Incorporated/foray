@@ -768,8 +768,12 @@ final class AVDeck: DeckDriving {
     /// A cold load: a new item for `args`, under its token. `mayResolve`
     /// lets a resume attach where its redirects ended last time
     /// (ResolvedSources); the fallback after such an attach failed passes
-    /// false, so it attaches the load's own URL.
-    private func attach(_ args: LoadArgs, cold: String, idleSec: Double?, mayResolve: Bool) {
+    /// false, so it attaches the load's own URL, and passes the failed
+    /// attempt's `startedAtMs`: to the core it is ONE load, so its elapsed
+    /// times count from the first attach and its deadline is what is left of
+    /// the first one (P-13 bounds the silence, not each attempt).
+    private func attach(_ args: LoadArgs, cold: String, idleSec: Double?, mayResolve: Bool,
+                        startedAtMs: Double? = nil) {
         let newToken = args.token
         let urlString = args.url
         detachItem()
@@ -783,7 +787,7 @@ final class AVDeck: DeckDriving {
         reachedEnd = false
         lastTimeControl = nil
         lastWaitingReason = nil
-        loadStartedAtMs = config.nowMs()
+        loadStartedAtMs = startedAtMs ?? config.nowMs()
         loadedURL = nil
         reusedItem = false
         gateStep = "duration"
@@ -823,7 +827,10 @@ final class AVDeck: DeckDriving {
         loadedBounded = args.bounded
         noteLive()
         observe(item: item, generation: generation)
-        armDeadline(generation: generation)
+        armDeadline(generation: generation, afterSec: startedAtMs.map { started in
+            Swift.max(0, config.deadlineSec(for: args.deadlineClass) - (config.nowMs() - started) / 1000)
+        })
+        if startedAtMs != nil { mark("fallback") }
         record(attachedResolved ? "attach resolved" : "attach")
         deckRow("attach", newToken, [
             JSONMember("startSec", Self.secNode(targetStartSec)),
@@ -1244,10 +1251,12 @@ final class AVDeck: DeckDriving {
 
     // MARK: - Deadline (P-13)
 
-    private func armDeadline(generation gen: Int) {
+    /// `afterSec`: what is left of a deadline already running (the
+    /// fallback's); nil is the load class's whole P-13 deadline.
+    private func armDeadline(generation gen: Int, afterSec: Double? = nil) {
         let work = DispatchWorkItem { [weak self] in self?.deadlineFired(generation: gen) }
         deadline = work
-        config.after(config.deadlineSec(for: deadlineClass), work)
+        config.after(afterSec ?? config.deadlineSec(for: deadlineClass), work)
     }
 
     private func deadlineFired(generation gen: Int) {
@@ -1425,6 +1434,8 @@ final class AVDeck: DeckDriving {
         case .ready:
             guard let token else { return }
             reachedEnd = false
+            // The start buffer was measured where the gate landed, not here.
+            startsAtOnce = false
             let gen = generation
             record("seek \(Self.format(target))")
             // The watch moves with the seek NOW (a scrub past the boundary
@@ -1734,10 +1745,13 @@ final class AVDeck: DeckDriving {
     /// the localized sentence, which DiagGate would refuse anyway.
     private func fail(generation gen: Int, message: String, where step: String, error: Error?) {
         guard gen == generation, stage != .failed, let token else { return }
-        if attachedResolved, let original = loadedURL {
-            // The resolved address failed: it is never tried again for this
-            // source, and a load that had not reached `.ready` repeats on the
-            // load's own URL, on the same token. The core sees one load.
+        // The resolved address failed (not the PLAYER: a dead AVPlayer is no
+        // address's fault, and a fallback onto it would only wait out the
+        // deadline): it is never tried again for this source, and a load that
+        // had not reached `.ready` repeats on the load's own URL, on the same
+        // token, at the start the core last asked for, inside what is left of
+        // the same deadline. The core sees one load.
+        if attachedResolved, step != "player", let original = loadedURL {
             config.resolvedSources?.forget(from: original)
             if stage != .ready, let fallback = resolvedFallback, fallback.token == token {
                 deckRow("fallback", token, [
@@ -1747,12 +1761,16 @@ final class AVDeck: DeckDriving {
                 ] + Self.errorFields(error) + accessFields() + errorLogFields())
                 if let asset { config.assetFailed(asset) }
                 record("fallback")
-                attach(fallback, cold: "fallback", idleSec: nil, mayResolve: false)
+                attach(LoadArgs(token: fallback.token, url: fallback.url, startSec: targetStartSec,
+                                preciseTiming: fallback.preciseTiming, deadlineClass: fallback.deadlineClass,
+                                bounded: fallback.bounded),
+                       cold: "fallback", idleSec: nil, mayResolve: false, startedAtMs: loadStartedAtMs)
                 return
             }
         }
         deadline?.cancel()
         deadline = nil
+        stopBufferWatch()
         stage = .failed
         intendsToPlay = false
         deckRow("failed", token, [
