@@ -1951,6 +1951,7 @@ const FLOORS = {
   "tools/recommender/progress.test.mjs": 8, // RV-02: new, zero slack (the card's 6 plus a corrupt file throws, the committed file is empty and in saveProgress form)
   /* RV-01 (docs/roadmap/recommender-v1.md, #1380): the 13 rating personas validate against the real catalogue, taxonomy roots and onboarding personas; word limits, seed lookup, root-only affinity, unique kebab ids, and no two personas sharing loves or why+how+form. New, zero slack (the card's 6 plus the pairwise rule). */
   "tools/recommender/profiles.test.mjs": 7,
+  "tools/recommender/agreement.test.mjs": 13, // RV-11 (docs/roadmap/recommender-v1.md, D4(b)/D13): new, zero slack -- Krippendorff alpha reproduces the published 2011 example (nominal 0.743, ordinal 0.815, interval 0.849), interval differs from nominal, hand-computed Spearman and tau-b with ties, test-retest top-persona change fraction, per-persona joint-vs-isolated Spearman, correlated-pair and never-top flags, within-node tau, a 0.5 batch drift flagged, score compression, only merged results files read, the report block rewritten with --check seeing staleness, an invalid ratings file refused (the card's 9 plus the last four); each test names its mutation, all run red
   /* CH2-32 (T1-19, docs/roadmap/code-health-2.md): the curated artwork backfill
      looks up through harvest-merge's politeFetchJson - a 5xx is retried, a 404
      fails at once, no private fetcher - and artworkFromLookup is the harvest
