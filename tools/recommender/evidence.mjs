@@ -20,9 +20,15 @@
    PodcastIndex id or anything about ad insertion. `stripped` records which of
    those keys the source rows carried; it is audit metadata, and `raterPack`
    drops it before a pack goes into a batch file. The publisher's name is also
-   redacted out of untrusted text, so a feed description that repeats it does
-   not leak it back in. The classifier's `rationale` is never read (it carries
-   the classifier's opinion); only `blurb` is.
+   redacted out of the untrusted text and the editorial note, so a feed
+   description that repeats it does not leak it back in. Names of two or more
+   characters count (NPR, TED and BBC are the brands D7 hides); a name equal to
+   the title is left alone. Matching is by whole token where the name's edge
+   is a letter or digit of a script that spaces its words, so "NPR's" loses
+   "NPR" but "Islamic" keeps "islami"; at a Han, kana, Thai, Lao, Khmer or
+   Myanmar edge (no spaces between words) a bare substring match is used. The
+   classifier's `rationale` is never read (it carries the classifier's
+   opinion); only `blurb` is.
 
    DATAMARKING (D7; spotlighting, Hines et al. 2024). Untrusted show text (feed
    description, episode titles and descriptions, the classifier blurb,
@@ -134,11 +140,30 @@ export function injectionSuspected(text, patterns = INJECTION_PATTERNS) {
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** Removes each publisher name (case-insensitive) from untrusted text. */
+/** The shortest publisher name that is redacted (NPR, TED; two-letter FX, GQ). */
+export const PUBLISHER_MIN_CHARS = 2;
+
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+// Scripts written without spaces between words have no token edge to match on.
+const UNSPACED_CHAR = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]/u;
+const needsBoundary = (ch) => WORD_CHAR.test(ch) && !UNSPACED_CHAR.test(ch);
+
+/** The case-insensitive pattern for one publisher name: whole tokens only at
+    an edge that is a letter or digit of a spaced script, and any whitespace
+    run between its words. */
+export function publisherPattern(name) {
+  const chars = [...name];
+  const body = name.split(/\s+/).map(escapeRegExp).join("\\s+");
+  const before = needsBoundary(chars[0]) ? "(?<![\\p{L}\\p{N}])" : "";
+  const after = needsBoundary(chars[chars.length - 1]) ? "(?![\\p{L}\\p{N}])" : "";
+  return new RegExp(`${before}${body}${after}`, "giu");
+}
+
+/** Removes each publisher name (case-insensitive, whole tokens) from text. */
 export function redactPublisher(text, names) {
   if (typeof text !== "string" || !names.length) return text;
   let out = text;
-  for (const name of names) out = out.replace(new RegExp(escapeRegExp(name), "gi"), PUBLISHER_REDACTION);
+  for (const name of names) out = out.replace(publisherPattern(name), PUBLISHER_REDACTION);
   return out;
 }
 
@@ -404,7 +429,7 @@ export function buildEvidence(ref, sources, { windows = 3, windowSec = 300, seed
   const title = curated?.title ?? breadth?.title ?? null;
 
   const publishers = [breadth?.artist_name, curated?.artist_name]
-    .filter((n) => typeof n === "string" && n.trim().length >= 4 && n.trim().toLowerCase() !== String(title ?? "").trim().toLowerCase())
+    .filter((n) => typeof n === "string" && [...n.trim()].length >= PUBLISHER_MIN_CHARS && n.trim().toLowerCase() !== String(title ?? "").trim().toLowerCase())
     .map((n) => n.trim());
   const untrusted = (text) => redactPublisher(text, publishers);
 
@@ -449,7 +474,7 @@ export function buildEvidence(ref, sources, { windows = 3, windowSec = 300, seed
     typical_duration_min: median(allEpisodes.map((e) => e.duration_min)),
     episode_count_band: episodeCountBand(episodeCount),
     explicit,
-    editorial_note: hasText(curated?.editorial_note) ? curated.editorial_note.trim() : null,
+    editorial_note: hasText(curated?.editorial_note) ? untrusted(curated.editorial_note.trim()) : null,
     blurb: datamark(rawBlurb),
     feed_description: datamark(rawFeed),
     episodes: rawEpisodes.map((e) => ({ title: datamark(e.title), description: datamark(e.description), duration_min: e.duration_min, published_at: e.published_at })),

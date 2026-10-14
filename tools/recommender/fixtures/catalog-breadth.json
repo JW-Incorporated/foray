@@ -164,6 +164,60 @@
       "taxonomy_node_ids": [
         "science"
       ]
+    },
+    {
+      "apple_collection_id": 666,
+      "title": "Quiz Desk",
+      "feed_url": "https://example.invalid/666.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "NPR",
+      "episode_count": 40,
+      "explicit": false,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 5,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": false,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "history"
+      ]
+    },
+    {
+      "apple_collection_id": 777,
+      "title": "Recitations",
+      "feed_url": "https://example.invalid/777.xml",
+      "artwork_url": null,
+      "apple_genre": "History",
+      "apple_genre_ids": [
+        "1487",
+        "26"
+      ],
+      "artist_name": "Islami",
+      "episode_count": 40,
+      "explicit": false,
+      "chart_genre_id": "1487",
+      "chart_genre_name": "History",
+      "chart_rank": 9,
+      "last_charted_at": "2026-10-07T00:26:27.274Z",
+      "in_curated": false,
+      "podcastindex_id": 4242,
+      "tier": "breadth",
+      "region": "us",
+      "harvest_source": "apple-top-charts",
+      "harvested_at": "2026-10-07T00:26:27.274Z",
+      "taxonomy_node_ids": [
+        "history"
+      ]
     }
   ]
 }

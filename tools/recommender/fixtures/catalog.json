@@ -1,7 +1,7 @@
 {
   "version": 1,
   "built_at": "2026-10-14T00:00:00.000Z",
-  "notes": "RV-03 fixture: two curated shows",
+  "notes": "RV-03 fixture: three curated shows",
   "shows": [
     {
       "show_id": "tx-show",
@@ -36,6 +36,24 @@
       "archetype_fit": [],
       "cadence_hint": null,
       "explicit": null,
+      "source": "fixture"
+    },
+    {
+      "show_id": "quiz-desk",
+      "title": "Quiz Desk",
+      "apple_collection_id": 666,
+      "feed_url": "https://example.invalid/666.xml",
+      "artwork_url": null,
+      "apple_genre": null,
+      "episode_count": null,
+      "editorial_note": "NPR's long-running news quiz; the panel riffs on the week.",
+      "taxonomy_node_ids": [
+        "news/daily"
+      ],
+      "label_scope": "general",
+      "archetype_fit": [],
+      "cadence_hint": "weekly",
+      "explicit": false,
       "source": "fixture"
     }
   ]

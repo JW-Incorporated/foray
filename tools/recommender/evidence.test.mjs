@@ -19,6 +19,7 @@ import {
   injectionSuspected,
   loadSources,
   raterPack,
+  redactPublisher,
   undatamark,
 } from "./evidence.mjs";
 
@@ -73,11 +74,20 @@ test("tier: none for title-only", () => {
 
 /* Mutation: spread the raw row into the pack (`return { ...breadth, show_key:
    ...` in buildEvidence) -- the serialised pack carries chart_rank,
-   artist_name and in_curated. */
+   artist_name and in_curated. Also red: the old length floor
+   (`PUBLISHER_MIN_CHARS = 4`, 666's "NPR" leaks), a bare substring match in
+   publisherPattern (drop `before`/`after`; 777's "Islamic" is cut), and an
+   unredacted editorial note (`untrusted(curated.editorial_note...)` ->
+   `curated.editorial_note.trim()`; 666's note keeps "NPR"), a literal space
+   between a name's words (`.join(" ")`; 333's blurb has "Blurb  Network"),
+   and a boundary at a Han edge (`needsBoundary = (ch) => WORD_CHAR.test(ch)`;
+   Chinese has no spaces, so the name inside a sentence survives). */
 test("the pack never carries chart_rank, artist_name or in_curated", () => {
   const s = sources();
   const artists = [...s.breadth.values()].map((r) => r.artist_name);
-  for (const key of ["111", "222", "333", "555", "999", "tx-show"]) {
+  // Whole-token match, written here independently of publisherPattern.
+  const token = (a) => new RegExp(`(?<![\\p{L}\\p{N}])${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}])`, "iu");
+  for (const key of ["111", "222", "333", "555", "999", "tx-show", "666", "777"]) {
     const pack = buildEvidence(key, s);
     for (const k of ["chart_rank", "artist_name", "in_curated"]) assert.ok(pack.stripped.includes(k), `${key}: stripped lists ${k}`);
     const json = JSON.stringify(raterPack(pack));
@@ -87,9 +97,16 @@ test("the pack never carries chart_rank, artist_name or in_curated", () => {
     assert.ok(!json.includes("4242"), `${key}: podcastindex_id value leaked`);
     assert.ok(!json.includes("RATIONALE-SECRET"), `${key}: the classifier rationale leaked`);
     // The publisher name is redacted out of untrusted text too (333's blurb, 111's
-    // episode notes and 222's feed description repeat it).
-    for (const a of artists) assert.ok(!undatamark(json).includes(a), `${key}: publisher "${a}" leaked`);
+    // episode notes and 222's feed description repeat it; 666's three-letter
+    // "NPR" is in its blurb and its curated editorial note).
+    for (const a of artists) assert.ok(!token(a).test(undatamark(json)), `${key}: publisher "${a}" leaked`);
   }
+  // Whole tokens only: 777's publisher "Islami" goes, the word "Islamic" stays.
+  assert.equal(undatamark(buildEvidence("777", s).blurb), "Quran recitation by an Islamic scholar; [publisher] presents.");
+  const p666 = buildEvidence("666", s);
+  assert.equal(undatamark(p666.blurb), "[publisher]'s weekly news quiz, taped before a live audience.");
+  assert.equal(p666.editorial_note, "[publisher]'s long-running news quiz; the panel riffs on the week.");
+  assert.equal(redactPublisher("本节目由声动活泼制作播出。", ["声动活泼"]), "本节目由[publisher]制作播出。");
 });
 
 /* Mutation: datamark editorial_note too (`editorial_note: datamark(...)`). */

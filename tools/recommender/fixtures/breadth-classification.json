@@ -38,7 +38,7 @@
       "source": "fixture",
       "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
       "display_title": "x",
-      "blurb": "Blurb Network presents short   essays on   maps and the people who drew them.",
+      "blurb": "Blurb  Network presents short   essays on   maps and the people who drew them.",
       "display_copy_ok": true,
       "model": "fixture",
       "tier": 1
@@ -52,6 +52,32 @@
       "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
       "display_title": "x",
       "blurb": "Four-episode miniseries on lighthouse keepers.",
+      "display_copy_ok": true,
+      "model": "fixture",
+      "tier": 1
+    },
+    "666": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "fixture",
+      "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
+      "display_title": "x",
+      "blurb": "NPR's weekly news quiz, taped before a live audience.",
+      "display_copy_ok": true,
+      "model": "fixture",
+      "tier": 1
+    },
+    "777": {
+      "topics": [
+        "history"
+      ],
+      "confidence": "high",
+      "source": "fixture",
+      "rationale": "RATIONALE-SECRET the classifier's own opinion of this show.",
+      "display_title": "x",
+      "blurb": "Quran recitation by an Islamic scholar; Islami presents.",
       "display_copy_ok": true,
       "model": "fixture",
       "tier": 1
