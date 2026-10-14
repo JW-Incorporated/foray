@@ -934,6 +934,10 @@ export type ReportEntry = {
    * violations it was asked to fix). Absent when the first spine passed —
    * the common case — and on a resume from a banked spine. */
   spineReasks?: SpineReask[];
+  /** GV-86: the acts (0-based) §4.4 took from the spine with no deepen call,
+   * on a run where FORAY_SPINE_FOLD_DEEPEN was in force for its tier (empty
+   * when every act fell back to its deepen call). Absent otherwise. */
+  deepenFolded?: number[];
   /** F-91: how the topic was chosen — the resolver's pick, every candidate's
    * supply, and whether supply moved the choice (`reason`). On every outcome
    * that got as far as a decision (`no-supply`, `no-tape`, `generated`), so
@@ -1619,6 +1623,7 @@ export async function generateOneCandidate(
       ? { narrationConcurrency: outcome.narration.concurrency, narrationActs: outcome.narration.acts }
       : {}),
     ...(spineReasks.length ? { spineReasks } : {}),
+    ...("deepenFolded" in outcome && outcome.deepenFolded !== undefined ? { deepenFolded: outcome.deepenFolded } : {}),
     ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,
     ...(outcome.outcome === "generated" && gate ? { gate, publishable: outcome.result.validation.ok && gate.ok } : {}),

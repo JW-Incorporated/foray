@@ -23,6 +23,43 @@ import { joinParts, type PromptParts } from "../promptLayout";
  * act", and the number is on the TARGET ACT line in the call part.
  */
 
+/**
+ * GV-86 (W4-05): the rules for the fields §4.4 adds to an act, shared with
+ * the folded spine prompt (prompts/spine.ts), so a spine that writes them
+ * itself on the folded-deepen path is asked in the deepen prompt's own words.
+ * Each rule is its lines without its number: the first line takes "N. " where
+ * a prompt numbers it, the rest keep their three-space indent. The deepen
+ * prompt numbers them 3-6, exactly the bytes it sent before GV-86.
+ *
+ * This one is rule 3, the beat-kind definition.
+ */
+export const DEEPEN_KIND_RULE: readonly string[] = Object.freeze([
+  "Tag every beat `kind`. \"account\" is the DEFAULT and covers most beats: an event, a practice, a",
+  "   measurement, or a mechanism someone could be heard describing — a person explaining how a thing",
+  "   is done is an account, not an argument. Use \"argument\" ONLY for a claim about what something",
+  "   MEANS or what someone SHOULD do, which no recording of an event, a person or a practice could",
+  "   carry. Arguments are narrated, never illustrated with tape, so a beat wrongly tagged \"argument\"",
+  "   silently loses its tape; at most a third of any one slot's beats may be arguments."
+]);
+
+/** Rules 4-6: the act's introduction, its exit, and that both are spoken. */
+export const INTRODUCTION_EXIT_RULES: readonly (readonly string[])[] = Object.freeze([
+  Object.freeze([
+    "Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
+    "   this act does not re-explain what an earlier act already established."
+  ]),
+  Object.freeze([
+    "Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
+    "   later continuity pass reconciles the full cross-act seam, this is just this act's side of it)."
+  ]),
+  Object.freeze([`The introduction and the exit are SPOKEN. ${NARRATOR_STRUCTURE_RULE}`])
+]);
+
+/** One shared rule as a numbered prompt rule: "N. " before its first line. */
+export function numberedRule(n: number, lines: readonly string[]): string[] {
+  return lines.map((line, i) => (i === 0 ? `${n}. ${line}` : line));
+}
+
 /** The deepen prompt's static half: built once, the same bytes for every Foray and act. */
 const DEEPEN_STABLE = [
   "Your job:",
@@ -38,17 +75,10 @@ const DEEPEN_STABLE = [
   "   loses its tape and becomes narration instead. A rewrite that reads better is still a beat with no",
   "   tape. Everything else about a seeded beat is yours to write as normal — `exploration` and `kind`",
   "   below, and the act's own title, thesis, states, introduction and exit — only the claim is frozen.",
-  "3. Tag every beat `kind`. \"account\" is the DEFAULT and covers most beats: an event, a practice, a",
-  "   measurement, or a mechanism someone could be heard describing — a person explaining how a thing",
-  "   is done is an account, not an argument. Use \"argument\" ONLY for a claim about what something",
-  "   MEANS or what someone SHOULD do, which no recording of an event, a person or a practice could",
-  "   carry. Arguments are narrated, never illustrated with tape, so a beat wrongly tagged \"argument\"",
-  "   silently loses its tape; at most a third of any one slot's beats may be arguments.",
-  "4. Write this act's own INTRODUCTION — what a listener hears entering this act. Use the full spine so",
-  "   this act does not re-explain what an earlier act already established.",
-  "5. Write this act's EXIT — the connective tissue into the next act (its own half of the handoff; a",
-  "   later continuity pass reconciles the full cross-act seam, this is just this act's side of it).",
-  `6. The introduction and the exit are SPOKEN. ${NARRATOR_STRUCTURE_RULE}`,
+  ...numberedRule(3, DEEPEN_KIND_RULE),
+  ...numberedRule(4, INTRODUCTION_EXIT_RULES[0]!),
+  ...numberedRule(5, INTRODUCTION_EXIT_RULES[1]!),
+  ...numberedRule(6, INTRODUCTION_EXIT_RULES[2]!),
   "",
   "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
   '{"title": string, "thesis": string, "startState": string, "endState": string, ' +

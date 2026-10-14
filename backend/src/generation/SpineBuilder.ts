@@ -59,6 +59,18 @@ export interface SpineBuildContext {
    * Spine (§4.1's "prompts are discarded").
    */
   listenerPrompt?: string;
+  /**
+   * GV-86 (W4-05): set (true) only when FORAY_SPINE_FOLD_DEEPEN is in force
+   * for this run's tier. A builder that honours it asks the spine reply for
+   * each act's introduction and exit and each beat's kind (prompts/spine.ts,
+   * in the deepen prompt's own rules) and parses them through
+   * (`RawSpineFoldDeepenSchema`), so `deepenActs.ts` can take the act as
+   * deepened without a deepen call. A builder that ignores it returns a
+   * classic spine, and every act then costs its usual deepen call. Absent on
+   * every classic call, which is then unchanged. CALL STACK ONLY, like
+   * `listenerPrompt`.
+   */
+  foldDeepen?: boolean;
 }
 
 /** F-86: what a re-ask carries — see `SpineBuildContext.revision`. */
