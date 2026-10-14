@@ -194,6 +194,37 @@ const jevBudgetSchema = z
   .max(MAX_JEV_BUDGET_MS, { message: "FORAY_JEV_BUDGET_MS" });
 
 /**
+ * GV-90 (docs/roadmap/generation-v2.md, R1-19): per-Foray UNIT cap
+ * overrides for cost/unitBudget.ts. Unset means the tier's default cap
+ * (DEFAULT_UNIT_CAPS there); a set value replaces that unit's cap for every
+ * tier. Read through the same bounded rule as the budgets above: a present
+ * but malformed value fails startup naming only the variable. The maxima are
+ * typo guards, not targets (a day of seconds; 100,000 Jev calls).
+ */
+const MAX_UNIT_CAP_SECONDS = 86_400;
+const MAX_UNIT_CAP_JEV_CALLS = 100_000;
+
+function unitSecondsSchema(name: string): z.ZodNumber {
+  return z
+    .number({ invalid_type_error: name })
+    .finite({ message: name })
+    .nonnegative({ message: name })
+    .max(MAX_UNIT_CAP_SECONDS, { message: name });
+}
+
+const jevCallsSchema = z
+  .number({ invalid_type_error: "FORAY_JEV_CALLS_PER_FORAY" })
+  .int({ message: "FORAY_JEV_CALLS_PER_FORAY" })
+  .nonnegative({ message: "FORAY_JEV_CALLS_PER_FORAY" })
+  .max(MAX_UNIT_CAP_JEV_CALLS, { message: "FORAY_JEV_CALLS_PER_FORAY" });
+
+/** `readBoundedNumber` for a cap with no fallback: unset is `undefined`. */
+function readOptionalBoundedNumber(name: string, schema: z.ZodNumber): number | undefined {
+  if (process.env[name] === undefined) return undefined;
+  return readBoundedNumber(name, NaN, schema);
+}
+
+/**
  * The Jev API key: `JEV_API_KEY`, else the trimmed contents of the file named
  * by `JEV_KEY_FILE` (how the Spark keeps it, LM-22). Read at call time, so a
  * key added after startup is seen. An unset, empty or unreadable source is
@@ -241,6 +272,13 @@ export interface Env {
   jevModel: string | undefined;
   /** GV-20: FORAY_JEV_BUDGET_MS, the total time one Jev ask may take. */
   jevBudgetMs: number;
+  /** GV-90: FORAY_SPARK_SECONDS_PER_FORAY, the Spark-seconds cap for every
+   * tier; undefined keeps the tier defaults (cost/unitBudget.ts). */
+  sparkSecondsPerForay: number | undefined;
+  /** GV-90: FORAY_SECOND_BOX_SECONDS_PER_FORAY, likewise for the second box. */
+  secondBoxSecondsPerForay: number | undefined;
+  /** GV-90: FORAY_JEV_CALLS_PER_FORAY, likewise for Jev asks (an integer). */
+  jevCallsPerForay: number | undefined;
   /** true when no ANTHROPIC_API_KEY is configured -> StubEnricher must be used */
   readonly anthropicDryRun: boolean;
   /** true when no Podcast Index credentials configured -> client runs dry-run */
@@ -261,6 +299,9 @@ export const env: Env = {
   jevBaseUrl: readString("FORAY_JEV_BASE_URL"),
   jevModel: readString("FORAY_JEV_MODEL"),
   jevBudgetMs: readBoundedNumber("FORAY_JEV_BUDGET_MS", DEFAULT_JEV_BUDGET_MS, jevBudgetSchema),
+  sparkSecondsPerForay: readOptionalBoundedNumber("FORAY_SPARK_SECONDS_PER_FORAY", unitSecondsSchema("FORAY_SPARK_SECONDS_PER_FORAY")),
+  secondBoxSecondsPerForay: readOptionalBoundedNumber("FORAY_SECOND_BOX_SECONDS_PER_FORAY", unitSecondsSchema("FORAY_SECOND_BOX_SECONDS_PER_FORAY")),
+  jevCallsPerForay: readOptionalBoundedNumber("FORAY_JEV_CALLS_PER_FORAY", jevCallsSchema),
   get anthropicDryRun(): boolean {
     return this.anthropicApiKey === undefined;
   },

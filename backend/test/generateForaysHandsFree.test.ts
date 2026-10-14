@@ -28,6 +28,12 @@ import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { BudgetStopError, BudgetExceededError, EpisodeBudgetExceededError } from "../src/cost/budgetGuard";
 import { currentCallContext, currentRunLog, RUNLOG_SCHEMA, type RunLog, type StageSpan } from "../src/generation/runLog";
 import { spanMsOf } from "../src/generation/stageTiming";
+import { DEFAULT_UNIT_CAPS, UnitBudgetExceededError, UnitBudgetStopError, defaultUnitBudgetGuard } from "../src/cost/unitBudget";
+import { defaultBudgetGuard } from "../src/cost/budgetGuard";
+import { estimateJevUsd, meteredJevClient } from "../src/generation/jevClient";
+import { FakeJevClient, jevFixtures, noulAnswer } from "./helpers/fakeJevClient";
+import type { DeepenActBuilder } from "../src/generation/DeepenActBuilder";
+import { countAnthropicCall } from "../src/generation/usageTracking";
 
 /**
  * G-30 (docs/curation/foray-to-spec-roadmap.md; latency brief §4 manual
@@ -582,5 +588,89 @@ describe("(e) GV-01: elapsed time, driver time, tier, prompt id and the per-atte
     });
     expect(result.entry?.runLog).toBeUndefined();
     expect(fs.existsSync(path.join(dry, "runlogs"))).toBe(false);
+  });
+});
+
+describe("(f) GV-90: per-Foray unit caps and the report's unit spend and Jev dollars", () => {
+  it("classifyFailure reads a unit cap stop as a budget stop (not resumable)", () => {
+    /* MUTATION THAT KILLS THIS: drop the UnitBudgetStopError line from
+       classifyFailure — the stop is `fatal` and lands as an error row. Ran
+       it — red. */
+    const stop = new UnitBudgetStopError("deepen", new UnitBudgetExceededError("s", "sparkSeconds", 600, 1000, 600));
+    expect(classifyFailure(stop)).toEqual({ kind: "budget-stop", reason: stop.message });
+  });
+
+  it("a metered deepen past its Spark-seconds cap aborts as budget-stop, and the row carries unitSpend and the Jev dollars", async () => {
+    /* MUTATION THAT KILLS THIS: leave `unitSpend` (or `usage`) off the row
+       in finishEntry. Ran both — red. A second: sum every provider's events
+       in jevCostUsd (the $0 stub events would not move it, so the test seeds
+       a non-Jev event with a price under the same session). Ran it — red. */
+    const fx = jevFixtures();
+    const q = fx.questions.slice(0, 1);
+    let asked = false;
+    let session: string | undefined;
+    const deepenBuilder: DeepenActBuilder = {
+      providerName: "metered-deepen",
+      deepenAct: async (_spine, _act, _i, ctx) => {
+        session = ctx.sessionId;
+        if (!asked) {
+          asked = true;
+          /* One Jev ask under the Foray's session: one jevCalls unit and its
+             dollar estimate on the default guards. */
+          const jev = meteredJevClient(new FakeJevClient({ byId: { [q[0]!.id]: noulAnswer(0.9) } }), {
+            guard: defaultBudgetGuard,
+            userId: ctx.userId,
+            ...(ctx.sessionId !== undefined ? { sessionId: ctx.sessionId } : {})
+          });
+          await jev.ask(fx.state, q, { purpose: "gv90-probe" });
+          await defaultBudgetGuard.checkAndRecord({ userId: ctx.userId, operation: "other", provider: "not-jev", estimatedUsd: 0.5, ...(ctx.sessionId !== undefined ? { sessionId: ctx.sessionId } : {}) });
+        }
+        /* The tier comes off the call context (medium, from baseArgs). */
+        return defaultUnitBudgetGuard.metered({ sessionId: ctx.sessionId ?? "none", unit: "sparkSeconds", estimate: 1000 }, async () => {
+          throw new Error("unreachable: the reservation is refused first");
+        });
+      }
+    };
+    const { sleep, waits } = recordingSleep();
+    const result = await generateOneCandidate({ prompt: "gv90 a unit cap stop in deepen", topic: "food/grilling-bbq" }, baseArgs(dir), {
+      cueProvider,
+      runPipeline: stubPipeline(FAKE_FINALIZE, { deepenBuilder }),
+      sleep
+    });
+    expect(waits).toEqual([]);
+    expect(result.entry?.outcome).toBe("aborted");
+    expect(result.entry?.abort?.reason).toBe("budget-stop");
+    expect(result.entry?.detail).toMatch(/stage "deepen"/);
+    expect(result.entry?.detail).toMatch(/FORAY_SPARK_SECONDS_PER_FORAY/);
+    /* A unit stop is per-Foray: the batch goes on. */
+    expect(result.runBudgetSpent).toBeUndefined();
+    expect(session).toBeDefined();
+    expect(result.entry?.unitSpend).toEqual({ sparkSeconds: 0, secondBoxSeconds: 0, jevCalls: 1, caps: DEFAULT_UNIT_CAPS.medium });
+    expect(result.entry?.usage?.costUsd).toBeCloseTo(estimateJevUsd(fx.state, q), 15);
+    expect(result.entry?.usage?.costUsd).toBeGreaterThan(0);
+    defaultUnitBudgetGuard.reset(session);
+  }, 60_000);
+
+  it("a row with no metered call carries zero unit spend at its tier's caps and $0 of Jev; a row that sent Anthropic requests carries no Jev-only usage", async () => {
+    const result = await generateOneCandidate({ prompt: "gv90 nothing metered", duration: "short" }, baseArgs(dir), {
+      cueProvider,
+      runPipeline: flakyPipeline([]).fn
+    });
+    expect(result.entry?.outcome).toBe("generated");
+    expect(result.entry?.unitSpend).toEqual({ sparkSeconds: 0, secondBoxSeconds: 0, jevCalls: 0, caps: DEFAULT_UNIT_CAPS.short });
+    expect(result.entry?.usage).toEqual({ costUsd: 0 });
+
+    /* MUTATION THAT KILLS THIS: add `usage` on every row, Anthropic or not —
+       a Jev-only $0 would stand for a run whose dollars went to Anthropic. */
+    const anthropic = await generateOneCandidate({ prompt: "gv90 an anthropic row" }, baseArgs(dir), {
+      cueProvider,
+      runPipeline: async () => {
+        countAnthropicCall();
+        return generatedOutcome("gv90-anthropic");
+      }
+    });
+    expect(anthropic.entry?.anthropicCalls).toBe(1);
+    expect(anthropic.entry?.usage).toBeUndefined();
+    expect(anthropic.entry?.unitSpend?.caps).toEqual(DEFAULT_UNIT_CAPS.medium);
   });
 });
