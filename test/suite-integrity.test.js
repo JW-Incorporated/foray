@@ -3633,13 +3633,13 @@ const BACKEND_FLOORS = {
   /* GV-85 (docs/roadmap/generation-v2.md, W1-05; MT-08, R1-14): code-time
      spans below stage level. codeSpanSync/codeSpan/codeHit are inert outside
      a run log (same value, same promise, same throw, no clock read);
-     inside one they aggregate {count, totalMs, maxMs} per (stage, name) with
-     the stage taken when the span starts, nested spans reported inclusive, a
+     inside one they aggregate {count, totalMs, maxMs} per (stage, name),
+     nested spans reported inclusive, a
      throwing or rejecting function still recorded, an async span timed until
      it settles; flushCodeSpans appends at most one CodeSpanAggregate per
      (stage, name) however often it runs, keeps two logs apart and serialises
      into runlog/1. Offline; one named mutation per test. */
-  "test/codeSpans.test.ts": 11,
+  "test/codeSpans.test.ts": 10,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

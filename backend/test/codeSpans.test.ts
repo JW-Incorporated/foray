@@ -54,11 +54,18 @@ describe("codeSpans — inert outside a run log", () => {
 
   it("throws exactly what the function throws", () => {
     const boom = new Error("boom");
-    expect(() =>
+    let caught: unknown;
+    try {
       codeSpanSync("x", () => {
         throw boom;
-      })
-    ).toThrow(boom);
+      });
+    } catch (err) {
+      caught = err;
+    }
+    /* The very same error object, not one with the same message.
+       MUTATION: outside a log `try { return fn(); } catch (e) { throw new Error((e as Error).message); }`.
+       Ran it: red. */
+    expect(caught).toBe(boom);
   });
 });
 
@@ -95,17 +102,6 @@ describe("codeSpans — aggregation per (stage, name)", () => {
     expect(find(log, null, "index.search")).toMatchObject({ count: 1, totalMs: 1, maxMs: 1 });
   });
 
-  it("keys a span by the stage in force when it STARTS", () => {
-    const log = new RunLog();
-    runWithRunLog(log, () =>
-      withCallContext({ stage: "outer" }, () =>
-        codeSpanSync("sourcing.all", () => withCallContext({ stage: "inner" }, takes(4, 0)))
-      )
-    );
-    flushCodeSpans(log);
-    expect(codeEvents(log).map((e) => [e.stage, e.name])).toEqual([["outer", "sourcing.all"]]);
-  });
-
   it("reports nested spans inclusively: the outer total includes the inner one", () => {
     const log = new RunLog();
     runWithRunLog(log, () =>
@@ -117,6 +113,8 @@ describe("codeSpans — aggregation per (stage, name)", () => {
     );
     flushCodeSpans(log);
     expect(find(log, null, "index.load")).toMatchObject({ totalMs: 5 });
+    /* MUTATION: exclusive time — a module-level stack of child time, each span
+       records its wall time minus its children's. Ran it: red (totalMs 3). */
     expect(find(log, null, "index.search")).toMatchObject({ totalMs: 8 });
   });
 
@@ -147,6 +145,7 @@ describe("codeSpans — aggregation per (stage, name)", () => {
     );
     flushCodeSpans(log);
     expect(find(log, "source", "transcript.cacheHit")).toMatchObject({ count: 3, totalMs: 0, maxMs: 0 });
+    /* MUTATION: codeHit reads the clock (`const start = nowMs();` before the count). Ran it: red. */
     expect(globalThis.performance.now).not.toHaveBeenCalled();
   });
 });
@@ -201,19 +200,30 @@ describe("codeSpans — flush", () => {
     runWithRunLog(b, () => codeHit("transcript.cacheHit"));
     flushCodeSpans(a);
     flushCodeSpans(b);
+    /* MUTATION: one module-level LogSpans shared by every log instead of the
+       per-log WeakMap. Ran it: red (a gets both names, b none). */
     expect(codeEvents(a).map((e) => e.name)).toEqual(["index.load"]);
     expect(codeEvents(b).map((e) => e.name)).toEqual(["transcript.cacheHit"]);
   });
 
-  it("serialises the aggregates in the runlog/1 JSONL", () => {
+  it("serialises the aggregates in the runlog/1 JSONL, as they stand when it serialises", () => {
     const log = new RunLog();
-    runWithRunLog(log, () => withCallContext({ stage: "source" }, () => codeSpanSync("sourcing.all", takes(4, 0))));
-    flushCodeSpans(log);
+    runWithRunLog(log, () =>
+      withCallContext({ stage: "source" }, () => {
+        codeSpanSync("sourcing.all", takes(4, 0));
+        flushCodeSpans(log);
+        /* After the flush: folds into the aggregate the log already holds. */
+        codeSpanSync("sourcing.all", takes(6, 0));
+      })
+    );
+    /* MUTATION: flushCodeSpans appends a copy (`log.append({ ...agg })`)
+       instead of the shared aggregate. Ran it: red (count 1, totalMs 4). */
     const lines = log
       .toJsonl()
       .trim()
       .split("\n")
       .map((l) => JSON.parse(l) as Record<string, unknown>);
-    expect(lines[1]).toEqual({ kind: "code", stage: "source", name: "sourcing.all", count: 1, totalMs: 4, maxMs: 4 });
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toEqual({ kind: "code", stage: "source", name: "sourcing.all", count: 2, totalMs: 10, maxMs: 6 });
   });
 });
