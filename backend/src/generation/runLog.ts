@@ -90,13 +90,17 @@ export interface ParseEvent {
 }
 
 /** Code time inside a stage, aggregated per (stage, name) rather than one
- * event per call, so a hot loop does not flood the log. */
+ * event per call, so a hot loop does not flood the log. `totalMs` and `maxMs`
+ * are inclusive (a span's children are in its time); `selfMs` is exclusive
+ * (the span's time minus its direct children's), so `selfMs` sums over a
+ * stage without counting nested time twice. codeSpans.ts has the rules. */
 export interface CodeSpanAggregate {
   kind: "code";
   stage: string | null;
   name: string;
   count: number;
   totalMs: number;
+  selfMs: number;
   maxMs: number;
 }
 

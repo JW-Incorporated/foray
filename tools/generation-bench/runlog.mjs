@@ -225,6 +225,10 @@ const isKind = (kind) => (e) => e && e.kind === kind;
  *   queueP50Ms, ttftP50Ms, cachedShare                                (MT-04)
  *   prose {tokPerSec, basis: "ttft"|"e2e"} over the writer's calls    (MT-12)
  *   codeMsByStage, codeMs                                             (MT-08)
+ *                                — exclusive code time: the sum of each code
+ *                                  aggregate's selfMs (totalMs on a runlog
+ *                                  that predates selfMs), never the nested
+ *                                  inclusive totals
  *   renderRealtime, firstRenderMs                                     (MT-09)
  *   unitSpend {unit: amount}, unitReserved {unit: amount}             (MT-10)
  */
@@ -301,11 +305,16 @@ export function summarizeRunLog(events) {
         ? { tokPerSec: writerRates.e2eTokPerSec, basis: "e2e" }
         : { tokPerSec: null, basis: null };
 
-  /* MT-08: code time per stage. */
+  /* MT-08: code time per stage, as the sum of each aggregate's EXCLUSIVE
+     time. Code spans nest (sourcing.all > sourcing.tier2 > index.search >
+     index.load > transcript.read) and `totalMs` is inclusive, so summing it
+     would count nested time once per level. `selfMs` (the span's time minus
+     its direct children's, backend codeSpans.ts) sums without overlap. A
+     runlog written before selfMs existed falls back to `totalMs`. */
   const code = list.filter(isKind("code"));
   const codeMsByStage = {};
   for (const e of code) {
-    const ms = num(e.totalMs);
+    const ms = num(e.selfMs) ?? num(e.totalMs);
     if (ms === null) continue;
     const key = typeof e.stage === "string" && e.stage !== "" ? e.stage : UNSTAGED;
     codeMsByStage[key] = (codeMsByStage[key] ?? 0) + ms;

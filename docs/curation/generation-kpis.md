@@ -164,7 +164,7 @@ column) and `prose_basis`.
 | `ttftP50` | — | — | **detail, MT-04.** Median seconds to the first token, over the calls that report it |
 | `cached` | — | — | **detail, MT-04.** Cached prompt tokens ÷ prompt tokens, over the calls that report both |
 | `proseTps` | — | — | **detail, MT-12.** The writer's output tokens per second of decode (call time minus TTFT). When no writer call reports a TTFT the cell is the end-to-end rate, printed with `e2e` after it; the two are never mixed |
-| `code s` | — | — | **detail, MT-08.** Seconds of code time inside the stages (`CodeSpanAggregate` events; none are emitted until GV-85) |
+| `code s` | — | — | **detail, MT-08.** Seconds of code time inside the stages (`CodeSpanAggregate` events; none are emitted until GV-85). Spans nest, so the column sums each aggregate's exclusive `selfMs` (its time minus its direct children's), never the inclusive `totalMs`; a runlog without `selfMs` falls back to `totalMs` |
 | `renderX` | — | — | **detail, MT-09.** Seconds of narration audio rendered per second of rendering (`RenderSpan` events) |
 | `spark s` | — | — | **detail, MT-10.** Spark seconds charged: reconciled `sparkSeconds` meter events. A reservation is a hold, not a charge (meters land with GV-90) |
 
