@@ -3580,6 +3580,16 @@ const BACKEND_FLOORS = {
      Carry beat's quote passes gateSelectedClaims. Offline; one named
      mutation per test. */
   "test/DossierExternalResearcher.test.ts": 17,
+  /* GV-123 (docs/roadmap/generation-v2.md, W4-01 items 4-5; R1-01, GP-03,
+     MT-06): the critical-path probe. serialCallChain on serial, parallel,
+     diamond and 1 ms-overlap intervals, the strict callsStartedBefore, and
+     agreement with runlog.mjs seriesDepth on fixtures/runlog-synth;
+     callLog.ts instrumentDeps records one span per builder-method call
+     (writeActStream as one span, a throw still recorded, act from the run
+     context first) and imports no file system; the stub short-tier chain
+     before onActReady(act 0) pinned at 8 calls through recordingDeps' virtual
+     clock, deterministic across runs. Offline; one named mutation per test. */
+  "test/criticalPath.test.ts": 13,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
