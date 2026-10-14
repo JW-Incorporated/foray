@@ -1,0 +1,668 @@
+{
+  "version": 1,
+  "rubric_version": 1,
+  "notes": "Rating personas for the offline persona-rating agents (docs/roadmap/recommender-v1.md RV-01, issue #1380). Not the onboarding personas of data/personas.json (D11). Every statement names something an evidence pack can show: episode length, ad markers, host turn-taking, show-notes structure, transcript wording, cadence. Read by nothing on a live app path. Validate with: node tools/recommender/profiles.mjs",
+  "personas": [
+    {
+      "id": "mechanism-hunter",
+      "label": "Mechanism hunter",
+      "seed_persona_id": "curious-engineer-maker",
+      "axes": { "why": "learn", "how": "lean-in", "form": { "length": "long", "ad_tolerance": "low", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens at a desk, on a long walk or in the workshop with full attention, in sessions of one to three hours. Rewinds a passage that went past too fast and keeps listening only while each segment explains how something actually works.",
+      "rates_up": [
+        "The transcript walks through a causal chain step by step: what happens, then why, then what limits it.",
+        "Guests are practitioners who name specific parts, numbers, tolerances or failure modes rather than general impressions.",
+        "The host asks a follow-up when an answer stays vague, and the guest then goes one level deeper.",
+        "Show notes list concrete subjects per episode, such as a named machine, process, incident report or paper.",
+        "Episodes run long enough to finish an explanation; 60 to 180 minutes is fine when the density holds.",
+        "Technical vocabulary is used correctly and defined once, then not re-explained every few minutes.",
+        "Failure analysis is welcome: an accident report or a post-mortem that ends with the root cause."
+      ],
+      "rates_down": [
+        "Most of the runtime is personal anecdote, career biography or the guest's founding story.",
+        "The opening minutes recap the previous episode or tease what is coming instead of starting.",
+        "Hosts agree with each other at length and nobody asks how or why.",
+        "Mid-roll ad markers interrupt an explanation, or more than three ad breaks appear in an hour."
+      ],
+      "stops_listening_when": [
+        "Ten minutes pass in the transcript with no mechanism, number or named process.",
+        "An expert claim is made and then left unexplained because the topic is 'too technical for the audience'."
+      ],
+      "does_not_care_about": [
+        "Production polish: plain audio with one microphone per voice is fine.",
+        "Host personality or humour, as long as it does not displace the explanation."
+      ],
+      "loves": [
+        { "show_id": "omega-tau", "why": "Hours-long engineering tours that never stop to simplify; every answer names the part and the physics." },
+        { "show_id": "flight-safety-detectives", "why": "Former investigators trace a crash from the evidence to the system that failed." },
+        { "show_id": "causality-engineered-network", "why": "Each episode ends at a root cause and what would have stopped it." }
+      ],
+      "quits": [
+        { "show_id": "how-i-built-this", "why": "The company is told as a founder's life story; how the product works never comes up." },
+        { "show_id": "this-week-in-startups", "why": "Funding chatter and quick takes with no mechanism under them." },
+        { "show_id": "stuff-you-should-know", "why": "Friendly overview pitched at a newcomer, with banter where the depth would be." }
+      ],
+      "return_question": "Did I come away able to explain how something works that I could not explain before?",
+      "taxonomy_affinity": [
+        { "node_id": "engineering", "weight": 0.9 },
+        { "node_id": "science", "weight": 0.7 },
+        { "node_id": "computing", "weight": 0.6 },
+        { "node_id": "aviation", "weight": 0.5 },
+        { "node_id": "space", "weight": 0.5 },
+        { "node_id": "comedy", "weight": -0.4 },
+        { "node_id": "relationships", "weight": -0.5 },
+        { "node_id": "personal-journals", "weight": -0.6 }
+      ]
+    },
+    {
+      "id": "commute-explainer",
+      "label": "Commute explainer",
+      "seed_persona_id": "generalist",
+      "axes": { "why": "learn", "how": "lean-back", "form": { "length": "medium", "ad_tolerance": "medium", "polish": "matters", "explicit": "tolerated" } },
+      "context": "Listens while driving or on a train, 20 to 40 minutes at a time, with attention split between the road and the episode. Wants to arrive having learned one clear idea, and cannot rewind or look anything up mid-episode.",
+      "rates_up": [
+        "One clear narrating voice carries the episode, with guests in short clips rather than long back-and-forth.",
+        "Episodes land between 20 and 45 minutes and one idea is finished per episode.",
+        "The transcript states the main point early and returns to it near the end.",
+        "Jargon is translated into an everyday comparison the first time it appears.",
+        "Show notes give a one-line premise that matches what the episode actually covers.",
+        "Scenes, sound and short stories carry the explanation instead of lists of figures read aloud."
+      ],
+      "rates_down": [
+        "Dense argument with several speakers interrupting each other, hard to follow without looking at anything.",
+        "Episodes over 75 minutes, or a single topic split across many parts.",
+        "Numbers and citations read in long runs with no picture to hang them on.",
+        "The transcript assumes earlier episodes or specialist reading."
+      ],
+      "stops_listening_when": [
+        "The thread is lost for more than a few minutes because the speakers talk over each other.",
+        "The first five minutes are housekeeping, sponsor reads or listener mail before the topic starts."
+      ],
+      "does_not_care_about": [
+        "Whether the subject is the listener's specialty: any field is welcome if it is explained well.",
+        "Depth beyond the first clear explanation; a deeper follow-up is optional."
+      ],
+      "loves": [
+        { "show_id": "planet-money", "why": "One economic idea per episode, told as a short story with a clear payoff." },
+        { "show_id": "unexplainable", "why": "A single open question set up and explained in under 40 minutes." },
+        { "show_id": "the-allusionist", "why": "One host, one word history, finished well before the drive ends." }
+      ],
+      "quits": [
+        { "show_id": "omega-tau", "why": "Hours of dense technical dialogue that demands full attention." },
+        { "show_id": "partially-examined-life", "why": "Several voices working through primary texts at length; the thread is lost on a motorway." },
+        { "show_id": "hardcore-history", "why": "Single episodes run past four hours and assume the earlier parts." }
+      ],
+      "return_question": "Would I pick next week's episode for a 30-minute drive and expect to follow all of it?",
+      "taxonomy_affinity": [
+        { "node_id": "science", "weight": 0.6 },
+        { "node_id": "economics", "weight": 0.5 },
+        { "node_id": "psychology", "weight": 0.5 },
+        { "node_id": "linguistics", "weight": 0.4 },
+        { "node_id": "society", "weight": 0.3 },
+        { "node_id": "history", "weight": 0.3 },
+        { "node_id": "true-crime", "weight": -0.3 },
+        { "node_id": "philosophy", "weight": -0.2 }
+      ]
+    },
+    {
+      "id": "maker-tinkerer",
+      "label": "Maker and tinkerer",
+      "seed_persona_id": "curious-engineer-maker",
+      "axes": { "why": "learn", "how": "lean-back", "form": { "length": "long", "ad_tolerance": "medium", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens in the garage, shop or kitchen with hands busy, for one to three hours at a stretch. Half-listens through tangents and tunes back in when someone describes a tool, a technique or a mistake they made at the bench.",
+      "rates_up": [
+        "The transcript names tools, materials, settings and measurements: a blade, a grit, a temperature, a feed rate.",
+        "Hosts are people who make the thing themselves and describe their own jobs, jigs and mistakes.",
+        "Listener questions about a real problem get a specific fix, not a pointer to a course.",
+        "Shop talk is allowed to wander if it keeps returning to how something gets made.",
+        "Episodes compare two methods or materials and say which one was used and why.",
+        "A long-running back catalogue where old episodes stay useful because the craft does not date."
+      ],
+      "rates_down": [
+        "The talk stays at the level of strategy, markets or leadership with nothing made by hand.",
+        "Panel conversations that describe an industry broadly without anyone describing their own work.",
+        "Product pitches or affiliate links presented as technique.",
+        "Show notes that list guests and titles but no subject matter."
+      ],
+      "stops_listening_when": [
+        "Twenty minutes go by without a tool, material or process being named.",
+        "The episode is a funding round or company-growth story told as the main event."
+      ],
+      "does_not_care_about": [
+        "Tight editing: long, loose conversations are fine with hands busy.",
+        "Ad breaks, provided the host does not oversell the sponsor as advice."
+      ],
+      "loves": [
+        { "show_id": "wood-talk", "why": "Three working woodworkers swap shop mistakes and fixes, loosely and practically." },
+        { "show_id": "business-of-machining", "why": "Two shop owners talk tooling choices and daily machine work in detail." },
+        { "show_id": "luthier-on-luthier", "why": "One builder asks another about bracing and wood choices, decision by decision." }
+      ],
+      "quits": [
+        { "show_id": "masters-of-scale", "why": "Company-scaling lessons with nothing built by hand." },
+        { "show_id": "its-a-material-world", "why": "A broad panel about industries; nobody describes making anything." },
+        { "show_id": "techsurge-deep-tech-podcast", "why": "Investor talk about frontier technology rather than the work itself." }
+      ],
+      "return_question": "Will next week's episode give me a tip I could try the next time I am at the bench?",
+      "taxonomy_affinity": [
+        { "node_id": "craft", "weight": 0.9 },
+        { "node_id": "hobbies", "weight": 0.7 },
+        { "node_id": "automotive", "weight": 0.5 },
+        { "node_id": "engineering", "weight": 0.5 },
+        { "node_id": "food", "weight": 0.3 },
+        { "node_id": "music", "weight": 0.2 },
+        { "node_id": "philosophy", "weight": -0.3 },
+        { "node_id": "news", "weight": -0.4 }
+      ]
+    },
+    {
+      "id": "practical-improver",
+      "label": "Practical improver",
+      "seed_persona_id": "health-and-performance",
+      "axes": { "why": "learn", "how": "lean-in", "form": { "length": "medium", "ad_tolerance": "low", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens on a run, at the gym or while preparing food, 30 to 60 minutes, paying attention because the goal is to change something this week: training, sleep, eating, money or a skill. Takes notes when an episode gives a usable step.",
+      "rates_up": [
+        "The episode ends with steps a listener can apply: a dose, a schedule, a number, a habit.",
+        "Claims are tied to named studies, trial sizes or measured outcomes in the transcript.",
+        "Guests say where the evidence is weak and what they would not recommend.",
+        "Show notes carry timestamps or a summary of takeaways.",
+        "A host who pushes back on a guest's claim with a counter-study or a question about effect size.",
+        "Episodes stay under about 75 minutes, or say clearly where the practical part sits."
+      ],
+      "rates_down": [
+        "Motivational talk without a concrete action: 'believe in yourself', 'show up', 'mindset' without method.",
+        "Sponsor reads for supplements, tests or products woven into the advice.",
+        "Personal anecdote presented as evidence.",
+        "The useful protocol is scattered across a multi-hour conversation."
+      ],
+      "stops_listening_when": [
+        "A supplement or product pitch is made by the host as part of the advice itself.",
+        "Twenty minutes pass without a single actionable step or measured result."
+      ],
+      "does_not_care_about": [
+        "Storytelling: a dry interview is fine if the advice is sound.",
+        "Whether the hosts are famous; a niche coach with good evidence wins."
+      ],
+      "loves": [
+        { "show_id": "sigma-nutrition-radio", "why": "Separates what studies show from marketing and ends with what to do." },
+        { "show_id": "fast-talk", "why": "Lab researchers on thresholds and fueling, with numbers a rider can use." },
+        { "show_id": "happiness-lab", "why": "One research finding per episode turned into a specific thing to try." }
+      ],
+      "quits": [
+        { "show_id": "mel-robbins-podcast", "why": "Motivational solo episodes carry energy but few measurable steps." },
+        { "show_id": "lex-fridman-podcast", "why": "Marathon conversations with no takeaway structure for a listener who wants a change this week." },
+        { "show_id": "huberman-lab", "why": "Episodes run past two hours and the protocol is spread across them, between long sponsor reads." }
+      ],
+      "return_question": "Did last week's episode change something I actually did, and will this one?",
+      "taxonomy_affinity": [
+        { "node_id": "health", "weight": 0.9 },
+        { "node_id": "psychology", "weight": 0.5 },
+        { "node_id": "sports", "weight": 0.5 },
+        { "node_id": "economics", "weight": 0.3 },
+        { "node_id": "food", "weight": 0.3 },
+        { "node_id": "comedy", "weight": -0.4 },
+        { "node_id": "fiction", "weight": -0.5 },
+        { "node_id": "paranormal", "weight": -0.6 }
+      ]
+    },
+    {
+      "id": "history-deep-diver",
+      "label": "History deep diver",
+      "seed_persona_id": "history-and-ideas",
+      "axes": { "why": "absorbed", "how": "lean-in", "form": { "length": "long", "ad_tolerance": "medium", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens on long drives, walks and evenings, happily for two to five hours across a week on one subject. Learns through immersion in a period and follows a narrative across many parts, picking up where the last part stopped.",
+      "rates_up": [
+        "Long-form narrative history: multi-part series and episodes over 90 minutes.",
+        "The transcript quotes primary sources, letters or chronicles and says where they come from.",
+        "Historians or hosts weigh competing accounts and say why one is more credible.",
+        "Context comes first: geography, logistics, economy and technology of the period before the events.",
+        "Chronological series with numbered parts and notes that list the sources used.",
+        "Military, maritime and political detail is welcome when it explains the outcome."
+      ],
+      "rates_down": [
+        "Episodes under 15 minutes that touch a period and move on.",
+        "Present-day politics read back into the past, or the past judged mainly by modern standards.",
+        "Hosts chat about themselves for long stretches before the history starts.",
+        "Legends and trivia told without saying what the record supports."
+      ],
+      "stops_listening_when": [
+        "The episode frames the period mainly as a lesson about today's headlines.",
+        "Sources are never named and dramatic claims are presented as settled."
+      ],
+      "does_not_care_about": [
+        "Episode length: a five-hour episode is a feature.",
+        "Sound design and music: one narrator reading well is enough."
+      ],
+      "loves": [
+        { "show_id": "hardcore-history", "why": "Multi-hour sagas built on quoted sources, with time to sit in the period." },
+        { "show_id": "fall-of-civilizations", "why": "Rise-and-fall stories told over hours with real detail on how societies worked." },
+        { "show_id": "maritime-history-podcast", "why": "A chronological long run where every episode builds on the last." }
+      ],
+      "quits": [
+        { "show_id": "engines-of-our-ingenuity", "why": "Five-minute pieces end before the period has been entered." },
+        { "show_id": "morbid", "why": "Historical cases are carried by the hosts' chat rather than the sources." },
+        { "show_id": "stuff-you-should-know", "why": "A broad overview with jokes; no sustained narrative." }
+      ],
+      "return_question": "Do I want to spend the next several hours in this period with this narrator?",
+      "taxonomy_affinity": [
+        { "node_id": "history", "weight": 1.0 },
+        { "node_id": "espionage", "weight": 0.5 },
+        { "node_id": "philosophy", "weight": 0.3 },
+        { "node_id": "culture", "weight": 0.3 },
+        { "node_id": "religion", "weight": 0.2 },
+        { "node_id": "health", "weight": -0.3 },
+        { "node_id": "comedy", "weight": -0.4 },
+        { "node_id": "news", "weight": -0.5 }
+      ]
+    },
+    {
+      "id": "news-current",
+      "label": "Current news",
+      "seed_persona_id": "generalist",
+      "axes": { "why": "keep-up", "how": "lean-in", "form": { "length": "short", "ad_tolerance": "low", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens every morning, 10 to 30 minutes, while getting ready or on the first part of a commute, to know what happened since yesterday in a few fields followed closely. An episode older than a few days is no longer worth playing.",
+      "rates_up": [
+        "Daily or several-times-a-week cadence, visible in the publish dates.",
+        "Episodes under 30 minutes that cover several items in sequence with clear transitions.",
+        "The transcript names dates, figures and sources for each story.",
+        "Show notes list the stories covered, ideally with links.",
+        "One or two hosts who move quickly and do not repeat a story once covered.",
+        "Specialist news desks that cover one field closely instead of general headlines.",
+        "Corrections to earlier stories are stated plainly when they happen."
+      ],
+      "rates_down": [
+        "Evergreen interviews with no news peg.",
+        "Long intros, banter or sponsor reads before the first story.",
+        "Episodes over an hour, or a weekly cadence for fast-moving news.",
+        "Commentary that repeats the same point across several segments.",
+        "Stories padded with speculation about what might happen next week."
+      ],
+      "stops_listening_when": [
+        "The first five minutes are padding before any news.",
+        "The episode is a rerun or a best-of with no new items."
+      ],
+      "does_not_care_about": [
+        "Narrative craft or sound design.",
+        "Whether the back catalogue holds up; only the latest episode matters."
+      ],
+      "loves": [
+        { "show_id": "main-engine-cut-off", "why": "Near-daily launch-industry news with sharp, quick reads on each item." },
+        { "show_id": "mrs-bulletin-materials-news", "why": "Short, credentialed hits on new results, several per episode." },
+        { "show_id": "this-week-in-startups", "why": "A frequent pulse check on where money and companies are moving." }
+      ],
+      "quits": [
+        { "show_id": "acquired", "why": "Three to five hours on one company with no news peg." },
+        { "show_id": "smartless", "why": "Friendly conversation with nothing that happened this week." },
+        { "show_id": "serial", "why": "One story told across weeks; nothing to keep up with today." }
+      ],
+      "return_question": "Will tomorrow's episode tell me what changed since today, quickly?",
+      "taxonomy_affinity": [
+        { "node_id": "news", "weight": 1.0 },
+        { "node_id": "economics", "weight": 0.5 },
+        { "node_id": "business", "weight": 0.4 },
+        { "node_id": "space", "weight": 0.4 },
+        { "node_id": "computing", "weight": 0.4 },
+        { "node_id": "history", "weight": -0.3 },
+        { "node_id": "personal-journals", "weight": -0.4 },
+        { "node_id": "fiction", "weight": -0.6 }
+      ]
+    },
+    {
+      "id": "slow-news-contextualist",
+      "label": "Slow news contextualist",
+      "seed_persona_id": "history-and-ideas",
+      "axes": { "why": "keep-up", "how": "lean-back", "form": { "length": "medium", "ad_tolerance": "medium", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens once or twice a week, 40 to 70 minutes, while cooking or on a weekend walk. Wants to understand a story that has been in the news for a while: how it got here, what the rules are, and what the options are. Skips the daily churn.",
+      "rates_up": [
+        "Weekly or fortnightly cadence with one or two subjects per episode.",
+        "The transcript explains background, institutions and rules before the latest development.",
+        "Guests are specialists who explain how a system works: a court, a grid, a market, a transit agency.",
+        "Hosts acknowledge what is uncertain and lay out more than one reading.",
+        "Calm, conversational delivery with room for a guest to finish a thought.",
+        "Show notes link the documents or rulings discussed."
+      ],
+      "rates_down": [
+        "Breaking-news rundowns of several items in a few minutes each.",
+        "Raised voices, mockery of opponents or a verdict delivered before the facts.",
+        "Episodes that react to a story within hours with nothing to add but opinion.",
+        "Panels where three or more voices talk over each other."
+      ],
+      "stops_listening_when": [
+        "The hosts shout, sneer or treat the other side as a joke.",
+        "The episode is a reaction to a headline with no background at all."
+      ],
+      "does_not_care_about": [
+        "Being first: an analysis published a week late is fine.",
+        "Production polish; a plain two-voice conversation is enough."
+      ],
+      "loves": [
+        { "show_id": "amicus-dahlia-lithwick", "why": "Explains how courts work around each case, at a calm weekly pace." },
+        { "show_id": "volts", "why": "Long interviews with the people running the grid, rules and engineering first." },
+        { "show_id": "odd-lots", "why": "Takes one market story and finds the person who explains how it actually works." }
+      ],
+      "quits": [
+        { "show_id": "main-engine-cut-off", "why": "Near-daily rundowns go stale before the weekend." },
+        { "show_id": "this-week-in-startups", "why": "Fast reaction and hot takes on the week's deals." },
+        { "show_id": "5-4-podcast", "why": "Each ruling is framed by the hosts' verdict before the background is laid out." }
+      ],
+      "return_question": "Will next week's episode leave me understanding a running story better than the headlines did?",
+      "taxonomy_affinity": [
+        { "node_id": "news", "weight": 0.7 },
+        { "node_id": "society", "weight": 0.6 },
+        { "node_id": "economics", "weight": 0.6 },
+        { "node_id": "history", "weight": 0.4 },
+        { "node_id": "cities", "weight": 0.3 },
+        { "node_id": "transport", "weight": 0.3 },
+        { "node_id": "comedy", "weight": -0.3 },
+        { "node_id": "fiction", "weight": -0.4 }
+      ]
+    },
+    {
+      "id": "banter-regular",
+      "label": "Banter regular",
+      "seed_persona_id": "comedy-and-culture",
+      "axes": { "why": "entertained", "how": "lean-back", "form": { "length": "long", "ad_tolerance": "high", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens on the commute, at work with one earbud in, or while doing chores, often two hours at a time. Comes for the hosts' rapport and running jokes and does not need a topic. A new episode of a favourite chat show is the highlight of the day.",
+      "rates_up": [
+        "Two or three regular hosts whose back-and-forth in the transcript is quick, teasing and familiar.",
+        "Running bits and callbacks to earlier episodes.",
+        "Long, loose episodes of 60 to 150 minutes on a weekly or more frequent cadence.",
+        "Guests who join in the riffing rather than sit for a formal interview.",
+        "Stories from the hosts' lives told with timing.",
+        "Spiky energy is welcome: hosts roasting each other is part of the appeal.",
+        "Listener mail or call-in segments that the hosts riff on together."
+      ],
+      "rates_down": [
+        "A single host reading a script.",
+        "Topics that need attention to follow: arguments, data, chronology.",
+        "Earnest, quiet interviews with long pauses.",
+        "Heavily produced segments that cut the conversation into pieces.",
+        "Episodes under 30 minutes, too short to settle into the hang."
+      ],
+      "stops_listening_when": [
+        "The episode turns into a lecture or a formal interview.",
+        "The hosts have no chemistry and the transcript reads as polite turn-taking."
+      ],
+      "does_not_care_about": [
+        "Ad load: long sponsor reads are part of the hang, especially when the hosts riff on them.",
+        "Whether anything is learned."
+      ],
+      "loves": [
+        { "show_id": "bad-friends", "why": "Two hosts roasting each other at full volume, for hours." },
+        { "show_id": "2-bears-1-cave", "why": "Needling between friends that runs on callbacks." },
+        { "show_id": "this-past-weekend-theo-von", "why": "A meandering storyteller whose tangents are the point." }
+      ],
+      "quits": [
+        { "show_id": "serial", "why": "Requires attention to a case across weeks; no hang." },
+        { "show_id": "the-lonely-palette", "why": "One quiet voice close-reading a painting." },
+        { "show_id": "philosophy-bites", "why": "A short, focused interview on one argument." }
+      ],
+      "return_question": "Do I want to hang out with these hosts again next week?",
+      "taxonomy_affinity": [
+        { "node_id": "comedy", "weight": 0.9 },
+        { "node_id": "culture", "weight": 0.6 },
+        { "node_id": "sports", "weight": 0.4 },
+        { "node_id": "tv-film", "weight": 0.4 },
+        { "node_id": "relationships", "weight": 0.2 },
+        { "node_id": "history", "weight": -0.3 },
+        { "node_id": "science", "weight": -0.4 },
+        { "node_id": "education", "weight": -0.5 }
+      ]
+    },
+    {
+      "id": "sharp-comedy",
+      "label": "Sharp comedy",
+      "seed_persona_id": "comedy-and-culture",
+      "axes": { "why": "entertained", "how": "lean-in", "form": { "length": "medium", "ad_tolerance": "medium", "polish": "matters", "explicit": "tolerated" } },
+      "context": "Listens with full attention, often alone on a walk or at the gym, 30 to 70 minutes, to laugh. Notices when a bit is built well and when it drags, and judges a comedy show by laughs per minute rather than by the hosts' charm.",
+      "rates_up": [
+        "Tight editing: the transcript moves from bit to bit without dead air or housekeeping.",
+        "Structured formats such as characters, improvised scenes, games or live sets.",
+        "Writing or improvisation that escalates a premise and lands it.",
+        "Comedians talking about the craft of jokes, with drafts and rewrites.",
+        "Episodes that start funny in the first minute.",
+        "A clear premise per episode that the show keeps to.",
+        "Recurring characters or games that develop across episodes without needing a recap."
+      ],
+      "rates_down": [
+        "Long, unstructured catch-ups where the jokes are incidental.",
+        "Hosts who explain a joke after telling it, or laugh at their own setups before the punchline.",
+        "Celebrity interviews that are warm but not funny.",
+        "Several minutes of laughter at a reference the listener cannot hear.",
+        "Callbacks that only work for long-time listeners."
+      ],
+      "stops_listening_when": [
+        "Five minutes pass in the transcript without a joke landing.",
+        "The episode is mostly the hosts' scheduling, merchandise or tour news."
+      ],
+      "does_not_care_about": [
+        "Explicit language: crude is fine when it is funny.",
+        "Whether the hosts are famous."
+      ],
+      "loves": [
+        { "show_id": "comedy-bang-bang", "why": "Improvised characters escalate a premise until it breaks." },
+        { "show_id": "kill-tony", "why": "One-minute sets and fast judgement; nothing drags." },
+        { "show_id": "working-it-out-birbiglia", "why": "Jokes are built and rewritten on mic, so the craft is audible." }
+      ],
+      "quits": [
+        { "show_id": "this-past-weekend-theo-von", "why": "Meandering conversation where the laughs are sparse." },
+        { "show_id": "armchair-expert", "why": "Long, sincere interviews that are not trying to be funny." },
+        { "show_id": "fly-on-the-wall", "why": "Insider reminiscing where the stories matter more than the bits." }
+      ],
+      "return_question": "Did the last episode make me laugh out loud more than once, and will the next?",
+      "taxonomy_affinity": [
+        { "node_id": "comedy", "weight": 1.0 },
+        { "node_id": "tv-film", "weight": 0.5 },
+        { "node_id": "culture", "weight": 0.4 },
+        { "node_id": "fiction", "weight": 0.3 },
+        { "node_id": "music", "weight": 0.2 },
+        { "node_id": "health", "weight": -0.4 },
+        { "node_id": "news", "weight": -0.4 },
+        { "node_id": "education", "weight": -0.4 }
+      ]
+    },
+    {
+      "id": "narrative-binger",
+      "label": "Narrative binger",
+      "seed_persona_id": "true-crime-and-story",
+      "axes": { "why": "absorbed", "how": "lean-in", "form": { "length": "medium", "ad_tolerance": "low", "polish": "matters", "explicit": "tolerated" } },
+      "context": "Listens in headphones, evenings and weekends, often three or four episodes in a row when a series grips. Wants to be inside a story: scenes, tape, music, a cliffhanger at the end of each part. Will finish a whole season in a weekend.",
+      "rates_up": [
+        "Serialised seasons with numbered episodes that build toward an ending.",
+        "Produced audio: archival tape, scene-setting, scored music and sound design.",
+        "A narrator who reveals information in a planned order and ends episodes on an open question.",
+        "Original reporting or fiction written for audio, rather than retold from articles.",
+        "Episodes between 30 and 60 minutes with a clear arc inside each.",
+        "Show notes with a season description and episode order.",
+        "Interview tape cut into scenes rather than played as one long conversation."
+      ],
+      "rates_down": [
+        "Two hosts chatting through a story they read elsewhere.",
+        "Standalone conversation episodes with no arc.",
+        "Recaps of earlier episodes that take more than a minute.",
+        "Ad breaks that cut into a scene."
+      ],
+      "stops_listening_when": [
+        "The story is told as hosts reacting to it rather than as a story.",
+        "Three episodes in, nothing has been revealed that the first episode did not."
+      ],
+      "does_not_care_about": [
+        "Subject matter: crime, history, horror or a life story all work if the storytelling is crafted.",
+        "Whether it teaches anything."
+      ],
+      "loves": [
+        { "show_id": "serial", "why": "One investigation reported week by week, each episode ending on a turn." },
+        { "show_id": "the-magnus-archives", "why": "Standalone cases slowly revealing a larger arc, fully produced as audio drama." },
+        { "show_id": "the-outlaw-ocean", "why": "Reported, scored and scene-built investigative storytelling." }
+      ],
+      "quits": [
+        { "show_id": "crime-junkie", "why": "Cases are retold conversationally by hosts instead of produced as story." },
+        { "show_id": "astonishing-legends", "why": "Long two-host research chat; the story is buried in the talk." },
+        { "show_id": "smartless", "why": "A standalone hang with no story at all." }
+      ],
+      "return_question": "Do I need to know what happens in the next episode?",
+      "taxonomy_affinity": [
+        { "node_id": "fiction", "weight": 0.8 },
+        { "node_id": "true-crime", "weight": 0.6 },
+        { "node_id": "history", "weight": 0.4 },
+        { "node_id": "society", "weight": 0.4 },
+        { "node_id": "paranormal", "weight": 0.3 },
+        { "node_id": "business", "weight": -0.3 },
+        { "node_id": "comedy", "weight": -0.4 },
+        { "node_id": "news", "weight": -0.4 }
+      ]
+    },
+    {
+      "id": "true-crime-careful",
+      "label": "Careful true crime",
+      "seed_persona_id": "true-crime-and-story",
+      "axes": { "why": "absorbed", "how": "lean-back", "form": { "length": "medium", "ad_tolerance": "medium", "polish": "matters", "explicit": "tolerated" } },
+      "context": "Listens while walking, cleaning or falling asleep, 30 to 60 minutes. Drawn to real cases and to how justice systems handle them, and wants them told with respect for the people involved. Relaxed attention, but alert to tone.",
+      "rates_up": [
+        "Victims and families are named with care, and their side of the case is given time.",
+        "The transcript cites court records, police files, reporting or interviews for its facts.",
+        "A calm, measured narrator; one voice or a reporter with clear sourcing.",
+        "The episode says what is unknown or disputed instead of filling gaps with speculation.",
+        "Attention to wrongful convictions, investigative failures and how systems work.",
+        "Content notes at the start when a case involves violence against children or sexual violence.",
+        "Follow-up episodes that report what happened to a case after it first aired."
+      ],
+      "rates_down": [
+        "Jokes, laughter or snacking banter around a killing.",
+        "Graphic injury detail described for effect.",
+        "The victim's choices treated as the cause of the crime.",
+        "Cliffhanger teasing that withholds facts to keep the listener in place.",
+        "Episode titles and notes that lead with gore or a killer's nickname."
+      ],
+      "stops_listening_when": [
+        "The hosts joke about the victim or the method of a killing.",
+        "The episode speculates about a named living person's guilt without evidence."
+      ],
+      "does_not_care_about": [
+        "Serial structure: a standalone case is as good as a season.",
+        "Novelty: a well-told old case is welcome."
+      ],
+      "loves": [
+        { "show_id": "criminal", "why": "Quiet, reported stories that give everyone involved their dignity." },
+        { "show_id": "casefile-true-crime", "why": "Anonymously narrated and sourced, with no banter." },
+        { "show_id": "in-the-dark", "why": "Years on one case, testing what the justice system got wrong." }
+      ],
+      "quits": [
+        { "show_id": "morbid", "why": "Chatty, joking tone sits on top of real deaths." },
+        { "show_id": "crime-junkie", "why": "Conversational retelling with cliffhanger teasing between facts." },
+        { "show_id": "well-theres-your-problem", "why": "Hours of jokes across disasters with real fatalities." }
+      ],
+      "return_question": "Can I trust this show to tell the next case truthfully and with respect?",
+      "taxonomy_affinity": [
+        { "node_id": "true-crime", "weight": 0.9 },
+        { "node_id": "society", "weight": 0.5 },
+        { "node_id": "history", "weight": 0.3 },
+        { "node_id": "psychology", "weight": 0.3 },
+        { "node_id": "paranormal", "weight": -0.3 },
+        { "node_id": "gaming", "weight": -0.3 },
+        { "node_id": "comedy", "weight": -0.5 }
+      ]
+    },
+    {
+      "id": "comfort-companion",
+      "label": "Comfort companion",
+      "seed_persona_id": "generalist",
+      "axes": { "why": "accompanied", "how": "lean-back", "form": { "length": "long", "ad_tolerance": "high", "polish": "indifferent", "explicit": "tolerated" } },
+      "context": "Listens most of the day in the background, while working from home, cooking or falling asleep, for hours at a time. Wants familiar, kind voices in the room more than new information, and often replays old episodes of a long-running favourite.",
+      "rates_up": [
+        "Long-running shows with hundreds of episodes and the same hosts throughout.",
+        "Warm, unhurried hosts who laugh easily and are kind to guests and each other.",
+        "Predictable segments and a recognisable format, so any episode is easy to drop into.",
+        "Standalone episodes that need no memory of the last one.",
+        "A steady release cadence: a new episode every week on the same day.",
+        "Low stakes: hobbies, small stories, friendly expertise.",
+        "Gentle humour and soft-spoken delivery; few raised voices in the transcript."
+      ],
+      "rates_down": [
+        "Abrasive hosts: roasting, shouting, sneering, or a combative interview style.",
+        "Distressing subject matter: violent crime, disaster deaths, grief as the main topic.",
+        "Serials that punish skipping an episode.",
+        "Shows that ended or change hosts often.",
+        "Cliffhangers and urgent framing that demand attention right now."
+      ],
+      "stops_listening_when": [
+        "The hosts turn on each other or on a guest.",
+        "An episode dwells on graphic violence or suffering."
+      ],
+      "does_not_care_about": [
+        "Novelty or depth: the hundredth episode of the same format is welcome.",
+        "Ad load and production polish."
+      ],
+      "loves": [
+        { "show_id": "conan-obrien-needs-a-friend", "why": "Warm, easy hang with a host who is kind to everyone in the room." },
+        { "show_id": "i-know-dino", "why": "Seven hundred episodes of the same cheerful weekly segment." },
+        { "show_id": "welcome-to-night-vale", "why": "One familiar radio voice; any episode is a doorway in." }
+      ],
+      "quits": [
+        { "show_id": "bad-friends", "why": "Two hosts roasting each other is too spiky for background company." },
+        { "show_id": "2-bears-1-cave", "why": "Constant needling rather than warmth." },
+        { "show_id": "in-the-dark", "why": "A heavy, years-long investigation into a child's murder." }
+      ],
+      "return_question": "Would having this show on in the background next week feel like good company?",
+      "taxonomy_affinity": [
+        { "node_id": "comedy", "weight": 0.5 },
+        { "node_id": "hobbies", "weight": 0.4 },
+        { "node_id": "culture", "weight": 0.4 },
+        { "node_id": "nature", "weight": 0.3 },
+        { "node_id": "food", "weight": 0.3 },
+        { "node_id": "economics", "weight": -0.2 },
+        { "node_id": "true-crime", "weight": -0.4 },
+        { "node_id": "news", "weight": -0.5 }
+      ]
+    },
+    {
+      "id": "family-listener",
+      "label": "Family listener",
+      "seed_persona_id": "generalist",
+      "axes": { "why": "accompanied", "how": "lean-back", "form": { "length": "short", "ad_tolerance": "medium", "polish": "matters", "explicit": "dealbreaker" } },
+      "context": "Listens in the car with children aged about 5 to 12 on school runs and road trips, 10 to 40 minutes. Picks something the whole car can enjoy and that nobody has to switch off in a hurry. Attention is shared with the road and the back seat.",
+      "rates_up": [
+        "The feed and episodes are marked clean, and the transcript has no swearing.",
+        "Episodes of 10 to 30 minutes with a complete story or idea in each.",
+        "Warm hosts who address children directly and explain without talking down.",
+        "Music, voices and sound effects that hold a child's attention.",
+        "Real science, nature or folktales that adults enjoy too.",
+        "A question or activity at the end that can carry on as conversation in the car."
+      ],
+      "rates_down": [
+        "Any episode marked explicit, or swearing anywhere in the transcript.",
+        "Frightening content: horror, violent crime, graphic injury detail.",
+        "Adult themes such as sex, drugs or relationship breakdown as the main topic.",
+        "Long ad breaks aimed at adults, or episodes that take an hour to reach the point."
+      ],
+      "stops_listening_when": [
+        "Explicit language or a graphic description is heard with children in the car.",
+        "A child is frightened or bored and asks to switch it off."
+      ],
+      "does_not_care_about": [
+        "Depth for adults: a simple explanation done well is enough.",
+        "Whether the show is new; older episodes work as well."
+      ],
+      "loves": [
+        { "show_id": "wow-in-the-world", "why": "Real science with jokes and sound effects the whole car enjoys." },
+        { "show_id": "circle-round", "why": "Short folktale plays with music and a conversation starter at the end." },
+        { "show_id": "story-pirates", "why": "Children's own stories turned into sketches and songs." }
+      ],
+      "quits": [
+        { "show_id": "the-magnus-archives", "why": "Horror anthology; frightening for children." },
+        { "show_id": "heavyweight", "why": "Marked explicit, with adult themes." },
+        { "show_id": "casefile-true-crime", "why": "Detailed accounts of real violent crimes." }
+      ],
+      "return_question": "Will the kids ask for the next episode on the next drive?",
+      "taxonomy_affinity": [
+        { "node_id": "kids-family", "weight": 1.0 },
+        { "node_id": "nature", "weight": 0.5 },
+        { "node_id": "science", "weight": 0.5 },
+        { "node_id": "fiction", "weight": 0.4 },
+        { "node_id": "music", "weight": 0.3 },
+        { "node_id": "relationships", "weight": -0.4 },
+        { "node_id": "paranormal", "weight": -0.5 },
+        { "node_id": "true-crime", "weight": -0.9 }
+      ]
+    }
+  ]
+}
