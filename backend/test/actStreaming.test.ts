@@ -48,6 +48,9 @@ import type { Voice } from "../src/types/spine";
  *  11. writeAct.ts releaseProbe: ask verifySeam only when the seam selected
  *      claims (`if (gated.claims.length > 0)`; a beat-bearing seam resting
  *      on a clip window alone is released with no verifier).
+ *  12. writeAct.ts releaseProbe: `if (issues.length > 0) return;` removed
+ *      (a claim-free, beat-free seam that fails validateSeam is released by
+ *      code, and mechanicalPass then skips it).
  */
 
 const voice: Voice = { style: "well-read friend", register: "conversational", sentenceRhythm: "varied", narratorPresence: "medium" };
@@ -386,6 +389,39 @@ describe("GV-73 — the streamed act writer releases a code-checked introduction
     expect(asked).toContain("s1");
     expect(refused.checked.map((e) => e.seamId)).toEqual(["s0"]);
     expect(refused.stats.seamsReleasedEarly).toBe(1);
+  });
+
+  it("a claim-free, beat-free introduction that fails a structural rule is not released: it goes through the act's own pass", async () => {
+    /* MUTATION 12 (releaseProbe ignores validateSeam's issues: the
+       `if (issues.length > 0) return;` guard removed) kills this: s0 is a
+       claim-free, beat-free introduction, so nothing but that code gate stands
+       between it and a 'code' release, and mechanicalPass skips a released
+       seam — the show-less line would already be playing. */
+    const nameless = "Who speaks next, and where? Listen closely to the voice that comes after this, and to what it says.";
+    const unnameS0 = (reply: ActWriteResult, _request: ActWriteRequest, call: number): ActWriteResult =>
+      call === 1 ? { seams: reply.seams.map((s) => (s.seamId === "s0" ? { ...s, script: nameless, claims: [], usedClaims: [] } : s)) } : reply;
+    const b = builders({ mutate: unnameS0 });
+    const { act, stats, checked } = await writeOne(fourBeatsTwoClips(), b, { streamSeams: true }, ["B"]);
+
+    /* The seam is exactly the shape the code-only release is for. */
+    expect(b.requests[0]!.seams.find((s) => s.seamId === "s0")!.beats).toEqual([]);
+    expect(b.replies[0]!.seams.find((s) => s.seamId === "s0")!.claims).toEqual([]);
+
+    /* Not released: no signal, no 'code' verification, no count. */
+    expect(checked.filter((e) => e.seamId === "s0")).toEqual([]);
+    expect(checked.some((e) => e.verifiedBy === "code")).toBe(false);
+    expect(stats.seamsReleasedEarly ?? 0).toBe(0);
+    expect(stats.firstSeamCheckedMs).toBeUndefined();
+
+    /* The act's own pass refuses it in round 1 and re-asks it, unfrozen, with
+       the naming rule as its note; the re-written introduction is what plays. */
+    expect(b.requests.length).toBeGreaterThan(1);
+    const retryS0 = b.requests[1]!.seams.find((s) => s.seamId === "s0")!;
+    expect(retryS0.frozen).not.toBe(true);
+    expect(retryS0.notes).toMatch(/Q-09|Q-02/);
+    const clipBeat = act.slots[0]!.beats[2]!;
+    expect(clipBeat.sourcing === "tape" && clipBeat.connectiveNarration?.script).not.toBe(nameless);
+    expect(clipBeat.sourcing === "tape" && clipBeat.connectiveNarration?.script).toContain(SHOW);
   });
 
   it("a beat a released seam leaves uncarried is handed to the next open seam, which the retry asks for it", async () => {
