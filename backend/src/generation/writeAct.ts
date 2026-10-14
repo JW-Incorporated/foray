@@ -28,6 +28,8 @@ import type {
   NarrationBuildContext,
   NarrationWriterBuilder,
   SeamBrief,
+  SeamEditRequest,
+  SeamNeighbour,
   SelectedClaim,
   WriterStreamEvent,
   WrittenSeam
@@ -66,6 +68,7 @@ import {
   retryNoteFrom,
   slotNeighbours,
   sourcesFor,
+  type ActRoundPolicy,
   type NarrationWriteStats,
   type PendingPage,
   type SeamCheckedEvent,
@@ -259,6 +262,16 @@ export interface WriteActOptions {
    * `DEFAULT_WRITER_STREAM_IDLE_MS`.
    */
   streamIdleTimeoutMs?: number;
+  /**
+   * GV-80 (W4-13): the act's round policy (`roundPolicyFor` in
+   * writeNarration.ts). `maxRounds` bounds the round loop; `editScope:
+   * "seams"` sends round 2 onwards as a seam edit (`editSeams`) when the
+   * writer offers one -- only the failing seams, their neighbours, the clips
+   * they touch and the documents they cite -- and a whole-act round when it
+   * does not. Omitted is today's policy: `NARRATION_PAGE_ATTEMPTS` whole-act
+   * rounds, byte for byte.
+   */
+  roundPolicy?: ActRoundPolicy;
 }
 
 /**
@@ -499,14 +512,22 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
     }
   }
 
-  /* 4. ROUNDS — at most `NARRATION_PAGE_ATTEMPTS` per act. */
+  /* 4. ROUNDS — at most `NARRATION_PAGE_ATTEMPTS` per act (GV-80: or the
+        round policy's `maxRounds`). */
+  const maxRounds = options.roundPolicy?.maxRounds ?? NARRATION_PAGE_ATTEMPTS;
+  /* GV-80: on the timed policy, round 2 onwards is a seam edit when the
+     writer offers one; without it the round re-sends the whole act. */
+  const seamEdits = options.roundPolicy?.editScope === "seams" && typeof writer.editSeams === "function";
+  /* GV-80: what each seam's last reply cited, for the edit request's
+     documents. Kept only when seam edits can happen. */
+  const citedBy = new Map<string, string[]>();
   const actRejections: string[] = [];
   const clipSourceCount = clips.filter((c) => c.window).length + ground.length;
   /* GV-73: after a streamed reply was cut (token cap or stall), the next
      round's request lists only the seams still open -- the frozen ones are
      not echoed back, so the retry fits under the cap the cut one hit. */
   let askOnly: Set<string> | undefined;
-  for (let round = 1; round <= NARRATION_PAGE_ATTEMPTS; round++) {
+  for (let round = 1; round <= maxRounds; round++) {
     if (round > 1 && stats) stats.retryRounds += 1;
 
     /* GV-07: the writer's model calls are recorded with this round and role
@@ -525,7 +546,21 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
     };
     let reply: ActWriteResult;
     let cut: StreamCut | undefined;
-    if (streaming) {
+    /* GV-80: the timed policy's edit round -- only the failing seams, the
+       seams beside them, the clips they touch and the documents they cite.
+       Every other seam is padded back with its current text, so the gate
+       below reads a whole act exactly as on a whole-act round. */
+    const editing = seamEdits && round > 1 ? failingSeams(seams) : [];
+    if (editing.length > 0) {
+      const editRequest = seamEditRequestOf(editing, seams, clips, documents, (seam) => seamDocIds(seam, beats, packs, seamPlans, citedBy), {
+        actTitle: act.title,
+        voice,
+        retryNote: retryNoteFrom(actRejections),
+        ...(options.frame ? { frame: options.frame } : {})
+      });
+      const edited = await withCallContext({ attempt: round, role: "writer" }, () => writer.editSeams!(editRequest, ctx));
+      reply = padSeamEdit(seams, editRequest, edited, act.title, round);
+    } else if (streaming) {
       /* GV-73: the same request, streamed (the frame rides along as on the
          one-shot call); round 1 checks each seam as its line closes. */
       const streamed = await withCallContext({ attempt: round, role: "writer" }, () =>
@@ -537,6 +572,7 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
     } else {
       reply = await withCallContext({ attempt: round, role: "writer" }, () => writer.writeAct(writeRequest, ctx));
     }
+    if (seamEdits) noteCitations(citedBy, reply);
 
     /* THE MECHANICAL GATE, seam by seam, in two passes (`mechanicalPass`):
        first every seam's claims through the quote gate (the act's source
@@ -617,6 +653,114 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
 
 function positionKey(slot: number, beat: number): string {
   return `${slot}/${beat}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* GV-80: the timed policy's seam edit                                  */
+/* ------------------------------------------------------------------ */
+
+/** The seams an edit round asks for, in play order: every seam that is not
+ * frozen, except a clean silent one (no beats, intro not full, came back
+ * empty), which is no failure and is padded back as silence. */
+function failingSeams(seams: SeamState[]): SeamState[] {
+  return seams.filter((s) => !s.frozen && !s.silent);
+}
+
+/** Records which documents each seam of a reply cited (its claims' docIds). */
+function noteCitations(citedBy: Map<string, string[]>, reply: ActWriteResult): void {
+  for (const written of reply.seams ?? []) {
+    const claims = Array.isArray(written?.claims) ? written.claims : [];
+    citedBy.set(String(written?.seamId), claims.map((c) => String(c?.docId ?? "")).filter((id) => id.length > 0));
+  }
+}
+
+/** The docIds a failing seam cites: what its last reply's claims named, and
+ * the evidence of every beat it answers for (positioned in it, or handed to
+ * it by a released seam on the streamed path). */
+function seamDocIds(seam: SeamState, beats: Map<string, BeatState>, packs: Map<string, EvidencePack>, seamPlans: SeamPlan[], citedBy: Map<string, string[]>): string[] {
+  const beatIds = new Set([...seam.plan.beats.map((b) => b.beatId), ...beatsIn(seam, beats).map((b) => b.brief.beatId)]);
+  const fromBeats = seamPlans
+    .flatMap((plan) => plan.beats)
+    .filter((b) => beatIds.has(b.beatId))
+    .flatMap((b) => (packs.get(positionKey(b.slot, b.beat))?.docs ?? []).map((d) => d.docId));
+  return [...(citedBy.get(seam.plan.seamId) ?? []), ...fromBeats];
+}
+
+/**
+ * The short request of an edit round (`SeamEditRequest`): the failing seams'
+ * briefs (each with its previous script and notes), the seam before and
+ * after each that is not itself being edited, the clips they follow or
+ * introduce, and the documents they cite plus those clips' windows -- in the
+ * act's own document order, so a quote resolves exactly as on round 1.
+ */
+function seamEditRequestOf(
+  editing: SeamState[],
+  seams: SeamState[],
+  clips: ClipState[],
+  documents: EvidenceDoc[],
+  docIdsOf: (seam: SeamState) => string[],
+  head: Pick<SeamEditRequest, "actTitle" | "voice" | "retryNote" | "frame">
+): SeamEditRequest {
+  const editIds = new Set(editing.map((s) => s.plan.seamId));
+  const neighbourIndexes = new Set<number>();
+  seams.forEach((seam, index) => {
+    if (!editIds.has(seam.plan.seamId)) return;
+    for (const at of [index - 1, index + 1]) {
+      const near = seams[at];
+      if (near && !editIds.has(near.plan.seamId)) neighbourIndexes.add(at);
+    }
+  });
+  const neighbours: SeamNeighbour[] = [...neighbourIndexes]
+    .sort((a, b) => a - b)
+    .map((at) => {
+      const near = seams[at]!;
+      return { seamId: near.plan.seamId, script: near.draft?.script ?? near.previousScript ?? "" };
+    });
+  const clipIds = new Set(editing.flatMap((s) => [s.plan.follows?.clipId, s.plan.introduces?.clipId]).filter((id): id is string => id !== undefined));
+  const touched = clips.filter((c) => clipIds.has(c.brief.clipId));
+  const docIds = new Set([...editing.flatMap(docIdsOf), ...touched.flatMap((c) => (c.brief.docId ? [c.brief.docId] : []))]);
+  return {
+    actTitle: head.actTitle,
+    voice: head.voice,
+    ...(head.frame ? { frame: head.frame } : {}),
+    seams: editing.map(seamBriefOf),
+    neighbours,
+    clips: touched.map((c) => c.brief),
+    documents: documents.filter((d) => docIds.has(d.docId)),
+    retryNote: head.retryNote
+  };
+}
+
+/**
+ * The edit reply as a whole act: each requested seam as the writer returned
+ * it (a missing one stays missing, and the gate refuses it as on any round),
+ * every other seam padded with its current text -- a frozen seam's
+ * confirmed draft, a silent seam's empty script. A seam the writer returned
+ * but was not asked for is ignored.
+ */
+function padSeamEdit(seams: SeamState[], request: SeamEditRequest, edited: ActWriteResult, actTitle: string, round: number): ActWriteResult {
+  const asked = new Set(request.seams.map((s) => s.seamId));
+  const returned = Array.isArray(edited?.seams) ? edited.seams : [];
+  const extra = returned.filter((s) => !asked.has(s?.seamId));
+  if (extra.length > 0) {
+    console.warn(`writeAct: act "${actTitle}" round ${round} — the seam edit returned seam(s) it was not asked for (${extra.map((s) => s?.seamId).join(", ")}); keeping their current text`);
+  }
+  const out: WrittenSeam[] = [];
+  for (const seam of seams) {
+    const seamId = seam.plan.seamId;
+    if (asked.has(seamId)) {
+      const written = returned.find((s) => s?.seamId === seamId);
+      if (written) out.push(written);
+      continue;
+    }
+    const draft = seam.draft;
+    out.push(
+      draft
+        ? { seamId, script: draft.script, claims: draft.claims, usedClaims: draft.claims.map((_, i) => i), pronunciationHints: draft.hints }
+        : { seamId, script: "", claims: [], usedClaims: [], pronunciationHints: [] }
+    );
+  }
+  return { seams: out };
 }
 
 /** A clip as the gate needs it: the brief and the held window. */

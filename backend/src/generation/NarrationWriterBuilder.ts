@@ -66,6 +66,56 @@ export interface NarrationWriterBuilder {
    * `collectActStream` turns a stream back into `writeAct`'s result.
    */
   writeActStream?(request: ActWriteRequest, ctx: NarrationBuildContext): AsyncIterable<WriterStreamEvent>;
+
+  /**
+   * GV-80 (W4-13, docs/roadmap/generation-v2.md; GP-04, GP-02, GP-05): A
+   * SEAM EDIT. On the timed round policy (FORAY_ROUND_POLICY=timed, or the
+   * fast-path umbrella) the act's second round sends only the seams that
+   * failed, the seam on either side of each as read-only context, the
+   * clips they touch and the documents they cite -- not the whole act
+   * again. The reply holds a script for each requested seam and nothing
+   * else; the orchestrator keeps every other seam's text as it stands.
+   *
+   * OPTIONAL, and nothing calls it on the default policy. A writer without
+   * it gets a whole-act second round (`writeAct`) under the timed policy.
+   */
+  editSeams?(request: SeamEditRequest, ctx: NarrationBuildContext): Promise<ActWriteResult>;
+}
+
+/* ------------------------------------------------------------------ *
+ * GV-80: the seam-edit contract.
+ * ------------------------------------------------------------------ */
+
+/** A seam beside one being edited, as the listener will hear it: read-only
+ * context so an edited seam still joins its neighbours. `script` is the
+ * neighbour's current text ("" for a silent seam). */
+export interface SeamNeighbour {
+  seamId: string;
+  script: string;
+}
+
+/**
+ * GV-80: the short request of a timed-policy edit round. Every field is a
+ * slice of the round-1 `ActWriteRequest` for the failing seams:
+ *   - `seams`: only the seams being edited, each with its `previousScript`
+ *     and `notes` (never a frozen seam);
+ *   - `neighbours`: the seam before and after each failing seam that is not
+ *     itself being edited, in play order;
+ *   - `clips`: the clips those seams follow or introduce;
+ *   - `documents`: the documents those seams cite (their last reply's
+ *     claims and their beats' evidence) and those clips' tape windows, in
+ *     the act's document order;
+ *   - `retryNote`: the act's rejections so far, as on a whole-act retry.
+ */
+export interface SeamEditRequest {
+  actTitle: string;
+  voice: Voice;
+  frame?: ActFrame;
+  seams: SeamBrief[];
+  neighbours: SeamNeighbour[];
+  clips: ClipBrief[];
+  documents: EvidenceDoc[];
+  retryNote: string;
 }
 
 /* ------------------------------------------------------------------ *

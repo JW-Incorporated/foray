@@ -3501,6 +3501,20 @@ const BACKEND_FLOORS = {
      bound, the end-event contract, and the report fields only when
      streamed. Offline; fake clock or scripted streams. */
   "test/actStreaming.test.ts": 15,
+  /* GV-80 (docs/roadmap/generation-v2.md, W4-13, #1286): the timed-path
+     round policy -- roundPolicyFor (default three whole-act rounds, timed
+     two rounds of seam edits on every tier, the fast path sets timed), the
+     default policy's three whole-act rounds with editSeams never called and
+     omitted == explicit default, one failing seam costing exactly two
+     writer calls with round 2 an editSeams request of that seam, its two
+     neighbours, its two clips and the documents it cites under 25% of
+     round 1's size, frozen seams never in an edit request and kept whatever
+     it returns, a clean silent seam kept out of the edit and padded back as
+     silence, a seam still failing after round 2 ending unverified as
+     finalPageFor ends it, the whole-act fallback for a writer without
+     editSeams, and the stub's editSeams. Stub builders over a ten-clip
+     fixture; offline. One named mutation per test. */
+  "test/roundPolicy.test.ts": 8,
   /* GV-51 (docs/roadmap/generation-v2.md, W5-09, #1286): the Jev act
      verifier -- seamSentences (intro, question, imperative, statement),
      per-statement support with the specifics check on the same texts (an
