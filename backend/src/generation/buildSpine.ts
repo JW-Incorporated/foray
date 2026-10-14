@@ -5,6 +5,8 @@ import { SpineSchema, validateSpine, type DurationTier, type Spine, type SpineVa
 import { checkSpineStructure, foldedCopyIssues, InvalidSpineStructureError } from "./spineStructure";
 import type { SpineBuildContext, SpineBuilder, SpineRevisionRequest } from "./SpineBuilder";
 import { withCallContext } from "./runLog";
+import { postSeedSpine } from "./postSeedSpine";
+import { runtimeViolations, spineCannotFit, spineRuntimeLowerBoundSec } from "./tierRuntime";
 
 /**
  * §4.3 end to end (docs/curation/generation-architecture.md §4.3), taking
@@ -77,6 +79,10 @@ export interface SpineReask {
   attempt: number;
   /** The gate's messages the builder was asked to fix, verbatim. */
   violations: string[];
+  /** GV-89: `"runtime"` on the post-spine runtime re-ask (`reaskForRuntime`),
+   * whose violations name the overrun. Absent on a structural re-ask, so
+   * F-86's rows in `report.json` are unchanged. */
+  kind?: "runtime";
 }
 
 export interface BuildSpineOptions {
@@ -192,4 +198,95 @@ export async function buildSpine(
   options: BuildSpineOptions = {}
 ): Promise<Spine> {
   return (await buildSpineWithReasks(intent, researchShape, duration, builder, ctx, options)).spine;
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   GV-89 (W4-14): one runtime re-ask for a plan that cannot fit its tier.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+export interface RuntimeReaskOptions {
+  /** Fired the moment the re-ask is decided on, BEFORE the builder is called,
+   * so the run log says what is being paid for while it is being paid for. */
+  onReask?: (reask: SpineReask) => void;
+}
+
+export interface RuntimeReaskResult {
+  /** The spine the run keeps: the post-seeded reply when it was accepted,
+   * otherwise the spine passed in, unchanged. */
+  spine: Spine;
+  /** The re-ask, for `spineReasks`; null when the plan already fit (no call). */
+  reask: SpineReask | null;
+  /** Whether the reply replaced the spine passed in. */
+  accepted: boolean;
+}
+
+/** The re-ask turn shows the model its plan with the seeds that make up the
+ * overrun, post-seeding's included (they count toward the bound), but without
+ * `seedSource`: that mark is the pipeline's bookkeeping, not a field the
+ * prompt asked the model to write. */
+function withoutSeedSource(spine: Spine): Spine {
+  return {
+    ...spine,
+    acts: spine.acts.map((act) => ({
+      ...act,
+      slots: act.slots.map((slot) => ({
+        ...slot,
+        beats: slot.beats.map((beat) => {
+          if (beat.seedSource === undefined) return beat;
+          const { seedSource: _dropped, ...rest } = beat;
+          return rest;
+        })
+      }))
+    }))
+  };
+}
+
+/**
+ * GV-89: THE POST-SPINE RUNTIME CHECK. `spine` is the post-seeded spine (seeds
+ * are final there, so seeds post-seeding attached count toward the bound).
+ * When its minimum runtime (`tierRuntime.ts`) is over the tier's hard ceiling,
+ * the builder is re-asked ONCE with revision.kind 'runtime' and the overrun
+ * named; a plan that fits costs no call.
+ *
+ * The reply must pass the same gates the first reply passed (the schema,
+ * `validateSpine`, `checkSpineStructure` against the map's episodes, and on a
+ * folded call the copy fields). It is then post-seeded deterministically,
+ * with NO further seed-floor re-ask. A reply that fails a gate, or whose
+ * minimum runtime is longer than the spine it was asked to shorten, is
+ * dropped and the spine passed in is kept: the call is spent either way,
+ * but the run is never made worse by it. If the kept plan still overruns,
+ * the run continues and GV-106's sourcing ceiling (W4-15) enforces the limit.
+ *
+ * The caller decides whether the check applies (FORAY_TIER_RUNTIME_CAP).
+ */
+export async function reaskForRuntime(
+  spine: Spine,
+  intent: IntentUnderstanding,
+  researchShape: ResearchShape,
+  duration: DurationTier,
+  builder: SpineBuilder,
+  ctx: SpineBuildContext,
+  options: RuntimeReaskOptions = {}
+): Promise<RuntimeReaskResult> {
+  if (!spineCannotFit(spine, duration)) return { spine, reask: null, accepted: false };
+
+  const violations = runtimeViolations(spine, duration);
+  const reask: SpineReask = { attempt: 1, violations, kind: "runtime" };
+  options.onReask?.(reask);
+  const revision: SpineRevisionRequest = { previous: withoutSeedSource(spine), violations, attempt: 1, kind: "runtime" };
+  /* GV-07: the runtime re-ask's model calls are recorded as such (a no-op
+     wrapper outside a RunLog). */
+  const raw = await withCallContext({ reask: "runtime" }, () => builder.buildSpine(intent, researchShape, duration, { ...ctx, revision }));
+
+  const folded = ctx.listenerPrompt !== undefined;
+  const parsed = (folded ? FoldedReplySpineSchema : SpineSchema).safeParse(raw);
+  if (!parsed.success) return { spine, reask, accepted: false };
+  const reply = parsed.data;
+  const seedableEpisodeIds = researchShape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId));
+  const issues = [...(folded ? foldedCopyIssues(reply) : []), ...checkSpineStructure(reply, { seedableEpisodeIds })];
+  if (!validateSpine(reply).valid || issues.length > 0) return { spine, reask, accepted: false };
+
+  const reseeded = postSeedSpine(reply, researchShape).spine;
+  if (spineRuntimeLowerBoundSec(reseeded) > spineRuntimeLowerBoundSec(spine)) return { spine, reask, accepted: false };
+  return { spine: reseeded, reask, accepted: true };
 }

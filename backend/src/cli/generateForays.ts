@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import { randomUUID } from "crypto";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
+import type { SpineRuntime } from "../generation/tierRuntime";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
@@ -934,6 +935,10 @@ export type ReportEntry = {
    * violations it was asked to fix). Absent when the first spine passed —
    * the common case — and on a resume from a banked spine. */
   spineReasks?: SpineReask[];
+  /** GV-89: the spine's runtime lower bound and estimate in seconds
+   * (`tierRuntime.ts`), on every outcome that reached the spine, so the
+   * golden set can calibrate the estimate against the finished runtime. */
+  spineRuntime?: SpineRuntime;
   /** GV-86: the acts (0-based) §4.4 took from the spine with no deepen call,
    * on a run where FORAY_SPINE_FOLD_DEEPEN was in force for its tier (empty
    * when every act fell back to its deepen call). Absent otherwise. */
@@ -1623,6 +1628,7 @@ export async function generateOneCandidate(
       ? { narrationConcurrency: outcome.narration.concurrency, narrationActs: outcome.narration.acts }
       : {}),
     ...(spineReasks.length ? { spineReasks } : {}),
+    ...("spineRuntime" in outcome && outcome.spineRuntime !== undefined ? { spineRuntime: outcome.spineRuntime } : {}),
     ...("deepenFolded" in outcome && outcome.deepenFolded !== undefined ? { deepenFolded: outcome.deepenFolded } : {}),
     ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,
