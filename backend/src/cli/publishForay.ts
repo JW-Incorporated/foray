@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import {
   finalizeForay,
@@ -17,6 +18,7 @@ import {
   type RuntimeRestatement
 } from "../generation/finalizeForay";
 import { evaluateVeracityGate, type VeracityGateResult, type VeracityMetrics } from "../generation/veracityMetrics";
+import { JOB_LANES, isJobLane, type JobLane } from "../generation/jobSink";
 import {
   formatSuiteFailure,
   knownUncoveredGuidance,
@@ -131,12 +133,24 @@ import {
  * writes the files, runs the suites, restores the files, and reports — no
  * branch, no PR — so a candidate can be gated locally without publishing.
  *
+ * GV-81 LANE CHECK (docs/roadmap/generation-v2.md GV-81; DECISIONS.md
+ * 2026-10-13): before the veracity gate (before validation, in fact) an
+ * `on-demand` candidate (`meta.lane`, written by `generate-forays --lane`) is
+ * refused unless `--review-verdict <verdicts.jsonl>` holds a `pass` verdict
+ * (tools/generation/review-queue.mjs, GV-41) for EVERY act of this Foray id,
+ * each given on the sha-256 of these exact `--input` bytes. `--force` does
+ * NOT bypass it: an on-demand Foray is a founder's private play (D9), and the
+ * only way from that lane into the catalogue is a recorded review. A
+ * catalogue candidate (no lane, or `catalogue`) is not checked and publishes
+ * exactly as before. See `laneCheck`.
+ *
  * Usage:
  *   npm run publish-foray -- --input path/to/candidate.json
  *   npm run publish-foray -- --input path/to/candidate.json --dry-run
  *   npm run publish-foray -- --input path/to/candidate.json --no-hold
  *   npm run publish-foray -- --input path/to/candidate.json --force
  *   npm run publish-foray -- --input path/to/candidate.json --report out/report.json [--deploy-id <id>]
+ *   npm run publish-foray -- --input path/to/on-demand-candidate.json --review-verdict data-local/review/verdicts.jsonl
  */
 
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
@@ -167,6 +181,10 @@ export interface CliArgs {
    * `main()` says so on the console; the flag combination is not an error, it
    * is a request the gate declines (see `parseArgs`). */
   holdForcedByForce: boolean;
+  /** GV-81: `--review-verdict <verdicts.jsonl>`, the review verdicts an
+   * on-demand candidate must hold a pass in for every act. Not read for a
+   * catalogue candidate. */
+  reviewVerdict: string | null;
 }
 
 /**
@@ -208,8 +226,213 @@ export function parseArgs(argv: string[]): CliArgs {
     report: get("--report") ?? null,
     deployId: get("--deploy-id") ?? null,
     supersedes: get("--supersedes") ?? null,
-    holdForcedByForce: force && noHold
+    holdForcedByForce: force && noHold,
+    reviewVerdict: get("--review-verdict") ?? null
   };
+}
+
+/* ------------------------------------------------------------------ */
+/* GV-81: the lane check                                               */
+/* ------------------------------------------------------------------ */
+
+/* The review verdict row's schema tag, tools/generation/review-queue.mjs's
+   VERDICT_SCHEMA. Assembled from name and version because a name-slash-digit
+   literal under backend/src/ reads as a User-Agent to
+   tools/segments/politeness.test.mjs (the same trick jobSink.ts uses). */
+const REVIEW_VERDICT_SCHEMA_NAME = "foray-review-verdict";
+const REVIEW_VERDICT_SCHEMA_VERSION = 1;
+export const REVIEW_VERDICT_SCHEMA = `${REVIEW_VERDICT_SCHEMA_NAME}/${REVIEW_VERDICT_SCHEMA_VERSION}`;
+
+/** The fields of one review verdict row (`review-queue.mjs verdict`, GV-41)
+ * the lane check reads. The writer validates the whole row (axes, reviewer,
+ * time); this reads only what decides the lane. */
+export interface ReviewVerdictRow {
+  schema: string;
+  forayId: string;
+  /** 1-based act number. */
+  act: number;
+  /** sha-256 hex of the candidate file's bytes the verdict was given on. */
+  candidateSha256: string;
+  verdict: "pass" | "fail" | "fix";
+  lane?: string;
+}
+
+/** sha-256 hex of a candidate file's bytes, as review-queue.mjs hashes them. */
+export function candidateSha256(bytes: Buffer | string): string {
+  return createHash("sha256").update(bytes).digest("hex");
+}
+
+/**
+ * Every row of a verdicts.jsonl text. Throws, naming the line, on a line that
+ * is not JSON or not a review verdict: a verdicts file the check cannot read
+ * is a refusal, never a silent "no verdicts".
+ */
+export function parseReviewVerdicts(text: string, file = "verdicts.jsonl"): ReviewVerdictRow[] {
+  const rows: ReviewVerdictRow[] = [];
+  text.split("\n").forEach((raw, index) => {
+    const line = raw.replace(/\r$/, "");
+    if (line.trim() === "") return;
+    let row: unknown;
+    try {
+      row = JSON.parse(line);
+    } catch (err) {
+      throw new Error(`${file}:${index + 1}: not JSON (${err instanceof Error ? err.message : String(err)})`, { cause: err });
+    }
+    const r = row as Partial<ReviewVerdictRow> | null;
+    const ok =
+      r !== null &&
+      typeof r === "object" &&
+      r.schema === REVIEW_VERDICT_SCHEMA &&
+      typeof r.forayId === "string" &&
+      Number.isInteger(r.act) &&
+      (r.act as number) >= 1 &&
+      typeof r.candidateSha256 === "string" &&
+      /^[0-9a-f]{64}$/.test(r.candidateSha256) &&
+      (r.verdict === "pass" || r.verdict === "fail" || r.verdict === "fix");
+    if (!ok) throw new Error(`${file}:${index + 1}: not a ${REVIEW_VERDICT_SCHEMA} row`);
+    rows.push(r as ReviewVerdictRow);
+  });
+  return rows;
+}
+
+/** The acts a candidate declares, review-queue.mjs's `actCount` rule: 1..N
+ * while an `act-N-introduction` item exists. The verdicts are written per act
+ * under the same rule, so the two cannot disagree on what "every act" is. */
+export function candidateActCount(input: Pick<FinalizeForayInput, "items">): number {
+  const items: readonly unknown[] = Array.isArray(input.items) ? input.items : [];
+  const has = (id: string): boolean => items.some((i) => typeof i === "object" && i !== null && (i as { id?: unknown }).id === id);
+  let n = 0;
+  while (has(`act-${n + 1}-introduction`)) n++;
+  return n;
+}
+
+export interface LaneCheckResult {
+  ok: boolean;
+  lane: JobLane;
+  /** Why it was refused; empty when `ok`. */
+  problems: string[];
+}
+
+/**
+ * GV-81: may this candidate go on to the publish gates? Pure.
+ *
+ * - A catalogue candidate (`meta.lane` absent or `catalogue`) always may: the
+ *   catalogue lane is the held PR (D7), and the rest of this CLI is its gate.
+ * - A lane that is neither is refused, so a typo cannot read as `catalogue`.
+ * - An `on-demand` candidate may only when `verdictRows` (null = no
+ *   `--review-verdict`) holds, for EVERY act 1..N of this Foray id, a latest
+ *   verdict of `pass` given on `inputSha` (the sha-256 of the --input bytes).
+ *   Latest means last in the file among this id, act and sha: the file is
+ *   append-only, so a later `fail` or `fix` withdraws an earlier `pass`. A
+ *   verdict given on other bytes (a regenerated or edited candidate) does not
+ *   count.
+ *
+ * `--force` is not an input: nothing overrides this check.
+ */
+export function laneCheck(
+  input: Pick<FinalizeForayInput, "id" | "items" | "meta">,
+  verdictRows: readonly ReviewVerdictRow[] | null,
+  inputSha: string
+): LaneCheckResult {
+  const raw = (input.meta as { lane?: unknown } | undefined)?.lane;
+  if (raw !== undefined && !isJobLane(raw)) {
+    return { ok: false, lane: "on-demand", problems: [`meta.lane ${JSON.stringify(raw)} is not one of ${JOB_LANES.join(", ")}`] };
+  }
+  const lane: JobLane = raw ?? "catalogue";
+  if (lane === "catalogue") return { ok: true, lane, problems: [] };
+
+  if (verdictRows === null) {
+    return { ok: false, lane, problems: ["an on-demand candidate needs --review-verdict <verdicts.jsonl> with a pass verdict for every act"] };
+  }
+  const acts = candidateActCount(input);
+  if (acts === 0) return { ok: false, lane, problems: ["the candidate declares no act (no act-1-introduction item), so no review can cover it"] };
+
+  const problems: string[] = [];
+  const mine = verdictRows.filter((r) => r.forayId === input.id);
+  for (let act = 1; act <= acts; act++) {
+    const forAct = mine.filter((r) => r.act === act);
+    const matching = forAct.filter((r) => r.candidateSha256 === inputSha);
+    const latest = matching[matching.length - 1];
+    if (latest?.verdict === "pass") continue;
+    if (latest) problems.push(`act ${act}: the latest verdict on these bytes is "${latest.verdict}", not "pass"`);
+    else if (forAct.length > 0) {
+      const other = forAct[forAct.length - 1]!.candidateSha256;
+      problems.push(`act ${act}: the verdict was given on other bytes (candidateSha256 ${other.slice(0, 12)}..., this file is ${inputSha.slice(0, 12)}...)`);
+    } else problems.push(`act ${act}: no verdict`);
+  }
+  return { ok: problems.length === 0, lane, problems };
+}
+
+/**
+ * GV-81: the lane check as `main` runs it: reads the --review-verdict file
+ * (only for a candidate that is not catalogue), checks, prints. Returns
+ * whether the publish may go on. A verdicts file that is missing or
+ * unreadable refuses an on-demand candidate.
+ */
+export function laneGate(
+  args: Pick<CliArgs, "reviewVerdict" | "force">,
+  input: Pick<FinalizeForayInput, "id" | "items" | "meta">,
+  inputBytes: Buffer,
+  out: Pick<Out, "log" | "error"> = CONSOLE
+): boolean {
+  const declared = (input.meta as { lane?: unknown } | undefined)?.lane;
+  let result: LaneCheckResult;
+  if (declared !== undefined && declared !== "catalogue" && args.reviewVerdict) {
+    let rows: ReviewVerdictRow[] | null = null;
+    let readError: string | null = null;
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied --review-verdict path.
+      rows = parseReviewVerdicts(fs.readFileSync(path.resolve(args.reviewVerdict), "utf8"), args.reviewVerdict);
+    } catch (err) {
+      readError = err instanceof Error ? err.message : String(err);
+    }
+    result = readError !== null ? { ok: false, lane: "on-demand", problems: [`--review-verdict could not be read: ${readError}`] } : laneCheck(input, rows, candidateSha256(inputBytes));
+  } else {
+    result = laneCheck(input, null, candidateSha256(inputBytes));
+  }
+  if (result.ok) {
+    if (result.lane === "on-demand") out.log(`Foray "${input.id}" (on-demand) has a pass review verdict for every act of these bytes; on to the publish gates.`);
+    return true;
+  }
+  out.error(`Foray "${input.id}" FAILED the lane check (GV-81): no file written, no PR opened.`);
+  for (const p of result.problems) out.error(`  ${p}`);
+  out.error(
+    "An on-demand Foray is a founder's private play (D9) and reaches the catalogue only through a recorded review: a pass " +
+      "verdict for every act (node tools/generation/review-queue.mjs verdict ...) on these exact candidate bytes." +
+      (args.force ? " --force does not bypass the lane check." : "")
+  );
+  return false;
+}
+
+/**
+ * GV-81 (the card's item 3): what this publish says about rendered narration
+ * on the candidate. A Foray publishes as `status: "draft"` (`finalizeForay`'s
+ * record), and check-forays.mjs refuses rendered narration audio only on a
+ * PUBLISHED Foray while its RENDERED_NARRATION_ON_PUBLISHED is false, so a
+ * stamped candidate passes as a draft; this names the rule a later promotion
+ * would hit instead of leaving it to an obscure checker line. Empty when no
+ * narration item carries a rendered file (any voice, check-forays.mjs's
+ * `carriesRenderedNarration`).
+ */
+export function renderedNarrationNotice(items: readonly unknown[]): string[] {
+  const nonEmpty = (v: unknown): boolean => typeof v === "string" && v.trim() !== "";
+  const stamped = items.filter((raw) => {
+    if (typeof raw !== "object" || raw === null) return false;
+    const it = raw as { type?: unknown; audio_url?: unknown; asset?: unknown; voices?: unknown };
+    if (it.type !== "narration") return false;
+    if (nonEmpty(it.audio_url) || nonEmpty(it.asset)) return true;
+    return (
+      typeof it.voices === "object" &&
+      it.voices !== null &&
+      Object.values(it.voices as Record<string, unknown>).some((v) => typeof v === "object" && v !== null && nonEmpty((v as { audio_url?: unknown }).audio_url))
+    );
+  }).length;
+  if (stamped === 0) return [];
+  return [
+    `${stamped} narration item(s) carry rendered audio. This Foray publishes as a draft; while RENDERED_NARRATION_ON_PUBLISHED ` +
+      "is false in tools/foray/check-forays.mjs a PUBLISHED Foray may not carry rendered narration, so keep it a draft or strip " +
+      "its audio_url before promoting it."
+  ];
 }
 
 function makeRunner(cwd: string): Runner {
@@ -791,7 +1014,7 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   if (!args.input) {
     console.error(
-      "Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold] [--force] [--report report.json] [--deploy-id <id>] [--supersedes <foray-id>]"
+      "Usage: npm run publish-foray -- --input path/to/candidate.json [--dry-run] [--no-hold] [--force] [--report report.json] [--deploy-id <id>] [--supersedes <foray-id>] [--review-verdict verdicts.jsonl]"
     );
     process.exitCode = 1;
     return;
@@ -809,8 +1032,17 @@ async function main(): Promise<void> {
   // Step 0 — see THE BRANCH IS CUT FROM ORIGIN/MAIN in this file's doc comment.
   assertDataFilesMatchMain(run);
 
-  const raw = fs.readFileSync(path.resolve(args.input), "utf8");
-  const input = JSON.parse(raw) as FinalizeForayInput;
+  /* One read: the lane check hashes the very bytes that are parsed. */
+  const inputBytes = fs.readFileSync(path.resolve(args.input));
+  const input = JSON.parse(inputBytes.toString("utf8")) as FinalizeForayInput;
+
+  /* GV-81: the lane check, before validation and the veracity gate, with no
+     --force override. See LANE CHECK in this file's doc comment. */
+  if (!laneGate(args, input, inputBytes)) {
+    process.exitCode = 1;
+    return;
+  }
+  for (const line of renderedNarrationNotice(input.items ?? [])) console.log(`  ${line}`);
 
   const result = await finalizeForay(input);
 

@@ -30,9 +30,10 @@ import { FileCheckpointStore } from "./checkpointStore";
 import { FileJobSink } from "./fileJobSink";
 import { SpoolRenderClient } from "./spoolRenderClient";
 import { AUDIO_POLICIES, DEFAULT_AUDIO_POLICY, isAudioPolicy, NarrationRenderTracker, type AudioPolicy, type NarrationRenderClient, type RenderReport } from "../generation/narrationRender";
-import { EMPTY_JOB_PROGRESS, isJobForayId, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity } from "../generation/jobSink";
+import { EMPTY_JOB_PROGRESS, JOB_LANES, isJobForayId, isJobLane, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity, type JobLane } from "../generation/jobSink";
 import { readAuthorIdFlag, type ClarityDecider, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
+import type { FinalizeForayInput } from "../generation/finalizeForay";
 import type { VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
 import type { PublishRecord } from "./publishForay";
 import { modelSummary } from "../config/models";
@@ -118,6 +119,7 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *                              [--stage-provider stage=provider[:lane][,...]]
  *                              [--keep-checkpoints]
  *                              [--seed-checkpoints <dir> --rerun-from <stage>]
+ *                              [--lane on-demand|catalogue]
  *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
  *   same default `generate-foray` uses; `--author` still works for one
  *   release and prints a deprecation line)
@@ -169,6 +171,14 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  * <stage> (CHECKPOINT_STAGE_ORDER in generation/checkpoint.ts), and so
  * rebuilds only from the changed stage. A missing or unusable seed is logged
  * and the prompt runs from scratch; the row records `seededFrom`.
+ *
+ * `--lane on-demand|catalogue` (GV-81, default catalogue) names the lane the
+ * batch's candidates are for. Given, it is written onto every report row
+ * (`lane`), the candidate's `meta.lane` and the job snapshot's `lane`; absent,
+ * nothing is written and the job row reads `catalogue`, exactly as before.
+ * An on-demand candidate is a founder's private Foray (D9): `publish-foray`
+ * refuses it, `--force` or not, without a pass review verdict for every act
+ * (`laneCheck` in publishForay.ts). The catalogue lane is the held PR (D7).
  */
 
 interface PromptSpec {
@@ -243,6 +253,10 @@ export interface CliArgs {
   seedCheckpoints?: string;
   /** GV-62: `--rerun-from <stage>`, the first stage a seeded run rebuilds. */
   rerunFrom?: CheckpointStage;
+  /** GV-81: `--lane on-demand|catalogue`. Absent unless given, so the parsed
+   * args, the candidate and the report row of a run without it are unchanged;
+   * absent reads as `catalogue`. */
+  lane?: JobLane;
 }
 
 /** A command-line value the driver refuses. `main` prints the message and
@@ -401,6 +415,7 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
   const stageProviders = stageProviderValues.length ? parseStageProviders(stageProviderValues) : undefined;
   const fork = parseForkFlags(argv);
   const render = parseRenderFlags(argv);
+  const lane = parseLaneFlag(argv);
   return {
     prompts: get("--prompts") ?? null,
     out: get("--out") ?? path.join("data-local", "foray-candidates"),
@@ -417,8 +432,32 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {}),
     ...(stageProviders ? { stageProviders } : {}),
     ...fork,
-    ...render
+    ...render,
+    ...(lane !== undefined ? { lane } : {})
   };
+}
+
+/**
+ * GV-81: `--lane on-demand|catalogue`, absent unless given. Refused
+ * (CliArgError): the flag with no value, or a value that is not a lane.
+ */
+function parseLaneFlag(argv: string[]): JobLane | undefined {
+  const i = argv.indexOf("--lane");
+  if (i < 0) return undefined;
+  const value = argv[i + 1];
+  if (value === undefined || value.startsWith("--") || value.trim() === "") throw new CliArgError(`--lane needs a value: ${JOB_LANES.join("|")}`);
+  if (!isJobLane(value)) throw new CliArgError(`--lane: "${value}" is not one of ${JOB_LANES.join(", ")}`);
+  return value;
+}
+
+/**
+ * GV-81: the candidate as written to disk — `meta.lane` added when `--lane`
+ * was given, the input itself otherwise (so a run without the flag writes the
+ * same bytes it always did). `meta` keeps `veracity` first.
+ */
+export function candidateWithLane(input: FinalizeForayInput, lane: JobLane | undefined): FinalizeForayInput {
+  if (lane === undefined) return input;
+  return { ...input, meta: { ...input.meta, lane } as FinalizeForayInput["meta"] };
 }
 
 /**
@@ -991,6 +1030,9 @@ export type ReportEntry = {
    * (createMessage's per-process count, read before and after). 0 under the
    * zero-Anthropic rule. On every row. */
   anthropicCalls?: number;
+  /** GV-81: the run's `--lane`, on every row when the flag was given; absent
+   * otherwise (reads as `catalogue`). */
+  lane?: JobLane;
 };
 
 /** GV-62: a report row's `seededFrom`. */
@@ -1256,7 +1298,7 @@ export async function generateOneCandidate(
      stays served. Nothing is opened without --job-dir, and nothing under
      --dry-run. A job-row failure never costs the Foray: it is a warning. */
   const jobSink: GenerationJobSink | null = args.jobDir && !args.dryRun ? new FileJobSink(path.resolve(args.jobDir)) : null;
-  const job: JobIdentity = { jobId: (deps.newJobId ?? randomUUID)(), authorId: args.authorId, lane: "catalogue" };
+  const job: JobIdentity = { jobId: (deps.newJobId ?? randomUUID)(), authorId: args.authorId, lane: args.lane ?? "catalogue" };
   let jobProgress = EMPTY_JOB_PROGRESS;
   let jobSeq = 0;
   /* GV-74 (W6-07): the render stage. One tracker per prompt, kept across
@@ -1367,7 +1409,8 @@ export async function generateOneCandidate(
       gates,
       stageAssignments,
       anthropicCalls: anthropicCallCount() - anthropicAtStart,
-      ...(seededFrom !== undefined ? { seededFrom } : {})
+      ...(seededFrom !== undefined ? { seededFrom } : {}),
+      ...(args.lane !== undefined ? { lane: args.lane } : {})
     };
     if (!notify) return withCalls;
     const notification = await notify({
@@ -1583,7 +1626,7 @@ export async function generateOneCandidate(
   const id = outcome.outcome === "generated" ? outcome.input.id : lastPartialId;
   if (outcome.outcome === "generated" && outcome.result.validation.ok) {
     if (!args.dryRun) {
-      fs.writeFileSync(file, `${JSON.stringify(outcome.input, null, 2)}\n`);
+      fs.writeFileSync(file, `${JSON.stringify(candidateWithLane(outcome.input, args.lane), null, 2)}\n`);
       /* The candidate now IS the resume record — the outer skip above will
          see it. A checkpoint left beside a finished candidate is only a trap
          for the next reader, and so is the partial candidate: its job (letting
@@ -1638,7 +1681,8 @@ export async function main(
         "[--duration short|medium|long] [--limit N] [--budget-usd N] [--no-resume] [--dry-run] " +
         "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
         "[--render-spool <dir> [--audio-policy phone-voice-first|await-render]] " +
-        "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>]"
+        "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>] " +
+        "[--lane on-demand|catalogue]"
     );
     process.exitCode = 1;
     return;
