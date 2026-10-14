@@ -4,6 +4,7 @@ import type { ResearchShape } from "../../types/research";
 import { DURATION_SHAPE_BUDGETS, SPINE_MIN_SEEDED_BEATS_PER_ACT, type DurationTier, type Spine } from "../../types/spine";
 import { joinParts, type PromptParts } from "../promptLayout";
 import type { SpineBuildContext } from "../SpineBuilder";
+import { SPINE_COPY_FIELDS } from "../replySchemas";
 import { SPINE_SEED_REPEAT_MIN, SPINE_SEED_THIRD_MIN } from "../spineSeeding";
 
 /**
@@ -42,8 +43,8 @@ export interface SpineTurn {
  * toChatMessages(parts) (GV-32), and both append spineRevisionTurns. A fresh
  * array on every call.
  */
-export function spineConversation(promptText: string, revision: SpineBuildContext["revision"]): SpineTurn[] {
-  return [{ role: "user", content: promptText }, ...spineRevisionTurns(revision)];
+export function spineConversation(promptText: string, revision: SpineBuildContext["revision"], folded: boolean = false): SpineTurn[] {
+  return [{ role: "user", content: promptText }, ...spineRevisionTurns(revision, folded)];
 }
 
 /**
@@ -51,10 +52,10 @@ export function spineConversation(promptText: string, revision: SpineBuildContex
  * otherwise [the refused reply as the assistant's turn, the fix turn]. The
  * opening is never rebuilt, so a re-ask keeps the first call's prefix (GV-32).
  */
-export function spineRevisionTurns(revision: SpineBuildContext["revision"]): SpineTurn[] {
+export function spineRevisionTurns(revision: SpineBuildContext["revision"], folded: boolean = false): SpineTurn[] {
   if (!revision) return [];
   return [
-    { role: "assistant", content: spineReplyText(revision.previous) },
+    { role: "assistant", content: spineReplyText(revision.previous, folded) },
     {
       role: "user",
       content: revision.kind === "seed-floor" ? buildSeedFloorInstruction(revision.violations) : buildSpineFixInstruction(revision.violations)
@@ -68,8 +69,19 @@ export function spineRevisionTurns(revision: SpineBuildContext["revision"]): Spi
  * what the model would have said, not a wrapper around it. Exported for the
  * test that pins the re-ask conversation.
  */
-export function spineReplyText(previous: Spine): string {
-  return JSON.stringify({ overview: previous.overview, voice: previous.voice, acts: previous.acts });
+export function spineReplyText(previous: Spine, folded: boolean = false): string {
+  if (!folded) return JSON.stringify({ overview: previous.overview, voice: previous.voice, acts: previous.acts });
+  /* GV-67: a folded reply led with the copy fields, so its re-ask turn does
+     too, in the order the prompt asked for them. A field the reply left out
+     or blank stays out: the turn is what the model wrote, and nothing the
+     pipeline would otherwise have filled in (spineFromReply leaves a missing
+     subject or angle blank, never the keyword intent's). */
+  const copy: Record<string, string> = {};
+  for (const field of SPINE_COPY_FIELDS) {
+    const value = previous[field];
+    if (value !== undefined && value.trim() !== "") copy[field] = value;
+  }
+  return JSON.stringify({ ...copy, overview: previous.overview, voice: previous.voice, acts: previous.acts });
 }
 
 /**
@@ -182,7 +194,12 @@ function tapeFitPhrase(subtopic: ResearchShape["subtopics"][number]): string {
  * research map (G-25 records it): the words that reach the model are the
  * whole of WS-L and G-25, so they are asserted on directly.
  */
-export function buildSpinePromptParts(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier): PromptParts {
+export function buildSpinePromptParts(
+  intent: IntentUnderstanding,
+  researchShape: ResearchShape,
+  duration: DurationTier,
+  listenerPrompt?: string
+): PromptParts {
   const budget = DURATION_SHAPE_BUDGETS[duration];
   const subtopicLines = researchShape.subtopics
     .map(
@@ -256,13 +273,23 @@ export function buildSpinePromptParts(intent: IntentUnderstanding, researchShape
           "episode, put them in the order the tape says them: the beat seeded from the earlier startSec comes first."
         ];
 
+  /* GV-67: on the folded path (`listenerPrompt` set) the intent is only a
+     keyword list with sentinel fields (preSpineIntent.ts), so the spine is
+     given the listener's own words instead and writes the subject, angle and
+     copy itself (SPINE_STABLE_FOLDED). The rest of the foray part is the same. */
+  const opening =
+    listenerPrompt !== undefined
+      ? ['Build the SPINE for an audio documentary ("Foray") a listener asked for in these words:', `"${listenerPrompt}"`]
+      : [
+          `Build the SPINE for an audio documentary ("Foray") on: "${intent.subject}".`,
+          `Angle: ${intent.angle}`,
+          `What the listener probably already knows: ${intent.priorKnowledge}`,
+          `This Foray disappoints if: ${intent.disappointment}`
+        ];
   return {
-    stable: SPINE_STABLE,
+    stable: listenerPrompt !== undefined ? SPINE_STABLE_FOLDED : SPINE_STABLE,
     foray: [
-      `Build the SPINE for an audio documentary ("Foray") on: "${intent.subject}".`,
-      `Angle: ${intent.angle}`,
-      `What the listener probably already knows: ${intent.priorKnowledge}`,
-      `This Foray disappoints if: ${intent.disappointment}`,
+      ...opening,
       "",
       "Research map (candidate subtopics found so far):",
       subtopicLines,
@@ -278,12 +305,12 @@ export function buildSpinePromptParts(intent: IntentUnderstanding, researchShape
 
 /** The legacy single-string spine prompt: stable, a blank line, foray. The
  * Anthropic builder sends it as one user turn. */
-export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier): string {
-  return joinParts(buildSpinePromptParts(intent, researchShape, duration));
+export function buildSpinePrompt(intent: IntentUnderstanding, researchShape: ResearchShape, duration: DurationTier, listenerPrompt?: string): string {
+  return joinParts(buildSpinePromptParts(intent, researchShape, duration, listenerPrompt));
 }
 
-/** The spine prompt's static half: built once, the same bytes for every Foray. */
-const SPINE_STABLE = [
+/** The rules both static halves share: everything before the reply shape. */
+const SPINE_RULE_LINES = [
   "For EACH act, give: title, thesis, startState (what the listener believes entering), endState",
   "(what they believe leaving), and slots (each with a title and an ordered list of beats).",
   "",
@@ -310,9 +337,51 @@ const SPINE_STABLE = [
   "running order and does not need one. A machine checks that after you answer.",
   `The overview is SPOKEN. ${NARRATOR_STRUCTURE_RULE}`,
   "",
-  "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:",
-  '{"overview": string, "voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
-    '"acts": [{"title": string, "thesis": string, "startState": string, "endState": string, ' +
-    '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, ' +
-    '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}]}]}'
+  "Respond with ONLY a single JSON object, no markdown fences, no other text, matching exactly:"
+];
+
+/** The reply shape from the overview on: overview, voice and the acts. */
+const SPINE_PLAN_SHAPE =
+  '"overview": string, "voice": {"style": string, "register": string, "sentenceRhythm": string, "narratorPresence": string}, ' +
+  '"acts": [{"title": string, "thesis": string, "startState": string, "endState": string, ' +
+  '"slots": [{"title": string, "beats": [{"claim": string, "exploration": boolean, ' +
+  '"seed"?: {"episodeId": string, "startSec": number, "endSec": number}}]}]}]}';
+
+/** The spine prompt's static half: built once, the same bytes for every Foray. */
+const SPINE_STABLE = [...SPINE_RULE_LINES, `{${SPINE_PLAN_SHAPE}`].join("\n");
+
+/**
+ * GV-67 (W4-03): the folded path's static half. No extractIntent call ran, so
+ * the spine writes the listener copy itself, FIRST, before the acts it will
+ * shape. The field rules are the intent prompt's (prompts/understand.ts) plus
+ * `answersDisappointment` (R2's guard: the plan says how it avoids the
+ * disappointment it named, which MQ-10 measures); then the same rules as the
+ * classic half and the same reply shape, the seven copy fields leading it.
+ * The same bytes for every folded Foray.
+ */
+const SPINE_STABLE_FOLDED = [
+  "A listener's own request is quoted below. Before the acts, decide what this Foray is, and write these",
+  "seven fields FIRST in your reply:",
+  "- subject: the concrete subject of the Foray, as a short noun phrase of at most 8 words —",
+  "  NOT a restatement of the request",
+  "- angle: the specific angle or thesis worth taking, not just the topic; the acts below take it",
+  "- priorKnowledge: what the listener probably already knows about this",
+  "- disappointment: what would make this Foray a disappointment to the listener — this is",
+  "  the most important field; be concrete, not generic",
+  "- answersDisappointment: ONE sentence on how the acts below avoid that disappointment",
+  "- title: the Foray's public title, at most 10 words, in SENTENCE CASE: capitalise the first word, proper",
+  "  nouns and acronyms, and nothing else (\"How AI actually gets built\", \"How Earth got plate tectonics and",
+  "  Venus never did\" — not \"How AI Actually Gets Built\"). No closing period; a closing ? or ! is fine.",
+  "- summary: one plain sentence of at most 16 words that a listener sees under the title —",
+  "  what they will come away knowing, not a list of subtopics",
+  "  Neither the title nor the summary may count or number the Foray's parts (\"eight beats\", \"22 segments\",",
+  "  \"three acts\", \"Act one\", \"this act\", \"the running order\"): those are our production words, not a",
+  "  listener's. A machine checks that after you answer.",
+  "",
+  "Then build the spine.",
+  "",
+  ...SPINE_RULE_LINES,
+  '{"subject": string, "angle": string, "priorKnowledge": string, "disappointment": string, ' +
+    '"answersDisappointment": string, "title": string, "summary": string, ' +
+    SPINE_PLAN_SHAPE
 ].join("\n");

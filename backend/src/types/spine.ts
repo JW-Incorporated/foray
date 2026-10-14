@@ -223,7 +223,22 @@ export const SpineSchema = z
     duration: DurationTierSchema,
     generatedAt: z.string(),
     voice: VoiceSchema,
-    acts: z.array(ActSchema).min(1)
+    acts: z.array(ActSchema).min(1),
+    /*
+     * GV-67 (W4-03): THE LISTENER COPY, WRITTEN BY THE SPINE. Set only on the
+     * folded path (`flags.foldSpineCopy`), where no extractIntent call runs and
+     * the spine call writes what the understander used to: what the listener
+     * already knows, what would disappoint them, how this plan avoids that
+     * (`answersDisappointment`, one sentence, for MQ-10's prompt-fit check),
+     * and the public title and summary (clamped and house-styled in code by
+     * `forayCopy`). Optional, so every spine banked before them, and every
+     * classic spine, still parses unchanged.
+     */
+    priorKnowledge: z.string().trim().min(1).optional(),
+    disappointment: z.string().trim().min(1).optional(),
+    answersDisappointment: z.string().trim().min(1).optional(),
+    title: z.string().trim().min(1).optional(),
+    summary: z.string().trim().min(1).optional()
   })
   .strict();
 export type Spine = z.infer<typeof SpineSchema>;

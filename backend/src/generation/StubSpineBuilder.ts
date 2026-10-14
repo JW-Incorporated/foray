@@ -95,6 +95,13 @@ export class StubSpineBuilder implements SpineBuilder {
       sessionId: ctx.sessionId
     });
 
+    /* GV-67: on the folded path the stub writes the listener copy a real spine
+       reply leads with, deterministically, from its own subject (the intent's
+       keyword list); act 1's startState then uses that priorKnowledge rather
+       than the pre-spine sentinel. Classic calls take none of this. */
+    const folded = ctx.listenerPrompt !== undefined ? stubFoldedCopy(intent.subject) : undefined;
+    const priorKnowledge = folded ? folded.priorKnowledge : intent.priorKnowledge;
+
     const budget = DURATION_SHAPE_BUDGETS[duration];
     const actCount = midpoint(budget.acts);
     const slotCount = midpoint(budget.slots);
@@ -202,7 +209,7 @@ export class StubSpineBuilder implements SpineBuilder {
            path. */
         title: `Act ${a + 1}: ${actTitleFor(intent.subject, a, seed)}`,
         thesis: `the story turns on ${actTitleFor(intent.subject, a, seed).toLowerCase()} as it relates to ${intent.subject}.`,
-        startState: a === 0 ? intent.priorKnowledge : `The listener has just heard about ${actTitleFor(intent.subject, a - 1, seed).toLowerCase()}.`,
+        startState: a === 0 ? priorKnowledge : `The listener has just heard about ${actTitleFor(intent.subject, a - 1, seed).toLowerCase()}.`,
         endState: `The listener now understands ${actTitleFor(intent.subject, a, seed).toLowerCase()} and how it changes their view of ${intent.subject}.`,
         slots: actSlots
       });
@@ -220,7 +227,8 @@ export class StubSpineBuilder implements SpineBuilder {
       duration,
       generatedAt: new Date().toISOString(),
       voice: stubVoice(intent),
-      acts
+      acts,
+      ...(folded ?? {})
     };
 
     /* F-86: the reply the stub was told to get wrong. The beat is act 2's
@@ -275,6 +283,21 @@ function spreadIndices(total: number, count: number): Set<number> {
 function hashToInt(input: string): number {
   const digest = crypto.createHash("sha1").update(input).digest();
   return digest.readUInt32BE(0);
+}
+
+/**
+ * GV-67: the copy a folded stub spine carries, from its subject alone, so it
+ * is deterministic and never holds the listener's prompt verbatim (the stub
+ * spine is banked). Exported for the tests that pin the folded path.
+ */
+export function stubFoldedCopy(subject: string): Required<Pick<Spine, "priorKnowledge" | "disappointment" | "answersDisappointment" | "title" | "summary">> {
+  return {
+    priorKnowledge: `A listener asking about ${subject} likely knows the name but not the specifics.`,
+    disappointment: `This Foray disappoints if it stays surface-level on ${subject} without one claim the listener did not already know.`,
+    answersDisappointment: `Every act turns on a specific, sourced claim about ${subject}, and a third of the beats go somewhere the request did not.`,
+    title: `${capitalize(subject)}, from the beginning`,
+    summary: `What shaped ${subject}, and why it still matters.`
+  };
 }
 
 function capitalize(s: string): string {

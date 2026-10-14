@@ -1,0 +1,30 @@
+{
+  "id": "E0-floor",
+  "kind": "measure",
+  "armA": "reference",
+  "armB": {
+    "env": {
+      "FORAY_STAGE_UNDERSTAND_CLARITY": "local:spark",
+      "FORAY_STAGE_UNDERSTAND_INTENT": "local:spark",
+      "FORAY_STAGE_UNDERSTAND_TITLE": "local:spark",
+      "FORAY_STAGE_RESEARCH": "none",
+      "FORAY_STAGE_SPINE": "local:spark",
+      "FORAY_STAGE_SPINE_ALT": "local:spark",
+      "FORAY_STAGE_DEEPEN": "local:spark",
+      "FORAY_STAGE_WRITER": "local:spark",
+      "FORAY_STAGE_VERIFIER": "local:spark",
+      "FORAY_STAGE_CONTINUITY": "local:spark",
+      "FORAY_STAGE_JUDGE": "local:spark"
+    }
+  },
+  "rerunFrom": null,
+  "golden": "tools/generation-bench/golden/golden-v1.json",
+  "expect": {
+    "stageAssignments": {
+      "research": { "impl": "none" },
+      "verifier": { "impl": "local", "machine": "spark" },
+      "judge": { "impl": "local", "machine": "spark" }
+    }
+  },
+  "notes": "The floor (GP-27): every stage on Qwen3.8-27B on the Spark, research 'none' (OQ-04), every lever off, the Qwen verifier and judge. Arm A is not generated: it is the committed Claude-written Foray each listened golden prompt names. Kind 'measure': the gap is recorded and nothing is adopted. Arm B is also the floor stack every 'adopted' arm starts from until adopted-stack.json names a stage. spine-alt is set because every stage is set explicitly; nothing reads it until the best-of-2 lever (GV-91) lands."
+}

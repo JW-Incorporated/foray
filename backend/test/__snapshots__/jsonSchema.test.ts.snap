@@ -424,7 +424,28 @@ exports[`zodToJsonSchema over REPLY_SCHEMAS > converts every reply schema, each 
       },
       "type": "array",
     },
+    "angle": {
+      "type": "string",
+    },
+    "answersDisappointment": {
+      "type": "string",
+    },
+    "disappointment": {
+      "type": "string",
+    },
     "overview": {
+      "type": "string",
+    },
+    "priorKnowledge": {
+      "type": "string",
+    },
+    "subject": {
+      "type": "string",
+    },
+    "summary": {
+      "type": "string",
+    },
+    "title": {
       "type": "string",
     },
     "voice": {
