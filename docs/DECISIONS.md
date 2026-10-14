@@ -2,6 +2,59 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-14 — Recommender v1: persona ratings are an offline prior, evidence-tiered, never shown chart rank (#1380)
+
+**Source.** Founder directive, Wyatt, 2026-10-14, recorded verbatim on issue
+#1380: build "archetypical user profiles with very thorough descriptions", have
+agents "rate" shows with "extra tokens to burn", use the ratings as "a basis for
+what shows are served", and also consider likes, follows and percent listened.
+The package is `docs/roadmap/recommender-v1.md` (30 cards, RV-01..RV-30), built
+from a research pass and a repo audit. This entry records its data-model
+decisions before any rating lands in `data/` (`CLAUDE.md`: decisions first).
+
+- **Offline labelling by Claude Code agents is approved (D1); it is not a runtime
+  call.** The app and backend never call Anthropic. GV-68's enforcement is
+  untouched. `tools/recommender/` calls no model: an agent reads a batch file and
+  writes a results file, as `tools/classify/` does. A Qwen (LiteLLM) path and a
+  Jev path are dormant until their keys arrive (#1163 item 17).
+- **The ratings are a prior, not the recommender (D2).** The runtime model is a
+  persona mixture with shrinkage toward local listening evidence. The prior never
+  overrides the stretch floor of `pickWithStretchFloor` or the structural stretch
+  slot of `buildCards`.
+- **Evidence tiers (D3).** Every rating records `evidence_tier`: `transcript`,
+  `episode-metadata` or `show-metadata`. The `host_style`, `production` and
+  `ad_load` sub-scores are null unless a transcript backs them, and confidence is
+  capped at 0.5 for show metadata and 0.7 for episode metadata. Rows of the
+  title-only shows index get `evidence_tier: none` and no rating. The 4.71M
+  PodcastIndex feeds are out of scope.
+- **Raters never see chart rank, download or popularity counts, the
+  publisher/network, or `in_curated` (D7).** Chart rank predicts dynamic ad
+  insertion in this catalogue, and the raters would learn the chart instead of
+  the show. Show text is untrusted. It is datamarked and pre-scanned for
+  instruction-like strings, and results are validated by code.
+- **File homes (D8).** `data/recommender/persona-profiles.json`,
+  `data/recommender/ratings.json` (gold set, one `top_reason` per show),
+  `data/recommender/ratings-predicted.json` (student output for the catalogued
+  shows), `data/recommender/rating-progress.json`, and the client projection
+  `data/recommender/ratings-client.json` with a 40 KB budget pinned by test. The
+  full per-persona reasons stay in `data-local/recommender/reasons/` and are
+  never committed. Nothing fetches the client file until the one `app.js` card
+  (RV-27), which is parked behind `RECOMMENDER_PRIOR = false` until the UI freeze
+  lifts.
+- **Rating personas are new ids (D11).** `data/personas.json` (the six
+  onboarding personas, expanded under issue #8, a change never recorded here
+  until now) and `backend/src/types/personas.ts` are unchanged. Each rating
+  persona carries `seed_persona_id` and `taxonomy_affinity`, so the client infers
+  a mixture from interests without storing a persona id or adding a `cp_` key.
+- **Ad insertion is a product constraint, not a taste score (D12).**
+  `data/dai-classification.json` enters the sampler's strata and the student's
+  features. The mixture model applies a separate `dai_penalty`, and the raters
+  are not shown it.
+- **Follows stay out of every weighting for now.** The privacy policy row for
+  `cp_starred_shows` promises that following a show "never changes what 4a
+  surfaces to you elsewhere". `player/recommender-feedback.js` ships with
+  `useFollows: false`, and the wording change is a founder item on #1163 (RV-24).
+
 ## 2026-10-13 — Two lanes for generated Forays: on-demand behind code gates, the catalogue through review (GV-81)
 
 **Source.** The founder's direction that every issue on the Foray Generation
