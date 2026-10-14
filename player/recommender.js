@@ -30,6 +30,10 @@
    behind `RECOMMENDER_PRIOR = false`. A suite pins the absence of those calls in
    the source text. */
 
+/* The one owner of the finite-number and plain-object guards (CH-41,
+   player/guards.test.js); guards.js is a leaf, so this stays pure. */
+import { isNum, isObj } from "./guards.js";
+
 /** The Dirichlet pseudo-count of the persona mix (research §3.1 B: "user n0 ~
     5-10"). The prior mix counts as this many listens. */
 export const MIX_N0 = 8;
@@ -52,9 +56,6 @@ const NEUTRAL_FIT = 3;
 /** The floor a pseudo-count is clamped to after a negative (bounce) update, so
     a persona's weight can fall toward zero but never below it. */
 const MIN_ALPHA = 1e-6;
-
-const isNum = (v) => typeof v === "number" && Number.isFinite(v);
-const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 
 /** The persona ids of a profiles input: the parsed `persona-profiles.json`
     or its `personas` array. */

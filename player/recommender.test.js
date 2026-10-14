@@ -237,10 +237,16 @@ test("the client tier codes are RV-02's CLIENT_TIER_CODES, inverted", () => {
 });
 
 // Mutation: add `const saved = globalThis.localStorage?.getItem("x");` inside
-// personaMixFromInterests.
+// personaMixFromInterests; or add `import { readJSON } from "./storage.js";`.
 test("the module source has no fetch, storage, page, window, event log or storage key", () => {
   const src = fs.readFileSync(path.join(ROOT, "player/recommender.js"), "utf8");
-  for (const re of [/\bfetch\s*\(/, /localStorage/, /sessionStorage/, /indexedDB/, /\bdocument\b/, /\bwindow\b/, /logEvent/, /["'`]cp_/, /\bimport\b/]) {
-    assert.doesNotMatch(src, re);
+  /* Its one import is the leaf guards module (CH-41's one owner,
+     player/guards.test.js); any other import is refused, so nothing reaches
+     storage or the page through one. */
+  const imports = [...src.matchAll(/^\s*import\b.*$/gm)].map((m) => m[0].trim());
+  assert.deepEqual(imports, ['import { isNum, isObj } from "./guards.js";']);
+  const body = src.replace(/^\s*import\b.*$/gm, "");
+  for (const re of [/\bfetch\s*\(/, /localStorage/, /sessionStorage/, /indexedDB/, /\bdocument\b/, /\bwindow\b/, /logEvent/, /["'`]cp_/, /\bimport\s*\(/, /\brequire\s*\(/]) {
+    assert.doesNotMatch(body, re);
   }
 });
