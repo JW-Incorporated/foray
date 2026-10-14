@@ -32,6 +32,7 @@ import { NullExternalResearcher } from "../src/generation/NullExternalResearcher
 import { findHoldingDoc, tapeDocIdFor } from "../src/types/narration";
 import { leadingNounPhrase } from "../src/types/spine";
 import { clipOpening } from "../src/generation/actSeams";
+import { actDocuments } from "../src/generation/writeAct";
 import { EVIDENCE_WHOLE_CLIP_ENV, FlagValueError } from "../src/generation/generationFlags";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
 import type { ExternalResearcher, ExternalResearchContext, ExternalResearchResult, PassageRetrievalRequest, RetrievedPassage } from "../src/generation/ExternalResearcher";
@@ -1084,6 +1085,46 @@ describe("GV-76: whole clip window as evidence (FORAY_EVIDENCE_WHOLE_CLIP)", () 
     const offPrev = ownDoc(off, longTape)!;
     expect(offPrev.text).not.toContain(LAST_LINE);
     expect(offPrev.text.endsWith(TAPE_CUT_MARK)).toBe(true);
+  });
+
+  /* PR #1363 review fix. The Intro page plays BEFORE its clip and holds it as
+     `adjacentTape.next`, head + tail; the clip's own page holds it whole.
+     `writeAct.actDocuments` dedupes by docId in play order, so the Intro's
+     excerpt reached it first and the act writer, the verifier and the clip
+     window read were all handed head + tail (R2-12 lost, tapeDocsCut still 0).
+     MUTATION THAT KILLS THIS: restore first-wins in `actDocuments` (skip any
+     held docId). Ran: red (no minute-12 quote, gap mark present). */
+  it("flag set: actDocuments keeps the clip's own whole document over the Intro's head + tail copy, in either play order", async () => {
+    const intro = { claim: "the Intro before the long clip", adjacentTape: { next: longTape } };
+    const clip = { claim: "the bridge", tape: longTape };
+    const [introPack, clipPack] = await withFlag("1", async () => {
+      const g = gatherer(new NullExternalResearcher(), longClipCues());
+      return [await g.gather(intro, ctx), await g.gather(clip, ctx)];
+    });
+    /* The Intro really does hold the excerpt, flagged as one. */
+    expect(ownDoc(introPack, longTape)!.text).toContain(TAPE_GAP_MARK.trim());
+    expect(ownDoc(introPack, longTape)!.text).not.toContain(MINUTE_12);
+
+    for (const order of [[introPack, clipPack], [clipPack, introPack]]) {
+      const docs = actDocuments(order);
+      expect(docs.filter((d) => d.docId === tapeDocIdFor(longTape.segmentId))).toHaveLength(1);
+      const held = ownDoc({ docs }, longTape)!;
+      expect(held.text).toContain(MINUTE_12);
+      expect(held.text).toContain(PRE_ROLL);
+      expect(held.text).not.toContain(TAPE_GAP_MARK.trim());
+      expect(Object.keys(held).sort()).toEqual(["docId", "kind", "text", "title"]);
+    }
+
+    /* Flag off: nothing is flagged, both copies are one text, and the act's
+       documents are what first-wins always gave. */
+    const [offIntro, offClip] = await withFlag(undefined, async () => {
+      const g = gatherer(new NullExternalResearcher(), longClipCues());
+      return [await g.gather(intro, ctx), await g.gather(clip, ctx)];
+    });
+    expect(offIntro.docs.some((d) => d.adjacentExcerpt)).toBe(false);
+    expect(ownDoc(offIntro, longTape)!.text).toBe(ownDoc(offClip, longTape)!.text);
+    const { tapePosition: _p, ...firstCopy } = offIntro.docs.find((d) => d.docId === tapeDocIdFor(longTape.segmentId))!;
+    expect(actDocuments([offIntro, offClip])).toEqual([firstCopy]);
   });
 
   /* MUTATION THAT KILLS THIS: count every built document as cut (drop the

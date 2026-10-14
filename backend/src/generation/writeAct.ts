@@ -806,11 +806,25 @@ export function replayMechanicalGate(
  * across an act — the layout says where each clip plays. */
 export function actDocuments(packs: EvidencePack[]): EvidenceDoc[] {
   const out = new Map<string, EvidenceDoc>();
+  /* GV-76 review fix: the docIds whose held copy is a neighbour's head+tail
+     excerpt (`adjacentExcerpt`). With `FORAY_EVIDENCE_WHOLE_CLIP` on, the
+     Intro page plays BEFORE its clip and holds that clip as its `next`
+     document in head+tail form; first-in-play-order would hand the writer,
+     the verifier and the clip-window read (`ClipState.window`) the excerpt
+     and lose R2-12 (judge a clip against the whole clip). So the clip's OWN
+     copy (no `adjacentExcerpt`) replaces an excerpt whatever the order; the
+     document keeps the position its first copy took (Map.set on a held key).
+     The rule reads the flag gatherEvidence sets, not text length. With the
+     flag off nothing carries `adjacentExcerpt` and this is first-wins, as
+     before, byte for byte. */
+  const excerpts = new Set<string>();
   for (const pack of packs) {
     for (const doc of pack.docs) {
-      if (out.has(doc.docId)) continue;
-      const { tapePosition: _position, ...rest } = doc;
+      if (out.has(doc.docId) && !(excerpts.has(doc.docId) && doc.adjacentExcerpt !== true)) continue;
+      const { tapePosition: _position, adjacentExcerpt, ...rest } = doc;
       out.set(doc.docId, rest);
+      if (adjacentExcerpt === true) excerpts.add(doc.docId);
+      else excerpts.delete(doc.docId);
     }
   }
   return [...out.values()];

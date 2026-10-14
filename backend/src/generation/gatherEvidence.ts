@@ -120,6 +120,13 @@ export interface EvidenceDoc extends HeldEvidenceDoc {
    * writer and verifier prompts read it so a page between two segments
    * knows which window is which. */
   tapePosition?: TapePosition;
+  /** GV-76 (`FORAY_EVIDENCE_WHOLE_CLIP`): set on a tape document a page
+   * holds for a NEIGHBOURING clip in whole-clip mode — the clip's head and
+   * tail (`headAndTail`), not the whole clip. The clip's own page holds the
+   * whole one under the same docId, and `writeAct.actDocuments` keeps that
+   * one whatever the play order. Never set with the flag off (both copies
+   * are then the same text). */
+  adjacentExcerpt?: true;
 }
 
 export type TapePosition = "previous" | "next";
@@ -511,7 +518,7 @@ export class DefaultEvidenceGatherer implements EvidenceGatherer {
           continue;
         }
         const window = this.tapeEvidenceFor(pointer, { whole, adjacent: true });
-        if (window?.doc) pack.docs.push({ ...window.doc, tapePosition: position });
+        if (window?.doc) pack.docs.push({ ...window.doc, tapePosition: position, ...(whole ? { adjacentExcerpt: true as const } : {}) });
       }
     }
 
