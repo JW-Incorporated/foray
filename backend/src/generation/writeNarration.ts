@@ -18,7 +18,8 @@ import {
   type NarrationMode,
   type Source
 } from "../types/narration";
-import type { DeepenedAct, Spine, Voice } from "../types/spine";
+import type { DeepenedAct, DurationTier, Spine, Voice } from "../types/spine";
+import type { PipelineFlags } from "./pipelineFlags";
 import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
 import { beatKindOf, createEvidenceGatherer, type AdjacentTape, type EvidenceBeat, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
 import type { ActFrame, GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
@@ -249,6 +250,12 @@ export interface WriteNarrationOptions {
    * permission to play (the per-act veracity gate decides that).
    */
   onSeamChecked?: (event: SeamCheckedEvent) => void;
+  /**
+   * GV-80 (W4-13): every act's round policy (`roundPolicyFor`), set by the
+   * driver from FORAY_ROUND_POLICY or the fast path. Omitted is today's
+   * policy: three whole-act rounds, and no act's options carry the key.
+   */
+  roundPolicy?: ActRoundPolicy;
 }
 
 /**
@@ -484,6 +491,43 @@ export function decideConnectiveNarration(slot: SourcedSlot, beatIndex: number):
 export const NARRATION_PAGE_ATTEMPTS = 3;
 
 /**
+ * GV-80 (W4-13; GP-04, GP-02, GP-05): how many rounds an act may take, and
+ * what a round after the first sends the writer.
+ *   - `maxRounds`: the act's round bound (`writeActNarration`'s loop).
+ *   - `editScope`: `act`, every round re-sends the whole act (today); `seams`,
+ *     from round 2 the writer gets a short seam edit (`editSeams`) holding
+ *     only the failing seams, their neighbours, the clips they touch and the
+ *     documents they cite -- falling back to a whole-act round when the
+ *     writer has no `editSeams`.
+ */
+export interface ActRoundPolicy {
+  maxRounds: number;
+  editScope: "act" | "seams";
+}
+
+/** Today's policy: `NARRATION_PAGE_ATTEMPTS` whole-act rounds. */
+export const DEFAULT_ACT_ROUND_POLICY: Readonly<ActRoundPolicy> = Object.freeze({ maxRounds: NARRATION_PAGE_ATTEMPTS, editScope: "act" as const });
+
+/** The timed path's policy: at most one edit round, on the failing seams. */
+export const TIMED_ACT_ROUND_POLICY: Readonly<ActRoundPolicy> = Object.freeze({ maxRounds: 2, editScope: "seams" as const });
+
+/** The tiers the timed policy applies to when FORAY_ROUND_POLICY=timed:
+ * every tier for now. Narrowing it (say, keeping the long tier on today's
+ * rounds) is a one-line change here, never at a call site. */
+export const TIMED_ROUND_POLICY_TIERS: ReadonlySet<DurationTier> = new Set<DurationTier>(["short", "medium", "long"]);
+
+/**
+ * GV-80: the round policy for a run's flags (FORAY_ROUND_POLICY, or the
+ * fast-path umbrella that sets it to `timed`) and tier. Anything but
+ * `timed` on a tier in `TIMED_ROUND_POLICY_TIERS` is today's policy. An
+ * omitted tier takes the flag alone.
+ */
+export function roundPolicyFor(flags: Pick<PipelineFlags, "roundPolicy">, tier?: DurationTier): ActRoundPolicy {
+  if (flags.roundPolicy === "timed" && (tier === undefined || TIMED_ROUND_POLICY_TIERS.has(tier))) return { ...TIMED_ACT_ROUND_POLICY };
+  return { ...DEFAULT_ACT_ROUND_POLICY };
+}
+
+/**
  * F-82: the beats on either side of a slot, in play order — the last beat
  * of the slot before it and the first of the slot after it. A page at a
  * slot's edge sits beside them exactly as it sits beside its own slot's
@@ -695,7 +739,9 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
               /* GV-73: the streamed writer path and its early-release signal,
                  with this act's position. */
               ...(options.streamSeams ? { streamSeams: true } : {}),
-              ...(options.onSeamChecked ? { actIndex, onSeamChecked: options.onSeamChecked } : {})
+              ...(options.onSeamChecked ? { actIndex, onSeamChecked: options.onSeamChecked } : {}),
+              /* GV-80: the run's round policy, when the driver set one. */
+              ...(options.roundPolicy ? { roundPolicy: options.roundPolicy } : {})
             },
             voice,
             ctx

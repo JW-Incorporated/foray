@@ -9,6 +9,7 @@ import type {
   NarrationBuildContext,
   NarrationWriterBuilder,
   SeamBrief,
+  SeamEditRequest,
   SelectedClaim,
   WriterStreamEvent,
   WrittenSeam
@@ -110,6 +111,25 @@ export class StubNarrationWriterBuilder implements NarrationWriterBuilder {
       yield { type: "seam", seam, atMs: this.now() - startedAt };
     }
     yield { type: "end", stopReason: "end", unfinishedSeamIds: [] };
+  }
+
+  /**
+   * GV-80: the seam edit of the timed round policy. Re-runs `stubSeam` for
+   * the requested seams only, against the request's own clips and
+   * documents (one budget record: an edit is one call). The local writer's
+   * implementation is W4-19's (GV-84).
+   */
+  async editSeams(request: SeamEditRequest, ctx: NarrationBuildContext): Promise<ActWriteResult> {
+    await this.budgetGuard.checkAndRecord({
+      userId: ctx.userId,
+      operation: "narration_edit_seams",
+      provider: this.providerName,
+      estimatedUsd: 0,
+      dryRun: true,
+      sessionId: ctx.sessionId
+    });
+    const clips = new Map(request.clips.map((c) => [c.clipId, c]));
+    return { seams: request.seams.map((seam) => stubSeam(seam, clips, request.documents, request.voice.register)) };
   }
 }
 
