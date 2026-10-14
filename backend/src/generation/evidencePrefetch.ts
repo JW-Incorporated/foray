@@ -1,4 +1,4 @@
-import { beatKindOf, claimHash, type EvidenceBeat, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
+import { beatKindOf, claimHash, type EvidenceBeat, type EvidenceGatherer, type EvidencePack, type TapeEvidenceMetrics } from "./gatherEvidence";
 import { decideConnectiveNarration, evidenceBeatFor, slotNeighbours, type SlotNeighbours } from "./writeNarration";
 import { findBudgetError } from "../cost/budgetGuard";
 import type { ExternalResearchContext } from "./ExternalResearcher";
@@ -64,7 +64,7 @@ export function evidencePrefetchConcurrency(): number {
 /** What `report.json` carries about retrieval for the run (`meta.veracity.
  * retrieval`). Wall times are real `Date.now()` differences, like every
  * other timing in `stageTiming.ts`. */
-export interface EvidencePrefetchMetrics {
+export interface EvidencePrefetchMetrics extends Partial<TapeEvidenceMetrics> {
   /** Wall time of the whole fan-out — the retrieval that moved OFF the
    * narration path. When the fan-out ran as a timed pipeline stage this IS
    * that stage's number (`recordStageMs`), not a second reading of the
@@ -90,6 +90,10 @@ export interface EvidencePrefetchMetrics {
    * calls, so with a full prefetch it is a few milliseconds of memo lookups,
    * and every retrieval that stayed on the critical path shows up here. */
   narrationRetrievalMs: number;
+  /* GV-76 (QK-27): `tapeDocsBuilt` and `tapeDocsCut`, inherited from
+     `TapeEvidenceMetrics`, are the wrapped gatherer's counts, present when it
+     keeps them (`DefaultEvidenceGatherer` does). QK-27 is
+     tapeDocsCut / tapeDocsBuilt. */
 }
 
 /**
@@ -274,7 +278,10 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
       narrationGathers: gathers,
       narrationHits: hits,
       hitRate: gathers === 0 ? null : hits / gathers,
-      narrationRetrievalMs: ms
+      narrationRetrievalMs: ms,
+      /* GV-76: the wrapped gatherer's tape counts, so they reach
+         `veracity.retrieval` with the rest of this row. */
+      ...(this.inner.tapeEvidenceMetrics ? this.inner.tapeEvidenceMetrics() : {})
     };
   }
 

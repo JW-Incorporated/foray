@@ -9,7 +9,10 @@ import {
 import { writeNarration } from "../src/generation/writeNarration";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
-import type { EvidenceBeat, EvidenceDoc, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
+import { DefaultEvidenceGatherer, type EvidenceBeat, type EvidenceDoc, type EvidenceGatherer, type EvidencePack, type TapeEvidenceMetrics } from "../src/generation/gatherEvidence";
+import { NullExternalResearcher } from "../src/generation/NullExternalResearcher";
+import type { CatalogueData } from "../src/generation/catalogueLookup";
+import type { TranscriptCue, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import type { ExternalResearchContext } from "../src/generation/ExternalResearcher";
 import type { SourcedAct, SourcedBeat, SourcedSlot } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
@@ -304,5 +307,76 @@ describe("PrefetchingEvidenceGatherer — the fan-out, and what narration finds 
     expect(inner.calls).toHaveLength(2);
     expect(evidence.metrics().hitRate).toBe(0);
     expect(evidence.summaryLine()).toMatch(/prefetched 1\/1 pages .* narration hit the prefetch 0\/1 \(0%\)/);
+  });
+});
+
+/* GV-76 (QK-27): the wrapped gatherer's tape counts reach `metrics()`, the
+   row runPipeline reports as `veracity.retrieval`. */
+describe("GV-76: tapeDocsBuilt / tapeDocsCut pass through metrics()", () => {
+  class TapeCountingGatherer extends CountingGatherer {
+    built = 0;
+    cut = 0;
+    override async gather(beat: EvidenceBeat): Promise<EvidencePack> {
+      if (beat.tape) {
+        this.built += 1;
+        if (beat.tape.endSec - beat.tape.startSec > 20) this.cut += 1;
+      }
+      return super.gather(beat);
+    }
+    tapeEvidenceMetrics(): TapeEvidenceMetrics {
+      return { tapeDocsBuilt: this.built, tapeDocsCut: this.cut };
+    }
+  }
+
+  /* MUTATION THAT KILLS THIS: drop the `...this.inner.tapeEvidenceMetrics()`
+     spread from metrics(). Ran: red (both counts undefined). */
+  it("carries the wrapped gatherer's counts, read when metrics() is asked", async () => {
+    const inner = new TapeCountingGatherer();
+    const evidence = new PrefetchingEvidenceGatherer(inner);
+    const m = await evidence.prefetch([MIXED_ACT], ctx);
+    expect(m.tapeDocsBuilt).toBe(2);
+    expect(m.tapeDocsCut).toBe(2);
+    expect(evidence.metrics()).toMatchObject({ tapeDocsBuilt: 2, tapeDocsCut: 2 });
+  });
+
+  /* MUTATION THAT KILLS THIS: report zeros when the wrapped gatherer keeps
+     no counts. Ran: red (the keys appear). */
+  it("leaves the counts out when the wrapped gatherer keeps none", async () => {
+    const evidence = new PrefetchingEvidenceGatherer(new CountingGatherer());
+    await evidence.prefetch([MIXED_ACT], ctx);
+    const m = evidence.metrics();
+    expect("tapeDocsBuilt" in m).toBe(false);
+    expect("tapeDocsCut" in m).toBe(false);
+  });
+
+  /* The real gatherer end to end: its own counts, unchanged by the wrapper.
+     MUTATION THAT KILLS THIS: never increment tapeDocsBuilt in
+     DefaultEvidenceGatherer. Ran: red (0 built). */
+  it("with DefaultEvidenceGatherer, the row holds the documents it built and none cut for short clips", async () => {
+    const item = "walkway--hearing-day-one";
+    const catalogue: CatalogueData = {
+      items: [{ id: item, show: "Walkway", title: "The walkway collapse hearing", topics: [], hook: "" }],
+      itemTags: {},
+      concepts: {},
+      shows: [{ show_id: "walkway", title: "Walkway", taxonomy_node_ids: [] }]
+    };
+    const digest: TranscriptDigestEntry = { show_id: "walkway", show_title: "Walkway", guid: "w-1", title: "The walkway collapse hearing", cues: 1 };
+    const cues: TranscriptCue[] = [{ text: "So the first thing to understand is the rod. And that changed everything after that.", start_sec: 100, end_sec: 130 }];
+    const act: SourcedAct = {
+      title: "Act",
+      slots: [{ title: "Slot", beats: [tapeBeat("The engineer explains the hanger.", item), narrationBeat("The connection was never checked.", "Carry")] }]
+    };
+    const inner = new DefaultEvidenceGatherer({
+      researcher: new NullExternalResearcher(),
+      cueProvider: { getCues: () => cues },
+      catalogue,
+      transcriptArchive: [digest],
+      cacheDir: null
+    });
+    const evidence = new PrefetchingEvidenceGatherer(inner);
+    const m = await evidence.prefetch([act], ctx);
+    expect(m.tapeDocsBuilt).toBeGreaterThan(0);
+    expect(m.tapeDocsCut).toBe(0);
+    expect({ tapeDocsBuilt: m.tapeDocsBuilt, tapeDocsCut: m.tapeDocsCut }).toEqual(inner.tapeEvidenceMetrics());
   });
 });
