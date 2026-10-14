@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildSpine, InvalidSpineError } from "../src/generation/buildSpine";
+import { buildSpine, InvalidSpineError, reaskForRuntime } from "../src/generation/buildSpine";
+import { spineCannotFit } from "../src/generation/tierRuntime";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
 import type { SpineBuilder, SpineBuildContext } from "../src/generation/SpineBuilder";
 import {
@@ -466,5 +467,169 @@ describe("buildSpine — G-25: the stub seeds every beat it can, one episode at 
       const foreign = claimWords.filter((w) => !spoken.has(w));
       expect(foreign, `"${beat.claim}" carries words its window never said`).toEqual([]);
     }
+  });
+});
+
+/* ────────────────────────────────────────────────────────────────────────────
+   GV-89 (W4-14): reaskForRuntime — one re-ask for a plan that cannot fit.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+const RUNTIME_CLAIMS = [
+  "Pitmasters in Lockhart smoked brisket over post oak for fourteen hours.",
+  "Ford turned sawdust from Model T body shops into charcoal briquettes.",
+  "Kingsford bought the briquette plant from Ford after the war.",
+  "Kansas City sauce leaned on molasses and tomato for its sweetness.",
+  "Carolina whole hog cooks mopped the pig with vinegar and red pepper.",
+  "Memphis rib joints rubbed their racks with paprika before the dry smoke.",
+  "Weber built the kettle grill from a cut marine buoy in Chicago.",
+  "Argentine asado cooks raked embers under parrilla grates of iron.",
+  "Korean galbi marinated short ribs in pear juice and soy.",
+  "Japanese yakitori chefs fanned binchotan under skewered chicken."
+];
+/* Claims no offered window speaks to, so post-seeding attaches nothing. */
+const RUNTIME_UNRELATED = [
+  "Suburban patios signalled prosperity during postwar housing booms.",
+  "Hardware stores marketed lighter fluid aggressively nationwide.",
+  "Television cooking programmes popularized outdoor entertaining.",
+  "Propane tanks displaced older backyard stoves gradually."
+];
+
+const runtimeShape: ResearchShape = makeResearchShape({
+  subtopics: [
+    {
+      label: "barbecue",
+      source: "literal-term",
+      tape: { signal: "strong", itemCount: 10, showCount: 1, exampleItemIds: [] },
+      controversies: [],
+      externalNotes: null,
+      externallyResearched: false,
+      windowsUnavailable: null,
+      tapeWindows: RUNTIME_CLAIMS.map((text, i) => ({
+        episodeId: `ep-${i}`,
+        showTitle: "Smoke Talk",
+        episodeTitle: `Episode ${i}`,
+        startSec: 100,
+        endSec: 220,
+        text,
+        score: 1
+      }))
+    }
+  ]
+});
+
+type RuntimeBeat = Spine["acts"][number]["slots"][number]["beats"][number];
+
+function runtimeBeat(i: number, seed: boolean): RuntimeBeat {
+  return { claim: RUNTIME_CLAIMS[i]!, exploration: i % 3 === 0, ...(seed ? { seed: { episodeId: `ep-${i}`, startSec: 100, endSec: 220 } } : {}) };
+}
+
+function runtimeSpine(beats: RuntimeBeat[]): Spine {
+  const half = Math.ceil(beats.length / 2);
+  return {
+    subject: "the history of grilling",
+    angle: "how an industrial waste product became a backyard ritual",
+    overview: "Smoke, sauce and steel: how a handful of backyard habits travelled the world and back.",
+    duration: "short",
+    generatedAt: "2026-10-14T00:00:00.000Z",
+    voice: { style: "curious", register: "conversational", sentenceRhythm: "varied", narratorPresence: "light" },
+    acts: [
+      {
+        title: "Act 1: Smoke and fire",
+        thesis: "Grilling grew out of industry as much as out of regional craft.",
+        startState: "The listener thinks of grilling as a timeless backyard habit.",
+        endState: "The listener sees the factories and pits behind it.",
+        slots: [
+          { title: "Pits and sauces", beats: beats.slice(0, half) },
+          { title: "Kettles and coals", beats: beats.slice(half) }
+        ]
+      }
+    ]
+  };
+}
+
+/** 10 beats seeded from 10 distinct 120 s windows: at least 1,200 s. */
+const overrunSpine = runtimeSpine(RUNTIME_CLAIMS.map((_, i) => ({ ...runtimeBeat(i, true), seedSource: "spine" as const })));
+/** 8 beats, 4 seeded (480 s) and 4 the windows say nothing about: fits. */
+const fittingReply = runtimeSpine([
+  ...[0, 1, 2, 3].map((i) => runtimeBeat(i, true)),
+  ...RUNTIME_UNRELATED.map((claim, i) => ({ claim, exploration: i % 2 === 0 }))
+]);
+
+/** A spine builder that hands back scripted replies in order and records every context. */
+class ScriptedSpineBuilder implements SpineBuilder {
+  readonly providerName = "scripted";
+  readonly calls: SpineBuildContext[] = [];
+  constructor(private readonly replies: Spine[]) {}
+  async buildSpine(_i: IntentUnderstanding, _r: ResearchShape, _d: DurationTier, ctx: SpineBuildContext): Promise<Spine> {
+    this.calls.push(ctx);
+    const next = this.replies.shift();
+    if (!next) throw new Error("ScriptedSpineBuilder: no reply left");
+    return next;
+  }
+}
+
+describe("GV-89: reaskForRuntime re-asks only a spine that cannot fit its tier", () => {
+  const ctx = { userId: "u1" };
+
+  it("a spine whose minimum runtime overruns the short ceiling is re-asked exactly once with kind 'runtime', and the fitting reply is kept, post-seeded", async () => {
+    /* MUTATION THAT KILLS THIS: send the revision without `kind: "runtime"`
+       (the builders then send F-86's structural fix turn). Ran it: red. */
+    expect(spineCannotFit(overrunSpine)).toBe(true);
+    const builder = new ScriptedSpineBuilder([fittingReply]);
+    const out = await reaskForRuntime(overrunSpine, makeIntent(), runtimeShape, "short", builder, ctx);
+
+    expect(builder.calls).toHaveLength(1);
+    const revision = builder.calls[0]!.revision!;
+    expect(revision.kind).toBe("runtime");
+    expect(revision.attempt).toBe(1);
+    expect(revision.violations[0]).toMatch(/^the plan's minimum runtime is \d+ s .* above the short tier's ceiling of 1035 s/);
+    /* The model is shown its plan without the pipeline's seedSource marks. */
+    expect(allBeats(revision.previous).every((b) => b.seedSource === undefined)).toBe(true);
+    expect(allBeats(revision.previous).filter((b) => b.seed)).toHaveLength(10);
+
+    expect(out.reask).toEqual({ attempt: 1, violations: revision.violations, kind: "runtime" });
+    expect(out.accepted).toBe(true);
+    expect(allBeats(out.spine)).toHaveLength(8);
+    expect(allBeats(out.spine).filter((b) => b.seedSource === "spine")).toHaveLength(4);
+    expect(spineCannotFit(out.spine)).toBe(false);
+  });
+
+  it("a spine that fits makes no call", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `spineCannotFit` early return. The
+       builder is then called (and throws: it has no reply). Ran it: red. */
+    const builder = new ScriptedSpineBuilder([]);
+    const out = await reaskForRuntime(fittingReply, makeIntent(), runtimeShape, "short", builder, ctx);
+    expect(builder.calls).toHaveLength(0);
+    expect(out).toEqual({ spine: fittingReply, reask: null, accepted: false });
+  });
+
+  it("a reply that fails the structural gate is dropped and the spine passed in is kept; the re-ask is still recorded", async () => {
+    /* MUTATION THAT KILLS THIS: skip `checkSpineStructure` on the reply. The
+       duplicated claim below then passes and the reply replaces the spine.
+       Ran it: red. */
+    const duplicated = runtimeSpine([
+      ...[0, 1, 2, 3].map((i) => runtimeBeat(i, true)),
+      ...RUNTIME_UNRELATED.slice(0, 3).map((claim, i) => ({ claim, exploration: i % 2 === 0 })),
+      { claim: RUNTIME_UNRELATED[0]!, exploration: true }
+    ]);
+    const builder = new ScriptedSpineBuilder([duplicated]);
+    const out = await reaskForRuntime(overrunSpine, makeIntent(), runtimeShape, "short", builder, ctx);
+    expect(builder.calls).toHaveLength(1);
+    expect(out.accepted).toBe(false);
+    expect(out.spine).toBe(overrunSpine);
+    expect(out.reask?.kind).toBe("runtime");
+  });
+
+  it("a reply whose minimum runtime is longer than the spine it was asked to shorten is dropped", async () => {
+    /* MUTATION THAT KILLS THIS: drop the lower-bound comparison. The longer
+       reply (the same plan with a 900 s first window) then replaces the
+       spine. Ran it: red. */
+    const longer = runtimeSpine(
+      RUNTIME_CLAIMS.map((_, i) => (i === 0 ? { ...runtimeBeat(0, true), seed: { episodeId: "ep-0", startSec: 100, endSec: 1000 } } : runtimeBeat(i, true)))
+    );
+    const builder = new ScriptedSpineBuilder([longer]);
+    const out = await reaskForRuntime(overrunSpine, makeIntent(), runtimeShape, "short", builder, ctx);
+    expect(out.accepted).toBe(false);
+    expect(out.spine).toBe(overrunSpine);
   });
 });

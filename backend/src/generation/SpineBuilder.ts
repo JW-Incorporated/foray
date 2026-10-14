@@ -91,6 +91,13 @@ export interface SpineRevisionRequest {
    * text per condition — telling a model to "fix only these violations" about
    * beats that violate nothing is how a re-ask comes back worse than the reply
    * it re-asked.
+   *
+   * GV-89 (W4-14) adds `"runtime"`: the post-seeded plan's minimum runtime
+   * (`tierRuntime.ts`) is over the tier's ceiling, and the re-ask names the
+   * overrun and the seed windows that carry it, asking the model to drop or
+   * merge beats and keep the seeds it keeps (`buildRuntimeFixInstruction`).
+   * Sent only under FORAY_TIER_RUNTIME_CAP (`buildSpine.ts`'s
+   * `reaskForRuntime`).
    */
-  kind?: "structure" | "seed-floor";
+  kind?: "structure" | "seed-floor" | "runtime";
 }

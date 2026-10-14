@@ -20,7 +20,8 @@ import { askStructured, type StructuredBudgetGuard, type StructuredTarget } from
  * and reply shape, user: this Foray's intent, research map and tier]
  * (GV-32, toChatMessages), so a re-ask and the next Foray reuse the cached
  * prefix; same re-ask turns (spineRevisionTurns: a structural or seed-floor
- * re-ask appends [the refused spine, the fix turn]); same schema (RawSpineSchema, sent as the 'spine' json_schema), same
+ * re-ask appends [the refused spine, the fix turn]; GV-89: a runtime
+ * re-ask's fix turn is buildRuntimeFixInstruction); same schema (RawSpineSchema, sent as the 'spine' json_schema), same
  * cap (BUILDER_MAX_TOKENS.spine), and the same Spine fields back
  * (spineFromReply): subject and angle from the intent, the duration asked
  * for, generatedAt now. GV-67: on the folded path (ctx.listenerPrompt set)
