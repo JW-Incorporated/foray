@@ -235,16 +235,25 @@ test("only the feed URL is fetched", () => withDir(async (dir) => {
 /* MUTATION, run: in fetchFeedPolitely, `if (res.status !== 429 && res.status < 500) throw err;`
    -> `throw err;` (every non-ok final) -> red: one attempt, no hold. Also run:
    delete the `waitBeforeRetry(url, res, attempt, ...)` line -> red: the retries
-   fire with no Retry-After wait. */
-test("a 429 is retried at most three times, each after the host's Retry-After", () => withDir(async (dir) => {
+   fire with no Retry-After wait. Also run: guard that line with
+   `if (attempt < attempts)` again -> red: the final 429's Retry-After is
+   dropped and the next show on the same host goes out 1200 ms later. */
+test("a 429 is retried at most three times, each after the host's Retry-After, and the last one holds the host too", () => withDir(async (dir) => {
   resetHostGates();
   const h = harness();
-  const fetchImpl = fakeFetch(h, () => new Response("slow down", { status: 429, headers: { "retry-after": "7" } }));
-  const counts = await enrichAll([SHOW], { dir, fetchImpl, parse: fakeParse, now: h.now, sleep: h.sleep, random: h.random });
-  assert.deepEqual(counts, { fetched: 0, cached: 0, failed: 1, skipped: 0 });
-  assert.equal(fetchImpl.calls.length, 3, "three attempts, then recorded as failed");
-  const gaps = fetchImpl.calls.slice(1).map((c, i) => c.at - fetchImpl.calls[i].at);
+  const NEXT = { show_key: "fixture-rivers", feed_url: "https://feeds.fixture.test/rivers.xml" };
+  const fetchImpl = fakeFetch(h, (url) => url === SHOW.feed_url
+    ? new Response("slow down", { status: 429, headers: { "retry-after": "7" } })
+    : xmlRes(FEED_XML));
+  const counts = await enrichAll([SHOW, NEXT], { dir, concurrency: 1, fetchImpl, parse: fakeParse, now: h.now, sleep: h.sleep, random: h.random });
+  assert.deepEqual(counts, { fetched: 1, cached: 0, failed: 1, skipped: 0 });
+  const first = fetchImpl.calls.filter((c) => c.url === SHOW.feed_url);
+  assert.equal(first.length, 3, "three attempts, then recorded as failed");
+  const gaps = first.slice(1).map((c, i) => c.at - first[i].at);
   assert.ok(gaps.every((g) => g >= 7000), `each retry waits out Retry-After: ${gaps}`);
+  const next = fetchImpl.calls.find((c) => c.url === NEXT.feed_url);
+  const after = next.at - first[2].at;
+  assert.ok(after >= 7000, `the third 429's Retry-After holds the host for the next show too: ${after}`);
   assert.match(JSON.parse(readFileSync(cachePath(dir, SHOW.show_key), "utf8")).error, /^HTTP_429/);
 }));
 

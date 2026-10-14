@@ -225,7 +225,10 @@ export async function fetchFeedPolitely(url, opts = {}) {
     } finally {
       clearTimeout(timer);
     }
-    if (attempt < attempts) waitBeforeRetry(url, res, attempt, { now, random });
+    // Every retryable outcome holds the host, the last attempt's too: a final
+    // 429's Retry-After must still quiet the next worker on this host.
+    // waitBeforeRetry only moves the host gate; it never sleeps.
+    waitBeforeRetry(url, res, attempt, { now, random });
   }
   throw lastError;
 }
