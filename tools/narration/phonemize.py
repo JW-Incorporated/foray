@@ -31,6 +31,11 @@ characters — the rule `narrator-voice.md`'s Appendix describes and
 alone: that file's own honesty note says why, and inventing one here would put
 an unverified claim into the artefact whose whole job is to be exact.
 
+GV-82: a RUN may add its own entries (the writer's pronunciation hints that
+carry IPA). `merge_lexicon` validates each against the model's id table and
+lets them fill only terms the curated file does not pin; hard-terms.json
+itself is never written.
+
 DETERMINISM IS A REQUIREMENT, NOT A PROPERTY.
 The card's acceptance says "running the stage twice on the same script is
 byte-identical". misaki is deterministic; so is espeak in the mode used here.
@@ -160,6 +165,82 @@ def plan_overrides(script: str, entries: list[dict]) -> list[dict]:
         chosen.append(hit)
         cursor = hit["end"]
     return chosen
+
+
+def lexicon_term_key(term: str) -> str:
+    """The key two lexicon terms collide on: trimmed and case-folded, because
+    `term_pattern` matches case-insensitively, so ``Gdansk`` and ``gdansk``
+    are one term to the substitution."""
+    return term.strip().casefold()
+
+
+def unsingable_symbols(ipa: str, vocab: dict) -> list[str]:
+    """The characters of an IPA string the model has no id for, in order of
+    first appearance (each once)."""
+    table = vocab["table"]
+    seen: list[str] = []
+    for ch in ipa:
+        if ch not in table and ch not in seen:
+            seen.append(ch)
+    return seen
+
+
+def merge_lexicon(curated: list[dict], extra: list, vocab: dict | None = None) -> dict:
+    """GV-82: the curated lexicon plus a run's own entries, validated.
+
+    `curated` is hard-terms.json's entries and is never changed. `extra` is a
+    run-local list of ``{term, ipa}`` (the writer's pronunciation hints that
+    carry IPA, via a render job's ``lexicon`` or ``--lexicon-extra``).
+
+    PRECEDENCE: a curated entry WITH an ``ipa`` wins; an extra entry fills a
+    term only when no curated entry pins it (a curated term whose ``ipa`` is
+    null pins nothing, so a hint may fill it). Between two extra entries for
+    one term the first wins. Either losing entry is ``shadowed``.
+
+    VALIDATION: each extra ``ipa`` is checked with ``ids_for`` against the
+    model's id table (when ``vocab`` is given). A symbol outside it, or an id
+    count over the graph's limit, REJECTS that entry with the reason; the rest
+    still apply. A malformed entry (no string term or ipa) is rejected too.
+    Nothing here raises for a bad hint: a hint is advice, and one bad hint
+    must not cost the line.
+
+    Returns ``{"entries": curated + accepted, "accepted": [...], "rejected":
+    [{term, ipa, reason}], "shadowed": [{term, ipa}]}``. Curated entries come
+    first, unchanged, so ``entries`` with no extras is ``curated`` itself.
+    """
+    pinned = {
+        lexicon_term_key(e["term"])
+        for e in curated
+        if isinstance(e, dict) and isinstance(e.get("term"), str) and e["term"].strip() and e.get("ipa")
+    }
+    accepted: list[dict] = []
+    rejected: list[dict] = []
+    shadowed: list[dict] = []
+    taken: set[str] = set()
+    for e in extra or []:
+        term = e.get("term") if isinstance(e, dict) else None
+        ipa = e.get("ipa") if isinstance(e, dict) else None
+        if not isinstance(term, str) or not term.strip() or not isinstance(ipa, str) or not ipa.strip():
+            rejected.append({"term": term if isinstance(term, str) else None,
+                             "ipa": ipa if isinstance(ipa, str) else None,
+                             "reason": "not a {term, ipa} pair of non-empty strings"})
+            continue
+        term, ipa = term.strip(), ipa.strip()
+        key = lexicon_term_key(term)
+        if key in pinned or key in taken:
+            shadowed.append({"term": term, "ipa": ipa})
+            continue
+        if vocab is not None:
+            try:
+                ids_for(ipa, vocab)
+            except UnsingablePhoneme as exc:
+                bad = unsingable_symbols(ipa, vocab)
+                reason = ("symbols outside the Kokoro vocab: " + " ".join(f"{c!r} (U+{ord(c):04X})" for c in bad)) if bad else str(exc)
+                rejected.append({"term": term, "ipa": ipa, "reason": reason})
+                continue
+        taken.add(key)
+        accepted.append({"term": term, "ipa": ipa})
+    return {"entries": list(curated) + accepted, "accepted": accepted, "rejected": rejected, "shadowed": shadowed}
 
 
 def estimate_seconds(script: str) -> float:

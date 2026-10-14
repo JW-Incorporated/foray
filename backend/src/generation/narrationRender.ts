@@ -1,3 +1,4 @@
+import type { PronunciationHint } from "../types/narration";
 import type { ItemReadyEvent } from "./deliveryTimeline";
 import type { JobAudioState } from "./jobSink";
 
@@ -24,15 +25,35 @@ import type { JobAudioState } from "./jobSink";
  * `await-render` (opt-in) holds a narration item back from the served prefix
  * until its render has a result; a FAILED render falls back to the phone
  * voice, so a broken worker never strands the listener once it has answered.
+ * A worker that never answers is bounded too (GV-82, from the GV-74 review):
+ * past `awaitRenderCapMs` since its enqueue, the tracker reads a current job
+ * with no result as timed out and the item falls back to the phone voice.
  *
  * NO URL WITHOUT AN UPLOAD. `audio_url` is only ever the done record's
  * `public_url`, which GV-22's spool-upload writes after a confirmed upload. A
  * rendered file that is not uploaded is not reachable by the phone, so it
- * reads `phone-voice` and carries no URL.
+ * reads `phone-voice` and carries no URL. The URL must be https: cleartext
+ * cannot play in the shipped app (iOS ATS, Android's cleartext policy, the
+ * CSP's `media-src https:`; docs/DECISIONS.md, 2026-07-26 "an http enclosure
+ * is upgraded to https"), and the narration base is https by ruling D6.
+ *
+ * PRONUNCIATION PINS (GV-82, from W6-11). A writer hint that carries `ipa`
+ * (types/narration.ts PronunciationHintSchema) becomes a `{term, ipa}` entry
+ * in the job's `lexicon` (`lexiconFromHints`); render-foray.py validates it
+ * against the model's vocab and lets it fill only terms hard-terms.json does
+ * not pin. A hint without `ipa` changes nothing, and a job with no entries is
+ * byte-identical to before (no `lexicon` field, the same job id).
+ * TODO(GV-82 gap): on origin/main the writer's hints reach neither
+ * `ItemReadyEvent` nor `ItemProvenance` (`provenanceFor` copies none, and
+ * the stitched item's `pronunciationHints` is stripped by `toForayItems`), so
+ * the driver has nothing to pass yet; `onItemReady(ev, {pronunciationHints})`
+ * is the seam a card that edits runPipeline.ts/itemReadiness.ts wires.
  *
  * Pure: types, pure functions and one small in-memory tracker. No fs (a
- * generation/ module may not write files), no env, no clock — every time is
- * on the event or the done record.
+ * generation/ module may not write files), no env. The only clock is the
+ * tracker's injectable `nowMs` (default `Date.now`), read for the
+ * await-render cap alone; every other time is on the event or the done
+ * record.
  */
 
 /** The two audio policies. `phone-voice-first` is the default and the only
@@ -50,6 +71,35 @@ export function isAudioPolicy(v: unknown): v is AudioPolicy {
 export interface RenderLexiconEntry {
   term: string;
   ipa: string;
+}
+
+/**
+ * GV-82: the writer's hints that carry IPA, as render lexicon entries, in
+ * the order given. A hint without `ipa` (every hint written before GV-82) is
+ * skipped; terms collide case-insensitively, as render-foray's matching does,
+ * and the first hint for a term wins. Validating the IPA against the model's
+ * vocab is render-foray.py's job (it alone holds the id table).
+ */
+export function lexiconFromHints(hints: readonly PronunciationHint[] | undefined): RenderLexiconEntry[] {
+  const out: RenderLexiconEntry[] = [];
+  const seen = new Set<string>();
+  for (const h of hints ?? []) {
+    const term = typeof h?.word === "string" ? h.word.trim() : "";
+    const ipa = typeof h?.ipa === "string" ? h.ipa.trim() : "";
+    if (!term || !ipa) continue;
+    const key = term.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ term, ipa });
+  }
+  return out;
+}
+
+/** A lexicon's identity in a job id: empty for no entries, so a job without
+ * pins keeps its pre-GV-82 id. */
+function lexiconMaterial(lexicon: readonly RenderLexiconEntry[] | undefined): string {
+  if (!lexicon || !lexicon.length) return "";
+  return `\u0000${JSON.stringify(lexicon.map((e) => [e.term, e.ipa]))}`;
 }
 
 /** One narration line to render. `priority` is the item's index in the
@@ -76,6 +126,11 @@ export interface RenderResult {
   audioSec?: number;
   renderMs?: number;
   queuedMs?: number;
+  /** GV-82: set only on a result the tracker made up under await-render
+   * when a current job had no answer within `awaitRenderCapMs` (status
+   * `failed`, so the item falls back to the phone voice). Never on a done
+   * record's result. */
+  timedOut?: true;
 }
 
 export interface NarrationRenderClient {
@@ -106,13 +161,15 @@ function contentHash(text: string): string {
  * The job id for one item: `<forayId>.i<index>.<hash>`. The hash covers the
  * Foray, the item and its script, so a resumed attempt that re-emits the same
  * line gets the same id (it is not rendered twice) and a rewritten line gets
- * a new one. Only id-safe characters survive, so no id can walk out of the
- * spool.
+ * a new one. GV-82: a non-empty `lexicon` is hashed too, so a line whose pins
+ * change is a new job (the worker's render key moves with the phonemes
+ * anyway); with no pins the id is exactly the pre-GV-82 one. Only id-safe
+ * characters survive, so no id can walk out of the spool.
  */
-export function renderJobIdFor(forayId: string, index: number, itemId: string, script: string): string {
+export function renderJobIdFor(forayId: string, index: number, itemId: string, script: string, lexicon?: readonly RenderLexiconEntry[]): string {
   const slug = forayId.replace(/[^A-Za-z0-9-]/g, "-").slice(0, 80);
   const head = /^[A-Za-z0-9]/.test(slug) ? slug : `f${slug}`;
-  const id = `${head}.i${index}.${contentHash(`${forayId}\u0000${itemId}\u0000${script}`)}`;
+  const id = `${head}.i${index}.${contentHash(`${forayId}\u0000${itemId}\u0000${script}${lexiconMaterial(lexicon)}`)}`;
   if (!RENDER_JOB_ID_PATTERN.test(id)) throw new Error(`renderJobIdFor: built an unsafe job id ${JSON.stringify(id)}`);
   return id;
 }
@@ -122,21 +179,36 @@ export function renderJobIdFor(forayId: string, index: number, itemId: string, s
  * script, and only when the item is servable (GV-21's policy, carried on the
  * event). A tape segment or a jingle is audio already; an unservable item is
  * never played in this run, so rendering it would only spend the worker.
+ *
+ * GV-82: the job's `lexicon` is `opts.lexicon` followed by every
+ * `opts.pronunciationHints` entry that carries `ipa` (`lexiconFromHints`),
+ * a term already given keeping its first entry. No entries, no `lexicon`
+ * field: the job is exactly today's.
  */
-export function renderJobsFor(ev: ItemReadyEvent, opts: { lexicon?: readonly RenderLexiconEntry[] } = {}): RenderJob[] {
+export function renderJobsFor(
+  ev: ItemReadyEvent,
+  opts: { lexicon?: readonly RenderLexiconEntry[]; pronunciationHints?: readonly PronunciationHint[] } = {}
+): RenderJob[] {
   if (!ev.servable) return [];
   const item = ev.item;
   if (item.type !== "narration") return [];
   const script = item.script.trim();
   if (!script) return [];
+  const lexicon: RenderLexiconEntry[] = (opts.lexicon ?? []).map((e) => ({ term: e.term, ipa: e.ipa }));
+  const given = new Set(lexicon.map((e) => e.term.trim().toLowerCase()));
+  for (const e of lexiconFromHints(opts.pronunciationHints)) {
+    if (given.has(e.term.toLowerCase())) continue;
+    given.add(e.term.toLowerCase());
+    lexicon.push(e);
+  }
   return [
     {
-      jobId: renderJobIdFor(ev.forayId, ev.index, ev.itemId, script),
+      jobId: renderJobIdFor(ev.forayId, ev.index, ev.itemId, script, lexicon),
       forayId: ev.forayId,
       itemId: ev.itemId,
       script,
       priority: ev.index,
-      ...(opts.lexicon && opts.lexicon.length ? { lexicon: opts.lexicon.map((e) => ({ term: e.term, ipa: e.ipa })) } : {})
+      ...(lexicon.length ? { lexicon } : {})
     }
   ];
 }
@@ -149,9 +221,10 @@ export function resultFor(itemId: string, results: readonly RenderResult[]): Ren
   return undefined;
 }
 
-/** A URL the phone may fetch: http(s) only. */
+/** A URL the phone may fetch: https only (cleartext cannot play in the
+ * shipped app; docs/DECISIONS.md 2026-07-26, and ruling D6's https base). */
 export function isPublicAudioUrl(v: unknown): v is string {
-  return typeof v === "string" && /^https?:\/\/[^\s]+$/.test(v);
+  return typeof v === "string" && /^https:\/\/[^\s]+$/.test(v);
 }
 
 /**
@@ -182,7 +255,7 @@ const finiteNonNegative = (v: unknown): number | undefined => (typeof v === "num
  * error, timings:{queued_ms, render_ms, audio_sec}, public_url?}`) read back
  * as a result for the job it answers. Null when the document is not a done
  * record for that job. `publicUrl` is carried only when the record holds an
- * http(s) `public_url` on a rendered job — the only way an `audio_url` can
+ * https `public_url` on a rendered job — the only way an `audio_url` can
  * ever be written.
  */
 export function renderResultFromDone(job: Pick<RenderJob, "jobId" | "itemId">, doc: unknown): RenderResult | null {
@@ -240,6 +313,20 @@ export interface TrackedRenderJob {
   attempt: number;
 }
 
+/** GV-82 (GV-74 review): how long await-render holds an item whose render
+ * has not answered before it falls back to the phone voice. 30 s, the
+ * short tier's first-audio target (OQ-03): a line that has waited that long
+ * is already costing the listener more than the phone voice would. */
+export const DEFAULT_AWAIT_RENDER_CAP_MS = 30_000;
+
+export interface NarrationRenderTrackerOptions {
+  /** Await-render's bound on an unanswered job, from its enqueue. Default
+   * `DEFAULT_AWAIT_RENDER_CAP_MS`; must be a finite number >= 0. */
+  awaitRenderCapMs?: number;
+  /** The tracker's clock, in ms. Default `Date.now`. */
+  nowMs?: () => number;
+}
+
 const round3 = (n: number): number => Math.round(n * 1000) / 1000;
 
 /**
@@ -292,19 +379,40 @@ export function renderReportOf(jobs: readonly TrackedRenderJob[], results: reado
  * from `results` and from the report, so the phone never plays audio that
  * does not match the line's text — it speaks the new script (or, under
  * await-render, waits for the new render).
+ *
+ * BOUNDED WAIT (GV-82, from the GV-74 review). Under await-render, a current
+ * job with no result `awaitRenderCapMs` after its enqueue (the tracker's own
+ * clock) reads as a `failed` result with `timedOut: true` in `results`, so
+ * the snapshot serves the item on the phone voice instead of holding the
+ * prefix forever. A real result that arrives later replaces it. The report
+ * counts only real results. TODO(GV-82 gap): the driver publishes its last
+ * snapshot when the run ends and nothing re-reads results after that, so an
+ * item still inside the cap at that moment stays `pending` in the final
+ * snapshot; an end-of-run drain (poll until no current job is pending or the
+ * cap passes) belongs in cli/generateForays.ts.
  */
 export class NarrationRenderTracker {
   private readonly tracked = new Map<string, TrackedRenderJob>();
   /** itemId -> the job id of that item's latest event (absent when the
    * latest event made no job: an unservable or empty line). */
   private readonly currentJob = new Map<string, string>();
+  /** jobId -> the tracker clock when it was enqueued (for the cap). */
+  private readonly enqueuedWallMs = new Map<string, number>();
   private latest: RenderResult[] = [];
   private attempt = 0;
+  private readonly awaitRenderCapMs: number;
+  private readonly nowMs: () => number;
 
   constructor(
     private readonly client: NarrationRenderClient,
-    readonly policy: AudioPolicy = DEFAULT_AUDIO_POLICY
-  ) {}
+    readonly policy: AudioPolicy = DEFAULT_AUDIO_POLICY,
+    options: NarrationRenderTrackerOptions = {}
+  ) {
+    const cap = options.awaitRenderCapMs ?? DEFAULT_AWAIT_RENDER_CAP_MS;
+    if (!Number.isFinite(cap) || cap < 0) throw new Error(`NarrationRenderTracker: awaitRenderCapMs must be a finite number >= 0, got ${cap}`);
+    this.awaitRenderCapMs = cap;
+    this.nowMs = options.nowMs ?? Date.now;
+  }
 
   beginAttempt(): void {
     this.attempt++;
@@ -312,15 +420,21 @@ export class NarrationRenderTracker {
 
   /** Enqueues the event's jobs that are not enqueued yet; returns them. The
    * event's line becomes the item's current one before the enqueue, so a
-   * failed enqueue still never serves an older line's audio. */
-  async onItemReady(ev: ItemReadyEvent): Promise<RenderJob[]> {
-    const jobs = renderJobsFor(ev);
+   * failed enqueue still never serves an older line's audio. GV-82:
+   * `opts.pronunciationHints` (the line's writer hints) become the job's
+   * lexicon (`renderJobsFor`); without them the job is today's. */
+  async onItemReady(ev: ItemReadyEvent, opts: { pronunciationHints?: readonly PronunciationHint[] } = {}): Promise<RenderJob[]> {
+    const jobs = renderJobsFor(ev, opts.pronunciationHints ? { pronunciationHints: opts.pronunciationHints } : {});
     this.currentJob.delete(ev.itemId);
     for (const job of jobs) this.currentJob.set(job.itemId, job.jobId);
     const fresh = jobs.filter((j) => !this.tracked.has(j.jobId));
     if (!fresh.length) return [];
     await this.client.enqueue(fresh);
-    for (const job of fresh) this.tracked.set(job.jobId, { job, enqueuedAtMs: ev.readyAtMs, attempt: this.attempt });
+    const at = this.nowMs();
+    for (const job of fresh) {
+      this.tracked.set(job.jobId, { job, enqueuedAtMs: ev.readyAtMs, attempt: this.attempt });
+      this.enqueuedWallMs.set(job.jobId, at);
+    }
     return fresh;
   }
 
@@ -335,9 +449,28 @@ export class NarrationRenderTracker {
     return this.results;
   }
 
-  /** The results of each item's current job only (see ONE LINE, ONE JOB). */
-  get results(): readonly RenderResult[] {
+  /** The real results of each item's current job only (see ONE LINE, ONE
+   * JOB). */
+  private currentResults(): RenderResult[] {
     return this.latest.filter((r) => this.isCurrent(r.jobId, r.itemId));
+  }
+
+  /** The results of each item's current job only (see ONE LINE, ONE JOB),
+   * plus, under await-render, a timed-out `failed` result for every current
+   * job with no answer past the cap (see BOUNDED WAIT). */
+  get results(): readonly RenderResult[] {
+    const real = this.currentResults();
+    if (this.policy !== "await-render") return real;
+    const answered = new Set(real.map((r) => r.jobId));
+    const now = this.nowMs();
+    const timedOut: RenderResult[] = [];
+    for (const [itemId, jobId] of this.currentJob) {
+      if (answered.has(jobId)) continue;
+      const at = this.enqueuedWallMs.get(jobId);
+      if (at === undefined || now - at < this.awaitRenderCapMs) continue;
+      timedOut.push({ jobId, itemId, status: "failed", timedOut: true });
+    }
+    return timedOut.length ? [...timedOut, ...real] : real;
   }
 
   get jobs(): TrackedRenderJob[] {
@@ -348,6 +481,6 @@ export class NarrationRenderTracker {
    * render (or failure) is not the Foray's narration. */
   report(): RenderReport {
     const current = this.jobs.filter((t) => this.isCurrent(t.job.jobId, t.job.itemId));
-    return renderReportOf(current, this.results, this.attempt);
+    return renderReportOf(current, this.currentResults(), this.attempt);
   }
 }

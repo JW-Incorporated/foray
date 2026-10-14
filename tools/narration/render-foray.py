@@ -69,6 +69,19 @@ GV-72: `--report` also prints one loudness line per Foray (min/max output_i,
 the spread in LU, max output_tp) and flags a spread over 1.0 LU. The Whisper
 round trip that checks each rendered line's words is asr-transcribe.py then
 asr-check.mjs, run by hand; nothing here calls them.
+
+GV-82: a run's own pronunciation pins. `--lexicon-extra PATH` (batch) and a
+job's `lexicon` (worker) add `{term, ipa}` entries, the writer's hints that
+carry IPA, for this render only. `phonemize.merge_lexicon` validates each
+against the model's id table (an unknown symbol drops that entry, never the
+line) and lets it fill only a term hard-terms.json does not pin: the curated
+IPA always wins, and the file is never written. Each manifest entry records
+`lexicon_extra_sha` (the sha of the run-local entries that changed THAT line,
+null when none did) and `lexicon_rejected` (the rejected entries whose term
+the line contains, null when none). `lexicon_sha` keeps its meaning, the sha
+of hard-terms.json, which stamp-narration copies into render.lexicon_sha. The
+render key needs no change: it hashes the phonemes, so a hint that changes
+them re-keys exactly the lines it touches.
 """
 
 from __future__ import annotations
@@ -113,6 +126,8 @@ DRAFTS = "@drafts"
 ENTRY_KEYS = (
     "foray_id", "item_id", "voice", "status", "key", "bytes", "duration_sec", "sha256", "profile",
     "text_sha256", "lexicon_sha", "chunks", "speech_sec", "estimate_sec", "container_sec", "loudness",
+    # GV-82: appended, so every earlier key keeps its position.
+    "lexicon_extra_sha", "lexicon_rejected",
 )
 
 
@@ -779,11 +794,28 @@ def _tool_version(exe: str | None) -> str:
         return "missing"
 
 
-def phonemize_line(P, script: str, entries: list[dict], g2p, vocab: dict) -> dict:
+def lexicon_extra_sha(applied: list[dict]):
+    """GV-82: the sha of the run-local entries that changed a line, or None
+    when none did. Canonical JSON of `{term, ipa}` sorted by term, so the
+    order the hints arrived in does not move it."""
+    if not applied:
+        return None
+    rows = sorted(({"term": e["term"], "ipa": e["ipa"]} for e in applied), key=lambda e: (e["term"].casefold(), e["term"]))
+    return sha256_text(canonical_json(rows))
+
+
+def phonemize_line(P, script: str, entries: list[dict], g2p, vocab: dict, lexicon_extra: dict | None = None) -> dict:
     """One script -> {chunks, ids, error}: the lexicon first, misaki, then the
     one chunk rule. An unsingable phoneme or an empty result is an `error`,
-    never a dropped character."""
+    never a dropped character.
+
+    GV-82: with `lexicon_extra` (the `merge_lexicon` result `entries` came
+    from), the row also carries `lexicon_extra_sha` (the accepted run-local
+    entries this line's plan substituted) and `lexicon_rejected` (the
+    rejected entries whose term the line contains). Without it the row is
+    exactly {chunks, ids, error}."""
     row = {"chunks": [], "ids": [], "error": None}
+    res = None
     try:
         res = P.phonemize_script(script.strip(), entries, g2p)
         row["chunks"] = P.sentence_chunks(res["phonemes"])
@@ -792,15 +824,41 @@ def phonemize_line(P, script: str, entries: list[dict], g2p, vocab: dict) -> dic
             row["error"] = "phonemized to nothing"
     except P.UnsingablePhoneme as exc:
         row["error"] = f"unsingable: {exc}"
+    if lexicon_extra is not None:
+        extra_keys = {P.lexicon_term_key(e["term"]) for e in lexicon_extra.get("accepted") or []}
+        applied: dict = {}
+        for o in (res or {}).get("overrides") or []:
+            k = P.lexicon_term_key(o["term"])
+            if k in extra_keys and k not in applied:
+                applied[k] = {"term": o["term"], "ipa": o["ipa"]}
+        rejected = [
+            r for r in lexicon_extra.get("rejected") or []
+            if isinstance(r.get("term"), str) and r["term"].strip() and P.term_pattern(r["term"].strip()).search(script)
+        ]
+        row["lexicon_extra_sha"] = lexicon_extra_sha(list(applied.values()))
+        row["lexicon_rejected"] = rejected or None
     return row
 
 
-def phonemize_work(work: list[tuple[dict, list[dict]]]) -> tuple[list[dict], dict]:
+def phonemize_work(work: list[tuple[dict, list[dict]]], lexicon_extra: list | None = None) -> tuple[list[dict], dict]:
     """Every selected line -> {foray_id, item, chunks, ids | error}. Done once,
-    for all voices, and the G2P freed before the ONNX session loads."""
+    for all voices, and the G2P freed before the ONNX session loads.
+
+    GV-82: `lexicon_extra` (--lexicon-extra's entries) is merged behind the
+    curated lexicon (`merge_lexicon`); every rejected or shadowed entry is
+    logged once here, and each line records what applied to it
+    (`phonemize_line`)."""
     P = _load_phonemize()
     g2p = P.load_backend()
     entries, vocab = P.load_lexicon(), P.load_vocab()
+    merged = None
+    if lexicon_extra is not None:
+        merged = P.merge_lexicon(entries, lexicon_extra, vocab)
+        entries = merged["entries"]
+        for r in merged["rejected"]:
+            log(f"lexicon-extra: rejected {r['term']!r} ({r['ipa']!r}): {r['reason']}")
+        for e in merged["shadowed"]:
+            log(f"lexicon-extra: {e['term']!r} is pinned by hard-terms.json (or an earlier entry); that IPA wins")
     fallback = getattr(g2p, "fallback", None)
     phon = {
         "g2p": "misaki en-US " + _pkg_version("misaki"),
@@ -810,7 +868,7 @@ def phonemize_work(work: list[tuple[dict, list[dict]]]) -> tuple[list[dict], dic
     lines = []
     for foray, items in work:
         for item in items:
-            lines.append({"foray_id": foray["id"], "item": item, **phonemize_line(P, item["script"], entries, g2p, vocab)})
+            lines.append({"foray_id": foray["id"], "item": item, **phonemize_line(P, item["script"], entries, g2p, vocab, merged)})
     del g2p
     gc.collect()
     return lines, phon
@@ -867,6 +925,7 @@ def render_line(session, style, line: dict, profile: dict, pins: dict, out_dir: 
         foray_id=line["foray_id"], item_id=item["id"], voice=voice, key=key, profile=profile["id"],
         text_sha256=sha256_text(item["script"]), lexicon_sha=lexicon_sha, chunks=len(line["chunks"]),
         estimate_sec=estimate_seconds(item["script"], reject["estimate_chars_per_sec"]),
+        lexicon_extra_sha=line.get("lexicon_extra_sha"), lexicon_rejected=line.get("lexicon_rejected"),
     )
     if not rerender and is_unchanged(item, voice, default_voice, key):
         log(f"{tag}: unchanged ({key})")
@@ -913,7 +972,26 @@ def render_line(session, style, line: dict, profile: dict, pins: dict, out_dir: 
     return entry
 
 
+def load_lexicon_extra(path) -> list:
+    """GV-82: --lexicon-extra's entries: a JSON list of {term, ipa}, or an
+    object with such a list under `entries` (hard-terms.json's own shape). An
+    unreadable or wrongly shaped FILE is refused (the operator named it); a
+    bad ENTRY inside it is left to merge_lexicon, which rejects that entry
+    only."""
+    p = Path(path)
+    try:
+        doc = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise RenderError(f"--lexicon-extra {p}: cannot read JSON ({exc})")
+    entries = doc.get("entries") if isinstance(doc, dict) else doc
+    if not isinstance(entries, list):
+        raise RenderError(f"--lexicon-extra {p}: expected a list of {{term, ipa}} or an object with one under entries")
+    return entries
+
+
 def render_all(args, profile: dict, work: list[tuple[dict, list[dict]]], voices: list[str]) -> int:
+    extra_path = getattr(args, "lexicon_extra", None)
+    lexicon_extra = load_lexicon_extra(extra_path) if extra_path else None
     ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
     if not ffmpeg or not ffprobe:
         raise RenderError("ffmpeg and ffprobe must be on PATH (apt-get install ffmpeg)")
@@ -928,7 +1006,7 @@ def render_all(args, profile: dict, work: list[tuple[dict, list[dict]]], voices:
 
     n_items = sum(len(items) for _, items in work)
     log(f"phonemizing {n_items} narration line(s) from {len(work)} Foray(s)")
-    lines, phon = phonemize_work(work)
+    lines, phon = phonemize_work(work) if lexicon_extra is None else phonemize_work(work, lexicon_extra)
 
     import onnxruntime as ort
 
@@ -1222,6 +1300,8 @@ def process_job(job, deps: dict, *, job_id: str) -> dict:
             "foray_id": job["foray_id"],
             "item": {"type": "narration", "id": job["item_id"], "script": job["script"]},
             "chunks": ph.get("chunks") or [], "ids": ph.get("ids") or [], "error": ph.get("error"),
+            # GV-82: what the job's own lexicon did to this line (absent -> null).
+            "lexicon_extra_sha": ph.get("lexicon_extra_sha"), "lexicon_rejected": ph.get("lexicon_rejected"),
         }
         entry = deps["render_line"](
             deps.get("session"), deps["styles"][voice], line, profile, deps["pins"], deps["out_dir"], deps["tmp"],
@@ -1284,8 +1364,13 @@ def run_worker(spool, deps: dict, *, once: bool = False, idle_exit: float | None
 
 def make_phonemizer(P=None):
     """The worker's resident phonemizer: G2P, lexicon and vocab loaded once
-    (phonemize_work frees its G2P; a worker keeps it). A job's own lexicon goes
-    ahead of hard-terms.json, so on the same term the job's IPA wins."""
+    (phonemize_work frees its G2P; a worker keeps it).
+
+    GV-82: a job's own lexicon is merged BEHIND hard-terms.json
+    (`merge_lexicon`): on a term the curated file pins, the curated IPA wins
+    (GV-22 put the job's first; the card reverses it), an entry with a symbol
+    outside the vocab is dropped and recorded, and the rest fill terms the
+    file does not pin. A job with no lexicon phonemizes exactly as before."""
     P = P or _load_phonemize()
     g2p = P.load_backend()
     entries, vocab = P.load_lexicon(), P.load_vocab()
@@ -1297,7 +1382,10 @@ def make_phonemizer(P=None):
     }
 
     def phonemize(script: str, lexicon=None) -> dict:
-        return phonemize_line(P, script, list(lexicon or []) + list(entries), g2p, vocab)
+        if not lexicon:
+            return phonemize_line(P, script, list(entries), g2p, vocab)
+        merged = P.merge_lexicon(entries, lexicon, vocab)
+        return phonemize_line(P, script, merged["entries"], g2p, vocab, merged)
 
     return phonemize, info
 
@@ -1352,7 +1440,7 @@ def plan_worker(args, profile: dict) -> list[str]:
         return []
     for flag, given in (("--forays", args.forays), ("--candidate", args.candidate), ("--items", args.items),
                         ("--smoke", args.smoke), ("--rerender", args.rerender), ("--manifest", args.manifest),
-                        ("--out", args.out)):
+                        ("--out", args.out), ("--lexicon-extra", getattr(args, "lexicon_extra", None))):
         if given:
             raise RenderError(f"--worker takes its jobs from the spool; {flag} is a batch option")
     if args.idle_exit is not None and not args.idle_exit > 0:
@@ -1423,6 +1511,9 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--no-download", action="store_true", help="refuse to fetch weights")
     ap.add_argument("--rerender", action="store_true", help="render lines data/forays.json already stamps with the same key")
     ap.add_argument("--threads", type=int, default=min(4, os.cpu_count() or 1), help="onnxruntime intra-op threads")
+    ap.add_argument("--lexicon-extra", metavar="PATH",
+                    help="GV-82: run-local {term, ipa} pins (a JSON list, or an object with one under entries); "
+                         "checked against the vocab, they fill only terms hard-terms.json does not pin")
     ap.add_argument("--report", nargs="+", metavar="MANIFEST", help="print a markdown summary of manifest(s) and exit")
     ap.add_argument("--worker", metavar="SPOOL",
                     help="GV-22: stay resident and render per-item jobs from SPOOL/in/*.job.json in priority order")
