@@ -3456,7 +3456,10 @@ test("NE-15: preroll( is called from exactly one place, AVDeck.prerollWhenReady,
   const completed = swiftFuncBody(code, "gateSeekCompleted");
   const finishedGuard = completed.search(/guard finished else/);
   assert.ok(finishedGuard > 0 && finishedGuard < completed.search(/prerollWhenReady\(/), "prerollWhenReady must follow the finished check");
-  assert.deepEqual(swiftCallersOf(code, "gateSeek"), ["advanceIfReady", "gateSeekCompleted", "notReady", "prerollCompleted"]);
+  /* `seek`: a seek that lands while an EPISODE waits for its start buffer
+     (car cold resume, 2026-10-14) seeks again, as gateSeekCompleted does for a
+     seek during the gate seek itself. */
+  assert.deepEqual(swiftCallersOf(code, "gateSeek"), ["advanceIfReady", "gateSeekCompleted", "notReady", "prerollCompleted", "seek"]);
   const advance = swiftFuncBody(code, "advanceIfReady");
   assert.match(advance, /durationKnown/);
   assert.match(advance, /player\.status\s*==\s*\.readyToPlay/);
@@ -3508,6 +3511,27 @@ test("NE-15: AVDeck's settings, zero-tolerance seeks, the 20 s MEASURE deadline,
   assert.match(play, /config\.writeRow\(/);
   assert.match(play, /config\.debugFault\(/);
   assert.match(code, /debugFault:[^=]*=\s*\{\s*assertionFailure\(\$0\)\s*\}/, "the production fault must assert in DEBUG");
+
+  /* Car cold resume (founder report 2026-10-14). An EPISODE starts on its
+     buffer, not on a preroll, and its first play is `playImmediately`: still
+     from applyRateAndPlay only, so audio keeps ONE start path. The deck's
+     default is OFF (every gate test above runs the preroll path) and the
+     production main deck turns it on in ONE place, `forMainDeck`, which both
+     DeckPair.make and EngineBoot's lone deck go through, with the resolved
+     sources; the preview deck does not. The two waits stay findable as MEASURE.
+     MUTATION (each run): call `player.playImmediately` from `play()`; default
+     `startsEpisodesOnBuffer` to true; drop `.forMainDeck(` from DeckPair.make
+     or from EngineBoot; drop the MEASURE marker on either wait. Each fails. */
+  assert.deepEqual(swiftCallersOf(code, "player\\.playImmediately"), ["applyRateAndPlay"], "an episode's immediate start is still the one audible start");
+  assert.match(code, /var startsEpisodesOnBuffer = false\n/, "the deck default stays the preroll path");
+  assert.match(swiftFuncBody(code, "forMainDeck") ?? "", /startsEpisodesOnBuffer = true[\s\S]*resolvedSources = resolvedSources/);
+  const pairCode = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "DeckPair.swift"), "utf8"));
+  assert.equal([...(swiftFuncBody(pairCode, "make") ?? "").matchAll(/\.forMainDeck\(resolvedSources: resolvedSources\)/g)].length, 1, "DeckPair.make's decks are main decks");
+  const bootCode = stripSwiftComments(fs.readFileSync(path.join(ENGINE_DIR, "EngineBoot.swift"), "utf8"));
+  assert.equal([...bootCode.matchAll(/\.forMainDeck\(resolvedSources: resolvedSources\)/g)].length, 1, "EngineBoot's lone deck is a main deck");
+  assert.match(bootCode, /resolvedSources: resolvedSources\)\s*:\s*AVDeck\(/, "the pair gets the boot's resolved sources");
+  assert.match(raw, /static let defaultStartBufferSec: Double = 2 \/\/ MEASURE:/);
+  assert.match(raw, /static let defaultStartBufferWaitSec: Double = 3 \/\/ MEASURE:/);
 });
 
 test("NE-15: AVDeck's Simulator tests play NE-25a's CBR MP3 and PCM WAV, the one exempt click-track set, and report through the one summary hand-off", () => {

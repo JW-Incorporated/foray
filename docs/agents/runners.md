@@ -216,6 +216,7 @@ token spend**. Derivation and the failure modes:
 
 | Runner | Purpose | Gate |
 |--------|---------|------|
+| **foray-rate-shard0–4** | Persona rating of recommender gold-set batches ([`docs/roadmap/recommender-v1.md`](../roadmap/recommender-v1.md) RV-19, issue #1380): five Claude Cloud routines, **Sonnet**, every 8 h, prompt `runner-prompts/persona-rate-batch.md` (version 1); each commits `data/recommender/ratings.json` and `data/recommender/rating-progress.json` only, to `rate-<shard>`, and opens no PR (the classify-shard precedent above) | **not created** — the pool runs first (a local pool of at most 5 agents, RV-13 and RV-19); create per [`routine-invariants.md`](routine-invariants.md) only if RV-19 chooses routines, and flip this row to Live then |
 | **foray-segment-extract** | Segment proposal from free transcripts — see `docs/curation/segment-extraction-pipeline.md` Lane C | #64 ruling + ADR-0007 (accepted) + the merge validator existing first + a prompt that points at `docs/research/corpus/digests.md` (segment boundaries and DAI drift are the research corpus's strongest area; the corpus DB is machine-local, so the prompt must cite the digests, never the CLI) |
 
 ## Model tiering

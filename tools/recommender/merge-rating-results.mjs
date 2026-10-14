@@ -13,7 +13,8 @@
 
      node tools/recommender/merge-rating-results.mjs \
        --results data-local/recommender/results/rating-results-<batch_id>.json \
-       [--batch data-local/recommender/batches/rating-batch-<batch_id>.json]
+       [--batch data-local/recommender/batches/rating-batch-<batch_id>.json] \
+       [--into ratings-<rater>.json]
      node tools/recommender/merge-rating-results.mjs --check
 
    ALL OR NOTHING. A results file with any problem (schema.mjs's, or a
@@ -42,8 +43,10 @@
    ISOLATED MODE (`isolated:<persona_id>`, RV-11's joint-vs-isolated check)
    merges into data/recommender/ratings-isolated.json, never ratings.json. Each
    persona's array there is newest-wins (one isolated rating per persona), and
-   an isolated batch releases its reservations but does not mark a pass rated:
-   it is a side measurement, not one of the show's three joint passes.
+   an isolated batch releases its reservations and marks its pass rated only
+   under its own progress keys (`<show_key>@isolated:<persona_id>`, RV-08's
+   progressKey): it is a side measurement, not one of the show's three joint
+   passes, and the record stops the same isolated shows being offered again.
 
    IDEMPOTENT per batch_id: a merged batch id is recorded in `merged_batches`;
    merging it again changes no rating, re-applying only the (idempotent)
@@ -52,16 +55,34 @@
 
    --check validates the committed ratings.json (and ratings-isolated.json if
    present) and exits 1 on any problem or on an in-flight reservation older
-   than 12 hours (reported, not fixed: prepare's reclaimStale frees it). */
+   than 12 hours (reported, not fixed: prepare's reclaimStale frees it).
+
+   SIDE RATERS, --into (RV-18). `--into ratings-<rater>.json` merges a joint
+   results file into data/recommender/ratings-<rater>.json instead of
+   ratings.json, and settles its reservations in that rater's own progress
+   file, data/recommender/rating-progress-<rater>.json (the one its batches
+   were prepared against with prepare-rating-batch.mjs --progress), so a side
+   rater re-rating gold shows neither blocks nor satisfies a Claude pass.
+   `--into` defaults to ratings.json; it takes a bare file name, never
+   ratings-isolated/-predicted/-client.json (other writers' files), and never
+   an isolated results file. A METADATA-ONLY model (`model` starting `jev-`,
+   jev-rate.mjs) writes no text and never sees a transcript: its persona
+   reasons may be "" (an empty reason is refused for every other model), the
+   tier merged is the weaker of the pack's and the one it declares, and its
+   results are refused into ratings.json (Jev replaces nothing until it
+   clears the RV-14 gate). An empty `top_reason` is accepted only in a side
+   file. */
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
+import { progressKey } from "./prepare-rating-batch.mjs";
 import { loadProgress, markRated, release, saveProgress, serializeProgress, STALE_MS } from "./progress.mjs";
 import {
   AUDIO_SUBSCORES,
+  EVIDENCE_TIERS,
   RATING_SLOTS,
   RUBRIC_VERSION,
   capConfidence,
@@ -78,6 +99,29 @@ export const PROGRESS_PATH = "data/recommender/rating-progress.json";
 export const PROFILES_PATH = "data/recommender/persona-profiles.json";
 export const BATCHES_DIR = "data-local/recommender/batches";
 export const REASONS_DIR = "data-local/recommender/reasons";
+
+export const DEFAULT_INTO = "ratings.json";
+/** File names --into may not take: written by other tools or other modes. */
+const RESERVED_INTO = new Set(["ratings-isolated.json", "ratings-predicted.json", "ratings-client.json"]);
+
+/** The prefix of a metadata-only rater's `model` (jev-rate.mjs, RV-18). */
+export const METADATA_ONLY_MODEL_PREFIX = "jev-";
+
+/** True for a model that writes no reasons and never sees a transcript. */
+export function isMetadataOnlyModel(model) {
+  return typeof model === "string" && model.startsWith(METADATA_ONLY_MODEL_PREFIX);
+}
+
+/** The ratings file and progress file `--into <name>` selects (repo-relative),
+    or throws on a name it may not take. */
+export function intoPaths(into = DEFAULT_INTO) {
+  if (into === DEFAULT_INTO) return { ratings: RATINGS_PATH, progress: PROGRESS_PATH, side: false };
+  const m = /^ratings-([a-z0-9]+(?:-[a-z0-9]+)*)\.json$/.exec(String(into));
+  if (!m || RESERVED_INTO.has(into)) {
+    throw new Error(`--into takes ${DEFAULT_INTO} or a bare ratings-<rater>.json (not ${[...RESERVED_INTO].join(", ")}), got ${JSON.stringify(into)}`);
+  }
+  return { ratings: `data/recommender/${into}`, progress: `data/recommender/rating-progress-${m[1]}.json`, side: true };
+}
 
 /** The two slots on a 0-1 scale; every other slot is 1-5. */
 const UNIT_SLOTS = new Set(["return_prob", "confidence"]);
@@ -125,6 +169,24 @@ const packTier = (pack, fallback) => pack?.tier ?? pack?.evidence_tier ?? fallba
 
 /* ---------------------------------------------------------- validation */
 
+/** The `at` paths of the persona reasons that may be "" in `results`: every
+    exactly-empty reason of a metadata-only model (Jev writes no text), none
+    for any other model. */
+export function emptyReasonPaths(results) {
+  const out = new Set();
+  if (!isObject(results) || !isMetadataOnlyModel(results.model) || !isObject(results.results)) return out;
+  for (const [key, show] of Object.entries(results.results)) {
+    if (!isObject(show) || !isObject(show.personas)) continue;
+    for (const [pid, r] of Object.entries(show.personas)) {
+      if (isObject(r) && r.reason === "") out.add(`results.${key}.personas.${pid}.reason`);
+    }
+  }
+  return out;
+}
+
+/** The weaker of two evidence tiers (later in EVIDENCE_TIERS). */
+const weakerTier = (a, b) => (EVIDENCE_TIERS.indexOf(b) > EVIDENCE_TIERS.indexOf(a) ? b : a);
+
 /** Every reason to refuse `results` as an answer to `batch`: schema.mjs's
     problems plus the batch checks. `profilesSha256OnDisk` is the hash of the
     profiles file the batch names, as it is now; `progress` is the progress
@@ -137,7 +199,10 @@ export function validateAgainstBatch(results, batch, { personaIds, profilesSha25
     return problems;
   }
   const packs = packsByKey(batch);
-  problems.push(...validateResultsFile(results, { personaIds, showKeys: [...packs.keys()] }));
+  const allowedEmpty = emptyReasonPaths(results);
+  for (const p of validateResultsFile(results, { personaIds, showKeys: [...packs.keys()] })) {
+    if (!(p.code === "reason_missing" && allowedEmpty.has(p.at))) problems.push(p);
+  }
   if (!isObject(results)) return problems;
 
   if (results.batch_id !== batch.batch_id) {
@@ -231,7 +296,10 @@ export function mergeInto(target, results, batch, { now = new Date() } = {}) {
       counts.not_rated.push(key);
       continue;
     }
-    const tier = packTier(pack, show.evidence_tier);
+    // A metadata-only rater may declare less than the pack holds (it never saw
+    // the transcript windows); it can never declare more.
+    const fromPack = packTier(pack, show.evidence_tier);
+    const tier = isMetadataOnlyModel(results.model) ? weakerTier(fromPack, show.evidence_tier) : fromPack;
     if (tier !== show.evidence_tier) counts.tier_from_batch += 1;
     const old = target.shows[key] || null;
     const n = old ? old.passes : 0;
@@ -313,11 +381,18 @@ const within = (root, p) => (isAbsolute(p) ? p : join(root, p));
 
 /** Validate and merge one results file. Returns `{ ok, problems, report }`;
     writes only when ok. `root` is the repo root (tests pass a temp dir). */
-export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now = new Date() }) {
+export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now = new Date(), into = DEFAULT_INTO }) {
   const problems = [];
   const add = (code, at, message) => problems.push({ code, at, message });
   const refuse = () => ({ ok: false, problems, report: null });
 
+  let paths;
+  try {
+    paths = intoPaths(into);
+  } catch (e) {
+    add("bad_into", "--into", e.message);
+    return refuse();
+  }
   const results = readJsonOr(resultsPath, "results_unreadable", add);
   if (!results) return refuse();
   if (typeof results.batch_id !== "string" || results.batch_id.trim().length === 0) {
@@ -329,8 +404,23 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
   if (!batch) return refuse();
 
   const isolated = results.mode !== "joint";
-  const targetPath = join(root, isolated ? ISOLATED_PATH : RATINGS_PATH);
-  const progressPath = join(root, PROGRESS_PATH);
+  if (isolated && paths.side) {
+    add("isolated_into_side_file", "--into", `isolated results always merge into ${ISOLATED_PATH}; drop --into ${into}`);
+    return refuse();
+  }
+  if (isMetadataOnlyModel(results.model) && !paths.side) {
+    add("metadata_only_into_gold", "model", `${JSON.stringify(results.model)} results carry no reasons and replace no rating until they clear the RV-14 gate; merge them with --into ratings-jev.json`);
+    return refuse();
+  }
+  const targetPath = join(root, isolated ? ISOLATED_PATH : paths.ratings);
+  const progressPath = join(root, paths.progress);
+  /* A side file's shows may hold an empty top_reason (a metadata-only rater's);
+     ratings.json's never. */
+  const shapeProblems = (doc) =>
+    validateRatingsFile(doc).filter((p) => {
+      const m = /^shows\.(.+)\.top_reason$/.exec(p.at);
+      return !(paths.side && p.code === "reason_missing" && m && doc.shows?.[m[1]]?.top_reason === "");
+    });
   const progress = loadProgress(progressPath);
   const progressBefore = serializeProgress(progress);
   const target = existsSync(targetPath) ? readJsonOr(targetPath, "ratings_unreadable", add) : skeletonRatings();
@@ -340,7 +430,14 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
 
   const settleProgress = () => {
     const released = release(progress, results.batch_id);
-    if (!isolated && Number.isInteger(results.pass)) markRated(progress, batchKeys, { pass: results.pass, batchId: results.batch_id });
+    // An isolated batch is recorded under the keys RV-08 reserved it by
+    // (`<show_key>@isolated:<persona_id>`), never the show's own joint key: it is
+    // not one of the joint passes, but without the record prepare-rating-batch
+    // would offer the same isolated shows again after every merge.
+    if (Number.isInteger(results.pass)) {
+      const keys = isolated ? batchKeys.map((k) => progressKey(k, results.mode)) : batchKeys;
+      markRated(progress, keys, { pass: results.pass, batchId: results.batch_id });
+    }
     if (serializeProgress(progress) !== progressBefore) saveProgress(progressPath, progress);
     return released;
   };
@@ -359,11 +456,11 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
   /* The results' personas were checked against the profiles above; the file
      being merged into is checked for shape only, so a persona pruned from the
      profiles later (RV-29) does not wedge every merge. --check names it. */
-  for (const p of validateRatingsFile(target)) problems.push({ ...p, code: `existing_${p.code}`, at: `${targetPath}#${p.at}` });
+  for (const p of shapeProblems(target)) problems.push({ ...p, code: `existing_${p.code}`, at: `${targetPath}#${p.at}` });
   if (problems.length > 0) return refuse();
 
   const { counts, reasons } = mergeInto(target, results, batch, { now });
-  for (const p of validateRatingsFile(target)) problems.push({ ...p, code: `merged_${p.code}` });
+  for (const p of shapeProblems(target)) problems.push({ ...p, code: `merged_${p.code}` });
   if (problems.length > 0) return refuse();
 
   const reasonsPath = reasonsPathFor(results.batch_id, root);
@@ -378,6 +475,7 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
       mode: results.mode,
       pass: results.pass,
       target: targetPath,
+      progress: progressPath,
       reasons_path: reasonsPath,
       reasons_written: reasons.length,
       released: released.length,
@@ -412,19 +510,22 @@ export function runCheck({ root = REPO_ROOT, now = new Date() } = {}) {
 
 /* ------------------------------------------------------------------ CLI */
 
-const USAGE = "usage: node tools/recommender/merge-rating-results.mjs --results <file> [--batch <file>] | --check";
+const USAGE = "usage: node tools/recommender/merge-rating-results.mjs --results <file> [--batch <file>] [--into ratings-<rater>.json] | --check";
 
 export function parseArgs(argv) {
-  const args = { results: null, batch: null, check: false };
+  const args = { results: null, batch: null, check: false, into: DEFAULT_INTO };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--results") args.results = argv[++i];
     else if (a === "--batch") args.batch = argv[++i];
+    else if (a === "--into") args.into = argv[++i];
     else if (a === "--check") args.check = true;
     else throw new Error(`unknown argument ${a}`);
   }
   if (!args.check && !args.results) throw new Error("--results <file> or --check is required");
   if (args.check && args.results) throw new Error("--check takes no --results");
+  if (args.check && args.into !== DEFAULT_INTO) throw new Error("--check takes no --into");
+  intoPaths(args.into);
   return args;
 }
 
@@ -455,6 +556,7 @@ export function main(argv = process.argv.slice(2), { root = REPO_ROOT, now = new
     batchPath: args.batch ? resolve(process.cwd(), args.batch) : null,
     root,
     now,
+    into: args.into,
   });
   if (!ok) {
     log(`merge-rating-results: refused, nothing merged (${problems.length} problem(s)); fix them in the results file and run again`);
