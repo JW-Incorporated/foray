@@ -74,7 +74,8 @@ import { NARRATION_CHARS_PER_SEC } from "../types/narration";
 import { disclosureTemplate, preludeTemplate } from "../types/narration";
 import { buildPartialCandidate, type PartialCandidate } from "./partialCandidate";
 import { resetUsageTracking, getUsageTotals } from "./usageTracking";
-import { buildVeracityMetrics, computeActVeracity, evaluateVeracityGate, type ActVeracity, type VeracityGateResult } from "./veracityMetrics";
+import { buildVeracityMetrics, computeActVeracity, evaluateVeracityGate, type ActVeracity, type ShowVarietyItem, type VeracityGateResult } from "./veracityMetrics";
+import { showKeyForItem, type ShowIdentityContext } from "./showIdentity";
 import { clipLevelFor, createClipJudge, subjectSentenceFor, type ClipJudge } from "./clipJudge";
 import { applyClipScores, scoreSourcedClips, type ClipScoreRecord } from "./scoreClips";
 import { createJevClient } from "./jevClient";
@@ -687,6 +688,29 @@ export function runtimeSecFor(items: ForayItem[], pool: SegmentRecord[] = loadSe
     if (script.length > 0) total += Math.round((script.length / NARRATION_CHARS_PER_SEC) * 1000) / 1000;
   }
   return Math.round(total * 1000) / 1000;
+}
+
+/**
+ * GV-83 (MQ-07): the Foray's tape items as `computeShowVariety` reads them,
+ * one per `segment` item, its seconds from the SAME pool join `runtimeSecFor`
+ * makes (the last row under an id wins, so a committed row outranks a minted
+ * one exactly as it does for the runtime) and its show from `showKeyForItem`.
+ * A segment the pool cannot resolve has no episode to name and is left out,
+ * as it contributes nothing to the runtime either.
+ */
+export function showVarietyItemsFor(items: ForayItem[], pool: SegmentRecord[], ctx: ShowIdentityContext = {}): ShowVarietyItem[] {
+  const byId = new Map(pool.map((s) => [s.id, s]));
+  const out: ShowVarietyItem[] = [];
+  for (const item of items) {
+    const rec = item as unknown as Record<string, unknown>;
+    if (rec.type !== "segment") continue;
+    const seg = byId.get(String(rec.segment_id));
+    if (!seg || typeof seg.item_id !== "string" || !seg.item_id) continue;
+    const durationSec =
+      Number.isFinite(seg.end_sec) && Number.isFinite(seg.start_sec) && seg.end_sec > seg.start_sec ? seg.end_sec - seg.start_sec : 0;
+    out.push({ showKey: showKeyForItem(seg.item_id, ctx), itemId: seg.item_id, durationSec });
+  }
+  return out;
 }
 
 /**
@@ -2180,6 +2204,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     /* GV-26 (MQ-09): the narration-degraded rows, so tape yield can tell a
        beat that searched and found nothing from one that never searched. */
     sourcingTrace: sourced.sourcingTrace,
+    /* GV-83 (MQ-07): the stitched tape items, timed on the runtime pool. */
+    showItems: showVarietyItemsFor(stitchedItems, runtimePool, {
+      archive,
+      newSegmentSources: sourced.newSegmentSources,
+      ...(options.root ? { root: options.root } : {})
+    }),
     root: options.root
   });
   /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is

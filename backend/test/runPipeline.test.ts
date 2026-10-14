@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { runForayPipeline, slotsFromSpine, runtimeSecFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
+import { runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -12,7 +12,8 @@ import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVer
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult } from "../src/generation/finalizeForay";
 import { stitchForay } from "../src/generation/stitchForay";
-import { evaluateVeracityGate } from "../src/generation/veracityMetrics";
+import { computeShowVariety, evaluateVeracityGate } from "../src/generation/veracityMetrics";
+import { showKeyForItem } from "../src/generation/showIdentity";
 import { checkpointFingerprint } from "../src/generation/checkpoint";
 import { forayIdFor, resetTaxonomyCache } from "../src/generation/resolveTopic";
 import { resetTaxonomyFamilyCache, taxonomyLineage, taxonomyRoot } from "../src/generation/taxonomyFamily";
@@ -39,7 +40,7 @@ import { makeFakeAnthropicClient, textBlock } from "./helpers/fakeAnthropicClien
 import { DeliveryTimeline, type ItemReadyEvent } from "../src/generation/deliveryTimeline";
 import { PRE_SPINE_SENTINEL, preSpineIntent } from "../src/generation/preSpineIntent";
 import { loadCatalogueData, type CatalogueData } from "../src/generation/catalogueLookup";
-import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
+import { loadSegmentPool, type SegmentRecord } from "../src/generation/segmentPoolLookup";
 import { loadTranscriptArchive } from "../src/generation/transcriptArchiveLookup";
 
 /**
@@ -1981,4 +1982,67 @@ describe("runForayPipeline — GV-79 clip-on-subject scorer (shadow mode)", () =
       expect(s).not.toContain(PRE_SPINE_SENTINEL);
     }
   }, 120_000);
+});
+
+/**
+ * GV-83 (W3-12; MQ-07, QK-21): show variety on every run. Measure-only: no
+ * flag, no gate; the stitched tape items are timed on the same pool join
+ * `runtimeSecFor` makes and keyed by `showKeyForItem`.
+ */
+describe("runForayPipeline — GV-83 show variety (MQ-07)", () => {
+  /* MUTATION THAT KILLS THIS: drop the `showItems` argument to
+     buildVeracityMetrics in runForayPipeline (showVariety is then absent).
+     Ran it: red. */
+  it("a stub run's report veracity carries showVariety, with its tape seconds equal to the runtime's tape seconds", async () => {
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    const veracity = out.input.meta?.veracity;
+    const variety = veracity?.showVariety;
+    expect(variety).toBeDefined();
+    if (!variety) return;
+    const pool = loadSegmentPool();
+    const tapeItems = out.input.items.filter((i) => (i as unknown as { type: string }).type === "segment");
+    expect(tapeItems.length).toBeGreaterThan(0);
+    const tapeSec = Object.values(variety.tapeSecByShow).reduce((a, b) => a + b, 0);
+    expect(tapeSec).toBeCloseTo(runtimeSecFor(tapeItems, pool), 3);
+    const byId = new Map(pool.map((s) => [s.id, s]));
+    const itemIds = new Set(tapeItems.map((i) => byId.get(String((i as unknown as { segment_id: string }).segment_id))?.item_id));
+    expect(variety.distinctEpisodes).toBe(itemIds.size);
+    expect(variety.distinctShows).toBe(new Set([...itemIds].map((id) => showKeyForItem(String(id)))).size);
+    expect(variety.largestShowTapeShare).toBeGreaterThan(0);
+    expect(variety.largestShowTapeShare).toBeLessThanOrEqual(1);
+    /* Gate behaviour is unchanged: the verdict does not read the field. */
+    expect(out.gate).toEqual(evaluateVeracityGate({ ...veracity!, showVariety: undefined }));
+  });
+
+  /* MUTATION THAT KILLS THIS: key the pool with the FIRST row under an id
+     (`if (!byId.has(s.id)) byId.set(...)`) — the minted cut's 100 s is
+     measured instead of the committed row's 40 s, which is not what
+     runtimeSecFor charges. Ran it: red. */
+  it("showVarietyItemsFor times each segment on the runtimeSecFor join and skips narration and unresolvable segments", () => {
+    const row = (id: string, item_id: string, start_sec: number, end_sec: number) => ({ id, item_id, start_sec, end_sec }) as SegmentRecord;
+    const pool = [row("seg-a", "show-x--ep-1", 0, 100), row("seg-a", "show-x--ep-1", 10, 50), row("seg-b", "show-y--ep-2", 5, 35)];
+    const items = [
+      { type: "narration", id: "n1", script: "Hello there." },
+      { type: "segment", segment_id: "seg-a" },
+      { type: "segment", segment_id: "seg-missing" },
+      { type: "segment", segment_id: "seg-b" }
+    ] as unknown as Parameters<typeof showVarietyItemsFor>[0];
+    /* An empty root: no catalogue, so every key is the id prefix. */
+    const root = mkdtempSync(join(tmpdir(), "gv83-"));
+    let rows: ReturnType<typeof showVarietyItemsFor>;
+    try {
+      rows = showVarietyItemsFor(items, pool, { root });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+    expect(rows).toEqual([
+      { showKey: "show-x", itemId: "show-x--ep-1", durationSec: 40 },
+      { showKey: "show-y", itemId: "show-y--ep-2", durationSec: 30 }
+    ]);
+    const tapeSec = rows.reduce((a, r) => a + r.durationSec, 0);
+    expect(tapeSec).toBe(runtimeSecFor(items.filter((i) => (i as unknown as { type: string }).type === "segment"), pool));
+    expect(computeShowVariety(rows).largestShowTapeShare).toBeCloseTo(40 / 70, 12);
+  });
 });

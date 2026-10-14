@@ -595,6 +595,30 @@ export const COLUMNS = [
     width: 5,
     kind: "text",
     targetNote: "R2-21 attribution: the most common impl@machine, then each stage that differs (`stageAssignments`, GV-55)"
+  },
+  /* GV-83 (MQ-07; QK-21, GP-22): show variety, off `meta.veracity.showVariety`
+     (computeShowVariety). Detail columns (GV-04 grouping), so the committed
+     KPI table does not change shape; absent on reports written before GV-83
+     (runs 4-9), never 0 (rule 1). No target: measure-only. */
+  {
+    key: "shows",
+    group: "detail",
+    header: "shows",
+    from: "report",
+    width: 5,
+    kind: "number",
+    digits: 0,
+    targetNote: "MQ-07: distinct shows the Foray's tape comes from (`showVariety.distinctShows`)"
+  },
+  {
+    key: "top_show_pct",
+    group: "detail",
+    header: "top show %",
+    from: "report",
+    width: 10,
+    kind: "number",
+    digits: 0,
+    targetNote: "MQ-07: the largest show's share of the tape seconds, in percent (`showVariety.largestShowTapeShare` x 100); — with no tape"
   }
 ];
 
@@ -1002,7 +1026,10 @@ export function rowFor(entry, context = {}) {
     spark_s: runlog ? num(runlog.unitSpend?.[SPARK_UNIT]) : null,
     lead15_s: num(delivery?.minLeadSecAt1_5x),
     render_rtf: num(delivery?.render?.realtimeFactor),
-    stack: stackOf(entry.stageAssignments)
+    stack: stackOf(entry.stageAssignments),
+    /* GV-83: absent without the block, and the share absent with no tape. */
+    shows: num(v.showVariety?.distinctShows),
+    top_show_pct: num(v.showVariety?.largestShowTapeShare) === null ? null : v.showVariety.largestShowTapeShare * 100
   };
   const sources = {};
   for (const col of COLUMNS) {

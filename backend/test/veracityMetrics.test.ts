@@ -16,6 +16,7 @@ import {
   computeBeatCoverage,
   computeSpecificsUnsupported,
   computeClipOnSubject,
+  computeShowVariety,
   CLIP_ON_SUBJECT_LEVEL,
   buildVeracityMetrics,
   evaluateVeracityGate,
@@ -1078,5 +1079,65 @@ describe("GV-79 — clipOnSubject: the clip judge's Scores, aggregated (MQ-05)",
     expect(judged.clipOnSubjectJudge).toBe("code");
     expect(judged.clipOnSubjectDetails).toEqual({ scored: 1, unscored: 0, offSubject: [expect.objectContaining({ itemId: "item-0" })] });
     expect(judged.tapeRelevance).toBe(1);
+  });
+});
+
+/**
+ * GV-83 (W3-12; MQ-07, QK-21, GP-22): show variety. Pure arithmetic over the
+ * Foray's tape items, each already keyed to its show (showIdentity.ts).
+ */
+describe("GV-83 — computeShowVariety: distinct shows and the largest show's tape share (MQ-07)", () => {
+  /* MUTATION THAT KILLS THIS: divide by the number of items instead of the
+     tape seconds (`largest / items.length`). Ran it: red. */
+  it("counts shows and episodes and gives the largest show's share of tape seconds on a two-show list", () => {
+    const r = computeShowVariety([
+      { showKey: "geology-bites", itemId: "geology-bites--a", durationSec: 60 },
+      { showKey: "geology-bites", itemId: "geology-bites--b", durationSec: 30 },
+      { showKey: "geology-bites", itemId: "geology-bites--a", durationSec: 30 },
+      { showKey: "title:the grill coach", itemId: "grill-1", durationSec: 40 }
+    ]);
+    expect(r.distinctShows).toBe(2);
+    expect(r.distinctEpisodes).toBe(3);
+    expect(r.largestShowKey).toBe("geology-bites");
+    expect(r.largestShowTapeShare).toBeCloseTo(120 / 160, 12);
+    expect(r.tapeSecByShow).toEqual({ "geology-bites": 120, "title:the grill coach": 40 });
+  });
+
+  /* MUTATION THAT KILLS THIS: return `largest / Math.max(total, 1)` (0, not
+     null, with no tape). Ran it: red. */
+  it("is null, never 0 or 1, with no tape seconds; an empty key is not a show", () => {
+    const none = computeShowVariety([]);
+    expect(none).toEqual({ distinctShows: 0, distinctEpisodes: 0, largestShowKey: null, largestShowTapeShare: null, tapeSecByShow: {} });
+    const zero = computeShowVariety([
+      { showKey: "a", itemId: "a--1", durationSec: 0 },
+      { showKey: "", itemId: "x", durationSec: 50 },
+      { showKey: "b", itemId: "b--1", durationSec: Number.NaN }
+    ]);
+    expect(zero.distinctShows).toBe(2);
+    expect(zero.largestShowKey).toBeNull();
+    expect(zero.largestShowTapeShare).toBeNull();
+  });
+
+  it("a tie goes to the lexically first key, so the report is stable", () => {
+    const r = computeShowVariety([
+      { showKey: "zeta", durationSec: 10 },
+      { showKey: "alpha", durationSec: 10 }
+    ]);
+    expect(r.largestShowKey).toBe("alpha");
+    expect(r.largestShowTapeShare).toBe(0.5);
+    expect(r.distinctEpisodes).toBe(0);
+  });
+
+  /* MUTATION THAT KILLS THIS: always add `showVariety` (computed over `[]`
+     when no items were passed). Ran it: red (a caller that passes no items
+     gains a key). */
+  it("buildVeracityMetrics carries showVariety only when given the items, and the gate is unchanged", () => {
+    const base = { sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, pipelineTokens: 0, stageTimings: [] };
+    const plain = buildVeracityMetrics(base);
+    expect("showVariety" in plain).toBe(false);
+    const single = buildVeracityMetrics({ ...base, showItems: [{ showKey: "one-show", itemId: "one-show--a", durationSec: 90 }] });
+    expect(single.showVariety).toMatchObject({ distinctShows: 1, largestShowKey: "one-show", largestShowTapeShare: 1 });
+    /* One show carrying all the tape (QK-21's finding) refuses nothing. */
+    expect(evaluateVeracityGate(single)).toEqual(evaluateVeracityGate(plain));
   });
 });
