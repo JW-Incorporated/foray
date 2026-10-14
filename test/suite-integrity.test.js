@@ -1943,6 +1943,14 @@ const FLOORS = {
      looks up through harvest-merge's politeFetchJson - a 5xx is retried, a 404
      fails at once, no private fetcher - and artworkFromLookup is the harvest
      mapping (a podcast's https artworkUrl600, else null). New, zero slack. */
+  /* RV-02 (docs/roadmap/recommender-v1.md, #1380): the persona-rating pipeline's
+     file shapes and progress file -- the results file, ratings.json and the
+     client projection validated (tier-gated audio scores, confidence caps, the
+     reason copy rules, unknown fields refused, the rubric's worked example),
+     and reservations that never double-book, reclaim at 12 h and save sorted.
+     Offline, fixtures only. */
+  "tools/recommender/schema.test.mjs": 13, // RV-02: new, zero slack (the card's 9 plus isolated mode, unrated/none-tier shows, an unknown field refused, the rubric example validates)
+  "tools/recommender/progress.test.mjs": 8, // RV-02: new, zero slack (the card's 6 plus a corrupt file throws, the committed file is empty and in saveProgress form)
   "tools/refresh/backfill-artwork.test.mjs": 4,
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
