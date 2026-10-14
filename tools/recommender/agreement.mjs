@@ -668,7 +668,12 @@ export function loadResults(dir, ratings) {
   if (!dir || !fs.existsSync(dir)) return null;
   const merged = Array.isArray(ratings && ratings.merged_batches) ? new Set(ratings.merged_batches) : null;
   const docs = [];
-  for (const name of fs.readdirSync(dir).filter((f) => /^rating-results-.+\.json$/.test(f)).sort()) {
+  for (const name of fs.readdirSync(dir).sort()) {
+    const m = /^rating-results-(.+)\.json$/.exec(name);
+    if (!m) continue;
+    /* Skip by name before parsing: a refused file (for example an agent's
+       truncated output) stays in the directory and may not be valid JSON. */
+    if (merged && !merged.has(m[1])) continue;
     const doc = readJson(path.join(dir, name));
     if (merged && !merged.has(doc.batch_id)) continue;
     docs.push(doc);

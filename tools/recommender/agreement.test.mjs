@@ -251,12 +251,17 @@ const quiet = { log: () => {}, error: () => {} };
 
 test("loadResults reads only the batches ratings.json lists as merged", (t) => {
   /* MUTATION (run red): drop `if (merged && !merged.has(doc.batch_id)) continue`
-     -- a refused, never-merged results file counts toward test-retest. */
+     -- a never-merged results file renamed onto a merged id (b4 below holds
+     batch b2) counts toward test-retest. */
   const dir = scratch(t);
   writeFileSync(join(dir, "rating-results-b1.json"), JSON.stringify(resultsDoc({ batch_id: "b1", pass: 1, shows: { s1: { a: [3, 0.5] } } })));
   writeFileSync(join(dir, "rating-results-b2.json"), JSON.stringify(resultsDoc({ batch_id: "b2", pass: 2, shows: { s1: { a: [4, 0.5] } } })));
   writeFileSync(join(dir, "notes.json"), "{}");
-  const docs = loadResults(dir, ratingsDoc({ s1: { a: 3 } }, { merged: ["b1"] }));
+  /* MUTATION (run red): drop the by-name `if (merged && !merged.has(m[1])) continue`
+     -- a refused, truncated (unparseable) results file crashes the report. */
+  writeFileSync(join(dir, "rating-results-b3.json"), '{"batch_id": "b3", "shows": {');
+  writeFileSync(join(dir, "rating-results-b4.json"), JSON.stringify(resultsDoc({ batch_id: "b2", pass: 2, shows: { s1: { a: [5, 0.5] } } })));
+  const docs = loadResults(dir, ratingsDoc({ s1: { a: 3 } }, { merged: ["b1", "b4"] }));
   assert.deepEqual(docs.map((d) => d.batch_id), ["b1"]);
   assert.equal(loadResults(join(dir, "absent"), {}), null);
 });
