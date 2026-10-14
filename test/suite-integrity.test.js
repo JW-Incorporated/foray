@@ -3648,6 +3648,18 @@ const BACKEND_FLOORS = {
      (stage, name) however often it runs, keeps two logs apart and serialises
      into runlog/1. Offline; one named mutation per test. */
   "test/codeSpans.test.ts": 10,
+  /* GV-88 (docs/roadmap/generation-v2.md, W3-15; R2-04, QK-22, R1-09): the
+     retrieval replay and the hybrid go/no-go gate. replayCompare: MQ-09's
+     unseeded yield and the dense-only counts exact on synthetic replays, the
+     verdict's pass, fail-lost-tape and fail-no-gain cases, incomparable
+     replays and recomputed summaries, the gold schema's 64-character and
+     strict-field refusals, recall@8. replaySourcing: main() over a synthetic
+     two-show corpus with run-2 attempt 6's structure (deterministic, exact
+     summary), --out and compare's exit codes, a remote bm25 replay equal to
+     the local one with no miss, a dense-only rescue passing the hybrid gate,
+     and the argument refusals. Offline; one named mutation per test. */
+  "test/replayCompare.test.ts": 8,
+  "test/replaySourcing.test.ts": 5,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
