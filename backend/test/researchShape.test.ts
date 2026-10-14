@@ -1050,6 +1050,48 @@ describe("GV-87: the per-show quota on a subtopic's tape windows (FORAY_RESEARCH
     expect(count(shows, "Fusion Weekly")).toBe(5);
   });
 
+  it("spends only the kept windows: an episode the quota skipped under one subtopic is quoted under the next", async () => {
+    /* MUTATION THAT KILLS THIS: spend every candidate window, not the kept ones
+       (`for (const w of windows) usedEpisodes.add(w.episodeId)` in
+       `tapeWindowsForUntimed`). Ran it — red: "Plasma" is left with no window,
+       the Fusion Weekly episodes the quota skipped spent under "Fusion". */
+    process.env[RESEARCH_SHOW_QUOTA_ENV] = "0.6";
+    const base = tapeFixtureCatalogue();
+    /* A second subtopic whose terms only Fusion Weekly speaks ("tokamak",
+       "plasma"), walked after "Fusion". */
+    const catalogue: CatalogueData = {
+      ...base,
+      itemTags: Object.fromEntries(base.items.map((it) => [it.id, ["fusion", "tokamak", "plasma"]])),
+      concepts: { ...base.concepts, plasma: { terms: ["plasma", "tokamak"], topics: ["engineering/energy-fusion"], related: [] } }
+    };
+    const run = async () => {
+      const { guard } = guardAndSink();
+      return buildResearchShape(makeIntent(), {
+        researcher: new StubExternalResearcher(guard),
+        ctx: { userId: "founder-1" },
+        catalogue,
+        topic: null,
+        ...archiveOf(8, 4)
+      });
+    };
+    const shape = await run();
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    const plasma = shape.subtopics.find((s) => s.label === "Plasma")!;
+    expect(count(showsOf(fusion.tapeWindows), "Fusion Weekly")).toBe(4);
+    /* The Fusion Weekly episodes "Fusion" ranked in its top six with no quota
+       but dropped with it. */
+    delete process.env[RESEARCH_SHOW_QUOTA_ENV];
+    const unquotedTop = (await run()).subtopics.find((s) => s.label === "Fusion")!.tapeWindows.map((w) => w.episodeId);
+    const kept = new Set(fusion.tapeWindows.map((w) => w.episodeId));
+    const skipped = unquotedTop.filter((id) => !kept.has(id));
+    expect(skipped.length).toBe(2);
+    const plasmaIds = plasma.tapeWindows.map((w) => w.episodeId);
+    for (const id of skipped) expect(plasmaIds).toContain(id);
+    /* And still one window per episode across the map (G-24 R3). */
+    const all = shape.subtopics.flatMap((s) => s.tapeWindows.map((w) => w.episodeId));
+    expect(new Set(all).size).toBe(all.length);
+  });
+
   it("with one show, the quota changes nothing", async () => {
     const off = await fusionMap(undefined, 8, 0);
     const on = await fusionMap("0.6", 8, 0);
