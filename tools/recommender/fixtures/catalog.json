@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "built_at": "2026-10-14T00:00:00.000Z",
+  "notes": "RV-03 fixture: three curated shows",
+  "shows": [
+    {
+      "show_id": "tx-show",
+      "title": "Tinkerer Hour",
+      "apple_collection_id": 999,
+      "feed_url": "https://example.invalid/tx.xml",
+      "artwork_url": null,
+      "apple_genre": null,
+      "episode_count": 120,
+      "editorial_note": "Two machinists talk through one shop project an episode, measurements read aloud.",
+      "taxonomy_node_ids": [
+        "science"
+      ],
+      "label_scope": "general",
+      "archetype_fit": [
+        "deep-learn"
+      ],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "fixture"
+    },
+    {
+      "show_id": "note-only",
+      "title": "Note Only Show",
+      "apple_collection_id": null,
+      "feed_url": null,
+      "artwork_url": null,
+      "apple_genre": null,
+      "episode_count": null,
+      "editorial_note": "A curated note   with double spaces kept as written.",
+      "taxonomy_node_ids": [],
+      "archetype_fit": [],
+      "cadence_hint": null,
+      "explicit": null,
+      "source": "fixture"
+    },
+    {
+      "show_id": "quiz-desk",
+      "title": "Quiz Desk",
+      "apple_collection_id": 666,
+      "feed_url": "https://example.invalid/666.xml",
+      "artwork_url": null,
+      "apple_genre": null,
+      "episode_count": null,
+      "editorial_note": "NPR's long-running news quiz; the panel riffs on the week.",
+      "taxonomy_node_ids": [
+        "news/daily"
+      ],
+      "label_scope": "general",
+      "archetype_fit": [],
+      "cadence_hint": "weekly",
+      "explicit": false,
+      "source": "fixture"
+    }
+  ]
+}
