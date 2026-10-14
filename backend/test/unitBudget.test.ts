@@ -9,9 +9,11 @@ import {
 } from "../src/cost/unitBudget";
 import { BudgetGuard, EpisodeBudgetExceededError } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
-import { NullJevClient, meteredJevClient } from "../src/generation/jevClient";
+import { FallbackJudgeClient, NullJevClient, meteredJevClient } from "../src/generation/jevClient";
+import { QwenJudgeClient } from "../src/generation/qwenJudgeClient";
 import { RunLog, runWithRunLog, withCallContext } from "../src/generation/runLog";
 import { FakeJevClient, jevFixtures, noulAnswer } from "./helpers/fakeJevClient";
+import { scriptedProvider } from "./helpers/fakeChatProvider";
 
 /**
  * GV-90 (docs/roadmap/generation-v2.md, R1-19): the per-Foray unit caps —
@@ -268,5 +270,36 @@ describe("meteredJevClient: one jevCalls unit per Jev ask (GV-90)", () => {
     const refusing = meteredJevClient(inner, { guard: dollarGuard(0), userId: "u1", sessionId: "s", unitGuard: units });
     await expect(refusing.ask(fx.state, Q, { purpose: "p" })).rejects.toBeInstanceOf(EpisodeBudgetExceededError);
     expect(units.spent("s").jevCalls).toBe(0);
+  });
+
+  it("a Qwen-judge ask (routed local, or behind an open breaker) reserves no jevCalls unit, so the Jev-call cap never stops it", async () => {
+    /* MUTATION THAT KILLS THIS: reserve for local asks too (drop `!local &&`
+       from the reserve guard in meteredJevClient) — the second ask on each
+       client throws UnitBudgetExceededError. Ran it — red. */
+    const qwen = () =>
+      new QwenJudgeClient({
+        provider: scriptedProvider({ complete: () => '{"answers":{}}' }),
+        model: "local-worker",
+        lane: "second",
+        structuredOutput: "json_schema",
+        logprobs: false
+      });
+
+    const routedLocal = new UnitBudgetGuard({ overrides: { jevCalls: 1 } });
+    const local = meteredJevClient(qwen(), { guard: dollarGuard(), userId: "u1", sessionId: "s-local", unitGuard: routedLocal });
+    await expect(local.ask(fx.state, Q, { purpose: "p" })).resolves.toBeDefined();
+    await expect(local.ask(fx.state, Q, { purpose: "p" })).resolves.toBeDefined();
+    expect(routedLocal.spent("s-local").jevCalls).toBe(0);
+
+    const primary = new FakeJevClient({ byId: { [Q[0]!.id]: noulAnswer(0.9) } });
+    const fallback = new FallbackJudgeClient(primary, qwen(), { breaker: { failuresToOpen: 1, coolOffMs: 60_000 } });
+    fallback.breaker.recordOutage();
+    expect(fallback.nextJudge()).not.toBe("jev");
+    const behindBreaker = new UnitBudgetGuard({ overrides: { jevCalls: 1 } });
+    const open = meteredJevClient(fallback, { guard: dollarGuard(), userId: "u1", sessionId: "s-open", unitGuard: behindBreaker });
+    await expect(open.ask(fx.state, Q, { purpose: "p" })).resolves.toBeDefined();
+    await expect(open.ask(fx.state, Q, { purpose: "p" })).resolves.toBeDefined();
+    expect(primary.calls).toHaveLength(0);
+    expect(behindBreaker.spent("s-open").jevCalls).toBe(0);
   });
 });
