@@ -29,6 +29,7 @@ import type {
   NarrationWriterBuilder,
   SeamBrief,
   SelectedClaim,
+  WriterStreamEvent,
   WrittenSeam
 } from "./NarrationWriterBuilder";
 import type { ActSourceBrief, ActVerifyResult, NarrationVerifierBuilder, VerifyClipBrief, VerifySeamBrief } from "./NarrationVerifierBuilder";
@@ -40,6 +41,7 @@ import {
   decideIntro,
   introNamesShow,
   introNamesSource,
+  introOnlyFirstSeam,
   introRestatesClip,
   planActSeams,
   seamBand,
@@ -66,6 +68,7 @@ import {
   sourcesFor,
   type NarrationWriteStats,
   type PendingPage,
+  type SeamCheckedEvent,
   type WrittenAct,
   type WrittenBeat,
   type WrittenSlot
@@ -231,7 +234,76 @@ export interface WriteActOptions {
    * (the default driver) means the request carries no `frame` key at all.
    */
   frame?: ActFrame;
+  /**
+   * GV-73 (W4-10; R1-06, R1-01, GP-05): write the act through the writer's
+   * streamed reply (`writeActStream`), checking each seam as its line closes.
+   * Applies only when the writer implements the method; omitted or false is
+   * today's one-shot `writeAct`, byte for byte. Set from FORAY_WRITER_STREAM
+   * (or the fast-path umbrella) by the driver. See `streamRound`.
+   */
+  streamSeams?: boolean;
+  /** GV-73: this act's position in the Foray, for `onSeamChecked`. Default 0. */
+  actIndex?: number;
+  /**
+   * GV-73: fired once per seam released early on the streamed path. A
+   * signal for the delivery workstream (R1-15), not permission to play: the
+   * act-level pass below stays the authority, and per-item serving waits for
+   * the per-act veracity gate. A throwing callback is logged, never fatal.
+   */
+  onSeamChecked?: (event: SeamCheckedEvent) => void;
+  /**
+   * GV-73: the most the streamed reply may go without a single event before
+   * it is treated as stalled and cut like a token-cap stop (finished seams
+   * kept, the rest re-asked). An IDLE bound, between events, so a long
+   * healthy stream is never cut for its total length. Default
+   * `DEFAULT_WRITER_STREAM_IDLE_MS`.
+   */
+  streamIdleTimeoutMs?: number;
 }
+
+/**
+ * GV-73: the default idle bound on a streamed act reply -- the same 120 s
+ * the OpenAI-compatible provider allows a whole one-shot call
+ * (`chat/openAICompatProvider.ts`), here allowed between two events, which
+ * also covers the prompt's prefill before the first seam.
+ */
+export const DEFAULT_WRITER_STREAM_IDLE_MS = 120_000;
+
+/**
+ * GV-73: an optional per-seam check a verifier MAY offer (the verification
+ * workstream's; no verifier implements it yet). On the streamed path a seam
+ * that carries claims or beats is released early only when this confirms it
+ * against the act sources that have arrived so far; without it, such a seam
+ * waits for the act's verifier like every other seam.
+ */
+export interface SeamVerifyRequest {
+  actTitle: string;
+  voice: Voice;
+  seam: VerifySeamBrief;
+  /** The beats positioned in this seam. */
+  beats: BeatBrief[];
+  clips: VerifyClipBrief[];
+  /** The act's sources so far: the clips' windows, the ground and the gated
+   * claims of the seams already arrived. */
+  sources: ActSourceBrief[];
+  documents: EvidenceDoc[];
+  ground?: GroundPageBrief[];
+}
+export interface SeamVerifyResult {
+  confirmed: boolean;
+  notes?: string;
+}
+export type SeamVerifyingVerifier = NarrationVerifierBuilder & {
+  verifySeam?(request: SeamVerifyRequest, ctx: NarrationBuildContext): Promise<SeamVerifyResult>;
+};
+
+/** GV-73: why a streamed reply stopped short, as the note each missing seam gets. */
+interface StreamCut {
+  note: string;
+}
+
+/** GV-73: the issue a seam the writer never reached gets after a token-cap stop. */
+export const UNFINISHED_AT_CAP_NOTE = "unfinished: the writer stopped at its token cap";
 
 interface ClipState {
   plan: SeamClip;
@@ -269,6 +341,14 @@ interface SeamState {
   /** True for a seam that returned an empty script and may (no beats,
    * intro not full) — no page, silence bridges. */
   silent?: boolean;
+  /**
+   * GV-73: released early on the streamed path -- checked as its line
+   * closed and signalled (`onSeamChecked`), so it may already be on its way
+   * to the listener. It is judged with the act in the round it was released
+   * in and is never edited afterwards (frozen from the end of that round),
+   * whatever the verifier says.
+   */
+  released?: { round: number; atMs: number; verifiedBy: "code" | "verifier" };
 }
 
 interface BeatState {
@@ -351,9 +431,18 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
      of kind `page` a thesis seam may quote whole sentences of. */
   const documents = [...actDocuments(beatsInOrder.map(({ slot, beat }) => packs.get(positionKey(slot, beat))!)), ...groundDocsFor(ground)];
 
+  /* GV-73: the streamed path, when asked for and the writer can stream.
+     Its seam layout makes line 1 an introduction only (`introOnlyFirstSeam`),
+     so the act's first seam can be released on code checks alone. */
+  const streaming = options.streamSeams === true && typeof writer.writeActStream === "function";
+  if (streaming && stats) {
+    stats.seamsReleasedEarly = stats.seamsReleasedEarly ?? 0;
+    stats.releasedThenRefused = stats.releasedThenRefused ?? 0;
+  }
+
   /* 2. THE CLIPS, in play order, each with its opening and its Intro
         weight (Q-02). */
-  const seamPlans = planActSeams(act);
+  const seamPlans = streaming ? introOnlyFirstSeam(planActSeams(act)) : planActSeams(act);
   const clips: ClipState[] = [];
   let previousClip: SeamClip | undefined;
   /* Q-09: every show this Foray has already named, canonicalised. Seeded from
@@ -412,15 +501,21 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
 
   /* 4. ROUNDS — at most `NARRATION_PAGE_ATTEMPTS` per act. */
   const actRejections: string[] = [];
+  const clipSourceCount = clips.filter((c) => c.window).length + ground.length;
+  /* GV-73: after a streamed reply was cut (token cap or stall), the next
+     round's request lists only the seams still open -- the frozen ones are
+     not echoed back, so the retry fits under the cap the cut one hit. */
+  let askOnly: Set<string> | undefined;
   for (let round = 1; round <= NARRATION_PAGE_ATTEMPTS; round++) {
     if (round > 1 && stats) stats.retryRounds += 1;
 
     /* GV-07: the writer's model calls are recorded with this round and role
        (a no-op wrapper outside a RunLog; the request is unchanged). */
+    const asked = askOnly;
     const writeRequest = {
       actTitle: act.title,
       voice,
-      seams: seams.map(seamBriefOf),
+      seams: (asked ? seams.filter((s) => asked.has(s.plan.seamId)) : seams).map(seamBriefOf),
       clips: clips.map((c) => c.brief),
       documents,
       ...(ground.length > 0 ? { ground: [...ground] } : {}),
@@ -428,14 +523,27 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
       /* GV-38: the act frame, on every round. */
       ...(options.frame ? { frame: options.frame } : {})
     };
-    const reply = await withCallContext({ attempt: round, role: "writer" }, () => writer.writeAct(writeRequest, ctx));
+    let reply: ActWriteResult;
+    let cut: StreamCut | undefined;
+    if (streaming) {
+      /* GV-73: the same request, streamed (the frame rides along as on the
+         one-shot call); round 1 checks each seam as its line closes. */
+      const streamed = await withCallContext({ attempt: round, role: "writer" }, () =>
+        streamRound(writeRequest, ctx, { round, act, voice, seams, clips, clipById, clipSourceCount, ground, documents, options })
+      );
+      reply = { seams: streamed.seams };
+      cut = streamed.cut;
+      if (cut) console.warn(`writeAct: act "${act.title}" round ${round} — the streamed reply was cut (${cut.note}); keeping the ${streamed.seams.length} finished seam(s)`);
+    } else {
+      reply = await withCallContext({ attempt: round, role: "writer" }, () => writer.writeAct(writeRequest, ctx));
+    }
 
     /* THE MECHANICAL GATE, seam by seam, in two passes (`mechanicalPass`):
        first every seam's claims through the quote gate (the act's source
        set is the union of what survives), then every seam's script through
        the structural rules against that set. A frozen seam is not re-read:
        its text is kept whatever the writer returned. */
-    const mechanical = mechanicalPass(seams, reply, clipById, clips.filter((c) => c.window).length + ground.length, round, act.title, options.specifics);
+    const mechanical = mechanicalPass(seams, reply, clipById, clipSourceCount, round, act.title, options.specifics, cut);
     if (mechanical.length > 0) {
       console.warn(`writeAct: act "${act.title}" round ${round} refused in code — ${mechanical.join(" | ").slice(0, 600)}`);
     }
@@ -474,13 +582,17 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
       const verdicts = await withCallContext({ attempt: round, role: "verifier" }, () => verifier.verifyAct(verifyRequest, ctx));
       judge(toJudge, open, verdicts, actSources, round, act.title, stats);
     }
+    /* GV-73: a released seam the verifier refused is not edited (it may be
+       playing); its beats move to the next seam still open. */
+    if (streaming) settleReleased(seams, beats, round, act.title, stats);
 
     /* WHAT FAILED: a seam refused in code, a seam the verifier refused, a
        seam whose positioned beat is not carried anywhere. Everything else
-       is frozen from here on. */
+       is frozen from here on. A seam's beats are the ones positioned in it
+       -- on the streamed path, plus any a released seam handed on. */
     const notes = roundNotes(seams, beats, mechanical);
     for (const seam of seams) {
-      if (seam.draft && seam.confirmed && seam.plan.beats.every((b) => beatSettled(beats.get(b.beatId)!))) {
+      if (seam.draft && seam.confirmed && beatsIn(seam, beats).every(beatSettled)) {
         seam.frozen = true;
         delete seam.notes;
       } else if (seam.confirmed && seam.draft) {
@@ -488,9 +600,12 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
            editing. The confirmation stands if the writer leaves it alone. */
         seam.frozen = false;
       }
+      /* GV-73: released means never edited again, whatever the verdict. */
+      if (seam.released) seam.frozen = true;
     }
     if (notes.length === 0) break;
     actRejections.push(notes.join(" | "));
+    askOnly = cut ? new Set(seams.filter((s) => !s.frozen).map((s) => s.plan.seamId)) : undefined;
   }
 
   return assemble(act, seams, beats);
@@ -537,6 +652,13 @@ function seamStateOf(plan: SeamPlan, intro: IntroKind | undefined, documents: Ev
  * through the structural rules against the act's source set — the other
  * seams' surviving claims, the clips' windows, the ground. Leaves each
  * seam with a `draft` or a recorded rejection; returns the refusals.
+ *
+ * GV-73: a seam released early on the streamed path was gated as its line
+ * closed and is not re-read (like a frozen one); it stays `changed` in the
+ * round it was released in, so the act's verifier judges it with the rest.
+ * After a cut reply (`cut`), a seam the writer never reached gets the cut's
+ * note -- "unfinished: the writer stopped at its token cap" -- instead of the
+ * missing-seam refusal, and is asked for again.
  */
 function mechanicalPass(
   seams: SeamState[],
@@ -545,7 +667,8 @@ function mechanicalPass(
   clipSourceCount: number,
   round: number,
   actTitle: string,
-  specifics: SpecificsMode = "report"
+  specifics: SpecificsMode = "report",
+  cut?: StreamCut
 ): string[] {
   const mechanical: string[] = [];
   const pending = new Map<string, { script: string; claims: SelectedClaim[]; hints: NarratedBeat["pronunciationHints"] }>();
@@ -557,6 +680,17 @@ function mechanicalPass(
       if (returned !== undefined && returned !== seam.draft!.script) {
         console.warn(`writeAct: act "${actTitle}" round ${round} — the writer changed frozen seam ${seam.plan.seamId}; keeping the confirmed text`);
       }
+      continue;
+    }
+    if (seam.released) {
+      seam.changed = seam.released.round === round;
+      continue;
+    }
+    if (cut && !written) {
+      delete seam.draft;
+      delete seam.silent;
+      delete seam.confirmed;
+      mechanical.push(`seam ${seam.plan.seamId}: ${rejectSeam(seam, [cut.note], [], round)}`);
       continue;
     }
     const gated = gateSeamClaims(seam, written, round);
@@ -1123,13 +1257,238 @@ function beatSettled(state: BeatState): boolean {
   return state.carried || state.seedLostClosed === true;
 }
 
+/** The beats a seam answers for: the ones positioned in it -- and, on the
+ * streamed path, any a released seam handed to it (`settleReleased`). */
+function beatsIn(seam: SeamState, beats: Map<string, BeatState>): BeatState[] {
+  return [...beats.values()].filter((b) => b.seamId === seam.plan.seamId);
+}
+
+/**
+ * GV-73: the act's verdict on the seams released early. A released seam is
+ * judged with the act in the round it was released in, exactly as any
+ * changed seam is; what differs is what a refusal does. The seam is NOT sent
+ * back for editing, because it may already be playing: it is counted
+ * (`releasedThenRefused`), keeps the verifier's note for the gate (F-51's
+ * salvage), and the beats it was carrying are re-opened. Every unsettled
+ * beat still positioned on a released seam -- refused, or confirmed with a
+ * beat of its own missing -- is handed to the next seam that is not
+ * released (else the nearest one before it), so `roundNotes` asks for it
+ * there.
+ */
+function settleReleased(seams: SeamState[], beats: Map<string, BeatState>, round: number, actTitle: string, stats?: NarrationWriteStats): void {
+  seams.forEach((seam, index) => {
+    if (!seam.released) return;
+    const seamId = seam.plan.seamId;
+    if (seam.released.round === round && !seam.confirmed) {
+      if (stats) stats.releasedThenRefused = (stats.releasedThenRefused ?? 0) + 1;
+      console.warn(
+        `writeAct: act "${actTitle}" — seam ${seamId} was released early (${seam.released.verifiedBy}) and the act's verifier then refused it; it is not edited, and its beats go to the next open seam: ${(seam.notes ?? "").slice(0, 200)}`
+      );
+      for (const state of beats.values()) {
+        if (state.carriedBy !== seamId) continue;
+        state.carried = false;
+        delete state.carriedBy;
+        delete state.verifiedAtAttempt;
+      }
+    }
+    const target = seams.slice(index + 1).find((s) => !s.released) ?? [...seams.slice(0, index)].reverse().find((s) => !s.released);
+    if (!target) return;
+    for (const state of beats.values()) {
+      if (state.seamId === seamId && !beatSettled(state)) state.seamId = target.plan.seamId;
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* GV-73: the streamed round                                            */
+/* ------------------------------------------------------------------ */
+
+/** What a streamed round needs from the act. */
+interface StreamRoundContext {
+  round: number;
+  act: SourcedAct;
+  voice: Voice;
+  seams: SeamState[];
+  clips: ClipState[];
+  clipById: Map<string, GateClip>;
+  /** Clips with a held window, plus the ground pages. */
+  clipSourceCount: number;
+  ground: ReadonlyArray<GroundPageBrief>;
+  documents: EvidenceDoc[];
+  options: WriteActOptions;
+}
+
+/**
+ * GV-73 (W4-10): one round's writer call, streamed. The reply arrives one
+ * seam at a time (`writeActStream`, GV-43); the round returns every seam that
+ * arrived and, when the stream stopped short (`length`: the token cap; or
+ * stalled past the idle bound), the cut each missing seam is refused with.
+ *
+ * ROUND 1 CHECKS EACH SEAM AS ITS LINE CLOSES (`releaseProbe`), against the
+ * act's sources so far: the clips' windows, the ground pages and the gated
+ * claims of the seams already arrived. A seam that passes and carries no
+ * claim and no beat -- line 1, the introduction `introOnlyFirstSeam` leaves
+ * there -- is RELEASED: checked by code alone (the quote gate, the structural
+ * rules, Q-02's naming and restate checks), signalled (`onSeamChecked`), and
+ * frozen. A seam that carries claims is released only if the verifier's
+ * optional `verifySeam` confirms it. Everything else waits, and the act-level
+ * pass after the stream decides it exactly as on the one-shot path. The
+ * incremental check never changes a seam it does not release: it runs on a
+ * copy, so the act-level pass sees the seam as if nothing had looked at it.
+ */
+async function streamRound(request: ActWriteRequest, ctx: NarrationBuildContext, rc: StreamRoundContext): Promise<{ seams: WrittenSeam[]; cut?: StreamCut }> {
+  const idleMs = rc.options.streamIdleTimeoutMs ?? DEFAULT_WRITER_STREAM_IDLE_MS;
+  const arrived: WrittenSeam[] = [];
+  const probe = rc.round === 1 ? releaseProbe(rc, ctx) : undefined;
+  const probes: Array<Promise<void>> = [];
+  const ended = await drainWriterStream(rc.options.writer.writeActStream!(request, ctx), idleMs, (seam, atMs) => {
+    arrived.push(seam);
+    if (probe) probes.push(probe(seam, atMs));
+  });
+  await Promise.all(probes);
+  if (ended.stopReason === "length") return { seams: arrived, cut: { note: UNFINISHED_AT_CAP_NOTE } };
+  if (ended.stopReason === "stalled") return { seams: arrived, cut: { note: `unfinished: the writer's stream stalled (nothing arrived for ${idleMs} ms)` } };
+  return { seams: arrived };
+}
+
+/** GV-73: the incremental check of round 1, one arrived seam at a time. */
+function releaseProbe(rc: StreamRoundContext, ctx: NarrationBuildContext): (written: WrittenSeam, atMs: number) => Promise<void> {
+  const { options, round } = rc;
+  const stats = options.stats;
+  /* The gated claims of the seams already arrived (act sources for the
+     seams after them), and the copies of those that cleared every rule. */
+  const gatedSoFar = new Map<string, SelectedClaim[]>();
+  const cleared = new Map<string, SeamState>();
+  const probed = new Set<string>();
+  const verifier = options.verifier as SeamVerifyingVerifier;
+  return async (written, atMs) => {
+    const seam = rc.seams.find((s) => s.plan.seamId === written.seamId);
+    if (!seam || seam.frozen || seam.released || probed.has(seam.plan.seamId)) return;
+    probed.add(seam.plan.seamId);
+    const scratch: SeamState = { ...seam, attempts: [...seam.attempts] };
+    const gated = gateSeamClaims(scratch, written, round);
+    if (typeof gated === "string") return; // refused, or silent: nothing to release
+    const others = [...gatedSoFar.values()].flat();
+    gatedSoFar.set(seam.plan.seamId, gated.claims);
+    const ownQuotes = gated.claims.map((c) => c.quote);
+    const otherQuotes = others.map((c) => c.quote);
+    const scope = (options.specifics ?? "report") === "enforce" ? actSpecificsScope(rc.seams, rc.clipById, [...otherQuotes, ...ownQuotes]) : undefined;
+    const issues = validateSeam(scratch, gated, rc.clipById, round, {
+      actSourceCount: rc.clipSourceCount + others.length,
+      actSourceQuotes: otherQuotes,
+      ...(scope ? { specifics: scope } : {})
+    });
+    if (issues.length > 0) return;
+    cleared.set(seam.plan.seamId, scratch);
+
+    let verifiedBy: "code" | "verifier" = "code";
+    if (gated.claims.length > 0 || seam.plan.beats.length > 0) {
+      if (typeof verifier.verifySeam !== "function") return;
+      const sources = buildActSources([...cleared.values()], rc.clips, rc.ground, rc.documents);
+      try {
+        const verdict = await verifier.verifySeam(
+          {
+            actTitle: rc.act.title,
+            voice: rc.voice,
+            seam: verifySeamBriefOf(scratch, sources),
+            beats: seam.plan.beats.map((b) => ({ beatId: b.beatId, claim: b.claim, mode: b.mode, kind: b.kind, ...(b.seedLost ? { seedLost: true as const } : {}) })),
+            clips: rc.clips.map((c): VerifyClipBrief => ({ ...c.brief, windowText: c.windowText })),
+            sources: sources.map((s) => s.brief),
+            documents: rc.documents,
+            ...(rc.ground.length > 0 ? { ground: [...rc.ground] } : {})
+          },
+          ctx
+        );
+        if (!verdict.confirmed) return;
+      } catch (err) {
+        console.warn(`writeAct: act "${rc.act.title}" — verifySeam failed for seam ${seam.plan.seamId}; it waits for the act's verifier (${err instanceof Error ? err.message : String(err)})`);
+        return;
+      }
+      verifiedBy = "verifier";
+    }
+
+    Object.assign(seam, scratch, { released: { round, atMs, verifiedBy } });
+    if (stats) {
+      stats.seamsReleasedEarly = (stats.seamsReleasedEarly ?? 0) + 1;
+      if (stats.firstSeamCheckedMs === undefined || atMs < stats.firstSeamCheckedMs) stats.firstSeamCheckedMs = atMs;
+    }
+    try {
+      options.onSeamChecked?.({
+        actIndex: options.actIndex ?? 0,
+        seamId: seam.plan.seamId,
+        script: seam.draft!.script,
+        verifiedBy,
+        ...(seam.plan.introduces ? { clipId: seam.plan.introduces.clipId } : {}),
+        atMs
+      });
+    } catch (err) {
+      console.warn(`writeAct: onSeamChecked threw for seam ${seam.plan.seamId}; ignored (${err instanceof Error ? err.message : String(err)})`);
+    }
+  };
+}
+
+/** GV-73: how a streamed reply ended. `stalled`: no event within the idle bound. */
+export interface DrainedWriterStream {
+  stopReason: "end" | "length" | "stalled";
+  unfinishedSeamIds: string[];
+}
+
+const STALLED = Symbol("stalled");
+
+/**
+ * GV-73: drains a writer stream, handing each seam to `onSeam` as it
+ * arrives, with an IDLE bound: the stream may run as long as it keeps
+ * producing, and is abandoned (and asked to stop) once `idleMs` passes with
+ * no event. A stream that finishes without its `end` event, or yields after
+ * it, breaks GV-43's contract and throws, as `collectActStream` does.
+ */
+export async function drainWriterStream(
+  stream: AsyncIterable<WriterStreamEvent>,
+  idleMs: number,
+  onSeam: (seam: WrittenSeam, atMs: number) => void
+): Promise<DrainedWriterStream> {
+  const iterator = stream[Symbol.asyncIterator]();
+  let ended: Extract<WriterStreamEvent, { type: "end" }> | undefined;
+  for (;;) {
+    const next = await nextWithin(iterator, idleMs);
+    if (next === STALLED) {
+      try {
+        const closing = iterator.return?.();
+        if (closing) closing.catch(() => undefined);
+      } catch {
+        /* a stream that cannot be told to stop is abandoned all the same */
+      }
+      return { stopReason: "stalled", unfinishedSeamIds: [] };
+    }
+    if (next.done) break;
+    const event = next.value;
+    if (ended) throw new Error(`writeAct: the writer stream yielded a '${event.type}' event after its 'end' event`);
+    if (event.type === "seam") onSeam(event.seam, event.atMs);
+    else ended = event;
+  }
+  if (!ended) throw new Error("writeAct: the writer stream finished without an 'end' event");
+  return { stopReason: ended.stopReason, unfinishedSeamIds: [...ended.unfinishedSeamIds] };
+}
+
+/** The iterator's next result, or STALLED when none arrives within `ms`. */
+function nextWithin<T>(iterator: AsyncIterator<T>, ms: number): Promise<IteratorResult<T> | typeof STALLED> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const pending = iterator.next();
+  pending.catch(() => undefined);
+  const stalled = new Promise<typeof STALLED>((resolve) => {
+    timer = setTimeout(() => resolve(STALLED), ms);
+  });
+  return Promise.race([pending, stalled]).finally(() => clearTimeout(timer));
+}
+
 /** The notes for the next round — empty when nothing failed. A seam's
  * own note goes on its SEAM line too (`seamBriefOf`); the act-level
  * list is F-35's running record. */
 function roundNotes(seams: SeamState[], beats: Map<string, BeatState>, mechanical: string[]): string[] {
   const notes: string[] = [...mechanical];
   for (const seam of seams) {
-    if (!seam.draft || seam.confirmed || seam.frozen) continue;
+    /* GV-73: a released seam is never edited, so its refusal is no note. */
+    if (!seam.draft || seam.confirmed || seam.frozen || seam.released) continue;
     if (seam.notes && seam.changed) notes.push(`seam ${seam.plan.seamId}: ${seam.notes}`);
   }
   for (const [beatId, state] of beats) {
@@ -1138,6 +1497,9 @@ function roundNotes(seams: SeamState[], beats: Map<string, BeatState>, mechanica
     if (beatSettled(state)) continue;
     const seam = seams.find((s) => s.plan.seamId === state.seamId)!;
     if (!seam.draft) continue; // its seam was refused in code; that note covers it
+    /* GV-73: still on a released seam -- `settleReleased` found no open seam
+       to hand it to, and no writer can edit the released one. */
+    if (seam.released) continue;
     const beatNote = `the prose does not carry beat ${beatId} (${state.brief.claim.slice(0, 120)})${state.notes ? ` — ${state.notes}` : ""}; add it where it belongs (seam ${state.seamId}), resting on an act source — if nothing in the act supports it, say only what the sources say`;
     notes.push(beatNote);
     seam.notes = seam.notes ? `${seam.notes}; ${beatNote}` : beatNote;
@@ -1165,13 +1527,23 @@ function assemble(act: SourcedAct, seams: SeamState[], beats: Map<string, BeatSt
 
   for (const seam of seams) {
     const page = finalPageFor(seam, beats);
-    const carrier = seam.plan.beats[0];
+    /* The page goes on the seam's first beat that plays AFTER the clip the
+       seam follows -- on `planActSeams`' layout that is always its first
+       beat. GV-73's `introOnlyFirstSeam` moves the first seam's beats past
+       the first clip; those beats sit before it in the act, so they are
+       carried by a beat after the clip, or, when the seam has none, by the
+       next clip's connective narration -- the page plays between the two
+       clips either way. */
+    const follows = seam.plan.follows;
+    const playsAfterFollows = (b: { slot: number; beat: number }): boolean => !follows || b.slot > follows.slot || (b.slot === follows.slot && b.beat > follows.beat);
+    const carrier = seam.plan.beats.find(playsAfterFollows) ?? (seam.plan.introduces ? undefined : seam.plan.beats[0]);
+    const holder = carrier ?? seam.plan.introduces;
     for (const b of seam.plan.beats) {
       const written = at(b.slot, b.beat);
       if (written.sourcing !== "narration") continue;
       const state = beats.get(b.beatId)!;
       if (state.verifiedAtAttempt !== undefined) written.verifiedAtAttempt = state.verifiedAtAttempt;
-      if (carrier && b !== carrier) written.carriedBy = { slot: carrier.slot, beat: carrier.beat };
+      if (holder && b !== carrier) written.carriedBy = { slot: holder.slot, beat: holder.beat };
     }
     if (!page) {
       if (seam.plan.beats.length > 0) {

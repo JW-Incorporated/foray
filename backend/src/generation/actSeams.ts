@@ -173,6 +173,44 @@ export function planActSeams(act: SourcedAct): SeamPlan[] {
   return seams;
 }
 
+/**
+ * GV-73 (W4-10, docs/roadmap/generation-v2.md; R1-06): LINE 1 IS AN
+ * INTRODUCTION AND NOTHING ELSE. On the streamed writer path the first
+ * seam's line is the first thing the act can play, and a seam is released
+ * for early checking only when code alone can clear it: no claims, no beats
+ * (R2's condition). So when s0 introduces a clip AND carries beats, its
+ * beats move into the seam that follows that clip, ahead of that seam's own
+ * beats (they were the earlier claims), and s0 keeps only the introduction.
+ *
+ * WHERE THE MOVED BEATS ARE SPOKEN. After the clip: `writeAct.ts`'s
+ * `assemble` places a seam's page on its first beat that plays after the
+ * clip the seam follows, or, when the seam has none (a beatless seam into
+ * the next clip), as that next clip's connective narration — either way the
+ * page plays between the two clips, never before the first.
+ *
+ * WHEN NOTHING MOVES. s0 does not introduce a clip (an act with no tape),
+ * s0 carries no beats, or no seam follows s0's clip (the clip is the act's
+ * last and nothing is narrated after it): there is no place after the clip
+ * for the item model to speak a page, so the plan is returned unchanged
+ * rather than inventing a seam no item can play.
+ *
+ * Every beat stays in exactly one seam (`planActSeams`' invariant), beat ids
+ * are unchanged, and seam ids are renumbered `s<n>` in order. Pure.
+ */
+export function introOnlyFirstSeam(plans: ReadonlyArray<SeamPlan>): SeamPlan[] {
+  const out: SeamPlan[] = plans.map((plan) => ({ ...plan, beats: [...plan.beats] }));
+  const first = out[0];
+  if (first?.introduces && first.beats.length > 0) {
+    const clipId = first.introduces.clipId;
+    const next = out.findIndex((plan) => plan.follows?.clipId === clipId);
+    if (next > 0) {
+      out[next] = { ...out[next]!, beats: [...first.beats, ...out[next]!.beats] };
+      out[0] = { ...first, beats: [] };
+    }
+  }
+  return out.map((plan, i) => ({ ...plan, seamId: `s${i}` }));
+}
+
 /** The mode a seam is PLANNED under — what its beats ask of it: the
  * provisional mode the mechanical gate runs with before the verifier has
  * answered. Since F-97 this is not the mode the page is recorded under;
