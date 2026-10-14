@@ -242,6 +242,48 @@ test("MT-08, MT-09, MT-10: code time per stage, render rate, and spend net of re
   assert.equal(SPARK_UNIT, "sparkSeconds");
 });
 
+test("MT-08: nested code spans count once — codeMsByStage sums exclusive selfMs, not inclusive totals", () => {
+  /* What backend codeSpans.ts emits for one 45 ms sourcing pass:
+     sourcing.all > sourcing.tier2 > index.search > index.load >
+     transcript.read. Each totalMs includes everything under it (they sum to
+     146), each selfMs excludes its direct children (they sum to 45). A second
+     stage carries one leaf so the per-stage split is checked too.
+     MUTATION: `const ms = num(e.totalMs);` (the pre-fix reader). Ran it: red
+     (source 146, codeMs 153). */
+  const code = (stage, name, count, totalMs, selfMs, maxMs) => ({ kind: "code", stage, name, count, totalMs, selfMs, maxMs });
+  const s = summarizeRunLog(
+    parseRunLog(
+      jsonl(
+        code("source", "sourcing.all", 1, 45, 10, 45),
+        code("source", "sourcing.tier2", 1, 35, 2, 35),
+        code("source", "index.search", 2, 33, 11, 25),
+        code("source", "index.load", 1, 22, 11, 22),
+        code("source", "transcript.read", 2, 11, 11, 6),
+        code("research-shape", "research.tapeWindows", 1, 7, 7, 7)
+      )
+    ).events
+  );
+  assert.deepEqual(s.codeMsByStage, { source: 45, "research-shape": 7 });
+  assert.equal(s.codeMs, 52);
+});
+
+test("MT-08: a code event without selfMs (a runlog older than the field) falls back to totalMs", () => {
+  /* The committed synthetic fixture predates selfMs: its two aggregates read
+     at their totals. A selfMs of 0 is a measured zero, not a missing one.
+     MUTATION: `const ms = num(e.selfMs);` (no fallback). Ran it: red (codeMs 0). */
+  const legacy = summarizeRunLog(
+    parseRunLog(
+      jsonl(
+        { kind: "code", stage: "source", name: "bm25", count: 3, totalMs: 900, maxMs: 500 },
+        { kind: "code", stage: "source", name: "index.search", count: 1, totalMs: 40, selfMs: 0, maxMs: 40 }
+      )
+    ).events
+  );
+  assert.deepEqual(legacy.codeMsByStage, { source: 900 });
+  assert.equal(legacy.codeMs, 900);
+  assert.deepEqual(synth().codeMsByStage, { "research-shape": 900, source: 1500 });
+});
+
 test("rule 1: a runlog with no calls, codes, renders or meters reads every measurement as absent", () => {
   /* MUTATION: `codeMs: ... : 0`. Ran it: red. A log from a run with no
      code spans did not spend 0 s in code, and one with no render worker did

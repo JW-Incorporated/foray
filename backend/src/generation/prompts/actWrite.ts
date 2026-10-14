@@ -1,6 +1,6 @@
 import { NARRATOR_STRUCTURE_RULE } from "../../copy/narratorStructure";
 import { MIN_QUOTE_WORDS } from "../../types/narration";
-import type { ActFrame, ActWriteRequest, ClipBrief, SeamBrief } from "../NarrationWriterBuilder";
+import type { ActFrame, ActWriteRequest, ClipBrief, SeamBrief, SeamEditRequest, SeamNeighbour } from "../NarrationWriterBuilder";
 import { joinParts, type PromptParts } from "../promptLayout";
 import { WRITTEN_SEAM_JSON_SCHEMA } from "../seamStream";
 
@@ -160,10 +160,8 @@ function writeStable(output: ActWriteOutput): string {
  */
 export function actWritePromptParts(request: ActWriteRequest, options: ActWritePromptOptions = {}): PromptParts {
   const clips = new Map(request.clips.map((c) => [c.clipId, c]));
-  const base = WRITE_STABLE[options.output ?? "json"];
-  const voiceBlock = options.voiceBlock ?? "";
   return {
-    stable: voiceBlock.length > 0 ? `${base}\n\n${voiceBlock}` : base,
+    stable: stableFor(options),
     foray: voiceLine(request),
     call: [
       `THE ACT YOU ARE WRITING: "${request.actTitle}"`,
@@ -176,12 +174,7 @@ export function actWritePromptParts(request: ActWriteRequest, options: ActWriteP
       actLayout(request.seams, clips),
       "",
       "DOCUMENTS — the only things you may quote:",
-      request.documents
-        .map(
-          (doc) =>
-            `--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${doc.kind === "tape" ? " | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)" : doc.kind === "page" ? " | a VERIFIED PAGE of this same Foray, from an earlier act — quote one of its whole sentences" : ""}\n${doc.text}`
-        )
-        .join("\n\n"),
+      documentsBlock(request.documents),
       ...(request.retryNote
         ? [
             "",
@@ -192,6 +185,116 @@ export function actWritePromptParts(request: ActWriteRequest, options: ActWriteP
         : [])
     ].join("\n")
   };
+}
+
+/** `stable` for these options: the output contract's rules, then the voice
+ * slot after a blank line when it is filled. Shared by the act prompt and
+ * the seam-edit prompt, so both send the same first bytes. */
+function stableFor(options: ActWritePromptOptions): string {
+  const base = WRITE_STABLE[options.output ?? "json"];
+  const voiceBlock = options.voiceBlock ?? "";
+  return voiceBlock.length > 0 ? `${base}\n\n${voiceBlock}` : base;
+}
+
+/** The DOCUMENTS section's body: one block per document, in the order given. */
+function documentsBlock(documents: ActWriteRequest["documents"]): string {
+  return documents
+    .map(
+      (doc) =>
+        `--- docId: ${doc.docId} | ${doc.title}${doc.url ? ` | ${doc.url}` : ""}${doc.kind === "tape" ? " | TRANSCRIPT WINDOW of a clip (cite it for statements about that clip)" : doc.kind === "page" ? " | a VERIFIED PAGE of this same Foray, from an earlier act — quote one of its whole sentences" : ""}\n${doc.text}`
+    )
+    .join("\n\n");
+}
+
+/**
+ * GV-84 (docs/roadmap/generation-v2.md, W4-19; covers R2-08, GP-05, GP-02):
+ * THE SEAM EDIT of the timed round policy (GV-80's `editSeams`), as
+ * [stable][foray][call].
+ *
+ *   stable  BYTE-IDENTICAL to `actWritePromptParts`'s for the same options
+ *           (`stableFor`), so an edit round reads the 9-11k-token writer
+ *           rules from the prefix cache the act's first call filled. The
+ *           streamed Chat writer sends the 'jsonl' contract, so its edit
+ *           reply is JSONL too: one line per edited seam.
+ *   foray   the voice line, as on every act call.
+ *   call    a short act part: the act's title, the frame (when the driver
+ *           sent one), ONLY the seams being edited (each with its band, its
+ *           beats, its previous script and its `fix` line) in play order
+ *           between the read-only seams beside them, the clips they follow
+ *           or introduce, the documents they cite, the act's rejections, and
+ *           which seams to return. A frozen seam is never in the request
+ *           (GV-80), so no FROZEN line is printed.
+ *
+ * Nothing on the default path calls it: only ChatNarrationWriterBuilder's
+ * editSeams does, and writeAct.ts asks for an edit only on the timed round
+ * policy (FORAY_ROUND_POLICY=timed or the fast-path umbrella).
+ */
+export function seamEditPromptParts(request: SeamEditRequest, options: ActWritePromptOptions = {}): PromptParts {
+  const ids = request.seams.map((s) => s.seamId);
+  return {
+    stable: stableFor(options),
+    foray: voiceLine(request),
+    call: [
+      `THE ACT YOU ARE EDITING: "${request.actTitle}"`,
+      "",
+      "A SEAM EDIT. The act is already written. Only the seams marked EDIT below need work; each is shown in play order with the seam on either side of it as the listener hears it (READ-ONLY: context, so an edited seam still joins its neighbours) and the clips it touches.",
+      "A SEAM is one stretch of narration: it carries the beats listed under it, bridges from the clip before to the clip after, and — when it introduces a clip — opens the listener's ear to it.",
+      "",
+      /* GV-38: only when the driver sent a frame. */
+      ...(request.frame ? actFrameBlock(request.frame) : []),
+      editLayout(request),
+      "",
+      "DOCUMENTS — the only things you may quote:",
+      documentsBlock(request.documents),
+      "",
+      `REJECTIONS SO FAR: ${request.retryNote}`,
+      "Seams marked EDIT carry their previous script and a `fix` line: edit each one to answer its notes — add a missed beat where it belongs, drop or re-source an unsupported sentence, replace an assertion about the record with what a source says — and keep every sentence that was not objected to.",
+      `Return a seam for each seam marked EDIT (${ids.join(", ")}) and for no other: a READ-ONLY seam is not yours to return.`
+    ].join("\n")
+  };
+}
+
+/** The `s<n>` position of a seam id, for play order; an id of any other
+ * shape sorts after the rest, in the order it came. */
+function seamOrdinal(seamId: string): number {
+  const match = /^s(\d+)$/.exec(seamId);
+  return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+}
+
+/** The seam edit's layout: the edited seams and their read-only neighbours
+ * in play order, each clip printed once, where it plays -- an introduced
+ * clip after the seam that introduces it (as `actLayout` prints it), and a
+ * followed clip that no edited seam introduces just before the seam that
+ * follows it. */
+function editLayout(request: SeamEditRequest): string {
+  const clips = new Map(request.clips.map((c) => [c.clipId, c]));
+  type Entry = { at: number; order: number; seam?: SeamBrief; neighbour?: SeamNeighbour };
+  const entries: Entry[] = [
+    ...request.seams.map((seam, i): Entry => ({ at: seamOrdinal(seam.seamId), order: i, seam })),
+    ...request.neighbours.map((neighbour, i): Entry => ({ at: seamOrdinal(neighbour.seamId), order: request.seams.length + i, neighbour }))
+  ].sort((a, b) => (a.at === b.at ? a.order - b.order : a.at < b.at ? -1 : 1));
+  const introduced = new Set(request.seams.map((s) => s.introduces).filter((id): id is string => id !== undefined));
+  const printed = new Set<string>();
+  const lines: string[] = [];
+  for (const entry of entries) {
+    if (entry.neighbour) {
+      const { seamId, script } = entry.neighbour;
+      lines.push(
+        script.length > 0
+          ? `SEAM ${seamId} — READ-ONLY, as the listener hears it: ${JSON.stringify(script)}`
+          : `SEAM ${seamId} — READ-ONLY, silent: the clips run together here`
+      );
+      continue;
+    }
+    const seam = entry.seam!;
+    const follows = seam.follows ? clips.get(seam.follows) : undefined;
+    if (follows && !introduced.has(follows.clipId) && !printed.has(follows.clipId)) {
+      printed.add(follows.clipId);
+      lines.push(...clipLines(follows));
+    }
+    lines.push(...seamLines(seam, clips));
+  }
+  return lines.join("\n");
 }
 
 /** The legacy single-string writer prompt (the Anthropic writer sends it):
@@ -229,56 +332,66 @@ export function actFrameBlock(frame: ActFrame): string[] {
 }
 
 function actLayout(seams: SeamBrief[], clips: Map<string, ClipBrief>): string {
+  return seams.flatMap((seam) => seamLines(seam, clips)).join("\n");
+}
+
+/** One seam's lines of the layout: its SEAM line, its beats, its previous
+ * script, and the CLIP it introduces. */
+function seamLines(seam: SeamBrief, clips: Map<string, ClipBrief>): string[] {
   const lines: string[] = [];
-  for (const seam of seams) {
-    const edges: string[] = [];
-    if (seam.follows) edges.push(`follows CLIP ${seam.follows}`);
-    if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
-    lines.push(`SEAM ${seam.seamId} — ${seam.band[0]}-${seam.band[1]} characters${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}${seam.frozen ? " — FROZEN" : seam.previousScript !== undefined ? " — EDIT" : ""}`);
-    if (seam.beats.length === 0) lines.push("  carries no beat — the introduction only, or nothing");
-    for (const beat of seam.beats) {
-      lines.push(`  carries beat ${beat.beatId}${beat.kind === "argument" ? " (an argument — what it means)" : ""}: ${beat.claim}`);
-      /* F-99: the seed behind this claim is not in the Foray. Said on the
-         beat's own line, in the imperative, because the general rule above
-         is not what a writer reads when it is looking at one claim. */
-      if (beat.seedLost) {
-        lines.push(
-          `    SEED LOST — beat ${beat.beatId}'s tape was not available: do not attribute specifics to anyone this claim names; say only what the act's sources say, or hand off.`
-        );
-      }
-    }
-    if (seam.frozen && seam.previousScript !== undefined) {
-      lines.push(`  FROZEN — verified; return this script verbatim, with no claims: ${JSON.stringify(seam.previousScript)}`);
-    } else if (seam.previousScript !== undefined) {
-      lines.push(`  previous script: ${JSON.stringify(seam.previousScript)}`);
-      if (seam.notes) lines.push(`  fix: ${seam.notes}`);
-    }
-    if (seam.introduces) {
-      const clip = clips.get(seam.introduces);
-      if (clip) {
-        /* F-99: a clip §4.5 merged two beats into is ONE clip carrying
-           both — it plays once, so it is introduced once and the tape
-           makes both points itself. Named on the line only when there is
-           more than one: a clip carrying its own beat alone is the
-           ordinary case and says nothing new. */
-        const carried = clip.carries ?? [];
-        lines.push(
-          `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape` +
-            (clip.docId ? ` (document ${clip.docId})` : " (no transcript window is held)") +
-            (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}` : "") +
-            /* Q-09: said on the CLIP line, in the imperative, because the
-               general rule above is not what a writer reads when it is
-               looking at one clip. */
-            (clip.show
-              ? clip.showFirstHeard === false
-                ? ` — ${clip.show} has already been introduced in this Foray: do not name it again`
-                : " — FIRST CLIP FROM THIS SHOW: say its name"
-              : "")
-        );
-        if (carried.length > 1) for (const beat of carried) lines.push(`  it carries beat ${beat.beatId}: ${beat.claim}`);
-        lines.push(clip.opening ? `  it opens: ${JSON.stringify(clip.opening)}` : "  its opening is not held — introduce it from the show and episode only");
-      }
+  const edges: string[] = [];
+  if (seam.follows) edges.push(`follows CLIP ${seam.follows}`);
+  if (seam.introduces) edges.push(`introduces CLIP ${seam.introduces} (introduction: ${seam.intro ?? "full"})`);
+  lines.push(`SEAM ${seam.seamId} — ${seam.band[0]}-${seam.band[1]} characters${edges.length > 0 ? ` — ${edges.join(", ")}` : ""}${seam.frozen ? " — FROZEN" : seam.previousScript !== undefined ? " — EDIT" : ""}`);
+  if (seam.beats.length === 0) lines.push("  carries no beat — the introduction only, or nothing");
+  for (const beat of seam.beats) {
+    lines.push(`  carries beat ${beat.beatId}${beat.kind === "argument" ? " (an argument — what it means)" : ""}: ${beat.claim}`);
+    /* F-99: the seed behind this claim is not in the Foray. Said on the
+       beat's own line, in the imperative, because the general rule above
+       is not what a writer reads when it is looking at one claim. */
+    if (beat.seedLost) {
+      lines.push(
+        `    SEED LOST — beat ${beat.beatId}'s tape was not available: do not attribute specifics to anyone this claim names; say only what the act's sources say, or hand off.`
+      );
     }
   }
-  return lines.join("\n");
+  if (seam.frozen && seam.previousScript !== undefined) {
+    lines.push(`  FROZEN — verified; return this script verbatim, with no claims: ${JSON.stringify(seam.previousScript)}`);
+  } else if (seam.previousScript !== undefined) {
+    lines.push(`  previous script: ${JSON.stringify(seam.previousScript)}`);
+    if (seam.notes) lines.push(`  fix: ${seam.notes}`);
+  }
+  if (seam.introduces) {
+    const clip = clips.get(seam.introduces);
+    if (clip) lines.push(...clipLines(clip));
+  }
+  return lines;
+}
+
+/** A clip's lines of the layout: its CLIP line, the beats it carries when
+ * there are several, and its opening. */
+function clipLines(clip: ClipBrief): string[] {
+  const lines: string[] = [];
+  /* F-99: a clip §4.5 merged two beats into is ONE clip carrying
+     both — it plays once, so it is introduced once and the tape
+     makes both points itself. Named on the line only when there is
+     more than one: a clip carrying its own beat alone is the
+     ordinary case and says nothing new. */
+  const carried = clip.carries ?? [];
+  lines.push(
+    `CLIP ${clip.clipId} — "${clip.title}" on ${clip.show || "an unnamed show"}, ${Math.round(clip.durationSec)} s of tape` +
+      (clip.docId ? ` (document ${clip.docId})` : " (no transcript window is held)") +
+      (carried.length > 1 ? ` — carries beats ${carried.map((b) => b.beatId).join(", ")}` : "") +
+      /* Q-09: said on the CLIP line, in the imperative, because the
+         general rule above is not what a writer reads when it is
+         looking at one clip. */
+      (clip.show
+        ? clip.showFirstHeard === false
+          ? ` — ${clip.show} has already been introduced in this Foray: do not name it again`
+          : " — FIRST CLIP FROM THIS SHOW: say its name"
+        : "")
+  );
+  if (carried.length > 1) for (const beat of carried) lines.push(`  it carries beat ${beat.beatId}: ${beat.claim}`);
+  lines.push(clip.opening ? `  it opens: ${JSON.stringify(clip.opening)}` : "  its opening is not held — introduce it from the show and episode only");
+  return lines;
 }
