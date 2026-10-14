@@ -1939,6 +1939,8 @@ const FLOORS = {
   "tools/mobile/ios-workflow.test.mjs": 52, // CH2-16 (2026-10-07, docs/roadmap/code-health-2.md T2-01): +2 -- both iOS build paths run the inject sequence through .github/actions/ios-prepare and neither carries an inline copy; ios-prepare carries the PR path's second opinions (splash test -d + json.tool), reads no secret or input, and checks its ART/SPM_DIR contract first; the file stood at 50 against 46, so the floor is set exact: 46 -> 52 // ci-release-12 (round-3 audit): +1 -- no npm install under mobile/ on either iOS path; 45 -> 46 // NE-17: +1 -- the plist step keeps the bare injector run and its --check, which carry ForayEngineDefault, with no --engine-default override // NE-06: +1 -- the parity fixtures and recorder are negated out of the path filter, below the patterns they narrow // +4 (2026-09-13): the MinimumOSVersion patch runs before both builds, off one resolved SwiftPM tree, with the deployment target READ not written, and the built device bundle is read back
 
   "tools/mobile/probe/install-probe.test.mjs": 50, // NE-36 (2026-09-25): the native phase, its audio base, its page and its Foray; 39 -> 50
+  /* RV-01 (docs/roadmap/recommender-v1.md, #1380): the 13 rating personas validate against the real catalogue, taxonomy roots and onboarding personas; word limits, seed lookup, root-only affinity, unique kebab ids, and no two personas sharing loves or why+how+form. New, zero slack (the card's 6 plus the pairwise rule). */
+  "tools/recommender/profiles.test.mjs": 7,
   /* CH2-32 (T1-19, docs/roadmap/code-health-2.md): the curated artwork backfill
      looks up through harvest-merge's politeFetchJson - a 5xx is retried, a 404
      fails at once, no private fetcher - and artworkFromLookup is the harvest
