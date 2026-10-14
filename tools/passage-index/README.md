@@ -467,3 +467,99 @@ timer stays off until the nightly accepts `r2-all`.
 ```
 npm test --prefix tools/passage-index -- deploy/deploy.test.mjs
 ```
+
+## replay.mjs: the retrieval replay and the hybrid gate (GV-88, W3-15)
+
+```
+node tools/passage-index/replay.mjs run --fixture f --topic node|none [--out f]
+  [--mode bm25|hybrid] [--show-share off] [--root d] [--archive f] [--pool f]
+  [--normalized-root d] [--index-root d]
+node tools/passage-index/replay.mjs compare base.json cand.json
+  [--gate default|hybrid] [--gold tools/passage-index/eval/gold.json] [--out f]
+```
+
+The question it answers with a number: does the dense arm earn its place?
+`tools/corpus` already measured hybrid losing to keyword on its own corpus,
+so `FORAY_RETRIEVAL_MODE` stays `bm25` until this gate passes on the live
+corpus. The replay is `backend/src/cli/replaySourcing.ts` (this file is its
+launcher, the `serve.mjs` pattern, with relative paths resolved against the
+caller's directory); the comparison is the pure
+`backend/src/generation/replayCompare.ts`.
+
+**run** replays sourcing alone (`sourceBeats`, no spine, no deepen, no
+writer, no model) over a banked deepen output:
+
+- the fixture is a deepen fixture (`{acts}`, e.g.
+  `backend/test/fixtures/run2-deepen-2026-09-09.json` and
+  `run2-attempt6-deepen-2026-09-09.json`), a pipeline checkpoint file (its
+  `deepen:<i>` stages) or a bare array of acts. Each act is parsed with
+  `DeepenedActSchema` and argument-capped, as `runPipeline.ts` does;
+- the topic is a `data/taxonomy.json` node (the lineage gate), or `none`;
+- retrieval is the local pair `generateForays.ts` builds
+  (`FileTranscriptCueProvider` + `FileTranscriptTextIndex`, BM25 only) unless
+  `FORAY_RETRIEVAL_URL` is set. Then it is GV-29's client: both scopes
+  registered for the topic, every claim and act-thesis search sourcing will
+  ask prepared with the exact strings and limits the call sites pass, the
+  bodies of the candidates, seeds, title matches and pool rows hydrated, and
+  sourcing reads them through `PrecomputedTextIndex` and
+  `HydratingCueProvider`. `--mode` (else `FORAY_RETRIEVAL_MODE`, else `bm25`)
+  picks the server's arm; `hybrid` needs the server. The token comes from
+  `FORAY_RETRIEVAL_TOKEN` or `FORAY_RETRIEVAL_TOKEN_FILE`;
+- the pool, archive, audio resolver and supersedable-cut rule are the
+  pipeline's, read from `--root` (default: the repo). `--pool` and
+  `--archive` take JSON files for a synthetic corpus;
+- `--show-share` accepts `off` only. The show-share rule is GV-115's
+  `SourceBeatsOptions.showShare`, not built yet, and a replay that named a
+  mode sourcing ignores would report a wrong number.
+
+The report (`replay-sourcing/1`) has one row per beat: the tier, the deciding
+gate (`placed`, `skipped:argument`, else the trace's furthest tier-2 gate),
+seeded and `seedWindowWon`, the candidates the text index handed sourcing
+(each with `via`: `bm25`, `dense` or `both`), and the winner (its `via`, or
+`seed`, `pool` or `title` when no candidate named it). The summary:
+
+| Field | Meaning |
+| --- | --- |
+| `unseededYield` | MQ-09 on unseeded beats: unseeded beats that found tape / unseeded beats that searched. Argument beats never search and are not counted; seeded beats find their tape by opening the seed's episode whatever the arm. |
+| `tapeBeats` | Beats sourced to tape. |
+| `showVariety` | GV-83's `computeShowVariety` over the placed clips (a merged clip once). |
+| `denseOnlyCandidates`, `denseOnlyWins` | Candidates only the dense arm found, and tape beats won by one (a seed's own window excluded). |
+| `denseOnlyWindowOverlapRefusals` | Narrated beats refused at `window-overlap` on a dense-only candidate: retrieval found the episode and the window floor refused it, so the judge, not retrieval, is the bottleneck. |
+
+A remote report adds `retrievalStats`: the client's counters (`misses` and
+`hydrationMisses` show any drift from the strings sourcing asks) and
+`denseOnlyPrepared`, the dense-only candidates the server returned including
+those the candidate limit (8) cut before sourcing saw them. The report is
+deterministic (no clock, no host) and holds the claims, so write it under
+`data-local/` and never commit it.
+
+**compare** diffs two reports of the same beats (`base` is the bm25 arm,
+`cand` the arm under test) and exits 0 on `pass`, 1 on `fail`:
+
+- no beat that found tape in `base` loses it;
+- `unseededYield` does not drop;
+- with `--gate hybrid`, one more unseeded beat finds tape, or `cand` has a
+  dense-only win.
+
+Replays of different beats fail as incomparable. The summaries are recomputed
+from the beats, never read from the file. With `--gold` the comparison adds
+candidate recall@8 for both sides (labels `on`, and `on` or `adjacent`); the
+label file's format is in `eval/README.md`.
+
+**The live step** (founder PC corpus, after the hybrid server is deployed):
+replay both run-2 fixtures and the germ-theory prompt's deepen output in bm25
+and in hybrid, label about 40 beats into `eval/gold.json`, compare with
+`--gate hybrid --gold`, and post the verdict on #1163. The orchestrator flips
+`FORAY_RETRIEVAL_MODE` only on `pass`. The replay measures retrieval through
+today's lexical window floors, so a dense gain can show only as
+`denseOnlyWindowOverlapRefusals` until the judge workstream lands; re-run it
+then. The fixture claims are Opus-era, so treat the result as indicative.
+
+```
+cd backend && npx vitest run test/replayCompare.test.ts test/replaySourcing.test.ts
+```
+
+Both suites are offline: synthetic replays, and a synthetic two-show corpus
+in a tmpdir with run-2 attempt 6's structure and claims rewritten to made-up
+words; the remote cases route the client's injected fetch into an in-process
+`RetrievalService`.
