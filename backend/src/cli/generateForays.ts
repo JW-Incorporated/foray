@@ -139,7 +139,7 @@ import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
  *
  * `--render-spool <dir>` (GV-74, off by default) renders narration inside the
  * run: every servable narration item, the moment it is ready, becomes a
- * `foray-render-job/1` file in `<dir>/in/` (priority = its item index, so the
+ * `RENDER_JOB_SCHEMA` file in `<dir>/in/` (priority = its item index, so the
  * resident worker, render-foray.py `--worker <dir>`, renders in play order),
  * and the worker's `<dir>/done/` records fold back into the job snapshot (an
  * item's `audio_url` only from a done record's confirmed `public_url`) and

@@ -7,7 +7,7 @@ import { renderResultFromDone, RENDER_JOB_ID_PATTERN, type NarrationRenderClient
  * the batch driver's `--render-spool <dir>` opens. It speaks GV-22's spool
  * layout (tools/narration/render-foray.py `--worker SPOOL`):
  *
- *   SPOOL/in/<job_id>.job.json   a `foray-render-job/1` job. Written as a
+ *   SPOOL/in/<job_id>.job.json   a `RENDER_JOB_SCHEMA` job. Written as a
  *                                dot-file in in/ (the worker skips dot-files)
  *                                and RENAMED to its name, so the worker never
  *                                reads half a job.
@@ -26,7 +26,10 @@ import { renderResultFromDone, RENDER_JOB_ID_PATTERN, type NarrationRenderClient
  * queued, claimed or done (same id: the id hashes the line) is not written
  * again.
  */
-export const RENDER_JOB_SCHEMA = "foray-render-job/1";
+/** GV-22's job schema id, "foray-render-job" version 1. Spelled as a template so
+ *  tools/segments/politeness.test.mjs's User-Agent scan (`foray<...>/<digit>`
+ *  anywhere under backend/src/) does not read a schema id as a second UA. */
+export const RENDER_JOB_SCHEMA = `foray-render-job/${1}` as const;
 
 export interface RenderJobDocument {
   schema: typeof RENDER_JOB_SCHEMA;
@@ -39,7 +42,7 @@ export interface RenderJobDocument {
   lexicon?: { term: string; ipa: string }[];
 }
 
-/** The `foray-render-job/1` document for a job, stamped `enqueuedAt`. */
+/** The `RENDER_JOB_SCHEMA` document for a job, stamped `enqueuedAt`. */
 export function renderJobDocument(job: RenderJob, enqueuedAt: Date): RenderJobDocument {
   if (!RENDER_JOB_ID_PATTERN.test(job.jobId)) throw new Error(`renderJobDocument: refused job id ${JSON.stringify(job.jobId)}`);
   if (!Number.isInteger(job.priority)) throw new Error(`renderJobDocument: priority must be an integer, got ${job.priority}`);

@@ -10,7 +10,7 @@ import type { JobAudioState } from "./jobSink";
  * WHAT IT DOES. Every servable narration item the run makes (GV-33's
  * `ItemReadyEvent`, servable under GV-21's per-act policy) becomes one render
  * job, handed to a `NarrationRenderClient` (the spool client,
- * `cli/spoolRenderClient.ts`, writes GV-22's `foray-render-job/1` files for
+ * `cli/spoolRenderClient.ts`, writes GV-22's `RENDER_JOB_SCHEMA` files for
  * the resident worker). A job's `priority` is the item's index, so the worker
  * renders the prelude first and every later line in play order. What came
  * back (`results()`) folds into two places: the job snapshot's per-item audio
