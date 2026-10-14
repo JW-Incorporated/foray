@@ -1068,6 +1068,71 @@ export function computeClipOnSubject(
 }
 
 /* ------------------------------------------------------------------ */
+/* showVariety (GV-83, W3-12; MQ-07)                                    */
+/* ------------------------------------------------------------------ */
+
+/** One tape item of the finished Foray: its show (`showIdentity.ts`'s
+ * `showKeyForItem`), its episode, and its seconds on the listener's clock. */
+export interface ShowVarietyItem {
+  showKey: string;
+  itemId?: string;
+  durationSec: number;
+}
+
+export interface ShowVarietyResult {
+  /** Shows with at least one tape item. */
+  distinctShows: number;
+  /** Episodes (item ids) with at least one tape item. */
+  distinctEpisodes: number;
+  /** The show with the most tape seconds (ties: the lexically first key);
+   * `null` with no tape seconds. */
+  largestShowKey: string | null;
+  /** That show's tape seconds over all tape seconds; `null` with no tape
+   * seconds (unmeasured, never 0 or 1). */
+  largestShowTapeShare: number | null;
+  /** Tape seconds per show key, rounded to the millisecond. */
+  tapeSecByShow: Record<string, number>;
+}
+
+/**
+ * GV-83 (MQ-07; QK-21, GP-22): how many shows the Foray quotes and how much of
+ * its tape the largest one carries, so "one show per Foray" has a number.
+ * Pure. An item with an empty show key or a non-finite or negative duration
+ * contributes no seconds; an empty key is not a show. Measured, never gated.
+ */
+export function computeShowVariety(items: readonly ShowVarietyItem[]): ShowVarietyResult {
+  const secByShow = new Map<string, number>();
+  const episodes = new Set<string>();
+  for (const item of items) {
+    const key = typeof item.showKey === "string" ? item.showKey : "";
+    if (!key) continue;
+    const sec = Number.isFinite(item.durationSec) && item.durationSec > 0 ? item.durationSec : 0;
+    secByShow.set(key, (secByShow.get(key) ?? 0) + sec);
+    if (typeof item.itemId === "string" && item.itemId) episodes.add(item.itemId);
+  }
+  let total = 0;
+  let largestShowKey: string | null = null;
+  let largest = 0;
+  for (const key of [...secByShow.keys()].sort()) {
+    const sec = secByShow.get(key)!;
+    total += sec;
+    if (sec > largest) {
+      largest = sec;
+      largestShowKey = key;
+    }
+  }
+  const tapeSecByShow: Record<string, number> = {};
+  for (const key of [...secByShow.keys()].sort()) tapeSecByShow[key] = Math.round(secByShow.get(key)! * 1000) / 1000;
+  return {
+    distinctShows: secByShow.size,
+    distinctEpisodes: episodes.size,
+    largestShowKey: total > 0 ? largestShowKey : null,
+    largestShowTapeShare: total > 0 ? largest / total : null,
+    tapeSecByShow
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
@@ -1193,6 +1258,10 @@ export interface VeracityMetrics {
   clipOnSubjectJudge?: ClipJudgeId | "mixed" | null;
   /** GV-79: scored and unscored counts and the off-subject clips, named. */
   clipOnSubjectDetails?: { scored: number; unscored: number; offSubject: OffSubjectClip[] };
+  /** GV-83 (MQ-07): distinct shows and episodes and the largest show's tape
+   * share (`computeShowVariety`). Absent when the caller passed no
+   * `showItems`; reported, never gated. */
+  showVariety?: ShowVarietyResult;
 }
 
 export interface BuildVeracityMetricsInput {
@@ -1239,6 +1308,9 @@ export interface BuildVeracityMetricsInput {
    * per-judge on-subject level (`clipLevelFor`). Omitted, no clip field is
    * added, so a default run's report is unchanged. */
   clipOnSubject?: { levelFor?: (judge: ClipJudgeId) => number };
+  /** GV-83: the finished Foray's tape items, each with its show key and
+   * seconds. Omitted, `showVariety` is absent. */
+  showItems?: readonly ShowVarietyItem[];
 }
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
@@ -1308,7 +1380,8 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
           clipOnSubjectJudge: clips.judge,
           clipOnSubjectDetails: { scored: clips.scored, unscored: clips.unscored, offSubject: clips.offSubject }
         }
-      : {})
+      : {}),
+    ...(input.showItems ? { showVariety: computeShowVariety(input.showItems) } : {})
   };
 }
 

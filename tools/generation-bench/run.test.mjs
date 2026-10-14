@@ -765,14 +765,17 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
      in the committed header and the default table). Ran it: red. */
   for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
   /* GV-08 added the first detail columns and GV-17 the runlog's speed
-     columns; every earlier column stays core. GV-55 adds the stack. */
+     columns; every earlier column stays core. GV-55 adds the stack, GV-83
+     the two show-variety columns. */
   assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), [
     "listen",
     "last_listen",
     ...SPEED_KEYS,
     "lead15_s",
     "render_rtf",
-    "stack"
+    "stack",
+    "shows",
+    "top_show_pct"
   ]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
@@ -1852,4 +1855,60 @@ test("GV-64: the KPI doc records the golden aggregates, the headline and the ban
   assert.match(doc, /MT-01, MT-02, MQ-02, MQ-05 and MQ-20/);
   assert.match(doc, /--fail-on-regression/);
   for (const m of GOLDEN_METRICS) assert.ok(doc.includes(`\`${m.key}\``), `the doc names ${m.key}`);
+});
+
+/* GV-83 (MQ-07; QK-21, GP-22): show variety, off the report's
+   `veracity.showVariety`. Two detail columns, so the committed KPI table is
+   unchanged; absent on every report written before the field existed. */
+const SHOW_KEYS = ["shows", "top_show_pct"];
+const varietyEntry = (showVariety) => ({ outcome: "generated", detail: "OK x", veracity: { showVariety } });
+
+test("GV-83: out-4 and out-9 carry no showVariety, so both show columns are — and never 0", () => {
+  /* MUTATION: `shows: num(v.showVariety?.distinctShows) ?? 0`. Ran it: red. */
+  for (const row of [run4(), run9()]) {
+    for (const key of SHOW_KEYS) {
+      assert.equal(row.values[key], null, `${row.values.run}/${key}`);
+      assert.equal(row.sources[key], "absent");
+      assert.equal(formatCell(column(key), row), ABSENT);
+    }
+  }
+});
+
+test("GV-83: the bench prints shows and top show % under --wide, from the report, never in the committed table", () => {
+  /* MUTATION: read `largestShowTapeShare` without the x 100 (the cell prints
+     1, not 75). Ran it: red. */
+  const row = rowFor(
+    varietyEntry({ distinctShows: 2, distinctEpisodes: 3, largestShowKey: "geology-bites", largestShowTapeShare: 0.75, tapeSecByShow: {} }),
+    { runId: "run-x" }
+  );
+  assert.equal(row.values.shows, 2);
+  assert.equal(row.values.top_show_pct, 75);
+  assert.equal(row.sources.shows, "report");
+  assert.equal(row.sources.top_show_pct, "report");
+  assert.equal(formatCell(column("shows"), row), "2");
+  assert.equal(formatCell(column("top_show_pct"), row), "75");
+  for (const key of SHOW_KEYS) assert.equal(column(key).group, DETAIL, key);
+  assert.equal(markdownHeader()[0].includes("top show %"), false, "the committed header is unchanged");
+  const wide = formatTable([row], { wide: true });
+  assert.match(wide, /shows/);
+  assert.match(wide, /top show %/);
+  assert.equal(formatTable([row]).includes("top show %"), false, "the default table is core only");
+  /* The JSONL carries both, and a line round-trips to the same wide table. */
+  const line = JSON.parse(jsonlLine(row));
+  assert.equal(line.metrics.shows, 2);
+  assert.equal(line.metrics.top_show_pct, 75);
+  assert.equal(formatTable([rowFromJsonl(line)], { wide: true }), wide);
+});
+
+test("GV-83: a Foray with no tape has a show count of 0 and an absent share, never 0 % or 100 %", () => {
+  /* MUTATION: `top_show_pct: (v.showVariety?.largestShowTapeShare ?? 0) * 100`
+     -- a null share reads 0 %. Ran it: red. */
+  const row = rowFor(
+    varietyEntry({ distinctShows: 0, distinctEpisodes: 0, largestShowKey: null, largestShowTapeShare: null, tapeSecByShow: {} }),
+    { runId: "run-y" }
+  );
+  assert.equal(row.values.shows, 0);
+  assert.equal(row.values.top_show_pct, null);
+  assert.equal(row.sources.top_show_pct, "absent");
+  assert.equal(formatCell(column("top_show_pct"), row), ABSENT);
 });
