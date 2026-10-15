@@ -10,7 +10,7 @@
    and writes a results file (RV-10), and merge-rating-results.mjs (RV-09)
    validates it, the tools/classify/ pattern (D1).
 
-     node tools/recommender/prepare-rating-batch.mjs --role pilot|gold
+     node tools/recommender/prepare-rating-batch.mjs --role pilot|gold|breadth
        [--set data/recommender/gold-set.json] [--pass 1|2|3]
        [--mode joint | isolated:<persona_id>] [--batch-size 20]
        [--shard i/n] [--only retest|isolated|holdout] [--dry-run]
@@ -52,6 +52,19 @@
    Prints the batch path and a token estimate (serialised chars / 4, D9).
    `--dry-run` reports the same and writes and reserves nothing.
 
+   BREADTH (RV-33, orchestrator decision 2026-10-15). `--role breadth` rates
+   the teacher's breadth slice: `--set` defaults to
+   data/recommender/breadth-set.json (sample.mjs --mode breadth), and a
+   breadth show is rated ONCE, joint: `--pass` above 1, an `isolated:` mode
+   and `--only` are refused (breadthRefusal), because the retest and
+   isolation measurements belong to the gold set. Batch ids are
+   `breadth-1-joint-<YYYYMMDD>-<hash8>`, so merge-rating-results.mjs routes
+   them to data/recommender/ratings-breadth.json and never ratings.json.
+   Reservations and pass records stay in rating-progress.json under the same
+   lock, keyed `<show_key>@breadth` (progress.mjs breadthKey). The breadth set
+   must not share a show with the gold set (data/recommender/gold-set.json
+   under the repo root, when present): an overlap refuses the batch.
+
    The progress file's load -> reclaim -> reserve -> save runs under
    progress.mjs's withProgressLock, so a prepare can overlap merges without
    overwriting their pass records (RV-13). */
@@ -64,16 +77,19 @@ import { isEntryScript } from "../ci/entry.mjs";
 import { parseShard, shardOf } from "../classify/labels.mjs";
 import { rng } from "../segments/rank-breadth.mjs";
 import { buildEvidence, loadSources, raterPack } from "./evidence.mjs";
-import { LOCK_WAIT_MS, loadProgress, reclaimStale, reserve, saveProgress, withProgressLock } from "./progress.mjs";
+import { LOCK_WAIT_MS, breadthKey, loadProgress, reclaimStale, reserve, saveProgress, withProgressLock } from "./progress.mjs";
 import { RUBRIC_VERSION, MAX_PASS } from "./schema.mjs";
 
 const REPO_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), "../..");
 
-export const ROLES = Object.freeze(["pilot", "gold"]);
+export const ROLES = Object.freeze(["pilot", "gold", "breadth"]);
+/** The breadth teacher slice's role (RV-33): pass 1, joint, its own set. */
+export const BREADTH_ROLE = "breadth";
 export const ONLY_ROLES = Object.freeze(["retest", "isolated", "holdout"]);
 export const DEFAULT_BATCH_SIZE = 20;
 export const DEFAULTS = Object.freeze({
   set: "data/recommender/gold-set.json",
+  breadthSet: "data/recommender/breadth-set.json",
   progress: "data/recommender/rating-progress.json",
   profiles: "data/recommender/persona-profiles.json",
   rubric: "docs/curation/rating-rubric-v1.md",
@@ -81,7 +97,7 @@ export const DEFAULTS = Object.freeze({
 });
 
 const USAGE =
-  "usage: node tools/recommender/prepare-rating-batch.mjs --role pilot|gold [--set PATH] [--pass 1|2|3] " +
+  "usage: node tools/recommender/prepare-rating-batch.mjs --role pilot|gold|breadth [--set PATH] [--pass 1|2|3] " +
   "[--mode joint|isolated:<persona_id>] [--batch-size 20] [--shard i/n] [--only retest|isolated|holdout] [--dry-run] " +
   "[--progress PATH] [--profiles PATH] [--batches-dir DIR]";
 
@@ -120,7 +136,20 @@ export function parseArgs(argv) {
   if (!(args.mode === "joint" || /^isolated:[a-z0-9]+(?:-[a-z0-9]+)*$/.test(args.mode))) throw new UsageError(`--mode must be joint or isolated:<persona_id>; ${USAGE}`);
   if (!Number.isInteger(args.batchSize) || args.batchSize < 1) throw new UsageError(`--batch-size must be a positive integer; ${USAGE}`);
   if (args.only !== null && !ONLY_ROLES.includes(args.only)) throw new UsageError(`--only must be one of ${ONLY_ROLES.join("|")}; ${USAGE}`);
+  const refusal = breadthRefusal(args);
+  if (refusal) throw new UsageError(refusal);
   return args;
+}
+
+/** Why a breadth batch cannot be built with these options, or null. Breadth
+    shows are rated once, joint (RV-33): the retest passes and the isolated
+    check are gold-set measurements. */
+export function breadthRefusal({ role, pass = 1, mode = "joint", only = null }) {
+  if (role !== BREADTH_ROLE) return null;
+  if (pass !== 1) return `--role breadth rates pass 1 only (got --pass ${pass}): retest passes are for the gold set`;
+  if (mode !== "joint") return `--role breadth rates joint only (got --mode ${mode}): the isolated check is for the gold set`;
+  if (only !== null) return `--role breadth takes no --only (got --only ${only}): breadth rows carry no retest, isolated or holdout role`;
+  return null;
 }
 
 /* ------------------------------------------------------------ helpers */
@@ -132,8 +161,10 @@ export function isolatedPersona(mode) {
 
 /** The progress-file key a show is reserved and recorded under for `mode`:
     the show key for joint batches, `<show_key>@isolated:<persona_id>` for
-    isolated ones (see the header). */
-export function progressKey(showKey, mode = "joint") {
+    isolated ones (see the header), `<show_key>@breadth` for every breadth
+    batch (`role`, RV-33). */
+export function progressKey(showKey, mode = "joint", role = null) {
+  if (role === BREADTH_ROLE) return breadthKey(String(showKey));
   const pid = isolatedPersona(mode);
   return pid ? `${showKey}@isolated:${pid}` : String(showKey);
 }
@@ -184,7 +215,7 @@ export function eligibleShows(set, progress, { role, pass = 1, mode = "joint", o
     if (pid && !roles.includes("isolated")) continue;
     if (only && !roles.includes(only)) continue;
     if (shard && shardOf(key, shard.count) !== shard.index) continue;
-    const pk = progressKey(key, mode);
+    const pk = progressKey(key, mode, role);
     if (Object.prototype.hasOwnProperty.call(progress.in_flight, pk)) continue;
     const passes = Array.isArray(progress.rated[pk]?.passes) ? progress.rated[pk].passes : [];
     if (passes.includes(pass)) continue;
@@ -204,12 +235,26 @@ const repoPath = (root, p) => {
   return rel && !rel.startsWith("..") && !isAbsolute(rel) ? rel.split(sep).join("/") : p;
 };
 
+/** The keys of `set`'s rows holding `role` that are also in `goldKeys`. */
+export function goldOverlap(set, role, goldKeys) {
+  const gold = new Set([...(goldKeys ?? [])].map(String));
+  return (set?.shows ?? []).filter((row) => row && Array.isArray(row.roles) && row.roles.includes(role) && gold.has(String(row.show_key))).map((row) => String(row.show_key));
+}
+
 /**
  * Builds one batch in memory and reserves its keys on `progress` (mutated).
  * Returns `{ batch, batchId, keys, skippedNone, reclaimed }`, or `batch: null`
- * when nothing is eligible. Throws when the isolated persona is unknown.
+ * when nothing is eligible. Throws when the isolated persona is unknown, on a
+ * breadth batch that is not pass 1 joint, and on a breadth set that shares a
+ * show with `goldKeys` (the gold set's show keys).
  */
-export function prepareBatch({ set, progress, profilesDoc, profilesSha256, profilesPath, rubricPath, sources, role, pass = 1, mode = "joint", only = null, shard = null, batchSize = DEFAULT_BATCH_SIZE, now }) {
+export function prepareBatch({ set, progress, profilesDoc, profilesSha256, profilesPath, rubricPath, sources, role, pass = 1, mode = "joint", only = null, shard = null, batchSize = DEFAULT_BATCH_SIZE, now, goldKeys = [] }) {
+  const refusal = breadthRefusal({ role, pass, mode, only });
+  if (refusal) throw new Error(refusal);
+  if (role === BREADTH_ROLE) {
+    const overlap = goldOverlap(set, role, goldKeys);
+    if (overlap.length) throw new Error(`the breadth set shares ${overlap.length} show(s) with the gold set (${overlap.slice(0, 5).join(", ")}${overlap.length > 5 ? ", ..." : ""}); rebuild it with sample.mjs --mode breadth`);
+  }
   const personaIds = (profilesDoc?.personas ?? []).map((p) => p.id);
   if (!personaIds.length) throw new Error("the persona profiles list no personas");
   const pid = isolatedPersona(mode);
@@ -248,7 +293,7 @@ export function prepareBatch({ set, progress, profilesDoc, profilesSha256, profi
     persona_order,
     shows: seededShuffle(packs, batchId),
   };
-  reserve(progress, keys.map((k) => progressKey(k, mode)), batchId, now);
+  reserve(progress, keys.map((k) => progressKey(k, mode, role)), batchId, now);
   return { batch, batchId, keys, skippedNone, reclaimed };
 }
 
@@ -278,16 +323,20 @@ export function main(argv = process.argv.slice(2), { root = REPO_ROOT, env = pro
     throw e;
   }
   const at = (flag, def) => (flag ? resolvePath(process.cwd(), flag) : resolvePath(root, def));
-  const setPath = at(args.set, DEFAULTS.set);
+  const breadth = args.role === BREADTH_ROLE;
+  const setPath = at(args.set, breadth ? DEFAULTS.breadthSet : DEFAULTS.set);
+  const goldPath = resolvePath(root, DEFAULTS.set);
   const progressPath = at(args.progress, DEFAULTS.progress);
   const profilesPath = at(args.profiles, DEFAULTS.profiles);
   const batchesDir = at(args.batchesDir, DEFAULTS.batchesDir);
   if (!existsSync(setPath)) {
-    error(`no gold set at ${setPath}; run tools/recommender/sample.mjs first (RV-07)`);
+    error(breadth ? `no breadth set at ${setPath}; run tools/recommender/sample.mjs --mode breadth first (RV-33)` : `no gold set at ${setPath}; run tools/recommender/sample.mjs first (RV-07)`);
     return 1;
   }
 
   const set = JSON.parse(readFileSync(setPath, "utf8"));
+  // A breadth batch asserts the breadth set is disjoint from the committed gold set.
+  const goldKeys = breadth && existsSync(goldPath) ? (JSON.parse(readFileSync(goldPath, "utf8")).shows ?? []).map((row) => String(row.show_key)) : [];
   const profilesDoc = JSON.parse(readFileSync(profilesPath, "utf8"));
   /* The catalogue loads before the lock (it is the slow part); the whole
      load -> reserve -> save of the progress file runs under the lock, so a
@@ -318,6 +367,7 @@ export function main(argv = process.argv.slice(2), { root = REPO_ROOT, env = pro
         shard: args.shard,
         batchSize: args.batchSize,
         now,
+        goldKeys,
       });
     } catch (e) {
       error(e.message);

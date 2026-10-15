@@ -20,10 +20,10 @@ sample -> prepare -> [ agent | qwen | jev ] -> merge -> agreement -> student -> 
 | evidence | `evidence.mjs` | RV-03 | The only place show text is assembled for any rater or the embedder: evidence tier, stripping of chart rank, counts, network and `in_curated` (D7), datamarking, injection pre-scan, transcript windows. |
 | enrich | `enrich-rss.mjs` | RV-04 | Recent episode titles and descriptions from RSS, through `tools/segments/politeness.mjs`, cached in `data-local/recommender/rss/`. |
 | R2 sample | `sample-r2.mjs` | RV-05 | Transcript windows sampled from R2; dormant until the R2 read key (#1163 item 17.3). |
-| sample | `sample.mjs` | RV-07 | The stratified gold set: pilot, gold, retest and holdout flags, strata over evidence tier, root node, chart band and DAI (D12). |
-| prepare | `prepare-rating-batch.mjs` | RV-08 | Joint and isolated batches, personas shuffled per show, shows shuffled per batch, reservations through `progress.mjs`, `--shard i/n`. |
+| sample | `sample.mjs` | RV-07 | The stratified gold set: pilot, gold, retest and holdout flags, strata over evidence tier, root node, chart band and DAI (D12). `--mode breadth` (RV-33): every chart top-25 show not in the gold set, `breadth-set.json`. |
+| prepare | `prepare-rating-batch.mjs` | RV-08 | Joint and isolated batches, personas shuffled per show, shows shuffled per batch, reservations through `progress.mjs`, `--shard i/n`. `--role breadth` (RV-33): pass 1 joint only, from `breadth-set.json`, `<show_key>@breadth` progress keys. |
 | rate | agent, `qwen-rate.mjs`, `jev-rate.mjs` | RV-10, RV-20, RV-18 | The judgement step. The agent follows `docs/agents/runner-prompts/persona-rate-batch.md` and `docs/curation/rating-rubric-v1.md`; Qwen and Jev are dormant until their keys (#1163 items 17.1, 17.2). |
-| merge | `merge-rating-results.mjs` | RV-09 | Validates a results file against its batch with `schema.mjs`, normalises, merges newest-wins with pass means into `ratings.json`, keeps one `top_reason` per show, writes full reasons to data-local, releases the reservation. `--check` validates the committed file. |
+| merge | `merge-rating-results.mjs` | RV-09 | Validates a results file against its batch with `schema.mjs`, normalises, merges newest-wins with pass means into `ratings.json`, keeps one `top_reason` per show, writes full reasons to data-local, releases the reservation. `--check` validates the committed file. A `breadth-` batch (RV-33) merges into `ratings-breadth.json`, never `ratings.json`. |
 | agreement | `agreement.mjs` | RV-11 | Krippendorff's alpha, Spearman, within-node Kendall tau, test-retest, joint vs isolated, persona differentiation, per-batch drift. |
 | embed | `embed.mjs` | RV-12 | Evidence-pack embeddings through the passage-index Embedder. |
 | student | `student.mjs` | RV-14 | Ridge regression from features to the rating vector, with the gate. |
@@ -93,6 +93,24 @@ node tools/recommender/agreement.mjs --ratings data/recommender/ratings.json --i
 ```
 
 Measured cost: a joint batch (20 shows x 13 personas) is about 183k tokens, and an isolated batch (20 shows x 1 persona) about 151k.
+
+### Breadth teacher slice (RV-33)
+
+The student failed its gate twice (RV-25 #1418, RV-32 #1419; [`docs/research/persona-ratings-student-2026-10.md`](../../docs/research/persona-ratings-student-2026-10.md)), so instead of predicting the catalogue the teacher rates the shows most likely to be served, starting with every Apple chart top-25 show that is not already in the gold set (orchestrator decision 2026-10-15). Breadth shows are rated once, joint, at pass 1; the retest passes and the isolated check stay gold-set measurements.
+
+```sh
+# the set: every catalogued chart 1-25 show with evidence, minus every gold-set show, sorted by show_key (~6 min)
+node tools/recommender/sample.mjs --mode breadth --chart 1-25 --exclude data/recommender/gold-set.json --report
+node tools/recommender/sample.mjs --mode breadth --check        # exit 1 when a rerun would change breadth-set.json
+# optional, live (never alongside Joey's crawler, #140): episode metadata for the breadth shows
+node tools/recommender/enrich-rss.mjs --keys data/recommender/breadth-set.json --concurrency 4
+# one prepare per batch; reads data/recommender/breadth-set.json by default; --pass 2, isolated:<id> and --only are refused
+node tools/recommender/prepare-rating-batch.mjs --role breadth --batch-size 20
+# the agent rates rating-batch-breadth-1-joint-<date>-<hash>.json as any other batch; merge as usual
+node tools/recommender/merge-rating-results.mjs --results data-local/recommender/results/rating-results-breadth-1-joint-<date>-<hash>.json
+```
+
+A `breadth-` batch merges into `data/recommender/ratings-breadth.json` (the `ratings.json` schema, committed as the empty skeleton) and never into `ratings.json`, so the gold artifacts that read `ratings.json` (student training, agreement, eval) are untouched; `--into` is refused for a breadth batch, and `--into ratings-breadth.json` for any other. Its reservations and pass records stay in `rating-progress.json` under the same lock, keyed `<show_key>@breadth`, so they never block or satisfy a gold pass. The breadth set is disjoint from the gold set by construction, and prepare (against `gold-set.json`), merge (against `ratings.json` and `gold-set.json`) and `--check` (a show in both ratings files) each assert it. The committed set (2026-10-15) holds 1,681 shows: 2,132 catalogued chart 1-25 shows with evidence, minus the 451 in the gold set. Like the gold set's, its recorded strata (evidence tier, and so `strata_counts`) depend on the local RSS cache: it was built with `RECOMMENDER_RSS_DIR` pointing at the pilot's cache, and `--check` needs the same cache to report it current.
 
 ## Tests
 

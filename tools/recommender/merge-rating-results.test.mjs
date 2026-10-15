@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  BREADTH_PATH,
   ISOLATED_PATH,
   PROGRESS_PATH,
   RATINGS_PATH,
@@ -484,4 +485,83 @@ test("jev- results merge only --into their own ratings and progress files", (t) 
 
   assert.equal(main(["--results", resultsPath, "--into", "ratings-isolated.json"], { root, now: NOW, log: () => {}, out: () => {} }), 2, "another writer's file is refused");
   assert.equal(main(["--check", "--into", "ratings-jev.json"], { root, now: NOW, log: () => {}, out: () => {} }), 2);
+});
+
+/* RV-33: the breadth teacher slice. A batch prepared with --role breadth
+   (id `breadth-1-joint-...`) merges into ratings-breadth.json, never
+   ratings.json, and settles `<show_key>@breadth` progress keys. */
+const BREADTH_ID = "breadth-1-joint-20261015-bbbb2222";
+
+function stageBreadth(root, { batchId = BREADTH_ID } = {}) {
+  const batch = batchDoc(root, { batchId });
+  const resultsPath = stage(root, batch, resultsDoc(batch), { reserve: false });
+  const progress = readJson(join(root, PROGRESS_PATH));
+  for (const k of KEYS) progress.in_flight[`${k}@breadth`] = { batch_id: batchId, reserved_at: new Date(NOW.getTime() - HOUR).toISOString() };
+  writeJson(join(root, PROGRESS_PATH), progress);
+  return { batch, resultsPath };
+}
+
+test("a breadth batch merges into ratings-breadth.json and leaves ratings.json byte-identical", (t) => {
+  // mutation: `breadth ? BREADTH_PATH : isolated ? ...` -> `isolated ? ...` in runMerge's targetPath -> the breadth shows land in ratings.json
+  const root = makeRoot(t);
+  // A gold rating already merged, as ratings.json holds the gold set's.
+  const gold = batchDoc(root, { batchId: "gold-1-joint-20261015-cccc3333" });
+  const goldResults = resultsDoc(gold);
+  gold.shows = gold.shows.filter((p) => p.show_key === "curated-show");
+  goldResults.results = { "curated-show": goldResults.results["curated-show"] };
+  assert.equal(runMerge({ resultsPath: stage(root, gold, goldResults, { reserve: false }), root, now: NOW }).ok, true);
+  const goldBefore = readFileSync(join(root, RATINGS_PATH), "utf8");
+
+  const batch = batchDoc(root, { batchId: BREADTH_ID });
+  batch.shows = batch.shows.filter((p) => p.show_key !== "curated-show");
+  const results = resultsDoc(batch);
+  delete results.results["curated-show"];
+  const resultsPath = stage(root, batch, results, { reserve: false });
+  const progress0 = readJson(join(root, PROGRESS_PATH));
+  for (const k of ["1000000001", "1000000002"]) progress0.in_flight[`${k}@breadth`] = { batch_id: BREADTH_ID, reserved_at: NOW.toISOString() };
+  writeJson(join(root, PROGRESS_PATH), progress0);
+
+  const { ok, problems, report } = runMerge({ resultsPath, root, now: new Date(NOW.getTime() + HOUR) });
+  assert.deepEqual(problems, []);
+  assert.equal(ok, true);
+  assert.equal(report.target, join(root, BREADTH_PATH));
+  assert.equal(readFileSync(join(root, RATINGS_PATH), "utf8"), goldBefore, "ratings.json is byte-identical");
+  const breadth = readJson(join(root, BREADTH_PATH));
+  assert.deepEqual(validateRatingsFile(breadth, { personaIds: ["p-history", "p-light"] }), []);
+  assert.deepEqual(Object.keys(breadth.shows), ["1000000001"]);
+  assert.deepEqual(breadth.merged_batches, [BREADTH_ID]);
+  const progress = readJson(join(root, PROGRESS_PATH));
+  assert.deepEqual(progress.in_flight, {}, "the breadth reservations are released");
+  assert.deepEqual(progress.rated["1000000001@breadth"], { last_batch_id: BREADTH_ID, passes: [1] });
+  assert.equal(progress.rated["1000000001"], undefined, "no bare (gold) key is recorded");
+  // A rerun is a no-op, and --check validates both files.
+  assert.equal(runMerge({ resultsPath, root, now: new Date(NOW.getTime() + 2 * HOUR) }).report.already_merged, true);
+  assert.deepEqual(runCheck({ root, now: NOW }), []);
+});
+
+test("a breadth batch holding a gold show is refused, and so is any --into for it", (t) => {
+  // mutation: delete the `if (gold.has(k)) add("breadth_show_in_gold", ...)` line in runMerge -> the gold show merges into the breadth file
+  const root = makeRoot(t);
+  writeJson(join(root, "data/recommender/gold-set.json"), { shows: [{ show_key: "1000000001", roles: ["gold"] }] });
+  const { resultsPath } = stageBreadth(root);
+  const refused = runMerge({ resultsPath, root, now: NOW });
+  assert.equal(refused.ok, false);
+  assert.ok(refused.problems.some((p) => p.code === "breadth_show_in_gold" && p.at === "batch.shows.1000000001"), JSON.stringify(refused.problems));
+  assert.equal(existsSync(join(root, BREADTH_PATH)), false, "nothing written");
+  assert.equal(existsSync(join(root, RATINGS_PATH)), false);
+
+  const side = runMerge({ resultsPath, root, now: NOW, into: "ratings-qwen.json" });
+  assert.deepEqual(side.problems.map((p) => p.code), ["breadth_into_side_file"]);
+  // A gold batch may not write the breadth file through --into.
+  assert.equal(main(["--results", resultsPath, "--into", "ratings-breadth.json"], { root, log: () => {}, out: () => {} }), 2);
+
+  // --check refuses a show held by both ratings files.
+  writeFileSync(join(root, RATINGS_PATH), serializeRatings({ ...skeletonRatings(), shows: { x: { evidence_tier: "show-metadata", summary: "s", format: "mixed", flags: { ...FLAGS_OFF }, top_reason: "A plain reason for a listener.", top_persona: "p-light", passes: 1, personas: { "p-light": [3, 0.5, 3, 3, 3, 3, null, null, null, 0.4] } } } }));
+  writeFileSync(join(root, BREADTH_PATH), readFileSync(join(root, RATINGS_PATH), "utf8"));
+  assert.ok(runCheck({ root, now: NOW }).some((p) => p.code === "breadth_show_in_gold"));
+});
+
+test("the committed ratings-breadth.json is the empty skeleton in canonical form", () => {
+  // mutation: add a space to data/recommender/ratings-breadth.json -> it is no longer serializeRatings(skeletonRatings())
+  assert.equal(readFileSync(join(REPO, BREADTH_PATH), "utf8"), serializeRatings(skeletonRatings()));
 });

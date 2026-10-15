@@ -76,6 +76,24 @@
    on disk leaves the file untouched, and `--check` compares with the file's
    own `built_at`.
 
+   BREADTH MODE (RV-33, orchestrator decision 2026-10-15 after the student
+   failed its gate twice: RV-25 #1418, RV-32 #1419). Instead of predicting the
+   catalogue, the teacher rates the shows most likely to be served:
+
+     node tools/recommender/sample.mjs --mode breadth [--chart 1-25] \
+       [--exclude data/recommender/gold-set.json] [--out data/recommender/breadth-set.json] [--report] [--check]
+
+   Every catalogued show whose chart band (the `chart` stratum above) is one
+   of `--chart` (a comma list of CHART_BANDS, default 1-25), minus every
+   show_key of the `--exclude` gold set (default: the gold-set path above), so
+   a breadth show is never a gold show. A show at evidence tier `none` is left
+   out, as in the gold set: there is nothing to rate (D3) and prepare would
+   skip it forever. No sampling and no seed: the rows are every match, sorted
+   by show_key, each `{ show_key, title, strata, roles: ["breadth"] }`.
+   Written to data/recommender/breadth-set.json (env
+   RECOMMENDER_BREADTH_SET_PATH, or --out) in the gold set's file format,
+   with the same `built_at` and `--check` rules.
+
    Calls no model and fetches nothing. */
 
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -95,7 +113,11 @@ export const RICH_TIERS = Object.freeze(["transcript", "episode-metadata"]);
 /** At least this share of the set comes from RICH_TIERS where available. */
 export const RICH_SHARE = 1 / 3;
 export const SUBSET_ROLES = Object.freeze(["retest", "isolated", "holdout"]);
-export const ROLE_ORDER = Object.freeze(["pilot", "gold", ...SUBSET_ROLES]);
+/** The breadth set's mode and only role (RV-33). */
+export const BREADTH = "breadth";
+export const ROLE_ORDER = Object.freeze(["pilot", "gold", ...SUBSET_ROLES, BREADTH]);
+/** The `chart` stratum's values (chartBand). */
+export const CHART_BANDS = Object.freeze(["1-25", "26-200", "uncharted"]);
 export const DIMENSIONS = Object.freeze(["root", "tier", "dai", "chart", "length"]);
 /** The dimensions every root must represent in full where the catalogue has them (D12). */
 export const COVER_DIMENSIONS = Object.freeze(["dai", "chart"]);
@@ -103,6 +125,7 @@ export const UNLABELLED = "unlabelled";
 
 export const PATHS = Object.freeze({
   goldSet: ["RECOMMENDER_GOLD_SET_PATH", "data/recommender/gold-set.json"],
+  breadthSet: ["RECOMMENDER_BREADTH_SET_PATH", "data/recommender/breadth-set.json"],
   dai: ["RECOMMENDER_DAI_PATH", "data/dai-classification.json"],
   discover: ["RECOMMENDER_DISCOVER_PATH", "data/discover.json"],
 });
@@ -153,8 +176,10 @@ const byKey = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
  * Every catalogued show as `{ show_key, title, strata }`, in show_key order,
  * including `none`-tier shows (the sampler drops those). `dai` is the parsed
  * dai-classification.json, `discover` the parsed discover.json (optional).
+ * `chartBands` (optional) keeps only the shows in those chart bands, checked
+ * before any evidence is built (the breadth set needs a few thousand of 26k).
  */
-export function catalogueCandidates(sources, { dai = { shows: {} }, discover = null } = {}) {
+export function catalogueCandidates(sources, { dai = { shows: {} }, discover = null, chartBands = null } = {}) {
   const discoverMinutes = new Map();
   for (const item of discover?.items ?? []) {
     if (item?.apple_collection_id == null || !Number.isFinite(item.duration_min)) continue;
@@ -166,8 +191,9 @@ export function catalogueCandidates(sources, { dai = { shows: {} }, discover = n
   const out = [];
   for (const key of keys) {
     const show = resolveShow(key, sources);
-    const pack = buildEvidence(key, sources, { windows: 0 });
     const rank = show.breadth?.chart_rank ?? show.curated?.chart_rank ?? null;
+    if (chartBands && !chartBands.includes(chartBand(rank))) continue;
+    const pack = buildEvidence(key, sources, { windows: 0 });
     const minutes = pack.typical_duration_min ?? (show.curated && show.acid ? median(discoverMinutes.get(show.acid) ?? []) : null);
     out.push({
       show_key: show.show_key,
@@ -426,6 +452,34 @@ export function sampleGoldSet({ candidates, mode, size, retest = 0, isolated = 0
   };
 }
 
+/**
+ * The breadth set (RV-33): every candidate whose chart band is in `chart` and
+ * whose tier is not `none`, minus the `exclude` show keys (the gold set), in
+ * show_key order, each with the one role `breadth`. Pure and deterministic.
+ */
+export function sampleBreadthSet({ candidates, chart = ["1-25"], exclude = [], builtAt = null }) {
+  const bands = [...new Set(chart)];
+  if (!bands.length || bands.some((b) => !CHART_BANDS.includes(b))) throw new Error(`chart bands must be among ${CHART_BANDS.join(", ")}`);
+  const excluded = new Set([...exclude].map(String));
+  const seen = new Set();
+  const pool = [];
+  for (const c of [...candidates].sort((a, b) => byKey(a.show_key, b.show_key))) {
+    if (c.strata.tier === "none" || !bands.includes(c.strata.chart) || seen.has(c.show_key)) continue;
+    seen.add(c.show_key);
+    pool.push(c);
+  }
+  const rows = pool.filter((c) => !excluded.has(c.show_key));
+  return {
+    version: GOLD_SET_VERSION,
+    mode: BREADTH,
+    chart: CHART_BANDS.filter((b) => bands.includes(b)),
+    excluded_gold: pool.length - rows.length,
+    built_at: builtAt,
+    strata_counts: strataCounts(pool, rows),
+    shows: rows.map((row) => ({ show_key: row.show_key, title: row.title ?? null, strata: Object.fromEntries(DIMENSIONS.map((d) => [d, row.strata[d]])), roles: [BREADTH] })),
+  };
+}
+
 /** The file bytes: the header pretty-printed, one show per line, trailing newline. */
 export function serializeGoldSet(doc) {
   const { shows, ...head } = doc;
@@ -436,7 +490,11 @@ export function serializeGoldSet(doc) {
 
 /** The strata table `--report` prints. */
 export function reportLines(doc) {
-  const lines = [`gold set: mode ${doc.mode}, seed ${doc.seed}, ${doc.shows.length} shows`];
+  const lines = [
+    doc.mode === BREADTH
+      ? `breadth set: chart ${doc.chart.join(",")}, ${doc.shows.length} shows (${doc.excluded_gold} gold shows excluded)`
+      : `gold set: mode ${doc.mode}, seed ${doc.seed}, ${doc.shows.length} shows`,
+  ];
   const roleCounts = Object.fromEntries(ROLE_ORDER.map((r) => [r, doc.shows.filter((s) => s.roles.includes(r)).length]));
   lines.push(`roles: ${ROLE_ORDER.filter((r) => roleCounts[r]).map((r) => `${r} ${roleCounts[r]}`).join(", ")}`);
   for (const dim of DIMENSIONS) {
@@ -452,12 +510,14 @@ export function reportLines(doc) {
 /* --------------------------------------------------------------------- CLI */
 
 const USAGE =
-  "usage: node tools/recommender/sample.mjs --mode pilot|gold --size N --seed S [--retest N] [--isolated N] [--holdout N] [--extend <gold-set.json>] [--out <path>] [--report] [--check]";
+  "usage: node tools/recommender/sample.mjs --mode pilot|gold --size N --seed S [--retest N] [--isolated N] [--holdout N] [--extend <gold-set.json>] [--out <path>] [--report] [--check]\n" +
+  "       node tools/recommender/sample.mjs --mode breadth [--chart 1-25[,26-200,uncharted]] [--exclude <gold-set.json>] [--out <path>] [--report] [--check]";
 
 export class UsageError extends Error {}
 
 export function parseArgs(argv) {
-  const args = { mode: null, size: null, retest: 0, isolated: 0, holdout: 0, seed: null, extend: null, out: null, report: false, check: false };
+  const args = { mode: null, size: null, retest: 0, isolated: 0, holdout: 0, seed: null, extend: null, out: null, report: false, check: false, chart: null, exclude: null };
+  const given = new Set();
   const count = (flag, v) => {
     if (!/^\d+$/.test(String(v ?? ""))) throw new UsageError(`${flag} needs a non-negative integer, got ${v ?? "nothing"}`);
     return Number(v);
@@ -468,6 +528,7 @@ export function parseArgs(argv) {
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    given.add(a);
     if (a === "--mode") args.mode = value(a, argv[++i]);
     else if (a === "--size") args.size = count(a, argv[++i]);
     else if (a === "--retest") args.retest = count(a, argv[++i]);
@@ -476,11 +537,22 @@ export function parseArgs(argv) {
     else if (a === "--seed") args.seed = value(a, argv[++i]);
     else if (a === "--extend") args.extend = value(a, argv[++i]);
     else if (a === "--out") args.out = value(a, argv[++i]);
+    else if (a === "--chart") args.chart = value(a, argv[++i]).split(",").map((b) => b.trim());
+    else if (a === "--exclude") args.exclude = value(a, argv[++i]);
     else if (a === "--report") args.report = true;
     else if (a === "--check") args.check = true;
     else throw new UsageError(`unknown argument ${a}`);
   }
-  if (!MODES.includes(args.mode)) throw new UsageError("--mode pilot|gold is required");
+  if (args.mode === BREADTH) {
+    const gold = ["--size", "--seed", "--retest", "--isolated", "--holdout", "--extend"].filter((f) => given.has(f));
+    if (gold.length) throw new UsageError(`--mode breadth takes every matching show and no ${gold.join(", ")}`);
+    args.chart ??= ["1-25"];
+    const bad = args.chart.filter((b) => !CHART_BANDS.includes(b));
+    if (bad.length || !args.chart.length) throw new UsageError(`--chart takes a comma list of ${CHART_BANDS.join(", ")}, got ${bad.join(",") || "nothing"}`);
+    return args;
+  }
+  if (given.has("--chart") || given.has("--exclude")) throw new UsageError("--chart and --exclude are for --mode breadth");
+  if (!MODES.includes(args.mode)) throw new UsageError("--mode pilot|gold|breadth is required");
   if (args.size === null || args.size < 1) throw new UsageError("--size N (N >= 1) is required");
   if (!args.seed) throw new UsageError("--seed is required");
   return args;
@@ -498,7 +570,9 @@ export function main(argv = process.argv.slice(2), { env = process.env, now = ()
     stderr(`sample: ${e.message}\n${USAGE}\n`);
     return 2;
   }
-  const outPath = args.out ? resolvePath(process.cwd(), args.out) : pathOf("goldSet", env);
+  const breadth = args.mode === BREADTH;
+  const outPath = args.out ? resolvePath(process.cwd(), args.out) : pathOf(breadth ? "breadthSet" : "goldSet", env);
+  const excludePath = breadth ? (args.exclude ? resolvePath(process.cwd(), args.exclude) : pathOf("goldSet", env)) : null;
   const daiPath = pathOf("dai", env);
   const discoverPath = pathOf("discover", env);
 
@@ -506,6 +580,9 @@ export function main(argv = process.argv.slice(2), { env = process.env, now = ()
   let current = null;
   try {
     if (!existsSync(daiPath)) throw new Error(`${daiPath} does not exist (set RECOMMENDER_DAI_PATH)`);
+    // The breadth set is disjoint from the gold set by construction, so a missing gold set is an error, not "exclude nothing".
+    const goldKeys = breadth ? readJson(excludePath).shows?.map((row) => String(row.show_key)) : null;
+    if (breadth && !Array.isArray(goldKeys)) throw new Error(`${excludePath} is not a gold set (no shows array)`);
     const existing = args.extend ? readJson(resolvePath(process.cwd(), args.extend)) : null;
     if (existing && !Array.isArray(existing.shows)) throw new Error(`${args.extend} is not a gold set (no shows array)`);
     current = existsSync(outPath) ? readFileSync(outPath, "utf8") : null;
@@ -515,8 +592,15 @@ export function main(argv = process.argv.slice(2), { env = process.env, now = ()
     } catch {
       currentBuiltAt = null;
     }
-    const candidates = catalogueCandidates(loadSources({ env }), { dai: readJson(daiPath), discover: existsSync(discoverPath) ? readJson(discoverPath) : null });
-    const build = (builtAt) => sampleGoldSet({ candidates, mode: args.mode, size: args.size, retest: args.retest, isolated: args.isolated, holdout: args.holdout, seed: args.seed, existing, builtAt });
+    const candidates = catalogueCandidates(loadSources({ env }), {
+      dai: readJson(daiPath),
+      discover: existsSync(discoverPath) ? readJson(discoverPath) : null,
+      chartBands: breadth ? args.chart : null,
+    });
+    const build = (builtAt) =>
+      breadth
+        ? sampleBreadthSet({ candidates, chart: args.chart, exclude: goldKeys, builtAt })
+        : sampleGoldSet({ candidates, mode: args.mode, size: args.size, retest: args.retest, isolated: args.isolated, holdout: args.holdout, seed: args.seed, existing, builtAt });
     doc = build(currentBuiltAt ?? "");
     if (args.check) {
       const same = current !== null && serializeGoldSet(doc) === current;
@@ -537,7 +621,7 @@ export function main(argv = process.argv.slice(2), { env = process.env, now = ()
     stderr(`sample: ${e.message}\n`);
     return 2;
   }
-  if (doc.shows.length < args.size) stderr(`sample: only ${doc.shows.length} catalogued shows have evidence; the set holds all of them\n`);
+  if (!breadth && doc.shows.length < args.size) stderr(`sample: only ${doc.shows.length} catalogued shows have evidence; the set holds all of them\n`);
   if (args.report) stdout(`${reportLines(doc).join("\n")}\n`);
   return 0;
 }
