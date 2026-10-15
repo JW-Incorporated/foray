@@ -87,8 +87,8 @@ function tmp(t) {
 
 /* Mutations (each run): (a) in splitRows, `if ((row.roles ?? []).includes(HOLDOUT_ROLE))`
    -> `if (false)` -- the holdout rows train the model and the holdout is
-   empty; (b) in trainStudent, `fitRidge(X, Y, { lambda: lambda.lambda, rows: trainRows })`
-   -> `fitRidge(X, Y, { lambda: lambda.lambda })` -- the split is right but the
+   empty; (b) in student.mjs fitStudent, `fitRidge(X, Y, { lambda: lambdas, rows })`
+   -> `fitRidge(X, Y, { lambda: lambdas })` -- the split is right but the
    solve sees the holdout, and the planted extreme row moves the weights. */
 test("holdout rows are excluded from training", () => {
   const w = world();
@@ -107,6 +107,28 @@ test("holdout rows are excluded from training", () => {
   planted.emb.s00 = [50, -50, 50, -50];
   const after = train(planted);
   for (const field of ["means", "scales", "intercepts", "weights", "lambdas", "knn", "calibration"]) assert.deepEqual(after.model[field], base.model[field], field);
+});
+
+/* Mutation (run): holdout kNN index built over all rows -- in trainStudent,
+   `knnIndexFor(model, { embeddingOf: ..., targetsOf: ... })` -> `knnIndex(keys,
+   E, Y)` -- the other holdout shows' teacher targets become neighbours of each
+   holdout show, and the planted holdout row moves its neighbours' predictions. */
+test("the holdout is predicted with the kNN over the training rows only", () => {
+  const w = world();
+  const opts = { weights: [0.75], ks: [5] };
+  const base = train(w, opts);
+  assert.ok(base.model.knn.weight.every((x) => x === 0.75), "the kNN is blended for every persona");
+  // s00 sits on s01's embedding, so it is s01's nearest neighbour whenever it is in the index.
+  const planted = structuredClone(w);
+  planted.emb.s00 = [...w.emb.s01];
+  planted.ratings.shows.s00.personas.ann = [5, 1, 5, 5, 5, 5, null, null, null, 1];
+  planted.ratings.shows.s00.personas.ben = [1, 0, 1, 1, 1, 1, null, null, null, 0];
+  const after = train(planted, opts);
+  for (let i = 1; i < 10; i++) {
+    const key = `s0${i}`;
+    assert.deepEqual(after.predictedHoldout.shows[key], base.predictedHoldout.shows[key], key);
+  }
+  assert.notDeepEqual(after.predictedHoldout.shows.s00, base.predictedHoldout.shows.s00, "the planted row's own prediction moves");
 });
 
 /* Mutation (run): in trainStudent, `chooseStudentConfig(X, E, Y, { rows: trainRows, ...`

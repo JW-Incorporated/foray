@@ -64,7 +64,7 @@ import { spearman, withinNodeTau } from "./agreement.mjs";
 import { embeddingsPath, keysFor } from "./embed.mjs";
 import { buildEvidence, loadSources, resolveShow } from "./evidence.mjs";
 import { RATING_SLOTS, capConfidence } from "./schema.mjs";
-import { BLEND_WEIGHTS, CEILING_FACTOR, GATE_THRESHOLDS, KNN_KS, TARGETS, applyGate, ceilingsFromRetest, checkModel, chooseStudentConfig, featureNames, featuresFor, finalise, fitStudent, gate, knnIndex, knnIndexFor, loadModel, predict, predictTable, serializeModel, targetRow } from "./student.mjs";
+import { BLEND_WEIGHTS, CEILING_FACTOR, GATE_THRESHOLDS, KNN_KS, TARGETS, applyGate, ceilingsFromRetest, checkModel, chooseStudentConfig, featureNames, featuresFor, finalise, fitStudent, gate, knnIndexFor, loadModel, predict, predictTable, serializeModel, targetRow } from "./student.mjs";
 
 const REPO_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -227,8 +227,11 @@ export function trainStudent({ goldSet, ratings, personaIds, packOf, showOf, emb
     blend_weights: [...weights],
     personas: Object.fromEntries(personaIds.map((pid, p) => [pid, config.personas[p]])),
   };
-  // The holdout's one look: predicted with the kNN over the training rows.
-  const knn = knnIndex(trainRows.map(keyOf), trainRows.map((r) => E[r]), trainRows.map((r) => Y[r]));
+  // The holdout's one look: predicted with the kNN over model.knn.train_keys,
+  // the same index predictCatalogue builds (knnIndexFor), so no holdout row's
+  // teacher target reaches another holdout row's prediction.
+  const rowOf = new Map(keys.map((k, r) => [k, r]));
+  const knn = knnIndexFor(model, { embeddingOf: (k) => E[rowOf.get(k)], targetsOf: (k) => targetRow(ratings.shows[k].personas, personaIds) });
   const featuresByKey = Object.fromEntries(hold.keys.map((k, i) => [k, hold.X[i]]));
   const predictedHoldout = predictTable(model, featuresByKey, { knn });
   const teacherHoldout = { shows: Object.fromEntries(hold.keys.map((k) => [k, ratings.shows[k]])) };
