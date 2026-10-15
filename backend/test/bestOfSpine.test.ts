@@ -195,8 +195,13 @@ describe("GV-91: BestOfTwoSpineBuilder chooses between gate-passing samples", ()
   });
 
   it("no unhandled rejection from a secondary that fails after the wrapper returned", async () => {
-    /* MUTATION THAT KILLS THIS: drop the rejection handler from `sample`
-       (`.then(onOk)` alone). Ran it: red (an unhandledRejection is seen). */
+    /* MUTATION THAT KILLS THIS: await the secondary with no race (drop the
+       `this.sleep(this.graceMs)` arm). Ran it: red (the call never returns
+       while the secondary's gate is shut; vitest times out).
+       NOT killed by dropping the rejection handler from `sample` (ran it:
+       green): with a valid primary the secondary is always subscribed through
+       the Promise.race, which handles its later rejection. The next case is
+       the one where the sample-level catch is the only handler. */
     const seen: unknown[] = [];
     const onUnhandled = (reason: unknown) => seen.push(reason);
     process.on("unhandledRejection", onUnhandled);
@@ -206,6 +211,28 @@ describe("GV-91: BestOfTwoSpineBuilder chooses between gate-passing samples", ()
       const out = await wrapper(new ScriptedBuilder("A"), secondary, new FakeSpineJudge(), fakeTime([3000])).buildSpine(intent(), research, "short", ctx);
       expect(out.overview).toMatch(/^Plan A: /);
       gate.resolve();
+      for (let i = 0; i < 5; i++) await tick();
+      expect(seen).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+
+  it("no unhandled rejection when the primary throws at once and the secondary throws later", async () => {
+    /* MUTATION THAT KILLS THIS: drop the rejection handler from `sample`
+       (`.then(onOk)` alone). Ran it: red (`await primaryRun` rejects before
+       the secondary is awaited, so the secondary's later rejection has no
+       handler and an unhandledRejection is seen). */
+    const seen: unknown[] = [];
+    const onUnhandled = (reason: unknown) => seen.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const primaryError = new Error("spark busy");
+      const gate = deferred();
+      const secondary = new ScriptedBuilder("B", { gate: gate.promise, throws: new Error("second box went away") });
+      const pending = wrapper(new ScriptedBuilder("A", { throws: primaryError }), secondary, new FakeSpineJudge(), fakeTime([3000])).buildSpine(intent(), research, "short", ctx);
+      gate.resolve();
+      await expect(pending).rejects.toBe(primaryError);
       for (let i = 0; i < 5; i++) await tick();
       expect(seen).toEqual([]);
     } finally {
