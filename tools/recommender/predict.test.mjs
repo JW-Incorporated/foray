@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { rng } from "../segments/rank-breadth.mjs";
 import { serializeModel } from "./student.mjs";
-import { HIGH_FIT, checkBindings, main, perPersonaTable, predictCatalogue, serializePredicted, sha256Text, splitRows, teacherRetestFrom, trainStudent } from "./predict.mjs";
+import { HIGH_FIT, checkBindings, gateCeilings, main, perPersonaTable, predictCatalogue, serializePredicted, sha256Text, splitRows, teacherRetestFrom, trainStudent } from "./predict.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PERSONAS = ["ann", "ben"];
@@ -106,8 +106,50 @@ test("holdout rows are excluded from training", () => {
   planted.ratings.shows.s00.personas.ben = [1, 0, 1, 1, 1, 1, null, null, null, 0];
   planted.emb.s00 = [50, -50, 50, -50];
   const after = train(planted);
-  for (const field of ["means", "scales", "intercepts", "weights", "lambda"]) assert.deepEqual(after.model[field], base.model[field], field);
-  assert.equal(after.lambda.lambda, base.lambda.lambda);
+  for (const field of ["means", "scales", "intercepts", "weights", "lambdas", "knn", "calibration"]) assert.deepEqual(after.model[field], base.model[field], field);
+});
+
+/* Mutation (run): in trainStudent, `chooseStudentConfig(X, E, Y, { rows: trainRows, ...`
+   -> `chooseStudentConfig(X, E, Y, { rows: X.map((_, i) => i), ...` -- the CV
+   folds, the kNN candidates and the calibration see the holdout, and the planted
+   row moves the CV tables and the chosen configuration. */
+test("CV choices never read a holdout row", () => {
+  const w = world();
+  const base = train(w);
+  assert.equal(base.config.oofFit[0].length, 30, "out-of-fold predictions cover the 30 training rows only");
+  const planted = structuredClone(w);
+  for (const k of ["s00", "s01", "s02"]) {
+    planted.ratings.shows[k].personas.ann = [5, 1, 5, 5, 5, 5, null, null, null, 1];
+    planted.ratings.shows[k].personas.ben = [1, 0, 1, 1, 1, 1, null, null, null, 0];
+    planted.emb[k] = [-1, 1, -1, 1];
+  }
+  const after = train(planted);
+  assert.deepEqual(after.config.personas, base.config.personas, "every chosen hyperparameter");
+  assert.deepEqual(after.config.cv, base.config.cv, "every CV score");
+  assert.deepEqual(after.model.selection, base.model.selection);
+  assert.deepEqual(after.model.knn.train_keys, base.model.knn.train_keys);
+  assert.ok(base.model.knn.train_keys.every((k) => !["s00", "s01", "s02"].includes(k)));
+});
+
+/* Mutations (each run): (a) in trainStudent, `gate(predictedHoldout, teacherHoldout, { nodeOf, ceilings })`
+   -> `{ nodeOf }` -- the bars are the caps whatever the teacher's retest; (b) in
+   ceilingsFromRetest (student.mjs), `spearman: Object.fromEntries(rhos)` ->
+   `spearman: {}` -- the per-persona ceilings are lost. */
+test("the gate's ceilings are computed from the committed gold report", () => {
+  const gold = fs.readFileSync(path.join(ROOT, "docs/research/persona-ratings-gold-2026-10.md"), "utf8");
+  const ceilings = gateCeilings(teacherRetestFrom(gold));
+  assert.equal(ceilings.spearman["family-listener"], 0.703);
+  assert.equal(Object.keys(ceilings.spearman).length, 13);
+  assert.ok(ceilings.within_node_tau > 0.5 && ceilings.within_node_tau < 0.7, `tau ceiling ${ceilings.within_node_tau}`);
+
+  const w = world();
+  const plain = train(w).verdict.per_metric;
+  assert.equal(plain.spearman.bars.ann, 0.75);
+  assert.equal(plain.within_node_tau.threshold, 0.6);
+  const relative = train(w, { teacherRetest: { ann: 0.5, ben: 0.95 } }).verdict.per_metric;
+  assert.ok(Math.abs(relative.spearman.bars.ann - 0.45) < 1e-12);
+  assert.equal(relative.spearman.bars.ben, 0.75);
+  assert.ok(relative.within_node_tau.threshold < 0.6 && relative.within_node_tau.ceiling !== null);
 });
 
 /* Mutations (each run): (a) in predictCatalogue, delete the line
@@ -205,8 +247,14 @@ test("--check binds the model to the gold set and the predictions to the model",
   assert.match(err.text, /trained on gold set/);
   fs.writeFileSync(p("gold-set.json"), goldText);
 
+  // The ratings the kNN reads change under the model (RV-32; mutation run: in
+  // checkBindings, `if (ratingsText !== null && model?.knn)` -> `if (false)`).
+  const bound = checkBindings({ goldSetText: goldText, modelText: serializeModel({ ...model, trained_on: { ...model.trained_on, ratings_sha256: sha256Text("r") } }), ratingsText: "r" });
+  assert.deepEqual(bound, []);
+  assert.match(checkBindings({ goldSetText: goldText, modelText: serializeModel({ ...model, trained_on: { ...model.trained_on, ratings_sha256: sha256Text("r") } }), ratingsText: "r2" }).join(";"), /kNN reads ratings/);
+
   // The model changes under the predictions.
-  fs.writeFileSync(p("student-model.json"), serializeModel({ ...model, lambda: model.lambda + 1 }));
+  fs.writeFileSync(p("student-model.json"), serializeModel({ ...model, lambdas: model.lambdas.map((l) => l + 1) }));
   const err2 = sink();
   assert.equal(await main(["--check"], { env, stdout: sink(), stderr: err2 }), 1);
   assert.match(err2.text, /built from model/);
@@ -216,6 +264,7 @@ test("--check binds the model to the gold set and the predictions to the model",
     goldSetText: fs.readFileSync(path.join(ROOT, "data/recommender/gold-set.json"), "utf8"),
     modelText: fs.readFileSync(path.join(ROOT, "data/recommender/student-model.json"), "utf8"),
     predictedText: fs.existsSync(path.join(ROOT, "data/recommender/ratings-predicted.json")) ? fs.readFileSync(path.join(ROOT, "data/recommender/ratings-predicted.json"), "utf8") : null,
+    ratingsText: fs.readFileSync(path.join(ROOT, "data/recommender/ratings.json"), "utf8"),
   });
   assert.deepEqual(committed, []);
 });

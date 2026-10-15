@@ -1,5 +1,7 @@
 /* RV-25 (docs/roadmap/recommender-v1.md, D4 (d), D3, D8; #1380): the student
    trained on the gold set, gated on its holdout, and carried to the catalogue.
+   RV-32 (orchestrator decision of 2026-10-15, the D4 amendment): student v2
+   and the ceiling-relative gate.
 
      node tools/recommender/predict.mjs --train   [--embeddings <file>] [--grid 1,10,100]
      node tools/recommender/predict.mjs --predict [--embeddings <file>]
@@ -8,12 +10,16 @@
    --train. Features (RV-14 `featuresFor`) for every gold-set row that the
    teacher rated (data/recommender/ratings.json, pass means) and that has an
    RV-12 embedding. Rows whose `roles` hold `holdout` NEVER enter training:
-   not the standardiser, not the lambda folds, not the solve. Lambda is chosen
-   by 5-fold cross-validation on the training rows only (STUDENT_LAMBDA_GRID),
-   the model is fitted on all training rows, and RV-14's `gate` scores it on
-   the holdout with RV-11's statistics at RV-14's thresholds (never lowered
-   here). Writes data/recommender/student-model.json (gate verdict inside,
-   failing sub-scores dropped) and the generated block of
+   not the standardiser, not the CV folds, not the solve, not the kNN, not the
+   calibration. Every choice of student v2 (RV-32: per-persona lambda from
+   STUDENT_LAMBDA_GRID, kNN k and blend weight, isotonic calibration or none)
+   is made by 5-fold cross-validation on the training rows only (student.mjs
+   `chooseStudentConfig`); the model is fitted on all training rows; the gate
+   scores it on the holdout once. The gate's Spearman and within-node tau bars
+   are ceiling-relative (the D4 amendment): computed by `gateCeilings` from the
+   committed gold report's per-persona retest table, never hard-coded.
+   Writes data/recommender/student-model.json (gate verdict inside, failing
+   sub-scores dropped) and the generated block of
    docs/research/persona-ratings-student-2026-10.md.
 
    The report adds what the gold report asked for (its "Distribution" note):
@@ -38,7 +44,9 @@
    { <id>: [RATING_SLOTS] } } } } on a single line.
 
    --check. Exit 1 when the model is unsound, its `trained_on.gold_set_sha256`
-   is not the committed gold set's, the predicted file's `model_sha256` is not
+   is not the committed gold set's, its `trained_on.ratings_sha256` (the kNN
+   reads its neighbours' targets from ratings.json) is not the committed
+   ratings file's, the predicted file's `model_sha256` is not
    the model file's, or a predicted file exists for a model whose gate failed.
    Hashes are sha256 of the file text with CRLF folded to LF, so a Windows
    checkout hashes like CI.
@@ -56,7 +64,7 @@ import { spearman, withinNodeTau } from "./agreement.mjs";
 import { embeddingsPath, keysFor } from "./embed.mjs";
 import { buildEvidence, loadSources, resolveShow } from "./evidence.mjs";
 import { RATING_SLOTS, capConfidence } from "./schema.mjs";
-import { TARGETS, applyGate, buildModel, checkModel, chooseLambda, featureNames, featuresFor, finalise, fitRidge, gate, loadModel, predict, predictTable, serializeModel, targetRow } from "./student.mjs";
+import { BLEND_WEIGHTS, CEILING_FACTOR, GATE_THRESHOLDS, KNN_KS, TARGETS, applyGate, ceilingsFromRetest, checkModel, chooseStudentConfig, featureNames, featuresFor, finalise, fitStudent, gate, knnIndex, knnIndexFor, loadModel, predict, predictTable, serializeModel, targetRow } from "./student.mjs";
 
 const REPO_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -166,35 +174,69 @@ export function buildFeatures(keys, { packOf, showOf, embeddingOf, taxonomyRoots
 /* ----------------------------------------------------------------- train */
 
 /**
- * Trains the student on the gold set minus its holdout and gates it on the
- * holdout. Returns `{ model (gate applied), verdict, lambda, split, features,
+ * The gate's ceilings (RV-32, the D4 amendment), computed from committed data:
+ * the teacher's per-persona joint-vs-joint retest Spearman (`teacherRetest`,
+ * read by `teacherRetestFrom` from the committed gold report) and the
+ * within-node tau ceiling derived from it (student.mjs `ceilingsFromRetest`).
+ * ratings.json keeps only pass means, so no per-pass within-node tau can be
+ * measured from committed data; the report says so.
+ */
+export function gateCeilings(teacherRetest) {
+  return ceilingsFromRetest(teacherRetest);
+}
+
+/**
+ * Trains student v2 on the gold set minus its holdout and gates it on the
+ * holdout. Every choice is made by `folds`-fold CV on the training rows only;
+ * the holdout is predicted once, after the choices are fixed. Returns
+ * `{ model (gate applied), verdict, config, ceilings, split, features,
  * predictedHoldout, teacherHoldout, nodeOf }`. Pure: the caller supplies every
  * lookup.
  */
-export function trainStudent({ goldSet, ratings, personaIds, packOf, showOf, embeddingOf, taxonomyRoots, embedder = null, goldSetSha256 = null, grid = STUDENT_LAMBDA_GRID, folds = 5 }) {
+export function trainStudent({ goldSet, ratings, personaIds, packOf, showOf, embeddingOf, taxonomyRoots, embedder = null, goldSetSha256 = null, ratingsSha256 = null, grid = STUDENT_LAMBDA_GRID, ks = KNN_KS, weights = BLEND_WEIGHTS, folds = 5, teacherRetest = {} }) {
   const split = splitRows(goldSet, ratings);
   const train = buildFeatures(split.train, { packOf, showOf, embeddingOf, taxonomyRoots });
   const hold = buildFeatures(split.holdout, { packOf, showOf, embeddingOf, taxonomyRoots });
   if (!train.keys.length) throw new Error("trainStudent: no training rows with an embedding");
+  const keys = [...train.keys, ...hold.keys];
   const X = [...train.X, ...hold.X];
-  const Y = [...train.keys, ...hold.keys].map((k) => targetRow(ratings.shows[k].personas, personaIds));
+  const Y = keys.map((k) => targetRow(ratings.shows[k].personas, personaIds));
   const trainRows = train.keys.map((_, i) => i);
-  const lambda = chooseLambda(X, Y, { folds: Math.min(folds, trainRows.length), grid, rows: trainRows });
-  const fit = fitRidge(X, Y, { lambda: lambda.lambda, rows: trainRows });
-  const names = featureNames(X[0].length - featureNames(0, taxonomyRoots).length, taxonomyRoots);
-  let model = buildModel(fit, {
+  const dim = X[0].length - featureNames(0, taxonomyRoots).length;
+  const E = X.map((x) => x.subarray(0, dim));
+  const keyOf = (r) => keys[r];
+  const nFolds = Math.min(folds, trainRows.length);
+  // Every choice below sees `trainRows` only.
+  const config = chooseStudentConfig(X, E, Y, { rows: trainRows, personaCount: personaIds.length, folds: nFolds, grid, ks, weights, keyOf });
+  let model = fitStudent(X, Y, {
+    rows: trainRows,
+    config,
+    oofFit: config.oofFit,
     personaIds,
-    featureNames: names,
+    featureNames: featureNames(dim, taxonomyRoots),
     embedder,
-    trainedOn: { n: train.keys.length, holdout_n: hold.keys.length, gold_set_sha256: goldSetSha256, ratings_built_at: ratings.built_at ?? null },
+    keyOf,
+    dim,
+    trainedOn: { n: train.keys.length, holdout_n: hold.keys.length, gold_set_sha256: goldSetSha256, ratings_sha256: ratingsSha256, ratings_built_at: ratings.built_at ?? null },
   });
+  model.selection = {
+    folds: nFolds,
+    criterion: "out-of-fold MSE on each persona's fit, training rows only",
+    lambda_grid: [...grid],
+    knn_ks: [...ks],
+    blend_weights: [...weights],
+    personas: Object.fromEntries(personaIds.map((pid, p) => [pid, config.personas[p]])),
+  };
+  // The holdout's one look: predicted with the kNN over the training rows.
+  const knn = knnIndex(trainRows.map(keyOf), trainRows.map((r) => E[r]), trainRows.map((r) => Y[r]));
   const featuresByKey = Object.fromEntries(hold.keys.map((k, i) => [k, hold.X[i]]));
-  const predictedHoldout = predictTable(model, featuresByKey);
+  const predictedHoldout = predictTable(model, featuresByKey, { knn });
   const teacherHoldout = { shows: Object.fromEntries(hold.keys.map((k) => [k, ratings.shows[k]])) };
   const nodeOf = nodeMapOf(goldSet);
-  const verdict = hold.keys.length ? gate(predictedHoldout, teacherHoldout, { nodeOf }) : { pass: false, per_metric: {}, failing_subscores: [] };
+  const ceilings = gateCeilings(teacherRetest);
+  const verdict = hold.keys.length ? gate(predictedHoldout, teacherHoldout, { nodeOf, ceilings }) : { pass: false, per_metric: {}, failing_subscores: [] };
   model = applyGate(model, verdict);
-  return { model, verdict, lambda, split, features: { train, holdout: hold }, predictedHoldout, teacherHoldout, nodeOf };
+  return { model, verdict, config, ceilings, split, features: { train, holdout: hold }, predictedHoldout, teacherHoldout, nodeOf };
 }
 
 /* ---------------------------------------------------------------- report */
@@ -242,7 +284,7 @@ const mae = (t, s) => (t.length ? mean(t.map((v, i) => Math.abs(v - s[i]))) : nu
  * over the shows the teacher rated HIGH_FIT or more, the persona's own
  * within-node tau, and the teacher's retest ceiling.
  */
-export function perPersonaTable({ teacherHoldout, predictedHoldout, personaIds, nodeOf, teacherRetest = {} }) {
+export function perPersonaTable({ teacherHoldout, predictedHoldout, personaIds, nodeOf, teacherRetest = {}, bars = {} }) {
   const keys = Object.keys(teacherHoldout.shows).sort();
   return personaIds.map((pid) => {
     const all = fitPairs(teacherHoldout, predictedHoldout, pid, keys);
@@ -261,6 +303,7 @@ export function perPersonaTable({ teacherHoldout, predictedHoldout, personaIds, 
       high_student_mean: mean(high.s),
       tau: tau.mean,
       retest: isNum(teacherRetest[pid]) ? teacherRetest[pid] : null,
+      bar: isNum(bars[pid]) ? bars[pid] : null,
     };
   });
 }
@@ -270,37 +313,69 @@ const f2 = (v) => (isNum(v) ? v.toFixed(2) : "n/a");
 const ok = (b) => (b ? "pass" : "**fail**");
 
 /** The generated report block (between REPORT_BEGIN and REPORT_END). */
-export function renderReport({ verdict, lambda, split, features, model, table }) {
+export function renderReport({ verdict, config, ceilings, split, features, model, table }) {
   const m = verdict.per_metric;
+  const pids = model.persona_ids;
   const L = [];
   L.push(REPORT_BEGIN);
-  L.push(`Inputs: ${split.train.length + split.holdout.length} rated gold shows (${split.train.length} training, ${split.holdout.length} holdout); ${features.train.keys.length} training and ${features.holdout.keys.length} holdout rows with an embedding; ${model.feature_names.length} features; ${model.persona_ids.length} personas; ratings built ${model.trained_on?.ratings_built_at ?? "n/a"}.`);
+  L.push(`Inputs: ${split.train.length + split.holdout.length} rated gold shows (${split.train.length} training, ${split.holdout.length} holdout); ${features.train.keys.length} training and ${features.holdout.keys.length} holdout rows with an embedding; ${model.feature_names.length} features; ${pids.length} personas; ratings built ${model.trained_on?.ratings_built_at ?? "n/a"}.`);
   L.push("");
-  L.push(`**Gate: ${verdict.pass ? "PASS" : "FAIL"}.** Thresholds are RV-14's \`GATE_THRESHOLDS\`, unchanged.`);
+  L.push(`Every choice (per-persona lambda, kNN k and blend weight, calibration) was made by ${model.selection?.folds ?? 5}-fold CV on the ${features.train.keys.length} training rows only. The holdout was predicted once, after the choices were fixed.`);
   L.push("");
-  L.push("| metric | value | threshold | result |");
+  L.push(`**Gate: ${verdict.pass ? "PASS" : "FAIL"}.** Bars per the D4 amendment (RV-32): per-persona Spearman bar = min(${GATE_THRESHOLDS.spearman}, ${CEILING_FACTOR} x the persona's teacher retest Spearman); within-node tau bar = min(${GATE_THRESHOLDS.withinNodeTau}, ${CEILING_FACTOR} x the tau ceiling); alpha on fit and the sub-score rule unchanged.`);
+  L.push("");
+  L.push("| metric | value | bar | result |");
   L.push("|---|---|---|---|");
   L.push(`| alpha (interval) on fit | ${f3(m.fit_alpha.value)} | ${m.fit_alpha.threshold} | ${ok(m.fit_alpha.pass)} |`);
-  L.push(`| min per-persona Spearman on fit | ${f3(m.spearman.min)} | ${m.spearman.threshold} | ${ok(m.spearman.pass)} |`);
-  L.push(`| mean within-node Kendall tau on fit (${m.within_node_tau.groups} groups) | ${f3(m.within_node_tau.value)} | ${m.within_node_tau.threshold} | ${ok(m.within_node_tau.pass)} |`);
+  L.push(`| per-persona Spearman on fit (personas at or above their own bar) | ${pids.length - (m.spearman.failing?.length ?? 0)} of ${pids.length} | per persona, below | ${ok(m.spearman.pass)} |`);
+  L.push(`| mean within-node Kendall tau on fit (${m.within_node_tau.groups} groups) | ${f3(m.within_node_tau.value)} | ${f3(m.within_node_tau.threshold)} | ${ok(m.within_node_tau.pass)} |`);
   for (const [sub, v] of Object.entries(m.subscore_alpha)) L.push(`| alpha on ${sub} (sub-score) | ${f3(v.alpha)} | ${v.threshold} | ${v.pass ? "kept" : "**dropped**"} |`);
   for (const [f, v] of Object.entries(m.reported)) L.push(`| alpha on ${f} (reported, not gated) | ${f3(v.alpha)} | - | - |`);
   L.push("");
   L.push(`Failing sub-scores (dropped from every prediction): ${verdict.failing_subscores.length ? verdict.failing_subscores.join(", ") : "none"}.`);
+  L.push(`Personas under their own Spearman bar: ${m.spearman.failing?.length ? m.spearman.failing.join(", ") : "none"}.`);
   L.push("");
-  L.push(`**Per persona on the holdout** (fit; "3+" = the shows the teacher rated ${HIGH_FIT} or more; ceiling = the teacher's own joint-vs-joint retest Spearman, the gold report's mean retest column)`);
+  L.push(`Ceilings, computed by \`gateCeilings\` from the committed gold report: ${ceilings?.method ?? "n/a"}. Within-node tau ceiling ${f3(ceilings?.within_node_tau)}, so its bar is ${f3(m.within_node_tau.threshold)}.`);
   L.push("");
-  L.push("| persona | n | Spearman | MAE | 3+ n | 3+ Spearman | 3+ MAE | 3+ student mean | within-node tau | ceiling (teacher retest) |");
-  L.push("|---|---|---|---|---|---|---|---|---|---|");
-  for (const r of table) L.push(`| ${r.persona} | ${r.n} | ${f3(r.spearman)}${isNum(r.spearman) && r.spearman < m.spearman.threshold ? " **<**" : ""} | ${f2(r.mae)} | ${r.high_n} | ${f3(r.high_spearman)} | ${f2(r.high_mae)} | ${f2(r.high_student_mean)} | ${f3(r.tau)} | ${f3(r.retest)} |`);
+  L.push(`**Per persona on the holdout** (fit; "3+" = the shows the teacher rated ${HIGH_FIT} or more; ceiling = the teacher's own joint-vs-joint retest Spearman, the gold report's mean retest column; bar = min(${GATE_THRESHOLDS.spearman}, ${CEILING_FACTOR} x ceiling))`);
   L.push("");
-  L.push(`**Lambda** (${lambda.scores.length}-point grid, 5-fold CV on the training rows only; chosen ${lambda.lambda})`);
+  L.push("| persona | n | Spearman | bar | MAE | 3+ n | 3+ Spearman | 3+ MAE | 3+ student mean | within-node tau | ceiling (teacher retest) |");
+  L.push("|---|---|---|---|---|---|---|---|---|---|---|");
+  for (const r of table) L.push(`| ${r.persona} | ${r.n} | ${f3(r.spearman)}${isNum(r.spearman) && isNum(r.bar) && r.spearman < r.bar ? " **<**" : ""} | ${f3(r.bar)} | ${f2(r.mae)} | ${r.high_n} | ${f3(r.high_spearman)} | ${f2(r.high_mae)} | ${f2(r.high_student_mean)} | ${f3(r.tau)} | ${f3(r.retest)} |`);
   L.push("");
-  L.push("| lambda | CV MSE (all 91 targets) |");
-  L.push("|---|---|");
-  for (const s of lambda.scores) L.push(`| ${s.lambda}${s.lambda === lambda.lambda ? " (chosen)" : ""} | ${f3(s.mse)} |`);
+  L.push("**Chosen configuration** (per persona, by CV on the training rows)");
+  L.push("");
+  L.push("| persona | lambda | kNN k | blend weight | calibration | CV MSE on fit, ridge alone | CV MSE on fit, chosen |");
+  L.push("|---|---|---|---|---|---|---|");
+  pids.forEach((pid, p) => {
+    const c = config.personas[p];
+    const ridgeAlone = config.cv.lambda[p].find((s) => s.lambda === c.lambda)?.mse;
+    const blend = config.cv.blend[p].find((s) => s.weight === c.weight && s.k === c.k)?.mse;
+    const cal = config.cv.calibration[p].find((s) => s.calibration === c.calibration)?.mse;
+    L.push(`| ${pid} | ${c.lambda} | ${c.k ?? "-"} | ${c.weight} | ${c.calibration} | ${f3(ridgeAlone)} | ${f3(c.calibration === "none" ? blend : cal)} |`);
+  });
+  L.push("");
+  const grid = config.cv.lambda[0].map((s) => s.lambda);
+  L.push(`**CV table, (a) lambda** (out-of-fold MSE on fit, ridge alone; the chosen cell in bold)`);
+  L.push("");
+  L.push(`| persona | ${grid.join(" | ")} |`);
+  L.push(`|---|${grid.map(() => "---").join("|")}|`);
+  pids.forEach((pid, p) => L.push(`| ${pid} | ${config.cv.lambda[p].map((s) => (s.lambda === config.personas[p].lambda ? `**${f3(s.mse)}**` : f3(s.mse))).join(" | ")} |`));
+  L.push("");
+  const cands = config.cv.blend[0].map((s) => (s.weight === 0 ? "w 0" : `w ${s.weight}, k ${s.k}`));
+  L.push(`**CV table, (b) kNN blend** (out-of-fold MSE on fit at the persona's lambda; w = the kNN's weight, k = neighbours; the chosen cell in bold)`);
+  L.push("");
+  L.push(`| persona | ${cands.join(" | ")} |`);
+  L.push(`|---|${cands.map(() => "---").join("|")}|`);
+  pids.forEach((pid, p) => L.push(`| ${pid} | ${config.cv.blend[p].map((s) => (s.weight === config.personas[p].weight && s.k === config.personas[p].k ? `**${f3(s.mse)}**` : f3(s.mse))).join(" | ")} |`));
+  L.push("");
+  L.push(`**CV table, (c) calibration** (MSE on fit of the chosen blend's out-of-fold predictions, a second ${model.selection?.folds ?? 5}-fold over them; the chosen cell in bold)`);
+  L.push("");
+  L.push("| persona | none | isotonic |");
+  L.push("|---|---|---|");
+  pids.forEach((pid, p) => L.push(`| ${pid} | ${config.cv.calibration[p].map((s) => (s.calibration === config.personas[p].calibration ? `**${f3(s.mse)}**` : f3(s.mse))).join(" | ")} |`));
   L.push(REPORT_END);
-  return L.join("\n").replace("all 91 targets", `all ${model.persona_ids.length * TARGETS.length} targets`);
+  return L.join("\n");
 }
 
 /** Replaces the generated block in `text` (or appends it). */
@@ -340,6 +415,7 @@ export function predictCatalogue(model, { keys, ratings, packOf, showOf, embeddi
   if (model?.gate?.pass !== true) throw new Error("refused: the student's gate did not pass (student-model.json gate.pass is not true); nothing is predicted");
   const taxonomyRoots = modelRoots(model);
   const rated = ratings?.shows ?? {};
+  const knn = knnIndexFor(model, { embeddingOf, targetsOf: (k) => targetRow(rated[k]?.personas, model.persona_ids) });
   const counts = { candidates: keys.length, teacher_rated: 0, none_tier: 0, no_embedding: 0, predicted: 0 };
   const shows = {};
   for (const key of [...keys].sort()) {
@@ -357,7 +433,7 @@ export function predictCatalogue(model, { keys, ratings, packOf, showOf, embeddi
       counts.no_embedding++;
       continue;
     }
-    const matrix = predict(model, featuresFor(showOf(key), pack, embedding, { taxonomyRoots }));
+    const matrix = predict(model, featuresFor(showOf(key), pack, embedding, { taxonomyRoots }), { knn, key });
     const personas = {};
     model.persona_ids.forEach((pid, p) => {
       personas[pid] = predictedSlots(matrix[p], pack.tier);
@@ -374,7 +450,7 @@ export const serializePredicted = (doc) => `${JSON.stringify(doc)}\n`;
 
 /** Problems binding the model to the gold set and the predictions to the
     model (`[]` when sound). `predictedText` null = no predicted file. */
-export function checkBindings({ goldSetText, modelText, predictedText = null }) {
+export function checkBindings({ goldSetText, modelText, predictedText = null, ratingsText = null }) {
   const problems = [];
   let model;
   try {
@@ -385,6 +461,10 @@ export function checkBindings({ goldSetText, modelText, predictedText = null }) 
   problems.push(...checkModel(model));
   const goldSha = sha256Text(goldSetText);
   if (model?.trained_on?.gold_set_sha256 !== goldSha) problems.push(`student-model.json was trained on gold set ${model?.trained_on?.gold_set_sha256 ?? "(none)"}, the committed gold set is ${goldSha}; retrain with --train`);
+  if (ratingsText !== null && model?.knn) {
+    const ratingsSha = sha256Text(ratingsText);
+    if (model?.trained_on?.ratings_sha256 !== ratingsSha) problems.push(`student-model.json's kNN reads ratings ${model?.trained_on?.ratings_sha256 ?? "(none)"}, the committed ratings.json is ${ratingsSha}; retrain with --train`);
+  }
   if (predictedText !== null) {
     let predicted;
     try {
@@ -476,7 +556,7 @@ export async function main(argv = process.argv.slice(2), { root = REPO_ROOT, env
   try {
     if (args.mode === "check") {
       const problems = existsSync(paths.model)
-        ? checkBindings({ goldSetText: readFileSync(paths.goldSet, "utf8"), modelText: readFileSync(paths.model, "utf8"), predictedText: existsSync(paths.predicted) ? readFileSync(paths.predicted, "utf8") : null })
+        ? checkBindings({ goldSetText: readFileSync(paths.goldSet, "utf8"), modelText: readFileSync(paths.model, "utf8"), predictedText: existsSync(paths.predicted) ? readFileSync(paths.predicted, "utf8") : null, ratingsText: existsSync(paths.ratings) ? readFileSync(paths.ratings, "utf8") : null })
         : [`no student model at ${paths.model}; run --train`];
       for (const p of problems) stderr.write(`${p}\n`);
       stdout.write(problems.length ? `predict --check: ${problems.length} problem(s)\n` : `predict --check: ok${existsSync(paths.predicted) ? "" : " (no ratings-predicted.json)"}\n`);
@@ -505,7 +585,9 @@ export async function main(argv = process.argv.slice(2), { root = REPO_ROOT, env
     const inp = inputs ?? loadInputs({ root, env, embeddingsFile: args.embeddings });
     const goldSetText = readFileSync(paths.goldSet, "utf8");
     const goldSet = JSON.parse(goldSetText);
-    const ratings = readJson(paths.ratings);
+    const ratingsText = readFileSync(paths.ratings, "utf8");
+    const ratings = JSON.parse(ratingsText);
+    const teacherRetest = existsSync(paths.goldReport) ? teacherRetestFrom(readFileSync(paths.goldReport, "utf8")) : {};
     const res = trainStudent({
       goldSet,
       ratings,
@@ -516,15 +598,16 @@ export async function main(argv = process.argv.slice(2), { root = REPO_ROOT, env
       taxonomyRoots: inp.taxonomyRoots,
       embedder: inp.embedder,
       goldSetSha256: sha256Text(goldSetText),
+      ratingsSha256: sha256Text(ratingsText),
       grid: args.grid ?? STUDENT_LAMBDA_GRID,
+      teacherRetest,
     });
     writeAtomic(paths.model, serializeModel(res.model));
-    const teacherRetest = existsSync(paths.goldReport) ? teacherRetestFrom(readFileSync(paths.goldReport, "utf8")) : {};
-    const table = perPersonaTable({ teacherHoldout: res.teacherHoldout, predictedHoldout: res.predictedHoldout, personaIds: inp.personaIds, nodeOf: res.nodeOf, teacherRetest });
-    const block = renderReport({ verdict: res.verdict, lambda: res.lambda, split: res.split, features: res.features, model: res.model, table });
+    const table = perPersonaTable({ teacherHoldout: res.teacherHoldout, predictedHoldout: res.predictedHoldout, personaIds: inp.personaIds, nodeOf: res.nodeOf, teacherRetest, bars: res.verdict.per_metric.spearman?.bars ?? {} });
+    const block = renderReport({ verdict: res.verdict, config: res.config, ceilings: res.ceilings, split: res.split, features: res.features, model: res.model, table });
     const existing = existsSync(paths.report) ? readFileSync(paths.report, "utf8") : "# Persona-rating student (RV-25), 2026-10\n";
     writeAtomic(paths.report, spliceReport(existing, block));
-    stdout.write(`${JSON.stringify({ pass: res.verdict.pass, lambda: res.lambda.lambda, train: res.features.train.keys.length, holdout: res.features.holdout.keys.length, failing_subscores: res.verdict.failing_subscores, model: paths.model, report: paths.report })}\n`);
+    stdout.write(`${JSON.stringify({ pass: res.verdict.pass, failing_personas: res.verdict.per_metric.spearman?.failing ?? [], train: res.features.train.keys.length, holdout: res.features.holdout.keys.length, failing_subscores: res.verdict.failing_subscores, model: paths.model, report: paths.report })}\n`);
     return 0;
   } catch (e) {
     stderr.write(`${e.message}\n`);
