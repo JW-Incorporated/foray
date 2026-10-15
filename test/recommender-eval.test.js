@@ -12,13 +12,17 @@
  *  3. The committed report's generated block is what the eval produces from
  *     the committed inputs (a PR that changes data/recommender/ratings.json
  *     reruns node tools/recommender/eval.mjs).
- *
- * NO FLOORS on the eval numbers (the card): they are a first measurement on the
- * 299-show pilot; raise floors in the PR that earns them, as the similar-shows
- * note says.
+ *  4. Two FLOORS on the committed data (RV-31, archetype map v1.1; the RV-21
+ *     card had none, and the gold-set re-run deferred them until the map was
+ *     settled): the "all mapped" archetype precision is at least the
+ *     node-modal baseline's under the same map (the prior beats the free
+ *     baseline; 0.629 against 0.561 on the RV-19 gold set), and the reachable
+ *     persona recall@6 is at least 0.30 (0.339 measured, less about one
+ *     standard error of the 60-seed mean).
  *
  * Every test names the mutation that kills it (CLAUDE.md: a green test is not
- * evidence until you have broken it). Each was run red on 2026-10-14.
+ * evidence until you have broken it). Each was run red on 2026-10-14 (the
+ * floors on 2026-10-15).
  *
  * Harness: no app boot, no network. The tool module is ESM, imported
  * dynamically. */
@@ -244,6 +248,36 @@ test("skew shares equal hand-computed base rates on a fixture", async () => {
     [...attrs].map(([k, a]) => [k, a.explicit, a.curated]),
     [["c1", true, true], ["c2", undefined, true], ["13", undefined, false]]
   );
+});
+
+/* One run of the eval over the committed inputs, shared by the two floors. */
+let committed = null;
+const committedEval = async () => {
+  if (!committed) committed = (await load()).runEval(ROOT);
+  return committed;
+};
+
+test("floor: archetype precision (all mapped) is at least the node-modal baseline", async () => {
+  /* The prior must beat the free baseline: the root's leave-one-out modal top
+     persona, scored against the same map. Gold set, map v1.1: 129 of 205
+     (0.629) against 0.561. Map v1 (the RV-21 card's) gave 0.439 against 0.473.
+     MUTATION (run): revert ARCHETYPE_PERSONAS to map v1 (drop
+     commute-explainer from `deep-learn` and history-deep-diver from
+     `narrative`) -> red (0.439 < 0.473). */
+  const a = (await committedEval()).archetype.all;
+  assert.ok(a.n >= 200, `only ${a.n} curated shows scored`);
+  assert.ok(a.precision >= a.nodeModal, `archetype precision ${a.precision.toFixed(3)} is below the node-modal baseline ${a.nodeModal.toFixed(3)}`);
+});
+
+test("floor: reachable persona recall@6 is at least 0.30", async () => {
+  /* The persona-vector ranking over the rated curated pool, scored on the
+     similar-shows eval set's rated seeds with judged lists cut to rated shows.
+     Gold set: 0.339 over 60 seeds (standard error about 0.042).
+     MUTATION (run): in personaNeighbours sort by ascending cosine
+     (`a[1] - b[1]`, the farthest shows first) -> red (recall 0.000). */
+  const s = (await committedEval()).similar.personaReachable;
+  assert.ok(s.seeds >= 50, `only ${s.seeds} reachable seeds`);
+  assert.ok(s.recall >= 0.3, `reachable persona recall@6 ${s.recall.toFixed(3)} is below the 0.30 floor`);
 });
 
 test("the committed report block is current", async () => {

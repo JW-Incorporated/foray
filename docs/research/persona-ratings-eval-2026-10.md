@@ -1,40 +1,52 @@
-# Persona-rating prior: offline eval (RV-21), 2026-10-14, re-run on the RV-19 gold set 2026-10-15
+# Persona-rating prior: offline eval (RV-21), 2026-10-14, re-run on the RV-19 gold set and archetype map v1.1 (RV-31) 2026-10-15
 
-Card RV-21 of [`docs/roadmap/recommender-v1.md`](../roadmap/recommender-v1.md), issue #1380. It answers one question before any client change: does the persona prior agree with the only ground truth on `main`, and how skewed is it, measured against baselines that cost nothing? The inputs are the committed RV-19 gold ratings: 2,978 shows rated by 13 personas, 220 of them curated, as reported in [`persona-ratings-gold-2026-10.md`](persona-ratings-gold-2026-10.md). The first version of this note read the 299-show pilot (#1401, [`persona-ratings-pilot-2026-10.md`](persona-ratings-pilot-2026-10.md)); where the gold numbers change a pilot reading, the text below says so. The block between the `GENERATED` markers is written by `node tools/recommender/eval.mjs`. Everything outside it is written by hand.
+Card RV-21 of [`docs/roadmap/recommender-v1.md`](../roadmap/recommender-v1.md), issue #1380. It answers one question before any client change: does the persona prior agree with the only ground truth on `main`, and how skewed is it, measured against baselines that cost nothing? The inputs are the committed RV-19 gold ratings: 2,978 shows rated by 13 personas, 220 of them curated, as reported in [`persona-ratings-gold-2026-10.md`](persona-ratings-gold-2026-10.md). The first version of this note read the 299-show pilot (#1401, [`persona-ratings-pilot-2026-10.md`](persona-ratings-pilot-2026-10.md)); where the gold numbers change a pilot reading, the text below says so. RV-31 then changed the archetype map (v1.1, below) and added two floors; section 1 keeps the map v1 numbers beside the v1.1 ones. The block between the `GENERATED` markers is written by `node tools/recommender/eval.mjs`. Everything outside it is written by hand.
 
-**Nothing here is a gate.** The card puts no floors on these numbers. They were first measured on the 299-show pilot and are re-measured here on the gold set. Floors are deferred again, for the reason in "What follows" item 1. `test/recommender-eval.test.js` checks the scorer's arithmetic and that the block below is current. Any PR that changes `data/recommender/ratings.json` (each RV-19 merge does) must rerun the script.
+**Two numbers are now gated (RV-31); the rest is reported.** RV-21 put no floors on these numbers, and the gold-set re-run deferred them until the archetype map was settled ("What follows" item 1). With map v1.1, `test/recommender-eval.test.js` holds two floors on the committed data. The "all mapped" archetype precision must be at least the node-modal baseline's under the same map: the prior must beat the free baseline. The reachable persona recall@6 must be at least 0.30 (0.339 measured, less noise). The suite also checks the scorer's arithmetic and that the block below is current. Any PR that changes `data/recommender/ratings.json` (each RV-19 merge does) must rerun the script.
 
 ## What was built
 
 | File | What it is |
 |---|---|
 | `tools/recommender/eval.mjs` | The eval. Pure scorers (archetype agreement and its baselines, persona-vector neighbours, chart Spearman, top-50 share profiles), a loader that reads only committed files, and a CLI with `--check` and `--json`, following the `tools/similar-eval/run.mjs` pattern. It calls no model and fetches nothing. |
-| `test/recommender-eval.test.js` | 7 tests: 6 on hand-worked fixtures and the committed catalogue, plus the block-is-current check. Each test names its mutation, and every mutation was run red. |
+| `test/recommender-eval.test.js` | 9 tests: 6 on hand-worked fixtures and the committed catalogue, the block-is-current check, and the two floors on the committed data (RV-31). Each test names its mutation, and every mutation was run red. |
 | this note | The reading below and the generated block. |
 
 **Choices the card left open.**
 - `documentary` maps to narrative-binger and true-crime-careful. All 12 documentary shows in `data/catalog.json` are produced true-crime or paranormal story series.
 - A show with several `archetype_fit` values is a hit if its top persona falls in the union of their sets.
+- **Map v1.1 (RV-31).** `deep-learn` adds commute-explainer, as decided in RV-29 (`docs/curation/persona-profiles-v1.md`, "v1.1 pruning", PR #1416). `narrative` adds history-deep-diver, because the numbers met the rule RV-31 set for it: the row must rise above its own node-modal baseline under the same map (section 1). `comfort`, `documentary` and `stretch` are unchanged.
 - The node-overlap baseline appears twice. "Node modal" is the leave-one-out modal top persona of the show's root, taken over all rated shows. "Node affinity" is the persona with the highest `taxonomy_affinity` for that root, which uses no rating at all.
 - The persona similarity uses `fit - 1`, so a show that every persona rates 1 has no direction and no neighbours.
 - Explicit has two sources. The persona and rated-set columns use the rater's `flags.explicit`. The catalogue base is Apple's `explicit` in `data/catalog.json`, over the 212 curated shows where it is a boolean (17 have `null`), which is the same curated-only denominator the DAI share uses. Breadth rows are left out of the explicit base: `catalog-breadth.json` has `explicit: false` on all 26,340 rows, because the chart harvest does not carry the flag, so counting them would read 0% by construction.
 
 ## Reading the numbers
 
-### 1. Archetype agreement: the prior beats the affinity baseline but not the node-modal one
+### 1. Archetype agreement: with map v1.1 the prior beats every baseline
 
-- **Overall.** The top persona lands in the mapped set for **90 of 205 curated shows (0.439)**. The baselines are 0.239 (random), **0.473 (node modal)** and 0.380 (node affinity).
-  - **This reverses the pilot's reading.** On 84 pilot shows the prior led every baseline (0.429 against a node modal of 0.286), and that note called the lead provisional. At n = 205 the node-modal baseline overtakes it, because with 2,978 rated shows the modal top persona of each root is well estimated.
-  - One binomial standard error is about 0.035. The prior and node modal are within one standard error of each other, and the prior leads node affinity by about 1.7 standard errors.
-- **What that means.** The top persona of a show mostly restates its root. That is expected, because the taxonomy and the personas both describe topic first. The persona vector's value has to come from what the root cannot carry: format, depth and tone within a topic. A single top-persona hit is the wrong instrument to see that.
-- **Restricting to confident tops changes little.** Counting only shows whose top persona has fit 4 or more (173 shows) gives 0.462, against a node modal of 0.480 (one-off count, not in the block).
+- **Overall, map v1.1.** The top persona lands in the mapped set for **129 of 205 curated shows (0.629)**. The baselines under the same map are 0.302 (random), **0.561 (node modal)** and 0.429 (node affinity).
+  - One binomial standard error is about 0.034. The prior leads node modal by about 2 standard errors and node affinity by about 6.
+  - That lead is the floor's margin: the test needs precision >= node modal, and the gap is 14 shows of 205.
+- **Map v1, for the record.** The card's map gave 90 of 205 (0.439), against 0.239 random, **0.473 node modal** and 0.380 node affinity. The prior was behind node modal, within one standard error.
+  - That reversed the pilot's reading. On 84 pilot shows the prior led every baseline (0.429 against a node modal of 0.286), and that note called the lead provisional. At n = 205 the node-modal baseline overtook it, because with 2,978 rated shows the modal top persona of each root is well estimated.
+- **Each step of v1.1, measured (one-off counts, not in the block).**
+  - Commute-explainer into `deep-learn` alone gives 122 of 205 (0.595), against a node modal of 0.532.
+  - Adding history-deep-diver to `narrative` as well gives the block's 129 (0.629), against 0.561.
+  - The node-modal baseline rises with every persona the map adds, because it is scored against the same sets. The floor therefore compares like with like, and a map cannot pass it just by adding personas.
+- **What that means.** The top persona of a show still mostly restates its root. That is expected, because the taxonomy and the personas both describe topic first. The persona vector's value has to come from what the root cannot carry: format, depth and tone within a topic. A single top-persona hit is the wrong instrument to see that, and the lead over node modal is modest.
+- **Restricting to confident tops.** Counting only shows whose top persona has fit 4 or more (173 shows) gives 0.653 under v1.1, against a node modal of 0.561. Under v1 it was 0.462 against 0.480 (one-off counts, not in the block).
 - **`comfort` (0.564)** agrees well, but node modal reaches 0.764 there: comedy and talk roots map straight to banter-regular and comfort-companion.
 - **`documentary`** scores 9 of 12.
-- **`deep-learn` (0.336) is a map gap, not a rating failure.**
-  - Of 128 deep-learn shows, **commute-explainer is the top persona for 32**, more than any mapped persona. Next are mechanism-hunter (24) and maker-tinkerer (20).
-  - Adding commute-explainer to the deep-learn set lifts it to 75 of 128 (0.586), and the overall score to 122 of 205 (0.595), above every baseline (one-off count, not in the block).
+- **`deep-learn` (0.586, was 0.336) was a map gap, not a rating failure.**
+  - Of 128 deep-learn shows, **commute-explainer is the top persona for 32**, more than any v1 member. Next are mechanism-hunter (24) and maker-tinkerer (20).
+  - With commute-explainer in the set the row is 75 of 128, against a node modal of 0.414.
   - This is the same finding as the pilot (15 of 56), now at more than twice the n.
-- **`narrative` (0.117)** is still at chance. Commute-explainer (15) and history-deep-diver (14) are the top persona on these story-told nonfiction shows, and narrative-binger on only 7. The catalogue's "narrative" and the narrative-binger persona split the genre differently, as the pilot found.
+- **`narrative` (0.350, was 0.117) clears its node-modal baseline, narrowly.**
+  - Under v1 the row was 7 of 60, below random (0.154). Commute-explainer (15) and history-deep-diver (14) are the top persona on these story-told nonfiction shows, and narrative-binger on only 7.
+  - With history-deep-diver the row is 21 of 60, against 0.231 random and **0.267 node modal**. That meets RV-31's rule for adding it, so v1.1 adds it.
+  - The margin is 5 shows. At n = 60 one standard error is about 0.062, so the lead is about 1.4 standard errors, not a firm one.
+  - Commute-explainer was not added to `narrative`, because RV-31 asked only about history-deep-diver. Adding it as well would give 36 of 60 there (0.600, against a node modal of 0.383), and 140 of 205 (0.683) overall against 0.580 (one-off count).
+  - The catalogue's "narrative" and the narrative-binger persona still split the genre differently, as the pilot found.
 
 ### 2. Similar shows: node overlap now leads on both recall and precision
 
@@ -77,13 +89,15 @@ Curation was done before any persona existed, so this is independent evidence th
 
 ## What follows
 
-1. **No floors yet, by decision.**
-   - The rule was that the prior must beat the free baseline. With the card's map it beats node affinity but not node modal, and flooring against the weaker baseline would set a bar the evidence does not support.
-   - The archetype map is the open lever (item 2). After RV-29 decides it, re-run this note. Then floor the archetype precision against node modal, and the reachable persona recall@6 against its own value.
-2. **For RV-29 / the archetype map:**
-   - Add commute-explainer to `deep-learn`: it is the top persona on 32 of 128 shows, and the overall score is 0.595 with it.
-   - Decide whether the catalogue's `narrative` maps to history-deep-diver as well.
-   - The pilot raised both, and the gold set confirms them at 2.4 times the n.
+1. **Floors, now in place (RV-31).**
+   - The rule was that the prior must beat the free baseline. With the card's map it beat node affinity but not node modal, so the gold-set re-run deferred the floors.
+   - With map v1.1 it beats node modal, 0.629 against 0.561. `test/recommender-eval.test.js` now floors the "all mapped" precision at node modal (same map), and the reachable persona recall@6 at 0.30, about one standard error below its measured 0.339 (the mean of 60 per-seed recalls, standard error about 0.042).
+   - Any PR that changes `ratings.json` or the map reruns this note, and either floor can turn it red.
+2. **The archetype map (done in RV-31):**
+   - Commute-explainer joined `deep-learn` (RV-29's decision). It is the top persona on 32 of 128 shows, and the overall score is 0.595 with it alone.
+   - History-deep-diver joined `narrative`. The row goes from 0.117 to 0.350, above its node modal of 0.267 by about 1.4 standard errors. Revisit if a later gold run drops it back under node modal.
+   - The pilot raised both, and the gold set confirmed them at 2.4 times the n.
+   - Next map question: commute-explainer in `narrative` as well. It tops 15 of the 60 shows; adding it would take the row to 36 of 60 (0.600, node modal 0.383) and the overall score to 0.683 (node modal 0.580), the largest single lift left. Not done here because RV-31 asked only about history-deep-diver.
 3. **For RV-27 (parked):** keep seam C as written, with the prior as a tie-break inside node-overlap candidates. Cut served persona lists at fit >= 3.
 4. **For RV-26:** list the `unlabelled` shows that reach persona top-50s.
 
@@ -94,21 +108,21 @@ Inputs: 2978 rated shows (220 curated), 13 personas, 201 merged batches in `data
 
 ### 1. Archetype agreement
 
-A hit: the show's `top_persona` is in the persona set its `archetype_fit` values map to. Baselines: uniform random, the root's modal top persona (leave-one-out over every rated show), the root's highest-affinity persona.
+A hit: the show's `top_persona` is in the persona set its `archetype_fit` values map to. Baselines: uniform random, the root's modal top persona (leave-one-out over every rated show), the root's highest-affinity persona. Map v1.1 (RV-31). Floored: the all-mapped precision is at least the node-modal baseline's.
 
 | archetype | personas | shows | hits | precision | random | node modal | node affinity |
 |---|---|---:|---:|---:|---:|---:|---:|
-| **all mapped** | union | 205 | 90 | 0.439 | 0.239 | 0.473 | 0.380 |
+| **all mapped** | union | 205 | 129 | 0.629 | 0.302 | 0.561 | 0.429 |
 | `comfort` | banter-regular, comfort-companion | 55 | 31 | 0.564 | 0.154 | 0.764 | 0.182 |
-| `deep-learn` | history-deep-diver, mechanism-hunter, practical-improver | 128 | 43 | 0.336 | 0.231 | 0.320 | 0.406 |
+| `deep-learn` | commute-explainer, history-deep-diver, mechanism-hunter, practical-improver | 128 | 75 | 0.586 | 0.308 | 0.414 | 0.445 |
 | `documentary` | narrative-binger, true-crime-careful | 12 | 9 | 0.750 | 0.154 | 0.833 | 1.000 |
-| `narrative` | narrative-binger, true-crime-careful | 60 | 7 | 0.117 | 0.154 | 0.067 | 0.067 |
+| `narrative` | history-deep-diver, narrative-binger, true-crime-careful | 60 | 21 | 0.350 | 0.231 | 0.267 | 0.250 |
 
 `stretch` only (no mapped persona, not scored): 15 shows; top persona comfort-companion 6, banter-regular 3, mechanism-hunter 2, news-current 2, commute-explainer 1, maker-tinkerer 1.
 
 ### 2. Similar-shows agreement
 
-Persona ranking: cosine over the fit vector (fit - 1) among the 220 rated curated shows. k = 6. Reported, not gated.
+Persona ranking: cosine over the fit vector (fit - 1) among the 220 rated curated shows. k = 6. Floored: the reachable persona recall@6 is at least 0.30. The rest is reported, not gated.
 
 | ranking | view | seeds | precision (shown) | recall@6 | hit rate | coverage | must-not |
 |---|---|---:|---:|---:|---:|---:|---:|
