@@ -20,6 +20,7 @@ import {
   MAX_REASON_CHARS,
   capConfidence,
   nullAudioScoresUnlessTranscript,
+  reasonCopyProblems,
   schemaForShow,
   validateClientFile,
   validateRatingsFile,
@@ -160,6 +161,54 @@ test("a reason with a BANNED word is refused", () => {
     doc.results["1000000001"].personas["p-light"].reason = text;
     assert.ok(codes(validateResultsFile(doc, ctx)).includes(code), `${JSON.stringify(text)} should raise ${code}`);
   }
+});
+
+test("trip, journey and ride in the time-fit sense are commute framing", () => {
+  /* MUTATION (run red): in reasonCopyProblems, drop
+     `|| TRIP_FIT_FRAMING.some(...)` -- every case below is accepted, as the
+     RV-13 pilot's four were. The first four are the pilot's own reasons
+     (docs/research/persona-ratings-pilot-2026-10.md). */
+  const cases = [
+    "Clear and easy, but far shorter than a full trip, so it works as filler.",
+    "At four minutes it is a snack rather than a full trip.",
+    "Some two-part specials are too long for one trip.",
+    "Episodes of 75 minutes and up are long for a family trip.",
+    "Light enough to have on for the ride.",
+    "Episodes run long; a long ride at least.",
+    "Each episode is about a 30-minute ride.",
+    "An hour-long journey per episode.",
+    "Trip-length chapters with a clean ending.",
+    "Fits a short trip almost exactly.",
+    "A trip's worth of stories in every episode.",
+    "Easy company for the morning ride.",
+    "Light enough for the ride home.",
+  ];
+  for (const text of cases) assert.deepEqual(reasonCopyProblems(text), ["reason_commute_framing"], JSON.stringify(text));
+  const doc = validResults();
+  doc.results["1000000001"].personas["p-light"].reason = cases[3];
+  assert.ok(codes(validateResultsFile(doc, ctx)).includes("reason_commute_framing"), "the results validator refuses it too");
+});
+
+test("trip, journey and ride as a topic are not commute framing", () => {
+  /* MUTATION (run red): TRIP_FIT_FRAMING = [/\b(?:trip|journey|ride)s?\b/i]
+     (ban the words outright) -- every case below is refused. The first eight
+     are reasons the RV-13 pilot wrote. */
+  const cases = [
+    "Mostly career biography and personal journey, with little on how things work.",
+    "Founder journeys told as interviews rather than produced narrative.",
+    "Weekly park trip reports of an hour or more, with no news cadence.",
+    "Trip ideas and places to stay have planning value.",
+    "One episode centres on a bad trip and a struggle with mental health.",
+    "The notes read as park reviews, not ride engineering.",
+    "Short destination episodes, mostly aimed at adults planning trips.",
+    "Coaster models and ride manufacturers come up by name.",
+    "Two friends plan a trip to Japan, one city per episode.",
+    "Road trip stories from small towns, told by the people who live there.",
+    "A long trip across the Sahara, retold from the diaries.",
+    "One host's whole journey through grief, told gently.",
+    "Admissions advice on landing a full ride scholarship.",
+  ];
+  for (const text of cases) assert.deepEqual(reasonCopyProblems(text), [], JSON.stringify(text));
 });
 
 test("isolated mode requires exactly the isolated persona", () => {
