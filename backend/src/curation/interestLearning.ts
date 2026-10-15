@@ -71,6 +71,14 @@ export interface DeriveContext {
    * `ignoredCardShownCounts` is absent (a caller with a single number).
    */
   ignoredCardShownCount?: number;
+  /**
+   * RV-23: show_followed / show_unfollowed move weights only when true.
+   * Default false: DECISIONS 2026-10-14 (#1380) keeps follows out of every
+   * weighting while privacy-policy cp_starred_shows promises a follow "never
+   * changes what 4a surfaces to you elsewhere" (roadmap D5; RV-17's
+   * useFollows mirrors it). Flip only after RV-24 item 1 is approved.
+   */
+  useFollows?: boolean;
 }
 
 // Base magnitudes — starting points per 03_CURATION_SPEC.md ("weights are
@@ -235,11 +243,13 @@ export function deriveInterestDeltas(event: PersistedEvent, ctx: DeriveContext =
     }
 
     case "show_followed": {
+      if (ctx.useFollows !== true) return [];
       const p = event.payload;
       return [...new Set(p.topics)].map((nodeId) => ({ nodeId, reason: "more_like_this" as const, delta: SHOW_FOLLOWED, durable: true, archetypeSlot: slot }));
     }
 
     case "show_unfollowed": {
+      if (ctx.useFollows !== true) return [];
       const p = event.payload;
       if ((p.episodes_played ?? 0) < UNFOLLOW_NEGATIVE_MIN_EPISODES) return [];
       return [...new Set(p.topics)].map((nodeId) => ({ nodeId, reason: "thumbs_down_named_node" as const, delta: -SHOW_UNFOLLOWED, durable: true, archetypeSlot: slot }));
