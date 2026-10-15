@@ -12,6 +12,7 @@ import {
   CardShownStreaks,
   IGNORED_CARD_SHOWN_THRESHOLD,
   INTEREST_REASONS,
+  UNFOLLOW_NEGATIVE_MIN_EPISODES,
   STRETCH_NEGATIVE_DAMPING,
   type ApplyDeps
 } from "../src/curation/interestLearning";
@@ -459,5 +460,37 @@ describe("TS reason/source lists match the SQL CHECKs", () => {
     const tsSources = [...union![1]!.matchAll(/"([^"]+)"/g)].map((m) => m[1]!);
     expect(tsSources.length).toBeGreaterThan(0);
     expect(sorted(lastCheckList("taxonomy_nodes", "source"))).toEqual(sorted(tsSources));
+  });
+});
+
+/* RV-23 (docs/roadmap/recommender-v1.md D6; research §2.2): the follow pair.
+   DARK -- nothing emits either type until the parked RV-27. */
+describe("show_followed / show_unfollowed (RV-23)", () => {
+  const follow = (type: "show_followed" | "show_unfollowed", episodes_played?: number) =>
+    evt({ type, payload: { show_id: "hardcore-history", topics: [FUSION, POLITICS], ...(episodes_played === undefined ? {} : { episodes_played }) } });
+
+  const on = { useFollows: true };
+
+  // MUTATION: drop either `ctx.useFollows !== true` guard (or default it to true) -> red.
+  it("follows move nothing unless useFollows is on (DECISIONS 2026-10-14, D5)", () => {
+    expect(deriveInterestDeltas(follow("show_followed"))).toEqual([]);
+    expect(deriveInterestDeltas(follow("show_unfollowed", 5))).toEqual([]);
+    expect(deriveInterestDeltas(follow("show_followed"), { useFollows: false })).toEqual([]);
+  });
+
+  // MUTATION: SHOW_FOLLOWED = 0 (or return [] from the show_followed case) -> red.
+  it("a follow is +0.05 on each of the show's topics", () => {
+    const deltas = deriveInterestDeltas(follow("show_followed"), on);
+    expect(deltas.map((d) => [d.nodeId, d.delta, d.durable])).toEqual([[FUSION, 0.05, true], [POLITICS, 0.05, true]]);
+    expect(deltas.every((d) => (INTEREST_REASONS as readonly string[]).includes(d.reason))).toBe(true);
+  });
+
+  // MUTATION: UNFOLLOW_NEGATIVE_MIN_EPISODES = 0 -> red (after 1 episode it moves).
+  it("unfollow after 3 episodes is a negative delta; after 1 it is zero", () => {
+    expect(UNFOLLOW_NEGATIVE_MIN_EPISODES).toBe(3);
+    const after3 = deriveInterestDeltas(follow("show_unfollowed", 3), on);
+    expect(after3.map((d) => [d.nodeId, d.delta, d.durable])).toEqual([[FUSION, -0.05, true], [POLITICS, -0.05, true]]);
+    expect(deriveInterestDeltas(follow("show_unfollowed", 1), on)).toEqual([]);
+    expect(deriveInterestDeltas(follow("show_unfollowed"), on)).toEqual([]);
   });
 });
