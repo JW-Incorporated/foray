@@ -38,8 +38,9 @@
 
 import { effectiveLength } from "./recommender-feedback.js";
 
-/** The upper bound of `percent`: a replay passes 1, as Apple's completion
-    does, but no further than the contract's max (events.ts, 1.2). */
+/** The upper bound of `percent`: only a replay (a position past the real
+    duration) passes 1, as Apple's completion does, but no further than the
+    contract's max (events.ts, 1.2). */
 export const PERCENT_CAP = 1.2;
 
 /** Why a stop was not the listener's own. A censored stop is not a skip and
@@ -67,7 +68,9 @@ function censorFlag(censorReason) {
 /**
  * The `finished` completion payload for a stop at `position_sec`.
  *   percent      position / effective length (outro margin trimmed, see
- *                effectiveLength), capped at PERCENT_CAP, two decimals
+ *                effectiveLength), two decimals; capped at 1 while the
+ *                position is within the episode, at PERCENT_CAP past its
+ *                real duration (a replay)
  *   eff_len_sec  that effective length, one decimal
  *   censored     true when the stop had a CENSOR_REASON, false for null
  *   resumed      true when this listen resumed an earlier position
@@ -91,7 +94,11 @@ export function finishedPayload({
   const payload = { episode_slug };
   if (nonEmptyString(show)) payload.show = show;
   payload.topics = stringList(topics);
-  payload.percent = round2(Math.min(PERCENT_CAP, position_sec / eff));
+  /* Inside the episode a stop reads at most 1 (a stop in the outro margin is
+     a completed listen); only a position past the real duration, a replay,
+     may pass 1, as events.ts gives the field. */
+  const ratio = position_sec / eff;
+  payload.percent = round2(position_sec <= duration_sec ? Math.min(1, ratio) : Math.min(PERCENT_CAP, ratio));
   payload.eff_len_sec = effLen;
   payload.censored = censored;
   payload.resumed = resumed === true;

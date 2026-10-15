@@ -76,6 +76,12 @@ test("a stop in the outro margin is percent 1.0", () => {
   const short = finishedPayload({ ...base, position_sec: 270, duration_sec: 5 * MIN });
   assert.equal(short.eff_len_sec, 270, "a 5-minute episode keeps 90% of its length");
   assert.equal(short.percent, 1);
+  /* MUTATION: `position_sec <= duration_sec ? Math.min(1, ratio) : ...` ->
+     `Math.min(PERCENT_CAP, ratio)` in finishedPayload — red: a stop deep in
+     the margin reads 2999/2940 = 1.02 and 299/270 = 1.11, logged like a
+     replay. */
+  assert.equal(finishedPayload({ ...base, position_sec: dur - 1, duration_sec: dur }).percent, 1, "one second before the end");
+  assert.equal(finishedPayload({ ...base, position_sec: 299, duration_sec: 5 * MIN }).percent, 1, "deep in a short episode's margin");
 });
 
 test("censored is true for every CENSOR_REASON and false for null", () => {
