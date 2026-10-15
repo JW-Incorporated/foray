@@ -16,10 +16,13 @@
    batch abandoned before merge is reclaimed after 12 hours.
 
    The in-memory functions mutate the progress object they are given and
-   return what they changed; only loadProgress and saveProgress touch disk.
-   No network, no model call. */
+   return what they changed; only loadProgress and saveProgress touch disk,
+   plus withProgressLock, which every caller that rewrites the file wraps its
+   whole load -> change -> save in (prepare and merge both read-modify-write
+   the file whole, and the RV-13 pilot lost four batches' pass records to a
+   prepare that overlapped merges). No network, no model call. */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 export const STALE_MS = 12 * 3600e3;
@@ -125,4 +128,68 @@ export function serializeProgress(progress) {
 export function saveProgress(path, progress) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, serializeProgress(progress));
+}
+
+/* ---------- the cross-process lock ---------- */
+
+/** A held lock older than this is taken over: its holder died without its
+    `finally` (a prepare or merge holds it for seconds, so ten minutes is
+    generous). */
+export const LOCK_STALE_MS = 10 * 60e3;
+/** How long a caller waits for a live lock before giving up. */
+export const LOCK_WAIT_MS = 5 * 60e3;
+
+/** The lock directory for the progress file at `path`. */
+export const lockPathFor = (path) => `${path}.lock`;
+
+const sleepCell = new Int32Array(new SharedArrayBuffer(4));
+const sleepSync = (ms) => Atomics.wait(sleepCell, 0, 0, Math.max(0, ms));
+
+/** Run `fn` while holding the cross-process lock on the progress file at
+    `path`, and return what it returns. The lock is the directory
+    `<path>.lock`, created with an exclusive mkdirSync (atomic on every
+    platform, no dependency); a caller that finds it held retries with
+    backoff for up to `waitMs`, then throws an Error with
+    `code: "progress_locked"`. A lock older than `staleMs` is a dead holder's
+    and is taken over. The lock is removed in `finally`, so a throwing `fn`
+    still releases it. Synchronous, like every caller: prepare and merge
+    wrap their whole load -> change -> save (and merge its ratings write) in
+    one call, so two of them can never interleave a read-modify-write. */
+export function withProgressLock(path, fn, { waitMs = LOCK_WAIT_MS, staleMs = LOCK_STALE_MS, retryMs = 25 } = {}) {
+  const lock = lockPathFor(path);
+  mkdirSync(dirname(lock), { recursive: true });
+  const deadline = Date.now() + waitMs;
+  let delay = retryMs;
+  for (;;) {
+    try {
+      mkdirSync(lock);
+      break;
+    } catch (e) {
+      if (e.code !== "EEXIST") throw e;
+    }
+    let age;
+    try {
+      age = Date.now() - statSync(lock).mtimeMs;
+    } catch (e) {
+      if (e.code === "ENOENT") continue; // released between our mkdir and stat
+      throw e;
+    }
+    if (age >= staleMs) {
+      rmSync(lock, { recursive: true, force: true });
+      continue;
+    }
+    const left = deadline - Date.now();
+    if (left <= 0) {
+      const err = new Error(`${path} is locked by another prepare or merge (${lock}, held ${Math.round(age / 1000)} s); retry when it finishes, or remove the lock directory if no prepare or merge is running`);
+      err.code = "progress_locked";
+      throw err;
+    }
+    sleepSync(Math.min(left, delay + Math.floor(Math.random() * delay)));
+    delay = Math.min(delay * 2, 500);
+  }
+  try {
+    return fn();
+  } finally {
+    rmSync(lock, { recursive: true, force: true });
+  }
 }

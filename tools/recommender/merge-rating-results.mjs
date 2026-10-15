@@ -53,6 +53,12 @@
    release and markRated, so a run that died between writing the ratings and
    writing the progress file recovers by being run again.
 
+   LOCKED. From reading the progress and ratings files through writing both,
+   a merge holds progress.mjs's withProgressLock on its progress file, so
+   concurrent merges and prepares queue instead of overwriting each other's
+   records (RV-13 lost four batches' pass records that way). A lock that stays
+   held past five minutes refuses the merge with `progress_locked`.
+
    --check validates the committed ratings.json (and ratings-isolated.json if
    present) and exits 1 on any problem or on an in-flight reservation older
    than 12 hours (reported, not fixed: prepare's reclaimStale frees it).
@@ -79,7 +85,7 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
 import { progressKey } from "./prepare-rating-batch.mjs";
-import { loadProgress, markRated, release, saveProgress, serializeProgress, STALE_MS } from "./progress.mjs";
+import { LOCK_WAIT_MS, loadProgress, markRated, release, saveProgress, serializeProgress, STALE_MS, withProgressLock } from "./progress.mjs";
 import {
   AUDIO_SUBSCORES,
   EVIDENCE_TIERS,
@@ -381,7 +387,7 @@ const within = (root, p) => (isAbsolute(p) ? p : join(root, p));
 
 /** Validate and merge one results file. Returns `{ ok, problems, report }`;
     writes only when ok. `root` is the repo root (tests pass a temp dir). */
-export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now = new Date(), into = DEFAULT_INTO }) {
+export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now = new Date(), into = DEFAULT_INTO, lockWaitMs = LOCK_WAIT_MS }) {
   const problems = [];
   const add = (code, at, message) => problems.push({ code, at, message });
   const refuse = () => ({ ok: false, problems, report: null });
@@ -421,67 +427,80 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
       const m = /^shows\.(.+)\.top_reason$/.exec(p.at);
       return !(paths.side && p.code === "reason_missing" && m && doc.shows?.[m[1]]?.top_reason === "");
     });
-  const progress = loadProgress(progressPath);
-  const progressBefore = serializeProgress(progress);
-  const target = existsSync(targetPath) ? readJsonOr(targetPath, "ratings_unreadable", add) : skeletonRatings();
-  if (!target) return refuse();
-  if (!Array.isArray(target.merged_batches)) target.merged_batches = [];
-  const batchKeys = (Array.isArray(batch.shows) ? batch.shows : []).map((p) => p?.show_key).filter((k) => typeof k === "string");
+  /* Everything from reading the progress and ratings files through writing
+     both runs under the progress lock: prepare and other merges rewrite the
+     same files whole, and an interleaved read-modify-write loses a batch
+     (RV-13). */
+  const mergeLocked = () => {
+    const progress = loadProgress(progressPath);
+    const progressBefore = serializeProgress(progress);
+    const target = existsSync(targetPath) ? readJsonOr(targetPath, "ratings_unreadable", add) : skeletonRatings();
+    if (!target) return refuse();
+    if (!Array.isArray(target.merged_batches)) target.merged_batches = [];
+    const batchKeys = (Array.isArray(batch.shows) ? batch.shows : []).map((p) => p?.show_key).filter((k) => typeof k === "string");
 
-  const settleProgress = () => {
-    const released = release(progress, results.batch_id);
-    // An isolated batch is recorded under the keys RV-08 reserved it by
-    // (`<show_key>@isolated:<persona_id>`), never the show's own joint key: it is
-    // not one of the joint passes, but without the record prepare-rating-batch
-    // would offer the same isolated shows again after every merge.
-    if (Number.isInteger(results.pass)) {
-      const keys = isolated ? batchKeys.map((k) => progressKey(k, results.mode)) : batchKeys;
-      markRated(progress, keys, { pass: results.pass, batchId: results.batch_id });
+    const settleProgress = () => {
+      const released = release(progress, results.batch_id);
+      // An isolated batch is recorded under the keys RV-08 reserved it by
+      // (`<show_key>@isolated:<persona_id>`), never the show's own joint key: it is
+      // not one of the joint passes, but without the record prepare-rating-batch
+      // would offer the same isolated shows again after every merge.
+      if (Number.isInteger(results.pass)) {
+        const keys = isolated ? batchKeys.map((k) => progressKey(k, results.mode)) : batchKeys;
+        markRated(progress, keys, { pass: results.pass, batchId: results.batch_id });
+      }
+      if (serializeProgress(progress) !== progressBefore) saveProgress(progressPath, progress);
+      return released;
+    };
+
+    if (target.merged_batches.includes(results.batch_id) && batch.batch_id === results.batch_id) {
+      const released = settleProgress();
+      return { ok: true, problems, report: { batch_id: results.batch_id, already_merged: true, released: released.length } };
     }
-    if (serializeProgress(progress) !== progressBefore) saveProgress(progressPath, progress);
-    return released;
-  };
 
-  if (target.merged_batches.includes(results.batch_id) && batch.batch_id === results.batch_id) {
+    const profilesPath = within(root, typeof batch.profiles_path === "string" ? batch.profiles_path : PROFILES_PATH);
+    const profiles = readJsonOr(profilesPath, "profiles_unreadable", add);
+    if (!profiles) return refuse();
+    const personaIds = (Array.isArray(profiles.personas) ? profiles.personas : []).map((p) => p && p.id).filter(Boolean);
+
+    for (const p of validateAgainstBatch(results, batch, { personaIds, profilesSha256OnDisk: sha256File(profilesPath), progress })) problems.push(p);
+    /* The results' personas were checked against the profiles above; the file
+       being merged into is checked for shape only, so a persona pruned from the
+       profiles later (RV-29) does not wedge every merge. --check names it. */
+    for (const p of shapeProblems(target)) problems.push({ ...p, code: `existing_${p.code}`, at: `${targetPath}#${p.at}` });
+    if (problems.length > 0) return refuse();
+
+    const { counts, reasons } = mergeInto(target, results, batch, { now });
+    for (const p of shapeProblems(target)) problems.push({ ...p, code: `merged_${p.code}` });
+    if (problems.length > 0) return refuse();
+
+    const reasonsPath = reasonsPathFor(results.batch_id, root);
+    writeText(reasonsPath, reasons.map((r) => `${JSON.stringify(r)}\n`).join(""));
+    writeText(targetPath, serializeRatings(target));
     const released = settleProgress();
-    return { ok: true, problems, report: { batch_id: results.batch_id, already_merged: true, released: released.length } };
-  }
-
-  const profilesPath = within(root, typeof batch.profiles_path === "string" ? batch.profiles_path : PROFILES_PATH);
-  const profiles = readJsonOr(profilesPath, "profiles_unreadable", add);
-  if (!profiles) return refuse();
-  const personaIds = (Array.isArray(profiles.personas) ? profiles.personas : []).map((p) => p && p.id).filter(Boolean);
-
-  for (const p of validateAgainstBatch(results, batch, { personaIds, profilesSha256OnDisk: sha256File(profilesPath), progress })) problems.push(p);
-  /* The results' personas were checked against the profiles above; the file
-     being merged into is checked for shape only, so a persona pruned from the
-     profiles later (RV-29) does not wedge every merge. --check names it. */
-  for (const p of shapeProblems(target)) problems.push({ ...p, code: `existing_${p.code}`, at: `${targetPath}#${p.at}` });
-  if (problems.length > 0) return refuse();
-
-  const { counts, reasons } = mergeInto(target, results, batch, { now });
-  for (const p of shapeProblems(target)) problems.push({ ...p, code: `merged_${p.code}` });
-  if (problems.length > 0) return refuse();
-
-  const reasonsPath = reasonsPathFor(results.batch_id, root);
-  writeText(reasonsPath, reasons.map((r) => `${JSON.stringify(r)}\n`).join(""));
-  writeText(targetPath, serializeRatings(target));
-  const released = settleProgress();
-  return {
-    ok: true,
-    problems,
-    report: {
-      batch_id: results.batch_id,
-      mode: results.mode,
-      pass: results.pass,
-      target: targetPath,
-      progress: progressPath,
-      reasons_path: reasonsPath,
-      reasons_written: reasons.length,
-      released: released.length,
-      ...counts,
-    },
+    return {
+      ok: true,
+      problems,
+      report: {
+        batch_id: results.batch_id,
+        mode: results.mode,
+        pass: results.pass,
+        target: targetPath,
+        progress: progressPath,
+        reasons_path: reasonsPath,
+        reasons_written: reasons.length,
+        released: released.length,
+        ...counts,
+      },
+    };
   };
+  try {
+    return withProgressLock(progressPath, mergeLocked, { waitMs: lockWaitMs });
+  } catch (e) {
+    if (e.code !== "progress_locked") throw e;
+    add("progress_locked", progressPath, e.message);
+    return refuse();
+  }
 }
 
 /** --check: the committed ratings files validate and no reservation is
