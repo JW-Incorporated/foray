@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
@@ -14,7 +14,7 @@ import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult } from
 import { stitchForay } from "../src/generation/stitchForay";
 import { computeShowVariety, evaluateVeracityGate } from "../src/generation/veracityMetrics";
 import { showKeyForItem } from "../src/generation/showIdentity";
-import { checkpointFingerprint } from "../src/generation/checkpoint";
+import { CheckpointSession, checkpointFingerprint, checkpointRunVariant } from "../src/generation/checkpoint";
 import { forayIdFor, resetTaxonomyCache } from "../src/generation/resolveTopic";
 import { resetTaxonomyFamilyCache, taxonomyLineage, taxonomyRoot } from "../src/generation/taxonomyFamily";
 import type { ExternalResearchContext, PassageRetrievalRequest } from "../src/generation/ExternalResearcher";
@@ -51,6 +51,11 @@ import type { DurationTier } from "../src/types/spine";
 import { generateOneCandidate, DEFAULT_MAX_RESUMES, type CliArgs } from "../src/cli/generateForays";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { FakeSpineJudge } from "./helpers/fakeSpineJudge";
+import { FakeDraftCritic } from "./helpers/fakeDraftCritic";
+import { SelfCritiquingNarrationWriter, __swapDraftCriticForTests, joinCheckpointVariant } from "../src/generation/selfCritique";
+import { resolvePipelineFlags } from "../src/generation/pipelineFlags";
+import { resolveRouting } from "../src/config/stageRouting";
+import type { WriterObservation } from "../src/generation/NarrationWriterBuilder";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -2182,4 +2187,189 @@ describe("runForayPipeline — GV-91 best-of-2 spine selection reaches the outco
     expect(out.spineSelection).toMatchObject({ chosen: "primary", reason: "judged" });
     for (const word of ["grilling", "barbecue", "history"]) expect(recorded).not.toContain(word);
   }, 60_000);
+});
+
+describe("runForayPipeline — GV-94 the writer sees its act's index and its observations reach the outcome and the report", () => {
+  /** A Stub writer that records the act index of every call and, on every
+   * act but act 0, reports one edit call through ctx.observe. */
+  function observingWriter() {
+    const stub = new StubNarrationWriterBuilder();
+    const actIndexes: Array<number | undefined> = [];
+    const writer: NarrationWriterBuilder = {
+      providerName: "observing",
+      writeAct: async (req, ctx) => {
+        actIndexes.push(ctx.actIndex);
+        const reply = await stub.writeAct(req, ctx);
+        if ((ctx.actIndex ?? 0) > 0) {
+          const e: WriterObservation = { kind: "self-critique", acts: 1, sentences: 3, flagged: 1, editedSeams: 1, editCalls: 1, editErrors: 0, critiqueCalls: 2, critiqueErrors: 0, ms: 7, pValues: [0.1, 0.8] };
+          ctx.observe?.(e);
+        }
+        return reply;
+      }
+    };
+    return { writer, actIndexes };
+  }
+
+  it("each narrate:<i> stage hands the writer actIndex i, the observations are summed onto the outcome, and the edit calls join narrationCalls.writer", async () => {
+    /* MUTATION THAT KILLS THIS: pass the pipeline ctx to writeNarration
+       without `actIndex: i` (every act reads undefined), drop the
+       `narrationWriterCalls += e.editCalls`, or drop the selfCritique spread
+       from the generated outcome. Ran all three: red. */
+    /* Medium: the stub spine has more than one act there. */
+    const multiAct: GenerationRequest = { ...request, duration: "medium" };
+    const baseline = await runForayPipeline(multiAct, options, stubDeps());
+    expect(baseline.outcome).toBe("generated");
+    if (baseline.outcome !== "generated") return;
+    expect("selfCritique" in baseline).toBe(false);
+
+    const { writer, actIndexes } = observingWriter();
+    const out = await runForayPipeline(multiAct, options, { ...stubDeps(), narrationWriter: writer });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    const acts = out.narration.acts.length;
+    expect(acts).toBeGreaterThan(1);
+    expect([...new Set(actIndexes)].sort()).toEqual(Array.from({ length: acts }, (_, i) => i));
+    expect(out.selfCritique).toEqual({
+      acts: acts - 1,
+      sentences: 3 * (acts - 1),
+      flagged: acts - 1,
+      editedSeams: acts - 1,
+      editCalls: acts - 1,
+      editErrors: 0,
+      critiqueCalls: 2 * (acts - 1),
+      critiqueErrors: 0,
+      ms: 7 * (acts - 1),
+      pValues: Array.from({ length: acts - 1 }, () => [0.1, 0.8]).flat()
+    });
+    const writerCalls = (o: typeof out) => (o.outcome === "generated" ? o.input.meta?.veracity?.narrationCalls?.writer : undefined);
+    expect(writerCalls(baseline)).toBeGreaterThan(0);
+    expect(writerCalls(out)).toBe(writerCalls(baseline)! + (acts - 1));
+  }, 240_000);
+
+  it("levers.selfCritique (the configuration) and selfCritique (what the run did) reach the report row", async () => {
+    /* MUTATION THAT KILLS THIS: leave selfCritique out of `levers` in
+       generateForays.ts, or drop the row's selfCritique spread. Ran both:
+       red. */
+    const critic = new FakeDraftCritic([], 0);
+    const restore = __swapDraftCriticForTests("fake-gv94", () => critic);
+    vi.stubEnv("FORAY_WRITER_SELF_CRITIQUE", "behind-playhead");
+    vi.stubEnv("FORAY_WRITER_CRITIC", "fake-gv94");
+    const dir = mkdtempSync(join(tmpdir(), "gv94-"));
+    try {
+      const writer = new SelfCritiquingNarrationWriter({ inner: new StubNarrationWriterBuilder(), critic, mode: "behind-playhead" });
+      const args: CliArgs = {
+        prompts: null,
+        out: dir,
+        duration: "medium",
+        limit: null,
+        dryRun: true,
+        authorId: "founder-1",
+        budgetUsd: null,
+        noResume: true,
+        maxResumes: DEFAULT_MAX_RESUMES,
+        continueOnRefusedPartial: false,
+        notify: null
+      };
+      let passed: unknown;
+      const result = await generateOneCandidate({ prompt: request.prompt, topic: "food/grilling-bbq" }, args, {
+        cueProvider: new FileTranscriptCueProvider(),
+        runPipeline: (req, opts, deps = {}) => {
+          passed = opts.selfCritique;
+          return runForayPipeline(req, opts, { ...stubDeps(), ...deps, narrationWriter: writer });
+        }
+      });
+      expect(result.skipped).toBe(false);
+      if (result.skipped) return;
+      expect(passed).toEqual({ mode: "behind-playhead", critic: "fake-gv94" });
+      expect(result.entry?.outcome).toBe("generated");
+      expect(result.entry?.levers).toEqual({ selfCritique: { mode: "behind-playhead", critic: "fake-gv94", flagP: 0.3, sourceBudgetTokens: 2000 } });
+      expect(result.entry?.selfCritique?.acts).toBeGreaterThanOrEqual(1);
+      expect(result.entry?.selfCritique?.editCalls).toBe(result.entry?.selfCritique?.acts);
+      expect(critic.calls).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllEnvs();
+      restore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 180_000);
+});
+
+describe("runForayPipeline — GV-94 decision 20: the self-critique part of the checkpoint variant at BOTH call sites", () => {
+  /** A deepen builder that throws: the driver records an `error` row and
+   * keeps the checkpoint (GV-15's "killed after spine"), so the file the
+   * FileCheckpointStore wrote can be read back. */
+  class KilledAfterSpine extends StubDeepenActBuilder {
+    override async deepenAct(): Promise<never> {
+      throw new Error("killed after spine");
+    }
+  }
+
+  /** One real (not dry) batch-driver run into a temp dir, killed after its
+   * spine: the session's fingerprint (what runForayPipeline handed
+   * CheckpointSession.open) and the store's (what it wrote into the file). */
+  async function fingerprintsUnder(env: Record<string, string>): Promise<{ session: string; store: string }> {
+    for (const [name, value] of Object.entries(env)) vi.stubEnv(name, value);
+    const open = vi.spyOn(CheckpointSession, "open");
+    const dir = mkdtempSync(join(tmpdir(), "gv94-fp-"));
+    try {
+      const args: CliArgs = {
+        prompts: null,
+        out: dir,
+        duration: "short",
+        limit: null,
+        dryRun: false,
+        authorId: "founder-1",
+        budgetUsd: null,
+        noResume: true,
+        maxResumes: 0,
+        continueOnRefusedPartial: false,
+        notify: null
+      };
+      const result = await generateOneCandidate({ prompt: request.prompt, topic: options.topic }, args, {
+        cueProvider: new FileTranscriptCueProvider(),
+        runPipeline: (req, opts, deps = {}) => runForayPipeline(req, opts, { ...stubDeps(), ...deps, deepenBuilder: new KilledAfterSpine() })
+      });
+      expect(result.skipped).toBe(false);
+      if (result.skipped) throw new Error("skipped");
+      expect(result.entry?.outcome).toBe("error");
+      expect(open).toHaveBeenCalledTimes(1);
+      const files = readdirSync(dir).filter((f) => f.endsWith(".checkpoint.json"));
+      expect(files).toHaveLength(1);
+      const store = (JSON.parse(readFileSync(join(dir, files[0]!), "utf8")) as { fingerprint: string }).fingerprint;
+      return { session: open.mock.calls[0]![2], store };
+    } finally {
+      open.mockRestore();
+      vi.unstubAllEnvs();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("the store's and the session's fingerprints agree and carry the critique's part only when it is on; off leaves the classic fingerprint unchanged", async () => {
+    /* MUTATION THAT KILLS THIS: revert either site to plain
+       `checkpointRunVariant(flags, routing)` -- generateForays.ts (the
+       FileCheckpointStore's fingerprint) or runPipeline.ts (the
+       CheckpointSession's). Ran both: red (the store's and the session's
+       fingerprints differ, and the reverted one is not the joined value). */
+    const critic = new FakeDraftCritic();
+    const restore = __swapDraftCriticForTests("fake-gv94", () => critic);
+    try {
+      const classicVariant = checkpointRunVariant(resolvePipelineFlags(), resolveRouting());
+      const fingerprintFor = (variant: string | undefined) =>
+        checkpointFingerprint({ prompt: request.prompt, duration: "short", topic: options.topic, ...(variant !== undefined ? { variant } : {}) });
+
+      const off = await fingerprintsUnder({ FORAY_WRITER_SELF_CRITIQUE: "off" });
+      expect(off.store).toBe(off.session);
+      expect(off.session).toBe(fingerprintFor(classicVariant));
+      expect(joinCheckpointVariant(classicVariant, { mode: "off" })).toBe(classicVariant);
+
+      const on = await fingerprintsUnder({ FORAY_WRITER_SELF_CRITIQUE: "behind-playhead", FORAY_WRITER_CRITIC: "fake-gv94" });
+      expect(on.store).toBe(on.session);
+      expect(on.session).toBe(fingerprintFor(joinCheckpointVariant(classicVariant, { mode: "behind-playhead", critic: "fake-gv94" })));
+      expect(on.session).not.toBe(off.session);
+      /* Killed before narrate: the critic was never asked. */
+      expect(critic.calls).toBe(0);
+    } finally {
+      restore();
+    }
+  }, 240_000);
 });

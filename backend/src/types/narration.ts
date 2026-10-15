@@ -686,6 +686,17 @@ export function hasDeclarativeSentence(script: string): boolean {
   return false;
 }
 
+/**
+ * The banned-copy rule of `validateNarratedBeat` (code `banned-copy`): every
+ * pattern of `patterns` (in practice `copy/rules.js`'s `BANNED`, injected by
+ * the caller) that `text` matches, in list order. GV-94's self-critique
+ * (generation/selfCritique.ts) runs the same rule on one draft sentence, so
+ * the two can never disagree about what is banned.
+ */
+export function bannedCopyHits(text: string, patterns: readonly RegExp[]): RegExp[] {
+  return patterns.filter((rx) => rx.test(text));
+}
+
 export interface ValidateNarratedBeatOptions {
   bannedPhrasePatterns?: RegExp[];
   /** Every document the pipeline holds for this page. When supplied, a
@@ -840,11 +851,8 @@ export function validateNarratedBeat(
     });
   }
 
-  const bannedPatterns = opts.bannedPhrasePatterns ?? [];
-  for (const rx of bannedPatterns) {
-    if (rx.test(beat.script)) {
-      issues.push({ code: "banned-copy", message: `script matches banned copy pattern ${rx}` });
-    }
+  for (const rx of bannedCopyHits(beat.script, opts.bannedPhrasePatterns ?? [])) {
+    issues.push({ code: "banned-copy", message: `script matches banned copy pattern ${rx}` });
   }
 
   if (!beat.verified) {

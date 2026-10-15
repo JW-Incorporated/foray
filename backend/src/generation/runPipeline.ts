@@ -97,8 +97,9 @@ import type { PromptUnderstander } from "./PromptUnderstander";
 import type { ExternalResearchContext, ExternalResearcher } from "./ExternalResearcher";
 import { taxonomyLineage } from "./taxonomyFamily";
 import type { SpineBuildContext, SpineBuilder, SpineSelectionRecord } from "./SpineBuilder";
+import { addSelfCritique, joinCheckpointVariant, readSelfCritique, type SelfCritiqueConfig, type SelfCritiqueTotals } from "./selfCritique";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
-import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
+import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, WriterObservation } from "./NarrationWriterBuilder";
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
@@ -401,6 +402,16 @@ export interface RunPipelineOptions {
    * partial candidate moves.
    */
   emitPreludeEarly?: boolean;
+  /**
+   * GV-94 (W7-08): the writer self-critique configuration this run was
+   * resolved under (`readSelfCritique`). Absent, it is read from process.env
+   * once at the top of the run, the same source the writer factory reads.
+   * Its part of the checkpoint variant (`joinCheckpointVariant`) is set only
+   * when the critique is on, so classic fingerprints are unchanged. The batch
+   * driver passes the config it hashed into its FileCheckpointStore, so the
+   * two agree (decision 20).
+   */
+  selfCritique?: SelfCritiqueConfig;
 }
 
 /** G-32: one act's narration, as the report shows it — the `narrate:<i>`
@@ -488,6 +499,12 @@ export type RunPipelineOutcome =
        * single-sample builder and on a resumed spine. Carried into
        * `report.json` as `spineSelection`. */
       spineSelection?: SpineSelectionRecord;
+      /** GV-94 (W7-08): what the writer self-critique did, summed over the
+       * acts it critiqued (FORAY_WRITER_SELF_CRITIQUE), from the decorator's
+       * `observe` at each `narrate:<i>` stage. Absent when no act was
+       * critiqued (off, every act skipped, or every act resumed). Carried
+       * into `report.json` as `selfCritique`. */
+      selfCritique?: SelfCritiqueTotals;
       /** WS-C: one row per tape-sourced beat, carrying the topic gate's own
        * verdict on the anchor it took (see `TapeRelevanceInput`). Surfaced here
        * because §4.5 is the only stage that knows all of it at once, and
@@ -1126,6 +1143,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const flags = resolvePipelineFlags(options.flags);
   const gates = resolveGateConfig(options.gates);
   const routing = options.routing ?? resolveRouting();
+  /* GV-94: the writer self-critique, resolved once like the flags (fail fast
+     on a malformed FORAY_WRITER_SELF_CRITIQUE / FORAY_WRITER_CRITIC). */
+  const selfCritique = options.selfCritique ?? readSelfCritique();
   // GV-14: a malformed FORAY_OUTPUT_BUDGETS throws here, not inside recordModelCall after a paid reply.
   void outputBudgetMode();
 
@@ -1139,7 +1159,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
-    checkpointFingerprint({ prompt: req.prompt, duration: req.duration, topic: options.topic, variant: checkpointRunVariant(flags, routing) })
+    checkpointFingerprint({
+      prompt: req.prompt,
+      duration: req.duration,
+      topic: options.topic,
+      /* GV-94: plus the self-critique's part, only when it is on. */
+      variant: joinCheckpointVariant(checkpointRunVariant(flags, routing), selfCritique)
+    })
   );
   const resumeHint = options.checkpointKey
     ? `Everything finished so far is checkpointed under "${options.checkpointKey}", so a re-run restarts at this stage.`
@@ -1307,6 +1333,15 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      going back to the writer), not by the proxy above, which sees
      requests and cannot tell a round from a call. */
   const narrationStats: NarrationWriteStats = { retryRounds: 0 };
+  /* GV-94 (W7-08): the self-critique decorator's report, one observation per
+     act it critiqued, handed to it on the ctx of each `narrate:<i>` stage. Its
+     edit call is a writer request the counting proxy above cannot see (it
+     sees one call per `writeAct`), so it is added to the count here. */
+  let selfCritiqueTotals: SelfCritiqueTotals | undefined;
+  const observeWriter = (e: WriterObservation): void => {
+    selfCritiqueTotals = addSelfCritique(selfCritiqueTotals, e);
+    narrationWriterCalls += e.editCalls;
+  };
   const countingNarrationVerifier: NarrationVerifierBuilder = {
     providerName: narrationVerifier.providerName,
     verifyAct: (actRequest: ActVerifyRequest, actCtx: NarrationBuildContext) => {
@@ -2160,7 +2195,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
               ...(deps.onSeamChecked ? { onSeamChecked: (event: SeamCheckedEvent) => deps.onSeamChecked!({ ...event, actIndex: i }) } : {})
             },
             spine.voice,
-            ctx
+            /* GV-94: this act's position (writeNarration sees one act, index
+               0) and the writer decorator's report hook. */
+            { ...ctx, actIndex: i, observe: observeWriter }
           );
           return one!;
         }
@@ -2323,6 +2360,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     spineReasks,
     spineRuntime,
     ...(spineSelection !== undefined ? { spineSelection } : {}),
+    ...(selfCritiqueTotals !== undefined ? { selfCritique: selfCritiqueTotals } : {}),
     tapeRelevance: tapeRelevanceRows,
     topicDecision,
     timings: timings.all(),
