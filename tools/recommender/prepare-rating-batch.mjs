@@ -50,7 +50,11 @@
    inputs is byte-identical. An `isolated:<id>` batch lists only that persona.
 
    Prints the batch path and a token estimate (serialised chars / 4, D9).
-   `--dry-run` reports the same and writes and reserves nothing. */
+   `--dry-run` reports the same and writes and reserves nothing.
+
+   The progress file's load -> reclaim -> reserve -> save runs under
+   progress.mjs's withProgressLock, so a prepare can overlap merges without
+   overwriting their pass records (RV-13). */
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -60,7 +64,7 @@ import { isEntryScript } from "../ci/entry.mjs";
 import { parseShard, shardOf } from "../classify/labels.mjs";
 import { rng } from "../segments/rank-breadth.mjs";
 import { buildEvidence, loadSources, raterPack } from "./evidence.mjs";
-import { loadProgress, reclaimStale, reserve, saveProgress } from "./progress.mjs";
+import { LOCK_WAIT_MS, loadProgress, reclaimStale, reserve, saveProgress, withProgressLock } from "./progress.mjs";
 import { RUBRIC_VERSION, MAX_PASS } from "./schema.mjs";
 
 const REPO_ROOT = resolvePath(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -262,7 +266,7 @@ function writeAtomic(file, text) {
 
 /* --------------------------------------------------------------------- CLI */
 
-export function main(argv = process.argv.slice(2), { root = REPO_ROOT, env = process.env, now = Date.now(), log = console.log, error = console.error } = {}) {
+export function main(argv = process.argv.slice(2), { root = REPO_ROOT, env = process.env, now = Date.now(), log = console.log, error = console.error, lockWaitMs = LOCK_WAIT_MS } = {}) {
   let args;
   try {
     args = parseArgs(argv);
@@ -284,48 +288,67 @@ export function main(argv = process.argv.slice(2), { root = REPO_ROOT, env = pro
   }
 
   const set = JSON.parse(readFileSync(setPath, "utf8"));
-  const progress = loadProgress(progressPath);
   const profilesDoc = JSON.parse(readFileSync(profilesPath, "utf8"));
-  let out;
+  /* The catalogue loads before the lock (it is the slow part); the whole
+     load -> reserve -> save of the progress file runs under the lock, so a
+     merge that rewrote the file in between is never overwritten (RV-13). */
+  let sources;
   try {
-    out = prepareBatch({
-      set,
-      progress,
-      profilesDoc,
-      profilesSha256: sha256File(profilesPath),
-      profilesPath: repoPath(root, profilesPath),
-      rubricPath: DEFAULTS.rubric,
-      sources: loadSources({ root, env }),
-      role: args.role,
-      pass: args.pass,
-      mode: args.mode,
-      only: args.only,
-      shard: args.shard,
-      batchSize: args.batchSize,
-      now,
-    });
+    sources = loadSources({ root, env });
   } catch (e) {
     error(e.message);
     return 1;
   }
+  const prepareLocked = () => {
+    const progress = loadProgress(progressPath);
+    let out;
+    try {
+      out = prepareBatch({
+        set,
+        progress,
+        profilesDoc,
+        profilesSha256: sha256File(profilesPath),
+        profilesPath: repoPath(root, profilesPath),
+        rubricPath: DEFAULTS.rubric,
+        sources,
+        role: args.role,
+        pass: args.pass,
+        mode: args.mode,
+        only: args.only,
+        shard: args.shard,
+        batchSize: args.batchSize,
+        now,
+      });
+    } catch (e) {
+      error(e.message);
+      return 1;
+    }
 
-  for (const k of out.skippedNone) log(`skipped ${k}: evidence tier none (never rated, D3)`);
-  if (!out.batch) {
-    log(`nothing to rate: no ${args.role} show is unrated at pass ${args.pass} (${args.mode}${args.only ? `, --only ${args.only}` : ""}${args.shard ? `, shard ${args.shard.index}/${args.shard.count}` : ""}) and not in flight`);
-    if (!args.dryRun && out.reclaimed.length) saveProgress(progressPath, progress);
+    for (const k of out.skippedNone) log(`skipped ${k}: evidence tier none (never rated, D3)`);
+    if (!out.batch) {
+      log(`nothing to rate: no ${args.role} show is unrated at pass ${args.pass} (${args.mode}${args.only ? `, --only ${args.only}` : ""}${args.shard ? `, shard ${args.shard.index}/${args.shard.count}` : ""}) and not in flight`);
+      if (!args.dryRun && out.reclaimed.length) saveProgress(progressPath, progress);
+      return 0;
+    }
+    const text = `${JSON.stringify(out.batch, null, 2)}\n`;
+    const batchPath = join(batchesDir, `rating-batch-${out.batchId}.json`);
+    const summary = `${out.keys.length} shows, ~${tokenEstimate(text)} tokens (chars / 4)`;
+    if (args.dryRun) {
+      log(`dry run: would write ${batchPath} (${summary}) and reserve: ${out.keys.join(", ")}`);
+      return 0;
+    }
+    writeAtomic(batchPath, text);
+    saveProgress(progressPath, progress);
+    log(`${batchPath} (${summary})`);
     return 0;
+  };
+  try {
+    return withProgressLock(progressPath, prepareLocked, { waitMs: lockWaitMs });
+  } catch (e) {
+    if (e.code !== "progress_locked") throw e;
+    error(e.message);
+    return 1;
   }
-  const text = `${JSON.stringify(out.batch, null, 2)}\n`;
-  const batchPath = join(batchesDir, `rating-batch-${out.batchId}.json`);
-  const summary = `${out.keys.length} shows, ~${tokenEstimate(text)} tokens (chars / 4)`;
-  if (args.dryRun) {
-    log(`dry run: would write ${batchPath} (${summary}) and reserve: ${out.keys.join(", ")}`);
-    return 0;
-  }
-  writeAtomic(batchPath, text);
-  saveProgress(progressPath, progress);
-  log(`${batchPath} (${summary})`);
-  return 0;
 }
 
 if (isEntryScript(import.meta.url)) process.exitCode = main();

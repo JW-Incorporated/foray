@@ -49,6 +49,8 @@ The audio sub-scores (`host_style`, `production`, `ad_load`) and `host_count` ar
 
 `data/recommender/rating-progress.json` is `{ in_flight: { <key>: { batch_id, reserved_at } }, rated: { <key>: { last_batch_id, passes: [1, 2, 3] } } }`, committed empty. Prepare calls `reclaimStale` then `reserve` (all or nothing; a key already in flight is refused); merge calls `release` and `markRated`. A batch abandoned before merge frees its shows after 12 hours. `saveProgress` writes sorted keys with a trailing newline so the file diffs cleanly; a progress file that does not parse throws rather than resetting.
 
+Both prepare and merge rewrite the file whole, so each holds `withProgressLock` (an exclusive `<progress file>.lock` directory) across its whole load, change and save (merge also across its ratings write); a concurrent prepare or merge waits up to five minutes, and a lock older than ten minutes is a crashed holder's and is taken over. Prepare can therefore overlap a merging pool without losing pass records (RV-13 lost four batches' that way).
+
 ## Local data (never committed)
 
 ```

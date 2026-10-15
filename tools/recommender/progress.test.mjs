@@ -8,23 +8,28 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
+  LOCK_STALE_MS,
   STALE_MS,
   emptyProgress,
   loadProgress,
+  lockPathFor,
   markRated,
   reclaimStale,
   release,
   reserve,
   saveProgress,
   serializeProgress,
+  withProgressLock,
 } from "./progress.mjs";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, "..", "..");
 const T0 = Date.parse("2026-10-14T00:00:00.000Z");
 const HOUR = 3600e3;
 
@@ -103,6 +108,102 @@ test("saveProgress writes sorted keys and a trailing newline", () => {
     assert.deepEqual(Object.keys(doc.rated.b), ["last_batch_id", "passes"]);
     assert.ok(text.includes('\n  "in_flight": {\n    "a": {'), "two-space indent");
     assert.deepEqual(loadProgress(file), doc, "what is saved loads back");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+/* One child process doing what prepare and merge do: under the lock, load the
+   file, say "loaded", hold for HOLD_MS, add KEY's pass record, save. */
+const CHILD = `
+import { loadProgress, markRated, saveProgress, withProgressLock } from ${JSON.stringify(pathToFileURL(join(HERE, "progress.mjs")).href)};
+const { FILE, KEY, HOLD_MS } = process.env;
+withProgressLock(FILE, () => {
+  const p = loadProgress(FILE);
+  process.stdout.write("loaded");
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, Number(HOLD_MS));
+  markRated(p, [KEY], { pass: 1, batchId: KEY });
+  saveProgress(FILE, p);
+});
+`;
+
+function child(file, key, holdMs) {
+  const proc = spawn(process.execPath, ["--input-type=module", "-e", CHILD], {
+    env: { ...process.env, FILE: file, KEY: key, HOLD_MS: String(holdMs) },
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  const loaded = new Promise((resolve) => {
+    let out = "";
+    proc.stdout.on("data", (d) => {
+      out += d;
+      if (out.includes("loaded")) resolve();
+    });
+  });
+  const exited = new Promise((resolve, reject) => {
+    proc.on("error", reject);
+    proc.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`child ${key} exited ${code}`))));
+  });
+  return { loaded, exited };
+}
+
+test("two interleaved read-modify-writes under the lock both land", async () => {
+  /* MUTATION (run red): make withProgressLock `return fn();` (no lock) -- the
+     second process loads the file while the first holds its copy, the first
+     saves last, and the second's pass record is lost (the RV-13 pilot's
+     four lost batches). */
+  const dir = mkdtempSync(join(tmpdir(), "rv-progress-"));
+  try {
+    const file = join(dir, "rating-progress.json");
+    saveProgress(file, emptyProgress());
+    const first = child(file, "first", 1500);
+    await first.loaded; // the first holds the lock with the file loaded
+    const second = child(file, "second", 0);
+    await Promise.all([first.exited, second.exited]);
+    assert.deepEqual(Object.keys(loadProgress(file).rated).sort(), ["first", "second"]);
+    assert.equal(existsSync(lockPathFor(file)), false, "the lock is released");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a dead holder's stale lock is taken over; a live one is waited on, then refused", () => {
+  /* MUTATION (run red): drop the `age >= staleMs` takeover in
+     withProgressLock -- a lock left by a crashed prepare blocks every later
+     run until it times out. And `age >= staleMs` -> `true`: the live lock
+     below is taken over and fn runs inside another process's write. */
+  const dir = mkdtempSync(join(tmpdir(), "rv-progress-"));
+  try {
+    const file = join(dir, "rating-progress.json");
+    const lock = lockPathFor(file);
+    mkdirSync(lock);
+    const dead = (Date.now() - LOCK_STALE_MS - 60e3) / 1000;
+    utimesSync(lock, dead, dead);
+    assert.equal(withProgressLock(file, () => "ran", { waitMs: 200 }), "ran");
+    assert.equal(existsSync(lock), false);
+
+    mkdirSync(lock); // a live holder
+    let ran = false;
+    assert.throws(
+      () => withProgressLock(file, () => (ran = true), { waitMs: 150 }),
+      (e) => e.code === "progress_locked" && e.message.includes(lock),
+    );
+    assert.equal(ran, false);
+    assert.ok(existsSync(lock), "a live holder's lock is left alone");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("the lock is released when the locked work throws", () => {
+  /* MUTATION (run red): release the lock after `fn()` returns instead of in
+     `finally` -- a prepare or merge that throws leaves the lock held and the
+     next run waits it out and is refused. */
+  const dir = mkdtempSync(join(tmpdir(), "rv-progress-"));
+  try {
+    const file = join(dir, "rating-progress.json");
+    assert.throws(() => withProgressLock(file, () => { throw new Error("boom"); }), /boom/);
+    assert.equal(existsSync(lockPathFor(file)), false);
+    assert.equal(withProgressLock(file, () => 7, { waitMs: 100 }), 7, "the next caller gets the lock at once");
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
