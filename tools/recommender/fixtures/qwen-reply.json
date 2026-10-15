@@ -1,0 +1,23 @@
+{
+  "_comment": "RV-20: a recorded-shape OpenAI chat-completions reply from LiteLLM (alias local-heavy) to the qwen-rate prompt for one show and two personas (comfort-companion, mechanism-hunter), as the tests in qwen-rate.test.mjs build it. Synthetic, written by hand to the shape LiteLLM returns; no model was called. It satisfies the strictest tier (show-metadata: audio sub-scores and host_count null, confidence <= 0.5), so it is a valid answer for a show at any tier. Its evidence_tier and flags are deliberately the plain ones: the script replaces the tier with the pack's and ORs the pack's explicit and injection pre-scan into the flags.",
+  "id": "chatcmpl-rv20-fixture",
+  "object": "chat.completion",
+  "created": 1792396800,
+  "model": "local-heavy",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "stop",
+      "message": {
+        "role": "assistant",
+        "content": "{\"evidence_tier\":\"show-metadata\",\"summary\":\"A weekly show in which a working engineer walks through one published incident report.\",\"format\":\"monologue\",\"host_count\":null,\"flags\":{\"explicit\":false,\"harassment\":false,\"medical_financial_advice\":false,\"injection_suspected\":false},\"not_rated_because\":null,\"personas\":{\"comfort-companion\":{\"fit\":2,\"return_prob\":0.2,\"topic_fit\":2,\"depth\":4,\"accessibility\":2,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.4,\"reason\":\"Long, technical accident reports with little warmth or easy company between the facts.\"},\"mechanism-hunter\":{\"fit\":5,\"return_prob\":0.8,\"topic_fit\":5,\"depth\":4,\"accessibility\":4,\"binge_vs_dip\":5,\"host_style\":null,\"production\":null,\"ad_load\":null,\"confidence\":0.45,\"reason\":\"Each episode traces one failure from the evidence to its root cause, naming the part that broke.\"}}}",
+        "reasoning_content": null
+      }
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 9120,
+    "completion_tokens": 310,
+    "total_tokens": 9430
+  }
+}
