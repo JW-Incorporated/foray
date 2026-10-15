@@ -2,7 +2,7 @@
 /* judge.mjs — the offline judged-metrics pass over one candidate Foray (GV-92).
  *
  *     node tools/generation-bench/judge.mjs --candidate <foray.json>
- *       [--report <report.json> [--entry N]] [--golden tools/generation-bench/golden/golden-v1.json]
+ *       [--report <report.json> [--entry N (1-based, as score.mjs)]] [--golden tools/generation-bench/golden/golden-v1.json]
  *       [--prompt-id <id>] [--out <file>] [--runlog <file>]
  *
  * WHAT IT IS FOR (docs/roadmap/generation-v2.md, card GV-92 from W1-18; #1286)

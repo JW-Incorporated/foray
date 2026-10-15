@@ -4,12 +4,14 @@ import * as path from "path";
 import { describe, expect, it } from "vitest";
 import {
   ATTRIBUTION_QUESTION,
+  candidateKeyFor,
   JUDGE_QUESTIONS_VERSION,
   PROMPT_FIT_QUESTION,
   SEAM_QUESTION,
   createArchiveClipWindows,
   judgeCandidate,
   judgedPathFor,
+  loadJudgeInput,
   main,
   overviewOf,
   parseJudgeArgs,
@@ -337,8 +339,61 @@ describe("GV-92 the CLI", () => {
     const golden = [{ id: "g99", prompt: "golden wording", duration: "long", disappointment: "only history" }];
     expect(resolvePrompt({ candidate: "C:/x/synth-bread.json" }, report, golden)).toEqual({ prompt: PROMPT, promptId: "g99", disappointment: "only history", tier: "short" });
     expect(resolvePrompt({ candidate: "c.json", promptId: "g99" }, undefined, golden)).toEqual({ prompt: "golden wording", promptId: "g99", disappointment: "only history", tier: "long" });
-    expect(resolvePrompt({ candidate: "c.json", entry: 0 }, report, undefined).prompt).toBe("other prompt");
     expect(judgedPathFor("out/synth-bread.json")).toBe("out/synth-bread.judged.json");
+  });
+
+  /* MUTATION THAT KILLS THIS: read `entries[index]` (0-based) in
+     pickReportEntry, as the first cut did. Ran it: red, entry 1 resolves to
+     the second entry's prompt while score.mjs's --entry 1 scores the first.
+     Also: accept 0 in parseJudgeArgs. Ran it: red. */
+  it("counts --entry from 1, as score.mjs does, and refuses 0", () => {
+    const report = {
+      entries: [
+        { promptId: "g01", prompt: "other prompt", file: "out/other.json", duration: "medium" },
+        { promptId: "g99", prompt: PROMPT, file: "out/synth-bread.json", duration: "short" }
+      ]
+    };
+    expect(resolvePrompt({ candidate: "c.json", entry: 1 }, report, undefined)).toMatchObject({ prompt: "other prompt", promptId: "g01", tier: "medium" });
+    expect(resolvePrompt({ candidate: "c.json", entry: 2 }, report, undefined)).toMatchObject({ prompt: PROMPT, promptId: "g99", tier: "short" });
+    expect(resolvePrompt({ candidate: "c.json", entry: 3 }, report, undefined).prompt).toBe("");
+    expect(parseJudgeArgs(["--candidate", "c.json", "--entry", "1"]).entry).toBe(1);
+    expect(() => parseJudgeArgs(["--candidate", "c.json", "--entry", "0"])).toThrow(/1-based/);
+  });
+
+  /* MUTATION THAT KILLS THIS: write `candidateId: candidate.id` (the Foray
+     id) instead of the candidate file's basename. Ran it: red, score.mjs's
+     readJudged finds the file beside the candidate but its basename lookup
+     returns null, so every judged cell would read 'no judged file'. Also:
+     drop candidateKey from loadJudgeInput (what main() judges). Ran it: red. */
+  it("writes candidateId as the candidate file's basename, the key score.mjs and run.mjs read it back by", async () => {
+    type ReadJudged = (file: string) => (id: string | null) => JudgedFile | null;
+    const score = (await import("../../tools/generation-bench/score.mjs")) as unknown as { readJudged: ReadJudged; judgedPathFor: (f: string) => string | null };
+    const run = (await import("../../tools/generation-bench/run.mjs")) as unknown as { candidateIdFor: (e: unknown) => string | null };
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "gv92-key-"));
+    try {
+      /* Generated candidates are named <prompt-slug>-<sha1-8>.json, not by Foray id. */
+      const file = path.join(dir, "why-does-a-slow-overnight-1a2b3c4d.json");
+      fs.writeFileSync(file, JSON.stringify(RAW_CANDIDATE));
+      expect(candidateKeyFor(file)).toBe("why-does-a-slow-overnight-1a2b3c4d");
+      /* main() judges what loadJudgeInput builds from the CLI's files. */
+      const report = path.join(dir, "report.json");
+      fs.writeFileSync(report, JSON.stringify({ entries: [{ promptId: "g99", prompt: PROMPT, file: `out/${path.basename(file)}`, duration: "short" }] }));
+      expect(loadJudgeInput({ candidate: file, report })).toMatchObject({ candidateKey: "why-does-a-slow-overnight-1a2b3c4d", prompt: PROMPT, promptId: "g99", tier: "short" });
+      expect(candidateKeyFor("C:\\x\\out\\a-b.JSON")).toBe("a-b");
+      const judged = await judgeCandidate({ ...input(), candidateKey: candidateKeyFor(file) }, deps(replayFake()));
+      expect(judged.candidateId).toBe("why-does-a-slow-overnight-1a2b3c4d");
+      expect(judged.forayId).toBe("synth-bread");
+      fs.writeFileSync(judgedPathFor(file), `${JSON.stringify(judged, null, 2)}\n`);
+      const found = score.judgedPathFor(file);
+      expect(found).not.toBeNull();
+      /* score.mjs's lookup (basename of the candidate file) ... */
+      expect(score.readJudged(found!)(path.basename(file, ".json"))?.["MQ-10"]).toEqual({ value: 4, scored: 1, unscored: 0 });
+      /* ... and run.mjs's (candidateIdFor over the report entry's file). */
+      const viaReport = score.readJudged(found!)(run.candidateIdFor({ file: `out/${path.basename(file)}` }));
+      expect(viaReport?.["MQ-12"]).toEqual({ value: 3.5, scored: 2, unscored: 1 });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   /* MUTATION THAT KILLS THIS: drop main()'s NullJevClient check. Ran it: red,

@@ -30,7 +30,9 @@ import { PRELUDE_BOILERPLATE } from "../types/narration";
  * MQ-03, MQ-05): the OFFLINE judged-metrics pass. It runs after a run, off
  * the timed path, over one finished candidate Foray, and writes
  * `<candidate>.judged.json`, which tools/generation-bench/score.mjs (GV-24)
- * reads for its judged cells.
+ * reads for its judged cells. Its `candidateId` is the candidate FILE's
+ * basename (candidateKeyFor), the key score.mjs and run.mjs look it up by;
+ * the Foray id rides along as `forayId`.
  *
  *   MQ-10 promptFit      one Score 1-5: do the prelude's overview and the slot
  *                        titles answer the prompt's subject and angle, and
@@ -77,7 +79,7 @@ import { PRELUDE_BOILERPLATE } from "../types/narration";
  * `calibrated: false` until the founder's listening cards calibrate them.
  *
  *   node tools/generation-bench/judge.mjs --candidate <foray.json>
- *     [--report <report.json> [--entry N]] [--golden <golden-v1.json>]
+ *     [--report <report.json> [--entry N (1-based)]] [--golden <golden-v1.json>]
  *     [--prompt-id <id>] [--out <file>] [--runlog <file>]
  */
 
@@ -334,7 +336,11 @@ export interface JudgedMetric {
 
 export interface JudgedFile {
   questionsVersion: typeof JUDGE_QUESTIONS_VERSION;
+  /** The key score.mjs and run.mjs look the row up by: the candidate FILE's
+   * basename without `.json` (candidateIdFor in run.mjs), not the Foray id. */
   candidateId: string;
+  /** The candidate's own Foray id (forayIdFor), kept for reference. */
+  forayId: string;
   promptId: string | null;
   /** The judge that answered: one provider, 'mixed' when the fallback changed it mid-pass, null when none answered. */
   provider: JudgedProvider | "mixed" | null;
@@ -354,6 +360,9 @@ export interface JudgedFile {
 
 export interface JudgeCandidateInput {
   candidate: CandidateForay;
+  /** The candidate file's basename without `.json` (candidateKeyFor), written
+   * as `candidateId`. Defaults to the Foray id when the pass has no file. */
+  candidateKey?: string;
   /** The listener's prompt (report entry or golden manifest). Sent to the judge, never written. */
   prompt: string;
   promptId?: string | null;
@@ -683,7 +692,8 @@ export async function judgeCandidate(input: JudgeCandidateInput, deps: JudgeCand
     const modelList = [...models];
     return {
       questionsVersion: JUDGE_QUESTIONS_VERSION,
-      candidateId: candidate.id,
+      candidateId: input.candidateKey ?? candidate.id,
+      forayId: candidate.id,
       promptId: input.promptId ?? null,
       provider: providers.length === 0 ? null : providers.length === 1 ? providers[0]! : "mixed",
       model: modelList.length === 0 ? null : modelList.length === 1 ? modelList[0]! : "mixed",
@@ -728,7 +738,7 @@ export function parseJudgeArgs(argv: readonly string[]): JudgeArgs {
   let entry: number | undefined;
   if (got["--entry"] !== undefined) {
     entry = Number(got["--entry"]);
-    if (!Number.isInteger(entry) || entry < 0) throw new Error("judgeCandidate: --entry must be a non-negative integer");
+    if (!Number.isInteger(entry) || entry < 1) throw new Error("judgeCandidate: --entry is a 1-based entry number, as in score.mjs");
   }
   return {
     candidate: got["--candidate"],
@@ -741,6 +751,13 @@ export function parseJudgeArgs(argv: readonly string[]): JudgeArgs {
   };
 }
 
+/** The id score.mjs (basename of the candidate file) and run.mjs (candidateIdFor,
+ * basename of the report entry's `file`) look a judged row up by. Generated
+ * candidates are named `<prompt-slug>-<sha1-8>.json`, which is not the Foray id. */
+export function candidateKeyFor(candidateFile: string): string {
+  return path.basename(candidateFile.replace(/\\/g, "/")).replace(/\.json$/i, "");
+}
+
 /** `<candidate>.judged.json`, the name score.mjs looks for beside the candidate. */
 export function judgedPathFor(candidateFile: string): string {
   return candidateFile.replace(/\.json$/i, "") + ".judged.json";
@@ -749,11 +766,12 @@ export function judgedPathFor(candidateFile: string): string {
 // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied CLI paths (--candidate, --report, --golden).
 const readJson = (file: string): unknown => JSON.parse(fs.readFileSync(file, "utf8"));
 
-/** The report entry for this candidate: `--entry N`, else the entry whose
- * `file` names the candidate, else the only entry. */
+/** The report entry for this candidate: `--entry N` (1-based, as score.mjs
+ * counts it), else the entry whose `file` names the candidate, else the only
+ * entry. */
 export function pickReportEntry(report: unknown, candidateFile: string, index?: number): Record<string, unknown> | null {
   const entries = isRecord(report) && Array.isArray(report.entries) ? report.entries.filter(isRecord) : [];
-  if (index !== undefined) return entries[index] ?? null;
+  if (index !== undefined) return index >= 1 ? (entries[index - 1] ?? null) : null;
   const base = path.basename(candidateFile);
   const byFile = entries.find((e) => typeof e.file === "string" && path.basename(e.file) === base);
   if (byFile) return byFile;
@@ -772,11 +790,19 @@ export function resolvePrompt(args: Pick<JudgeArgs, "candidate" | "entry" | "pro
   return { prompt, promptId, disappointment, ...(tier ? { tier } : {}) };
 }
 
-export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
-  const args = parseJudgeArgs(argv);
+/** The pass's input from the CLI's files: the candidate, the key score.mjs
+ * reads it back by, and the prompt from the report entry or golden manifest. */
+export function loadJudgeInput(args: JudgeArgs): JudgeCandidateInput {
   const candidate = readCandidate(readJson(args.candidate));
   const resolved = resolvePrompt(args, args.report ? readJson(args.report) : undefined, args.golden ? readJson(args.golden) : undefined);
-  if (!resolved.prompt) {
+  return { candidate, candidateKey: candidateKeyFor(args.candidate), ...resolved };
+}
+
+export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
+  const args = parseJudgeArgs(argv);
+  const judgeInput = loadJudgeInput(args);
+  const { candidate } = judgeInput;
+  if (!judgeInput.prompt) {
     console.error("judgeCandidate: no prompt for this candidate (give --report with its entry, or --golden with --prompt-id)");
     return 2;
   }
@@ -794,7 +820,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   });
   const log = new RunLog();
   try {
-    const judged = await runWithRunLog(log, () => judgeCandidate({ candidate, ...resolved }, { client, windows }));
+    const judged = await runWithRunLog(log, () => judgeCandidate(judgeInput, { client, windows }));
     const out = args.out ?? judgedPathFor(args.candidate);
     // eslint-disable-next-line security/detect-non-literal-fs-filename -- operator-supplied --out, or beside the candidate.
     fs.writeFileSync(out, `${JSON.stringify(judged, null, 2)}\n`);
