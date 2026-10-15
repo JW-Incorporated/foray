@@ -11,6 +11,7 @@ import {
 import { StageTimingLog, type StageTiming } from "./stageTiming";
 import { currentRunLog, withCallContext, type StageStatus } from "./runLog";
 import { BudgetStopError, EpisodeBudgetExceededError, defaultBudgetGuard, findBudgetError } from "../cost/budgetGuard";
+import { UnitBudgetStopError, findUnitBudgetError } from "../cost/unitBudget";
 import { CheckpointSession, checkpointFingerprint, checkpointRunVariant, type CheckpointStore } from "./checkpoint";
 import { resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
 import { resolveRouting, type RoutingTable } from "../config/stageRouting";
@@ -1170,7 +1171,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
    *   - NAME THE STAGE ON A BUDGET STOP (F-04). `BudgetGuard` throws from
    *     inside a builder and knows only the dollar figures; this is
    *     the only place that also knows which stage was running and that the
-   *     work so far is on disk.
+   *     work so far is on disk. GV-90's unit caps (`UnitBudgetGuard`) are
+   *     re-thrown here as `UnitBudgetStopError` for the same reason.
    */
   const timed = async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
     const spanStart = currentRunLog()?.nowMs() ?? 0;
@@ -1188,6 +1190,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         const scope = budget instanceof EpisodeBudgetExceededError ? "per-foray" : "run";
         throw new BudgetStopError(name, budget.spentUsd, budget.capUsd, scope, budget, resumeHint);
       }
+      /* GV-90: a per-Foray unit cap (Spark seconds, second-box seconds, Jev
+         calls) is named the same way: the stage, the unit and the resume. */
+      const unitStop = findUnitBudgetError(err);
+      if (unitStop) throw new UnitBudgetStopError(name, unitStop, resumeHint);
       throw err;
     }
   };

@@ -1,6 +1,7 @@
 import { env, readString } from "../config/env";
 import { resolveRouting, type RoutingTable, type StageRoute } from "../config/stageRouting";
 import type { BudgetGuard } from "../cost/budgetGuard";
+import { defaultUnitBudgetGuard, type UnitBudgetGuard, type UnitReservation } from "../cost/unitBudget";
 import type { ChatProvider } from "./chat/ChatProvider";
 import { chatProviderFor } from "./chat/providerRegistry";
 import {
@@ -58,8 +59,9 @@ import { currentRunLog, recordModelCall } from "./runLog";
  *     file is in PROVIDER_CALL_SITES (GV-07).
  *
  * meteredJevClient meters every ask through BudgetGuard (the one place Jev
- * spend is checked); createJevPool bounds fan-out. Per-Foray Jev-call caps
- * are GV-90's.
+ * spend is checked) and, under a session, reserves one `jevCalls` unit per
+ * ask sent to Jev against the per-Foray cap (GV-90, cost/unitBudget.ts);
+ * createJevPool bounds fan-out.
  *
  * GV-47 (OQ-05, decision 7): the judge is ROUTED. createJevClient reads the
  * routing table's 'judge' stage (FORAY_STAGE_JUDGE=jev|jev:<lane>|local:<lane>|none,
@@ -716,6 +718,12 @@ export interface MeteredJevClientOptions {
   /** Called after every ask that ran (R1-14 per-call records, R1-19 Jev-call
    * caps), tagged with the judge that answered (GV-47). */
   onCall?: (info: JevCallInfo) => void;
+  /** GV-90: the per-Foray unit guard each Jev ask reserves one `jevCalls`
+   * unit from (default defaultUnitBudgetGuard). Only under a `sessionId`. */
+  unitGuard?: UnitBudgetGuard;
+  /** GV-90: the tier the Jev-call cap is read at; defaults to the call
+   * context's tier (GV-01). */
+  tier?: string;
 }
 
 /**
@@ -725,9 +733,16 @@ export interface MeteredJevClientOptions {
  * EpisodeBudgetExceededError) propagates like every other model call's and
  * the ask is not sent; a transport failure never throws. An ask on a
  * NullJevClient sends nothing, so it is not charged.
+ *
+ * GV-90: an ask that goes to Jev under a `sessionId` first reserves one
+ * `jevCalls` unit; past the per-Foray cap it throws UnitBudgetExceededError
+ * and nothing is sent or charged. An ask the dollar guard then refuses gives
+ * its unit back. An ask on a local judge (the Qwen judge) is not a Jev call:
+ * its seconds are the lane scheduler's to charge (GV-93).
  */
 export function meteredJevClient(client: JevClient, opts: MeteredJevClientOptions): JevClient {
   const model = opts.model ?? env.jevModel ?? JEV_PINNED_MODEL;
+  const unitGuard = opts.unitGuard ?? defaultUnitBudgetGuard;
   /* GV-47: an ask is charged to the judge it goes to first. The Qwen judge
      (routed alone, or behind an open breaker) runs on a local lane: one $0
      event on that lane, never a Jev charge. */
@@ -738,19 +753,38 @@ export function meteredJevClient(client: JevClient, opts: MeteredJevClientOption
   };
   return {
     async ask(state, questions, askOpts) {
+      let unit: UnitReservation | null = null;
       if (!(client instanceof NullJevClient)) {
         const local = localJudge();
-        await opts.guard.checkAndRecord({
-          userId: opts.userId,
-          provider: local ? local.providerName : "jev",
-          model: local ? local.model : model,
-          operation: askOpts.purpose,
-          tokensInput: Math.ceil(jevInputChars(state, questions) / 4),
-          estimatedUsd: local ? 0 : estimateJevUsd(state, questions),
-          ...(opts.sessionId !== undefined ? { sessionId: opts.sessionId } : {})
-        });
+        if (!local && opts.sessionId !== undefined) {
+          unit = await unitGuard.reserve({
+            sessionId: opts.sessionId,
+            unit: "jevCalls",
+            amount: 1,
+            ...(opts.tier !== undefined ? { tier: opts.tier } : {})
+          });
+        }
+        try {
+          await opts.guard.checkAndRecord({
+            userId: opts.userId,
+            provider: local ? local.providerName : "jev",
+            model: local ? local.model : model,
+            operation: askOpts.purpose,
+            tokensInput: Math.ceil(jevInputChars(state, questions) / 4),
+            estimatedUsd: local ? 0 : estimateJevUsd(state, questions),
+            ...(opts.sessionId !== undefined ? { sessionId: opts.sessionId } : {})
+          });
+        } catch (err) {
+          if (unit) unitGuard.reconcile(unit, 0);
+          throw err;
+        }
       }
-      const result = await client.ask(state, questions, askOpts);
+      let result: JevResult;
+      try {
+        result = await client.ask(state, questions, askOpts);
+      } finally {
+        if (unit) unitGuard.reconcile(unit, 1);
+      }
       opts.onCall?.({
         purpose: askOpts.purpose,
         ok: result.ok,

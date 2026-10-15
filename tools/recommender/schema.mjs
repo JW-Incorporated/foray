@@ -159,14 +159,50 @@ export function schemaForShow(personaIds, { tier = null } = {}) {
 
 /* ---------- copy check on the listener-facing reason ---------- */
 
+/* Trip-length framing: the commute ban said another way. The RV-13 pilot's
+   raters, told never to write "commute" or "drive", wrote "far shorter than a
+   full trip", "long for a family trip" and "too long for one trip"
+   (docs/research/persona-ratings-pilot-2026-10.md). "trip", "journey" and
+   "ride" are plain English in a reason far more often ("park trip reports",
+   "a personal journey", "a trip to Japan", "ride manufacturers", "a bad
+   trip"), so, like COMMUTE_FRAMING, these match only the time-fit shapes: a
+   length word on the trip ("a full trip", "a long ride", "an hour-long trip",
+   "trip-length"; never "a whole journey", which is a founder's or a
+   grief's), a trip the episode is measured against ("long for a family
+   trip", "for one trip", "for the ride", "fits a short trip", "a trip's
+   worth"), and the listener's own trip ("the morning ride", "the ride home").
+   A trip followed by where it goes or what it is about ("a long trip to
+   Japan", "a full journey through grief", "trip reports") is a topic and
+   passes. Recommender-only: backend/src/copy/rules.js's lists also gate
+   Foray copy and discover hooks, which this pilot finding says nothing
+   about. */
+const TRIP = "(?:trips?|journeys?|rides?)";
+const TRIP_TOPIC = "(?!\\s+(?:to|of|from|through|across|into|around|abroad|with|reports?|stories|ideas|planning|talk|scholarships?)\\b)";
+const LENGTH = "(?:long|longer|short|shorter|brief|quick|lengthy)";
+const POINTER = "(?:a|an|one|the|your|any|every|each|most|a single)";
+export const TRIP_FIT_FRAMING = [
+  new RegExp(`\\b(?:full|whole|entire|single|average|typical)[ -](?:trips?|rides?)\\b${TRIP_TOPIC}`, "i"),
+  new RegExp(`\\b(?:for|than|in|on|over) (?:one|a single)[ -]${TRIP}\\b${TRIP_TOPIC}`, "i"),
+  new RegExp(`\\b${LENGTH}\\b[^.;:!?]{0,30}?\\bfor ${POINTER}(?: [a-z-]+){0,2} ${TRIP}\\b${TRIP_TOPIC}`, "i"),
+  new RegExp(`\\bfor the (?:whole |entire |full |long )?${TRIP}\\b${TRIP_TOPIC}`, "i"),
+  new RegExp(`\\b${LENGTH}(?: car| bus| train)? (?:trips?|rides?)\\b${TRIP_TOPIC}`, "i"),
+  new RegExp(`\\b(?:minute|min|hour)s?(?:[ -]long)?[ -]${TRIP}\\b${TRIP_TOPIC}`, "i"),
+  new RegExp(`\\b(?:fits?|fitting|fills?|filling|lasts?|outlasts?)(?: ${POINTER})?(?: [a-z-]+)? ${TRIP}\\b${TRIP_TOPIC}`, "i"),
+  /\b(?:trip|journey|ride)(?:['’]s|s['’]?)? worth\b/i,
+  new RegExp(`\\b(?:trip|journey|ride)[ -](?:length|sized?|companion|filler|listen|listening)s?\\b`, "i"),
+  new RegExp(`\\b(?:today'?s|tomorrow'?s|tonight'?s|(?:the|a|your|this) (?:morning|evening|afternoon|school)) ${TRIP}\\b`, "i"),
+  /\bride (?:home|to work|to school)\b|\b(?:trip|journey) to (?:work|school)\b/i,
+];
+
 /** The copy problems in a listener-facing reason, as codes. The same lists the
     classify merge and the Foray gates use (backend/src/copy/rules.js), plus
-    the rubric's own "no 'This podcast' opener" rule. */
+    the rubric's own "no 'This podcast' opener" rule and TRIP_FIT_FRAMING
+    above (reported as commute framing, which it is). */
 export function reasonCopyProblems(text) {
   const out = [];
   if (BANNED.some((rx) => rx.test(text))) out.push("reason_banned_word");
   if (INTERNAL_VOCABULARY.some((rx) => rx.test(text))) out.push("reason_internal_vocabulary");
-  if (COMMUTE_FRAMING.some((rx) => rx.test(text))) out.push("reason_commute_framing");
+  if (COMMUTE_FRAMING.some((rx) => rx.test(text)) || TRIP_FIT_FRAMING.some((rx) => rx.test(text))) out.push("reason_commute_framing");
   if (/^\s*(?:this|the) (?:podcast|show)\b/i.test(text)) out.push("reason_show_opener");
   return out;
 }
