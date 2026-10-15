@@ -6,6 +6,7 @@ import { randomUUID } from "crypto";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
 import { spineBestOfLever } from "../generation/bestOfSpine";
+import { joinCheckpointVariant, readSelfCritique, selfCritiqueLever, type SelfCritiqueLever, type SelfCritiqueTotals } from "../generation/selfCritique";
 import type { SpineSelectionRecord } from "../generation/SpineBuilder";
 import type { SpineRuntime } from "../generation/tierRuntime";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
@@ -1052,12 +1053,21 @@ export type ReportEntry = {
    * added after the primary). Only on a `generated` row whose spine was built
    * by a best-of-2 builder this attempt; absent otherwise. No prompt text. */
   spineSelection?: SpineSelectionRecord;
+  /** GV-94 (W7-08): what the writer self-critique did on this run
+   * (`SelfCritiqueTotals`: acts critiqued, sentences checked and flagged,
+   * seams edited, edit and critic calls and their errors, ms, each critic
+   * p). Only on a `generated` row on which at least one act was critiqued
+   * this attempt; absent otherwise. Counts and probabilities only, no text. */
+  selfCritique?: SelfCritiqueTotals;
   /** GV-91: the levers this prompt ran under, by lever name (the swap
    * runner's `expect.levers`, tools/generation-bench/swap-experiment.mjs).
    * `spineBestOf` is the configured best-of-2 lever (`spineBestOfLever`),
-   * fixed by the flags, absent when FORAY_SPINE_BEST_OF is unset or 1. On
-   * every row, `{}` when no lever is on. */
-  levers?: { spineBestOf?: { mode: "best-of-2"; judge: string; graceMs: number } };
+   * fixed by the flags, absent when FORAY_SPINE_BEST_OF is unset or 1.
+   * GV-94: `selfCritique` is the configured writer self-critique
+   * (`selfCritiqueLever`: mode, critic, flagP, sourceBudgetTokens), absent
+   * when FORAY_WRITER_SELF_CRITIQUE is unset or off. On every row, `{}` when
+   * no lever is on. */
+  levers?: { spineBestOf?: { mode: "best-of-2"; judge: string; graceMs: number }; selfCritique?: SelfCritiqueLever };
   /** GV-55 (from W7-02): per routed stage, the implementation, model and
    * machine that served it (`describeStageAssignments`), from the routing the
    * run was resolved under. On every row. */
@@ -1301,12 +1311,19 @@ export async function generateOneCandidate(
   /* GV-91: the configured levers, read once with the flags (fail fast on a
      malformed FORAY_SPINE_BEST_OF*, naming the variable). */
   const spineBestOf = spineBestOfLever(process.env);
-  const levers: NonNullable<ReportEntry["levers"]> = spineBestOf ? { spineBestOf } : {};
+  /* GV-94: the writer self-critique, read once here and handed to the
+     pipeline, so the store's and the session's variant agree. */
+  const selfCritique = readSelfCritique(process.env);
+  const selfCritiqueConfigured = selfCritiqueLever(selfCritique);
+  const levers: NonNullable<ReportEntry["levers"]> = {
+    ...(spineBestOf ? { spineBestOf } : {}),
+    ...(selfCritiqueConfigured ? { selfCritique: selfCritiqueConfigured } : {})
+  };
   const fingerprint = checkpointFingerprint({
     prompt: spec.prompt,
     duration: request.duration,
     topic: spec.topic,
-    variant: checkpointRunVariant(flags, routing)
+    variant: joinCheckpointVariant(checkpointRunVariant(flags, routing), selfCritique)
   });
   const checkpointStore = new FileCheckpointStore(path.resolve(args.out), fingerprint);
   /* GV-62: what a kept checkpoint is stamped with, and what a seed is
@@ -1528,7 +1545,8 @@ export async function generateOneCandidate(
           refusedPartial: args.continueOnRefusedPartial ? "continue" : "abort",
           flags,
           gates,
-          routing
+          routing,
+          selfCritique
         },
         {
           cueProvider: deps.cueProvider,
@@ -1681,6 +1699,7 @@ export async function generateOneCandidate(
     ...(spineReasks.length ? { spineReasks } : {}),
     ...("spineRuntime" in outcome && outcome.spineRuntime !== undefined ? { spineRuntime: outcome.spineRuntime } : {}),
     ...(outcome.outcome === "generated" && outcome.spineSelection !== undefined ? { spineSelection: outcome.spineSelection } : {}),
+    ...(outcome.outcome === "generated" && outcome.selfCritique !== undefined ? { selfCritique: outcome.selfCritique } : {}),
     ...("deepenFolded" in outcome && outcome.deepenFolded !== undefined ? { deepenFolded: outcome.deepenFolded } : {}),
     ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,

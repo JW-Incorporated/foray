@@ -1,0 +1,13 @@
+{
+  "id": "E5-self-critique",
+  "kind": "lever",
+  "lever": "selfCritique",
+  "armA": "adopted",
+  "armB": { "env": { "FORAY_WRITER_SELF_CRITIQUE": "behind-playhead", "FORAY_WRITER_CRITIC": "jev" } },
+  "rerunFrom": "narrate",
+  "golden": "tools/generation-bench/golden/golden-v1.json",
+  "expect": {
+    "levers": { "selfCritique": { "mode": "behind-playhead", "critic": "jev", "flagP": 0.3, "sourceBudgetTokens": 2000 } }
+  },
+  "notes": "R2-17 step 3 writer self-critique (GV-94, W7-08): arm B wraps the act writer so every act behind the playhead (act 1 on) has its first draft checked sentence by sentence (structure leak, banned copy, and the critic registered as 'jev' (GV-97) asked whether the sentence is backed by its seam's own sources, flagged below p 0.3), and seams with a flagged sentence go back once, every other seam frozen; act 0 is never critiqued. Arm A is the adopted stack. The lever first changes the narrate checkpoint, so arm B reruns from narrate. Read first-attempt pass rate, retry rounds, MQ-02, narrationCalls.writer (it includes the edit calls) and the row's selfCritique (flagged, editCalls, pValues, ms), then the pairwise listen; keep the lever only if the listen is even or better without a rise in retry rounds. Calibrate flagP against the R2-19 review verdicts and the run-9 labelled pages before adopting."
+}
