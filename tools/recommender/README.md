@@ -82,9 +82,9 @@ node tools/recommender/prepare-rating-batch.mjs --role pilot --pass 1 --mode iso
 node tools/recommender/prepare-rating-batch.mjs --role pilot --pass 2 --mode joint --batch-size 20
 ```
 
-**Rating.** A pool of at most 5 Claude Code agents (the pilot used Sonnet, pools of 3-4) gets one batch id each and follows [`docs/agents/runner-prompts/persona-rate-batch.md`](../../docs/agents/runner-prompts/persona-rate-batch.md). When several agents merge concurrently, each merge must run under a lock, because the merge rewrites `ratings.json` and `rating-progress.json` whole. The pilot wrapped `merge-rating-results.mjs --results … --batch …` in a lock directory.
+**Rating.** A pool of at most 5 Claude Code agents (the pilot used Sonnet, pools of 3-4) gets one batch id each and follows [`docs/agents/runner-prompts/persona-rate-batch.md`](../../docs/agents/runner-prompts/persona-rate-batch.md). Agents may merge concurrently: the merge rewrites `ratings.json` and `rating-progress.json` whole, but it holds `progress.mjs`'s `withProgressLock` while it does (see Progress above), so merges queue. The pilot, before that lock existed, wrapped each merge in a lock directory of its own; that wrapper is no longer needed, and must never be named `rating-progress.json.lock`, or the merge inside it waits for its own wrapper and is refused with `progress_locked`.
 
-**Never prepare while a pool is merging.** Prepare also rewrites `rating-progress.json` whole, and a prepare that overlapped merges lost four batches' pass records in the pilot. The ratings were safe, and re-running the idempotent merge on those batch ids restored the records. Until `progress.mjs` takes a lock itself, prepare everything first, then rate.
+**Preparing while a pool merges.** Prepare also rewrites `rating-progress.json` whole, and in the pilot a prepare that overlapped merges lost four batches' pass records. The ratings were safe, and re-running the idempotent merge on those batch ids restored the records. Prepare now holds the same lock, so it may overlap merges; preparing everything first is still the simpler loop.
 
 ```sh
 node tools/recommender/merge-rating-results.mjs --check
