@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { EventRowSchema, parseEventRow, safeParseEventRow } from "../src/types/events";
+import * as fs from "fs";
+import * as path from "path";
+import { EventRowSchema, EventTypeSchema, parseEventRow, safeParseEventRow } from "../src/types/events";
 
 const USER = "11111111-1111-1111-1111-111111111111";
 
@@ -176,5 +178,57 @@ describe("EventRowSchema — rejects invalid rows", () => {
     });
     expect(parsed.episode_id ?? null).toBeNull();
     expect(parsed.session_id ?? null).toBeNull();
+  });
+});
+
+/* RV-23 (docs/roadmap/recommender-v1.md D6, #1380): the follow pair and the
+   completion fields on `finished`, built dark. Nothing emits them yet. */
+describe("RV-23: follows and completion fields", () => {
+  // MUTATION: make `episodes_played` required in ShowFollowPayloadSchema -> red.
+  it("show_followed payload parses with and without episodes_played", () => {
+    expect(() => parseEventRow({ user_id: USER, type: "show_followed", payload: { show_id: "hardcore-history" } })).not.toThrow();
+    const row = parseEventRow({ user_id: USER, type: "show_unfollowed", payload: { show_id: "hardcore-history", episodes_played: 3, topics: ["history/military"] } });
+    expect(row.payload).toEqual({ show_id: "hardcore-history", episodes_played: 3, topics: ["history/military"] });
+    expect(safeParseEventRow({ user_id: USER, type: "show_followed", payload: { show_id: "" } }).success).toBe(false);
+    expect(safeParseEventRow({ user_id: USER, type: "show_unfollowed", payload: { show_id: "x", episodes_played: 1.5 } }).success).toBe(false);
+  });
+
+  // MUTATION: `percent: z.number().min(0).max(1)` -> red (1.1 is refused).
+  it("finished percent is bounded at 1.2", () => {
+    const base = { episode_slug: "lex-353-whyte", topics: [], percent_complete: 1, source: "observed" };
+    const parse = (extra: Record<string, unknown>) => safeParseEventRow({ user_id: USER, type: "finished", payload: { ...base, ...extra } });
+    const ok = parse({ percent: 1.1, eff_len_sec: 3120, censored: false, resumed: true });
+    expect(ok.success).toBe(true);
+    expect(ok.success && ok.data.payload).toMatchObject({ percent: 1.1, eff_len_sec: 3120, censored: false, resumed: true });
+    expect(parse({ percent: 1.2 }).success).toBe(true);
+    expect(parse({ percent: 2 }).success).toBe(false);
+    expect(parse({ percent: -0.1 }).success).toBe(false);
+    expect(parse({}).success).toBe(true); // every field is optional: rows the client already writes still parse
+  });
+
+  /* The effective CHECK is the LAST migration that defines events.type (0009
+     inline, then 0023), read the way interestLearning.test.ts reads the
+     user_interests CHECKs.
+     MUTATION: drop 'show_unfollowed' (or any type) from 0023's CHECK -> red. */
+  it("the migration CHECK equals EventTypeSchema's values", () => {
+    const dir = path.resolve(__dirname, "..", "migrations");
+    let found: string[] | null = null;
+    let from = "";
+    for (const file of fs.readdirSync(dir).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort()) {
+      const sql = fs.readFileSync(path.join(dir, file), "utf8").replace(/--[^\n]*/g, "");
+      for (const statement of sql.split(";")) {
+        // eslint-disable-next-line security/detect-unsafe-regex -- anchored, bounded, test-only.
+        const target = /^\s*(?:create\s+table(?:\s+if\s+not\s+exists)?|alter\s+table)\s+(\w+)/i.exec(statement);
+        if (!target || target[1] !== "events") continue;
+        const check = /check\s*\(\s*type\s+in\s*\(([^)]*)\)/i.exec(statement);
+        if (check) {
+          found = [...check[1]!.matchAll(/'([^']+)'/g)].map((m) => m[1]!);
+          from = file;
+        }
+      }
+    }
+    expect(from).toBe("0023_events_follow_types.sql");
+    expect([...new Set(found ?? [])].sort()).toEqual([...EventTypeSchema.options].sort());
+    expect(found).toHaveLength(EventTypeSchema.options.length);
   });
 });
