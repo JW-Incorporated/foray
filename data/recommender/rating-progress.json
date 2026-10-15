@@ -1,4 +1,4985 @@
 {
   "in_flight": {},
-  "rated": {}
+  "rated": {
+    "77001367": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "79063354": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "83260487": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "117752146": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "171668359": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "214089682": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "263456080": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "265264862": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "268800565": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "306390087": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "354628391": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "356920632": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "389446869": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "431180569": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "467041704": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "500189078": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "573731398": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "685821493": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "690828594": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "893008561": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "941219323": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "945390489": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1042017993": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1066326306": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1082252585": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1100417601": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1118781520": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1152853871": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1194755213": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1200361736": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1203110397": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1232131110": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1240751928": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1251546502": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1256660459": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1286811573": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1292353638": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1298314174": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1318397377": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1347746953": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1368081567": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1375339408": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "1391240708": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1402378177": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1419742734": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1421573955": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1435988964": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "1437916048": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1439567112": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1444873564": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1450599780": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1451224710": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1451897026": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1453352591": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1455758394": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1457255205": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1458420685": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1466271396": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1469394914": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1473838608": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1477578107": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "1480792783": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "1481366133": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1485931128": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1488393322": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1490722424": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1492797340": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "1493613536": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1495344067": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1495930854": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1501261245": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1503502564": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1506227206": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1507781967": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1508135544": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1510975732": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "1514590215": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1515625083": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1517651197": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1518811931": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1519377425": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1522600041": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1522899720": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1523900602": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1523921573": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1527477975": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1531593864": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1532956108": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1533388375": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1535418852": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1539568321": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1540428224": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1543330611": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1543990412": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1551992078": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1554319539": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1559564016": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1561803455": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1562879046": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1565409987": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1569401963": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1574382232": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1575957255": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1580594077": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1584214055": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1592182331": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1592823205": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1595271966": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1603011962": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1608051004": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1610918212": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1613551919": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1615593491": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1618050230": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1619978406": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1621750804": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1627066829": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1637438384": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1638001340": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1640172049": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1646871881": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1647719549": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1648019830": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1649863672": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1656058786": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1659732106": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "1669923788": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1677393954": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1677810412": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1680425507": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1684351915": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1688630975": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1692042597": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1693150761": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1697516282": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1697794816": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1701448583": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1710044536": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1712529780": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1721023499": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1728723635": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1733135157": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1738264274": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1741644879": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1742007509": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "1746391981": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1748724463": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1788724796": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1790108248": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1796849755": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1801412689": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "1802390261": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "1808470731": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1808734718": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1810695711": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "1824569474": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1825931696": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1829721662": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1833991539": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1842586566": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1844970260": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1846152861": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1847643602": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1848120606": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "1848156557": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1852074005": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1854454728": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "1858430616": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1860026821": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1865037317": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1866742314": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1870845014": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1876049295": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "1882553792": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1883190981": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1885416577": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "1892516584": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "1893930527": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "1896274410": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1896562835": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1896631617": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "1896762691": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "1896803199": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "1896834497": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "1896858485": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "1896875316": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "1896906112": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "1896908186": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1001659715@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1050535625@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1089022756@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1092751338@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "117752146@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1257202425@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1347746953@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1436427334@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1451897026@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1488393322@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1491102803@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1510975732@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1513034553@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1513787271@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1523900602@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1562879046@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1576594336@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1583132133@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1603011962@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1673858702@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1676846015@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1747873257@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1750591415@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1753827979@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1765998900@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1800012194@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1802264717@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1847643602@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "1896631617@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "1896875316@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "2-bears-1-cave": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "6783333783": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "6784802882": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "6785743281": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "99-percent-invisible": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "alpinist": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "amicus-dahlia-lithwick": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "ams-on-the-air": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "beersmith-podcast@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "being-an-engineer": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "black-box-down": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "bone-valley": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "broken-record": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "business-of-machining": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "business-wars": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "call-her-daddy": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "catalyst-shayle-kann": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "cbc-ideas": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "cider-chat": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "cleantechies-podcast": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "corecursive": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "dear-sugars": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "designer-notes": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "dont-panic-geocast": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "energy-gang": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "engines-of-our-ingenuity": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "engines-of-our-ingenuity@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "f1-beyond-the-grid": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "fast-talk": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "fly-on-the-wall": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "freakonomics-radio": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "gastropod": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "geology-bites@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "go-creative-show": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "good-hang-amy-poehler": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "happier-gretchen-rubin": {
+      "last_batch_id": "pilot-1-joint-20261014-4ae3084f",
+      "passes": [
+        1
+      ]
+    },
+    "history-of-wwii-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "in-the-dark": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "just-fly-performance-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "kill-tony": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "lex-fridman-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "lingthusiasm": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "lore": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "maintenance-phase": {
+      "last_batch_id": "pilot-2-joint-20261014-6f42fc0a",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "making-chips": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "maritime-history-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-90af8446",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-4ad4e2f8",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-8f5c19e2",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-f4d35d80",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-78db3daf",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-855d1da7",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-4e4f2f3c",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-3c2f8623",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-9fbc19e4",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-524492b8",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-c6ed8512",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-114cb05a",
+      "passes": [
+        1
+      ]
+    },
+    "masters-of-scale@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-eb301465",
+      "passes": [
+        1
+      ]
+    },
+    "music-history-monday": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "my-favorite-theorem": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "old-gods-of-appalachia": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "ologies-with-alie-ward": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "our-fake-history": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "partially-examined-life": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "planetary-radio": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "science-for-sport-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "shipwrecks-and-sea-dogs": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "shop-talk-live": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "sigma-nutrition-radio": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "snap-judgment@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "software-engineering-daily": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "spycast": {
+      "last_batch_id": "pilot-1-joint-20261014-0b8d43a0",
+      "passes": [
+        1
+      ]
+    },
+    "storycorps": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "strict-scrutiny": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "strong-towns-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "the-allusionist": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "the-ancients": {
+      "last_batch_id": "pilot-1-joint-20261014-041ad04f",
+      "passes": [
+        1
+      ]
+    },
+    "the-archaeology-show": {
+      "last_batch_id": "pilot-2-joint-20261014-51ca30cd",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "the-bbq-central-show": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "the-bourbon-life": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "the-bourbon-road@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "the-cinematography-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists": {
+      "last_batch_id": "pilot-1-joint-20261014-4802a727",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "the-great-women-artists@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "the-lonely-palette": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth": {
+      "last_batch_id": "pilot-1-joint-20261014-b7a4c031",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "the-moth@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "the-psychology-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "the-race-f1-podcast": {
+      "last_batch_id": "pilot-1-joint-20261014-86a6d0b6",
+      "passes": [
+        1
+      ]
+    },
+    "the-roundhouse": {
+      "last_batch_id": "pilot-1-joint-20261014-6bfd03f2",
+      "passes": [
+        1
+      ]
+    },
+    "the-war-on-cars": {
+      "last_batch_id": "pilot-1-joint-20261014-b7ce1a50",
+      "passes": [
+        1
+      ]
+    },
+    "this-past-weekend-theo-von": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "this-podcast-will-kill-you": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "this-week-in-startups": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "tiny-matters": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "two-scientists-walk-into-a-bar": {
+      "last_batch_id": "pilot-1-joint-20261014-8ba79f96",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "unauthorized-history-pacific-war@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "unexplainable": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "unexplained": {
+      "last_batch_id": "pilot-1-joint-20261014-4031883c",
+      "passes": [
+        1
+      ]
+    },
+    "volts": {
+      "last_batch_id": "pilot-1-joint-20261014-878f7005",
+      "passes": [
+        1
+      ]
+    },
+    "watt-it-takes": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "weather-geeks": {
+      "last_batch_id": "pilot-2-joint-20261014-e582e6a3",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "wine-educate": {
+      "last_batch_id": "pilot-2-joint-20261014-9609332b",
+      "passes": [
+        1,
+        2
+      ]
+    },
+    "wood-talk": {
+      "last_batch_id": "pilot-1-joint-20261014-09790578",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:banter-regular": {
+      "last_batch_id": "pilot-1-isolated-banter-regular-20261014-b689ba80",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:comfort-companion": {
+      "last_batch_id": "pilot-1-isolated-comfort-companion-20261014-93467602",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:commute-explainer": {
+      "last_batch_id": "pilot-1-isolated-commute-explainer-20261014-e636fec5",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:family-listener": {
+      "last_batch_id": "pilot-1-isolated-family-listener-20261014-93dc8b8e",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:history-deep-diver": {
+      "last_batch_id": "pilot-1-isolated-history-deep-diver-20261014-40babd69",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:maker-tinkerer": {
+      "last_batch_id": "pilot-1-isolated-maker-tinkerer-20261014-9221b7c7",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:mechanism-hunter": {
+      "last_batch_id": "pilot-1-isolated-mechanism-hunter-20261014-174fccc8",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:narrative-binger": {
+      "last_batch_id": "pilot-1-isolated-narrative-binger-20261014-5f4ceb62",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:news-current": {
+      "last_batch_id": "pilot-1-isolated-news-current-20261014-b5e2599c",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:practical-improver": {
+      "last_batch_id": "pilot-1-isolated-practical-improver-20261014-3c75f4d2",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:sharp-comedy": {
+      "last_batch_id": "pilot-1-isolated-sharp-comedy-20261014-acb831a1",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:slow-news-contextualist": {
+      "last_batch_id": "pilot-1-isolated-slow-news-contextualist-20261014-7f359161",
+      "passes": [
+        1
+      ]
+    },
+    "wood-talk@isolated:true-crime-careful": {
+      "last_batch_id": "pilot-1-isolated-true-crime-careful-20261014-8e8bec6d",
+      "passes": [
+        1
+      ]
+    },
+    "woodshop-life": {
+      "last_batch_id": "pilot-1-joint-20261014-3b2bc106",
+      "passes": [
+        1
+      ]
+    },
+    "wow-in-the-world": {
+      "last_batch_id": "pilot-1-joint-20261014-f7850431",
+      "passes": [
+        1
+      ]
+    },
+    "zoe-science-nutrition": {
+      "last_batch_id": "pilot-1-joint-20261014-b259a782",
+      "passes": [
+        1
+      ]
+    }
+  }
 }

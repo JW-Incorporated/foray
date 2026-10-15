@@ -31,7 +31,7 @@ sample -> prepare -> [ agent | qwen | jev ] -> merge -> agreement -> student -> 
 | client | `build-ratings-client.mjs` | RV-15, RV-30 | The 40 KB client projection `data/recommender/ratings-client.json`, with a `--check` drift test. |
 | reports | `eval.mjs`, `foray-supply.mjs`, `anomaly.mjs` | RV-21, RV-22, RV-26 | Offline eval against the chart, the Foray supply per persona, and the anomaly and injection audit. |
 
-Scripts land card by card; a row above whose file does not exist yet is planned, not missing. RV-13 adds the run loop as it was actually run, with the pilot's numbers.
+Scripts land card by card; a row above whose file does not exist yet is planned, not missing. The run loop as the pilot ran it is under "Running a pass" below.
 
 ## The three file shapes
 
@@ -61,6 +61,36 @@ data-local/recommender/
 ```
 
 Only `data/recommender/` is committed: personas, ratings, predicted ratings, progress and the client projection (D8).
+
+## Running a pass
+
+These are the commands as the pilot ran them (RV-13, 2026-10-14; report: [`docs/research/persona-ratings-pilot-2026-10.md`](../../docs/research/persona-ratings-pilot-2026-10.md)). One-time setup in a fresh worktree: `npm ci` in `backend/` (enrich-rss needs `fast-xml-parser`), and `npm install` in `tools/corpus/embed/` for the transformers embedder. That install once came out partial, with `onnxruntime-node` holding only `bin/`; check it with `node -e "import('./tools/corpus/embed/runtime.mjs')"`.
+
+```sh
+node tools/recommender/enrich-rss.mjs --keys curated --concurrency 4          # ~5 min; never alongside Joey's crawler (#140)
+node tools/recommender/sample.mjs --mode pilot --size 300 --retest 60 --isolated 40 --seed rv-pilot-01 --report   # ~10 min (builds evidence for the whole catalogue)
+node tools/recommender/enrich-rss.mjs --keys gold --concurrency 4
+node tools/recommender/embed.mjs --keys gold --embedder transformers --checkpoint 25   # CPU; checkpoint so a long run keeps its progress
+
+# pass 1, joint: one prepare per batch (~1 min each; each loads the catalogue)
+node tools/recommender/prepare-rating-batch.mjs --role pilot --pass 1 --mode joint --batch-size 20
+# isolated: two batches per persona
+node tools/recommender/prepare-rating-batch.mjs --role pilot --pass 1 --mode isolated:<persona_id> --only isolated --batch-size 20
+# pass 2 (retest) only after every pass-1 batch has MERGED
+node tools/recommender/prepare-rating-batch.mjs --role pilot --pass 2 --mode joint --batch-size 20
+```
+
+**Rating.** A pool of at most 5 Claude Code agents (the pilot used Sonnet, pools of 3-4) gets one batch id each and follows [`docs/agents/runner-prompts/persona-rate-batch.md`](../../docs/agents/runner-prompts/persona-rate-batch.md). When several agents merge concurrently, each merge must run under a lock, because the merge rewrites `ratings.json` and `rating-progress.json` whole. The pilot wrapped `merge-rating-results.mjs --results … --batch …` in a lock directory.
+
+**Never prepare while a pool is merging.** Prepare also rewrites `rating-progress.json` whole, and a prepare that overlapped merges lost four batches' pass records in the pilot. The ratings were safe, and re-running the idempotent merge on those batch ids restored the records. Until `progress.mjs` takes a lock itself, prepare everything first, then rate.
+
+```sh
+node tools/recommender/merge-rating-results.mjs --check
+node tools/recommender/agreement.mjs --ratings data/recommender/ratings.json --isolated data/recommender/ratings-isolated.json \
+  --results data-local/recommender/results --out docs/research/<report>.md --block <block>
+```
+
+Measured cost: a joint batch (20 shows x 13 personas) is about 183k tokens, and an isolated batch (20 shows x 1 persona) about 151k.
 
 ## Tests
 
