@@ -40,11 +40,38 @@
    fabricated number). return_prob and confidence alphas are reported, not
    gated (the card gates fit and the sub-scores only).
 
+   CEILING-RELATIVE BARS (RV-32; the D4 amendment of 2026-10-15 in
+   docs/roadmap/recommender-v1.md). A student cannot agree with the teacher
+   more than the teacher agrees with itself, so when `gate` is given the
+   teacher's retest `ceilings`, each persona's Spearman bar is
+   min(0.75, 0.9 x that persona's retest Spearman) and the within-node tau bar
+   is min(0.60, 0.9 x the teacher's within-node tau ceiling) (`relativeBar`).
+   alpha on fit (0.80) and the sub-score rule are unchanged. The ceilings are
+   inputs computed by the caller from committed data, never constants here.
+
+   STUDENT V2 (RV-32), every choice made by k-fold CV on the training rows
+   only (`chooseStudentConfig`), per persona, on that persona's `fit` column:
+     (a) a ridge lambda per persona (`fitRidge` takes one lambda per column);
+     (b) a kNN regression over the embedding block (cosine, k from KNN_KS; the
+         mean of the k nearest training shows' targets, the query show itself
+         never among them) blended into the ridge prediction with a weight
+         from BLEND_WEIGHTS (0 = ridge only); the blend applies to all seven
+         targets of the persona;
+     (c) a monotone calibration of the blended `fit` (`fitIsotonic`: pool
+         adjacent violators on the out-of-fold predictions, then linear
+         between the pooled blocks, slope 1 beyond them) to undo ridge's
+         shrinkage toward 1; it changes MAE and the 3+ mean, not the order.
+
    THE MODEL FILE (`serializeModel`, `loadModel`):
-   data/recommender/student-model.json = { version, embedder, feature_names,
-   means, scales, lambda, persona_ids, targets, dropped, intercepts (one row of
-   7 per persona), weights (per persona, one row of 7 per feature), trained_on:
-   { n, gold_set_sha256, ratings_built_at }, gate }. RV-25 writes it.
+   data/recommender/student-model.json = { version (2), embedder,
+   feature_names, means, scales, lambdas (one per persona), persona_ids,
+   targets, dropped, intercepts (one row of 7 per persona), trained_on: { n,
+   holdout_n, gold_set_sha256, ratings_sha256, ratings_built_at }, gate,
+   selection (the CV grids and the per-persona choices), knn: { metric, dim, train_keys, k (per persona), weight (per persona) },
+   calibration (per persona: null or { x, y } knots on fit), weights (per
+   persona, one row of 7 per feature) }. RV-25/RV-32 write it. The kNN reads
+   its neighbours' targets from ratings.json and their vectors from the
+   embeddings file at predict time (`knnIndex`); the model stores only keys.
 
    No model call, no network, no file I/O: pure functions. Nothing on a live
    app path reads anything this module produces (dark until RV-27). */
@@ -53,7 +80,7 @@ import { AUDIO_SUBSCORES, RATING_SLOTS, SUBSCORES } from "./schema.mjs";
 import { krippendorffAlpha, spearman, toTable, withinNodeTau } from "./agreement.mjs";
 import { daiValue, lengthBand } from "./sample.mjs";
 
-export const MODEL_VERSION = 1;
+export const MODEL_VERSION = 2;
 
 /** The seven predicted fields per persona, in model order. */
 export const TARGETS = Object.freeze(["fit", "return_prob", "topic_fit", "depth", "accessibility", "binge_vs_dip", "confidence"]);
@@ -78,6 +105,13 @@ export const DAI_VALUES = Object.freeze(["true", "false", "unknown"]);
 export const EPISODE_BAND_COUNT = Object.freeze({ "<10": 5, "10-49": 30, "50-199": 125, "200-999": 600, "1000+": 1500 });
 
 export const DEFAULT_LAMBDA_GRID = Object.freeze([0.01, 0.1, 1, 10, 100, 1000]);
+
+/** RV-32: a ceiling-relative bar is this fraction of the teacher's own retest. */
+export const CEILING_FACTOR = 0.9;
+/** RV-32 candidate grids (orchestrator note of 2026-10-15). */
+export const KNN_KS = Object.freeze([5, 10, 20, 40]);
+export const BLEND_WEIGHTS = Object.freeze([0, 0.25, 0.5, 0.75]);
+export const CALIBRATIONS = Object.freeze(["none", "isotonic"]);
 
 const isNum = (v) => typeof v === "number" && Number.isFinite(v);
 
@@ -283,8 +317,11 @@ function prepareRidge(X, Y, rows) {
   return { means, scales, d, m, prepared };
 }
 
+/** `lambda` is one number for every column or an array of one per column
+    (RV-32's per-persona lambda); columns sharing a lambda share one solve. */
 function solveRidge(prep, lambda) {
   const { d, m } = prep;
+  const lambdaOf = (c) => (Array.isArray(lambda) ? lambda[c] : lambda);
   const W = Array.from({ length: d }, () => new Float64Array(m));
   const intercept = new Float64Array(m);
   for (const g of prep.prepared) {
@@ -292,21 +329,30 @@ function solveRidge(prep, lambda) {
       for (const c of g.cols) intercept[c] = NaN;
       continue;
     }
-    const A = g.G.map((row, i) => {
-      const a = Float64Array.from(row);
-      a[i] += lambda;
-      return a;
-    });
-    const B = g.XtY.map((row) => Float64Array.from(row));
-    const Wg = solveLinear(A, B);
+    const byLambda = new Map();
     g.cols.forEach((c, k) => {
-      let b = g.ybar[k];
-      for (let j = 0; j < d; j++) {
-        W[j][c] = Wg[j][k];
-        b -= g.xbar[j] * Wg[j][k];
-      }
-      intercept[c] = b;
+      const l = lambdaOf(c);
+      if (!byLambda.has(l)) byLambda.set(l, []);
+      byLambda.get(l).push(k);
     });
+    for (const [l, ks] of byLambda) {
+      const A = g.G.map((row, i) => {
+        const a = Float64Array.from(row);
+        a[i] += l;
+        return a;
+      });
+      const B = g.XtY.map((row) => Float64Array.from(ks, (k) => row[k]));
+      const Wg = solveLinear(A, B);
+      ks.forEach((k, kk) => {
+        const c = g.cols[k];
+        let b = g.ybar[k];
+        for (let j = 0; j < d; j++) {
+          W[j][c] = Wg[j][kk];
+          b -= g.xbar[j] * Wg[j][kk];
+        }
+        intercept[c] = b;
+      });
+    }
   }
   return { W, intercept };
 }
@@ -318,7 +364,9 @@ function solveRidge(prep, lambda) {
  * standardised space), intercept (m) }`.
  */
 export function fitRidge(X, Y, { lambda = 1, rows = null } = {}) {
-  if (!(lambda >= 0)) throw new Error("fitRidge: lambda must be >= 0");
+  const lambdas = Array.isArray(lambda) ? lambda : [lambda];
+  if (!lambdas.length || !lambdas.every((l) => l >= 0)) throw new Error("fitRidge: lambda must be >= 0");
+  if (Array.isArray(lambda) && Y.length && lambda.length !== Y[0].length) throw new Error(`fitRidge: ${lambda.length} lambdas for ${Y[0].length} target columns`);
   if (X.length !== Y.length) throw new Error(`fitRidge: ${X.length} feature rows but ${Y.length} target rows`);
   const train = rows ?? X.map((_, i) => i);
   const prep = prepareRidge(X, Y, train);
@@ -356,26 +404,20 @@ export function rawCoefficients(fit) {
 export function chooseLambda(X, Y, { folds = 5, grid = DEFAULT_LAMBDA_GRID, rows = null } = {}) {
   if (!grid.length) throw new Error("chooseLambda: empty grid");
   const train = rows ?? X.map((_, i) => i);
-  if (train.length < folds) throw new Error(`chooseLambda: ${train.length} rows for ${folds} folds`);
+  const oof = oofRidge(X, Y, { rows: train, folds, grid });
   const sse = new Float64Array(grid.length);
   let count = 0;
-  for (let f = 0; f < folds; f++) {
-    const fitRows = train.filter((_, i) => i % folds !== f);
-    const testRows = train.filter((_, i) => i % folds === f);
-    const prep = prepareRidge(X, Y, fitRows);
-    grid.forEach((lambda, g) => {
-      const fit = { means: prep.means, scales: prep.scales, ...solveRidge(prep, lambda) };
-      for (const r of testRows) {
-        const p = predictRaw(fit, X[r]);
-        Y[r].forEach((y, c) => {
-          if (isNum(y) && Number.isFinite(p[c])) {
-            sse[g] += (p[c] - y) ** 2;
-            if (g === 0) count += 1;
-          }
-        });
-      }
+  grid.forEach((_, g) => {
+    train.forEach((r, i) => {
+      const p = oof[g][i];
+      Y[r].forEach((y, c) => {
+        if (isNum(y) && Number.isFinite(p[c])) {
+          sse[g] += (p[c] - y) ** 2;
+          if (g === 0) count += 1;
+        }
+      });
     });
-  }
+  });
   const scores = grid.map((lambda, g) => ({ lambda, mse: count ? sse[g] / count : null }));
   let best = 0;
   for (let g = 1; g < grid.length; g++) {
@@ -385,9 +427,257 @@ export function chooseLambda(X, Y, { folds = 5, grid = DEFAULT_LAMBDA_GRID, rows
   return { lambda: grid[best], scores };
 }
 
+/** Row i of `rows` is in fold i % folds (the chooseLambda convention). */
+export function foldOf(i, folds) {
+  return i % folds;
+}
+
+/**
+ * Out-of-fold ridge predictions on `rows` for every lambda of `grid`:
+ * `out[g][i]` is the m-vector for `rows[i]` from a model standardised and
+ * fitted on the other folds of `rows` only. Nothing outside `rows` is read.
+ */
+export function oofRidge(X, Y, { rows, folds = 5, grid }) {
+  if (rows.length < folds) throw new Error(`oofRidge: ${rows.length} rows for ${folds} folds`);
+  const out = grid.map(() => new Array(rows.length));
+  for (let f = 0; f < folds; f++) {
+    const fitRows = rows.filter((_, i) => foldOf(i, folds) !== f);
+    const prep = prepareRidge(X, Y, fitRows);
+    grid.forEach((lambda, g) => {
+      const fit = { means: prep.means, scales: prep.scales, ...solveRidge(prep, lambda) };
+      rows.forEach((r, i) => {
+        if (foldOf(i, folds) === f) out[g][i] = predictRaw(fit, X[r]);
+      });
+    });
+  }
+  return out;
+}
+
+/* ------------------------------------------------------------------- kNN */
+
+function unit(v) {
+  let n = 0;
+  for (let i = 0; i < v.length; i++) n += v[i] * v[i];
+  n = Math.sqrt(n);
+  return Float64Array.from(v, (x) => (n > 0 ? x / n : 0));
+}
+
+/**
+ * A cosine kNN index: `keys[i]` with embedding `vectors[i]` and flat target
+ * row `targets[i]` (null where the teacher has none).
+ */
+export function knnIndex(keys, vectors, targets) {
+  if (keys.length !== vectors.length || keys.length !== targets.length) throw new Error("knnIndex: keys, vectors and targets differ in length");
+  return { keys: [...keys], unit: vectors.map(unit), targets };
+}
+
+/**
+ * The positions in `index` of the `kmax` training shows nearest `query` by
+ * cosine, nearest first (ties to the lower position). A show whose key is
+ * `excludeKey` is never its own neighbour.
+ */
+export function knnNeighbours(index, query, kmax, { excludeKey = null } = {}) {
+  const q = unit(query);
+  const scored = [];
+  for (let i = 0; i < index.unit.length; i++) {
+    if (excludeKey !== null && index.keys[i] === excludeKey) continue;
+    const u = index.unit[i];
+    let s = 0;
+    for (let j = 0; j < q.length; j++) s += q[j] * u[j];
+    scored.push([s, i]);
+  }
+  scored.sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  return scored.slice(0, kmax).map(([, i]) => i);
+}
+
+/** Per target column, the mean over the first `k` neighbours that have it
+    (NaN where none does). */
+export function knnMean(index, neighbours, k) {
+  const m = index.targets[0]?.length ?? 0;
+  const out = new Float64Array(m).fill(NaN);
+  const near = neighbours.slice(0, k);
+  for (let c = 0; c < m; c++) {
+    let s = 0;
+    let n = 0;
+    for (const i of near) {
+      const v = index.targets[i][c];
+      if (isNum(v)) {
+        s += v;
+        n++;
+      }
+    }
+    if (n) out[c] = s / n;
+  }
+  return out;
+}
+
+/**
+ * Out-of-fold kNN predictions on `rows`: `out[kIdx][i]` from an index of the
+ * other folds' rows only. `E[r]` is row r's embedding, `keyOf(r)` its show.
+ */
+export function oofKnn(E, Y, { rows, folds = 5, ks = KNN_KS, keyOf = (r) => r }) {
+  const kmax = Math.max(...ks);
+  const out = ks.map(() => new Array(rows.length));
+  for (let f = 0; f < folds; f++) {
+    const fitRows = rows.filter((_, i) => foldOf(i, folds) !== f);
+    const index = knnIndex(fitRows.map(keyOf), fitRows.map((r) => E[r]), fitRows.map((r) => Y[r]));
+    rows.forEach((r, i) => {
+      if (foldOf(i, folds) !== f) return;
+      const nb = knnNeighbours(index, E[r], kmax, { excludeKey: keyOf(r) });
+      ks.forEach((k, ki) => {
+        out[ki][i] = knnMean(index, nb, k);
+      });
+    });
+  }
+  return out;
+}
+
+/* ----------------------------------------------------------- calibration */
+
+/**
+ * A monotone calibration of x -> y: pool-adjacent-violators isotonic
+ * regression over the pairs sorted by x (equal x pooled first), returned as
+ * knots `{ x, y }` (each block's mean x and mean y), both strictly increasing.
+ */
+export function fitIsotonic(xs, ys) {
+  const pts = xs.map((x, i) => [x, ys[i]]).filter(([x, y]) => isNum(x) && isNum(y)).sort((a, b) => a[0] - b[0]);
+  const blocks = [];
+  for (const [x, y] of pts) {
+    const last = blocks[blocks.length - 1];
+    if (last && last.lastX === x) {
+      last.x += x;
+      last.y += y;
+      last.w += 1;
+    } else blocks.push({ x, y, w: 1, lastX: x });
+    while (blocks.length > 1 && blocks[blocks.length - 2].y / blocks[blocks.length - 2].w >= blocks[blocks.length - 1].y / blocks[blocks.length - 1].w) {
+      const b = blocks.pop();
+      const a = blocks[blocks.length - 1];
+      a.x += b.x;
+      a.y += b.y;
+      a.w += b.w;
+      a.lastX = b.lastX;
+    }
+  }
+  return { x: blocks.map((b) => b.x / b.w), y: blocks.map((b) => b.y / b.w) };
+}
+
+/** A calibration applied to one value: linear between knots, slope 1 beyond
+    the first and last (strictly increasing everywhere). Null cal = identity. */
+export function applyCalibration(cal, v) {
+  if (!cal || !isNum(v) || !cal.x.length) return v;
+  const { x, y } = cal;
+  const n = x.length;
+  if (v <= x[0]) return y[0] + (v - x[0]);
+  if (v >= x[n - 1]) return y[n - 1] + (v - x[n - 1]);
+  let lo = 0;
+  let hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (x[mid] <= v) lo = mid;
+    else hi = mid;
+  }
+  return y[lo] + ((v - x[lo]) * (y[hi] - y[lo])) / (x[hi] - x[lo]);
+}
+
+/* -------------------------------------------------------- config by CV */
+
+const mseOf = (pairs) => (pairs.length ? pairs.reduce((s, [p, y]) => s + (p - y) ** 2, 0) / pairs.length : null);
+const lower = (a, b) => a !== null && (b === null || a < b);
+
+/**
+ * RV-32's per-persona choice, by `folds`-fold CV on `rows` (the training rows;
+ * nothing outside `rows` is read), each choice on the persona's `fit` column
+ * (column p * 7), in order:
+ *   lambda from `grid` (ridge out-of-fold MSE; a tie to the larger lambda);
+ *   then (k, weight) from `ks` x `weights` for the blend
+ *   (1 - weight) * ridge + weight * kNN (weight 0 is one candidate, k null;
+ *   a tie to the earlier candidate: smaller weight, then smaller k);
+ *   then "isotonic" calibration over "none" only when its CV MSE (a second
+ *   k-fold over the out-of-fold blended fit, same fold assignment) is lower.
+ * Returns `{ personas: [{ lambda, k, weight, calibration }], cv, oofFit }`;
+ * `oofFit[p][i]` is the out-of-fold blended fit of `rows[i]`, on which the
+ * final model's calibration is fitted.
+ */
+export function chooseStudentConfig(X, E, Y, { rows, personaCount, folds = 5, grid, ks = KNN_KS, weights = BLEND_WEIGHTS, keyOf = (r) => r }) {
+  const T = TARGETS.length;
+  const ridge = oofRidge(X, Y, { rows, folds, grid });
+  const knn = oofKnn(E, Y, { rows, folds, ks, keyOf });
+  const personas = [];
+  const cv = { lambda: [], blend: [], calibration: [] };
+  const oofFit = [];
+  for (let p = 0; p < personaCount; p++) {
+    const c = p * T;
+    const y = rows.map((r) => Y[r][c]);
+    const pairsOf = (preds) => preds.map((v, i) => [v, y[i]]).filter(([v, t]) => isNum(v) && isNum(t));
+    // (a) lambda
+    const lambdaScores = grid.map((lambda, g) => ({ lambda, mse: mseOf(pairsOf(ridge[g].map((row) => row[c]))) }));
+    let gBest = 0;
+    lambdaScores.forEach((s, g) => {
+      if (lower(s.mse, lambdaScores[gBest].mse) || (s.mse !== null && s.mse === lambdaScores[gBest].mse && grid[g] > grid[gBest])) gBest = g;
+    });
+    const ridgeFit = ridge[gBest].map((row) => row[c]);
+    // (b) the kNN blend
+    const blended = (w, ki) =>
+      ridgeFit.map((v, i) => {
+        const kv = ki === null ? NaN : knn[ki][i][c];
+        return w > 0 && Number.isFinite(kv) ? (1 - w) * v + w * kv : v;
+      });
+    const blendScores = [];
+    for (const w of weights) {
+      const cands = w === 0 ? [[null, null]] : ks.map((k, ki) => [ki, k]);
+      for (const [ki, k] of cands) blendScores.push({ k, weight: w, ki, mse: mseOf(pairsOf(blended(w, ki))) });
+    }
+    let bBest = 0;
+    blendScores.forEach((s, b) => {
+      if (lower(s.mse, blendScores[bBest].mse)) bBest = b;
+    });
+    const chosen = blendScores[bBest];
+    const fitOof = blended(chosen.weight, chosen.ki);
+    // (c) calibration: a second k-fold over the out-of-fold blended fit
+    const calPairs = { none: [], isotonic: [] };
+    for (let f = 0; f < folds; f++) {
+      const fitIdx = fitOof.map((_, i) => i).filter((i) => foldOf(i, folds) !== f);
+      const cal = fitIsotonic(fitIdx.map((i) => fitOof[i]), fitIdx.map((i) => y[i]));
+      fitOof.forEach((v, i) => {
+        if (foldOf(i, folds) !== f || !isNum(v) || !isNum(y[i])) return;
+        calPairs.none.push([v, y[i]]);
+        calPairs.isotonic.push([applyCalibration(cal, v), y[i]]);
+      });
+    }
+    const calScores = CALIBRATIONS.map((name) => ({ calibration: name, mse: mseOf(calPairs[name]) }));
+    const calibration = lower(calScores[1].mse, calScores[0].mse) ? "isotonic" : "none";
+    personas.push({ lambda: grid[gBest], k: chosen.k, weight: chosen.weight, calibration });
+    cv.lambda.push(lambdaScores);
+    cv.blend.push(blendScores.map(({ k, weight, mse }) => ({ k, weight, mse })));
+    cv.calibration.push(calScores);
+    oofFit.push(fitOof);
+  }
+  return { personas, cv, oofFit };
+}
+
+/**
+ * The fitted v2 student from a config: ridge on `rows` with each persona's
+ * lambda on its seven columns, the kNN over `rows`, and per persona the
+ * isotonic calibration fitted on `oofFit` (out-of-fold, never in-sample).
+ */
+export function fitStudent(X, Y, { rows, config, oofFit, personaIds, featureNames: names, embedder = null, trainedOn = null, keyOf, dim }) {
+  const T = TARGETS.length;
+  const lambdas = personaIds.flatMap((_, p) => Array(T).fill(config.personas[p].lambda));
+  const fit = fitRidge(X, Y, { lambda: lambdas, rows });
+  const model = buildModel({ ...fit, lambda: config.personas.map((c) => c.lambda) }, { personaIds, featureNames: names, embedder, trainedOn });
+  model.knn = { metric: "cosine", dim, train_keys: rows.map(keyOf), k: config.personas.map((c) => c.k), weight: config.personas.map((c) => c.weight) };
+  model.calibration = config.personas.map((c, p) => {
+    if (c.calibration !== "isotonic") return null;
+    const y = rows.map((r) => Y[r][p * T]);
+    return fitIsotonic(oofFit[p], y);
+  });
+  return model;
+}
+
 /* ----------------------------------------------------------------- model */
 
-/** A student model from a `fitRidge` over flat target rows (`targetRow`). */
+/** A student model from a `fitRidge` over flat target rows (`targetRow`).
+    `fit.lambda` is one number (every persona) or one per persona. */
 export function buildModel(fit, { personaIds, featureNames: names, embedder = null, trainedOn = null }) {
   const P = personaIds.length;
   const T = TARGETS.length;
@@ -399,7 +689,7 @@ export function buildModel(fit, { personaIds, featureNames: names, embedder = nu
     feature_names: names ? [...names] : null,
     means: Array.from(fit.means),
     scales: Array.from(fit.scales),
-    lambda: fit.lambda,
+    lambdas: Array.isArray(fit.lambda) ? [...fit.lambda] : personaIds.map(() => fit.lambda),
     persona_ids: [...personaIds],
     targets: [...TARGETS],
     dropped: [],
@@ -407,28 +697,65 @@ export function buildModel(fit, { personaIds, featureNames: names, embedder = nu
     weights: personaIds.map((_, p) => fit.W.map((row) => Array.from(row.slice(p * T, p * T + T)))),
     trained_on: trainedOn,
     gate: null,
+    knn: null,
+    calibration: null,
   };
+}
+
+/** The kNN index a model's blend reads: its `knn.train_keys`, their vectors
+    (`embeddingOf`) and flat target rows (`targetsOf`, model persona order).
+    Null when the model blends no kNN. Throws when a training key is missing. */
+export function knnIndexFor(model, { embeddingOf, targetsOf }) {
+  if (!model.knn || !model.knn.weight.some((w) => w > 0)) return null;
+  const keys = model.knn.train_keys;
+  const vectors = keys.map((k) => {
+    const v = embeddingOf(k);
+    if (!v) throw new Error(`knnIndexFor: no embedding for training show ${k}`);
+    return v;
+  });
+  return knnIndex(keys, vectors, keys.map((k) => targetsOf(k)));
 }
 
 /**
  * The P x 7 prediction for one feature row, persona rows in
- * `model.persona_ids` order, columns in TARGETS order. A target the gate
- * dropped is null. host_style, production and ad_load are not columns.
+ * `model.persona_ids` order, columns in TARGETS order: the ridge, blended per
+ * persona with the kNN over `knn` (a `knnIndexFor` index; required when the
+ * model blends any) on the row's embedding block (its first `knn.dim`
+ * features), never counting the show `key` itself as a neighbour; then the
+ * persona's calibration on `fit`. A target the gate dropped is null.
+ * host_style, production and ad_load are not columns.
  */
-export function predict(model, x) {
+export function predict(model, x, { knn = null, key = null } = {}) {
   const { means, scales, weights, intercepts } = model;
   if (x.length !== means.length) throw new Error(`predict: ${x.length} features, the model has ${means.length}`);
   const xs = Array.from(x, (v, j) => (v - means[j]) / scales[j]);
   const dropped = new Set(model.dropped ?? []);
-  return model.persona_ids.map((_, p) =>
-    TARGETS.map((t, c) => {
-      if (dropped.has(t)) return null;
+  const T = TARGETS.length;
+  const blendW = model.knn?.weight ?? [];
+  let neighbours = null;
+  if (blendW.some((w) => w > 0)) {
+    if (!knn) throw new Error("predict: this model blends a kNN; pass its index (knnIndexFor)");
+    neighbours = knnNeighbours(knn, Array.from(x).slice(0, model.knn.dim), Math.max(...model.knn.k.filter(isNum)), { excludeKey: key });
+  }
+  return model.persona_ids.map((_, p) => {
+    const Wp = weights[p];
+    const row = TARGETS.map((t, c) => {
       let s = intercepts[p][c];
-      const Wp = weights[p];
       for (let j = 0; j < xs.length; j++) if (xs[j] !== 0) s += xs[j] * Wp[j][c];
       return s;
-    }),
-  );
+    });
+    const w = blendW[p] ?? 0;
+    if (w > 0) {
+      const km = knnMean(knn, neighbours, model.knn.k[p]);
+      for (let c = 0; c < T; c++) {
+        const kv = km[p * T + c];
+        if (Number.isFinite(kv)) row[c] = (1 - w) * row[c] + w * kv;
+      }
+    }
+    const cal = model.calibration?.[p];
+    if (cal) row[0] = applyCalibration(cal, row[0]);
+    return row.map((v, c) => (dropped.has(TARGETS[c]) ? null : v));
+  });
 }
 
 /** A predicted value as it is published: clamped to its scale, `fit` and the
@@ -442,10 +769,10 @@ export function finalise(target, value) {
 /** Predictions in the ratings.json shape (`{ shows: { key: { personas: { pid:
     [RATING_SLOTS] } } } }`, audio slots null), finalised, so agreement.mjs
     reads them like the teacher. `featuresByKey` maps show_key to features. */
-export function predictTable(model, featuresByKey) {
+export function predictTable(model, featuresByKey, { knn = null } = {}) {
   const shows = {};
   for (const key of Object.keys(featuresByKey).sort()) {
-    const matrix = predict(model, featuresByKey[key]);
+    const matrix = predict(model, featuresByKey[key], { knn, key });
     const personas = {};
     model.persona_ids.forEach((pid, p) => {
       personas[pid] = RATING_SLOTS.map((slot) => {
@@ -474,12 +801,52 @@ function alphaOf(teacher, predicted, field) {
 const passes = (value, threshold) => value !== null && value !== undefined && value >= threshold;
 
 /**
+ * RV-32's ceiling-relative bar: min(cap, factor x ceiling). With no ceiling
+ * the cap stands (a missing ceiling never lowers a bar).
+ */
+export function relativeBar(cap, ceiling, factor = CEILING_FACTOR) {
+  return isNum(ceiling) ? Math.min(cap, factor * ceiling) : cap;
+}
+
+/**
+ * Kendall's tau implied by a Spearman rho under the bivariate-normal
+ * identities (Kruskal 1958): r = 2 sin(pi rho / 6), tau = (2 / pi) asin r.
+ * Used where only a retest Spearman is committed (RV-32).
+ */
+export function tauFromSpearman(rho) {
+  if (!isNum(rho)) return null;
+  const r = Math.max(-1, Math.min(1, 2 * Math.sin((Math.PI * rho) / 6)));
+  return (2 / Math.PI) * Math.asin(r);
+}
+
+/**
+ * The gate's ceilings from the teacher's per-persona retest Spearman (`{ pid:
+ * rho }`, e.g. predict.mjs `teacherRetestFrom` over the committed gold
+ * report): the Spearman ceilings as given, and the within-node tau ceiling as
+ * the mean over personas of `tauFromSpearman` (the gate's tau averages
+ * node x persona groups, and every holdout show is rated by every persona, so
+ * each persona weighs the same).
+ */
+export function ceilingsFromRetest(retest) {
+  const rhos = Object.entries(retest ?? {}).filter(([, v]) => isNum(v));
+  const taus = rhos.map(([, v]) => tauFromSpearman(v));
+  return {
+    spearman: Object.fromEntries(rhos),
+    within_node_tau: taus.length ? taus.reduce((a, b) => a + b, 0) / taus.length : null,
+    method: "spearman: teacher joint-vs-joint retest per persona; within_node_tau: mean over personas of (2/pi) asin(2 sin(pi rho / 6))",
+  };
+}
+
+/**
  * The student gate (research §4.4), teacher vs student on the held-out shows.
  * `predicted` and `teacher` are any shape agreement.mjs `toTable` reads
  * (`predictTable` output, ratings.json); `nodeOf` maps show_key to its root
- * node (function or map). Returns `{ pass, per_metric, failing_subscores }`.
+ * node (function or map). `ceilings` (RV-32, `ceilingsFromRetest`) makes the
+ * Spearman and within-node tau bars ceiling-relative (`relativeBar`); without
+ * it the thresholds stand as caps. Returns `{ pass, per_metric,
+ * failing_subscores }`.
  */
-export function gate(predicted, teacher, { nodeOf, thresholds = GATE_THRESHOLDS } = {}) {
+export function gate(predicted, teacher, { nodeOf, thresholds = GATE_THRESHOLDS, ceilings = null } = {}) {
   const fitAlpha = alphaOf(teacher, predicted, "fit");
   const subscores = {};
   const failing = [];
@@ -495,20 +862,24 @@ export function gate(predicted, teacher, { nodeOf, thresholds = GATE_THRESHOLDS 
   const s = toTable(predicted, { field: "fit" });
   const personaIds = [...new Set(Object.values(t).flatMap((row) => Object.keys(row)))].sort();
   const perPersona = {};
+  const bars = {};
   for (const pid of personaIds) {
     const keys = Object.keys(t).filter((k) => pid in t[k] && s[k] && pid in s[k]).sort();
     perPersona[pid] = spearman(keys.map((k) => t[k][pid]), keys.map((k) => s[k][pid]));
+    bars[pid] = relativeBar(thresholds.spearman, ceilings?.spearman?.[pid]);
   }
   const rhos = Object.values(perPersona);
-  const spearmanPass = rhos.length > 0 && rhos.every((r) => passes(r, thresholds.spearman));
+  const failingPersonas = personaIds.filter((pid) => !passes(perPersona[pid], bars[pid]));
+  const spearmanPass = rhos.length > 0 && failingPersonas.length === 0;
   const minRho = rhos.some((r) => r === null) ? null : rhos.length ? Math.min(...rhos) : null;
 
   const tau = withinNodeTau(teacher, nodeOf, predicted, { field: "fit" });
+  const tauBar = relativeBar(thresholds.withinNodeTau, ceilings?.within_node_tau);
   const per_metric = {
     fit_alpha: { value: fitAlpha, threshold: thresholds.fitAlpha, pass: passes(fitAlpha, thresholds.fitAlpha) },
     subscore_alpha: subscores,
-    spearman: { per_persona: perPersona, min: minRho, threshold: thresholds.spearman, pass: spearmanPass },
-    within_node_tau: { value: tau.mean, groups: tau.groups, threshold: thresholds.withinNodeTau, pass: passes(tau.mean, thresholds.withinNodeTau) },
+    spearman: { per_persona: perPersona, min: minRho, threshold: thresholds.spearman, bars, failing: failingPersonas, ceilings: ceilings?.spearman ?? null, pass: spearmanPass },
+    within_node_tau: { value: tau.mean, groups: tau.groups, threshold: tauBar, cap: thresholds.withinNodeTau, ceiling: ceilings?.within_node_tau ?? null, pass: passes(tau.mean, tauBar) },
     reported,
   };
   const pass = per_metric.fit_alpha.pass && per_metric.spearman.pass && per_metric.within_node_tau.pass;
@@ -534,12 +905,15 @@ export function serializeModel(model) {
     means: model.means.map(sig),
     scales: model.scales.map(sig),
     intercepts: model.intercepts.map((row) => row.map(sig)),
+    calibration: model.calibration ? model.calibration.map((c) => (c ? { x: c.x.map(sig), y: c.y.map(sig) } : null)) : null,
     weights: model.weights.map((rows) => rows.map((row) => row.map(sig))),
   };
-  const { weights, ...head } = doc;
+  const { weights, knn, calibration, ...head } = doc;
   const top = JSON.stringify(head, null, 2).replace(/\n}$/, "");
+  const knnText = knn ? `{\n    "metric": ${JSON.stringify(knn.metric)},\n    "dim": ${JSON.stringify(knn.dim)},\n    "k": ${JSON.stringify(knn.k)},\n    "weight": ${JSON.stringify(knn.weight)},\n    "train_keys": ${JSON.stringify(knn.train_keys)}\n  }` : "null";
+  const calText = calibration ? `[\n${calibration.map((c) => `    ${JSON.stringify(c)}`).join(",\n")}\n  ]` : "null";
   const body = weights.map((rows) => `    ${JSON.stringify(rows)}`).join(",\n");
-  return `${top},\n  "weights": [\n${body}\n  ]\n}\n`;
+  return `${top},\n  "knn": ${knnText},\n  "calibration": ${calText},\n  "weights": [\n${body}\n  ]\n}\n`;
 }
 
 /** Problems with a model document (`[]` when it is sound). */
@@ -558,6 +932,24 @@ export function checkModel(doc) {
   if (!Array.isArray(doc?.intercepts) || doc.intercepts.length !== P || !doc.intercepts.every((r) => Array.isArray(r) && r.length === TARGETS.length)) problems.push("intercepts must be one row of 7 per persona");
   if (!Array.isArray(doc?.weights) || doc.weights.length !== P || !doc.weights.every((rows) => Array.isArray(rows) && rows.length === d && rows.every((r) => Array.isArray(r) && r.length === TARGETS.length))) problems.push("weights must be, per persona, one row of 7 per feature");
   if (doc?.dropped && !doc.dropped.every((t) => GATED_SUBSCORES.includes(t))) problems.push("dropped may list only gated sub-scores");
+  if (!Array.isArray(doc?.lambdas) || doc.lambdas.length !== P || !doc.lambdas.every((l) => isNum(l) && l >= 0)) problems.push("lambdas must be one non-negative number per persona");
+  if (doc?.knn) {
+    const { knn } = doc;
+    if (!Array.isArray(knn.k) || knn.k.length !== P || !Array.isArray(knn.weight) || knn.weight.length !== P) problems.push("knn.k and knn.weight must be one per persona");
+    else if (!knn.weight.every((w, p) => isNum(w) && w >= 0 && w < 1 && (w === 0 || (Number.isInteger(knn.k[p]) && knn.k[p] > 0)))) problems.push("each knn weight must be in [0, 1) with a positive integer k when above 0");
+    if (!Array.isArray(knn.train_keys) || !knn.train_keys.length) problems.push("knn.train_keys is missing");
+    if (!Number.isInteger(knn.dim) || knn.dim <= 0 || knn.dim > d) problems.push("knn.dim must be the embedding block's width");
+  }
+  if (doc?.calibration) {
+    if (!Array.isArray(doc.calibration) || doc.calibration.length !== P) problems.push("calibration must be one entry per persona");
+    else {
+      for (const c of doc.calibration) {
+        if (c === null) continue;
+        const inc = (xs) => Array.isArray(xs) && xs.length > 0 && xs.every((v, i) => isNum(v) && (i === 0 || v > xs[i - 1]));
+        if (!inc(c.x) || !inc(c.y) || c.x.length !== c.y.length) problems.push("a calibration's x and y knots must be strictly increasing and of equal length");
+      }
+    }
+  }
   return problems;
 }
 

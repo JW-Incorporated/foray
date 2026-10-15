@@ -13,10 +13,19 @@ import { AUDIO_SUBSCORES, RATING_SLOTS } from "./schema.mjs";
 import {
   GATE_THRESHOLDS,
   TARGETS,
+  applyCalibration,
   applyGate,
   buildModel,
+  ceilingsFromRetest,
   checkModel,
   chooseLambda,
+  chooseStudentConfig,
+  fitIsotonic,
+  knnIndex,
+  knnMean,
+  knnNeighbours,
+  relativeBar,
+  tauFromSpearman,
   featureNames,
   featuresFor,
   fitRidge,
@@ -287,4 +296,152 @@ test("targetRow reads the seven targets of a ratings.json slot array, persona-ma
   // mutation: in targetsOf, read `entry[TARGETS.indexOf(t)]` instead of the RATING_SLOTS index.
   const personas = { ann: [4, 0.6, 3, 2, 5, 1, 4, 4, 4, 0.5], ben: [2, 0.2, 1, 1, 1, 1, null, null, null, 0.3] };
   assert.deepEqual(targetRow(personas, ["ann", "ben", "cat"]), [4, 0.6, 3, 2, 5, 1, 0.5, 2, 0.2, 1, 1, 1, 1, 0.3, null, null, null, null, null, null, null]);
+});
+
+/* ---------- RV-32: ceiling-relative gate, per-persona lambda, kNN blend, calibration ---------- */
+
+/** The teacher with one persona's fit replaced by fit + gaussian noise of `sd`. */
+function noisyFit(teacher, pid, sd, seed) {
+  const next = rng(seed);
+  const shows = {};
+  for (const [key, show] of Object.entries(teacher.shows)) {
+    const personas = {};
+    for (const [p, slots] of Object.entries(show.personas)) personas[p] = p === pid ? slots.map((v, i) => (i === 0 ? v + sd * gaussian(next) : v)) : [...slots];
+    shows[key] = { personas };
+  }
+  return { shows };
+}
+
+test("the ceiling-relative Spearman and tau bars are min(cap, 0.9 x ceiling)", () => {
+  // mutations (each run): (a) in relativeBar, `Math.min(cap, factor * ceiling)` ->
+  // `factor * ceiling` -- a persona whose teacher retests high is held above the cap;
+  // (b) in gate, `relativeBar(thresholds.spearman, ceilings?.spearman?.[pid])` ->
+  // `thresholds.spearman` -- a persona whose teacher retests low is still held to 0.75.
+  assert.equal(relativeBar(0.75, 0.7), 0.9 * 0.7);
+  assert.equal(relativeBar(0.75, 0.95), 0.75);
+  assert.equal(relativeBar(0.6, null), 0.6, "no ceiling never lowers the bar");
+  assert.ok(Math.abs(tauFromSpearman(1) - 1) < 1e-6 && Math.abs(tauFromSpearman(0)) < 1e-12);
+  assert.ok(tauFromSpearman(0.8) < 0.8 && tauFromSpearman(0.8) > 0.55, "tau sits below rho");
+
+  const { doc, nodeOf } = teacherDoc();
+  const student = noisyFit(studentOf(doc), "ben", 1.3, "noisy-ben");
+  const plain = gate(student, doc, { nodeOf });
+  const rho = plain.per_metric.spearman.per_persona.ben;
+  assert.ok(rho > 0.6 && rho < 0.75, `fixture: ben's Spearman ${rho} sits between a relative bar and the cap`);
+  assert.equal(plain.per_metric.spearman.pass, false);
+
+  // Ben's teacher retests just under rho / 0.9: the relative bar is under rho.
+  const low = ceilingsFromRetest({ ann: 0.99, ben: rho / 0.9 - 0.005, cat: 0.99 });
+  const relative = gate(student, doc, { nodeOf, ceilings: low });
+  assert.ok(Math.abs(relative.per_metric.spearman.bars.ben - 0.9 * (rho / 0.9 - 0.005)) < 1e-12);
+  assert.equal(relative.per_metric.spearman.bars.ann, 0.75, "a ceiling of 0.99 caps at 0.75");
+  assert.equal(relative.per_metric.spearman.pass, true, JSON.stringify(relative.per_metric.spearman));
+  assert.ok(Math.abs(relative.per_metric.within_node_tau.threshold - Math.min(0.6, 0.9 * low.within_node_tau)) < 1e-12);
+
+  // A faithful student whose teacher retests so high that 0.9 x ceiling would exceed
+  // its own Spearman still passes: the bar is capped at 0.75.
+  const faithful = studentOf(doc);
+  const fRho = gate(faithful, doc, { nodeOf }).per_metric.spearman.per_persona.ben;
+  const high = gate(faithful, doc, { nodeOf, ceilings: ceilingsFromRetest({ ann: 0.5, ben: fRho / 0.9 + 0.05, cat: 0.5 }) });
+  assert.equal(high.per_metric.spearman.bars.ben, 0.75);
+  assert.equal(high.per_metric.spearman.pass, true);
+});
+
+test("fitRidge solves each target column at its own lambda", () => {
+  // mutation: in solveRidge, `Array.isArray(lambda) ? lambda[c] : lambda` -> `Array.isArray(lambda) ? lambda[0] : lambda`.
+  const { X, Y } = planted({ n: 60, d: 8, m: 4, noise: 0.5, seed: "per-col" });
+  const lambdas = [0.1, 0.1, 50, 500];
+  const joint = fitRidge(X, Y, { lambda: lambdas });
+  for (let c = 0; c < 4; c++) {
+    const alone = fitRidge(X, Y.map((y) => [y[c]]), { lambda: lambdas[c] });
+    for (const x of X.slice(0, 5)) assert.ok(Math.abs(predictRaw(joint, x)[c] - predictRaw(alone, x)[0]) < 1e-8, `column ${c}`);
+  }
+  assert.throws(() => fitRidge(X, Y, { lambda: [1, 2] }), /lambdas for 4/);
+});
+
+test("kNN never counts the query show as its own neighbour", () => {
+  // mutation: in knnNeighbours, drop `if (excludeKey !== null && index.keys[i] === excludeKey) continue;`.
+  const index = knnIndex(["a", "b", "c"], [[1, 0], [0.9, 0.1], [0, 1]], [[5, 1], [2, 1], [1, 1]]);
+  const nb = knnNeighbours(index, [1, 0], 2, { excludeKey: "a" });
+  assert.deepEqual(nb, [1, 2]);
+  assert.equal(knnMean(index, nb, 1)[0], 2, "the nearest other show's fit, not the query's own 5");
+  assert.deepEqual(knnNeighbours(index, [1, 0], 2), [0, 1], "an unrated query sees every training show");
+
+  // Through predict: a model whose ridge is zero, blending the kNN at weight 0.5.
+  const { model } = smallModel();
+  const T = TARGETS.length;
+  const zero = { ...model, intercepts: model.intercepts.map((r) => r.map(() => 0)), weights: model.weights.map((rows) => rows.map((r) => r.map(() => 0))) };
+  const blended = { ...zero, knn: { metric: "cosine", dim: 2, train_keys: ["a", "b", "c"], k: [1, 1, 1], weight: [0.5, 0.5, 0.5] } };
+  const targets = [5, 2, 1].map((v) => Array.from({ length: PERSONAS.length * T }, () => v));
+  const idx = knnIndex(["a", "b", "c"], [[1, 0], [0.9, 0.1], [0, 1]], targets);
+  const x = [1, 0, 0, 0, 0, 0];
+  assert.equal(predict(blended, x, { knn: idx, key: "a" })[0][0], 0.5 * 2);
+  assert.equal(predict(blended, x, { knn: idx, key: "zz" })[0][0], 0.5 * 5);
+  assert.throws(() => predict(blended, x), /blends a kNN/);
+});
+
+test("the calibration is monotone and undoes shrinkage toward 1", () => {
+  // mutation: in fitIsotonic, `while (blocks.length > 1 && ...` -> `while (false && blocks.length > 1 && ...`
+  // (no pooling: the knots follow the noise and go down as well as up).
+  const next = rng("iso");
+  const truth = Array.from({ length: 400 }, () => 1 + 4 * next() ** 2);
+  const shrunk = truth.map((t) => 1.4 + 0.45 * (t - 1) + 0.35 * gaussian(next));
+  const cal = fitIsotonic(shrunk, truth);
+  assert.ok(cal.x.length > 3);
+  for (let i = 1; i < cal.x.length; i++) {
+    assert.ok(cal.x[i] > cal.x[i - 1], "x knots increase");
+    assert.ok(cal.y[i] > cal.y[i - 1], `y knots increase (${cal.y[i - 1]} -> ${cal.y[i]})`);
+  }
+  let prev = -Infinity;
+  for (let v = -1; v <= 7; v += 0.01) {
+    const c = applyCalibration(cal, v);
+    assert.ok(c > prev, `strictly increasing at ${v}`);
+    prev = c;
+  }
+  const mse = (pred) => pred.reduce((s, p, i) => s + (p - truth[i]) ** 2, 0) / truth.length;
+  assert.ok(mse(shrunk.map((v) => applyCalibration(cal, v))) < mse(shrunk) * 0.8, "the calibrated fit is closer to the teacher");
+  assert.equal(applyCalibration(null, 2.5), 2.5);
+  assert.ok(checkModel({ ...smallModel().model, calibration: [cal, null, { x: [1, 2], y: [3, 2] }] }).some((p) => /strictly increasing/.test(p)));
+});
+
+test("chooseStudentConfig reads only its rows and picks the kNN where the target is local", () => {
+  // mutations (each run): (a) in chooseStudentConfig, the blend loop's
+  // `if (lower(s.mse, blendScores[bBest].mse)) bBest = b;` -> `if (false) bBest = b;`
+  // -- the clustered persona keeps ridge alone; (b) in oofKnn,
+  // `const fitRows = rows.filter((_, i) => foldOf(i, folds) !== f);` ->
+  // `const fitRows = E.map((_, r) => r).filter((r) => !rows.includes(r) || foldOf(rows.indexOf(r), folds) !== f);`
+  // -- the kNN index holds rows outside `rows` and the planted rows move the CV table.
+  const next = rng("clusters");
+  const centres = Array.from({ length: 6 }, () => Array.from({ length: 4 }, () => gaussian(next)));
+  const n = 150;
+  const E = [];
+  const X = [];
+  const Y = [];
+  for (let i = 0; i < n; i++) {
+    const c = i % 6;
+    const e = centres[c].map((v) => v + 0.15 * gaussian(next));
+    E.push(e);
+    X.push([...e, gaussian(next)]);
+    // persona 0: fit is the cluster's level (local, not linear); persona 1: linear in e[0].
+    const local = [1, 5, 2, 4, 1, 3][c] + 0.2 * gaussian(next);
+    const linear = 3 + e[0] + 0.2 * gaussian(next);
+    Y.push([local, 0, 0, 0, 0, 0, 0, linear, 0, 0, 0, 0, 0, 0]);
+  }
+  const rows = Array.from({ length: 120 }, (_, i) => i);
+  const opts = { rows, personaCount: 2, folds: 5, grid: [0.1, 10, 1000] };
+  const base = chooseStudentConfig(X, E, Y, opts);
+  assert.ok(base.personas[0].weight > 0, `the clustered persona blends the kNN: ${JSON.stringify(base.personas[0])}`);
+  assert.equal(base.cv.blend[0].length, 1 + 3 * 4, "w 0 once, then every k for each non-zero w");
+  assert.equal(base.oofFit[0].length, rows.length);
+
+  // Rows outside `rows`, extreme targets on top of the cluster centres, change nothing.
+  const X2 = X.map((x) => [...x]);
+  const Y2 = Y.map((y) => [...y]);
+  for (let i = 120; i < n; i++) {
+    Y2[i] = Y2[i].map((v, c) => (c % 7 === 0 ? 50 : v));
+    X2[i] = [...centres[i % 6], 99];
+  }
+  const after = chooseStudentConfig(X2, X2.map((x) => x.slice(0, 4)), Y2, opts);
+  assert.deepEqual(after.personas, base.personas);
+  assert.deepEqual(after.cv, base.cv);
 });
