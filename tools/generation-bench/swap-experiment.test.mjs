@@ -51,7 +51,7 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..");
 const CONTRACT = loadBackendContract();
-const COMMITTED = ["E0-floor", "E1-deepen-p40", "E2-continuity-p40", "E6-verifier-jev-vs-qwen"];
+const COMMITTED = ["E0-floor", "E1-deepen-p40", "E2-continuity-p40", "E4-spine-best-of-2", "E6-verifier-jev-vs-qwen"];
 const FLOOR = readSpec(path.join(EXPERIMENTS_DIR, `${FLOOR_SPEC_ID}.json`));
 const EMPTY_STACK = { schema: "adopted-stack/1", note: "", stages: {}, levers: {}, ledgerRow: null };
 const OUT9 = path.join(HERE, "fixtures", "out-9");
@@ -290,6 +290,16 @@ test("plan output snapshot for each committed spec", () => {
         source: "env",
         env: envOf({ ...floorStages, continuity: "local:second" }),
         args: ["--prompts", G, "--out", "data-local/swaps/E2-continuity-p40/B", "--seed-checkpoints", "data-local/swaps/E2-continuity-p40/A", "--rerun-from", "stitch"]
+      }
+    },
+    /* GV-91: a lever experiment. Both arms put spine-alt on the second box
+       (a lever changes no stage; nothing reads spine-alt in arm A). */
+    "E4-spine-best-of-2": {
+      A: { source: "env", env: envOf({ ...floorStages, "spine-alt": "local:second" }), args: ["--prompts", G, "--out", "data-local/swaps/E4-spine-best-of-2/A", "--keep-checkpoints"] },
+      B: {
+        source: "env",
+        env: { ...envOf({ ...floorStages, "spine-alt": "local:second" }), FORAY_SPINE_BEST_OF: "2", FORAY_SPINE_JUDGE: "jev" },
+        args: ["--prompts", G, "--out", "data-local/swaps/E4-spine-best-of-2/B", "--seed-checkpoints", "data-local/swaps/E4-spine-best-of-2/A", "--rerun-from", "spine"]
       }
     },
     "E6-verifier-jev-vs-qwen": {
@@ -756,7 +766,7 @@ test("structural: the runner has no network use, no Anthropic call path and no r
   assert.match(src, /import \{ spawn as spawnChild \} from "node:child_process"/, "the only process start is the default spawner run injects");
 });
 
-test("the committed specs: valid, named after their files, E0 is the all-Spark floor, the rest change one FORAY_STAGE_* each", () => {
+test("the committed specs: valid, named after their files, E0 is the all-Spark floor, the stage specs change one FORAY_STAGE_* each, the lever spec one lever", () => {
   const files = fs.readdirSync(EXPERIMENTS_DIR).filter((f) => f.endsWith(".json")).sort();
   assert.deepEqual(files, COMMITTED.map((id) => `${id}.json`));
   for (const id of COMMITTED) {
@@ -766,6 +776,12 @@ test("the committed specs: valid, named after their files, E0 is the all-Spark f
     if (id === "E0-floor") {
       assert.equal(spec.kind, "measure");
       for (const stage of CONTRACT.stages) assert.equal(spec.armB.env[stageEnvVar(stage)], stage === "research" ? "none" : "local:spark", stage);
+    } else if (spec.kind === "lever") {
+      /* GV-91: E4, the best-of-2 spine lever; its arms differ in no stage. */
+      assert.equal(id, "E4-spine-best-of-2");
+      assert.equal(spec.lever, "spineBestOf");
+      assert.deepEqual(Object.keys(spec.armB.env), ["FORAY_SPINE_BEST_OF", "FORAY_SPINE_JUDGE"]);
+      assert.deepEqual(Object.keys(spec.expect.levers), ["spineBestOf"]);
     } else {
       assert.equal(spec.kind, "stage");
       assert.equal(spec.armA, "adopted");
