@@ -10,6 +10,7 @@ import {
   type ChatUsage,
   type ResponseFormat
 } from "./ChatProvider";
+import type { ScheduledChatRequest } from "./laneScheduler";
 import { parseSse } from "./sse";
 
 /**
@@ -73,6 +74,18 @@ import { parseSse } from "./sse";
  *     admission; SGLang's own queue and prefill land in ttftMs), ttftMs =
  *     request sent to the first content delta, and decodeTokPerSec =
  *     completion tokens over first delta to end, when usage was reported.
+ *
+ * GV-93 (the lane scheduler, chat/laneScheduler.ts) adds two things, both
+ * inert unless the provider is built for it or a request was scheduled:
+ *   - `user`: when the constructor is given one (providerRegistry.ts passes
+ *     'foray-generation'), every request body carries `user`, so LiteLLM's
+ *     logs and a Foray-only virtual key can tell Foray's requests apart.
+ *     Without it the body is exactly as before (extraBody still wins).
+ *   - queueMs: a request the scheduler handed on carries `laneQueueMs`, the
+ *     time it waited for its lane slot. complete() records that as queueMs
+ *     (it had none before); stream() adds it to its own header wait, so
+ *     queueMs is every wait before the server began the reply. The CallRecord's
+ *     startMs stays the moment the provider was called (after the slot).
  */
 
 /** The slice of a fetch Response this client reads. `body` is read only by
@@ -121,6 +134,8 @@ export interface OpenAICompatChatProviderOptions {
   now?: () => number;
   /** The provider name recorded on each CallRecord. */
   name?: string;
+  /** GV-93: sent as the body's `user` on every request when set ('foray-generation'). */
+  user?: string;
 }
 
 export const DEFAULT_CHAT_TIMEOUT_MS = 120_000;
@@ -132,6 +147,7 @@ export class OpenAICompatChatProvider implements ChatProvider {
   private readonly fetchImpl: FetchLike;
   private readonly timeoutMs: number;
   private readonly now: () => number;
+  private readonly user: string | undefined;
 
   constructor(opts: OpenAICompatChatProviderOptions) {
     if (typeof opts.baseUrl !== "string" || opts.baseUrl.trim() === "") {
@@ -149,6 +165,12 @@ export class OpenAICompatChatProvider implements ChatProvider {
     this.fetchImpl = fetchImpl;
     this.timeoutMs = timeoutMs;
     this.now = opts.now ?? Date.now;
+    this.user = typeof opts.user === "string" && opts.user.trim() !== "" ? opts.user : undefined;
+  }
+
+  /** The request body, with `user` when this provider was built with one (GV-93). */
+  private bodyFor(req: ChatRequest): Record<string, unknown> {
+    return buildRequestBody(req, this.user !== undefined ? { user: this.user } : {});
   }
 
   async complete(req: ChatRequest): Promise<ChatResponse> {
@@ -174,7 +196,7 @@ export class OpenAICompatChatProvider implements ChatProvider {
   }
 
   private async send(req: ChatRequest, startedAt: number, onFinish: (raw: string | null) => void): Promise<ChatResponse> {
-    const body = JSON.stringify(buildRequestBody(req));
+    const body = JSON.stringify(this.bodyFor(req));
     const scope = this.openScope(req);
     const { aborted, classify } = scope;
     try {
@@ -224,7 +246,7 @@ export class OpenAICompatChatProvider implements ChatProvider {
     let finished = false;
     let recorded = false;
     let text = "";
-    const body = JSON.stringify({ ...buildRequestBody(req), stream: true, stream_options: { include_usage: true } });
+    const body = JSON.stringify({ ...this.bodyFor(req), stream: true, stream_options: { include_usage: true } });
     const scope = this.openScope(req);
     try {
       const res = await this.post(body, scope);
@@ -316,6 +338,8 @@ export class OpenAICompatChatProvider implements ChatProvider {
     const endMs = marks.logEndMs ?? log.nowMs();
     const outputTokens = failure ? null : (usage?.completionTokens ?? null);
     const decodeMs = marks.logFirstDeltaMs === null ? null : endMs - marks.logFirstDeltaMs;
+    const laneWait = laneQueueMsOf(req);
+    const headerWait = marks.logHeadersMs === null ? null : marks.logHeadersMs - logStartMs;
     recordModelCall({
       provider: this.name,
       machine: servedBy,
@@ -323,7 +347,7 @@ export class OpenAICompatChatProvider implements ChatProvider {
       label: req.label,
       startMs: logStartMs,
       endMs,
-      queueMs: marks.logHeadersMs === null ? null : marks.logHeadersMs - logStartMs,
+      queueMs: headerWait === null ? laneWait : headerWait + (laneWait ?? 0),
       ttftMs: marks.logFirstDeltaMs === null ? null : marks.logFirstDeltaMs - logStartMs,
       promptTokens: failure ? null : (usage?.promptTokens ?? null),
       cachedTokens: failure ? null : (usage?.cachedTokens ?? null),
@@ -415,7 +439,7 @@ export class OpenAICompatChatProvider implements ChatProvider {
       label: req.label,
       startMs: logStartMs,
       endMs: log.nowMs(),
-      queueMs: null,
+      queueMs: laneQueueMsOf(req),
       ttftMs: null,
       promptTokens: response?.usage.promptTokens ?? null,
       cachedTokens: response?.usage.cachedTokens ?? null,
@@ -427,9 +451,16 @@ export class OpenAICompatChatProvider implements ChatProvider {
   }
 }
 
+/** GV-93: the lane wait a scheduled request carries (laneScheduler.ts), or null. */
+function laneQueueMsOf(req: ChatRequest): number | null {
+  const ms = (req as ScheduledChatRequest).laneQueueMs;
+  return typeof ms === "number" && Number.isFinite(ms) && ms >= 0 ? ms : null;
+}
+
 /** The OpenAI chat-completions body. Unset optional fields are left out;
- * `extraBody` is spread last, so a caller's explicit field wins. */
-export function buildRequestBody(req: ChatRequest): Record<string, unknown> {
+ * `extraBody` is spread last, so a caller's explicit field wins. `user`
+ * (GV-93) is sent only when given. */
+export function buildRequestBody(req: ChatRequest, opts: { user?: string } = {}): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: req.model,
     messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
@@ -445,6 +476,7 @@ export function buildRequestBody(req: ChatRequest): Record<string, unknown> {
     body.logprobs = true;
     body.top_logprobs = req.logprobs.top;
   }
+  if (opts.user !== undefined) body.user = opts.user;
   return { ...body, ...(req.extraBody ?? {}) };
 }
 

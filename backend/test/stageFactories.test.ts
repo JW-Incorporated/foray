@@ -33,6 +33,7 @@ import { ChatNarrationVerifierBuilder } from "../src/generation/chat/ChatNarrati
 import { ChatContinuityBuilder } from "../src/generation/chat/ChatContinuityBuilder";
 import { __setChatProviderForTests, chatProviderFor, getChatProvider } from "../src/generation/chat/providerRegistry";
 import { OpenAICompatChatProvider } from "../src/generation/chat/openAICompatProvider";
+import { LaneScheduledProvider } from "../src/generation/chat/laneScheduler";
 import { resolveRouting } from "../src/config/stageRouting";
 import { scriptedProvider } from "./helpers/fakeChatProvider";
 import { env } from "../src/config/env";
@@ -396,7 +397,9 @@ describe("GV-37: providerRegistry", () => {
      whatever the config. Ran: red. */
   it("builds one OpenAI-compatible provider per config and reuses it, with no network", () => {
     const a = getChatProvider({ baseUrl: BASE_URL, apiKey: "k1" });
-    expect(a).toBeInstanceOf(OpenAICompatChatProvider);
+    /* GV-93: the registry's provider is the lane scheduler over the client. */
+    expect(a).toBeInstanceOf(LaneScheduledProvider);
+    expect((a as LaneScheduledProvider).inner).toBeInstanceOf(OpenAICompatChatProvider);
     expect(getChatProvider({ baseUrl: BASE_URL, apiKey: "k1" })).toBe(a);
     const b = getChatProvider({ baseUrl: BASE_URL, apiKey: "k2" });
     expect(b).not.toBe(a);
