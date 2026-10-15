@@ -96,7 +96,7 @@ import { createContinuityBuilder } from "./createContinuityBuilder";
 import type { PromptUnderstander } from "./PromptUnderstander";
 import type { ExternalResearchContext, ExternalResearcher } from "./ExternalResearcher";
 import { taxonomyLineage } from "./taxonomyFamily";
-import type { SpineBuildContext, SpineBuilder } from "./SpineBuilder";
+import type { SpineBuildContext, SpineBuilder, SpineSelectionRecord } from "./SpineBuilder";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
 import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder } from "./NarrationWriterBuilder";
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
@@ -483,6 +483,11 @@ export type RunPipelineOutcome =
       spineReasks: SpineReask[];
       /** GV-89: see the `unresolved-topic` outcome's field. */
       spineRuntime?: SpineRuntime;
+      /** GV-91: how the best-of-2 spine chose (FORAY_SPINE_BEST_OF=2), from
+       * the spine builder's `observe` on its first call. Absent with a
+       * single-sample builder and on a resumed spine. Carried into
+       * `report.json` as `spineSelection`. */
+      spineSelection?: SpineSelectionRecord;
       /** WS-C: one row per tape-sourced beat, carrying the topic gate's own
        * verdict on the anchor it took (see `TapeRelevanceInput`). Surfaced here
        * because §4.5 is the only stage that knows all of it at once, and
@@ -1514,10 +1519,20 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      (and its re-asks) also writes each act's introduction and exit and each
      beat's kind, and §4.4 takes those acts from the spine (`fromSpine`). */
   const foldDeepen = foldsDeepen(flags.foldDeepen, req.duration);
-  const spineCtx: SpineBuildContext =
-    flags.foldSpineCopy || foldDeepen
-      ? { ...ctx, ...(flags.foldSpineCopy ? { listenerPrompt: req.prompt } : {}), ...(foldDeepen ? { foldDeepen: true } : {}) }
-      : ctx;
+  /* GV-91 (W7-07): how a best-of-2 spine builder chose on its first call
+     (bestOfSpine.ts), for the outcome and the report. A single-sample builder
+     never calls `observe`, so the field stays absent; a resumed spine (the
+     banked one) reports none, like `spineReasks`. */
+  let spineSelection: SpineSelectionRecord | undefined;
+  const observe = (record: SpineSelectionRecord): void => {
+    spineSelection ??= record;
+  };
+  const spineCtx: SpineBuildContext = {
+    ...ctx,
+    ...(flags.foldSpineCopy ? { listenerPrompt: req.prompt } : {}),
+    ...(foldDeepen ? { foldDeepen: true } : {}),
+    observe
+  };
   const spine = await stage(
     "spine",
     (raw) => SpineSchema.parse(raw),
@@ -2307,6 +2322,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     spine,
     spineReasks,
     spineRuntime,
+    ...(spineSelection !== undefined ? { spineSelection } : {}),
     tapeRelevance: tapeRelevanceRows,
     topicDecision,
     timings: timings.all(),

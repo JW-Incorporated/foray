@@ -596,6 +596,18 @@ export const COLUMNS = [
     kind: "text",
     targetNote: "R2-21 attribution: the most common impl@machine, then each stage that differs (`stageAssignments`, GV-55)"
   },
+  /* GV-91 (W7-07): how the best-of-2 spine chose (`entry.spineSelection`),
+     as chosen/reason/+addedMs. A text detail column: absent on every row
+     whose spine was not built by a best-of-2 builder (rule 1). */
+  {
+    key: "bo2",
+    group: "detail",
+    header: "bo2",
+    from: "report",
+    width: 3,
+    kind: "text",
+    targetNote: "R2-17 best-of-2 spine (GV-91): the chosen sample, the reason and the ms added after the primary (`spineSelection`); E4 keeps the lever only at p50 addedMs <= 3000"
+  },
   /* GV-83 (MQ-07; QK-21, GP-22): show variety, off `meta.veracity.showVariety`
      (computeShowVariety). Detail columns (GV-04 grouping), so the committed
      KPI table does not change shape; absent on reports written before GV-83
@@ -665,6 +677,23 @@ export function tableColumns(options = {}) {
   if (!options.wide) return COLUMNS.filter((col) => col.group === CORE);
   /* GV-24: the MQ scorecard columns, only when the rows were scored. */
   return options.scorecard ? [...COLUMNS, ...SCORECARD_COLUMNS] : COLUMNS;
+}
+
+const BO2_REASONS = ["judged", "only-valid", "secondary-late", "judge-failed", "none-valid"];
+
+/**
+ * GV-91 (W7-07): a row's `spineSelection` (the best-of-2 spine's record) as
+ * one cell, `chosen/reason/+addedMs`, e.g. `secondary/judged/+1200ms`. Null
+ * when the row carries none or the record is malformed (rule 1: absent,
+ * never a guessed choice).
+ */
+export function bestOfCell(selection) {
+  if (!selection || typeof selection !== "object") return null;
+  const { chosen, reason, addedMs } = selection;
+  if (chosen !== "primary" && chosen !== "secondary") return null;
+  if (!BO2_REASONS.includes(reason)) return null;
+  if (typeof addedMs !== "number" || !Number.isFinite(addedMs) || addedMs < 0) return null;
+  return `${chosen}/${reason}/+${Math.round(addedMs)}ms`;
 }
 
 /**
@@ -1027,6 +1056,7 @@ export function rowFor(entry, context = {}) {
     lead15_s: num(delivery?.minLeadSecAt1_5x),
     render_rtf: num(delivery?.render?.realtimeFactor),
     stack: stackOf(entry.stageAssignments),
+    bo2: bestOfCell(entry.spineSelection),
     /* GV-83: absent without the block, and the share absent with no tape. */
     shows: num(v.showVariety?.distinctShows),
     top_show_pct: num(v.showVariety?.largestShowTapeShare) === null ? null : v.showVariety.largestShowTapeShare * 100
@@ -1212,6 +1242,8 @@ export function jsonlLine(row) {
     /* GV-55: the compact stack, only when the row has one, so a line from a
        report without stageAssignments keeps its shape. */
     ...(typeof row.values.stack === "string" ? { stack: row.values.stack } : {}),
+    /* GV-91: the best-of-2 cell, only when the row has one. */
+    ...(typeof row.values.bo2 === "string" ? { bo2: row.values.bo2 } : {}),
     /* GV-24: the MQ scorecard, only on a --scorecard row, so a plain line is
        byte-identical to the bench's own. */
     ...(row.scorecard ? { scorecard: row.scorecard } : {})
@@ -1237,7 +1269,8 @@ export function rowFromJsonl(line) {
     valid: obj.valid ?? null,
     last_listen: typeof obj.last_listen === "string" ? obj.last_listen : null,
     tier: typeof obj.tier === "string" && TIERS.includes(obj.tier) ? obj.tier : null,
-    stack: typeof obj.stack === "string" && obj.stack ? obj.stack : null
+    stack: typeof obj.stack === "string" && obj.stack ? obj.stack : null,
+    bo2: typeof obj.bo2 === "string" && obj.bo2 ? obj.bo2 : null
   };
   for (const col of COLUMNS) {
     if (col.kind === "number") values[col.key] = num(obj.metrics?.[col.key]);

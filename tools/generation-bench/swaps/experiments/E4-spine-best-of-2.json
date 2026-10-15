@@ -1,0 +1,28 @@
+{
+  "id": "E4-spine-best-of-2",
+  "kind": "lever",
+  "lever": "spineBestOf",
+  "armA": {
+    "env": {
+      "FORAY_STAGE_UNDERSTAND_CLARITY": "local:spark",
+      "FORAY_STAGE_UNDERSTAND_INTENT": "local:spark",
+      "FORAY_STAGE_UNDERSTAND_TITLE": "local:spark",
+      "FORAY_STAGE_RESEARCH": "none",
+      "FORAY_STAGE_SPINE": "local:spark",
+      "FORAY_STAGE_SPINE_ALT": "local:second",
+      "FORAY_STAGE_DEEPEN": "local:spark",
+      "FORAY_STAGE_WRITER": "local:spark",
+      "FORAY_STAGE_VERIFIER": "local:spark",
+      "FORAY_STAGE_CONTINUITY": "local:spark",
+      "FORAY_STAGE_JUDGE": "local:spark"
+    }
+  },
+  "armB": { "env": { "FORAY_SPINE_BEST_OF": "2", "FORAY_SPINE_JUDGE": "jev" } },
+  "rerunFrom": "spine",
+  "golden": "tools/generation-bench/golden/golden-v1.json",
+  "expect": {
+    "stageAssignments": { "spine-alt": { "impl": "local", "machine": "second" } },
+    "levers": { "spineBestOf": { "mode": "best-of-2", "judge": "jev", "graceMs": 3000 } }
+  },
+  "notes": "R2-17 best-of-2 spine (GV-91, W7-07): arm B samples a second spine on the second box (P40, spine-alt local:second) in parallel with the Spark's, keeps only samples that pass the code gates, lets the judge registered as 'jev' (GV-97) pick between two valid ones, and returns the primary when the secondary is more than 3000 ms behind it. Arm A is the E0 floor with spine-alt also on the second box: a lever experiment changes no stage, and nothing reads spine-alt while FORAY_SPINE_BEST_OF is unset, so arm A runs the floor. Arm B reruns from the spine checkpoint. Read p50 addedMs and how often the secondary wins (report spineSelection, bench column bo2); keep the lever only if the pairwise listen is even or better and p50 addedMs <= 3000."
+}

@@ -80,6 +80,7 @@ import {
   spanMsOf,
   spliceRows,
   stackOf,
+  bestOfCell,
   tableColumns,
   targetFor,
   targetLabel,
@@ -765,8 +766,8 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
      in the committed header and the default table). Ran it: red. */
   for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
   /* GV-08 added the first detail columns and GV-17 the runlog's speed
-     columns; every earlier column stays core. GV-55 adds the stack, GV-83
-     the two show-variety columns. */
+     columns; every earlier column stays core. GV-55 adds the stack, GV-91
+     the best-of-2 cell, GV-83 the two show-variety columns. */
   assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), [
     "listen",
     "last_listen",
@@ -774,6 +775,7 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
     "lead15_s",
     "render_rtf",
     "stack",
+    "bo2",
     "shows",
     "top_show_pct"
   ]);
@@ -1531,6 +1533,56 @@ test("GV-55: the JSONL carries the stack and a baseline line round-trips it", ()
   assert.equal(back.values.stack, row.values.stack);
   assert.equal(formatTable([back], { wide: true }), formatTable([row], { wide: true }));
   assert.equal(rowFromJsonl({ run: "run-x", metrics: {}, sources: {} }).values.stack, null);
+});
+
+/* GV-91 (W7-07): the driver records `spineSelection` on a row whose spine
+   was built by the best-of-2 wrapper; the bench shows it as one `bo2` detail
+   cell, chosen/reason/+addedMs. */
+const SELECTION = {
+  samples: [
+    { role: "primary", impl: "local", valid: true, issues: [], ms: 41000, late: false },
+    { role: "secondary", impl: "local", valid: true, issues: [], ms: 42200.4, late: false }
+  ],
+  judge: { kind: "jev", outcome: "chose", ms: 900, swapped: false, index: 1 },
+  chosen: "secondary",
+  reason: "judged",
+  addedMs: 2100.4
+};
+
+test("GV-91: bestOfCell reads chosen/reason/+addedMs, and is null for a missing or malformed record", () => {
+  /* MUTATION: drop the BO2_REASONS check in bestOfCell. Ran it: red (an
+     unknown reason is printed as if the wrapper had made it). */
+  assert.equal(bestOfCell(SELECTION), "secondary/judged/+2100ms");
+  assert.equal(bestOfCell({ ...SELECTION, chosen: "primary", reason: "secondary-late", addedMs: 3000 }), "primary/secondary-late/+3000ms");
+  assert.equal(bestOfCell(undefined), null);
+  assert.equal(bestOfCell({ ...SELECTION, reason: "coin-flip" }), null);
+  assert.equal(bestOfCell({ ...SELECTION, chosen: "tertiary" }), null);
+  assert.equal(bestOfCell({ ...SELECTION, addedMs: -1 }), null);
+  assert.equal(bestOfCell({ ...SELECTION, addedMs: "2100" }), null);
+});
+
+test("GV-91: the bo2 column is detail, shows on a best-of-2 row, is absent on out-4 and out-9, and the JSONL round-trips it", () => {
+  /* MUTATION: drop the `bo2` spread from jsonlLine(). Ran it: red (the
+     baseline line loses the cell). */
+  assert.equal(column("bo2").group, DETAIL);
+  assert.equal(column("bo2").kind, "text");
+  assert.equal(markdownHeader()[0].includes("bo2"), false, "the committed KPI table is unchanged");
+  for (const row of [run4(), run9()]) {
+    assert.equal(row.values.bo2, null, row.values.run);
+    assert.equal(row.sources.bo2, "absent");
+    assert.equal("bo2" in JSON.parse(jsonlLine(row)), false, "an older report's JSONL line gains no bo2 key");
+  }
+  const row = rowFor({ prompt: "p", outcome: "generated", detail: "OK x", spineSelection: SELECTION }, { runId: "run-b" });
+  assert.equal(row.values.bo2, "secondary/judged/+2100ms");
+  assert.equal(row.sources.bo2, "report");
+  assert.match(formatTable([row], { wide: true }), /secondary\/judged\/\+2100ms/);
+  assert.equal(formatTable([row]).includes("judged"), false, "the default table prints core columns only");
+  const line = JSON.parse(jsonlLine(row));
+  assert.equal(line.bo2, "secondary/judged/+2100ms");
+  const back = rowFromJsonl(line);
+  assert.equal(back.values.bo2, row.values.bo2);
+  assert.equal(formatTable([back], { wide: true }), formatTable([row], { wide: true }));
+  assert.equal(rowFromJsonl({ run: "run-x", metrics: {}, sources: {} }).values.bo2, null);
 });
 
 /* =================================================================== */

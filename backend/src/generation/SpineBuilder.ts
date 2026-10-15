@@ -71,6 +71,56 @@ export interface SpineBuildContext {
    * `listenerPrompt`.
    */
   foldDeepen?: boolean;
+  /**
+   * GV-91 (W7-07): called once per FIRST call by a builder that samples more
+   * than one spine (`BestOfTwoSpineBuilder`, bestOfSpine.ts) with how it chose.
+   * A single-sample builder ignores it, and the pipeline's spine stage reads
+   * what it was given into `spineSelection` on the outcome and the report.
+   * The record carries no prompt text, no spine text and no ids.
+   */
+  observe?: (record: SpineSelectionRecord) => void;
+}
+
+/** GV-91: one sample of a best-of-2 spine call, as the report records it. */
+export interface SpineSampleRecord {
+  /** which inner builder drew it */
+  role: "primary" | "secondary";
+  /** that builder's `providerName` */
+  impl: string;
+  /** passed the schema, `validateSpine` and the structural gate under the
+   * options `buildSpineWithReasks` uses */
+  valid: boolean;
+  /** why it did not: gate issue codes ('schema', 'threw', 'validate:<code>',
+   * the structural gate's codes), never their messages, which quote claims */
+  issues: string[];
+  /** ms from the call's start until the sample settled; null when it had not
+   * settled when the wrapper decided (`late`) */
+  ms: number | null;
+  /** the secondary was still running when the grace window closed */
+  late: boolean;
+}
+
+/** GV-91: how a best-of-2 spine call chose (`SpineBuildContext.observe`). */
+export interface SpineSelectionRecord {
+  samples: SpineSampleRecord[];
+  /** the judge's verdict when it was asked; null when it was not */
+  judge: {
+    kind: string;
+    /** 'chose' when it answered, else why it did not */
+    outcome: "chose" | "threw" | "timeout";
+    ms: number;
+    /** the presented order was swapped (stable hash of the session id) */
+    swapped: boolean;
+    /** the index it chose in the PRESENTED order */
+    index?: 0 | 1;
+    probabilities?: number[];
+    confidence?: number;
+    requestId?: string;
+  } | null;
+  chosen: "primary" | "secondary";
+  reason: "judged" | "only-valid" | "secondary-late" | "judge-failed" | "none-valid";
+  /** ms the wrapper added to the critical path after the primary settled */
+  addedMs: number;
 }
 
 /** F-86: what a re-ask carries — see `SpineBuildContext.revision`. */

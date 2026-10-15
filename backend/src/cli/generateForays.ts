@@ -5,6 +5,8 @@ import { spawn } from "child_process";
 import { randomUUID } from "crypto";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
+import { spineBestOfLever } from "../generation/bestOfSpine";
+import type { SpineSelectionRecord } from "../generation/SpineBuilder";
 import type { SpineRuntime } from "../generation/tierRuntime";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
@@ -1044,6 +1046,18 @@ export type ReportEntry = {
    * understand-clarity stage is routed to Jev
    * (FORAY_STAGE_UNDERSTAND_CLARITY=jev); absent on every other route. */
   clarityDecidedBy?: ClarityDecider;
+  /** GV-91 (W7-07): how the best-of-2 spine chose on this run
+   * (`SpineSelectionRecord`: each sample's validity, issue codes, ms and
+   * lateness, the judge's verdict, the chosen sample, the reason and the ms
+   * added after the primary). Only on a `generated` row whose spine was built
+   * by a best-of-2 builder this attempt; absent otherwise. No prompt text. */
+  spineSelection?: SpineSelectionRecord;
+  /** GV-91: the levers this prompt ran under, by lever name (the swap
+   * runner's `expect.levers`, tools/generation-bench/swap-experiment.mjs).
+   * `spineBestOf` is the configured best-of-2 lever (`spineBestOfLever`),
+   * fixed by the flags, absent when FORAY_SPINE_BEST_OF is unset or 1. On
+   * every row, `{}` when no lever is on. */
+  levers?: { spineBestOf?: { mode: "best-of-2"; judge: string; graceMs: number } };
   /** GV-55 (from W7-02): per routed stage, the implementation, model and
    * machine that served it (`describeStageAssignments`), from the routing the
    * run was resolved under. On every row. */
@@ -1284,6 +1298,10 @@ export async function generateOneCandidate(
      store's and the session's variant agree. */
   const routing = resolveRouting(withStageProviders(process.env, args.stageProviders));
   const stageAssignments = describeStageAssignments({ routing });
+  /* GV-91: the configured levers, read once with the flags (fail fast on a
+     malformed FORAY_SPINE_BEST_OF*, naming the variable). */
+  const spineBestOf = spineBestOfLever(process.env);
+  const levers: NonNullable<ReportEntry["levers"]> = spineBestOf ? { spineBestOf } : {};
   const fingerprint = checkpointFingerprint({
     prompt: spec.prompt,
     duration: request.duration,
@@ -1451,6 +1469,7 @@ export async function generateOneCandidate(
       flags,
       gates,
       stageAssignments,
+      levers,
       anthropicCalls,
       unitSpend: unitSpendOf(defaultUnitBudgetGuard, checkpointKey, request.duration),
       ...(anthropicCalls === 0 ? { usage: { costUsd: await jevCostUsd(checkpointKey) } } : {}),
@@ -1661,6 +1680,7 @@ export async function generateOneCandidate(
       : {}),
     ...(spineReasks.length ? { spineReasks } : {}),
     ...("spineRuntime" in outcome && outcome.spineRuntime !== undefined ? { spineRuntime: outcome.spineRuntime } : {}),
+    ...(outcome.outcome === "generated" && outcome.spineSelection !== undefined ? { spineSelection: outcome.spineSelection } : {}),
     ...("deepenFolded" in outcome && outcome.deepenFolded !== undefined ? { deepenFolded: outcome.deepenFolded } : {}),
     ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,

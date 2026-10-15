@@ -27,7 +27,7 @@ import { SpineSchema, type DeepenedAct, type Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
 import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
 import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
-import type { SpineBuilder } from "../src/generation/SpineBuilder";
+import type { SpineBuildContext, SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
 import { servableThroughAct, servableView, type PartialCandidate } from "../src/generation/partialCandidate";
 import { itemKeyOf } from "../src/generation/itemReadiness";
@@ -44,6 +44,13 @@ import { loadSegmentPool, type SegmentRecord } from "../src/generation/segmentPo
 import { loadTranscriptArchive } from "../src/generation/transcriptArchiveLookup";
 import { UnitBudgetExceededError, UnitBudgetGuard, UnitBudgetStopError } from "../src/cost/unitBudget";
 import type { DeepenActBuilder } from "../src/generation/DeepenActBuilder";
+import { BestOfTwoSpineBuilder } from "../src/generation/bestOfSpine";
+import type { IntentUnderstanding } from "../src/types/generation";
+import type { ResearchShape } from "../src/types/research";
+import type { DurationTier } from "../src/types/spine";
+import { generateOneCandidate, DEFAULT_MAX_RESUMES, type CliArgs } from "../src/cli/generateForays";
+import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
+import { FakeSpineJudge } from "./helpers/fakeSpineJudge";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -2085,4 +2092,94 @@ describe("runForayPipeline — GV-90 per-Foray unit caps stop a run naming the s
     /* Every reservation was settled at its (tiny) wall time, not the estimate. */
     expect(units.spent("gv90-ok").sparkSeconds).toBeLessThan(25);
   });
+});
+
+describe("runForayPipeline — GV-91 best-of-2 spine selection reaches the outcome and the report", () => {
+  /** A Stub spine whose overview names the sample, so the test can see which
+   * one the pipeline kept. */
+  class MarkedSpineBuilder implements SpineBuilder {
+    readonly providerName: string;
+    private readonly stub = new StubSpineBuilder();
+    constructor(private readonly label: string) {
+      this.providerName = `marked-${label}`;
+    }
+    async buildSpine(i: IntentUnderstanding, r: ResearchShape, d: DurationTier, c: SpineBuildContext): Promise<Spine> {
+      const spine = await this.stub.buildSpine(i, r, d, c);
+      return { ...spine, overview: `Plan ${this.label}: ${spine.overview}` };
+    }
+  }
+
+  const bestOf = (judge: FakeSpineJudge) =>
+    new BestOfTwoSpineBuilder({ primary: new MarkedSpineBuilder("A"), secondary: new MarkedSpineBuilder("B"), judge, graceMs: 60_000 });
+
+  function cliArgs(out: string): CliArgs {
+    return {
+      prompts: null,
+      out,
+      duration: "short",
+      limit: null,
+      dryRun: true,
+      authorId: "founder-1",
+      budgetUsd: null,
+      noResume: true,
+      maxResumes: DEFAULT_MAX_RESUMES,
+      continueOnRefusedPartial: false,
+      notify: null
+    };
+  }
+
+  it("the judged choice is the run's spine, spineSelection is on the generated outcome and on the report row, with levers recorded", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `spineSelection` spread from the
+       generated outcome in runPipeline.ts (or from the report entry in
+       generateForays.ts). Ran both: red. */
+    const judge = new FakeSpineJudge([{ choose: 1 }]);
+    const out = await runForayPipeline(request, options, { ...stubDeps(), spineBuilder: bestOf(judge) });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(out.spine.overview).toMatch(/^Plan B: /);
+    expect(judge.calls).toBe(1);
+    expect(out.spineSelection).toMatchObject({ chosen: "secondary", reason: "judged" });
+    expect(out.spineSelection!.samples.map((x) => x.impl)).toEqual(["marked-A", "marked-B"]);
+
+    const dir = mkdtempSync(join(tmpdir(), "gv91-"));
+    try {
+      const reportJudge = new FakeSpineJudge([{ choose: 1 }]);
+      const result = await generateOneCandidate({ prompt: request.prompt, topic: "food/grilling-bbq" }, cliArgs(dir), {
+        cueProvider: new FileTranscriptCueProvider(),
+        runPipeline: (req, opts, deps = {}) => runForayPipeline(req, opts, { ...stubDeps(), ...deps, spineBuilder: bestOf(reportJudge) })
+      });
+      expect(result.skipped).toBe(false);
+      if (result.skipped) return;
+      expect(result.entry?.outcome).toBe("generated");
+      expect(result.entry?.spineSelection).toMatchObject({ chosen: "secondary", reason: "judged" });
+      expect(result.entry?.levers).toEqual({});
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
+
+  it("a single-sample spine builder leaves spineSelection absent on the outcome", async () => {
+    /* MUTATION THAT KILLS THIS: always spread `spineSelection` (undefined
+       becomes a present key). Ran it: red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    expect("spineSelection" in out).toBe(false);
+  }, 60_000);
+
+  it("fold on: the judge's question is the listener's prompt, never the keyword intent or the sentinel, and spineSelection carries no prompt text", async () => {
+    /* MUTATION THAT KILLS THIS: hand the judge `intent` alone (ignore
+       ctx.listenerPrompt in spineJudgeQuestion). Ran it: red. */
+    const judge = new FakeSpineJudge([{ choose: 0 }]);
+    const out = await runForayPipeline(request, { ...options, flags: { foldSpineCopy: true } }, { ...stubDeps(), spineBuilder: bestOf(judge) });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    const keyword = preSpineIntent(request.prompt)!;
+    const question = judge.inputs[0]!.question;
+    expect(question).toContain(request.prompt);
+    expect(question).not.toContain(keyword.subject);
+    expect(question).not.toContain(PRE_SPINE_SENTINEL);
+    const recorded = JSON.stringify(out.spineSelection);
+    expect(out.spineSelection).toMatchObject({ chosen: "primary", reason: "judged" });
+    for (const word of ["grilling", "barbecue", "history"]) expect(recorded).not.toContain(word);
+  }, 60_000);
 });
