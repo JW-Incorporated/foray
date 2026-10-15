@@ -2,10 +2,20 @@ import { z } from "zod";
 
 /**
  * First-party behavioral event contract (personalization-and-depth-plan.md
- * Step C). Matches `backend/migrations/0009_events.sql`'s `type` check
- * constraint exactly — this module is the single source of truth for what a
- * valid event payload looks like on both the write path (client -> Supabase,
- * once the client wave lands) and the read path (the interest-learning job).
+ * Step C). Matches the `events.type` check constraint exactly, as the last
+ * migration to define it leaves it (`0009_events.sql`, widened by
+ * `0023_events_follow_types.sql`; backend/test/events.test.ts pins the
+ * two) — this module is the single source of truth for what a valid event
+ * payload looks like on both the write path (client -> Supabase, once the
+ * client wave lands) and the read path (the interest-learning job).
+ *
+ * RV-23 (docs/roadmap/recommender-v1.md D6, issue #1380) adds the follow
+ * pair `show_followed`/`show_unfollowed` and four optional completion fields
+ * on `finished`. It ships DARK: nothing emits them (app.js is untouched until
+ * the parked RV-27 and the founder's privacy wording, RV-24), and the live
+ * CHECK rejects the two new types until the founder applies
+ * `backend/migrations/0023_events_follow_types.sql` in the Supabase SQL
+ * editor.
  *
  * Two deliberate contract decisions, both approved 2026-07-24 (see
  * docs/DECISIONS.md):
@@ -36,7 +46,9 @@ export const EventTypeSchema = z.enum([
   "thumbs",
   "saved",
   "session_built",
-  "session_rated"
+  "session_rated",
+  "show_followed",
+  "show_unfollowed"
 ]);
 export type EventType = z.infer<typeof EventTypeSchema>;
 
@@ -74,7 +86,20 @@ export type EventSource = z.infer<typeof EventSourceSchema>;
 
 export const FinishedPayloadSchema = EpisodeContextSchema.extend({
   percent_complete: z.number().min(0).max(1),
-  source: EventSourceSchema
+  source: EventSourceSchema,
+  /* RV-23 completion fields (recommender-v1.md D6; research §2.3). All
+     optional, so every row the shipped client already writes still parses.
+     `percent` is position over the EFFECTIVE length (intro/outro margins
+     trimmed, player/feedback-events.js, RV-28) and may pass 1 on a replay, as
+     Apple's completion does, up to 1.2. */
+  percent: z.number().min(0).max(1.2).optional(),
+  /** The effective length `percent` was measured against, in seconds. */
+  eff_len_sec: z.number().positive().optional(),
+  /** True when the stop was not the listener's: backgrounded, route lost, a
+      Foray transition, the app closed. A censored stop is not a skip. */
+  censored: z.boolean().optional(),
+  /** True when this listen resumed an earlier position. */
+  resumed: z.boolean().optional()
 });
 export type FinishedPayload = z.infer<typeof FinishedPayloadSchema>;
 
@@ -135,6 +160,21 @@ export const SessionRatedPayloadSchema = z.object({
 export type SessionRatedPayload = z.infer<typeof SessionRatedPayloadSchema>;
 
 /**
+ * RV-23: a show followed or unfollowed. `episodes_played` is how many of the
+ * show's episodes the listener had played when they unfollowed: an unfollow
+ * after 3 or more is the strong negative (research §2.2), an unfollow after
+ * one or none says little. `topics` are the show's taxonomy nodes,
+ * denormalized like EpisodeContextSchema's (contract decision 1), so the
+ * learning job can move them without a show-to-node lookup.
+ */
+export const ShowFollowPayloadSchema = z.object({
+  show_id: z.string().min(1),
+  episodes_played: z.number().int().min(0).optional(),
+  topics: z.array(z.string()).default([])
+});
+export type ShowFollowPayload = z.infer<typeof ShowFollowPayloadSchema>;
+
+/**
  * The full discriminated union: (type, payload) pairs. Use this to validate
  * a candidate (type, payload) tuple before it is written anywhere.
  */
@@ -147,7 +187,9 @@ export const EventPayloadByTypeSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("thumbs"), payload: ThumbsPayloadSchema }),
   z.object({ type: z.literal("saved"), payload: SavedPayloadSchema }),
   z.object({ type: z.literal("session_built"), payload: SessionBuiltPayloadSchema }),
-  z.object({ type: z.literal("session_rated"), payload: SessionRatedPayloadSchema })
+  z.object({ type: z.literal("session_rated"), payload: SessionRatedPayloadSchema }),
+  z.object({ type: z.literal("show_followed"), payload: ShowFollowPayloadSchema }),
+  z.object({ type: z.literal("show_unfollowed"), payload: ShowFollowPayloadSchema })
 ]);
 export type EventPayloadByType = z.infer<typeof EventPayloadByTypeSchema>;
 
