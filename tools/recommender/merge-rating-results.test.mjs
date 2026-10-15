@@ -30,6 +30,7 @@ import {
   skeletonRatings,
 } from "./merge-rating-results.mjs";
 import { eligibleShows, progressKey } from "./prepare-rating-batch.mjs";
+import { lockPathFor } from "./progress.mjs";
 import { RUBRIC_VERSION, validateRatingsFile } from "./schema.mjs";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -188,6 +189,28 @@ test("a second merge of the same batch_id is a no-op", (t) => {
   assert.equal(again.report.already_merged, true);
   assert.equal(readFileSync(join(root, RATINGS_PATH), "utf8"), before, "ratings.json is byte-identical (built_at included)");
   assert.equal(readFileSync(join(root, PROGRESS_PATH), "utf8"), progressBefore);
+});
+
+test("a merge holds the progress lock: refused and unwritten while another holds it", (t) => {
+  // mutation: in runMerge, `return mergeLocked();` instead of through withProgressLock -> the merge writes ratings.json
+  // and rating-progress.json while a prepare or another merge holds the lock
+  const root = makeRoot(t);
+  const batch = batchDoc(root);
+  const resultsPath = stage(root, batch, resultsDoc(batch));
+  const progressPath = join(root, PROGRESS_PATH);
+  const progressBefore = readFileSync(progressPath, "utf8");
+  mkdirSync(lockPathFor(progressPath)); // another process holds it
+
+  const held = runMerge({ resultsPath, root, now: NOW, lockWaitMs: 100 });
+  assert.equal(held.ok, false);
+  assert.deepEqual(held.problems.map((p) => p.code), ["progress_locked"]);
+  assert.equal(existsSync(join(root, RATINGS_PATH)), false, "ratings.json is not written");
+  assert.equal(readFileSync(progressPath, "utf8"), progressBefore, "the progress file is not written");
+  assert.ok(existsSync(lockPathFor(progressPath)), "the other holder's lock is left alone");
+
+  rmSync(lockPathFor(progressPath), { recursive: true });
+  assert.equal(runMerge({ resultsPath, root, now: NOW }).ok, true);
+  assert.equal(existsSync(lockPathFor(progressPath)), false, "the merge releases its lock");
 });
 
 test("one problem refuses the whole file", (t) => {

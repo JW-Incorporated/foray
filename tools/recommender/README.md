@@ -49,6 +49,8 @@ The audio sub-scores (`host_style`, `production`, `ad_load`) and `host_count` ar
 
 `data/recommender/rating-progress.json` is `{ in_flight: { <key>: { batch_id, reserved_at } }, rated: { <key>: { last_batch_id, passes: [1, 2, 3] } } }`, committed empty. Prepare calls `reclaimStale` then `reserve` (all or nothing; a key already in flight is refused); merge calls `release` and `markRated`. A batch abandoned before merge frees its shows after 12 hours. `saveProgress` writes sorted keys with a trailing newline so the file diffs cleanly; a progress file that does not parse throws rather than resetting.
 
+Both prepare and merge rewrite the file whole, so each holds `withProgressLock` (an exclusive `<progress file>.lock` directory) across its whole load, change and save (merge also across its ratings write); a concurrent prepare or merge waits up to five minutes, and a lock older than ten minutes is a crashed holder's and is taken over. Prepare can therefore overlap a merging pool without losing pass records (RV-13 lost four batches' that way).
+
 ## Local data (never committed)
 
 ```
@@ -80,9 +82,9 @@ node tools/recommender/prepare-rating-batch.mjs --role pilot --pass 1 --mode iso
 node tools/recommender/prepare-rating-batch.mjs --role pilot --pass 2 --mode joint --batch-size 20
 ```
 
-**Rating.** A pool of at most 5 Claude Code agents (the pilot used Sonnet, pools of 3-4) gets one batch id each and follows [`docs/agents/runner-prompts/persona-rate-batch.md`](../../docs/agents/runner-prompts/persona-rate-batch.md). When several agents merge concurrently, each merge must run under a lock, because the merge rewrites `ratings.json` and `rating-progress.json` whole. The pilot wrapped `merge-rating-results.mjs --results … --batch …` in a lock directory.
+**Rating.** A pool of at most 5 Claude Code agents (the pilot used Sonnet, pools of 3-4) gets one batch id each and follows [`docs/agents/runner-prompts/persona-rate-batch.md`](../../docs/agents/runner-prompts/persona-rate-batch.md). Agents may merge concurrently: the merge rewrites `ratings.json` and `rating-progress.json` whole, but it holds `progress.mjs`'s `withProgressLock` while it does (see Progress above), so merges queue. The pilot, before that lock existed, wrapped each merge in a lock directory of its own; that wrapper is no longer needed, and must never be named `rating-progress.json.lock`, or the merge inside it waits for its own wrapper and is refused with `progress_locked`.
 
-**Never prepare while a pool is merging.** Prepare also rewrites `rating-progress.json` whole, and a prepare that overlapped merges lost four batches' pass records in the pilot. The ratings were safe, and re-running the idempotent merge on those batch ids restored the records. Until `progress.mjs` takes a lock itself, prepare everything first, then rate.
+**Preparing while a pool merges.** Prepare also rewrites `rating-progress.json` whole, and in the pilot a prepare that overlapped merges lost four batches' pass records. The ratings were safe, and re-running the idempotent merge on those batch ids restored the records. Prepare now holds the same lock, so it may overlap merges; preparing everything first is still the simpler loop.
 
 ```sh
 node tools/recommender/merge-rating-results.mjs --check

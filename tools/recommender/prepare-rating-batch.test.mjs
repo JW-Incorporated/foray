@@ -11,12 +11,12 @@
 import { test } from "node:test";
 import assert from "node:assert";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { STRIPPED_KEYS, loadSources } from "./evidence.mjs";
-import { emptyProgress, markRated } from "./progress.mjs";
+import { emptyProgress, lockPathFor, markRated } from "./progress.mjs";
 import { eligibleShows, main, personaOrder, prepareBatch, progressKey } from "./prepare-rating-batch.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -202,6 +202,35 @@ test("--dry-run reserves nothing", () => {
     assert.equal(existsSync(w.progressPath), false, "no progress file written");
     assert.deepEqual(w.batches(), [], "no batch file written");
     assert.match(w.lines.join("\n"), /dry run: would write .*rating-batch-pilot-1-joint-20261014-[0-9a-f]{8}\.json \(3 shows, ~\d+ tokens/);
+  } finally {
+    w.done();
+  }
+});
+
+/* Mutation: in main, `return prepareLocked();` instead of through
+   withProgressLock -- the prepare reserves and writes a batch while a merge
+   holds the progress lock, and one of the two loses the other's records. */
+test("a prepare holds the progress lock: refused and unwritten while another holds it", () => {
+  const w = workspace();
+  try {
+    mkdirSync(lockPathFor(w.progressPath)); // a merge holds it
+    const code = main(["--set", w.setPath, "--progress", w.progressPath, "--batches-dir", w.batchesDir, "--role", "pilot", "--batch-size", "3"], {
+      root: ROOT,
+      env: ENV,
+      now: NOW,
+      log: (m) => w.lines.push(m),
+      error: (m) => w.lines.push(`ERR ${m}`),
+      lockWaitMs: 100,
+    });
+    assert.equal(code, 1);
+    assert.match(w.lines.join("\n"), /ERR .*rating-progress\.json is locked/);
+    assert.equal(existsSync(w.progressPath), false, "nothing reserved");
+    assert.deepEqual(w.batches(), [], "no batch file written");
+
+    rmSync(lockPathFor(w.progressPath), { recursive: true });
+    assert.equal(w.run("--role", "pilot", "--batch-size", "3"), 0);
+    assert.equal(Object.keys(w.progress().in_flight).length, 3);
+    assert.equal(existsSync(lockPathFor(w.progressPath)), false, "the prepare releases its lock");
   } finally {
     w.done();
   }
