@@ -4,6 +4,7 @@ import * as path from "path";
 import { describe, expect, it } from "vitest";
 import {
   ATTRIBUTION_QUESTION,
+  buildJudgeClient,
   candidateKeyFor,
   JUDGE_QUESTIONS_VERSION,
   PROMPT_FIT_QUESTION,
@@ -21,10 +22,12 @@ import {
   type JudgeCandidateDeps,
   type JudgedFile
 } from "../src/cli/judgeCandidate";
-import { UnitBudgetGuard, UnitBudgetStopError } from "../src/cost/unitBudget";
+import { BudgetExceededError, BudgetGuard } from "../src/cost/budgetGuard";
+import { InMemoryCostEventSink } from "../src/cost/costEvents";
+import { defaultUnitBudgetGuard, UnitBudgetGuard, UnitBudgetStopError } from "../src/cost/unitBudget";
 import { CLIP_QUESTIONS } from "../src/generation/clipJudge";
 import { readGateConfig } from "../src/generation/gateConfig";
-import { FallbackJudgeClient, HttpJevClient, parseJevReply, type JevFetch } from "../src/generation/jevClient";
+import { FallbackJudgeClient, HttpJevClient, NullJevClient, parseJevReply, type JevFetch } from "../src/generation/jevClient";
 import type { JevClient, JevQuestion, JevState } from "../src/generation/jevTypes";
 import { RunLog, runWithRunLog } from "../src/generation/runLog";
 import { supportQuestions } from "../src/generation/sentenceSupport";
@@ -323,6 +326,39 @@ describe("GV-92 run log and the jevCalls cap (GV-90)", () => {
     const early = await judgeCandidate(input(), deps(replayFake(), { unitGuard: new UnitBudgetGuard({ overrides: { jevCalls: 2 } }) })).catch((e: unknown) => e);
     expect(early).toBeInstanceOf(UnitBudgetStopError);
     expect((early as UnitBudgetStopError).stage).toBe("judge:MQ-12");
+  });
+});
+
+describe("GV-92 review fix: the CLI's client is metered through BudgetGuard (decision 6)", () => {
+  /* MUTATION THAT KILLS THESE: return the raw client from buildJudgeClient
+     (drop the meteredJevClient wrap, as main() had it). Ran it: red, no cost
+     events and the zero-dollar cap sends every ask. And pass a sessionId
+     ('judge:synth-bread') to meteredJevClient: red, the cost events carry
+     the session (and defaultUnitBudgetGuard reserves a second jevCalls unit
+     per ask). */
+  it("every Jev ask the CLI's client sends is checked and recorded as a provider 'jev' cost event, with no second jevCalls unit", async () => {
+    const { client, requests } = replayHttp();
+    const sink = new InMemoryCostEventSink();
+    const unitGuard = new UnitBudgetGuard();
+    const judge = buildJudgeClient({ create: () => client, guard: new BudgetGuard(sink, 100) });
+    expect(judge).not.toBeNull();
+    await judgeCandidate(input(), deps(judge!, { unitGuard }));
+    const events = await sink.all();
+    expect(requests.length).toBe(1 + 2 + 2 + 2 + 2);
+    expect(events.length).toBe(requests.length);
+    expect(events.every((e) => e.provider === "jev" && e.estimatedUsd > 0 && e.sessionId === undefined)).toBe(true);
+    /* The pass's own meter counts one unit per ask; meteredJevClient, with no session, reserves none. */
+    expect(unitGuard.spent("judge:synth-bread").jevCalls).toBe(requests.length);
+    expect(defaultUnitBudgetGuard.spent("judge:synth-bread").jevCalls).toBe(0);
+    expect(buildJudgeClient({ create: () => new NullJevClient() })).toBeNull();
+  });
+
+  it("a dollar cap stop from the CLI's guard stops the pass before anything is sent", async () => {
+    const { client, requests } = replayHttp();
+    const judge = buildJudgeClient({ create: () => client, guard: new BudgetGuard(new InMemoryCostEventSink(), 0) });
+    const err = await judgeCandidate(input(), deps(judge!)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(BudgetExceededError);
+    expect(requests.length).toBe(0);
   });
 });
 

@@ -1,11 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
+import { defaultBudgetGuard, type BudgetGuard } from "../cost/budgetGuard";
 import { defaultUnitBudgetGuard, findUnitBudgetError, UnitBudgetStopError, type UnitBudgetExceededError, type UnitBudgetGuard } from "../cost/unitBudget";
 import { loadCatalogueData, type CatalogueData } from "../generation/catalogueLookup";
 import { CLIP_JUDGE_PURPOSE, clipLevelFor, JevClipJudge, type ClipQuestion } from "../generation/clipJudge";
 import { findDigestForItem } from "../generation/gatherEvidence";
 import { resolveGateConfig, judgeThreshold, type GateConfig } from "../generation/gateConfig";
-import { createJevClient, createJevPool, DEFAULT_JEV_POOL_SIZE, NullJevClient } from "../generation/jevClient";
+import { createJevClient, createJevPool, DEFAULT_JEV_POOL_SIZE, meteredJevClient, NullJevClient } from "../generation/jevClient";
 import type { JevChoiceQuestion, JevClient, JevResult, JevScoreQuestion, JevState, JudgeId } from "../generation/jevTypes";
 import { RunLog, runWithRunLog, withCallContext } from "../generation/runLog";
 import { loadSegmentPool, type SegmentRecord } from "../generation/segmentPoolLookup";
@@ -68,6 +69,15 @@ import { PRELUDE_BOILERPLATE } from "../types/narration";
  * also remembers the stop and the pass re-raises it after the clip phase.
  * Every ask counts one unit, a Qwen-judge fallback ask included: the cap
  * bounds the pass's judge calls, conservatively.
+ *
+ * DOLLARS (roadmap generation-v2 decision 6). The CLI's client is built by
+ * buildJudgeClient: createJevClient() wrapped in meteredJevClient over
+ * defaultBudgetGuard, so every paid Jev ask is checked against the dollar cap
+ * and lands in the cost ledger (provider 'jev') like every other Jev call
+ * site. It is wrapped WITHOUT a sessionId: meteredJevClient reserves a
+ * `jevCalls` unit only under a session, and the pass's own
+ * UnitBudgetGuard.metered already counts one per ask, so a session there
+ * would count every ask twice.
  *
  * WHAT LEAVES THE NETWORK (LM-25, adopted OQ-05): the prompt, the overview
  * and slot titles, clip windows and narration scripts, each question's
@@ -798,6 +808,31 @@ export function loadJudgeInput(args: JudgeArgs): JudgeCandidateInput {
   return { candidate, candidateKey: candidateKeyFor(args.candidate), ...resolved };
 }
 
+/** The cost ledger's user for the operator CLI (the seeded founder, as the
+ * other operator CLIs use; cost_events.user_id is a uuid). */
+export const JUDGE_CLI_USER_ID = "00000000-0000-0000-0000-000000000001";
+
+export interface BuildJudgeClientDeps {
+  /** The routed judge (default createJevClient()). */
+  create?: () => JevClient;
+  /** The dollar guard every Jev ask is checked and recorded against (default defaultBudgetGuard). */
+  guard?: BudgetGuard;
+  userId?: string;
+}
+
+/**
+ * The CLI's judge: the routed client metered through BudgetGuard
+ * (meteredJevClient, "the one place Jev spend is checked"), or null when no
+ * judge is configured (NullJevClient: nothing would be sent). No sessionId:
+ * the pass's UnitBudgetGuard.metered already reserves the `jevCalls` unit, and
+ * meteredJevClient would reserve a second one under a session.
+ */
+export function buildJudgeClient(deps: BuildJudgeClientDeps = {}): JevClient | null {
+  const raw = (deps.create ?? (() => createJevClient()))();
+  if (raw instanceof NullJevClient) return null;
+  return meteredJevClient(raw, { guard: deps.guard ?? defaultBudgetGuard, userId: deps.userId ?? JUDGE_CLI_USER_ID });
+}
+
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   const args = parseJudgeArgs(argv);
   const judgeInput = loadJudgeInput(args);
@@ -806,8 +841,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     console.error("judgeCandidate: no prompt for this candidate (give --report with its entry, or --golden with --prompt-id)");
     return 2;
   }
-  const client = createJevClient();
-  if (client instanceof NullJevClient) {
+  const client = buildJudgeClient();
+  if (client === null) {
     console.error("judgeCandidate: no judge. Set JEV_API_KEY or JEV_KEY_FILE (or route FORAY_STAGE_JUDGE to a local judge); nothing was sent.");
     return 2;
   }
