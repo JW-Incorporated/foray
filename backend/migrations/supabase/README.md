@@ -129,3 +129,16 @@ no client writes the table; `test/data-deletion.test.js` holds that ledger.
 
 **Roll back.** The file header lists the `drop` statements. Dropped jobs do not
 come back.
+
+## Portable `0023_events_follow_types.sql`: founder applies, NOT applied
+
+RV-23 (`docs/roadmap/recommender-v1.md` D6, issue #1380) widens the `events`
+type CHECK with `show_followed` and `show_unfollowed`. It is a portable
+migration (`backend/migrations/0023_events_follow_types.sql`, not this folder),
+but on Supabase it is applied **by the founder in the SQL editor**, the
+HUMAN-ACTIONS #116 pattern: paste the file, read it, run it. It is idempotent
+and needs only 0009. **It is NOT applied.** Until it is, the live CHECK rejects
+the two types; nothing emits them either (app.js is untouched until the parked
+RV-27, and the privacy wording is the founder's, RV-24 on #1163). Check after
+applying: `select pg_get_constraintdef(oid) from pg_constraint where conname = 'events_type_check';`
+lists both new types.
