@@ -51,7 +51,7 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..");
 const CONTRACT = loadBackendContract();
-const COMMITTED = ["E0-floor", "E1-deepen-p40", "E2-continuity-p40", "E4-spine-best-of-2", "E6-verifier-jev-vs-qwen"];
+const COMMITTED = ["E0-floor", "E1-deepen-p40", "E2-continuity-p40", "E4-spine-best-of-2", "E5-self-critique", "E6-verifier-jev-vs-qwen"];
 const FLOOR = readSpec(path.join(EXPERIMENTS_DIR, `${FLOOR_SPEC_ID}.json`));
 const EMPTY_STACK = { schema: "adopted-stack/1", note: "", stages: {}, levers: {}, ledgerRow: null };
 const OUT9 = path.join(HERE, "fixtures", "out-9");
@@ -300,6 +300,17 @@ test("plan output snapshot for each committed spec", () => {
         source: "env",
         env: { ...envOf({ ...floorStages, "spine-alt": "local:second" }), FORAY_SPINE_BEST_OF: "2", FORAY_SPINE_JUDGE: "jev" },
         args: ["--prompts", G, "--out", "data-local/swaps/E4-spine-best-of-2/B", "--seed-checkpoints", "data-local/swaps/E4-spine-best-of-2/A", "--rerun-from", "spine"]
+      }
+    },
+    /* GV-94: the self-critique lever. Arm A is the adopted stack (the floor
+       under the empty stack); arm B adds the two writer flags and reruns
+       from narrate, the first checkpoint the writer feeds. */
+    "E5-self-critique": {
+      A: { source: "adopted", env: envOf(floorStages), args: ["--prompts", G, "--out", "data-local/swaps/E5-self-critique/A", "--keep-checkpoints"] },
+      B: {
+        source: "env",
+        env: { ...envOf(floorStages), FORAY_WRITER_CRITIC: "jev", FORAY_WRITER_SELF_CRITIQUE: "behind-playhead" },
+        args: ["--prompts", G, "--out", "data-local/swaps/E5-self-critique/B", "--seed-checkpoints", "data-local/swaps/E5-self-critique/A", "--rerun-from", "narrate"]
       }
     },
     "E6-verifier-jev-vs-qwen": {
@@ -766,7 +777,7 @@ test("structural: the runner has no network use, no Anthropic call path and no r
   assert.match(src, /import \{ spawn as spawnChild \} from "node:child_process"/, "the only process start is the default spawner run injects");
 });
 
-test("the committed specs: valid, named after their files, E0 is the all-Spark floor, the stage specs change one FORAY_STAGE_* each, the lever spec one lever", () => {
+test("the committed specs: valid, named after their files, E0 is the all-Spark floor, the stage specs change one FORAY_STAGE_* each, the lever specs one lever each", () => {
   const files = fs.readdirSync(EXPERIMENTS_DIR).filter((f) => f.endsWith(".json")).sort();
   assert.deepEqual(files, COMMITTED.map((id) => `${id}.json`));
   for (const id of COMMITTED) {
@@ -777,11 +788,16 @@ test("the committed specs: valid, named after their files, E0 is the all-Spark f
       assert.equal(spec.kind, "measure");
       for (const stage of CONTRACT.stages) assert.equal(spec.armB.env[stageEnvVar(stage)], stage === "research" ? "none" : "local:spark", stage);
     } else if (spec.kind === "lever") {
-      /* GV-91: E4, the best-of-2 spine lever; its arms differ in no stage. */
-      assert.equal(id, "E4-spine-best-of-2");
-      assert.equal(spec.lever, "spineBestOf");
-      assert.deepEqual(Object.keys(spec.armB.env), ["FORAY_SPINE_BEST_OF", "FORAY_SPINE_JUDGE"]);
-      assert.deepEqual(Object.keys(spec.expect.levers), ["spineBestOf"]);
+      /* GV-91: E4, the best-of-2 spine lever; GV-94: E5, the writer
+         self-critique lever. Their arms differ in no stage. */
+      const levers = {
+        "E4-spine-best-of-2": { lever: "spineBestOf", env: ["FORAY_SPINE_BEST_OF", "FORAY_SPINE_JUDGE"] },
+        "E5-self-critique": { lever: "selfCritique", env: ["FORAY_WRITER_SELF_CRITIQUE", "FORAY_WRITER_CRITIC"] }
+      };
+      assert.ok(Object.hasOwn(levers, id), `${id} is not a known lever spec`);
+      assert.equal(spec.lever, levers[id].lever);
+      assert.deepEqual(Object.keys(spec.armB.env), levers[id].env);
+      assert.deepEqual(Object.keys(spec.expect.levers), [levers[id].lever]);
     } else {
       assert.equal(spec.kind, "stage");
       assert.equal(spec.armA, "adopted");

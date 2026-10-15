@@ -413,4 +413,49 @@ export interface SelectedClaim {
 export interface NarrationBuildContext {
   userId: string;
   sessionId?: string;
+  /**
+   * GV-94 (W7-08): the act's 0-based position in the Foray. `runPipeline`
+   * sets it at each `narrate:<i>` stage (`writeNarration` is handed ONE act
+   * there, so its own index is always 0 and cannot stand in). Read by the
+   * self-critique decorator's `behind-playhead` mode, which never critiques
+   * act 0. Absent outside the pipeline.
+   */
+  actIndex?: number;
+  /**
+   * GV-94: how a writer decorator reports what it did on one `writeAct`
+   * (`WriterObservation`). `runPipeline` sets it at each `narrate:<i>` stage
+   * and totals the observations onto the generated outcome. A plain writer
+   * never calls it.
+   */
+  observe?: (e: WriterObservation) => void;
+}
+
+/**
+ * GV-94: what the self-critique decorator (`selfCritique.ts`) did on one act
+ * it critiqued. Counts only, plus each critic answer's probability: never a
+ * sentence, a source or a prompt.
+ *   - `acts`: 1 (an act the decorator critiqued; a skipped act reports none);
+ *   - `sentences`: draft sentences checked, every non-frozen seam;
+ *   - `flagged`: sentences flagged (code rule or critic p < CRITIQUE_FLAG_P);
+ *   - `editedSeams`: seams sent back in the edit call;
+ *   - `editCalls`: 0 or 1 (writer calls the pipeline's counting proxy
+ *     cannot see, so `runPipeline` adds them to `narrationWriterCalls`);
+ *   - `editErrors`: edit calls that threw (the draft was kept);
+ *   - `critiqueCalls`: critic questions asked; `critiqueErrors`: those that
+ *     threw (the sentence was left unflagged);
+ *   - `ms`: the decorator's own time after the draft (critique + edit);
+ *   - `pValues`: each critic answer's p, in question order.
+ */
+export interface WriterObservation {
+  kind: "self-critique";
+  acts: number;
+  sentences: number;
+  flagged: number;
+  editedSeams: number;
+  editCalls: number;
+  editErrors: number;
+  critiqueCalls: number;
+  critiqueErrors: number;
+  ms: number;
+  pValues: number[];
 }

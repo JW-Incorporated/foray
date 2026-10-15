@@ -51,6 +51,9 @@ import type { DurationTier } from "../src/types/spine";
 import { generateOneCandidate, DEFAULT_MAX_RESUMES, type CliArgs } from "../src/cli/generateForays";
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { FakeSpineJudge } from "./helpers/fakeSpineJudge";
+import { FakeDraftCritic } from "./helpers/fakeDraftCritic";
+import { SelfCritiquingNarrationWriter, __swapDraftCriticForTests } from "../src/generation/selfCritique";
+import type { WriterObservation } from "../src/generation/NarrationWriterBuilder";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -2182,4 +2185,109 @@ describe("runForayPipeline — GV-91 best-of-2 spine selection reaches the outco
     expect(out.spineSelection).toMatchObject({ chosen: "primary", reason: "judged" });
     for (const word of ["grilling", "barbecue", "history"]) expect(recorded).not.toContain(word);
   }, 60_000);
+});
+
+describe("runForayPipeline — GV-94 the writer sees its act's index and its observations reach the outcome and the report", () => {
+  /** A Stub writer that records the act index of every call and, on every
+   * act but act 0, reports one edit call through ctx.observe. */
+  function observingWriter() {
+    const stub = new StubNarrationWriterBuilder();
+    const actIndexes: Array<number | undefined> = [];
+    const writer: NarrationWriterBuilder = {
+      providerName: "observing",
+      writeAct: async (req, ctx) => {
+        actIndexes.push(ctx.actIndex);
+        const reply = await stub.writeAct(req, ctx);
+        if ((ctx.actIndex ?? 0) > 0) {
+          const e: WriterObservation = { kind: "self-critique", acts: 1, sentences: 3, flagged: 1, editedSeams: 1, editCalls: 1, editErrors: 0, critiqueCalls: 2, critiqueErrors: 0, ms: 7, pValues: [0.1, 0.8] };
+          ctx.observe?.(e);
+        }
+        return reply;
+      }
+    };
+    return { writer, actIndexes };
+  }
+
+  it("each narrate:<i> stage hands the writer actIndex i, the observations are summed onto the outcome, and the edit calls join narrationCalls.writer", async () => {
+    /* MUTATION THAT KILLS THIS: pass the pipeline ctx to writeNarration
+       without `actIndex: i` (every act reads undefined), drop the
+       `narrationWriterCalls += e.editCalls`, or drop the selfCritique spread
+       from the generated outcome. Ran all three: red. */
+    /* Medium: the stub spine has more than one act there. */
+    const multiAct: GenerationRequest = { ...request, duration: "medium" };
+    const baseline = await runForayPipeline(multiAct, options, stubDeps());
+    expect(baseline.outcome).toBe("generated");
+    if (baseline.outcome !== "generated") return;
+    expect("selfCritique" in baseline).toBe(false);
+
+    const { writer, actIndexes } = observingWriter();
+    const out = await runForayPipeline(multiAct, options, { ...stubDeps(), narrationWriter: writer });
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    const acts = out.narration.acts.length;
+    expect(acts).toBeGreaterThan(1);
+    expect([...new Set(actIndexes)].sort()).toEqual(Array.from({ length: acts }, (_, i) => i));
+    expect(out.selfCritique).toEqual({
+      acts: acts - 1,
+      sentences: 3 * (acts - 1),
+      flagged: acts - 1,
+      editedSeams: acts - 1,
+      editCalls: acts - 1,
+      editErrors: 0,
+      critiqueCalls: 2 * (acts - 1),
+      critiqueErrors: 0,
+      ms: 7 * (acts - 1),
+      pValues: Array.from({ length: acts - 1 }, () => [0.1, 0.8]).flat()
+    });
+    const writerCalls = (o: typeof out) => (o.outcome === "generated" ? o.input.meta?.veracity?.narrationCalls?.writer : undefined);
+    expect(writerCalls(baseline)).toBeGreaterThan(0);
+    expect(writerCalls(out)).toBe(writerCalls(baseline)! + (acts - 1));
+  }, 240_000);
+
+  it("levers.selfCritique (the configuration) and selfCritique (what the run did) reach the report row", async () => {
+    /* MUTATION THAT KILLS THIS: leave selfCritique out of `levers` in
+       generateForays.ts, or drop the row's selfCritique spread. Ran both:
+       red. */
+    const critic = new FakeDraftCritic([], 0);
+    const restore = __swapDraftCriticForTests("fake-gv94", () => critic);
+    vi.stubEnv("FORAY_WRITER_SELF_CRITIQUE", "behind-playhead");
+    vi.stubEnv("FORAY_WRITER_CRITIC", "fake-gv94");
+    const dir = mkdtempSync(join(tmpdir(), "gv94-"));
+    try {
+      const writer = new SelfCritiquingNarrationWriter({ inner: new StubNarrationWriterBuilder(), critic, mode: "behind-playhead" });
+      const args: CliArgs = {
+        prompts: null,
+        out: dir,
+        duration: "medium",
+        limit: null,
+        dryRun: true,
+        authorId: "founder-1",
+        budgetUsd: null,
+        noResume: true,
+        maxResumes: DEFAULT_MAX_RESUMES,
+        continueOnRefusedPartial: false,
+        notify: null
+      };
+      let passed: unknown;
+      const result = await generateOneCandidate({ prompt: request.prompt, topic: "food/grilling-bbq" }, args, {
+        cueProvider: new FileTranscriptCueProvider(),
+        runPipeline: (req, opts, deps = {}) => {
+          passed = opts.selfCritique;
+          return runForayPipeline(req, opts, { ...stubDeps(), ...deps, narrationWriter: writer });
+        }
+      });
+      expect(result.skipped).toBe(false);
+      if (result.skipped) return;
+      expect(passed).toEqual({ mode: "behind-playhead", critic: "fake-gv94" });
+      expect(result.entry?.outcome).toBe("generated");
+      expect(result.entry?.levers).toEqual({ selfCritique: { mode: "behind-playhead", critic: "fake-gv94", flagP: 0.3, sourceBudgetTokens: 2000 } });
+      expect(result.entry?.selfCritique?.acts).toBeGreaterThanOrEqual(1);
+      expect(result.entry?.selfCritique?.editCalls).toBe(result.entry?.selfCritique?.acts);
+      expect(critic.calls).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllEnvs();
+      restore();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 180_000);
 });
