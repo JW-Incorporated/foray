@@ -175,22 +175,28 @@ describe("GV-94: the self-critique decorator", () => {
   it("no flagged sentence: no edit call, the draft is returned and the observation says so", async () => {
     /* MUTATION THAT KILLS THIS: make the edit call whenever any sentence was
        checked (drop the `flagsBySeam.size === 0` return). Ran it: red (two
-       writer calls). */
+       writer calls). The flag rule is strictly p < CRITIQUE_FLAG_P: one
+       sentence is answered at exactly the threshold and is NOT flagged.
+       MUTATION THAT KILLS THIS TOO: `answer.p < CRITIQUE_FLAG_P` ->
+       `answer.p <= CRITIQUE_FLAG_P`. Ran it: red (flagged 1, an edit call). */
     const d = draft();
-    const { inner, critic, writer, observed, ctx } = harness("all", [d]);
+    const { inner, critic, writer, observed, ctx } = harness("all", [d], new FakeDraftCritic([{ match: S0_BAD, p: CRITIQUE_FLAG_P }]));
     expect(await writer.writeAct(request(), ctx(1))).toBe(d);
     expect(inner.requests).toHaveLength(1);
     /* Five sentences; the imperative asserts nothing and is not asked. */
     expect(critic.questions.map((q) => q.sentence)).toEqual([S0_KEEP, S0_BAD, S1_FIRST, S2_ONLY]);
     expect(observed).toEqual([
-      { kind: "self-critique", acts: 1, sentences: 5, flagged: 0, editedSeams: 0, editCalls: 0, editErrors: 0, critiqueCalls: 4, critiqueErrors: 0, ms: 0, pValues: [0.9, 0.9, 0.9, 0.9] }
+      { kind: "self-critique", acts: 1, sentences: 5, flagged: 0, editedSeams: 0, editCalls: 0, editErrors: 0, critiqueCalls: 4, critiqueErrors: 0, ms: 0, pValues: [0.9, CRITIQUE_FLAG_P, 0.9, 0.9] }
     ]);
   });
 
   it("one flagged sentence: exactly one edit call, that seam re-sent with the sentence quoted, every other seam frozen, and frozen seams keep their draft script and claims", async () => {
     /* MUTATION THAT KILLS THIS: merge every seam from the edit reply (drop
        the flagged-only merge), or send the other seams unfrozen. Ran both:
-       red (s1/s2 take the edit's text; s1 is not frozen). */
+       red (s1/s2 take the edit's text; s1 is not frozen). The flagged
+       sentence is answered just under the threshold (CRITIQUE_FLAG_P - 0.01).
+       MUTATION THAT KILLS THIS TOO: lower the threshold
+       (`answer.p < CRITIQUE_FLAG_P - 0.01`). Ran it: red (nothing flagged). */
     const edited: ActWriteResult = {
       seams: [
         { seamId: "s0", script: `${S0_KEEP} The walkway stood for a year before anyone looked again.`, claims: [claim("approved without calculation")], usedClaims: [0], pronunciationHints: [] },
@@ -198,7 +204,7 @@ describe("GV-94: the self-critique decorator", () => {
         { seamId: "s2", script: "", claims: [], usedClaims: [], pronunciationHints: [] }
       ]
     };
-    const critic = new FakeDraftCritic([{ match: S0_BAD, p: 0.05 }]);
+    const critic = new FakeDraftCritic([{ match: S0_BAD, p: CRITIQUE_FLAG_P - 0.01 }]);
     const { inner, writer, observed, ctx } = harness("all", [draft(), edited], critic);
     const out = await writer.writeAct(request(), ctx(1));
 
@@ -218,7 +224,7 @@ describe("GV-94: the self-critique decorator", () => {
     expect(out.seams[1]).toEqual(draft().seams[1]);
     expect(out.seams[2]).toEqual(draft().seams[2]);
     expect(observed[0]).toMatchObject({ flagged: 1, editedSeams: 1, editCalls: 1, editErrors: 0, critiqueCalls: 4 });
-    expect(observed[0]!.pValues).toEqual([0.9, 0.05, 0.9, 0.9]);
+    expect(observed[0]!.pValues).toEqual([0.9, CRITIQUE_FLAG_P - 0.01, 0.9, 0.9]);
   });
 
   it("a flagged seam missing from the edit reply keeps its draft", async () => {

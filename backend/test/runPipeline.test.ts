@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 import { runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
@@ -14,7 +14,7 @@ import { finalizeForay, type FinalizeForayInput, type FinalizeForayResult } from
 import { stitchForay } from "../src/generation/stitchForay";
 import { computeShowVariety, evaluateVeracityGate } from "../src/generation/veracityMetrics";
 import { showKeyForItem } from "../src/generation/showIdentity";
-import { checkpointFingerprint } from "../src/generation/checkpoint";
+import { CheckpointSession, checkpointFingerprint, checkpointRunVariant } from "../src/generation/checkpoint";
 import { forayIdFor, resetTaxonomyCache } from "../src/generation/resolveTopic";
 import { resetTaxonomyFamilyCache, taxonomyLineage, taxonomyRoot } from "../src/generation/taxonomyFamily";
 import type { ExternalResearchContext, PassageRetrievalRequest } from "../src/generation/ExternalResearcher";
@@ -52,7 +52,9 @@ import { generateOneCandidate, DEFAULT_MAX_RESUMES, type CliArgs } from "../src/
 import { FileTranscriptCueProvider } from "../src/generation/transcriptArchiveLookup";
 import { FakeSpineJudge } from "./helpers/fakeSpineJudge";
 import { FakeDraftCritic } from "./helpers/fakeDraftCritic";
-import { SelfCritiquingNarrationWriter, __swapDraftCriticForTests } from "../src/generation/selfCritique";
+import { SelfCritiquingNarrationWriter, __swapDraftCriticForTests, joinCheckpointVariant } from "../src/generation/selfCritique";
+import { resolvePipelineFlags } from "../src/generation/pipelineFlags";
+import { resolveRouting } from "../src/config/stageRouting";
 import type { WriterObservation } from "../src/generation/NarrationWriterBuilder";
 
 /**
@@ -2290,4 +2292,84 @@ describe("runForayPipeline — GV-94 the writer sees its act's index and its obs
       rmSync(dir, { recursive: true, force: true });
     }
   }, 180_000);
+});
+
+describe("runForayPipeline — GV-94 decision 20: the self-critique part of the checkpoint variant at BOTH call sites", () => {
+  /** A deepen builder that throws: the driver records an `error` row and
+   * keeps the checkpoint (GV-15's "killed after spine"), so the file the
+   * FileCheckpointStore wrote can be read back. */
+  class KilledAfterSpine extends StubDeepenActBuilder {
+    override async deepenAct(): Promise<never> {
+      throw new Error("killed after spine");
+    }
+  }
+
+  /** One real (not dry) batch-driver run into a temp dir, killed after its
+   * spine: the session's fingerprint (what runForayPipeline handed
+   * CheckpointSession.open) and the store's (what it wrote into the file). */
+  async function fingerprintsUnder(env: Record<string, string>): Promise<{ session: string; store: string }> {
+    for (const [name, value] of Object.entries(env)) vi.stubEnv(name, value);
+    const open = vi.spyOn(CheckpointSession, "open");
+    const dir = mkdtempSync(join(tmpdir(), "gv94-fp-"));
+    try {
+      const args: CliArgs = {
+        prompts: null,
+        out: dir,
+        duration: "short",
+        limit: null,
+        dryRun: false,
+        authorId: "founder-1",
+        budgetUsd: null,
+        noResume: true,
+        maxResumes: 0,
+        continueOnRefusedPartial: false,
+        notify: null
+      };
+      const result = await generateOneCandidate({ prompt: request.prompt, topic: options.topic }, args, {
+        cueProvider: new FileTranscriptCueProvider(),
+        runPipeline: (req, opts, deps = {}) => runForayPipeline(req, opts, { ...stubDeps(), ...deps, deepenBuilder: new KilledAfterSpine() })
+      });
+      expect(result.skipped).toBe(false);
+      if (result.skipped) throw new Error("skipped");
+      expect(result.entry?.outcome).toBe("error");
+      expect(open).toHaveBeenCalledTimes(1);
+      const files = readdirSync(dir).filter((f) => f.endsWith(".checkpoint.json"));
+      expect(files).toHaveLength(1);
+      const store = (JSON.parse(readFileSync(join(dir, files[0]!), "utf8")) as { fingerprint: string }).fingerprint;
+      return { session: open.mock.calls[0]![2], store };
+    } finally {
+      open.mockRestore();
+      vi.unstubAllEnvs();
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("the store's and the session's fingerprints agree and carry the critique's part only when it is on; off leaves the classic fingerprint unchanged", async () => {
+    /* MUTATION THAT KILLS THIS: revert either site to plain
+       `checkpointRunVariant(flags, routing)` -- generateForays.ts (the
+       FileCheckpointStore's fingerprint) or runPipeline.ts (the
+       CheckpointSession's). Ran both: red (the store's and the session's
+       fingerprints differ, and the reverted one is not the joined value). */
+    const critic = new FakeDraftCritic();
+    const restore = __swapDraftCriticForTests("fake-gv94", () => critic);
+    try {
+      const classicVariant = checkpointRunVariant(resolvePipelineFlags(), resolveRouting());
+      const fingerprintFor = (variant: string | undefined) =>
+        checkpointFingerprint({ prompt: request.prompt, duration: "short", topic: options.topic, ...(variant !== undefined ? { variant } : {}) });
+
+      const off = await fingerprintsUnder({ FORAY_WRITER_SELF_CRITIQUE: "off" });
+      expect(off.store).toBe(off.session);
+      expect(off.session).toBe(fingerprintFor(classicVariant));
+      expect(joinCheckpointVariant(classicVariant, { mode: "off" })).toBe(classicVariant);
+
+      const on = await fingerprintsUnder({ FORAY_WRITER_SELF_CRITIQUE: "behind-playhead", FORAY_WRITER_CRITIC: "fake-gv94" });
+      expect(on.store).toBe(on.session);
+      expect(on.session).toBe(fingerprintFor(joinCheckpointVariant(classicVariant, { mode: "behind-playhead", critic: "fake-gv94" })));
+      expect(on.session).not.toBe(off.session);
+      /* Killed before narrate: the critic was never asked. */
+      expect(critic.calls).toBe(0);
+    } finally {
+      restore();
+    }
+  }, 240_000);
 });
