@@ -1,0 +1,73 @@
+{
+  "_comment": "GV-92: SYNTHETIC Jev /v1/systemone reply bodies for the offline judged pass (judge-questions/1), shaped like hermes-operating-system ops/jev/tests/_fixtures.py:33-64 (_build_answer, success_body_for) and backend/test/fixtures/jev/answers.json. One body per ask, answers in question order. No prompt, transcript or listener text. Not a recording: the card's live step (judge.mjs on the founder PC with the Jev key) replaces these with sanitized recorded bodies.",
+  "questionsVersion": "judge-questions/1",
+  "bodies": {
+    "promptFit": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "score", "score": 3, "legend": "They answer the subject and angle, with a gap the listener might notice.", "probabilities": { "0": 0.01, "1": 0.04, "2": 0.15, "3": 0.6, "4": 0.2 }, "confidence": 0.6 }
+      ],
+      "usage": { "input_tokens": 410, "output_tokens": 6 }
+    },
+    "seamStrong": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "score", "score": 4, "legend": null, "probabilities": { "0": 0.0, "1": 0.02, "2": 0.08, "3": 0.2, "4": 0.7 }, "confidence": 0.7 }
+      ],
+      "usage": { "input_tokens": 260, "output_tokens": 6 }
+    },
+    "seamWeak": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "score", "score": 1, "legend": null, "probabilities": { "0": 0.2, "1": 0.55, "2": 0.15, "3": 0.07, "4": 0.03 }, "confidence": 0.55 }
+      ],
+      "usage": { "input_tokens": 255, "output_tokens": 6 }
+    },
+    "speakerMatch": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "choice", "choice": "match", "probabilities": { "match": 0.88, "mismatch": 0.07, "unnamed": 0.05 }, "confidence": 0.88 }
+      ],
+      "usage": { "input_tokens": 190, "output_tokens": 5 }
+    },
+    "speakerMismatch": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "choice", "choice": "mismatch", "probabilities": { "match": 0.1, "mismatch": 0.8, "unnamed": 0.1 }, "confidence": 0.8 }
+      ],
+      "usage": { "input_tokens": 188, "output_tokens": 5 }
+    },
+    "clipOnSubject": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "score", "score": 4, "legend": null, "probabilities": { "0": 0.0, "1": 0.01, "2": 0.04, "3": 0.25, "4": 0.7 }, "confidence": 0.7 },
+        { "type": "score", "score": 3, "legend": null, "probabilities": { "0": 0.02, "1": 0.03, "2": 0.15, "3": 0.6, "4": 0.2 }, "confidence": 0.6 }
+      ],
+      "usage": { "input_tokens": 520, "output_tokens": 9 }
+    },
+    "clipOffSubject": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "score", "score": 1, "legend": null, "probabilities": { "0": 0.3, "1": 0.5, "2": 0.1, "3": 0.06, "4": 0.04 }, "confidence": 0.5 },
+        { "type": "score", "score": 0, "legend": null, "probabilities": { "0": 0.7, "1": 0.2, "2": 0.05, "3": 0.03, "4": 0.02 }, "confidence": 0.7 }
+      ],
+      "usage": { "input_tokens": 480, "output_tokens": 9 }
+    },
+    "supported": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "noul", "noul": 0.9 },
+        { "type": "choice", "choice": "s1", "probabilities": { "s1": 0.9, "none": 0.1 }, "confidence": 0.9 }
+      ],
+      "usage": { "input_tokens": 300, "output_tokens": 8 }
+    },
+    "borderline": {
+      "model": "jev-1.13.0",
+      "answers": [
+        { "type": "noul", "noul": 0.6 },
+        { "type": "choice", "choice": "none", "probabilities": { "s1": 0.35, "none": 0.65 }, "confidence": 0.65 }
+      ],
+      "usage": { "input_tokens": 296, "output_tokens": 8 }
+    }
+  }
+}
