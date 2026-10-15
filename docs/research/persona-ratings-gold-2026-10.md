@@ -115,6 +115,73 @@ The bold personas are the four that got the isolated slice. The retest columns c
 3. **Follow-up card, low priority:** a persona-group mode for slow-news-contextualist (the pilot's rule; see the verdict).
 4. **RV-26:** the label bugs above, plus the `unlabelled` shows in persona top-50s (eval §4).
 
+## Anomaly audit (RV-26)
+
+`node tools/recommender/anomaly.mjs` audited the 2,978 rated gold shows on 2026-10-15. It writes `data-local/recommender/anomalies.json`, which is not committed. A show is an anomaly when any of these hold:
+
+- **student gap:** its fit differs from the student's by more than 1.5 on any persona;
+- **node mean:** its fit differs by more than 2 from that persona's mean fit over the show's taxonomy root;
+- **injection flag:** it carries `injection_suspected`;
+- **reason injection:** its `top_reason`, or any persona reason in a merged joint results file, matches RV-03's injection patterns.
+
+**The student fits are out-of-fold.**
+- The tool re-runs `trainStudent` on the committed data and writes nothing. The selection it chooses matches the committed `student-model.json`.
+- The 2,483 training rows use the out-of-fold fit from the 5-fold CV that chose the model, with the isotonic map also fitted on the other folds. The 495 holdout rows use the plain prediction.
+- The student failed its gate (RV-25, RV-32), so a large gap is a weak signal. One run took 51 minutes on the loaded machine.
+
+**Count by cause** (a show with two causes counts under each):
+
+| cause | shows |
+|---|---|
+| student gap | 460 |
+| node mean | 544 |
+| injection flag | 3 |
+| reason injection | 0 |
+| **any (anomalous shows)** | **825 of 2,978 (27.7%)** |
+
+- 278 shows have a student gap only, 362 a node mean only, 182 both, and 3 the injection flag only.
+- **Most anomalies are a persona's favourites, not errors.** 565 of the 638 node-mean flags and 406 of the 550 student-gap flags point upward. They mark a fit of 4-5 where that persona's root averages 1.1-3 (median 1.64). Fit is mostly ones (see Distribution above), so a narrow persona's real favourites are outliers by construction.
+- **Injection: nothing new.** The three flagged shows are the three listed above (Eat Your Spanish, The State of The Universe, The Blue Room). None of the 51,662 persona reasons in the 201 merged joint files matches an injection pattern.
+
+**Count by batch.** Each joint results file is audited on its own pass's ratings, and a show counts once per batch.
+
+| batches | count | show-ratings | anomalous | share | over 20% |
+|---|---|---|---|---|---|
+| pilot pass 1 | 15 | 299 | 81 | 27.1% | 9 |
+| pilot pass 2 | 4 | 59 | 20 | 33.9% | 4 |
+| gold pass 1 | 135 | 2,678 | 774 | 28.9% | 98 |
+| gold pass 2 | 22 | 439 | 110 | 25.1% | 15 |
+| gold pass 3 | 25 | 499 | 131 | 26.3% | 17 |
+| **all** | **201** | **3,974** | **1,116** | **28.1%** | **143** |
+
+**Re-rate no batch.**
+- By the card's rule, 143 batches are over 20%, but that bar sits below the average batch (28.1%). The full list is `counts.batches_to_rerate` in `anomalies.json`.
+- The highest are `gold-1-joint-20261015-00741238` and `gold-1-joint-20261015-d7889e0b` at 11 of 20 (55%), then `gold-1-joint-20261015-751adc28` and `gold-1-joint-20261015-c48af90a` at 50%.
+- The spread between batches is what chance predicts. A dispersion test against one shared rate gives chi-square 192.3 on 200 degrees of freedom, so no batch is anomalous more often than chance allows. The top batch is 2.7 standard deviations above the mean, about the expected maximum of 201 draws.
+- This agrees with the drift check above: no batch mean moves more than 0.198.
+- **For a future run, set the bar relative to the base rate.** Base rate plus three binomial standard deviations is about 58% for a 20-show batch. No batch here reaches it.
+
+**Catalogue label bugs the raters reported, cross-checked:**
+
+| show | reported | audit |
+|---|---|---|
+| Outrage + Optimism (1459416461) | climate title, tech-news blurb | not anomalous: every fit is 1-3 at confidence 0.15-0.18, so nothing stands out |
+| Librivox Audiobooks (1680031836) | blurb describes credit and bond news | **node mean:** filed under `business`; history-deep-diver 4 against a root mean of 1.16 |
+| Where Should We Begin? (`where-should-we-begin`) | blurb contradicts the feed | not anomalous: fits 1-3 under `relationships` |
+| Credentialing Chronicles (1801579797) | blurb contradicts the feed | **student gap:** news-current 3 against the student's 1.4 (filed under `tv-film`) |
+| Rebel Girls: Growing Up Powerful (1685349616) | blurb says Persian, episodes are English | **student gap:** family-listener 4 against the student's 2.2 |
+
+- The audit catches 3 of the 5. A mislabel that the raters answered with low confidence and low fits (Outrage + Optimism) is invisible to both rules.
+- **The audit adds downward node-mean outliers, the more useful signal.** In 72 shows a persona rated 1 where it averages above 3 in the show's root. Many sit in a root that does not match the show, which makes them candidate root mislabels:
+  - Consider This from NPR (1503226625) under `music`;
+  - Tides of History (1257202425), The GMAT Strategy Podcast (1484727323) and CISSP Cyber Training (1674060379) under `tv-film`;
+  - Twin Peaks Unwrapped (1005628280), America Adapts (1133023095) and Australian Birth Stories (1242155321) under `craft`;
+  - Audio Arguendo (1067649051) under `gaming`;
+  - The Michael Knowles Show (1266577963) under `hobbies`;
+  - iNTO THE FRAY RADIO (1042017993) under `cities`.
+- The root is the first taxonomy node of the show's catalogue label. The ratings are right; the label is what to fix.
+- **`unlabelled` shows are anomalous more often:** 89 of 250 (36%), against 27.7% overall. That root mixes unrelated shows, so its node means mean little.
+
 ## Generated statistics
 
 <!-- BEGIN agreement:gold -->
