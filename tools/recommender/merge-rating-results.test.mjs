@@ -390,10 +390,10 @@ test("isolated results never enter ratings.json", (t) => {
   assert.ok(existsSync(reasonsPathFor(batch.batch_id, root)), "the reasons file name is Windows-safe despite the ':'");
 });
 
-test("--check passes the committed skeleton and fails a bad file or a stale reservation", (t) => {
+test("--check passes the committed ratings and fails a bad file or a stale reservation", (t) => {
   // mutation: in runCheck, `t - at > STALE_MS` -> `t - at > Infinity` -> the 13-hour reservation passes
   const committed = readFileSync(join(REPO, RATINGS_PATH), "utf8");
-  assert.equal(committed, serializeRatings(skeletonRatings()), "the committed skeleton is in the merge's own form");
+  assert.equal(committed, serializeRatings(JSON.parse(committed)), "the committed ratings are in the merge's own form");
   assert.deepEqual(runCheck({ root: REPO, now: NOW }).filter((p) => p.code !== "stale_in_flight"), []);
 
   const root = makeRoot(t);

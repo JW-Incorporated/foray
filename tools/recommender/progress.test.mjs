@@ -224,13 +224,14 @@ test("loadProgress: a missing file is empty, a corrupt one throws", () => {
   }
 });
 
-test("the committed rating-progress.json is empty and in saveProgress form", () => {
-  /* MUTATION (run red): commit the file as one line `{ "in_flight": {},
-     "rated": {} }` (the first save would rewrite every byte), or with a stale
-     reservation in it. A test that cannot fail on today's file until someone
-     hand-edits it; written deliberately. */
+test("the committed rating-progress.json is in saveProgress form with nothing in flight", () => {
+  /* MUTATION (run red): commit the file as one line (the first save would
+     rewrite every byte), or with a reservation still in flight. RV-13 commits
+     the pilot's pass records, so the file is no longer empty; what must hold
+     is the canonical form and that no batch was left reserved. */
   const file = join(ROOT, "data", "recommender", "rating-progress.json");
   const text = readFileSync(file, "utf8");
-  assert.equal(text, serializeProgress(emptyProgress()));
-  assert.deepEqual(loadProgress(file), { in_flight: {}, rated: {} });
+  const progress = loadProgress(file);
+  assert.equal(text, serializeProgress(progress));
+  assert.deepEqual(progress.in_flight, {});
 });
