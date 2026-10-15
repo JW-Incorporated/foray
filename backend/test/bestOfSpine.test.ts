@@ -284,6 +284,56 @@ describe("GV-91: BestOfTwoSpineBuilder chooses between gate-passing samples", ()
     expect(records[0]!.samples[1]!.issues).toContain("beat-claim-not-single-sentence");
   });
 
+  it("the validity gate uses buildSpineWithReasks's seedable episode ids: a sample with no seeded beats per act is invalid when the map has tape windows, and never judged", async () => {
+    /* Card step 6: the gate's checkSpineStructure options are the ones
+       buildSpineWithReasks uses, seedableEpisodeIds from the research shape.
+       The shared fixture has no tape windows, so the seeded-beat rule is off
+       there; this map quotes windows from ten episodes, so it is on.
+       MUTATION THAT KILLS THIS: call checkSpineStructure(spine, {
+       seedableEpisodeIds: [] }) in spineSampleIssues. Ran it: red (the
+       unseeded secondary counts as valid and the judge is asked). */
+    const windowed: ResearchShape = {
+      ...research,
+      subtopics: research.subtopics.map((s) => ({
+        ...s,
+        windowsUnavailable: null,
+        tapeWindows: ["inventory", "payments", "fraud", "search", "ranking", "speech", "vision", "logistics", "billing", "weather"].map((topic, i) => ({
+          episodeId: `practical-ai--episode-${900 + i}`,
+          showTitle: "Practical AI",
+          episodeTitle: `Episode ${900 + i}`,
+          startSec: 100 + i * 10,
+          endSec: 200 + i * 10,
+          text:
+            `The ${topic} pipeline failed on a Friday and nobody noticed the ${topic} outage until Monday morning. ` +
+            `The ${topic} retraining job ran on a fixed calendar rather than on any signal from the data itself.`,
+          score: 2
+        }))
+      }))
+    };
+    /** The stub's spine with every seed stripped: well-formed, but no act
+     * carries a beat seeded from a window the map listed. */
+    class UnseededBuilder extends ScriptedBuilder {
+      override async buildSpine(i: IntentUnderstanding, r: ResearchShape, d: DurationTier, c: SpineBuildContext): Promise<Spine> {
+        const spine = await super.buildSpine(i, r, d, c);
+        const unseeded = (beat: Spine["acts"][number]["slots"][number]["beats"][number]) => {
+          const copy = { ...beat };
+          delete copy.seed;
+          return copy;
+        };
+        return { ...spine, acts: spine.acts.map((a) => ({ ...a, slots: a.slots.map((s) => ({ ...s, beats: s.beats.map(unseeded) })) })) };
+      }
+    }
+    const judge = new FakeSpineJudge([{ choose: 1 }]);
+    const { records, ctx: c } = observed();
+    const out = await wrapper(new ScriptedBuilder("A"), new UnseededBuilder("B"), judge).buildSpine(intent(), windowed, "short", c);
+    expect(out.overview).toMatch(/^Plan A: /);
+    expect(judge.calls).toBe(0);
+    expect(records[0]).toMatchObject({ chosen: "primary", reason: "only-valid", judge: null });
+    expect(records[0]!.samples[0]).toMatchObject({ role: "primary", valid: true, issues: [] });
+    expect(records[0]!.samples[1]).toMatchObject({ role: "secondary", valid: false, late: false });
+    expect(records[0]!.samples[1]!.issues).toContain("act-below-seeded-beat-floor");
+  });
+
   it("both invalid: the primary's own spine or error is passed through unchanged, reason 'none-valid'", async () => {
     /* MUTATION THAT KILLS THIS: throw a new error (or return the secondary)
        when no sample passed. Ran it: red (not the primary's object). */
