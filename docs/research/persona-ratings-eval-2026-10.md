@@ -45,7 +45,7 @@ Card RV-21 of [`docs/roadmap/recommender-v1.md`](../roadmap/recommender-v1.md), 
   - Under v1 the row was 7 of 60, below random (0.154). Commute-explainer (15) and history-deep-diver (14) are the top persona on these story-told nonfiction shows, and narrative-binger on only 7.
   - With history-deep-diver the row is 21 of 60, against 0.231 random and **0.267 node modal**. That meets RV-31's rule for adding it, so v1.1 adds it.
   - The margin is 5 shows. At n = 60 one standard error is about 0.062, so the lead is about 1.4 standard errors, not a firm one.
-  - Commute-explainer was not added to `narrative`, because RV-31 asked only about history-deep-diver. Adding it as well would give 22 of 60 there (one-off count).
+  - Commute-explainer was not added to `narrative`, because RV-31 asked only about history-deep-diver. Adding it as well would give 36 of 60 there (0.600, against a node modal of 0.383), and 140 of 205 (0.683) overall against 0.580 (one-off count).
   - The catalogue's "narrative" and the narrative-binger persona still split the genre differently, as the pilot found.
 
 ### 2. Similar shows: node overlap now leads on both recall and precision
@@ -97,6 +97,7 @@ Curation was done before any persona existed, so this is independent evidence th
    - Commute-explainer joined `deep-learn` (RV-29's decision). It is the top persona on 32 of 128 shows, and the overall score is 0.595 with it alone.
    - History-deep-diver joined `narrative`. The row goes from 0.117 to 0.350, above its node modal of 0.267 by about 1.4 standard errors. Revisit if a later gold run drops it back under node modal.
    - The pilot raised both, and the gold set confirmed them at 2.4 times the n.
+   - Next map question: commute-explainer in `narrative` as well. It tops 15 of the 60 shows; adding it would take the row to 36 of 60 (0.600, node modal 0.383) and the overall score to 0.683 (node modal 0.580), the largest single lift left. Not done here because RV-31 asked only about history-deep-diver.
 3. **For RV-27 (parked):** keep seam C as written, with the prior as a tie-break inside node-overlap candidates. Cut served persona lists at fit >= 3.
 4. **For RV-26:** list the `unlabelled` shows that reach persona top-50s.
 
