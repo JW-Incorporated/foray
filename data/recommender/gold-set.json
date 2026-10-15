@@ -1,0 +1,536 @@
+{
+  "version": 1,
+  "mode": "pilot",
+  "seed": "rv-pilot-01",
+  "built_at": "2026-10-14T20:36:42.997Z",
+  "strata_counts": {
+    "root": {
+      "adventure": {
+        "catalogue": 130,
+        "sampled": 4
+      },
+      "architecture": {
+        "catalogue": 21,
+        "sampled": 3
+      },
+      "automotive": {
+        "catalogue": 214,
+        "sampled": 5
+      },
+      "aviation": {
+        "catalogue": 177,
+        "sampled": 3
+      },
+      "business": {
+        "catalogue": 946,
+        "sampled": 17
+      },
+      "cities": {
+        "catalogue": 7,
+        "sampled": 5
+      },
+      "comedy": {
+        "catalogue": 734,
+        "sampled": 13
+      },
+      "computing": {
+        "catalogue": 221,
+        "sampled": 4
+      },
+      "craft": {
+        "catalogue": 472,
+        "sampled": 9
+      },
+      "culture": {
+        "catalogue": 897,
+        "sampled": 13
+      },
+      "economics": {
+        "catalogue": 205,
+        "sampled": 3
+      },
+      "education": {
+        "catalogue": 516,
+        "sampled": 4
+      },
+      "engineering": {
+        "catalogue": 178,
+        "sampled": 11
+      },
+      "espionage": {
+        "catalogue": 5,
+        "sampled": 3
+      },
+      "fiction": {
+        "catalogue": 526,
+        "sampled": 5
+      },
+      "food": {
+        "catalogue": 184,
+        "sampled": 10
+      },
+      "gaming": {
+        "catalogue": 279,
+        "sampled": 4
+      },
+      "health": {
+        "catalogue": 817,
+        "sampled": 9
+      },
+      "history": {
+        "catalogue": 345,
+        "sampled": 10
+      },
+      "hobbies": {
+        "catalogue": 147,
+        "sampled": 3
+      },
+      "kids-family": {
+        "catalogue": 510,
+        "sampled": 6
+      },
+      "linguistics": {
+        "catalogue": 31,
+        "sampled": 5
+      },
+      "math": {
+        "catalogue": 93,
+        "sampled": 3
+      },
+      "medicine": {
+        "catalogue": 317,
+        "sampled": 7
+      },
+      "music": {
+        "catalogue": 609,
+        "sampled": 8
+      },
+      "nature": {
+        "catalogue": 519,
+        "sampled": 9
+      },
+      "news": {
+        "catalogue": 897,
+        "sampled": 10
+      },
+      "paranormal": {
+        "catalogue": 88,
+        "sampled": 4
+      },
+      "personal-journals": {
+        "catalogue": 100,
+        "sampled": 4
+      },
+      "philosophy": {
+        "catalogue": 223,
+        "sampled": 5
+      },
+      "psychology": {
+        "catalogue": 174,
+        "sampled": 4
+      },
+      "relationships": {
+        "catalogue": 197,
+        "sampled": 4
+      },
+      "religion": {
+        "catalogue": 1078,
+        "sampled": 8
+      },
+      "science": {
+        "catalogue": 541,
+        "sampled": 8
+      },
+      "society": {
+        "catalogue": 204,
+        "sampled": 4
+      },
+      "space": {
+        "catalogue": 189,
+        "sampled": 5
+      },
+      "sports": {
+        "catalogue": 2533,
+        "sampled": 22
+      },
+      "transport": {
+        "catalogue": 6,
+        "sampled": 4
+      },
+      "travel": {
+        "catalogue": 146,
+        "sampled": 3
+      },
+      "true-crime": {
+        "catalogue": 234,
+        "sampled": 10
+      },
+      "tv-film": {
+        "catalogue": 1008,
+        "sampled": 8
+      },
+      "unlabelled": {
+        "catalogue": 1704,
+        "sampled": 21
+      }
+    },
+    "tier": {
+      "episode-metadata": {
+        "catalogue": 296,
+        "sampled": 114
+      },
+      "show-metadata": {
+        "catalogue": 18126,
+        "sampled": 186
+      }
+    },
+    "dai": {
+      "false": {
+        "catalogue": 86,
+        "sampled": 39
+      },
+      "true": {
+        "catalogue": 143,
+        "sampled": 51
+      },
+      "unknown": {
+        "catalogue": 18193,
+        "sampled": 210
+      }
+    },
+    "chart": {
+      "1-25": {
+        "catalogue": 2132,
+        "sampled": 78
+      },
+      "26-200": {
+        "catalogue": 10090,
+        "sampled": 135
+      },
+      "uncharted": {
+        "catalogue": 6200,
+        "sampled": 87
+      }
+    },
+    "length": {
+      "31-60": {
+        "catalogue": 172,
+        "sampled": 67
+      },
+      "<=30": {
+        "catalogue": 45,
+        "sampled": 16
+      },
+      ">60": {
+        "catalogue": 91,
+        "sampled": 34
+      },
+      "unknown": {
+        "catalogue": 18114,
+        "sampled": 183
+      }
+    }
+  },
+  "shows": [
+    {"show_key":"1554319539","title":"Sew & So...","strata":{"root":"craft","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"software-engineering-daily","title":"Software Engineering Daily","strata":{"root":"computing","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1562879046","title":"Joy Lab |  strengthen your mental health with the science of joy","strata":{"root":"health","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"corecursive","title":"CoRecursive: Coding Stories","strata":{"root":"computing","tier":"episode-metadata","dai":"false","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"making-chips","title":"Making Chips Podcast for Manufacturing Leaders","strata":{"root":"engineering","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1118781520","title":"The Homeschool Sisters Podcast","strata":{"root":"education","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"431180569","title":"Challenge of the Yukon | OTRWesterns.com","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"our-fake-history","title":"Our Fake History","strata":{"root":"culture","tier":"episode-metadata","dai":"true","chart":"uncharted","length":">60"},"roles":["pilot"]},
+    {"show_key":"1391240708","title":"AccuWeather Daily","strata":{"root":"science","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1747873257","title":"恰恰小报","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1796849755","title":"Colorado Today","strata":{"root":"news","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"engines-of-our-ingenuity","title":"Engines of Our Ingenuity","strata":{"root":"history","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"<=30"},"roles":["pilot","isolated"]},
+    {"show_key":"history-of-wwii-podcast","title":"The History of WWII Podcast","strata":{"root":"history","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"cider-chat","title":"Cider Chat","strata":{"root":"food","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1882553792","title":"Donor Dad","strata":{"root":"relationships","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1540428224","title":"The Sunday Plodcast","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1450599780","title":"Coaster Kings","strata":{"root":"hobbies","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1896631617","title":"Rest to Return","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"strict-scrutiny","title":"Strict Scrutiny","strata":{"root":"society","tier":"episode-metadata","dai":"false","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"the-war-on-cars","title":"The War on Cars","strata":{"root":"cities","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1050535625","title":"The Ted and Austin Broer Show - MP3 Edition","strata":{"root":"news","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"tiny-matters","title":"Tiny Matters","strata":{"root":"science","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1444873564","title":"Post Reports","strata":{"root":"news","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1488393322","title":"The TriDot Triathlon Podcast","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1608051004","title":"Aquatics Today","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1865037317","title":"The Traitors Official Podcast","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"the-cinematography-podcast","title":"The Cinematography Podcast","strata":{"root":"craft","tier":"episode-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot"]},
+    {"show_key":"1194755213","title":"Small Town Murder","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"99-percent-invisible","title":"99% Invisible","strata":{"root":"architecture","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1808734718","title":"Two Guys on a Plane","strata":{"root":"aviation","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"bone-valley","title":"Bone Valley","strata":{"root":"true-crime","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"1721023499","title":"Women's Rugby Rundown","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"573731398","title":"Talking Flight","strata":{"root":"aviation","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1728723635","title":"The Jamie Kern Lima Show","strata":{"root":"business","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1892516584","title":"Outside The Dollar","strata":{"root":"economics","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"unexplained","title":"Unexplained","strata":{"root":"paranormal","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1896562835","title":"If You Please, Himan Brown’s Radio Mystery Theater","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"268800565","title":"Eye On College Basketball","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"fly-on-the-wall","title":"Fly on the Wall with Dana Carvey and David Spade","strata":{"root":"comedy","tier":"episode-metadata","dai":"false","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"690828594","title":"The Pullbuoy Podcast","strata":{"root":"gaming","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"maintenance-phase","title":"Maintenance Phase","strata":{"root":"health","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"1493613536","title":"Fasting For Life","strata":{"root":"health","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1523900602","title":"Almost Cult Classics","strata":{"root":"comedy","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1421573955","title":"Dr. Death","strata":{"root":"true-crime","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"cbc-ideas","title":"CBC Ideas","strata":{"root":"philosophy","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1810695711","title":"What's Your Number?","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1519377425","title":"TRXL","strata":{"root":"architecture","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1684351915","title":"AuDHD Flourishing","strata":{"root":"psychology","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"389446869","title":"Obsesión por el Cielo","strata":{"root":"space","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"the-bourbon-life","title":"The Bourbon Life","strata":{"root":"food","tier":"episode-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot"]},
+    {"show_key":"1518811931","title":"Ranking The Beatles","strata":{"root":"music","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"wow-in-the-world","title":"Wow in the World","strata":{"root":"kids-family","tier":"episode-metadata","dai":"true","chart":"1-25","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1603011962","title":"The Deck","strata":{"root":"true-crime","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"263456080","title":"Maths on the Move","strata":{"root":"education","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1510975732","title":"Talking Sleep","strata":{"root":"medicine","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1453352591","title":"The Craft Room Podcast","strata":{"root":"craft","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"go-creative-show","title":"Go Creative Show","strata":{"root":"craft","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"masters-of-scale","title":"Masters of Scale","strata":{"root":"business","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"watt-it-takes","title":"Watt It Takes","strata":{"root":"engineering","tier":"episode-metadata","dai":"true","chart":"uncharted","length":">60"},"roles":["pilot"]},
+    {"show_key":"1042017993","title":"iNTO THE FRAY RADIO - Encounters with the Paranormal","strata":{"root":"cities","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1733135157","title":"The Level Up Podcast w/ Paul Alex","strata":{"root":"business","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1618050230","title":"True Crime with Kendall Rae","strata":{"root":"true-crime","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1833991539","title":"Medicine with Meaning","strata":{"root":"medicine","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1866742314","title":"Insurance Exam Prep","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"shipwrecks-and-sea-dogs","title":"Shipwrecks and Sea Dogs","strata":{"root":"transport","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"spycast","title":"SpyCast","strata":{"root":"espionage","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1506227206","title":"Opinion Science","strata":{"root":"psychology","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"117752146","title":"Daily Radio Program with Charles Stanley - In Touch Ministries","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1515625083","title":"Raw vs Nitro - Reliving The War","strata":{"root":"history","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1495930854","title":"Love After Lockup, mmkay","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1514590215","title":"Scoring Notes","strata":{"root":"music","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1712529780","title":"Peak Physique Podcast","strata":{"root":"health","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"designer-notes","title":"Designer Notes","strata":{"root":"gaming","tier":"episode-metadata","dai":"false","chart":"uncharted","length":">60"},"roles":["pilot"]},
+    {"show_key":"1808470731","title":"The Ian Wendt Show","strata":{"root":"philosophy","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1710044536","title":"Woo Woo with Rachel Dratch","strata":{"root":"paranormal","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1533388375","title":"出逃在即","strata":{"root":"comedy","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1896908186","title":"The Last 12 Weeks","strata":{"root":"true-crime","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"just-fly-performance-podcast","title":"Just Fly Performance Podcast","strata":{"root":"sports","tier":"episode-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot"]},
+    {"show_key":"in-the-dark","title":"In The Dark","strata":{"root":"true-crime","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1419742734","title":"Dropping the Gloves","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1492797340","title":"The Team House","strata":{"root":"news","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":">60"},"roles":["pilot"]},
+    {"show_key":"dont-panic-geocast","title":"Don't Panic Geocast","strata":{"root":"nature","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1375339408","title":"You Can’t Make This Up","strata":{"root":"adventure","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1846152861","title":"City Cast Twin Cities","strata":{"root":"cities","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1575957255","title":"The Yard","strata":{"root":"comedy","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1824569474","title":"Atmanandalahari","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"79063354","title":"Travel with Rick Steves","strata":{"root":"travel","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1647719549","title":"Straight Outta Vegas AM","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"265264862","title":"Tara Brach","strata":{"root":"philosophy","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1513787271","title":"The Breakdown","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1896762691","title":"In the Booth with Babish","strata":{"root":"food","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1860026821","title":"Subliminal Affirmations with Nicky Sutton","strata":{"root":"health","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"kill-tony","title":"KILL TONY","strata":{"root":"comedy","tier":"episode-metadata","dai":"true","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"1592823205","title":"Gone South","strata":{"root":"history","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"fast-talk","title":"Fast Talk","strata":{"root":"sports","tier":"episode-metadata","dai":"true","chart":"uncharted","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"beersmith-podcast","title":"BeerSmith Home and Beer Brewing Podcast","strata":{"root":"food","tier":"episode-metadata","dai":"false","chart":"26-200","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"the-roundhouse","title":"The Roundhouse","strata":{"root":"transport","tier":"episode-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot"]},
+    {"show_key":"1697794816","title":"The Really Good Podcast with Bobbi Althoff","strata":{"root":"food","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1876049295","title":"The Book Club","strata":{"root":"history","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1298314174","title":"Southern Mysteries Podcast","strata":{"root":"true-crime","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"shop-talk-live","title":"Shop Talk Live - Fine Woodworking","strata":{"root":"craft","tier":"episode-metadata","dai":"false","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"1610918212","title":"The World of the API","strata":{"root":"science","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"the-race-f1-podcast","title":"The Race F1 Podcast","strata":{"root":"automotive","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"cleantechies-podcast","title":"CleanTechies Podcast","strata":{"root":"engineering","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"1844970260","title":"Unblinded with Sean Callagy","strata":{"root":"business","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1697516282","title":"Maul or Nothing","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1574382232","title":"Nonprofit Missionary Podcast with Ken McQuiller","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1692042597","title":"Legends of the Ashes","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1595271966","title":"無瑣事事務所 Nothing Much Office","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1802390261","title":"Sus Stories with Atif Myers","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"wine-educate","title":"Wine Educate: Wine Lessons, Travel & WSET Study Prep","strata":{"root":"food","tier":"episode-metadata","dai":"false","chart":"26-200","length":"<=30"},"roles":["pilot","retest"]},
+    {"show_key":"1451897026","title":"Habits and Hustle","strata":{"root":"business","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"1580594077","title":"LanguaTalk Slow French: Learn French With Gaëlle | French podcast for A2-B1","strata":{"root":"linguistics","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1503502564","title":"Fairy Tales with Granny MacDuff","strata":{"root":"kids-family","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1790108248","title":"I Wanna Be Like You with Elbi Cespedes","strata":{"root":"automotive","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1543330611","title":"Human & Holy","strata":{"root":"personal-journals","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"214089682","title":"Fresh Air","strata":{"root":"culture","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"lingthusiasm","title":"Lingthusiasm - A podcast that's enthusiastic about linguistics","strata":{"root":"linguistics","tier":"episode-metadata","dai":"false","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"893008561","title":"The Simpsons Show","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"this-past-weekend-theo-von","title":"This Past Weekend w/ Theo Von","strata":{"root":"comedy","tier":"episode-metadata","dai":"true","chart":"1-25","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1576594336","title":"Morning Wire","strata":{"root":"news","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"<=30"},"roles":["pilot","isolated"]},
+    {"show_key":"1583132133","title":"The Weekly Show with Jon Stewart","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot","isolated"]},
+    {"show_key":"1473838608","title":"Eric Roberts Fitness","strata":{"root":"health","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"woodshop-life","title":"Woodshop Life Podcast","strata":{"root":"craft","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"the-psychology-podcast","title":"The Psychology Podcast","strata":{"root":"psychology","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1535418852","title":"童話透中島","strata":{"root":"kids-family","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1693150761","title":"Beckman Unleashed","strata":{"root":"nature","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"this-week-in-startups","title":"This Week in Startups","strata":{"root":"business","tier":"show-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot"]},
+    {"show_key":"1092751338","title":"The StoryBrand Podcast","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1152853871","title":"The Thoughtful Counselor","strata":{"root":"psychology","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1676846015","title":"Digital Social Hour","strata":{"root":"business","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"1854454728","title":"InteleCast - InteleTravel Official Podcast","strata":{"root":"kids-family","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1847643602","title":"The Hockey Lifers","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1257202425","title":"Tides of History","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"sigma-nutrition-radio","title":"Sigma Nutrition Radio","strata":{"root":"health","tier":"episode-metadata","dai":"false","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1637438384","title":"Grey Dynamics","strata":{"root":"espionage","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1240751928","title":"1874","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1592182331","title":"Discograffiti","strata":{"root":"music","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1638001340","title":"Previously On... The Official Love Island USA podcast with Matthew Hoffman","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1451224710","title":"Business Alchemy with Jackie Minsky","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1561803455","title":"Son of a Butch with Claude Harmon","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1531593864","title":"Therapy Gecko","strata":{"root":"comedy","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"306390087","title":"Adam Carolla Show","strata":{"root":"comedy","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"1584214055","title":"CavernCast","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1455758394","title":"James Bond & Friends","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"happier-gretchen-rubin","title":"Happier with Gretchen Rubin","strata":{"root":"education","tier":"show-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"gastropod","title":"Gastropod","strata":{"root":"food","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1435988964","title":"Upzoned","strata":{"root":"cities","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"business-of-machining","title":"Business of Machining","strata":{"root":"engineering","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1543990412","title":"LOL! Teen Comedy","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1669923788","title":"MedLink Neurology Podcast","strata":{"root":"medicine","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1701448583","title":"The Risk Takers Podcast","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1318397377","title":"This Podcast Has Fleas","strata":{"root":"fiction","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1788724796","title":"The Bryant Bright Consulting®️Show","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"freakonomics-radio","title":"Freakonomics Radio","strata":{"root":"economics","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1001659715","title":"No Jumper","strata":{"root":"music","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1200361736","title":"The Daily","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"this-podcast-will-kill-you","title":"This Podcast Will Kill You","strata":{"root":"medicine","tier":"episode-metadata","dai":"true","chart":"1-25","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1848120606","title":"Better Call Sexton","strata":{"root":"relationships","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1648019830","title":"Paranormal Investigations Hawaii","strata":{"root":"fiction","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"science-for-sport-podcast","title":"Science for Sport Podcast","strata":{"root":"sports","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"2-bears-1-cave","title":"2 Bears, 1 Cave with Tom Segura & Bert Kreischer","strata":{"root":"comedy","tier":"episode-metadata","dai":"true","chart":"26-200","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1457255205","title":"My Mom's Basement","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"685821493","title":"Learning Spanish for Beginners Podcast","strata":{"root":"education","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1368081567","title":"The Toast","strata":{"root":"culture","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1527477975","title":"Rules of the Game: The Bolder Advocacy Podcast","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"zoe-science-nutrition","title":"ZOE Science & Nutrition","strata":{"root":"health","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1659732106","title":"Yarn Talk","strata":{"root":"engineering","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1893930527","title":"SLPs en Acción","strata":{"root":"linguistics","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1480792783","title":"Chasing Giants with Don Higgins","strata":{"root":"hobbies","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1885416577","title":"Revive Outdoors","strata":{"root":"adventure","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1436427334","title":"Wollkanal","strata":{"root":"craft","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"356920632","title":"White Horse Inn","strata":{"root":"personal-journals","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"geology-bites","title":"Geology Bites","strata":{"root":"nature","tier":"episode-metadata","dai":"false","chart":"1-25","length":"<=30"},"roles":["pilot","isolated"]},
+    {"show_key":"my-favorite-theorem","title":"My Favorite Theorem","strata":{"root":"math","tier":"episode-metadata","dai":"false","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"354628391","title":"Renegade Talk Radio","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"snap-judgment","title":"Snap Judgment","strata":{"root":"science","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"1627066829","title":"Credibly Challenged","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1477578107","title":"Stitch Please","strata":{"root":"news","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"500189078","title":"JTS Torah Commentary","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1753827979","title":"Peaceful Rain - Nature Sounds for Deep Sleep","strata":{"root":"health","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"lore","title":"Lore","strata":{"root":"paranormal","tier":"episode-metadata","dai":"false","chart":"1-25","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1508135544","title":"Tennis Lounge Podcast: Mental Performance, Insiders Interviews, The Stories that Shape(d) the Game","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1848156557","title":"Tomorrow, Today","strata":{"root":"news","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1619978406","title":"History Tea Time","strata":{"root":"history","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1825931696","title":"AIpocalypse?","strata":{"root":"computing","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"the-archaeology-show","title":"The Archaeology Show","strata":{"root":"history","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"1801412689","title":"Folktales from Sudan","strata":{"root":"kids-family","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1089022756","title":"Pardon My Take","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot","isolated"]},
+    {"show_key":"1829721662","title":"Frameshifts with Benjamin Arya","strata":{"root":"science","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1748724463","title":"On A Tangent: Voices of Mathematics Münster","strata":{"root":"math","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1402378177","title":"The Bulletproof Musician","strata":{"root":"news","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1896906112","title":"Feminist Art Lives","strata":{"root":"space","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1485931128","title":"Against The Stream","strata":{"root":"philosophy","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1613551919","title":"The Regular Joe Show","strata":{"root":"news","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1842586566","title":"Catch More Bass — Bass Fishing Podcast","strata":{"root":"adventure","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"music-history-monday","title":"Music History Monday","strata":{"root":"music","tier":"episode-metadata","dai":"false","chart":"26-200","length":"<=30"},"roles":["pilot","retest"]},
+    {"show_key":"1458420685","title":"How to Spanish Podcast","strata":{"root":"linguistics","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"f1-beyond-the-grid","title":"F1 Beyond The Grid","strata":{"root":"automotive","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"the-moth","title":"The Moth","strata":{"root":"science","tier":"episode-metadata","dai":"false","chart":"1-25","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"1896875316","title":"Is This Really Legal?","strata":{"root":"engineering","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1539568321","title":"The Bible in a Year (with Fr. Mike Schmitz)","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1800012194","title":"Project Upland Podcast","strata":{"root":"nature","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"catalyst-shayle-kann","title":"Catalyst with Shayle Kann","strata":{"root":"engineering","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"1680425507","title":"The Wall Street Skinny","strata":{"root":"economics","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1232131110","title":"Let's Talk About Sets!","strata":{"root":"comedy","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1852074005","title":"The KCX Podcast","strata":{"root":"automotive","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1439567112","title":"Talk Art","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"business-wars","title":"Business Wars","strata":{"root":"business","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1501261245","title":"Stages of Akhlaaq in the Quran - Mizãn Institute","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1738264274","title":"Data Security Decoded","strata":{"root":"computing","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1522600041","title":"Critical Role & Sagas of Sundry","strata":{"root":"gaming","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1565409987","title":"Rav Gershon Ribner","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"wood-talk","title":"Wood Talk | Woodworking","strata":{"root":"craft","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"1517651197","title":"Park Predators","strata":{"root":"true-crime","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"unauthorized-history-pacific-war","title":"The Unauthorized History of the Pacific War","strata":{"root":"history","tier":"episode-metadata","dai":"true","chart":"26-200","length":">60"},"roles":["pilot","isolated"]},
+    {"show_key":"1481366133","title":"Locked On College Football","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"ams-on-the-air","title":"AMS on the Air","strata":{"root":"nature","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"ologies-with-alie-ward","title":"Ologies with Alie Ward","strata":{"root":"nature","tier":"episode-metadata","dai":"true","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"storycorps","title":"StoryCorps","strata":{"root":"personal-journals","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1621750804","title":"Crime Scene","strata":{"root":"true-crime","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1469394914","title":"The Journal.","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1746391981","title":"Past Present Feature with Marcus Mizelle","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1100417601","title":"Talk Easy with Sam Fragoso","strata":{"root":"music","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1491102803","title":"Last Seen Alive","strata":{"root":"true-crime","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1082252585","title":"The Secret Room | True Stories","strata":{"root":"personal-journals","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"old-gods-of-appalachia","title":"Old Gods of Appalachia","strata":{"root":"fiction","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1569401963","title":"The Rise and Fall of Mars Hill","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1347746953","title":"No Bad Dogs Podcast","strata":{"root":"tv-film","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1802264717","title":"Feelin’ Girlie","strata":{"root":"comedy","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"6783333783","title":"Not Your Average Garden Club Podcast","strata":{"root":"nature","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1896858485","title":"The Snare","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"1507781967","title":"Blue Canary: For Cops By a Cop","strata":{"root":"society","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1677810412","title":"Car Dealership Guy Podcast","strata":{"root":"automotive","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"945390489","title":"Bon Appétit","strata":{"root":"food","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"broken-record","title":"Broken Record with Rick Rubin, Malcolm Gladwell, Bruce Headlam and Justin Richmond","strata":{"root":"music","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1750591415","title":"Candace","strata":{"root":"engineering","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"weather-geeks","title":"Weather Geeks","strata":{"root":"nature","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"1677393954","title":"Learning Interior Design with Marcie Dennis","strata":{"root":"architecture","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"two-scientists-walk-into-a-bar","title":"Two Scientists Walk Into a Bar","strata":{"root":"medicine","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"171668359","title":"Puck Podcast","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1896274410","title":"PASSAGES: On Morrison","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"1466271396","title":"Spectacular Failures","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1883190981","title":"String and Tell","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1649863672","title":"Locked On NHL Prospects","strata":{"root":"news","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1656058786","title":"Apparently invisible. Chemistry in ceramics.","strata":{"root":"space","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1490722424","title":"Dumb Scum & Villainy a Star Wars RPG Podcast","strata":{"root":"fiction","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"call-her-daddy","title":"Call Her Daddy","strata":{"root":"comedy","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot","retest"]},
+    {"show_key":"lex-fridman-podcast","title":"Lex Fridman Podcast","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"false","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"1741644879","title":"The Colubrid Corruption Podcast","strata":{"root":"nature","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"energy-gang","title":"Energy Gang","strata":{"root":"engineering","tier":"episode-metadata","dai":"true","chart":"1-25","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1437916048","title":"Two Minutes in the Garden: Gardening Tips, Science, Myths","strata":{"root":"craft","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"467041704","title":"The Cane and Rinse videogame podcast","strata":{"root":"gaming","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1615593491","title":"Greenbook Podcast","strata":{"root":"business","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"the-great-women-artists","title":"The Great Women Artists","strata":{"root":"culture","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot","isolated"]},
+    {"show_key":"1559564016","title":"Money Rehab with Nicole Lapin","strata":{"root":"history","tier":"episode-metadata","dai":"unknown","chart":"uncharted","length":"<=30"},"roles":["pilot","retest"]},
+    {"show_key":"the-bourbon-road","title":"The Bourbon Road","strata":{"root":"food","tier":"episode-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot","isolated"]},
+    {"show_key":"being-an-engineer","title":"Being an Engineer","strata":{"root":"engineering","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"83260487","title":"Travel in 10: Travel Podcast","strata":{"root":"travel","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1896834497","title":"Five Miles From Home","strata":{"root":"unlabelled","tier":"episode-metadata","dai":"unknown","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1292353638","title":"Dementia Matters","strata":{"root":"medicine","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"amicus-dahlia-lithwick","title":"Amicus With Dahlia Lithwick | Law, justice, and the courts","strata":{"root":"society","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"maritime-history-podcast","title":"The Maritime History Podcast","strata":{"root":"transport","tier":"episode-metadata","dai":"false","chart":"uncharted","length":">60"},"roles":["pilot"]},
+    {"show_key":"1256660459","title":"Down in Alabama with Ike Morgan","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1532956108","title":"IMO with Michelle Obama and Craig Robinson","strata":{"root":"kids-family","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"planetary-radio","title":"Planetary Radio: Space Exploration, Astronomy and Science","strata":{"root":"space","tier":"episode-metadata","dai":"true","chart":"26-200","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"1742007509","title":"Yours Truly Johnny Dollar Radio","strata":{"root":"fiction","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1522899720","title":"Woo话可说","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","retest"]},
+    {"show_key":"6784802882","title":"Trainsatlantic","strata":{"root":"transport","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1513034553","title":"What More Can I Say?","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1646871881","title":"السنة النبوية","strata":{"root":"religion","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"volts","title":"Volts","strata":{"root":"engineering","tier":"show-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot"]},
+    {"show_key":"77001367","title":"The Ramsey Show","strata":{"root":"business","tier":"episode-metadata","dai":"unknown","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1203110397","title":"Strange Familiars","strata":{"root":"paranormal","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"black-box-down","title":"Black Box Down","strata":{"root":"aviation","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1066326306","title":"Blueshirts Breakaway: A show about the New York Rangers","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"unexplainable","title":"Unexplainable","strata":{"root":"science","tier":"episode-metadata","dai":"true","chart":"1-25","length":"<=30"},"roles":["pilot"]},
+    {"show_key":"1495344067","title":"Puestos pa' la mañana","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"the-lonely-palette","title":"The Lonely Palette","strata":{"root":"culture","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1673858702","title":"Cubs REKAP Podcast","strata":{"root":"sports","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"1765998900","title":"The Chopin Podcast","strata":{"root":"music","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot","isolated"]},
+    {"show_key":"partially-examined-life","title":"The Partially Examined Life Philosophy Podcast","strata":{"root":"philosophy","tier":"episode-metadata","dai":"false","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1896803199","title":"Foul Play","strata":{"root":"espionage","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1523921573","title":"Because I Wanna Know","strata":{"root":"unlabelled","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"6785743281","title":"The Everygirl Book Club","strata":{"root":"hobbies","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"good-hang-amy-poehler","title":"Good Hang with Amy Poehler","strata":{"root":"comedy","tier":"episode-metadata","dai":"true","chart":"1-25","length":">60"},"roles":["pilot"]},
+    {"show_key":"strong-towns-podcast","title":"The Strong Towns Podcast","strata":{"root":"cities","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"alpinist","title":"Alpinist","strata":{"root":"adventure","tier":"episode-metadata","dai":"false","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1688630975","title":"Classes of Mail","strata":{"root":"society","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"the-bbq-central-show","title":"The BBQ Central Show","strata":{"root":"food","tier":"episode-metadata","dai":"false","chart":"26-200","length":">60"},"roles":["pilot","retest"]},
+    {"show_key":"the-ancients","title":"The Ancients","strata":{"root":"history","tier":"episode-metadata","dai":"true","chart":"1-25","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"dear-sugars","title":"Dear Sugars","strata":{"root":"relationships","tier":"episode-metadata","dai":"true","chart":"uncharted","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1640172049","title":"Jillian on Love","strata":{"root":"relationships","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1870845014","title":"Game Recognize Game with Stewie and Myles","strata":{"root":"travel","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1251546502","title":"Analog Talk","strata":{"root":"culture","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"the-allusionist","title":"The Allusionist","strata":{"root":"linguistics","tier":"episode-metadata","dai":"true","chart":"26-200","length":"31-60"},"roles":["pilot"]},
+    {"show_key":"1858430616","title":"The Kentucky Pain Reversal Show","strata":{"root":"medicine","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1286811573","title":"Sex Ed with DB: smart, science-backed sex education","strata":{"root":"science","tier":"show-metadata","dai":"unknown","chart":"26-200","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"941219323","title":"Linear Digressions","strata":{"root":"math","tier":"show-metadata","dai":"unknown","chart":"uncharted","length":"unknown"},"roles":["pilot"]},
+    {"show_key":"1551992078","title":"HUNTR","strata":{"root":"space","tier":"show-metadata","dai":"unknown","chart":"1-25","length":"unknown"},"roles":["pilot"]}
+  ]
+}
