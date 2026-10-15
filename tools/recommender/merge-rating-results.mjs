@@ -59,9 +59,10 @@
    records (RV-13 lost four batches' pass records that way). A lock that stays
    held past five minutes refuses the merge with `progress_locked`.
 
-   --check validates the committed ratings.json (and ratings-isolated.json if
-   present) and exits 1 on any problem or on an in-flight reservation older
-   than 12 hours (reported, not fixed: prepare's reclaimStale frees it).
+   --check validates the committed ratings.json (and ratings-isolated.json and
+   ratings-breadth.json if present) and exits 1 on any problem or on an
+   in-flight reservation older than 12 hours (reported, not fixed: prepare's
+   reclaimStale frees it).
 
    SIDE RATERS, --into (RV-18). `--into ratings-<rater>.json` merges a joint
    results file into data/recommender/ratings-<rater>.json instead of
@@ -77,15 +78,30 @@
    tier merged is the weaker of the pack's and the one it declares, and its
    results are refused into ratings.json (Jev replaces nothing until it
    clears the RV-14 gate). An empty `top_reason` is accepted only in a side
-   file. */
+   file.
+
+   BREADTH (RV-33, orchestrator decision 2026-10-15). A batch whose id starts
+   `breadth-` (prepare-rating-batch.mjs --role breadth: pass 1, joint) merges
+   into data/recommender/ratings-breadth.json (ratings.json's schema; created
+   from the skeleton if absent) and NEVER into ratings.json, so the gold
+   artifacts that read ratings.json (student training, agreement, eval) are
+   untouched. The batch decides, not a flag: `--into` is refused for a breadth
+   batch, and `--into ratings-breadth.json` is refused for any other. Its
+   progress records stay in rating-progress.json under the same lock, keyed
+   `<show_key>@breadth` (progress.mjs breadthKey). A breadth batch holding a
+   show that is in ratings.json or in data/recommender/gold-set.json is
+   refused (`breadth_show_in_gold`): the two sets are disjoint by
+   construction, and this asserts it. A breadth batch that is not pass 1
+   joint, or a metadata-only model's, is refused. --check also validates
+   ratings-breadth.json and refuses a show held by both ratings files. */
 
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryScript } from "../ci/entry.mjs";
-import { progressKey } from "./prepare-rating-batch.mjs";
-import { LOCK_WAIT_MS, loadProgress, markRated, release, saveProgress, serializeProgress, STALE_MS, withProgressLock } from "./progress.mjs";
+import { BREADTH_ROLE, progressKey } from "./prepare-rating-batch.mjs";
+import { LOCK_WAIT_MS, breadthKey, loadProgress, markRated, release, saveProgress, serializeProgress, STALE_MS, withProgressLock } from "./progress.mjs";
 import {
   AUDIO_SUBSCORES,
   EVIDENCE_TIERS,
@@ -101,6 +117,9 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 export const RATINGS_PATH = "data/recommender/ratings.json";
 export const ISOLATED_PATH = "data/recommender/ratings-isolated.json";
+/** The breadth teacher ratings (RV-33): ratings.json's schema, never ratings.json. */
+export const BREADTH_PATH = "data/recommender/ratings-breadth.json";
+export const GOLD_SET_PATH = "data/recommender/gold-set.json";
 export const PROGRESS_PATH = "data/recommender/rating-progress.json";
 export const PROFILES_PATH = "data/recommender/persona-profiles.json";
 export const BATCHES_DIR = "data-local/recommender/batches";
@@ -108,7 +127,13 @@ export const REASONS_DIR = "data-local/recommender/reasons";
 
 export const DEFAULT_INTO = "ratings.json";
 /** File names --into may not take: written by other tools or other modes. */
-const RESERVED_INTO = new Set(["ratings-isolated.json", "ratings-predicted.json", "ratings-client.json"]);
+const RESERVED_INTO = new Set(["ratings-isolated.json", "ratings-predicted.json", "ratings-client.json", "ratings-breadth.json"]);
+
+/** True for a batch prepare-rating-batch.mjs built with --role breadth: its
+    id is `breadth-<pass>-<mode>-<date>-<hash>` (batchIdOf puts the role first). */
+export function isBreadthBatch(batch) {
+  return typeof batch?.batch_id === "string" && batch.batch_id.startsWith(`${BREADTH_ROLE}-`);
+}
 
 /** The prefix of a metadata-only rater's `model` (jev-rate.mjs, RV-18). */
 export const METADATA_ONLY_MODEL_PREFIX = "jev-";
@@ -196,8 +221,9 @@ const weakerTier = (a, b) => (EVIDENCE_TIERS.indexOf(b) > EVIDENCE_TIERS.indexOf
 /** Every reason to refuse `results` as an answer to `batch`: schema.mjs's
     problems plus the batch checks. `profilesSha256OnDisk` is the hash of the
     profiles file the batch names, as it is now; `progress` is the progress
-    document (for the already-rated check). Pure. */
-export function validateAgainstBatch(results, batch, { personaIds, profilesSha256OnDisk = null, progress = null } = {}) {
+    document (for the already-rated check), whose records are keyed by
+    `keyOf(show_key)` (breadthKey for a breadth batch). Pure. */
+export function validateAgainstBatch(results, batch, { personaIds, profilesSha256OnDisk = null, progress = null, keyOf = (k) => k } = {}) {
   const problems = [];
   const add = (code, at, message) => problems.push({ code, at, message });
   if (!isObject(batch) || typeof batch.batch_id !== "string" || !Array.isArray(batch.shows)) {
@@ -234,9 +260,10 @@ export function validateAgainstBatch(results, batch, { personaIds, profilesSha25
     if (packTier(pack) === "none" && isRated(show)) {
       add("rated_without_evidence", `results.${key}`, `results.${key} is rated, but its pack has evidence tier "none"; a show with no evidence is never rated (D4)`);
     }
-    const passes = progress?.rated?.[key]?.passes;
+    const record = progress?.rated?.[keyOf(key)];
+    const passes = record?.passes;
     if (joint && Array.isArray(passes) && passes.includes(results.pass)) {
-      add("pass_already_rated", `results.${key}`, `results.${key} was already rated at pass ${results.pass} (by ${progress.rated[key].last_batch_id}); a pass is merged once`);
+      add("pass_already_rated", `results.${key}`, `results.${key} was already rated at pass ${results.pass} (by ${record.last_batch_id}); a pass is merged once`);
     }
   }
   return problems;
@@ -369,6 +396,17 @@ export function serializeRatings(doc) {
 
 /* ------------------------------------------------------------------ I/O */
 
+/** Every gold show key: the shows of ratings.json and the rows of
+    gold-set.json, each when present under `root`. */
+function goldShowKeys(root, add) {
+  const keys = new Set();
+  const ratingsPath = join(root, RATINGS_PATH);
+  if (existsSync(ratingsPath)) for (const k of Object.keys(readJsonOr(ratingsPath, "ratings_unreadable", add)?.shows ?? {})) keys.add(k);
+  const goldPath = join(root, GOLD_SET_PATH);
+  if (existsSync(goldPath)) for (const row of readJsonOr(goldPath, "gold_set_unreadable", add)?.shows ?? []) keys.add(String(row?.show_key));
+  return keys;
+}
+
 function readJsonOr(path, code, add) {
   try {
     return JSON.parse(readFileSync(path, "utf8"));
@@ -410,6 +448,15 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
   if (!batch) return refuse();
 
   const isolated = results.mode !== "joint";
+  const breadth = isBreadthBatch(batch);
+  if (breadth && paths.side) {
+    add("breadth_into_side_file", "--into", `a breadth batch always merges into ${BREADTH_PATH}; drop --into ${into}`);
+    return refuse();
+  }
+  if (breadth && (batch.mode !== "joint" || batch.pass !== 1 || isolated || results.pass !== 1)) {
+    add("breadth_not_pass1_joint", "mode", `breadth shows are rated once, joint, at pass 1; batch ${batch.batch_id} is ${JSON.stringify(batch.mode)} pass ${JSON.stringify(batch.pass)} and the results ${JSON.stringify(results.mode)} pass ${JSON.stringify(results.pass)}`);
+    return refuse();
+  }
   if (isolated && paths.side) {
     add("isolated_into_side_file", "--into", `isolated results always merge into ${ISOLATED_PATH}; drop --into ${into}`);
     return refuse();
@@ -418,7 +465,8 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
     add("metadata_only_into_gold", "model", `${JSON.stringify(results.model)} results carry no reasons and replace no rating until they clear the RV-14 gate; merge them with --into ratings-jev.json`);
     return refuse();
   }
-  const targetPath = join(root, isolated ? ISOLATED_PATH : paths.ratings);
+  const targetPath = join(root, breadth ? BREADTH_PATH : isolated ? ISOLATED_PATH : paths.ratings);
+  const keyOf = breadth ? breadthKey : (k) => k;
   const progressPath = join(root, paths.progress);
   /* A side file's shows may hold an empty top_reason (a metadata-only rater's);
      ratings.json's never. */
@@ -446,7 +494,7 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
       // not one of the joint passes, but without the record prepare-rating-batch
       // would offer the same isolated shows again after every merge.
       if (Number.isInteger(results.pass)) {
-        const keys = isolated ? batchKeys.map((k) => progressKey(k, results.mode)) : batchKeys;
+        const keys = breadth ? batchKeys.map(keyOf) : isolated ? batchKeys.map((k) => progressKey(k, results.mode)) : batchKeys;
         markRated(progress, keys, { pass: results.pass, batchId: results.batch_id });
       }
       if (serializeProgress(progress) !== progressBefore) saveProgress(progressPath, progress);
@@ -463,7 +511,13 @@ export function runMerge({ resultsPath, batchPath = null, root = REPO_ROOT, now 
     if (!profiles) return refuse();
     const personaIds = (Array.isArray(profiles.personas) ? profiles.personas : []).map((p) => p && p.id).filter(Boolean);
 
-    for (const p of validateAgainstBatch(results, batch, { personaIds, profilesSha256OnDisk: sha256File(profilesPath), progress })) problems.push(p);
+    for (const p of validateAgainstBatch(results, batch, { personaIds, profilesSha256OnDisk: sha256File(profilesPath), progress, keyOf })) problems.push(p);
+    if (breadth) {
+      const gold = goldShowKeys(root, add);
+      for (const k of batchKeys) {
+        if (gold.has(k)) add("breadth_show_in_gold", `batch.shows.${k}`, `${k} is a gold show (${RATINGS_PATH} or ${GOLD_SET_PATH}); breadth shows are disjoint from the gold set, rebuild the breadth set with sample.mjs --mode breadth`);
+      }
+    }
     /* The results' personas were checked against the profiles above; the file
        being merged into is checked for shape only, so a persona pruned from the
        profiles later (RV-29) does not wedge every merge. --check names it. */
@@ -510,11 +564,18 @@ export function runCheck({ root = REPO_ROOT, now = new Date() } = {}) {
   const add = (code, at, message) => problems.push({ code, at, message });
   const profiles = readJsonOr(join(root, PROFILES_PATH), "profiles_unreadable", add);
   const personaIds = profiles && Array.isArray(profiles.personas) ? profiles.personas.map((p) => p && p.id).filter(Boolean) : undefined;
-  for (const rel of [RATINGS_PATH, ISOLATED_PATH]) {
+  const docs = {};
+  for (const rel of [RATINGS_PATH, ISOLATED_PATH, BREADTH_PATH]) {
     const path = join(root, rel);
-    if (rel === ISOLATED_PATH && !existsSync(path)) continue;
+    if (rel !== RATINGS_PATH && !existsSync(path)) continue;
     const doc = readJsonOr(path, "ratings_unreadable", add);
+    docs[rel] = doc;
     if (doc) for (const p of validateRatingsFile(doc, { personaIds })) problems.push({ ...p, at: `${rel}#${p.at}` });
+  }
+  // The breadth ratings never hold a gold show (RV-33).
+  const goldShows = docs[RATINGS_PATH]?.shows ?? {};
+  for (const k of Object.keys(docs[BREADTH_PATH]?.shows ?? {})) {
+    if (own(goldShows, k)) add("breadth_show_in_gold", `${BREADTH_PATH}#shows.${k}`, `${k} is in both ${BREADTH_PATH} and ${RATINGS_PATH}; breadth shows are disjoint from the gold set`);
   }
   const progress = loadProgress(join(root, PROGRESS_PATH));
   const t = now instanceof Date ? now.getTime() : Number(now);

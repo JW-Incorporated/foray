@@ -10,6 +10,9 @@
        "rated":     { "<show_key>": { "last_batch_id": "...", "passes": [1, 2, 3] } }
      }
 
+   (Isolated batches use `<show_key>@isolated:<persona_id>` keys and breadth
+   batches `<show_key>@breadth` keys; see BREADTH_KEY_SUFFIX below.)
+
    The lifecycle, as tools/classify/ runs it for the breadth classifier:
    prepare reserves a batch's keys (reclaimStale first), an agent rates the
    batch, merge releases the batch and marks its keys rated at the pass. A
@@ -26,6 +29,26 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } 
 import { dirname } from "node:path";
 
 export const STALE_MS = 12 * 3600e3;
+
+/* BREADTH KEYS (RV-33). Breadth teacher batches (prepare-rating-batch.mjs
+   --role breadth) keep their reservations and pass records in this same file,
+   under this same lock, but never under a show's bare key: a breadth show is
+   recorded as `<show_key>@breadth`. Breadth shows are disjoint from the gold
+   set by construction (sample.mjs --mode breadth excludes every gold key, and
+   prepare and merge assert it), and the suffix makes the two key families
+   unable to collide even if a later gold --extend took a show already rated
+   for breadth: a breadth record never blocks or satisfies a gold pass. */
+export const BREADTH_KEY_SUFFIX = "@breadth";
+
+/** The progress key of a breadth show. */
+export function breadthKey(showKey) {
+  return `${showKey}${BREADTH_KEY_SUFFIX}`;
+}
+
+/** True for a key breadthKey made. */
+export function isBreadthKey(key) {
+  return typeof key === "string" && key.endsWith(BREADTH_KEY_SUFFIX);
+}
 
 const ms = (now) => (now instanceof Date ? now.getTime() : Number(now));
 

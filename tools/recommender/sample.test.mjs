@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadSources } from "./evidence.mjs";
-import { catalogueCandidates, main, sampleGoldSet, serializeGoldSet } from "./sample.mjs";
+import { catalogueCandidates, main, sampleBreadthSet, sampleGoldSet, serializeGoldSet } from "./sample.mjs";
 
 const FIX = path.join(path.dirname(fileURLToPath(import.meta.url)), "fixtures");
 const FIXTURE_ENV = {
@@ -200,4 +200,87 @@ test("catalogue strata: root, tier, DAI by Apple id, chart and length bands, cur
   assert.equal(by.get("quiz-desk").root, "news", "the root of news/daily");
   assert.equal(by.get("note-only").root, "unlabelled");
   assert.equal(by.get("note-only").length, "unknown");
+});
+
+/* RV-33 (orchestrator decision 2026-10-15): --mode breadth, every chart
+   top-25 show that is not a gold show. The RV-03 fixture catalogue's 1-25
+   shows are 111, 222, 555, 777 and quiz-desk. */
+function breadthRun(gold) {
+  const dir = tempDir();
+  const daiPath = path.join(dir, "dai.json");
+  writeFileSync(daiPath, JSON.stringify(FIXTURE_DAI));
+  const goldPath = path.join(dir, "gold-set.json");
+  if (gold) writeFileSync(goldPath, serializeGoldSet({ version: 1, mode: "gold", seed: "g", built_at: null, strata_counts: {}, shows: gold }));
+  const outPath = path.join(dir, "breadth-set.json");
+  const env = { ...FIXTURE_ENV, RECOMMENDER_DAI_PATH: daiPath, RECOMMENDER_GOLD_SET_PATH: goldPath, RECOMMENDER_BREADTH_SET_PATH: outPath };
+  const errors = [];
+  const run = (argv, now = "2026-10-15T12:00:00Z") => main(argv, { env, stderr: (m) => errors.push(m), stdout: () => {}, now: () => new Date(now) });
+  return { dir, outPath, errors, run, read: () => JSON.parse(readFileSync(outPath, "utf8")), done: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+/* Mutation: `const rows = pool.filter((c) => !excluded.has(c.show_key));` ->
+   `const rows = pool;` -- the gold shows 111 (and z-gold) stay in the breadth set. */
+test("breadth sampling excludes gold shows", () => {
+  const candidates = [cand("z-gold", "a", { chart: "1-25" }), cand("z-new", "a", { chart: "1-25" })];
+  const doc = sampleBreadthSet({ candidates, chart: ["1-25"], exclude: ["z-gold"] });
+  assert.deepStrictEqual(keysOf(doc), ["z-new"]);
+  assert.equal(doc.excluded_gold, 1);
+
+  const w = breadthRun([{ show_key: "111", title: "x", strata: {}, roles: ["pilot", "gold"] }, { show_key: "tx-show", title: "y", strata: {}, roles: ["gold"] }]);
+  try {
+    assert.equal(w.run(["--mode", "breadth"]), 0, w.errors.join(""));
+    const set = w.read();
+    assert.deepStrictEqual(keysOf(set), ["222", "555", "777", "quiz-desk"], "every 1-25 fixture show but the gold show 111");
+    assert.equal(set.excluded_gold, 1);
+    assert.ok(set.shows.every((s) => s.roles.length === 1 && s.roles[0] === "breadth"));
+    // Without a readable gold set the breadth set is not built (it would not be disjoint).
+    const bare = breadthRun(null);
+    try {
+      assert.equal(bare.run(["--mode", "breadth"]), 2);
+      assert.match(bare.errors.join(""), /gold-set\.json/);
+    } finally {
+      bare.done();
+    }
+  } finally {
+    w.done();
+  }
+});
+
+/* Mutation: drop `!bands.includes(c.strata.chart) ||` from the
+   sampleBreadthSet filter -- the 26-200 and uncharted rows enter a 1-25 set.
+   (Second mutation, also run: delete the chartBands `continue` in
+   catalogueCandidates -- the pre-filtered candidates include 333.) */
+test("breadth sampling is deterministic and filtered by chart band", () => {
+  const candidates = [
+    cand("k-3", "a", { chart: "1-25" }),
+    cand("k-1", "b", { chart: "1-25", tier: "episode-metadata" }),
+    cand("k-2", "a", { chart: "26-200" }),
+    cand("k-4", "a", { chart: "uncharted" }),
+    cand("k-5", "a", { chart: "1-25", tier: "none" }),
+  ];
+  const one = serializeGoldSet(sampleBreadthSet({ candidates, chart: ["1-25"], builtAt: "2026-10-15T00:00:00.000Z" }));
+  const two = serializeGoldSet(sampleBreadthSet({ candidates: [...candidates].reverse(), chart: ["1-25"], builtAt: "2026-10-15T00:00:00.000Z" }));
+  assert.equal(one, two, "input order never changes the bytes");
+  assert.deepStrictEqual(JSON.parse(one).shows.map((s) => s.show_key), ["k-1", "k-3"], "1-25 only, none-tier out, show_key order");
+  const wider = sampleBreadthSet({ candidates, chart: ["26-200", "1-25"] });
+  assert.deepStrictEqual(keysOf(wider), ["k-1", "k-2", "k-3"]);
+  assert.deepStrictEqual(wider.chart, ["1-25", "26-200"]);
+  assert.throws(() => sampleBreadthSet({ candidates, chart: ["top-10"] }), /chart bands/);
+
+  const pre = catalogueCandidates(loadSources({ env: FIXTURE_ENV }), { dai: FIXTURE_DAI, chartBands: ["1-25"] });
+  assert.deepStrictEqual(pre.map((c) => c.show_key), ["111", "222", "555", "777", "quiz-desk"]);
+
+  const w = breadthRun([]);
+  try {
+    assert.equal(w.run(["--mode", "breadth", "--chart", "1-25"]), 0);
+    const written = readFileSync(w.outPath, "utf8");
+    assert.equal(JSON.parse(written).built_at, "2026-10-15T12:00:00.000Z");
+    assert.equal(w.run(["--mode", "breadth", "--check"]), 0, "--chart defaults to 1-25");
+    assert.equal(w.run(["--mode", "breadth"], "2027-01-01T00:00:00Z"), 0);
+    assert.equal(readFileSync(w.outPath, "utf8"), written, "a rerun leaves the file and its built_at untouched");
+    assert.equal(w.run(["--mode", "breadth", "--chart", "1-25,26-200", "--check"]), 1, "other bands are another file");
+    assert.equal(w.run(["--mode", "breadth", "--size", "10"]), 2, "breadth takes no gold sizing");
+  } finally {
+    w.done();
+  }
 });

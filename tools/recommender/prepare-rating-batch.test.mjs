@@ -17,7 +17,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { STRIPPED_KEYS, loadSources } from "./evidence.mjs";
 import { emptyProgress, lockPathFor, markRated } from "./progress.mjs";
-import { eligibleShows, main, personaOrder, prepareBatch, progressKey } from "./prepare-rating-batch.mjs";
+import { eligibleShows, main, parseArgs, personaOrder, prepareBatch, progressKey } from "./prepare-rating-batch.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "../..");
@@ -267,4 +267,84 @@ test("a show at evidence tier none is skipped and never reserved", () => {
   assert.ok(!keysOf(batch).includes("444"));
   assert.ok(!("444" in progress.in_flight));
   assert.equal(batch.shows.length, 8, "the batch fills from the rest of the set");
+});
+
+/* RV-33: the breadth teacher slice. Fixture shows standing in for chart
+   top-25 shows that are not in the gold set. */
+const BREADTH_SET = {
+  version: 1,
+  mode: "breadth",
+  shows: ["222", "555", "777", "quiz-desk"].map((show_key) => ({ show_key, roles: ["breadth"] })),
+};
+
+/** A temp repo root holding only data/recommender/{breadth-set,gold-set}.json:
+    main reads the breadth set by default from there. */
+function breadthWorkspace(goldKeys) {
+  const root = mkdtempSync(path.join(tmpdir(), "rv33-"));
+  mkdirSync(path.join(root, "data", "recommender"), { recursive: true });
+  writeFileSync(path.join(root, "data", "recommender", "breadth-set.json"), JSON.stringify(BREADTH_SET));
+  writeFileSync(path.join(root, "data", "recommender", "gold-set.json"), JSON.stringify({ shows: goldKeys.map((show_key) => ({ show_key, roles: ["gold"] })) }));
+  const progressPath = path.join(root, "data", "recommender", "rating-progress.json");
+  const batchesDir = path.join(root, "batches");
+  const lines = [];
+  const run = (...argv) =>
+    main(["--progress", progressPath, "--profiles", PROFILES, "--batches-dir", batchesDir, ...argv], {
+      root,
+      env: ENV,
+      now: NOW,
+      log: (m) => lines.push(m),
+      error: (m) => lines.push(`ERR ${m}`),
+    });
+  const batches = () => (existsSync(batchesDir) ? readdirSync(batchesDir).map((f) => JSON.parse(readFileSync(path.join(batchesDir, f), "utf8"))) : []);
+  return { root, progressPath, lines, run, batches, progress: () => JSON.parse(readFileSync(progressPath, "utf8")), done: () => rmSync(root, { recursive: true, force: true }) };
+}
+
+/* Mutation: `breadthRefusal` returns null at once -- pass 2, an isolated mode
+   and --only all build breadth batches. */
+test("prepare --role breadth refuses pass 2, isolated modes and --only", () => {
+  const w = breadthWorkspace([]);
+  try {
+    assert.equal(w.run("--role", "breadth", "--pass", "2"), 2);
+    assert.match(w.lines.join("\n"), /ERR --role breadth rates pass 1 only/);
+    assert.equal(w.run("--role", "breadth", "--mode", `isolated:${PERSONA_IDS[0]}`), 2);
+    assert.match(w.lines.join("\n"), /ERR --role breadth rates joint only/);
+    assert.equal(w.run("--role", "breadth", "--only", "retest"), 2);
+    assert.deepEqual(w.batches(), [], "nothing written");
+    assert.equal(existsSync(w.progressPath), false, "nothing reserved");
+    assert.throws(() => prepareBatch({ set: BREADTH_SET, progress: emptyProgress(), profilesDoc: profilesDoc(), profilesSha256: "0".repeat(64), profilesPath: "p", rubricPath: "r", sources: loadSources({ env: ENV }), role: "breadth", pass: 3, now: NOW }), /pass 1 only/);
+    assert.equal(parseArgs(["--role", "gold", "--pass", "2"]).pass, 2, "gold retest passes are unaffected");
+  } finally {
+    w.done();
+  }
+});
+
+/* Mutation: progressKey ignores `role` (drop the BREADTH_ROLE line) -- the
+   breadth reservations land under the bare show keys a gold pass uses. */
+test("a breadth batch reads breadth-set.json, reserves <key>@breadth and refuses a gold overlap", () => {
+  const w = breadthWorkspace(["111", "tx-show"]);
+  try {
+    assert.equal(w.run("--role", "breadth", "--batch-size", "3"), 0, w.lines.join("\n"));
+    const [batch] = w.batches();
+    assert.match(batch.batch_id, /^breadth-1-joint-20261014-[0-9a-f]{8}$/);
+    assert.equal(batch.mode, "joint");
+    assert.equal(batch.pass, 1);
+    const keys = keysOf(batch);
+    assert.equal(keys.length, 3);
+    assert.ok(keys.every((k) => BREADTH_SET.shows.some((s) => s.show_key === k)), "only breadth-set shows");
+    assert.deepEqual(Object.keys(w.progress().in_flight).sort(), keys.map((k) => `${k}@breadth`).sort());
+    assert.equal(progressKey("222", "joint", "breadth"), "222@breadth");
+    // The gold pass is neither blocked nor satisfied by breadth records.
+    const progress = w.progress();
+    assert.deepEqual(eligibleShows({ shows: [{ show_key: "222", roles: ["gold"] }] }, progress, { role: "gold" }), ["222"]);
+  } finally {
+    w.done();
+  }
+  const overlap = breadthWorkspace(["555"]);
+  try {
+    assert.equal(overlap.run("--role", "breadth"), 1);
+    assert.match(overlap.lines.join("\n"), /ERR the breadth set shares 1 show\(s\) with the gold set \(555\)/);
+    assert.deepEqual(overlap.batches(), []);
+  } finally {
+    overlap.done();
+  }
 });
