@@ -42,15 +42,19 @@
       evidence.
    4. Coverage and skew (research §6.6, D12). Per persona, its top-50 rated
       shows (fit desc, return_prob desc, show_key asc): the share that is
-      DAI (of those the DAI classifier covered), chart top-25, explicit
-      (the rater's `flags.explicit`), transcript-tier, and the leading root
-      nodes, against two base rates: the rated set (what the top-50 is drawn
-      from) and the catalogue (26k shows, what the student will serve). Two
-      shares have only the rated-set base: tier, because the catalogue's tier
-      mix depends on the RSS and transcript caches in data-local/, which CI
-      does not have; and explicit, because catalog-breadth.json's Apple
-      `explicit` is false on all 26,340 rows (the chart harvest does not carry
-      it), so a catalogue base would read 0% by construction.
+      DAI (of those the DAI classifier covered), chart top-25, explicit,
+      transcript-tier, and the leading root nodes, against two base rates: the
+      rated set (what the top-50 is drawn from) and the catalogue (26k shows,
+      what the student will serve). Explicit is the rater's `flags.explicit`
+      for the persona and rated-set columns; the catalogue's explicit base is
+      Apple's `explicit` in data/catalog.json over the curated shows that
+      carry a boolean (the same curated-only denominator DAI uses, its n
+      printed in brackets). Breadth rows carry no explicit share:
+      catalog-breadth.json has `explicit: false` on all 26,340 rows (the chart
+      harvest does not carry the flag), so counting them would read 0% by
+      construction. Tier has only the rated-set base, because the catalogue's
+      tier mix depends on the RSS and transcript caches in data-local/, which
+      CI does not have.
 
    INPUTS (all committed; the block is reproducible in CI):
    data/recommender/ratings.json, data/recommender/persona-profiles.json,
@@ -287,13 +291,15 @@ export function topShows(shows, pid, n = TOP_N) {
     .slice(0, n);
 }
 
-/** Share profile of a set of shows `{ dai: "true"|"false"|"unknown", chart, explicit, tier, root }`.
+/** Share profile of a set of shows `{ dai: "true"|"false"|"unknown", chart, explicit?, tier?, root }`.
     DAI's share is over the classified shows only (`daiKnown` is its
-    denominator); every other share is over all `n`. A set whose rows all lack
-    `explicit` or `tier` has no share for it (null, "n/a"). */
+    denominator) and explicit's over the rows that carry a boolean
+    (`explicitKnown`); every other share is over all `n`. A set whose rows all
+    lack `explicit` or `tier` has no share for it (null, "n/a"). */
 export function shareProfile(rows) {
   const n = rows.length;
   const daiKnown = rows.filter((r) => r.dai === "true" || r.dai === "false").length;
+  const explicitKnown = rows.filter((r) => typeof r.explicit === "boolean").length;
   const roots = {};
   for (const r of rows) roots[r.root] = (roots[r.root] || 0) + 1;
   const share = (count, total) => (total ? count / total : null);
@@ -302,7 +308,8 @@ export function shareProfile(rows) {
     daiKnown,
     dai: share(rows.filter((r) => r.dai === "true").length, daiKnown),
     chartTop25: share(rows.filter((r) => r.chart === "1-25").length, n),
-    explicit: rows.every((r) => r.explicit === undefined) ? null : share(rows.filter((r) => r.explicit === true).length, n),
+    explicitKnown,
+    explicit: share(rows.filter((r) => r.explicit === true).length, explicitKnown),
     transcript: rows.every((r) => r.tier === undefined) ? null : share(rows.filter((r) => r.tier === "transcript").length, n),
     roots: Object.fromEntries(Object.entries(roots).map(([k, c]) => [k, c / n])),
   };
@@ -310,7 +317,7 @@ export function shareProfile(rows) {
 
 /** Per persona, the share profile of its top-N rated shows (and `minFit`, the
     lowest fit that made the cut), beside the rated set's and the catalogue's. `rated`: `[{ show_key, personas, attrs }]`;
-    `catalogue`: attrs rows without `tier`. */
+    `catalogue`: attrs rows without `tier` (breadth rows also without `explicit`). */
 export function skewAudit(rated, catalogue, personaIds, { n = TOP_N } = {}) {
   const per = {};
   for (const pid of personaIds) {
@@ -328,8 +335,11 @@ function readJson(rel, root) {
 
 /** The catalogue universe (curated by show_id, breadth by apple id minus the
     curated shows' breadth twins; sample.mjs's universe) with the attributes
-    the skew audit reads. A curated show's root and archetypes come from catalog.json;
-    chart rank from the breadth row (a curated show's via its twin). */
+    the skew audit reads. A curated show's root, archetypes and Apple
+    `explicit` (only when it is a boolean; catalog.json has null for a few)
+    come from catalog.json; chart rank from the breadth row (a curated show's
+    via its twin). A breadth row has no `explicit`: the harvest's flag is
+    false on every row, so it is not evidence. */
 export function catalogueAttrs(catalog, breadth, dai) {
   const byAcid = new Map(breadth.shows.map((b) => [String(b.apple_collection_id), b]));
   const daiOf = (acid) => {
@@ -347,6 +357,7 @@ export function catalogueAttrs(catalog, breadth, dai) {
       chart_rank: twin?.chart_rank ?? null,
       chart: chartBand(twin?.chart_rank ?? null),
       dai: daiOf(acid),
+      ...(typeof c.explicit === "boolean" ? { explicit: c.explicit } : {}),
       archetypes: Array.isArray(c.archetype_fit) ? c.archetype_fit : [],
       curated: true,
     });
@@ -418,7 +429,7 @@ export function runEval(root = ROOT) {
   // 4. coverage and skew
   const skew = skewAudit(
     rated.map((r) => ({ show_key: r.show_key, personas: r.personas, attrs: { dai: r.a.dai, chart: r.a.chart, explicit: r.explicit, tier: r.tier, root: r.a.root } })),
-    [...attrs.values()].map((a) => ({ dai: a.dai, chart: a.chart, root: a.root })),
+    [...attrs.values()].map((a) => ({ dai: a.dai, chart: a.chart, root: a.root, ...(a.explicit === undefined ? {} : { explicit: a.explicit }) })),
     personaIds
   );
 
@@ -486,9 +497,9 @@ export function renderSection(r) {
 
   out.push("### 4. Coverage and skew");
   out.push("");
-  out.push(`Each persona's top ${r.skew.n} rated shows (fit, then return_prob, then show_key). DAI is a share of the shows the DAI classifier covered (n in brackets); the other shares are of all ${r.skew.n}. Explicit is the rater's flag; transcript tier and explicit have no catalogue base (the catalogue's tier mix depends on data-local caches, and the breadth harvest carries no explicit flag).`);
+  out.push(`Each persona's top ${r.skew.n} rated shows (fit, then return_prob, then show_key). DAI is a share of the shows the DAI classifier covered (n in brackets); chart and tier shares are of all ${r.skew.n}. Explicit is a share of the shows with a known flag (n in brackets): the rater's flag for the rated set and the personas, Apple's flag in \`${PATHS.catalog}\` for the catalogue row, which covers curated shows only (the breadth harvest carries no explicit flag). Transcript tier has no catalogue base (the catalogue's tier mix depends on data-local caches).`);
   out.push("");
-  out.push("| set | lowest fit | DAI (classified) | chart top-25 | explicit | transcript tier | leading roots |");
+  out.push("| set | lowest fit | DAI (classified) | chart top-25 | explicit (known) | transcript tier | leading roots |");
   out.push("|---|---:|---:|---:|---:|---:|---|");
   const roots = (p) =>
     Object.entries(p.roots)
@@ -496,7 +507,7 @@ export function renderSection(r) {
       .slice(0, 3)
       .map(([k, s]) => `${k} ${pct(s)}`)
       .join(", ");
-  const skewLine = (name, p) => `| ${name} | ${p.minFit ?? ""} | ${pct(p.dai)} (${p.daiKnown}) | ${pct(p.chartTop25)} | ${pct(p.explicit)} | ${pct(p.transcript)} | ${roots(p)} |`;
+  const skewLine = (name, p) => `| ${name} | ${p.minFit ?? ""} | ${pct(p.dai)} (${p.daiKnown}) | ${pct(p.chartTop25)} | ${pct(p.explicit)} (${p.explicitKnown}) | ${pct(p.transcript)} | ${roots(p)} |`;
   out.push(skewLine("**catalogue**", r.skew.catalogue));
   out.push(skewLine("**rated set**", r.skew.rated));
   for (const pid of r.personaIds) out.push(skewLine(pid, r.skew.per[pid]));

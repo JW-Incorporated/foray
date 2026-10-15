@@ -9,7 +9,7 @@ Card RV-21 of [`docs/roadmap/recommender-v1.md`](../roadmap/recommender-v1.md), 
 | File | What it is |
 |---|---|
 | `tools/recommender/eval.mjs` | The eval. Pure scorers (archetype agreement and its baselines, persona-vector neighbours, chart Spearman, top-50 share profiles), a loader that reads only committed files, and a CLI with `--check` and `--json`, following the `tools/similar-eval/run.mjs` pattern. It calls no model and fetches nothing. |
-| `test/recommender-eval.test.js` | 7 tests on hand-worked fixtures plus the block-is-current check. Each test names its mutation, and every mutation was run red. |
+| `test/recommender-eval.test.js` | 7 tests: 6 on hand-worked fixtures and the committed catalogue, plus the block-is-current check. Each test names its mutation, and every mutation was run red. |
 | this note | The reading below and the generated block. |
 
 **Choices the card left open.**
@@ -17,13 +17,15 @@ Card RV-21 of [`docs/roadmap/recommender-v1.md`](../roadmap/recommender-v1.md), 
 - A show with several `archetype_fit` values is a hit if its top persona falls in the union of their sets.
 - The node-overlap baseline appears twice. "Node modal" is the leave-one-out modal top persona of the show's root, taken over all 299 rated shows. "Node affinity" is the persona with the highest `taxonomy_affinity` for that root, which uses no rating at all.
 - The persona similarity uses `fit - 1`, so a show that every persona rates 1 has no direction and no neighbours.
-- Explicit is the rater's flag. `catalog-breadth.json` has `explicit: false` on all 26,340 rows, because the chart harvest does not carry the flag, so the catalogue base for explicit would read 0% by construction.
+- Explicit has two sources. The persona and rated-set columns use the rater's `flags.explicit`. The catalogue base is Apple's `explicit` in `data/catalog.json`, over the 212 curated shows where it is a boolean (17 have `null`), which is the same curated-only denominator the DAI share uses. Breadth rows are left out of the explicit base: `catalog-breadth.json` has `explicit: false` on all 26,340 rows, because the chart harvest does not carry the flag, so counting them would read 0% by construction.
 
 ## Reading the numbers
 
-### 1. Archetype agreement: better than every free baseline, but weak
+### 1. Archetype agreement: ahead of every free baseline (provisionally), but weak
 
-- **Overall.** The top persona lands in the mapped set for **36 of 84 curated shows (0.429)**. The baselines are 0.238 (random), 0.286 (node modal) and 0.333 (node affinity). So the prior carries signal that the taxonomy alone does not. Still, at 0.43, the top persona alone is a poor proxy for a hand-assigned archetype.
+- **Overall.** The top persona lands in the mapped set for **36 of 84 curated shows (0.429)**. The baselines are 0.238 (random), 0.286 (node modal) and 0.333 (node affinity). So the prior may carry signal that the taxonomy alone does not, but the margin is within rater noise (next bullet). Still, at 0.43, the top persona alone is a poor proxy for a hand-assigned archetype.
+- **The margin over node affinity is within the pilot's noise.** The pilot ([`persona-ratings-pilot-2026-10.md`](persona-ratings-pilot-2026-10.md)) found the raters consistent on `fit` (test-retest alpha 0.908), but `top_persona`, the only thing this table scores, is much less stable: it changed between two joint passes for 32% of the retest shows, almost all near-ties among low fits (2 against 2 or 3). The pilot also flagged four personas as falling more than 0.10 below their own retest ceiling when rated in isolation. Three of them sit in mapped sets here: true-crime-careful (`narrative`, `documentary`), practical-improver (`deep-learn`) and banter-regular (`comfort`). At the pilot's flip rate, a second pass would change the top persona of roughly 27 of these 84 shows. The 8-hit gap over node affinity (36 against 28) is smaller than that churn, and at n = 84 one binomial standard error on each precision is about 0.05. So "the prior beats the free baseline" is provisional until the RV-19 gold run, which re-rates these shows with a retest pass and an isolated slice for the flagged personas.
+- **A fit-weighted hit metric is worth adding later.** The pilot's rule is that `top_reason` is shown only when the top persona's fit is 4 or more, because below that the top persona is mostly a tie-break. Scoring only those shows, or weighting a hit by the top fit, would measure the prior where it is stable and would actually be served. The block does not compute it yet; RV-19's re-run is the place to add it.
 - **`comfort` (0.611) agrees best.**
 - **`documentary`** scores 4 of 4, but n = 4.
 - **`deep-learn` (0.304)** is the largest group, and the baseline nearly matches it: node affinity scores 0.375. The misses are not random. Of the 56 deep-learn shows, **commute-explainer is the top persona for 15**, more than any mapped persona. Commute-explainer is a generalist explainer, and the card's map leaves it out. With it included, deep-learn would score 32 of 56 (0.571; one-off count, not in the block). That is a mapping question, not evidence against the ratings. RV-29 or the next eval should decide it, not this card.
@@ -56,7 +58,7 @@ The pilot found that about 52% of all fits are 1 (mean 1.74). True-crime-careful
 - **Narrow personas reach down to fit 2 to fill 50 slots.** These are family-listener, history-deep-diver, news-current, practical-improver, sharp-comedy and true-crime-careful (`lowest fit` column), and maker-tinkerer reaches 2.5. Their top-50 tails are "might sample one", not recommendations. A served list should cut at fit >= 3 (or 4, the threshold the pilot set for showing `top_reason`) rather than at a fixed N.
 - **Chart top-25.** It is 26.1% of the rated set but 9.4% of the catalogue. The sampler stratified on chart band (D12), so the pilot over-represents charting shows by design. Inside the rated set, family-listener (42%) and comfort-companion, commute-explainer and sharp-comedy (38%) lean further toward top-25 shows. This fits section 3's slight lean.
 - **DAI.** It is measurable only on the 229 curated shows the DAI classifier covered, and the persona columns have 10-30 such shows each. Narrative-binger (85%), news-current (80%) and true-crime-careful (76.5%) sit above the 56.7% rated base. Maker-tinkerer (32%) sits below it. The n is too small to read a direction from. If the gold set confirms it, `dai_penalty` (D2, RV-16) is the lever.
-- **Explicit.** Raters flagged 14 of 299 shows (4.7%). Sharp-comedy (18%), banter-regular (12%) and narrative-binger (10%) concentrate them, as expected.
+- **Explicit.** Raters flagged 14 of 299 shows (4.7%). The catalogue base is Apple's flag on the curated shows: 8 of 212 (3.8%). Sharp-comedy (18%), banter-regular (12%) and narrative-binger (10%) sit well above both, as expected. The two flags are not the same measurement. On the 90 rated curated shows they disagree on 4 where both are known: Call Her Daddy, Old Gods of Appalachia, Snap Judgment and Spycast are explicit to the rater but not to Apple. So read the catalogue column as a rough base, not as a like-for-like comparison.
 - **Transcript tier is 0% everywhere.** The pilot had no transcript-tier packs (no local transcript windows; R2 is gated on #1163 17.3). Every audio sub-score is null, so this column carries no information until RV-05 runs.
 - **Roots follow the personas' intent.** Comedy leads for banter-regular and sharp-comedy, true-crime for the two story personas, history for history-deep-diver and craft/food for maker-tinkerer. `unlabelled` breadth shows (12.9% of the catalogue) appear in several top-50s. That is a catalogue-label gap (RV-26's anomaly list), not a persona defect.
 
@@ -124,23 +126,23 @@ Spearman between `chart_rank` (1 = top of an Apple genre chart) and `fit`, over 
 
 ### 4. Coverage and skew
 
-Each persona's top 50 rated shows (fit, then return_prob, then show_key). DAI is a share of the shows the DAI classifier covered (n in brackets); the other shares are of all 50. Explicit is the rater's flag; transcript tier and explicit have no catalogue base (the catalogue's tier mix depends on data-local caches, and the breadth harvest carries no explicit flag).
+Each persona's top 50 rated shows (fit, then return_prob, then show_key). DAI is a share of the shows the DAI classifier covered (n in brackets); chart and tier shares are of all 50. Explicit is a share of the shows with a known flag (n in brackets): the rater's flag for the rated set and the personas, Apple's flag in `data/catalog.json` for the catalogue row, which covers curated shows only (the breadth harvest carries no explicit flag). Transcript tier has no catalogue base (the catalogue's tier mix depends on data-local caches).
 
-| set | lowest fit | DAI (classified) | chart top-25 | explicit | transcript tier | leading roots |
+| set | lowest fit | DAI (classified) | chart top-25 | explicit (known) | transcript tier | leading roots |
 |---|---:|---:|---:|---:|---:|---|
-| **catalogue** |  | 62.4% (229) | 9.4% | n/a | n/a | sports 13.0%, unlabelled 12.9%, religion 6.3% |
-| **rated set** |  | 56.7% (90) | 26.1% | 4.7% | 0.0% | sports 7.4%, unlabelled 7.0%, business 5.7% |
-| banter-regular | 3 | 75.0% (12) | 26.0% | 12.0% | 0.0% | comedy 22.0%, sports 16.0%, unlabelled 10.0% |
-| comfort-companion | 3.5 | 56.5% (23) | 38.0% | 2.0% | 0.0% | food 16.0%, comedy 8.0%, craft 8.0% |
-| commute-explainer | 3 | 65.4% (26) | 38.0% | 0.0% | 0.0% | history 8.0%, nature 8.0%, business 6.0% |
-| family-listener | 2 | 66.7% (18) | 42.0% | 0.0% | 0.0% | nature 12.0%, kids-family 10.0%, sports 8.0% |
-| history-deep-diver | 2 | 57.7% (26) | 28.0% | 4.0% | 0.0% | history 16.0%, music 12.0%, culture 6.0% |
-| maker-tinkerer | 2.5 | 32.0% (25) | 24.0% | 2.0% | 0.0% | craft 18.0%, food 18.0%, engineering 8.0% |
-| mechanism-hunter | 3 | 50.0% (30) | 28.0% | 0.0% | 0.0% | engineering 14.0%, medicine 8.0%, space 8.0% |
-| narrative-binger | 3 | 85.0% (20) | 30.0% | 10.0% | 0.0% | true-crime 18.0%, unlabelled 10.0%, fiction 8.0% |
-| news-current | 2 | 80.0% (10) | 28.0% | 0.0% | 0.0% | sports 24.0%, unlabelled 12.0%, news 10.0% |
-| practical-improver | 2 | 66.7% (15) | 26.0% | 2.0% | 0.0% | health 14.0%, sports 14.0%, medicine 12.0% |
-| sharp-comedy | 2 | 71.4% (14) | 38.0% | 18.0% | 0.0% | comedy 22.0%, unlabelled 14.0%, fiction 6.0% |
-| slow-news-contextualist | 3 | 72.2% (18) | 34.0% | 0.0% | 0.0% | engineering 12.0%, business 10.0%, cities 8.0% |
-| true-crime-careful | 2 | 76.5% (17) | 34.0% | 4.0% | 0.0% | true-crime 20.0%, unlabelled 8.0%, history 6.0% |
+| **catalogue** |  | 62.4% (229) | 9.4% | 3.8% (212) | n/a | sports 13.0%, unlabelled 12.9%, religion 6.3% |
+| **rated set** |  | 56.7% (90) | 26.1% | 4.7% (299) | 0.0% | sports 7.4%, unlabelled 7.0%, business 5.7% |
+| banter-regular | 3 | 75.0% (12) | 26.0% | 12.0% (50) | 0.0% | comedy 22.0%, sports 16.0%, unlabelled 10.0% |
+| comfort-companion | 3.5 | 56.5% (23) | 38.0% | 2.0% (50) | 0.0% | food 16.0%, comedy 8.0%, craft 8.0% |
+| commute-explainer | 3 | 65.4% (26) | 38.0% | 0.0% (50) | 0.0% | history 8.0%, nature 8.0%, business 6.0% |
+| family-listener | 2 | 66.7% (18) | 42.0% | 0.0% (50) | 0.0% | nature 12.0%, kids-family 10.0%, sports 8.0% |
+| history-deep-diver | 2 | 57.7% (26) | 28.0% | 4.0% (50) | 0.0% | history 16.0%, music 12.0%, culture 6.0% |
+| maker-tinkerer | 2.5 | 32.0% (25) | 24.0% | 2.0% (50) | 0.0% | craft 18.0%, food 18.0%, engineering 8.0% |
+| mechanism-hunter | 3 | 50.0% (30) | 28.0% | 0.0% (50) | 0.0% | engineering 14.0%, medicine 8.0%, space 8.0% |
+| narrative-binger | 3 | 85.0% (20) | 30.0% | 10.0% (50) | 0.0% | true-crime 18.0%, unlabelled 10.0%, fiction 8.0% |
+| news-current | 2 | 80.0% (10) | 28.0% | 0.0% (50) | 0.0% | sports 24.0%, unlabelled 12.0%, news 10.0% |
+| practical-improver | 2 | 66.7% (15) | 26.0% | 2.0% (50) | 0.0% | health 14.0%, sports 14.0%, medicine 12.0% |
+| sharp-comedy | 2 | 71.4% (14) | 38.0% | 18.0% (50) | 0.0% | comedy 22.0%, unlabelled 14.0%, fiction 6.0% |
+| slow-news-contextualist | 3 | 72.2% (18) | 34.0% | 0.0% (50) | 0.0% | engineering 12.0%, business 10.0%, cities 8.0% |
+| true-crime-careful | 2 | 76.5% (17) | 34.0% | 4.0% (50) | 0.0% | true-crime 20.0%, unlabelled 8.0%, history 6.0% |
 <!-- END GENERATED -->

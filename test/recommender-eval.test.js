@@ -183,11 +183,19 @@ test("skew shares equal hand-computed base rates on a fixture", async () => {
               roots r1 2/3, r2 1/3; lowest fit 4.
        rated set (6): DAI true 2 of 4 classified = 0.5; chart top-25 3/6;
               explicit 1/6; transcript 1/6.
-       catalogue (4 rows, no explicit/tier): DAI 1 of 1; chart 1/4; explicit
-              and transcript null.
+       catalogue (4 rows, no tier; explicit only on the two curated rows,
+              true and false): DAI 1 of 1; chart 1/4; explicit 1 of 2 known
+              = 0.5 (not 1/4: breadth rows carry no flag); transcript null.
      MUTATION (run): in shareProfile divide the DAI count by `n` instead of
-     `daiKnown` -> red (1/3 != 0.5). */
-  const { skewAudit } = await load();
+     `daiKnown` -> red (1/3 != 0.5).
+     MUTATION (run): in shareProfile divide the explicit count by `n` instead
+     of `explicitKnown` -> red (0.25 != 0.5).
+     catalogueAttrs reads Apple's `explicit` from catalog.json only when it is
+     a boolean, and never from a breadth row (the harvest's flag is false
+     everywhere).
+     MUTATION (run): in catalogueAttrs set `explicit: c.explicit === true`
+     on every curated row -> red (the null show gets false). */
+  const { skewAudit, catalogueAttrs } = await load();
   const row = (key, fit, rp, attrs) => ({ show_key: key, personas: { a: [fit, rp] }, attrs });
   const rated = [
     row("k1", 5, 0.1, { dai: "true", chart: "1-25", explicit: false, tier: "transcript", root: "r1" }),
@@ -198,8 +206,8 @@ test("skew shares equal hand-computed base rates on a fixture", async () => {
     row("k6", 1, 0.9, { dai: "unknown", chart: "uncharted", explicit: false, tier: "show-metadata", root: "r3" }),
   ];
   const catalogue = [
-    { dai: "true", chart: "1-25", root: "r1" },
-    { dai: "unknown", chart: "uncharted", root: "r1" },
+    { dai: "true", chart: "1-25", root: "r1", explicit: true },
+    { dai: "unknown", chart: "uncharted", root: "r1", explicit: false },
     { dai: "unknown", chart: "uncharted", root: "r2" },
     { dai: "unknown", chart: "26-200", root: "r3" },
   ];
@@ -216,10 +224,26 @@ test("skew shares equal hand-computed base rates on a fixture", async () => {
   assert.strictEqual(s.rated.dai, 0.5);
   assert.strictEqual(s.rated.chartTop25, 0.5);
   assert.strictEqual(s.rated.explicit, 1 / 6);
+  assert.strictEqual(s.rated.explicitKnown, 6);
+  assert.strictEqual(s.catalogue.explicitKnown, 2);
+  assert.strictEqual(s.catalogue.explicit, 0.5);
   assert.strictEqual(s.catalogue.dai, 1);
   assert.strictEqual(s.catalogue.chartTop25, 0.25);
-  assert.strictEqual(s.catalogue.explicit, null);
   assert.strictEqual(s.catalogue.transcript, null);
+  const attrs = catalogueAttrs(
+    {
+      shows: [
+        { show_id: "c1", apple_collection_id: 11, explicit: true, taxonomy_node_ids: ["r1"] },
+        { show_id: "c2", apple_collection_id: 12, explicit: null, taxonomy_node_ids: ["r1"] },
+      ],
+    },
+    { shows: [{ apple_collection_id: 11, explicit: false, chart_rank: 3 }, { apple_collection_id: 13, explicit: false, chart_rank: 9 }] },
+    { shows: {} }
+  );
+  assert.deepStrictEqual(
+    [...attrs].map(([k, a]) => [k, a.explicit, a.curated]),
+    [["c1", true, true], ["c2", undefined, true], ["13", undefined, false]]
+  );
 });
 
 test("the committed report block is current", async () => {
