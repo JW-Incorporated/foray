@@ -65,6 +65,13 @@ import { ChatProviderError, type ChatProvider, type ChatRequest, type ChatRespon
  * still contend, which is why the server-side priority is the card's live
  * step. The scheduler is active only on local routes (the chat provider is
  * built only for them); the anthropic and stub paths never reach it.
+ *
+ * KNOWN GAP (#1411): a stream waits for its slot inside its first next(),
+ * with no event, and the streamed-writer consumers (writeAct.ts
+ * drainWriterStream, ChatNarrationWriterBuilder's chunk bound) count that
+ * wait toward their idle bounds, so a background stream queued past 120 s is
+ * cut as a stall. Only the streamed writer (FORAY_WRITER_STREAM, or the fast
+ * path) is exposed, and it is off by default; #1411 blocks those flips.
  */
 
 /** Stages on the critical path whatever the act. */

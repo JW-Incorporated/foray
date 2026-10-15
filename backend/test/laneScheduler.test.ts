@@ -496,6 +496,73 @@ describe("streams go through the same slots", () => {
     expect(seen[0]!.laneQueueMs).toBe(0);
     expect(scheduler(manualProvider()).stream).toBeUndefined();
   });
+
+  it("a stream queued behind a background call, through the real client: queueMs is lane wait plus header wait, and the seconds charged are its wall time inside the slot", async () => {
+    /* MUTATION THAT KILLS THIS: record a stream's queueMs as the header wait
+       alone (openAICompatProvider.ts recordStream, `headerWait` instead of
+       `headerWait + (laneWait ?? 0)`) -- queueMs reads 40, not 340. Ran it --
+       red. And reconciling the stream's reservation from the enqueue instead
+       of from inside the slot (`startMs = this.now() - queueMs` in streamScheduled) charges the
+       300 ms wait too -- sparkSeconds reads 0.5. Ran it -- red. */
+    vi.useFakeTimers();
+    vi.setSystemTime(3_000_000);
+    try {
+      const after = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+      const sse = (o: unknown): string => `data: ${JSON.stringify(o)}\n\n`;
+      let releaseComplete: (() => void) | undefined;
+      const completeBody = JSON.stringify({ choices: [{ message: { role: "assistant", content: "ok" }, finish_reason: "stop" }], model: "m" });
+      const fetchImpl: FetchLike = async (_url, init) => {
+        const wire = JSON.parse(init.body) as { stream?: boolean };
+        if (!wire.stream) {
+          await new Promise<void>((r) => (releaseComplete = r));
+          return { ok: true, status: 200, headers: { get: () => null }, text: () => Promise.resolve(completeBody) };
+        }
+        await after(40); // the server's header wait
+        async function* body(): AsyncGenerator<string> {
+          await after(100);
+          yield sse({ model: "m", choices: [{ index: 0, delta: { content: "hello" }, finish_reason: null }] });
+          await after(60);
+          yield sse({ model: "m", choices: [{ index: 0, delta: {}, finish_reason: "stop" }], usage: { prompt_tokens: 100, completion_tokens: 2 } });
+          yield "data: [DONE]\n\n";
+        }
+        return { ok: true, status: 200, headers: { get: () => null }, text: () => Promise.resolve(""), body: body() };
+      };
+      const client = new OpenAICompatChatProvider({ baseUrl: "http://litellm.invalid:4000", apiKey: "k", fetchImpl });
+      const guard = new UnitBudgetGuard({ now: () => Date.now() });
+      /* Two sessions, so the stream's charge is not mixed with the first call's. */
+      const p = scheduler(client, SPARK_2_1, {
+        unitGuard: guard,
+        sessionOf: () => (currentCallContext().stage === "narrate:2" ? "s-stream" : "s-first")
+      });
+      const log = new RunLog();
+      const first = runWithRunLog(log, () => background(() => p.complete(request("first"))));
+      const streamed = runWithRunLog(log, () =>
+        inContext({ stage: "narrate:2", act: 2 }, async () => {
+          const out: ChatStreamEvent[] = [];
+          for await (const e of p.stream!(request("streamed"))) out.push(e);
+          return out;
+        })
+      );
+      await flush();
+      expect(p.load("spark")).toEqual({ inFlight: 1, backgroundInFlight: 1, queued: 1 });
+
+      await vi.advanceTimersByTimeAsync(300);
+      releaseComplete!();
+      await first;
+      await vi.advanceTimersByTimeAsync(200);
+      const events = await streamed;
+      expect(events.map((e) => e.type)).toEqual(["delta", "done"]);
+
+      const record = log.calls().find((c) => c.label === "streamed")!;
+      expect(record.stage).toBe("narrate:2");
+      expect(record.queueMs).toBe(340);
+      expect(guard.spent("s-stream").sparkSeconds).toBeCloseTo(0.2, 5);
+      expect(guard.spent("s-first").sparkSeconds).toBeCloseTo(0.3, 5);
+      expect(p.load("spark")).toEqual({ inFlight: 0, backgroundInFlight: 0, queued: 0 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 /* ------------------------------------------------------------------------ */
