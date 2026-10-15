@@ -25,6 +25,9 @@
       among the OTHER rated shows of the same root, leave-one-out), and the
       root node's affinity persona (the highest `taxonomy_affinity` weight
       for that root in persona-profiles.json: free, uses no rating).
+      FLOORED (RV-31): the "all mapped" precision must be at least the
+      node-modal baseline's, both under the same map (the prior must beat the
+      free baseline). test/recommender-eval.test.js holds the floor.
    2. Similar-shows agreement. The 64 seeds of tools/similar-eval/eval-set.json
       are ranked by cosine over the persona `fit` vector, shifted so that 1
       (would not finish one episode) is 0: a show every persona rates 1 has no
@@ -34,7 +37,9 @@
       listed (an unrated seed renders nothing), the reachable view (rated
       seeds, judged lists cut to rated shows), and app.js's similarShows over
       the same rated pool (the node-overlap ranking on equal footing).
-      Reported, never gated (the card).
+      FLOORED (RV-31): the reachable persona recall@6 must be at least 0.30
+      (0.339 on the RV-19 gold set, less noise). The rest is reported, not
+      gated.
    3. Chart baseline. Spearman between `chart_rank` (1 is the top of an Apple
       genre chart) and each persona's `fit`, over the rated shows that chart.
       Raters never saw the rank (D7), so a strong NEGATIVE value (higher fit
@@ -89,13 +94,22 @@ export const REPORT_PATH = "docs/research/persona-ratings-eval-2026-10.md";
 export const BEGIN = "<!-- BEGIN GENERATED: node tools/recommender/eval.mjs -->";
 export const END = "<!-- END GENERATED -->";
 
-/** The card's map (RV-21), plus `documentary`, which the card required to be
-    covered but left unmapped: all 12 documentary shows in catalog.json are
-    produced true-crime or paranormal story series, which is the narrative
-    set. `stretch` means "outside the listener's lane" and names no persona. */
+/** Map v1.1 (RV-31). v1 was the card's map (RV-21), plus `documentary`, which
+    the card required to be covered but left unmapped: all 12 documentary
+    shows in catalog.json are produced true-crime or paranormal story series,
+    which is the narrative set. `stretch` means "outside the listener's lane"
+    and names no persona.
+    v1.1, on the RV-19 gold set (docs/research/persona-ratings-eval-2026-10.md):
+    - `deep-learn` adds commute-explainer, the top persona for 32 of its 128
+      rated curated shows, more than any v1 member (the RV-29 decision in
+      docs/curation/persona-profiles-v1.md, "v1.1 pruning", PR #1416).
+    - `narrative` adds history-deep-diver, the top persona for 14 of its 60:
+      the row goes from 7 hits (0.117, below random) to 21 (0.350), above its
+      node-modal baseline under the same map (0.267). `documentary` stays as
+      v1: its 12 shows are true-crime and paranormal series. */
 export const ARCHETYPE_PERSONAS = Object.freeze({
-  "deep-learn": Object.freeze(["history-deep-diver", "mechanism-hunter", "practical-improver"]),
-  narrative: Object.freeze(["narrative-binger", "true-crime-careful"]),
+  "deep-learn": Object.freeze(["commute-explainer", "history-deep-diver", "mechanism-hunter", "practical-improver"]),
+  narrative: Object.freeze(["history-deep-diver", "narrative-binger", "true-crime-careful"]),
   comfort: Object.freeze(["banter-regular", "comfort-companion"]),
   documentary: Object.freeze(["narrative-binger", "true-crime-careful"]),
   stretch: Object.freeze([]),
@@ -459,7 +473,7 @@ export function renderSection(r) {
 
   out.push("### 1. Archetype agreement");
   out.push("");
-  out.push("A hit: the show's `top_persona` is in the persona set its `archetype_fit` values map to. Baselines: uniform random, the root's modal top persona (leave-one-out over every rated show), the root's highest-affinity persona.");
+  out.push("A hit: the show's `top_persona` is in the persona set its `archetype_fit` values map to. Baselines: uniform random, the root's modal top persona (leave-one-out over every rated show), the root's highest-affinity persona. Map v1.1 (RV-31). Floored: the all-mapped precision is at least the node-modal baseline's.");
   out.push("");
   out.push("| archetype | personas | shows | hits | precision | random | node modal | node affinity |");
   out.push("|---|---|---:|---:|---:|---:|---:|---:|");
@@ -474,7 +488,7 @@ export function renderSection(r) {
 
   out.push("### 2. Similar-shows agreement");
   out.push("");
-  out.push(`Persona ranking: cosine over the fit vector (fit - 1) among the ${r.similar.pool} rated curated shows. k = ${r.similar.personaAll.k}. Reported, not gated.`);
+  out.push(`Persona ranking: cosine over the fit vector (fit - 1) among the ${r.similar.pool} rated curated shows. k = ${r.similar.personaAll.k}. Floored: the reachable persona recall@6 is at least 0.30. The rest is reported, not gated.`);
   out.push("");
   out.push("| ranking | view | seeds | precision (shown) | recall@6 | hit rate | coverage | must-not |");
   out.push("|---|---|---:|---:|---:|---:|---:|---:|");

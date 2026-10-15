@@ -191,7 +191,8 @@ Thirteen personas is a starting point, not a finding. After the gold set
 
 - its `fit` column has pairwise correlation **< 0.85** with every other
   persona's column, and
-- it is the top-rated persona for **at least 3%** of shows.
+- it is the top-rated persona for **at least 3%** of shows (v1.0 only; v1.1
+  replaced this test, see "v1.1 pruning" below).
 
 A pair at or above 0.85 is merged (the one with the higher top-persona share
 is kept; the other gets `pruned: true, merged_into: "<id>"`), and a persona
@@ -199,6 +200,43 @@ under 3% is pruned. RV-29 applies this as v1.1, bumps the file's `version` to 2
 and records the table here under "v1.1 pruning". The research expects 8-10 of
 13 to survive. Twelve personas that collapse into four clusters are four
 personas with extra cost.
+
+## v1.1 pruning (RV-29, 2026-10-15): all 13 kept
+
+These are the gold-set numbers (RV-19, 2,978 shows; [`docs/research/persona-ratings-gold-2026-10.md`](../research/persona-ratings-gold-2026-10.md)), read against the rule above:
+
+| persona | top-persona share | top share, chart top-25 shows | shows at fit >= 4 | highest correlation with another persona | rule says |
+|---|---|---|---|---|---|
+| banter-regular | 23.9% | | 459 | 0.62 (sharp-comedy) | keep |
+| comfort-companion | 24.1% | | 476 | 0.41 (family-listener) | keep |
+| commute-explainer | 11.9% | | 259 | < 0.41 | keep |
+| news-current | 7.8% | | 108 | < 0.41 | keep |
+| practical-improver | 6.8% | | 111 | < 0.41 | keep |
+| narrative-binger | 5.9% | | 151 | 0.52 (true-crime-careful) | keep |
+| mechanism-hunter | 4.7% | | 120 | 0.48 (slow-news-contextualist) | keep |
+| maker-tinkerer | 4.1% | 2.4% | 151 | 0.48 (mechanism-hunter) | keep |
+| slow-news-contextualist | 3.6% | 2.7% | 114 | 0.48 (mechanism-hunter) | keep |
+| history-deep-diver | 2.9% | 4.7% | 57 | < 0.41 | **prune** |
+| family-listener | 2.8% | 2.7% | 77 | 0.41 (comfort-companion) | **prune** |
+| sharp-comedy | 0.9% | 1.1% | 44 | 0.62 (banter-regular) | **prune** |
+| true-crime-careful | 0.6% | 0.9% | 30 | 0.52 (narrative-binger) | **prune** |
+
+The chart top-25 column is filled in only where the decision needs it. "< 0.41" means the persona is in none of the five most correlated pairs, the highest of which is 0.41.
+
+**No pair reaches 0.85**: the highest is 0.62, so nothing merges. The 3% share rule would prune four personas and keep 9, inside the research's expected 8-10. **v1.1 does not apply the share rule. It keeps all 13, and `persona-profiles.json` stays at `version` 1, unchanged**, so every existing rating stays valid against `profiles_sha256`. The reasons:
+
+1. **Top-persona share measures argmax wins, not whether a persona is useful.** Two broad personas, comfort-companion and banter-regular, are the top persona for 48% of all shows, because they like a little of everything. A narrow persona loses the argmax on almost every show it likes, because the broad persona is close behind. This holds even where its genre is popular: on the 449 chart top-25 shows, true-crime-careful is the top persona for 0.9% and sharp-comedy for 1.1%. The share rule was meant as a proxy for redundancy, and the correlation column already measures redundancy directly. No persona is redundant.
+2. **Every pruned candidate has real supply.** Each one rates 30-77 gold shows at fit 4 or more, which is roughly 260-680 across the 26k catalogue at the same rate. That is enough to fill a served list. Their top-50s lead with their intended roots: kids-family is 50% of family-listener's, true-crime 62% of true-crime-careful's, history 42% of history-deep-diver's and comedy 44% of sharp-comedy's (eval §4).
+3. **Pruning removes a listener, not a cost.** The client projection is 12.6 KB of a 40 KB budget with all 13 personas, so pruning saves nothing that binds. Pruning true-crime-careful would serve a listener who wants victim-centred true crime through narrative-binger, a persona that is 0.52 correlated with it and does not share its dealbreakers. Family-listener carries the explicit-content sensitivity that no other persona has.
+
+**The replacement rule, for v1.2 and later:**
+- Merge any pair at r >= 0.85, unchanged.
+- Prune a persona only when its fit >= 4 supply falls under 0.5% of the gold set (15 shows).
+- Revisit both once RV-27 sends real listener feedback: the per-listener persona mixture weights will show which personas listeners actually load on, and that is the measure the share rule was standing in for.
+
+The research's expectation of 8-10 survivors was a prior, and this table is the evidence.
+
+The related map finding goes to the eval, not to the profiles. In `tools/recommender/eval.mjs`, commute-explainer should join the `deep-learn` archetype set: it is the top persona for 32 of 128 deep-learn shows, and adding it lifts overall archetype precision from 0.439 to 0.595 ([`persona-ratings-eval-2026-10.md`](../research/persona-ratings-eval-2026-10.md)). That change, and the eval floors that follow it, is its own card.
 
 ## Changing a profile
 
