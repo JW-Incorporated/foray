@@ -10,7 +10,9 @@ import {
   type StageImplementation,
   type StageProvider
 } from "../../config/stageRouting";
+import { DEFAULT_LANE_PROFILES, type LaneProfiles } from "../../config/machineProfiles";
 import type { ChatProvider } from "./ChatProvider";
+import { LaneScheduledProvider } from "./laneScheduler";
 import { OpenAICompatChatProvider } from "./openAICompatProvider";
 import type { StructuredTarget } from "./askStructured";
 import { targetFor } from "./targetFor";
@@ -25,10 +27,17 @@ import { targetFor } from "./targetFor";
  * ONE PROVIDER PER PROCESS. getChatProvider lazily builds one
  * OpenAICompatChatProvider (LiteLLM's OpenAI-compatible endpoint) from
  * FORAY_LLM_BASE_URL and the key (FORAY_LLM_API_KEY or FORAY_LLM_API_KEY_FILE,
- * resolveLlmApiKey), and hands the same instance to every local stage, so the
- * lane scheduler (W2-09, GV-93) can later wrap it here and see every call. A
- * call with a different base URL or key replaces the cached instance.
- * __setChatProviderForTests swaps in a scripted provider (and resets).
+ * resolveLlmApiKey), and hands the same instance to every local stage. A
+ * call with a different base URL, key or lane profiles replaces the cached
+ * instance. __setChatProviderForTests swaps in a scripted provider (and
+ * resets); a test provider is handed out as given, unscheduled.
+ *
+ * GV-93: the instance is the OpenAI-compatible client wrapped in the lane
+ * scheduler (chat/laneScheduler.ts: per-lane slots from the lane profiles,
+ * critical-path calls first, queueMs, the GV-90 seconds caps), and the client
+ * tags every request `user: 'foray-generation'` (FORAY_REQUEST_USER). Only
+ * local routes reach this provider, so the anthropic and stub paths are
+ * unchanged.
  *
  * NO NETWORK HERE. Building the provider opens no connection; the first byte
  * goes out when a stage calls complete(). Errors name the variable, never its
@@ -38,11 +47,18 @@ import { targetFor } from "./targetFor";
 let testProvider: ChatProvider | undefined;
 let cached: { signature: string; provider: ChatProvider } | undefined;
 
+/** GV-93: the `user` every Foray request carries, so LiteLLM can tell Foray's
+ * requests from the owners' terminals (and a Foray-only key can be scoped). */
+export const FORAY_REQUEST_USER = "foray-generation";
+
 export interface ChatProviderConfig {
   /** FORAY_LLM_BASE_URL (already validated by resolveRouting). */
   baseUrl: string | null;
   /** The LiteLLM key; absent means an unauthenticated server. */
   apiKey: string | undefined;
+  /** GV-93: the lane profiles the scheduler sizes its slots from (the routing
+   * table's; DEFAULT_LANE_PROFILES when absent). */
+  profiles?: LaneProfiles;
 }
 
 /** The process's ChatProvider for `config`. Throws RoutingConfigError naming
@@ -54,9 +70,11 @@ export function getChatProvider(config: ChatProviderConfig): ChatProvider {
     throw new RoutingConfigError(LLM_BASE_URL_ENV, `A stage is routed to a local lane but ${LLM_BASE_URL_ENV} is not set`);
   }
   const apiKey = config.apiKey ?? "";
-  const signature = `${config.baseUrl}\u0000${apiKey}`;
+  const profiles = config.profiles ?? DEFAULT_LANE_PROFILES;
+  const signature = `${config.baseUrl}\u0000${apiKey}\u0000${JSON.stringify(profiles)}`;
   if (cached === undefined || cached.signature !== signature) {
-    cached = { signature, provider: new OpenAICompatChatProvider({ baseUrl: config.baseUrl, apiKey, name: "litellm" }) };
+    const client = new OpenAICompatChatProvider({ baseUrl: config.baseUrl, apiKey, name: "litellm", user: FORAY_REQUEST_USER });
+    cached = { signature, provider: new LaneScheduledProvider(client, { profiles }) };
   }
   return cached.provider;
 }
@@ -65,7 +83,7 @@ export function getChatProvider(config: ChatProviderConfig): ChatProvider {
  * the key read from `source` (process.env by default). */
 export function chatProviderFor(routing: RoutingTable, source: NodeJS.ProcessEnv = process.env): ChatProvider {
   if (testProvider !== undefined) return testProvider;
-  return getChatProvider({ baseUrl: routing.llmBaseUrl, apiKey: resolveLlmApiKey(source) });
+  return getChatProvider({ baseUrl: routing.llmBaseUrl, apiKey: resolveLlmApiKey(source), profiles: routing.profiles });
 }
 
 /** Test seam: every local stage gets `provider` until reset with undefined,

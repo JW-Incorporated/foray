@@ -133,11 +133,16 @@ describe("anthropicCall: gen-14, every reply's usage is recorded, re-asks includ
      its cap, while both keep the seams that finished (TRUNCATION_POLICY
      'narrate.act': keep-finished-seams) and read JSONL, not one JSON object.
      Each call meters its budget guard before it sends and records its usage
-     after, as askStructured does. */
+     after, as askStructured does.
+   - GV-93: chat/laneScheduler.ts may call a provider's .complete( too: the
+     lane scheduler wraps the process's provider and forwards each request it
+     was handed (by askStructured, the narration writer or the Qwen judge) to
+     the inner provider once its lane slot is free. It makes no request of
+     its own, so the caller's budget metering still covers every call. */
 const MESSAGES_CREATE_SITES = ["anthropicCall.ts", "usageTracking.ts"];
 const RECORD_USAGE_SITES = ["anthropicCall.ts", "usageTracking.ts", "chat/askStructured.ts", "chat/ChatNarrationWriterBuilder.ts"];
 const FETCH_SITES = [...PROVIDER_CALL_SITES, "retrievalClient.ts"];
-const CHAT_COMPLETE_SITES = ["chat/askStructured.ts", "chat/openAICompatProvider.ts", "chat/ChatNarrationWriterBuilder.ts"];
+const CHAT_COMPLETE_SITES = ["chat/askStructured.ts", "chat/openAICompatProvider.ts", "chat/ChatNarrationWriterBuilder.ts", "chat/laneScheduler.ts"];
 
 function structuralOffenders(dir: string): string[] {
   const offenders: string[] = [];
