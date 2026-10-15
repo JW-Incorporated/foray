@@ -59,6 +59,8 @@ import {
   type StageId
 } from "../config/stageRouting";
 import { BudgetStopError, defaultBudgetGuard } from "../cost/budgetGuard";
+import { defaultCostEventSink } from "../cost/costEvents";
+import { UnitBudgetStopError, defaultUnitBudgetGuard, unitSpendOf, type UnitSpend } from "../cost/unitBudget";
 
 /**
  * The batch driver: N prompts in, N candidate Forays out.
@@ -691,7 +693,10 @@ export type FailureKind =
   /** Either budget cap: not resumable. The per-Foray cap would trip again on
    * the same Foray, and the RUN cap is this process's whole budget — there is
    * no window that resets it (CH2-04). Raising a cap is a decision, not a
-   * retry; a run-cap stop also ends the batch (`runBudgetSpent`). */
+   * retry; a run-cap stop also ends the batch (`runBudgetSpent`). GV-90: a
+   * per-Foray UNIT cap stop (`UnitBudgetStopError`: Spark seconds,
+   * second-box seconds, Jev calls) is a budget stop too, for the same reason;
+   * it ends that prompt only. */
   | "budget-stop"
   /** `RefusedPartialError` (manual step 10): the named abort. */
   | "refused-partial"
@@ -724,6 +729,7 @@ export function classifyFailure(err: unknown): FailureClass {
   if (err instanceof BudgetStopError) {
     return { kind: "budget-stop", reason: err.message };
   }
+  if (err instanceof UnitBudgetStopError) return { kind: "budget-stop", reason: err.message };
   let current: unknown = err;
   for (let depth = 0; depth < 8 && current !== undefined && current !== null; depth++) {
     const e = current as { message?: unknown; status?: unknown; statusCode?: unknown; code?: unknown; name?: unknown; cause?: unknown };
@@ -736,6 +742,17 @@ export function classifyFailure(err: unknown): FailureClass {
     current = e.cause;
   }
   return { kind: "fatal", reason: errorMessage(err) };
+}
+
+/**
+ * GV-90: one Foray's Jev dollars — the dollar guard's cost events (its
+ * default sink, defaultBudgetGuard's) for this session with provider 'jev',
+ * summed. No price arithmetic here: each event already carries the estimate
+ * meteredJevClient charged ($0.042 per million input tokens).
+ */
+export async function jevCostUsd(sessionId: string, sink: Pick<typeof defaultCostEventSink, "all"> = defaultCostEventSink): Promise<number> {
+  const events = await sink.all();
+  return events.filter((e) => e.sessionId === sessionId && e.provider === "jev").reduce((sum, e) => sum + e.estimatedUsd, 0);
 }
 
 /** 30 s, 60 s, 120 s, … capped at 10 min. The floor is deliberately not
@@ -1040,6 +1057,18 @@ export type ReportEntry = {
    * (createMessage's per-process count, read before and after). 0 under the
    * zero-Anthropic rule. On every row. */
   anthropicCalls?: number;
+  /** GV-90 (R1-19, MT-10): this Foray's spend against its per-Foray unit caps
+   * (Spark seconds, second-box seconds, Jev calls) across every attempt, and
+   * the caps it ran under (its tier's, env overrides applied). All zeros
+   * until a provider meters (GV-93's scheduler, meteredJevClient). On every
+   * row. */
+  unitSpend?: UnitSpend;
+  /** GV-90: the Foray's Jev dollars, summed from the dollar guard's cost
+   * events (provider 'jev', this session), which the bench reads as its
+   * `cost_usd` column. Absent on a row whose prompt sent Anthropic requests
+   * (`anthropicCalls` > 0): that spend is not Jev's, and a Jev-only figure
+   * would understate it. */
+  usage?: { costUsd: number };
   /** GV-81: the run's `--lane`, on every row when the flag was given; absent
    * otherwise (reads as `catalogue`). */
   lane?: JobLane;
@@ -1411,6 +1440,7 @@ export async function generateOneCandidate(
     if (notifyOutcome === "built") await closeJob("complete", undefined, id);
     else if (notifyOutcome.startsWith("aborted:")) await closeJob("aborted", notifyOutcome.slice("aborted:".length), id);
     else await closeJob("failed", notifyOutcome, id);
+    const anthropicCalls = anthropicCallCount() - anthropicAtStart;
     const withCalls: ReportEntry = {
       ...entry,
       calls,
@@ -1421,7 +1451,9 @@ export async function generateOneCandidate(
       flags,
       gates,
       stageAssignments,
-      anthropicCalls: anthropicCallCount() - anthropicAtStart,
+      anthropicCalls,
+      unitSpend: unitSpendOf(defaultUnitBudgetGuard, checkpointKey, request.duration),
+      ...(anthropicCalls === 0 ? { usage: { costUsd: await jevCostUsd(checkpointKey) } } : {}),
       ...(seededFrom !== undefined ? { seededFrom } : {}),
       ...(args.lane !== undefined ? { lane: args.lane } : {})
     };

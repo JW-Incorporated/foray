@@ -65,7 +65,7 @@ One sentence for the listener on why this persona would or would not like the sh
 - at most 200 characters;
 - no second person ("you'll love"): write about the show, not at the reader;
 - no "This podcast" or "This show" opener: start with what the show does;
-- none of the banned words in `backend/src/copy/rules.js` `BANNED` ("fascinating", "deep dive", "delve", "explores", and the commute shapes), none of its `INTERNAL_VOCABULARY` (counted beats, segments, acts; "running order") and no commute framing (`COMMUTE_FRAMING`);
+- none of the banned words in `backend/src/copy/rules.js` `BANNED` ("fascinating", "deep dive", "delve", "explores", and the commute shapes), none of its `INTERNAL_VOCABULARY` (counted beats, segments, acts; "running order") and no commute framing (`COMMUTE_FRAMING`), including a "trip", "journey" or "ride" used as a length to fit ("far shorter than a full trip", "long for a family trip", "too long for one trip", "for the ride", "a long ride"; `TRIP_FIT_FRAMING` in `tools/recommender/schema.mjs`). The words as a topic stay fine: "a personal journey", "a trip to Japan", "road trip stories", "trip reports". Say an episode's length in minutes, if at all;
 - no clickbait withholding ("the answer will surprise").
 
 Only the top persona's reason is kept in `data/recommender/ratings.json` (`top_reason`); the rest go to `data-local/recommender/reasons/` and are never committed (D7).

@@ -42,6 +42,8 @@ import { PRE_SPINE_SENTINEL, preSpineIntent } from "../src/generation/preSpineIn
 import { loadCatalogueData, type CatalogueData } from "../src/generation/catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "../src/generation/segmentPoolLookup";
 import { loadTranscriptArchive } from "../src/generation/transcriptArchiveLookup";
+import { UnitBudgetExceededError, UnitBudgetGuard, UnitBudgetStopError } from "../src/cost/unitBudget";
+import type { DeepenActBuilder } from "../src/generation/DeepenActBuilder";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -2044,5 +2046,43 @@ describe("runForayPipeline — GV-83 show variety (MQ-07)", () => {
     const tapeSec = rows.reduce((a, r) => a + r.durationSec, 0);
     expect(tapeSec).toBe(runtimeSecFor(items.filter((i) => (i as unknown as { type: string }).type === "segment"), pool));
     expect(computeShowVariety(rows).largestShowTapeShare).toBeCloseTo(40 / 70, 12);
+  });
+});
+
+describe("runForayPipeline — GV-90 per-Foray unit caps stop a run naming the stage", () => {
+  /* MUTATION THAT KILLS THIS: drop the findUnitBudgetError re-throw in
+     timed() — the run ends on deepen's own ActDeepeningError, with the unit
+     figures buried in its cause and no stage named. Ran it — red. */
+  it("a deepen builder whose metered() call passes the Spark-seconds cap ends the run with UnitBudgetStopError naming 'deepen'", async () => {
+    const units = new UnitBudgetGuard({ overrides: { sparkSeconds: 10 } });
+    const stub = new StubDeepenActBuilder();
+    const deepenBuilder: DeepenActBuilder = {
+      providerName: "metered-deepen",
+      deepenAct: (spine, act, i, ctx) =>
+        units.metered({ sessionId: ctx.sessionId ?? "none", unit: "sparkSeconds", estimate: 25 }, () => stub.deepenAct(spine, act, i, ctx))
+    };
+    const err = await runForayPipeline(request, { ...options, sessionId: "gv90-session", checkpointKey: "gv90-key" }, { ...stubDeps(), deepenBuilder }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UnitBudgetStopError);
+    const stop = err as UnitBudgetStopError;
+    expect(stop.stage).toBe("deepen");
+    expect(stop.unit).toBe("sparkSeconds");
+    expect(stop.cap).toBe(10);
+    expect(stop.cause).toBeInstanceOf(UnitBudgetExceededError);
+    expect(stop.message).toContain('"gv90-key"');
+    expect(units.spent("gv90-session").sparkSeconds).toBe(0);
+  });
+
+  it("with the caps unreached a metered deepen runs to a generated Foray, and the session's spend is its wall time", async () => {
+    const units = new UnitBudgetGuard();
+    const stub = new StubDeepenActBuilder();
+    const deepenBuilder: DeepenActBuilder = {
+      providerName: "metered-deepen",
+      deepenAct: (spine, act, i, ctx) =>
+        units.metered({ sessionId: ctx.sessionId ?? "none", unit: "sparkSeconds", estimate: 25 }, () => stub.deepenAct(spine, act, i, ctx))
+    };
+    const out = await runForayPipeline(request, { ...options, sessionId: "gv90-ok" }, { ...stubDeps(), deepenBuilder });
+    expect(out.outcome).toBe("generated");
+    /* Every reservation was settled at its (tiny) wall time, not the estimate. */
+    expect(units.spent("gv90-ok").sparkSeconds).toBeLessThan(25);
   });
 });
