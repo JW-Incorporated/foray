@@ -1,0 +1,13 @@
+# tools/podcast/render-episode.py (Python 3.12; ffmpeg and ffprobe on PATH or --ffmpeg).
+# `python tools/podcast/render-episode.py --check` reports what is missing.
+#
+# Loudness is measured by ffmpeg's ebur128, not a Python library, so there is no
+# pyloudnorm. Pins are the versions the flagship (asteroids-flagship-1) was built with.
+numpy==2.1.3
+soundfile==0.12.1
+
+# OPTIONAL: only the `align` and `seamcheck` subcommands (word-level edge alignment, #1442;
+# the seam listen-check, #1458). Both decode through ffmpeg and hand faster-whisper raw PCM,
+# so PyAV is never opened (#1454: faster-whisper 1.2.1 passes a keyword the newest av rejects).
+# Uncomment to install:
+# faster-whisper==1.2.1

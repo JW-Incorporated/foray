@@ -1967,6 +1967,9 @@ const FLOORS = {
      mapping (a podcast's https artworkUrl600, else null). New, zero slack. */
   "tools/refresh/backfill-artwork.test.mjs": 4,
   "tools/podcast/build-feed.test.mjs": 12, // 2026-10-20 (#1425, self-hosted flagship podcast): new -- esc/CDATA, feed tags, drafts gating, JSON chapters, https base URL, publish readiness, content-addressed keys, guid permanence, CLI; every test runs its own mutant
+  "tools/podcast/render-plan.test.mjs": 8, // 2026-10-20 (#1457, #1425): new, zero slack -- the flagship plan reproduces the committed chapter titles, item order and cut points from repo data, seam types, speaker parse, missing-segment / reversed-segment refusals, chapter-title fallback warning, CLI exit codes; every test runs its own mutant
+  "tools/podcast/update-episode.test.mjs": 7, // 2026-10-20 (#1457, #1425): new, zero slack -- the committed manifest is a fixed point of updateManifest, chapter floor, build-feed validation of the result, true-peak refusal, unknown foray / missing / empty encode, untouched fields, CLI hashing + --dry-run; every test runs its own mutant
+  "tools/podcast/render-episode.test.mjs": 12, // 2026-10-20 (#1457, #1425): new, zero slack -- node tests that drive render-episode.py offline (bake --dry-run argv/filter graph, mono -19 vs stereo -16, seam gaps, limiter, encode chapters, fetch cache key + 1.5 s duration refusal, missing-input refusal, linear-loudnorm and master-tolerance refusals, --check); skip with a message when no python; every test runs its own mutant
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
      failure impossible — a backfill that reports success while emitting nothing, or
