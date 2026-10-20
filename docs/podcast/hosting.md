@@ -19,6 +19,7 @@ idea."
 | show-level manifest | `data/podcast/channel.json` |
 | episode manifest (guid, show notes, audio keys + sha256, chapters, sources) | `data/podcast/episodes.json` |
 | feed builder + validator | `node tools/podcast/build-feed.mjs` |
+| render an episode (plan, fetch, bake, finish, manifest update) | `docs/podcast/rendering.md` |
 | output (never committed) | `data-local/podcast/feed/feed.xml` and `chapters/<guid>.json` |
 
 The audio files themselves are never committed. The manifest records where each

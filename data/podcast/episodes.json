@@ -89,6 +89,28 @@
           "title": "Closing: what hit us, and what we can do now"
         }
       ],
+      "render": {
+        "basename": "the-rock-that-ended-the-dinosaurs",
+        "artist": "4a Foray (clips: Geology Bites, Being an Engineer)",
+        "album": "4a Forays",
+        "comment": "Draft for founder listening. Clips from Geology Bites (Oliver Strimpel) and Being an Engineer (Aaron Moncur). Narration written with AI, synthetic voice (Kokoro-82M af_heart).",
+        "chapter_titles": {
+          "prelude": "Introduction",
+          "into-smit-1": "Jan Smit: a fingerprint in the clay",
+          "into-marshall": "John Marshall: how an impact kills",
+          "into-smit-2": "Jan Smit: a fish from the first hour",
+          "into-ernst": "Richard Ernst: did the rock act alone?",
+          "into-levison": "Hal Levison: the leftovers of planet building",
+          "into-connolly-1": "Harold Connolly: arriving at Bennu",
+          "into-connolly-2": "Harold Connolly: the grab",
+          "into-russell-1": "Sara Russell: asteroids made of metal",
+          "into-oh": "David Oh: a world made of metal",
+          "into-weiss": "Ben Weiss: a hunch about Psyche",
+          "into-elkins": "Lindy Elkins-Tanton: on the way",
+          "into-russell-2": "Sara Russell: could it happen again?",
+          "close": "Closing: what hit us, and what we can do now"
+        }
+      },
       "people": [],
       "sources": [
         {
