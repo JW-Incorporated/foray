@@ -61,6 +61,9 @@ export const PERSONA_RATING_FIELDS = ["fit", "return_prob", ...SUBSCORES, "confi
 /** The client file's one-letter tier code. */
 export const CLIENT_TIER_CODES = { transcript: "t", "episode-metadata": "e", "show-metadata": "s" };
 
+/** RV-30: the tier code of a breadth row rated by the teacher (ratings-breadth.json). */
+export const CLIENT_BREADTH_TIER_CODE = "b";
+
 /** The highest pass the three-pass design (D13) ever writes. */
 export const MAX_PASS = 3;
 
@@ -460,7 +463,7 @@ export function validateClientFile(doc) {
     add("bad_shows", "shows", "shows must be an object keyed by show id");
     return problems;
   }
-  const codes = Object.values(CLIENT_TIER_CODES);
+  const codes = [...Object.values(CLIENT_TIER_CODES), CLIENT_BREADTH_TIER_CODE];
   for (const [key, s] of Object.entries(doc.shows)) {
     const at = `shows.${key}`;
     if (!isObject(s)) {
