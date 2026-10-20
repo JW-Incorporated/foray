@@ -188,6 +188,26 @@ function buildCorpus(): { archive: TranscriptDigestEntry[]; cuesByGuid: Map<stri
       enclosure_url: `https://cdn.example/${guid}.mp3`
     });
   }
+  /* One more episode, under a pool row only: no claim says a word of it, so
+     no search returns it and only the pool's own entry in sourcingBodies
+     fetches its body (tier 1 reads every pool segment's window). */
+  const poolOnly = "gv95-pool-only";
+  const poolCues: TranscriptCue[] = Array.from({ length: 12 }, (_, i) => ({
+    text: "amphorae of olive oil and wine filled the ostia harbour warehouses",
+    start_sec: i * 20,
+    end_sec: i * 20 + 20,
+    speaker: null
+  }));
+  cuesByGuid.set(poolOnly, poolCues);
+  archive.push({
+    show_id: "fall-of-civilizations",
+    show_title: "Fall of Civilizations",
+    guid: poolOnly,
+    title: "Ostia harbour warehouses",
+    cues: poolCues.length,
+    feed_duration_sec: 3600,
+    enclosure_url: `https://cdn.example/${poolOnly}.mp3`
+  });
   return { archive, cuesByGuid, spoken };
 }
 
@@ -210,6 +230,23 @@ const POOL: SegmentRecord[] = [
     start_anchor: wordsFor(1, 0).slice(0, 2).join(" "),
     end_anchor: "in the old accounts",
     why: spokenClaim(1, 0),
+    confidence: "high",
+    transcript_source: "publisher",
+    dai_suspected: false,
+    source: "agent-v1",
+    batch_id: "seg-test",
+    needs_review: false
+  } as SegmentRecord,
+  {
+    id: `${deriveItemId(entryOf("gv95-pool-only"))}#60`,
+    item_id: deriveItemId(entryOf("gv95-pool-only")),
+    topic: TOPIC,
+    start_sec: 60,
+    end_sec: 160,
+    reference_duration_sec: 3600,
+    start_anchor: "amphorae of olive oil",
+    end_anchor: "ostia harbour warehouses",
+    why: "Amphorae of olive oil and wine filled the Ostia harbour warehouses",
     confidence: "high",
     transcript_source: "publisher",
     dai_suspected: false,
