@@ -561,7 +561,12 @@ test("a breadth batch holding a gold show is refused, and so is any --into for i
   assert.ok(runCheck({ root, now: NOW }).some((p) => p.code === "breadth_show_in_gold"));
 });
 
-test("the committed ratings-breadth.json is the empty skeleton in canonical form", () => {
-  // mutation: add a space to data/recommender/ratings-breadth.json -> it is no longer serializeRatings(skeletonRatings())
-  assert.equal(readFileSync(join(REPO, BREADTH_PATH), "utf8"), serializeRatings(skeletonRatings()));
+test("the committed ratings-breadth.json is canonical and holds only breadth-set shows from breadth- batches", () => {
+  // mutation: add a space to data/recommender/ratings-breadth.json -> it is no longer serializeRatings(JSON.parse(committed))
+  const committed = readFileSync(join(REPO, BREADTH_PATH), "utf8");
+  const breadth = JSON.parse(committed);
+  assert.equal(committed, serializeRatings(breadth), "the committed breadth ratings are in the merge's own form");
+  const setKeys = new Set(JSON.parse(readFileSync(join(REPO, "data/recommender/breadth-set.json"), "utf8")).shows.map((s) => String(s.show_key)));
+  assert.deepEqual(Object.keys(breadth.shows).filter((k) => !setKeys.has(k)), [], "every rated show is in the breadth set");
+  assert.deepEqual(breadth.merged_batches.filter((id) => !id.startsWith("breadth-")), [], "only breadth- batches merged here");
 });
