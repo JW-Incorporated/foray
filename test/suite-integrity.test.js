@@ -3515,6 +3515,21 @@ const BACKEND_FLOORS = {
      reply, one wire-level replay. Offline: scriptedProvider, fakeFetch over
      synthetic bodies, a fake Anthropic client. One named mutation per test. */
   "test/chatPlanningBuilders.test.ts": 14,
+  /* GV-100 (docs/roadmap/generation-v2.md, W4-04 items 2-4 + W4-18): spine
+     tier sizing on the Spark. spineJsonSchema(tier) accepts the synthetic
+     short and medium fixture replies, refuses an act count outside the
+     tier's band, agrees with its zod twin and RawSpineSchema on every
+     fixture and bound variant, holds the beat/claim/copy overrides and
+     contract order (fold fields included); spineActBand matches
+     validateSpine; the spineMaxTokens table; ChatSpineBuilder under
+     FORAY_SPINE_TIER_SIZING sends the tier schema and cap (also over the
+     real client), keeps the re-ask prefix for both fix kinds, one shorter
+     re-ask on a 'length' stop and TruncatedReplyError on the second, no
+     re-ask on other failures, off by default and read at call time; no
+     Anthropic import; the fast path's short tier hands postSeedWithFloor
+     maxSeedFloorReasks 0, classic and medium hand none, an explicit option
+     wins. Offline; one named mutation per test. */
+  "test/spineTierSizing.test.ts": 19,
   /* GV-31 (docs/roadmap/generation-v2.md, #1286): the Chat twins of the act
      writer and act verifier -- parity with each Anthropic twin for the same
      recorded-shape reply (pronunciationHints and restsOn defaulted to []),

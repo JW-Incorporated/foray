@@ -1,0 +1,17 @@
+{
+  "_source": "GV-100: a SYNTHETIC OpenAI chat.completion whose content is a SHORT-tier spine reply in the folded shape (copy fields first, GV-67): 1 act, 3 slots, 9 beats, 3 exploration, one seeded beat. Hand-written to the tier's schema; never from a live model, and no usage counts are given. The live step (docs/roadmap/generation-v2.md, GV-100) replaces it with a recorded Spark reply.",
+  "id": "chatcmpl-synthetic-spine-short-0001",
+  "object": "chat.completion",
+  "created": 1760000000,
+  "model": "synthetic-heavy-27b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "{\"subject\":\"charcoal briquettes\",\"angle\":\"how a car maker's scrap wood became the backyard grill\",\"priorKnowledge\":\"has lit a bag of briquettes but never wondered where they came from\",\"disappointment\":\"a list of grilling tips with no history in it\",\"answersDisappointment\":\"it follows the scrap wood from the Model T line to the patio\",\"title\":\"How Ford's scrap wood became the backyard grill\",\"summary\":\"Charcoal briquettes began as a way to sell the wood a car plant threw away.\",\"overview\":\"The charcoal briquette is an industrial by-product that found a second life: a car plant's scrap wood, pressed into a fuel that made the backyard cookout predictable.\",\"voice\":{\"style\":\"plain, concrete, curious\",\"register\":\"conversational expert\",\"sentenceRhythm\":\"short declaratives with the odd long build\",\"narratorPresence\":\"a guide who points, rarely opines\"},\"acts\":[{\"title\":\"Scrap Wood Into Summer\",\"thesis\":\"The briquette exists because a car factory needed somewhere to send its waste, and its uniform burn is what turned grilling into a suburban habit.\",\"startState\":\"The listener thinks of charcoal as something that has always been sold in bags.\",\"endState\":\"The listener sees the briquette as a factory by-product whose shape and burn were engineered for convenience.\",\"slots\":[{\"title\":\"The sawdust problem\",\"beats\":[{\"claim\":\"Ford's Model T plants produced piles of scrap wood from the frames and floorboards of every car.\",\"exploration\":false,\"seed\":{\"episodeId\":\"ep-grill-history-01\",\"startSec\":312,\"endSec\":348}},{\"claim\":\"Henry Ford and his relative E. G. Kingsford turned that scrap into charcoal at a plant in northern Michigan.\",\"exploration\":false},{\"claim\":\"Ford sold the charcoal as Ford Charcoal, first through his own car dealerships.\",\"exploration\":false}]},{\"title\":\"Why a pillow shape\",\"beats\":[{\"claim\":\"A briquette is pressed charcoal dust bound with starch, which is why every piece burns at a similar rate.\",\"exploration\":true},{\"claim\":\"Ellsworth Zwoyer patented a pillow-shaped briquette in the 1890s, decades before Ford's plant opened.\",\"exploration\":true},{\"claim\":\"The even burn made charcoal predictable enough for a weekend cook who had never tended a fire.\",\"exploration\":false}]},{\"title\":\"The backyard boom\",\"beats\":[{\"claim\":\"Postwar suburbs gave millions of families a patio, and the grill moved from the campsite to the backyard.\",\"exploration\":false},{\"claim\":\"Ford sold the charcoal plant to local investors in 1951, and the business took the Kingsford name.\",\"exploration\":true},{\"claim\":\"The Kingsford bag became the charcoal most American cooks reach for, long after the Model T was gone.\",\"exploration\":false}]}]}]}"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

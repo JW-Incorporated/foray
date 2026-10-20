@@ -2,7 +2,8 @@ import { z, type ZodTypeAny } from "zod";
 import type { ActWriteResult } from "./NarrationWriterBuilder";
 import type { ActVerifyResult } from "./NarrationVerifierBuilder";
 import type { IntentUnderstanding } from "../types/generation";
-import type { DurationTier, Spine } from "../types/spine";
+import { DURATION_SHAPE_BUDGETS, SHAPE_TOLERANCE, type DurationTier, type Spine } from "../types/spine";
+import { zodToJsonSchema, type JsonSchema } from "./chat/jsonSchema";
 
 /**
  * Every JSON reply schema the generation builders parse a model's answer
@@ -102,6 +103,88 @@ export const SpineFoldDeepenActSchema = SpineActSchema.extend({
   exit: z.string().optional()
 });
 export const RawSpineFoldDeepenSchema = RawSpineSchema.extend({ acts: z.array(SpineFoldDeepenActSchema) });
+
+/* ---------- GV-100: the per-tier spine schema ---------- */
+
+/** GV-100 (W4-04 item 2): the longest beat claim the per-tier grammar lets
+ * through. One sentence of at most 25 words is the house shape; 420
+ * characters is room for that with long proper names, not a target. */
+export const SPINE_CLAIM_MAX_CHARS = 420;
+/** GV-100: the longest folded title or summary the per-tier grammar lets
+ * through (forayCopy clamps both at 18 words downstream). */
+export const SPINE_COPY_TEXT_MAX_CHARS = 140;
+
+/**
+ * GV-100: the act counts a `tier` spine may carry, `[min, max]` inclusive:
+ * DURATION_SHAPE_BUDGETS' act band widened by SHAPE_TOLERANCE, rounded
+ * inward to whole acts, so it is exactly the set of counts validateSpine
+ * accepts (short [1, 1], medium [3, 4], long [5, 8]).
+ */
+export function spineActBand(tier: DurationTier): [number, number] {
+  const [min, max] = DURATION_SHAPE_BUDGETS[tier].acts;
+  return [Math.ceil(min * (1 - SHAPE_TOLERANCE)), Math.floor(max * (1 + SHAPE_TOLERANCE))];
+}
+
+export interface SpineSchemaOptions {
+  /** GV-86: the folded-deepen reply (RawSpineFoldDeepenSchema) instead of
+   * the classic one. The folded copy fields are in both, so fold-copy does
+   * not change the schema. */
+  foldDeepen?: boolean;
+}
+
+/**
+ * GV-100 (decision 11): the spine reply schema for one tier, as zod. It is
+ * RawSpineSchema (or RawSpineFoldDeepenSchema) with the per-tier overrides
+ * of W4-04 item 2 and nothing else: acts bounded by `spineActBand(tier)`,
+ * every slot with at least one beat, each claim at most
+ * SPINE_CLAIM_MAX_CHARS, the folded title and summary at most
+ * SPINE_COPY_TEXT_MAX_CHARS. zod's `extend` keeps each overridden key where
+ * it was, so the properties stay in contract order (the folded copy fields
+ * first, then overview, voice, acts; seed and GV-86's kind, introduction and
+ * exit where the base schema has them).
+ *
+ * It is what the grammar holds the reply to (`spineJsonSchema`); the reply
+ * is still PARSED with the base schema, so a reply recorded before the
+ * bounds, or from an unconstrained target, parses as it always did.
+ */
+export function spineTierReplySchema(tier: DurationTier, opts: SpineSchemaOptions = {}): z.ZodObject<z.ZodRawShape> {
+  const [minActs, maxActs] = spineActBand(tier);
+  const foldDeepen = opts.foldDeepen === true;
+  const beat = (foldDeepen ? SpineFoldDeepenBeatSchema : SpineBeatSchema).extend({ claim: z.string().max(SPINE_CLAIM_MAX_CHARS) });
+  const slot = SpineSlotSchema.extend({ beats: z.array(beat).min(1) });
+  const act = (foldDeepen ? SpineFoldDeepenActSchema : SpineActSchema).extend({ slots: z.array(slot) });
+  return (foldDeepen ? RawSpineFoldDeepenSchema : RawSpineSchema).extend({
+    title: z.string().max(SPINE_COPY_TEXT_MAX_CHARS).optional(),
+    summary: z.string().max(SPINE_COPY_TEXT_MAX_CHARS).optional(),
+    acts: z.array(act).min(minActs).max(maxActs)
+  }) as unknown as z.ZodObject<z.ZodRawShape>;
+}
+
+const spineJsonSchemaCache = new Map<string, JsonSchema>();
+
+function deepFreeze<T>(value: T): T {
+  if (value && typeof value === "object") {
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+/**
+ * GV-100 (decision 11; W4-04 item 2, W4-18): the per-tier spine JSON Schema
+ * a ChatSpineBuilder sends as its json_schema response_format under
+ * FORAY_SPINE_TIER_SIZING: zodToJsonSchema of `spineTierReplySchema(tier,
+ * opts)`. Converted once per (tier, foldDeepen) and frozen, so every call
+ * sends the same object (and SGLang compiles the same grammar).
+ */
+export function spineJsonSchema(tier: DurationTier, opts: SpineSchemaOptions = {}): JsonSchema {
+  const key = `${tier}:${opts.foldDeepen === true ? "foldDeepen" : "classic"}`;
+  const cached = spineJsonSchemaCache.get(key);
+  if (cached) return cached;
+  const schema = deepFreeze(zodToJsonSchema(spineTierReplySchema(tier, opts)));
+  spineJsonSchemaCache.set(key, schema);
+  return schema;
+}
 
 /**
  * GV-86: a folded-deepen act's introduction or exit that came back blank is

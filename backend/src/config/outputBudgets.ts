@@ -1,5 +1,6 @@
 import type { DurationTier } from "../types/spine";
 import { readEnumFlag, type FlagSource } from "../generation/generationFlags";
+import { spineActBand } from "../generation/replySchemas";
 
 /**
  * GV-14 (docs/roadmap/generation-v2.md, from W1-07; covers R1-17, MT-05,
@@ -153,7 +154,7 @@ export function R1_17_SUM(tier: DurationTier, ctx: OutputBudgetContext = {}): nu
 /**
  * The max_tokens each Anthropic builder sends today, as one constant
  * (decision 10). Nothing reads it in GV-14; GV-25 points the Anthropic and
- * Chat builders at it, and GV-100 adds spineMaxTokens beside it. The writer
+ * Chat builders at it, and GV-100 adds spineMaxTokens below it. The writer
  * is not here: it keeps `actOutputTokenBudget` and its 12000 floor.
  * backend/test/outputBudgets.test.ts greps each builder and fails on drift.
  */
@@ -167,6 +168,50 @@ export const BUILDER_MAX_TOKENS = {
   verifier: 4000
 } as const;
 export type BuilderCapKey = keyof typeof BUILDER_MAX_TOKENS;
+
+/* ---------------------------------------------------------------------------
+   GV-100: the tier-sized spine cap.
+   --------------------------------------------------------------------------- */
+
+/**
+ * GV-100 (W4-04 item 3; decision 10): what a folded spine call writes on top
+ * of the plan. `copy` is the listener copy (GV-67: subject, angle,
+ * priorKnowledge, disappointment, answersDisappointment, title, summary);
+ * `perAct` is one act's folded introduction and exit (GV-86).
+ */
+export const SPINE_FOLD_EXTRA_TOKENS = { copy: 120, perAct: 100 } as const;
+
+/** GV-100: the headroom over the spine target. A cut reply is refused, never
+ * parsed (TruncatedReplyError), so the cap sits well above the target. */
+export const SPINE_MAX_TOKENS_HEADROOM = 1.5;
+
+export interface SpineMaxTokensOptions {
+  /** The call also writes the listener copy (GV-67). */
+  foldCopy?: boolean;
+  /** The call also writes each act's introduction and exit (GV-86), counted
+   * for the most acts the tier's schema allows (spineActBand). */
+  foldDeepen?: boolean;
+}
+
+/**
+ * GV-100: the max_tokens a tier-sized spine call sends:
+ * ceil((OUTPUT_TOKEN_BUDGETS.spine[tier] + fold extras) x 1.5).
+ *
+ *   tier     plain   +copy   +copy+deepen
+ *   short      675     855      1005  (1 act)
+ *   medium    1800    1980      2580  (4 acts)
+ *   long      3600    3780      4980  (8 acts; the 2400 target is PROPOSED)
+ *
+ * Only ChatSpineBuilder's tier-sized path (FORAY_SPINE_TIER_SIZING) sends
+ * it; every other spine call keeps BUILDER_MAX_TOKENS.spine.
+ */
+export function spineMaxTokens(tier: DurationTier, opts: SpineMaxTokensOptions = {}): number {
+  const target = OUTPUT_TOKEN_BUDGETS.spine[tier];
+  if (typeof target !== "number") throw new Error(`spineMaxTokens: the spine budget for "${tier}" is not a token count`);
+  const copy = opts.foldCopy ? SPINE_FOLD_EXTRA_TOKENS.copy : 0;
+  const acts = opts.foldDeepen ? SPINE_FOLD_EXTRA_TOKENS.perAct * spineActBand(tier)[1] : 0;
+  return Math.ceil((target + copy + acts) * SPINE_MAX_TOKENS_HEADROOM);
+}
 
 /* ---------------------------------------------------------------------------
    The mode flag.
