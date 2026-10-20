@@ -72,6 +72,13 @@ export interface AskStructuredInput<T> {
   schemaName: ReplySchemaName;
   /** The zod schema the reply is parsed against. */
   schema: z.ZodType<T>;
+  /**
+   * GV-100: a json_schema sent in place of `responseFormatFor(schemaName)`
+   * when the target constrains with 'json_schema' (the per-tier spine
+   * schema, replySchemas.ts spineJsonSchema). Ignored for 'json_object' and
+   * 'none' targets. Absent, the request is exactly as before.
+   */
+  responseFormat?: Extract<ResponseFormat, { type: "json_schema" }>;
   messages: ChatMessage[];
   maxTokens: number;
   /** The cost event's operation label. */
@@ -99,10 +106,14 @@ function estimateUsd(messages: readonly ChatMessage[], maxTokens: number, target
   return (inputTokens * target.usdPerMtokIn + maxTokens * target.usdPerMtokOut) / 1_000_000;
 }
 
-function responseFormatOf(target: StructuredTarget, schemaName: ReplySchemaName): ResponseFormat | undefined {
+function responseFormatOf(
+  target: StructuredTarget,
+  schemaName: ReplySchemaName,
+  override: AskStructuredInput<unknown>["responseFormat"]
+): ResponseFormat | undefined {
   switch (target.structuredOutput) {
     case "json_schema":
-      return responseFormatFor(schemaName);
+      return override ?? responseFormatFor(schemaName);
     case "json_object":
       return { type: "json_object" };
     case "none":
@@ -112,7 +123,7 @@ function responseFormatOf(target: StructuredTarget, schemaName: ReplySchemaName)
 
 export async function askStructured<T>(input: AskStructuredInput<T>): Promise<AskStructuredResult<T>> {
   const { provider, target, schemaName, schema, maxTokens, operation, budget, label } = input;
-  const responseFormat = responseFormatOf(target, schemaName);
+  const responseFormat = responseFormatOf(target, schemaName, input.responseFormat);
 
   /* Step 1's cost event. The guard is called at each call site (first ask
      and re-ask) so every `reask` closure visibly meters itself, the rule

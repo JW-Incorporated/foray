@@ -108,7 +108,7 @@ import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeN
 import { NullTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { TapeRelevanceInput } from "../types/tapeSourcing";
-import type { Spine } from "../types/spine";
+import type { DurationTier, Spine } from "../types/spine";
 import type { ForayItem } from "./forayItems";
 
 /**
@@ -1143,6 +1143,21 @@ const WrittenActSchema = z.object({
 const StitchActCheckpointSchema = z.array(ForayItemSchema);
 
 /**
+ * GV-100 (W4-04 item 4; covers GP-05): the seed-floor re-asks the spine may
+ * spend when the run takes no explicit `spineSeedFloorReasks`. On the fast
+ * path's short tier it is `flags.spineSeedFloorReasksOnTimedPath` (0 under
+ * the umbrella), so the floor's re-ask stays off the short timed path;
+ * post-seeding still runs, and the structural re-ask is untouched.
+ * Everywhere else `undefined`: postSeedWithFloor's own default, today's.
+ */
+export function timedSpineSeedFloorReasks(
+  flags: Pick<PipelineFlags, "fastPath" | "spineSeedFloorReasksOnTimedPath">,
+  duration: DurationTier
+): number | undefined {
+  return flags.fastPath && duration === "short" ? flags.spineSeedFloorReasksOnTimedPath : undefined;
+}
+
+/**
  * The narration stage's counting proxy over the writer (G-34, Q-03): every
  * request the writer makes calls `count` once, whatever its page count. It
  * offers exactly the methods the writer offers, so a caller that checks for
@@ -1690,8 +1705,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
          will use: a resume must not re-decide the seeds, and the seed is what
          decides where the tape comes from. `postSeedSpine.ts` owns both halves;
          the only thing that happens here is the logging. */
+      /* GV-100 (W4-04 item 4): on the fast path's short tier the floor's
+         re-ask is off the timed path (flags.spineSeedFloorReasksOnTimedPath,
+         0); an explicit option still wins, and every other run passes what
+         it passed before. */
+      const seedFloorReasks = options.spineSeedFloorReasks ?? timedSpineSeedFloorReasks(flags, req.duration);
       const seeded = await postSeedWithFloor(built.spine, intent, researchShape, req.duration, spineBuilder, spineCtx, {
-        ...(options.spineSeedFloorReasks !== undefined ? { maxSeedFloorReasks: options.spineSeedFloorReasks } : {}),
+        ...(seedFloorReasks !== undefined ? { maxSeedFloorReasks: seedFloorReasks } : {}),
         onReask: ({ share, violations }) =>
           console.log(
             `  spine: ${(share * 100).toFixed(0)} % of non-argument beats seeded after post-seeding, below the ${SPINE_SEED_FLOOR} floor — ` +
