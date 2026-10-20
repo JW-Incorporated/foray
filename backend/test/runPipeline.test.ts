@@ -57,6 +57,8 @@ import { SelfCritiquingNarrationWriter, __swapDraftCriticForTests, joinCheckpoin
 import { resolvePipelineFlags } from "../src/generation/pipelineFlags";
 import { resolveRouting } from "../src/config/stageRouting";
 import type { WriterObservation } from "../src/generation/NarrationWriterBuilder";
+import { evidenceMemoKey } from "../src/generation/evidencePrefetch";
+import { BudgetExceededError, BudgetStopError } from "../src/cost/budgetGuard";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -2484,4 +2486,177 @@ describe("runForayPipeline — GV-95 the retrieval server is asked ahead of rese
     expect(out.input.meta?.veracity?.retrieval).toBeDefined();
     expect(out.input.meta?.veracity?.retrieval).not.toHaveProperty("remote");
   });
+});
+
+/**
+ * GV-98 (W3-17, R1-05): FORAY_EVIDENCE_PREFETCH=first-act. The `evidence`
+ * stage awaits act 1's packs only; every later act's are gathered behind it
+ * while act 1 is written, and settled on every exit path. The gatherer is a
+ * scripted fake that reads the stage it was called in off the call context
+ * (so each run is inside a RunLog) and answers every gather outside the
+ * `evidence` stage 30 ms late: the "slower act-2 gathers".
+ */
+describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the rest behind it", () => {
+  const multiAct: GenerationRequest = { ...request, duration: "medium" };
+
+  function withEnv<T>(vars: Record<string, string | undefined>, fn: () => Promise<T>): Promise<T> {
+    const previous = Object.fromEntries(Object.keys(vars).map((k) => [k, process.env[k]]));
+    for (const [k, v] of Object.entries(vars)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    return fn().finally(() => {
+      for (const [k, v] of Object.entries(previous)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    });
+  }
+
+  function stagedGatherer() {
+    const calls: Array<{ key: string; stage: string | undefined }> = [];
+    const log: string[] = [];
+    let inFlight = 0;
+    const evidence: EvidenceGatherer = {
+      async gather(beat): Promise<EvidencePack> {
+        const stage = currentCallContext().stage;
+        calls.push({ key: evidenceMemoKey(beat), stage });
+        inFlight += 1;
+        try {
+          if (stage !== "evidence") await new Promise((resolve) => setTimeout(resolve, 30));
+          log.push(`landed@${stage === "evidence" ? "evidence" : "behind"}`);
+          return { purpose: beat.claim, beatKind: "account", docs: [] };
+        } finally {
+          inFlight -= 1;
+        }
+      }
+    };
+    return { evidence, calls, log, inFlight: () => inFlight };
+  }
+
+  function loggingWriter(log: string[], fail = false): NarrationWriterBuilder {
+    const stub = new StubNarrationWriterBuilder();
+    return {
+      providerName: stub.providerName,
+      writeAct: async (req, narrationCtx) => {
+        log.push(`write:${req.actTitle}`);
+        if (fail) throw new Error("writer down");
+        return stub.writeAct(req, narrationCtx);
+      }
+    };
+  }
+
+  /* MUTATION THAT KILLS THIS: drop the `acts: i => i === 0` filter from the
+     evidence stage (every page lands inside `evidence`, so nothing is left
+     to land behind act 1's first write); or have buildQueue ignore
+     `options.acts` (the same, from the gatherer's side). */
+  it("first-act: the stage gathers act 1's pages only, act 1 is written before the later acts' slower packs land, and every page is gathered once", async () => {
+    const { evidence, calls, log } = stagedGatherer();
+    const out = await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act" }, () =>
+      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence, narrationWriter: loggingWriter(log) }))
+    );
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    const names = out.timings.map((t) => t.name);
+    expect(names.indexOf("evidence")).toBe(names.indexOf("source") + 1);
+    expect(names.indexOf("evidence")).toBeLessThan(names.indexOf("narrate:0"));
+    expect(names.filter((n) => /^narrate:\d+$/.test(n)).length).toBeGreaterThan(1);
+
+    const retrieval = out.input.meta!.veracity!.retrieval!;
+    const timedCalls = calls.filter((c) => c.stage === "evidence");
+    expect(retrieval.timedPages).toBe(timedCalls.length);
+    expect(retrieval.timedPages).toBeGreaterThan(0);
+    expect(retrieval.backgroundPages).toBeGreaterThan(0);
+    expect(retrieval.timedPages! + retrieval.backgroundPages!).toBe(retrieval.pages);
+    expect(retrieval.backgroundMs).toBeGreaterThanOrEqual(0);
+    /* The background's own calls are tagged for the lane scheduler. */
+    expect(calls.some((c) => c.stage === "evidence:background")).toBe(true);
+    /* Exactly once: no key reached the wrapped gatherer twice, and every
+       page either phase listed was gathered. */
+    expect(new Set(calls.map((c) => c.key)).size).toBe(calls.length);
+    expect(calls).toHaveLength(retrieval.pages);
+    expect(retrieval.failed).toBe(0);
+    /* Act 1's writer started before the later acts' packs had all landed. */
+    const firstWrite = log.findIndex((l) => l.startsWith("write:"));
+    expect(firstWrite).toBeGreaterThan(-1);
+    expect(log.slice(firstWrite).some((l) => l === "landed@behind")).toBe(true);
+    expect(log.slice(0, firstWrite).every((l) => l === "landed@evidence" || l === "landed@behind")).toBe(true);
+  }, 60_000);
+
+  /* MUTATION THAT KILLS THIS: default FORAY_EVIDENCE_PREFETCH to first-act.
+     Pages then land outside the stage and the phase keys appear. */
+  it("all (the default): every page is gathered inside the evidence stage and the report carries no phase keys", async () => {
+    const { evidence, calls, log } = stagedGatherer();
+    const out = await withEnv({ FORAY_EVIDENCE_PREFETCH: undefined }, () =>
+      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence, narrationWriter: loggingWriter(log) }))
+    );
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((c) => c.stage === "evidence")).toBe(true);
+    const retrieval = out.input.meta!.veracity!.retrieval!;
+    expect(retrieval).not.toHaveProperty("timedPages");
+    expect(retrieval).not.toHaveProperty("backgroundPages");
+    expect(retrieval).not.toHaveProperty("backgroundMs");
+  }, 60_000);
+
+  /* MUTATION THAT KILLS THIS: drop the `settleBackground` calls from the
+     narration loop's catch and finally. The run then rejects with a
+     background gather still in flight, and the background keeps taking the
+     later acts' pages after the run has returned. */
+  it("first-act, narration throws: the run rejects with the writer's error only after the background has settled, and gathers nothing afterwards", async () => {
+    const { evidence, calls, log, inFlight } = stagedGatherer();
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      let caught: unknown;
+      await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act", EVIDENCE_PREFETCH_CONCURRENCY: "1" }, () =>
+        runWithRunLog(new RunLog(), () =>
+          runForayPipeline(multiAct, { ...options, narrationActConcurrency: 1 }, { ...stubDeps(), evidence, narrationWriter: loggingWriter(log, true) })
+        ).catch((err: unknown) => {
+          caught = err;
+        })
+      );
+      expect(caught).toBeInstanceOf(Error);
+      expect(String((caught as Error).message)).toMatch(/writer down/);
+      expect(inFlight()).toBe(0);
+      const atRejection = calls.length;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(calls.length).toBe(atRejection);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  }, 60_000);
+
+  /* MUTATION THAT KILLS THIS: start the background outside the
+     `evidence:background` call context (the refused gathers are then never
+     made and the run completes; ran: red). The deferred throw itself is
+     pinned by evidencePrefetch.test.ts: here a narration gather that shares
+     the refused in-flight promise carries the stop too, so dropping the
+     throw alone leaves this green (ran). */
+  it("first-act: a budget stop in the background surfaces from the next narration gather and stops the run naming a narrate stage", async () => {
+    const calls: Array<string | undefined> = [];
+    const evidence: EvidenceGatherer = {
+      async gather(beat): Promise<EvidencePack> {
+        const stage = currentCallContext().stage;
+        calls.push(stage);
+        /* Only the background fan-out is refused; a narration-time re-ask
+           would be answered. */
+        if (stage === "evidence:background") throw new BudgetExceededError(9.9, 0.2, 10);
+        return { purpose: beat.claim, beatKind: "account", docs: [] };
+      }
+    };
+    let caught: unknown;
+    await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act" }, () =>
+      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence })).catch((err: unknown) => {
+        caught = err;
+      })
+    );
+    expect(calls).toContain("evidence:background");
+    expect(caught).toBeInstanceOf(BudgetStopError);
+    expect((caught as BudgetStopError).stage).toMatch(/^narrate:\d+$/);
+  }, 60_000);
 });

@@ -90,6 +90,16 @@ export interface EvidencePrefetchMetrics extends Partial<TapeEvidenceMetrics> {
    * calls, so with a full prefetch it is a few milliseconds of memo lookups,
    * and every retrieval that stayed on the critical path shows up here. */
   narrationRetrievalMs: number;
+  /** GV-98 (FORAY_EVIDENCE_PREFETCH=first-act): present only when a
+   * background fan-out ran (`startBackground`), so the default run's row is
+   * unchanged. `pages`, `prefetched`, `failed` and `skipped` above are then
+   * the two phases together; these split `pages` into the phase the timed
+   * `evidence` stage waited for and the phase gathered behind it, and
+   * `backgroundMs` is the background fan-out's wall time (so far, when it is
+   * read before `settleBackground`). */
+  timedPages?: number;
+  backgroundPages?: number;
+  backgroundMs?: number;
   /* GV-76 (QK-27): `tapeDocsBuilt` and `tapeDocsCut`, inherited from
      `TapeEvidenceMetrics`, are the wrapped gatherer's counts, present when it
      keeps them (`DefaultEvidenceGatherer` does). QK-27 is
@@ -143,6 +153,28 @@ export interface PrefetchOptions {
    * from the checkpoint's `narrate:<act>` / `narrate:<act>:<slot>` keys).
    * Its pages are counted as `skipped` and never gathered. */
   skipSlot?: (actIndex: number, slotIndex: number) => boolean;
+  /** GV-98: only the acts this answers true for are queued; the others are
+   * neither gathered nor counted by THIS call (they belong to the other
+   * phase). Unset: every act, as before. */
+  acts?: (actIndex: number) => boolean;
+}
+
+/** What one phase of the fan-out did with its pages. */
+interface PhaseTally {
+  prefetched: number;
+  failed: number;
+}
+
+/** GV-98: the background phase, from `startBackground` to its last page. */
+interface BackgroundPhase extends PhaseTally {
+  pages: number;
+  skipped: number;
+  startedAt: number;
+  /** Set when the last worker has finished; `null` while it runs. */
+  ms: number | null;
+  /** Set by `settleBackground({ stop: true })`: no worker takes a new page. */
+  stopped: boolean;
+  promise: Promise<void>;
 }
 
 /**
@@ -158,6 +190,15 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
   private prefetchFinished = false;
   private stats = { prefetchMs: 0, concurrency: 0, pages: 0, prefetched: 0, failed: 0, skipped: 0 };
   private narration = { gathers: 0, hits: 0, ms: 0 };
+  /** GV-98: every key either phase has queued, so a page shared by act 1
+   * and a later act is gathered (and counted) once, by the phase that saw
+   * it first. */
+  private readonly queued = new Set<string>();
+  private background: BackgroundPhase | null = null;
+  /** GV-98: a budget stop the background fan-out hit, thrown by the next
+   * `gather` (the shape of `DefaultEvidenceGatherer.deferredBudgetError`),
+   * so the run stops in the narrate stage that asked, named by it. */
+  private deferredBudgetError: unknown = undefined;
 
   constructor(private readonly inner: EvidenceGatherer) {}
 
@@ -171,10 +212,84 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
   async prefetch(acts: SourcedAct[], ctx: ExternalResearchContext, options: PrefetchOptions = {}): Promise<EvidencePrefetchMetrics> {
     const concurrency = Math.max(1, Math.floor(options.concurrency ?? evidencePrefetchConcurrency()));
     const start = Date.now();
+    const { queue, skipped } = this.buildQueue(acts, options);
+    const tally: PhaseTally = { prefetched: 0, failed: 0 };
+    /* A budget stop ends the run at this stage, as it would anywhere. */
+    await this.runQueue(queue, ctx, concurrency, tally, () => false);
+
+    this.stats = { prefetchMs: Date.now() - start, concurrency, pages: queue.length + skipped, prefetched: tally.prefetched, failed: tally.failed, skipped };
+    this.prefetchFinished = true;
+    return this.metrics();
+  }
+
+  /**
+   * GV-98 (FORAY_EVIDENCE_PREFETCH=first-act): the same fan-out, NOT awaited.
+   * The pipeline awaits `prefetch` for act 1's pages only, starts this for
+   * every later act's, and lets act 1's writer begin; a later act's
+   * narration-time `gather` shares whatever is in flight through the memo
+   * (`lookup`), so no page is gathered twice. Returns at once.
+   *
+   * A budget stop is not thrown from here (nobody is awaiting it): it is held
+   * and thrown by the next `gather`, and no worker takes another page. Any
+   * other failure is counted, as in `prefetch`. The promise never rejects;
+   * `settleBackground` awaits it, and the pipeline does so on every exit path.
+   */
+  startBackground(acts: SourcedAct[], ctx: ExternalResearchContext, options: PrefetchOptions = {}): void {
+    if (this.background) throw new Error("PrefetchingEvidenceGatherer.startBackground: the background fan-out has already been started");
+    const concurrency = Math.max(1, Math.floor(options.concurrency ?? evidencePrefetchConcurrency()));
+    const startedAt = Date.now();
+    const { queue, skipped } = this.buildQueue(acts, options);
+    const phase: BackgroundPhase = {
+      pages: queue.length + skipped,
+      skipped,
+      prefetched: 0,
+      failed: 0,
+      startedAt,
+      ms: null,
+      stopped: false,
+      promise: Promise.resolve()
+    };
+    this.background = phase;
+    phase.promise = this.runQueue(
+      queue,
+      ctx,
+      concurrency,
+      phase,
+      () => phase.stopped || this.deferredBudgetError !== undefined,
+      (err) => {
+        if (this.deferredBudgetError === undefined) this.deferredBudgetError = err;
+      }
+    )
+      .catch((err: unknown) => {
+        /* Unreachable while every worker catches its own page's error; kept so
+           the promise can never become an unhandled rejection. */
+        console.warn(`evidencePrefetch: the background fan-out stopped (${err instanceof Error ? err.message : String(err)})`);
+      })
+      .finally(() => {
+        phase.ms = Date.now() - startedAt;
+      });
+  }
+
+  /**
+   * GV-98: waits for the background fan-out to finish (at once when none was
+   * started). Never throws. `stop` lets the pages already in flight land but
+   * starts no more: the failure path's call, so a run that is ending does
+   * not keep paying for evidence nobody will read.
+   */
+  async settleBackground(options: { stop?: boolean } = {}): Promise<void> {
+    const phase = this.background;
+    if (!phase) return;
+    if (options.stop) phase.stopped = true;
+    await phase.promise;
+  }
+
+  /** The page list for one phase: every page of every act `options.acts`
+   * admits, minus skipped slots and keys a phase has already queued. */
+  private buildQueue(acts: SourcedAct[], options: PrefetchOptions): { queue: EvidenceBeat[]; skipped: number } {
     const queue: EvidenceBeat[] = [];
-    const seen = new Set<string>();
     let skipped = 0;
     acts.forEach((act, actIndex) => {
+      if (options.acts && !options.acts(actIndex)) return;
       act.slots.forEach((slot, slotIndex) => {
         const beats = evidenceBeatsFor(slot, slotNeighbours(act, slotIndex));
         if (options.skipSlot?.(actIndex, slotIndex)) {
@@ -185,18 +300,33 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
           /* Two pages with the same key share one gather; counting the
              second would report a page that was never fetched. */
           const key = evidenceMemoKey(beat);
-          if (seen.has(key)) continue;
-          seen.add(key);
+          if (this.queued.has(key)) continue;
+          this.queued.add(key);
           queue.push(beat);
         }
       });
     });
+    return { queue, skipped };
+  }
 
-    let prefetched = 0;
-    let failed = 0;
+  /**
+   * The bounded worker pool both phases use: at most `concurrency` gathers in
+   * flight, each page counted into `tally`. A page whose gather throws is
+   * counted and NOT memoised, so narration asks again for it through the
+   * normal path. A budget stop is rethrown, or, given `onBudgetError`, handed
+   * to it and this worker stops. `stop` is checked before each new page.
+   */
+  private async runQueue(
+    queue: EvidenceBeat[],
+    ctx: ExternalResearchContext,
+    concurrency: number,
+    tally: PhaseTally,
+    stop: () => boolean,
+    onBudgetError?: (err: unknown) => void
+  ): Promise<void> {
     let next = 0;
     const worker = async (): Promise<void> => {
-      while (next < queue.length) {
+      while (next < queue.length && !stop()) {
         const beat = queue[next++]!;
         try {
           const pack = await this.lookup(beat, ctx);
@@ -204,13 +334,16 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
              lookup() has already dropped it from the memo so narration asks
              again. */
           if (pack.retrievalFailed) {
-            failed += 1;
+            tally.failed += 1;
             console.warn(`evidencePrefetch: retrieval failed for "${beat.claim.slice(0, 60)}" — narration will ask again`);
-          } else prefetched += 1;
+          } else tally.prefetched += 1;
         } catch (err) {
-          /* A budget stop ends the run at this stage, as it would anywhere. */
-          if (findBudgetError(err)) throw err;
-          failed += 1;
+          if (findBudgetError(err)) {
+            if (!onBudgetError) throw err;
+            onBudgetError(err);
+            return;
+          }
+          tally.failed += 1;
           console.warn(
             `evidencePrefetch: could not gather for "${beat.claim.slice(0, 60)}" — narration will ask again (${err instanceof Error ? err.message : String(err)})`
           );
@@ -218,16 +351,14 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
       }
     };
     await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, () => worker()));
-
-    this.stats = { prefetchMs: Date.now() - start, concurrency, pages: queue.length + skipped, prefetched, failed, skipped };
-    this.prefetchFinished = true;
-    return this.metrics();
   }
 
   /** `writeNarration`'s call. Counted against the prefetch only once the
    * fan-out has finished — before that, the fan-out and any early caller
    * simply share in-flight work. */
   async gather(beat: EvidenceBeat, ctx: ExternalResearchContext): Promise<EvidencePack> {
+    /* GV-98: the background fan-out's budget stop, surfaced here. */
+    if (this.deferredBudgetError !== undefined) throw this.deferredBudgetError;
     if (!this.prefetchFinished) return this.lookup(beat, ctx);
     const start = Date.now();
     this.narration.gathers += 1;
@@ -273,8 +404,23 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
 
   metrics(): EvidencePrefetchMetrics {
     const { gathers, hits, ms } = this.narration;
+    const phase = this.background;
     return {
       ...this.stats,
+      /* GV-98: only when a background fan-out ran, so the default row is
+         unchanged. Spread over `stats`, so the totals keep their keys'
+         places. */
+      ...(phase
+        ? {
+            pages: this.stats.pages + phase.pages,
+            prefetched: this.stats.prefetched + phase.prefetched,
+            failed: this.stats.failed + phase.failed,
+            skipped: this.stats.skipped + phase.skipped,
+            timedPages: this.stats.pages,
+            backgroundPages: phase.pages,
+            backgroundMs: phase.ms ?? Date.now() - phase.startedAt
+          }
+        : {}),
       narrationGathers: gathers,
       narrationHits: hits,
       hitRate: gathers === 0 ? null : hits / gathers,
@@ -291,7 +437,8 @@ export class PrefetchingEvidenceGatherer implements EvidenceGatherer {
     const rate = m.hitRate === null ? "n/a" : `${Math.round(m.hitRate * 100)}%`;
     return (
       `evidence: prefetched ${m.prefetched}/${m.pages} pages in ${m.prefetchMs} ms (${m.concurrency} at a time` +
-      `${m.failed ? `, ${m.failed} failed` : ""}${m.skipped ? `, ${m.skipped} skipped as already narrated` : ""}); ` +
+      `${m.failed ? `, ${m.failed} failed` : ""}${m.skipped ? `, ${m.skipped} skipped as already narrated` : ""}` +
+      `${m.backgroundPages !== undefined ? `, ${m.backgroundPages} of them behind act 1 in ${m.backgroundMs} ms` : ""}); ` +
       `narration hit the prefetch ${m.narrationHits}/${m.narrationGathers} (${rate}), ${m.narrationRetrievalMs} ms of retrieval left on its path (G-35)`
     );
   }

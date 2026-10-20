@@ -44,6 +44,7 @@ import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./aud
 import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics } from "./evidencePrefetch";
+import { evidencePrefetchMode } from "./generationFlags";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
 import { loadCatalogueData, type CatalogueData } from "./catalogueLookup";
 import { ForayStitcher } from "./stitchForay";
@@ -1225,6 +1226,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const selfCritique = options.selfCritique ?? readSelfCritique();
   // GV-14: a malformed FORAY_OUTPUT_BUDGETS throws here, not inside recordModelCall after a paid reply.
   void outputBudgetMode();
+  /* GV-98: FORAY_EVIDENCE_PREFETCH, read once here for the same reason (a
+     malformed value fails the run before it spends a call). 'all' (the
+     default) is G-35's whole-Foray fan-out; 'first-act' awaits act 1's packs
+     only and gathers the rest behind it. Not in the checkpoint variant: both
+     modes gather the same packs. */
+  const evidencePrefetch = evidencePrefetchMode();
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
@@ -2028,9 +2035,17 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const evidence = new PrefetchingEvidenceGatherer(
     deps.evidence ?? createEvidenceGatherer({ researcher, ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}) })
   );
+  const skipNarratedSlot = (actIndex: number, slotIndex: number): boolean =>
+    checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`);
+  /* GV-98 (W3-17, R1-05): under 'first-act' the timed stage waits for act 1's
+     packs only; every later act's are started in the background just before
+     narration begins (below), so act 1's writer never waits on act 2's
+     retrieval. For a one-act Foray the two modes are the same run. */
+  const evidenceFirstActOnly = evidencePrefetch === "first-act";
   await timed("evidence", () =>
     evidence.prefetch(sourced.acts, ctx, {
-      skipSlot: (actIndex, slotIndex) => checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`)
+      skipSlot: skipNarratedSlot,
+      ...(evidenceFirstActOnly ? { acts: (actIndex: number) => actIndex === 0 } : {})
     })
   );
   /* ONE clock for the fan-out. The stage log's reading is the report's
@@ -2287,6 +2302,19 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     const titles = titlesForItem(tape.itemId, showCatalogue, findDigestForItem(tape.itemId, archive, showCatalogue));
     return titles?.showTitle ?? sourced.newSegmentSources.find((s) => s.id === tape.itemId)?.show ?? "";
   });
+  /* GV-98: the later acts' evidence, gathered behind act 1. Started HERE,
+     immediately before the acts start, so the try/finally below is the one
+     place that settles it: from this line on every exit path awaits
+     `settleBackground`, and no gather outlives the run. A background budget
+     stop is thrown by the next narration `gather`, inside a `narrate:<i>`
+     stage, which names it. Its calls carry the stage `evidence:background`
+     on the call context (no timing of its own): the lane scheduler reads
+     that as background and the output budgets as retrieval. */
+  if (evidenceFirstActOnly) {
+    withCallContext({ stage: "evidence:background" }, () =>
+      evidence.startBackground(sourced.acts, ctx, { acts: (actIndex) => actIndex > 0, skipSlot: skipNarratedSlot })
+    );
+  }
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
     const p = gate.run(async () => {
       const landed = await stage(
@@ -2380,7 +2408,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   } catch (err) {
     gate.abort(err instanceof Error ? err : new Error(String(err)));
     await Promise.allSettled(narrations);
+    /* GV-98: a failing run starts no more background pages. */
+    await evidence.settleBackground({ stop: true });
     throw err;
+  } finally {
+    /* GV-98: every exit path, so the metrics below are final and nothing is
+       left running. A no-op without a background fan-out. */
+    await evidence.settleBackground();
   }
 
   /* G-32's evidence, for the report: one row per act off the same stage log
