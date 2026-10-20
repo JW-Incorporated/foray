@@ -1,3 +1,4 @@
+import * as fs from "fs";
 import * as path from "path";
 import type { z } from "zod";
 
@@ -154,4 +155,136 @@ const showQuotaParser: FlagParser<number> = {
  * non-number throws naming the variable. */
 export function researchShowQuota(source: FlagSource = process.env): number | undefined {
   return readFlag<number | undefined>(RESEARCH_SHOW_QUOTA_ENV, showQuotaParser, undefined, source);
+}
+
+/* ---------------------------------------------------------------------------
+   GV-95 (W3-11; decision 23): the retrieval server. FORAY_RETRIEVAL_URL unset
+   keeps today's local path (the File cue provider and text index); set, the
+   batch driver builds GV-29's RemoteRetrieval, PrecomputedTextIndex and
+   HydratingCueProvider instead.
+   --------------------------------------------------------------------------- */
+
+export const RETRIEVAL_URL_ENV = "FORAY_RETRIEVAL_URL";
+export const RETRIEVAL_TOKEN_ENV = "FORAY_RETRIEVAL_TOKEN";
+/** The file the token is read from when FORAY_RETRIEVAL_TOKEN is unset: the
+ * retrieval server's own rule (`retrievalServer.ts` `retrievalToken`). */
+export const RETRIEVAL_TOKEN_FILE_ENV = "FORAY_RETRIEVAL_TOKEN_FILE";
+export const RETRIEVAL_MODE_ENV = "FORAY_RETRIEVAL_MODE";
+export const RETRIEVAL_MODES = ["bm25", "hybrid"] as const;
+export type RetrievalModeFlag = (typeof RETRIEVAL_MODES)[number];
+
+/**
+ * Whether `hostname` (as `URL.hostname` spells it) is this machine: localhost,
+ * 127.0.0.0/8 or ::1. The one place plain http may carry the bearer token,
+ * because the bytes never leave the machine.
+ */
+export function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "localhost" || host === "[::1]" || host === "::1" || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+}
+
+/**
+ * GV-29 review follow-up (#1286, wave 5): a bearer token must not travel in
+ * clear. True when `baseUrl` is plain http to a host other than this machine,
+ * or does not parse at all (fail closed): a token may not be sent there.
+ */
+export function tokenWouldTravelInClear(baseUrl: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return true;
+  }
+  if (url.protocol === "https:") return false;
+  return !(url.protocol === "http:" && isLoopbackHost(url.hostname));
+}
+
+/** An http(s) URL with a host, no query and no fragment; a trailing slash is
+ * dropped. */
+const retrievalUrlParser: FlagParser<string> = {
+  parse: (raw) => {
+    let url: URL;
+    try {
+      url = new URL(raw);
+    } catch {
+      return undefined;
+    }
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || url.hostname.length === 0) return undefined;
+    if (url.search.length > 0 || url.hash.length > 0 || url.username.length > 0 || url.password.length > 0) return undefined;
+    return raw.replace(/\/+$/, "");
+  },
+  expected: "an http(s) URL with no query, fragment or credentials, e.g. http://127.0.0.1:7311"
+};
+
+/** GV-95: the retrieval server's base URL, or undefined (unset: the local
+ * path). A malformed value throws naming FORAY_RETRIEVAL_URL. */
+export function retrievalUrl(source: FlagSource = process.env): string | undefined {
+  return readFlag<string | undefined>(RETRIEVAL_URL_ENV, retrievalUrlParser, undefined, source);
+}
+
+/** Any non-empty string. */
+const tokenParser: FlagParser<string> = { parse: (raw) => raw, expected: "a non-empty token" };
+
+/** GV-95: the bearer token, from FORAY_RETRIEVAL_TOKEN, else from the file
+ * FORAY_RETRIEVAL_TOKEN_FILE names (trimmed), else undefined. A present but
+ * empty variable, or a token file that cannot be read or is empty, throws
+ * naming the variable. */
+export function retrievalToken(source: FlagSource = process.env, readFile: (file: string) => string = defaultReadFile): string | undefined {
+  const direct = readFlag<string | undefined>(RETRIEVAL_TOKEN_ENV, tokenParser, undefined, source);
+  if (direct !== undefined) return direct;
+  const file = readFlag<string | undefined>(RETRIEVAL_TOKEN_FILE_ENV, filePathParser, undefined, source);
+  if (file === undefined) return undefined;
+  let text: string;
+  try {
+    text = readFile(file).trim();
+  } catch {
+    throw new FlagValueError(RETRIEVAL_TOKEN_FILE_ENV, "a readable file holding the token");
+  }
+  if (text.length === 0) throw new FlagValueError(RETRIEVAL_TOKEN_FILE_ENV, "a readable file holding the token");
+  return text;
+}
+
+function defaultReadFile(file: string): string {
+  // eslint-disable-next-line security/detect-non-literal-fs-filename -- an operator-named secret file.
+  return fs.readFileSync(file, "utf8");
+}
+
+/** A file path, resolved against the repository root like `directoryParser`. */
+const filePathParser: FlagParser<string> = {
+  parse: (raw) => path.resolve(REPO_ROOT, raw),
+  expected: "a file path"
+};
+
+/** GV-95: FORAY_RETRIEVAL_MODE, bm25 (the default) or hybrid. */
+export function retrievalMode(source: FlagSource = process.env): RetrievalModeFlag {
+  return readEnumFlag(RETRIEVAL_MODE_ENV, RETRIEVAL_MODES, "bm25", source);
+}
+
+export interface RetrievalConfig {
+  baseUrl: string;
+  token: string | undefined;
+  mode: RetrievalModeFlag;
+}
+
+/**
+ * GV-95: the three retrieval flags together, or null when FORAY_RETRIEVAL_URL
+ * is unset (today's local path, and then no token is read). Fails fast:
+ *   - hybrid with no URL throws naming FORAY_RETRIEVAL_MODE (the local index
+ *     is BM25 only, so the mode would silently do nothing);
+ *   - a token with a plain-http URL to a non-loopback host throws naming
+ *     FORAY_RETRIEVAL_URL (GV-29 review: the token would cross the network in
+ *     clear). Use https, or a loopback URL (an SSH tunnel, say).
+ */
+export function retrievalConfig(source: FlagSource = process.env, readFile?: (file: string) => string): RetrievalConfig | null {
+  const baseUrl = retrievalUrl(source);
+  const mode = retrievalMode(source);
+  if (baseUrl === undefined) {
+    if (mode !== "bm25") throw new FlagValueError(RETRIEVAL_MODE_ENV, `bm25 when ${RETRIEVAL_URL_ENV} is unset (the local index is BM25 only)`);
+    return null;
+  }
+  const token = retrievalToken(source, readFile);
+  if (token !== undefined && tokenWouldTravelInClear(baseUrl)) {
+    throw new FlagValueError(RETRIEVAL_URL_ENV, `an https URL, or http to a loopback host, when ${RETRIEVAL_TOKEN_ENV} is set (the token must not travel in clear)`);
+  }
+  return { baseUrl, token, mode };
 }

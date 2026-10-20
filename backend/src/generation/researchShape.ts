@@ -32,7 +32,7 @@ import {
 import { corpusCoverage } from "./transcriptCorpus";
 import { codeSpanSync } from "./codeSpans";
 import { researchShowQuota } from "./generationFlags";
-import { NullTranscriptTextIndex, type TranscriptTextIndex } from "./transcriptTextIndex";
+import { NullTranscriptTextIndex, type TranscriptTextIndex, type TranscriptTextSearchOptions } from "./transcriptTextIndex";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
 
 /** This checkout. Only the corpus-coverage read below needs it, and only when
@@ -204,6 +204,56 @@ interface CandidateSeed {
 }
 
 /**
+ * GV-95 (W3-11): THE QUERY STRINGS, IN ONE PLACE. A retrieval server answers
+ * only the exact question it was asked ahead of time (`PrecomputedTextIndex`
+ * keys an answer by scope, limit and verbatim text), so the strings this stage
+ * prepares and the strings it then searches come from these helpers and
+ * nowhere else: they cannot drift apart.
+ */
+
+/** A subtopic's own vocabulary: its label plus the semantic index's phrases
+ * for it (`tapeWindowsFor`). */
+export function subtopicQueryText(seed: { label: string; terms: readonly string[] }): string {
+  return [seed.label, ...seed.terms].join(" ");
+}
+
+/** How many episodes the subject probe asks for (`probeSubjectTape`). */
+export const SUBJECT_PROBE_LIMIT = 50;
+
+/** The subject probe's query: the listener's prompt (when this stage has it),
+ * then the intent's subject and angle (`probeSubjectTape`). */
+export function subjectProbeQuery(prompt: string | undefined, intent: { subject: string; angle: string }): string {
+  return `${prompt ?? ""} ${intent.subject} ${intent.angle}`;
+}
+
+/** One question this stage will ask the text index, as the retrieval client
+ * prepares it: 'lineage' for a search with the lineage predicate, 'all' for
+ * one without. */
+export interface ResearchSearchRequest {
+  scope: "lineage" | "all";
+  text: string;
+  limit: number;
+}
+
+/** Whether the subtopic's catalogue tape is enough to search the tape for it
+ * at all (`tapeWindowsFor`'s second gate). */
+function tapeWorthSearching(tape: TapeAvailability): boolean {
+  return tape.signal === "strong" || tape.signal === "moderate";
+}
+
+/**
+ * GV-29 review follow-up (#1286 wave 5): would this search be ANSWERED, or is
+ * it a miss? An index that can say (`PrecomputedTextIndex.answers`) is asked;
+ * any other index answers every search it is enabled for. A miss falls back
+ * to an index that finds nothing, and must not be reported as a search that
+ * ran and found nothing.
+ */
+function indexAnswers(textIndex: TranscriptTextIndex, query: string, options: TranscriptTextSearchOptions): boolean {
+  const answers = (textIndex as { answers?: (q: string, o: TranscriptTextSearchOptions) => boolean }).answers;
+  return typeof answers !== "function" || answers.call(textIndex, query, options);
+}
+
+/**
  * Builds the candidate list from the intent's subject+angle text: every
  * matched semantic-index concept (subject/angle terms overlapping a
  * concept's `terms`), plus up to `MAX_RELATED_CONCEPTS` concepts related to
@@ -311,19 +361,30 @@ function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps
   if (!deps.textIndex.enabled) {
     return { windows: [], unavailable: "no transcript text index on this machine, so nothing could be quoted", episodesMatched: 0 };
   }
-  if (tape.signal !== "strong" && tape.signal !== "moderate") {
+  if (!tapeWorthSearching(tape)) {
     return { windows: [], unavailable: `catalogue tape for this subtopic is "${tape.signal}" — too thin to be worth quoting`, episodesMatched: 0 };
   }
 
   /* The subtopic's own vocabulary: its label plus the semantic index's phrases
      for it, which is what makes the query broader than the prompt's wording
      ("feature store" finds the episodes that discuss one without using the
-     label). Hyphenated concept terms split on the tokenizer's own rule. */
-  const queryText = [seed.label, ...seed.terms].join(" ");
+     label). Hyphenated concept terms split on the tokenizer's own rule.
+     GV-95: one helper, so the prepared string is this string. */
+  const queryText = subtopicQueryText(seed);
   const isUsable = (entry: TranscriptDigestEntry): boolean =>
     familyGateAllows(deps.topic, nodesForArchiveEntry(entry, deps.root), deps.root);
 
-  const candidates = deps.textIndex.search(queryText, { limit: RESEARCH_TAPE_EPISODE_CANDIDATES, isUsable });
+  const searchOptions = { limit: RESEARCH_TAPE_EPISODE_CANDIDATES, isUsable };
+  /* GV-29 review: a search the retrieval server never answered says so,
+     rather than reading as an archive that holds nothing on the subtopic. */
+  if (!indexAnswers(deps.textIndex, queryText, searchOptions)) {
+    return {
+      windows: [],
+      unavailable: "the retrieval server did not answer this subtopic's search (a miss: degraded or not prepared), so nothing could be quoted",
+      episodesMatched: 0
+    };
+  }
+  const candidates = deps.textIndex.search(queryText, searchOptions);
   if (candidates.length === 0) {
     return { windows: [], unavailable: "no episode in this Foray's taxonomy lineage says enough of this subtopic to open", episodesMatched: 0 };
   }
@@ -568,7 +629,13 @@ const OVERRIDE_ENV = "FORAY_ALLOW_IRRELEVANT_MAP";
  */
 function probeSubjectTape(query: string, textIndex: TranscriptTextIndex): SubjectTapeProbe {
   if (!textIndex.enabled) return { query, episodesMatched: 0, shows: [], searched: false };
-  const hits = textIndex.search(query, { limit: 50 });
+  /* GV-29 review: a probe the retrieval server never answered was not a
+     search, and must not refuse the map as if the corpus had said nothing. */
+  if (!indexAnswers(textIndex, query, { limit: SUBJECT_PROBE_LIMIT })) {
+    console.log("researchShape: the subject probe was not answered by the retrieval server (a miss), so it is reported as not searched");
+    return { query, episodesMatched: 0, shows: [], searched: false };
+  }
+  const hits = textIndex.search(query, { limit: SUBJECT_PROBE_LIMIT });
   const shows: string[] = [];
   for (const hit of hits) {
     const show = String(hit.entry.show_title ?? hit.entry.show_id ?? "").trim();
@@ -629,6 +696,17 @@ export interface BuildResearchShapeOptions {
    * a caller that cannot pass one.
    */
   refuseIrrelevantMap?: boolean;
+  /**
+   * GV-95 (W3-11): called once, before the subject probe and the subtopic
+   * searches, with EVERY search this stage is about to make (the strings come
+   * from `subjectProbeQuery` and `subtopicQueryText`, the same helpers the
+   * searches use, with the limits and scopes they pass). The pipeline's
+   * retrieval wiring sends them to the retrieval server and hydrates the
+   * bodies the subtopic searches will open, so the synchronous searches below
+   * read stored answers. Omitted (the default), nothing is called and the
+   * stage is unchanged; not called when the text index is disabled.
+   */
+  prepareQueries?: (requests: ResearchSearchRequest[]) => Promise<void>;
 }
 
 /**
@@ -699,7 +777,17 @@ export async function buildResearchShape(
      the next twenty lines use anyway, so the ordering costs nothing and saves
      everything downstream of it — the fan-out, the window searches, and the
      Opus spine call the whole of #703 is about. */
-  const subjectTape = probeSubjectTape(`${options.prompt ?? ""} ${intent.subject} ${intent.angle}`, windowDeps.textIndex);
+  const probeQuery = subjectProbeQuery(options.prompt, intent);
+  /* GV-95: every search below, prepared before the first of them runs. */
+  if (options.prepareQueries && windowDeps.textIndex.enabled) {
+    await options.prepareQueries([
+      { scope: "all", text: probeQuery, limit: SUBJECT_PROBE_LIMIT },
+      ...withTape
+        .filter(({ tape }) => tapeWorthSearching(tape))
+        .map(({ seed }): ResearchSearchRequest => ({ scope: "lineage", text: subtopicQueryText(seed), limit: RESEARCH_TAPE_EPISODE_CANDIDATES }))
+    ]);
+  }
+  const subjectTape = probeSubjectTape(probeQuery, windowDeps.textIndex);
 
   /* #703 ASK 2: and what that corpus IS, counted against the disk rather than
      against the digest that was supposed to describe it. Read here so the
