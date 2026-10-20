@@ -1,3 +1,4 @@
+import { AsyncResource } from "node:async_hooks";
 import { z } from "zod";
 import {
   CLARITY_DECIDERS,
@@ -17,7 +18,7 @@ import { resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
 import { resolveRouting, type RoutingTable } from "../config/stageRouting";
 import { resolveGateConfig, type GateConfig } from "./gateConfig";
 import { outputBudgetMode } from "../config/outputBudgets";
-import { DeepenedActSchema, SpineSchema } from "../types/spine";
+import { DeepenedActSchema, SpineSchema, type DeepenedAct } from "../types/spine";
 import {
   ClipScoreOutcomeSchema,
   NewSegmentSchema,
@@ -37,17 +38,26 @@ import { buildSpineWithReasks, reaskForRuntime, type SpineReask } from "./buildS
 import { spineRuntimeLine, spineRuntimeOf, type SpineRuntime } from "./tierRuntime";
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
 import { deepenActs, foldsDeepen } from "./deepenActs";
-import { sourceBeats, sourcingBodies, sourcingSearches, summarizeSourcing } from "./sourceBeats";
+import {
+  SOURCING_SNAPSHOT_VERSION,
+  SourcingSession,
+  sourceBeats,
+  sourcingBodies,
+  sourcingSearches,
+  summarizeSourcing,
+  type SourceBeatsOptions,
+  type SourcingSnapshot
+} from "./sourceBeats";
 import { retrievalStatsSince, type RetrievalMode, type RetrievalSearchRequest, type RetrievalStats } from "./retrievalClient";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
-import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
+import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeAct, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
-import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics } from "./evidencePrefetch";
-import { evidencePrefetchMode } from "./generationFlags";
+import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics, type PrefetchOptions } from "./evidencePrefetch";
+import { evidencePrefetchMode, readNumberFlag, type FlagSource } from "./generationFlags";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
 import { loadCatalogueData, type CatalogueData } from "./catalogueLookup";
-import { ForayStitcher } from "./stitchForay";
+import { ForayStitcher, type StitchForayOptions } from "./stitchForay";
 import {
   finalizeForay,
   generationBatchId,
@@ -101,13 +111,13 @@ import { taxonomyLineage } from "./taxonomyFamily";
 import type { SpineBuildContext, SpineBuilder, SpineSelectionRecord } from "./SpineBuilder";
 import { addSelfCritique, joinCheckpointVariant, readSelfCritique, type SelfCritiqueConfig, type SelfCritiqueTotals } from "./selfCritique";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
-import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, SeamEditRequest, WriterObservation } from "./NarrationWriterBuilder";
+import type { ActFrame, ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, SeamEditRequest, WriterObservation } from "./NarrationWriterBuilder";
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
 import { NullTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
-import type { TapeRelevanceInput } from "../types/tapeSourcing";
+import type { SourceBeatsResult, SourcedAct, TapePointer, TapeRelevanceInput } from "../types/tapeSourcing";
 import type { DurationTier, Spine } from "../types/spine";
 import type { ForayItem } from "./forayItems";
 
@@ -1142,6 +1152,138 @@ const WrittenActSchema = z.object({
    function's own return value is one less shape to keep in step. */
 const StitchActCheckpointSchema = z.array(ForayItemSchema);
 
+/* GV-102 (W4-07): the per-act pipeline's sourcing checkpoint. `source:<i>`
+   banks act i as SourcingSession.sourceAct returned it, beside the session's
+   whole state after it (`exportState`), so a resume rebuilds the session from
+   the last banked act and never re-decides an act that may already be
+   narrated. One schema per ledger of `SourcingSnapshot`; the rows reuse the
+   classic `source` stage's schemas, so a row parses the same either way. */
+const LedgerEntriesSchema = z.array(z.tuple([z.string(), z.number()]));
+const SourcingSnapshotSchema = z.object({
+  version: z.literal(SOURCING_SNAPSHOT_VERSION),
+  mintedIds: z.array(z.string()),
+  newSegments: z.array(NewSegmentSchema),
+  newSegmentSources: z.array(z.tuple([z.string(), MintedSegmentSourceSchema])),
+  transcriptionQueueCandidates: z.array(TranscriptionQueueCandidateSchema),
+  usedSegmentIds: z.array(z.string()),
+  lastStartByItem: LedgerEntriesSchema,
+  lastEndByItem: LedgerEntriesSchema,
+  usedCountByItem: LedgerEntriesSchema,
+  placedTapeCount: z.number().int().nonnegative(),
+  placedDurations: z.array(z.number()),
+  placedSecByItem: LedgerEntriesSchema,
+  longestSecByItem: LedgerEntriesSchema,
+  placed: z.array(z.object({ itemId: z.string(), startSec: z.number() })),
+  lastMintedClip: z.null(),
+  tapeRelevance: z.array(TapeRelevanceInputSchema),
+  sourcingTrace: z.array(SourcingTraceSchema),
+  acts: z.array(SourcedActSchema)
+});
+const SourceActCheckpointSchema = z.object({ act: SourcedActSchema, snapshot: SourcingSnapshotSchema });
+type SourceActCheckpoint = { act: SourcedAct; snapshot: SourcingSnapshot };
+
+/**
+ * GV-102: how many acts the per-act pipeline deepens at once. 1 by default:
+ * concurrent deepen calls on one Spark would slow act 0's writer, so act 0 is
+ * asked first and the rest queue behind it. Raised once the routing sends
+ * deepen to the second box. Read only when the per-act pipeline is on, so a
+ * malformed value never touches a classic run (decision 5: fail fast, naming
+ * the variable only).
+ */
+export const DEEPEN_CONCURRENCY_ENV = "FORAY_DEEPEN_CONCURRENCY";
+export const DEFAULT_DEEPEN_CONCURRENCY = 1;
+export function deepenConcurrency(env: FlagSource = process.env): number {
+  return readNumberFlag(DEEPEN_CONCURRENCY_ENV, z.number().int().min(1), DEFAULT_DEEPEN_CONCURRENCY, env);
+}
+
+/**
+ * GV-102: the evidence gatherer the per-act pipeline hands every act. It is
+ * the classic `PrefetchingEvidenceGatherer` (one memo, one `queued` set, so a
+ * page two acts share is gathered and counted once, by the first), asked once
+ * per act (`evidence:<i>`) instead of once for the Foray. Its own `prefetch`
+ * keeps only the last call's counts, so this sums them across the acts, and
+ * `prefetchMs` is the sum of the `evidence:<i>` stage timings: the report row
+ * then counts what the classic single fan-out counts over the same pages.
+ * Calls must not overlap (the pipeline chains `evidence:<i>` behind
+ * `evidence:<i-1>`): each call's counts are read right after it.
+ */
+export class PerActEvidenceGatherer extends PrefetchingEvidenceGatherer {
+  private totals = { prefetchMs: 0, concurrency: 0, pages: 0, prefetched: 0, failed: 0, skipped: 0 };
+
+  override async prefetch(acts: SourcedAct[], ctx: ExternalResearchContext, options: PrefetchOptions = {}): Promise<EvidencePrefetchMetrics> {
+    await super.prefetch(acts, ctx, options);
+    const call = super.metrics();
+    this.totals = {
+      prefetchMs: this.totals.prefetchMs,
+      concurrency: call.concurrency,
+      pages: this.totals.pages + call.pages,
+      prefetched: this.totals.prefetched + call.prefetched,
+      failed: this.totals.failed + call.failed,
+      skipped: this.totals.skipped + call.skipped
+    };
+    return this.metrics();
+  }
+
+  /** One `evidence:<i>` stage's wall time, added to `prefetchMs`. */
+  addStageMs(ms: number): void {
+    this.totals.prefetchMs += ms;
+  }
+
+  override metrics(): EvidencePrefetchMetrics {
+    return { ...super.metrics(), ...this.totals };
+  }
+}
+
+/** GV-102: what the act-ready wrapper reads of sourcing when an act is
+ * ready. `totalActs` is set only on the per-act path, where `acts` may still
+ * be a prefix of the Foray. */
+interface SourcingView {
+  acts: SourcedAct[];
+  newSegments: SourceBeatsResult["newSegments"];
+  newSegmentSources: SourceBeatsResult["newSegmentSources"];
+  runtimePool: SegmentRecord[];
+  totalActs?: number;
+}
+
+/** GV-102: what either middle hands `finishRun`. */
+interface PipelineMiddle {
+  sourced: SourceBeatsResult;
+  written: WrittenAct[];
+  stitcher: ForayStitcher;
+  evidence: PrefetchingEvidenceGatherer;
+  clipScoresPending: Promise<ClipScoreRecord[]> | null;
+  runtimePool: SegmentRecord[];
+  actConcurrency: number;
+}
+
+/** GV-102: the per-act pipeline's no-tape stop, thrown from the last act's
+ * chain when the whole Foray sourced no tape, and turned back into the
+ * `no-tape` outcome by the driver once in-flight work has settled. */
+class PerActNoTapeStop extends Error {
+  constructor() {
+    super("runForayPipeline: every act sourced to narration (no tape)");
+    this.name = "PerActNoTapeStop";
+  }
+}
+
+/** A promise with its resolve and reject in hand; rejections are pre-caught
+ * so one nobody awaits is never an unhandled rejection. */
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void; reject: (err: unknown) => void } {
+  let resolve!: (value: T) => void;
+  let reject!: (err: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  promise.catch(() => undefined);
+  return { promise, resolve, reject };
+}
+
+/** The tape beats in `acts`: the no-tape stop's count (F-65). */
+function tapeBeatCount(acts: readonly SourcedAct[]): number {
+  return acts.reduce((sum, act) => sum + act.slots.reduce((s, slot) => s + slot.beats.filter((b) => b.sourcing === "tape").length, 0), 0);
+}
+
 /**
  * GV-100 (W4-04 item 4; covers GP-05): the seed-floor re-asks the spine may
  * spend when the run takes no explicit `spineSeedFloorReasks`. On the fast
@@ -1247,6 +1389,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      only and gathers the rest behind it. Not in the checkpoint variant: both
      modes gather the same packs. */
   const evidencePrefetch = evidencePrefetchMode();
+  /* GV-102: FORAY_DEEPEN_CONCURRENCY, read once here and only on the per-act
+     path, so a classic run never reads it. */
+  const perActDeepenConcurrency = flags.perActPipeline ? deepenConcurrency() : undefined;
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
@@ -1351,11 +1496,15 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      until someone passes --no-resume, so it is dropped, with everything
      built on it (narration and stitching), and the next attempt re-sources
      against the pool as it is now. */
+  /* GV-102: the per-act pipeline banks its sourcing per act (`source:<i>`);
+     set when it resumed any of them, so the same drop applies. */
+  let perActSourceResumed = false;
   const dropStaleSourcing = async (checkForaysErrors: readonly string[]): Promise<void> => {
-    if (!checkpoint.wasResumed("source")) return;
+    if (!checkpoint.wasResumed("source") && !perActSourceResumed) return;
     if (!checkForaysErrors.some(isMintedPoolCollisionError)) return;
     const dropped = await checkpoint.drop(
-      (name) => name === "source" || name === "clip-scores" || name.startsWith("narrate:") || name.startsWith("stitch:")
+      (name) =>
+        name === "source" || name.startsWith("source:") || name === "clip-scores" || name.startsWith("narrate:") || name.startsWith("stitch:")
     );
     console.warn(
       `runForayPipeline: the resumed sourcing collides with the committed segment pool; dropped ${dropped.length} banked stage(s) (${dropped.join(", ")}) so the next attempt re-sources (gen-12)`
@@ -1891,14 +2040,725 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     await emitPrelude(readyAtMs, segmentPool, "item");
   }
 
-  /* §4.4 — deepen every act, in parallel across acts, each act checkpointed on
-     its own (F-17): an act that succeeded is banked even when a sibling act
-     exhausts its retry budget and fails the stage. */
+  /* ---------------------------------------------------------------------- *
+   * GV-102 (W4-07): from here the run takes one of two middles. The classic
+   * one (below the per-act branch, unchanged) deepens every act, sources the
+   * whole Foray, gathers every page's evidence and only then narrates. The
+   * per-act one (`perActRun`, FORAY_PER_ACT_PIPELINE or the FORAY_FAST_PATH
+   * umbrella) runs act 1's deepen, source, evidence, write and stitch first
+   * and later acts behind it. Both hand the same record to `finishRun`, so
+   * veracity, finalize and the outcome are built once. The helpers between
+   * here and the branch are the classic path's own code, shared so the two
+   * middles cannot drift: each behaves exactly as it did inline.
+   * ---------------------------------------------------------------------- */
+
   /* GV-86: on the folded-deepen path an act whose spine reply carries its
      introduction and exit is taken as deepened with no deepen call; one that
      does not costs its usual call. `deepenFolded` names the acts taken from
      the spine (0-based), and is set only on that path. */
   const deepenFolded: number[] = [];
+
+  /* WS-D2's clock: set once, the first time `onActReady` fires for act index
+     0 — now immediately after act 0 is narrated — then carried unchanged on
+     every later act's rewrite, matching `PartialCandidate.ttlA1Ms`'s own doc
+     comment.
+
+     IT STAYS `null` ON A RESUMED RUN, and that is correct rather than a gap.
+     When F-17/F-18's checkpoint already holds act 0's stitch, `stageDetail()`
+     returns the stored items and act 0 never goes through the stitcher, so
+     `onActReady` never fires for it and no act boundary is ever timed. The
+     resumed process did not take that long, and the process that did is gone;
+     a number measured from THIS run's start would be a fiction. Reported as
+     "not measured" instead. The same is true of any run that supplied no
+     `deps.onActReady` — there was no act-boundary clock to read. */
+  let ttlA1Ms: number | null = null;
+
+  /* GV-21 (W5-12a): every act's veracity, filled in the ordered loop below
+     from the `WrittenAct` it stitches — banked or fresh — and NOT from the
+     callback: a resumed act never fires `onActReady`, and its pages must
+     still count. The partial candidate reads it per act. */
+  const actVeracity: ActVeracity[] = [];
+
+  /* F-88: which acts' narration has landed, by position, for the synthesis
+     pass — it reads the whole Foray's verified pages, and `writeNarration`
+     is handed one act. A rejected act contributes nothing; the ordered loop
+     reports its error when it reaches it. Declared BEFORE the acts start
+     because F-97 reads it from inside them too (`ground`). */
+  const settledActs: Array<WrittenAct | undefined> = [];
+
+  /* G-35: a slot a resumed run will not narrate again; its pages are counted
+     as skipped and never gathered. */
+  const skipNarratedSlot = (actIndex: number, slotIndex: number): boolean =>
+    checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`);
+
+  /* §4.5's options, built where the stage runs (the classic `source`, or each
+     per-act `source:<i>`), so a resumed stage builds none of them. */
+  const sourceOptionsOf = (): SourceBeatsOptions => ({
+    cueProvider: deps.cueProvider,
+    textIndex: deps.textIndex,
+    /* F-91: the tape the topic decision was measured on — both tiers. */
+    segmentPool,
+    transcriptArchive: archive,
+    topic,
+    root: options.root,
+    /* Tier 2 may only mint tape whose audio can be honestly registered
+       (F-49 plumbing) — see `audioSourceLookup.ts`. */
+    audioSourceFor: deps.audioSourceFor ?? createDigestAudioSourceResolver({ root: options.root }),
+    /* F-98 (B): which committed pool rows a longer cut of the same window
+       may supersede. The rule is `poolRowIsSupersedable`'s — a machine's
+       unreviewed cut, played only by generated drafts — and the Foray list
+       it is asked against is the one on disk, read once here rather than
+       per candidate. A checkout without `data/forays.json` (CI, a fixture
+       run) supersedes nothing, which is the same inert default every other
+       catalogue-reading option in this call has. */
+    supersedableCut: makeSupersedableCut(options.root)
+  });
+
+  /* GV-95: the archive entry of every clip `acts` play, fetched before
+     anything reads clip text (the clip scores and the evidence stage). */
+  const clipEpisodesOf = (acts: readonly SourcedAct[]): TranscriptDigestEntry[] => {
+    const catalogue = loadCatalogueData();
+    const entries: TranscriptDigestEntry[] = [];
+    for (const act of acts) {
+      for (const slot of act.slots) {
+        for (const beat of slot.beats) {
+          if (beat.sourcing !== "tape") continue;
+          const entry = findDigestForItem(beat.tape.itemId, archive, catalogue);
+          if (entry) entries.push(entry);
+        }
+      }
+    }
+    return entries;
+  };
+
+  /* The pool the runtime clock is measured against: what tier 2 minted
+     first, then the pool the run sourced against (see the classic call site
+     below for why, F-78, F-84 and gen-15). */
+  const runtimePoolFor = (
+    newSegments: SourceBeatsResult["newSegments"],
+    newSegmentSources: SourceBeatsResult["newSegmentSources"]
+  ): SegmentRecord[] => {
+    const rowContext = { batchId: generationBatchId(forayId), sources: newSegmentSources };
+    const mintedPool = newSegments.map((s) => mintedSegmentRow(s, topic, rowContext) as unknown as SegmentRecord);
+    return mintedPool.length ? [...mintedPool, ...segmentPool] : segmentPool;
+  };
+
+  /* GV-79: the checkpointed clip-scores stage over `sourced`, started off the
+     timed path and awaited just before the veracity metrics. */
+  const startClipScores = (sourced: SourceBeatsResult): Promise<ClipScoreRecord[]> =>
+    stage(
+      "clip-scores",
+      (raw) => ClipScoresCheckpointSchema.parse(raw) as ClipScoreRecord[],
+      async () =>
+        scoreSourcedClips(sourced, {
+          cueProvider: deps.cueProvider ?? new NullTranscriptCueProvider(),
+          transcriptArchive: archive,
+          catalogue: deps.clipCatalogue ?? loadCatalogueData(),
+          judge:
+            deps.clipJudge ??
+            createClipJudge(gates, createJevClient({ routing }), {
+              meter: { guard: defaultBudgetGuard, userId: options.userId, ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}) }
+            }),
+          subjectSentence: subjectSentenceFor(spine, intent)
+        })
+    );
+
+  /* WS-D2 + GV-33: the stitcher's act-ready wrapper (see the classic call
+     site's comment). `view` is read when the act is ready: the classic path's
+     whole-Foray sourcing, or (GV-102) the per-act session's state at that
+     moment, whose plan names the Foray's `totalActs` so the partial's
+     share-of-whole rules wait for the acts not yet sourced (GV-46). */
+  const actReadyHandler =
+    (view: () => SourcingView): NonNullable<StitchForayOptions["onActReady"]> =>
+    async ({ actIndex, actItems, itemsSoFar, actItemProvenance, provenanceSoFar, seamItemsEmitted }) => {
+      const v = view();
+      const readyAtMs = wallClockMs() - pipelineStartMs;
+      const logReadyMs = readinessNowMs();
+      const preludeRides = !preludeEmitted;
+      const actItemIds = [...(preludeRides ? [itemKeyOf(prelude, 0)] : []), ...actItemProvenance.map((p) => p.itemId)];
+      if (preludeRides) await emitPrelude(readyAtMs, v.runtimePool, "act");
+      if (deps.onItemReady) {
+        /* GV-21's act verdict, no finalize: an unservable act's items are
+           marked so the timeline pauses there. */
+        const servable = assessAct(actItemProvenance, DEFAULT_READINESS_POLICY, actVeracity[actIndex]).servable;
+        const actStart = itemsSoFar.length - actItems.length;
+        for (let k = seamItemsEmitted; k < actItems.length; k++) {
+          const item = actItems[k]!;
+          const before = [prelude, ...itemsSoFar.slice(0, actStart + k)];
+          await emitItem(item, actItemProvenance[k]!, servable, readyAtMs, runtimeSecFor(before, v.runtimePool), runtimeSecFor([item], v.runtimePool), "act");
+        }
+      }
+      if (!deps.onActReady) {
+        emitActReady({ actIndex, itemIds: actItemIds, partialOk: null, ...(logReadyMs !== undefined ? { readyMs: logReadyMs } : {}) });
+        return;
+      }
+      if (actIndex === 0) ttlA1Ms = readyAtMs;
+      /* The disclosure is prepended here for the SAME reason the
+         whole-Foray path prepends it below: it is a Foray-level
+         obligation stitch has no concept of, and `check-forays.mjs`
+         requires items[0] to be it — a partial candidate is
+         something `finalizeForay` inside `buildPartialCandidate`
+         validates with those same gates, so it needs the same
+         opening item the final candidate gets. */
+      const itemsWithDisclosure = [preludeItem(spine.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
+      /* GV-21: per-item readiness beside the items (never on them), the
+         prelude classified explicitly as index 0. The verdict it feeds
+         (`delivery`) is independent of `validation` and of the refusal
+         below: an unservable act is withheld, never aborts the run. */
+      const itemProvenance = [preludeProvenance(itemsWithDisclosure[0]!), ...provenanceSoFar];
+      const candidate = await buildPartialCandidate(
+        {
+          actIndex,
+          totalActs: allActTitles.length,
+          allActTitles,
+          items: itemsWithDisclosure,
+          slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
+          runtimeSec: runtimeSecFor(itemsWithDisclosure, v.runtimePool),
+          ttlA1Ms,
+          itemProvenance,
+          actVeracity: actVeracity.slice(0, actIndex + 1)
+        },
+        {
+          id: forayId,
+          title,
+          topic,
+          summary,
+          authorId: options.userId,
+          builtAt: startedAt,
+          /* F-71: the same minted tier-2 tape the whole-Foray input
+             carries below. Without it the partial candidate's own
+             `finalizeForay` is handed a pool this run's segments are not
+             in, and reports them as unknown segment ids — a failure of
+             the input, not of the Foray. */
+          segments: v.newSegments,
+          segmentSources: v.newSegmentSources,
+          root: options.root,
+          /* F-79: the sourcing plan, so the partial's share-of-whole
+             rules (M4 above all) are judged on the projected whole
+             rather than on this act's slice — see partialProjection.ts. */
+          projection: { sourcedActs: v.acts, slots, ...(v.totalActs !== undefined ? { totalActs: v.totalActs } : {}) }
+        },
+        finalize
+      );
+      /* GV-33: stamped when the act was ready, not after the two
+         finalize runs above; the verdict is the partial's. */
+      emitActReady({
+        actIndex,
+        itemIds: actItemIds,
+        partialOk: candidate.validation.ok,
+        ...(logReadyMs !== undefined ? { readyMs: logReadyMs } : {})
+      });
+      await deps.onActReady(candidate);
+      await dropStaleSourcing(candidate.validation.checkForaysErrors);
+      /* G-30 (manual step 10): the partial-refusal exit. AFTER the
+         callback, so the refused partial is on disk for whoever reads
+         the report; BEFORE `checkpoint.stage` records this act's
+         stitch, so a re-run rebuilds the refused act rather than
+         resuming past it. */
+      if (!candidate.validation.ok && options.refusedPartial === "abort") {
+        throw new RefusedPartialError(
+          actIndex,
+          allActTitles.length,
+          candidate.validation.checkForaysErrors,
+          candidate.validation.checkNarrationErrors
+        );
+      }
+    };
+
+  /* §4.7: one act's `narrate:<i>` stage, checkpointed under its own key. */
+  const narrateOneAct = async (
+    i: number,
+    act: SourcedAct,
+    evidence: EvidenceGatherer,
+    extras: { segmentSources: SourceBeatsResult["newSegmentSources"]; showsIntroduced: string[]; frame: ActFrame | undefined }
+  ): Promise<WrittenAct> => {
+    const landed = await stage(
+      `narrate:${i}`,
+      (raw) => WrittenActSchema.parse(raw) as WrittenAct,
+      async () => {
+        const [one] = await writeNarration(
+          [act],
+          {
+            writer: countingNarrationWriter,
+            verifier: countingNarrationVerifier,
+            /* G-34: one accumulator shared by every concurrent act — a
+               plain counter the stage increments; `meta.veracity` reads
+               it once every act has settled. */
+            stats: narrationStats,
+            /* G-35: the prefetched packs — ONE gatherer shared by every
+               concurrent act, so each act's gathers are memo lookups
+               against the fan-out that ran before this gate opened.
+               Requirements §8.1 still holds — the gatherer inside was
+               built with the same cue provider §4.5 sources against, so a
+               tape beat's evidence pack holds the cue window and not just
+               the episode title. */
+            evidence,
+            /* Q-02: the rows tier 2 minted this run, so an Intro before a
+               clip the committed registry does not hold yet can still be
+               checked against its show and episode title. */
+            segmentSources: extras.segmentSources,
+            /* F-97: F-88's ground on the act path — the verified pages of
+               the acts that have already landed when THIS act starts. With
+               `actConcurrency` acts starting together the first wave sees
+               none; a later act's thesis seam may rest on them. */
+            ground: () => verifiedPageSummaries(settledActs),
+            showsIntroduced: [extras.showsIntroduced],
+            /* GV-38: this act's frame, under sequential order or the fast path. */
+            ...(extras.frame ? { frames: [extras.frame] } : {}),
+            /* GV-34 / decision 34: FORAY_SPECIFICS_CHECK reaches the writer,
+               so `enforce` re-asks a seam in a real run (default `report`). */
+            specifics: gates.specifics,
+            /* GV-73: FORAY_WRITER_STREAM (or the fast path) streams the
+               writer's reply; early releases reach deps.onSeamChecked with
+               this act's index (`writeNarration` sees one act, index 0). */
+            ...(flags.writerStream ? { streamSeams: true } : {}),
+            ...(deps.onSeamChecked ? { onSeamChecked: (event: SeamCheckedEvent) => deps.onSeamChecked!({ ...event, actIndex: i }) } : {})
+          },
+          spine.voice,
+          /* GV-94: this act's position (writeNarration sees one act, index
+             0) and the writer decorator's report hook. */
+          { ...ctx, actIndex: i, observe: observeWriter }
+        );
+        return one!;
+      }
+    );
+    /* GV-38: the act's narration is recorded as landed INSIDE its gate task,
+       before the task returns and the gate starts the next act, so under
+       'sequential' act i+1's `ground` always reads act i's verified pages
+       (a separate `p.then` left that to microtask order). A resumed act
+       lands the same way. Behaviour-neutral for 'parallel'. */
+    settledActs[i] = landed;
+    return landed;
+  };
+
+  /* Everything after the last act is stitched: the report's narration rows,
+     veracity, the gate, finalize and the outcome. */
+  const finishRun = async (middle: PipelineMiddle): Promise<RunPipelineOutcome> => {
+    const { sourced, written, stitcher, evidence, clipScoresPending, runtimePool, actConcurrency } = middle;
+    deepenFolded.sort((a, b) => a - b);
+    const foldedTag = foldDeepen ? { deepenFolded } : {};
+    /* G-32's evidence, for the report: one row per act off the same stage log
+       the run already keeps, so a reader sees `startedAt` overlap rather than
+       taking a shorter total on trust. */
+    const narrationActs: NarrationActTiming[] = timings
+      .all()
+      /* GV-01: a failed narrate attempt is in the stage log, but it is not an
+         act's narration. */
+      .filter((t) => !t.failed)
+      .map((t) => ({ t, m: /^narrate:(\d+)$/.exec(t.name) }))
+      .filter((x): x is { t: StageTiming; m: RegExpExecArray } => x.m !== null)
+      .map(({ t, m }) => ({ act: Number(m[1]), startedAt: t.startedAt, ms: t.ms, ...(t.resumed ? { resumed: true as const } : {}) }))
+      .sort((a, b) => a.act - b.act);
+
+    /* §4.8's product: every act's items in act order, each one either stitched
+       inside the loop above or read back from its own `stitch:<i>` checkpoint. */
+    const stitchedItems = stitcher.items();
+
+    const generatedAt = now().toISOString();
+    /* The disclosure is prepended here rather than inside stitch: it is a
+       Foray-level obligation, not an act's content, and stitch has no concept of
+       "the whole Foray" to attach it to. Prepending also keeps it out of the
+       runtime sum below by construction — it is a spoken marker, not tape. */
+    const items = [preludeItem(spine.subject, spine.overview, slots[0]!.id), ...stitchedItems];
+
+    /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
+       it) and before `finalize` runs, so `meta.veracity` rides along on
+       EVERY candidate this function returns — including one that fails
+       check-forays/check-narration below, which `generateForays.ts` still
+       records in `report.json` even though it never writes a candidate file. */
+    /* G-35: printed now, when the hit rate is finally known, and carried into
+       `report.json` through `meta.veracity.retrieval`. */
+    console.log(`  ${evidence.summaryLine()}`);
+    /* GV-79: the clip-scores stage, awaited only now. Off, the rows are
+       §4.5's own, untouched. */
+    const tapeRelevanceRows = clipScoresPending ? applyClipScores(sourced.tapeRelevance, await clipScoresPending) : sourced.tapeRelevance;
+    /* GV-95: the retrieval server's counts and degraded reasons beside the
+       prefetch's, only when the run had one. */
+    const retrievalMetrics: RunRetrievalMetrics =
+      retrieval && retrievalBaseline ? { ...evidence.metrics(), remote: retrievalStatsSince(retrievalBaseline, retrieval.stats()) } : evidence.metrics();
+    const veracity = buildVeracityMetrics({
+      sourcedActs: sourced.acts,
+      writtenActs: written,
+      topic,
+      writerCalls: narrationWriterCalls,
+      verifierCalls: narrationVerifierCalls,
+      retryRounds: narrationStats.retryRounds,
+      /* F-99: beats the act writer closed as seed-lost rather than retrying.
+         Zero is a real answer here — the accumulator was passed — so it is
+         reported as 0, not as "not counted". */
+      seedLostBeats: narrationStats.seedLostBeats ?? 0,
+      /* GV-61: content pages written with no print document (OQ-04's trade,
+         measured). Zero is a real answer: the accumulator was passed. */
+      printEvidenceSkipped: narrationStats.printSkipped ?? 0,
+      /* GV-73: the streamed path's early releases, only when it ran -- the
+         default run's report is unchanged. */
+      ...(narrationStats.seamsReleasedEarly !== undefined
+        ? {
+            seamsReleasedEarly: narrationStats.seamsReleasedEarly,
+            releasedThenRefused: narrationStats.releasedThenRefused ?? 0,
+            ...(narrationStats.firstSeamCheckedMs !== undefined ? { firstSeamCheckedMs: narrationStats.firstSeamCheckedMs } : {})
+          }
+        : {}),
+      pipelineTokens: pipelineTokensOfRun(),
+      stageTimings: timings.all(),
+      retrieval: retrievalMetrics,
+      tapeRelevanceRows,
+      /* GV-79: the clip-on-subject rate, only when the judge ran. */
+      ...(clipScoresPending ? { clipOnSubject: { levelFor: (judge: Parameters<typeof clipLevelFor>[1]) => clipLevelFor(gates, judge) } } : {}),
+      /* GV-26 (MQ-09): the narration-degraded rows, so tape yield can tell a
+         beat that searched and found nothing from one that never searched. */
+      sourcingTrace: sourced.sourcingTrace,
+      /* GV-83 (MQ-07): the stitched tape items, timed on the runtime pool. */
+      showItems: showVarietyItemsFor(stitchedItems, runtimePool, {
+        archive,
+        newSegmentSources: sourced.newSegmentSources,
+        ...(options.root ? { root: options.root } : {})
+      }),
+      root: options.root
+    });
+    /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is
+       refused on it — the candidate stays local either way. */
+    const veracityGate = evaluateVeracityGate(veracity);
+
+    const input: FinalizeForayInput = {
+      id: forayId,
+      title,
+      topic,
+      summary,
+      slots,
+      items,
+      runtimeSec: runtimeSecFor(items, runtimePool),
+      builtAt: generatedAt,
+      meta: { veracity },
+      /* What §4.5 tier 2 cut this run, travelling WITH the candidate: nothing
+         else can resolve a segment id that is not in `data/segments.json` yet
+         (see `FinalizeForayInput.segments`). */
+      segments: sourced.newSegments,
+      segmentSources: sourced.newSegmentSources
+    };
+
+    // §4.9 — validate against the same two checkers CI runs. Writes nothing.
+    const result = await timed("finalize", () => finalize(input, options.root));
+    await dropStaleSourcing(result.validation.checkForaysErrors);
+
+    /* `finalize`'s own internal breakdown (build-record/check-forays/check-
+       narration) plus this function's now-complete stage list — appended
+       after the fact by mutating the SAME `veracity` object `input.meta`
+       already holds a reference to, rather than rebuilding `input`. */
+    veracity.stageTimings = [...timings.all(), ...result.timings.map((t) => ({ ...t, name: `finalize.${t.name}` }))];
+
+    return {
+      outcome: "generated",
+      input,
+      result,
+      spine,
+      spineReasks,
+      spineRuntime,
+      ...(spineSelection !== undefined ? { spineSelection } : {}),
+      ...(selfCritiqueTotals !== undefined ? { selfCritique: selfCritiqueTotals } : {}),
+      tapeRelevance: tapeRelevanceRows,
+      topicDecision,
+      timings: timings.all(),
+      ttlA1Ms,
+      narration: { concurrency: actConcurrency, acts: narrationActs },
+      gate: veracityGate,
+      ...clarityTag,
+      ...foldedTag
+    };
+  };
+
+  /**
+   * GV-102 (W4-07; R1-04, R1-01, GP-03): THE PER-ACT PIPELINE. Act 1 no
+   * longer waits on every act's deepen, on the whole Foray's sourcing or on
+   * the whole evidence wave. The spine stays frozen; the per-act stages only
+   * reorder the work after it.
+   *
+   *   - deepen: every act through its own gate (FORAY_DEEPEN_CONCURRENCY,
+   *     default 1), act 0 queued first; each call carries its act on the call
+   *     context, and act 0's (deepen and evidence) are marked critical for the
+   *     lane scheduler (decision 22).
+   *     Banked per act under deepen:<i>, as on the classic path.
+   *   - source:<i> waits for act i's deepen and for source:<i-1>, so the
+   *     ledgers run in the classic order; it runs one SourcingSession.sourceAct
+   *     and banks {act, snapshot}. A resume rebuilds the session from the last
+   *     banked snapshot, so a changed corpus cannot re-decide an act that may
+   *     already be narrated. With a retrieval server (GV-95) act i's searches
+   *     are asked and its bodies fetched first (retrieval:source:<i>).
+   *   - evidence:<i> hydrates act i's clips (retrieval:evidence:<i>, with a
+   *     server) and prefetches act i's pages only, behind evidence:<i-1>. It
+   *     is timed, not banked: like the classic `evidence` stage its product is
+   *     a warm cache. FORAY_EVIDENCE_PREFETCH=first-act is subsumed here.
+   *   - narrate:<i> follows its evidence, through the classic narration gate
+   *     (flags.narrationOrder decides it), and stitch:<i> runs in act order.
+   *   - the no-tape stop: after the last act is sourced, on the cumulative
+   *     count; an earlier act with no tape only logs. On a one-act Foray that
+   *     is exactly the classic stop, before any evidence or narration.
+   *   - a failure anywhere aborts both gates, awaits every in-flight piece of
+   *     work (allSettled) and rethrows, the classic contract.
+   */
+  const perActRun = async (): Promise<RunPipelineOutcome> => {
+    const actCount = spine.acts.length;
+    const last = actCount - 1;
+    if (evidencePrefetch === "first-act") {
+      console.log("  evidence: FORAY_EVIDENCE_PREFETCH=first-act is subsumed by the per-act pipeline: each act gathers only its own pages (GV-102)");
+    }
+
+    /* §4.4 per act. deepenActs keeps its retry, fold and banking rules; the
+       gate sits in front of the builder, so a queued act costs no call and a
+       retry queues again. Each call is bound to its caller's async context
+       (AsyncResource.bind): a queued call is started from the previous call's
+       completion, and must not inherit that call's context. */
+    const deepenGate = createActGate(perActDeepenConcurrency ?? DEFAULT_DEEPEN_CONCURRENCY);
+    /* Act 0's calls are marked critical for the lane scheduler (GV-93): its
+       deepen, and its evidence, which on this path sits between act 0's
+       sourcing and its writer. Later acts keep the scheduler's own rule. */
+    const actZeroPriority = (actIndex: number): { priority?: "critical" } => (actIndex === 0 ? { priority: "critical" } : {});
+    const deepenedSoFar: DeepenedAct[] = [];
+    const deepenedAct = Array.from({ length: actCount }, () => deferred<DeepenedAct>());
+    const landDeepened = (index: number, act: DeepenedAct): void => {
+      if (deepenedSoFar[index] !== undefined) return;
+      deepenedSoFar[index] = act;
+      deepenedAct[index]!.resolve(act);
+    };
+    const gatedDeepenBuilder: DeepenActBuilder = {
+      providerName: deepenBuilder.providerName,
+      deepenAct: (fullSpine, targetAct, targetActIndex, buildCtx) =>
+        deepenGate.run(
+          AsyncResource.bind(() =>
+            withCallContext({ act: targetActIndex, ...actZeroPriority(targetActIndex) }, () =>
+              deepenBuilder.deepenAct(fullSpine, targetAct, targetActIndex, buildCtx)
+            )
+          )
+        )
+    };
+    const deepenAll = timed("deepen", () =>
+      deepenActs(spine, gatedDeepenBuilder, ctx, {
+        resume: (index) => checkpoint.resumeSync(`deepen:${index}`, (raw) => DeepenedActSchema.parse(raw)),
+        onActDeepened: async (index, act) => {
+          await checkpoint.save(`deepen:${index}`, act);
+          landDeepened(index, act);
+        },
+        ...(foldDeepen ? { fromSpine: () => true, onActFolded: (index: number) => deepenFolded.push(index) } : {})
+      })
+    );
+    /* A resumed act is handed over when the stage returns (it never reaches
+       onActDeepened); a failed stage fails every act still waiting. */
+    const deepenSettled = deepenAll.then(
+      (acts) => acts.forEach((act, index) => landDeepened(index, act)),
+      (err: unknown) => {
+        for (const d of deepenedAct) d.reject(err);
+        throw err;
+      }
+    );
+    deepenSettled.catch(() => undefined);
+
+    /* §4.5 per act: one session, resumed from the last banked act. */
+    let session: SourcingSession | null = null;
+    let lastSnapshot: SourcingSnapshot | null = null;
+    let resumedThrough = -1;
+    for (let k = 0; k < actCount && checkpoint.has(`source:${k}`); k++) {
+      const banked = checkpoint.resumeSync(`source:${k}`, (raw) => SourceActCheckpointSchema.parse(raw) as unknown as SourceActCheckpoint);
+      if (!banked || banked.snapshot.acts.length !== k + 1) break;
+      lastSnapshot = banked.snapshot;
+      resumedThrough = k;
+    }
+    if (lastSnapshot) {
+      try {
+        session = SourcingSession.resume(sourceOptionsOf(), lastSnapshot);
+      } catch (err) {
+        console.warn(`runForayPipeline: the banked sourcing could not be resumed (${err instanceof Error ? err.message : String(err)}); sourcing every act again`);
+        lastSnapshot = null;
+        resumedThrough = -1;
+      }
+    }
+    if (resumedThrough >= 0) perActSourceResumed = true;
+    let finalSourced: SourceBeatsResult | null = null;
+    let sourcingLines: string[] = [];
+    let tapeSoFar = 0;
+    /* What the act-ready wrapper and the show memory read: the session's
+       state after the latest sourced act. */
+    const view = (): SourcingView => {
+      const snap = lastSnapshot!;
+      const newSegmentSources = snap.newSegmentSources.map(([, source]) => source);
+      return {
+        acts: snap.acts,
+        newSegments: snap.newSegments,
+        newSegmentSources,
+        runtimePool: runtimePoolFor(snap.newSegments, newSegmentSources),
+        totalActs: actCount
+      };
+    };
+
+    const evidence = new PerActEvidenceGatherer(
+      deps.evidence ?? createEvidenceGatherer({ researcher, ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}) })
+    );
+    const sequentialNarration = flags.narrationOrder === "sequential";
+    const wantFrames = sequentialNarration || flags.fastPath;
+    const actConcurrency = sequentialNarration ? 1 : options.narrationActConcurrency ?? narrationActConcurrency();
+    const gate = createActGate(actConcurrency);
+    const showCatalogue = loadCatalogueData();
+    const showOf = (tape: TapePointer): string => {
+      const titles = titlesForItem(tape.itemId, showCatalogue, findDigestForItem(tape.itemId, archive, showCatalogue));
+      return titles?.showTitle ?? view().newSegmentSources.find((s) => s.id === tape.itemId)?.show ?? "";
+    };
+
+    const sourceDone: Array<Promise<SourcedAct>> = [];
+    const evidenceDone: Array<Promise<void>> = [];
+    const narrations: Array<Promise<WrittenAct>> = [];
+    for (let i = 0; i < actCount; i++) {
+      sourceDone[i] = (async (): Promise<SourcedAct> => {
+        const act = await deepenedAct[i]!.promise;
+        if (i > 0) await sourceDone[i - 1];
+        let sourcedAct: SourcedAct;
+        if (i <= resumedThrough) {
+          markResumed(`source:${i}`);
+          sourcedAct = lastSnapshot!.acts[i]!;
+        } else {
+          if (retrieval) {
+            await timed(`retrieval:source:${i}`, async () => {
+              await scopeRetrievalTo(topic);
+              await retrieval.prepare(sourcingSearches([act]));
+              await retrieval.hydrate(
+                sourcingBodies([act], { transcriptArchive: archive, segmentPool, topic, root: options.root, candidatesFor: preparedCandidates }),
+                { pin: true }
+              );
+            });
+          }
+          const banked = await timed(`source:${i}`, async (): Promise<SourceActCheckpoint> => {
+            session ??= new SourcingSession(sourceOptionsOf());
+            const one = session.sourceAct(act, i);
+            return { act: one, snapshot: session.exportState() };
+          });
+          await checkpoint.save(`source:${i}`, banked);
+          lastSnapshot = banked.snapshot;
+          sourcedAct = banked.act;
+        }
+        const actTape = tapeBeatCount([sourcedAct]);
+        tapeSoFar += actTape;
+        if (i < last) {
+          if (actTape === 0) console.log(`  source: act ${i + 1} of ${actCount} has no tape; the no-tape stop waits for the last act (GV-102)`);
+          return sourcedAct;
+        }
+        /* The last act: the whole Foray's sourcing, its summary lines (F-49,
+           G-25) and the no-tape stop (F-65), on the cumulative count. */
+        finalSourced = session!.result(deepenedSoFar);
+        sourcingLines = [...summarizeSourcing(finalSourced), summarizeSeeding(deepenedSoFar, finalSourced)];
+        for (const line of sourcingLines) console.log(`  ${line}`);
+        if (tapeSoFar === 0) throw new PerActNoTapeStop();
+        return sourcedAct;
+      })();
+
+      evidenceDone[i] = (async (): Promise<void> => {
+        const sourcedAct = await sourceDone[i]!;
+        if (i > 0) await evidenceDone[i - 1];
+        if (retrieval) {
+          await timed(`retrieval:evidence:${i}`, async () => {
+            await retrieval.hydrate(clipEpisodesOf([sourcedAct]), { pin: true });
+          });
+        }
+        /* Act i at its own index, so skipSlot and the page keys see the
+           Foray's positions; the gatherer queues only act i. */
+        const actsView: SourcedAct[] = [];
+        actsView[i] = sourcedAct;
+        await timed(`evidence:${i}`, () =>
+          withCallContext(actZeroPriority(i), () => evidence.prefetch(actsView, ctx, { skipSlot: skipNarratedSlot, acts: (actIndex) => actIndex === i }))
+        );
+        const stageMs = timings.all().find((t) => t.name === `evidence:${i}`)?.ms;
+        if (stageMs !== undefined) evidence.addStageMs(stageMs);
+      })();
+
+      narrations[i] = (async (): Promise<WrittenAct> => {
+        await evidenceDone[i];
+        const sourcedAct = await sourceDone[i]!;
+        /* Read once act i is sourced: what act i has heard depends only on
+           the acts before it (GV-46), and its frame on acts 0..i. */
+        const showsIntroduced = showsHeardBeforeAct(view().acts, i, showOf);
+        const frame = wantFrames ? { ...buildActFrames(spine, deepenedSoFar.slice(0, i + 1))[i]!, totalActs: actCount } : undefined;
+        return gate.run(() => narrateOneAct(i, sourcedAct, evidence, { segmentSources: view().newSegmentSources, showsIntroduced, frame }));
+      })();
+    }
+
+    /* The first failure anywhere ends the ordered loop at once. */
+    let fail!: (err: unknown) => void;
+    const failed = new Promise<never>((_, reject) => {
+      fail = reject;
+    });
+    failed.catch(() => undefined);
+    const chains: Array<Promise<unknown>> = [deepenSettled, ...sourceDone, ...evidenceDone, ...narrations];
+    for (const chain of chains) chain.catch((err: unknown) => fail(err));
+
+    /* GV-79: the clip scores, started once every act is sourced and its clips
+       fetched (the last evidence stage), off the timed path like the classic
+       stage, and awaited by finishRun. Not one of the fail-fast chains: a
+       judge failure surfaces at that await, as it does on the classic path. */
+    const clipScoresPending: Promise<ClipScoreRecord[]> | null =
+      gates.clipJudge === "off" ? null : evidenceDone[last]!.then(() => startClipScores(finalSourced!));
+    clipScoresPending?.catch(() => undefined);
+
+    /* §4.8 in act order, over acts handed in as they are deepened (GV-46). */
+    const stitcher = new ForayStitcher(
+      { actCount, deepenedAct: (i) => deepenedSoFar[i] },
+      {
+        continuity: { builder: continuityBuilder },
+        slotIds: slotIdsFromSpine(spine),
+        onActReady: actReadyHandler(view)
+      },
+      ctx
+    );
+
+    const written: WrittenAct[] = [];
+    try {
+      for (let i = 0; i < actCount; i++) {
+        const writtenAct = await Promise.race([narrations[i]!, failed]);
+        written.push(writtenAct);
+        actVeracity[i] = computeActVeracity(writtenAct, i);
+        const { value: actItems, resumed } = await stageDetail(
+          `stitch:${i}`,
+          (raw) => StitchActCheckpointSchema.parse(raw) as ForayItem[],
+          () => stitcher.stitchNextAct(writtenAct)
+        );
+        if (resumed) stitcher.acceptStitchedAct(actItems, writtenAct);
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err : new Error(String(err));
+      deepenGate.abort(reason);
+      gate.abort(reason);
+      await Promise.allSettled([...chains, ...(clipScoresPending ? [clipScoresPending] : [])]);
+      if (err instanceof PerActNoTapeStop) {
+        deepenFolded.sort((a, b) => a - b);
+        return {
+          outcome: "no-tape",
+          title,
+          sourcing: sourcingLines,
+          topicDecision,
+          spineReasks,
+          spineRuntime,
+          timings: timings.all(),
+          ...clarityTag,
+          ...(foldDeepen ? { deepenFolded } : {})
+        };
+      }
+      throw err;
+    }
+
+    const sourced = finalSourced!;
+    return finishRun({
+      sourced,
+      written,
+      stitcher,
+      evidence,
+      clipScoresPending,
+      runtimePool: runtimePoolFor(sourced.newSegments, sourced.newSegmentSources),
+      actConcurrency
+    });
+  };
+
+  if (flags.perActPipeline) return perActRun();
+
+  /* §4.4 — deepen every act, in parallel across acts, each act checkpointed on
+     its own (F-17): an act that succeeded is banked even when a sibling act
+     exhausts its retry budget and fails the stage. GV-86: a folded act is
+     named in `deepenFolded` (declared above). */
   const deepened = await timed("deepen", () =>
     deepenActs(spine, deepenBuilder, ctx, {
       resume: (index) => checkpoint.resumeSync(`deepen:${index}`, (raw) => DeepenedActSchema.parse(raw)),
@@ -1934,27 +2794,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const sourced = await stage(
     "source",
     (raw) => SourceCheckpointSchema.parse(raw),
-    async () =>
-      sourceBeats(deepened, {
-        cueProvider: deps.cueProvider,
-        textIndex: deps.textIndex,
-        /* F-91: the tape the topic decision was measured on — both tiers. */
-        segmentPool,
-        transcriptArchive: archive,
-        topic,
-        root: options.root,
-        /* Tier 2 may only mint tape whose audio can be honestly registered
-           (F-49 plumbing) — see `audioSourceLookup.ts`. */
-        audioSourceFor: deps.audioSourceFor ?? createDigestAudioSourceResolver({ root: options.root }),
-        /* F-98 (B): which committed pool rows a longer cut of the same window
-           may supersede. The rule is `poolRowIsSupersedable`'s — a machine's
-           unreviewed cut, played only by generated drafts — and the Foray list
-           it is asked against is the one on disk, read once here rather than
-           per candidate. A checkout without `data/forays.json` (CI, a fixture
-           run) supersedes nothing, which is the same inert default every other
-           catalogue-reading option in this call has. */
-        supersedableCut: makeSupersedableCut(options.root)
-      })
+    async () => sourceBeats(deepened, sourceOptionsOf())
   );
 
   /* ONE LINE PER SLOT, SAYING WHAT §4.5 DID (F-49). Run 2 finished with zero
@@ -1993,18 +2833,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      sourcing, and so fetched nothing above, has the bodies too. */
   if (retrieval) {
     await timed("retrieval:evidence", async () => {
-      const catalogue = loadCatalogueData();
-      const entries: TranscriptDigestEntry[] = [];
-      for (const act of sourced.acts) {
-        for (const slot of act.slots) {
-          for (const beat of slot.beats) {
-            if (beat.sourcing !== "tape") continue;
-            const entry = findDigestForItem(beat.tape.itemId, archive, catalogue);
-            if (entry) entries.push(entry);
-          }
-        }
-      }
-      await retrieval.hydrate(entries, { pin: true });
+      await retrieval.hydrate(clipEpisodesOf(sourced.acts), { pin: true });
     });
   }
 
@@ -2015,25 +2844,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      so first audio never waits on the judge, and a resume never re-pays it.
      Off (the default), nothing starts and nothing below changes. The judge
      is built inside the stage, so a resumed stage builds none. */
-  const clipScoresPending: Promise<ClipScoreRecord[]> | null =
-    gates.clipJudge === "off"
-      ? null
-      : stage(
-          "clip-scores",
-          (raw) => ClipScoresCheckpointSchema.parse(raw) as ClipScoreRecord[],
-          async () =>
-            scoreSourcedClips(sourced, {
-              cueProvider: deps.cueProvider ?? new NullTranscriptCueProvider(),
-              transcriptArchive: archive,
-              catalogue: deps.clipCatalogue ?? loadCatalogueData(),
-              judge:
-                deps.clipJudge ??
-                createClipJudge(gates, createJevClient({ routing }), {
-                  meter: { guard: defaultBudgetGuard, userId: options.userId, ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}) }
-                }),
-              subjectSentence: subjectSentenceFor(spine, intent)
-            })
-        );
+  const clipScoresPending: Promise<ClipScoreRecord[]> | null = gates.clipJudge === "off" ? null : startClipScores(sourced);
   /* A run that fails before the await below must not also leave an
      unhandled rejection behind; the await still rethrows it. */
   clipScoresPending?.catch(() => undefined);
@@ -2055,8 +2866,6 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const evidence = new PrefetchingEvidenceGatherer(
     deps.evidence ?? createEvidenceGatherer({ researcher, ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}) })
   );
-  const skipNarratedSlot = (actIndex: number, slotIndex: number): boolean =>
-    checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`);
   /* GV-98 (W3-17, R1-05): under 'first-act' the timed stage waits for act 1's
      packs only; every later act's are started in the background just before
      narration begins (below), so act 1's writer never waits on act 2's
@@ -2092,12 +2901,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      reuses the pool's cut at a shared start, so the two agree on the ids they
      share; this is the order that keeps them agreeing if a checkpoint resumes
      against a pool that has since gained the row. */
-  const rowContext = { batchId: generationBatchId(forayId), sources: sourced.newSegmentSources };
-  const mintedPool = sourced.newSegments.map((s) => mintedSegmentRow(s, topic, rowContext) as unknown as SegmentRecord);
-  /* gen-15: the pool the run SOURCED against (injected, or loaded once above),
-     not a fresh read of the repo root's pool, so runtime seconds are measured
-     on the rows the Foray actually references. */
-  const runtimePool = mintedPool.length ? [...mintedPool, ...segmentPool] : segmentPool;
+  const runtimePool = runtimePoolFor(sourced.newSegments, sourced.newSegmentSources);
 
   /* §4.7 — write narration, then verify it independently (distinct instances,
      enforced there). Driven ONE CALL PER ACT rather than one call for all, so
@@ -2125,26 +2929,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      `ForayStitcher`), so act N is stitched the instant it is narrated and the
      listener's clock finally measures what its name says. */
 
-  /* WS-D2's clock: set once, the first time `onActReady` fires for act index
-     0 — now immediately after act 0 is narrated — then carried unchanged on
-     every later act's rewrite, matching `PartialCandidate.ttlA1Ms`'s own doc
-     comment.
 
-     IT STAYS `null` ON A RESUMED RUN, and that is correct rather than a gap.
-     When F-17/F-18's checkpoint already holds act 0's stitch, `stageDetail()`
-     returns the stored items and act 0 never goes through the stitcher, so
-     `onActReady` never fires for it and no act boundary is ever timed. The
-     resumed process did not take that long, and the process that did is gone;
-     a number measured from THIS run's start would be a fiction. Reported as
-     "not measured" instead. The same is true of any run that supplied no
-     `deps.onActReady` — there was no act-boundary clock to read. */
-  let ttlA1Ms: number | null = null;
-
-  /* GV-21 (W5-12a): every act's veracity, filled in the ordered loop below
-     from the `WrittenAct` it stitches — banked or fresh — and NOT from the
-     callback: a resumed act never fires `onActReady`, and its pages must
-     still count. The partial candidate reads it per act. */
-  const actVeracity: ActVeracity[] = [];
 
   /* §4.8's per-act driver. Constructed BEFORE narration starts because it
      needs nothing narration produces: its continuity smoothing reads act
@@ -2162,99 +2947,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
          (ttlA1Ms, the partial candidate and its two finalize runs,
          dropStaleSourcing, the refusal) runs only when `deps.onActReady` was,
          exactly as before. A resumed act never reaches this wrapper. */
-      onActReady: async ({ actIndex, actItems, itemsSoFar, actItemProvenance, provenanceSoFar, seamItemsEmitted }) => {
-        const readyAtMs = wallClockMs() - pipelineStartMs;
-        const logReadyMs = readinessNowMs();
-        const preludeRides = !preludeEmitted;
-        const actItemIds = [...(preludeRides ? [itemKeyOf(prelude, 0)] : []), ...actItemProvenance.map((p) => p.itemId)];
-        if (preludeRides) await emitPrelude(readyAtMs, runtimePool, "act");
-        if (deps.onItemReady) {
-          /* GV-21's act verdict, no finalize: an unservable act's items are
-             marked so the timeline pauses there. */
-          const servable = assessAct(actItemProvenance, DEFAULT_READINESS_POLICY, actVeracity[actIndex]).servable;
-          const actStart = itemsSoFar.length - actItems.length;
-          for (let k = seamItemsEmitted; k < actItems.length; k++) {
-            const item = actItems[k]!;
-            const before = [prelude, ...itemsSoFar.slice(0, actStart + k)];
-            await emitItem(item, actItemProvenance[k]!, servable, readyAtMs, runtimeSecFor(before, runtimePool), runtimeSecFor([item], runtimePool), "act");
-          }
-        }
-        if (!deps.onActReady) {
-          emitActReady({ actIndex, itemIds: actItemIds, partialOk: null, ...(logReadyMs !== undefined ? { readyMs: logReadyMs } : {}) });
-          return;
-        }
-        if (actIndex === 0) ttlA1Ms = readyAtMs;
-        /* The disclosure is prepended here for the SAME reason the
-           whole-Foray path prepends it below: it is a Foray-level
-           obligation stitch has no concept of, and `check-forays.mjs`
-           requires items[0] to be it — a partial candidate is
-           something `finalizeForay` inside `buildPartialCandidate`
-           validates with those same gates, so it needs the same
-           opening item the final candidate gets. */
-        const itemsWithDisclosure = [preludeItem(spine.subject, spine.overview, slots[0]!.id), ...itemsSoFar];
-        /* GV-21: per-item readiness beside the items (never on them), the
-           prelude classified explicitly as index 0. The verdict it feeds
-           (`delivery`) is independent of `validation` and of the refusal
-           below: an unservable act is withheld, never aborts the run. */
-        const itemProvenance = [preludeProvenance(itemsWithDisclosure[0]!), ...provenanceSoFar];
-        const candidate = await buildPartialCandidate(
-          {
-            actIndex,
-            totalActs: allActTitles.length,
-            allActTitles,
-            items: itemsWithDisclosure,
-            slots: slots.slice(0, slotCountThroughAct(spine, actIndex)),
-            runtimeSec: runtimeSecFor(itemsWithDisclosure, runtimePool),
-            ttlA1Ms,
-            itemProvenance,
-            actVeracity: actVeracity.slice(0, actIndex + 1)
-          },
-          {
-            id: forayId,
-            title,
-            topic,
-            summary,
-            authorId: options.userId,
-            builtAt: startedAt,
-            /* F-71: the same minted tier-2 tape the whole-Foray input
-               carries below. Without it the partial candidate's own
-               `finalizeForay` is handed a pool this run's segments are not
-               in, and reports them as unknown segment ids — a failure of
-               the input, not of the Foray. */
-            segments: sourced.newSegments,
-            segmentSources: sourced.newSegmentSources,
-            root: options.root,
-            /* F-79: the sourcing plan, so the partial's share-of-whole
-               rules (M4 above all) are judged on the projected whole
-               rather than on this act's slice — see partialProjection.ts. */
-            projection: { sourcedActs: sourced.acts, slots }
-          },
-          finalize
-        );
-        /* GV-33: stamped when the act was ready, not after the two
-           finalize runs above; the verdict is the partial's. */
-        emitActReady({
-          actIndex,
-          itemIds: actItemIds,
-          partialOk: candidate.validation.ok,
-          ...(logReadyMs !== undefined ? { readyMs: logReadyMs } : {})
-        });
-        await deps.onActReady(candidate);
-        await dropStaleSourcing(candidate.validation.checkForaysErrors);
-        /* G-30 (manual step 10): the partial-refusal exit. AFTER the
-           callback, so the refused partial is on disk for whoever reads
-           the report; BEFORE `checkpoint.stage` records this act's
-           stitch, so a re-run rebuilds the refused act rather than
-           resuming past it. */
-        if (!candidate.validation.ok && options.refusedPartial === "abort") {
-          throw new RefusedPartialError(
-            actIndex,
-            allActTitles.length,
-            candidate.validation.checkForaysErrors,
-            candidate.validation.checkNarrationErrors
-          );
-        }
-      }
+      onActReady: actReadyHandler(() => ({ acts: sourced.acts, newSegments: sourced.newSegments, newSegmentSources: sourced.newSegmentSources, runtimePool }))
     },
     ctx
   );
@@ -2307,12 +3000,6 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const actFrames = sequentialNarration || flags.fastPath ? buildActFrames(spine, deepened) : undefined;
   const actConcurrency = sequentialNarration ? 1 : options.narrationActConcurrency ?? narrationActConcurrency();
   const gate = createActGate(actConcurrency);
-  /* F-88: which acts' narration has landed, by position, for the synthesis
-     pass — it reads the whole Foray's verified pages, and `writeNarration`
-     is handed one act. A rejected act contributes nothing; the ordered loop
-     reports its error when it reaches it. Declared BEFORE the acts start
-     because F-97 reads it from inside them too (`ground`). */
-  const settledActs: Array<WrittenAct | undefined> = [];
   /* gen-8 (round-3 audit): Q-09's cross-act show memory. Every act gets the
      shows introduced in the acts before it, computed once from sourcing, so a
      show named in act 1 is not re-introduced by name in act 3. The show is
@@ -2336,65 +3023,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     );
   }
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
-    const p = gate.run(async () => {
-      const landed = await stage(
-        `narrate:${i}`,
-        (raw) => WrittenActSchema.parse(raw) as WrittenAct,
-        async () => {
-          const [one] = await writeNarration(
-            [act],
-            {
-              writer: countingNarrationWriter,
-              verifier: countingNarrationVerifier,
-              /* G-34: one accumulator shared by every concurrent act — a
-                 plain counter the stage increments; `meta.veracity` reads
-                 it once every act has settled. */
-              stats: narrationStats,
-              /* G-35: the prefetched packs — ONE gatherer shared by every
-                 concurrent act, so each act's gathers are memo lookups
-                 against the fan-out that ran before this gate opened.
-                 Requirements §8.1 still holds — the gatherer inside was
-                 built with the same cue provider §4.5 sources against, so a
-                 tape beat's evidence pack holds the cue window and not just
-                 the episode title. */
-              evidence,
-              /* Q-02: the rows tier 2 minted this run, so an Intro before a
-                 clip the committed registry does not hold yet can still be
-                 checked against its show and episode title. */
-              segmentSources: sourced.newSegmentSources,
-              /* F-97: F-88's ground on the act path — the verified pages of
-                 the acts that have already landed when THIS act starts. With
-                 `actConcurrency` acts starting together the first wave sees
-                 none; a later act's thesis seam may rest on them. */
-              ground: () => verifiedPageSummaries(settledActs),
-              showsIntroduced: [showsBeforeAct[i] ?? []],
-              /* GV-38: this act's frame, under sequential order or the fast path. */
-              ...(actFrames?.[i] ? { frames: [actFrames[i]] } : {}),
-              /* GV-34 / decision 34: FORAY_SPECIFICS_CHECK reaches the writer,
-                 so `enforce` re-asks a seam in a real run (default `report`). */
-              specifics: gates.specifics,
-              /* GV-73: FORAY_WRITER_STREAM (or the fast path) streams the
-                 writer's reply; early releases reach deps.onSeamChecked with
-                 this act's index (`writeNarration` sees one act, index 0). */
-              ...(flags.writerStream ? { streamSeams: true } : {}),
-              ...(deps.onSeamChecked ? { onSeamChecked: (event: SeamCheckedEvent) => deps.onSeamChecked!({ ...event, actIndex: i }) } : {})
-            },
-            spine.voice,
-            /* GV-94: this act's position (writeNarration sees one act, index
-               0) and the writer decorator's report hook. */
-            { ...ctx, actIndex: i, observe: observeWriter }
-          );
-          return one!;
-        }
-      );
-      /* GV-38: the act's narration is recorded as landed INSIDE its gate task,
-         before the task returns and the gate starts the next act, so under
-         'sequential' act i+1's `ground` always reads act i's verified pages
-         (a separate `p.then` left that to microtask order). A resumed act
-         lands the same way. Behaviour-neutral for 'parallel'. */
-      settledActs[i] = landed;
-      return landed;
-    });
+    const p = gate.run(() =>
+      narrateOneAct(i, act, evidence, {
+        segmentSources: sourced.newSegmentSources,
+        showsIntroduced: showsBeforeAct[i] ?? [],
+        frame: actFrames?.[i]
+      })
+    );
     /* A rejection here is reported by the ordered loop below when it reaches
        this act (or by `allSettled` on the failure path), never as an
        unhandled rejection in the meantime. `p` itself stays rejected. */
@@ -2437,132 +3072,5 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     await evidence.settleBackground();
   }
 
-  /* G-32's evidence, for the report: one row per act off the same stage log
-     the run already keeps, so a reader sees `startedAt` overlap rather than
-     taking a shorter total on trust. */
-  const narrationActs: NarrationActTiming[] = timings
-    .all()
-    /* GV-01: a failed narrate attempt is in the stage log, but it is not an
-       act's narration. */
-    .filter((t) => !t.failed)
-    .map((t) => ({ t, m: /^narrate:(\d+)$/.exec(t.name) }))
-    .filter((x): x is { t: StageTiming; m: RegExpExecArray } => x.m !== null)
-    .map(({ t, m }) => ({ act: Number(m[1]), startedAt: t.startedAt, ms: t.ms, ...(t.resumed ? { resumed: true as const } : {}) }))
-    .sort((a, b) => a.act - b.act);
-
-  /* §4.8's product: every act's items in act order, each one either stitched
-     inside the loop above or read back from its own `stitch:<i>` checkpoint. */
-  const stitchedItems = stitcher.items();
-
-  const generatedAt = now().toISOString();
-  /* The disclosure is prepended here rather than inside stitch: it is a
-     Foray-level obligation, not an act's content, and stitch has no concept of
-     "the whole Foray" to attach it to. Prepending also keeps it out of the
-     runtime sum below by construction — it is a spoken marker, not tape. */
-  const items = [preludeItem(spine.subject, spine.overview, slots[0]!.id), ...stitchedItems];
-
-  /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
-     it) and before `finalize` runs, so `meta.veracity` rides along on
-     EVERY candidate this function returns — including one that fails
-     check-forays/check-narration below, which `generateForays.ts` still
-     records in `report.json` even though it never writes a candidate file. */
-  /* G-35: printed now, when the hit rate is finally known, and carried into
-     `report.json` through `meta.veracity.retrieval`. */
-  console.log(`  ${evidence.summaryLine()}`);
-  /* GV-79: the clip-scores stage, awaited only now. Off, the rows are
-     §4.5's own, untouched. */
-  const tapeRelevanceRows = clipScoresPending ? applyClipScores(sourced.tapeRelevance, await clipScoresPending) : sourced.tapeRelevance;
-  /* GV-95: the retrieval server's counts and degraded reasons beside the
-     prefetch's, only when the run had one. */
-  const retrievalMetrics: RunRetrievalMetrics =
-    retrieval && retrievalBaseline ? { ...evidence.metrics(), remote: retrievalStatsSince(retrievalBaseline, retrieval.stats()) } : evidence.metrics();
-  const veracity = buildVeracityMetrics({
-    sourcedActs: sourced.acts,
-    writtenActs: written,
-    topic,
-    writerCalls: narrationWriterCalls,
-    verifierCalls: narrationVerifierCalls,
-    retryRounds: narrationStats.retryRounds,
-    /* F-99: beats the act writer closed as seed-lost rather than retrying.
-       Zero is a real answer here — the accumulator was passed — so it is
-       reported as 0, not as "not counted". */
-    seedLostBeats: narrationStats.seedLostBeats ?? 0,
-    /* GV-61: content pages written with no print document (OQ-04's trade,
-       measured). Zero is a real answer: the accumulator was passed. */
-    printEvidenceSkipped: narrationStats.printSkipped ?? 0,
-    /* GV-73: the streamed path's early releases, only when it ran -- the
-       default run's report is unchanged. */
-    ...(narrationStats.seamsReleasedEarly !== undefined
-      ? {
-          seamsReleasedEarly: narrationStats.seamsReleasedEarly,
-          releasedThenRefused: narrationStats.releasedThenRefused ?? 0,
-          ...(narrationStats.firstSeamCheckedMs !== undefined ? { firstSeamCheckedMs: narrationStats.firstSeamCheckedMs } : {})
-        }
-      : {}),
-    pipelineTokens: pipelineTokensOfRun(),
-    stageTimings: timings.all(),
-    retrieval: retrievalMetrics,
-    tapeRelevanceRows,
-    /* GV-79: the clip-on-subject rate, only when the judge ran. */
-    ...(clipScoresPending ? { clipOnSubject: { levelFor: (judge: Parameters<typeof clipLevelFor>[1]) => clipLevelFor(gates, judge) } } : {}),
-    /* GV-26 (MQ-09): the narration-degraded rows, so tape yield can tell a
-       beat that searched and found nothing from one that never searched. */
-    sourcingTrace: sourced.sourcingTrace,
-    /* GV-83 (MQ-07): the stitched tape items, timed on the runtime pool. */
-    showItems: showVarietyItemsFor(stitchedItems, runtimePool, {
-      archive,
-      newSegmentSources: sourced.newSegmentSources,
-      ...(options.root ? { root: options.root } : {})
-    }),
-    root: options.root
-  });
-  /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is
-     refused on it — the candidate stays local either way. */
-  const veracityGate = evaluateVeracityGate(veracity);
-
-  const input: FinalizeForayInput = {
-    id: forayId,
-    title,
-    topic,
-    summary,
-    slots,
-    items,
-    runtimeSec: runtimeSecFor(items, runtimePool),
-    builtAt: generatedAt,
-    meta: { veracity },
-    /* What §4.5 tier 2 cut this run, travelling WITH the candidate: nothing
-       else can resolve a segment id that is not in `data/segments.json` yet
-       (see `FinalizeForayInput.segments`). */
-    segments: sourced.newSegments,
-    segmentSources: sourced.newSegmentSources
-  };
-
-  // §4.9 — validate against the same two checkers CI runs. Writes nothing.
-  const result = await timed("finalize", () => finalize(input, options.root));
-  await dropStaleSourcing(result.validation.checkForaysErrors);
-
-  /* `finalize`'s own internal breakdown (build-record/check-forays/check-
-     narration) plus this function's now-complete stage list — appended
-     after the fact by mutating the SAME `veracity` object `input.meta`
-     already holds a reference to, rather than rebuilding `input`. */
-  veracity.stageTimings = [...timings.all(), ...result.timings.map((t) => ({ ...t, name: `finalize.${t.name}` }))];
-
-  return {
-    outcome: "generated",
-    input,
-    result,
-    spine,
-    spineReasks,
-    spineRuntime,
-    ...(spineSelection !== undefined ? { spineSelection } : {}),
-    ...(selfCritiqueTotals !== undefined ? { selfCritique: selfCritiqueTotals } : {}),
-    tapeRelevance: tapeRelevanceRows,
-    topicDecision,
-    timings: timings.all(),
-    ttlA1Ms,
-    narration: { concurrency: actConcurrency, acts: narrationActs },
-    gate: veracityGate,
-    ...clarityTag,
-    ...deepenFoldedTag
-  };
+  return finishRun({ sourced, written, stitcher, evidence, clipScoresPending, runtimePool, actConcurrency });
 }

@@ -2912,6 +2912,16 @@ const BACKEND_FLOORS = {
      completes on the title path and the seed with the reason in
      meta.veracity.retrieval.remote; openRemoteRetrieval and retrievalConfig. */
   "test/runPipelineRemoteRetrieval.test.ts": 9, // GV-125 (#1413 items 16-17): per-prompt retrieval stats on a shared instance, FORAY_RETRIEVAL_MODE=hybrid in the pipeline's and the driver's checkpoint fingerprint and fork stamp; 6 -> 9
+  /* GV-102 (docs/roadmap/generation-v2.md, from W4-07): the per-act pipeline
+     (FORAY_PER_ACT_PIPELINE) on stub builders and the GV-123 fake clock:
+     narrate:0 starts before source:1 and act 3's deepen end, act 0 is ready
+     before narrate:1 ends, act 0's deepen and evidence are marked critical
+     for the lane scheduler, the classic path deepens every act first; the
+     candidate deep-equals the classic run's; first-act prefetch is subsumed;
+     a run killed after source:1 resumes from the banked snapshot; the no-tape
+     stop waits for the last act; the retrieval server (fresh and resumed)
+     misses no search and reads no body unhydrated. */
+  "test/perActPipeline.test.ts": 10,
   /* GV-48 (docs/roadmap/generation-v2.md, from W3-09): the hybrid merge —
      'append' keeps every BM25 candidate's rank and adds at most denseExtra
      dense-only episodes with their best passage, every candidate carries the
@@ -3169,7 +3179,7 @@ const BACKEND_FLOORS = {
      partway through an act re-pays only for the slots that never landed, and
      the per-Foray budget cap the batch path left inert by never passing a
      sessionId. */
-  "test/runPipelineCheckpoint.test.ts": 17, // GV-79: a pre-GV-79 checkpoint resumes under shadow with only the clip scores as new work, and a banked clip-scores stage resumes with zero judge calls; 15 -> 17. GV-21: a banked act's provenance and veracity equal a fresh run's; 14 -> 15. GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
+  "test/runPipelineCheckpoint.test.ts": 18, // GV-102 (W4-07): a classic checkpoint is not resumed by a per-act run and the reverse, each resumes its own; 17 -> 18. GV-79: a pre-GV-79 checkpoint resumes under shadow with only the clip scores as new work, and a banked clip-scores stage resumes with zero judge calls; 15 -> 17. GV-21: a banked act's provenance and veracity equal a fresh run's; 14 -> 15. GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
   /* G-32: acts narrated in parallel, stitch and continuity in act order. Seven
      cases latch the writer to PROVE overlap (acts start while act 1 is held,
      the cap holds, a failure still banks in-flight acts and never starts
