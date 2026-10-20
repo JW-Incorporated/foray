@@ -2035,7 +2035,7 @@
       "topic": "space/astronomy",
       "status": "draft",
       "summary": "Nine scientists on the hour the dinosaurs died, the asteroids we visit now, and the next one.",
-      "runtime_sec": 1919.64,
+      "runtime_sec": 1920.29,
       "source_doc": "docs/curation/asteroids-foray-assembly.md",
       "label_prefixes": {
         "SMIT": "geology-bites--jan-smit-on-resolving-a-single-hour-of-the-cataclysm-that",
@@ -2099,7 +2099,7 @@
         {
           "type": "narration",
           "id": "into-marshall",
-          "script": "That was Jan Smit, and there's a lot more of him in his Geology Bites episode, linked in the show notes. So something enormous hit. But how does one rock kill animals on the far side of the world? John Marshall studies mass extinctions at the University of Southampton. Same show, his own episode.",
+          "script": "That was Jan Smit, and there's a lot more of him in his Geology Bites episode, linked in the show notes. So something enormous hit. But how does one rock kill animals on the far side of the world? John Marshall studies mass extinctions at the University of Southampton. Same show, in an episode of his own.",
           "mode": "frame",
           "slot": "the-fingerprint"
         },
@@ -2141,7 +2141,7 @@
         {
           "type": "narration",
           "id": "into-levison",
-          "script": "Richard Ernst. His Geology Bites episode on these giant lava fields makes a good next listen. Whatever the volcanoes did, the iridium says a rock arrived. So what are these rocks? Hal Levison leads NASA's Lucy mission, which is on its way to a swarm of them near Jupiter.",
+          "script": "Richard Ernst. His Geology Bites episode is a good next listen. Whatever the volcanoes did, the iridium says a rock arrived. So what are these rocks? Hal Levison leads NASA's Lucy mission, now flying out to a swarm of them near Jupiter.",
           "mode": "marker",
           "slot": "what-hit-us"
         },
@@ -2155,7 +2155,7 @@
         {
           "type": "narration",
           "id": "into-connolly-1",
-          "script": "Hal Levison, on Geology Bites. If asteroids are the leftovers of planet building, the obvious move is to go and pick one up. Harold Connolly, a geologist at Rowan University, is a sample scientist on NASA's Osiris-Rex mission. In twenty eighteen, it reached a small asteroid called Bennu.",
+          "script": "Hal Levison, on Geology Bites. If asteroids are the leftovers of planet building, the obvious move is to go and pick one up. Harold Connolly, a geologist at Rowan University, is a sample scientist on NASA's Osiris-Rex mission. In twenty eighteen, the spacecraft reached a small, dark asteroid called Bennu.",
           "mode": "frame",
           "slot": "what-hit-us"
         },
@@ -2211,7 +2211,7 @@
         {
           "type": "narration",
           "id": "into-weiss",
-          "script": "That's David Oh. Being an Engineer has hundreds of conversations like that one, on Apple Podcasts and Spotify. So is Psyche the exposed core of a broken baby planet, or something stranger? Ben Weiss of MIT is the mission's deputy principal investigator. He was asked for his hunch.",
+          "script": "That's David Oh. Being an Engineer has hundreds more conversations like that one, on Apple Podcasts and Spotify. So is Psyche the exposed core of a broken baby planet, or something stranger? Ben Weiss of MIT is the mission's deputy principal investigator. Oliver Strimpel asked him for his own hunch.",
           "mode": "frame",
           "slot": "a-world-of-metal"
         },

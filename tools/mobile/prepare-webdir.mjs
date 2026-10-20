@@ -1848,6 +1848,18 @@ export function assertItemTagsSliceComplete(source, written, { discover, session
  *     measurement, not a knob: when the alarm fires, the question is not the
  *     number but the rule — the seed then needs "the newest N published" rather
  *     than "every published", and `seedCarries` is where that goes.
+ *     RAISED 44 -> 56 KB on 2026-10-20 (asteroids-flagship-1, #1425) for a NEW
+ *     UNIT this note did not foresee, not for a second published generated
+ *     Foray: a hand-built flagship is a CURATED draft (so the seed carries it)
+ *     that is also NARRATED, 14 scripts, ~9 KB compact, against "a few KB" for
+ *     a curated Foray without narration. The seed went 36.5 -> 45.5 KB (one
+ *     published generated Foray at 25.6 KB plus four curated). At 56 KB it is
+ *     81% used: room for ONE more flagship-size draft (~54.5 KB, 97%), and a
+ *     second published generated Foray is still far over, so the alarm keeps
+ *     the statement it made. The founder asked for "a few" flagships, so the
+ *     NEXT one should trip this and bring the rule change, not another raise:
+ *     the seed should then carry curated drafts by reference only, or the
+ *     newest N.
  *   - `data/segments.json` — 41 KB today, budget 100 KB. Its unit is a Foray: at
  *     ~0.74 KB per referenced segment and ~19 segments per Foray, that is about
  *     four more Forays the size of today's three combined. Authoring a Foray is a
@@ -1865,7 +1877,7 @@ export function assertItemTagsSliceComplete(source, written, { discover, session
 export const PROJECTED_DATA = [
   {
     rel: "data/forays.json",
-    maxBytes: 44 * 1024,
+    maxBytes: 56 * 1024,
     whenBreached:
       "Its unit is a PUBLISHED generated Foray: a generated draft costs zero bytes here " +
       "(it is the directory's), a curated Foray is a few KB, and a published generated one " +
