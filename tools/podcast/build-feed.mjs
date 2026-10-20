@@ -17,6 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const CHANNEL_PATH = "data/podcast/channel.json";
@@ -263,4 +264,4 @@ export function main(argv = process.argv.slice(2), root = ROOT) {
   return 0;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());
+if (isEntryScript(import.meta.url)) process.exitCode = main();

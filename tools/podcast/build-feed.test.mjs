@@ -18,7 +18,9 @@ let n = 0;
 async function mutant(from, to) {
   assert.ok(SRC.includes(from), `mutation anchor not found: ${from}`);
   const file = path.join(TMP, `m${n++}.mjs`);
-  fs.writeFileSync(file, SRC.replace(from, to));
+  /* The copy lives in a temp dir, so its one relative import is pinned to the real file. */
+  const entry = JSON.stringify(pathToFileURL(path.join(HERE, "..", "ci", "entry.mjs")).href);
+  fs.writeFileSync(file, SRC.replace(from, to).replace('"../ci/entry.mjs"', entry));
   return import(pathToFileURL(file).href);
 }
 
