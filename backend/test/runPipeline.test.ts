@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { countingNarrationWriterOf, runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
+import { countingNarrationWriterOf, runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem, type RetrievalPreparer } from "../src/generation/runPipeline";
+import { sourcingSearches } from "../src/generation/sourceBeats";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -2405,5 +2406,75 @@ describe("GV-124 — the counting writer forwards editSeams", () => {
     const plainProxy = countingNarrationWriterOf(plain, () => void count++);
     expect(plainProxy.editSeams).toBeUndefined();
     expect(plainProxy.writeActStream).toBeUndefined();
+  });
+});
+
+describe("runForayPipeline — GV-95 the retrieval server is asked ahead of research, sourcing and evidence, and only when supplied", () => {
+  /** A scripted RetrievalPreparer: records what the pipeline asked, in order,
+   * and the stage each call ran under. */
+  function scriptedRetrieval() {
+    const calls: Array<{ op: string; stage: string | undefined; detail?: unknown }> = [];
+    const stats = { prepared: 0, hits: 7, misses: 0, degraded: 0, hydrated: 0, hydrationMisses: 0, hydrationAbsent: 0, unmapped: 0, unprepared: 0, evictions: 0, evictedPinned: 0, heldBytes: 0, pinned: 0, scopeMismatches: 0, reasons: [] };
+    const retrieval: RetrievalPreparer = {
+      prepareScope: async (topic) => {
+        calls.push({ op: "prepareScope", stage: currentCallContext()?.stage, detail: topic });
+        return true;
+      },
+      prepare: async (requests) => {
+        calls.push({ op: "prepare", stage: currentCallContext()?.stage, detail: requests });
+        return requests.length;
+      },
+      answerFor: () => undefined,
+      hydrate: async (entries) => {
+        calls.push({ op: "hydrate", stage: currentCallContext()?.stage, detail: entries.length });
+        return 0;
+      },
+      stats: () => stats
+    };
+    return { retrieval, calls, stats };
+  }
+
+  it("prepares the topic's scope once, every sourcing search before 'source' and every clip's body before evidence, each in its own timed stage; its stats ride in meta.veracity.retrieval.remote", async () => {
+    /* MUTATION THAT KILLS THIS: prepare sourcing's searches from the deepen
+       acts' theses only (drop the claim queries). Ran it: red. */
+    const { retrieval, calls, stats } = scriptedRetrieval();
+    let deepened: DeepenedAct[] = [];
+    const deepenBuilder = new StubDeepenActBuilder();
+    const real = deepenBuilder.deepenAct.bind(deepenBuilder);
+    deepenBuilder.deepenAct = async (...args: Parameters<DeepenActBuilder["deepenAct"]>) => {
+      const act = await real(...args);
+      deepened[args[2]] = act;
+      return act;
+    };
+    /* Under a RunLog, so each call can be read off the call context's stage. */
+    const out = await runWithRunLog(new RunLog(), () => runForayPipeline(request, options, { ...stubDeps(), deepenBuilder, retrieval }));
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    deepened = deepened.filter(Boolean);
+    /* The stub run has no text index, so research-shape asks nothing ahead. */
+    expect(calls.map((c) => `${c.op}@${c.stage}`)).toEqual([
+      "prepareScope@retrieval:source",
+      "prepare@retrieval:source",
+      "hydrate@retrieval:source",
+      "hydrate@retrieval:evidence"
+    ]);
+    expect(calls[0]!.detail).toBe(options.topic);
+    expect(calls[1]!.detail).toEqual(sourcingSearches(deepened));
+    expect((calls[1]!.detail as unknown[]).length).toBeGreaterThan(deepened.length);
+    const names = out.timings.map((t) => t.name);
+    expect(names.indexOf("retrieval:source")).toBeLessThan(names.indexOf("source"));
+    expect(names.indexOf("retrieval:evidence")).toBeLessThan(names.indexOf("evidence"));
+    expect((out.input.meta?.veracity?.retrieval as { remote?: unknown }).remote).toEqual(stats);
+  });
+
+  it("without deps.retrieval no retrieval stage runs and meta.veracity.retrieval has no remote key", async () => {
+    /* MUTATION THAT KILLS THIS: add `remote` to meta.veracity.retrieval
+       unconditionally. Ran it: red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(out.timings.map((t) => t.name).filter((n) => n.startsWith("retrieval:"))).toEqual([]);
+    expect(out.input.meta?.veracity?.retrieval).toBeDefined();
+    expect(out.input.meta?.veracity?.retrieval).not.toHaveProperty("remote");
   });
 });

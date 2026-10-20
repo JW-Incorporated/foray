@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
 import { randomUUID } from "crypto";
-import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
+import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RetrievalPreparer, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
 import { spineBestOfLever } from "../generation/bestOfSpine";
 import {
@@ -16,7 +16,9 @@ import {
 } from "../generation/selfCritique";
 import type { SpineSelectionRecord } from "../generation/SpineBuilder";
 import type { SpineRuntime } from "../generation/tierRuntime";
-import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
+import { CORPUS_DIGEST_FILE, FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
+import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval, type RetrievalFetch, type RetrievalHealth } from "../generation/retrievalClient";
+import { retrievalConfig, type RetrievalConfig } from "../generation/generationFlags";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import {
@@ -1257,11 +1259,18 @@ export async function generateOneCandidate(
   spec: PromptSpec,
   args: CliArgs,
   deps: {
-    cueProvider: FileTranscriptCueProvider;
+    /* The batch driver's FileTranscriptCueProvider, or (GV-95,
+       FORAY_RETRIEVAL_URL set) a HydratingCueProvider over the retrieval
+       server. */
+    cueProvider: TranscriptCueProvider;
     /* WS-H (F-06): tier 2’s transcript-TEXT candidate search. Optional for the
        same reason `runPipeline` is — a caller that supplies none (every test that
        predates it) leaves tier 2 on the title path, unchanged. */
     textIndex?: TranscriptTextIndex;
+    /** GV-95: the retrieval server behind `cueProvider` and `textIndex`, handed
+     * to the pipeline (`RunPipelineDeps.retrieval`). Omitted: today's local
+     * path. */
+    retrieval?: RetrievalPreparer;
     runPipeline?: typeof runForayPipeline;
     onPartialWrite?: (candidate: PartialCandidate, partialFile: string) => void;
     sleep?: (ms: number) => Promise<void>;
@@ -1571,6 +1580,7 @@ export async function generateOneCandidate(
         {
           cueProvider: deps.cueProvider,
           textIndex: deps.textIndex,
+          ...(deps.retrieval ? { retrieval: deps.retrieval } : {}),
           checkpoint: args.dryRun ? undefined : checkpointStore,
           onActReady,
           onItemReady: async (ev) => {
@@ -1843,12 +1853,29 @@ export async function main(
 
     fs.mkdirSync(path.resolve(args.out), { recursive: true });
 
-    const cueProvider = new FileTranscriptCueProvider();
-    /* WS-H (F-06): the same machine holds the transcript BODIES, so tier 2 also
-       gets the text index built over them — read through the cue provider above,
-       cached under data-local/transcripts/index/. A checkout without data-local/
-       builds nothing, returns no candidates, and leaves tier 2 on the title path. */
-    const textIndex = new FileTranscriptTextIndex({ bodies: cueProvider });
+    /* GV-95 (W3-11; decision 23): FORAY_RETRIEVAL_URL set sources against the
+       retrieval server (RemoteRetrieval, PrecomputedTextIndex and
+       HydratingCueProvider); unset, the File pair below, exactly as before.
+       Read here, so a malformed URL, mode or token fails the batch before any
+       prompt runs, naming the variable. */
+    const retrievalFlags = retrievalConfig();
+    const archive = loadTranscriptArchive();
+    const remote = retrievalFlags ? await openRemoteRetrieval(retrievalFlags, archive) : null;
+
+    let cueProvider: TranscriptCueProvider & { bodyStat(entry: TranscriptDigestEntry): unknown };
+    let textIndex: TranscriptTextIndex;
+    if (remote) {
+      cueProvider = remote.cueProvider;
+      textIndex = remote.textIndex;
+    } else {
+      const fileProvider = new FileTranscriptCueProvider();
+      cueProvider = fileProvider;
+      /* WS-H (F-06): the same machine holds the transcript BODIES, so tier 2 also
+         gets the text index built over them — read through the cue provider above,
+         cached under data-local/transcripts/index/. A checkout without data-local/
+         builds nothing, returns no candidates, and leaves tier 2 on the title path. */
+      textIndex = new FileTranscriptTextIndex({ bodies: fileProvider });
+    }
 
     /* #703: WHAT THIS RUN CAN SEE OF ITS OWN CORPUS, BEFORE IT GENERATES
        ANYTHING. The 2026-09-14 run drew its research map from 14 of the 22
@@ -1858,7 +1885,6 @@ export async function main(
        whole corpus says so — and the same numbers go into report.json, so a
        reader who never watched the console can still tell which corpus a batch
        was sourced from. */
-    const archive = loadTranscriptArchive();
     /* One stat per row, shared by the coverage count and the fingerprint. */
     const bodyOnDisk = new Map<TranscriptDigestEntry, boolean>();
     const hasBody = (entry: TranscriptDigestEntry): boolean => {
@@ -1869,13 +1895,17 @@ export async function main(
       }
       return known;
     };
-    const coverage = corpusCoverage({
-      archive,
-      hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
-      /* The same directory `FileTranscriptCueProvider` defaults to, resolved
-         the same way: two levels up from `backend/src/cli`. */
-      normalizedRoot: path.resolve(__dirname, "..", "..", "..", "data-local", "transcripts", "normalized")
-    });
+    const coverage = remote
+      ? /* GV-95: the server's corpus, counted from its manifest: a scan of this
+           machine's directory would read 0 shows on a machine that holds none. */
+        corpusCoverage({ archive, hasBody: (entry) => hasBody(entry as TranscriptDigestEntry), disk: remote.retrieval.manifestShows() })
+      : corpusCoverage({
+          archive,
+          hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
+          /* The same directory `FileTranscriptCueProvider` defaults to, resolved
+             the same way: two levels up from `backend/src/cli`. */
+          normalizedRoot: path.resolve(__dirname, "..", "..", "..", "data-local", "transcripts", "normalized")
+        });
     if (coverage.showsOnDisk > 0) console.log(corpusCoverageLine(coverage));
     /* GV-39: the golden-set corpus snapshot — which rows, with which content
        digests, this run could read, through which index format. */
@@ -1884,13 +1914,22 @@ export async function main(
       corpusFingerprint({
         archive,
         hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
-        indexVersion: TRANSCRIPT_TEXT_INDEX_VERSION
+        /* GV-95: the format the server's index is in, when it said. */
+        indexVersion: remote?.health?.indexVersion ?? TRANSCRIPT_TEXT_INDEX_VERSION
       })
     );
 
-    const { report, generated, skipped } = await generateQueue(queue, (spec) =>
-      generateOneCandidate(spec, args, { cueProvider, textIndex, ...(deps.runPipeline ? { runPipeline: deps.runPipeline } : {}) })
-    );
+    const { report, generated, skipped } = await generateQueue(queue, (spec) => {
+      const built = generateOneCandidate(spec, args, {
+        cueProvider,
+        textIndex,
+        ...(remote ? { retrieval: remote.retrieval } : {}),
+        ...(deps.runPipeline ? { runPipeline: deps.runPipeline } : {})
+      });
+      /* GV-95: a finished prompt's bodies stop being pinned, so the next
+         prompt's can push them out under the memory bound. */
+      return remote ? built.finally(() => remote.retrieval.unpinAll()) : built;
+    });
 
     /* Count what actually happened, not what the outcome tag says. A run that
        reached §4.9 and FAILED validation still carries `outcome: "generated"` —
@@ -1987,6 +2026,69 @@ export async function main(
       });
     }
   }
+}
+
+/** GV-95: what `openRemoteRetrieval` builds. */
+export interface RemoteRetrievalSources {
+  retrieval: RemoteRetrieval;
+  textIndex: PrecomputedTextIndex;
+  cueProvider: HydratingCueProvider;
+  /** GET /healthz, or null when the server did not answer it. */
+  health: RetrievalHealth | null;
+}
+
+/** The `generated_at` of this machine's corpus digest
+ * (data-local/transcripts/corpus-digest.json), or null when there is none. */
+export function localCorpusDigestGeneratedAt(root: string = path.resolve(__dirname, "..", "..", "..")): string | null {
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- a fixed repo-relative path.
+    const parsed = JSON.parse(fs.readFileSync(path.join(root, CORPUS_DIGEST_FILE), "utf8")) as { generated_at?: unknown };
+    return typeof parsed.generated_at === "string" ? parsed.generated_at : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GV-95 (W3-11): the retrieval server's three classes over ONE RemoteRetrieval,
+ * with the manifest loaded (so `bodyStat`, topic supply and corpus coverage see
+ * the server's corpus). Never throws on the network: a manifest that did not
+ * load is said, and the run then sources on the title path (every body counts
+ * as absent and every search misses). Warns when this machine's corpus digest
+ * is not the one the server loaded: the archive rows this process maps answers
+ * onto would then differ from the server's, so run
+ * tools/passage-index/pull-archive.mjs first.
+ */
+export async function openRemoteRetrieval(
+  config: RetrievalConfig,
+  archive: readonly TranscriptDigestEntry[],
+  deps: { fetchFn?: RetrievalFetch; localGeneratedAt?: () => string | null; log?: (line: string) => void } = {}
+): Promise<RemoteRetrievalSources> {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const retrieval = new RemoteRetrieval({
+    baseUrl: config.baseUrl,
+    token: config.token ?? null,
+    mode: config.mode,
+    archive,
+    ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {})
+  });
+  /* The URL, the mode and whether a token is set; never the token. */
+  log(`RETRIEVAL: ${config.baseUrl} (mode ${config.mode}${config.token ? ", token set" : ", no token"})`);
+  if (!(await retrieval.loadManifest())) {
+    log(
+      `  WARNING retrieval: the server's episode manifest did not load (${retrieval.stats().reasons.join("; ")}): ` +
+        "every body counts as absent and searches will miss, so sourcing falls back to the title path"
+    );
+  }
+  const health = await retrieval.health();
+  const local = (deps.localGeneratedAt ?? (() => localCorpusDigestGeneratedAt()))();
+  if (health && health.archiveGeneratedAt !== local) {
+    log(
+      `  WARNING retrieval: this machine's corpus digest (generated_at ${local ?? "none"}) is not the server's ` +
+        `(${health.archiveGeneratedAt ?? "none"}); run tools/passage-index/pull-archive.mjs so both source from the same archive`
+    );
+  }
+  return { retrieval, textIndex: new PrecomputedTextIndex(retrieval), cueProvider: new HydratingCueProvider(retrieval), health };
 }
 
 /* Only run when invoked as a script; importing this module for its exported
