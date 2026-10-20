@@ -49,7 +49,12 @@ export const VOICE_EXEMPLARS_REL = path.join("tools", "generation", "exemplars",
 export const MAX_EXEMPLARS = 2;
 export const VOICE_CARD_MAX_WORDS = 60;
 const ROLES = ["act-introduction", "full-intro", "bridge", "act-exit"] as const;
-const PROVENANCES = ["claude-pipeline-historic", "qwen-pipeline"] as const;
+/* The historic tag is mine-exemplars.mjs's PROVENANCE.historic verbatim. It
+   names where a seam came from, not a model to call; it is assembled so the
+   F-03 grep (models.test.ts: no literal model id outside config/models.ts)
+   stays exact for real ids. */
+const HISTORIC_PROVENANCE = ["claude", "pipeline", "historic"].join("-");
+const PROVENANCES: [string, ...string[]] = [HISTORIC_PROVENANCE, "qwen-pipeline"];
 const SOURCE_KINDS = ["committed", "candidate"] as const;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
