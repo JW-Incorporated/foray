@@ -20,7 +20,8 @@ import type { SpineRuntime } from "../generation/tierRuntime";
 import { CORPUS_DIGEST_FILE, FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval, type RetrievalFetch, type RetrievalHealth } from "../generation/retrievalClient";
 import { retrievalConfig, type RetrievalConfig } from "../generation/generationFlags";
-import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
+import { corpusCoverage, corpusCoverageLine, corpusFingerprint, scanNormalizedCorpus, type CorpusCoverage, type CorpusFingerprint, type CorpusShowOnDisk } from "../generation/transcriptCorpus";
+import { archiveIntegrity, integrityGate, readSyncState, remoteIntegrity, SyncStateError, type IntegrityVerdict } from "../generation/archiveIntegrity";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import {
   CHECKPOINT_STAGE_ORDER,
@@ -274,6 +275,11 @@ export interface CliArgs {
    * args, the candidate and the report row of a run without it are unchanged;
    * absent reads as `catalogue`. */
   lane?: JobLane;
+  /** GV-101 (PKG-23): `--allow-short-archive`, run even when the run-start
+   * corpus integrity guard finds the archive short or stale (it still prints
+   * the shortfall). `parseArgs` always sets it, false unless given; optional
+   * only so callers that build CliArgs by hand need not. */
+  allowShortArchive?: boolean;
 }
 
 /** A command-line value the driver refuses. `main` prints the message and
@@ -444,6 +450,7 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     noResume: argv.includes("--no-resume"),
     maxResumes: Number.isInteger(maxResumes) && maxResumes >= 0 ? maxResumes : DEFAULT_MAX_RESUMES,
     continueOnRefusedPartial: argv.includes("--continue-on-refused-partial"),
+    allowShortArchive: argv.includes("--allow-short-archive"),
     notify: get("--notify") ?? (notifyEnv ? notifyEnv : null),
     ...(argv.includes("--fast-path") ? { fastPath: true } : {}),
     ...(get("--job-dir") ? { jobDir: get("--job-dir")! } : {}),
@@ -1812,7 +1819,7 @@ export async function main(
         "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
         "[--render-spool <dir> [--audio-policy phone-voice-first|await-render]] " +
         "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>] " +
-        "[--lane on-demand|catalogue]"
+        "[--lane on-demand|catalogue] [--allow-short-archive]"
     );
     process.exitCode = 1;
     return;
@@ -1909,18 +1916,32 @@ export async function main(
       }
       return known;
     };
+    /* GV-101: the local disk is scanned once, here, so the coverage count and
+       the integrity guard below read the same listing. */
+    const repoRoot = path.resolve(__dirname, "..", "..", "..");
+    const localShows = remote
+      ? null
+      : /* The same directory `FileTranscriptCueProvider` defaults to, resolved
+           the same way: two levels up from `backend/src/cli`. */
+        scanNormalizedCorpus(path.join(repoRoot, "data-local", "transcripts", "normalized"));
     const coverage = remote
       ? /* GV-95: the server's corpus, counted from its manifest: a scan of this
            machine's directory would read 0 shows on a machine that holds none. */
         corpusCoverage({ archive, hasBody: (entry) => hasBody(entry as TranscriptDigestEntry), disk: remote.retrieval.manifestShows() })
-      : corpusCoverage({
-          archive,
-          hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
-          /* The same directory `FileTranscriptCueProvider` defaults to, resolved
-             the same way: two levels up from `backend/src/cli`. */
-          normalizedRoot: path.resolve(__dirname, "..", "..", "..", "data-local", "transcripts", "normalized")
-        });
+      : corpusCoverage({ archive, hasBody: (entry) => hasBody(entry as TranscriptDigestEntry), disk: localShows ?? [] });
     if (coverage.showsOnDisk > 0) console.log(corpusCoverageLine(coverage));
+
+    /* GV-101 (PKG-23, GP-09): refuse to source against a short or stale
+       corpus. Local: the disk against tools/foraycorpus-export/sync-r2.mjs's
+       state file (no state file, nothing to check). Remote: the server's
+       /healthz and the manifest loaded above against this machine's index
+       version and pulled corpus digest. Exit 2 unless --allow-short-archive. */
+    const gate = integrityGate(runStartIntegrity(remote, localShows ?? [], repoRoot), args.allowShortArchive === true);
+    for (const line of gate.lines) (gate.refuse ? console.error : console.log)(line);
+    if (gate.refuse) {
+      process.exitCode = 2;
+      return;
+    }
     /* GV-39: the golden-set corpus snapshot — which rows, with which content
        digests, this run could read, through which index format. */
     const corpus = corpusReport(
@@ -2049,6 +2070,35 @@ export interface RemoteRetrievalSources {
   cueProvider: HydratingCueProvider;
   /** GET /healthz, or null when the server did not answer it. */
   health: RetrievalHealth | null;
+  /** GV-101: the `generated_at` of this machine's pulled corpus digest, as
+   * compared with `health.archiveGeneratedAt` (null when there is none). */
+  pulledArchiveGeneratedAt: string | null;
+}
+
+/**
+ * GV-101: the run-start integrity verdict. Remote when the retrieval server is
+ * in use (its /healthz and the manifest `openRemoteRetrieval` loaded through
+ * the same RemoteRetrieval), local otherwise (`shows` against the sync state
+ * under `repoRoot`). A sync state that exists and cannot be read is a verdict
+ * of its own, never "no state".
+ */
+export function runStartIntegrity(
+  remote: Pick<RemoteRetrievalSources, "retrieval" | "health" | "pulledArchiveGeneratedAt"> | null,
+  shows: readonly CorpusShowOnDisk[],
+  repoRoot: string
+): IntegrityVerdict {
+  if (remote) {
+    return {
+      kind: "remote",
+      ...remoteIntegrity({ healthz: remote.health, pulledArchiveGeneratedAt: remote.pulledArchiveGeneratedAt, manifest: remote.retrieval.manifestShows() })
+    };
+  }
+  try {
+    return { kind: "local", ...archiveIntegrity({ state: readSyncState(repoRoot), shows }) };
+  } catch (err) {
+    if (err instanceof SyncStateError) return { kind: "unreadable-state", ok: false, message: err.message };
+    throw err;
+  }
 }
 
 /** The `generated_at` of this machine's corpus digest
@@ -2102,7 +2152,13 @@ export async function openRemoteRetrieval(
         `(${health.archiveGeneratedAt ?? "none"}); run tools/passage-index/pull-archive.mjs so both source from the same archive`
     );
   }
-  return { retrieval, textIndex: new PrecomputedTextIndex(retrieval), cueProvider: new HydratingCueProvider(retrieval), health };
+  return {
+    retrieval,
+    textIndex: new PrecomputedTextIndex(retrieval),
+    cueProvider: new HydratingCueProvider(retrieval),
+    health,
+    pulledArchiveGeneratedAt: local
+  };
 }
 
 /* Only run when invoked as a script; importing this module for its exported
