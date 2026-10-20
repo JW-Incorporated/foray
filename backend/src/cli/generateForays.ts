@@ -214,7 +214,7 @@ import { UnitBudgetStopError, defaultUnitBudgetGuard, unitSpendOf, type UnitSpen
  * (`laneCheck` in publishForay.ts). The catalogue lane is the held PR (D7).
  */
 
-interface PromptSpec {
+export interface PromptSpec {
   prompt: string;
   duration?: "short" | "medium" | "long";
   topic?: string;
@@ -751,6 +751,10 @@ export function candidateFilename(prompt: string): string {
   const hash = createHash("sha1").update(prompt).digest("hex").slice(0, 8);
   return `${slug || "prompt"}-${hash}.json`;
 }
+
+/** GV-105: a `generateOneCandidate` file key given in place of the prompt's
+ * slug (the worker's `job-<uuid>`): lowercase letters, digits and dashes. */
+export const CANDIDATE_KEY_PATTERN = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 /** WS-D2's partial-candidate file, next to `candidateFilename`'s own file and
  * keyed the same way (same slug+hash, so a reader can find both without a
@@ -1385,16 +1389,34 @@ export async function generateOneCandidate(
     /** GV-74: the render client `--render-spool` uses (default a
      * SpoolRenderClient over that directory). Ignored without the flag. */
     renderClient?: NarrationRenderClient;
+    /** GV-105: the job sink the Spark worker opens on its claimed row (a
+     * SupabaseJobSink). Given, it is used in place of `--job-dir`'s
+     * FileJobSink; omitted, `--job-dir` decides as before. Never opened under
+     * --dry-run either way. */
+    jobSink?: GenerationJobSink;
+    /** GV-105: what this prompt's log lines name it by (default its first 60
+     * characters). The worker passes the job id, so a listener's prompt never
+     * reaches a log line. */
+    promptLabel?: string;
+    /** GV-105: the file key (candidate, partial, checkpoint and runlog names)
+     * in place of `candidateFilename(prompt)`'s slug of the prompt. The worker
+     * passes one built from the job id, so no prompt-derived name reaches the
+     * disk. */
+    candidateKey?: string;
   }
 ): Promise<CandidateResult> {
   const runPipeline = deps.runPipeline ?? runForayPipeline;
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const now = deps.now ?? (() => new Date());
   const notify = deps.notify ?? (args.notify ? (summary: NotifySummary) => runNotifyHook(args.notify!, summary) : undefined);
-  const basename = candidateFilename(spec.prompt);
+  if (deps.candidateKey !== undefined && !CANDIDATE_KEY_PATTERN.test(deps.candidateKey)) {
+    throw new Error(`generateOneCandidate: candidateKey must match ${CANDIDATE_KEY_PATTERN}`);
+  }
+  const label = deps.promptLabel ?? spec.prompt.slice(0, 60);
+  const basename = deps.candidateKey !== undefined ? `${deps.candidateKey}.json` : candidateFilename(spec.prompt);
   const file = path.join(path.resolve(args.out), basename);
   if (fs.existsSync(file)) {
-    console.log(`  skip   ${spec.prompt.slice(0, 60)} (already built)`);
+    console.log(`  skip   ${label} (already built)`);
     return { skipped: true, file };
   }
 
@@ -1491,13 +1513,13 @@ export async function generateOneCandidate(
           store: checkpointStore,
           fingerprint,
           stamp: forkStamp,
-          label: spec.prompt.slice(0, 60)
+          label
         })
       : undefined;
   const resumable = !args.noResume && checkpointStore.load(checkpointKey) !== null;
   if (resumable) {
     const stages = Object.keys(checkpointStore.load(checkpointKey)!.stages);
-    console.log(`  resume ${spec.prompt.slice(0, 60)} — ${stages.length} stage(s) already done: ${stages.join(", ")}`);
+    console.log(`  resume ${label} — ${stages.length} stage(s) already done: ${stages.join(", ")}`);
   }
 
   /* WS-D2 (docs/curation/generation-fix-plan-2026-09-09.md, "D2 (streaming
@@ -1515,14 +1537,14 @@ export async function generateOneCandidate(
      per act since F-66), which a resume skips. A run that resumes act 1's
      stitch therefore has `ttlA1Ms` `null` too, for the same reason — see that
      module's own comment. */
-  const partialFile = path.join(path.resolve(args.out), partialCandidateFilename(spec.prompt));
+  const partialFile = path.join(path.resolve(args.out), deps.candidateKey !== undefined ? `${deps.candidateKey}.partial.json` : partialCandidateFilename(spec.prompt));
   const refusedPartials: number[] = [];
   let lastPartialId: string | null = null;
   /* GV-44 (W6-03): the job row. One sink per prompt, kept across resume
      attempts so the row's seq keeps climbing and a banked act already served
      stays served. Nothing is opened without --job-dir, and nothing under
      --dry-run. A job-row failure never costs the Foray: it is a warning. */
-  const jobSink: GenerationJobSink | null = args.jobDir && !args.dryRun ? new FileJobSink(path.resolve(args.jobDir)) : null;
+  const jobSink: GenerationJobSink | null = args.dryRun ? null : (deps.jobSink ?? (args.jobDir ? new FileJobSink(path.resolve(args.jobDir)) : null));
   const job: JobIdentity = { jobId: (deps.newJobId ?? randomUUID)(), authorId: args.authorId, lane: args.lane ?? "catalogue" };
   let jobProgress = EMPTY_JOB_PROGRESS;
   let jobSeq = 0;
@@ -1744,7 +1766,7 @@ export async function generateOneCandidate(
           const waitMs = resumeBackoffMs(resumes.length);
           resumes.push({ attempt: resumes.length + 1, kind: failure.kind, reason: detail.slice(0, 300), waitedMs: waitMs, at: now().toISOString() });
           console.log(
-            `  retry  ${spec.prompt.slice(0, 60)} — resume ${resumes.length}/${args.maxResumes} in ${Math.round(waitMs / 1000)}s ` +
+            `  retry  ${label} — resume ${resumes.length}/${args.maxResumes} in ${Math.round(waitMs / 1000)}s ` +
               `after ${failure.kind}: ${detail.slice(0, 120)}`
           );
           await sleep(waitMs);
@@ -1753,7 +1775,7 @@ export async function generateOneCandidate(
         /* One prompt's failure must not end the batch — a rate limit on
            prompt 7 should still leave prompts 1-6 on disk and prompt 8
            attempted. The error is recorded, not swallowed. */
-        console.log(`  ABORT  ${spec.prompt.slice(0, 60)} — resumes exhausted (${args.maxResumes}) after ${failure.kind}: ${detail.slice(0, 120)}${checkpointNote}`);
+        console.log(`  ABORT  ${label} — resumes exhausted (${args.maxResumes}) after ${failure.kind}: ${detail.slice(0, 120)}${checkpointNote}`);
         const entry: ReportEntry = {
           prompt: spec.prompt,
           outcome: "aborted",
@@ -1771,7 +1793,7 @@ export async function generateOneCandidate(
            and cutting it removes the spend and the resume instruction, which is
            exactly the half a person needs. The refused partial's message names
            the act and the checker's errors for the same reason. */
-        console.log(`  ABORT  ${spec.prompt.slice(0, 60)} — ${failure.kind}: ${detail}${checkpointNote}`);
+        console.log(`  ABORT  ${label} — ${failure.kind}: ${detail}${checkpointNote}`);
         const entry: ReportEntry = {
           prompt: spec.prompt,
           outcome: "aborted",
@@ -1793,7 +1815,7 @@ export async function generateOneCandidate(
         };
       }
 
-      console.log(`  ERROR  ${spec.prompt.slice(0, 60)} — ${detail.slice(0, 120)}${checkpointNote}`);
+      console.log(`  ERROR  ${label} — ${detail.slice(0, 120)}${checkpointNote}`);
       const entry: ReportEntry = {
         prompt: spec.prompt,
         outcome: "error",
@@ -1819,7 +1841,7 @@ export async function generateOneCandidate(
   const gate = outcome.outcome === "generated" ? outcome.gate : undefined;
   const gateFail = gate && !gate.ok ? ` GATE FAIL: ${gate.failures[0] ?? "(no reason given)"}` : "";
   console.log(
-    `  ${outcome.outcome === "generated" ? "built " : "stop  "} ${spec.prompt.slice(0, 60)} — ${line}` +
+    `  ${outcome.outcome === "generated" ? "built " : "stop  "} ${label} — ${line}` +
       (ttlA1Ms != null ? ` (ttlA1=${ttlA1Ms}ms)` : "") +
       (spineReasks.length ? ` [spine re-asked ${spineReasks.length}x: ${spineReasks.flatMap((r) => r.violations).join("; ")}]` : "") +
       (refusedPartials.length ? ` [partial refused at act ${refusedPartials.map((i) => i + 1).join(", ")}; continued]` : "") +
