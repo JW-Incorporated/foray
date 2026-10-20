@@ -1,0 +1,26 @@
+{
+  "_comment": "GV-97: SYNTHETIC Jev /v1/systemone reply bodies for the draft critic's noul question ('Is every fact in this sentence stated in the source text?'), shaped like hermes-operating-system ops/jev/tests/_fixtures.py success_body_for / corrupted_body_for. No prompt, sentence, transcript or listener text. Not a recording: the card's live step (E5, with the founder's Jev key) captures one sanitised response and replaces or adds it here.",
+  "requestId": "req-synthetic-noul-0001",
+  "success": {
+    "model": "jev-1.13.0",
+    "answers": [
+      {
+        "type": "noul",
+        "noul": 0.82
+      }
+    ],
+    "usage": {
+      "input_tokens": 410,
+      "output_tokens": 2
+    }
+  },
+  "corrupted": {
+    "model": "jev-1.13.0",
+    "answers": [
+      {
+        "type": "noul",
+        "noul": 1.7
+      }
+    ]
+  }
+}

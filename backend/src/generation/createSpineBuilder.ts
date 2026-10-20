@@ -1,6 +1,11 @@
 import { instantiateStage, resolveRouting, RoutingConfigError, stageEnvVar } from "../config/stageRouting";
 import { BestOfTwoSpineBuilder, createSpineJudge, readSpineBestOf, SPINE_BEST_OF_ENV } from "./bestOfSpine";
 import { ChatSpineBuilder } from "./chat/ChatSpineBuilder";
+/* GV-125 (#1413 item 13): GV-97's judges register 'jev', 'qwen' and
+   'jev-then-qwen' when judges.ts is first imported, and nothing else in
+   backend/src imports it, so without this FORAY_SPINE_JUDGE could never name
+   them. Registering builds no client and reads no variable. */
+import "./judges";
 import { ensureStageImplementations, localImplementation, plainImplementation } from "./chat/providerRegistry";
 import type { SpineBuilder } from "./SpineBuilder";
 import { StubSpineBuilder } from "./StubSpineBuilder";

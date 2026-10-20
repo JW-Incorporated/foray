@@ -1396,8 +1396,90 @@ function usableArchiveEntry(state: SourcingState): (entry: TranscriptDigestEntry
  * which is what every test written before F-96 already saw.
  */
 function thesisIdfFor(thesis: string | null, state: SourcingState): ReadonlyMap<string, number> | undefined {
-  if (!thesis || !state.textIndex.enabled) return undefined;
-  return state.textIndex.search(thesis, { limit: 1, isUsable: usableArchiveEntry(state) })[0]?.idf;
+  const query = thesisQueryFor(thesis);
+  if (!query || !state.textIndex.enabled) return undefined;
+  return state.textIndex.search(query.text, { limit: query.limit, isUsable: usableArchiveEntry(state) })[0]?.idf;
+}
+
+/* ---------------------------------------------------------------------------
+   GV-95 (W3-11): WHAT SOURCING WILL ASK, AND WHAT IT MAY OPEN, KNOWN AHEAD.
+   Sourcing is synchronous; a retrieval server is not. The pipeline's wiring
+   asks the server every search below before the 'source' stage and fetches
+   every body sourcing could open, and the synchronous seams then read stored
+   answers (`retrievalClient.ts`). The query helpers are what the call sites
+   above use, so a prepared string IS the searched string; the body list is
+   the union of every place the walk calls `getCues`. Pure: no fetch, no
+   promise, nothing written.
+   --------------------------------------------------------------------------- */
+
+/** One question sourcing asks the text index. Every sourcing search carries
+ * the lineage predicate, so every one is in the 'lineage' scope. */
+export interface SourcingSearchRequest {
+  scope: "lineage";
+  text: string;
+  limit: number;
+}
+
+/** The act thesis's idf query (F-96, `thesisIdfFor`), or null for no thesis. */
+export function thesisQueryFor(thesis: string | null): SourcingSearchRequest | null {
+  return thesis ? { scope: "lineage", text: thesis, limit: 1 } : null;
+}
+
+/** A searching beat's candidate query (`tier2Candidates`). */
+export function claimQueryFor(claim: string): SourcingSearchRequest {
+  return { scope: "lineage", text: claim, limit: TRANSCRIPT_TEXT_CANDIDATES };
+}
+
+/** Every search sourcing `acts` will make: each act's thesis query and each
+ * non-argument beat's claim query (an argument beat searches nothing, F-38). */
+export function sourcingSearches(acts: readonly DeepenedAct[]): SourcingSearchRequest[] {
+  const requests: SourcingSearchRequest[] = [];
+  for (const act of acts) {
+    const thesis = thesisQueryFor(act.thesis);
+    if (thesis) requests.push(thesis);
+    for (const slot of act.slots) for (const beat of slot.beats) if (beat.kind !== "argument") requests.push(claimQueryFor(beat.claim));
+  }
+  return requests;
+}
+
+/**
+ * Every archive entry sourcing `acts` could open a body of, given the text
+ * candidates each claim query will return (`candidatesFor`):
+ *   - tier 2's candidates: the text hits, the title-path match
+ *     (`findTranscriptArchiveMatch`, local) and the seeded episode;
+ *   - tier 1's window text: the episode of EVERY pool segment, because
+ *     `scoreSegmentsAgainstClaim` reads the window of each segment it ranks,
+ *     lineage-admitted or not (the trace names the best of any lineage).
+ * Deduplicated, in first-seen order.
+ */
+export function sourcingBodies(
+  acts: readonly DeepenedAct[],
+  options: {
+    transcriptArchive: readonly TranscriptDigestEntry[];
+    segmentPool: readonly SegmentRecord[];
+    topic: string | null;
+    root?: string;
+    candidatesFor: (request: SourcingSearchRequest) => readonly TranscriptDigestEntry[];
+  }
+): TranscriptDigestEntry[] {
+  const isUsable = (entry: TranscriptDigestEntry): boolean => familyGateAllows(options.topic, nodesForArchiveEntry(entry, options.root), options.root);
+  const archive = options.transcriptArchive as TranscriptDigestEntry[];
+  const wanted = new Set<TranscriptDigestEntry>();
+  for (const act of acts) {
+    for (const slot of act.slots) {
+      for (const beat of slot.beats) {
+        if (beat.kind === "argument") continue;
+        for (const entry of options.candidatesFor(claimQueryFor(beat.claim))) wanted.add(entry);
+        const byTitle = findTranscriptArchiveMatch(beat.claim, archive, isUsable);
+        if (byTitle) wanted.add(byTitle.entry);
+        const seed = beat.seed;
+        if (seed) for (const entry of archive) if (entryMatchesSeed(entry, seed) && isUsable(entry)) wanted.add(entry);
+      }
+    }
+  }
+  const poolItems = new Set(options.segmentPool.map((s) => s.item_id));
+  for (const entry of archive) if (poolItems.has(deriveItemId(entry))) wanted.add(entry);
+  return [...wanted];
 }
 
 /** The claim search's idf over the thesis's — a term the claim search
@@ -2392,7 +2474,8 @@ function tier2Candidates(
   const seen = new Set<string>();
   const key = (entry: TranscriptDigestEntry) => `${entry.show_id}\u0000${entry.guid}`;
 
-  for (const hit of state.textIndex.search(claim, { limit: TRANSCRIPT_TEXT_CANDIDATES, isUsable })) {
+  const query = claimQueryFor(claim);
+  for (const hit of state.textIndex.search(query.text, { limit: query.limit, isUsable })) {
     if (seen.has(key(hit.entry))) continue;
     seen.add(key(hit.entry));
     candidates.push({ entry: hit.entry, titleScore: titleTokenScore(claimTokens, hit.entry), text: hit });

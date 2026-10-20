@@ -157,6 +157,14 @@ export interface CallContext {
   tier?: string;
   /** How many automatic resumes preceded this pipeline attempt (0 = first). */
   resumeAttempt?: number;
+  /**
+   * GV-124 (#1413 item 1): the Foray's generation session, stable across its
+   * automatic resumes (the batch driver passes its checkpoint key). The lane
+   * scheduler meters Spark and second-box seconds against it, so one Foray's
+   * unit caps bind across every attempt; without it each RunLog (one
+   * attempt) is its own session.
+   */
+  sessionId?: string;
   /** Lane priority for the scheduler (GV-93). */
   priority?: "critical" | "background";
   lane?: string;

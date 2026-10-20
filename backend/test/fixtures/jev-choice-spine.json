@@ -1,0 +1,54 @@
+{
+  "_comment": "GV-97: SYNTHETIC Jev /v1/systemone reply bodies for the spine judge's choice question (options A and B), shaped like hermes-operating-system ops/jev/tests/_fixtures.py success_body_for / corrupted_body_for. No prompt, plan, transcript or listener text. Not a recording: the card's live step (E4, with the founder's Jev key) captures one sanitised response and replaces or adds it here.",
+  "requestId": "req-synthetic-spine-0001",
+  "success": {
+    "model": "jev-1.13.0",
+    "answers": [
+      {
+        "type": "choice",
+        "choice": "B",
+        "probabilities": {
+          "A": 0.22,
+          "B": 0.78
+        },
+        "confidence": 0.78
+      }
+    ],
+    "usage": {
+      "input_tokens": 1840,
+      "output_tokens": 3
+    }
+  },
+  "weak": {
+    "model": "jev-1.13.0",
+    "answers": [
+      {
+        "type": "choice",
+        "choice": "B",
+        "probabilities": {
+          "A": 0.46,
+          "B": 0.54
+        },
+        "confidence": 0.54
+      }
+    ],
+    "usage": {
+      "input_tokens": 1840,
+      "output_tokens": 3
+    }
+  },
+  "corrupted": {
+    "model": "jev-1.13.0",
+    "answers": [
+      {
+        "type": "choice",
+        "choice": "C",
+        "probabilities": {
+          "A": 0.22,
+          "B": 0.78
+        },
+        "confidence": 0.78
+      }
+    ]
+  }
+}

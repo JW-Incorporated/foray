@@ -155,7 +155,9 @@ function serve(svc: RetrievalService | undefined, call: Call): Reply {
 }
 
 function client(fetchFn: RetrievalFetch, extra: Partial<ConstructorParameters<typeof RemoteRetrieval>[0]> = {}): RemoteRetrieval {
-  return new RemoteRetrieval({ baseUrl: "http://retrieval.test/", token: "t0ken", fetchFn, archive: ARCHIVE, ...extra });
+  /* https: the client refuses to send a token over plain http to any host
+     but this machine (GV-95, from the GV-29 review). */
+  return new RemoteRetrieval({ baseUrl: "https://retrieval.test/", token: "t0ken", fetchFn, archive: ARCHIVE, ...extra });
 }
 
 /** A candidate list in the comparable shape (entry by key, numbers exact). */
@@ -372,6 +374,48 @@ describe("RemoteRetrieval + PrecomputedTextIndex: prepared answers equal a local
     expect(broken.stats().reasons).toEqual(["episodes: HTTP 500"]);
   });
 
+  it("never sends the bearer token over plain http to a non-loopback host; https, loopback http and a token-less client are sent", async () => {
+    /* GV-95 (GV-29 review, #1286 wave 5). MUTATION THAT KILLS THIS: drop the
+       tokenInClear check in call() (the LAN client then sends its token).
+       Ran it: red. */
+    const lanFake = fakeFetch({ svc: service() });
+    const lan = new RemoteRetrieval({ baseUrl: "http://retrieval.lan:7311", token: "t0ken", fetchFn: lanFake.fetchFn, archive: ARCHIVE });
+    expect(await lan.loadManifest()).toBe(false);
+    expect(await lan.prepareScope(TOPIC)).toBe(false);
+    expect(await lan.hydrate([ARCHIVE[0]!])).toBe(0);
+    expect(await lan.health()).toBeNull();
+    expect(lanFake.calls).toHaveLength(0);
+    expect(lan.stats().reasons[0]).toBe("episodes: refused: the bearer token would travel over plain http to a non-loopback host (use https)");
+    expect(lan.stats().reasons.join(" ")).not.toMatch(/t0ken/);
+
+    for (const baseUrl of ["https://retrieval.example", "http://127.0.0.1:7311", "http://localhost:7311", "http://[::1]:7311"]) {
+      const fake = fakeFetch({ svc: service() });
+      const r = new RemoteRetrieval({ baseUrl, token: "t0ken", fetchFn: fake.fetchFn, archive: ARCHIVE });
+      expect(await r.loadManifest()).toBe(true);
+      expect(fake.calls[0]!.headers.authorization).toBe("Bearer t0ken");
+    }
+    /* No token, nothing secret to leak: plain http to the LAN is sent. */
+    const open = fakeFetch({ svc: service() });
+    const tokenless = new RemoteRetrieval({ baseUrl: "http://retrieval.lan:7311", fetchFn: open.fetchFn, archive: ARCHIVE });
+    expect(await tokenless.loadManifest()).toBe(true);
+    expect(open.calls[0]!.headers.authorization).toBeUndefined();
+  });
+
+  it("answers() tells a stored answer from a miss, without searching or counting; a miss with a real fallback is answered", async () => {
+    /* GV-95 (GV-29 review: a miss read as a search that ran). MUTATION THAT
+       KILLS THIS: return true from answers() unconditionally. Ran it: red. */
+    const retrieval = client(fakeFetch({ svc: service() }).fetchFn);
+    await retrieval.prepareScope(TOPIC);
+    await retrieval.prepare([{ scope: "lineage", text: "rome legions", limit: 8 }]);
+    const index = new PrecomputedTextIndex(retrieval);
+    expect(index.answers("rome legions", { limit: 8, isUsable: lineageIsUsable })).toBe(true);
+    expect(index.answers("rome legions", { limit: 1, isUsable: lineageIsUsable })).toBe(false);
+    expect(index.answers("rome legions", { limit: 8 })).toBe(false);
+    expect(index.answers("never asked")).toBe(false);
+    expect(index.stats()).toMatchObject({ hits: 0, misses: 0 });
+    expect(new PrecomputedTextIndex(retrieval, { fallback: localIndex() }).answers("never asked")).toBe(true);
+  });
+
   it("debug builds check once per lineage scope that the caller's predicate admits exactly that scope", async () => {
     /* MUTATIONS THAT KILL THIS: compare sizes only (the swapped predicate has
        the same size); verify once per index instead of once per prepareScope
@@ -504,6 +548,52 @@ describe("HydratingCueProvider: bodies fetched ahead, read synchronously", () =>
     for (const e of [...first, ...second]) expect(provider.getCues(e)).not.toBeNull();
   });
 
+  it("proves the cap: with every reply held, exactly 8 /v1/cues requests are in flight across two hydrate calls, and each released reply admits exactly one more, first queued first", async () => {
+    /* GV-95 (GV-29 review: the timing-based test above does not prove the
+       limit). Nothing here depends on a clock: every reply is held until the
+       test releases it. MUTATIONS THAT KILL THIS: `<=` for `<` in
+       acquireCuesSlot (9 in flight); skip acquireCuesSlot (25 in flight);
+       hand a freed slot to the newest waiter (pop for shift: o-0's turn goes
+       to o-4). Ran all three: red. */
+    const held: Array<() => void> = [];
+    const started: string[] = [];
+    let released = 0;
+    const fetchFn: RetrievalFetch = async (url) => {
+      started.push(String(new URL(url).searchParams.get("guid")));
+      await new Promise<void>((resolve) => held.push(resolve));
+      return { ok: true, status: 200, text: async () => JSON.stringify({ cues: [{ text: "a b c", start_sec: 0, end_sec: 1 }] }) };
+    };
+    const flush = async () => {
+      for (let i = 0; i < 5; i++) await new Promise<void>((resolve) => setImmediate(resolve));
+    };
+    const retrieval = client(fetchFn, { timeoutMs: 60_000 });
+    const first = Array.from({ length: 20 }, (_, i) => ({ ...ARCHIVE[0]!, guid: `bulk-${i}` }));
+    const second = Array.from({ length: 5 }, (_, i) => ({ ...ARCHIVE[0]!, guid: `o-${i}` }));
+    const a = retrieval.hydrate(first);
+    await flush();
+    expect(started).toEqual(first.slice(0, 8).map((e) => e.guid));
+    const b = retrieval.hydrate(second);
+    await flush();
+    expect(started.length).toBe(8);
+    const releaseOne = async () => {
+      held.shift()!();
+      released += 1;
+      await flush();
+    };
+    await releaseOne();
+    expect(started.length).toBe(9);
+    expect(started[8]).toBe("bulk-8");
+    while (released < 25) {
+      expect(started.length - released).toBe(Math.min(8, 25 - released));
+      await releaseOne();
+    }
+    expect(await a).toBe(20);
+    expect(await b).toBe(5);
+    /* First queued, first served: the second call's bodies went last. */
+    expect(started.slice(20)).toEqual(second.map((e) => e.guid));
+    expect(new Set(started).size).toBe(25);
+  });
+
   it("pins bodies for the run under a memory bound, evicting least recently used unpinned bodies first", async () => {
     /* MUTATION THAT KILLS THIS: evict the oldest body whether pinned or not
        (b would survive and a pinned a would go first). Ran it: red. */
@@ -583,6 +673,30 @@ describe("HydratingCueProvider: bodies fetched ahead, read synchronously", () =>
       "throws"
     ]);
     expect(transcriptSourceOfBody(null)).toBe("asr-local");
+  });
+});
+
+describe("RemoteRetrieval: the manifest's shows and /healthz (GV-95)", () => {
+  it("manifestShows counts each show's manifest rows, sorted by show id; health maps /healthz and degrades to null", async () => {
+    /* MUTATION THAT KILLS THIS: count manifestShows from the archive instead
+       of the manifest (an archive-only row would count). Ran it: red. */
+    const healthz = { indexVersion: 7, shows: 3, episodes: 5, archiveGeneratedAt: "2026-10-01T00:00:00.000Z" };
+    const retrieval = client(
+      fakeFetch({ svc: service(), route: (call) => (call.url.pathname === "/healthz" ? { json: healthz } : undefined) }).fetchFn,
+      { archive: [...ARCHIVE, { ...ARCHIVE[0]!, guid: "archive-only" }] }
+    );
+    expect(retrieval.manifestShows()).toEqual([]);
+    expect(await retrieval.loadManifest()).toBe(true);
+    expect(retrieval.manifestShows()).toEqual([
+      { dirName: "fall-of-civilizations", showId: "fall-of-civilizations", episodes: 1 },
+      { dirName: "hardcore-history", showId: "hardcore-history", episodes: 2 },
+      { dirName: "titans-of-nuclear", showId: "titans-of-nuclear", episodes: 2 }
+    ]);
+    expect(await retrieval.health()).toEqual(healthz);
+
+    const broken = client(fakeFetch({ route: () => ({ status: 500, json: { error: "x" } }) }).fetchFn);
+    expect(await broken.health()).toBeNull();
+    expect(broken.stats().reasons).toEqual(["healthz: HTTP 500"]);
   });
 });
 

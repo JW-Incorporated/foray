@@ -3,13 +3,23 @@ import * as fs from "fs";
 import * as path from "path";
 import { spawn } from "child_process";
 import { randomUUID } from "crypto";
-import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
+import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RetrievalPreparer, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
 import { spineBestOfLever } from "../generation/bestOfSpine";
-import { joinCheckpointVariant, readSelfCritique, selfCritiqueLever, type SelfCritiqueLever, type SelfCritiqueTotals } from "../generation/selfCritique";
+import {
+  joinCheckpointVariant,
+  readSelfCritique,
+  selfCritiqueLever,
+  selfCritiqueVariant,
+  type SelfCritiqueLever,
+  type SelfCritiqueTotals
+} from "../generation/selfCritique";
+import { writerExemplarsLever, type ExemplarsLever } from "../generation/voiceExemplars";
 import type { SpineSelectionRecord } from "../generation/SpineBuilder";
 import type { SpineRuntime } from "../generation/tierRuntime";
-import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
+import { CORPUS_DIGEST_FILE, FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
+import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval, type RetrievalFetch, type RetrievalHealth } from "../generation/retrievalClient";
+import { retrievalConfig, type RetrievalConfig } from "../generation/generationFlags";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, type CorpusCoverage, type CorpusFingerprint } from "../generation/transcriptCorpus";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
 import {
@@ -1065,9 +1075,12 @@ export type ReportEntry = {
    * fixed by the flags, absent when FORAY_SPINE_BEST_OF is unset or 1.
    * GV-94: `selfCritique` is the configured writer self-critique
    * (`selfCritiqueLever`: mode, critic, flagP, sourceBudgetTokens), absent
-   * when FORAY_WRITER_SELF_CRITIQUE is unset or off. On every row, `{}` when
-   * no lever is on. */
-  levers?: { spineBestOf?: { mode: "best-of-2"; judge: string; graceMs: number }; selfCritique?: SelfCritiqueLever };
+   * when FORAY_WRITER_SELF_CRITIQUE is unset or off. GV-99: `exemplars` is
+   * the Qwen writer's voice block (`writerExemplarsLever`: mode 'on' with the
+   * selected exemplar ids and the file's sha, or 'unavailable' when the file
+   * holds no selection), absent when FORAY_WRITER_EXEMPLARS is unset or off.
+   * On every row, `{}` when no lever is on. */
+  levers?: { spineBestOf?: { mode: "best-of-2"; judge: string; graceMs: number }; selfCritique?: SelfCritiqueLever; exemplars?: ExemplarsLever };
   /** GV-55 (from W7-02): per routed stage, the implementation, model and
    * machine that served it (`describeStageAssignments`), from the routing the
    * run was resolved under. On every row. */
@@ -1250,11 +1263,18 @@ export async function generateOneCandidate(
   spec: PromptSpec,
   args: CliArgs,
   deps: {
-    cueProvider: FileTranscriptCueProvider;
+    /* The batch driver's FileTranscriptCueProvider, or (GV-95,
+       FORAY_RETRIEVAL_URL set) a HydratingCueProvider over the retrieval
+       server. */
+    cueProvider: TranscriptCueProvider;
     /* WS-H (F-06): tier 2’s transcript-TEXT candidate search. Optional for the
        same reason `runPipeline` is — a caller that supplies none (every test that
        predates it) leaves tier 2 on the title path, unchanged. */
     textIndex?: TranscriptTextIndex;
+    /** GV-95: the retrieval server behind `cueProvider` and `textIndex`, handed
+     * to the pipeline (`RunPipelineDeps.retrieval`). Omitted: today's local
+     * path. */
+    retrieval?: RetrievalPreparer;
     runPipeline?: typeof runForayPipeline;
     onPartialWrite?: (candidate: PartialCandidate, partialFile: string) => void;
     sleep?: (ms: number) => Promise<void>;
@@ -1301,6 +1321,11 @@ export async function generateOneCandidate(
      variant on the session alone would stop a flag-on run resuming itself
      and would merge classic and flag-on stages into one file. */
   const flags = resolvePipelineFlags(args.fastPath ? { fastPath: true } : {});
+  /* GV-125 (#1413 item 17): the checkpoint variant's flags, plus the
+     retrieval server's mode, read off the same instance the pipeline reads it
+     from (`deps.retrieval.mode`), so the store's fingerprint, the session's
+     and the fork stamp agree. bm25 (or no server) adds nothing. */
+  const variantFlags = { ...flags, retrievalMode: deps.retrieval?.mode };
   const gates = resolveGateConfig();
   /* GV-55: the routing table, resolved once here with the --stage-provider
      overrides applied (main() also sets them on process.env, which the stage
@@ -1315,20 +1340,33 @@ export async function generateOneCandidate(
      pipeline, so the store's and the session's variant agree. */
   const selfCritique = readSelfCritique(process.env);
   const selfCritiqueConfigured = selfCritiqueLever(selfCritique);
+  /* GV-99: the writer's voice block, as the prompt builder will read it (the
+     file is read once per process; a malformed FORAY_WRITER_EXEMPLARS fails
+     here, before any model call, naming the variable). */
+  const exemplars = writerExemplarsLever(process.env);
   const levers: NonNullable<ReportEntry["levers"]> = {
     ...(spineBestOf ? { spineBestOf } : {}),
-    ...(selfCritiqueConfigured ? { selfCritique: selfCritiqueConfigured } : {})
+    ...(selfCritiqueConfigured ? { selfCritique: selfCritiqueConfigured } : {}),
+    ...(exemplars ? { exemplars } : {})
   };
   const fingerprint = checkpointFingerprint({
     prompt: spec.prompt,
     duration: request.duration,
     topic: spec.topic,
-    variant: joinCheckpointVariant(checkpointRunVariant(flags, routing), selfCritique)
+    variant: joinCheckpointVariant(checkpointRunVariant(variantFlags, routing), selfCritique)
   });
   const checkpointStore = new FileCheckpointStore(path.resolve(args.out), fingerprint);
   /* GV-62: what a kept checkpoint is stamped with, and what a seed is
-     checked against. */
-  const forkStamp = checkpointForkStamp({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, flags, routing });
+     checked against. GV-124 (#1413 item 8): with the self-critique, so a seed
+     built under another self-critique forks only from narrate or earlier. */
+  const forkStamp = checkpointForkStamp({
+    prompt: spec.prompt,
+    duration: request.duration,
+    topic: spec.topic,
+    flags: variantFlags,
+    routing,
+    selfCritique: selfCritiqueVariant(selfCritique) ?? null
+  });
   if (args.noResume) checkpointStore.discard(checkpointKey);
   /* GV-62: arm B's fork, before the resume check below reads the file. */
   const seededFrom =
@@ -1513,7 +1551,12 @@ export async function generateOneCandidate(
   let timeline: DeliveryTimeline;
   for (;;) {
     /* GV-01: a fresh log per attempt; attempt numbers are 1-based, and the
-       context's `resumeAttempt` counts the resumes before this attempt. */
+       context's `resumeAttempt` counts the resumes before this attempt.
+       GV-124 (#1413 item 1): the context's `sessionId` is the checkpoint key,
+       the same for every attempt, so the lane scheduler meters one Foray's
+       Spark and second-box seconds against ONE session and its unit caps bind
+       across resumes (not up to 1 + max-resumes times over), and the row's
+       `unitSpend` (keyed by the checkpoint key) reads what was spent. */
     const runLog = new RunLog();
     /* GV-33: one delivery timeline per attempt, like the RunLog — a resumed
        attempt's banked acts fire nothing, so its timeline is its own. */
@@ -1522,7 +1565,7 @@ export async function generateOneCandidate(
     render?.beginAttempt();
     const attempt = resumes.length + 1;
     const runAttempt: typeof runPipeline = (req, opts, pipelineDeps) =>
-      runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length }, () => runPipeline(req, opts, pipelineDeps)));
+      runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length, sessionId: checkpointKey }, () => runPipeline(req, opts, pipelineDeps)));
     try {
       /* The machine this driver runs on holds the transcript bodies (data-local/,
          gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout
@@ -1551,6 +1594,7 @@ export async function generateOneCandidate(
         {
           cueProvider: deps.cueProvider,
           textIndex: deps.textIndex,
+          ...(deps.retrieval ? { retrieval: deps.retrieval } : {}),
           checkpoint: args.dryRun ? undefined : checkpointStore,
           onActReady,
           onItemReady: async (ev) => {
@@ -1823,12 +1867,29 @@ export async function main(
 
     fs.mkdirSync(path.resolve(args.out), { recursive: true });
 
-    const cueProvider = new FileTranscriptCueProvider();
-    /* WS-H (F-06): the same machine holds the transcript BODIES, so tier 2 also
-       gets the text index built over them — read through the cue provider above,
-       cached under data-local/transcripts/index/. A checkout without data-local/
-       builds nothing, returns no candidates, and leaves tier 2 on the title path. */
-    const textIndex = new FileTranscriptTextIndex({ bodies: cueProvider });
+    /* GV-95 (W3-11; decision 23): FORAY_RETRIEVAL_URL set sources against the
+       retrieval server (RemoteRetrieval, PrecomputedTextIndex and
+       HydratingCueProvider); unset, the File pair below, exactly as before.
+       Read here, so a malformed URL, mode or token fails the batch before any
+       prompt runs, naming the variable. */
+    const retrievalFlags = retrievalConfig();
+    const archive = loadTranscriptArchive();
+    const remote = retrievalFlags ? await openRemoteRetrieval(retrievalFlags, archive) : null;
+
+    let cueProvider: TranscriptCueProvider & { bodyStat(entry: TranscriptDigestEntry): unknown };
+    let textIndex: TranscriptTextIndex;
+    if (remote) {
+      cueProvider = remote.cueProvider;
+      textIndex = remote.textIndex;
+    } else {
+      const fileProvider = new FileTranscriptCueProvider();
+      cueProvider = fileProvider;
+      /* WS-H (F-06): the same machine holds the transcript BODIES, so tier 2 also
+         gets the text index built over them — read through the cue provider above,
+         cached under data-local/transcripts/index/. A checkout without data-local/
+         builds nothing, returns no candidates, and leaves tier 2 on the title path. */
+      textIndex = new FileTranscriptTextIndex({ bodies: fileProvider });
+    }
 
     /* #703: WHAT THIS RUN CAN SEE OF ITS OWN CORPUS, BEFORE IT GENERATES
        ANYTHING. The 2026-09-14 run drew its research map from 14 of the 22
@@ -1838,7 +1899,6 @@ export async function main(
        whole corpus says so — and the same numbers go into report.json, so a
        reader who never watched the console can still tell which corpus a batch
        was sourced from. */
-    const archive = loadTranscriptArchive();
     /* One stat per row, shared by the coverage count and the fingerprint. */
     const bodyOnDisk = new Map<TranscriptDigestEntry, boolean>();
     const hasBody = (entry: TranscriptDigestEntry): boolean => {
@@ -1849,13 +1909,17 @@ export async function main(
       }
       return known;
     };
-    const coverage = corpusCoverage({
-      archive,
-      hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
-      /* The same directory `FileTranscriptCueProvider` defaults to, resolved
-         the same way: two levels up from `backend/src/cli`. */
-      normalizedRoot: path.resolve(__dirname, "..", "..", "..", "data-local", "transcripts", "normalized")
-    });
+    const coverage = remote
+      ? /* GV-95: the server's corpus, counted from its manifest: a scan of this
+           machine's directory would read 0 shows on a machine that holds none. */
+        corpusCoverage({ archive, hasBody: (entry) => hasBody(entry as TranscriptDigestEntry), disk: remote.retrieval.manifestShows() })
+      : corpusCoverage({
+          archive,
+          hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
+          /* The same directory `FileTranscriptCueProvider` defaults to, resolved
+             the same way: two levels up from `backend/src/cli`. */
+          normalizedRoot: path.resolve(__dirname, "..", "..", "..", "data-local", "transcripts", "normalized")
+        });
     if (coverage.showsOnDisk > 0) console.log(corpusCoverageLine(coverage));
     /* GV-39: the golden-set corpus snapshot — which rows, with which content
        digests, this run could read, through which index format. */
@@ -1864,13 +1928,22 @@ export async function main(
       corpusFingerprint({
         archive,
         hasBody: (entry) => hasBody(entry as TranscriptDigestEntry),
-        indexVersion: TRANSCRIPT_TEXT_INDEX_VERSION
+        /* GV-95: the format the server's index is in, when it said. */
+        indexVersion: remote?.health?.indexVersion ?? TRANSCRIPT_TEXT_INDEX_VERSION
       })
     );
 
-    const { report, generated, skipped } = await generateQueue(queue, (spec) =>
-      generateOneCandidate(spec, args, { cueProvider, textIndex, ...(deps.runPipeline ? { runPipeline: deps.runPipeline } : {}) })
-    );
+    const { report, generated, skipped } = await generateQueue(queue, (spec) => {
+      const built = generateOneCandidate(spec, args, {
+        cueProvider,
+        textIndex,
+        ...(remote ? { retrieval: remote.retrieval } : {}),
+        ...(deps.runPipeline ? { runPipeline: deps.runPipeline } : {})
+      });
+      /* GV-95: a finished prompt's bodies stop being pinned, so the next
+         prompt's can push them out under the memory bound. */
+      return remote ? built.finally(() => remote.retrieval.unpinAll()) : built;
+    });
 
     /* Count what actually happened, not what the outcome tag says. A run that
        reached §4.9 and FAILED validation still carries `outcome: "generated"` —
@@ -1967,6 +2040,69 @@ export async function main(
       });
     }
   }
+}
+
+/** GV-95: what `openRemoteRetrieval` builds. */
+export interface RemoteRetrievalSources {
+  retrieval: RemoteRetrieval;
+  textIndex: PrecomputedTextIndex;
+  cueProvider: HydratingCueProvider;
+  /** GET /healthz, or null when the server did not answer it. */
+  health: RetrievalHealth | null;
+}
+
+/** The `generated_at` of this machine's corpus digest
+ * (data-local/transcripts/corpus-digest.json), or null when there is none. */
+export function localCorpusDigestGeneratedAt(root: string = path.resolve(__dirname, "..", "..", "..")): string | null {
+  try {
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- a fixed repo-relative path.
+    const parsed = JSON.parse(fs.readFileSync(path.join(root, CORPUS_DIGEST_FILE), "utf8")) as { generated_at?: unknown };
+    return typeof parsed.generated_at === "string" ? parsed.generated_at : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GV-95 (W3-11): the retrieval server's three classes over ONE RemoteRetrieval,
+ * with the manifest loaded (so `bodyStat`, topic supply and corpus coverage see
+ * the server's corpus). Never throws on the network: a manifest that did not
+ * load is said, and the run then sources on the title path (every body counts
+ * as absent and every search misses). Warns when this machine's corpus digest
+ * is not the one the server loaded: the archive rows this process maps answers
+ * onto would then differ from the server's, so run
+ * tools/passage-index/pull-archive.mjs first.
+ */
+export async function openRemoteRetrieval(
+  config: RetrievalConfig,
+  archive: readonly TranscriptDigestEntry[],
+  deps: { fetchFn?: RetrievalFetch; localGeneratedAt?: () => string | null; log?: (line: string) => void } = {}
+): Promise<RemoteRetrievalSources> {
+  const log = deps.log ?? ((line: string) => console.log(line));
+  const retrieval = new RemoteRetrieval({
+    baseUrl: config.baseUrl,
+    token: config.token ?? null,
+    mode: config.mode,
+    archive,
+    ...(deps.fetchFn ? { fetchFn: deps.fetchFn } : {})
+  });
+  /* The URL, the mode and whether a token is set; never the token. */
+  log(`RETRIEVAL: ${config.baseUrl} (mode ${config.mode}${config.token ? ", token set" : ", no token"})`);
+  if (!(await retrieval.loadManifest())) {
+    log(
+      `  WARNING retrieval: the server's episode manifest did not load (${retrieval.stats().reasons.join("; ")}): ` +
+        "every body counts as absent and searches will miss, so sourcing falls back to the title path"
+    );
+  }
+  const health = await retrieval.health();
+  const local = (deps.localGeneratedAt ?? (() => localCorpusDigestGeneratedAt()))();
+  if (health && health.archiveGeneratedAt !== local) {
+    log(
+      `  WARNING retrieval: this machine's corpus digest (generated_at ${local ?? "none"}) is not the server's ` +
+        `(${health.archiveGeneratedAt ?? "none"}); run tools/passage-index/pull-archive.mjs so both source from the same archive`
+    );
+  }
+  return { retrieval, textIndex: new PrecomputedTextIndex(retrieval), cueProvider: new HydratingCueProvider(retrieval), health };
 }
 
 /* Only run when invoked as a script; importing this module for its exported

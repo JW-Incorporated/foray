@@ -7,8 +7,13 @@ import {
   RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC,
   RESEARCH_TAPE_WINDOW_MAX_CHARS,
   RESEARCH_TAPE_WINDOW_MAX_SEC,
-  RESEARCH_TAPE_WINDOW_MIN_SEC
+  RESEARCH_TAPE_WINDOW_MIN_SEC,
+  SUBJECT_PROBE_LIMIT,
+  subjectProbeQuery,
+  subtopicQueryText,
+  type ResearchSearchRequest
 } from "../src/generation/researchShape";
+import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval } from "../src/generation/retrievalClient";
 import {
   TAPE_CLAIM_SEARCH_MAX_SEC,
   TAPE_CLAIM_SEARCH_MIN_SEC,
@@ -1135,5 +1140,123 @@ describe("GV-87: the per-show quota on a subtopic's tape windows (FORAY_RESEARCH
     }
     /* The offending value is never part of the message. */
     expect(() => researchShowQuota({ [RESEARCH_SHOW_QUOTA_ENV]: "lots" })).not.toThrow(/lots/);
+  });
+});
+
+describe("GV-95: research-shape asks every search ahead of the first (prepareQueries), and a search the retrieval server never answered says so", () => {
+  const show = (n: number): TranscriptDigestEntry => ({
+    show_id: "show-a",
+    show_title: "Show A",
+    guid: `sa-${n}`,
+    title: `Episode ${n}`,
+    cues: 3,
+    feed_duration_sec: 3600
+  });
+  const cues: TranscriptCue[] = [
+    { text: "fusion in a tokamak is the whole show today and the tokamak is the hard part", start_sec: 0, end_sec: 50 },
+    { text: "fusion reactors need the tokamak to hold the plasma long enough for fusion to pay", start_sec: 50, end_sec: 100 },
+    { text: "so every tokamak group measures fusion gain before anything else", start_sec: 100, end_sec: 150 }
+  ];
+  const archive = [show(1), show(2), show(3)];
+  const bodies: TranscriptBodySource = { getCues: () => cues, bodyStat: () => ({ mtimeMs: 1, size: 1 }) };
+
+  /** Every search, as the retrieval client would key it. */
+  function recordingIndex(events: string[]) {
+    const inner = new FileTranscriptTextIndex({ archive, bodies, cache: false });
+    const searched: Array<{ scope: "lineage" | "all"; text: string; limit: number }> = [];
+    const index: TranscriptTextIndex = {
+      enabled: true,
+      search: (q, o = {}) => {
+        events.push("search");
+        searched.push({ scope: o.isUsable ? "lineage" : "all", text: q, limit: o.limit ?? 8 });
+        return inner.search(q, o);
+      }
+    };
+    return { index, searched };
+  }
+
+  it("prepares exactly the (scope, text, limit) the subject probe and the subtopic searches then ask, once, before the first of them, with the strings of the exported helpers", async () => {
+    /* MUTATION THAT KILLS THIS: prepare a subtopic by `seed.label` alone
+       instead of subtopicQueryText(seed) (the prepared list no longer equals
+       the searched one). Ran it: red. */
+    const events: string[] = [];
+    const { index, searched } = recordingIndex(events);
+    const prepared: ResearchSearchRequest[] = [];
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      prompt: "tell me how fusion works",
+      textIndex: index,
+      cueProvider: { getCues: () => cues },
+      prepareQueries: async (requests) => {
+        events.push("prepare");
+        prepared.push(...requests);
+      }
+    });
+    expect(events[0]).toBe("prepare");
+    expect(events.filter((e) => e === "prepare")).toHaveLength(1);
+    expect(prepared).toEqual(searched);
+    expect(prepared[0]).toEqual({ scope: "all", text: subjectProbeQuery("tell me how fusion works", makeIntent()), limit: SUBJECT_PROBE_LIMIT });
+    expect(prepared).toContainEqual({ scope: "lineage", text: subtopicQueryText({ label: "Fusion", terms: ["fusion", "tokamak"] }), limit: 12 });
+    /* The helpers are the strings the stage always used. */
+    expect(subjectProbeQuery(undefined, { subject: "s", angle: "a" })).toBe(" s a");
+    expect(subtopicQueryText({ label: "Fusion", terms: ["fusion", "tokamak"] })).toBe("Fusion fusion tokamak");
+    /* Not vacuous: the prepared searches found tape. */
+    expect(shape.subtopics.find((s) => s.label === "Fusion")!.tapeWindows.length).toBeGreaterThan(0);
+  });
+
+  it("without prepareQueries the map is the same, and with a disabled index the callback is never called", async () => {
+    /* MUTATION THAT KILLS THIS: call prepareQueries even when the index is
+       disabled. Ran it: red. */
+    const { guard } = guardAndSink();
+    const base = { researcher: new StubExternalResearcher(guard), ctx: { userId: "founder-1" }, catalogue: tapeFixtureCatalogue(), topic: null, cueProvider: { getCues: () => cues } };
+    const plain = await buildResearchShape(makeIntent(), { ...base, textIndex: new FileTranscriptTextIndex({ archive, bodies, cache: false }) });
+    const prepared = await buildResearchShape(makeIntent(), {
+      ...base,
+      textIndex: new FileTranscriptTextIndex({ archive, bodies, cache: false }),
+      prepareQueries: async () => undefined
+    });
+    expect({ ...prepared, generatedAt: "" }).toEqual({ ...plain, generatedAt: "" });
+    let called = 0;
+    await buildResearchShape(makeIntent(), {
+      ...base,
+      prepareQueries: async () => {
+        called += 1;
+      }
+    });
+    expect(called).toBe(0);
+  });
+
+  it("a probe the retrieval server never answered is not searched and refuses nothing; a subtopic it never answered gives that reason", async () => {
+    /* GV-29 review (#1286 wave 5): `enabled` is true on every search, so a
+       miss used to read as a corpus that says nothing, and refused the map.
+       The index here is the real PrecomputedTextIndex over a server that
+       refuses every request (an injected fetch; no network).
+       MUTATION THAT KILLS THIS: drop the indexAnswers check in
+       probeSubjectTape (the map is refused). Ran it: red. */
+    const retrieval = new RemoteRetrieval({
+      baseUrl: "http://127.0.0.1:1",
+      archive,
+      fetchFn: async () => {
+        throw new TypeError("fetch failed");
+      }
+    });
+    expect(await retrieval.prepareScope(null)).toBe(false);
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: tapeFixtureCatalogue(),
+      topic: null,
+      textIndex: new PrecomputedTextIndex(retrieval),
+      cueProvider: new HydratingCueProvider(retrieval)
+    });
+    expect(shape.subjectTape).toEqual({ query: subjectProbeQuery(undefined, makeIntent()), episodesMatched: 0, shows: [], searched: false });
+    expect(shape.subtopics.find((s) => s.label === "Fusion")!.windowsUnavailable).toMatch(/did not answer this subtopic's search/);
+    /* No search was made on a miss: nothing counted as one. */
+    expect(retrieval.stats()).toMatchObject({ hits: 0, misses: 0 });
   });
 });

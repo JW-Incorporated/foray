@@ -1,4 +1,5 @@
 import { TranscriptSourceSchema, type TranscriptSource } from "../types/tapeSourcing";
+import { tokenWouldTravelInClear } from "./generationFlags";
 import { familyGateAllows, nodesForArchiveEntry } from "./taxonomyFamily";
 import {
   cuesFromBodyJson,
@@ -67,8 +68,15 @@ import {
  * why it is a separate module: sourceBeats.ts and its neighbours stay
  * fetch-free (`sourceBeats.test.ts`'s structural check).
  *
- * INERT UNTIL CONSTRUCTED. Nothing builds these classes yet; GV-95 builds them
- * only when FORAY_RETRIEVAL_URL is set, so default generation is unchanged.
+ * INERT UNTIL CONSTRUCTED. The batch driver (GV-95, `generateForays.ts`)
+ * builds them only when FORAY_RETRIEVAL_URL is set, so default generation is
+ * unchanged.
+ *
+ * THE TOKEN NEVER TRAVELS IN CLEAR (GV-29 review, #1286 wave 5). With a token
+ * and a plain-http base URL to a host other than this machine, no request is
+ * sent at all: every operation degrades with a reason saying so, before the
+ * token could leave. `generationFlags.retrievalConfig` refuses the same
+ * configuration up front; this is the client's own guard for any other caller.
  */
 
 /** Per-request budget. */
@@ -151,6 +159,23 @@ export interface CandidateHint {
   passage?: unknown;
 }
 
+/** GET /healthz: what the server says it is serving. */
+export interface RetrievalHealth {
+  indexVersion: number | null;
+  shows: number | null;
+  episodes: number | null;
+  /** The `generated_at` of the corpus digest the server loaded. */
+  archiveGeneratedAt: string | null;
+}
+
+/** One show of the server's manifest, in the shape `scanNormalizedCorpus`
+ * reports a show directory (`dirName` is the show id). */
+export interface ManifestShow {
+  dirName: string;
+  showId: string;
+  episodes: number;
+}
+
 export interface RetrievalStats {
   /** Answers stored by `prepare`. */
   prepared: number;
@@ -180,6 +205,38 @@ export interface RetrievalStats {
   scopeMismatches: number;
   /** The first MAX_DEGRADED_REASONS degraded reasons. Never query text. */
   reasons: string[];
+}
+
+/** The counters `retrievalStatsSince` reports as a difference; every other
+ * field is a level (answers stored now, bytes held now, entries pinned now). */
+const CUMULATIVE_STATS = [
+  "hits",
+  "misses",
+  "degraded",
+  "hydrated",
+  "hydrationMisses",
+  "hydrationAbsent",
+  "unmapped",
+  "unprepared",
+  "evictions",
+  "evictedPinned",
+  "scopeMismatches"
+] as const;
+
+/**
+ * GV-125 (#1413 item 16): one prompt's share of a RemoteRetrieval that serves
+ * the whole batch. `stats()` counts from the instance's birth, so a report row
+ * built from it read prompts 1..N on row N; this is `current` less `baseline`
+ * (taken at the prompt's start) for every running count, the reasons logged
+ * since the baseline (still capped at MAX_DEGRADED_REASONS overall, so a
+ * prompt after the cap lists none while `degraded` stays exact), and the
+ * levels as they stand now: `prepared` (answers stored; `prepareScope` clears
+ * them per Foray), `heldBytes` and `pinned`.
+ */
+export function retrievalStatsSince(baseline: RetrievalStats, current: RetrievalStats): RetrievalStats {
+  const delta = { ...current, reasons: current.reasons.slice(baseline.reasons.length) };
+  for (const key of CUMULATIVE_STATS) delta[key] = current[key] - baseline[key];
+  return delta;
 }
 
 /** The stored key for a prepared search: scope, limit and the verbatim text. */
@@ -265,9 +322,13 @@ export class RemoteRetrieval {
   private readonly token: string | null;
   private readonly fetchFn: RetrievalFetch | null;
   private readonly timeoutMs: number;
-  private readonly mode: RetrievalMode;
+  /** The mode sent with every search (GV-125: read by the checkpoint
+   * variant, so a hybrid run never resumes bm25-built stages). */
+  readonly mode: RetrievalMode;
   private readonly maxBodyBytes: number;
   private readonly concurrency: number;
+  /** Token plus plain http to another host: nothing is sent (see above). */
+  private readonly tokenInClear: boolean;
   private readonly archiveByKey = new Map<string, TranscriptDigestEntry>();
   private readonly archive: readonly TranscriptDigestEntry[];
 
@@ -309,6 +370,7 @@ export class RemoteRetrieval {
   constructor(options: RemoteRetrievalOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.token = options.token && options.token.length > 0 ? options.token : null;
+    this.tokenInClear = this.token !== null && tokenWouldTravelInClear(this.baseUrl);
     this.fetchFn = options.fetchFn ?? ((globalThis as { fetch?: RetrievalFetch }).fetch ?? null);
     this.timeoutMs = options.timeoutMs ?? RETRIEVAL_TIMEOUT_MS;
     this.mode = options.mode ?? "bm25";
@@ -376,6 +438,31 @@ export class RemoteRetrieval {
   bodyStat(entry: TranscriptDigestEntry): TranscriptBodyStat | null {
     const row = this.episodeFor(entry);
     return row ? { mtimeMs: row.mtimeMs, size: row.size } : null;
+  }
+
+  /** The manifest's shows with their episode counts, sorted by show id: the
+   * server's corpus as `corpusCoverage` counts a disk (GV-95). Empty before
+   * the manifest loads. */
+  manifestShows(): ManifestShow[] {
+    return [...this.listings.entries()]
+      .map(([showId, listing]) => ({ dirName: showId, showId, episodes: listing.byName.size }))
+      .sort((a, b) => (a.showId < b.showId ? -1 : a.showId > b.showId ? 1 : 0));
+  }
+
+  /** GET /healthz (GV-95: the batch driver compares `archiveGeneratedAt` with
+   * this machine's corpus digest). Resolves null when degraded. */
+  async health(): Promise<RetrievalHealth | null> {
+    const reply = await this.call("GET", "/healthz");
+    if (!reply.ok) return this.degradeNull("healthz", reply.reason);
+    const j = reply.json as Record<string, unknown> | null;
+    if (j === null || typeof j !== "object" || Array.isArray(j)) return this.degradeNull("healthz", "reply is not an object");
+    const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+    return {
+      indexVersion: num(j.indexVersion),
+      shows: num(j.shows),
+      episodes: num(j.episodes),
+      archiveGeneratedAt: typeof j.archiveGeneratedAt === "string" ? j.archiveGeneratedAt : null
+    };
   }
 
   /* ------------------------------------------------------------------ */
@@ -729,6 +816,11 @@ export class RemoteRetrieval {
     return false;
   }
 
+  private degradeNull(operation: string, reason: string): null {
+    this.degrade(operation, reason);
+    return null;
+  }
+
   /**
    * One request, bounded by the timeout: the signal aborts it, and the call is
    * also raced against the deadline so a fetch (or body read) that ignores its
@@ -737,6 +829,7 @@ export class RemoteRetrieval {
   private async call(method: "GET" | "POST", route: string, payload?: unknown): Promise<CallResult> {
     const fetchFn = this.fetchFn;
     if (!fetchFn) return { ok: false, reason: "no fetch implementation" };
+    if (this.tokenInClear) return { ok: false, reason: "refused: the bearer token would travel over plain http to a non-loopback host (use https)" };
     const controller = new AbortController();
     const headers: Record<string, string> = { accept: "application/json", "accept-encoding": "gzip" };
     if (this.token) headers.authorization = `Bearer ${this.token}`;
@@ -828,6 +921,22 @@ export class PrecomputedTextIndex implements TranscriptTextIndex {
 
   stats(): RetrievalStats {
     return this.retrieval.stats();
+  }
+
+  /**
+   * GV-29 review follow-up (#1286 wave 5): `enabled` is true for every search,
+   * so a search the server never answered (a MISS, which falls back to the
+   * Null index and finds nothing) would read like one that ran and found
+   * nothing. This says which it would be, without searching and without
+   * counting: true when a stored answer exists for exactly this question, or
+   * when the fallback a miss goes to is itself a real (enabled) index.
+   * Callers that report a search (researchShape's subject probe and window
+   * reasons) ask it to tell the two apart.
+   */
+  answers(queryText: string, options: TranscriptTextSearchOptions = {}): boolean {
+    const limit = options.limit ?? TRANSCRIPT_TEXT_CANDIDATES;
+    if (this.retrieval.answerFor(options.isUsable ? "lineage" : "all", limit, queryText) !== undefined) return true;
+    return this.fallback.enabled;
   }
 
   private verifyLineage(isUsable: (entry: TranscriptDigestEntry) => boolean): void {

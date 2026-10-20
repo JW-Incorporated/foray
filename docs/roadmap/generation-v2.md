@@ -26,7 +26,7 @@ Seven workstreams (measurement, provider layer, retrieval, critical path, gates,
 
 ## How to read the plan
 
-- Cards are numbered GV-01..GV-123. GV-01..GV-122 were numbered in wave order before the review fixes; after them GV-14 sits in wave 4 and GV-23 in wave 3 (swapped to make room), GV-123 (split out of GV-15) sits in wave 14, and GV-77 and GV-96 are in the gated backlog (wave 'gated', 0 in the machine summary). The wave table is authoritative. Each card lists **from** (the original workstream ids). Carried-over design text still names original ids (W1-02, W5-12a ...); the id map at the end resolves them.
+- Cards are numbered GV-01..GV-124. GV-01..GV-122 were numbered in wave order before the review fixes; after them GV-14 sits in wave 4 and GV-23 in wave 3 (swapped to make room), GV-123 (split out of GV-15) sits in wave 14, GV-124 (the #1413 review follow-ups) sits in wave 20, and GV-77 and GV-96 are in the gated backlog (wave 'gated', 0 in the machine summary). The wave table is authoritative. Each card lists **from** (the original workstream ids). Carried-over design text still names original ids (W1-02, W5-12a ...); the id map at the end resolves them.
 - A wave holds at most 6 cards; no two cards in a wave edit the same existing file (test/suite-integrity.test.js excepted, see decision 1); a card sits in a wave only after every card it depends on is in an earlier wave.
 - Every behaviour change ships dark behind a flag or a route that defaults to today's behaviour, so main stays shippable between waves. A QK or GP fix is CLOSED only when its default flips, per the Default flips table (after the gated backlog, before Coverage).
 - Every card that touches a tools/ci/path-policy.mjs DENIED_PREFIXES path (backend/src/, backend/migrations/, docs/DECISIONS.md, tools/narration/upload-narration.mjs, ...) says 'founder-approved label (orchestrator applies)' in its Founder need line; any live-step need follows it.
@@ -98,7 +98,7 @@ Seven workstreams (measurement, provider layer, retrieval, critical path, gates,
 | 17 | GV-89 Tier runtime targets and a post-spine runtime check that… | Tier runtime check; runPipeline.ts chain. |
 | 18 | GV-90 Unit caps per Foray: Spark seconds, second-box seconds, Jev… | Unit caps per Foray; runPipeline.ts chain. After this wave and wave 19, batch local runs are allowed (GV-68's accepted ordering). |
 | 19 | GV-91 Constrained best-of-2 spine wrapper with a deadline and a…<br>GV-92 Offline judged-metrics pass: MQ-10 prompt fit and MQ-12 seam…<br>GV-93 Lane scheduler: per-machine concurrency, critical-path… | Best-of-2 spine wrapper (runPipeline.ts and runPipeline.test.ts editor), offline judged metrics, lane scheduler (its priority assertions live in laneScheduler.test.ts). |
-| 20 | GV-94 Typed self-critique decorator: per-sentence check on the… | Typed self-critique; runPipeline.ts chain. |
+| 20 | GV-94 Typed self-critique decorator: per-sentence check on the…<br>GV-124 Generation follow-ups from #1413: unit caps per Foray… | Typed self-critique; runPipeline.ts chain. GV-124 (the #1413 follow-ups) lands after GV-94, before batch local runs and before self-critique or streaming is switched on. |
 | 21 | GV-95 Pipeline wiring: prepare every search and hydrate every body…<br>GV-97 Jev and Qwen-judge adapters for SpineJudge and DraftCritic,… | Remote retrieval wiring (runPipeline.ts editor), spine judge and critic adapters. GV-96 moved to the gated backlog. |
 | 22 | GV-98 Evidence wave off the timed path: await only act 1's packs,…<br>GV-99 Voice card and exemplar block in the Qwen writer's cached… | First-act evidence wave (runPipeline.ts editor), exemplar block in the writer prefix. |
 | 23 | GV-100 Spine tier sizing on the Spark: per-tier JSON schema,…<br>GV-101 Run-start corpus integrity guard (roadmap PKG-23), extended… | Spine tier sizing (runPipeline.ts editor), run-start corpus guard. |
@@ -126,8 +126,8 @@ Files edited by five or more cards, in merge order. Rebase on whichever landed l
 
 | File | Cards (in wave order; gated-backlog cards last) |
 |---|---|
-| backend/src/generation/runPipeline.ts | GV-01, GV-07, GV-15, GV-21, GV-26, GV-33, GV-38, GV-43, GV-49, GV-55, GV-61, GV-67, GV-73, GV-79, GV-83, GV-86, GV-89, GV-90, GV-91, GV-94, GV-95, GV-98, GV-100, GV-102, GV-104, GV-106, GV-107, GV-108, GV-109, GV-110, GV-112, GV-115, GV-116, GV-117, GV-118, GV-119, GV-120, GV-121, GV-122 |
-| backend/src/cli/generateForays.ts | GV-01, GV-15, GV-26, GV-33, GV-39, GV-44, GV-49, GV-55, GV-62, GV-68, GV-74, GV-81, GV-85, GV-86, GV-89, GV-90, GV-91, GV-94, GV-95, GV-99, GV-101, GV-103, GV-105, GV-106, GV-110, GV-117, GV-118, GV-122, GV-96 |
+| backend/src/generation/runPipeline.ts | GV-01, GV-07, GV-15, GV-21, GV-26, GV-33, GV-38, GV-43, GV-49, GV-55, GV-61, GV-67, GV-73, GV-79, GV-83, GV-86, GV-89, GV-90, GV-91, GV-94, GV-124, GV-95, GV-98, GV-100, GV-102, GV-104, GV-106, GV-107, GV-108, GV-109, GV-110, GV-112, GV-115, GV-116, GV-117, GV-118, GV-119, GV-120, GV-121, GV-122 |
+| backend/src/cli/generateForays.ts | GV-01, GV-15, GV-26, GV-33, GV-39, GV-44, GV-49, GV-55, GV-62, GV-68, GV-74, GV-81, GV-85, GV-86, GV-89, GV-90, GV-91, GV-94, GV-124, GV-95, GV-99, GV-101, GV-103, GV-105, GV-106, GV-110, GV-117, GV-118, GV-122, GV-96 |
 | backend/test/runPipeline.test.ts | GV-01, GV-07, GV-21, GV-26, GV-33, GV-38, GV-61, GV-67, GV-79, GV-83, GV-90, GV-91, GV-94, GV-95, GV-98, GV-115, GV-119, GV-121 |
 | backend/src/generation/veracityMetrics.ts | GV-21, GV-26, GV-34, GV-61, GV-73, GV-79, GV-83, GV-104, GV-106, GV-108, GV-109, GV-113, GV-116, GV-118, GV-120, GV-121 |
 | backend/src/generation/gateConfig.ts | GV-34, GV-47, GV-79, GV-103, GV-104, GV-107, GV-108, GV-109, GV-111, GV-113, GV-118, GV-119, GV-120, GV-121 |
@@ -6211,6 +6211,59 @@ The card also commits the E5-self-critique.json spec (rerunFrom 'narrate').
 **Founder need.** founder-approved label (orchestrator applies)
 
 **Risk.** On act 0 the edit call is a second whole-act writer call on the critical path, so 'all' must never be the timed-path default. Jev is weak on numbers and dates (LM-23), so this complements R2-09's code checks rather than replacing them. LM-24 (10 of 13 retried, 1 improved) says the lever may add calls with no gain, which is what E5 decides. R1-04 (per-act chain) and R1-06 (streamed writer) restructure runPipeline's narrate fan-out, so the actIndex/observe wiring must move with them. Governed path.
+
+#### GV-124 · Generation follow-ups from #1413: unit caps per Foray across resumes, the jevCalls cap stops the run, FORAY_SPINE_BEST_OF in the checkpoint variant and LEVER_ENV, self-critique keeps streaming and joins the fork stamp, self-backed quotes dropped, editSeams forwarded
+
+- **From:** #1413 (governed reviews of GV-90, GV-91, GV-93, GV-94)
+- **Wave:** 20 · **Size:** S · **Depends on:** none
+- **Covers:** none (review follow-ups)
+
+**Goal.** Land #1413's code items before batch local runs (Decision 31) and before self-critique or writer streaming is switched on.
+
+**Design.**
+
+1. Unit caps bind per Foray, not per attempt: `CallContext.sessionId` (runLog.ts); the driver runs each attempt under `withCallContext({ resumeAttempt, sessionId: checkpointKey })`, so the lane scheduler meters every resume against one session and the row's `unitSpend` reads it.
+3. `JevPromptUnderstander` and `JevClipJudge.score` re-throw `findUnitBudgetError` as well as `findBudgetError`.
+4. `checkpointRunVariant` carries `spine=best-of-2` when FORAY_SPINE_BEST_OF=2 (absent at 1, so classic fingerprints do not move).
+5. swap-experiment's `LEVER_ENV` maps `spineBestOf` to FORAY_SPINE_BEST_OF (1|2); an adopted record sets FORAY_SPINE_JUDGE and FORAY_SPINE_BEST_OF_GRACE_MS too.
+7. `SelfCritiquingNarrationWriter.writeActStream` (when the inner writer streams): an act it does not critique is the inner stream; a critiqued act is written, critiqued and handed on whole.
+8. The fork stamp carries `selfCritique` and `spineBestOf` beside the flags; `forkSeedRefusal` treats a self-critique difference like a changed writer route (rerun from narrate or earlier) and a best-of difference like a changed spine route.
+9. `seamCritiqueSources` keeps a claim quote only when it is an exact substring of the document it names in `request.documents`.
+10. runPipeline's counting writer (`countingNarrationWriterOf`) forwards `editSeams`.
+
+Not in this card: item 2 (retune `sparkSeconds` from a measured run), item 6 (confirm the `user` tag on a live LiteLLM) and item 11 (GV-97's critic metering).
+
+**Files edited:**
+
+- backend/src/generation/runLog.ts
+- backend/src/generation/chat/laneScheduler.ts
+- backend/src/cli/generateForays.ts
+- backend/src/generation/JevPromptUnderstander.ts
+- backend/src/generation/clipJudge.ts
+- backend/src/generation/checkpoint.ts
+- backend/src/generation/selfCritique.ts
+- backend/src/generation/runPipeline.ts
+- tools/generation-bench/swap-experiment.mjs
+- test/suite-integrity.test.js
+
+**Acceptance:**
+
+- A resumed Foray hits its Spark-seconds cap cumulatively, and the row's unitSpend reads the spend.
+- A jevCalls UnitBudgetExceededError stops the run (understand stage) instead of degrading the clarity check or the clip scores.
+- Flipping FORAY_SPINE_BEST_OF changes the variant; a run killed after its spine is not resumed across the flip.
+- An adopted stack can turn spineBestOf on with its judge.
+- Under behind-playhead, act 0 keeps GV-73 streaming through the decorator.
+- A seed built under another self-critique is refused from stitch and accepted from narrate.
+- An invented quote never reaches the critic as a source.
+- The counting writer offers and counts editSeams.
+
+**Tests.** backend: generateForays, JevPromptUnderstander, clipJudge, checkpointFork, selfCritique and runPipeline suites; tools: swap-experiment.test.mjs. One named mutation per test.
+
+**Flag.** None new; every change is inert while self-critique, best-of-2 and the unit caps' callers are off.
+
+**Live step.** none
+
+**Founder need.** founder-approved label (orchestrator applies)
 
 ### Wave 21
 

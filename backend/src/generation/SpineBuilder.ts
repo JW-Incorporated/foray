@@ -116,6 +116,14 @@ export interface SpineSelectionRecord {
     probabilities?: number[];
     confidence?: number;
     requestId?: string;
+    /** GV-125 (#1413 item 15): the judge that ANSWERED, when the judge says
+     * ('jev' or 'qwen'): `kind` is the configured judge, so under
+     * jev-then-qwen this tells a Jev answer from the Qwen fallback's. */
+    answeredBy?: string;
+    /** GV-125: whether the answering judge's probabilities are calibrated
+     * (the Qwen judge's logprobs) rather than self-reported; absent when the
+     * judge does not say. */
+    calibrated?: boolean;
   } | null;
   chosen: "primary" | "secondary";
   reason: "judged" | "only-valid" | "secondary-late" | "judge-failed" | "none-valid";

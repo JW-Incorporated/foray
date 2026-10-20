@@ -76,7 +76,10 @@
  * - Every row of both reports must carry the stageAssignments the plan
  *   implies (impl and machine per stage, plus spec.expect for arm B) and,
  *   when spec.expect.levers is set, matching `levers`: arm B the spec's
- *   values, arm A each named lever on or off as planned (absent = off). An
+ *   values (an object value names the fields the row's record must carry,
+ *   so GV-99's { mode: "on" } matches { mode, exemplarIds, fileSha }; any
+ *   other value must equal the record), arm A each named lever on or off as
+ *   planned (absent = off). An
  *   unimplemented flag, or a lever flag leaking into arm A, could otherwise
  *   make arm B silently equal arm A. `run` drops every inherited lever flag an
  *   arm leaves unset, and the printed commands unset it (env -u).
@@ -156,8 +159,24 @@ export const LISTEN_ACT = 1;
  * FORAY_WRITER_EXEMPLARS; GV-99 defines it as off|on, read through
  * generationFlags.readEnumFlag, which throws on any other value such as "1").
  * An adopted stack that turns on an unmapped lever is refused until its card
- * adds the mapping. */
-export const LEVER_ENV = Object.freeze({ exemplars: Object.freeze({ name: "FORAY_WRITER_EXEMPLARS", on: "on", off: "off" }) });
+ * adds the mapping.
+ *
+ * GV-124 (#1413 item 5): spineBestOf is FORAY_SPINE_BEST_OF (1|2, GV-91's
+ * pipelineFlags.ts). Under 2 the backend also requires FORAY_SPINE_JUDGE and
+ * reads FORAY_SPINE_BEST_OF_GRACE_MS, so its adopted value is the lever as the
+ * report records it ({ mode: "best-of-2", judge, graceMs }): `companions`
+ * maps that record's fields to their variables, and `requires` names the
+ * fields an adopted stack must give. */
+export const LEVER_ENV = Object.freeze({
+  exemplars: Object.freeze({ name: "FORAY_WRITER_EXEMPLARS", on: "on", off: "off" }),
+  spineBestOf: Object.freeze({
+    name: "FORAY_SPINE_BEST_OF",
+    on: "2",
+    off: "1",
+    companions: Object.freeze({ judge: "FORAY_SPINE_JUDGE", graceMs: "FORAY_SPINE_BEST_OF_GRACE_MS" }),
+    requires: Object.freeze(["judge"])
+  })
+});
 
 export const MODE_ENV = "FORAY_GENERATION_MODE";
 export const ALLOW_LEGACY_ENV = "FORAY_ALLOW_ANTHROPIC_LEGACY";
@@ -387,7 +406,19 @@ export function adoptedEnv({ floorSpec, stack, contract, ledgerRows = [] }) {
     if (value === false || value === null || value === undefined) continue;
     const flag = LEVER_ENV[lever];
     if (!flag) throw new Error(`adopted-stack.json turns on lever "${lever}", which has no backend flag mapped yet (LEVER_ENV)`);
-    env[flag.name] = value === true ? flag.on : String(value);
+    if (isPlainObject(value)) {
+      /* A recorded lever ({ mode, ... }): on unless its mode is off; its
+         other fields set the flag's companion variables. */
+      if (!leverIsOn(value)) continue;
+      env[flag.name] = flag.on;
+      for (const [field, name] of Object.entries(flag.companions ?? {})) if (value[field] !== undefined) env[name] = String(value[field]);
+    } else {
+      env[flag.name] = value === true ? flag.on : String(value);
+    }
+    for (const field of flag.requires ?? []) {
+      const name = flag.companions[field];
+      if (env[name] === undefined) throw new Error(`adopted-stack.json turns on lever "${lever}" without its ${field} (${name}); give the lever as recorded, e.g. { "mode": ..., "${field}": ... }`);
+    }
   }
   return env;
 }
@@ -648,6 +679,16 @@ function readReport(file) {
   return report;
 }
 
+/** Whether a row's recorded lever meets the spec's expectation: an object
+ * expectation names the fields the record must carry with those values (the
+ * record may carry more, e.g. GV-99's exemplarIds and fileSha, which the spec
+ * cannot know before the founder's selection); any other expectation must
+ * equal the record. */
+export function leverMatches(got, want) {
+  if (isPlainObject(want)) return isPlainObject(got) && Object.entries(want).every(([field, value]) => JSON.stringify(got[field]) === JSON.stringify(value));
+  return JSON.stringify(got) === JSON.stringify(want);
+}
+
 /** Every way the rows of one arm disagree with what the plan routed. */
 export function assignmentMismatches(entries, expected, extra = {}, expectLevers = undefined, armName = "?") {
   const problems = [];
@@ -676,7 +717,7 @@ export function assignmentMismatches(entries, expected, extra = {}, expectLevers
       if (!isPlainObject(entry.levers)) problems.push(`${at} records no levers`);
       else
         for (const [lever, want] of Object.entries(expectLevers)) {
-          if (JSON.stringify(entry.levers[lever]) !== JSON.stringify(want)) problems.push(`${at} lever ${lever}: ${JSON.stringify(entry.levers[lever])}, expected ${JSON.stringify(want)}`);
+          if (!leverMatches(entry.levers[lever], want)) problems.push(`${at} lever ${lever}: ${JSON.stringify(entry.levers[lever])}, expected ${JSON.stringify(want)}`);
         }
     }
     if (typeof entry.anthropicCalls === "number" && entry.anthropicCalls > 0) problems.push(`${at} sent ${entry.anthropicCalls} Anthropic request(s)`);

@@ -232,13 +232,18 @@ export interface CorpusCoverage {
  * `hasBody` is passed in rather than computed here because only the cue
  * provider knows how a digest row maps to a file — this module owns the naming
  * RULE, not the directory walk.
+ *
+ * GV-95: `disk` in place of `normalizedRoot` counts a corpus that is not a
+ * local directory — the retrieval server's manifest (`RemoteRetrieval
+ * .manifestShows`), where a scan of this machine's directory would read 0.
  */
-export function corpusCoverage(options: {
-  archive: Array<{ show_id: string }>;
-  hasBody: (entry: { show_id: string }, showId: string) => boolean;
-  normalizedRoot: string;
-}): CorpusCoverage {
-  const disk = scanNormalizedCorpus(options.normalizedRoot);
+export function corpusCoverage(
+  options: {
+    archive: Array<{ show_id: string }>;
+    hasBody: (entry: { show_id: string }, showId: string) => boolean;
+  } & ({ normalizedRoot: string; disk?: undefined } | { disk: readonly CorpusShowOnDisk[]; normalizedRoot?: undefined })
+): CorpusCoverage {
+  const disk = options.disk !== undefined ? options.disk : scanNormalizedCorpus(options.normalizedRoot);
   const byShow = new Map<string, Array<{ show_id: string }>>();
   for (const entry of options.archive) {
     const list = byShow.get(entry.show_id);

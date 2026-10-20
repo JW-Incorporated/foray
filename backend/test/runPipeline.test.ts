@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
+import { countingNarrationWriterOf, runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem, type RetrievalPreparer } from "../src/generation/runPipeline";
+import { sourcingSearches } from "../src/generation/sourceBeats";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -26,7 +27,7 @@ import { INTERNAL_VOCABULARY, titleStyleProblems } from "../src/copy/rules";
 import { SpineSchema, type DeepenedAct, type Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
 import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
-import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
+import type { NarrationWriterBuilder, SeamEditRequest } from "../src/generation/NarrationWriterBuilder";
 import type { SpineBuildContext, SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
 import { servableThroughAct, servableView, type PartialCandidate } from "../src/generation/partialCandidate";
@@ -56,6 +57,8 @@ import { SelfCritiquingNarrationWriter, __swapDraftCriticForTests, joinCheckpoin
 import { resolvePipelineFlags } from "../src/generation/pipelineFlags";
 import { resolveRouting } from "../src/config/stageRouting";
 import type { WriterObservation } from "../src/generation/NarrationWriterBuilder";
+import { evidenceMemoKey } from "../src/generation/evidencePrefetch";
+import { BudgetExceededError, BudgetStopError } from "../src/cost/budgetGuard";
 
 /**
  * THE GAP THIS SUITE COVERS. Every stage §4.0-§4.9 was built and tested on its
@@ -2372,4 +2375,337 @@ describe("runForayPipeline — GV-94 decision 20: the self-critique part of the 
       restore();
     }
   }, 240_000);
+});
+
+/* GV-124 (#1413 item 10): the pipeline's counting proxy over the writer
+   (`countingNarrationWriterOf`, what runForayPipeline hands the narration
+   stage) forwards `editSeams`, so the seam edit GV-80 built can reach the
+   writer through the pipeline. It was dropped: writeAct.ts checks for the
+   method, found none, and a timed round 2 would have been a whole-act
+   rewrite. */
+describe("GV-124 — the counting writer forwards editSeams", () => {
+  it("offers exactly the writer's optional methods, forwards each, and counts every request once", async () => {
+    /* MUTATION THAT KILLS THIS: drop the editSeams forward from
+       countingNarrationWriterOf (the pre-GV-124 proxy). Ran it: red (the
+       proxy has no editSeams). Or: forward it without counting. Ran it: red
+       (the count reads 1 after the edit and the act). */
+    const stub = new StubNarrationWriterBuilder();
+    let count = 0;
+    const proxy = countingNarrationWriterOf(stub, () => void count++);
+    expect(proxy.providerName).toBe(stub.providerName);
+    expect(typeof proxy.writeActStream).toBe("function");
+    expect(typeof proxy.editSeams).toBe("function");
+    const voice = { style: "well-read friend", register: "conversational", sentenceRhythm: "varied", narratorPresence: "medium" } as const;
+    const edit: SeamEditRequest = { actTitle: "Act 1", voice, seams: [], neighbours: [], clips: [], documents: [], retryNote: "r" };
+    const ctx = { userId: "founder-1" };
+    expect(await proxy.editSeams!(edit, ctx)).toEqual(await stub.editSeams(edit, ctx));
+    expect(count).toBe(1);
+    await proxy.writeAct({ actTitle: "Act 1", voice, seams: [], clips: [], documents: [] }, ctx);
+    expect(count).toBe(2);
+
+    /* A writer without the optional methods: the proxy has none either. */
+    const plain: NarrationWriterBuilder = { providerName: "plain", writeAct: async () => ({ seams: [] }) };
+    const plainProxy = countingNarrationWriterOf(plain, () => void count++);
+    expect(plainProxy.editSeams).toBeUndefined();
+    expect(plainProxy.writeActStream).toBeUndefined();
+  });
+});
+
+describe("runForayPipeline — GV-95 the retrieval server is asked ahead of research, sourcing and evidence, and only when supplied", () => {
+  /** A scripted RetrievalPreparer: records what the pipeline asked, in order,
+   * and the stage each call ran under. */
+  function scriptedRetrieval() {
+    const calls: Array<{ op: string; stage: string | undefined; detail?: unknown }> = [];
+    /* Counts from the instance's birth, as RemoteRetrieval's do: 4 hits are
+       an earlier prompt's, and this run's `prepare` adds 7 (GV-125). */
+    const counts = { prepared: 0, hits: 4, misses: 0, degraded: 0, hydrated: 0, hydrationMisses: 0, hydrationAbsent: 0, unmapped: 0, unprepared: 0, evictions: 0, evictedPinned: 0, heldBytes: 0, pinned: 0, scopeMismatches: 0, reasons: [] as string[] };
+    /* This run's share, which is what meta.veracity.retrieval.remote reports. */
+    const stats = { ...counts, hits: 7, reasons: [] as string[] };
+    const retrieval: RetrievalPreparer = {
+      prepareScope: async (topic) => {
+        calls.push({ op: "prepareScope", stage: currentCallContext()?.stage, detail: topic });
+        return true;
+      },
+      prepare: async (requests) => {
+        calls.push({ op: "prepare", stage: currentCallContext()?.stage, detail: requests });
+        counts.hits += 7;
+        return requests.length;
+      },
+      answerFor: () => undefined,
+      hydrate: async (entries) => {
+        calls.push({ op: "hydrate", stage: currentCallContext()?.stage, detail: entries.length });
+        return 0;
+      },
+      stats: () => ({ ...counts, reasons: [...counts.reasons] })
+    };
+    return { retrieval, calls, stats };
+  }
+
+  it("prepares the topic's scope once, every sourcing search before 'source' and every clip's body before evidence, each in its own timed stage; its stats ride in meta.veracity.retrieval.remote", async () => {
+    /* MUTATION THAT KILLS THIS: prepare sourcing's searches from the deepen
+       acts' theses only (drop the claim queries). Ran it: red. Or (GV-125):
+       report `retrieval.stats()` whole instead of `retrievalStatsSince`.
+       Ran it: red (hits 11, the earlier prompt's 4 included). */
+    const { retrieval, calls, stats } = scriptedRetrieval();
+    let deepened: DeepenedAct[] = [];
+    const deepenBuilder = new StubDeepenActBuilder();
+    const real = deepenBuilder.deepenAct.bind(deepenBuilder);
+    deepenBuilder.deepenAct = async (...args: Parameters<DeepenActBuilder["deepenAct"]>) => {
+      const act = await real(...args);
+      deepened[args[2]] = act;
+      return act;
+    };
+    /* Under a RunLog, so each call can be read off the call context's stage. */
+    const out = await runWithRunLog(new RunLog(), () => runForayPipeline(request, options, { ...stubDeps(), deepenBuilder, retrieval }));
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    deepened = deepened.filter(Boolean);
+    /* The stub run has no text index, so research-shape asks nothing ahead. */
+    expect(calls.map((c) => `${c.op}@${c.stage}`)).toEqual([
+      "prepareScope@retrieval:source",
+      "prepare@retrieval:source",
+      "hydrate@retrieval:source",
+      "hydrate@retrieval:evidence"
+    ]);
+    expect(calls[0]!.detail).toBe(options.topic);
+    expect(calls[1]!.detail).toEqual(sourcingSearches(deepened));
+    expect((calls[1]!.detail as unknown[]).length).toBeGreaterThan(deepened.length);
+    const names = out.timings.map((t) => t.name);
+    expect(names.indexOf("retrieval:source")).toBeLessThan(names.indexOf("source"));
+    expect(names.indexOf("retrieval:evidence")).toBeLessThan(names.indexOf("evidence"));
+    expect((out.input.meta?.veracity?.retrieval as { remote?: unknown }).remote).toEqual(stats);
+  });
+
+  it("without deps.retrieval no retrieval stage runs and meta.veracity.retrieval has no remote key", async () => {
+    /* MUTATION THAT KILLS THIS: add `remote` to meta.veracity.retrieval
+       unconditionally. Ran it: red. */
+    const out = await runForayPipeline(request, options, stubDeps());
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(out.timings.map((t) => t.name).filter((n) => n.startsWith("retrieval:"))).toEqual([]);
+    expect(out.input.meta?.veracity?.retrieval).toBeDefined();
+    expect(out.input.meta?.veracity?.retrieval).not.toHaveProperty("remote");
+  });
+});
+
+/**
+ * GV-98 (W3-17, R1-05): FORAY_EVIDENCE_PREFETCH=first-act. The `evidence`
+ * stage awaits act 1's packs only; every later act's are gathered behind it
+ * while act 1 is written, and settled on every exit path. The gatherer is a
+ * scripted fake that reads the stage it was called in off the call context
+ * (so each run is inside a RunLog) and answers every gather outside the
+ * `evidence` stage 30 ms late: the "slower act-2 gathers".
+ */
+describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the rest behind it", () => {
+  const multiAct: GenerationRequest = { ...request, duration: "medium" };
+
+  function withEnv<T>(vars: Record<string, string | undefined>, fn: () => Promise<T>): Promise<T> {
+    const previous = Object.fromEntries(Object.keys(vars).map((k) => [k, process.env[k]]));
+    for (const [k, v] of Object.entries(vars)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    return fn().finally(() => {
+      for (const [k, v] of Object.entries(previous)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    });
+  }
+
+  function stagedGatherer() {
+    const calls: Array<{ key: string; stage: string | undefined; claim: string }> = [];
+    const log: string[] = [];
+    let inFlight = 0;
+    const evidence: EvidenceGatherer = {
+      async gather(beat): Promise<EvidencePack> {
+        const stage = currentCallContext().stage;
+        calls.push({ key: evidenceMemoKey(beat), stage, claim: beat.claim });
+        inFlight += 1;
+        try {
+          if (stage !== "evidence") await new Promise((resolve) => setTimeout(resolve, 30));
+          log.push(`landed@${stage === "evidence" ? "evidence" : "behind"}`);
+          return { purpose: beat.claim, beatKind: "account", docs: [] };
+        } finally {
+          inFlight -= 1;
+        }
+      }
+    };
+    return { evidence, calls, log, inFlight: () => inFlight };
+  }
+
+  function loggingWriter(log: string[], fail = false): NarrationWriterBuilder {
+    const stub = new StubNarrationWriterBuilder();
+    return {
+      providerName: stub.providerName,
+      writeAct: async (req, narrationCtx) => {
+        log.push(`write:${req.actTitle}`);
+        if (fail) throw new Error("writer down");
+        return stub.writeAct(req, narrationCtx);
+      }
+    };
+  }
+
+  /* MUTATION THAT KILLS THIS: drop the `acts: i => i === 0` filter from the
+     evidence stage (every page lands inside `evidence`, so nothing is left
+     to land behind act 1's first write); or have buildQueue ignore
+     `options.acts` (the same, from the gatherer's side). */
+  it("first-act: the stage gathers act 1's pages only, act 1 is written before the later acts' slower packs land, and every page is gathered once", async () => {
+    const { evidence, calls, log } = stagedGatherer();
+    const claimsByAct = new Map<string, Set<string>>();
+    const base = loggingWriter(log);
+    const narrationWriter: NarrationWriterBuilder = {
+      providerName: base.providerName,
+      writeAct: async (req, narrationCtx) => {
+        const claims = claimsByAct.get(req.actTitle) ?? new Set<string>();
+        for (const seam of req.seams) for (const b of seam.beats) claims.add(b.claim);
+        claimsByAct.set(req.actTitle, claims);
+        return base.writeAct(req, narrationCtx);
+      }
+    };
+    const out = await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act" }, () =>
+      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence, narrationWriter }))
+    );
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+
+    /* Which act each page belongs to, off the briefs the writer was handed
+       (a seam beat's claim is the gathered beat's claim). Act 1 is the
+       first act written. */
+    const [firstAct, ...laterActs] = [...claimsByAct.keys()];
+    expect(laterActs.length).toBeGreaterThan(1);
+    const act1Claims = claimsByAct.get(firstAct!)!;
+    const laterClaims = new Set(laterActs.flatMap((t) => [...claimsByAct.get(t)!]).filter((c) => !act1Claims.has(c)));
+    expect(laterClaims.size).toBeGreaterThan(0);
+    const timedClaims = calls.filter((c) => c.stage === "evidence").map((c) => c.claim);
+    const backgroundClaims = new Set(calls.filter((c) => c.stage === "evidence:background").map((c) => c.claim));
+    /* The timed stage gathered act 1's pages and no page of any later act... */
+    expect(timedClaims.some((c) => act1Claims.has(c))).toBe(true);
+    expect(timedClaims.filter((c) => laterClaims.has(c))).toEqual([]);
+    /* ...and the background carries the later acts' pages (act 2's among
+       them) and none that only act 1 holds. */
+    expect([...claimsByAct.get(laterActs[0]!)!].some((c) => backgroundClaims.has(c))).toBe(true);
+    expect([...backgroundClaims].some((c) => laterClaims.has(c))).toBe(true);
+    expect([...backgroundClaims].filter((c) => act1Claims.has(c) && !laterClaims.has(c))).toEqual([]);
+
+    const names = out.timings.map((t) => t.name);
+    expect(names.indexOf("evidence")).toBe(names.indexOf("source") + 1);
+    expect(names.indexOf("evidence")).toBeLessThan(names.indexOf("narrate:0"));
+    expect(names.filter((n) => /^narrate:\d+$/.test(n)).length).toBeGreaterThan(1);
+
+    const retrieval = out.input.meta!.veracity!.retrieval!;
+    const timedCalls = calls.filter((c) => c.stage === "evidence");
+    expect(retrieval.timedPages).toBe(timedCalls.length);
+    expect(retrieval.timedPages).toBeGreaterThan(0);
+    expect(retrieval.backgroundPages).toBeGreaterThan(0);
+    expect(retrieval.timedPages! + retrieval.backgroundPages!).toBe(retrieval.pages);
+    expect(retrieval.backgroundMs).toBeGreaterThanOrEqual(0);
+    /* The background's own calls are tagged for the lane scheduler. */
+    expect(calls.some((c) => c.stage === "evidence:background")).toBe(true);
+    /* Exactly once: no key reached the wrapped gatherer twice, and every
+       page either phase listed was gathered. */
+    expect(new Set(calls.map((c) => c.key)).size).toBe(calls.length);
+    expect(calls).toHaveLength(retrieval.pages);
+    expect(retrieval.failed).toBe(0);
+    /* Act 1's writer started before the later acts' packs had all landed. */
+    const firstWrite = log.findIndex((l) => l.startsWith("write:"));
+    expect(firstWrite).toBeGreaterThan(-1);
+    expect(log.slice(firstWrite).some((l) => l === "landed@behind")).toBe(true);
+    expect(log.slice(0, firstWrite).every((l) => l === "landed@evidence" || l === "landed@behind")).toBe(true);
+  }, 60_000);
+
+  /* MUTATION THAT KILLS THIS: default FORAY_EVIDENCE_PREFETCH to first-act.
+     Pages then land outside the stage and the phase keys appear. */
+  it("all (the default): every page is gathered inside the evidence stage and the report carries no phase keys", async () => {
+    const { evidence, calls, log } = stagedGatherer();
+    const out = await withEnv({ FORAY_EVIDENCE_PREFETCH: undefined }, () =>
+      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence, narrationWriter: loggingWriter(log) }))
+    );
+    expect(out.outcome).toBe("generated");
+    if (out.outcome !== "generated") return;
+    expect(calls.length).toBeGreaterThan(0);
+    expect(calls.every((c) => c.stage === "evidence")).toBe(true);
+    const retrieval = out.input.meta!.veracity!.retrieval!;
+    expect(retrieval).not.toHaveProperty("timedPages");
+    expect(retrieval).not.toHaveProperty("backgroundPages");
+    expect(retrieval).not.toHaveProperty("backgroundMs");
+  }, 60_000);
+
+  /* MUTATION THAT KILLS THIS: drop the `settleBackground` calls from the
+     narration loop's catch and finally. The run then rejects with a
+     background gather still in flight, and the background keeps taking the
+     later acts' pages after the run has returned. */
+  it("first-act, narration throws: the run rejects with the writer's error only after the background has settled, and gathers nothing afterwards", async () => {
+    const { evidence, calls, log, inFlight } = stagedGatherer();
+    /* Every background page that STARTED after the writer threw. */
+    let writerThrown = false;
+    let backgroundStartedAfterThrow = 0;
+    const gather = evidence.gather.bind(evidence);
+    evidence.gather = async (beat, ctx) => {
+      if (writerThrown && currentCallContext().stage === "evidence:background") backgroundStartedAfterThrow += 1;
+      return gather(beat, ctx);
+    };
+    const failingWriter = loggingWriter(log, true);
+    const writeAct = failingWriter.writeAct.bind(failingWriter);
+    failingWriter.writeAct = async (req, narrationCtx) => {
+      writerThrown = true;
+      return writeAct(req, narrationCtx);
+    };
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      let caught: unknown;
+      await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act", EVIDENCE_PREFETCH_CONCURRENCY: "1" }, () =>
+        runWithRunLog(new RunLog(), () =>
+          runForayPipeline(multiAct, { ...options, narrationActConcurrency: 1 }, { ...stubDeps(), evidence, narrationWriter: failingWriter })
+        ).catch((err: unknown) => {
+          caught = err;
+        })
+      );
+      expect(caught).toBeInstanceOf(Error);
+      expect(String((caught as Error).message)).toMatch(/writer down/);
+      expect(inFlight()).toBe(0);
+      /* The failure stopped the background: no background page was STARTED
+         after the writer threw (merely settling lets the queue drain). */
+      expect(writerThrown).toBe(true);
+      expect(calls.some((c) => c.stage === "evidence:background")).toBe(true);
+      expect(backgroundStartedAfterThrow).toBe(0);
+      const atRejection = calls.length;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      expect(calls.length).toBe(atRejection);
+      expect(unhandled).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  }, 60_000);
+
+  /* MUTATION THAT KILLS THIS: start the background outside the
+     `evidence:background` call context (the refused gathers are then never
+     made and the run completes; ran: red). The deferred throw itself is
+     pinned by evidencePrefetch.test.ts: here a narration gather that shares
+     the refused in-flight promise carries the stop too, so dropping the
+     throw alone leaves this green (ran). */
+  it("first-act: a budget stop in the background surfaces from the next narration gather and stops the run naming a narrate stage", async () => {
+    const calls: Array<string | undefined> = [];
+    const evidence: EvidenceGatherer = {
+      async gather(beat): Promise<EvidencePack> {
+        const stage = currentCallContext().stage;
+        calls.push(stage);
+        /* Only the background fan-out is refused; a narration-time re-ask
+           would be answered. */
+        if (stage === "evidence:background") throw new BudgetExceededError(9.9, 0.2, 10);
+        return { purpose: beat.claim, beatKind: "account", docs: [] };
+      }
+    };
+    let caught: unknown;
+    await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act" }, () =>
+      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence })).catch((err: unknown) => {
+        caught = err;
+      })
+    );
+    expect(calls).toContain("evidence:background");
+    expect(caught).toBeInstanceOf(BudgetStopError);
+    expect((caught as BudgetStopError).stage).toMatch(/^narrate:\d+$/);
+  }, 60_000);
 });

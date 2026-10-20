@@ -32,17 +32,19 @@ import { NarratedBeatSchema } from "../types/narration";
 
 import { understandPrompt, understandPromptFast } from "./understandPrompt";
 import { provisionalTitle } from "./preSpineIntent";
-import { buildResearchShape } from "./researchShape";
+import { buildResearchShape, type ResearchSearchRequest } from "./researchShape";
 import { buildSpineWithReasks, reaskForRuntime, type SpineReask } from "./buildSpine";
 import { spineRuntimeLine, spineRuntimeOf, type SpineRuntime } from "./tierRuntime";
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
 import { deepenActs, foldsDeepen } from "./deepenActs";
-import { sourceBeats, summarizeSourcing } from "./sourceBeats";
+import { sourceBeats, sourcingBodies, sourcingSearches, summarizeSourcing } from "./sourceBeats";
+import { retrievalStatsSince, type RetrievalMode, type RetrievalSearchRequest, type RetrievalStats } from "./retrievalClient";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
-import { PrefetchingEvidenceGatherer } from "./evidencePrefetch";
+import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics } from "./evidencePrefetch";
+import { evidencePrefetchMode } from "./generationFlags";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
 import { loadCatalogueData, type CatalogueData } from "./catalogueLookup";
 import { ForayStitcher } from "./stitchForay";
@@ -99,7 +101,7 @@ import { taxonomyLineage } from "./taxonomyFamily";
 import type { SpineBuildContext, SpineBuilder, SpineSelectionRecord } from "./SpineBuilder";
 import { addSelfCritique, joinCheckpointVariant, readSelfCritique, type SelfCritiqueConfig, type SelfCritiqueTotals } from "./selfCritique";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
-import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, WriterObservation } from "./NarrationWriterBuilder";
+import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, SeamEditRequest, WriterObservation } from "./NarrationWriterBuilder";
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
@@ -144,6 +146,35 @@ import type { ForayItem } from "./forayItems";
  * budget: two budget checks that can disagree is worse than one.
  */
 
+/**
+ * GV-95 (W3-11; R1-09, GP-09): what the pipeline asks of a retrieval server
+ * ahead of the synchronous stages. `RemoteRetrieval` (retrievalClient.ts)
+ * satisfies it; the batch driver builds one only when FORAY_RETRIEVAL_URL is
+ * set, and passes `PrecomputedTextIndex` and `HydratingCueProvider` over the
+ * same instance as `textIndex` and `cueProvider`.
+ */
+export interface RetrievalPreparer {
+  /** Registers the Foray's 'lineage' and 'all' scopes for `topic`. */
+  prepareScope(topic: string | null, root?: string): Promise<boolean>;
+  /** Asks the server every search in `requests`; answers are stored. */
+  prepare(requests: readonly RetrievalSearchRequest[]): Promise<number>;
+  /** A stored answer, read without counting a search. */
+  answerFor(scope: RetrievalSearchRequest["scope"], limit: number, text: string): { candidates: ReadonlyArray<{ entry: TranscriptDigestEntry }> } | undefined;
+  /** Fetches the bodies of `entries` so `getCues` can read them. */
+  hydrate(entries: readonly TranscriptDigestEntry[], options?: { pin?: boolean }): Promise<number>;
+  /** The counts and degraded reasons since the instance was made; the run
+   * reports its own share (`retrievalStatsSince`, GV-125) in
+   * `meta.veracity.retrieval.remote`. */
+  stats(): RetrievalStats;
+  /** GV-125 (#1413 item 17): the mode sent with every search. Anything but
+   * bm25 joins the checkpoint variant at both call sites. Absent: bm25. */
+  readonly mode?: RetrievalMode;
+}
+
+/** G-35's prefetch metrics, plus GV-95's retrieval-server counts when the run
+ * had one. */
+type RunRetrievalMetrics = EvidencePrefetchMetrics & { remote?: RetrievalStats };
+
 export interface RunPipelineDeps {
   understander?: PromptUnderstander;
   researcher?: ExternalResearcher;
@@ -186,6 +217,16 @@ export interface RunPipelineDeps {
    * Omitted, tier 2 keeps to the title-metadata path — see
    * `SourceBeatsOptions.textIndex`. */
   textIndex?: TranscriptTextIndex;
+  /**
+   * GV-95 (W3-11): the retrieval server behind `textIndex` and `cueProvider`.
+   * Omitted (the default, FORAY_RETRIEVAL_URL unset), nothing below changes.
+   * Supplied, every search research-shape and sourcing will make is asked
+   * ahead of its stage and every body they and the evidence stage may open is
+   * fetched ahead, in three timed, uncheckpointed stages ('retrieval:research',
+   * 'retrieval:source', 'retrieval:evidence'); its `stats()` ride in
+   * `meta.veracity.retrieval.remote`.
+   */
+  retrieval?: RetrievalPreparer;
   /** §4.5 tier-2: resolves the `data/segment-sources.json` row that makes a
    * minted segment playable. Defaults to the real catalogue-reading resolver;
    * injectable so a test can exercise the refusal path without a checkout. */
@@ -1101,6 +1142,43 @@ const WrittenActSchema = z.object({
    function's own return value is one less shape to keep in step. */
 const StitchActCheckpointSchema = z.array(ForayItemSchema);
 
+/**
+ * The narration stage's counting proxy over the writer (G-34, Q-03): every
+ * request the writer makes calls `count` once, whatever its page count. It
+ * offers exactly the methods the writer offers, so a caller that checks for
+ * an optional method (`writeActStream`, `editSeams`) sees what the writer
+ * has:
+ *   - GV-43: a streamed act is one request, counted when the stream opens;
+ *   - GV-124 (#1413 item 10): a seam edit (GV-80) is one request. It was
+ *     dropped here, so the timed policy's round 2 could never reach the
+ *     writer's `editSeams` through the pipeline.
+ */
+export function countingNarrationWriterOf(writer: NarrationWriterBuilder, count: () => void): NarrationWriterBuilder {
+  return {
+    providerName: writer.providerName,
+    writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
+      count();
+      return writer.writeAct(actRequest, actCtx);
+    },
+    ...(writer.writeActStream
+      ? {
+          writeActStream: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
+            count();
+            return writer.writeActStream!(actRequest, actCtx);
+          }
+        }
+      : {}),
+    ...(writer.editSeams
+      ? {
+          editSeams: (editRequest: SeamEditRequest, actCtx: NarrationBuildContext) => {
+            count();
+            return writer.editSeams!(editRequest, actCtx);
+          }
+        }
+      : {})
+  };
+}
+
 export async function runForayPipeline(
   request: GenerationRequest,
   options: RunPipelineOptions,
@@ -1148,6 +1226,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const selfCritique = options.selfCritique ?? readSelfCritique();
   // GV-14: a malformed FORAY_OUTPUT_BUDGETS throws here, not inside recordModelCall after a paid reply.
   void outputBudgetMode();
+  /* GV-98: FORAY_EVIDENCE_PREFETCH, read once here for the same reason (a
+     malformed value fails the run before it spends a call). 'all' (the
+     default) is G-35's whole-Foray fan-out; 'first-act' awaits act 1's packs
+     only and gathers the rest behind it. Not in the checkpoint variant: both
+     modes gather the same packs. */
+  const evidencePrefetch = evidencePrefetchMode();
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
@@ -1155,7 +1239,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      keeps a flag-on run and a classic run off each other's banked stages;
      with every semantics-changing flag off it is undefined and the
      fingerprint is today's. GV-55: it also carries the narration order and,
-     in local mode, the routing. */
+     in local mode, the routing. GV-125 (#1413 item 17): and the retrieval
+     server's mode when it is not bm25, read off the same instance the driver
+     hashed (`deps.retrieval.mode`). */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
@@ -1164,7 +1250,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       duration: req.duration,
       topic: options.topic,
       /* GV-94: plus the self-critique's part, only when it is on. */
-      variant: joinCheckpointVariant(checkpointRunVariant(flags, routing), selfCritique)
+      variant: joinCheckpointVariant(checkpointRunVariant({ ...flags, retrievalMode: deps.retrieval?.mode }, routing), selfCritique)
     })
   );
   const resumeHint = options.checkpointKey
@@ -1311,24 +1397,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      improvement from the change that produced it. */
   let narrationWriterCalls = 0;
   let narrationVerifierCalls = 0;
-  const countingNarrationWriter: NarrationWriterBuilder = {
-    providerName: narrationWriter.providerName,
-    writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
-      narrationWriterCalls++;
-      return narrationWriter.writeAct(actRequest, actCtx);
-    },
-    /* GV-43: a streamed act is one request too, so it counts once, when the
-       stream is opened. Forwarded only when the writer has it, so a caller
-       that checks for the method sees exactly what the writer offers. */
-    ...(narrationWriter.writeActStream
-      ? {
-          writeActStream: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
-            narrationWriterCalls++;
-            return narrationWriter.writeActStream!(actRequest, actCtx);
-          }
-        }
-      : {})
-  };
+  const countingNarrationWriter = countingNarrationWriterOf(narrationWriter, () => {
+    narrationWriterCalls++;
+  });
   /* G-34: `retryRounds` is counted by the stage itself (a round is an act
      going back to the writer), not by the proxy above, which sees
      requests and cannot tell a round from a call. */
@@ -1435,6 +1506,23 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      overridden; its supply is measured and said, and that is all. */
   const archive = deps.transcriptArchive ?? loadTranscriptArchive();
   const segmentPool = deps.segmentPool ?? loadSegmentPool();
+  /* GV-95: the retrieval server, when the driver has one. Its scopes are
+     registered for the topic the next search will be filtered by, once per
+     topic: the pre-spine topic for research-shape, and again only when the
+     post-spine decision resolved a different one before sourcing. */
+  const retrieval = deps.retrieval;
+  /* GV-125 (#1413 item 16): one RemoteRetrieval serves the whole batch, so
+     this run's counts are the difference from here, not since the batch
+     began. */
+  const retrievalBaseline = retrieval?.stats();
+  let scopedFor: { topic: string | null } | null = null;
+  const scopeRetrievalTo = async (forTopic: string | null): Promise<void> => {
+    if (!retrieval || (scopedFor !== null && scopedFor.topic === forTopic)) return;
+    await retrieval.prepareScope(forTopic, options.root);
+    scopedFor = { topic: forTopic };
+  };
+  const preparedCandidates = (request: RetrievalSearchRequest): TranscriptDigestEntry[] =>
+    (retrieval?.answerFor(request.scope, request.limit, request.text)?.candidates ?? []).map((c) => c.entry);
   const bodySource = deps.cueProvider as (TranscriptCueProvider & { bodyStat?: (entry: TranscriptDigestEntry) => unknown }) | undefined;
   const isSearchable =
     bodySource && typeof bodySource.bodyStat === "function"
@@ -1529,7 +1617,24 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
            from an item count. Both default to their Null implementations, so a
            driver that wires neither gets the pre-WS-L map. */
         ...(deps.textIndex ? { textIndex: deps.textIndex } : {}),
-        ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {})
+        ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}),
+        /* GV-95: with a retrieval server, the stage's every search (the
+           subject probe and each subtopic's) is asked ahead, and the bodies
+           the subtopic searches will open are fetched, before the first
+           search runs. Absent, the stage is called exactly as before. */
+        ...(retrieval
+          ? {
+              prepareQueries: (requests: ResearchSearchRequest[]) =>
+                timed("retrieval:research", async () => {
+                  await scopeRetrievalTo(topic);
+                  await retrieval.prepare(requests);
+                  await retrieval.hydrate(
+                    requests.filter((r) => r.scope === "lineage").flatMap(preparedCandidates),
+                    { pin: true }
+                  );
+                })
+            }
+          : {})
       })
   );
 
@@ -1784,6 +1889,23 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   deepenFolded.sort((a, b) => a - b);
   const deepenFoldedTag = foldDeepen ? { deepenFolded } : {};
 
+  /* GV-95: with a retrieval server, every search sourcing will make (each
+     act's thesis query and each searching beat's claim query, the strings and
+     limits sourceBeats.ts's own helpers give its call sites) is asked ahead,
+     and every body sourcing could open is fetched: the text candidates, the
+     title-path matches, the seeded episodes and the pool segments' episodes.
+     Not when the stage is banked: a resumed sourcing opens nothing. */
+  if (retrieval && !checkpoint.has("source")) {
+    await timed("retrieval:source", async () => {
+      await scopeRetrievalTo(topic);
+      await retrieval.prepare(sourcingSearches(deepened));
+      await retrieval.hydrate(
+        sourcingBodies(deepened, { transcriptArchive: archive, segmentPool, topic, root: options.root, candidatesFor: preparedCandidates }),
+        { pin: true }
+      );
+    });
+  }
+
   /* §4.5-4.6 — source each beat against tape, then resolve the pointer. Purely
      deterministic and keyless: no LLM call happens in here at all. The cue
      provider is what decides whether tier-2 can anchor a real span or whether
@@ -1844,6 +1966,28 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     return { outcome: "no-tape", title, sourcing: sourcingLines, topicDecision, spineReasks, spineRuntime, timings: timings.all(), ...clarityTag, ...deepenFoldedTag };
   }
 
+  /* GV-95: with a retrieval server, the episode of every clip the Foray plays
+     (which is every page's own clip and every adjacent one) is fetched before
+     anything reads clip text: the clip scores just below and the evidence
+     stage. Here rather than inside sourcing, so a run that RESUMED its
+     sourcing, and so fetched nothing above, has the bodies too. */
+  if (retrieval) {
+    await timed("retrieval:evidence", async () => {
+      const catalogue = loadCatalogueData();
+      const entries: TranscriptDigestEntry[] = [];
+      for (const act of sourced.acts) {
+        for (const slot of act.slots) {
+          for (const beat of slot.beats) {
+            if (beat.sourcing !== "tape") continue;
+            const entry = findDigestForItem(beat.tape.itemId, archive, catalogue);
+            if (entry) entries.push(entry);
+          }
+        }
+      }
+      await retrieval.hydrate(entries, { pin: true });
+    });
+  }
+
   /* GV-79 (W5-03, MQ-05) — THE CLIP-ON-SUBJECT SCORES, OFF THE TIMED PATH.
      With FORAY_CLIP_JUDGE on, every clip the Foray plays is scored against
      the listener's subject sentence and its beat's claim, in a checkpointed
@@ -1891,9 +2035,17 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const evidence = new PrefetchingEvidenceGatherer(
     deps.evidence ?? createEvidenceGatherer({ researcher, ...(deps.cueProvider ? { cueProvider: deps.cueProvider } : {}) })
   );
+  const skipNarratedSlot = (actIndex: number, slotIndex: number): boolean =>
+    checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`);
+  /* GV-98 (W3-17, R1-05): under 'first-act' the timed stage waits for act 1's
+     packs only; every later act's are started in the background just before
+     narration begins (below), so act 1's writer never waits on act 2's
+     retrieval. For a one-act Foray the two modes are the same run. */
+  const evidenceFirstActOnly = evidencePrefetch === "first-act";
   await timed("evidence", () =>
     evidence.prefetch(sourced.acts, ctx, {
-      skipSlot: (actIndex, slotIndex) => checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`)
+      skipSlot: skipNarratedSlot,
+      ...(evidenceFirstActOnly ? { acts: (actIndex: number) => actIndex === 0 } : {})
     })
   );
   /* ONE clock for the fan-out. The stage log's reading is the report's
@@ -2150,6 +2302,19 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     const titles = titlesForItem(tape.itemId, showCatalogue, findDigestForItem(tape.itemId, archive, showCatalogue));
     return titles?.showTitle ?? sourced.newSegmentSources.find((s) => s.id === tape.itemId)?.show ?? "";
   });
+  /* GV-98: the later acts' evidence, gathered behind act 1. Started HERE,
+     immediately before the acts start, so the try/finally below is the one
+     place that settles it: from this line on every exit path awaits
+     `settleBackground`, and no gather outlives the run. A background budget
+     stop is thrown by the next narration `gather`, inside a `narrate:<i>`
+     stage, which names it. Its calls carry the stage `evidence:background`
+     on the call context (no timing of its own): the lane scheduler reads
+     that as background and the output budgets as retrieval. */
+  if (evidenceFirstActOnly) {
+    withCallContext({ stage: "evidence:background" }, () =>
+      evidence.startBackground(sourced.acts, ctx, { acts: (actIndex) => actIndex > 0, skipSlot: skipNarratedSlot })
+    );
+  }
   const narrations: Array<Promise<WrittenAct>> = sourced.acts.map((act, i) => {
     const p = gate.run(async () => {
       const landed = await stage(
@@ -2243,7 +2408,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   } catch (err) {
     gate.abort(err instanceof Error ? err : new Error(String(err)));
     await Promise.allSettled(narrations);
+    /* GV-98: a failing run starts no more background pages. */
+    await evidence.settleBackground({ stop: true });
     throw err;
+  } finally {
+    /* GV-98: every exit path, so the metrics below are final and nothing is
+       left running. A no-op without a background fan-out. */
+    await evidence.settleBackground();
   }
 
   /* G-32's evidence, for the report: one row per act off the same stage log
@@ -2281,6 +2452,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   /* GV-79: the clip-scores stage, awaited only now. Off, the rows are
      §4.5's own, untouched. */
   const tapeRelevanceRows = clipScoresPending ? applyClipScores(sourced.tapeRelevance, await clipScoresPending) : sourced.tapeRelevance;
+  /* GV-95: the retrieval server's counts and degraded reasons beside the
+     prefetch's, only when the run had one. */
+  const retrievalMetrics: RunRetrievalMetrics =
+    retrieval && retrievalBaseline ? { ...evidence.metrics(), remote: retrievalStatsSince(retrievalBaseline, retrieval.stats()) } : evidence.metrics();
   const veracity = buildVeracityMetrics({
     sourcedActs: sourced.acts,
     writtenActs: written,
@@ -2306,7 +2481,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       : {}),
     pipelineTokens: pipelineTokensOfRun(),
     stageTimings: timings.all(),
-    retrieval: evidence.metrics(),
+    retrieval: retrievalMetrics,
     tapeRelevanceRows,
     /* GV-79: the clip-on-subject rate, only when the judge ran. */
     ...(clipScoresPending ? { clipOnSubject: { levelFor: (judge: Parameters<typeof clipLevelFor>[1]) => clipLevelFor(gates, judge) } } : {}),

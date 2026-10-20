@@ -1,6 +1,7 @@
 import * as crypto from "crypto";
 import { z } from "zod";
 import type { RoutingTable, StageId } from "../config/stageRouting";
+import type { RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 
 /**
@@ -180,30 +181,69 @@ function routeDescriptor(stage: string, route: RoutingTable["routes"][StageId]):
   return `${stage}=${route.provider}${at}/${route.model}${fallback}`;
 }
 
+/** The flags the checkpoint variant reads. `spineBestOf` is optional so a
+ * caller holding only the four GV-15 flags reads as best-of-1, and
+ * `retrievalMode` (GV-125) so one without a retrieval server reads as bm25. */
+export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder"> &
+  Partial<Pick<PipelineFlags, "spineBestOf">> & {
+    /** The retrieval server's FORAY_RETRIEVAL_MODE (`RetrievalPreparer.mode`);
+     * undefined with no server. */
+    retrievalMode?: RetrievalModeFlag | undefined;
+  };
+
+/**
+ * GV-125 (#1413 item 17): the retrieval mode's part of the variant, or
+ * undefined for bm25 (today's, and the only mode without a server), so every
+ * classic fingerprint is unchanged. FORAY_RETRIEVAL_MODE=hybrid changes what
+ * every search answers, so what `research-shape` and `source` bank; it must
+ * join before hybrid's default flips (the replay gate, GV-88, decision 23).
+ */
+export function retrievalModeVariant(mode: RetrievalModeFlag | undefined): string | undefined {
+  return mode !== undefined && mode !== "bm25" ? `retrieval=${mode}` : undefined;
+}
+
+/** The flag parts the fork stamp compares exactly: the semantics-changing
+ * flags, the narration order and (GV-125) a non-bm25 retrieval mode, which
+ * feeds the stage `research-shape` so no seed built under another mode is
+ * worth forking. */
+function flagParts(flags: CheckpointRunFlags): string[] {
+  return [
+    checkpointVariant(flags),
+    flags.narrationOrder === "sequential" ? "narration=sequential" : undefined,
+    retrievalModeVariant(flags.retrievalMode)
+  ].filter((p): p is string => Boolean(p));
+}
+
+/**
+ * GV-124 (#1413 item 4): the best-of-N spine's part of the variant, or
+ * undefined at best-of-1 (today), so every classic fingerprint is unchanged.
+ * FORAY_SPINE_BEST_OF changes what the `spine` stage banks (a judged pick of
+ * two samples), so a plain resume across a flip of the flag must not reuse a
+ * spine built under the other setting.
+ */
+export function spineBestOfVariant(flags: Pick<CheckpointRunFlags, "spineBestOf">): string | undefined {
+  return flags.spineBestOf !== undefined && flags.spineBestOf !== 1 ? `spine=best-of-${flags.spineBestOf}` : undefined;
+}
+
 /**
  * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
  *
- *     [checkpointVariant(flags), narration order, routingVariant(routing)]
- *       .filter(Boolean).join("|")
+ *     [checkpointVariant(flags), narration order, retrieval mode,
+ *      spine best-of, routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
  * follow-up to the wave 5/6 reviews): a resumed run can then never mix acts
  * narrated in order with acts narrated all at once, and today's `parallel`
  * adds nothing, so the classic fingerprint is unchanged. The part is the
  * value, not "differs from the default", so flipping the default later does
- * not move any banked file's fingerprint. Undefined when every part is.
+ * not move any banked file's fingerprint. The spine best-of joins it only
+ * above 1 (GV-124, `spineBestOfVariant`), the retrieval mode only when it
+ * is not bm25 (GV-125, `retrievalModeVariant`). Undefined when every part is.
  */
-export function checkpointRunVariant(
-  flags: Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder">,
-  routing?: RoutingTable
-): string | undefined {
-  const parts = [
-    checkpointVariant(flags),
-    flags.narrationOrder === "sequential" ? "narration=sequential" : undefined,
-    routingVariant(routing)
-  ].filter((p): p is string => Boolean(p));
+export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
+  const parts = [...flagParts(flags), spineBestOfVariant(flags), routingVariant(routing)].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
 }
 
@@ -311,11 +351,21 @@ export const ROUTED_STAGE_FIRST_CHECKPOINT: Readonly<Record<StageId, CheckpointS
 export const CheckpointForkStampSchema = z.object({
   /** checkpointFingerprint with no variant: the prompt, duration and topic. */
   request: z.string(),
-  /** checkpointRunVariant without the routing: the semantics-changing flags
-   * and the narration order (null when none is on). */
+  /** checkpointRunVariant without the routing and the spine best-of: the
+   * semantics-changing flags, the narration order and (GV-125) a non-bm25
+   * retrieval mode (null when none is on). */
   flags: z.string().nullable(),
   /** Per routed stage, its route as `routingVariant` spells it. */
-  routes: z.record(z.string())
+  routes: z.record(z.string()),
+  /** GV-124: FORAY_SPINE_BEST_OF (1 or 2). Compared like a spine route, not
+   * like the flags, so E4's arm B may fork arm A and rerun from `spine`.
+   * Absent on a stamp written before GV-124: best-of-1. */
+  spineBestOf: z.number().int().optional(),
+  /** GV-124 (#1413 item 8): the self-critique's variant part
+   * (`selfCritiqueVariant`), null when off. Compared like a writer route:
+   * a difference needs --rerun-from narrate or earlier. Absent on a stamp
+   * written before GV-124: off. */
+  selfCritique: z.string().nullable().optional()
 });
 export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
 
@@ -323,15 +373,20 @@ export function checkpointForkStamp(input: {
   prompt: string;
   duration: string;
   topic?: string | null;
-  flags: Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder">;
+  flags: CheckpointRunFlags;
   routing: RoutingTable;
+  /** `selfCritiqueVariant(config)`: undefined or null when self-critique is off. */
+  selfCritique?: string | null;
 }): CheckpointForkStamp {
   const routes: Record<string, string> = {};
   for (const [stage, route] of Object.entries(input.routing.routes)) routes[stage] = routeDescriptor(stage, route);
+  const flags = flagParts(input.flags);
   return {
     request: checkpointFingerprint({ prompt: input.prompt, duration: input.duration, topic: input.topic }),
-    flags: checkpointRunVariant(input.flags) ?? null,
-    routes
+    flags: flags.length ? flags.join("|") : null,
+    routes,
+    spineBestOf: input.flags.spineBestOf ?? 1,
+    selfCritique: input.selfCritique ?? null
   };
 }
 
@@ -344,7 +399,9 @@ export function checkpointForkStamp(input: {
  *   - otherwise it must carry a fork stamp (`--keep-checkpoints` writes one)
  *     for the same request and the same flags, and every routed stage whose
  *     route differs must feed a banked stage at or after `rerunFrom`, so no
- *     kept stage was built by a route this run would not use.
+ *     kept stage was built by a route this run would not use. A different
+ *     spine best-of counts as a changed `spine` route and a different
+ *     self-critique as a changed `writer` route (GV-124).
  *
  * Throws on an unknown `rerunFrom`.
  */
@@ -361,6 +418,20 @@ export function forkSeedRefusal(
   const stamp = parsed.data;
   if (stamp.request !== run.stamp.request) return "built for a different prompt, duration or topic";
   if (stamp.flags !== run.stamp.flags) return `built under other pipeline flags (${stamp.flags ?? "none"}; this run ${run.stamp.flags ?? "none"})`;
+  /* GV-124: the two levers that change what one stage banks are compared like
+     a route to that stage: the spine best-of feeds `spine`, the self-critique
+     feeds `narrate` (#1413 item 8: a seed rerun from stitch under another
+     self-critique would keep arm A's uncritiqued narration while its row
+     reports the lever on). */
+  const levers: Array<[string, string, string, CheckpointStage]> = [
+    ["FORAY_SPINE_BEST_OF", String(stamp.spineBestOf ?? 1), String(run.stamp.spineBestOf ?? 1), "spine"],
+    ["self-critique", stamp.selfCritique ?? "off", run.stamp.selfCritique ?? "off", "narrate"]
+  ];
+  for (const [lever, seedValue, runValue, feeds] of levers) {
+    if (seedValue !== runValue && CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {
+      return `${lever} differs (${seedValue}; this run ${runValue}) and feeds ${feeds}, before --rerun-from ${rerunFrom}`;
+    }
+  }
   const stages = [...new Set([...Object.keys(stamp.routes), ...Object.keys(run.stamp.routes)])];
   for (const stage of stages) {
     const seedRoute = stamp.routes[stage];
