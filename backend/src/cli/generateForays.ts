@@ -1317,6 +1317,11 @@ export async function generateOneCandidate(
      variant on the session alone would stop a flag-on run resuming itself
      and would merge classic and flag-on stages into one file. */
   const flags = resolvePipelineFlags(args.fastPath ? { fastPath: true } : {});
+  /* GV-125 (#1413 item 17): the checkpoint variant's flags, plus the
+     retrieval server's mode, read off the same instance the pipeline reads it
+     from (`deps.retrieval.mode`), so the store's fingerprint, the session's
+     and the fork stamp agree. bm25 (or no server) adds nothing. */
+  const variantFlags = { ...flags, retrievalMode: deps.retrieval?.mode };
   const gates = resolveGateConfig();
   /* GV-55: the routing table, resolved once here with the --stage-provider
      overrides applied (main() also sets them on process.env, which the stage
@@ -1339,7 +1344,7 @@ export async function generateOneCandidate(
     prompt: spec.prompt,
     duration: request.duration,
     topic: spec.topic,
-    variant: joinCheckpointVariant(checkpointRunVariant(flags, routing), selfCritique)
+    variant: joinCheckpointVariant(checkpointRunVariant(variantFlags, routing), selfCritique)
   });
   const checkpointStore = new FileCheckpointStore(path.resolve(args.out), fingerprint);
   /* GV-62: what a kept checkpoint is stamped with, and what a seed is
@@ -1349,7 +1354,7 @@ export async function generateOneCandidate(
     prompt: spec.prompt,
     duration: request.duration,
     topic: spec.topic,
-    flags,
+    flags: variantFlags,
     routing,
     selfCritique: selfCritiqueVariant(selfCritique) ?? null
   });

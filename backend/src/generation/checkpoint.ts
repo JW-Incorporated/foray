@@ -1,6 +1,7 @@
 import * as crypto from "crypto";
 import { z } from "zod";
 import type { RoutingTable, StageId } from "../config/stageRouting";
+import type { RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 
 /**
@@ -181,16 +182,36 @@ function routeDescriptor(stage: string, route: RoutingTable["routes"][StageId]):
 }
 
 /** The flags the checkpoint variant reads. `spineBestOf` is optional so a
- * caller holding only the four GV-15 flags reads as best-of-1. */
+ * caller holding only the four GV-15 flags reads as best-of-1, and
+ * `retrievalMode` (GV-125) so one without a retrieval server reads as bm25. */
 export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder"> &
-  Partial<Pick<PipelineFlags, "spineBestOf">>;
+  Partial<Pick<PipelineFlags, "spineBestOf">> & {
+    /** The retrieval server's FORAY_RETRIEVAL_MODE (`RetrievalPreparer.mode`);
+     * undefined with no server. */
+    retrievalMode?: RetrievalModeFlag | undefined;
+  };
+
+/**
+ * GV-125 (#1413 item 17): the retrieval mode's part of the variant, or
+ * undefined for bm25 (today's, and the only mode without a server), so every
+ * classic fingerprint is unchanged. FORAY_RETRIEVAL_MODE=hybrid changes what
+ * every search answers, so what `research-shape` and `source` bank; it must
+ * join before hybrid's default flips (the replay gate, GV-88, decision 23).
+ */
+export function retrievalModeVariant(mode: RetrievalModeFlag | undefined): string | undefined {
+  return mode !== undefined && mode !== "bm25" ? `retrieval=${mode}` : undefined;
+}
 
 /** The flag parts the fork stamp compares exactly: the semantics-changing
- * flags and the narration order. */
+ * flags, the narration order and (GV-125) a non-bm25 retrieval mode, which
+ * feeds the stage `research-shape` so no seed built under another mode is
+ * worth forking. */
 function flagParts(flags: CheckpointRunFlags): string[] {
-  return [checkpointVariant(flags), flags.narrationOrder === "sequential" ? "narration=sequential" : undefined].filter((p): p is string =>
-    Boolean(p)
-  );
+  return [
+    checkpointVariant(flags),
+    flags.narrationOrder === "sequential" ? "narration=sequential" : undefined,
+    retrievalModeVariant(flags.retrievalMode)
+  ].filter((p): p is string => Boolean(p));
 }
 
 /**
@@ -209,8 +230,8 @@ export function spineBestOfVariant(flags: Pick<CheckpointRunFlags, "spineBestOf"
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
  *
- *     [checkpointVariant(flags), narration order, spine best-of,
- *      routingVariant(routing)].filter(Boolean).join("|")
+ *     [checkpointVariant(flags), narration order, retrieval mode,
+ *      spine best-of, routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
  * follow-up to the wave 5/6 reviews): a resumed run can then never mix acts
@@ -218,7 +239,8 @@ export function spineBestOfVariant(flags: Pick<CheckpointRunFlags, "spineBestOf"
  * adds nothing, so the classic fingerprint is unchanged. The part is the
  * value, not "differs from the default", so flipping the default later does
  * not move any banked file's fingerprint. The spine best-of joins it only
- * above 1 (GV-124, `spineBestOfVariant`). Undefined when every part is.
+ * above 1 (GV-124, `spineBestOfVariant`), the retrieval mode only when it
+ * is not bm25 (GV-125, `retrievalModeVariant`). Undefined when every part is.
  */
 export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
   const parts = [...flagParts(flags), spineBestOfVariant(flags), routingVariant(routing)].filter((p): p is string => Boolean(p));
@@ -330,7 +352,8 @@ export const CheckpointForkStampSchema = z.object({
   /** checkpointFingerprint with no variant: the prompt, duration and topic. */
   request: z.string(),
   /** checkpointRunVariant without the routing and the spine best-of: the
-   * semantics-changing flags and the narration order (null when none is on). */
+   * semantics-changing flags, the narration order and (GV-125) a non-bm25
+   * retrieval mode (null when none is on). */
   flags: z.string().nullable(),
   /** Per routed stage, its route as `routingVariant` spells it. */
   routes: z.record(z.string()),

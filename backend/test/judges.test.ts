@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import {
@@ -775,6 +775,137 @@ describe("registered names", () => {
     ).toBe("spark");
     expect(qwenJudgeLane({ provider: "none", model: "none" })).toBe("second");
     expect(qwenJudgeLane(undefined)).toBe("second");
+  });
+});
+
+/* ------------------------------------------------------------------------ */
+/* GV-125: the #1413 wave-21 follow-ups                                      */
+/* ------------------------------------------------------------------------ */
+
+describe("GV-125: the judges are reachable from the stage factories (#1413 item 13)", () => {
+  /* Each case loads ONE factory into a fresh module registry, so this file's
+     own import of judges.ts above cannot register the names for it. */
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it("importing createSpineBuilder registers the spine judges, and FORAY_SPINE_JUDGE=jev resolves", async () => {
+    /* MUTATION THAT KILLS THIS: drop `import "./judges"` from
+       createSpineBuilder.ts. Ran it: red (no spine judge is registered and
+       createSpineBuilder refuses, naming FORAY_SPINE_JUDGE). */
+    delete process.env.JEV_API_KEY;
+    delete process.env.JEV_KEY_FILE;
+    vi.resetModules();
+    const { createSpineBuilder } = await import(
+      "../src/generation/createSpineBuilder"
+    );
+    const fresh = await import("../src/generation/bestOfSpine");
+    for (const name of ["jev", "qwen", "jev-then-qwen"])
+      expect(fresh.isSpineJudgeRegistered(name)).toBe(true);
+    const built = createSpineBuilder({
+      FORAY_SPINE_BEST_OF: "2",
+      FORAY_STAGE_SPINE_ALT: "stub",
+      FORAY_SPINE_JUDGE: "jev",
+    });
+    expect(built).toBeInstanceOf(fresh.BestOfTwoSpineBuilder);
+    expect((built as BestOfTwoSpineBuilder).judge.kind).toBe("jev");
+  });
+
+  it("importing createNarrationWriterBuilder registers the draft critics, and FORAY_WRITER_CRITIC=jev-then-qwen resolves", async () => {
+    /* MUTATION THAT KILLS THIS: drop `import "./judges"` from
+       createNarrationWriterBuilder.ts. Ran it: red (no critic is registered
+       and the factory refuses, naming FORAY_WRITER_CRITIC). */
+    delete process.env.JEV_API_KEY;
+    delete process.env.JEV_KEY_FILE;
+    vi.resetModules();
+    const { createNarrationWriterBuilder } = await import(
+      "../src/generation/createNarrationWriterBuilder"
+    );
+    const fresh = await import("../src/generation/selfCritique");
+    for (const name of ["jev", "qwen", "jev-then-qwen"])
+      expect(fresh.isDraftCriticRegistered(name)).toBe(true);
+    const built = createNarrationWriterBuilder({
+      FORAY_WRITER_SELF_CRITIQUE: "behind-playhead",
+      FORAY_WRITER_CRITIC: "jev-then-qwen",
+      FORAY_LLM_BASE_URL: "http://litellm.invalid:4000",
+    });
+    expect(built).toBeInstanceOf(fresh.SelfCritiquingNarrationWriter);
+    expect(
+      (built as unknown as { critic: { kind: string } }).critic.kind,
+    ).toBe("jev-then-qwen");
+  });
+});
+
+describe("GV-125: the record and the labels", () => {
+  it("under jev-then-qwen the selection record names the judge that answered and whether it is calibrated (#1413 item 15)", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `answeredBy` spread in
+       bestOfSpine.ts's judged record. Ran it: red (answeredBy missing). */
+    const { client: jev } = httpJev({ status: 503, body: "busy" });
+    const qwen = qwenFake(() => qwenChoice("A", 0.9));
+    const { guard, unitGuard } = meters();
+    const { record } = await bestOf(
+      new FallbackSpineJudge(
+        new JevSpineJudge(jev, { guard, unitGuard }),
+        new QwenSpineJudge(qwen.client, { guard, unitGuard }),
+      ),
+      sessionWhere(false),
+    );
+    expect(record.reason).toBe("judged");
+    expect(record.judge).toMatchObject({
+      kind: "jev-then-qwen",
+      answeredBy: "qwen",
+      calibrated: false,
+    });
+
+    const fake = new FakeJevClient({
+      byId: {
+        better_plan: {
+          type: "choice",
+          choice: "A",
+          probabilities: { A: 0.9, B: 0.1 },
+          confidence: 0.9,
+        },
+      },
+    });
+    const jevAnswered = await bestOf(
+      new JevSpineJudge(fake, meters()),
+      sessionWhere(false),
+    );
+    expect(jevAnswered.record.judge).toMatchObject({
+      kind: "jev",
+      answeredBy: "jev",
+    });
+  });
+
+  it("a client that throws is labelled with the adapter's own judge: 'qwen' on the Qwen adapters, 'jev' on Jev's (#1413 item 19)", async () => {
+    /* MUTATION THAT KILLS THIS: label askInRun's thrown error 'jev' again
+       (ignore its `judge` argument). Ran it: red (the Qwen adapters report
+       'jev'). */
+    const throwing: JevClient = {
+      ask: () => Promise.reject(new Error("broke its never-throws contract")),
+    };
+    const judged = async (p: Promise<unknown>): Promise<unknown> => {
+      try {
+        await p;
+      } catch (err) {
+        expect(err).toBeInstanceOf(JevUnavailableError);
+        return (err as JevUnavailableError).judge;
+      }
+      throw new Error("expected a throw");
+    };
+    const opts = meters();
+    expect(
+      await judged(new QwenSpineJudge(throwing, opts).choose(input)),
+    ).toBe("qwen");
+    expect(
+      await judged(new QwenDraftCritic(throwing, opts).supported(sentenceQ)),
+    ).toBe("qwen");
+    expect(
+      await judged(new JevSpineJudge(throwing, opts).choose(input)),
+    ).toBe("jev");
+    expect(
+      await judged(new JevDraftCritic(throwing, opts).supported(sentenceQ)),
+    ).toBe("jev");
   });
 });
 

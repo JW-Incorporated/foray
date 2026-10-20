@@ -117,7 +117,10 @@ import {
  *
  * DARK. Nothing reaches these unless FORAY_SPINE_BEST_OF=2 with
  * FORAY_SPINE_JUDGE, or FORAY_WRITER_SELF_CRITIQUE with FORAY_WRITER_CRITIC,
- * names one; both default off.
+ * names one; both default off. GV-125 (#1413 item 13): the two stage
+ * factories (createSpineBuilder.ts, createNarrationWriterBuilder.ts) import
+ * this module for its registration, so the names resolve wherever a builder
+ * is made; registering builds nothing and reads no variable.
  */
 
 /* ------------------------------------------------------------------------ */
@@ -252,10 +255,13 @@ export interface JudgeMeterOptions {
  * One metered ask under the run context: BudgetGuard and the jevCalls unit
  * under the context's sessionId (meteredJevClient), at the enclosing stage's
  * lane priority. A budget stop propagates; anything else a client throws is
- * that judge being unavailable.
+ * that judge being unavailable. GV-125 (#1413 item 19): `judge` is the
+ * judge the client is (the adapter's), so a Qwen client's throw is labelled
+ * 'qwen', not 'jev'.
  */
 async function askInRun(
   client: JevClient,
+  judge: JudgeId,
   state: JevState,
   questions: readonly JevQuestion[],
   purpose: string,
@@ -280,13 +286,13 @@ async function askInRun(
     );
   } catch (err) {
     if (isBudgetStop(err)) throw err;
-    throw new JevUnavailableError("network", "threw", "jev");
+    throw new JevUnavailableError("network", "threw", judge);
   }
   if (!result.ok)
     throw new JevUnavailableError(
       result.error.category,
       result.error.reason,
-      result.judge ?? "jev",
+      result.judge ?? judge,
     );
   return result;
 }
@@ -316,6 +322,8 @@ export interface SpineJudgeOptions extends ClientJudgeOptions {
 /** Jev's (or any JevClient's) choice between the two presented plans. */
 export class JevSpineJudge implements SpineJudge {
   readonly kind: string = "jev";
+  /** The judge this adapter's client is (GV-125: the label of a throw). */
+  protected readonly judgeId: JudgeId = "jev";
   private readonly now: () => number;
   private readonly floors: Readonly<Record<JudgeId, number>>;
 
@@ -332,12 +340,13 @@ export class JevSpineJudge implements SpineJudge {
     const question = spineChoiceQuestion(input);
     const result = await askInRun(
       this.client,
+      this.judgeId,
       spineChoiceState(),
       [question],
       SPINE_JUDGE_PURPOSE,
       this.opts,
     );
-    const judge: JudgeId = result.judge ?? "jev";
+    const judge: JudgeId = result.judge ?? this.judgeId;
     const answer = result.answers.find((a) => a.id === question.id);
     if (answer === undefined || answer.type !== "choice")
       throw new JevUnavailableError("malformed", "answer_type_mismatch", judge);
@@ -371,6 +380,7 @@ export class JevSpineJudge implements SpineJudge {
  * alias, not a second prompt; the card's integration note). */
 export class QwenSpineJudge extends JevSpineJudge {
   override readonly kind: string = "qwen";
+  protected override readonly judgeId: JudgeId = "qwen";
 }
 
 /* ------------------------------------------------------------------------ */
@@ -386,6 +396,8 @@ export interface JudgedCritiqueAnswer extends DraftCritiqueAnswer {
  * its sources? p is the noul. */
 export class JevDraftCritic implements DraftCritic {
   readonly kind: string = "jev";
+  /** The judge this adapter's client is (GV-125: the label of a throw). */
+  protected readonly judgeId: JudgeId = "jev";
   private readonly now: () => number;
 
   constructor(
@@ -399,12 +411,13 @@ export class JevDraftCritic implements DraftCritic {
     const startedAt = this.now();
     const result = await askInRun(
       this.client,
+      this.judgeId,
       draftCritiqueState(q),
       [DRAFT_CRITIC_QUESTION],
       DRAFT_CRITIC_PURPOSE,
       this.opts,
     );
-    const judge: JudgeId = result.judge ?? "jev";
+    const judge: JudgeId = result.judge ?? this.judgeId;
     const answer = result.answers.find(
       (a) => a.id === DRAFT_CRITIC_QUESTION_ID,
     );
@@ -425,6 +438,7 @@ export class JevDraftCritic implements DraftCritic {
 /** The Qwen judge's noul: the same adapter over a QwenJudgeClient. */
 export class QwenDraftCritic extends JevDraftCritic {
   override readonly kind: string = "qwen";
+  protected override readonly judgeId: JudgeId = "qwen";
 }
 
 /* ------------------------------------------------------------------------ */

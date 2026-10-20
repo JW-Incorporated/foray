@@ -1,6 +1,8 @@
 import * as crypto from "crypto";
 import { z } from "zod";
 import { RoutingConfigError } from "../config/stageRouting";
+import { findBudgetError } from "../cost/budgetGuard";
+import { findUnitBudgetError } from "../cost/unitBudget";
 import type { IntentUnderstanding } from "../types/generation";
 import type { ResearchShape } from "../types/research";
 import { SpineSchema, validateSpine, type DurationTier, type Spine } from "../types/spine";
@@ -46,6 +48,10 @@ import type { SpineBuildContext, SpineBuilder, SpineSampleRecord, SpineSelection
  *     its 'not yet known' sentinels); the A/B order is a stable hash of the
  *     session id.
  *  9. A judge that throws, times out or answers out of range: the primary.
+ *     GV-125 (#1413 item 14): except a budget stop (BudgetExceededError,
+ *     EpisodeBudgetExceededError, UnitBudgetExceededError), which judges.ts
+ *     deliberately propagates: it is rethrown, so a spent cap stops the run
+ *     like every other model call's (clipJudge.ts's rule, GV-124).
  */
 
 /** What the judge is shown: one question and the two plans, rendered. */
@@ -62,6 +68,11 @@ export interface SpineJudgeChoice {
   confidence?: number;
   requestId?: string;
   ms: number;
+  /** GV-125 (#1413 item 15): the judge that answered ('jev' or 'qwen'),
+   * when the judge says; recorded as `answeredBy`. */
+  judge?: string;
+  /** GV-125: the answering judge's probabilities are calibrated. */
+  calibrated?: boolean;
 }
 
 /** A judge between two valid spines. GV-97 adds the Jev and Qwen adapters. */
@@ -167,6 +178,9 @@ export function spineJudgeQuestion(intent: IntentUnderstanding, ctx: Pick<SpineB
   if (known(intent.disappointment)) parts.push(`What would disappoint the listener: ${intent.disappointment}`);
   return [...parts, ask].join("\n");
 }
+
+/** A budget stop, which no wrapper turns into a fallback (GV-125). */
+const isBudgetStop = (err: unknown): boolean => findBudgetError(err) !== null || findUnitBudgetError(err) !== null;
 
 const LATE = Symbol("late");
 const TIMEOUT = Symbol("timeout");
@@ -285,10 +299,13 @@ export class BestOfTwoSpineBuilder implements SpineBuilder {
     const judgeStartedAt = this.now();
     const asked = (async () => this.judge.choose(input))().then(
       (choice) => ({ ok: true as const, choice }),
-      () => ({ ok: false as const })
+      (error: unknown) => ({ ok: false as const, error })
     );
     const answer = await Promise.race([asked, this.sleep(this.judgeTimeoutMs).then((): typeof TIMEOUT => TIMEOUT)]);
     const judgeMs = this.now() - judgeStartedAt;
+    /* GV-125 (#1413 item 14): a budget stop is the run stopping, not the
+       judge failing: rethrown, never recorded as 'judge-failed'. */
+    if (answer !== TIMEOUT && !answer.ok && isBudgetStop(answer.error)) throw answer.error;
     if (answer === TIMEOUT || !answer.ok || (answer.choice.index !== 0 && answer.choice.index !== 1)) {
       finish("primary", "judge-failed", {
         kind: this.judge.kind,
@@ -308,7 +325,9 @@ export class BestOfTwoSpineBuilder implements SpineBuilder {
       index: choice.index,
       ...(choice.probabilities !== undefined ? { probabilities: choice.probabilities } : {}),
       ...(choice.confidence !== undefined ? { confidence: choice.confidence } : {}),
-      ...(choice.requestId !== undefined ? { requestId: choice.requestId } : {})
+      ...(choice.requestId !== undefined ? { requestId: choice.requestId } : {}),
+      ...(choice.judge !== undefined ? { answeredBy: choice.judge } : {}),
+      ...(choice.calibrated !== undefined ? { calibrated: choice.calibrated } : {})
     });
     return original === 0 ? a : b;
   }
