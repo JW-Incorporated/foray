@@ -86,7 +86,10 @@ import { modelSummary } from "../config/models";
  * (`promptLabel`), files are keyed `job-<uuid>` (`candidateKey`), the job
  * sink refuses any body with a prompt key, and while a job runs every console
  * line is passed through `redactPrompt` so a stage that echoes the request
- * cannot leak it either. The candidate the run builds stays under
+ * cannot leak it either. A job that does not complete has its resumable
+ * checkpoint and partial deleted when it closes (`discardJobLeftovers`): the
+ * classic path banks research with the prompt inside, and a closed job is
+ * never resumed. The candidate the run builds stays under
  * data-local/ (`--out`, refused elsewhere) and is never published:
  * an on-demand Foray enters the catalogue only through publish-foray's lane
  * check (GV-81).
@@ -547,6 +550,7 @@ export async function runJob(
         );
     },
   );
+  let end: JobEnd = "error";
   try {
     const result: CandidateResult = await withRedactedConsole(prompt, () =>
       generate(spec, args, {
@@ -574,21 +578,59 @@ export async function runJob(
         `worker: ${tag}: a candidate for this job already exists; closing it`,
       );
       await closeFailed(ALREADY_BUILT_DETAIL);
-      return "failed";
+      end = "failed";
+      return end;
     }
     const built = result.entry?.file !== undefined;
     log(
       `worker: ${tag}: ${built ? "complete" : `closed (${result.entry?.outcome ?? "no outcome"})`}`,
     );
-    return built ? "complete" : "failed";
+    end = built ? "complete" : "failed";
+    return end;
   } catch (err) {
     log(
       `worker: ${tag}: failed: ${redactPrompt(err instanceof Error ? err.message : String(err), prompt).slice(0, 200)}`,
     );
     await closeFailed(WORKER_ERROR_DETAIL);
-    return "error";
+    end = "error";
+    return end;
   } finally {
     stopHeartbeat();
+    /* A closed job is never resumed, and the in-call resume loop has ended:
+       whatever generateOneCandidate kept "to resume" for an unfinished job
+       must go, because the classic path banks research with the prompt
+       inside (subjectTape.query). A complete job's checkpoint and partial
+       are already discarded by the driver. */
+    if (end !== "complete") discardJobLeftovers(opts.out, `job-${job.id}`, log);
+  }
+}
+
+/**
+ * Best-effort removal of a closed job's resumable leftovers under --out: its
+ * `<key>.checkpoint.json` (and the store's `.tmp` beside it) and its
+ * `<key>.partial.json`. Never throws; a file the run never wrote is fine.
+ * Runlogs stay (stage timings and counts, no prompt).
+ */
+export function discardJobLeftovers(
+  out: string,
+  key: string,
+  log: (line: string) => void = (l) => console.log(l),
+): void {
+  const dir = path.resolve(out);
+  for (const name of [
+    `${key}.checkpoint.json`,
+    `${key}.checkpoint.json.tmp`,
+    `${key}.partial.json`,
+  ]) {
+    try {
+      // eslint-disable-next-line security/detect-non-literal-fs-filename -- the worker's own job-<uuid> key under its --out.
+      fs.unlinkSync(path.join(dir, name));
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT")
+        log(
+          `worker: could not discard ${name}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+    }
   }
 }
 

@@ -3473,7 +3473,7 @@ const BACKEND_FLOORS = {
      file name (promptLabel, candidateKey, console redaction); the
      zero-Anthropic start refusal and a refused environment claims nothing;
      the RPC client's claim and guarded heartbeat; --out under data-local/. */
-  "test/generationWorker.test.ts": 15,
+  "test/generationWorker.test.ts": 17,
   /* GV-81 (docs/roadmap/generation-v2.md, #1286; from W6-17; D7, D9): the
      two lanes. publishLane: --review-verdict parsed; laneCheck lets a
      catalogue candidate through untouched and refuses an on-demand one

@@ -581,6 +581,69 @@ describe("GV-105 — the prompt is never logged or written", () => {
     }
   });
 
+  it("a job that closes failed after its stages ran leaves no file under --out carrying the prompt (no resumable checkpoint or partial)", async () => {
+    /* The classic path banks research with subjectTape.query =
+       `${prompt} ${subject} ${angle}`, and generateOneCandidate keeps the
+       checkpoint on error so a later run can resume. A worker job is never
+       re-run (its row is closed), so the leftovers must go.
+       MUTATION THAT KILLS THIS: drop the discardJobLeftovers call in
+       runJob's finally (the checkpoint stays with the prompt inside). Ran it
+       — red. Also killed: drop `${key}.partial.json` from
+       discardJobLeftovers's list (the stub run leaves a partial). Ran it —
+       red. */
+    const sinks = new Map<string, MemorySink>();
+    const stub = stubPipeline();
+    const stats = await runWorker(options({ maxJobs: 1, exitWhenIdle: true }), {
+      rpc: fakeRpc([job(JOB_A)]),
+      clock: fakeClock(),
+      sinkFor: (id) => {
+        const s = new MemorySink();
+        sinks.set(id, s);
+        return s;
+      },
+      sources: { cueProvider },
+      runPipeline: async (request, opts, deps) => {
+        await stub(request, opts, deps);
+        throw new Error("the wrapper fell over after every stage");
+      },
+    });
+    expect(stats).toMatchObject({ claimed: 1, complete: 0, failed: 1 });
+    expect(sinks.get(JOB_A)!.log.closed).toEqual([
+      { outcome: "failed", detail: "error" },
+    ]);
+    const files = allFiles(dir);
+    const names = files.map((f) => path.basename(f));
+    expect(names).not.toContain(`job-${JOB_A}.checkpoint.json`);
+    expect(names).not.toContain(`job-${JOB_A}.partial.json`);
+    for (const f of files)
+      expect(fs.readFileSync(f, "utf8")).not.toContain(PROMPT);
+  });
+
+  it("an exception that escapes the driver also discards the job's checkpoint and partial", async () => {
+    /* MUTATION THAT KILLS THIS: discard only when end === "failed" (not
+       for the catch branch's "error"). Ran it — red. */
+    const checkpoint = path.join(dir, `job-${JOB_A}.checkpoint.json`);
+    const partial = path.join(dir, `job-${JOB_A}.partial.json`);
+    const other = path.join(dir, `job-${JOB_B}.checkpoint.json`);
+    fs.writeFileSync(other, "{}\n");
+    const stats = await runWorker(options({ maxJobs: 1, exitWhenIdle: true }), {
+      rpc: fakeRpc([job(JOB_A)]),
+      clock: fakeClock(),
+      sinkFor: () => new MemorySink(),
+      sources: { cueProvider },
+      generate: async () => {
+        fs.writeFileSync(checkpoint, JSON.stringify({ query: PROMPT }));
+        fs.writeFileSync(partial, JSON.stringify({ title: "t" }));
+        throw new Error("the driver fell over");
+      },
+    });
+    expect(stats).toMatchObject({ claimed: 1, failed: 1 });
+    expect(fs.existsSync(checkpoint)).toBe(false);
+    expect(fs.existsSync(partial)).toBe(false);
+    /* Only this job's files: another key under --out is left alone. */
+    expect(fs.existsSync(other)).toBe(true);
+  });
+
   it("generateOneCandidate's own lines name the prompt by promptLabel when one is given", async () => {
     /* MUTATION THAT KILLS THIS: ignore deps.promptLabel (log the prompt's
        first 60 characters as before). Ran it — red. */
