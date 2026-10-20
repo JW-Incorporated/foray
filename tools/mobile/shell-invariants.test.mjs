@@ -439,13 +439,19 @@ test("the sliced files' per-file budgets are pinned, all five of them", () => {
      the seed to 35–43 KB (79–97%, every committed draft fits), a second is far
      over. 40 KB would false-red the fattest draft's first publish; 48 KB would
      leave 11.6 KB at 24%, under prepare-webdir.test.mjs's 25% floor.
+     RAISED 44 -> 56 KB on 2026-10-20 (asteroids-flagship-1, #1425): a new unit,
+     the NARRATED CURATED draft (~9 KB compact; the seed carries curated drafts),
+     took the seed 36.5 -> 45.5 KB. 56 KB is 81% used, with room for one more
+     flagship-size draft. A second published generated Foray is still far over, and
+     the next flagship should bring a seed rule (curated drafts by reference, or the
+     newest N), not another raise. Reason in full at PROJECTED_DATA.
 
      `data/item-tags.json` 138 KB, added on 2026-10-05 (#279) when the tag map
      stopped being copied whole (279.6 KB) and became the searched pool's tag lists
      plus the whole map's counts (122.0 KB, LF). ~13% above, the discover slice's
      distance: it watches the same catalogue growth, plus the tagger's vocabulary. */
   assert.deepEqual(PROJECTED_DATA.map((p) => [p.rel, p.maxBytes]), [
-    ["data/forays.json", 44 * 1024],
+    ["data/forays.json", 56 * 1024],
     ["data/discover.json", 720 * 1024],
     ["data/item-tags.json", 138 * 1024],
     ["data/segments.json", 100 * 1024],

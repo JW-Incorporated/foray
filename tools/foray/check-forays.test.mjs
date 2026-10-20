@@ -665,11 +665,13 @@ test("every label resolves to exactly one segment by (episode, duration)", () =>
  * Foray never touches these sets. A doc NOT listed is still checked when it
  * carries either section, so a new curated Foray needs no test edit either. */
 const DOCS_WITH_TLDR = new Set([
+  "docs/curation/asteroids-foray-assembly.md",
   "docs/curation/foray2-capital.md",
   "docs/curation/geology-foray-assembly.md",
   "docs/curation/grilling-foray.md",
 ]);
 const DOCS_WITH_SLOT_HEADERS = new Set([
+  "docs/curation/asteroids-foray-assembly.md",
   "docs/curation/foray2-capital.md",
   "docs/curation/geology-foray-assembly.md",
   "docs/curation/grilling-foray.md",

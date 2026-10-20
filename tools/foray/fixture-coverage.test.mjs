@@ -136,11 +136,6 @@ const CARRIERS = {
 const KNOWN_UNCOVERED = [
   {
     field: "narration.mode",
-    value: "correction",
-    why: "neither generated Foray on main wrote a Correction beat; the pipeline may emit one on any run.",
-  },
-  {
-    field: "narration.mode",
     value: "intro",
     why:
       "Q-02 (listening-quality deck): the introduction before a clip, written per act since Q-03. No generation run has " +
@@ -221,7 +216,7 @@ const KNOWN_UNCOVERED = [
   },
 ];
 /** Raise this only with a written reason in the same PR. Lowering it is free. */
-const KNOWN_UNCOVERED_CEILING = 11; // 13 -> 11: narration.voice=audio_url and narration.duration_source=measured are carried by the rendered fixture (tools/foray/fixtures/rendered/, Spark assessment Phase 1, 2026-09-28) // 12 -> 13: segment.transcript_source=apple-podcasts (2026-09-25), accepted ahead of the first Apple-sourced body foray-db publishes — see its entry above // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
+const KNOWN_UNCOVERED_CEILING = 10; // 11 -> 10: narration.mode=correction is carried by asteroids-flagship-1 (hand-curated, 2026-10-19, item into-elkins) // 13 -> 11: narration.voice=audio_url and narration.duration_source=measured are carried by the rendered fixture (tools/foray/fixtures/rendered/, Spark assessment Phase 1, 2026-09-28) // 12 -> 13: segment.transcript_source=apple-podcasts (2026-09-25), accepted ahead of the first Apple-sourced body foray-db publishes — see its entry above // 6 (jingle carrier landed with #632, 2026-09-11) + 1 narration.mode=intro (Q-02, 2026-09-12) + 3 segment.boundary values (Q-01, 2026-09-12) + 2 narration.cite_kind values (F-103, 2026-09-12), all until the next generation run lands their carriers
 /* RAISED 10 -> 12 by F-103, and the reason it is a raise rather than a fixture
    is the one case this list exists for. Both new shapes are written by the
    GENERATOR and by nothing else, and the four committed Forays were generated
