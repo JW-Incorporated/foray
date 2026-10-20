@@ -320,6 +320,47 @@ describe("JevDraftCritic: the recorded noul body", () => {
     expect((await critic.supported(sentenceQ)).p).toBe(0.82);
     expect(qwen.provider.requests).toHaveLength(0);
   });
+
+  it("an off-shape ok reply (a choice under the noul's id, a choice outside A/B) is unavailable, and jev-then-qwen asks Qwen", async () => {
+    const { guard, unitGuard } = meters();
+    /* A client that says ok but answers off-shape: HttpJevClient and the
+     * fake both refuse to build such a reply, so the adapters' own shape
+     * guards are the last line. */
+    const okWith = (answers: unknown[]): JevClient => ({
+      ask: async () => ({
+        ok: true,
+        answers: answers as never,
+        model: "jev-1.13.0",
+        modelMismatch: false,
+        usage: { inputTokens: null, outputTokens: null },
+        requestId: null,
+        latencyMs: 0,
+      }),
+    });
+    const wrongType = okWith([
+      { id: "supported", type: "choice", choice: "A", probabilities: { A: 1 }, confidence: 1 },
+    ]);
+    const err = await new JevDraftCritic(wrongType, { guard, unitGuard })
+      .supported(sentenceQ)
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(JevUnavailableError);
+    expect((err as JevUnavailableError).reason).toBe("answer_type_mismatch");
+    const qwen = qwenFake([qwenNoul(0.3)]);
+    const critic = new FallbackDraftCritic(
+      new JevDraftCritic(wrongType, { guard, unitGuard }),
+      new QwenDraftCritic(qwen.client, { guard, unitGuard }),
+    );
+    expect((await critic.supported(sentenceQ)).p).toBe(0.3);
+
+    const outside = okWith([
+      { id: "better_plan", type: "choice", choice: "C", probabilities: { A: 0.1, B: 0.1, C: 0.8 }, confidence: 0.9 },
+    ]);
+    const err2 = await new JevSpineJudge(outside, { guard, unitGuard })
+      .choose(input)
+      .catch((e: unknown) => e);
+    expect(err2).toBeInstanceOf(JevUnavailableError);
+    expect((err2 as JevUnavailableError).reason).toBe("choice_not_in_criteria");
+  });
 });
 
 describe("the OQ-05 breaker", () => {
