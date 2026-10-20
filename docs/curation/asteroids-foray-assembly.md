@@ -26,14 +26,14 @@ sources. Nothing has been uploaded or published.
 |---|---|
 | Segments in the running order | **12** |
 | Tape runtime | **1,666.6 s — 27 min 47 s** |
-| Playback runtime incl. narration | **1,917.8 s** in `data/forays.json` (narration estimated at 17 chars/s); the baked file measures **BAKE_DURATION** (§7) |
+| Playback runtime incl. narration | **1,919.6 s** in `data/forays.json` (narration estimated at 17 chars/s); the baked file measures **1,963.7 s — 32 min 44 s** (§7) |
 | Mean / median segment | **138.9 s / 134.5 s** |
 | Shortest / longest | 35.0 s / 220.24 s |
 | Interquartile range | 100.73 s (R-7) |
 | Episodes used | **9**, from **2 shows** |
 | Shows | **Geology Bites** (8 episodes, host Oliver Strimpel) and **Being an Engineer** (1 episode, host Aaron Moncur) |
 | Voices | **9 scientists and engineers**, plus the two hosts asking questions |
-| Narration | **14 items, 4,270 characters, about 251 s (13 % of the listening time)**: written by AI, voiced by Kokoro-82M `af_heart` |
+| Narration | **14 items, 4,301 characters**: 253 s estimated at 17 chars/s, **285.8 s as rendered (14.6 % of the baked file)**; written by AI, voiced by Kokoro-82M `af_heart` |
 | Segments merged | `seg-2026-10-19-asteroids` (11) and `seg-2026-10-19-asteroids-bae` (1); 0 rejected |
 | `transcript_source` | **`publisher`** everywhere |
 | Ad safety | All 9 enclosures downloaded and measured: delivered duration = feed duration to within 1 s, so there are no inserted ads (§6) |
@@ -208,7 +208,7 @@ listener's question ahead of the tape.
 
 The founder asked for narrator-led "where possible, but not if that makes the
 listening quality garbage". The decision is **tape-led with a visible
-narrator**, at about 13 % of the listening time. The reasons:
+narrator**, at 14.6 % of the baked file (285.8 s of 1,963.7 s). The reasons:
 
 - The only voice that can be rendered locally and centrally is Kokoro-82M
   `af_heart`, the current central render profile (`kokoro-fp32-aac64-v1`). It is
@@ -236,20 +236,20 @@ links live in the show notes, and the prelude and the close both point there.
 Mode, approximate spoken length (17 chars/s), and script. All 14 items pass
 `spokenLineErrors` and `narratorStructureErrors`.
 
-1. **prelude** (marker, 28.5 s). "Sixty-six million years ago, the age of the dinosaurs ended in a single terrible day. How can anyone know what happened that day? What actually hit us? And is anything like it still out there? Nine scientists answer, in clips from two podcasts, Geology Bites and Being an Engineer. This voice, linking them together, is synthetic, and its words were written with the help of AI. Treat it as a guide, and go to the full episodes for the real thing. They're all listed in the show notes."
+1. **prelude** (marker, 28.6 s). "Sixty-six million years ago, the age of the dinosaurs ended in a single terrible day. How can anyone know what happened that day? What actually hit us? And is anything like it still out there? Nine scientists answer, in clips from two podcasts, Geology Bites and Being an Engineer. This voice, linking them together, is synthetic, and its words were written with the help of AI, so take it as a guide, and go to the full episodes for the real thing. They're all listed in the show notes."
 2. **into-smit-1** (frame, 13.1 s). "The first clue was a thin layer of clay, the same in Italy, in Denmark and under the Pacific. Jan Smit, a geologist in Amsterdam, was one of the first to read it. He's talking to Oliver Strimpel, the host of Geology Bites."
 3. **into-marshall** (frame, 17.5 s). "That was Jan Smit, and there's a lot more of him in his Geology Bites episode, linked in the show notes. So something enormous hit. But how does one rock kill animals on the far side of the world? John Marshall studies mass extinctions at the University of Southampton. Same show, his own episode."
 4. **into-smit-2** (patch, 19.0 s). "John Marshall. His full episode is about an extinction that no rock can explain, and it's well worth your time. Back to Jan Smit. In twenty nineteen, a fossil site in North Dakota called Tanis put a clock on that falling debris. Tanis is three thousand kilometres from the crater. Listen for what turned up inside the fish."
-5. **into-ernst** (frame, 17.5 s). "Jan Smit again, from Geology Bites. Search the show for his name to hear the rest of that day. So, one rock. Or was it? Around the same time, a huge stretch of India was being buried under lava, flow after flow. Richard Ernst wrote the textbook on these lava floods, and he's on Geology Bites too."
+5. **into-ernst** (frame, 18.2 s). "Jan Smit again, from Geology Bites. If you search the show for his name, you can hear the rest of that day. So, one rock. Or was it? Around the same time, a huge stretch of India was being buried under lava, flow after flow. Richard Ernst wrote the textbook on these lava floods, and he's on Geology Bites too."
 6. **into-levison** (marker, 15.9 s). "Richard Ernst. His Geology Bites episode on these giant lava fields makes a good next listen. Whatever the volcanoes did, the iridium says a rock arrived. So what are these rocks? Hal Levison leads NASA's Lucy mission, which is on its way to a swarm of them near Jupiter."
 7. **into-connolly-1** (frame, 16.9 s). "Hal Levison, on Geology Bites. If asteroids are the leftovers of planet building, the obvious move is to go and pick one up. Harold Connolly, a geologist at Rowan University, is a sample scientist on NASA's Osiris-Rex mission. In twenty eighteen, it reached a small asteroid called Bennu."
 8. **into-connolly-2** (hinge, 7.5 s). "Two years of mapping later, the spacecraft went down and touched the surface, for only a few seconds. Here's what came back up."
 9. **into-russell-1** (patch, 20.0 s). "Harold Connolly, from his Geology Bites episode, recorded just after that touchdown. The capsule landed in the Utah desert in September twenty twenty-three, carrying about a hundred and twenty grams of Bennu. Not every asteroid is rubble, though. Sara Russell studies meteorites at the Natural History Museum in London. Geology Bites again."
 10. **into-oh** (frame, 20.1 s). "Sara Russell, on Geology Bites. We'll hear from her once more before the end. The mission she mentioned is called Psyche. David Oh, an engineer at NASA's Jet Propulsion Laboratory, was its systems engineering manager. He's talking to Aaron Moncur, on a different podcast, Being an Engineer. This was recorded in twenty twenty, before launch."
-11. **into-weiss** (frame, 16.4 s). "That's David Oh. Being an Engineer has hundreds of conversations like that one, on Apple Podcasts and Spotify. So is Psyche the bare core of a broken baby planet, or something stranger? Ben Weiss of MIT is the mission's deputy principal investigator. He was asked for his hunch."
+11. **into-weiss** (frame, 16.5 s). "That's David Oh. Being an Engineer has hundreds of conversations like that one, on Apple Podcasts and Spotify. So is Psyche the exposed core of a broken baby planet, or something stranger? Ben Weiss of MIT is the mission's deputy principal investigator. He was asked for his hunch."
 12. **into-elkins** (correction, 12.3 s). "Ben Weiss, on Geology Bites, in twenty twenty-two. Psyche's launch then slipped by more than a year. Here is the scientist who leads the whole mission, Lindy Elkins-Tanton, in a later episode of the same show."
 13. **into-russell-2** (frame, 8.8 s). "Lindy Elkins-Tanton, on Geology Bites. One question is left, the one we started with. Could it happen again? Back to Sara Russell, and back to Bennu."
-14. **close** (marker, 37.8 s). "Sara Russell, on Geology Bites. So, what hit us? A rock from space, read in iridium, in glass, and in the gills of a fish. Is another one out there? Yes, somewhere, some day. Bennu itself has roughly a one in two thousand seven hundred chance of hitting us. The riskiest single day is in September of twenty one eighty-two. But we are not just waiting. In twenty twenty-two, a NASA spacecraft called DART flew into a small asteroid on purpose, and shortened its orbit by about half an hour. The dinosaurs never had that option. Every voice you heard has a full episode waiting, on Geology Bites and on Being an Engineer. Go and listen to them."
+14. **close** (marker, 38.6 s). "Sara Russell, on Geology Bites. So, what hit us? A rock from space, traced in iridium, in glass, and in the gills of a fish. Is another one out there? Yes, somewhere, some day. Bennu itself has roughly a one in two thousand seven hundred chance of hitting us. The riskiest single day is a little over a hundred and fifty years from now. But we are not just waiting. In twenty twenty-two, a NASA spacecraft called DART flew into a small asteroid on purpose, and shortened its orbit by about half an hour. The dinosaurs never had that option. Every voice you heard has a full episode waiting, on Geology Bites and on Being an Engineer. Go and listen to them."
 
 ### Claims the narrator makes that the tape does not
 
@@ -262,9 +262,9 @@ Each is in the accompanying text here, never spoken as a citation
 | touch-and-go lasted a few seconds, about two years after arrival | into-connolly-2 | NASA, OSIRIS-REx TAG event, 20 Oct 2020 (contact about 6 s) |
 | the capsule landed in Utah in September 2023 with about 120 g | into-russell-1 | NASA, OSIRIS-REx sample return 24 Sep 2023; the sample mass was later reported as 121.6 g |
 | Psyche's launch slipped by more than a year | into-elkins | Weiss on tape (August 2022 plan) against Elkins-Tanton on tape ("we launched in 2023") |
-| Bennu's impact chance is about 1 in 2,700, for 24 September 2182 | close | NASA/JPL, Farnocchia et al. 2021, *Icarus*: total 1 in 1,750 through 2300, single most significant date 24 Sep 2182 at 1 in 2,700 |
-| DART hit a small asteroid in 2022 and shortened its orbit by about half an hour | close | NASA DART, impact 26 Sep 2022; Dimorphos's orbit around Didymos shortened by 32 minutes |
-| Tanis is about 3,000 km from the crater; it was announced in 2019 | into-smit-2 | Smit on tape: "3,000 kilometers away from the impact"; Strimpel's introduction: "in 2019, the announcement of a new find in North Dakota" |
+| Bennu's impact chance is about 1 in 2,700, and its riskiest single day is a little over 150 years away (24 September 2182) | close | NASA/JPL, Farnocchia et al. 2021, *Icarus*: total 1 in 1,750 through 2300, single most significant date 24 Sep 2182 at 1 in 2,700 |
+| DART hit a small asteroid in 2022 and shortened its orbit by about half an hour | close | NASA DART, impact 26 Sep 2022; Dimorphos's orbit around Didymos shortened by 33 ± 1 min (Thomas et al. 2023, *Nature*; NASA's first estimate was 32 min) |
+| Tanis is about 3,000 km from the crater; it was announced in 2019 | into-smit-2 | the same Smit episode, outside the played clips: Strimpel at 836.9 s ("now we're 3,000 kilometers away from the impact") and in his introduction ("in 2019, the announcement of a new find in North Dakota") |
 | a huge stretch of India was buried under lava at around the same time | into-ernst | Smit on tape (Deccan "erupted in the space of a few tens of thousands of years, more or less coincident with the end of the Cretaceous") and Ernst on tape |
 
 ---
@@ -291,7 +291,7 @@ asteroids-flagship-1 (draft): 12 segments, 32.0 min, mean 138.9 s, foray mode
 | L5 share of source episode | ≤ 20 % | worst is RUS-2 at 16.0 % of its episode |
 | M1 / M2 same-episode gap | < 45 s merge; 45–180 s flag | SMIT-1 → SMIT-2 elides 131.6 s (M2 flag). Kept separate on purpose: they are not adjacent (MARSH-1 sits between), and the elided span is the Tanis discovery story, which the narration condenses |
 | M3 chronology | never out of order | clean (SMIT, CON and RUS each play in source order) |
-| M4 concentration | ≤ 25 % of segments; ≤ 25 % of tape beyond the longest clip | worst count is 2 of 12 (16.7 %, four episodes). Smit beyond-longest is 13.1 % of tape; by plain share, Smit is 26.3 % of tape and 22.8 % of the listening time |
+| M4 concentration | ≤ 25 % of segments; ≤ 25 % of tape beyond the longest clip | worst count is 2 of 12 (16.7 %, four episodes). Smit beyond-longest is 13.1 % of tape; by plain share, Smit is 26.3 % of tape and 22.3 % of the baked file |
 | M5 / M6 same-episode seam marked; > 5 min elision ⇒ narration | required | CON-1 → CON-2 elides 5.8 min and carries `into-connolly-2` |
 | X1 cross-episode seam carries narration | required | **met at all 10 cross-episode seams**, and the one same-episode seam (CON-1 → CON-2) is narrated too |
 | X2 bridge names its source | flag | every item names speaker and show |
@@ -353,7 +353,67 @@ ffmpeg `ebur128`); 25 ms fade in and 80 ms fade out on tape; 15 ms on narration;
 digital black; then one two-pass `loudnorm` in linear mode to podcast spec, and
 AAC 128 kbps plus MP3 128 kbps with embedded chapters.
 
-BAKE_TABLE
+| measured | `.m4a` (AAC 128 kbps stereo) | `.mp3` (128 kbps CBR stereo) |
+|---|---|---|
+| duration | 1,963.7 s (32:44) | 1,963.7 s |
+| integrated loudness | **−16.1 LUFS** | −16.5 LUFS |
+| true peak | **−4.1 dBTP** | −4.6 dBTP |
+| loudness range | 3.3 LU | 3.3 LU |
+| chapters | 14, embedded | 14, embedded (ID3 CHAP) |
+
+Measured with ffmpeg `ebur128=peak=true` on the encoded files. Per item before
+processing, tape arrived at −22.6 to −26.3 LUFS, with true peaks up to −4.8
+dBTP. Narration arrived at −19 LUFS (the renderer's own master). Every item
+leaves the chain at −16.0 to −16.2 LUFS (mono) with a −2.0 dBTP ceiling.
+
+Two mastering mistakes were caught by measurement and fixed, and both are in
+the lessons log:
+
+1. **v1 used `loudnorm` on the whole mix and it went dynamic.** After level
+   matching, the uncompressed interview tape peaked at +8 dBTP (Connolly's
+   remote call), so a linear gain could not meet the peak target, and loudnorm
+   switched to dynamic mode without failing. v2 compresses each tape clip
+   gently (−20 dBFS threshold, 3:1) and then limits it at 4x oversampling, so
+   no whole-mix dynamics run at all.
+2. **Dual-mono measures 3 LU louder.** Items matched to −16 LUFS mono produced
+   a −13.1 LUFS stereo master. The encode applies −2.9 dB.
+
+Chapters (also in `chapters.txt` and the show notes):
+
+| at | chapter |
+|---|---|
+| 0:00 | Introduction |
+| 0:32 | Jan Smit: a fingerprint in the clay |
+| 4:28 | John Marshall: how an impact kills |
+| 7:11 | Jan Smit: a fish from the first hour |
+| 11:11 | Richard Ernst: did the rock act alone? |
+| 13:19 | Hal Levison: the leftovers of planet building |
+| 14:56 | Harold Connolly: arriving at Bennu |
+| 17:04 | Harold Connolly: the grab |
+| 19:55 | Sara Russell: asteroids made of metal |
+| 22:25 | David Oh: a world made of metal |
+| 26:04 | Ben Weiss: a hunch about Psyche |
+| 27:21 | Lindy Elkins-Tanton: on the way |
+| 28:10 | Sara Russell: could it happen again? |
+| 31:59 | Closing: what hit us, and what we can do now |
+
+**The narration voice, honestly.** Kokoro-82M `af_heart` (the central render
+profile) is clean, intelligible and correctly levelled. It is also recognisably
+synthetic: prosody is even from sentence to sentence, questions do not lift
+the way a person's do, and the voice lacks the small hesitations that make
+the researchers sound present. Next to nine real people it reads as a polite
+announcer. Its intelligibility was checked by an ASR round trip (faster-whisper
+`base.en` over every rendered line, scored by the repo's `asr-check.mjs`). The
+first render caught four real defects. "Treat" vanished from the start of a
+sentence. "Read in iridium" came back as "red". "Bare core" came back as
+"bear". The year 2182, spelled "twenty one eighty-two", came back as "two
+thousand … hundred". All four lines were rewritten and re-rendered, and the
+second pass heard them correctly. What remains flagged is spelling variants
+(Sara/Sarah, Oh/O, Tanis/Tannies, Moncur/Monker, kilometres/kilometers), and
+an ASR mishearing of a word cannot show whether a person would mishear it.
+"Tanis", "Moncur" and "Smit" (heard once as "Smith") are the names most worth
+checking by ear. It is good enough that the episode works. It is not good
+enough to carry a narrator-led format, which is why this one is tape-led.
 
 **In the app instead.** `?foray=asteroids-flagship-1` on a draft-capable
 build plays the same order. The 14 narration items have no `audio_url` yet,
