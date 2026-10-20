@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { defaultBudgetGuard } from "../cost/budgetGuard";
+import { defaultUnitBudgetGuard, type UnitBudgetGuard } from "../cost/unitBudget";
 import { loadCatalogueData, type CatalogueData } from "../generation/catalogueLookup";
 import { judgeThresholdEntry, judgeThresholdSetting } from "../generation/gateConfig";
 import { HttpJevClient, NullJevClient, createDirectJevClient, createJevClient, meteredJevClient } from "../generation/jevClient";
@@ -89,7 +90,7 @@ const USAGE =
   "   or: calibrate-judges --labels <jsonl> --kind page-support|clip-subject|clip-claim --judge jev|qwen --out data-local/... " +
   "[--thresholds a,b,...] [--allow-run-verdicts] [--qwen-lane spark|second] [--max-in-flight N]";
 
-export function parseCalibrateArgs(argv: readonly string[], cwd: string = process.cwd()): CalibrateArgs {
+export function parseCalibrateArgs(argv: readonly string[], cwd: string = process.cwd(), repoRoot?: string): CalibrateArgs {
   const value = (flag: string): string | undefined => {
     const i = argv.indexOf(flag);
     if (i < 0) return undefined;
@@ -99,7 +100,7 @@ export function parseCalibrateArgs(argv: readonly string[], cwd: string = proces
   };
   const out = value("--out");
   if (out === undefined) throw new CalibrateArgError(`--out is required\n${USAGE}`);
-  const refusal = dataLocalRefusal("--out", out, cwd);
+  const refusal = dataLocalRefusal("--out", out, cwd, repoRoot);
   if (refusal !== null) throw new CalibrateArgError(refusal);
 
   const extract = value("--extract");
@@ -219,9 +220,30 @@ export function calibrationClient(judge: JudgeId, lane: LaneId, source: NodeJS.P
 export interface CalibrateDeps extends ExtractDeps {
   /** The judge to ask (default: built from --judge, metered). */
   judge?: CalibrationJudge;
+  /** GV-126: the client the default judge meters (default
+   * `calibrationClient(--judge, --qwen-lane)`). Ignored when `judge` is given. */
+  client?: JevClient;
+  /** GV-126: the unit guard the metered client reserves `jevCalls` from
+   * (default defaultUnitBudgetGuard). */
+  unitGuard?: UnitBudgetGuard;
   log?: (line: string) => void;
   /** What relative paths are read against (default process.cwd()). */
   cwd?: string;
+  /** GV-126: the repository whose data-local/ directories --out must sit
+   * inside (default: this checkout's root). */
+  repoRoot?: string;
+}
+
+/**
+ * GV-126 (#1413 item 32): the metering session one calibration run's asks
+ * are charged to. Under a session `meteredJevClient` reserves one `jevCalls`
+ * unit per ask that goes to Jev, so the per-session cap
+ * (FORAY_JEV_CALLS_PER_FORAY; untiered, the long tier's) bounds a
+ * calibration run as it bounds a Foray; without one only the dollar caps
+ * applied. A Qwen-judge ask is not a Jev call and reserves nothing.
+ */
+export function calibrationSessionId(kind: ExampleKind, judge: JudgeId): string {
+  return `calibrate:${kind}:${judge}`;
 }
 
 function writeOut(out: string, body: string): void {
@@ -239,7 +261,7 @@ export async function main(argv: string[] = process.argv.slice(2), deps: Calibra
   const at = (p: string): string => path.resolve(cwd, p);
   let args: CalibrateArgs;
   try {
-    args = parseCalibrateArgs(argv, cwd);
+    args = parseCalibrateArgs(argv, cwd, deps.repoRoot);
   } catch (err) {
     if (!(err instanceof CalibrateArgError)) throw err;
     console.error(err.message);
@@ -280,12 +302,17 @@ export async function main(argv: string[] = process.argv.slice(2), deps: Calibra
   }
   let judge = deps.judge;
   if (!judge) {
-    const built = calibrationClient(args.judge, args.qwenLane);
+    const built = deps.client ? { client: deps.client } : calibrationClient(args.judge, args.qwenLane);
     if ("error" in built) {
       console.error(`calibrate-judges: ${built.error}`);
       return 1;
     }
-    const metered = meteredJevClient(built.client, { guard: defaultBudgetGuard, userId: DEFAULT_AUTHOR_ID });
+    const metered = meteredJevClient(built.client, {
+      guard: defaultBudgetGuard,
+      userId: DEFAULT_AUTHOR_ID,
+      sessionId: calibrationSessionId(args.kind, args.judge),
+      unitGuard: deps.unitGuard ?? defaultUnitBudgetGuard
+    });
     judge = new JevCalibrationJudge(metered, args.judge, args.maxInFlight !== undefined ? { maxInFlight: args.maxInFlight } : {});
   }
   if (judge.judge !== args.judge) {

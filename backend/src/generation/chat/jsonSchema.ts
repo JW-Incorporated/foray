@@ -188,7 +188,9 @@ export interface JsonSchemaResponseFormat {
   readonly strict: true;
 }
 
-function deepFreeze<T>(value: T): T {
+/** Freezes `value` and everything under it, in place, and returns it. Shared
+ * with replySchemas.ts's `spineJsonSchema` (GV-126, #1413 item 26: one copy). */
+export function deepFreeze<T>(value: T): T {
   if (value && typeof value === "object") {
     for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
     Object.freeze(value);

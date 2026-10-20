@@ -2,7 +2,16 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { runForayPipeline, type RunPipelineDeps, type RunPipelineOptions, type RunPipelineOutcome } from "../src/generation/runPipeline";
+import {
+  DEEPEN_CONCURRENCY_ENV,
+  DEFAULT_DEEPEN_CONCURRENCY,
+  MAX_DEEPEN_CONCURRENCY,
+  deepenConcurrency,
+  runForayPipeline,
+  type RunPipelineDeps,
+  type RunPipelineOptions,
+  type RunPipelineOutcome
+} from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -24,7 +33,7 @@ import { mintSegmentSource } from "../src/generation/audioSourceLookup";
 import { RetrievalService } from "../src/cli/retrievalServer";
 import type { CueStore } from "../src/generation/manifestBodySource";
 import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval, type RetrievalFetch, type RetrievalFetchInit } from "../src/generation/retrievalClient";
-import { RETRIEVAL_URL_ENV } from "../src/generation/generationFlags";
+import { FlagValueError, RETRIEVAL_URL_ENV } from "../src/generation/generationFlags";
 import { createEvidenceGatherer, type EvidenceBeat, type EvidenceGatherer } from "../src/generation/gatherEvidence";
 import type { ExternalResearchContext } from "../src/generation/ExternalResearcher";
 import { loadCatalogueData } from "../src/generation/catalogueLookup";
@@ -787,5 +796,43 @@ describe("GV-102: remote retrieval (GV-95) under the per-act pipeline", () => {
     expect(resumed.tapeDocs).toBeGreaterThan(0);
     expect(resumed.tapeDocs).toBe(first.tapeDocs);
     expect(resumed.input.items).toEqual(first.input.items);
+  }, 300_000);
+});
+
+/* ---------------------------------------------------------------------------
+   GV-126 (#1413 item 30): FORAY_DEEPEN_CONCURRENCY is bounded
+   --------------------------------------------------------------------------- */
+
+describe("GV-126: FORAY_DEEPEN_CONCURRENCY has an upper bound", () => {
+  /* MUTATION THAT KILLS THIS: drop `.max(MAX_DEEPEN_CONCURRENCY)` from
+     deepenConcurrency's schema (9 and 4000 read as gates). Ran it: red. */
+  it("reads 1..8, defaults to 1, and refuses anything above 8, naming only the variable", () => {
+    expect(MAX_DEEPEN_CONCURRENCY).toBe(8);
+    expect(deepenConcurrency({})).toBe(DEFAULT_DEEPEN_CONCURRENCY);
+    expect(deepenConcurrency({ [DEEPEN_CONCURRENCY_ENV]: "1" })).toBe(1);
+    expect(deepenConcurrency({ [DEEPEN_CONCURRENCY_ENV]: " 8 " })).toBe(8);
+    for (const bad of ["9", "4000", "0", "-1", "1.5", "two"]) {
+      expect(() => deepenConcurrency({ [DEEPEN_CONCURRENCY_ENV]: bad }), bad).toThrow(FlagValueError);
+      expect(() => deepenConcurrency({ [DEEPEN_CONCURRENCY_ENV]: bad }), bad).toThrow(/FORAY_DEEPEN_CONCURRENCY.*an integer from 1 to 8/);
+    }
+  });
+
+  /* MUTATION THAT KILLS THIS: read FORAY_DEEPEN_CONCURRENCY on the classic
+     path too (`const perActDeepenConcurrency = deepenConcurrency()`): the
+     classic run fails. Ran it: red. */
+  it("a per-act run with a value above the cap fails before any model call; a classic run never reads it", async () => {
+    vi.stubEnv(DEEPEN_CONCURRENCY_ENV, "9");
+    const deps = stubDeps();
+    let understood = 0;
+    const understander = deps.understander as StubPromptUnderstander;
+    const realAssess = understander.assessClarity.bind(understander);
+    understander.assessClarity = (...args: Parameters<StubPromptUnderstander["assessClarity"]>) => {
+      understood += 1;
+      return realAssess(...args);
+    };
+    await expect(runForayPipeline(request, { ...baseOptions, flags: PER_ACT }, { ...deps, finalize: capturingFinalize().fn })).rejects.toThrow(FlagValueError);
+    expect(understood).toBe(0);
+    const classic = await runForayPipeline(request, baseOptions, { ...stubDeps(), finalize: capturingFinalize().fn });
+    expect(classic.outcome).toBe("generated");
   }, 300_000);
 });

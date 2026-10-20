@@ -48,20 +48,41 @@ import type { TranscriptCueProvider, TranscriptDigestEntry } from "./transcriptA
  * (`data-local/`, no leading slash), so a file under it is never committed. */
 export const DATA_LOCAL_DIR = "data-local";
 
-/** Whether `p`, resolved against `cwd`, is a `data-local` directory or inside
- * one. */
-export function isUnderDataLocal(p: string, cwd: string = process.cwd()): boolean {
+/** The repository root (backend/src/generation -> three levels up). */
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
+
+/** GV-126 (#1413 item 28): the two data-local directories calibration data
+ * may be written inside: `<repo>/data-local/` and `<repo>/backend/data-local/`. */
+export function dataLocalRoots(repoRoot: string = REPO_ROOT): string[] {
+  return [path.join(repoRoot, DATA_LOCAL_DIR), path.join(repoRoot, "backend", DATA_LOCAL_DIR)];
+}
+
+/**
+ * Whether `p`, resolved against `cwd`, sits strictly INSIDE one of the
+ * repository's data-local directories (`dataLocalRoots`). GV-126 (#1413
+ * item 28): the directory itself is refused (`--out data-local` would write a
+ * FILE named data-local, which the `data-local/` ignore rule does not match),
+ * and so is a `data-local` segment anywhere else, inside the repository or
+ * outside it.
+ */
+export function isUnderDataLocal(p: string, cwd: string = process.cwd(), repoRoot: string = REPO_ROOT): boolean {
   const resolved = path.resolve(cwd, p);
-  return resolved.split(/[\\/]+/).includes(DATA_LOCAL_DIR);
+  return dataLocalRoots(repoRoot).some((root) => {
+    const rel = path.relative(root, resolved);
+    return rel !== "" && !path.isAbsolute(rel) && rel.split(/[\\/]+/)[0] !== "..";
+  });
 }
 
 /** Why `flag`'s value `p` is refused, or null when it is under data-local/.
  * Transcript windows, scripts and evidence text are machine-local data that
  * must never reach git (hard rule: generated local data is never committed). */
-export function dataLocalRefusal(flag: string, p: string, cwd: string = process.cwd()): string | null {
+export function dataLocalRefusal(flag: string, p: string, cwd: string = process.cwd(), repoRoot: string = REPO_ROOT): string | null {
   if (p.trim().length === 0) return `${flag} needs a path under ${DATA_LOCAL_DIR}/`;
-  if (isUnderDataLocal(p, cwd)) return null;
-  return `${flag} must be under ${DATA_LOCAL_DIR}/ (it holds transcript and evidence text that is never committed); got a path outside it`;
+  if (isUnderDataLocal(p, cwd, repoRoot)) return null;
+  return (
+    `${flag} must be under ${DATA_LOCAL_DIR}/ (inside the repository's ${DATA_LOCAL_DIR}/ or backend/${DATA_LOCAL_DIR}/; ` +
+    `it holds transcript and evidence text that is never committed); got a path outside them`
+  );
 }
 
 /* ---------------------------------------------------------------------------
@@ -202,17 +223,41 @@ const asRecord = (v: unknown): Record<string, unknown> | null => (v !== null && 
 const asString = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
 
 /**
+ * GV-126 (#1413 item 27): the sourcing a checkpoint banked, as {acts,
+ * tapeRelevance}. A classic run banks one `source` stage. The per-act
+ * pipeline (FORAY_PER_ACT_PIPELINE, GV-102) banks `source:<i>` per act, each
+ * {act, snapshot} with the sourcing session's whole state after act i, so
+ * the snapshot of the highest banked index holds every act and every
+ * tapeRelevance row. Null when neither is banked.
+ */
+function bankedSourcing(stages: Record<string, unknown>): { acts: unknown[]; tapeRelevance: unknown[] } | null {
+  const usable = (v: unknown): { acts: unknown[]; tapeRelevance: unknown[] } | null => {
+    const r = asRecord(v);
+    return r && Array.isArray(r.acts) && Array.isArray(r.tapeRelevance) ? { acts: r.acts as unknown[], tapeRelevance: r.tapeRelevance as unknown[] } : null;
+  };
+  const classic = usable(stages.source);
+  if (classic) return classic;
+  let last = -1;
+  for (const key of Object.keys(stages)) {
+    const m = /^source:(\d+)$/.exec(key);
+    if (m) last = Math.max(last, Number(m[1]));
+  }
+  return last < 0 ? null : usable(asRecord(stages[`source:${last}`])?.snapshot);
+}
+
+/**
  * Builds the export from a checkpoint's stages (the driver's
- * `FileCheckpointStore.load(key).stages`): `source` (acts and tapeRelevance),
+ * `FileCheckpointStore.load(key).stages`): `source` (acts and tapeRelevance;
+ * under the per-act pipeline the last `source:<i>` snapshot, GV-126),
  * `narrate:<i>` for every act, `spine` (subject, angle) with the
  * `understand` intent as the fallback, and `clip-scores` when banked.
  * Returns why it cannot when a stage it needs is missing. Copies only those
  * fields: no stage that could carry the prompt is read whole.
  */
 export function calibrationExportFromStages(stages: Record<string, unknown>, ident: CalibrationExportIdentity): CalibrationExport | { error: string } {
-  const source = asRecord(stages.source);
-  if (!source || !Array.isArray(source.acts) || !Array.isArray(source.tapeRelevance)) return { error: "no source stage" };
-  const acts = source.acts as unknown[];
+  const source = bankedSourcing(stages);
+  if (!source) return { error: "no source stage" };
+  const acts = source.acts;
   const writtenActs: unknown[] = [];
   for (let i = 0; i < acts.length; i += 1) {
     const written = stages[`narrate:${i}`];

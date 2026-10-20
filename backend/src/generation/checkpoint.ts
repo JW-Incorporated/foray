@@ -183,12 +183,20 @@ function routeDescriptor(stage: string, route: RoutingTable["routes"][StageId]):
 
 /** The flags the checkpoint variant reads. `spineBestOf` is optional so a
  * caller holding only the four GV-15 flags reads as best-of-1, and
- * `retrievalMode` (GV-125) so one without a retrieval server reads as bm25. */
+ * `retrievalMode` (GV-125) so one without a retrieval server reads as bm25.
+ * GV-126: `spineTierSizing` and `writerExemplars` are optional for the same
+ * reason (absent reads as off). */
 export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder"> &
   Partial<Pick<PipelineFlags, "spineBestOf">> & {
     /** The retrieval server's FORAY_RETRIEVAL_MODE (`RetrievalPreparer.mode`);
      * undefined with no server. */
     retrievalMode?: RetrievalModeFlag | undefined;
+    /** GV-126 (#1413 item 24): FORAY_SPINE_TIER_SIZING
+     * (ChatSpineBuilder.ts `readSpineTierSizing`). */
+    spineTierSizing?: boolean | undefined;
+    /** GV-126 (#1413 item 21): FORAY_WRITER_EXEMPLARS
+     * (voiceExemplars.ts `writerExemplarsMode`). */
+    writerExemplars?: "off" | "on" | undefined;
   };
 
 /**
@@ -226,12 +234,38 @@ export function spineBestOfVariant(flags: Pick<CheckpointRunFlags, "spineBestOf"
 }
 
 /**
+ * GV-126 (#1413 item 24): the tier-sized spine's part of the variant, or
+ * undefined when FORAY_SPINE_TIER_SIZING is off (today), so every classic
+ * fingerprint is unchanged. The flag changes what the `spine` stage banks
+ * (the per-tier schema and the tier-sized cap, GV-100), for the same reason
+ * GV-124 added the best-of-N spine: a plain resume across a flip must not
+ * reuse a spine built under the other setting.
+ */
+export function spineTierSizingVariant(flags: Pick<CheckpointRunFlags, "spineTierSizing">): string | undefined {
+  return flags.spineTierSizing === true ? "spine=tier-sized" : undefined;
+}
+
+/**
+ * GV-126 (#1413 item 21): the writer exemplars' part of the variant, or
+ * undefined when FORAY_WRITER_EXEMPLARS is off (today), so every classic
+ * fingerprint is unchanged. On, the Qwen writer's prefix carries the voice
+ * block (GV-99), which changes what every `narrate:<i>` banks; the way
+ * `selfCritiqueVariant` does, it keeps a resume from mixing acts narrated
+ * with and without it. It stays out of the fork stamp's flags, so E3's arm B
+ * can still fork arm A and rebuild from `narrate`.
+ */
+export function writerExemplarsVariant(flags: Pick<CheckpointRunFlags, "writerExemplars">): string | undefined {
+  return flags.writerExemplars === "on" ? "exemplars=on" : undefined;
+}
+
+/**
  * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
  *
  *     [checkpointVariant(flags), narration order, retrieval mode,
- *      spine best-of, routingVariant(routing)].filter(Boolean).join("|")
+ *      spine best-of, tier-sized spine, writer exemplars,
+ *      routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
  * follow-up to the wave 5/6 reviews): a resumed run can then never mix acts
@@ -240,10 +274,17 @@ export function spineBestOfVariant(flags: Pick<CheckpointRunFlags, "spineBestOf"
  * value, not "differs from the default", so flipping the default later does
  * not move any banked file's fingerprint. The spine best-of joins it only
  * above 1 (GV-124, `spineBestOfVariant`), the retrieval mode only when it
- * is not bm25 (GV-125, `retrievalModeVariant`). Undefined when every part is.
+ * is not bm25 (GV-125, `retrievalModeVariant`), the tier-sized spine and the
+ * writer exemplars only when on (GV-126). Undefined when every part is.
  */
 export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
-  const parts = [...flagParts(flags), spineBestOfVariant(flags), routingVariant(routing)].filter((p): p is string => Boolean(p));
+  const parts = [
+    ...flagParts(flags),
+    spineBestOfVariant(flags),
+    spineTierSizingVariant(flags),
+    writerExemplarsVariant(flags),
+    routingVariant(routing)
+  ].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
 }
 
@@ -351,7 +392,8 @@ export const ROUTED_STAGE_FIRST_CHECKPOINT: Readonly<Record<StageId, CheckpointS
 export const CheckpointForkStampSchema = z.object({
   /** checkpointFingerprint with no variant: the prompt, duration and topic. */
   request: z.string(),
-  /** checkpointRunVariant without the routing and the spine best-of: the
+  /** checkpointRunVariant without the routing, the spine best-of, the
+   * tier-sized spine and the writer exemplars (GV-126): the
    * semantics-changing flags, the narration order and (GV-125) a non-bm25
    * retrieval mode (null when none is on). */
   flags: z.string().nullable(),
@@ -365,7 +407,16 @@ export const CheckpointForkStampSchema = z.object({
    * (`selfCritiqueVariant`), null when off. Compared like a writer route:
    * a difference needs --rerun-from narrate or earlier. Absent on a stamp
    * written before GV-124: off. */
-  selfCritique: z.string().nullable().optional()
+  selfCritique: z.string().nullable().optional(),
+  /** GV-126 (#1413 item 24): FORAY_SPINE_TIER_SIZING, written only when on.
+   * Compared like a spine route (like `spineBestOf`): a difference needs
+   * --rerun-from spine or earlier. Absent: off. */
+  spineTierSizing: z.literal(true).optional(),
+  /** GV-126 (#1413 item 21): FORAY_WRITER_EXEMPLARS, written only when on.
+   * Compared like a writer route (like `selfCritique`), so E3's arm B forks
+   * arm A from `narrate` while a seed rerun from `stitch` cannot keep
+   * narration built under the other setting. Absent: off. */
+  exemplars: z.literal("on").optional()
 });
 export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
 
@@ -386,7 +437,11 @@ export function checkpointForkStamp(input: {
     flags: flags.length ? flags.join("|") : null,
     routes,
     spineBestOf: input.flags.spineBestOf ?? 1,
-    selfCritique: input.selfCritique ?? null
+    selfCritique: input.selfCritique ?? null,
+    /* GV-126: only when on, so a stamp written with both off is byte-identical
+       to one written before them. */
+    ...(input.flags.spineTierSizing === true ? { spineTierSizing: true as const } : {}),
+    ...(input.flags.writerExemplars === "on" ? { exemplars: "on" as const } : {})
   };
 }
 
@@ -401,7 +456,8 @@ export function checkpointForkStamp(input: {
  *     route differs must feed a banked stage at or after `rerunFrom`, so no
  *     kept stage was built by a route this run would not use. A different
  *     spine best-of counts as a changed `spine` route and a different
- *     self-critique as a changed `writer` route (GV-124).
+ *     self-critique as a changed `writer` route (GV-124); likewise the
+ *     tier-sized spine (`spine`) and the writer exemplars (`writer`), GV-126.
  *
  * Throws on an unknown `rerunFrom`.
  */
@@ -425,7 +481,10 @@ export function forkSeedRefusal(
      reports the lever on). */
   const levers: Array<[string, string, string, CheckpointStage]> = [
     ["FORAY_SPINE_BEST_OF", String(stamp.spineBestOf ?? 1), String(run.stamp.spineBestOf ?? 1), "spine"],
-    ["self-critique", stamp.selfCritique ?? "off", run.stamp.selfCritique ?? "off", "narrate"]
+    ["self-critique", stamp.selfCritique ?? "off", run.stamp.selfCritique ?? "off", "narrate"],
+    /* GV-126 (#1413 items 21, 24). */
+    ["FORAY_SPINE_TIER_SIZING", stamp.spineTierSizing ? "on" : "off", run.stamp.spineTierSizing ? "on" : "off", "spine"],
+    ["FORAY_WRITER_EXEMPLARS", stamp.exemplars ?? "off", run.stamp.exemplars ?? "off", "narrate"]
   ];
   for (const [lever, seedValue, runValue, feeds] of levers) {
     if (seedValue !== runValue && CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {

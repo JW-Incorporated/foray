@@ -8100,6 +8100,8 @@ Evidence standards used below:
 | QK-29, GP-23, R2-13 | FORAY_UNVERIFIED_SEAM_POLICY (GV-108) | keep -> cut | Golden compare: MQ-21 up, MQ-04 within band, no HANDOFF_SCRIPT; pairwise listen including a slot whose seams were all cut | Orchestrator, after the founder's listen | open |
 | GP-26, R2-10 | FORAY_UNSUPPORTED_SENTENCE_POLICY (GV-113) | rewrite -> cut | Calibration of sentence support; golden compare: retry rounds and writer calls down, sentencesSurvivingRate and MQ-21 up | Orchestrator | open |
 | GP-26, R1-07 | FORAY_STAGE_VERIFIER, local-mode default (GV-51) | today's verifier -> jev | Calibration; GV-51's short and medium golden prompts against the run-9 baseline; golden compare on MQ-02 and MQ-21 | Orchestrator | open |
+| R1-03, R2-07, GP-02 | FORAY_SPINE_TIER_SIZING (GV-100) | off -> on | GV-100's live step on the 10 listened golden prompts: no truncated spine (TruncatedReplyError), the structural re-ask rate and MQ-10 not worse, spine output tokens down; golden compare with no MQ headline outside its band. The flag is in the checkpoint variant (`spine=tier-sized`, GV-126), so the runs may resume banked checkpoints | Orchestrator | open |
+| R1-04, GP-03 | FORAY_PER_ACT_PIPELINE (GV-102) | off -> on | GV-102's live step: medium golden prompts on the Spark with the flag on and off; first-seam time and MT-06 improve; golden compare with whole-Foray time still within 4 min medium and no MQ headline outside its band | Orchestrator | open |
 | R1-01, GP-03 | FORAY_FAST_PATH (GV-15, GV-117) | off -> on for the short tier | GV-117's live golden run meets 30 s to first audio (MT-01) on the short tier; pairwise listen of fast-path vs classic short Forays; blocked until #1411 is fixed (the fast path turns on FORAY_WRITER_STREAM, and under the GV-93 lane scheduler a stream's wait for its lane slot counts toward the writer-stream idle bound and is cut as a stall; the same blocker applies to flipping FORAY_WRITER_STREAM alone) | Orchestrator, after the founder's listen | open |
 
 GP-26's closing metric is the golden-set MQ-21 rate (the publishable share, GV-26's `publishable`, aggregated by GV-64). The PROPOSED close is MQ-21 of at least 0.8 on the scored golden prompts, recorded in docs/curation/generation-kpis.md and confirmed by the orchestrator once the first golden baseline exists. QK-30 is closed by the founder's first listen (GV-36), not by a flag.
@@ -8112,8 +8114,8 @@ Every listed item maps to cards or to an explicit disposition. GP-20..GP-25 also
 |---|---|---|
 | R1-01 | GV-15, GV-73, GV-86, GV-102, GV-117, GV-123 | covered; the critical-path probe (GV-123) pins today's chain; the offline latency model in GV-117 asserts 3 serial calls; the live golden run measures them; closed when FORAY_FAST_PATH defaults on for the short tier (Default flips) |
 | R1-02 | GV-49, GV-67 | covered (Jev clarity, title/summary/intent from the spine) |
-| R1-03 | GV-32, GV-86, GV-100 | covered (prefix layout, per-tier schema and budget, folded deepen) |
-| R1-04 | GV-18, GV-46, GV-102 | covered (SourcingSession, incremental stitcher, per-act driver) |
+| R1-03 | GV-32, GV-86, GV-100 | covered (prefix layout, per-tier schema and budget, folded deepen); closed when FORAY_SPINE_TIER_SIZING defaults on (Default flips) |
+| R1-04 | GV-18, GV-46, GV-102 | covered (SourcingSession, incremental stitcher, per-act driver); closed when FORAY_PER_ACT_PIPELINE defaults on (Default flips) |
 | R1-05 | GV-61, GV-69, GV-98 | covered (no web research on the timed path, first-act evidence wave, dossier researcher) |
 | R1-06 | GV-43, GV-73, GV-84 | covered (streamed JSONL contract, per-seam gating, streamed Qwen writer) |
 | R1-07 | GV-20, GV-27, GV-34, GV-47, GV-51, GV-103 | covered (Jev client, per-sentence judge, Jev verifier, calibration, Qwen fallback) |
@@ -8136,7 +8138,7 @@ Every listed item maps to cards or to an explicit disposition. GP-20..GP-25 also
 | R2-04 | GV-12, GV-28, GV-48, GV-88 | covered (passages, embeddings, hybrid merge, replay go/no-go) |
 | R2-05 | GV-56, GV-109, GV-111 | covered (per-edge boundaries and gate, word-timestamp schema, pause snapping); the farm must emit words (other repo) |
 | R2-06 | GV-63, GV-78, GV-122 | covered (distinctive anchors, phone diagnostics, simulated resolve report); real play-time resolution waits on the native locate step (ADR-0008), out of scope |
-| R2-07 | GV-32, GV-67, GV-91, GV-100 | covered (tier-sized spine, disappointment fields, best-of-2 behind a flag) |
+| R2-07 | GV-32, GV-67, GV-91, GV-100 | covered (tier-sized spine, disappointment fields, best-of-2 behind a flag); closed when FORAY_SPINE_TIER_SIZING defaults on (Default flips) |
 | R2-08 | GV-43, GV-50, GV-84, GV-104, GV-116 | covered (streamed one-call-per-act writer, prompt layout with voice slot, voice checks, drift alarm) |
 | R2-09 | GV-34, GV-51, GV-103 | covered (code checks on numbers, dates and names inside the Jev verifier) |
 | R2-10 | GV-113 | covered (cut unsupported sentences; one edit only for an orphaned beat) |
@@ -8163,7 +8165,7 @@ Every listed item maps to cards or to an explicit disposition. GP-20..GP-25 also
 | QK-29 | GV-21, GV-108 | per-act servability is always on (GV-21, no flag); the cut policy is built behind FORAY_UNVERIFIED_SEAM_POLICY; closed when cut becomes the default after a golden compare (MQ-21 up) and a pairwise listen (Default flips) |
 | QK-30 | GV-08, GV-36 | fixed in tooling; closed only by the founder's first listen (live step) |
 | GP-01 | GV-01, GV-07, GV-17 | covered (run log, call records, bench speed summary); first local numbers need the LiteLLM key |
-| GP-02 | GV-14, GV-32, GV-80, GV-84, GV-100, GV-117 | covered (budgets, tier-sized spine, streamed writer cap, seam-only edits, fast path) |
+| GP-02 | GV-14, GV-32, GV-80, GV-84, GV-100, GV-117 | covered (budgets, tier-sized spine, streamed writer cap, seam-only edits, fast path); closed when FORAY_SPINE_TIER_SIZING defaults on (Default flips) |
 | GP-03 | GV-15, GV-86, GV-102, GV-117, GV-123 | covered (critical-path probe GV-123, folded deepen, per-act driver, fast path); closed with the FORAY_FAST_PATH flip (Default flips) |
 | GP-04 | GV-80 | covered (timed round policy; cut instead of rewrite) |
 | GP-05 | GV-32, GV-50, GV-73, GV-80, GV-84, GV-100, GV-117 | covered (prefix layouts, streaming, smaller edit rounds) |

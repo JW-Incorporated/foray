@@ -26,7 +26,8 @@ import { judgeThresholdEntry, judgeThresholdSetting } from "../src/generation/ga
 import { deriveItemId, type TranscriptCue, type TranscriptCueProvider, type TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import type { CatalogueData } from "../src/generation/catalogueLookup";
 import type { JevResult, JevState } from "../src/generation/jevTypes";
-import { CalibrateArgError, main as calibrateMain, parseCalibrateArgs, readLabels } from "../src/cli/calibrateJudges";
+import { CalibrateArgError, calibrationSessionId, main as calibrateMain, parseCalibrateArgs, readLabels } from "../src/cli/calibrateJudges";
+import { UnitBudgetGuard } from "../src/cost/unitBudget";
 import { FakeJevClient, choiceAnswer, noulAnswer, scoreAnswer } from "./helpers/fakeJevClient";
 
 /**
@@ -360,19 +361,90 @@ describe("GV-103 the export --keep-calibration writes", () => {
     expect(calibrationExportFromStages(s, { key: "k" })).toEqual({ error: "no narrate:0 stage" });
     expect(calibrationExportFromStages({}, { key: "k" })).toEqual({ error: "no source stage" });
   });
+
+  /* GV-126 (#1413 item 27). Under FORAY_PER_ACT_PIPELINE the run banks
+     `source:<i>` ({act, snapshot}), never `source`. MUTATIONS THAT KILL THIS:
+     read only the classic `source` key (the export says "no source stage");
+     or read the FIRST banked snapshot rather than the last (act 1's narration
+     is left out and its tape rows are missing); or compare the indices as
+     strings ("source:10" before "source:9"). Ran each: red. */
+  it("reads the last banked source:<i> snapshot when the per-act pipeline ran", () => {
+    const classic = stages();
+    const src = classic.source as { acts: unknown[]; tapeRelevance: unknown[] };
+    const fixture = exportFixture();
+    const act1 = { title: "b", slots: [{ title: "s1", beats: [{ sourcing: "tape", claim: "u", tape: fixture.tapePointers[1]!.tape }] }] };
+    const tape = fixture.tapeRelevance.slice(0, 2);
+    const perAct: Record<string, unknown> = { ...classic };
+    delete perAct.source;
+    perAct["source:0"] = { act: src.acts[0], snapshot: { acts: [src.acts[0]], tapeRelevance: tape.slice(0, 1), newSegments: [] } };
+    perAct["source:1"] = { act: act1, snapshot: { acts: [src.acts[0], act1], tapeRelevance: tape, newSegments: [] } };
+    perAct["narrate:1"] = fixture.writtenActs[1] ?? fixture.writtenActs[0];
+    const exp = calibrationExportFromStages(perAct, { key: "k" });
+    if ("error" in exp) throw new Error(exp.error);
+    expect(exp.writtenActs.length).toBe(2);
+    expect(exp.tapeRelevance).toEqual(tape);
+    expect(exp.tapePointers.map((p) => [p.actIndex, p.slotIndex, p.beatIndex])).toEqual([
+      [0, 0, 1],
+      [1, 0, 0]
+    ]);
+    /* The same rows the classic stage would have given for act 0 alone. */
+    const one: Record<string, unknown> = { ...perAct };
+    delete one["source:1"];
+    const first = calibrationExportFromStages(one, { key: "k" });
+    if ("error" in first) throw new Error(first.error);
+    const fromClassic = calibrationExportFromStages({ ...classic, source: { ...src, tapeRelevance: tape.slice(0, 1) } }, { key: "k" });
+    if ("error" in fromClassic) throw new Error(fromClassic.error);
+    expect(first).toEqual(fromClassic);
+    /* Ten acts: source:9 is not the last. */
+    const ten: Record<string, unknown> = { ...perAct };
+    const acts = Array.from({ length: 11 }, (_, i) => ({ title: `a${i}`, slots: [] }));
+    for (let i = 0; i < 11; i += 1) {
+      ten[`source:${i}`] = { act: acts[i], snapshot: { acts: acts.slice(0, i + 1), tapeRelevance: [], newSegments: [] } };
+      ten[`narrate:${i}`] = fixture.writtenActs[0];
+    }
+    const eleven = calibrationExportFromStages(ten, { key: "k" });
+    if ("error" in eleven) throw new Error(eleven.error);
+    expect(eleven.writtenActs.length).toBe(11);
+    /* A per-act run whose narration is missing is still refused, by act. */
+    delete perAct["narrate:1"];
+    expect(calibrationExportFromStages(perAct, { key: "k" })).toEqual({ error: "no narrate:1 stage" });
+  });
 });
 
 describe("GV-103 where calibration data may be written", () => {
-  const cwd = path.resolve("/repo/backend");
-  it("accepts data-local/ or a path inside one, and refuses anything else", () => {
-    expect(isUnderDataLocal("data-local/judge-calibration/x.json", cwd)).toBe(true);
-    expect(isUnderDataLocal("data-local", cwd)).toBe(true);
-    expect(isUnderDataLocal("../data-local/calibration", cwd)).toBe(true);
-    expect(isUnderDataLocal("data-local-not/x", cwd)).toBe(false);
-    expect(isUnderDataLocal("data-local/../docs/x.json", cwd)).toBe(false);
-    expect(isUnderDataLocal("docs/x.json", cwd)).toBe(false);
-    expect(dataLocalRefusal("--out", "docs/x.json", cwd)).toMatch(/--out must be under data-local\//);
-    expect(dataLocalRefusal("--out", "data-local/x.json", cwd)).toBeNull();
+  const repo = path.resolve("/repo");
+  const cwd = path.join(repo, "backend");
+  it("accepts a path inside <repo>/backend/data-local/ or <repo>/data-local/, and refuses anything else", () => {
+    expect(isUnderDataLocal("data-local/judge-calibration/x.json", cwd, repo)).toBe(true);
+    expect(isUnderDataLocal("../data-local/calibration", cwd, repo)).toBe(true);
+    expect(isUnderDataLocal(path.join(repo, "data-local", "c", "x.json"), "/elsewhere", repo)).toBe(true);
+    expect(isUnderDataLocal("data-local-not/x", cwd, repo)).toBe(false);
+    expect(isUnderDataLocal("data-local/../docs/x.json", cwd, repo)).toBe(false);
+    expect(isUnderDataLocal("docs/x.json", cwd, repo)).toBe(false);
+    expect(dataLocalRefusal("--out", "docs/x.json", cwd, repo)).toMatch(/--out must be under data-local\//);
+    expect(dataLocalRefusal("--out", "data-local/x.json", cwd, repo)).toBeNull();
+  });
+
+  /* GV-126 (#1413 item 28). MUTATIONS THAT KILL THIS: accept the directory
+     itself (drop `rel !== ""`: `--out data-local` writes a FILE the ignore
+     rule does not match), or go back to any `data-local` segment (a path
+     outside the repository, or a nested data-local/ inside it, passes). Ran
+     each: red. */
+  it("refuses the data-local directory itself, a data-local/ outside the repository, and one nested elsewhere in it", () => {
+    expect(isUnderDataLocal("data-local", cwd, repo)).toBe(false);
+    expect(isUnderDataLocal("data-local/", cwd, repo)).toBe(false);
+    expect(isUnderDataLocal("../data-local", cwd, repo)).toBe(false);
+    expect(dataLocalRefusal("--out", "data-local", cwd, repo)).toMatch(/--out must be under data-local\//);
+    expect(isUnderDataLocal(path.resolve("/elsewhere/data-local/x.json"), cwd, repo)).toBe(false);
+    expect(isUnderDataLocal("../../data-local/x.json", cwd, repo)).toBe(false);
+    expect(isUnderDataLocal(path.resolve("/repo-other/data-local/x.json"), cwd, repo)).toBe(false);
+    expect(isUnderDataLocal("src/data-local/x.json", cwd, repo)).toBe(false);
+    expect(isUnderDataLocal("../tools/data-local/x.json", cwd, repo)).toBe(false);
+    /* A child whose name merely starts with two dots is still inside. */
+    expect(isUnderDataLocal("data-local/..x/y.json", cwd, repo)).toBe(true);
+    /* The default root is this checkout: backend/data-local/ is inside it, a temp directory is not. */
+    expect(isUnderDataLocal(path.resolve(__dirname, "..", "data-local", "calibration", "x.json"))).toBe(true);
+    expect(isUnderDataLocal(path.join(os.tmpdir(), "data-local", "x.json"))).toBe(false);
   });
 });
 
@@ -401,7 +473,7 @@ describe("GV-103 calibrateJudges CLI", () => {
     expect(() => parseCalibrateArgs(["--extract", "e.json", "--out", "../outside.jsonl"])).toThrow(/must be under data-local/);
     let asked = 0;
     const judge = { judge: "jev" as const, values: async () => ((asked += 1), new Map()) };
-    const code = await calibrateMain(["--labels", "missing.jsonl", "--kind", "page-support", "--judge", "jev", "--out", "tables/x.json"], { judge, log: () => undefined, cwd: dir });
+    const code = await calibrateMain(["--labels", "missing.jsonl", "--kind", "page-support", "--judge", "jev", "--out", "tables/x.json"], { judge, log: () => undefined, cwd: dir, repoRoot: dir });
     expect(code).toBe(1);
     expect(asked).toBe(0);
     expect(fs.existsSync(path.join(dir, "tables"))).toBe(false);
@@ -422,7 +494,8 @@ describe("GV-103 calibrateJudges CLI", () => {
       transcriptArchive: ENTRIES,
       catalogue: CATALOGUE,
       log,
-      cwd: dir
+      cwd: dir,
+      repoRoot: dir
     });
     expect(extracted).toBe(0);
     const rows = fs
@@ -445,7 +518,7 @@ describe("GV-103 calibrateJudges CLI", () => {
 
     const code = await calibrateMain(
       ["--labels", "data-local/judge-calibration/labelled.jsonl", "--kind", "page-support", "--judge", "jev", "--out", "data-local/judge-calibration/page.jev.json"],
-      { judge: new JevCalibrationJudge(supportJudge(), "jev"), log, cwd: dir }
+      { judge: new JevCalibrationJudge(supportJudge(), "jev"), log, cwd: dir, repoRoot: dir }
     );
     expect(code).toBe(0);
     const table = JSON.parse(fs.readFileSync(path.join(dir, "data-local", "judge-calibration", "page.jev.json"), "utf8")) as {
@@ -457,5 +530,21 @@ describe("GV-103 calibrateJudges CLI", () => {
     expect(table.recommended).toBe(0.45);
     expect(table.setting).toBe("FORAY_SUPPORT_MIN_P_JEV=0.45");
     expect(lines.some((l) => l.includes("gate setting: FORAY_SUPPORT_MIN_P_JEV=0.45"))).toBe(true);
+
+    /* GV-126 (#1413 item 32): the default judge is metered under a session,
+       so every Jev ask reserves a `jevCalls` unit and the per-session cap
+       stops a runaway calibration. MUTATION THAT KILLS THIS: drop `sessionId`
+       from the meteredJevClient options (no unit is reserved: spent 0, and
+       the capped run completes). Ran it: red. */
+    const labelArgs = ["--labels", "data-local/judge-calibration/labelled.jsonl", "--kind", "page-support", "--judge", "jev", "--out", "data-local/judge-calibration/metered.json"];
+    const client = supportJudge();
+    const unitGuard = new UnitBudgetGuard();
+    expect(await calibrateMain(labelArgs, { client, unitGuard, log, cwd: dir, repoRoot: dir })).toBe(0);
+    const session = calibrationSessionId("page-support", "jev");
+    expect(session).toBe("calibrate:page-support:jev");
+    expect(client.calls.length).toBeGreaterThan(1);
+    expect(unitGuard.spent(session).jevCalls).toBe(client.calls.length);
+    const capped = new UnitBudgetGuard({ overrides: { jevCalls: 1 } });
+    await expect(calibrateMain(labelArgs, { client: supportJudge(), unitGuard: capped, log, cwd: dir, repoRoot: dir })).rejects.toThrow(/jevCalls cap/);
   });
 });

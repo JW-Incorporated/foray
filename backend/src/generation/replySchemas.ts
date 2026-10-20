@@ -3,7 +3,12 @@ import type { ActWriteResult } from "./NarrationWriterBuilder";
 import type { ActVerifyResult } from "./NarrationVerifierBuilder";
 import type { IntentUnderstanding } from "../types/generation";
 import { DURATION_SHAPE_BUDGETS, SHAPE_TOLERANCE, type DurationTier, type Spine } from "../types/spine";
-import { zodToJsonSchema, type JsonSchema } from "./chat/jsonSchema";
+/* GV-126 (#1413 item 26): deepFreeze is chat/jsonSchema.ts's, not a copy.
+   This module and that one import each other; both use the other's exports
+   only at call time (spineJsonSchema here, responseFormatFor there), never
+   while either module is still loading, so the cycle is safe. Breaking it
+   would move responseFormatFor out of jsonSchema.ts and every caller with it. */
+import { deepFreeze, zodToJsonSchema, type JsonSchema } from "./chat/jsonSchema";
 
 /**
  * Every JSON reply schema the generation builders parse a model's answer
@@ -161,14 +166,6 @@ export function spineTierReplySchema(tier: DurationTier, opts: SpineSchemaOption
 }
 
 const spineJsonSchemaCache = new Map<string, JsonSchema>();
-
-function deepFreeze<T>(value: T): T {
-  if (value && typeof value === "object") {
-    for (const child of Object.values(value as Record<string, unknown>)) deepFreeze(child);
-    Object.freeze(value);
-  }
-  return value;
-}
 
 /**
  * GV-100 (decision 11; W4-04 item 2, W4-18): the per-tier spine JSON Schema
