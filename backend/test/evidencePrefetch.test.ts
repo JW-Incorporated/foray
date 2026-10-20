@@ -487,25 +487,32 @@ describe("GV-98: act 1's packs on the timed path, the rest behind it", () => {
   /* MUTATION THAT KILLS THIS: drop the `deferredBudgetError` throw at the top
      of gather() (the next gather then answers from the wrapped gatherer and
      the run goes on past the budget); or let a background budget stop keep
-     taking pages (`stop` ignoring deferredBudgetError: 3 calls). */
+     taking pages on the OTHER worker (`stop` reading only `phase.stopped`,
+     not deferredBudgetError: the second worker, released after the first
+     worker's budget throw, takes the third page: 3 calls). */
   it("a background budget stop surfaces from the next gather, and no further background page is taken", async () => {
     const inner = new CountingGatherer();
-    let budgetSpent = false;
+    let release: () => void = () => {};
+    const latch = new Promise<void>((resolve) => (release = resolve));
     inner.gather = async (beat: EvidenceBeat): Promise<EvidencePack> => {
       inner.calls.push(beat);
-      if (!budgetSpent) {
-        budgetSpent = true;
-        throw new BudgetExceededError(9.9, 0.2, 10);
-      }
+      /* Worker one's page is refused for budget at once; worker two's page
+         is still in flight when that happens, and lands only afterwards. */
+      if (inner.calls.length === 1) throw new BudgetExceededError(9.9, 0.2, 10);
+      if (inner.calls.length === 2) await latch;
       return { purpose: beat.claim, beatKind: "account", docs: [DOC] };
     };
     const evidence = new PrefetchingEvidenceGatherer(inner);
     await evidence.prefetch([ACT_1, ACT_2], ctx, { acts: () => false });
-    evidence.startBackground([ACT_1, ACT_2], ctx, { acts: (i) => i > 0, concurrency: 1 });
+    evidence.startBackground([ACT_1, ACT_2], ctx, { acts: (i) => i > 0, concurrency: 2 });
+    await settle();
+    expect(inner.calls).toHaveLength(2);
+    release();
     await evidence.settleBackground();
-    expect(inner.calls).toHaveLength(1);
+    expect(inner.calls).toHaveLength(2);
+    expect(evidence.metrics()).toMatchObject({ backgroundPages: 3, prefetched: 1 });
     await expect(evidence.gather({ claim: "Any later page at all.", requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
-    expect(inner.calls).toHaveLength(1);
+    expect(inner.calls).toHaveLength(2);
   });
 
   /* MUTATION THAT KILLS THIS: rethrow a non-budget error from the worker
