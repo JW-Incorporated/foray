@@ -119,7 +119,7 @@ export const REAL_DATA_SUITES: readonly string[] = [
      rewritten to avoid the read. A publish ADDS a Foray, so it cannot turn
      this red; it is here because G-21c's rule is "every real-data suite
      runs". Offline and cheap (fifteen tests over two JSON files). */
-  "tools/generation-bench/golden/golden.test.mjs"
+  "tools/generation-bench/golden/golden.test.mjs",
   /* Added 2026-10-20 with the suite (#1467): render-plan builds a podcast
      episode plan from the committed asteroids-flagship-1 Foray and its
      segments, so a publish that reshapes those files is checked here. */
