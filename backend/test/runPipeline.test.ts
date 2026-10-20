@@ -2641,9 +2641,9 @@ describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the res
     let writerThrown = false;
     let backgroundStartedAfterThrow = 0;
     const gather = evidence.gather.bind(evidence);
-    evidence.gather = async (beat) => {
+    evidence.gather = async (beat, ctx) => {
       if (writerThrown && currentCallContext().stage === "evidence:background") backgroundStartedAfterThrow += 1;
-      return gather(beat);
+      return gather(beat, ctx);
     };
     const failingWriter = loggingWriter(log, true);
     const writeAct = failingWriter.writeAct.bind(failingWriter);
