@@ -1,0 +1,175 @@
+{
+  "_readme": "Episode manifest for the self-hosted podcast feed. guid and object keys are permanent (docs/podcast/hosting.md). Audio is never committed; the keys are where it will live in the bucket.",
+  "episodes": [
+    {
+      "guid": "92b1a9a9-69ef-4f8c-a554-fef5b6948b17",
+      "foray_id": "asteroids-flagship-1",
+      "status": "draft",
+      "pub_date": null,
+      "title": "The rock that ended the dinosaurs, and the ones we are chasing now",
+      "subtitle": "Nine scientists and engineers on the impact that ended the Cretaceous and the asteroids we are studying now, in clips from Geology Bites and Being an Engineer.",
+      "summary": "Sixty-six million years ago the age of the dinosaurs ended in one terrible day. What actually hit us, and is anything like it still out there? Nine scientists and engineers answer, in clips from Geology Bites and Being an Engineer. Every voice has a full conversation waiting on its own show.",
+      "description": "<p>Sixty-six million years ago the age of the dinosaurs ended in one terrible day. How can anyone know what happened that day? What actually hit us? And is anything like it still out there? Nine scientists and engineers answer, in clips from two podcasts. Every voice in this episode has a full conversation waiting on its own show. Go and hear them.</p>\n<h2>The shows behind this episode</h2>\n<h3>Geology Bites, hosted by Oliver Strimpel</h3>\n<p>Oliver Strimpel, a former astrophysicist and museum director, asks leading Earth scientists what they have discovered and how they did it, in about half an hour each. Eight of the nine voices here come from Geology Bites.</p>\n<ul>\n<li>Apple Podcasts: <a href=\"https://podcasts.apple.com/us/podcast/geology-bites/id1525620301\">https://podcasts.apple.com/us/podcast/geology-bites/id1525620301</a></li>\n<li>Spotify: <a href=\"https://open.spotify.com/show/6q57AqrzK2L8RfMpsA8eDl\">https://open.spotify.com/show/6q57AqrzK2L8RfMpsA8eDl</a></li>\n<li>Website (pictures and diagrams for every episode): <a href=\"https://geologybites.com\">https://geologybites.com</a></li>\n<li>RSS: <a href=\"https://anchor.fm/s/80e7bb4/podcast/rss\">https://anchor.fm/s/80e7bb4/podcast/rss</a></li>\n</ul>\n<p>Episodes used, in the order you hear them:</p>\n<ul>\n<li>Jan Smit: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/Jan-Smit-on-Resolving-a-Single-Hour-of-the-Cataclysm-That-Ended-the-Cretaceous-66-Million-Years-Ago-e106910\">Jan Smit on Resolving a Single Hour of the Cataclysm That Ended the Cretaceous 66 Million Years Ago</a> (3 May 2021)</li>\n<li>John Marshall: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/John-Marshall-on-the-Riddle-of-the-Mass-Extinction-360-Million-Years-Ago-elsf8p\">John Marshall on the Riddle of the Mass Extinction 360 Million Years Ago</a> (1 Nov 2020)</li>\n<li>Richard Ernst: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/Richard-Ernst-on-Large-Igneous-Provinces-e2i7evu\">Richard Ernst on Large Igneous Provinces</a> (10 Apr 2024)</li>\n<li>Hal Levison: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/Hal-Levison-on-the-Mission-to-Jupiters-Trojan-Asteroids-e3g1b5l\">Hal Levison on the Mission to Jupiter's Trojan Asteroids</a> (6 Mar 2026)</li>\n<li>Harold C. Connolly Jr.: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/Harold-C--Connolly-Jr--on-Bringing-an-Asteroid-Sample-Back-to-Earth-en384h\">Harold C. Connolly Jr. on Bringing an Asteroid Sample Back to Earth</a> (28 Nov 2020)</li>\n<li>Sara Russell: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/Sara-Russell-on-What-the-Asteroids-Can-Tell-Us-About-the-Earth-ejrc6o\">Sara Russell on What the Asteroids Can Tell Us About the Earth</a> (18 Sep 2020)</li>\n<li>Ben Weiss: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/Ben-Weiss-on-the-Mission-to-Psyche-e1h3n2b\">Ben Weiss on the Mission to Psyche</a> (12 Apr 2022)</li>\n<li>Lindy Elkins-Tanton: <a href=\"https://podcasters.spotify.com/pod/show/geologybites/episodes/Lindy-Elkins-Tanton-on-the-Origin-of-Earths-Water-e30okv1\">Lindy Elkins-Tanton on the Origin of Earth's Water</a> (27 Mar 2025)</li>\n</ul>\n<h3>Being an Engineer, hosted by Aaron Moncur</h3>\n<p>Aaron Moncur talks to engineers about how the work actually gets done, from medical devices to deep-space missions. There are hundreds of episodes.</p>\n<ul>\n<li>Apple Podcasts: <a href=\"https://podcasts.apple.com/us/podcast/being-an-engineer/id1508222292\">https://podcasts.apple.com/us/podcast/being-an-engineer/id1508222292</a></li>\n<li>Spotify: <a href=\"https://open.spotify.com/show/2FsX1P22iZdIbO6uAa8oIJ\">https://open.spotify.com/show/2FsX1P22iZdIbO6uAa8oIJ</a></li>\n<li>Website: <a href=\"https://teampipeline.us\">https://teampipeline.us</a></li>\n<li>RSS: <a href=\"https://rss.buzzsprout.com/995575.rss\">https://rss.buzzsprout.com/995575.rss</a></li>\n</ul>\n<p>Episode used:</p>\n<ul>\n<li>David Oh: <a href=\"https://teampipeline.us/nasa-systems-engineering/\">S1E58 NASA, Systems Engineering, and Sending Robots to Space, with David Oh</a> (23 Dec 2020)</li>\n</ul>\n<h2>Chapters</h2>\n<ul>\n<li>0:00 Introduction</li>\n<li>0:32 Jan Smit: a fingerprint in the clay</li>\n<li>4:28 John Marshall: how an impact kills</li>\n<li>7:11 Jan Smit: a fish from the first hour</li>\n<li>11:11 Richard Ernst: did the rock act alone?</li>\n<li>13:20 Hal Levison: the leftovers of planet building</li>\n<li>14:55 Harold Connolly: arriving at Bennu</li>\n<li>17:04 Harold Connolly: the grab</li>\n<li>19:54 Sara Russell: asteroids made of metal</li>\n<li>22:24 David Oh: a world made of metal</li>\n<li>26:03 Ben Weiss: a hunch about Psyche</li>\n<li>27:22 Lindy Elkins-Tanton: on the way</li>\n<li>28:11 Sara Russell: could it happen again?</li>\n<li>32:00 Closing: what hit us, and what we can do now</li>\n</ul>\n<h2>About this episode</h2>\n<ul>\n<li><strong>The clips are real</strong> and unedited inside each clip. They are cut on word boundaries, level-matched and lightly faded at the edges. Some were recorded years before the events the narrator updates them with (the Psyche launch and the OSIRIS-REx sample return).</li>\n<li><strong>The narration is not a person.</strong> It was written with AI and read by a synthetic voice (Kokoro-82M, voice &quot;Heart&quot;). It gives sources for its own facts here, not on air:\n<ul>\n<li>OSIRIS-REx touched Bennu on 20 October 2020, and its capsule landed in Utah on 24 September 2023 with 121.6 g of sample (NASA).</li>\n<li>Bennu's impact probability is about 1 in 1,750 through the year 2300, and the most significant single date is 24 September 2182, at about 1 in 2,700 (Farnocchia et al., <em>Icarus</em>, 2021).</li>\n<li>NASA's DART spacecraft hit Dimorphos on 26 September 2022 and shortened its orbit around Didymos by about 33 minutes (Thomas et al., <em>Nature</em>, 2023; NASA's first estimate, in October 2022, was 32 minutes).</li>\n<li>Psyche launched in October 2023 and is due at the asteroid in 2029. That one is on tape, from Lindy Elkins-Tanton.</li>\n</ul>\n</li>\n<li>Made by 4a as a Foray: a listening path through other people's podcasts. All credit for the conversations belongs to the shows and their guests.</li>\n</ul>\n<h2>Go listen to these shows</h2>\n<p>If one voice in this episode made you lean in, go and hear the whole conversation. <strong>Geology Bites</strong> has more than a hundred half-hour interviews with the people who did the science. <strong>Being an Engineer</strong> has hundreds of conversations about how real things get built. Follow them on Apple Podcasts or Spotify, tell a friend, and leave them a rating. That is what keeps shows like these going.</p>",
+      "episode_type": "full",
+      "season": null,
+      "episode": null,
+      "explicit": false,
+      "duration_sec": 1965.36,
+      "audio": [
+        {
+          "format": "mp3",
+          "type": "audio/mpeg",
+          "bytes": 31448367,
+          "sha256": "d2c89d52b10470f7ec1eb853e97e5c34e5791fcf6de7fc4e4af9585144028ec2",
+          "key": "episodes/92b1a9a9-69ef-4f8c-a554-fef5b6948b17/d2c89d52b104.mp3"
+        },
+        {
+          "format": "m4a",
+          "type": "audio/mp4",
+          "bytes": 31382918,
+          "sha256": "1624ce7ed7090d3706c5ce0d54e35bebf4a96904ce6db0ec1d87b2eb2b7668e0",
+          "key": "episodes/92b1a9a9-69ef-4f8c-a554-fef5b6948b17/1624ce7ed709.m4a"
+        }
+      ],
+      "chapters": [
+        {
+          "start_sec": 0,
+          "title": "Introduction"
+        },
+        {
+          "start_sec": 32,
+          "title": "Jan Smit: a fingerprint in the clay"
+        },
+        {
+          "start_sec": 268,
+          "title": "John Marshall: how an impact kills"
+        },
+        {
+          "start_sec": 431,
+          "title": "Jan Smit: a fish from the first hour"
+        },
+        {
+          "start_sec": 671,
+          "title": "Richard Ernst: did the rock act alone?"
+        },
+        {
+          "start_sec": 800,
+          "title": "Hal Levison: the leftovers of planet building"
+        },
+        {
+          "start_sec": 895,
+          "title": "Harold Connolly: arriving at Bennu"
+        },
+        {
+          "start_sec": 1024,
+          "title": "Harold Connolly: the grab"
+        },
+        {
+          "start_sec": 1194,
+          "title": "Sara Russell: asteroids made of metal"
+        },
+        {
+          "start_sec": 1344,
+          "title": "David Oh: a world made of metal"
+        },
+        {
+          "start_sec": 1563,
+          "title": "Ben Weiss: a hunch about Psyche"
+        },
+        {
+          "start_sec": 1642,
+          "title": "Lindy Elkins-Tanton: on the way"
+        },
+        {
+          "start_sec": 1691,
+          "title": "Sara Russell: could it happen again?"
+        },
+        {
+          "start_sec": 1920,
+          "title": "Closing: what hit us, and what we can do now"
+        }
+      ],
+      "people": [],
+      "sources": [
+        {
+          "show": "Geology Bites",
+          "host": "Oliver Strimpel",
+          "about": "Oliver Strimpel, a former astrophysicist and museum director, asks leading Earth scientists what they have discovered and how they did it, in about half an hour each. Eight of the nine voices here come from Geology Bites.",
+          "apple": "https://podcasts.apple.com/us/podcast/geology-bites/id1525620301",
+          "spotify": "https://open.spotify.com/show/6q57AqrzK2L8RfMpsA8eDl",
+          "website": "https://geologybites.com",
+          "website_note": "pictures and diagrams for every episode",
+          "rss": "https://anchor.fm/s/80e7bb4/podcast/rss",
+          "episodes": [
+            {
+              "guest": "Jan Smit",
+              "title": "Jan Smit on Resolving a Single Hour of the Cataclysm That Ended the Cretaceous 66 Million Years Ago",
+              "published": "3 May 2021",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/Jan-Smit-on-Resolving-a-Single-Hour-of-the-Cataclysm-That-Ended-the-Cretaceous-66-Million-Years-Ago-e106910"
+            },
+            {
+              "guest": "John Marshall",
+              "title": "John Marshall on the Riddle of the Mass Extinction 360 Million Years Ago",
+              "published": "1 Nov 2020",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/John-Marshall-on-the-Riddle-of-the-Mass-Extinction-360-Million-Years-Ago-elsf8p"
+            },
+            {
+              "guest": "Richard Ernst",
+              "title": "Richard Ernst on Large Igneous Provinces",
+              "published": "10 Apr 2024",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/Richard-Ernst-on-Large-Igneous-Provinces-e2i7evu"
+            },
+            {
+              "guest": "Hal Levison",
+              "title": "Hal Levison on the Mission to Jupiter's Trojan Asteroids",
+              "published": "6 Mar 2026",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/Hal-Levison-on-the-Mission-to-Jupiters-Trojan-Asteroids-e3g1b5l"
+            },
+            {
+              "guest": "Harold C. Connolly Jr.",
+              "title": "Harold C. Connolly Jr. on Bringing an Asteroid Sample Back to Earth",
+              "published": "28 Nov 2020",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/Harold-C--Connolly-Jr--on-Bringing-an-Asteroid-Sample-Back-to-Earth-en384h"
+            },
+            {
+              "guest": "Sara Russell",
+              "title": "Sara Russell on What the Asteroids Can Tell Us About the Earth",
+              "published": "18 Sep 2020",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/Sara-Russell-on-What-the-Asteroids-Can-Tell-Us-About-the-Earth-ejrc6o"
+            },
+            {
+              "guest": "Ben Weiss",
+              "title": "Ben Weiss on the Mission to Psyche",
+              "published": "12 Apr 2022",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/Ben-Weiss-on-the-Mission-to-Psyche-e1h3n2b"
+            },
+            {
+              "guest": "Lindy Elkins-Tanton",
+              "title": "Lindy Elkins-Tanton on the Origin of Earth's Water",
+              "published": "27 Mar 2025",
+              "url": "https://podcasters.spotify.com/pod/show/geologybites/episodes/Lindy-Elkins-Tanton-on-the-Origin-of-Earths-Water-e30okv1"
+            }
+          ]
+        },
+        {
+          "show": "Being an Engineer",
+          "host": "Aaron Moncur",
+          "about": "Aaron Moncur talks to engineers about how the work actually gets done, from medical devices to deep-space missions. There are hundreds of episodes.",
+          "apple": "https://podcasts.apple.com/us/podcast/being-an-engineer/id1508222292",
+          "spotify": "https://open.spotify.com/show/2FsX1P22iZdIbO6uAa8oIJ",
+          "website": "https://teampipeline.us",
+          "website_note": null,
+          "rss": "https://rss.buzzsprout.com/995575.rss",
+          "episodes": [
+            {
+              "guest": "David Oh",
+              "title": "S1E58 NASA, Systems Engineering, and Sending Robots to Space, with David Oh",
+              "published": "23 Dec 2020",
+              "url": "https://teampipeline.us/nasa-systems-engineering/"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
