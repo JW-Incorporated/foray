@@ -3729,6 +3729,17 @@ const BACKEND_FLOORS = {
      and the argument refusals. Offline; one named mutation per test. */
   "test/replayCompare.test.ts": 8,
   "test/replaySourcing.test.ts": 6,
+  /* GV-99 (docs/roadmap/generation-v2.md, W7-06; R2-17): the founder-selected
+     voice card and exemplars in the Qwen writer's cached static prefix,
+     behind FORAY_WRITER_EXEMPLARS (default off). The file schema and loader
+     (tmp roots, read once, null for a missing/empty/invalid/unselected file),
+     mode parsing, the block's fixed bytes, withExemplarPrefix on synthetic
+     parts, the flag-off and empty-file byte identity of every writer prompt,
+     the block identical across acts 0 and 3, rounds 1 and 2, two Forays and
+     the seam edit, the Anthropic prompt untouched, a quote copied from an
+     exemplar refused by the quote gate, and levers.exemplars on the report
+     row. Offline; one named mutation per test. */
+  "test/voiceExemplars.test.ts": 10,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

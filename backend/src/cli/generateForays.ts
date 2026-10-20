@@ -14,6 +14,7 @@ import {
   type SelfCritiqueLever,
   type SelfCritiqueTotals
 } from "../generation/selfCritique";
+import { writerExemplarsLever, type ExemplarsLever } from "../generation/voiceExemplars";
 import type { SpineSelectionRecord } from "../generation/SpineBuilder";
 import type { SpineRuntime } from "../generation/tierRuntime";
 import { CORPUS_DIGEST_FILE, FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
@@ -1074,9 +1075,12 @@ export type ReportEntry = {
    * fixed by the flags, absent when FORAY_SPINE_BEST_OF is unset or 1.
    * GV-94: `selfCritique` is the configured writer self-critique
    * (`selfCritiqueLever`: mode, critic, flagP, sourceBudgetTokens), absent
-   * when FORAY_WRITER_SELF_CRITIQUE is unset or off. On every row, `{}` when
-   * no lever is on. */
-  levers?: { spineBestOf?: { mode: "best-of-2"; judge: string; graceMs: number }; selfCritique?: SelfCritiqueLever };
+   * when FORAY_WRITER_SELF_CRITIQUE is unset or off. GV-99: `exemplars` is
+   * the Qwen writer's voice block (`writerExemplarsLever`: mode 'on' with the
+   * selected exemplar ids and the file's sha, or 'unavailable' when the file
+   * holds no selection), absent when FORAY_WRITER_EXEMPLARS is unset or off.
+   * On every row, `{}` when no lever is on. */
+  levers?: { spineBestOf?: { mode: "best-of-2"; judge: string; graceMs: number }; selfCritique?: SelfCritiqueLever; exemplars?: ExemplarsLever };
   /** GV-55 (from W7-02): per routed stage, the implementation, model and
    * machine that served it (`describeStageAssignments`), from the routing the
    * run was resolved under. On every row. */
@@ -1336,9 +1340,14 @@ export async function generateOneCandidate(
      pipeline, so the store's and the session's variant agree. */
   const selfCritique = readSelfCritique(process.env);
   const selfCritiqueConfigured = selfCritiqueLever(selfCritique);
+  /* GV-99: the writer's voice block, as the prompt builder will read it (the
+     file is read once per process; a malformed FORAY_WRITER_EXEMPLARS fails
+     here, before any model call, naming the variable). */
+  const exemplars = writerExemplarsLever(process.env);
   const levers: NonNullable<ReportEntry["levers"]> = {
     ...(spineBestOf ? { spineBestOf } : {}),
-    ...(selfCritiqueConfigured ? { selfCritique: selfCritiqueConfigured } : {})
+    ...(selfCritiqueConfigured ? { selfCritique: selfCritiqueConfigured } : {}),
+    ...(exemplars ? { exemplars } : {})
   };
   const fingerprint = checkpointFingerprint({
     prompt: spec.prompt,

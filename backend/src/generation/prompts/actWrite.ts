@@ -3,6 +3,7 @@ import { MIN_QUOTE_WORDS } from "../../types/narration";
 import type { ActFrame, ActWriteRequest, ClipBrief, SeamBrief, SeamEditRequest, SeamNeighbour } from "../NarrationWriterBuilder";
 import { joinParts, type PromptParts } from "../promptLayout";
 import { WRITTEN_SEAM_JSON_SCHEMA } from "../seamStream";
+import { withExemplarPrefix, writerVoiceExemplars } from "../voiceExemplars";
 
 /**
  * §4.7's per-act writer prompt (Q-02/Q-03), moved here from
@@ -36,9 +37,17 @@ import { WRITTEN_SEAM_JSON_SCHEMA } from "../seamStream";
  * THE VOICE SLOT (decision 17). Empty by default: no voice card or exemplar
  * ships unconditionally. GV-99 renders the founder-selected
  * tools/generation/exemplars/narration-exemplars.json (GV-42) into one fixed
- * block and passes it as `voiceBlock` only when FORAY_WRITER_EXEMPLARS=on; it
- * lands at the end of `stable`, after a blank line, so it is cached with the
- * rules. An empty or absent block leaves `stable` byte-identical.
+ * block (voiceExemplars.ts) and appends it only when FORAY_WRITER_EXEMPLARS=on
+ * and the file holds a selection; it lands at the end of `stable`, after a
+ * blank line, so it is cached with the rules. An empty or absent block leaves
+ * `stable` byte-identical.
+ *
+ * WHO GETS IT (GV-99). When the caller passes no `voiceBlock`, the Qwen
+ * writer's two builders here (`actWritePromptParts`, `seamEditPromptParts`,
+ * which ChatNarrationWriterBuilder calls without a voiceBlock) fill the slot
+ * through `withExemplarPrefix`, the one call site (`voiced`). An explicit
+ * `voiceBlock` (tests, or "" for none) wins. The Anthropic writer's
+ * `buildActWritePrompt` passes "", so it never carries the block.
  */
 
 /** Which reply the prompt asks for: one JSON object for the act (today's
@@ -49,7 +58,9 @@ export type ActWriteOutput = "json" | "jsonl";
 export interface ActWritePromptOptions {
   /** Default 'json'. */
   output?: ActWriteOutput;
-  /** The voice slot's contents (GV-99). Absent or "" leaves the slot empty. */
+  /** The voice slot's contents. "" leaves the slot empty; absent fills it
+   * from the founder-selected exemplars when FORAY_WRITER_EXEMPLARS=on
+   * (GV-99, `withExemplarPrefix`), and leaves it empty otherwise. */
   voiceBlock?: string;
 }
 
@@ -160,7 +171,7 @@ function writeStable(output: ActWriteOutput): string {
  */
 export function actWritePromptParts(request: ActWriteRequest, options: ActWritePromptOptions = {}): PromptParts {
   const clips = new Map(request.clips.map((c) => [c.clipId, c]));
-  return {
+  return voiced(options, {
     stable: stableFor(options),
     foray: voiceLine(request),
     call: [
@@ -184,7 +195,15 @@ export function actWritePromptParts(request: ActWriteRequest, options: ActWriteP
           ]
         : [])
     ].join("\n")
-  };
+  });
+}
+
+/** GV-99: the parts as built when the caller set `voiceBlock`; otherwise
+ * with the founder-selected voice block appended to `stable` (nothing when
+ * FORAY_WRITER_EXEMPLARS is off or the file holds no selection). The flag is
+ * read at call time, so a malformed value throws naming only the variable. */
+function voiced(options: ActWritePromptOptions, parts: PromptParts): PromptParts {
+  return options.voiceBlock === undefined ? withExemplarPrefix(parts, writerVoiceExemplars()) : parts;
 }
 
 /** `stable` for these options: the output contract's rules, then the voice
@@ -231,7 +250,7 @@ function documentsBlock(documents: ActWriteRequest["documents"]): string {
  */
 export function seamEditPromptParts(request: SeamEditRequest, options: ActWritePromptOptions = {}): PromptParts {
   const ids = request.seams.map((s) => s.seamId);
-  return {
+  return voiced(options, {
     stable: stableFor(options),
     foray: voiceLine(request),
     call: [
@@ -251,7 +270,7 @@ export function seamEditPromptParts(request: SeamEditRequest, options: ActWriteP
       "Seams marked EDIT carry their previous script and a `fix` line: edit each one to answer its notes — add a missed beat where it belongs, drop or re-source an unsupported sentence, replace an assertion about the record with what a source says — and keep every sentence that was not objected to.",
       `Return a seam for each seam marked EDIT (${ids.join(", ")}) and for no other: a READ-ONLY seam is not yours to return.`
     ].join("\n")
-  };
+  });
 }
 
 /** The `s<n>` position of a seam id, for play order; an id of any other
@@ -298,9 +317,10 @@ function editLayout(request: SeamEditRequest): string {
 }
 
 /** The legacy single-string writer prompt (the Anthropic writer sends it):
- * the three parts joined, the 'json' contract, the voice slot empty. */
+ * the three parts joined, the 'json' contract, the voice slot empty whatever
+ * FORAY_WRITER_EXEMPLARS says (GV-99 fills it for the Qwen writer only). */
 export function buildActWritePrompt(request: ActWriteRequest): string {
-  return joinParts(actWritePromptParts(request));
+  return joinParts(actWritePromptParts(request, { voiceBlock: "" }));
 }
 
 /**
