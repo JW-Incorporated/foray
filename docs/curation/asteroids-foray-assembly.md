@@ -26,14 +26,14 @@ sources. Nothing has been uploaded or published.
 |---|---|
 | Segments in the running order | **12** |
 | Tape runtime | **1,666.6 s — 27 min 47 s** |
-| Playback runtime incl. narration | **1,919.6 s** in `data/forays.json` (narration estimated at 17 chars/s); the baked file measures **1,963.7 s — 32 min 44 s** (§7) |
+| Playback runtime incl. narration | **1,919.6 s** in `data/forays.json` (narration estimated at 17 chars/s); the baked file measures **1,964.6 s — 32 min 45 s** (§7) |
 | Mean / median segment | **138.9 s / 134.5 s** |
 | Shortest / longest | 35.0 s / 220.24 s |
 | Interquartile range | 100.73 s (R-7) |
 | Episodes used | **9**, from **2 shows** |
 | Shows | **Geology Bites** (8 episodes, host Oliver Strimpel) and **Being an Engineer** (1 episode, host Aaron Moncur) |
 | Voices | **9 scientists and engineers**, plus the two hosts asking questions |
-| Narration | **14 items, 4,301 characters**: 253 s estimated at 17 chars/s, **285.8 s as rendered (14.6 % of the baked file)**; written by AI, voiced by Kokoro-82M `af_heart` |
+| Narration | **14 items, 4,301 characters**: 253 s estimated at 17 chars/s, **286.7 s as rendered (14.6 % of the baked file)**; written by AI, voiced by Kokoro-82M `af_heart` |
 | Segments merged | `seg-2026-10-19-asteroids` (11) and `seg-2026-10-19-asteroids-bae` (1); 0 rejected |
 | `transcript_source` | **`publisher`** everywhere |
 | Ad safety | All 9 enclosures downloaded and measured: delivered duration = feed duration to within 1 s, so there are no inserted ads (§6) |
@@ -208,7 +208,7 @@ listener's question ahead of the tape.
 
 The founder asked for narrator-led "where possible, but not if that makes the
 listening quality garbage". The decision is **tape-led with a visible
-narrator**, at 14.6 % of the baked file (285.8 s of 1,963.7 s). The reasons:
+narrator**, at 14.6 % of the baked file (286.7 s of 1,964.6 s). The reasons:
 
 - The only voice that can be rendered locally and centrally is Kokoro-82M
   `af_heart`, the current central render profile (`kokoro-fp32-aac64-v1`). It is
@@ -355,9 +355,9 @@ AAC 128 kbps plus MP3 128 kbps with embedded chapters.
 
 | measured | `.m4a` (AAC 128 kbps stereo) | `.mp3` (128 kbps CBR stereo) |
 |---|---|---|
-| duration | 1,963.7 s (32:44) | 1,963.7 s |
+| duration | 1,964.6 s (32:45) | 1,964.6 s |
 | integrated loudness | **−16.1 LUFS** | −16.5 LUFS |
-| true peak | **−4.1 dBTP** | −4.6 dBTP |
+| true peak | **−3.9 dBTP** | −4.5 dBTP |
 | loudness range | 3.3 LU | 3.3 LU |
 | chapters | 14, embedded | 14, embedded (ID3 CHAP) |
 
@@ -385,7 +385,7 @@ Chapters (also in `chapters.txt` and the show notes):
 | 0:00 | Introduction |
 | 0:32 | Jan Smit: a fingerprint in the clay |
 | 4:28 | John Marshall: how an impact kills |
-| 7:11 | Jan Smit: a fish from the first hour |
+| 7:10 | Jan Smit: a fish from the first hour |
 | 11:11 | Richard Ernst: did the rock act alone? |
 | 13:19 | Hal Levison: the leftovers of planet building |
 | 14:56 | Harold Connolly: arriving at Bennu |
@@ -393,9 +393,9 @@ Chapters (also in `chapters.txt` and the show notes):
 | 19:55 | Sara Russell: asteroids made of metal |
 | 22:25 | David Oh: a world made of metal |
 | 26:04 | Ben Weiss: a hunch about Psyche |
-| 27:21 | Lindy Elkins-Tanton: on the way |
-| 28:10 | Sara Russell: could it happen again? |
-| 31:59 | Closing: what hit us, and what we can do now |
+| 27:22 | Lindy Elkins-Tanton: on the way |
+| 28:11 | Sara Russell: could it happen again? |
+| 32:00 | Closing: what hit us, and what we can do now |
 
 **The narration voice, honestly.** Kokoro-82M `af_heart` (the central render
 profile) is clean, intelligible and correctly levelled. It is also recognisably
