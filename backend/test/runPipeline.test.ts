@@ -2514,13 +2514,13 @@ describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the res
   }
 
   function stagedGatherer() {
-    const calls: Array<{ key: string; stage: string | undefined }> = [];
+    const calls: Array<{ key: string; stage: string | undefined; claim: string }> = [];
     const log: string[] = [];
     let inFlight = 0;
     const evidence: EvidenceGatherer = {
       async gather(beat): Promise<EvidencePack> {
         const stage = currentCallContext().stage;
-        calls.push({ key: evidenceMemoKey(beat), stage });
+        calls.push({ key: evidenceMemoKey(beat), stage, claim: beat.claim });
         inFlight += 1;
         try {
           if (stage !== "evidence") await new Promise((resolve) => setTimeout(resolve, 30));
@@ -2552,11 +2552,41 @@ describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the res
      `options.acts` (the same, from the gatherer's side). */
   it("first-act: the stage gathers act 1's pages only, act 1 is written before the later acts' slower packs land, and every page is gathered once", async () => {
     const { evidence, calls, log } = stagedGatherer();
+    const claimsByAct = new Map<string, Set<string>>();
+    const base = loggingWriter(log);
+    const narrationWriter: NarrationWriterBuilder = {
+      providerName: base.providerName,
+      writeAct: async (req, narrationCtx) => {
+        const claims = claimsByAct.get(req.actTitle) ?? new Set<string>();
+        for (const seam of req.seams) for (const b of seam.beats) claims.add(b.claim);
+        claimsByAct.set(req.actTitle, claims);
+        return base.writeAct(req, narrationCtx);
+      }
+    };
     const out = await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act" }, () =>
-      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence, narrationWriter: loggingWriter(log) }))
+      runWithRunLog(new RunLog(), () => runForayPipeline(multiAct, options, { ...stubDeps(), evidence, narrationWriter }))
     );
     expect(out.outcome).toBe("generated");
     if (out.outcome !== "generated") return;
+
+    /* Which act each page belongs to, off the briefs the writer was handed
+       (a seam beat's claim is the gathered beat's claim). Act 1 is the
+       first act written. */
+    const [firstAct, ...laterActs] = [...claimsByAct.keys()];
+    expect(laterActs.length).toBeGreaterThan(1);
+    const act1Claims = claimsByAct.get(firstAct!)!;
+    const laterClaims = new Set(laterActs.flatMap((t) => [...claimsByAct.get(t)!]).filter((c) => !act1Claims.has(c)));
+    expect(laterClaims.size).toBeGreaterThan(0);
+    const timedClaims = calls.filter((c) => c.stage === "evidence").map((c) => c.claim);
+    const backgroundClaims = new Set(calls.filter((c) => c.stage === "evidence:background").map((c) => c.claim));
+    /* The timed stage gathered act 1's pages and no page of any later act... */
+    expect(timedClaims.some((c) => act1Claims.has(c))).toBe(true);
+    expect(timedClaims.filter((c) => laterClaims.has(c))).toEqual([]);
+    /* ...and the background carries the later acts' pages (act 2's among
+       them) and none that only act 1 holds. */
+    expect([...claimsByAct.get(laterActs[0]!)!].some((c) => backgroundClaims.has(c))).toBe(true);
+    expect([...backgroundClaims].some((c) => laterClaims.has(c))).toBe(true);
+    expect([...backgroundClaims].filter((c) => act1Claims.has(c) && !laterClaims.has(c))).toEqual([]);
 
     const names = out.timings.map((t) => t.name);
     expect(names.indexOf("evidence")).toBe(names.indexOf("source") + 1);
@@ -2607,6 +2637,20 @@ describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the res
      later acts' pages after the run has returned. */
   it("first-act, narration throws: the run rejects with the writer's error only after the background has settled, and gathers nothing afterwards", async () => {
     const { evidence, calls, log, inFlight } = stagedGatherer();
+    /* Every background page that STARTED after the writer threw. */
+    let writerThrown = false;
+    let backgroundStartedAfterThrow = 0;
+    const gather = evidence.gather.bind(evidence);
+    evidence.gather = async (beat) => {
+      if (writerThrown && currentCallContext().stage === "evidence:background") backgroundStartedAfterThrow += 1;
+      return gather(beat);
+    };
+    const failingWriter = loggingWriter(log, true);
+    const writeAct = failingWriter.writeAct.bind(failingWriter);
+    failingWriter.writeAct = async (req, narrationCtx) => {
+      writerThrown = true;
+      return writeAct(req, narrationCtx);
+    };
     const unhandled: unknown[] = [];
     const onUnhandled = (reason: unknown) => unhandled.push(reason);
     process.on("unhandledRejection", onUnhandled);
@@ -2614,7 +2658,7 @@ describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the res
       let caught: unknown;
       await withEnv({ FORAY_EVIDENCE_PREFETCH: "first-act", EVIDENCE_PREFETCH_CONCURRENCY: "1" }, () =>
         runWithRunLog(new RunLog(), () =>
-          runForayPipeline(multiAct, { ...options, narrationActConcurrency: 1 }, { ...stubDeps(), evidence, narrationWriter: loggingWriter(log, true) })
+          runForayPipeline(multiAct, { ...options, narrationActConcurrency: 1 }, { ...stubDeps(), evidence, narrationWriter: failingWriter })
         ).catch((err: unknown) => {
           caught = err;
         })
@@ -2622,6 +2666,11 @@ describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the res
       expect(caught).toBeInstanceOf(Error);
       expect(String((caught as Error).message)).toMatch(/writer down/);
       expect(inFlight()).toBe(0);
+      /* The failure stopped the background: no background page was STARTED
+         after the writer threw (merely settling lets the queue drain). */
+      expect(writerThrown).toBe(true);
+      expect(calls.some((c) => c.stage === "evidence:background")).toBe(true);
+      expect(backgroundStartedAfterThrow).toBe(0);
       const atRejection = calls.length;
       await new Promise((resolve) => setTimeout(resolve, 150));
       expect(calls.length).toBe(atRejection);
