@@ -2906,7 +2906,7 @@ const BACKEND_FLOORS = {
      hydrates every clip before evidence; a server refusing every search
      completes on the title path and the seed with the reason in
      meta.veracity.retrieval.remote; openRemoteRetrieval and retrievalConfig. */
-  "test/runPipelineRemoteRetrieval.test.ts": 8, // GV-125 (#1413 items 16-17): per-prompt retrieval stats on a shared instance, FORAY_RETRIEVAL_MODE=hybrid in the pipeline's checkpoint fingerprint; 6 -> 8
+  "test/runPipelineRemoteRetrieval.test.ts": 9, // GV-125 (#1413 items 16-17): per-prompt retrieval stats on a shared instance, FORAY_RETRIEVAL_MODE=hybrid in the pipeline's and the driver's checkpoint fingerprint and fork stamp; 6 -> 9
   /* GV-48 (docs/roadmap/generation-v2.md, from W3-09): the hybrid merge —
      'append' keeps every BM25 candidate's rank and adds at most denseExtra
      dense-only episodes with their best passage, every candidate carries the

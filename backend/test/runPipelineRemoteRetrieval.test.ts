@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -34,7 +34,7 @@ import { FileTranscriptTextIndex, type TranscriptTextIndex, type TranscriptTextS
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
 import { SUBJECT_PROBE_LIMIT } from "../src/generation/researchShape";
 import { sourcingBodies } from "../src/generation/sourceBeats";
-import { openRemoteRetrieval } from "../src/cli/generateForays";
+import { DEFAULT_MAX_RESUMES, candidateFilename, generateOneCandidate, openRemoteRetrieval, type CliArgs } from "../src/cli/generateForays";
 import { FlagValueError, retrievalConfig, tokenWouldTravelInClear } from "../src/generation/generationFlags";
 import { corpusCoverage } from "../src/generation/transcriptCorpus";
 import type { Act, Beat, DeepenedAct, Spine } from "../src/types/spine";
@@ -663,6 +663,76 @@ describe("GV-125: the #1413 wave-21 follow-ups on the retrieval server", () => {
     expect(resumed.outcome.outcome).toBe("generated");
     expect(timingNames(resumed.outcome)).not.toContain("retrieval:source");
   }, 120_000);
+
+  it("the driver (generateOneCandidate) keys its store and its fork stamp by the instance's mode: a hybrid arm's kept file says retrieval=hybrid, and a bm25 seed is refused it (#1413 item 17)", async () => {
+    /* MUTATION THAT KILLS THIS: `const variantFlags = { ...flags };` in
+       generateForays.ts generateOneCandidate (the driver's fingerprint and
+       fork stamp lose the mode). Ran it: red (the hybrid arm's stamp has no
+       retrieval=hybrid, its fingerprint is the bm25 arm's, and the bm25 seed
+       is forked into it). */
+    const spec = { prompt: request.prompt, duration: request.duration, topic: TOPIC, bench: true };
+    const driverArgs = (out: string, overrides: Partial<CliArgs> = {}): CliArgs => ({
+      prompts: null,
+      out,
+      duration: request.duration,
+      limit: null,
+      dryRun: false,
+      authorId: "founder-1",
+      budgetUsd: null,
+      noResume: false,
+      maxResumes: DEFAULT_MAX_RESUMES,
+      continueOnRefusedPartial: false,
+      notify: null,
+      ...overrides
+    });
+    const driverRun = async (out: string, mode: RetrievalMode, overrides: Partial<CliArgs> = {}) => {
+      fs.mkdirSync(out, { recursive: true });
+      const retrieval = new RemoteRetrieval({ baseUrl: "http://127.0.0.1:7311", token: "t0ken", fetchFn: fakeFetch(service()).fetchFn, archive: ARCHIVE, mode });
+      await retrieval.loadManifest();
+      const runPipeline: typeof runForayPipeline = (req, opts, deps = {}) => runForayPipeline(req, opts, { ...baseDeps(), ...deps });
+      return generateOneCandidate(spec, driverArgs(out, overrides), {
+        cueProvider: new HydratingCueProvider(retrieval),
+        textIndex: new PrecomputedTextIndex(retrieval),
+        retrieval,
+        runPipeline
+      });
+    };
+    const kept = (out: string) =>
+      JSON.parse(fs.readFileSync(path.join(out, candidateFilename(request.prompt).replace(/\.json$/, ".checkpoint.json")), "utf8")) as {
+        fingerprint: string;
+        fork: { flags: string | null };
+      };
+    const fingerprintFor = (mode: RetrievalMode) =>
+      checkpointFingerprint({
+        prompt: request.prompt,
+        duration: request.duration,
+        topic: TOPIC,
+        variant: checkpointRunVariant({ ...resolvePipelineFlags(), retrievalMode: mode }, resolveRouting())
+      });
+    const armBm25 = path.join(tmp, "driver-bm25");
+    const armHybrid = path.join(tmp, "driver-hybrid");
+    const armSeeded = path.join(tmp, "driver-seeded");
+
+    expect((await driverRun(armBm25, "bm25", { keepCheckpoints: true })).entry?.outcome).toBe("generated");
+    expect((await driverRun(armHybrid, "hybrid", { keepCheckpoints: true })).entry?.outcome).toBe("generated");
+    /* bm25 adds nothing to the stamp or the fingerprint; hybrid does. */
+    expect(kept(armBm25).fork.flags ?? "").not.toMatch(/retrieval=/);
+    expect(kept(armHybrid).fork.flags).toMatch(/(^|\|)retrieval=hybrid(\||$)/);
+    expect(kept(armBm25).fingerprint).toBe(fingerprintFor("bm25"));
+    expect(kept(armHybrid).fingerprint).toBe(fingerprintFor("hybrid"));
+    expect(kept(armHybrid).fingerprint).not.toBe(kept(armBm25).fingerprint);
+
+    /* A hybrid arm seeded from the bm25 arm: refused, run from scratch. */
+    const log = vi.spyOn(console, "log");
+    try {
+      const seeded = await driverRun(armSeeded, "hybrid", { seedCheckpoints: armBm25, rerunFrom: "narrate" });
+      expect(seeded.entry?.outcome).toBe("generated");
+      expect(seeded.entry?.seededFrom).toBeNull();
+      expect(log.mock.calls.map((c) => String(c[0])).join("\n")).toMatch(/no usable seed .*other pipeline flags/);
+    } finally {
+      log.mockRestore();
+    }
+  }, 240_000);
 });
 
 describe("GV-95: sourcingBodies holds a seeded episode no search and no title reaches", () => {
