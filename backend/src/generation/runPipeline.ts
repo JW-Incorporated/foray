@@ -54,7 +54,9 @@ import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./aud
 import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeAct, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics, type PrefetchOptions } from "./evidencePrefetch";
-import { evidencePrefetchMode, readNumberFlag, type FlagSource } from "./generationFlags";
+import { evidencePrefetchMode, numberParser, readFlag, type FlagSource } from "./generationFlags";
+import { readSpineTierSizing } from "./chat/ChatSpineBuilder";
+import { writerExemplarsMode } from "./voiceExemplars";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
 import { loadCatalogueData, type CatalogueData } from "./catalogueLookup";
 import { ForayStitcher, type StitchForayOptions } from "./stitchForay";
@@ -1189,11 +1191,23 @@ type SourceActCheckpoint = { act: SourcedAct; snapshot: SourcingSnapshot };
  * deepen to the second box. Read only when the per-act pipeline is on, so a
  * malformed value never touches a classic run (decision 5: fail fast, naming
  * the variable only).
+ *
+ * GV-126 (#1413 item 30): bounded above by MAX_DEEPEN_CONCURRENCY, the
+ * long tier's most acts (spineActBand: [5, 8]). A larger gate deepens no
+ * more acts at once, so a value above it is a typo (an extra digit), and it
+ * fails fast like any malformed value rather than reading as "every act".
+ * Documented in docs/curation/generation-providers.md.
  */
 export const DEEPEN_CONCURRENCY_ENV = "FORAY_DEEPEN_CONCURRENCY";
 export const DEFAULT_DEEPEN_CONCURRENCY = 1;
+export const MAX_DEEPEN_CONCURRENCY = 8;
 export function deepenConcurrency(env: FlagSource = process.env): number {
-  return readNumberFlag(DEEPEN_CONCURRENCY_ENV, z.number().int().min(1), DEFAULT_DEEPEN_CONCURRENCY, env);
+  return readFlag(
+    DEEPEN_CONCURRENCY_ENV,
+    numberParser(z.number().int().min(1).max(MAX_DEEPEN_CONCURRENCY), `an integer from 1 to ${MAX_DEEPEN_CONCURRENCY}`),
+    DEFAULT_DEEPEN_CONCURRENCY,
+    env
+  );
 }
 
 /**
@@ -1401,7 +1415,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      fingerprint is today's. GV-55: it also carries the narration order and,
      in local mode, the routing. GV-125 (#1413 item 17): and the retrieval
      server's mode when it is not bm25, read off the same instance the driver
-     hashed (`deps.retrieval.mode`). */
+     hashed (`deps.retrieval.mode`). GV-126 (#1413 items 21, 24): and
+     FORAY_SPINE_TIER_SIZING and FORAY_WRITER_EXEMPLARS when on, read here
+     from the same environment the driver hashed (a malformed value fails
+     here, naming the variable, before any call). */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
@@ -1410,7 +1427,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       duration: req.duration,
       topic: options.topic,
       /* GV-94: plus the self-critique's part, only when it is on. */
-      variant: joinCheckpointVariant(checkpointRunVariant({ ...flags, retrievalMode: deps.retrieval?.mode }, routing), selfCritique)
+      variant: joinCheckpointVariant(
+        checkpointRunVariant(
+          { ...flags, retrievalMode: deps.retrieval?.mode, spineTierSizing: readSpineTierSizing(), writerExemplars: writerExemplarsMode() },
+          routing
+        ),
+        selfCritique
+      )
     })
   );
   const resumeHint = options.checkpointKey

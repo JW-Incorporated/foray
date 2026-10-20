@@ -530,6 +530,156 @@ describe("GV-124 — FORAY_SPINE_BEST_OF joins the checkpoint variant", () => {
   }, 120_000);
 });
 
+/* GV-126 (#1413 items 21, 24): FORAY_SPINE_TIER_SIZING changes what the
+   spine stage banks and FORAY_WRITER_EXEMPLARS what every narrate:<i> banks,
+   so each joins the checkpoint variant at BOTH sites (the driver's store and
+   the pipeline's session). With neither set the fingerprint is today's. */
+describe("GV-126 — FORAY_SPINE_TIER_SIZING and FORAY_WRITER_EXEMPLARS join the checkpoint variant at both sites", () => {
+  let dir: string;
+  const spec = { prompt: "the history of grilling and barbecue" };
+  const LEVER_ENV = ["FORAY_SPINE_TIER_SIZING", "FORAY_WRITER_EXEMPLARS", "FORAY_EVIDENCE_PREFETCH"];
+
+  class CountingSpineBuilder extends StubSpineBuilder {
+    calls = 0;
+    override async buildSpine(...args: Parameters<StubSpineBuilder["buildSpine"]>): ReturnType<StubSpineBuilder["buildSpine"]> {
+      this.calls++;
+      return super.buildSpine(...args);
+    }
+  }
+  class KilledAfterSpine extends StubDeepenActBuilder {
+    override async deepenAct(): Promise<never> {
+      throw new Error("killed after spine");
+    }
+  }
+  const run = (spine: CountingSpineBuilder, killAfterSpine: boolean) =>
+    generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: (request, options, deps) =>
+        stubPipeline()(request, options, { ...deps, spineBuilder: spine, ...(killAfterSpine ? { deepenBuilder: new KilledAfterSpine() } : {}) })
+    });
+  const readCheckpointFingerprint = (): string => {
+    const file = fs.readdirSync(dir).find((f) => f.endsWith(".checkpoint.json"))!;
+    return (JSON.parse(fs.readFileSync(path.join(dir, file), "utf8")) as { fingerprint: string }).fingerprint;
+  };
+  const clearEnv = (): void => {
+    for (const name of [...Object.values(PIPELINE_FLAG_ENV), ...LEVER_ENV]) delete process.env[name];
+  };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv126-"));
+    clearEnv();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    clearEnv();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /* The dark default. MUTATION THAT KILLS THIS: join either part when off
+     (`spineTierSizingVariant` returning "spine=tier-sized" for false). Ran
+     it: red. */
+  it("with neither flag set the banked fingerprint is today's (no variant), and so with both set off", async () => {
+    for (const env of [{}, { FORAY_SPINE_TIER_SIZING: "0", FORAY_WRITER_EXEMPLARS: "off" }]) {
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.mkdirSync(dir, { recursive: true });
+      clearEnv();
+      Object.assign(process.env, env);
+      expect((await run(new CountingSpineBuilder(), true)).entry?.outcome).toBe("error");
+      expect(readCheckpointFingerprint(), JSON.stringify(env)).toBe(checkpointFingerprint({ prompt: spec.prompt, duration: "short" }));
+      /* The pipeline's session hashes the same: the banked spine resumes. */
+      const own = new CountingSpineBuilder();
+      expect((await run(own, false)).entry?.outcome).toBe("generated");
+      expect(own.calls, JSON.stringify(env)).toBe(0);
+    }
+  }, 180_000);
+
+  for (const [name, on, part] of [
+    ["FORAY_SPINE_TIER_SIZING", "1", "spine=tier-sized"],
+    ["FORAY_WRITER_EXEMPLARS", "on", "exemplars=on"]
+  ] as const) {
+    it(`${name}: a run killed after its spine is not resumed across a flip, in either direction, and resumes its own`, async () => {
+      /* MUTATIONS THAT KILL THIS: drop the part from checkpointRunVariant
+         (the flipped run resumes the other setting's spine: b.calls 0), or
+         read the flag at ONE site only (runPipeline.ts's session hashes
+         without it while the driver's store hashes with it, so the run under
+         its own setting cannot resume: own.calls 1). Ran each: red. */
+      for (const [first, second] of [
+        [false, true],
+        [true, false]
+      ] as const) {
+        fs.rmSync(dir, { recursive: true, force: true });
+        fs.mkdirSync(dir, { recursive: true });
+        clearEnv();
+        if (first) process.env[name] = on;
+        const a = new CountingSpineBuilder();
+        expect((await run(a, true)).entry?.outcome).toBe("error");
+        expect(a.calls).toBe(1);
+        expect(readCheckpointFingerprint()).toBe(
+          checkpointFingerprint({ prompt: spec.prompt, duration: "short", ...(first ? { variant: part } : {}) })
+        );
+        clearEnv();
+        if (second) process.env[name] = on;
+        const b = new CountingSpineBuilder();
+        expect((await run(b, true)).entry?.outcome).toBe("error");
+        expect(b.calls, `${first} -> ${second}`).toBe(1);
+      }
+      /* Under its own setting (on) the banked spine resumes. */
+      const own = new CountingSpineBuilder();
+      expect((await run(own, false)).entry?.outcome).toBe("generated");
+      expect(own.calls).toBe(0);
+    }, 120_000);
+  }
+});
+
+/* GV-126 (#1413 item 29; GV-102 item 11): FORAY_EVIDENCE_PREFETCH=first-act is
+   subsumed by the per-act pipeline, and the report row says so; with
+   neither flag (or only one of them) the row is unchanged. */
+describe("GV-126 — the report records first-act prefetch as subsumed under the per-act pipeline", () => {
+  let dir: string;
+  const spec = { prompt: "the history of grilling and barbecue" };
+  const clearEnv = (): void => {
+    for (const name of [...Object.values(PIPELINE_FLAG_ENV), "FORAY_EVIDENCE_PREFETCH"]) delete process.env[name];
+  };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv126-pf-"));
+    clearEnv();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    clearEnv();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /* MUTATIONS THAT KILL THIS: drop the `flags.perActPipeline &&` guard (a
+     classic first-act row says subsumed), or the `=== "first-act"` test (a
+     per-act row with the default says subsumed), or the row field. Ran each:
+     red. */
+  it("only FORAY_PER_ACT_PIPELINE with FORAY_EVIDENCE_PREFETCH=first-act adds evidencePrefetch to the row", async () => {
+    const cases: Array<[NodeJS.ProcessEnv, boolean]> = [
+      [{}, false],
+      [{ FORAY_EVIDENCE_PREFETCH: "first-act" }, false],
+      [{ FORAY_PER_ACT_PIPELINE: "1" }, false],
+      [{ FORAY_PER_ACT_PIPELINE: "1", FORAY_EVIDENCE_PREFETCH: "all" }, false],
+      [{ FORAY_PER_ACT_PIPELINE: "1", FORAY_EVIDENCE_PREFETCH: "first-act" }, true]
+    ];
+    for (const [env, subsumed] of cases) {
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.mkdirSync(dir, { recursive: true });
+      clearEnv();
+      Object.assign(process.env, env);
+      const entry = (await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), { cueProvider, runPipeline: stubPipeline() })).entry!;
+      expect(entry.outcome, JSON.stringify(env)).toBe("generated");
+      if (subsumed) expect(entry.evidencePrefetch).toEqual({ mode: "first-act", subsumed: true });
+      else expect("evidencePrefetch" in entry, JSON.stringify(env)).toBe(false);
+    }
+  }, 180_000);
+});
+
 /* GV-124 (#1413 item 1): the unit caps are per Foray. The driver puts the
    checkpoint key on the call context as `sessionId`, the same for every
    automatic resume, so the lane scheduler meters every attempt against ONE

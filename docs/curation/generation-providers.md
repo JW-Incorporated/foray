@@ -125,6 +125,12 @@ backend. It has no variables of its own beyond `FORAY_DOSSIER_MODEL`.
 `generateForays --stage-provider stage=impl[:lane][,...]` sets the same
 `FORAY_STAGE_*` overrides from the command line.
 
+### Per-act pipeline concurrency
+
+| Variable | Meaning |
+| --- | --- |
+| `FORAY_DEEPEN_CONCURRENCY` | How many acts the per-act pipeline (`FORAY_PER_ACT_PIPELINE`, or the fast path) deepens at once. An integer from 1 to 8; default 1, so act 0's deepen is asked first and the rest queue behind it (concurrent deepen calls on one Spark slow act 0's writer). Raise it once deepen routes to the second box. 8 is the long tier's most acts, so a larger gate deepens nothing more at once: a value above 8, below 1 or not an integer stops the run, naming the variable. Read only on the per-act path; a classic run never reads it. |
+
 ### Jev (the judge, clarity and the verifier)
 
 | Variable | Meaning |

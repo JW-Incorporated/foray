@@ -11,8 +11,11 @@ import {
   checkpointRunVariant,
   forkSeedRefusal,
   CHECKPOINT_VERSION,
+  CheckpointForkStampSchema,
   retrievalModeVariant,
   routingVariant,
+  spineTierSizingVariant,
+  writerExemplarsVariant,
   type CheckpointStore
 } from "../src/generation/checkpoint";
 import { CLASSIC_PIPELINE_FLAGS, FAST_PATH_PIPELINE_FLAGS, checkpointVariant } from "../src/generation/pipelineFlags";
@@ -270,6 +273,67 @@ describe("checkpointRunVariant (GV-55)", () => {
     const seed = { version: CHECKPOINT_VERSION, fingerprint: "seed-print", fork: stamp() };
     expect(forkSeedRefusal(seed, { fingerprint: "run-print", stamp: stamp("hybrid") }, "narrate")).toMatch(/other pipeline flags/);
     expect(forkSeedRefusal(seed, { fingerprint: "run-print", stamp: stamp("bm25") }, "narrate")).toBeNull();
+  });
+
+  /* GV-126 (#1413 items 21, 24). Kills: leaving either part out of the
+     variant (`spineTierSizingVariant` or `writerExemplarsVariant` returning
+     undefined: a run with the flag on would resume a spine, or narration,
+     banked with it off), or joining either when off (every banked run would
+     stop resuming). Ran each: red. */
+  it("joins spine=tier-sized and exemplars=on only when on; off or absent, the fingerprint is today's", () => {
+    const local = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
+    for (const off of [{}, { spineTierSizing: false, writerExemplars: "off" as const }, { spineTierSizing: undefined, writerExemplars: undefined }]) {
+      expect(spineTierSizingVariant(off)).toBeUndefined();
+      expect(writerExemplarsVariant(off)).toBeUndefined();
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off })).toBeUndefined();
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off }))).toBe(TODAY);
+      expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, ...off }, local)).toBe(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS, local));
+    }
+    const tier = { ...CLASSIC_PIPELINE_FLAGS, spineTierSizing: true };
+    const exemplars = { ...CLASSIC_PIPELINE_FLAGS, writerExemplars: "on" as const };
+    expect(checkpointRunVariant(tier)).toBe("spine=tier-sized");
+    expect(checkpointRunVariant(exemplars)).toBe("exemplars=on");
+    const prints = new Set([TODAY, fp(checkpointRunVariant(tier)), fp(checkpointRunVariant(exemplars)), fp(checkpointRunVariant({ ...tier, writerExemplars: "on" }))]);
+    expect(prints.size).toBe(4);
+    /* After the spine best-of, before the routing. */
+    expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, retrievalMode: "hybrid", spineBestOf: 2, spineTierSizing: true, writerExemplars: "on" }, local)).toBe(
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|spine=best-of-2|spine=tier-sized|exemplars=on|${routingVariant(local)}`
+    );
+  });
+
+  /* GV-126. Kills: putting either lever in the stamp's `flags` (E3's arm B,
+     exemplars on, could no longer fork arm A from narrate; ran it: red), or
+     dropping its lever comparison (a seed rerun from stitch, or from deepen
+     under another spine sizing, would keep work built under the other
+     setting; ran it: red), or writing the fields when off (an off stamp
+     would differ from a pre-GV-126 one). */
+  it("the fork stamp carries both only when on, and compares them like a route to the stage they feed", () => {
+    const routing = resolveRouting({});
+    const stamp = (extra: { spineTierSizing?: boolean; writerExemplars?: "off" | "on" } = {}) =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, ...extra }, routing });
+    const before = stamp();
+    expect(stamp({ spineTierSizing: false, writerExemplars: "off" })).toEqual(before);
+    expect(Object.keys(before)).not.toContain("spineTierSizing");
+    expect(Object.keys(before)).not.toContain("exemplars");
+    const armA = { version: CHECKPOINT_VERSION, fingerprint: "arm-a", fork: before };
+    /* E3: arm B with exemplars on forks arm A from narrate (and earlier), not from stitch. */
+    const armB = { fingerprint: "arm-b", stamp: stamp({ writerExemplars: "on" }) };
+    expect(armB.stamp.flags).toBe(before.flags);
+    expect(armB.stamp.exemplars).toBe("on");
+    expect(forkSeedRefusal(armA, armB, "narrate")).toBeNull();
+    expect(forkSeedRefusal(armA, armB, "spine")).toBeNull();
+    expect(forkSeedRefusal(armA, armB, "stitch")).toMatch(/FORAY_WRITER_EXEMPLARS differs \(off; this run on\) and feeds narrate/);
+    /* And the reverse: a seed built with exemplars on, run with them off. */
+    expect(forkSeedRefusal({ ...armA, fingerprint: "arm-b", fork: armB.stamp }, { fingerprint: "arm-a", stamp: before }, "stitch")).toMatch(/FORAY_WRITER_EXEMPLARS differs \(on; this run off\)/);
+    /* Tier sizing feeds the spine. */
+    const tiered = { fingerprint: "tiered", stamp: stamp({ spineTierSizing: true }) };
+    expect(tiered.stamp.flags).toBe(before.flags);
+    expect(forkSeedRefusal(armA, tiered, "spine")).toBeNull();
+    expect(forkSeedRefusal(armA, tiered, "deepen")).toMatch(/FORAY_SPINE_TIER_SIZING differs \(off; this run on\) and feeds spine/);
+    /* A stamp round-trips through its schema (what a kept checkpoint holds). */
+    expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(stamp({ spineTierSizing: true, writerExemplars: "on" }))))).toEqual(
+      stamp({ spineTierSizing: true, writerExemplars: "on" })
+    );
   });
 });
 

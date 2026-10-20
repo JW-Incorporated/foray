@@ -14,12 +14,13 @@ import {
   type SelfCritiqueLever,
   type SelfCritiqueTotals
 } from "../generation/selfCritique";
-import { writerExemplarsLever, type ExemplarsLever } from "../generation/voiceExemplars";
+import { writerExemplarsLever, writerExemplarsMode, type ExemplarsLever } from "../generation/voiceExemplars";
+import { readSpineTierSizing } from "../generation/chat/ChatSpineBuilder";
 import type { SpineSelectionRecord } from "../generation/SpineBuilder";
 import type { SpineRuntime } from "../generation/tierRuntime";
 import { CORPUS_DIGEST_FILE, FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
 import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval, type RetrievalFetch, type RetrievalHealth } from "../generation/retrievalClient";
-import { retrievalConfig, type RetrievalConfig } from "../generation/generationFlags";
+import { evidencePrefetchMode, retrievalConfig, type RetrievalConfig } from "../generation/generationFlags";
 import { corpusCoverage, corpusCoverageLine, corpusFingerprint, scanNormalizedCorpus, type CorpusCoverage, type CorpusFingerprint, type CorpusShowOnDisk } from "../generation/transcriptCorpus";
 import { archiveIntegrity, integrityGate, readSyncState, remoteIntegrity, SyncStateError, type IntegrityVerdict } from "../generation/archiveIntegrity";
 import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type TranscriptTextIndex } from "../generation/transcriptTextIndex";
@@ -1201,6 +1202,12 @@ export type ReportEntry = {
   /** GV-81: the run's `--lane`, on every row when the flag was given; absent
    * otherwise (reads as `catalogue`). */
   lane?: JobLane;
+  /** GV-126 (#1413 item 29; GV-102 item 11): FORAY_EVIDENCE_PREFETCH=first-act
+   * under the per-act pipeline (FORAY_PER_ACT_PIPELINE or the fast path),
+   * where it is subsumed: each act gathers only its own pages, so the setting
+   * is accepted and has no further effect. On every row of such a run;
+   * absent otherwise. */
+  evidencePrefetch?: { mode: "first-act"; subsumed: true };
 };
 
 /** GV-62: a report row's `seededFrom`. */
@@ -1416,8 +1423,17 @@ export async function generateOneCandidate(
   /* GV-125 (#1413 item 17): the checkpoint variant's flags, plus the
      retrieval server's mode, read off the same instance the pipeline reads it
      from (`deps.retrieval.mode`), so the store's fingerprint, the session's
-     and the fork stamp agree. bm25 (or no server) adds nothing. */
-  const variantFlags = { ...flags, retrievalMode: deps.retrieval?.mode };
+     and the fork stamp agree. bm25 (or no server) adds nothing. GV-126
+     (#1413 items 21, 24): plus FORAY_SPINE_TIER_SIZING and
+     FORAY_WRITER_EXEMPLARS, read from the environment the pipeline reads
+     them from; each adds a part only when on, and neither joins the fork
+     stamp's flags (each is compared like a route to the stage it feeds). */
+  const variantFlags = {
+    ...flags,
+    retrievalMode: deps.retrieval?.mode,
+    spineTierSizing: readSpineTierSizing(process.env),
+    writerExemplars: writerExemplarsMode(process.env)
+  };
   const gates = resolveGateConfig();
   /* GV-55: the routing table, resolved once here with the --stage-provider
      overrides applied (main() also sets them on process.env, which the stage
@@ -1436,6 +1452,11 @@ export async function generateOneCandidate(
      file is read once per process; a malformed FORAY_WRITER_EXEMPLARS fails
      here, before any model call, naming the variable). */
   const exemplars = writerExemplarsLever(process.env);
+  /* GV-126 (#1413 item 29): FORAY_EVIDENCE_PREFETCH=first-act is subsumed
+     by the per-act pipeline (GV-102 item 11: accepted, no further effect);
+     the row says so. Read only with the per-act pipeline on, so a classic
+     run never reads it here. */
+  const evidencePrefetchSubsumed = flags.perActPipeline && evidencePrefetchMode() === "first-act";
   const levers: NonNullable<ReportEntry["levers"]> = {
     ...(spineBestOf ? { spineBestOf } : {}),
     ...(selfCritiqueConfigured ? { selfCritique: selfCritiqueConfigured } : {}),
@@ -1621,7 +1642,8 @@ export async function generateOneCandidate(
       unitSpend: unitSpendOf(defaultUnitBudgetGuard, checkpointKey, request.duration),
       ...(anthropicCalls === 0 ? { usage: { costUsd: await jevCostUsd(checkpointKey) } } : {}),
       ...(seededFrom !== undefined ? { seededFrom } : {}),
-      ...(args.lane !== undefined ? { lane: args.lane } : {})
+      ...(args.lane !== undefined ? { lane: args.lane } : {}),
+      ...(evidencePrefetchSubsumed ? { evidencePrefetch: { mode: "first-act" as const, subsumed: true as const } } : {})
     };
     if (!notify) return withCalls;
     const notification = await notify({
