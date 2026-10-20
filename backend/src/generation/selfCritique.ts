@@ -12,6 +12,7 @@ import type {
   SeamBrief,
   SeamEditRequest,
   WriterObservation,
+  WriterStreamEvent,
   WrittenSeam
 } from "./NarrationWriterBuilder";
 
@@ -163,7 +164,10 @@ export function selfCritiqueLever(config: SelfCritiqueConfig): SelfCritiqueLever
  * with and without the critique. Joined onto `checkpointRunVariant` at BOTH
  * call sites (`joinCheckpointVariant`). It stays out of the fork stamp's
  * flags (`checkpointForkStamp`), so E5's arm B can still fork arm A's banked
- * stages and rebuild from `narrate`.
+ * stages and rebuild from `narrate`; the stamp carries it on its own
+ * (`selfCritique`, GV-124), compared like a writer route, so a seed built
+ * under another self-critique is refused unless the fork reruns from
+ * `narrate` or earlier.
  */
 export function selfCritiqueVariant(config: SelfCritiqueConfig): string | undefined {
   return config.mode === "off" ? undefined : `self-critique=${config.mode}:${config.critic}`;
@@ -227,6 +231,12 @@ export function __swapDraftCriticForTests(name: string, factory: DraftCriticFact
  * follows and introduces (`request.clips[].docId` resolved to
  * `request.documents`), deduplicated, trimmed to `budgetChars` in that order
  * (the last source that does not fit is cut, the rest dropped).
+ *
+ * GV-124 (#1413 item 9): a claim quote is kept only when it is an exact
+ * substring of the document it names in `request.documents`. The critique
+ * runs on the draft BEFORE the mechanical quote gate, so without this a quote
+ * the writer made up would be handed to the critic as the very source that
+ * backs its own sentence.
  */
 export function seamCritiqueSources(
   brief: SeamBrief,
@@ -234,7 +244,10 @@ export function seamCritiqueSources(
   request: ActWriteRequest,
   budgetChars: number = CRITIQUE_SOURCE_BUDGET_CHARS
 ): DraftCritiqueSource[] {
-  const candidates: DraftCritiqueSource[] = draft.claims.map((c) => ({ docId: c.docId, text: c.quote }));
+  const docText = new Map(request.documents.map((d) => [d.docId, d.text]));
+  const candidates: DraftCritiqueSource[] = draft.claims
+    .filter((c) => typeof c.quote === "string" && c.quote.length > 0 && (docText.get(c.docId)?.includes(c.quote) ?? false))
+    .map((c) => ({ docId: c.docId, text: c.quote }));
   for (const clipId of [brief.follows, brief.introduces]) {
     if (clipId === undefined) continue;
     const docId = request.clips.find((c) => c.clipId === clipId)?.docId;
@@ -310,15 +323,21 @@ export interface SelfCritiquingNarrationWriterOptions {
 
 /**
  * The decorator. Implements `writeAct` (critiqued) and forwards `editSeams`
- * (timed-policy rounds 2-3, which carry the verifier's notes) untouched. It
- * deliberately offers NO `writeActStream`: a streamed act releases seams
- * before the draft is whole, which a whole-draft critique cannot follow, so
- * under FORAY_WRITER_STREAM the act falls back to `writeAct` (writeAct.ts
- * streams only when the writer has the method) and is critiqued.
+ * (timed-policy rounds 2-3, which carry the verifier's notes) untouched.
+ *
+ * GV-124 (#1413 item 7): it offers `writeActStream` when the inner writer
+ * does. An act it does not critique (a retry round, every act under `off`,
+ * act 0 under `behind-playhead`) is the inner writer's own stream, untouched,
+ * so GV-73's streamed act 0 and its early seam release survive. An act it
+ * does critique cannot be streamed (a whole-draft critique cannot follow seams
+ * released before the draft is whole): it is written and critiqued exactly as
+ * `writeAct` does, and its seams are handed on together after the critique,
+ * then one `end`.
  */
 export class SelfCritiquingNarrationWriter implements NarrationWriterBuilder {
   readonly providerName: string;
   readonly editSeams?: (request: SeamEditRequest, ctx: NarrationBuildContext) => Promise<ActWriteResult>;
+  readonly writeActStream?: (request: ActWriteRequest, ctx: NarrationBuildContext) => AsyncIterable<WriterStreamEvent>;
   private readonly inner: NarrationWriterBuilder;
   private readonly critic: DraftCritic;
   private readonly mode: SelfCritiqueMode;
@@ -334,12 +353,33 @@ export class SelfCritiquingNarrationWriter implements NarrationWriterBuilder {
     this.providerName = options.inner.providerName;
     const inner = options.inner;
     if (inner.editSeams) this.editSeams = (request, ctx) => inner.editSeams!(request, ctx);
+    if (inner.writeActStream) this.writeActStream = (request, ctx) => this.streamAct(request, ctx);
+  }
+
+  /** Whether this act's round-1 draft is critiqued (see the module comment). */
+  private critiques(request: ActWriteRequest, ctx: NarrationBuildContext): boolean {
+    if (this.mode === "off" || request.retryNote !== undefined) return false;
+    if (this.mode === "behind-playhead" && (ctx.actIndex ?? 0) === 0) return false;
+    return true;
+  }
+
+  /** GV-124: the streamed act (see the class comment). */
+  private async *streamAct(request: ActWriteRequest, ctx: NarrationBuildContext): AsyncGenerator<WriterStreamEvent, void, undefined> {
+    if (!this.critiques(request, ctx)) {
+      yield* this.inner.writeActStream!(request, ctx);
+      return;
+    }
+    const startedAt = this.now();
+    const { seams } = await this.writeAct(request, ctx);
+    const atMs = Math.max(0, this.now() - startedAt);
+    for (const seam of seams) yield { type: "seam", seam, atMs };
+    const arrived = new Set(seams.map((s) => s.seamId));
+    yield { type: "end", stopReason: "end", unfinishedSeamIds: request.seams.filter((s) => !arrived.has(s.seamId)).map((s) => s.seamId) };
   }
 
   async writeAct(request: ActWriteRequest, ctx: NarrationBuildContext): Promise<ActWriteResult> {
     const draft = await this.inner.writeAct(request, ctx);
-    if (this.mode === "off" || request.retryNote !== undefined) return draft;
-    if (this.mode === "behind-playhead" && (ctx.actIndex ?? 0) === 0) return draft;
+    if (!this.critiques(request, ctx)) return draft;
 
     const startedAt = this.now();
     const briefs = new Map(request.seams.map((s) => [s.seamId, s]));

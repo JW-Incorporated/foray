@@ -156,8 +156,24 @@ export const LISTEN_ACT = 1;
  * FORAY_WRITER_EXEMPLARS; GV-99 defines it as off|on, read through
  * generationFlags.readEnumFlag, which throws on any other value such as "1").
  * An adopted stack that turns on an unmapped lever is refused until its card
- * adds the mapping. */
-export const LEVER_ENV = Object.freeze({ exemplars: Object.freeze({ name: "FORAY_WRITER_EXEMPLARS", on: "on", off: "off" }) });
+ * adds the mapping.
+ *
+ * GV-124 (#1413 item 5): spineBestOf is FORAY_SPINE_BEST_OF (1|2, GV-91's
+ * pipelineFlags.ts). Under 2 the backend also requires FORAY_SPINE_JUDGE and
+ * reads FORAY_SPINE_BEST_OF_GRACE_MS, so its adopted value is the lever as the
+ * report records it ({ mode: "best-of-2", judge, graceMs }): `companions`
+ * maps that record's fields to their variables, and `requires` names the
+ * fields an adopted stack must give. */
+export const LEVER_ENV = Object.freeze({
+  exemplars: Object.freeze({ name: "FORAY_WRITER_EXEMPLARS", on: "on", off: "off" }),
+  spineBestOf: Object.freeze({
+    name: "FORAY_SPINE_BEST_OF",
+    on: "2",
+    off: "1",
+    companions: Object.freeze({ judge: "FORAY_SPINE_JUDGE", graceMs: "FORAY_SPINE_BEST_OF_GRACE_MS" }),
+    requires: Object.freeze(["judge"])
+  })
+});
 
 export const MODE_ENV = "FORAY_GENERATION_MODE";
 export const ALLOW_LEGACY_ENV = "FORAY_ALLOW_ANTHROPIC_LEGACY";
@@ -387,7 +403,19 @@ export function adoptedEnv({ floorSpec, stack, contract, ledgerRows = [] }) {
     if (value === false || value === null || value === undefined) continue;
     const flag = LEVER_ENV[lever];
     if (!flag) throw new Error(`adopted-stack.json turns on lever "${lever}", which has no backend flag mapped yet (LEVER_ENV)`);
-    env[flag.name] = value === true ? flag.on : String(value);
+    if (isPlainObject(value)) {
+      /* A recorded lever ({ mode, ... }): on unless its mode is off; its
+         other fields set the flag's companion variables. */
+      if (!leverIsOn(value)) continue;
+      env[flag.name] = flag.on;
+      for (const [field, name] of Object.entries(flag.companions ?? {})) if (value[field] !== undefined) env[name] = String(value[field]);
+    } else {
+      env[flag.name] = value === true ? flag.on : String(value);
+    }
+    for (const field of flag.requires ?? []) {
+      const name = flag.companions[field];
+      if (env[name] === undefined) throw new Error(`adopted-stack.json turns on lever "${lever}" without its ${field} (${name}); give the lever as recorded, e.g. { "mode": ..., "${field}": ... }`);
+    }
   }
   return env;
 }

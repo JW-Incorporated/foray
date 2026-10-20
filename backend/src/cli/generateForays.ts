@@ -6,7 +6,14 @@ import { randomUUID } from "crypto";
 import { runForayPipeline, RefusedPartialError, type NarrationActTiming, type PipelineTopicDecision, type RunPipelineOutcome } from "../generation/runPipeline";
 import type { SpineReask } from "../generation/buildSpine";
 import { spineBestOfLever } from "../generation/bestOfSpine";
-import { joinCheckpointVariant, readSelfCritique, selfCritiqueLever, type SelfCritiqueLever, type SelfCritiqueTotals } from "../generation/selfCritique";
+import {
+  joinCheckpointVariant,
+  readSelfCritique,
+  selfCritiqueLever,
+  selfCritiqueVariant,
+  type SelfCritiqueLever,
+  type SelfCritiqueTotals
+} from "../generation/selfCritique";
 import type { SpineSelectionRecord } from "../generation/SpineBuilder";
 import type { SpineRuntime } from "../generation/tierRuntime";
 import { FileTranscriptCueProvider, loadTranscriptArchive, type TranscriptDigestEntry } from "../generation/transcriptArchiveLookup";
@@ -1327,8 +1334,16 @@ export async function generateOneCandidate(
   });
   const checkpointStore = new FileCheckpointStore(path.resolve(args.out), fingerprint);
   /* GV-62: what a kept checkpoint is stamped with, and what a seed is
-     checked against. */
-  const forkStamp = checkpointForkStamp({ prompt: spec.prompt, duration: request.duration, topic: spec.topic, flags, routing });
+     checked against. GV-124 (#1413 item 8): with the self-critique, so a seed
+     built under another self-critique forks only from narrate or earlier. */
+  const forkStamp = checkpointForkStamp({
+    prompt: spec.prompt,
+    duration: request.duration,
+    topic: spec.topic,
+    flags,
+    routing,
+    selfCritique: selfCritiqueVariant(selfCritique) ?? null
+  });
   if (args.noResume) checkpointStore.discard(checkpointKey);
   /* GV-62: arm B's fork, before the resume check below reads the file. */
   const seededFrom =
@@ -1513,7 +1528,12 @@ export async function generateOneCandidate(
   let timeline: DeliveryTimeline;
   for (;;) {
     /* GV-01: a fresh log per attempt; attempt numbers are 1-based, and the
-       context's `resumeAttempt` counts the resumes before this attempt. */
+       context's `resumeAttempt` counts the resumes before this attempt.
+       GV-124 (#1413 item 1): the context's `sessionId` is the checkpoint key,
+       the same for every attempt, so the lane scheduler meters one Foray's
+       Spark and second-box seconds against ONE session and its unit caps bind
+       across resumes (not up to 1 + max-resumes times over), and the row's
+       `unitSpend` (keyed by the checkpoint key) reads what was spent. */
     const runLog = new RunLog();
     /* GV-33: one delivery timeline per attempt, like the RunLog — a resumed
        attempt's banked acts fire nothing, so its timeline is its own. */
@@ -1522,7 +1542,7 @@ export async function generateOneCandidate(
     render?.beginAttempt();
     const attempt = resumes.length + 1;
     const runAttempt: typeof runPipeline = (req, opts, pipelineDeps) =>
-      runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length }, () => runPipeline(req, opts, pipelineDeps)));
+      runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length, sessionId: checkpointKey }, () => runPipeline(req, opts, pipelineDeps)));
     try {
       /* The machine this driver runs on holds the transcript bodies (data-local/,
          gitignored), so §4.5 tier 2 gets the real cue provider. On a checkout

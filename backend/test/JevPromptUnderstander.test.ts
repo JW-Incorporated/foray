@@ -16,6 +16,7 @@ import { FallbackJudgeClient, HttpJevClient, parseJevReply } from "../src/genera
 import { RoutingConfigError, describeStageAssignments } from "../src/config/stageRouting";
 import { __setChatProviderForTests } from "../src/generation/chat/providerRegistry";
 import { BudgetExceededError, BudgetGuard } from "../src/cost/budgetGuard";
+import { UnitBudgetExceededError, UnitBudgetStopError } from "../src/cost/unitBudget";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import { runForayPipeline } from "../src/generation/runPipeline";
 import { checkpointFingerprint } from "../src/generation/checkpoint";
@@ -195,6 +196,21 @@ describe("GV-49: JevPromptUnderstander.assessClarity", () => {
     expect(calls.clarity).toBe(1);
   });
 
+  /* GV-124 (#1413 item 3). MUTATION THAT KILLS THIS: re-throw
+     findBudgetError only (the GV-90 catch). Ran it: red (the jevCalls cap
+     is swallowed into a fallback call). */
+  it("a jevCalls UnitBudgetExceededError propagates, bare or wrapped, and the fallback is not asked", async () => {
+    const { understander: fallback, calls } = countingFallback();
+    const capped = new UnitBudgetExceededError("session-gv49", "jevCalls", 250, 1, 250);
+    const unitStop = { ask: async (): Promise<JevResult> => Promise.reject(capped) };
+    const u = new JevPromptUnderstander(unitStop, fallback, CLARITY_THRESHOLDS, freshGuard().guard);
+    await expect(u.assessClarity("Mercury", CTX)).rejects.toBe(capped);
+    const wrapped = { ask: async (): Promise<JevResult> => Promise.reject(new Error("pool", { cause: capped })) };
+    const w = new JevPromptUnderstander(wrapped, fallback, CLARITY_THRESHOLDS, freshGuard().guard);
+    await expect(w.assessClarity("Mercury", CTX)).rejects.toThrow("pool");
+    expect(calls.clarity).toBe(0);
+  });
+
   /* MUTATION THAT KILLS THIS: ask the raw client instead of the metered one.
      Ran: red (no cost event). */
   it("meters the Jev ask through the budget guard with the call's user and session", async () => {
@@ -335,6 +351,20 @@ describe("GV-49: runForayPipeline carries the decision and resumes old checkpoin
 
     const resumed = await runForayPipeline(request, { userId: "u", checkpointKey: KEY }, { understander: refusing, checkpoint: store });
     expect(resumed).toMatchObject({ outcome: "needs-clarification", clarityDecidedBy: "fallback" });
+  });
+
+  /* GV-124 (#1413 item 3). MUTATION THAT KILLS THIS: re-throw
+     findBudgetError only in JevPromptUnderstander. Ran it: red (the run
+     degrades to the fallback's clarity verdict and goes on). */
+  it("a jevCalls cap hit in the clarity check stops the run at the understand stage", async () => {
+    const { understander: fallback, calls } = countingFallback();
+    const capped = new UnitBudgetExceededError("gv124", "jevCalls", 250, 1, 250);
+    const understander = new JevPromptUnderstander({ ask: async (): Promise<JevResult> => Promise.reject(capped) }, fallback, CLARITY_THRESHOLDS, freshGuard().guard);
+    const err = await runForayPipeline(request, { userId: "u" }, { understander }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UnitBudgetStopError);
+    expect((err as UnitBudgetStopError).stage).toBe("understand");
+    expect((err as UnitBudgetStopError).unit).toBe("jevCalls");
+    expect(calls.clarity).toBe(0);
   });
 
   it("an understand checkpoint banked without clarityDecidedBy still parses, and the outcome has no such key", async () => {
