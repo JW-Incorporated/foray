@@ -2027,6 +2027,237 @@
           "slot": "the-fork-is-a-repeated-choice"
         }
       ]
+    },
+    {
+      "id": "asteroids-flagship-1",
+      "kind": "deep-dive",
+      "title": "The rock that ended the dinosaurs, and the ones we are chasing now",
+      "topic": "space/astronomy",
+      "status": "draft",
+      "summary": "Nine scientists on the hour the dinosaurs died, the asteroids we visit now, and the next one.",
+      "runtime_sec": 1917.82,
+      "source_doc": "docs/curation/asteroids-foray-assembly.md",
+      "label_prefixes": {
+        "SMIT": "geology-bites--jan-smit-on-resolving-a-single-hour-of-the-cataclysm-that",
+        "MARSH": "geology-bites--john-marshall-on-the-riddle-of-the-mass-extinction-360",
+        "ERNST": "geology-bites--richard-ernst-on-large-igneous-provinces",
+        "LEV": "geology-bites--hal-levison-on-the-mission-to-jupiter-s-trojan-asteroids",
+        "CON": "geology-bites--harold-c-connolly-jr-on-bringing-an-asteroid-sample-back-to",
+        "RUS": "geology-bites--sara-russell-on-what-the-asteroids-can-tell-us-about-the",
+        "OH": "being-an-engineer--s1e58-nasa-systems-engineering-and-sending-robots-to-space",
+        "WEISS": "geology-bites--ben-weiss-on-the-mission-to-psyche",
+        "ELK": "geology-bites--lindy-elkins-tanton-on-the-origin-of-earth-s-water"
+      },
+      "slots": [
+        {
+          "id": "the-fingerprint",
+          "title": "A fingerprint in the clay"
+        },
+        {
+          "id": "the-hour",
+          "title": "The first hour, read from a fish"
+        },
+        {
+          "id": "not-alone",
+          "title": "Did the rock act alone?"
+        },
+        {
+          "id": "what-hit-us",
+          "title": "What the rocks are, and fetching one"
+        },
+        {
+          "id": "a-world-of-metal",
+          "title": "A world made of metal"
+        },
+        {
+          "id": "could-it-happen-again",
+          "title": "Could it happen again?"
+        }
+      ],
+      "items": [
+        {
+          "type": "narration",
+          "id": "prelude",
+          "script": "Sixty-six million years ago, the age of the dinosaurs ended in a single terrible day. How can anyone know what happened that day? What actually hit us? And is anything like it still out there? Nine scientists answer, in clips from two podcasts, Geology Bites and Being an Engineer. This voice, linking them together, is synthetic, and its words were written with the help of AI. Treat it as a guide, and go to the full episodes for the real thing. They're all listed in the show notes.",
+          "mode": "marker",
+          "slot": "the-fingerprint"
+        },
+        {
+          "type": "narration",
+          "id": "into-smit-1",
+          "script": "The first clue was a thin layer of clay, the same in Italy, in Denmark and under the Pacific. Jan Smit, a geologist in Amsterdam, was one of the first to read it. He's talking to Oliver Strimpel, the host of Geology Bites.",
+          "mode": "frame",
+          "slot": "the-fingerprint"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fingerprint",
+          "label": "SMIT-1",
+          "segment_id": "geology-bites--jan-smit-on-resolving-a-single-hour-of-the-cataclysm-that#266",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-marshall",
+          "script": "That was Jan Smit, and there's a lot more of him in his Geology Bites episode, linked in the show notes. So something enormous hit. But how does one rock kill animals on the far side of the world? John Marshall studies mass extinctions at the University of Southampton. Same show, his own episode.",
+          "mode": "frame",
+          "slot": "the-fingerprint"
+        },
+        {
+          "type": "segment",
+          "slot": "the-fingerprint",
+          "label": "MARSH-1",
+          "segment_id": "geology-bites--john-marshall-on-the-riddle-of-the-mass-extinction-360#65",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-smit-2",
+          "script": "John Marshall. His full episode is about an extinction that no rock can explain, and it's well worth your time. Back to Jan Smit. In twenty nineteen, a fossil site in North Dakota called Tanis put a clock on that falling debris. Tanis is three thousand kilometres from the crater. Listen for what turned up inside the fish.",
+          "mode": "patch",
+          "slot": "the-hour"
+        },
+        {
+          "type": "segment",
+          "slot": "the-hour",
+          "label": "SMIT-2",
+          "segment_id": "geology-bites--jan-smit-on-resolving-a-single-hour-of-the-cataclysm-that#618",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-ernst",
+          "script": "Jan Smit again, from Geology Bites. Search the show for his name to hear the rest of that day. So, one rock. Or was it? Around the same time, a huge stretch of India was being buried under lava, flow after flow. Richard Ernst wrote the textbook on these lava floods, and he's on Geology Bites too.",
+          "mode": "frame",
+          "slot": "not-alone"
+        },
+        {
+          "type": "segment",
+          "slot": "not-alone",
+          "label": "ERNST-1",
+          "segment_id": "geology-bites--richard-ernst-on-large-igneous-provinces#1428",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-levison",
+          "script": "Richard Ernst. His Geology Bites episode on these giant lava fields makes a good next listen. Whatever the volcanoes did, the iridium says a rock arrived. So what are these rocks? Hal Levison leads NASA's Lucy mission, which is on its way to a swarm of them near Jupiter.",
+          "mode": "marker",
+          "slot": "what-hit-us"
+        },
+        {
+          "type": "segment",
+          "slot": "what-hit-us",
+          "label": "LEV-1",
+          "segment_id": "geology-bites--hal-levison-on-the-mission-to-jupiter-s-trojan-asteroids#124",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-connolly-1",
+          "script": "Hal Levison, on Geology Bites. If asteroids are the leftovers of planet building, the obvious move is to go and pick one up. Harold Connolly, a geologist at Rowan University, is a sample scientist on NASA's Osiris-Rex mission. In twenty eighteen, it reached a small asteroid called Bennu.",
+          "mode": "frame",
+          "slot": "what-hit-us"
+        },
+        {
+          "type": "segment",
+          "slot": "what-hit-us",
+          "label": "CON-1",
+          "segment_id": "geology-bites--harold-c-connolly-jr-on-bringing-an-asteroid-sample-back-to#332",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-connolly-2",
+          "script": "Two years of mapping later, the spacecraft went down and touched the surface, for only a few seconds. Here's what came back up.",
+          "mode": "hinge",
+          "slot": "what-hit-us"
+        },
+        {
+          "type": "segment",
+          "slot": "what-hit-us",
+          "label": "CON-2",
+          "segment_id": "geology-bites--harold-c-connolly-jr-on-bringing-an-asteroid-sample-back-to#787",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-russell-1",
+          "script": "Harold Connolly, from his Geology Bites episode, recorded just after that touchdown. The capsule landed in the Utah desert in September twenty twenty-three, carrying about a hundred and twenty grams of Bennu. Not every asteroid is rubble, though. Sara Russell studies meteorites at the Natural History Museum in London. Geology Bites again.",
+          "mode": "patch",
+          "slot": "a-world-of-metal"
+        },
+        {
+          "type": "segment",
+          "slot": "a-world-of-metal",
+          "label": "RUS-1",
+          "segment_id": "geology-bites--sara-russell-on-what-the-asteroids-can-tell-us-about-the#441",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-oh",
+          "script": "Sara Russell, on Geology Bites. We'll hear from her once more before the end. The mission she mentioned is called Psyche. David Oh, an engineer at NASA's Jet Propulsion Laboratory, was its systems engineering manager. He's talking to Aaron Moncur, on a different podcast, Being an Engineer. This was recorded in twenty twenty, before launch.",
+          "mode": "frame",
+          "slot": "a-world-of-metal"
+        },
+        {
+          "type": "segment",
+          "slot": "a-world-of-metal",
+          "label": "OH-1",
+          "segment_id": "being-an-engineer--s1e58-nasa-systems-engineering-and-sending-robots-to-space#1282",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "into-weiss",
+          "script": "That's David Oh. Being an Engineer has hundreds of conversations like that one, on Apple Podcasts and Spotify. So is Psyche the bare core of a broken baby planet, or something stranger? Ben Weiss of MIT is the mission's deputy principal investigator. He was asked for his hunch.",
+          "mode": "frame",
+          "slot": "a-world-of-metal"
+        },
+        {
+          "type": "segment",
+          "slot": "a-world-of-metal",
+          "label": "WEISS-1",
+          "segment_id": "geology-bites--ben-weiss-on-the-mission-to-psyche#1628",
+          "role": "quote"
+        },
+        {
+          "type": "narration",
+          "id": "into-elkins",
+          "script": "Ben Weiss, on Geology Bites, in twenty twenty-two. Psyche's launch then slipped by more than a year. Here is the scientist who leads the whole mission, Lindy Elkins-Tanton, in a later episode of the same show.",
+          "mode": "correction",
+          "slot": "a-world-of-metal"
+        },
+        {
+          "type": "segment",
+          "slot": "a-world-of-metal",
+          "label": "ELK-1",
+          "segment_id": "geology-bites--lindy-elkins-tanton-on-the-origin-of-earth-s-water#1163",
+          "role": "quote"
+        },
+        {
+          "type": "narration",
+          "id": "into-russell-2",
+          "script": "Lindy Elkins-Tanton, on Geology Bites. One question is left, the one we started with. Could it happen again? Back to Sara Russell, and back to Bennu.",
+          "mode": "frame",
+          "slot": "could-it-happen-again"
+        },
+        {
+          "type": "segment",
+          "slot": "could-it-happen-again",
+          "label": "RUS-2",
+          "segment_id": "geology-bites--sara-russell-on-what-the-asteroids-can-tell-us-about-the#1038",
+          "role": "explanation"
+        },
+        {
+          "type": "narration",
+          "id": "close",
+          "script": "Sara Russell, on Geology Bites. So, what hit us? A rock from space, read in iridium, in glass, and in the gills of a fish. Is another one out there? Yes, somewhere, some day. Bennu itself has roughly a one in two thousand seven hundred chance of hitting us. The riskiest single day is in September of twenty one eighty-two. But we are not just waiting. In twenty twenty-two, a NASA spacecraft called DART flew into a small asteroid on purpose, and shortened its orbit by about half an hour. The dinosaurs never had that option. Every voice you heard has a full episode waiting, on Geology Bites and on Being an Engineer. Go and listen to them.",
+          "mode": "marker",
+          "slot": "could-it-happen-again"
+        }
+      ]
     }
   ]
 }
