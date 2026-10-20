@@ -329,7 +329,8 @@ cuts, and §6 explains why that is the lint, not the cuts.
    played. `merge-segments.mjs` (the CI gate) verified all 12 anchors verbatim
    against the publisher transcripts, within its 120 s tolerance, and merged
    them, with 0 rejected.
-4. **One id collision avoided.** The pool already held
+4. **Seams checked on the final file.** After the bake, every one of the 24 item boundaries in the encoded `.m4a` was re-transcribed. Each tape clip ends on its last word and starts on its first ("Before", "In the introduction", "So what happened", "We also see", "Can you explain", "Let's talk", "But the greatest hope", "So you said", "You're the engineering manager", "I probably shouldn't", "What are you working on", "There's something else"). No ad, music bed or show intro sits at any edge.
+5. **One id collision avoided.** The pool already held
    `jan-smit…#609` (608.6–683.8 s, the paddlefish find alone). SMIT-2 starts at
    the next question (617.75 s) instead. It is both a cleaner opening and a
    distinct id (`#618`).
