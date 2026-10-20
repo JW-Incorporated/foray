@@ -161,6 +161,33 @@ export function judgeThreshold(config: GateConfig, name: JudgeThresholdName, jud
 }
 
 /**
+ * GV-103: the gate-table row a calibrated value of threshold `name` for
+ * `judge` goes into (key `<name>.<judge>`, its env variable and default), so
+ * calibrateJudges names the exact variable to set and a follow-up PR copies
+ * the value into the right row. Throws for an unknown judge or threshold,
+ * like `judgeThreshold`.
+ */
+export function judgeThresholdEntry(name: JudgeThresholdName, judge: JudgeId, table: readonly GateTableEntry[] = GATE_TABLE): GateTableEntry<number> {
+  if (!(JUDGE_IDS as readonly string[]).includes(judge)) throw new Error(`judgeThresholdEntry: unknown judge for ${name}`);
+  if (!(JUDGE_THRESHOLD_NAMES as readonly string[]).includes(name)) throw new Error("judgeThresholdEntry: unknown threshold");
+  const entry = table.find((e) => e.key === `${name}.${judge}`);
+  if (!entry) throw new Error(`judgeThresholdEntry: no gate row for ${name}.${judge}`);
+  return entry as GateTableEntry<number>;
+}
+
+/**
+ * GV-103: the `VARIABLE=value` line that sets a calibrated threshold, or
+ * null when the row's own parser refuses `value` (a clip level that is not
+ * an integer 0..4, a probability outside 0..1): a recommendation the gate
+ * could not read is never printed as a setting.
+ */
+export function judgeThresholdSetting(name: JudgeThresholdName, judge: JudgeId, value: number, table: readonly GateTableEntry[] = GATE_TABLE): string | null {
+  const entry = judgeThresholdEntry(name, judge, table);
+  const raw = String(value);
+  return entry.parse.parse(raw) === undefined ? null : `${entry.env}=${raw}`;
+}
+
+/**
  * GV-47's fail-closed reading of one judged answer: true only when the judge
  * answered (`ok`) and question `questionId`'s value reaches the answering
  * judge's threshold `name`: a noul's probability, or a score's level. Every
