@@ -8,7 +8,10 @@ import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWrite
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
-import { CHECKPOINT_VERSION, checkpointFingerprint } from "../src/generation/checkpoint";
+import { CHECKPOINT_VERSION, checkpointFingerprint, checkpointRunVariant } from "../src/generation/checkpoint";
+import { resolvePipelineFlags, type PipelineFlags } from "../src/generation/pipelineFlags";
+import { resolveRouting } from "../src/config/stageRouting";
+import { joinCheckpointVariant, readSelfCritique } from "../src/generation/selfCritique";
 import { BudgetExceededError, BudgetGuard, EpisodeBudgetExceededError, BudgetStopError } from "../src/cost/budgetGuard";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
@@ -618,4 +621,61 @@ describe("GV-79 clip-scores checkpoint", () => {
     expect(v1.clipOnSubjectRate).toBeLessThan(1);
     expect(resumed.tapeRelevance).toEqual(first.tapeRelevance);
   }, 120_000);
+});
+
+/* GV-102 (W4-07): the per-act pipeline banks per-act sourcing (`source:<i>`)
+   and its fingerprint carries the `perAct` variant (GV-15), so a classic
+   checkpoint and a per-act one never resume each other's stages. */
+describe("GV-102: classic and per-act checkpoints do not resume each other", () => {
+  /** The fingerprint the run computes for `flags`, from the same env-read
+   * routing and self-critique the run reads. */
+  const fingerprintFor = (flags: Partial<PipelineFlags>): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      variant: joinCheckpointVariant(checkpointRunVariant(resolvePipelineFlags(flags), resolveRouting()), readSelfCritique())
+    });
+  const PER_ACT = { perActPipeline: true };
+
+  async function countedRun(store: FakeCheckpointStore, flags: Partial<PipelineFlags> | undefined) {
+    const { calls, deps } = countingDeps();
+    const outcome = await runForayPipeline(
+      request,
+      { userId: "u", checkpointKey: KEY, now: () => new Date("2026-09-09T00:00:00Z"), ...(flags ? { flags } : {}) },
+      { ...deps, finalize: fakeFinalize().fn, checkpoint: store }
+    );
+    expect(outcome.outcome).toBe("generated");
+    return calls;
+  }
+
+  /* MUTATION THAT KILLS THIS: drop `if (flags.perActPipeline)
+     parts.push("perAct")` from pipelineFlags.ts checkpointVariant (the two
+     fingerprints agree, so the per-act run resumes the classic run's
+     understand, spine and deepen). Ran it: red. */
+  it("a classic checkpoint is not resumed by a per-act run, and the reverse; each resumes its own", async () => {
+    const classicStore = new FakeCheckpointStore(fingerprintFor({}));
+    await countedRun(classicStore, undefined);
+    expect(classicStore.stageKeys(KEY)).toContain("source");
+    const perActOverClassic = await countedRun(classicStore, PER_ACT);
+    expect(perActOverClassic.understand).toBeGreaterThan(0);
+    expect(perActOverClassic.spine).toBe(1);
+    expect(perActOverClassic.deepen).toBeGreaterThan(0);
+    expect(perActOverClassic.write).toBeGreaterThan(0);
+
+    const perActStore = new FakeCheckpointStore(fingerprintFor(PER_ACT));
+    await countedRun(perActStore, PER_ACT);
+    expect(perActStore.stageKeys(KEY)).toContain("source:0");
+    expect(perActStore.stageKeys(KEY)).not.toContain("source");
+    const classicOverPerAct = await countedRun(perActStore, undefined);
+    expect(classicOverPerAct.spine).toBe(1);
+    expect(classicOverPerAct.deepen).toBeGreaterThan(0);
+    expect(classicOverPerAct.write).toBeGreaterThan(0);
+
+    /* Not vacuous: each store resumes its own kind of run for nothing. */
+    const perActAgain = await countedRun(perActStore, PER_ACT);
+    expect(perActAgain).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+    const classicAgain = await countedRun(classicStore, undefined);
+    expect(classicAgain).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+    expect(fingerprintFor(PER_ACT)).not.toBe(fingerprintFor({}));
+  }, 240_000);
 });
