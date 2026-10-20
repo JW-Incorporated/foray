@@ -370,7 +370,6 @@ def cmd_fetch(a):
 
 
 def cmd_bake(a):
-    import numpy as np
     plan = load_plan(a.plan)
     ff = find_tool("ffmpeg", a.ffmpeg)
     steps = bake_steps(plan, ff, a.cache, load_src_map(a.src_map), a.narr_dir, a.channels, strict=not a.dry_run)
@@ -380,6 +379,7 @@ def cmd_bake(a):
         steps["encode"] = {c: encode_argv(ff, "master.wav", "chapters.ffmeta", f"{plan.get('basename', 'foray')}.{c}", c) for c in ("m4a", "mp3")}
         print(json.dumps(steps, indent=1))
         return 0
+    import numpy as np  # only the real bake needs it; --dry-run runs on a bare python
     nch = channels_of(steps["channels"])
     os.makedirs(a.out, exist_ok=True)
     tmp = os.path.join(a.out, "_tmp.wav")
