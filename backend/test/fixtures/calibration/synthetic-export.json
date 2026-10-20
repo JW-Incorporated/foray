@@ -1,0 +1,155 @@
+{
+  "schema": "foray-calibration-export/1",
+  "key": "0a1b2c3d",
+  "promptId": "synthetic-lighthouse",
+  "forayId": "synthetic-lighthouse-foray",
+  "duration": "short",
+  "subjectSentence": "Lighthouse keeping (how automation ended the keeper's life)",
+  "writtenActs": [
+    {
+      "title": "The keepers of Gull Point",
+      "slots": [
+        {
+          "title": "The light is lit",
+          "beats": [
+            {
+              "sourcing": "narration",
+              "claim": "The Gull Point light was first lit in 1871 and tended every four hours.",
+              "exploration": false,
+              "narration": {
+                "mode": "Patch",
+                "script": "The light at Gull Point was first lit in 1871. Keepers trimmed the wick every four hours.",
+                "sources": [{ "claimText": "first lit in 1871", "publication": "Gull Point history", "contested": false, "quote": "first lit in 1871" }],
+                "pronunciationHints": [],
+                "verified": true,
+                "evidence": [
+                  { "docId": "doc-history", "title": "Gull Point history", "text": "The light at Gull Point was first lit in 1871. The keepers trimmed the wick every four hours through the night." },
+                  { "docId": "doc-empty", "title": "An empty fetch", "text": "" }
+                ]
+              }
+            },
+            {
+              "sourcing": "tape",
+              "claim": "A keeper's grandson remembers the storm log.",
+              "exploration": false,
+              "tape": { "segmentId": "seg-1", "itemId": "show-a--episode-one", "startSec": 10, "endSec": 40, "startAnchor": "my grandfather kept", "endAnchor": "the whole night", "tier": 1, "confidence": "high" },
+              "connectiveNarration": {
+                "mode": "Frame",
+                "script": "The keeper's log records a storm in 1903.",
+                "sources": [{ "claimText": "a storm in 1903", "publication": "Show A", "contested": false, "kind": "tape", "segmentId": "seg-1" }],
+                "pronunciationHints": [],
+                "verified": true,
+                "evidence": [{ "docId": "tape:seg-1", "title": "Show A: Episode one", "text": "My grandfather kept the log, and in 1903 he wrote down a storm that lasted the whole night." }]
+              }
+            }
+          ]
+        },
+        {
+          "title": "Fog and electricity",
+          "beats": [
+            {
+              "sourcing": "narration",
+              "claim": "A fog horn was added after a wreck in 1911.",
+              "exploration": false,
+              "narration": {
+                "mode": "Patch",
+                "script": "Fog signals were added after a wreck in 1911. The horn could be heard for nine miles.",
+                "sources": [{ "claimText": "fog signal after the 1911 wreck", "publication": "Coast survey", "contested": false, "quote": "after the wreck of 1911" }],
+                "pronunciationHints": [],
+                "verified": true,
+                "evidence": [{ "docId": "doc-survey", "title": "Coast survey", "text": "A fog signal was installed after the wreck of 1911; its horn carried nine miles in calm air." }]
+              }
+            },
+            {
+              "sourcing": "narration",
+              "claim": "Electric lamps replaced the wick in 1934.",
+              "exploration": false,
+              "narration": {
+                "mode": "Carry",
+                "script": "Electric lamps replaced the oil wick in 1934.",
+                "sources": [{ "claimText": "electric lamps in 1934", "publication": "Coast survey", "contested": false, "quote": "electrified in 1934" }],
+                "pronunciationHints": [],
+                "verified": true,
+                "evidence": [{ "docId": "doc-survey", "title": "Coast survey", "text": "The station was electrified in 1934, and the oil wick was retired." }]
+              }
+            },
+            {
+              "sourcing": "tape",
+              "claim": "The last keeper describes the day the light went automatic.",
+              "exploration": false,
+              "tape": { "segmentId": "seg-2", "itemId": "show-a--episode-two", "startSec": 100, "endSec": 160, "startAnchor": "the day they came", "endAnchor": "and that was that", "tier": 1, "confidence": "medium" }
+            },
+            {
+              "sourcing": "tape",
+              "claim": "The automation crew arrived without warning.",
+              "exploration": false,
+              "tape": { "segmentId": "seg-2", "itemId": "show-a--episode-two", "startSec": 100, "endSec": 160, "startAnchor": "the day they came", "endAnchor": "and that was that", "tier": 1, "confidence": "medium" }
+            }
+          ]
+        },
+        {
+          "title": "The end of keeping",
+          "beats": [
+            {
+              "sourcing": "narration",
+              "claim": "The last keeper retired in 1990.",
+              "exploration": false,
+              "narration": {
+                "mode": "Patch",
+                "script": "The last keeper retired in 1990. He was paid partly in fish.",
+                "sources": [{ "claimText": "retired in 1990", "publication": "Harbour newsletter", "contested": false, "quote": "retired in 1990" }],
+                "pronunciationHints": [],
+                "verified": false,
+                "verifierNotes": "No source says the keeper was paid in fish.",
+                "evidence": [{ "docId": "doc-newsletter", "title": "Harbour newsletter", "text": "The last keeper retired in 1990 after thirty years on the point." }]
+              }
+            },
+            {
+              "sourcing": "narration",
+              "claim": "Gull Point was automated early.",
+              "exploration": false,
+              "narration": {
+                "mode": "Patch",
+                "script": "Gull Point was the first light in the state to be automated.",
+                "sources": [{ "claimText": "automated", "publication": "Harbour newsletter", "contested": false, "quote": "the light was automated" }],
+                "pronunciationHints": [],
+                "verified": false,
+                "verifierNotes": "No source says it was the first in the state.",
+                "evidence": [{ "docId": "doc-newsletter", "title": "Harbour newsletter", "text": "When he retired, the light was automated." }]
+              }
+            },
+            {
+              "sourcing": "narration",
+              "claim": "What came next for the point.",
+              "exploration": false,
+              "narration": {
+                "mode": "Hinge",
+                "script": "We move on to what came next for the point.",
+                "sources": [],
+                "pronunciationHints": [],
+                "verified": false,
+                "unverifiedReason": "no-evidence"
+              }
+            },
+            {
+              "sourcing": "narration",
+              "claim": "The keeper's house became a museum.",
+              "exploration": false,
+              "carriedBy": { "slot": 2, "beat": 0 }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tapeRelevance": [
+    { "actIndex": 0, "slotIndex": 0, "beatIndex": 1, "claim": "A keeper's grandson remembers the storm log.", "itemId": "show-a--episode-one", "segmentId": "seg-1", "tier": 1, "taxonomyNodeIds": ["history/maritime"], "families": ["history"], "forayTopic": "history/maritime", "forayFamily": "history", "onTopic": true },
+    { "actIndex": 0, "slotIndex": 1, "beatIndex": 2, "claim": "The last keeper describes the day the light went automatic.", "itemId": "show-a--episode-two", "segmentId": "seg-2", "tier": 1, "taxonomyNodeIds": ["history/maritime"], "families": ["history"], "forayTopic": "history/maritime", "forayFamily": "history", "onTopic": true },
+    { "actIndex": 0, "slotIndex": 1, "beatIndex": 3, "claim": "The automation crew arrived without warning.", "itemId": "show-a--episode-two", "segmentId": "seg-2", "tier": 1, "taxonomyNodeIds": ["history/maritime"], "families": ["history"], "forayTopic": "history/maritime", "forayFamily": "history", "onTopic": true, "mergedInto": { "slot": 1, "beat": 2 } }
+  ],
+  "tapePointers": [
+    { "actIndex": 0, "slotIndex": 0, "beatIndex": 1, "tape": { "segmentId": "seg-1", "itemId": "show-a--episode-one", "startSec": 10, "endSec": 40, "startAnchor": "my grandfather kept", "endAnchor": "the whole night", "tier": 1, "confidence": "high" } },
+    { "actIndex": 0, "slotIndex": 1, "beatIndex": 2, "tape": { "segmentId": "seg-2", "itemId": "show-a--episode-two", "startSec": 100, "endSec": 160, "startAnchor": "the day they came", "endAnchor": "and that was that", "tier": 1, "confidence": "medium" } },
+    { "actIndex": 0, "slotIndex": 1, "beatIndex": 3, "tape": { "segmentId": "seg-2", "itemId": "show-a--episode-two", "startSec": 100, "endSec": 160, "startAnchor": "the day they came", "endAnchor": "and that was that", "tier": 1, "confidence": "medium" } }
+  ]
+}

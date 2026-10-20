@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { anthropicRuleViolation, batchReportDocument, batchSummaryText, corpusReport, generateOneCandidate, main, parseArgs, partialCandidateFilename, candidateFilename, readPromptSet, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
+import { anthropicRuleViolation, batchReportDocument, batchSummaryText, calibrationExportFilename, corpusReport, generateOneCandidate, main, parseArgs, partialCandidateFilename, candidateFilename, readPromptSet, type CliArgs, type ReportEntry } from "../src/cli/generateForays";
+import { extractPages, parseCalibrationExport } from "../src/generation/judgeCalibration";
 import { corpusCoverage, corpusFingerprint, corpusSafeKey } from "../src/generation/transcriptCorpus";
 import { TRANSCRIPT_TEXT_INDEX_VERSION } from "../src/generation/transcriptTextIndex";
 import { createHash } from "node:crypto";
@@ -1635,5 +1636,80 @@ describe("GV-81 — --lane on the report row, the candidate and the job row", ()
     const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { lane: "on-demand", maxResumes: 0 }), { cueProvider, runPipeline: failing });
     expect(result.entry?.outcome).toBe("error");
     expect(result.entry?.lane).toBe("on-demand");
+  });
+});
+
+describe("GV-103 — --keep-calibration writes the run data judge calibration needs", () => {
+  let dir: string;
+  let calDir: string;
+  const PROMPT = "tell me the whole story of grilling and barbecue please";
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv103-"));
+    calDir = path.join(dir, "data-local", "calibration");
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("parses --keep-calibration under data-local/, adds nothing without it, and refuses a path outside it, no value, or --dry-run", () => {
+    /* MUTATION THAT KILLS THIS: drop the dataLocalRefusal check in
+       parseKeepCalibrationFlag. A path outside data-local/ parses. Ran it: red. */
+    expect(parseArgs(["--prompts", "p.json", "--keep-calibration", "data-local/calibration"]).keepCalibration).toBe("data-local/calibration");
+    expect("keepCalibration" in parseArgs(["--prompts", "p.json"])).toBe(false);
+    expect(() => parseArgs(["--prompts", "p.json", "--keep-calibration", "calibration"])).toThrow(/--keep-calibration must be under data-local\//);
+    expect(() => parseArgs(["--prompts", "p.json", "--keep-calibration", "data-local/../docs"])).toThrow(/must be under data-local\//);
+    expect(() => parseArgs(["--prompts", "p.json", "--keep-calibration"])).toThrow(/needs a directory/);
+    expect(() => parseArgs(["--prompts", "p.json", "--keep-calibration", "data-local/c", "--dry-run"])).toThrow(/--dry-run/);
+  });
+
+  it("a built prompt's export holds the written acts, sourcing rows, tape pointers and subject sentence, and no prompt field", async () => {
+    /* MUTATION THAT KILLS THIS: write the export AFTER checkpointStore.discard
+       (the checkpoint is gone, nothing is exported). Ran it: red. */
+    const result = await generateOneCandidate({ prompt: PROMPT, id: "grill-1" }, baseArgs(dir, { keepCalibration: calDir, maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: stubPipeline()
+    });
+    expect(result.entry?.outcome).toBe("generated");
+    const name = calibrationExportFilename(PROMPT);
+    expect(candidateFilename(PROMPT).endsWith(`-${name.replace(/^calibration-/, "")}`)).toBe(true);
+    expect(fs.readdirSync(calDir)).toEqual([name]);
+    const text = fs.readFileSync(path.join(calDir, name), "utf8");
+    const exp = parseCalibrationExport(JSON.parse(text));
+    expect(exp.promptId).toBe("grill-1");
+    expect(exp.writtenActs.length).toBeGreaterThan(0);
+    expect(exp.tapeRelevance.length).toBeGreaterThan(0);
+    expect(exp.tapePointers.length).toBe(exp.tapeRelevance.length);
+    expect(exp.subjectSentence.length).toBeGreaterThan(0);
+    /* No prompt field anywhere in the document. (Its text is another matter
+       here: the stub understander takes the prompt as the intent's subject, so
+       the stub spine, claims and scripts repeat it, exactly as the candidate
+       beside it does; a real run's subject is the spine's, the §9.4 title
+       carve-out. calibrationExportFromStages never reads the understand stage
+       whole, which judgeCalibration.test.ts pins with a raw field.) */
+    const keys = new Set<string>();
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === "object") {
+        for (const [k, x] of Object.entries(v)) {
+          keys.add(k);
+          walk(x);
+        }
+      }
+    };
+    walk(JSON.parse(text));
+    expect(keys.has("prompt")).toBe(false);
+    expect(extractPages(exp).length).toBeGreaterThan(0);
+    /* The checkpoint is still discarded. */
+    expect(fs.readdirSync(dir).filter((f) => f.endsWith(".checkpoint.json"))).toEqual([]);
+  });
+
+  it("without the flag nothing is exported", async () => {
+    const result = await generateOneCandidate({ prompt: PROMPT }, baseArgs(dir, { maxResumes: 0 }), { cueProvider, runPipeline: stubPipeline() });
+    expect(result.entry?.outcome).toBe("generated");
+    expect(fs.existsSync(path.join(dir, "data-local"))).toBe(false);
   });
 });
