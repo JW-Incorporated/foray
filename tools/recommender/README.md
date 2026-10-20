@@ -28,7 +28,7 @@ sample -> prepare -> [ agent | qwen | jev ] -> merge -> agreement -> student -> 
 | embed | `embed.mjs` | RV-12 | Evidence-pack embeddings through the passage-index Embedder. |
 | student | `student.mjs` | RV-14 | Ridge regression from features to the rating vector, with the gate. |
 | predict | `predict.mjs` | RV-25 | The gated student over the ~26k catalogued shows: `data/recommender/ratings-predicted.json`. |
-| client | `build-ratings-client.mjs` | RV-15, RV-30 | The 40 KB client projection `data/recommender/ratings-client.json`, with a `--check` drift test. |
+| client | `build-ratings-client.mjs` | RV-15, RV-30 | The 40 KB client projection `data/recommender/ratings-client.json`, with a `--check` drift test. `--include breadth-top:N\|max` (RV-30) adds the teacher breadth rows of `ratings-breadth.json`, best max-persona fit first, tier `b`, never a curated show's twin, skipping injection_suspected and harassment rows; `max` picks the largest N under the budget. The committed file is `node tools/recommender/build-ratings-client.mjs --include breadth-top:max`, and `--check` needs the same `--include`. |
 | reports | `eval.mjs`, `foray-supply.mjs`, `anomaly.mjs` | RV-21, RV-22, RV-26 | Offline eval against the chart, the Foray supply per persona, and the anomaly and injection audit. |
 
 Scripts land card by card; a row above whose file does not exist yet is planned, not missing. The run loop as the pilot ran it is under "Running a pass" below.
