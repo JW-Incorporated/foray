@@ -26,14 +26,14 @@ sources. Nothing has been uploaded or published.
 |---|---|
 | Segments in the running order | **12** |
 | Tape runtime | **1,666.6 s — 27 min 47 s** |
-| Playback runtime incl. narration | **1,920.3 s** in `data/forays.json` (narration estimated at 17 chars/s); the baked file measures **1,964.6 s — 32 min 45 s** (§7) |
+| Playback runtime incl. narration | **1,920.3 s** in `data/forays.json` (narration estimated at 17 chars/s); the baked file measures **1,965.4 s — 32 min 45 s** (§7) |
 | Mean / median segment | **138.9 s / 134.5 s** |
 | Shortest / longest | 35.0 s / 220.24 s |
 | Interquartile range | 100.73 s (R-7) |
 | Episodes used | **9**, from **2 shows** |
 | Shows | **Geology Bites** (8 episodes, host Oliver Strimpel) and **Being an Engineer** (1 episode, host Aaron Moncur) |
 | Voices | **9 scientists and engineers**, plus the two hosts asking questions |
-| Narration | **14 items, 4,312 characters**: 254 s estimated at 17 chars/s, **286.7 s as rendered (14.6 % of the baked file)**; written by AI, voiced by Kokoro-82M `af_heart` |
+| Narration | **14 items, 4,312 characters**: 254 s estimated at 17 chars/s, **287.5 s as rendered (14.6 % of the baked file)**; written by AI, voiced by Kokoro-82M `af_heart` |
 | Segments merged | `seg-2026-10-19-asteroids` (11) and `seg-2026-10-19-asteroids-bae` (1); 0 rejected |
 | `transcript_source` | **`publisher`** everywhere |
 | Ad safety | All 9 enclosures downloaded and measured: delivered duration = feed duration to within 1 s, so there are no inserted ads (§6) |
@@ -208,7 +208,7 @@ listener's question ahead of the tape.
 
 The founder asked for narrator-led "where possible, but not if that makes the
 listening quality garbage". The decision is **tape-led with a visible
-narrator**, at 14.6 % of the baked file (286.7 s of 1,964.6 s). The reasons:
+narrator**, at 14.6 % of the baked file (287.5 s of 1,965.4 s). The reasons:
 
 - The only voice that can be rendered locally and centrally is Kokoro-82M
   `af_heart`, the current central render profile (`kokoro-fp32-aac64-v1`). It is
@@ -332,7 +332,7 @@ cuts, and §6 explains why that is the lint, not the cuts.
    played. `merge-segments.mjs` (the CI gate) verified all 12 anchors verbatim
    against the publisher transcripts, within its 120 s tolerance, and merged
    them, with 0 rejected.
-4. **Seams checked on the final file.** After the bake, every one of the 24 item boundaries in the encoded `.m4a` was re-transcribed. Each tape clip ends on its last word and starts on its first ("Before", "In the introduction", "So what happened", "We also see", "Can you explain", "Let's talk", "But the greatest hope", "So you said", "You're the engineering manager", "I probably shouldn't", "What are you working on", "There's something else"). No ad, music bed or show intro sits at any edge.
+4. **Seams checked on the encoded file.** Every one of the 24 item boundaries in the encoded `.m4a` was re-transcribed. The check ran on the bake before the last narration rewrite; that rewrite changed narration only, so every clip edge is byte-for-byte the same cut. Each tape clip ends on its last word and starts on its first ("Before", "In the introduction", "So what happened", "We also see", "Can you explain", "Let's talk", "But the greatest hope", "So you said", "You're the engineering manager", "I probably shouldn't", "What are you working on", "There's something else"). No ad, music bed or show intro sits at any edge.
 5. **One id collision avoided.** The pool already held
    `jan-smit…#609` (608.6–683.8 s, the paddlefish find alone). SMIT-2 starts at
    the next question (617.75 s) instead. It is both a cleaner opening and a
@@ -359,9 +359,9 @@ AAC 128 kbps plus MP3 128 kbps with embedded chapters.
 
 | measured | `.m4a` (AAC 128 kbps stereo) | `.mp3` (128 kbps CBR stereo) |
 |---|---|---|
-| duration | 1,964.6 s (32:45) | 1,964.6 s |
+| duration | 1,965.4 s (32:45) | 1,965.4 s |
 | integrated loudness | **−16.1 LUFS** | −16.5 LUFS |
-| true peak | **−3.9 dBTP** | −4.5 dBTP |
+| true peak | **−4.0 dBTP** | −4.6 dBTP |
 | loudness range | 3.3 LU | 3.3 LU |
 | chapters | 14, embedded | 14, embedded (ID3 CHAP) |
 
@@ -389,14 +389,14 @@ Chapters (also in `chapters.txt` and the show notes):
 | 0:00 | Introduction |
 | 0:32 | Jan Smit: a fingerprint in the clay |
 | 4:28 | John Marshall: how an impact kills |
-| 7:10 | Jan Smit: a fish from the first hour |
+| 7:11 | Jan Smit: a fish from the first hour |
 | 11:11 | Richard Ernst: did the rock act alone? |
-| 13:19 | Hal Levison: the leftovers of planet building |
-| 14:56 | Harold Connolly: arriving at Bennu |
+| 13:20 | Hal Levison: the leftovers of planet building |
+| 14:55 | Harold Connolly: arriving at Bennu |
 | 17:04 | Harold Connolly: the grab |
-| 19:55 | Sara Russell: asteroids made of metal |
-| 22:25 | David Oh: a world made of metal |
-| 26:04 | Ben Weiss: a hunch about Psyche |
+| 19:54 | Sara Russell: asteroids made of metal |
+| 22:24 | David Oh: a world made of metal |
+| 26:03 | Ben Weiss: a hunch about Psyche |
 | 27:22 | Lindy Elkins-Tanton: on the way |
 | 28:11 | Sara Russell: could it happen again? |
 | 32:00 | Closing: what hit us, and what we can do now |
@@ -456,3 +456,11 @@ Four honest weaknesses:
   answered by the narrator (DART), not by tape, because no held episode covers
   DART. Russell's segment answers "could it happen again?" in her own words,
   and that is the question the opening asks.
+
+---
+
+## 9. What this needs from the founder
+
+1. **Listen** to `C:/w/helpers/flagship/listen/the-rock-that-ended-the-dinosaurs.m4a`, then decide whether it publishes as a Foray, as a podcast episode, or neither.
+2. **The seed budget.** `tools/mobile/prepare-webdir.mjs` is a governed path, and this PR raises its `data/forays.json` budget from 44 to 56 KB (the reason is written at `PROJECTED_DATA`). `path-policy` stays red until a founder applies `founder-approved`. The alternative is a seed rule that carries curated drafts by reference. The next flagship will need that rule anyway.
+3. **The narration voice.** Kokoro `af_heart` is serviceable but plainly synthetic (§7). A human or premium read of the 14 scripts would lift this episode more than any re-cut.
