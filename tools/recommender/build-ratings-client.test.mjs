@@ -74,7 +74,7 @@ function tempDir() {
 
 test("REAL DATA: the committed client file is the builder's output", () => {
   // mutation: in runBuild's check branch, `if (onDisk !== text)` -> `if (false)`
-  const res = runBuild({ check: true });
+  const res = runBuild({ check: true, breadthTop: "max" });
   assert.equal(res.code, 0, res.message);
 
   const dir = tempDir();
@@ -87,17 +87,17 @@ test("REAL DATA: the committed client file is the builder's output", () => {
     assert.notEqual(edited, committed);
     const out = path.join(dir, "ratings-client.json");
     writeFileSync(out, edited);
-    const stale = runBuild({ check: true, outPath: out });
+    const stale = runBuild({ check: true, breadthTop: "max", outPath: out });
     assert.equal(stale.code, 1, "one edited digit is drift");
     assert.match(stale.message, /stale/);
     assert.equal(readFileSync(out, "utf8"), edited, "--check never rewrites the file");
 
     /* The CLI itself: exit 0 on the committed file, exit 1 on the edited copy
        (the Windows entrypoint-guard class, tools/entrypoint-guards.test.mjs). */
-    const ok = spawnSync(process.execPath, [SCRIPT, "--check"], { encoding: "utf8" });
+    const ok = spawnSync(process.execPath, [SCRIPT, "--check", "--include", "breadth-top:max"], { encoding: "utf8" });
     assert.equal(ok.status, 0, ok.stderr);
     assert.match(ok.stdout, /up to date/);
-    const bad = spawnSync(process.execPath, [SCRIPT, "--check", "--out", out], { encoding: "utf8" });
+    const bad = spawnSync(process.execPath, [SCRIPT, "--check", "--include", "breadth-top:max", "--out", out], { encoding: "utf8" });
     assert.equal(bad.status, 1, bad.stdout);
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -237,4 +237,79 @@ test("an invalid ratings.json is refused, nothing written", () => {
   const bad = ratingsDoc({ s1: ratedShow({ personas: { alpha: 4 } }) });
   bad.shows.s1.personas.alpha = [4, 0.4]; // two slots, not ten
   assert.throws(() => buildRatingsClient(bad, catalogDoc([{ show_id: "s1" }]), PROFILES), /ratings\.json is invalid/);
+});
+
+/* ---------- RV-30: teacher breadth rows ---------- */
+
+function breadthFixture() {
+  const ratings = ratingsDoc({ "curated-a": ratedShow({ personas: { alpha: 4, gamma: 2 } }) });
+  const catalog = catalogDoc([{ show_id: "curated-a", apple_collection_id: 111 }]);
+  const flagged = ratedShow({ personas: { alpha: 5, gamma: 5 } });
+  flagged.flags.injection_suspected = true;
+  const breadth = ratingsDoc({
+    "111": ratedShow({ personas: { alpha: 5, gamma: 5 } }), // the curated show's breadth twin
+    "222": ratedShow({ personas: { alpha: 5, gamma: 1 } }),
+    "333": ratedShow({ personas: { alpha: 2, gamma: 3 }, explicit: true }),
+    "444": ratedShow({ personas: { alpha: 1, gamma: 1 } }),
+    "555": flagged,
+  });
+  return { ratings, catalog, breadth };
+}
+
+test("breadth-top:N adds teacher breadth rows with tier b and stays under budget", () => {
+  // mutation: in runBuild, delete the `if (bytes > budgetBytes) { return ... }` block
+  // (or: `t: CLIENT_BREADTH_TIER_CODE` -> `t: "e"`)
+  const { ratings, catalog, breadth } = breadthFixture();
+  const doc = buildRatingsClient(ratings, catalog, PROFILES, { breadth, breadthTop: 2 });
+  assert.deepEqual(Object.keys(doc.shows).sort(), ["222", "333", "curated-a"], "the top 2 by max fit; flagged and twin rows skipped");
+  assert.equal(doc.shows["222"].t, "b");
+  assert.equal(doc.shows["222"].f, "51");
+  assert.equal(doc.shows["333"].x, 1);
+  assert.equal(doc.shows["curated-a"].t, "s", "the curated row keeps its own tier");
+  assert.deepEqual(validateClientFile(doc), []);
+
+  const dir = tempDir();
+  try {
+    const files = {
+      ratingsPath: path.join(dir, "ratings.json"),
+      catalogPath: path.join(dir, "catalog.json"),
+      profilesPath: path.join(dir, "profiles.json"),
+      breadthPath: path.join(dir, "breadth.json"),
+      outPath: path.join(dir, "ratings-client.json"),
+    };
+    writeFileSync(files.ratingsPath, JSON.stringify(ratings));
+    writeFileSync(files.catalogPath, JSON.stringify(catalog));
+    writeFileSync(files.profilesPath, JSON.stringify(PROFILES));
+    writeFileSync(files.breadthPath, JSON.stringify(breadth));
+    const base = runBuild({ ...files, outPath: path.join(dir, "base.json") });
+    const baseBytes = statSync(path.join(dir, "base.json")).size;
+    assert.equal(base.code, 0, base.message);
+
+    // An explicit N that does not fit refuses and writes nothing.
+    const over = runBuild({ ...files, breadthTop: 2, budgetBytes: baseBytes + 10 });
+    assert.equal(over.code, 1);
+    assert.match(over.message, /over the \d+ B budget/);
+    assert.equal(existsSync(files.outPath), false, "nothing written over budget");
+
+    // "max" picks the largest N that fits: room for exactly one more row.
+    const one = runBuild({ ...files, breadthTop: 1 });
+    const oneBytes = statSync(files.outPath).size;
+    assert.equal(one.code, 0, one.message);
+    const max = runBuild({ ...files, breadthTop: "max", budgetBytes: oneBytes });
+    assert.equal(max.code, 0, max.message);
+    assert.match(max.message, /N=1 of 3 eligible/);
+    assert.deepEqual(Object.keys(JSON.parse(readFileSync(files.outPath, "utf8")).shows).sort(), ["222", "curated-a"]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a curated show is never duplicated by its breadth twin", () => {
+  // mutation: in breadthRows, delete `if (curated.has(key)) continue;`
+  const { ratings, catalog, breadth } = breadthFixture();
+  const doc = buildRatingsClient(ratings, catalog, PROFILES, { breadth, breadthTop: 10 });
+  assert.ok(!("111" in doc.shows), "the twin keyed by the curated apple_collection_id is absent");
+  assert.equal(doc.shows["curated-a"].f, "42", "the curated row is the one kept");
+  assert.ok(!("555" in doc.shows), "an injection_suspected breadth row is excluded");
+  assert.equal(Object.keys(doc.shows).filter((k) => doc.shows[k].t === "b").length, 3);
 });

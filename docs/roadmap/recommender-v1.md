@@ -94,7 +94,7 @@ This roadmap turns the directive into 30 cards. The research changed its shape i
 | RV-28 | `player/feedback-events.js`: pure completion and follow payload builders (effective duration, buckets, censoring) | 5 | S | RV-23 | no | no | |
 | RV-29 | Persona pruning to v1.1 from the gold-set differentiation numbers | 5 | XS | RV-19 | no | no | **orchestrator step** |
 | RV-26 | Anomaly and injection audit: ratings far from the student or the node mean, reasons with instruction-like text | 6 | XS | RV-25 | no | no | |
-| RV-30 | Client projection v2: budgeted breadth top-N from predicted ratings | 6 | XS | RV-15, RV-25 | no | no | |
+| RV-30 | Client projection v2: budgeted breadth top-N from teacher breadth ratings (ratings-breadth.json) | 6 | XS | RV-15, RV-25 | no | no | |
 | RV-27 | `app.js` wiring behind `RECOMMENDER_PRIOR = false`: fetch, mixture, seam A/B/C blend, event cases | parked | S | RV-15, RV-16, RV-17, RV-23, RV-24 | no | **yes** | parked: revamp or exemption |
 
 ## Waves
@@ -825,16 +825,16 @@ What is parked on each: RV-17 follows (item 1); RV-27's emission cases (items 2,
 
 **Tests** (FLOORS 4): `"a 2-point teacher-student gap is an anomaly"` (mutation: threshold 10); `"node-mean outliers are flagged"` (mutation: skip); `"a reason with an injection pattern is flagged"` (mutation: empty patterns); `"the per-batch table counts correctly on a fixture"` (mutation: count per show).
 
-#### RV-30 · Client projection v2: budgeted breadth top-N from predicted ratings
+#### RV-30 · Client projection v2: budgeted breadth top-N from teacher breadth ratings (ratings-breadth.json)
 
-- **Wave:** 6 · **Size:** XS · **Depends on:** RV-15, RV-25
+- **Wave:** 6 · **Size:** XS · **Depends on:** RV-15, RV-33 (was RV-25; re-scoped, see below)
 - **Covers:** D8; the client's "Similar shows" seed can be a breadth show (audit seam C)
 
-**Design.** `build-ratings-client.mjs --include breadth-top:N`: add the N breadth shows (keyed by `apple_collection_id` string, the key `state.breadthShowCache` uses) with the highest max-persona `fit` in `ratings-predicted.json`, under the same 40 KB budget (expect N around 1,000 at ~25 B per row; the builder prints the N that fits and refuses over budget). The `t` tier digit distinguishes predicted (`p`) from teacher rows.
+**Design.** `build-ratings-client.mjs --include breadth-top:N`: add the N breadth shows (keyed by `apple_collection_id` string, the key `state.breadthShowCache` uses) with the highest max-persona `fit` in the **teacher** file `data/recommender/ratings-breadth.json` (RV-33), under the same 40 KB budget. **Re-scoped** on #1380 issuecomment-6283935185: the student failed its gate twice, so there is no `ratings-predicted.json` to project. The `t` tier digit marks these rows `b` (breadth-teacher). `N` is a positive integer or `max`; `max` picks the largest N that fits and prints it, an explicit N over budget exits 1 and writes nothing. Breadth rows flagged `injection_suspected` or `harassment` are skipped (the gold projection has no such policy). Committed with `node tools/recommender/build-ratings-client.mjs --include breadth-top:max` (N=579 of 1,673 eligible, 40,919 B; about 49 B a row, not 25, because the keys are 9-10 digit ids and `f` is 13 digits). `--check` must be given the same `--include` to compare.
 
-**Files edited:** `tools/recommender/build-ratings-client.mjs`, `tools/recommender/build-ratings-client.test.mjs` (+2, floor 5 -> 7), `data/recommender/ratings-client.json`, `test/suite-integrity.test.js`.
+**Files edited:** `tools/recommender/build-ratings-client.mjs`, `tools/recommender/build-ratings-client.test.mjs` (+2), `tools/recommender/schema.mjs` (the `b` tier code), `data/recommender/ratings-client.json`, `test/suite-integrity.test.js`.
 
-**Tests:** `"breadth-top:N adds predicted rows with tier p and stays under budget"` (mutation: budget ignored); `"a curated show is never duplicated by its breadth twin"` (mutation: skip the `apple_collection_id` join).
+**Tests:** `"breadth-top:N adds teacher breadth rows with tier b and stays under budget"` (mutation: budget ignored); `"a curated show is never duplicated by its breadth twin"` (mutation: skip the `apple_collection_id` join).
 
 ### Parked
 

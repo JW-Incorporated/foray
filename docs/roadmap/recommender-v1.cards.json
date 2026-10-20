@@ -460,19 +460,20 @@
     },
     {
       "id": "RV-30",
-      "title": "Client projection v2: budgeted breadth top-N from predicted ratings",
+      "title": "Client projection v2: budgeted breadth top-N from teacher breadth ratings (ratings-breadth.json)",
       "wave": 6,
       "size": "XS",
       "depends_on": ["RV-15", "RV-25"],
       "files": [
         "tools/recommender/build-ratings-client.mjs",
         "tools/recommender/build-ratings-client.test.mjs",
+        "tools/recommender/schema.mjs",
         "data/recommender/ratings-client.json",
         "test/suite-integrity.test.js"
       ],
       "governed": false,
       "ui_touch": false,
-      "notes": "--include breadth-top:N under the same 40 KB budget; tier digit p for predicted rows; curated shows never duplicated by their breadth twin. build-ratings-client FLOORS 5 -> 7."
+      "notes": "Re-scoped on #1380 issuecomment-6283935185 (the student failed its gate): rows come from the teacher ratings-breadth.json. --include breadth-top:N|max under the same 40 KB budget; tier digit b for breadth-teacher rows; injection_suspected and harassment rows skipped; curated shows never duplicated by their breadth twin. build-ratings-client FLOORS +2."
     },
     {
       "id": "RV-27",
