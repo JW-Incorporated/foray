@@ -10,8 +10,12 @@ import {
   candidateFilename,
   mergeReportEntries,
   readPriorReportEntries,
+  runStartIntegrity,
   withStageProviders
 } from "../src/cli/generateForays";
+import { SYNC_STATE_RELATIVE_PATH, integrityGate, type IntegrityVerdict } from "../src/generation/archiveIntegrity";
+import type { RemoteRetrieval } from "../src/generation/retrievalClient";
+import { TRANSCRIPT_TEXT_INDEX_VERSION } from "../src/generation/transcriptTextIndex";
 import { parseArgs as parseSingleArgs, understandRouteLine } from "../src/cli/generateForay";
 import { resolveRouting } from "../src/config/stageRouting";
 import { BudgetGuard } from "../src/cost/budgetGuard";
@@ -65,6 +69,8 @@ describe("generateForays --budget-usd (F-04)", () => {
          when absent. */
       maxResumes: 3,
       continueOnRefusedPartial: false,
+      /* GV-101: the guard's escape hatch, off unless given. */
+      allowShortArchive: false,
       notify: null
     });
   });
@@ -334,5 +340,69 @@ describe("generateForays --stage-provider (GV-55)", () => {
     const line = understandRouteLine(resolveRouting({ FORAY_LLM_BASE_URL: LLM, FORAY_STAGE_UNDERSTAND_CLARITY: "jev" }));
     expect(line).toMatch(/^UNDERSTAND: mode local; clarity=jev, intent=local:spark \S+, title=local:spark \S+$/);
     expect(line).not.toContain("secret");
+  });
+});
+
+describe("GV-101 run-start corpus integrity guard: --allow-short-archive", () => {
+  /* MUTATION: parse --allow-short-archive as always true. Ran it: red. */
+  it("--allow-short-archive parses and defaults to false", () => {
+    expect(parseArgs(["--prompts", "p.json"]).allowShortArchive).toBe(false);
+    expect(parseArgs(["--prompts", "p.json", "--allow-short-archive"]).allowShortArchive).toBe(true);
+  });
+
+  /* MUTATION: always take the local branch in runStartIntegrity (a remote run
+     would then check this machine's empty disk and never the server's
+     manifest). Ran it: red. MUTATION: rethrow SyncStateError instead of
+     returning the unreadable-state verdict. Ran it: red. */
+  it("checks the server's manifest when remote, the sync state when local, and an unreadable state is a verdict", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "gv101-args-"));
+    try {
+      /* No state on disk: local and ok, expected null. */
+      expect(runStartIntegrity(null, [], root)).toEqual({ kind: "local", ok: true, expected: null, found: 0, missingShows: [], shortShows: [] });
+      const stateFile = path.join(root, SYNC_STATE_RELATIVE_PATH);
+      fs.mkdirSync(path.dirname(stateFile), { recursive: true });
+      fs.writeFileSync(stateFile, JSON.stringify({ bodies_expected: 4, shows: { "show-0123456789": { show_id: "show", bodies: 4 } } }));
+      const local = runStartIntegrity(null, [{ dirName: "show-0123456789", showId: "show", episodes: 3 }], root);
+      expect(local).toMatchObject({ kind: "local", ok: false, expected: 4, found: 3, shortShows: [{ show: "show-0123456789", expected: 4, found: 3 }] });
+      fs.writeFileSync(stateFile, "{");
+      expect(runStartIntegrity(null, [], root)).toMatchObject({ kind: "unreadable-state", ok: false });
+
+      /* Remote: the same unreadable local state is not consulted; the
+         manifest the client loaded is. */
+      const manifest = [{ dirName: "show", showId: "show", episodes: 2 }];
+      const remote = {
+        retrieval: { manifestShows: () => manifest } as unknown as RemoteRetrieval,
+        health: { indexVersion: TRANSCRIPT_TEXT_INDEX_VERSION, shows: 1, episodes: 2, archiveGeneratedAt: "2026-10-01" },
+        pulledArchiveGeneratedAt: "2026-10-01"
+      };
+      expect(runStartIntegrity(remote, [], root)).toEqual({ kind: "remote", ok: true, expected: 2, found: 2, reasons: [] });
+      expect(runStartIntegrity({ ...remote, pulledArchiveGeneratedAt: "2026-09-01" }, [], root).ok).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  /* MUTATION: ignore allowShortArchive in integrityGate (refuse always). Ran
+     it: red. MUTATION: refuse on an ok local verdict. Ran it: red. */
+  it("a failed check refuses (exit 2) unless --allow-short-archive, which prints the same shortfall and goes on", () => {
+    const short: IntegrityVerdict = { kind: "local", ok: false, expected: 7, found: 4, missingShows: ["gone-0000000000"], shortShows: [{ show: "b-1111111111", expected: 4, found: 1 }] };
+    const refused = integrityGate(short, false);
+    expect(refused.refuse).toBe(true);
+    expect(refused.lines[0]).toMatch(/^ARCHIVE SHORT: 4 of 7 synced bodies on disk/);
+    expect(refused.lines).toContain("  missing shows: gone-0000000000");
+    expect(refused.lines).toContain("  short show: b-1111111111 (1 of 4)");
+    expect(refused.lines.at(-1)).toMatch(/exit 2.*--allow-short-archive/);
+    const bypassed = integrityGate(short, true);
+    expect(bypassed.refuse).toBe(false);
+    expect(bypassed.lines.slice(0, -1)).toEqual(refused.lines.slice(0, -1));
+    expect(bypassed.lines.at(-1)).toMatch(/--allow-short-archive: sourcing against this corpus anyway/);
+    expect(integrityGate({ kind: "remote", ok: false, expected: 3, found: 2, reasons: ["x"] }, false).refuse).toBe(true);
+    expect(integrityGate({ kind: "unreadable-state", ok: false, message: "m" }, false).refuse).toBe(true);
+    /* No state: nothing printed, nothing refused. */
+    expect(integrityGate({ kind: "local", ok: true, expected: null, found: 0, missingShows: [], shortShows: [] }, false)).toEqual({ refuse: false, lines: [] });
+    expect(integrityGate({ kind: "local", ok: true, expected: 5, found: 5, missingShows: [], shortShows: [] }, false)).toEqual({
+      refuse: false,
+      lines: ["archive integrity: 5 of 5 synced bodies on disk"]
+    });
   });
 });

@@ -1,0 +1,25 @@
+{
+  "_readme": "Show-level manifest for the self-hosted podcast feed. tools/podcast/build-feed.mjs turns this plus episodes.json into feed.xml. Nulls are values the founder supplies before going live; see docs/podcast/hosting.md.",
+  "title": "4a Forays",
+  "todo": {
+    "title": "Working title. The final show name is the founder's naming call; changing it later is safe (the podcast_guid, not the title, identifies the show)."
+  },
+  "author": "4a",
+  "owner": { "name": "4a", "email": null },
+  "description": "Forays are listening paths through other people's podcasts: a narrator weaves short, real clips from great conversations into one episode, names every show the clips come from, and sends you to the full conversations. Every voice you hear has more waiting on its own show.",
+  "language": "en",
+  "categories": [
+    { "name": "Science", "sub": null },
+    { "name": "History", "sub": null }
+  ],
+  "categories_note": "Apple's taxonomy allows up to three top-level categories; Science and History cover the first flagship (the end-Cretaceous impact and asteroid science) and the topics Forays will likely take next. Sub-categories are left off on purpose; add one (for example Science > Astronomy) per the founder's taste.",
+  "explicit": false,
+  "type": "episodic",
+  "link": null,
+  "artwork": null,
+  "artwork_spec": "Square JPEG or PNG, RGB, 1400 to 3000 px per side. When supplied: { key: 'channel/artwork-<sha256-12>.jpg', sha256, width, height }. The key is content-addressed, so a new image is a new key.",
+  "podcast_guid": "58612bb9-eb3d-4533-a0c0-606f387d87b7",
+  "podcast_guid_note": "NEVER CHANGE. Podcasting 2.0 recommends a UUIDv5 of the feed URL (with scheme and trailing slashes stripped), so anyone can recompute it. The feed URL is not known yet, so this is a random UUID generated 2026-10-20. Tradeoff: it cannot be recomputed from the URL, but it survives any later move of the feed, which is the point of a GUID. If the founder prefers the UUIDv5 form, it must be chosen BEFORE the feed is first submitted anywhere, and then frozen.",
+  "locked": true,
+  "funding": null
+}
