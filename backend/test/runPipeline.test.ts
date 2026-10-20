@@ -2414,7 +2414,11 @@ describe("runForayPipeline — GV-95 the retrieval server is asked ahead of rese
    * and the stage each call ran under. */
   function scriptedRetrieval() {
     const calls: Array<{ op: string; stage: string | undefined; detail?: unknown }> = [];
-    const stats = { prepared: 0, hits: 7, misses: 0, degraded: 0, hydrated: 0, hydrationMisses: 0, hydrationAbsent: 0, unmapped: 0, unprepared: 0, evictions: 0, evictedPinned: 0, heldBytes: 0, pinned: 0, scopeMismatches: 0, reasons: [] };
+    /* Counts from the instance's birth, as RemoteRetrieval's do: 4 hits are
+       an earlier prompt's, and this run's `prepare` adds 7 (GV-125). */
+    const counts = { prepared: 0, hits: 4, misses: 0, degraded: 0, hydrated: 0, hydrationMisses: 0, hydrationAbsent: 0, unmapped: 0, unprepared: 0, evictions: 0, evictedPinned: 0, heldBytes: 0, pinned: 0, scopeMismatches: 0, reasons: [] as string[] };
+    /* This run's share, which is what meta.veracity.retrieval.remote reports. */
+    const stats = { ...counts, hits: 7, reasons: [] as string[] };
     const retrieval: RetrievalPreparer = {
       prepareScope: async (topic) => {
         calls.push({ op: "prepareScope", stage: currentCallContext()?.stage, detail: topic });
@@ -2422,6 +2426,7 @@ describe("runForayPipeline — GV-95 the retrieval server is asked ahead of rese
       },
       prepare: async (requests) => {
         calls.push({ op: "prepare", stage: currentCallContext()?.stage, detail: requests });
+        counts.hits += 7;
         return requests.length;
       },
       answerFor: () => undefined,
@@ -2429,14 +2434,16 @@ describe("runForayPipeline — GV-95 the retrieval server is asked ahead of rese
         calls.push({ op: "hydrate", stage: currentCallContext()?.stage, detail: entries.length });
         return 0;
       },
-      stats: () => stats
+      stats: () => ({ ...counts, reasons: [...counts.reasons] })
     };
     return { retrieval, calls, stats };
   }
 
   it("prepares the topic's scope once, every sourcing search before 'source' and every clip's body before evidence, each in its own timed stage; its stats ride in meta.veracity.retrieval.remote", async () => {
     /* MUTATION THAT KILLS THIS: prepare sourcing's searches from the deepen
-       acts' theses only (drop the claim queries). Ran it: red. */
+       acts' theses only (drop the claim queries). Ran it: red. Or (GV-125):
+       report `retrieval.stats()` whole instead of `retrievalStatsSince`.
+       Ran it: red (hits 11, the earlier prompt's 4 included). */
     const { retrieval, calls, stats } = scriptedRetrieval();
     let deepened: DeepenedAct[] = [];
     const deepenBuilder = new StubDeepenActBuilder();
