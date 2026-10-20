@@ -1,4 +1,5 @@
 import { defaultBudgetGuard, findBudgetError, type BudgetGuard } from "../cost/budgetGuard";
+import { findUnitBudgetError } from "../cost/unitBudget";
 import type { ClarityResult, IntentUnderstanding } from "../types/generation";
 import { meteredJevClient } from "./jevClient";
 import type { JevClient, JevNoulQuestion, JevResult, JevState } from "./jevTypes";
@@ -118,10 +119,13 @@ export class JevPromptUnderstander implements PromptUnderstander {
     try {
       result = await metered.ask(clarityState(prompt), CLARITY_QUESTIONS, { purpose: CLARITY_JEV_PURPOSE });
     } catch (err) {
-      /* A budget stop propagates like every model call's. Anything else a
-         JevClient throws breaks its never-throws contract; it is treated as
-         Jev being unavailable, so the run still gets a clarity verdict. */
-      if (findBudgetError(err) !== null) throw err;
+      /* A budget stop propagates like every model call's: the dollar caps
+         and, GV-124 (#1413 item 3), the per-Foray unit caps (a `jevCalls`
+         UnitBudgetExceededError), so a spent cap stops the run instead of
+         quietly degrading the stage. Anything else a JevClient throws breaks
+         its never-throws contract; it is treated as Jev being unavailable,
+         so the run still gets a clarity verdict. */
+      if (findBudgetError(err) !== null || findUnitBudgetError(err) !== null) throw err;
       result = { ok: false, error: { category: "network", reason: "threw" }, latencyMs: 0 };
     }
     if (clarityVerdict(result, this.thresholds) === "clear") {

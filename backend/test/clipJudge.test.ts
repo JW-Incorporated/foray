@@ -14,7 +14,8 @@ import {
   type ClipQuestion
 } from "../src/generation/clipJudge";
 import { readGateConfig } from "../src/generation/gateConfig";
-import { NullJevClient } from "../src/generation/jevClient";
+import { NullJevClient, meteredJevClient } from "../src/generation/jevClient";
+import { UnitBudgetExceededError, UnitBudgetGuard } from "../src/cost/unitBudget";
 import { PRE_SPINE_SENTINEL, preSpineIntent } from "../src/generation/preSpineIntent";
 import { BudgetExceededError, type BudgetGuard } from "../src/cost/budgetGuard";
 import type { JevClient, JevResult } from "../src/generation/jevTypes";
@@ -138,6 +139,26 @@ describe("GV-79 JevClipJudge", () => {
     await expect(new JevClipJudge(budget).score([q("a", "x")])).rejects.toBeInstanceOf(BudgetExceededError);
     const broken: JevClient = { ask: async () => Promise.reject(new Error("boom")) };
     expect((await new JevClipJudge(broken).score([q("a", "x")])).get("a")).toEqual({ unavailable: "threw" });
+  });
+});
+
+describe("GV-124: the jevCalls cap stops the run instead of leaving the clips unscored (#1413 item 3)", () => {
+  /* MUTATION THAT KILLS THIS: re-throw findBudgetError only (the GV-90
+     catch). Ran it: red (the refused clip comes back { unavailable:
+     "threw" } and the score resolves). */
+  it("a UnitBudgetExceededError from the metered client propagates out of score()", async () => {
+    const fake = new FakeJevClient({ rules: [{ when: () => true, answer: scoreAnswer(4, CLIP_SCORE_LEVELS) }] });
+    const unitGuard = new UnitBudgetGuard({ overrides: { jevCalls: 1 } });
+    const metered = meteredJevClient(fake, { guard: recordingGuard(), userId: "founder-1", sessionId: "gv124-clips", unitGuard, tier: "short" });
+    const err = await new JevClipJudge(metered).score([q("a", "one"), q("b", "two")]).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UnitBudgetExceededError);
+    expect((err as UnitBudgetExceededError).unit).toBe("jevCalls");
+    /* The cap held: one ask went to Jev, the second was never sent. */
+    expect(fake.calls).toHaveLength(1);
+    expect(unitGuard.spent("gv124-clips").jevCalls).toBe(1);
+    /* Wrapped (as a pool or act wrapper may), it still propagates. */
+    const wrapped: JevClient = { ask: async () => Promise.reject(new Error("pool", { cause: new UnitBudgetExceededError("s", "jevCalls", 1, 1, 1) })) };
+    await expect(new JevClipJudge(wrapped).score([q("a", "x")])).rejects.toThrow("pool");
   });
 });
 

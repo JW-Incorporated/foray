@@ -17,7 +17,7 @@ import { createNarrationWriterBuilder } from "../src/generation/createNarrationW
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { writeActNarration } from "../src/generation/writeAct";
-import { allWrittenNarration } from "../src/generation/writeNarration";
+import { allWrittenNarration, type NarrationWriteStats } from "../src/generation/writeNarration";
 import { RoutingConfigError } from "../src/config/stageRouting";
 import { FlagValueError } from "../src/generation/generationFlags";
 import { tapeDocIdFor, validateNarratedBeat, type NarratedBeat } from "../src/types/narration";
@@ -29,6 +29,7 @@ import type {
   NarrationWriterBuilder,
   SeamEditRequest,
   WriterObservation,
+  WriterStreamEvent,
   WrittenSeam
 } from "../src/generation/NarrationWriterBuilder";
 import type { ActVerifyRequest } from "../src/generation/NarrationVerifierBuilder";
@@ -300,26 +301,138 @@ describe("GV-94: the self-critique decorator", () => {
     /* MUTATION THAT KILLS THIS: drop the `seen` set or the `left <= 0`
        stop. Ran both: red. */
     const req = request();
-    const seam: WrittenSeam = { ...draft().seams[0]!, claims: [claim("Q one"), claim("Q one"), claim("   ")] };
+    const seam: WrittenSeam = { ...draft().seams[0]!, claims: [claim("were not checked"), claim("were not checked"), claim("   ")] };
     expect(seamCritiqueSources(req.seams[0]!, seam, req)).toEqual([
-      { docId: PRINT_ID, text: "Q one" },
+      { docId: PRINT_ID, text: "were not checked" },
       { docId: WINDOW_A_ID, text: WINDOW_A }
     ]);
-    expect(seamCritiqueSources(req.seams[0]!, seam, req, 3)).toEqual([{ docId: PRINT_ID, text: "Q o" }]);
+    expect(seamCritiqueSources(req.seams[0]!, seam, req, 3)).toEqual([{ docId: PRINT_ID, text: "wer" }]);
   });
 
-  it("forwards editSeams to the inner writer and offers no writeActStream", async () => {
-    /* MUTATION THAT KILLS THIS: forward writeActStream (a streamed act would
-       skip the critique), or drop the editSeams forward. Ran both: red. */
+  it("GV-124: seamCritiqueSources keeps only quotes that are exact substrings of the document they name; an invented quote never backs its own sentence", async () => {
+    /* MUTATION THAT KILLS THIS: drop the substring filter (#1413 item 9: the
+       critique runs before the mechanical quote gate). Ran it: red (the
+       made-up quote is handed to the critic as the sentence's source). */
+    const INVENTED = "Everyone on the project knew the walkway would fall";
+    const req = request();
+    const seam: WrittenSeam = {
+      ...draft().seams[0]!,
+      claims: [
+        claim(INVENTED),
+        claim("were not checked for adequacy"),
+        /* A real sentence of the print, named against the wrong document. */
+        claim("approved without calculation", WINDOW_A_ID),
+        /* Not exact: one word changed. */
+        claim("were never checked for adequacy")
+      ]
+    };
+    expect(seamCritiqueSources(req.seams[0]!, seam, req)).toEqual([
+      { docId: PRINT_ID, text: "were not checked for adequacy" },
+      { docId: WINDOW_A_ID, text: WINDOW_A }
+    ]);
+    /* Through the decorator: the critic is never shown the invented quote. */
+    const d = draft();
+    d.seams[0] = { ...d.seams[0]!, claims: [claim(INVENTED)] };
+    const { critic, writer, ctx } = harness("all", [d]);
+    await writer.writeAct(request(), ctx(1));
+    const shown = critic.questions.find((q) => q.sentence === S0_BAD)!;
+    expect(shown.sources).toEqual([{ docId: WINDOW_A_ID, text: WINDOW_A }]);
+    expect(critic.questions.flatMap((q) => q.sources).some((src) => src.text.includes(INVENTED))).toBe(false);
+  });
+
+  it("forwards editSeams to the inner writer; offers writeActStream only when the inner writer streams", async () => {
+    /* MUTATION THAT KILLS THIS: drop the editSeams forward, or offer
+       writeActStream over a writer that cannot stream. Ran both: red. */
     const stub = new StubNarrationWriterBuilder();
     const writer = new SelfCritiquingNarrationWriter({ inner: stub, critic: new FakeDraftCritic(), mode: "all" });
-    expect("writeActStream" in writer).toBe(false);
+    expect(typeof writer.writeActStream).toBe("function");
     expect(writer.providerName).toBe("stub");
     const req = request();
     const edit: SeamEditRequest = { actTitle: req.actTitle, voice, seams: [req.seams[2]!], neighbours: [], clips: req.clips, documents: req.documents, retryNote: "r" };
     expect(await writer.editSeams!(edit, { userId: "u" })).toEqual(await stub.editSeams(edit, { userId: "u" }));
     const plain: NarrationWriterBuilder = { providerName: "p", writeAct: async () => ({ seams: [] }) };
-    expect(new SelfCritiquingNarrationWriter({ inner: plain, critic: new FakeDraftCritic(), mode: "all" }).editSeams).toBeUndefined();
+    const overPlain = new SelfCritiquingNarrationWriter({ inner: plain, critic: new FakeDraftCritic(), mode: "all" });
+    expect(overPlain.editSeams).toBeUndefined();
+    expect(overPlain.writeActStream).toBeUndefined();
+  });
+
+  it("GV-124: an act it does not critique is the inner writer's own stream; a critiqued act is written, critiqued and handed on whole", async () => {
+    /* MUTATION THAT KILLS THIS: drop writeActStream from the decorator
+       (#1413 item 7: self-critique switched streaming off, act 0 included);
+       or stream every act through the inner stream (a critiqued act would
+       skip the critique). Ran both: red. */
+    class StreamingScripted extends ScriptedWriter {
+      streams = 0;
+      readonly marker = { type: "end" as const, stopReason: "end" as const, unfinishedSeamIds: [] as string[] };
+      async *writeActStream(): AsyncGenerator<WriterStreamEvent> {
+        this.streams++;
+        for (const [i, seam] of draft().seams.entries()) yield { type: "seam", seam, atMs: 10 * (i + 1) };
+        yield this.marker;
+      }
+    }
+    const edited = draft();
+    edited.seams[0] = { ...edited.seams[0]!, script: S0_KEEP };
+    const inner = new StreamingScripted([draft(), edited]);
+    const critic = new FakeDraftCritic([{ match: S0_BAD, p: 0.1 }]);
+    const observed: WriterObservation[] = [];
+    const writer = new SelfCritiquingNarrationWriter({ inner, critic, mode: "behind-playhead", now: () => 1000 });
+    const ctx = (actIndex: number): NarrationBuildContext => ({ userId: "founder-1", actIndex, observe: (e) => observed.push(e) });
+    const drain = async (stream: AsyncIterable<WriterStreamEvent>): Promise<WriterStreamEvent[]> => {
+      const out: WriterStreamEvent[] = [];
+      for await (const e of stream) out.push(e);
+      return out;
+    };
+
+    /* Act 0 under behind-playhead: the inner stream, event for event. */
+    const act0 = await drain(writer.writeActStream!(request(), ctx(0)));
+    expect(inner.streams).toBe(1);
+    expect(inner.requests).toHaveLength(0);
+    expect(critic.calls).toBe(0);
+    expect(act0.map((e) => (e.type === "seam" ? e.atMs : e))).toEqual([10, 20, 30, inner.marker]);
+    expect(act0.at(-1)).toBe(inner.marker);
+
+    /* A retry round passes through too. */
+    await drain(writer.writeActStream!(request({ retryNote: "fix s2" }), ctx(1)));
+    expect(inner.streams).toBe(2);
+    expect(critic.calls).toBe(0);
+
+    /* Act 1: written (draft + one edit call), critiqued, then every seam at once. */
+    const act1 = await drain(writer.writeActStream!(request(), ctx(1)));
+    expect(inner.streams).toBe(2);
+    expect(inner.requests).toHaveLength(2);
+    expect(critic.calls).toBeGreaterThan(0);
+    expect(observed).toHaveLength(1);
+    expect(observed[0]).toMatchObject({ acts: 1, editCalls: 1, flagged: 1 });
+    const seams = act1.filter((e): e is Extract<WriterStreamEvent, { type: "seam" }> => e.type === "seam").map((e) => e.seam);
+    expect(seams.map((x) => x.seamId)).toEqual(["s0", "s1", "s2"]);
+    expect(seams[0]!.script).toBe(S0_KEEP);
+    expect(act1.at(-1)).toEqual({ type: "end", stopReason: "end", unfinishedSeamIds: [] });
+  });
+
+  it("GV-124: wrapped around a streaming writer, GV-73 streaming survives for act 0 under behind-playhead", async () => {
+    /* MUTATION THAT KILLS THIS: drop writeActStream from the decorator.
+       Ran it: red (writeAct.ts takes the one-shot path: the inner stream is
+       never opened and the stats carry no streaming counters). */
+    let streams = 0;
+    class CountingStream extends StubNarrationWriterBuilder {
+      override async *writeActStream(request: ActWriteRequest, buildCtx: NarrationBuildContext): AsyncGenerator<WriterStreamEvent> {
+        streams++;
+        yield* super.writeActStream(request, buildCtx);
+      }
+    }
+    const critic = new FakeDraftCritic();
+    const writer = new SelfCritiquingNarrationWriter({ inner: new CountingStream(), critic, mode: "behind-playhead" });
+    const stats: NarrationWriteStats = { retryRounds: 0 };
+    const act = await writeActNarration(
+      oneClipAct(),
+      { writer, verifier: new StubNarrationVerifierBuilder(), evidence: actGatherer(), streamSeams: true, stats },
+      voice,
+      { userId: "founder-1", actIndex: 0 }
+    );
+    expect(streams).toBeGreaterThanOrEqual(1);
+    expect(typeof stats.seamsReleasedEarly).toBe("number");
+    expect(critic.calls).toBe(0);
+    expect(allWrittenNarration([act]).length).toBeGreaterThan(0);
   });
 });
 

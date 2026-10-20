@@ -328,9 +328,13 @@ test("plan output snapshot for each committed spec", () => {
       const got = plan.arms[arm];
       assert.deepEqual({ source: got.source, env: got.env, args: got.args }, snapshot[id][arm], `${id} arm ${arm}`);
     }
+    /* GV-124: an arm that leaves FORAY_SPINE_BEST_OF unset unsets it too;
+       only E4's arm B sets it. */
     assert.equal(
-      plan.commands.filter((l) => l.startsWith("(cd backend && env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_WRITER_EXEMPLARS FORAY_GENERATION_MODE=local ")).length,
-      id === "E0-floor" ? 1 : 2
+      plan.commands.filter((l) =>
+        l.startsWith("(cd backend && env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_WRITER_EXEMPLARS -u FORAY_SPINE_BEST_OF FORAY_GENERATION_MODE=local ")
+      ).length,
+      id === "E0-floor" || id === "E4-spine-best-of-2" ? 1 : 2
     );
   }
 });
@@ -392,8 +396,8 @@ test("plan refuses an arm B that changes more or less than the spec's one stage,
   assert.equal(leverPlan.arms.B.levers.exemplars, true);
   assert.deepEqual(leverPlan.arms.A.levers, {});
   /* Arm A leaves the lever unset, so its command unsets it; arm B sets it. */
-  assert.match(leverPlan.commands[1], /env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_WRITER_EXEMPLARS FORAY_GENERATION_MODE=local /);
-  assert.match(leverPlan.commands[3], /env -u FORAY_ALLOW_ANTHROPIC_LEGACY FORAY_GENERATION_MODE=local .*FORAY_WRITER_EXEMPLARS=on /);
+  assert.match(leverPlan.commands[1], /env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_WRITER_EXEMPLARS -u FORAY_SPINE_BEST_OF FORAY_GENERATION_MODE=local /);
+  assert.match(leverPlan.commands[3], /env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_SPINE_BEST_OF FORAY_GENERATION_MODE=local .*FORAY_WRITER_EXEMPLARS=on /);
   assert.equal(planExperiment({ ...lever, armB: { env: { FORAY_WRITER_EXEMPLARS: "off" } }, armA: { env: { ...floorEnv(), FORAY_WRITER_EXEMPLARS: "on" } } }, { root, contract: CONTRACT }).arms.B.levers.exemplars, false);
   /* GV-99's flag is off|on through readEnumFlag, which throws on "1". */
   assert.throws(() => planExperiment({ ...lever, armB: { env: { FORAY_WRITER_EXEMPLARS: "1" } } }, { root, contract: CONTRACT }), /arm B FORAY_WRITER_EXEMPLARS=1 is not off\|on/);
@@ -410,6 +414,42 @@ test("plan refuses a rerunFrom after the changed stage's first banked stage, a s
   const dir = tmp();
   writeJson(path.join(dir, "E9-x.json"), deepenSpec({ id: "E9-y" }));
   assert.throws(() => readSpec(path.join(dir, "E9-x.json")), /must equal the file name/);
+});
+
+/* GV-124 (#1413 item 5). MUTATION THAT KILLS THIS: drop spineBestOf from
+   LEVER_ENV -- the adopted stack is refused as an unmapped lever and E4's
+   arm B records no spineBestOf lever. Ran it -- red. Dropping the
+   companions loop leaves FORAY_SPINE_JUDGE unset and the stack is refused
+   for want of its judge. Ran it -- red. */
+test("GV-124: spineBestOf is mapped to FORAY_SPINE_BEST_OF, so an adopted stack can turn it on with its judge", () => {
+  assert.equal(LEVER_ENV.spineBestOf.name, "FORAY_SPINE_BEST_OF");
+  assert.equal(LEVER_ENV.spineBestOf.on, "2");
+  assert.equal(LEVER_ENV.spineBestOf.off, "1");
+  const spec = readSpec(path.join(EXPERIMENTS_DIR, "E6-verifier-jev-vs-qwen.json"));
+  const recorded = { mode: "best-of-2", judge: "jev", graceMs: 3000 };
+  const plan = planExperiment(spec, { contract: CONTRACT, stack: { ...EMPTY_STACK, levers: { spineBestOf: recorded } }, ledgerRows: [] });
+  assert.equal(plan.arms.A.env.FORAY_SPINE_BEST_OF, "2");
+  assert.equal(plan.arms.A.env.FORAY_SPINE_JUDGE, "jev");
+  assert.equal(plan.arms.A.env.FORAY_SPINE_BEST_OF_GRACE_MS, "3000");
+  assert.equal(plan.arms.A.levers.spineBestOf, true);
+  assert.ok(plan.commands.every((l) => !/-u FORAY_SPINE_BEST_OF /.test(l)), "neither arm unsets a lever the stack turned on");
+  /* A recorded lever whose mode is off adds nothing. */
+  const off = planExperiment(spec, { contract: CONTRACT, stack: { ...EMPTY_STACK, levers: { spineBestOf: { mode: "off" } } }, ledgerRows: [] });
+  assert.equal(off.arms.A.env.FORAY_SPINE_BEST_OF, undefined);
+  /* The backend refuses best-of-2 without FORAY_SPINE_JUDGE; so does the plan. */
+  assert.throws(
+    () => planExperiment(spec, { contract: CONTRACT, stack: { ...EMPTY_STACK, levers: { spineBestOf: true } }, ledgerRows: [] }),
+    /lever "spineBestOf" without its judge \(FORAY_SPINE_JUDGE\)/
+  );
+  /* E4's arm B is read as the lever on, its arm A as off. */
+  const e4 = planExperiment(readSpec(path.join(EXPERIMENTS_DIR, "E4-spine-best-of-2.json")), { contract: CONTRACT, stack: EMPTY_STACK, ledgerRows: [] });
+  assert.equal(e4.arms.B.levers.spineBestOf, true);
+  assert.equal(e4.arms.A.levers.spineBestOf, undefined);
+  /* pipelineFlags.ts reads 1|2 only. */
+  const root = tmp();
+  writeJson(path.join(root, "golden.json"), goldenOf(2, 1));
+  const lever = { id: "T4", kind: "lever", lever: "spineBestOf", armA: { env: floorEnv() }, armB: { env: { FORAY_SPINE_BEST_OF: "3" } }, rerunFrom: null, golden: "golden.json" };
+  assert.throws(() => planExperiment(lever, { root, contract: CONTRACT }), /arm B FORAY_SPINE_BEST_OF=3 is not 1\|2/);
 });
 
 test("the adopted arm is the floor overlaid with adopted-stack.json; an unmapped lever is refused", () => {
