@@ -1,5 +1,13 @@
 # Legal / Compliance Risk-Scoping Memo — CommutePilot
 
+> **Founder ruling, 2026-10-19 (#1425; DECISIONS 2026-10-19).** The
+> "never rehost/proxy/transform" invariant this memo treats as the biggest
+> risk lever is **withdrawn** for flagship Forays, which are published as
+> podcast episodes built from clip audio. The founder accepted the legal risk
+> and chose attribution (every clip names its show and where to get more) and
+> no per-show permissions for now. The analysis below is kept as the record
+> of the risk that was accepted.
+
 > **Name change since this memo — 2026-08-21.** This memo was researched
 > against a working name, "CommutePilot," which is not the shipped
 > product: the founder chose **4a** (`foray` now names only the

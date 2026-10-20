@@ -2,6 +2,42 @@
 
 Per-topic ADRs live in `docs/adr/`. This file is the chronological record.
 
+## 2026-10-19 — The "clip audio is never stored or served" invariant is withdrawn; flagship Forays ship as podcast episodes (#1425)
+
+**Source.** Founder ruling, Wyatt, 2026-10-19, recorded verbatim on issue #1425
+(issuecomment-6281590342): "Yeah delete that decision about storing and
+rehosting clip audio, we're doing it. Let's accept the legal risk. In the
+posting, let's direct to the channels like hell. Also, each time we use a clip,
+the narrator needs to reference the show it's from and where to get more. We
+will not pursue permissions from each show for now. Where possible, make it
+narrator-led, but not if that makes the listening quality garbage". Context is
+his request earlier that day (#1425 issuecomment-6281438791) to share flagship
+Forays "on Apple Podcasts and wherever else podcasts can be heard".
+
+- **Withdrawn: "clip audio is never stored or served by 4a".** That covers the
+  2026-09-28 standing rule above, "Clip audio is still never stored or served by
+  4a (§1.1, ADR-0007/0008)", and the #64 "never a concatenated derived artefact"
+  premise of ADR-0007, which applies to published episodes. 4a may now download,
+  store, cut, master and publish excerpts of other shows' audio. The founder has
+  accepted the legal risk, and no per-show permission is sought for now.
+- **First use: flagship Forays as standalone podcast episodes.** Each one is a
+  single baked audio file (clips plus narration), distributed through public
+  podcast directories such as Apple Podcasts and Spotify. Cutting from our own
+  copy removes the DAI anchoring problem for these files. What remains is
+  making sure no inserted ad lands inside a clip.
+- **Attribution is mandatory (founder rule).** Every clip carries narration
+  that names the show it comes from and where to get more. Show notes push
+  listeners to each source show: name, host, episode used and directory links.
+- **Narrator-led where possible**, with clips as the evidence and the voices,
+  unless that makes listening worse. Listening quality wins that trade-off.
+- **What does not change yet.** In-app playback still streams each clip from
+  the publisher's enclosure (ADR-0007's seek-and-stop ladder), so the privacy
+  policy's description of the app stays accurate. If the app ever plays
+  4a-hosted clip audio, `docs/legal/privacy-policy.md` §1 and §4 must change
+  first. That is legal wording and needs founder approval (#1163).
+- Lessons from building these by hand are filed as `flagship-lesson` issues
+  under #1425. Hand-building is not the end state.
+
 ## 2026-10-14 — Recommender v1: persona ratings are an offline prior, evidence-tiered, never shown chart rank (#1380)
 
 **Source.** Founder directive, Wyatt, 2026-10-14, recorded verbatim on issue
@@ -936,7 +972,8 @@ defaults):
 - The text front-end, espeak-ng (GPL-3.0) and misaki, stays server-side and
   CI-side only; `test/release-gates.test.js`'s espeak needle keeps it out of the
   app.
-- Clip audio is still never stored or served by 4a (§1.1, ADR-0007/0008).
+- ~~Clip audio is still never stored or served by 4a (§1.1, ADR-0007/0008).~~
+  **Withdrawn 2026-10-19** by founder ruling (#1425; see that date's entry).
   `foray-narration` holds only 4a's own voice.
 - Rendered audio reaches *published* Forays only after the "speak the script
   if the file fails" fallback ships in a build (assessment §1 risk 1, Phase 2).
