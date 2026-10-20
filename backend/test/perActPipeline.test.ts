@@ -8,6 +8,7 @@ import { StubExternalResearcher } from "../src/generation/StubExternalResearcher
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
 import { StubDeepenActBuilder } from "../src/generation/StubDeepenActBuilder";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
+import type { ActWriteRequest, NarrationBuildContext } from "../src/generation/NarrationWriterBuilder";
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import type { DeepenActBuilder, DeepenActContext } from "../src/generation/DeepenActBuilder";
@@ -55,7 +56,10 @@ import { recordingDeps } from "./helpers/recordingDeps";
  *     the classic stop on a one-act one;
  *   - remote retrieval (GV-95): with the fake server, no search misses and no
  *     body is read unhydrated, and the candidate equals the classic remote
- *     run's.
+ *     run's;
+ *   - cross-act show memory (card Design item 4): each act's writer requests
+ *     carry the same showFirstHeard marks as the classic run's, and a show
+ *     heard in an earlier act is marked heard.
  *
  * Offline: stub builders, an injected finalize, an in-process retrieval
  * server; no model, no network.
@@ -617,9 +621,36 @@ function fakeFetch(svc: RetrievalService): RetrievalFetch {
   };
 }
 
+/** Each writer call's clip briefs, per act: `[act][call]` holds the
+ * `showFirstHeard` of every clip in that request, in play order. */
+type ShowFirstHeardLog = Array<Array<Array<{ show: string; showFirstHeard: boolean | undefined }>>>;
+
+/** The stub writer, recording what each act's requests say about the shows
+ * the listener has already heard (Q-09's `ClipBrief.showFirstHeard`). The
+ * stub itself ignores the field, so the candidate cannot show it. */
+function recordingWriter(log: ShowFirstHeardLog): StubNarrationWriterBuilder {
+  const writer = new StubNarrationWriterBuilder();
+  const note = (request: ActWriteRequest, ctx: NarrationBuildContext) => {
+    const act = ctx.actIndex ?? -1;
+    (log[act] ??= []).push(request.clips.map((c) => ({ show: c.show, showFirstHeard: c.showFirstHeard })));
+  };
+  const realWrite = writer.writeAct.bind(writer);
+  writer.writeAct = (request, ctx) => {
+    note(request, ctx);
+    return realWrite(request, ctx);
+  };
+  const realStream = writer.writeActStream.bind(writer);
+  writer.writeActStream = (request, ctx) => {
+    note(request, ctx);
+    return realStream(request, ctx);
+  };
+  return writer;
+}
+
 async function remoteRun(
   flags: Partial<PipelineFlags> | undefined,
-  store?: FakeCheckpointStore
+  store?: FakeCheckpointStore,
+  narrationWriter?: StubNarrationWriterBuilder
 ): Promise<{ outcome: RunPipelineOutcome; input: FinalizeForayInput; retrieval: RemoteRetrieval; tapeDocs: number }> {
   vi.stubEnv(RETRIEVAL_URL_ENV, "http://127.0.0.1:7311");
   const retrieval = new RemoteRetrieval({ baseUrl: "http://127.0.0.1:7311", token: "t0ken", fetchFn: fakeFetch(service()), archive: ARCHIVE });
@@ -641,6 +672,7 @@ async function remoteRun(
   const outcome = await runForayPipeline(remoteRequest, { ...remoteOptions, ...(store ? { checkpointKey: KEY } : {}), ...(flags ? { flags } : {}) }, {
     ...stubDeps(),
     deepenBuilder: new ScriptedDeepen(),
+    ...(narrationWriter ? { narrationWriter } : {}),
     finalize: finalize.fn,
     transcriptArchive: ARCHIVE,
     segmentPool: POOL,
@@ -692,6 +724,37 @@ describe("GV-102: remote retrieval (GV-95) under the per-act pipeline", () => {
     expect(classic.retrieval.stats().misses).toBe(0);
     expect(perAct.tapeDocs).toBeGreaterThan(0);
     expect(perAct.tapeDocs).toBe(classic.tapeDocs);
+  }, 300_000);
+
+  it("act i's clip briefs mark a show heard in an earlier act as already heard (showFirstHeard), as the classic run does", async () => {
+    /* Card Design item 4: on the per-act path act i's showsIntroduced is read
+       from showsHeardBeforeAct once act i is sourced. The stub writer ignores
+       showFirstHeard, so the candidate-equality cases cannot see it; this
+       reads the writer's requests instead.
+       MUTATION THAT KILLS THIS: in perActRun replace
+       `const showsIntroduced = showsHeardBeforeAct(view().acts, i, showOf);`
+       with `const showsIntroduced: string[] = [];` (every act forgets the
+       shows the acts before it played). Ran it: red. */
+    const classicLog: ShowFirstHeardLog = [];
+    const perActLog: ShowFirstHeardLog = [];
+    const classic = await remoteRun(undefined, undefined, recordingWriter(classicLog));
+    const perAct = await remoteRun(PER_ACT, undefined, recordingWriter(perActLog));
+    expect(classic.outcome.outcome).toBe("generated");
+    expect(perAct.outcome.outcome).toBe("generated");
+    expect(classicLog).toHaveLength(ACTS);
+    expect(perActLog).toEqual(classicLog);
+    /* Not vacuous: in some act after the first, a show's FIRST clip in that
+       act is already marked heard -- only an earlier act can have made it so. */
+    const carriedOver = classicLog.slice(1).some((calls) => {
+      const firstCall = calls[0] ?? [];
+      const seen = new Set<string>();
+      return firstCall.some((clip) => {
+        const firstInAct = !seen.has(clip.show);
+        seen.add(clip.show);
+        return firstInAct && clip.showFirstHeard === false;
+      });
+    });
+    expect(carriedOver).toBe(true);
   }, 300_000);
 
   it("a per-act run that resumed its sourcing fetches every clip's episode before evidence: no hydration miss, the same candidate", async () => {

@@ -2921,7 +2921,7 @@ const BACKEND_FLOORS = {
      a run killed after source:1 resumes from the banked snapshot; the no-tape
      stop waits for the last act; the retrieval server (fresh and resumed)
      misses no search and reads no body unhydrated. */
-  "test/perActPipeline.test.ts": 10,
+  "test/perActPipeline.test.ts": 11,
   /* GV-48 (docs/roadmap/generation-v2.md, from W3-09): the hybrid merge —
      'append' keeps every BM25 candidate's rank and adds at most denseExtra
      dense-only episodes with their best passage, every candidate carries the
