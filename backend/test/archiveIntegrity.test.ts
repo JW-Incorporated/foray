@@ -267,6 +267,16 @@ describe("remoteIntegrity: the retrieval server against this machine (GV-101 rem
         manifest: good.retrieval.manifestShows(),
       }).ok,
     ).toBe(false);
+    /* Two missing stamps are not a match either (null !== null is false, so
+       this needs its own check). MUTATION THAT KILLS THIS: drop the two
+       `=== null` arms of the stamp test. Ran it: red. */
+    expect(
+      remoteIntegrity({
+        healthz: { ...good.health!, archiveGeneratedAt: null },
+        pulledArchiveGeneratedAt: null,
+        manifest: good.retrieval.manifestShows(),
+      }).ok,
+    ).toBe(false);
   });
 
   /* MUTATION THAT KILLS THIS: drop the manifest-vs-/healthz episode
