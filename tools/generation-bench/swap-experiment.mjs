@@ -76,7 +76,10 @@
  * - Every row of both reports must carry the stageAssignments the plan
  *   implies (impl and machine per stage, plus spec.expect for arm B) and,
  *   when spec.expect.levers is set, matching `levers`: arm B the spec's
- *   values, arm A each named lever on or off as planned (absent = off). An
+ *   values (an object value names the fields the row's record must carry,
+ *   so GV-99's { mode: "on" } matches { mode, exemplarIds, fileSha }; any
+ *   other value must equal the record), arm A each named lever on or off as
+ *   planned (absent = off). An
  *   unimplemented flag, or a lever flag leaking into arm A, could otherwise
  *   make arm B silently equal arm A. `run` drops every inherited lever flag an
  *   arm leaves unset, and the printed commands unset it (env -u).
@@ -676,6 +679,16 @@ function readReport(file) {
   return report;
 }
 
+/** Whether a row's recorded lever meets the spec's expectation: an object
+ * expectation names the fields the record must carry with those values (the
+ * record may carry more, e.g. GV-99's exemplarIds and fileSha, which the spec
+ * cannot know before the founder's selection); any other expectation must
+ * equal the record. */
+export function leverMatches(got, want) {
+  if (isPlainObject(want)) return isPlainObject(got) && Object.entries(want).every(([field, value]) => JSON.stringify(got[field]) === JSON.stringify(value));
+  return JSON.stringify(got) === JSON.stringify(want);
+}
+
 /** Every way the rows of one arm disagree with what the plan routed. */
 export function assignmentMismatches(entries, expected, extra = {}, expectLevers = undefined, armName = "?") {
   const problems = [];
@@ -704,7 +717,7 @@ export function assignmentMismatches(entries, expected, extra = {}, expectLevers
       if (!isPlainObject(entry.levers)) problems.push(`${at} records no levers`);
       else
         for (const [lever, want] of Object.entries(expectLevers)) {
-          if (JSON.stringify(entry.levers[lever]) !== JSON.stringify(want)) problems.push(`${at} lever ${lever}: ${JSON.stringify(entry.levers[lever])}, expected ${JSON.stringify(want)}`);
+          if (!leverMatches(entry.levers[lever], want)) problems.push(`${at} lever ${lever}: ${JSON.stringify(entry.levers[lever])}, expected ${JSON.stringify(want)}`);
         }
     }
     if (typeof entry.anthropicCalls === "number" && entry.anthropicCalls > 0) problems.push(`${at} sent ${entry.anthropicCalls} Anthropic request(s)`);

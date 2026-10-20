@@ -51,7 +51,7 @@ import {
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "..", "..");
 const CONTRACT = loadBackendContract();
-const COMMITTED = ["E0-floor", "E1-deepen-p40", "E2-continuity-p40", "E4-spine-best-of-2", "E5-self-critique", "E6-verifier-jev-vs-qwen"];
+const COMMITTED = ["E0-floor", "E1-deepen-p40", "E2-continuity-p40", "E3-writer-exemplars", "E4-spine-best-of-2", "E5-self-critique", "E6-verifier-jev-vs-qwen"];
 const FLOOR = readSpec(path.join(EXPERIMENTS_DIR, `${FLOOR_SPEC_ID}.json`));
 const EMPTY_STACK = { schema: "adopted-stack/1", note: "", stages: {}, levers: {}, ledgerRow: null };
 const OUT9 = path.join(HERE, "fixtures", "out-9");
@@ -292,6 +292,17 @@ test("plan output snapshot for each committed spec", () => {
         args: ["--prompts", G, "--out", "data-local/swaps/E2-continuity-p40/B", "--seed-checkpoints", "data-local/swaps/E2-continuity-p40/A", "--rerun-from", "stitch"]
       }
     },
+    /* GV-99: the writer exemplars lever. Arm A is the adopted stack; arm B
+       turns the voice block on and reruns from narrate, the first checkpoint
+       the writer feeds. */
+    "E3-writer-exemplars": {
+      A: { source: "adopted", env: envOf(floorStages), args: ["--prompts", G, "--out", "data-local/swaps/E3-writer-exemplars/A", "--keep-checkpoints"] },
+      B: {
+        source: "env",
+        env: { ...envOf(floorStages), FORAY_WRITER_EXEMPLARS: "on" },
+        args: ["--prompts", G, "--out", "data-local/swaps/E3-writer-exemplars/B", "--seed-checkpoints", "data-local/swaps/E3-writer-exemplars/A", "--rerun-from", "narrate"]
+      }
+    },
     /* GV-91: a lever experiment. Both arms put spine-alt on the second box
        (a lever changes no stage; nothing reads spine-alt in arm A). */
     "E4-spine-best-of-2": {
@@ -329,12 +340,13 @@ test("plan output snapshot for each committed spec", () => {
       assert.deepEqual({ source: got.source, env: got.env, args: got.args }, snapshot[id][arm], `${id} arm ${arm}`);
     }
     /* GV-124: an arm that leaves FORAY_SPINE_BEST_OF unset unsets it too;
-       only E4's arm B sets it. */
+       only E4's arm B sets it. GV-99: likewise FORAY_WRITER_EXEMPLARS, which
+       only E3's arm B sets. */
     assert.equal(
       plan.commands.filter((l) =>
         l.startsWith("(cd backend && env -u FORAY_ALLOW_ANTHROPIC_LEGACY -u FORAY_WRITER_EXEMPLARS -u FORAY_SPINE_BEST_OF FORAY_GENERATION_MODE=local ")
       ).length,
-      id === "E0-floor" || id === "E4-spine-best-of-2" ? 1 : 2
+      id === "E0-floor" || id === "E3-writer-exemplars" || id === "E4-spine-best-of-2" ? 1 : 2
     );
   }
 });
@@ -627,6 +639,20 @@ test("collect refuses when a report's stageAssignments or levers do not match th
   );
   assert.deepEqual(armALeverMismatches([{ promptId: "p01", levers: { exemplars: { mode: "off" } } }, { promptId: "p02", levers: {} }], { exemplars: true }, {}), []);
   assert.deepEqual(armALeverMismatches([{ promptId: "p01", levers: {} }], { exemplars: true }, { exemplars: true }), ["arm A row p01 lever exemplars: undefined, planned on"]);
+  /* GV-99: an object expectation names the fields the record must carry.
+     E3 expects { mode: "on" }; arm B's row records the selection's ids and
+     the file's sha as well, which the spec cannot know. MUTATION THAT KILLS
+     THIS: compare the whole record (the pre-GV-99 JSON equality) -- the first
+     collect throws "lever exemplars: {...}, expected {"mode":"on"}". Ran it:
+     red. A record whose mode is not the expected one is still refused. */
+  const e3Spec = deepenSpec({ expect: { levers: { exemplars: { mode: "on" } } } });
+  const recorded = { mode: "on", exemplarIds: ["foray-1:item-1"], fileSha: "abc" };
+  assert.equal(collected({ n: 2, spec: e3Spec, edit: (e, arm) => (e.levers = arm === "B" ? { exemplars: recorded } : {}) }).evidence.prompts.length, 2);
+  assert.throws(
+    () => collected({ n: 2, spec: e3Spec, edit: (e, arm) => (e.levers = arm === "B" ? { exemplars: { mode: "unavailable", exemplarIds: [], fileSha: null } } : {}) }),
+    /arm B row p01 lever exemplars: \{"mode":"unavailable".*expected \{"mode":"on"\}/
+  );
+  assert.throws(() => collected({ n: 2, spec: e3Spec, edit: (e, arm) => (e.levers = arm === "B" ? { exemplars: true } : {}) }), /lever exemplars: true, expected \{"mode":"on"\}/);
   assert.throws(() => collected({ n: 2, edit: (e, arm) => arm === "B" && (e.anthropicCalls = 2) }), /sent 2 Anthropic request\(s\)/);
   assert.throws(() => collected({ n: 2, corpus: { A: "fp-1", B: "fp-2" } }), /different corpora/);
 });
@@ -829,8 +855,10 @@ test("the committed specs: valid, named after their files, E0 is the all-Spark f
       for (const stage of CONTRACT.stages) assert.equal(spec.armB.env[stageEnvVar(stage)], stage === "research" ? "none" : "local:spark", stage);
     } else if (spec.kind === "lever") {
       /* GV-91: E4, the best-of-2 spine lever; GV-94: E5, the writer
-         self-critique lever. Their arms differ in no stage. */
+         self-critique lever; GV-99: E3, the writer exemplars lever. Their
+         arms differ in no stage. */
       const levers = {
+        "E3-writer-exemplars": { lever: "exemplars", env: ["FORAY_WRITER_EXEMPLARS"] },
         "E4-spine-best-of-2": { lever: "spineBestOf", env: ["FORAY_SPINE_BEST_OF", "FORAY_SPINE_JUDGE"] },
         "E5-self-critique": { lever: "selfCritique", env: ["FORAY_WRITER_SELF_CRITIQUE", "FORAY_WRITER_CRITIC"] }
       };

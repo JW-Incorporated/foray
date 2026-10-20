@@ -1,0 +1,13 @@
+{
+  "id": "E3-writer-exemplars",
+  "kind": "lever",
+  "lever": "exemplars",
+  "armA": "adopted",
+  "armB": { "env": { "FORAY_WRITER_EXEMPLARS": "on" } },
+  "rerunFrom": "narrate",
+  "golden": "tools/generation-bench/golden/golden-v1.json",
+  "expect": {
+    "levers": { "exemplars": { "mode": "on" } }
+  },
+  "notes": "R2-17 step 2 writer exemplars (GV-99, W7-06): arm B appends the founder-selected voice card and exemplar seams (tools/generation/exemplars/narration-exemplars.json, GV-42) to the end of the Qwen writer's stable prompt part, the byte-stable system message every act, round and Foray shares, so the block is a prefix-cache hit after the first writer call. Arm A is the adopted stack. The lever first changes the narrate checkpoint, so arm B reruns from narrate. Run it only after the founder's selection is committed: with the file still empty arm B records levers.exemplars.mode 'unavailable' and collect refuses it. Read MQ-02, first-attempt pass rate and retry rounds, the cached-token share of the writer's call records (R1-14), then the pairwise listen; keep the lever only if the listen prefers arm B without a rise in retry rounds or quotes refused by the quote gate."
+}
