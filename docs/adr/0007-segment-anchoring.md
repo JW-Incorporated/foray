@@ -7,6 +7,12 @@
 bug to fix later; it invalidates every segment the extraction produces,
 which is why it was decided before any of it ran.
 
+**Amended 2026-10-19 (founder ruling, #1425; DECISIONS 2026-10-19).** The
+#64 premise "never a concatenated derived artefact" is withdrawn: 4a may now
+cut and publish clip audio as standalone podcast episodes (flagship Forays).
+This ADR still governs **in-app** playback, which keeps seeking within the
+publisher's enclosure.
+
 **Amended by ADR-0008** (`0008-ad-tolerance-and-timestamp-precision.md`, Wyatt,
 2026-08-16). Nothing below is retracted. Two things are added: ad load no longer
 gates *sourcing*, and the fourth rung of the playback ladder below — resolve the
