@@ -16,7 +16,9 @@ import { createEvidenceGatherer, type EvidenceBeat, type EvidenceDoc, type Evide
 import type { ExternalResearchContext } from "../src/generation/ExternalResearcher";
 import { loadCatalogueData } from "../src/generation/catalogueLookup";
 import { mintSegmentSource } from "../src/generation/audioSourceLookup";
-import { checkpointFingerprint } from "../src/generation/checkpoint";
+import { checkpointFingerprint, checkpointRunVariant } from "../src/generation/checkpoint";
+import { resolvePipelineFlags } from "../src/generation/pipelineFlags";
+import { resolveRouting } from "../src/config/stageRouting";
 import { RetrievalService } from "../src/cli/retrievalServer";
 import type { CueStore } from "../src/generation/manifestBodySource";
 import {
@@ -24,7 +26,8 @@ import {
   PrecomputedTextIndex,
   RemoteRetrieval,
   type RetrievalFetch,
-  type RetrievalFetchInit
+  type RetrievalFetchInit,
+  type RetrievalMode
 } from "../src/generation/retrievalClient";
 import { deriveItemId, type TranscriptCue, type TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import { FileTranscriptTextIndex, type TranscriptTextIndex, type TranscriptTextSearchOptions } from "../src/generation/transcriptTextIndex";
@@ -458,11 +461,21 @@ async function localRun(): Promise<RunRecord> {
 }
 
 async function remoteRun(
-  options_: { svc?: RetrievalService; route?: (call: Call) => { status: number } | undefined; store?: FakeCheckpointStore } = {}
+  options_: {
+    svc?: RetrievalService;
+    route?: (call: Call) => { status: number } | undefined;
+    store?: FakeCheckpointStore;
+    /** GV-125: the server's FORAY_RETRIEVAL_MODE (default bm25). */
+    mode?: RetrievalMode;
+    /** GV-125: reuse one instance across runs, as the batch driver does. */
+    retrieval?: RemoteRetrieval;
+  } = {}
 ): Promise<RunRecord & { retrieval: RemoteRetrieval; calls: Call[] }> {
   const { fetchFn, calls } = fakeFetch(options_.svc ?? service(), options_.route);
-  const retrieval = new RemoteRetrieval({ baseUrl: "http://127.0.0.1:7311", token: "t0ken", fetchFn, archive: ARCHIVE });
-  await retrieval.loadManifest();
+  const retrieval =
+    options_.retrieval ??
+    new RemoteRetrieval({ baseUrl: "http://127.0.0.1:7311", token: "t0ken", fetchFn, archive: ARCHIVE, ...(options_.mode ? { mode: options_.mode } : {}) });
+  if (!options_.retrieval) await retrieval.loadManifest();
   const cueProvider = new HydratingCueProvider(retrieval);
   const index = new RecordingTextIndex(new PrecomputedTextIndex(retrieval));
   const evidence = recordingEvidence(cueProvider);
@@ -595,6 +608,60 @@ describe("GV-95: a run against the retrieval server equals the same run on the F
     /* What report.json's row carries (`veracity`, generateForays.ts). */
     const remote = (degraded.outcome.input.meta?.veracity?.retrieval as { remote?: { reasons: string[] } } | undefined)?.remote;
     expect(remote?.reasons).toContain("search: HTTP 503");
+  }, 120_000);
+});
+
+describe("GV-125: the #1413 wave-21 follow-ups on the retrieval server", () => {
+  it("meta.veracity.retrieval.remote is this prompt's share: a second prompt on the same instance reports its own counts, not the batch's (#1413 item 16)", async () => {
+    /* MUTATION THAT KILLS THIS: report `retrieval.stats()` again in
+       runPipeline (the batch-wide counters). Ran it: red (the second row's
+       misses and reasons are the two prompts' sum). */
+    const route = (call: Call) => (call.route === "/v1/search" ? { status: 503 } : undefined);
+    const first = await remoteRun({ route });
+    const afterFirst = first.retrieval.stats();
+    const second = await remoteRun({ route, retrieval: first.retrieval });
+    const afterSecond = first.retrieval.stats();
+    expect(first.outcome.outcome).toBe("generated");
+    expect(second.outcome.outcome).toBe("generated");
+    const rowOf = (record: RunRecord) =>
+      record.outcome.outcome === "generated"
+        ? (record.outcome.input.meta?.veracity?.retrieval as { remote?: { misses: number; degraded: number; reasons: string[]; hits: number } } | undefined)?.remote
+        : undefined;
+    const row1 = rowOf(first)!;
+    const row2 = rowOf(second)!;
+    /* Not vacuous: both prompts missed and degraded. */
+    expect(row1.misses).toBeGreaterThan(0);
+    expect(row1.degraded).toBeGreaterThan(0);
+    expect(row2.misses).toBe(afterSecond.misses - afterFirst.misses);
+    expect(row2.degraded).toBe(afterSecond.degraded - afterFirst.degraded);
+    expect(row2.misses).toBeLessThan(afterSecond.misses);
+    /* The same prompt twice: the same share each time. */
+    expect(row2.misses).toBe(row1.misses);
+    expect(row2.reasons).toEqual(afterSecond.reasons.slice(afterFirst.reasons.length));
+    expect(row2.reasons).toContain("search: HTTP 503");
+  }, 120_000);
+
+  it("FORAY_RETRIEVAL_MODE=hybrid joins the pipeline's checkpoint fingerprint, as the driver computes it: no resume of a bm25 bank, a resume of a hybrid one (#1413 item 17)", async () => {
+    /* MUTATION THAT KILLS THIS: drop `retrievalMode: deps.retrieval?.mode`
+       from runPipeline's checkpointRunVariant call. Ran it: red (the hybrid
+       run resumes the bm25 bank, so 'retrieval:source' never runs; and it
+       cannot resume its own hybrid bank). */
+    const bm25 = await remoteRun();
+    expect(stageOf(bm25, "source")).toBeDefined();
+    const overBm25 = await remoteRun({ mode: "hybrid", store: bm25.store });
+    expect(overBm25.outcome.outcome).toBe("generated");
+    expect(timingNames(overBm25.outcome)).toContain("retrieval:source");
+
+    /* The store keyed by the driver's formula (generateForays.ts: the merged
+       flags plus the instance's mode): the second hybrid run resumes it. */
+    const hybridVariant = checkpointRunVariant({ ...resolvePipelineFlags(), retrievalMode: "hybrid" }, resolveRouting());
+    expect(hybridVariant).toContain("retrieval=hybrid");
+    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic: TOPIC, variant: hybridVariant }));
+    const hybrid = await remoteRun({ mode: "hybrid", store });
+    expect(timingNames(hybrid.outcome)).toContain("retrieval:source");
+    const resumed = await remoteRun({ mode: "hybrid", store });
+    expect(resumed.outcome.outcome).toBe("generated");
+    expect(timingNames(resumed.outcome)).not.toContain("retrieval:source");
   }, 120_000);
 });
 

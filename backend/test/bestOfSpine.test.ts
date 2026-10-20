@@ -7,7 +7,9 @@ import {
   renderSpineForJudge,
   spineBestOfLever,
   spineJudgeQuestion,
-  spineSampleIssues
+  spineSampleIssues,
+  type SpineJudge,
+  type SpineJudgeChoice
 } from "../src/generation/bestOfSpine";
 import { createSpineBuilder } from "../src/generation/createSpineBuilder";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -16,7 +18,8 @@ import { buildSpineWithReasks } from "../src/generation/buildSpine";
 import type { SpineBuildContext, SpineBuilder, SpineSelectionRecord } from "../src/generation/SpineBuilder";
 import { RoutingConfigError } from "../src/config/stageRouting";
 import { FlagValueError } from "../src/generation/generationFlags";
-import { BudgetGuard } from "../src/cost/budgetGuard";
+import { BudgetExceededError, BudgetGuard, EpisodeBudgetExceededError } from "../src/cost/budgetGuard";
+import { UnitBudgetExceededError } from "../src/cost/unitBudget";
 import { InMemoryCostEventSink } from "../src/cost/costEvents";
 import type { IntentUnderstanding } from "../src/types/generation";
 import type { ResearchShape } from "../src/types/research";
@@ -364,6 +367,48 @@ describe("GV-91: BestOfTwoSpineBuilder chooses between gate-passing samples", ()
     expect(hung.records[0]).toMatchObject({ chosen: "primary", reason: "judge-failed", judge: { outcome: "timeout", ms: 5000 } });
   });
 
+  it("GV-125: a budget stop from the judge is rethrown, never recorded as 'judge-failed' (#1413 item 14)", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `isBudgetStop(answer.error)` rethrow
+       in buildSpine, so every judge throw is 'judge-failed'. Ran it: red (each
+       call resolves to Plan A instead of rejecting). */
+    const stops: Error[] = [
+      new BudgetExceededError(1, 0.01, 1),
+      new EpisodeBudgetExceededError("foray-key", 1, 0.01, 1),
+      new UnitBudgetExceededError("foray-key", "jevCalls", 4, 1, 4),
+      Object.assign(new Error("wrapped by a provider"), { cause: new UnitBudgetExceededError("foray-key", "jevCalls", 4, 1, 4) })
+    ];
+    for (const stop of stops) {
+      const judge: SpineJudge = { kind: "budget-stop", choose: () => Promise.reject(stop) };
+      const { records, ctx: c } = observed();
+      const w = new BestOfTwoSpineBuilder({ primary: new ScriptedBuilder("A"), secondary: new ScriptedBuilder("B"), judge, graceMs: 3000, judgeTimeoutMs: 5000, now: fakeTime().now, sleep: fakeTime().sleep });
+      await expect(w.buildSpine(intent(), research, "short", c), stop.message).rejects.toBe(stop);
+      expect(records).toHaveLength(0);
+    }
+    /* Any other throw is still the judge failing: the primary. */
+    const { records, ctx: c } = observed();
+    const plain = await wrapper(new ScriptedBuilder("A"), new ScriptedBuilder("B"), new FakeSpineJudge([{ throw: "budget? no, a 503" }])).buildSpine(intent(), research, "short", c);
+    expect(plain.overview).toMatch(/^Plan A: /);
+    expect(records[0]).toMatchObject({ reason: "judge-failed", judge: { outcome: "threw" } });
+  });
+
+  it("GV-125: the record names the judge that answered and whether it is calibrated (#1413 item 15)", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `answeredBy` (or `calibrated`)
+       spread from the judged record. Ran both: red (the field is missing). */
+    const answering: SpineJudge = {
+      kind: "jev-then-qwen",
+      choose: async (): Promise<SpineJudgeChoice> => ({ index: 1, ms: 2, confidence: 0.9, judge: "qwen", calibrated: false })
+    };
+    const { records, ctx: c } = observed();
+    const w = new BestOfTwoSpineBuilder({ primary: new ScriptedBuilder("A"), secondary: new ScriptedBuilder("B"), judge: answering, graceMs: 3000, now: fakeTime().now, sleep: fakeTime().sleep });
+    await w.buildSpine(intent(), research, "short", c);
+    expect(records[0]!.judge).toMatchObject({ kind: "jev-then-qwen", outcome: "chose", answeredBy: "qwen", calibrated: false });
+    /* A judge that does not say adds neither field (the record is unchanged). */
+    const silent = observed();
+    await wrapper(new ScriptedBuilder("A"), new ScriptedBuilder("B"), new FakeSpineJudge([{ choose: 0 }])).buildSpine(intent(), research, "short", silent.ctx);
+    expect(Object.keys(silent.records[0]!.judge!)).not.toContain("answeredBy");
+    expect(Object.keys(silent.records[0]!.judge!)).not.toContain("calibrated");
+  });
+
   it("revision calls go to the last winner; the loser is not called again", async () => {
     /* MUTATION THAT KILLS THIS: send a re-ask to the primary always. Ran it:
        red (primary called twice, secondary once). */
@@ -508,9 +553,11 @@ describe("GV-91: createSpineBuilder and the flags", () => {
       FORAY_STAGE_SPINE_ALT: "anthropic"
     });
     expect(legacy.variable).toBe("FORAY_STAGE_SPINE_ALT");
-    const unknownJudge = thrown({ FORAY_SPINE_BEST_OF: "2", FORAY_STAGE_SPINE_ALT: "stub", FORAY_SPINE_JUDGE: "jev" });
+    /* GV-125: 'jev' is registered now (the factory imports judges.ts), so
+       the unregistered name is one nobody registers. */
+    const unknownJudge = thrown({ FORAY_SPINE_BEST_OF: "2", FORAY_STAGE_SPINE_ALT: "stub", FORAY_SPINE_JUDGE: "nobody-here" });
     expect(unknownJudge.variable).toBe("FORAY_SPINE_JUDGE");
-    expect(unknownJudge.message).not.toContain("jev\"");
+    expect(unknownJudge.message).not.toContain("nobody-here");
     const noJudge = thrown({ FORAY_SPINE_BEST_OF: "2", FORAY_STAGE_SPINE_ALT: "stub" });
     expect(noJudge.variable).toBe("FORAY_SPINE_JUDGE");
   });

@@ -4,7 +4,17 @@ import * as os from "os";
 import * as path from "path";
 import { z } from "zod";
 import { FakeCheckpointStore } from "./helpers/fakeCheckpointStore";
-import { CheckpointSession, checkpointFingerprint, checkpointRunVariant, routingVariant, type CheckpointStore } from "../src/generation/checkpoint";
+import {
+  CheckpointSession,
+  checkpointFingerprint,
+  checkpointForkStamp,
+  checkpointRunVariant,
+  forkSeedRefusal,
+  CHECKPOINT_VERSION,
+  retrievalModeVariant,
+  routingVariant,
+  type CheckpointStore
+} from "../src/generation/checkpoint";
 import { CLASSIC_PIPELINE_FLAGS, FAST_PATH_PIPELINE_FLAGS, checkpointVariant } from "../src/generation/pipelineFlags";
 import { resolveRouting } from "../src/config/stageRouting";
 import { FileCheckpointStore } from "../src/cli/checkpointStore";
@@ -226,6 +236,40 @@ describe("checkpointRunVariant (GV-55)", () => {
       `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|${routingVariant(local)}`
     );
     expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, local)).toBe(routingVariant(local));
+  });
+
+  /* GV-125 (#1413 item 17). Kills: leaving the retrieval mode out of the
+     variant (`retrievalModeVariant` returning undefined: a hybrid run would
+     resume stages a bm25 run banked), or joining bm25 too (every banked run
+     with a retrieval server would stop resuming). Ran both: red. */
+  it("joins FORAY_RETRIEVAL_MODE=hybrid, and leaves bm25 and no server out (byte-identical)", () => {
+    const local = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
+    for (const mode of [undefined, "bm25" as const]) {
+      expect(retrievalModeVariant(mode)).toBeUndefined();
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, retrievalMode: mode })).toBeUndefined();
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, retrievalMode: mode }))).toBe(TODAY);
+      expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, retrievalMode: mode }, local)).toBe(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS, local));
+    }
+    const hybrid = { ...CLASSIC_PIPELINE_FLAGS, retrievalMode: "hybrid" as const };
+    expect(checkpointRunVariant(hybrid)).toBe("retrieval=hybrid");
+    expect(fp(checkpointRunVariant(hybrid))).not.toBe(TODAY);
+    /* After the flags and the narration order, before the spine best-of and the routing. */
+    expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, retrievalMode: "hybrid", spineBestOf: 2 }, local)).toBe(
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|spine=best-of-2|${routingVariant(local)}`
+    );
+  });
+
+  /* GV-125. Kills: a fork stamp whose `flags` leaves the retrieval mode out
+     (arm B under hybrid would fork arm A's bm25-built research map). */
+  it("a seed built under another retrieval mode is not forked; under bm25 the stamp is unchanged", () => {
+    const routing = resolveRouting({});
+    const stamp = (retrievalMode?: "bm25" | "hybrid") =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, retrievalMode }, routing });
+    expect(stamp("bm25")).toEqual(stamp());
+    expect(stamp("hybrid").flags).toBe("retrieval=hybrid");
+    const seed = { version: CHECKPOINT_VERSION, fingerprint: "seed-print", fork: stamp() };
+    expect(forkSeedRefusal(seed, { fingerprint: "run-print", stamp: stamp("hybrid") }, "narrate")).toMatch(/other pipeline flags/);
+    expect(forkSeedRefusal(seed, { fingerprint: "run-print", stamp: stamp("bm25") }, "narrate")).toBeNull();
   });
 });
 

@@ -38,7 +38,7 @@ import { spineRuntimeLine, spineRuntimeOf, type SpineRuntime } from "./tierRunti
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
 import { deepenActs, foldsDeepen } from "./deepenActs";
 import { sourceBeats, sourcingBodies, sourcingSearches, summarizeSourcing } from "./sourceBeats";
-import type { RetrievalSearchRequest, RetrievalStats } from "./retrievalClient";
+import { retrievalStatsSince, type RetrievalMode, type RetrievalSearchRequest, type RetrievalStats } from "./retrievalClient";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
@@ -161,8 +161,13 @@ export interface RetrievalPreparer {
   answerFor(scope: RetrievalSearchRequest["scope"], limit: number, text: string): { candidates: ReadonlyArray<{ entry: TranscriptDigestEntry }> } | undefined;
   /** Fetches the bodies of `entries` so `getCues` can read them. */
   hydrate(entries: readonly TranscriptDigestEntry[], options?: { pin?: boolean }): Promise<number>;
-  /** The run's counts and degraded reasons, for `meta.veracity.retrieval.remote`. */
+  /** The counts and degraded reasons since the instance was made; the run
+   * reports its own share (`retrievalStatsSince`, GV-125) in
+   * `meta.veracity.retrieval.remote`. */
   stats(): RetrievalStats;
+  /** GV-125 (#1413 item 17): the mode sent with every search. Anything but
+   * bm25 joins the checkpoint variant at both call sites. Absent: bm25. */
+  readonly mode?: RetrievalMode;
 }
 
 /** G-35's prefetch metrics, plus GV-95's retrieval-server counts when the run
@@ -1227,7 +1232,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      keeps a flag-on run and a classic run off each other's banked stages;
      with every semantics-changing flag off it is undefined and the
      fingerprint is today's. GV-55: it also carries the narration order and,
-     in local mode, the routing. */
+     in local mode, the routing. GV-125 (#1413 item 17): and the retrieval
+     server's mode when it is not bm25, read off the same instance the driver
+     hashed (`deps.retrieval.mode`). */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
@@ -1236,7 +1243,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       duration: req.duration,
       topic: options.topic,
       /* GV-94: plus the self-critique's part, only when it is on. */
-      variant: joinCheckpointVariant(checkpointRunVariant(flags, routing), selfCritique)
+      variant: joinCheckpointVariant(checkpointRunVariant({ ...flags, retrievalMode: deps.retrieval?.mode }, routing), selfCritique)
     })
   );
   const resumeHint = options.checkpointKey
@@ -1497,6 +1504,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      topic: the pre-spine topic for research-shape, and again only when the
      post-spine decision resolved a different one before sourcing. */
   const retrieval = deps.retrieval;
+  /* GV-125 (#1413 item 16): one RemoteRetrieval serves the whole batch, so
+     this run's counts are the difference from here, not since the batch
+     began. */
+  const retrievalBaseline = retrieval?.stats();
   let scopedFor: { topic: string | null } | null = null;
   const scopeRetrievalTo = async (forTopic: string | null): Promise<void> => {
     if (!retrieval || (scopedFor !== null && scopedFor.topic === forTopic)) return;
@@ -2409,7 +2420,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const tapeRelevanceRows = clipScoresPending ? applyClipScores(sourced.tapeRelevance, await clipScoresPending) : sourced.tapeRelevance;
   /* GV-95: the retrieval server's counts and degraded reasons beside the
      prefetch's, only when the run had one. */
-  const retrievalMetrics: RunRetrievalMetrics = retrieval ? { ...evidence.metrics(), remote: retrieval.stats() } : evidence.metrics();
+  const retrievalMetrics: RunRetrievalMetrics =
+    retrieval && retrievalBaseline ? { ...evidence.metrics(), remote: retrievalStatsSince(retrievalBaseline, retrieval.stats()) } : evidence.metrics();
   const veracity = buildVeracityMetrics({
     sourcedActs: sourced.acts,
     writtenActs: written,

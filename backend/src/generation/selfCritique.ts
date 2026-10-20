@@ -1,5 +1,7 @@
 import { RoutingConfigError } from "../config/stageRouting";
 import { narratorStructureLeaks } from "../copy/narratorStructure";
+import { findBudgetError } from "../cost/budgetGuard";
+import { findUnitBudgetError } from "../cost/unitBudget";
 import { BANNED } from "../copy/rules";
 import { splitSpokenSentences } from "../copy/spokenLine";
 import { bannedCopyHits, isStatementSentence } from "../types/narration";
@@ -297,10 +299,17 @@ export function codeFlagOf(sentence: string): SentenceFlag | null {
 async function boundedAll<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
   const results = new Array<T>(tasks.length);
   let next = 0;
+  /* GV-125: once a task throws (a budget stop), no worker starts another. */
+  let failed = false;
   const worker = async (): Promise<void> => {
-    while (next < tasks.length) {
+    while (!failed && next < tasks.length) {
       const i = next++;
-      results[i] = await tasks[i]!();
+      try {
+        results[i] = await tasks[i]!();
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
@@ -409,7 +418,13 @@ export class SelfCritiquingNarrationWriter implements NarrationWriterBuilder {
       questions.map((q) => async () => {
         try {
           return await this.critic.supported({ sentence: q.sentence, sources: q.sources });
-        } catch {
+        } catch (err) {
+          /* GV-125 (#1413 item 14): a budget stop (the dollar caps or a
+             per-Foray unit cap, which judges.ts deliberately propagates)
+             stops the run like every model call's (clipJudge.ts's rule,
+             GV-124), and no further question is asked; anything else is
+             that one sentence unchecked. */
+          if (findBudgetError(err) !== null || findUnitBudgetError(err) !== null) throw err;
           critiqueErrors++;
           return undefined;
         }

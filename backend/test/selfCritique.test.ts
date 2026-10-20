@@ -11,6 +11,9 @@ import {
   registerDraftCritic,
   selfCritiqueLever,
   seamCritiqueSources,
+  type DraftCritic,
+  type DraftCritiqueAnswer,
+  type DraftCritiqueQuestion,
   type SelfCritiqueMode
 } from "../src/generation/selfCritique";
 import { createNarrationWriterBuilder } from "../src/generation/createNarrationWriterBuilder";
@@ -36,6 +39,8 @@ import type { ActVerifyRequest } from "../src/generation/NarrationVerifierBuilde
 import type { SourcedAct, TapePointer } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
 import { FakeDraftCritic } from "./helpers/fakeDraftCritic";
+import { BudgetExceededError } from "../src/cost/budgetGuard";
+import { UnitBudgetExceededError } from "../src/cost/unitBudget";
 
 /**
  * GV-94 (W7-08, R2-17 step 3; docs/roadmap/generation-v2.md): the typed
@@ -270,6 +275,33 @@ describe("GV-94: the self-critique decorator", () => {
     expect(edit.seams[1]!.notes).toBe(`Uses banned copy: «${banned}» - rewrite it; keep every other sentence.`);
     expect(edit.seams[2]!.frozen).toBe(true);
     expect(observed[0]).toMatchObject({ sentences: 5, flagged: 2, editedSeams: 2, critiqueCalls: 3, critiqueErrors: 1, pValues: [0.9, 0.9] });
+  });
+
+  it("GV-125: a budget stop from the critic is rethrown, no further question is asked and no edit call is made (#1413 item 14)", async () => {
+    /* MUTATIONS THAT KILL THIS: (1) drop the findBudgetError /
+       findUnitBudgetError rethrow in the critic's catch, so the stop is a
+       critiqueError. Ran it: red (writeAct resolves to the draft). (2) drop
+       `!failed` from boundedAll's worker loop. Ran it: red (the second worker
+       goes on to ask the remaining questions: 4 asked, not 2). */
+    for (const stop of [new UnitBudgetExceededError("foray-key", "jevCalls", 4, 1, 4), new BudgetExceededError(1, 0.01, 1)]) {
+      const asked: DraftCritiqueQuestion[] = [];
+      const critic: DraftCritic = {
+        kind: "budget-stop",
+        supported: async (q): Promise<DraftCritiqueAnswer> => {
+          asked.push(q);
+          if (asked.length === 1) throw stop;
+          return { p: 0.9, ms: 1 };
+        }
+      };
+      const inner = new ScriptedWriter([draft()]);
+      const observed: WriterObservation[] = [];
+      const writer = new SelfCritiquingNarrationWriter({ inner, critic, mode: "all", now: () => 1000, concurrency: 2 });
+      await expect(writer.writeAct(request(), { userId: "founder-1", actIndex: 1, observe: (e) => observed.push(e) })).rejects.toBe(stop);
+      await new Promise<void>((r) => setImmediate(r));
+      expect(asked).toHaveLength(2);
+      expect(inner.requests).toHaveLength(1);
+      expect(observed).toEqual([]);
+    }
   });
 
   it("each critic question carries only its seam's own claim quotes and the windows of the clips it follows or introduces, within the ~2k-token budget", async () => {

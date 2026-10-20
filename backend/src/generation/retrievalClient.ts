@@ -207,6 +207,38 @@ export interface RetrievalStats {
   reasons: string[];
 }
 
+/** The counters `retrievalStatsSince` reports as a difference; every other
+ * field is a level (answers stored now, bytes held now, entries pinned now). */
+const CUMULATIVE_STATS = [
+  "hits",
+  "misses",
+  "degraded",
+  "hydrated",
+  "hydrationMisses",
+  "hydrationAbsent",
+  "unmapped",
+  "unprepared",
+  "evictions",
+  "evictedPinned",
+  "scopeMismatches"
+] as const;
+
+/**
+ * GV-125 (#1413 item 16): one prompt's share of a RemoteRetrieval that serves
+ * the whole batch. `stats()` counts from the instance's birth, so a report row
+ * built from it read prompts 1..N on row N; this is `current` less `baseline`
+ * (taken at the prompt's start) for every running count, the reasons logged
+ * since the baseline (still capped at MAX_DEGRADED_REASONS overall, so a
+ * prompt after the cap lists none while `degraded` stays exact), and the
+ * levels as they stand now: `prepared` (answers stored; `prepareScope` clears
+ * them per Foray), `heldBytes` and `pinned`.
+ */
+export function retrievalStatsSince(baseline: RetrievalStats, current: RetrievalStats): RetrievalStats {
+  const delta = { ...current, reasons: current.reasons.slice(baseline.reasons.length) };
+  for (const key of CUMULATIVE_STATS) delta[key] = current[key] - baseline[key];
+  return delta;
+}
+
 /** The stored key for a prepared search: scope, limit and the verbatim text. */
 export function precomputedKey(scope: RetrievalScope, limit: number, text: string): string {
   return `${scope}\u0000${limit}\u0000${text}`;
@@ -290,7 +322,9 @@ export class RemoteRetrieval {
   private readonly token: string | null;
   private readonly fetchFn: RetrievalFetch | null;
   private readonly timeoutMs: number;
-  private readonly mode: RetrievalMode;
+  /** The mode sent with every search (GV-125: read by the checkpoint
+   * variant, so a hybrid run never resumes bm25-built stages). */
+  readonly mode: RetrievalMode;
   private readonly maxBodyBytes: number;
   private readonly concurrency: number;
   /** Token plus plain http to another host: nothing is sent (see above). */
