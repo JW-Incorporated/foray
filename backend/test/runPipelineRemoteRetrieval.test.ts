@@ -30,6 +30,7 @@ import { deriveItemId, type TranscriptCue, type TranscriptDigestEntry } from "..
 import { FileTranscriptTextIndex, type TranscriptTextIndex, type TranscriptTextSearchOptions } from "../src/generation/transcriptTextIndex";
 import type { SegmentRecord } from "../src/generation/segmentPoolLookup";
 import { SUBJECT_PROBE_LIMIT } from "../src/generation/researchShape";
+import { sourcingBodies } from "../src/generation/sourceBeats";
 import { openRemoteRetrieval } from "../src/cli/generateForays";
 import { FlagValueError, retrievalConfig, tokenWouldTravelInClear } from "../src/generation/generationFlags";
 import { corpusCoverage } from "../src/generation/transcriptCorpus";
@@ -208,6 +209,28 @@ function buildCorpus(): { archive: TranscriptDigestEntry[]; cuesByGuid: Map<stri
     feed_duration_sec: 3600,
     enclosure_url: `https://cdn.example/${poolOnly}.mp3`
   });
+  /* And one reached only by the seed: act 0 slot 0's claim spoken again, in
+     an episode whose title shares no word with any claim, so the title path
+     never opens it; in the degraded run (no search answered) only the seed's
+     entry in sourcingBodies fetches its body. */
+  const seedOnly = "gv95-seed-only";
+  const seedCues: TranscriptCue[] = [];
+  let st = 0;
+  for (let i = 0; i < 3; i++, st += 20) seedCues.push({ text: FILLER[i % FILLER.length]!, start_sec: st, end_sec: st + 20, speaker: null });
+  for (const c of claimCues(spokenClaim(0, 0), st)) seedCues.push(c);
+  spoken.push({ a: 0, s: 0, guid: seedOnly, startSec: st, endSec: st + 80 });
+  st += 80;
+  for (let i = 0; i < 4; i++, st += 20) seedCues.push({ text: FILLER[i % FILLER.length]!, start_sec: st, end_sec: st + 20, speaker: null });
+  cuesByGuid.set(seedOnly, seedCues);
+  archive.push({
+    show_id: "hardcore-history",
+    show_title: "Hardcore History",
+    guid: seedOnly,
+    title: "Dispatches about camp kitchens",
+    cues: seedCues.length,
+    feed_duration_sec: 3600,
+    enclosure_url: `https://cdn.example/${seedOnly}.mp3`
+  });
   return { archive, cuesByGuid, spoken };
 }
 
@@ -215,6 +238,8 @@ const CORPUS = buildCorpus();
 const ARCHIVE = CORPUS.archive;
 const entryOf = (guid: string): TranscriptDigestEntry => ARCHIVE.find((e) => e.guid === guid)!;
 const spokenAt = (a: number, s: number): Spoken => CORPUS.spoken.find((x) => x.a === a && x.s === s)!;
+/** Where act 0 slot 0's seed points: its second telling, in the seed-only episode. */
+const SEED_AT = CORPUS.spoken.find((x) => x.guid === "gv95-seed-only")!;
 
 /** One committed pool row over act 1 slot 0's spoken stretch, in the lineage,
  * so tier 1 reads its window text from a hydrated body. */
@@ -261,8 +286,8 @@ const SHOW_META = new Map(SHOWS.map((s) => [s.show_id, { dai: false, feedUrl: `h
 /**
  * The deepen builder: the stub's act (introduction, exit, thesis) with each
  * slot's beats replaced by two the corpus is built around: the spoken claim of
- * (act, slot), seeded at its stretch for act 0 slot 0, and a claim spoken
- * nowhere.
+ * (act, slot), seeded for act 0 slot 0 at its second telling in the
+ * seed-only episode, and a claim spoken nowhere.
  */
 class ScriptedDeepen implements DeepenActBuilder {
   readonly providerName = "scripted";
@@ -274,8 +299,7 @@ class ScriptedDeepen implements DeepenActBuilder {
       slots: base.slots.map((slot, s) => {
         const spokenBeat: Beat = { claim: spokenClaim(index, s), exploration: false, kind: "account" };
         if (index === 0 && s === 0) {
-          const at = spokenAt(0, 0);
-          spokenBeat.seed = { episodeId: deriveItemId(entryOf(at.guid)), startSec: at.startSec, endSec: at.endSec };
+          spokenBeat.seed = { episodeId: deriveItemId(entryOf(SEED_AT.guid)), startSec: SEED_AT.startSec, endSec: SEED_AT.endSec };
         }
         return { title: slot.title, beats: [spokenBeat, { claim: unspokenClaim(index, s), exploration: false, kind: "account" }] };
       })
@@ -547,9 +571,12 @@ describe("GV-95: a run against the retrieval server equals the same run on the F
     /* The probe and the subtopic searches MISS, which researchShape now
        reports as not searched rather than refusing the map; sourcing falls back
        to the title path and the seed, whose bodies are still fetched.
-       MUTATION THAT KILLS THIS: hydrate only the text candidates in
+       MUTATIONS THAT KILL THIS: hydrate only the text candidates in
        sourcingBodies (no title-path or seeded body is held: the title-path and
-       seed tape is lost). Ran it: red. */
+       seed tape is lost); drop only the seeded episode from sourcingBodies
+       (`void seed`: the seed-only episode is read unhydrated, so
+       hydrationMisses > 0 and act 0 slot 0 loses its seed window). Ran both:
+       red. */
     const degraded = await remoteRun({ route: (call) => (call.route === "/v1/search" ? { status: 503 } : undefined) });
     expect(degraded.outcome.outcome).toBe("generated");
     if (degraded.outcome.outcome !== "generated") return;
@@ -560,13 +587,45 @@ describe("GV-95: a run against the retrieval server equals the same run on the F
     expect(stats.reasons).toContain("search: HTTP 503");
     const tier2 = degraded.outcome.tapeRelevance.filter((r) => r.tier === 2);
     expect(tier2.length).toBeGreaterThan(0);
-    expect(degraded.outcome.tapeRelevance.some((r) => r.seedWindowWon)).toBe(true);
+    /* The seed won act 0 slot 0, from the episode only the seed reaches. */
+    const seeded = degraded.outcome.tapeRelevance.find((r) => r.actIndex === 0 && r.slotIndex === 0 && r.beatIndex === 0);
+    expect(seeded).toMatchObject({ tier: 2, seedWindowWon: true, itemId: deriveItemId(entryOf(SEED_AT.guid)) });
     const shape = stageOf(degraded, "research-shape") as { subjectTape: { searched: boolean } };
     expect(shape.subjectTape.searched).toBe(false);
     /* What report.json's row carries (`veracity`, generateForays.ts). */
     const remote = (degraded.outcome.input.meta?.veracity?.retrieval as { remote?: { reasons: string[] } } | undefined)?.remote;
     expect(remote?.reasons).toContain("search: HTTP 503");
   }, 120_000);
+});
+
+describe("GV-95: sourcingBodies holds a seeded episode no search and no title reaches", () => {
+  /** One act of one slot whose single beat makes `claim`, seeded at `guid`. */
+  const seededActs = (claim: string, seedEpisode: string | null): DeepenedAct[] => {
+    const beat: Beat = { claim, exploration: false, kind: "account" };
+    if (seedEpisode) beat.seed = { episodeId: seedEpisode, startSec: 60, endSec: 140 };
+    return [{ slots: [{ title: "s", beats: [beat] }] } as unknown as DeepenedAct];
+  };
+  const bodiesFor = (acts: DeepenedAct[]) =>
+    sourcingBodies(acts, { transcriptArchive: ARCHIVE, segmentPool: [], topic: TOPIC, candidatesFor: () => [] }).map((e) => e.guid);
+
+  it("adds the seeded episode (by item id or by guid) when the lineage gate admits it, and never when the gate refuses it", () => {
+    /* MUTATIONS THAT KILL THIS: `void seed` in place of the seed's line in
+       sourcingBodies (the seeded episode is never fetched); drop
+       `&& isUsable(entry)` from that line (a seed outside the lineage is
+       fetched). Ran both: red. */
+    const claim = unspokenClaim(0, 0);
+    /* Not vacuous: unseeded, nothing reaches any episode (no candidates, no
+       title shares a word with the claim, no pool). */
+    expect(bodiesFor(seededActs(claim, null))).toEqual([]);
+    const admitted = entryOf("gv95-ep-3");
+    expect(admitted.show_id).toBe("hardcore-history");
+    expect(bodiesFor(seededActs(claim, deriveItemId(admitted)))).toEqual(["gv95-ep-3"]);
+    expect(bodiesFor(seededActs(claim, admitted.guid))).toEqual(["gv95-ep-3"]);
+    /* Titans of Nuclear is outside history/military-ancient's lineage. */
+    const refused = entryOf("gv95-ep-2");
+    expect(refused.show_id).toBe("titans-of-nuclear");
+    expect(bodiesFor(seededActs(claim, deriveItemId(refused)))).toEqual([]);
+  });
 });
 
 describe("GV-95: the batch driver's remote sources (generateForays.ts openRemoteRetrieval)", () => {

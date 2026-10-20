@@ -2905,7 +2905,7 @@ const BACKEND_FLOORS = {
      hydrates every clip before evidence; a server refusing every search
      completes on the title path and the seed with the reason in
      meta.veracity.retrieval.remote; openRemoteRetrieval and retrievalConfig. */
-  "test/runPipelineRemoteRetrieval.test.ts": 5,
+  "test/runPipelineRemoteRetrieval.test.ts": 6,
   /* GV-48 (docs/roadmap/generation-v2.md, from W3-09): the hybrid merge —
      'append' keeps every BM25 candidate's rank and adds at most denseExtra
      dense-only episodes with their best passage, every candidate carries the
