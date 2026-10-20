@@ -1966,6 +1966,7 @@ const FLOORS = {
      fails at once, no private fetcher - and artworkFromLookup is the harvest
      mapping (a podcast's https artworkUrl600, else null). New, zero slack. */
   "tools/refresh/backfill-artwork.test.mjs": 4,
+  "tools/podcast/build-feed.test.mjs": 12, // 2026-10-20 (#1425, self-hosted flagship podcast): new -- esc/CDATA, feed tags, drafts gating, JSON chapters, https base URL, publish readiness, content-addressed keys, guid permanence, CLI; every test runs its own mutant
   /* The one-shot that gets a newly curated show's back catalogue into the pipeline
      (#279). The floor matters because the whole script exists to make one silent
      failure impossible — a backfill that reports success while emitting nothing, or
