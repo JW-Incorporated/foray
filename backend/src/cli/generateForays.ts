@@ -26,6 +26,7 @@ import { FileTranscriptTextIndex, TRANSCRIPT_TEXT_INDEX_VERSION, type Transcript
 import {
   CHECKPOINT_STAGE_ORDER,
   CheckpointFileSchema,
+  type CheckpointFile,
   checkpointFingerprint,
   checkpointForkStamp,
   checkpointRunVariant,
@@ -43,6 +44,7 @@ import { flushCodeSpans } from "../generation/codeSpans";
 import { DeliveryTimeline, deliveryReportOf, type DeliveryReport } from "../generation/deliveryTimeline";
 import { spanMsOf } from "../generation/stageTiming";
 import { FileCheckpointStore } from "./checkpointStore";
+import { calibrationExportFromStages, dataLocalRefusal, type CalibrationExportIdentity } from "../generation/judgeCalibration";
 import { FileJobSink } from "./fileJobSink";
 import { SpoolRenderClient } from "./spoolRenderClient";
 import { AUDIO_POLICIES, DEFAULT_AUDIO_POLICY, isAudioPolicy, NarrationRenderTracker, type AudioPolicy, type NarrationRenderClient, type RenderReport } from "../generation/narrationRender";
@@ -138,6 +140,7 @@ import { UnitBudgetStopError, defaultUnitBudgetGuard, unitSpendOf, type UnitSpen
  *                              [--keep-checkpoints]
  *                              [--seed-checkpoints <dir> --rerun-from <stage>]
  *                              [--lane on-demand|catalogue]
+ *                              [--keep-calibration data-local/<dir>]
  *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
  *   same default `generate-foray` uses; `--author` still works for one
  *   release and prints a deprecation line)
@@ -189,6 +192,17 @@ import { UnitBudgetStopError, defaultUnitBudgetGuard, unitSpendOf, type UnitSpen
  * <stage> (CHECKPOINT_STAGE_ORDER in generation/checkpoint.ts), and so
  * rebuilds only from the changed stage. A missing or unusable seed is logged
  * and the prompt runs from scratch; the row records `seededFrom`.
+ *
+ * `--keep-calibration <dir>` (GV-103, off by default; `<dir>` must be under
+ * data-local/, anything else is refused, and so is --dry-run, which keeps no
+ * checkpoint) writes `<dir>/calibration-<hash>.json` for every prompt whose
+ * candidate is written, just before its checkpoint is discarded: the written
+ * acts (every page's verified flag, verifierNotes and evidence), the sourcing
+ * rows, the tape pointers and the listener's subject sentence
+ * (`generation/judgeCalibration.ts` CalibrationExport). It never holds the
+ * prompt; `<hash>` is the prompt's sha1 prefix the candidate's name also ends
+ * in. `tools/generation/calibrate-judges.mjs` reads it. Nothing else in the
+ * run changes.
  *
  * `--lane on-demand|catalogue` (GV-81, default catalogue) names the lane the
  * batch's candidates are for. Given, it is written onto every report row
@@ -280,6 +294,11 @@ export interface CliArgs {
    * the shortfall). `parseArgs` always sets it, false unless given; optional
    * only so callers that build CliArgs by hand need not. */
   allowShortArchive?: boolean;
+  /** GV-103: `--keep-calibration <dir>`, under data-local/: write each built
+   * prompt's calibration export there before its checkpoint is discarded.
+   * Absent unless given, so the parsed args of a run without it are
+   * unchanged. */
+  keepCalibration?: string;
 }
 
 /** A command-line value the driver refuses. `main` prints the message and
@@ -439,6 +458,7 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
   const fork = parseForkFlags(argv);
   const render = parseRenderFlags(argv);
   const lane = parseLaneFlag(argv);
+  const keepCalibration = parseKeepCalibrationFlag(argv);
   return {
     prompts: get("--prompts") ?? null,
     out: get("--out") ?? path.join("data-local", "foray-candidates"),
@@ -457,8 +477,73 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     ...(stageProviders ? { stageProviders } : {}),
     ...fork,
     ...render,
-    ...(lane !== undefined ? { lane } : {})
+    ...(lane !== undefined ? { lane } : {}),
+    ...(keepCalibration !== undefined ? { keepCalibration } : {})
   };
+}
+
+/**
+ * GV-103: `--keep-calibration <dir>`, absent unless given. Refused
+ * (CliArgError): no value, a directory outside data-local/ (the export holds
+ * scripts, evidence and transcript-derived text that never goes into git),
+ * or --dry-run (a dry run keeps no checkpoint, so there is nothing to
+ * export).
+ */
+function parseKeepCalibrationFlag(argv: string[]): string | undefined {
+  const i = argv.indexOf("--keep-calibration");
+  if (i < 0) return undefined;
+  const value = argv[i + 1];
+  if (value === undefined || value.startsWith("--") || value.trim() === "") throw new CliArgError("--keep-calibration needs a directory under data-local/");
+  const refusal = dataLocalRefusal("--keep-calibration", value);
+  if (refusal !== null) throw new CliArgError(refusal);
+  if (argv.includes("--dry-run")) throw new CliArgError("--keep-calibration cannot be used with --dry-run (a dry run keeps no checkpoint)");
+  return value;
+}
+
+/** GV-103: the export's file name: the prompt's sha1 prefix, the same one
+ * `candidateFilename` ends in, and no prompt text. */
+export function calibrationExportFilename(prompt: string): string {
+  const hash = candidateFilename(prompt).replace(/\.json$/, "").split("-").pop()!;
+  return `calibration-${hash}.json`;
+}
+
+/**
+ * GV-103: writes `<dir>/calibrationExportFilename(prompt)` from the
+ * checkpoint's banked stages (`calibrationExportFromStages`). Called only
+ * for a written candidate, before the checkpoint is discarded. Never
+ * throws: a missing stage or a failed write is a warning, never the run.
+ * Returns the file written, or null.
+ */
+export function writeCalibrationExport(
+  dir: string,
+  prompt: string,
+  checkpoint: CheckpointFile | null,
+  ident: Omit<CalibrationExportIdentity, "key">
+): string | null {
+  try {
+    if (!checkpoint) {
+      console.warn("  calibration: no checkpoint to export (nothing banked)");
+      return null;
+    }
+    const name = calibrationExportFilename(prompt);
+    const exp = calibrationExportFromStages(checkpoint.stages, { ...ident, key: name.replace(/^calibration-|\.json$/g, "") });
+    if ("error" in exp) {
+      console.warn(`  calibration: not exported (${exp.error})`);
+      return null;
+    }
+    const file = path.join(path.resolve(dir), name);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- --keep-calibration, refused unless under data-local/.
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const tmp = `${file}.tmp`;
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- --keep-calibration, refused unless under data-local/; the name is a hash.
+    fs.writeFileSync(tmp, `${JSON.stringify(exp, null, 2)}\n`);
+    // eslint-disable-next-line security/detect-non-literal-fs-filename -- same.
+    fs.renameSync(tmp, file);
+    return file;
+  } catch (err) {
+    console.warn(`  calibration: could not write the export: ${errorMessage(err)}`);
+    return null;
+  }
 }
 
 /**
@@ -1772,7 +1857,17 @@ export async function generateOneCandidate(
          the same content in the output directory.
          GV-62: under --keep-checkpoints a BENCH prompt's checkpoint stays,
          stamped so a later arm can fork it (main refused the flag unless
-         every prompt is a bench prompt; the spec is checked again here). */
+         every prompt is a bench prompt; the spec is checked again here).
+         GV-103: under --keep-calibration the calibration export is written
+         first, from the checkpoint about to be discarded. */
+      if (args.keepCalibration !== undefined) {
+        const exported = writeCalibrationExport(args.keepCalibration, spec.prompt, checkpointStore.load(checkpointKey), {
+          ...(spec.id !== undefined ? { promptId: spec.id } : {}),
+          forayId: outcome.input.id,
+          duration: request.duration
+        });
+        if (exported) console.log(`  calibration export: ${exported}`);
+      }
       if (args.keepCheckpoints && spec.bench === true) keepCheckpoint(checkpointStore, checkpointKey, forkStamp);
       else checkpointStore.discard(checkpointKey);
       discardPartial();
@@ -1819,7 +1914,7 @@ export async function main(
         "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
         "[--render-spool <dir> [--audio-policy phone-voice-first|await-render]] " +
         "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>] " +
-        "[--lane on-demand|catalogue] [--allow-short-archive]"
+        "[--lane on-demand|catalogue] [--allow-short-archive] [--keep-calibration data-local/<dir>]"
     );
     process.exitCode = 1;
     return;
