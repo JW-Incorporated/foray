@@ -1892,6 +1892,30 @@ describe("GV-104 — the voice gate re-asks a seam that breaks a spoken-line rul
     expect(pagesInOrder(first)[0]!.script.startsWith(DIGIT_LINE)).toBe(true);
   });
 
+  it("enforce: a rhetorical question is kept in a seam beside a clip and re-asked in a seam with no tape", async () => {
+    /* MUTATION THAT KILLS THIS: `const hasTape = false;` in validateSeam's
+       voice block (the clip-side question is re-asked: two rounds), or
+       `const hasTape = true;` (the tapeless question ships in one round).
+       Ran both — red. */
+    const QUESTION = "Who signed the drawing?";
+    const withQuestion = () =>
+      builders((reply, _request, round) => (round > 1 ? reply : { seams: reply.seams.map((seam, i) => (i === 0 ? { ...seam, script: `${QUESTION} ${seam.script}` } : seam)) }));
+
+    /* fourBeatsTwoClips' s0 introduces clip c0: the tape answers the question (§5c). */
+    const beside = withQuestion();
+    const kept = await writeActNarration(fourBeatsTwoClips(), { writer: beside.writer, verifier: beside.verifier, evidence: gatherer(), voiceGate: enforce }, voice, atAct(1));
+    expect(beside.calls.write).toBe(1);
+    expect(pagesInOrder(kept)[0]!.script.startsWith(QUESTION)).toBe(true);
+
+    /* An act with no tape: its only seam neither introduces nor follows a clip. */
+    const noTape: SourcedAct = { title: "N", slots: [{ title: "S", beats: [narration(CLAIMS.b0), narration(CLAIMS.b1)] }] };
+    const alone = withQuestion();
+    const reasked = await writeActNarration(noTape, { writer: alone.writer, verifier: alone.verifier, evidence: gatherer(), voiceGate: enforce }, voice, atAct(1));
+    expect(alone.calls.write).toBe(2);
+    expect(alone.requests[1]!.retryNote).toContain("rhetorical question");
+    for (const page of pagesInOrder(reasked)) expect(page.script).not.toContain(QUESTION);
+  });
+
   it("report and off never change the rounds or the text, in any act", async () => {
     /* MUTATION THAT KILLS THIS: enforce for any mode but `off`
        (`mode !== "off"` in voiceGateEnforces) — report then re-asks act 2. Ran it — red. */
