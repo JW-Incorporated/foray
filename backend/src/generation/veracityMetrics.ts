@@ -12,6 +12,7 @@ import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
 import type { ClipJudgeId, ClipScores } from "../types/tapeSourcing";
+import { computeVoiceMetrics, type VoiceMetrics, type VoiceScript } from "./voiceChecks";
 
 /**
  * WS-B (docs/curation/generation-fix-plan-2026-09-09.md §WS-B): "the AI
@@ -1262,6 +1263,14 @@ export interface VeracityMetrics {
    * share (`computeShowVariety`). Absent when the caller passed no
    * `showItems`; reported, never gated. */
   showVariety?: ShowVarietyResult;
+  /** GV-104 (MQ-15..MQ-18; W5-18 + W4-12): the voice scorecard over every
+   * final narration item -- reading grade and its band, sentence shape,
+   * speakability and banned words per 100 words, the hard-error count the
+   * writer's voice gate would re-ask on, and the per-item sentence shape
+   * (`computeVoiceMetrics`). Absent when the caller passed no
+   * `narrationScripts` (FORAY_VOICE_GATE=off, or a candidate built before
+   * GV-104). Reported, never gated. */
+  voice?: VoiceMetrics;
 }
 
 export interface BuildVeracityMetricsInput {
@@ -1311,6 +1320,12 @@ export interface BuildVeracityMetricsInput {
   /** GV-83: the finished Foray's tape items, each with its show key and
    * seconds. Omitted, `showVariety` is absent. */
   showItems?: readonly ShowVarietyItem[];
+  /** GV-104: every final narration item's script, in order, with whether
+   * tape sits beside it (`voiceScriptsOf`). Omitted, `voice` is absent. */
+  narrationScripts?: readonly VoiceScript[];
+  /** GV-104: the reading-grade band (`GateConfig.readingGradeBand`).
+   * Omitted, spokenLine.js's READING_GRADE_BAND (6-9). */
+  readingGradeBand?: readonly [number, number];
 }
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
@@ -1381,7 +1396,8 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
           clipOnSubjectDetails: { scored: clips.scored, unscored: clips.unscored, offSubject: clips.offSubject }
         }
       : {}),
-    ...(input.showItems ? { showVariety: computeShowVariety(input.showItems) } : {})
+    ...(input.showItems ? { showVariety: computeShowVariety(input.showItems) } : {}),
+    ...(input.narrationScripts ? { voice: computeVoiceMetrics(input.narrationScripts, input.readingGradeBand) } : {})
   };
 }
 

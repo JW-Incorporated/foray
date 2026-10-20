@@ -16,7 +16,8 @@ import { UnitBudgetStopError, findUnitBudgetError } from "../cost/unitBudget";
 import { CheckpointSession, checkpointFingerprint, checkpointRunVariant, type CheckpointStore } from "./checkpoint";
 import { resolvePipelineFlags, type PipelineFlags } from "./pipelineFlags";
 import { resolveRouting, type RoutingTable } from "../config/stageRouting";
-import { resolveGateConfig, type GateConfig } from "./gateConfig";
+import { resolveGateConfig, voiceGateOf, type GateConfig } from "./gateConfig";
+import { voiceScriptsOf } from "./voiceChecks";
 import { outputBudgetMode } from "../config/outputBudgets";
 import { DeepenedActSchema, SpineSchema, type DeepenedAct } from "../types/spine";
 import {
@@ -2331,6 +2332,11 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
             /* GV-34 / decision 34: FORAY_SPECIFICS_CHECK reaches the writer,
                so `enforce` re-asks a seam in a real run (default `report`). */
             specifics: gates.specifics,
+            /* GV-104 / decision 34: FORAY_VOICE_GATE reaches the writer, so
+               `enforce` re-asks a seam from FORAY_VOICE_ENFORCE_FROM_ACT on
+               (the act's position is ctx.actIndex below). Default `report`:
+               nothing changes in writeAct. */
+            voiceGate: voiceGateOf(gates),
             /* GV-73: FORAY_WRITER_STREAM (or the fast path) streams the
                writer's reply; early releases reach deps.onSeamChecked with
                this act's index (`writeNarration` sees one act, index 0). */
@@ -2437,6 +2443,11 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         newSegmentSources: sourced.newSegmentSources,
         ...(options.root ? { root: options.root } : {})
       }),
+      /* GV-104 (MQ-15..MQ-18): the voice scorecard over every final
+         narration item (prelude, act introductions and exits, seams), each
+         with whether tape sits beside it. From the items, so a resumed run
+         reports the same numbers. FORAY_VOICE_GATE=off leaves it out. */
+      ...(gates.voice === "off" ? {} : { narrationScripts: voiceScriptsOf(items), readingGradeBand: gates.readingGradeBand }),
       root: options.root
     });
     /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is

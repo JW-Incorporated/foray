@@ -24,6 +24,7 @@ import type { TranscriptCueProvider } from "./transcriptArchiveLookup";
 import { beatKindOf, createEvidenceGatherer, type AdjacentTape, type EvidenceBeat, type EvidenceGatherer, type EvidencePack } from "./gatherEvidence";
 import type { ActFrame, GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
 import type { SpecificsMode } from "./specifics";
+import type { VoiceGate } from "./voiceChecks";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import { writeActNarration } from "./writeAct";
 import { planActSeams } from "./actSeams";
@@ -236,6 +237,13 @@ export interface WriteNarrationOptions {
    * Omitted means `report`, the writer's own default.
    */
   specifics?: SpecificsMode;
+  /**
+   * GV-104 / decision 34: the run's voice gate (FORAY_VOICE_GATE,
+   * FORAY_VOICE_ENFORCE_FROM_ACT), handed to every act's
+   * `writeActNarration` with the act's position. Omitted means no act's
+   * options carry the key (today's writer, unchanged).
+   */
+  voiceGate?: VoiceGate;
   /**
    * GV-73 (W4-10): write each act through the writer's streamed reply
    * (`writeActStream`) when it has one -- FORAY_WRITER_STREAM or the fast
@@ -736,6 +744,9 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
               ...(options.frames?.[actIndex] ? { frame: options.frames[actIndex] } : {}),
               /* GV-34 / decision 34: the run's specifics gate. */
               ...(options.specifics ? { specifics: options.specifics } : {}),
+              /* GV-104: the run's voice gate, with this act's position (the
+                 pipeline's ctx.actIndex wins over it in writeAct). */
+              ...(options.voiceGate ? { voiceGate: options.voiceGate, actIndex } : {}),
               /* GV-73: the streamed writer path and its early-release signal,
                  with this act's position. */
               ...(options.streamSeams ? { streamSeams: true } : {}),

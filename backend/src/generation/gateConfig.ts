@@ -2,6 +2,8 @@ import { z } from "zod";
 import { enumParser, numberParser, readFlag, type FlagParser, type FlagSource } from "./generationFlags";
 import { JUDGE_IDS, type JevResult, type JudgeId } from "./jevTypes";
 import { SPECIFICS_MODES, type SpecificsMode } from "./specifics";
+import { VOICE_GATE_MODES, type VoiceGate, type VoiceGateMode } from "./voiceChecks";
+import { READING_GRADE_BAND } from "../copy/spokenLine";
 
 /**
  * GV-15 (docs/roadmap/generation-v2.md, W5-02): the gate configuration.
@@ -77,6 +79,33 @@ export interface GateConfig {
   "clipLevel.jev": number;
   /** FORAY_CLIP_LEVEL_QWEN: the same, for the Qwen judge. Default 3, PROPOSED. */
   "clipLevel.qwen": number;
+
+  /**
+   * GV-104 (W5-18; R2-14, QK-25): FORAY_VOICE_GATE = off|report|enforce,
+   * default `report`. The spoken-line rules (N7-N9: reference leak, digits,
+   * hedges, banned adjectives and openers, a rhetorical question with no
+   * tape; N24: one numeric expression per sentence) on every seam the writer
+   * returns (`voiceChecks.ts`). `enforce` makes a seam's hard errors
+   * mechanical issues, so the seam is re-asked, from act
+   * `voiceEnforceFromAct` on; `report` and `off` change nothing in the
+   * writer. `report` and `enforce` add `meta.veracity.voice` (the scorecard,
+   * from the final items); `off` leaves it out.
+   */
+  voice: VoiceGateMode;
+  /** GV-104: FORAY_VOICE_ENFORCE_FROM_ACT, the first act (0-based) the
+   * `enforce` mode re-asks seams in. Default 1, which keeps retries off act
+   * 1's first-audio path (R2). */
+  voiceEnforceFromAct: number;
+  /** GV-104 (OQ-02): FORAY_READING_GRADE_BAND, `<lo>-<hi>`, the
+   * Flesch-Kincaid band `meta.veracity.voice.gradeInBand` reads. Default
+   * spokenLine.js's READING_GRADE_BAND (6-9). Scorecard only: no gate reads
+   * the grade. */
+  readingGradeBand: [number, number];
+}
+
+/** GV-104: the writer-side voice gate of a resolved config. */
+export function voiceGateOf(config: GateConfig): VoiceGate {
+  return { mode: config.voice, enforceFromAct: config.voiceEnforceFromAct };
 }
 
 /** GV-79: the clip judge's modes (FORAY_CLIP_JUDGE). */
@@ -113,6 +142,19 @@ export function defineGateTable(entries: readonly GateTableEntry[]): readonly Ga
 
 const probabilityParser = numberParser(z.number().min(0).max(1), "a number from 0 to 1");
 const clipLevelParser = numberParser(z.number().int().min(0).max(4), "an integer from 0 to 4");
+const actIndexParser = numberParser(z.number().int().min(0).max(99), "an integer from 0 to 99");
+
+/** GV-104: a grade band, `<lo>-<hi>` (or `<lo>,<hi>`), each 0..20, lo <= hi. */
+export const gradeBandParser: FlagParser<[number, number]> = {
+  parse: (raw) => {
+    const m = /^(\d+(?:\.\d+)?)\s*[-,]\s*(\d+(?:\.\d+)?)$/.exec(raw);
+    if (!m) return undefined;
+    const lo = Number(m[1]);
+    const hi = Number(m[2]);
+    return lo <= hi && hi <= 20 ? [lo, hi] : undefined;
+  },
+  expected: "a grade band <lo>-<hi> with 0 <= lo <= hi <= 20"
+};
 
 /** The gate table. Each gate card appends its row. */
 export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
@@ -121,7 +163,15 @@ export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
   { key: "supportMinP.jev", env: "FORAY_SUPPORT_MIN_P_JEV", parse: probabilityParser, default: 0.5 } satisfies GateTableEntry<number>,
   { key: "supportMinP.qwen", env: "FORAY_SUPPORT_MIN_P_QWEN", parse: probabilityParser, default: 0.7 } satisfies GateTableEntry<number>,
   { key: "clipLevel.jev", env: "FORAY_CLIP_LEVEL_JEV", parse: clipLevelParser, default: 3 } satisfies GateTableEntry<number>,
-  { key: "clipLevel.qwen", env: "FORAY_CLIP_LEVEL_QWEN", parse: clipLevelParser, default: 3 } satisfies GateTableEntry<number>
+  { key: "clipLevel.qwen", env: "FORAY_CLIP_LEVEL_QWEN", parse: clipLevelParser, default: 3 } satisfies GateTableEntry<number>,
+  { key: "voice", env: "FORAY_VOICE_GATE", parse: enumParser(VOICE_GATE_MODES), default: "report" } satisfies GateTableEntry<VoiceGateMode>,
+  { key: "voiceEnforceFromAct", env: "FORAY_VOICE_ENFORCE_FROM_ACT", parse: actIndexParser, default: 1 } satisfies GateTableEntry<number>,
+  {
+    key: "readingGradeBand",
+    env: "FORAY_READING_GRADE_BAND",
+    parse: gradeBandParser,
+    default: [READING_GRADE_BAND[0], READING_GRADE_BAND[1]]
+  } satisfies GateTableEntry<[number, number]>
 ]);
 
 /**
