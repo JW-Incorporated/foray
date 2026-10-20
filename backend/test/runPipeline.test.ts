@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
-import { runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
+import { countingNarrationWriterOf, runForayPipeline, slotsFromSpine, runtimeSecFor, showVarietyItemsFor, forayCopy, clampWords, MAX_COPY_WORDS, preludeItem } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -26,7 +26,7 @@ import { INTERNAL_VOCABULARY, titleStyleProblems } from "../src/copy/rules";
 import { SpineSchema, type DeepenedAct, type Spine } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
 import type { EvidenceBeat, EvidenceGatherer, EvidencePack } from "../src/generation/gatherEvidence";
-import type { NarrationWriterBuilder } from "../src/generation/NarrationWriterBuilder";
+import type { NarrationWriterBuilder, SeamEditRequest } from "../src/generation/NarrationWriterBuilder";
 import type { SpineBuildContext, SpineBuilder } from "../src/generation/SpineBuilder";
 import type { ContinuityBuilder } from "../src/generation/ContinuityBuilder";
 import { servableThroughAct, servableView, type PartialCandidate } from "../src/generation/partialCandidate";
@@ -2372,4 +2372,38 @@ describe("runForayPipeline — GV-94 decision 20: the self-critique part of the 
       restore();
     }
   }, 240_000);
+});
+
+/* GV-124 (#1413 item 10): the pipeline's counting proxy over the writer
+   (`countingNarrationWriterOf`, what runForayPipeline hands the narration
+   stage) forwards `editSeams`, so the seam edit GV-80 built can reach the
+   writer through the pipeline. It was dropped: writeAct.ts checks for the
+   method, found none, and a timed round 2 would have been a whole-act
+   rewrite. */
+describe("GV-124 — the counting writer forwards editSeams", () => {
+  it("offers exactly the writer's optional methods, forwards each, and counts every request once", async () => {
+    /* MUTATION THAT KILLS THIS: drop the editSeams forward from
+       countingNarrationWriterOf (the pre-GV-124 proxy). Ran it: red (the
+       proxy has no editSeams). Or: forward it without counting. Ran it: red
+       (the count reads 1 after the edit and the act). */
+    const stub = new StubNarrationWriterBuilder();
+    let count = 0;
+    const proxy = countingNarrationWriterOf(stub, () => void count++);
+    expect(proxy.providerName).toBe(stub.providerName);
+    expect(typeof proxy.writeActStream).toBe("function");
+    expect(typeof proxy.editSeams).toBe("function");
+    const voice = { style: "well-read friend", register: "conversational", sentenceRhythm: "varied", narratorPresence: "medium" } as const;
+    const edit: SeamEditRequest = { actTitle: "Act 1", voice, seams: [], neighbours: [], clips: [], documents: [], retryNote: "r" };
+    const ctx = { userId: "founder-1" };
+    expect(await proxy.editSeams!(edit, ctx)).toEqual(await stub.editSeams(edit, ctx));
+    expect(count).toBe(1);
+    await proxy.writeAct({ actTitle: "Act 1", voice, seams: [], clips: [], documents: [] }, ctx);
+    expect(count).toBe(2);
+
+    /* A writer without the optional methods: the proxy has none either. */
+    const plain: NarrationWriterBuilder = { providerName: "plain", writeAct: async () => ({ seams: [] }) };
+    const plainProxy = countingNarrationWriterOf(plain, () => void count++);
+    expect(plainProxy.editSeams).toBeUndefined();
+    expect(plainProxy.writeActStream).toBeUndefined();
+  });
 });

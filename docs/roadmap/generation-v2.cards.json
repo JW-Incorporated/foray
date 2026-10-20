@@ -2771,6 +2771,38 @@
    "needs_founder": "founder-approved label (orchestrator applies)"
   },
   {
+   "id": "GV-124",
+   "from": [
+    "#1413"
+   ],
+   "title": "Generation follow-ups from #1413: unit caps per Foray across resumes, the jevCalls cap stops the run, FORAY_SPINE_BEST_OF in the checkpoint variant and LEVER_ENV, self-critique keeps streaming and joins the fork stamp, self-backed quotes dropped, editSeams forwarded",
+   "covers": [],
+   "wave": 20,
+   "depends_on": [],
+   "files": [
+    "backend/src/generation/runLog.ts",
+    "backend/src/generation/chat/laneScheduler.ts",
+    "backend/src/cli/generateForays.ts",
+    "backend/src/generation/JevPromptUnderstander.ts",
+    "backend/src/generation/clipJudge.ts",
+    "backend/src/generation/checkpoint.ts",
+    "backend/src/generation/selfCritique.ts",
+    "backend/src/generation/runPipeline.ts",
+    "tools/generation-bench/swap-experiment.mjs",
+    "tools/generation-bench/swap-experiment.test.mjs",
+    "backend/test/generateForays.test.ts",
+    "backend/test/JevPromptUnderstander.test.ts",
+    "backend/test/clipJudge.test.ts",
+    "backend/test/checkpointFork.test.ts",
+    "backend/test/selfCritique.test.ts",
+    "backend/test/runPipeline.test.ts",
+    "test/suite-integrity.test.js"
+   ],
+   "size": "S",
+   "live_step": "",
+   "needs_founder": "founder-approved label (orchestrator applies)"
+  },
+  {
    "id": "GV-95",
    "from": [
     "W3-11"
@@ -3927,9 +3959,10 @@
   {
    "n": 20,
    "cards": [
-    "GV-94"
+    "GV-94",
+    "GV-124"
    ],
-   "why": "Typed self-critique; runPipeline.ts chain."
+   "why": "Typed self-critique; runPipeline.ts chain. GV-124 (the #1413 follow-ups) lands after GV-94, before batch local runs and before self-critique or streaming is switched on."
   },
   {
    "n": 21,

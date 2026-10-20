@@ -30,6 +30,11 @@ import { SpoolRenderClient, renderJobDocument } from "../src/cli/spoolRenderClie
 import type { NarrationRenderClient, RenderJob, RenderResult } from "../src/generation/narrationRender";
 import type { PromptUnderstandContext } from "../src/generation/PromptUnderstander";
 import type { IntentUnderstanding } from "../src/types/generation";
+import { DEFAULT_LANE_PROFILES } from "../src/config/machineProfiles";
+import { UnitBudgetStopError, defaultUnitBudgetGuard, findUnitBudgetError } from "../src/cost/unitBudget";
+import { LaneScheduledProvider } from "../src/generation/chat/laneScheduler";
+import type { ChatProvider } from "../src/generation/chat/ChatProvider";
+import { currentCallContext, withCallContext } from "../src/generation/runLog";
 
 /**
  * WS-D2's own "exercisable without an API key" requirement (fix plan, D2):
@@ -442,6 +447,165 @@ describe("GV-15 — run configuration on the batch driver", () => {
       expect(after.fingerprint).toBe(secondMode === "flag-on" ? flagOnFingerprint : classicFingerprint);
       expect(Object.keys(after.stages).sort()).toEqual(firstStages);
     }
+  });
+});
+
+/* GV-124 (#1413 item 4): FORAY_SPINE_BEST_OF changes what the spine stage
+   banks, so it joins the checkpoint variant. A run killed after its spine
+   under one setting is never resumed under the other; under its own it is. */
+describe("GV-124 — FORAY_SPINE_BEST_OF joins the checkpoint variant", () => {
+  let dir: string;
+  const spec = { prompt: "the history of grilling and barbecue" };
+  const BEST_OF_ENV = ["FORAY_SPINE_BEST_OF", "FORAY_SPINE_JUDGE"];
+
+  class CountingSpineBuilder extends StubSpineBuilder {
+    calls = 0;
+    override async buildSpine(...args: Parameters<StubSpineBuilder["buildSpine"]>): ReturnType<StubSpineBuilder["buildSpine"]> {
+      this.calls++;
+      return super.buildSpine(...args);
+    }
+  }
+  class KilledAfterSpine extends StubDeepenActBuilder {
+    override async deepenAct(): Promise<never> {
+      throw new Error("killed after spine");
+    }
+  }
+  const run = (spine: CountingSpineBuilder, killAfterSpine: boolean) =>
+    generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 0 }), {
+      cueProvider,
+      runPipeline: (request, options, deps) =>
+        stubPipeline()(request, options, { ...deps, spineBuilder: spine, ...(killAfterSpine ? { deepenBuilder: new KilledAfterSpine() } : {}) })
+    });
+  const setBestOf = (n: 1 | 2): void => {
+    if (n === 2) Object.assign(process.env, { FORAY_SPINE_BEST_OF: "2", FORAY_SPINE_JUDGE: "jev" });
+    else for (const name of BEST_OF_ENV) delete process.env[name];
+  };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv124-bo-"));
+    for (const name of [...Object.values(PIPELINE_FLAG_ENV), ...BEST_OF_ENV]) delete process.env[name];
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    for (const name of [...Object.values(PIPELINE_FLAG_ENV), ...BEST_OF_ENV]) delete process.env[name];
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("flipping the flag changes the variant (and the fingerprint); best-of-1 leaves today's untouched", () => {
+    /* MUTATION THAT KILLS THIS: drop spineBestOfVariant from
+       checkpointRunVariant. Ran it: red. */
+    expect(checkpointRunVariant(readPipelineFlags({}))).toBeUndefined();
+    expect(checkpointRunVariant(readPipelineFlags({ FORAY_SPINE_BEST_OF: "1" }))).toBeUndefined();
+    expect(checkpointRunVariant(readPipelineFlags({ FORAY_SPINE_BEST_OF: "2" }))).toBe("spine=best-of-2");
+    expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, spineBestOf: 2 })).toBe(`${checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS)}|spine=best-of-2`);
+    const fp = (n: 1 | 2) => checkpointFingerprint({ prompt: spec.prompt, duration: "short", variant: checkpointRunVariant(readPipelineFlags({ FORAY_SPINE_BEST_OF: String(n) })) });
+    expect(fp(1)).toBe(checkpointFingerprint({ prompt: spec.prompt, duration: "short" }));
+    expect(fp(2)).not.toBe(fp(1));
+  });
+
+  it("a run killed after its spine is not resumed across a flip of FORAY_SPINE_BEST_OF, in either direction, and resumes its own", async () => {
+    /* MUTATION THAT KILLS THIS: drop spineBestOfVariant from
+       checkpointRunVariant (#1413 item 4: the resume reuses the spine built
+       under the other setting, so the second run's spine builder is never
+       called). Ran it: red. */
+    for (const [first, second] of [[1, 2], [2, 1]] as const) {
+      fs.rmSync(dir, { recursive: true, force: true });
+      fs.mkdirSync(dir, { recursive: true });
+      setBestOf(first);
+      const a = new CountingSpineBuilder();
+      expect((await run(a, true)).entry?.outcome).toBe("error");
+      expect(a.calls).toBe(1);
+      setBestOf(second);
+      const b = new CountingSpineBuilder();
+      expect((await run(b, true)).entry?.outcome).toBe("error");
+      expect(b.calls, `${first} -> ${second}`).toBe(1);
+    }
+    /* Under its own setting the banked spine resumes. */
+    const own = new CountingSpineBuilder();
+    expect((await run(own, false)).entry?.outcome).toBe("generated");
+    expect(own.calls).toBe(0);
+  }, 120_000);
+});
+
+/* GV-124 (#1413 item 1): the unit caps are per Foray. The driver puts the
+   checkpoint key on the call context as `sessionId`, the same for every
+   automatic resume, so the lane scheduler meters every attempt against ONE
+   session. The pipeline here is a fake that makes one Spark call through the
+   real LaneScheduledProvider (over a fake inner provider: nothing leaves the
+   process) and then fails transiently, so the driver resumes it; the
+   scheduler meters into the process-wide defaultUnitBudgetGuard, which is
+   what the report row's unitSpend reads. */
+describe("GV-124 — unit caps bind per Foray across its automatic resumes", () => {
+  let dir: string;
+  const spec = { prompt: "the history of grilling and barbecue" };
+  const checkpointKey = candidateFilename(spec.prompt).replace(/\.json$/, "");
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv124-units-"));
+    defaultUnitBudgetGuard.reset();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    defaultUnitBudgetGuard.reset();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("a resumed Foray hits the Spark-seconds cap cumulatively: the third attempt is refused, and the row's unitSpend reads the spend", async () => {
+    /* MUTATION THAT KILLS THIS: drop `sessionId: checkpointKey` from the
+       driver's withCallContext. Ran it: red (each attempt is its own RunLog
+       session, no attempt is refused, all four run and the row aborts
+       resumes-exhausted with unitSpend 0). */
+    const cap = defaultUnitBudgetGuard.capFor("sparkSeconds", "short");
+    const perCall = cap * 0.6;
+    const inner: ChatProvider = {
+      name: "fake-spark",
+      complete: async (req) => ({
+        text: "ok",
+        finishReason: "stop",
+        usage: { promptTokens: null, completionTokens: null, cachedTokens: null, reasoningTokens: null },
+        model: req.model,
+        requestId: null,
+        servedBy: null,
+        timing: { startedAt: 0, firstByteAt: 0, endedAt: 0 }
+      })
+    };
+    /* Each call is charged `perCall` server seconds: 0.6 of the cap. */
+    const provider = new LaneScheduledProvider(inner, { profiles: DEFAULT_LANE_PROFILES, serverSeconds: () => perCall });
+    const sessions: Array<string | undefined> = [];
+    const pipeline: typeof runForayPipeline = async () => {
+      sessions.push(currentCallContext().sessionId);
+      try {
+        await withCallContext({ tier: "short", stage: "spine" }, () =>
+          provider.complete({ model: DEFAULT_LANE_PROFILES.spark.modelAlias, messages: [{ role: "user", content: "spine" }], maxTokens: 8, label: "spine" })
+        );
+      } catch (err) {
+        /* What runPipeline's timed() does with a unit cap error. */
+        const unit = findUnitBudgetError(err);
+        if (unit) throw new UnitBudgetStopError("spine", unit);
+        throw err;
+      }
+      throw Object.assign(new Error("upstream unavailable"), { status: 503 });
+    };
+
+    const result = await generateOneCandidate(spec, baseArgs(dir, { duration: "short", maxResumes: 3 }), {
+      cueProvider,
+      runPipeline: pipeline,
+      sleep: async () => {}
+    });
+
+    expect(sessions).toEqual([checkpointKey, checkpointKey, checkpointKey]);
+    const entry = result.entry!;
+    expect(entry.outcome).toBe("aborted");
+    expect(entry.abort?.reason).toBe("budget-stop");
+    expect(entry.detail).toMatch(/sparkSeconds cap/);
+    expect(entry.resumes).toHaveLength(2);
+    expect(entry.unitSpend?.sparkSeconds).toBeCloseTo(2 * perCall, 5);
+    expect(entry.unitSpend?.sparkSeconds).toBeGreaterThan(cap);
+    expect(entry.unitSpend?.caps.sparkSeconds).toBe(cap);
   });
 });
 

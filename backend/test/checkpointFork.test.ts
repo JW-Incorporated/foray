@@ -249,6 +249,41 @@ describe("GV-62 the fork rule", () => {
     expect(() => forkSeedRefusal(seedOf(stampOf(a)), { fingerprint: "b", stamp: stampOf(a) }, "nope")).toThrow(/unknown checkpoint stage/);
   });
 
+  /* GV-124 (#1413 item 8). MUTATION THAT KILLS THIS: leave the
+     self-critique out of checkpointForkStamp (or out of the lever loop in
+     forkSeedRefusal) -- a seed rerun from stitch under another self-critique
+     is accepted. Ran both: red. MUTATION: compare the spine best-of with the
+     flags (exact match) -- E4's fork from spine is refused. Ran it: red. */
+  it("GV-124: a self-critique difference forks only from narrate or earlier, like a writer route; a spine best-of difference only from spine or earlier", () => {
+    const CRITIQUE = "self-critique=behind-playhead:jev";
+    const off = stampOf();
+    const on = checkpointForkStamp({ prompt: SPEC.prompt, duration: "medium", flags, routing: stub, selfCritique: CRITIQUE });
+    expect(on.selfCritique).toBe(CRITIQUE);
+    expect(off.selfCritique).toBeNull();
+    /* It stays out of the exact-match flags. */
+    expect(on.flags).toBe(off.flags);
+    const runOn = { fingerprint: "b", stamp: on };
+    expect(forkSeedRefusal(seedOf(off), runOn, "narrate")).toBeNull();
+    expect(forkSeedRefusal(seedOf(off), runOn, "source")).toBeNull();
+    expect(forkSeedRefusal(seedOf(off), runOn, "stitch")).toMatch(/self-critique differs \(off; this run self-critique=behind-playhead:jev\) and feeds narrate, before --rerun-from stitch/);
+    expect(forkSeedRefusal(seedOf(on), { fingerprint: "b", stamp: off }, "stitch")).toMatch(/self-critique differs/);
+    expect(forkSeedRefusal(seedOf(on), runOn, "stitch")).toBeNull();
+    /* A stamp written before GV-124 carries neither field: off, best-of-1. */
+    const legacy = { request: off.request, flags: off.flags, routes: off.routes };
+    expect(forkSeedRefusal(seedOf(legacy), { fingerprint: "b", stamp: off }, "stitch")).toBeNull();
+    expect(forkSeedRefusal(seedOf(legacy), runOn, "stitch")).toMatch(/self-critique differs/);
+
+    const bestOf2 = checkpointForkStamp({ prompt: SPEC.prompt, duration: "medium", flags: { ...flags, spineBestOf: 2 }, routing: stub });
+    expect(bestOf2.spineBestOf).toBe(2);
+    expect(bestOf2.flags).toBe(off.flags);
+    /* E4: arm B (best-of-2) forks arm A from spine. */
+    expect(forkSeedRefusal(seedOf(off), { fingerprint: "b", stamp: bestOf2 }, "spine")).toBeNull();
+    expect(forkSeedRefusal(seedOf(legacy), { fingerprint: "b", stamp: bestOf2 }, "spine")).toBeNull();
+    expect(forkSeedRefusal(seedOf(off), { fingerprint: "b", stamp: bestOf2 }, "narrate")).toMatch(
+      /FORAY_SPINE_BEST_OF differs \(1; this run 2\) and feeds spine, before --rerun-from narrate/
+    );
+  });
+
   it("the stamp carries the prompt only as a hash, and no URL or key", () => {
     const stamp = stampOf(local({ FORAY_LLM_API_KEY: "sk-secret-value" }));
     const text = JSON.stringify(stamp);
@@ -411,6 +446,33 @@ describe("GV-62 the driver: keep, then fork", () => {
     expect(second.counts.spine).toBeGreaterThan(0);
     expect(log.mock.calls.map((c) => String(c[0])).join("\n")).toMatch(/no usable seed .*no fork stamp/);
   }, 60_000);
+
+  /* GV-124 (#1413 item 8). MUTATION THAT KILLS THIS: stamp without the
+     self-critique in the driver (generateForays.ts). Ran it: red (arm B is
+     seeded from stitch and keeps arm A's uncritiqued narration). */
+  it("GV-124: an arm B under self-critique is refused a seed rerun from stitch, and seeded from narrate", async () => {
+    await runArmA();
+    const log = vi.spyOn(console, "log");
+    Object.assign(process.env, { FORAY_WRITER_SELF_CRITIQUE: "behind-playhead", FORAY_WRITER_CRITIC: "jev" });
+    try {
+      const refused = countingPipeline();
+      const fromStitch = await generateOneCandidate(SPEC, baseArgs(armB, { seedCheckpoints: armA, rerunFrom: "stitch" }), { cueProvider, runPipeline: refused.run });
+      expect(fromStitch.entry?.seededFrom).toBeNull();
+      expect(refused.counts.spine).toBeGreaterThan(0);
+      expect(log.mock.calls.map((c) => String(c[0])).join("\n")).toMatch(/no usable seed .*self-critique differs .*before --rerun-from stitch/);
+      expect(fromStitch.entry?.levers?.selfCritique?.mode).toBe("behind-playhead");
+
+      fs.rmSync(path.join(armB, candidateFilename(SPEC.prompt)), { force: true });
+      const seeded = countingPipeline();
+      const fromNarrate = await generateOneCandidate(SPEC, baseArgs(armB, { seedCheckpoints: armA, rerunFrom: "narrate" }), { cueProvider, runPipeline: seeded.run });
+      expect(fromNarrate.entry?.seededFrom?.rerunFrom).toBe("narrate");
+      expect(seeded.counts.spine).toBe(0);
+      expect(seeded.counts.writer).toBeGreaterThan(0);
+    } finally {
+      delete process.env.FORAY_WRITER_SELF_CRITIQUE;
+      delete process.env.FORAY_WRITER_CRITIC;
+    }
+  }, 120_000);
 
   it("a missing seed is logged and recorded as seededFrom: null; without the flag the row has no seededFrom", async () => {
     const log = vi.spyOn(console, "log");

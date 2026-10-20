@@ -99,7 +99,7 @@ import { taxonomyLineage } from "./taxonomyFamily";
 import type { SpineBuildContext, SpineBuilder, SpineSelectionRecord } from "./SpineBuilder";
 import { addSelfCritique, joinCheckpointVariant, readSelfCritique, type SelfCritiqueConfig, type SelfCritiqueTotals } from "./selfCritique";
 import type { DeepenActBuilder } from "./DeepenActBuilder";
-import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, WriterObservation } from "./NarrationWriterBuilder";
+import type { ActWriteRequest, NarrationBuildContext, NarrationWriterBuilder, SeamEditRequest, WriterObservation } from "./NarrationWriterBuilder";
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
@@ -1101,6 +1101,43 @@ const WrittenActSchema = z.object({
    function's own return value is one less shape to keep in step. */
 const StitchActCheckpointSchema = z.array(ForayItemSchema);
 
+/**
+ * The narration stage's counting proxy over the writer (G-34, Q-03): every
+ * request the writer makes calls `count` once, whatever its page count. It
+ * offers exactly the methods the writer offers, so a caller that checks for
+ * an optional method (`writeActStream`, `editSeams`) sees what the writer
+ * has:
+ *   - GV-43: a streamed act is one request, counted when the stream opens;
+ *   - GV-124 (#1413 item 10): a seam edit (GV-80) is one request. It was
+ *     dropped here, so the timed policy's round 2 could never reach the
+ *     writer's `editSeams` through the pipeline.
+ */
+export function countingNarrationWriterOf(writer: NarrationWriterBuilder, count: () => void): NarrationWriterBuilder {
+  return {
+    providerName: writer.providerName,
+    writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
+      count();
+      return writer.writeAct(actRequest, actCtx);
+    },
+    ...(writer.writeActStream
+      ? {
+          writeActStream: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
+            count();
+            return writer.writeActStream!(actRequest, actCtx);
+          }
+        }
+      : {}),
+    ...(writer.editSeams
+      ? {
+          editSeams: (editRequest: SeamEditRequest, actCtx: NarrationBuildContext) => {
+            count();
+            return writer.editSeams!(editRequest, actCtx);
+          }
+        }
+      : {})
+  };
+}
+
 export async function runForayPipeline(
   request: GenerationRequest,
   options: RunPipelineOptions,
@@ -1311,24 +1348,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      improvement from the change that produced it. */
   let narrationWriterCalls = 0;
   let narrationVerifierCalls = 0;
-  const countingNarrationWriter: NarrationWriterBuilder = {
-    providerName: narrationWriter.providerName,
-    writeAct: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
-      narrationWriterCalls++;
-      return narrationWriter.writeAct(actRequest, actCtx);
-    },
-    /* GV-43: a streamed act is one request too, so it counts once, when the
-       stream is opened. Forwarded only when the writer has it, so a caller
-       that checks for the method sees exactly what the writer offers. */
-    ...(narrationWriter.writeActStream
-      ? {
-          writeActStream: (actRequest: ActWriteRequest, actCtx: NarrationBuildContext) => {
-            narrationWriterCalls++;
-            return narrationWriter.writeActStream!(actRequest, actCtx);
-          }
-        }
-      : {})
-  };
+  const countingNarrationWriter = countingNarrationWriterOf(narrationWriter, () => {
+    narrationWriterCalls++;
+  });
   /* G-34: `retryRounds` is counted by the stage itself (a round is an act
      going back to the writer), not by the proxy above, which sees
      requests and cannot tell a round from a call. */

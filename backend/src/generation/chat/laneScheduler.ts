@@ -230,7 +230,7 @@ let runLogCounter = 0;
 
 /** The default session: the context's `sessionId`, else one key per RunLog. */
 function defaultSessionOf(): string | undefined {
-  const fromCtx = (currentCallContext() as CallContext & { sessionId?: unknown }).sessionId;
+  const fromCtx = currentCallContext().sessionId;
   if (typeof fromCtx === "string" && fromCtx !== "") return fromCtx;
   const log = currentRunLog();
   if (log === undefined) return undefined;
