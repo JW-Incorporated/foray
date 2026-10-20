@@ -110,6 +110,22 @@ export function evidenceWholeClip(source: FlagSource = process.env): boolean {
   return readBooleanFlag(EVIDENCE_WHOLE_CLIP_ENV, false, source);
 }
 
+/** GV-98 (W3-17, R1-05): how much of the evidence fan-out the timed
+ * `evidence` stage waits for. */
+export const EVIDENCE_PREFETCH_ENV = "FORAY_EVIDENCE_PREFETCH";
+export const EVIDENCE_PREFETCH_MODES = ["all", "first-act"] as const;
+export type EvidencePrefetchMode = (typeof EVIDENCE_PREFETCH_MODES)[number];
+
+/** GV-98: `FORAY_EVIDENCE_PREFETCH=first-act` awaits only act 1's packs in
+ * the `evidence` stage and gathers every later act's behind it while act 1
+ * is written (`PrefetchingEvidenceGatherer.startBackground`). The packs are
+ * the same packs, so the checkpoint variant does not carry it. Default `all`:
+ * today's whole-Foray fan-out, byte for byte. A malformed value throws naming
+ * the variable. */
+export function evidencePrefetchMode(source: FlagSource = process.env): EvidencePrefetchMode {
+  return readEnumFlag(EVIDENCE_PREFETCH_ENV, EVIDENCE_PREFETCH_MODES, "all", source);
+}
+
 /** The repository root (backend/src/generation -> three levels up). */
 const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 

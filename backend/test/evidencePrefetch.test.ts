@@ -17,6 +17,7 @@ import type { ExternalResearchContext } from "../src/generation/ExternalResearch
 import type { SourcedAct, SourcedBeat, SourcedSlot } from "../src/types/tapeSourcing";
 import type { Voice } from "../src/types/spine";
 import { BudgetExceededError } from "../src/cost/budgetGuard";
+import { FlagValueError, evidencePrefetchMode } from "../src/generation/generationFlags";
 
 /**
  * G-35 / M6: the evidence for every page of every act is gathered in one
@@ -378,5 +379,201 @@ describe("GV-76: tapeDocsBuilt / tapeDocsCut pass through metrics()", () => {
     expect(m.tapeDocsBuilt).toBeGreaterThan(0);
     expect(m.tapeDocsCut).toBe(0);
     expect({ tapeDocsBuilt: m.tapeDocsBuilt, tapeDocsCut: m.tapeDocsCut }).toEqual(inner.tapeEvidenceMetrics());
+  });
+});
+
+/* GV-98 (W3-17, R1-05): FORAY_EVIDENCE_PREFETCH=first-act. The timed stage
+   awaits act 1's pages only (`prefetch` with `acts`), the later acts' pages
+   are gathered behind it (`startBackground`), and a narration-time gather
+   shares whatever is in flight. Every gatherer here is a scripted fake. */
+describe("GV-98: act 1's packs on the timed path, the rest behind it", () => {
+  /* The same page closes both acts (same claim, same neighbours, so the same
+     memo key): one gather for both. */
+  const SHARED_SLOT: SourcedSlot = { title: "The verdict", beats: [narrationBeat("Both acts end on the same finding about the walkway.")] };
+  const ACT_1: SourcedAct = { title: "Act 1", slots: [MIXED_SLOT, SHARED_SLOT] };
+  const ACT_2: SourcedAct = {
+    title: "Act 2",
+    slots: [
+      {
+        title: "The inquiry",
+        beats: [
+          narrationBeat("The inquiry found the hanger rods had been redesigned in the shop."),
+          narrationBeat("The redesign doubled the load on the fourth-floor connection.", "Carry")
+        ]
+      },
+      SHARED_SLOT
+    ]
+  };
+  const ACT_2_CLAIMS = new Set(ACT_2.slots[0]!.beats.map((b) => b.claim));
+
+  /** Act 1's pages answer after 5 ms; act 2's wait on a latch (the scripted
+   * "slower act-2 gathers"), and each gather's end is logged. */
+  function scriptedGatherer() {
+    const calls: string[] = [];
+    const log: string[] = [];
+    let open!: () => void;
+    const latch = new Promise<void>((resolve) => (open = resolve));
+    const gatherer: EvidenceGatherer = {
+      async gather(beat: EvidenceBeat): Promise<EvidencePack> {
+        calls.push(beat.claim);
+        if (ACT_2_CLAIMS.has(beat.claim)) await latch;
+        else await new Promise((resolve) => setTimeout(resolve, 5));
+        log.push(`landed:${beat.claim.slice(0, 16)}`);
+        return { purpose: beat.claim, beatKind: beat.kind ?? "account", docs: [DOC] };
+      }
+    };
+    return { gatherer, calls, log, release: () => open() };
+  }
+
+  /* MUTATION THAT KILLS THIS: ignore `options.acts` in buildQueue. The timed
+     prefetch then queues act 2's latched pages and never resolves while the
+     latch is held: the race below resolves to "act-2 waited". */
+  it("the timed prefetch resolves before the slower act-2 gathers finish, and act 2's pages land behind it", async () => {
+    const { gatherer, calls, log, release } = scriptedGatherer();
+    const evidence = new PrefetchingEvidenceGatherer(gatherer);
+    const timed = evidence.prefetch([ACT_1, ACT_2], ctx, { acts: (i) => i === 0 });
+    const winner = await Promise.race([timed.then(() => "act-1 only"), new Promise((resolve) => setTimeout(() => resolve("act-2 waited"), 1000))]);
+    expect(winner).toBe("act-1 only");
+    log.push("evidence-stage-done");
+    expect(calls).toHaveLength(5);
+
+    evidence.startBackground([ACT_1, ACT_2], ctx, { acts: (i) => i > 0 });
+    await settle();
+    /* Act 2's two new pages are in flight, behind the stage. */
+    expect(calls).toHaveLength(7);
+    release();
+    await evidence.settleBackground();
+    expect(log.indexOf("evidence-stage-done")).toBeLessThan(log.findIndex((l) => l.startsWith("landed:The inquiry")));
+  });
+
+  /* MUTATION THAT KILLS THIS: give each phase its own `seen` set rather than
+     the instance's `queued` (the shared closing page is then queued and
+     counted by both phases: pages 8); or have `gather` skip the memo (the
+     narration-time gather of an in-flight act-2 page calls the wrapped
+     gatherer again: 8 calls). */
+  it("gathers every page exactly once across both phases and narration, and reports timedPages, backgroundPages and backgroundMs", async () => {
+    const { gatherer, calls, release } = scriptedGatherer();
+    const evidence = new PrefetchingEvidenceGatherer(gatherer);
+    await evidence.prefetch([ACT_1, ACT_2], ctx, { acts: (i) => i === 0 });
+    evidence.startBackground([ACT_1, ACT_2], ctx, { acts: (i) => i > 0 });
+    /* Narration asks for an act-2 page while its background gather is still
+       latched: it shares the in-flight gather. */
+    const asked = evidence.gather({ claim: "The inquiry found the hanger rods had been redesigned in the shop.", requiresEvidence: true }, ctx);
+    await settle();
+    release();
+    expect((await asked).docs).toEqual([DOC]);
+    await evidence.settleBackground();
+
+    expect(calls).toHaveLength(7);
+    expect(new Set(calls).size).toBe(7);
+    const m = evidence.metrics();
+    expect(m).toMatchObject({ pages: 7, prefetched: 7, failed: 0, skipped: 0, timedPages: 5, backgroundPages: 2, narrationGathers: 1, narrationHits: 1 });
+    expect(m.backgroundMs).toBeGreaterThanOrEqual(0);
+    expect(evidence.summaryLine()).toMatch(/prefetched 7\/7 pages .*, 2 of them behind act 1 in \d+ ms\)/);
+  });
+
+  /* MUTATION THAT KILLS THIS: spread the phase keys unconditionally in
+     metrics() (zeros without a background): timedPages appears. */
+  it("the default whole-Foray fan-out carries no phase keys, so its report row is unchanged", async () => {
+    const evidence = new PrefetchingEvidenceGatherer(new CountingGatherer());
+    await evidence.prefetch([ACT_1, ACT_2], ctx);
+    await evidence.settleBackground();
+    const m = evidence.metrics();
+    expect(Object.keys(m)).toEqual(["prefetchMs", "concurrency", "pages", "prefetched", "failed", "skipped", "narrationGathers", "narrationHits", "hitRate", "narrationRetrievalMs"]);
+    expect(m.pages).toBe(7);
+    expect(evidence.summaryLine()).not.toMatch(/behind act 1/);
+  });
+
+  /* MUTATION THAT KILLS THIS: drop the `deferredBudgetError` throw at the top
+     of gather() (the next gather then answers from the wrapped gatherer and
+     the run goes on past the budget); or let a background budget stop keep
+     taking pages on the OTHER worker (`stop` reading only `phase.stopped`,
+     not deferredBudgetError: the second worker, released after the first
+     worker's budget throw, takes the third page: 3 calls). */
+  it("a background budget stop surfaces from the next gather, and no further background page is taken", async () => {
+    const inner = new CountingGatherer();
+    let release: () => void = () => {};
+    const latch = new Promise<void>((resolve) => (release = resolve));
+    inner.gather = async (beat: EvidenceBeat): Promise<EvidencePack> => {
+      inner.calls.push(beat);
+      /* Worker one's page is refused for budget at once; worker two's page
+         is still in flight when that happens, and lands only afterwards. */
+      if (inner.calls.length === 1) throw new BudgetExceededError(9.9, 0.2, 10);
+      if (inner.calls.length === 2) await latch;
+      return { purpose: beat.claim, beatKind: "account", docs: [DOC] };
+    };
+    const evidence = new PrefetchingEvidenceGatherer(inner);
+    await evidence.prefetch([ACT_1, ACT_2], ctx, { acts: () => false });
+    evidence.startBackground([ACT_1, ACT_2], ctx, { acts: (i) => i > 0, concurrency: 2 });
+    await settle();
+    expect(inner.calls).toHaveLength(2);
+    release();
+    await evidence.settleBackground();
+    expect(inner.calls).toHaveLength(2);
+    expect(evidence.metrics()).toMatchObject({ backgroundPages: 3, prefetched: 1 });
+    await expect(evidence.gather({ claim: "Any later page at all.", requiresEvidence: true }, ctx)).rejects.toBeInstanceOf(BudgetExceededError);
+    expect(inner.calls).toHaveLength(2);
+  });
+
+  /* MUTATION THAT KILLS THIS: rethrow a non-budget error from the worker
+     instead of counting it: `failed` reads 0, and with the chain's `.catch`
+     also dropped the rejection is unhandled. */
+  it("a failing background gather is counted, never an unhandled rejection, and settleBackground resolves", async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const evidence = new PrefetchingEvidenceGatherer(new CountingGatherer({ failFor: () => true }));
+      evidence.startBackground([ACT_1, ACT_2], ctx, { acts: (i) => i > 0 });
+      await evidence.settleBackground();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(unhandled).toEqual([]);
+      expect(evidence.metrics()).toMatchObject({ backgroundPages: 3, failed: 3, prefetched: 0 });
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+
+  /* MUTATION THAT KILLS THIS: ignore `stop` in settleBackground. The latched
+     worker's successors are then taken after the release: 3 calls. */
+  it("settleBackground({ stop: true }) lets the page in flight land and starts no more", async () => {
+    const inner = new CountingGatherer({ latched: true });
+    const evidence = new PrefetchingEvidenceGatherer(inner);
+    evidence.startBackground([ACT_1, ACT_2], ctx, { acts: (i) => i > 0, concurrency: 1 });
+    await settle();
+    expect(inner.calls).toHaveLength(1);
+    const settled = evidence.settleBackground({ stop: true });
+    inner.releaseAll();
+    await settled;
+    expect(inner.calls).toHaveLength(1);
+    expect(evidence.metrics()).toMatchObject({ backgroundPages: 3, prefetched: 1 });
+  });
+
+  it("refuses a second background fan-out", () => {
+    const evidence = new PrefetchingEvidenceGatherer(new CountingGatherer());
+    evidence.startBackground([ACT_2], ctx);
+    expect(() => evidence.startBackground([ACT_2], ctx)).toThrow(/already been started/);
+  });
+});
+
+/* GV-98: the flag reader (generationFlags.ts, decision 5). */
+describe("GV-98: FORAY_EVIDENCE_PREFETCH", () => {
+  /* MUTATION THAT KILLS THIS: default to 'first-act', or read the flag with
+     a parser that falls back instead of throwing. */
+  it("defaults to all, reads first-act, and a malformed value throws naming only the variable", () => {
+    expect(evidencePrefetchMode({})).toBe("all");
+    expect(evidencePrefetchMode({ FORAY_EVIDENCE_PREFETCH: "all" })).toBe("all");
+    expect(evidencePrefetchMode({ FORAY_EVIDENCE_PREFETCH: " first-act " })).toBe("first-act");
+    for (const bad of ["", "first", "FIRST-ACT", "s3cr3t-value"]) {
+      let caught: unknown;
+      try {
+        evidencePrefetchMode({ FORAY_EVIDENCE_PREFETCH: bad });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(FlagValueError);
+      expect((caught as Error).message).toContain("FORAY_EVIDENCE_PREFETCH");
+    }
+    expect(() => evidencePrefetchMode({ FORAY_EVIDENCE_PREFETCH: "s3cr3t-value" })).toThrow(/^(?!.*s3cr3t).*$/s);
   });
 });
