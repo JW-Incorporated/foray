@@ -13,7 +13,8 @@ import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
 import type { ClipJudgeId, ClipScores } from "../types/tapeSourcing";
 import { computeVoiceMetrics, type VoiceMetrics, type VoiceScript } from "./voiceChecks";
-import type { CleanCutGateMode, UnverifiedSeamPolicy } from "./gateConfig";
+import type { CleanCutGateMode, SentencePolicy, UnverifiedSeamPolicy } from "./gateConfig";
+import { splitSpokenSentences } from "../copy/spokenLine";
 import { DURATION_RUNTIME_TARGET_SEC, TIER_RUNTIME_TOLERANCE, tierRuntimeBand, type DurationTier } from "../types/spine";
 
 /**
@@ -553,6 +554,47 @@ export function computePagesCut(writtenActs: WrittenAct[]): number {
     if (inRun) cut++;
   }
   return cut;
+}
+
+/* ------------------------------------------------------------------ */
+/* sentencesSurviving (GV-113)                                          */
+/* ------------------------------------------------------------------ */
+
+export interface SentencesSurvivingResult {
+  /** Sentences of every kept page's script (spokenLine.js's
+   * `splitSpokenSentences`). */
+  surviving: number;
+  /** Sentences the pages record as cut (`NarratedBeat.cutSentences`). */
+  cut: number;
+  /** surviving / (surviving + cut), or `null` when there is no sentence. */
+  rate: number | null;
+}
+
+/**
+ * GV-113 (W5-11; R2-10, QK-05's companion metric): how much of what the
+ * writer wrote survives to the listener. Under
+ * FORAY_UNSUPPORTED_SENTENCE_POLICY=cut an unsupported sentence is cut in
+ * code rather than rewritten, so `firstAttemptPassRate` alone no longer says
+ * how much text the verifier refused: this does. Computed from the pages
+ * themselves (each page's script and its `cutSentences`), never from a
+ * counter, so a resumed act reports what a fresh one does. A page cut to
+ * its introduction (GV-108) counts its cut sentences too.
+ */
+export function computeSentencesSurviving(writtenActs: WrittenAct[]): SentencesSurvivingResult {
+  let surviving = 0;
+  let cut = 0;
+  for (const { page } of flattenWrittenPages(writtenActs)) {
+    surviving += splitSpokenSentences(page.script).length;
+    cut += page.cutSentences?.length ?? 0;
+  }
+  const total = surviving + cut;
+  return { surviving, cut, rate: total > 0 ? surviving / total : null };
+}
+
+/** GV-113: a page a SENTENCE cut trimmed and that still plays whole -- it
+ * lists cut sentences and is not GV-108's intro-only page. */
+function hasSentenceCutPage(writtenActs: WrittenAct[]): boolean {
+  return flattenWrittenPages(writtenActs).some(({ page }) => (page.cutSentences?.length ?? 0) > 0 && page.verification?.kind !== "intro-only");
 }
 
 /* ------------------------------------------------------------------ */
@@ -1357,6 +1399,14 @@ export interface VeracityMetrics {
    * introduction or dropped (`computePagesCut`). Present only under `cut`;
    * reported, never gated. */
   pagesCut?: number;
+  /** GV-113 (R2-10): sentences surviving over sentences written
+   * (`computeSentencesSurviving`), beside the first-attempt rates. Present
+   * under FORAY_UNSUPPORTED_SENTENCE_POLICY=cut, or whenever a page a
+   * sentence cut trimmed plays whole; absent on a default run. Reported,
+   * never gated. */
+  sentencesSurvivingRate?: number | null;
+  /** GV-113: the sentences cut (`NarratedBeat.cutSentences`, every page). */
+  sentencesCut?: number;
   /** F-51: pages kept with `verified: false`. Any is a publish stop. */
   unverifiedPages: number;
   /** The same pages, named, so the gate can print which ones. */
@@ -1512,6 +1562,11 @@ export interface BuildVeracityMetricsInput {
   /** GV-108: the run's FORAY_UNVERIFIED_SEAM_POLICY. `cut` adds `pagesCut`;
    * omitted or `keep`, the field is absent and the report is unchanged. */
   unverifiedSeamPolicy?: UnverifiedSeamPolicy;
+  /** GV-113: the run's FORAY_UNSUPPORTED_SENTENCE_POLICY. `cut` adds
+   * `sentencesSurvivingRate` and `sentencesCut`; omitted or `rewrite`, they
+   * appear only when a page a sentence cut trimmed plays whole (never on a
+   * default run, whose pages carry no `cutSentences`). */
+  sentencePolicy?: SentencePolicy;
 }
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
@@ -1526,6 +1581,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
   const specifics = (input.specifics ?? "report") === "off" ? null : computeSpecificsUnsupported(input.writtenActs);
   const clips = input.clipOnSubject ? computeClipOnSubject(input.tapeRelevanceRows ?? [], input.clipOnSubject.levelFor) : null;
   const cleanCuts = input.tapeRelevanceRows ? computeCleanCuts(input.tapeRelevanceRows) : null;
+  const sentences = input.sentencePolicy === "cut" || hasSentenceCutPage(input.writtenActs) ? computeSentencesSurviving(input.writtenActs) : null;
 
   return {
     groundedQuoteRate: grounded.rate,
@@ -1554,6 +1610,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
       : {}),
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
     ...(input.unverifiedSeamPolicy === "cut" ? { pagesCut: computePagesCut(input.writtenActs) } : {}),
+    ...(sentences ? { sentencesSurvivingRate: sentences.rate, sentencesCut: sentences.cut } : {}),
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,
     synthesisVerifiedPages: synthesis.count,

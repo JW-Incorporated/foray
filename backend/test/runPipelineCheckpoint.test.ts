@@ -28,7 +28,9 @@ import { loadTranscriptArchive, type TranscriptDigestEntry } from "../src/genera
 import type { PartialCandidate } from "../src/generation/partialCandidate";
 import { createEvidenceGatherer, type EvidenceGatherer } from "../src/generation/gatherEvidence";
 import { HANDOFF_SCRIPT, type WrittenAct } from "../src/generation/writeNarration";
-import { droppedReasonOf, type NarratedBeat } from "../src/types/narration";
+import { droppedReasonOf, isStatementSentence, type NarratedBeat } from "../src/types/narration";
+import { splitSpokenSentences } from "../src/copy/spokenLine";
+import type { SentenceVerdict } from "../src/generation/NarrationVerifierBuilder";
 import { SourcingSession } from "../src/generation/sourceBeats";
 
 /**
@@ -986,6 +988,113 @@ describe("GV-111: FORAY_PAUSE_SNAP reaches sourcing and the fingerprint on both 
         expect(seen.length).toBeGreaterThan(0);
         expect(new Set(seen)).toEqual(new Set([want]));
       }
+    }
+  }, 240_000);
+});
+
+/**
+ * GV-113 (W5-11; R2-10; orchestrator note, the GV-108..GV-111 pattern):
+ * FORAY_UNSUPPORTED_SENTENCE_POLICY=cut changes what `narrate` / `narrate:<i>`
+ * bank (seams trimmed of their unsupported sentences), so it joins the
+ * variant at the pipeline's own fingerprint site (the driver's is
+ * generateForays.ts, from the same gate config), and the act writer's options
+ * carry it on both paths (they share narrateOneAct). The verifier is the stub
+ * with W5-09's sentence contract: every seam's last statement, when it has
+ * two or more, is refused. `rewrite` adds nothing anywhere.
+ */
+describe("GV-113: FORAY_UNSUPPORTED_SENTENCE_POLICY reaches the writer and the fingerprint on both paths, and rewrite is today's", () => {
+  const at = () => new Date("2026-09-09T00:00:00Z");
+  const CUT = { sentencePolicy: "cut" as const };
+  const fingerprintFor = (flags: Partial<PipelineFlags>, extra: { sentencePolicy?: "cut" } = {}): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      variant: joinCheckpointVariant(checkpointRunVariant({ ...resolvePipelineFlags(flags), ...extra }, resolveRouting()), readSelfCritique())
+    });
+
+  function sentenceDeps() {
+    const counted = countingDeps();
+    const verifier = counted.deps.narrationVerifier;
+    const realVerify = verifier.verifyAct.bind(verifier);
+    verifier.verifyAct = async (...args: Parameters<typeof realVerify>) => {
+      const [verifyRequest] = args;
+      const verdict = await realVerify(...args);
+      return {
+        ...verdict,
+        seams: verdict.seams.map((seam) => {
+          const brief = verifyRequest.seams.find((s) => s.seamId === seam.seamId)!;
+          const texts = splitSpokenSentences(brief.script);
+          const statements = texts.map((text, index) => ({ text, index })).filter(({ text }) => isStatementSentence(text));
+          const refused = statements.length >= 2 ? statements[statements.length - 1]!.index : -1;
+          const sentences: SentenceVerdict[] = texts.map((text, index) =>
+            !isStatementSentence(text)
+              ? { index, text, kind: "imperative", verdict: "exempt" }
+              : index === refused
+                ? { index, text, kind: "statement", verdict: "unsupported" }
+                : { index, text, kind: "statement", verdict: "supported", restsOn: [...seam.restsOn] }
+          );
+          return refused >= 0 ? { ...seam, sentences, claimsSupported: false, notes: `Unsupported: "${texts[refused]}"` } : { ...seam, sentences };
+        })
+      };
+    };
+    return counted;
+  }
+
+  const bankedPages = (store: FakeCheckpointStore): NarratedBeat[] =>
+    Object.entries(store.files.get(KEY)!.stages)
+      .filter(([k]) => k.startsWith("narrate"))
+      .flatMap(([, v]) => (Array.isArray(v) ? (v as WrittenAct[]) : [v as WrittenAct]))
+      .flatMap((act) => act.slots.flatMap((slot) => slot.beats))
+      .map((b) => (b.sourcing === "tape" ? b.connectiveNarration : b.narration))
+      .filter((p): p is NarratedBeat => p !== undefined);
+
+  /* MUTATIONS THAT KILL THIS: drop the `sentencePolicy` spread from
+     runPipeline.ts's narrateOneAct writer options (no page is trimmed, and
+     the act is re-asked); drop `sentencePolicy: gates.sentencePolicy` from
+     runPipeline.ts's checkpointRunVariant call (the cut run's session
+     fingerprint is the rewrite one, so it never matches its own cut-keyed
+     store and every stage is paid for again). Ran both: red. */
+  it("a cut run banks trimmed pages, reports the cut, and resumes only its own checkpoint, on both paths", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const cutFingerprint = fingerprintFor(flags, CUT);
+      expect(cutFingerprint).not.toBe(fingerprintFor(flags));
+      const store = new FakeCheckpointStore(cutFingerprint);
+      const first = sentenceDeps();
+      const fresh = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: CUT }, { ...first.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (fresh.outcome !== "generated") throw new Error("expected a generated outcome");
+      const trimmed = bankedPages(store).filter((p) => (p.cutSentences?.length ?? 0) > 0);
+      expect(trimmed.length).toBeGreaterThan(0);
+      expect(fresh.input.meta!.veracity!.sentencesCut).toBe(bankedPages(store).reduce((n, p) => n + (p.cutSentences?.length ?? 0), 0));
+      expect(fresh.input.meta!.veracity!.sentencesSurvivingRate).toBeLessThan(1);
+
+      const again = sentenceDeps();
+      const resumed = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: CUT }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (resumed.outcome !== "generated") throw new Error("expected a generated outcome");
+      expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+      expect(resumed.input.items).toEqual(fresh.input.items);
+      const rewrite = sentenceDeps();
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...rewrite.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(rewrite.calls.spine).toBe(1);
+    }
+  }, 240_000);
+
+  /* The default run keeps today's fingerprint and today's narration: a
+     rewrite run resumes a store keyed with no sentence-policy part, banks no
+     trimmed page and reports no sentence fields.
+     MUTATION THAT KILLS THIS: join `sentencePolicy=rewrite` under rewrite in
+     sentencePolicyVariant; or thread the policy to the writer whatever its
+     value (drop the `=== "cut"` test in narrateOneAct). Ran both: red. */
+  it("a rewrite run resumes a checkpoint keyed with today's fingerprint and cuts nothing, on both paths", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const store = new FakeCheckpointStore(fingerprintFor(flags));
+      const out = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: { sentencePolicy: "rewrite" } }, { ...sentenceDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (out.outcome !== "generated") throw new Error("expected a generated outcome");
+      expect(bankedPages(store).some((p) => p.cutSentences !== undefined)).toBe(false);
+      expect("sentencesCut" in out.input.meta!.veracity!).toBe(false);
+      expect("sentencesSurvivingRate" in out.input.meta!.veracity!).toBe(false);
+      const again = sentenceDeps();
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
     }
   }, 240_000);
 });

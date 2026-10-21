@@ -6,6 +6,7 @@ import type { SourcedAct } from "../types/tapeSourcing";
 import type { Voice } from "../types/spine";
 import {
   MODE_CHAR_BANDS,
+  containsContestedLanguage,
   hasDeclarativeSentence,
   isTapeSource,
   tapeDocIdFor,
@@ -38,7 +39,8 @@ import type {
   WriterStreamEvent,
   WrittenSeam
 } from "./NarrationWriterBuilder";
-import type { ActSourceBrief, ActVerifyResult, NarrationVerifierBuilder, VerifyClipBrief, VerifySeamBrief } from "./NarrationVerifierBuilder";
+import type { ActSourceBrief, ActVerifyResult, NarrationVerifierBuilder, SeamVerdict, VerifyClipBrief, VerifySeamBrief } from "./NarrationVerifierBuilder";
+import { scriptIsAboutPurpose } from "./StubNarrationVerifierBuilder";
 import {
   actBeatsInOrder,
   assignSeamMode,
@@ -59,7 +61,7 @@ import {
 import { pageDocIdFor } from "./synthesisVerify";
 import { prepareSpecificsSources, unsupportedSpecificsInScript, type PreparedSources, type SpecificsMode } from "./specifics";
 import { voiceGateEnforces, voiceReport, type VoiceGate } from "./voiceChecks";
-import type { UnverifiedSeamPolicy } from "./gateConfig";
+import type { SentencePolicy, UnverifiedSeamPolicy } from "./gateConfig";
 import { withCallContext } from "./runLog";
 import {
   decideConnectiveNarration,
@@ -172,6 +174,13 @@ import {
  * above) a seam the verifier never confirmed keeps only its introduction
  * sentences, checked in code, or is dropped; nothing unverified and no
  * hand-off line is kept (`cutToIntroduction`).
+ *
+ * GV-113 (W5-11; R2-10, MQ-11): under FORAY_UNSUPPORTED_SENTENCE_POLICY=cut
+ * (default `rewrite`, the policy above) a seam whose per-sentence verdicts
+ * mark some, but not all, of its statements unsupported is not sent back:
+ * code removes those sentences and confirms the rest in the same round
+ * (`cutUnsupportedSentences`). Only a beat the cut leaves uncarried re-opens
+ * a seam, for exactly one more writer round (`holdOrphanEdits`).
  *
  * COST. A clean act is two requests (write, verify). A round is at most
  * two more (the writer, then the verifier if anything clean is
@@ -306,6 +315,23 @@ export interface WriteActOptions {
    */
   unverifiedSeamPolicy?: UnverifiedSeamPolicy;
   /**
+   * GV-113 (W5-11; R2-10, MQ-02, MQ-11): what a seam whose per-sentence
+   * verdicts (`SeamVerdict.sentences`, GV-51) mark some, but not all, of its
+   * statement sentences `unsupported` costs (FORAY_UNSUPPORTED_SENTENCE_POLICY,
+   * threaded from the run's `GateConfig`). Omitted or `rewrite` is today's
+   * policy, byte for byte: the seam is refused and the writer re-asked. `cut`
+   * removes those sentences in code (`cutUnsupportedSentences`): the trimmed
+   * seam, re-validated with seamBand's floor relaxed, is confirmed in the same
+   * round at no writer cost, and its page lists the removed sentences as
+   * `cutSentences`. A beat the cut leaves uncarried re-opens the seam for
+   * exactly ONE more writer round; after it the trimmed text stands and the
+   * beat's fate is the unverified-seam policy's (GV-108). Every statement
+   * unsupported, an unconfirmed statement surviving, or a trimmed seam that
+   * fails a rule takes the rewrite path. A seam released early on the
+   * streamed path is never cut (it may already be playing).
+   */
+  sentencePolicy?: SentencePolicy;
+  /**
    * GV-110 (W7-09; R2-17): the bench-only writer exchange recorder. Called
    * once per round, at the end of the round (after the mechanical gate and
    * the verifier), with what the writer was sent, what it returned, the
@@ -397,7 +423,15 @@ interface SeamState {
   gate: PendingPage;
   attempts: NarrationAttemptRecord[];
   /** The current mechanically clean script with its gated claims. */
-  draft?: { script: string; claims: SelectedClaim[]; page: NarratedBeat; hints: NarratedBeat["pronunciationHints"] };
+  draft?: {
+    script: string;
+    claims: SelectedClaim[];
+    page: NarratedBeat;
+    hints: NarratedBeat["pronunciationHints"];
+    /** GV-113: the writer's sentences this draft was trimmed of as
+     * unsupported, in order, and the round the cut was made in. */
+    cut?: { sentences: string[]; round: number };
+  };
   /** True when the draft is new or edited this round — the verifier
    * judges it; false for a frozen seam or one the writer left alone. */
   changed: boolean;
@@ -424,6 +458,18 @@ interface SeamState {
    * whatever the verifier says.
    */
   released?: { round: number; atMs: number; verifiedBy: "code" | "verifier" };
+  /**
+   * GV-113: the one writer round a sentence cut that orphaned a beat earned
+   * this seam: the round of the cut, the trimmed, confirmed state it left,
+   * and the beats that state carried. If the seam is not confirmed at the
+   * end of the next round, that state is put back and stands
+   * (`holdOrphanEdits`). Set once; a second orphaning earns nothing.
+   */
+  orphanEdit?: {
+    round: number;
+    state: Pick<SeamState, "draft" | "confirmed" | "kept" | "lastPage" | "previousScript">;
+    carried: Array<Pick<BeatState, "carriedBy" | "restsOn" | "verifiedAtAttempt"> & { beatId: string }>;
+  };
 }
 
 interface BeatState {
@@ -443,6 +489,13 @@ interface BeatState {
    * says so (`unverifiedReason: "seed-lost"`).
    */
   seedLostClosed?: true;
+  /**
+   * GV-113: the round a sentence cut left this beat uncarried in. It earns
+   * its seam ONE more writer round; from the round after, while it stays
+   * uncarried, it is no note and keeps no seam open (`orphanSpent`), and the
+   * page names it as not carried.
+   */
+  orphanedAt?: number;
 }
 
 /** One entry of the act's source set, with what it resolves to. */
@@ -450,6 +503,8 @@ interface ActSource {
   brief: ActSourceBrief;
   /** A claim's or a clip's source shape; absent for a ground page. */
   source?: Source;
+  /** GV-113: a claim's index in its seam's `draft.claims`. */
+  claimIndex?: number;
   /** A ground page's Foray-wide id. */
   pageId?: string;
 }
@@ -591,6 +646,9 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
      round's request lists only the seams still open -- the frozen ones are
      not echoed back, so the retry fits under the cap the cut one hit. */
   let askOnly: Set<string> | undefined;
+  /* GV-113: what the sentence cut needs from the act, only under `cut`. */
+  const sentenceCut: SentenceCutContext | undefined =
+    options.sentencePolicy === "cut" ? { seams, clipById, clipSourceCount, specifics: options.specifics ?? "report", voiceEnforce } : undefined;
   for (let round = 1; round <= maxRounds; round++) {
     if (round > 1 && stats) stats.retryRounds += 1;
 
@@ -688,9 +746,12 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
         documents
       };
       const verdicts = await withCallContext({ attempt: round, role: "verifier" }, () => verifier.verifyAct(verifyRequest, ctx));
-      judge(toJudge, open, verdicts, actSources, round, act.title, stats);
+      judge(toJudge, open, verdicts, actSources, round, act.title, stats, sentenceCut);
       verdict = verdicts;
     }
+    /* GV-113: a seam whose orphan edit round did not end confirmed keeps the
+       trimmed text it was cut to; its refusal this round is no note. */
+    const held = sentenceCut ? holdOrphanEdits(seams, beats, round, act.title) : new Set<string>();
     /* GV-73: a released seam the verifier refused is not edited (it may be
        playing); its beats move to the next seam still open. */
     if (streaming) settleReleased(seams, beats, round, act.title, stats);
@@ -699,9 +760,14 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
        seam whose positioned beat is not carried anywhere. Everything else
        is frozen from here on. A seam's beats are the ones positioned in it
        -- on the streamed path, plus any a released seam handed on. */
-    const notes = roundNotes(seams, beats, mechanical);
+    const notes = roundNotes(
+      seams,
+      beats,
+      held.size > 0 ? mechanical.filter((m) => ![...held].some((seamId) => m.startsWith(`seam ${seamId}: `))) : mechanical,
+      round
+    );
     for (const seam of seams) {
-      if (seam.draft && seam.confirmed && beatsIn(seam, beats).every(beatSettled)) {
+      if (seam.draft && seam.confirmed && beatsIn(seam, beats).every((b) => beatSettled(b) || orphanSpent(b, round))) {
         seam.frozen = true;
         delete seam.notes;
       } else if (seam.confirmed && seam.draft) {
@@ -1154,10 +1220,11 @@ export function buildActSources(
   let k = 0;
   for (const seam of seams) {
     if (!seam.draft) continue;
-    for (const claim of seam.draft.claims) {
+    for (const [claimIndex, claim] of seam.draft.claims.entries()) {
       const [source] = sourcesFor([0], [claim], seam.gate.evidence, seam.gate.mode, true);
       if (!source) continue;
       out.push({
+        claimIndex,
         brief: {
           id: `k${k++}`,
           kind: "claim",
@@ -1305,7 +1372,15 @@ function validateSeam(
   pending: { script: string; claims: SelectedClaim[]; hints: NarratedBeat["pronunciationHints"] },
   clipById: Map<string, GateClip>,
   round: number,
-  actScope: { actSourceCount: number; actSourceQuotes: string[]; specifics?: SpecificsScope; voice?: true }
+  actScope: {
+    actSourceCount: number;
+    actSourceQuotes: string[];
+    specifics?: SpecificsScope;
+    voice?: true;
+    /** GV-113: the character band to hold the script to instead of the
+     * seam's own (a trimmed seam is held to [0, ceiling]). */
+    charBandOverride?: [number, number];
+  }
 ): string[] {
   const { script, claims, hints } = pending;
   /* The provisional page: the seam's own claims as its sources, under the
@@ -1324,7 +1399,7 @@ function validateSeam(
     bannedPhrasePatterns: BANNED,
     heldDocs: heldDocsOf(seam.gate.evidence),
     ...(seam.gate.claim ? { purposeText: seam.gate.claim } : {}),
-    charBand: seam.band,
+    charBand: actScope.charBandOverride ?? seam.band,
     tapeCitable: true,
     actSourceCount: actScope.actSourceCount,
     actSourceQuotes: actScope.actSourceQuotes
@@ -1444,7 +1519,8 @@ function judge(
   actSources: ActSource[],
   round: number,
   actTitle: string,
-  stats?: NarrationWriteStats
+  stats?: NarrationWriteStats,
+  sentenceCut?: SentenceCutContext
 ): void {
   for (const state of open) {
     const verdict = verdicts.beats.find((v) => v.beatId === state.brief.beatId);
@@ -1479,8 +1555,20 @@ function judge(
     }
   }
 
+  /* GV-113: the seams trimmed this round, with the sentences cut. */
+  const trimmed: Array<{ seam: SeamState; cut: Set<number> }> = [];
   for (const seam of toJudge) {
     const verdict = verdicts.seams.find((v) => v.seamId === seam.plan.seamId);
+    if (sentenceCut && verdict?.sentences && !seam.released) {
+      const cut = cutUnsupportedSentences(seam, verdict, actSources, round, actTitle, sentenceCut);
+      if (cut) {
+        seam.attempts.push({ attempt: round, sources: cut.resolved.sources, rejected: false });
+        delete seam.notes;
+        seam.confirmed = { sources: cut.resolved.sources, rest: cut.resolved.rest, pageIds: cut.resolved.pageIds, round, notes: cut.note };
+        trimmed.push({ seam, cut: cut.indexes });
+        continue;
+      }
+    }
     const failures: string[] = [];
     let resolved = sourcesForRest([], actSources);
     if (!verdict) failures.push("the verifier returned no verdict for this seam");
@@ -1516,12 +1604,20 @@ function judge(
     delete seam.notes;
     seam.confirmed = { sources: resolved.sources, rest: resolved.rest, pageIds: resolved.pageIds, round, ...(seamNote ? { notes: seamNote } : {}) };
   }
+  for (const { seam, cut } of trimmed) reopenOrphans(seam, cut, open, verdicts, round, actTitle);
 }
 
 /** F-99: a beat that no longer holds its seam open — carried, or closed
  * as seed-lost. */
 function beatSettled(state: BeatState): boolean {
   return state.carried || state.seedLostClosed === true;
+}
+
+/** GV-113: an orphaned beat whose one writer round is spent and that is
+ * still not carried: no note, and it keeps no seam open. The page still
+ * names it as not carried (it is not settled). */
+function orphanSpent(state: BeatState, round: number): boolean {
+  return !state.carried && state.orphanedAt !== undefined && state.orphanedAt < round;
 }
 
 /** The beats a seam answers for: the ones positioned in it -- and, on the
@@ -1752,7 +1848,7 @@ function nextWithin<T>(iterator: AsyncIterator<T>, ms: number): Promise<Iterator
 /** The notes for the next round — empty when nothing failed. A seam's
  * own note goes on its SEAM line too (`seamBriefOf`); the act-level
  * list is F-35's running record. */
-function roundNotes(seams: SeamState[], beats: Map<string, BeatState>, mechanical: string[]): string[] {
+function roundNotes(seams: SeamState[], beats: Map<string, BeatState>, mechanical: string[], round: number): string[] {
   const notes: string[] = [...mechanical];
   for (const seam of seams) {
     /* GV-73: a released seam is never edited, so its refusal is no note. */
@@ -1763,6 +1859,8 @@ function roundNotes(seams: SeamState[], beats: Map<string, BeatState>, mechanica
     /* F-99: a seed-lost beat is NOT a note — there is nothing the writer
        can do with one, and asking is what cost run 9 three rounds a beat. */
     if (beatSettled(state)) continue;
+    /* GV-113: an orphaned beat gets one writer round, never a second. */
+    if (orphanSpent(state, round)) continue;
     const seam = seams.find((s) => s.plan.seamId === state.seamId)!;
     if (!seam.draft) continue; // its seam was refused in code; that note covers it
     /* GV-73: still on a released seam -- `settleReleased` found no open seam
@@ -1897,7 +1995,9 @@ function finalPageFor(seam: SeamState, beats: Map<string, BeatState>, cut?: CutP
       verified: settled,
       purposeAccomplished: settled,
       ...(verification ? { verification } : {}),
-      attempts: seam.attempts
+      attempts: seam.attempts,
+      /* GV-113: the sentences the cut removed, only when it made one. */
+      ...(seam.draft.cut ? { cutSentences: [...seam.draft.cut.sentences] } : {})
     };
     const evidence = evidenceCarriedBy(seam, page);
     if (settled) return { ...page, ...(notes ? { verifierNotes: notes } : {}), evidence };
@@ -1905,7 +2005,7 @@ function finalPageFor(seam: SeamState, beats: Map<string, BeatState>, cut?: CutP
        with its seed) is a failing seam like any other under `cut`. */
     if (cut) {
       const missing = [...uncarried, ...seedLost];
-      return cutToIntroduction(seam, seam.draft.script, seam.draft.hints, cut, `beat${missing.length > 1 ? "s" : ""} ${missing.join(", ")} not carried`);
+      return cutToIntroduction(seam, seam.draft.script, seam.draft.hints, cut, `beat${missing.length > 1 ? "s" : ""} ${missing.join(", ")} not carried`, seam.draft.cut?.sentences);
     }
     /* F-99: the seam is clean and confirmed and the ONLY thing missing is
        a beat whose seed is gone. A distinct reason, not an ordinary
@@ -1978,6 +2078,200 @@ function finalPageFor(seam: SeamState, beats: Map<string, BeatState>, cut?: CutP
 }
 
 /* ------------------------------------------------------------------ */
+/* GV-113: cut unsupported sentences instead of rewriting               */
+/* ------------------------------------------------------------------ */
+
+/** What the sentence cut needs from the act (FORAY_UNSUPPORTED_SENTENCE_POLICY
+ * =cut): the seams (for the act's source set as the mechanical gate counts
+ * it), the clips, and the gates this act enforces, so a trimmed seam faces
+ * every rule its writer's text did. */
+interface SentenceCutContext {
+  seams: SeamState[];
+  clipById: Map<string, GateClip>;
+  clipSourceCount: number;
+  specifics: SpecificsMode;
+  voiceEnforce: boolean;
+}
+
+/** The note a trimmed seam's page carries (`verifierNotes`), with the round
+ * of the cut, so an editor reads why sentences are missing. */
+export const SENTENCE_CUT_NOTE = "unsupported sentence(s) cut (FORAY_UNSUPPORTED_SENTENCE_POLICY=cut, GV-113)";
+
+/** Words that lean on what came before: a kept first sentence that opens on
+ * one after the sentence before it was cut may dangle ("That is why ..."). */
+const LEANING_OPENERS = /^["'“‘(]*(that|this|these|those|it|its|they|their|them|he|she|his|her|such|so|then|but|and|which)\b/i;
+
+/**
+ * GV-113 (W5-11; R2-10): the act verifier's per-sentence verdicts applied in
+ * CODE instead of a rewrite round. When some, but not all, of the seam's
+ * statement sentences are `unsupported`, the seam is trimmed to its other
+ * sentences (their original text, spokenLine.js's `splitSpokenSentences`, in
+ * order), its claims are pruned to the ones a surviving statement rests on,
+ * and the trimmed seam is put through `validateSeam` again with the floor of
+ * its band relaxed to 0 (a cut seam may be shorter than seamBand asks; every
+ * other rule still runs: Q-02/Q-09 naming, the restate check, Q-08 leaks,
+ * banned copy, and the voice and specifics gates where they enforce). It is
+ * then confirmed resting on what its surviving statements rest on, under the
+ * same F-36/F-37 and contested rules `judge` holds a whole seam to.
+ *
+ * Commits the trimmed draft (with `cut`) and returns the resolved sources,
+ * the cut sentences' indexes and the page note; returns undefined, changing
+ * nothing, when the policy does not apply or the trimmed seam fails, so the
+ * existing (rewrite) path runs: every statement unsupported, a surviving
+ * statement the judge could not answer (`unknown`), verdicts that do not line
+ * up with the script's sentences, an unhandled contested point, or a rule.
+ */
+function cutUnsupportedSentences(
+  seam: SeamState,
+  verdict: SeamVerdict,
+  actSources: ActSource[],
+  round: number,
+  actTitle: string,
+  ctx: SentenceCutContext
+): { resolved: ReturnType<typeof sourcesForRest>; indexes: Set<number>; note: string } | undefined {
+  const draft = seam.draft;
+  const verdicts = verdict.sentences;
+  if (!draft || !verdicts || !verdict.contestedHandled) return undefined;
+  const sentences = splitSpokenSentences(draft.script);
+  const statements = verdicts.filter((v) => v.kind === "statement");
+  const indexes = new Set(statements.filter((v) => v.verdict === "unsupported").map((v) => v.index));
+  if (indexes.size === 0 || indexes.size === statements.length) return undefined;
+  const seamId = seam.plan.seamId;
+  if (verdicts.length !== sentences.length || verdicts.some((v, i) => v.index !== i)) {
+    console.warn(`writeAct: act "${actTitle}" seam ${seamId} — the sentence verdicts do not line up with the script's ${sentences.length} sentence(s); not cutting (GV-113)`);
+    return undefined;
+  }
+  if (statements.some((v) => !indexes.has(v.index) && v.verdict !== "supported")) return undefined;
+
+  const kept = sentences.filter((_, i) => !indexes.has(i));
+  const cutSentences = sentences.filter((_, i) => indexes.has(i));
+  const script = kept.join(" ");
+  const restsOn: string[] = [];
+  for (const v of statements) if (!indexes.has(v.index)) for (const id of v.restsOn ?? []) if (!restsOn.includes(id)) restsOn.push(id);
+  const own = actSources.filter((s) => s.brief.selectedBy === seamId);
+  const keepClaims = new Set(own.filter((s) => restsOn.includes(s.brief.id)).map((s) => s.claimIndex));
+  const claims = draft.claims.filter((_, i) => keepClaims.has(i));
+
+  /* What the trimmed seam rests on: its surviving statements' sources, else
+     its surviving claims (as `judge` falls back to a seam's own). */
+  const ids = restsOn.length > 0 ? restsOn : own.filter((s) => keepClaims.has(s.claimIndex)).map((s) => s.brief.id);
+  const resolved = sourcesForRest(ids, actSources);
+  if (resolved.sources.length === 0 && resolved.pageIds.length === 0 && hasDeclarativeSentence(script)) return undefined;
+  const rested = actSources.filter((s) => ids.includes(s.brief.id));
+  if (rested.some((s) => s.brief.contested) && !containsContestedLanguage(script)) return undefined;
+
+  /* The mechanical rules, on a copy: a refusal leaves the seam as it was. */
+  const others = ctx.seams.filter((s) => s !== seam).flatMap((s) => s.draft?.claims ?? []);
+  const scope = ctx.specifics === "enforce" ? actSpecificsScope(ctx.seams, ctx.clipById, [...others, ...claims].map((c) => c.quote)) : undefined;
+  const canon = script.toLowerCase();
+  const hints = draft.hints.filter((h) => canon.includes(h.word.toLowerCase()));
+  const scratch: SeamState = { ...seam, attempts: [...seam.attempts] };
+  const issues = validateSeam(scratch, { script, claims, hints }, ctx.clipById, round, {
+    actSourceCount: ctx.clipSourceCount + others.length,
+    actSourceQuotes: others.map((c) => c.quote),
+    ...(scope ? { specifics: scope } : {}),
+    ...(ctx.voiceEnforce ? { voice: true as const } : {}),
+    charBandOverride: [0, seam.band[1]]
+  });
+  if (issues.length > 0 || !scratch.draft) {
+    console.warn(`writeAct: act "${actTitle}" seam ${seamId} — trimmed of ${cutSentences.length} unsupported sentence(s), it fails in code; the writer is asked instead (GV-113): ${issues.join("; ").slice(0, 300)}`);
+    return undefined;
+  }
+
+  seam.draft = { ...scratch.draft, cut: { sentences: cutSentences, round } };
+  if (scratch.kept) seam.kept = scratch.kept;
+  if (scratch.lastPage) seam.lastPage = scratch.lastPage;
+  seam.previousScript = script;
+  if (indexes.has(0) && LEANING_OPENERS.test(kept[0] ?? "")) {
+    console.warn(`writeAct: act "${actTitle}" seam ${seamId} — after the cut its first sentence leans on one that is gone ("${(kept[0] ?? "").slice(0, 80)}") (GV-113)`);
+  }
+  console.warn(
+    `writeAct: act "${actTitle}" seam ${seamId} — cut ${cutSentences.length} unsupported sentence(s) in round ${round} instead of asking the writer again, ${kept.length} kept (FORAY_UNSUPPORTED_SENTENCE_POLICY=cut, GV-113)`
+  );
+  return { resolved, indexes, note: `${cutSentences.length} ${SENTENCE_CUT_NOTE}, round ${round}` };
+}
+
+/**
+ * GV-113 (MQ-11): beat coverage after a cut, decided in code. A beat this
+ * round's verdict said the trimmed seam carries is re-opened when the
+ * sentence that carried it (`carriedBySentence`) was cut, or, with no
+ * sentence named, when the trimmed script no longer shares a content word
+ * with its claim (`scriptIsAboutPurpose`, the stub verifier's structural
+ * test). An orphaned beat earns the seam ONE more writer round (its note
+ * names the beat); the trimmed state is kept so it can stand after it.
+ */
+function reopenOrphans(seam: SeamState, cut: Set<number>, open: BeatState[], verdicts: ActVerifyResult, round: number, actTitle: string): void {
+  const seamId = seam.plan.seamId;
+  const orphaned: string[] = [];
+  for (const state of open) {
+    if (!state.carried || state.carriedBy !== seamId) continue;
+    const at = verdicts.beats.find((v) => v.beatId === state.brief.beatId)?.carriedBySentence;
+    const lost = at !== undefined && at.seamId === seamId ? cut.has(at.index) : !scriptIsAboutPurpose(seam.draft!.script, state.brief.claim);
+    if (!lost) continue;
+    state.carried = false;
+    delete state.carriedBy;
+    delete state.restsOn;
+    delete state.verifiedAtAttempt;
+    state.notes = "the sentence that carried it was cut as unsupported (GV-113)";
+    if (state.orphanedAt === undefined) state.orphanedAt = round;
+    orphaned.push(state.brief.beatId);
+  }
+  if (orphaned.length === 0) return;
+  console.warn(`writeAct: act "${actTitle}" seam ${seamId} — the cut left beat(s) ${orphaned.join(", ")} uncarried (GV-113)`);
+  if (seam.orphanEdit) return;
+  seam.orphanEdit = {
+    round,
+    state: { draft: seam.draft, confirmed: seam.confirmed, kept: seam.kept, lastPage: seam.lastPage, previousScript: seam.previousScript },
+    carried: open
+      .filter((b) => b.carried && b.carriedBy === seamId)
+      .map((b) => ({
+        beatId: b.brief.beatId,
+        carriedBy: b.carriedBy,
+        ...(b.restsOn ? { restsOn: b.restsOn } : {}),
+        ...(b.verifiedAtAttempt !== undefined ? { verifiedAtAttempt: b.verifiedAtAttempt } : {})
+      }))
+  };
+}
+
+/**
+ * GV-113: the end of an orphan edit round. A seam that earned one writer
+ * round by a cut in the previous round and is not confirmed now gets the
+ * trimmed, confirmed state back, with the beats it carried: the trimmed
+ * text stands, and its orphaned beat is left to the unverified-seam policy.
+ * Returns the seams put back, whose refusals this round are no note.
+ */
+function holdOrphanEdits(seams: SeamState[], beats: Map<string, BeatState>, round: number, actTitle: string): Set<string> {
+  const held = new Set<string>();
+  for (const seam of seams) {
+    const edit = seam.orphanEdit;
+    if (!edit || edit.round !== round - 1 || (seam.confirmed && seam.draft)) continue;
+    Object.assign(seam, edit.state);
+    delete seam.notes;
+    delete seam.silent;
+    /* A beat the refused text carried is not carried by the text that stands. */
+    for (const state of beats.values()) {
+      if (!state.carried || state.carriedBy !== seam.plan.seamId || edit.carried.some((c) => c.beatId === state.brief.beatId)) continue;
+      state.carried = false;
+      delete state.carriedBy;
+      delete state.restsOn;
+      delete state.verifiedAtAttempt;
+    }
+    for (const kept of edit.carried) {
+      const state = beats.get(kept.beatId);
+      if (!state || state.carried) continue;
+      state.carried = true;
+      if (kept.carriedBy !== undefined) state.carriedBy = kept.carriedBy;
+      if (kept.restsOn) state.restsOn = kept.restsOn;
+      if (kept.verifiedAtAttempt !== undefined) state.verifiedAtAttempt = kept.verifiedAtAttempt;
+      delete state.notes;
+    }
+    held.add(seam.plan.seamId);
+    console.warn(`writeAct: act "${actTitle}" seam ${seam.plan.seamId} — its one edit round after the cut was not confirmed; the trimmed text stands (GV-113)`);
+  }
+  return held;
+}
+
+/* ------------------------------------------------------------------ */
 /* GV-108: the cut-to-introduction policy                               */
 /* ------------------------------------------------------------------ */
 
@@ -2028,7 +2322,10 @@ function cutToIntroduction(
   script: string,
   hints: NarratedBeat["pronunciationHints"],
   cut: CutPolicy,
-  why: string
+  why: string,
+  /** GV-113: sentences a sentence cut already removed from `script`; they
+   * lead the page's `cutSentences`. */
+  alreadyCut: readonly string[] = []
 ): NarratedBeat | undefined {
   const drop = (reason: string): undefined => {
     console.warn(
@@ -2050,7 +2347,7 @@ function cutToIntroduction(
   const introMax = MODE_CHAR_BANDS.Intro[1];
 
   const kept: string[] = [];
-  const cutSentences: string[] = [];
+  const cutSentences: string[] = [...alreadyCut];
   for (const sentence of splitSpokenSentences(script)) {
     const keeps =
       introNamesSource(sentence, brief) &&
@@ -2105,7 +2402,7 @@ function cutToIntroduction(
   });
   if (!structural.valid) return drop(`its introduction fails the structural rules (${structural.issues.map((i) => i.message).join("; ").slice(0, 200)})`);
   console.warn(
-    `writeAct: cutting seam ${seam.plan.seamId} (${seam.plan.beats.map((b) => b.beatId).join(", ") || "intro only"}) to its introduction before clip ${brief.clipId} — ${kept.length} sentence(s) kept, ${cutSentences.length} cut (FORAY_UNVERIFIED_SEAM_POLICY=cut, GV-108): ${why.slice(0, 200)}`
+    `writeAct: cutting seam ${seam.plan.seamId} (${seam.plan.beats.map((b) => b.beatId).join(", ") || "intro only"}) to its introduction before clip ${brief.clipId} — ${kept.length} sentence(s) kept, ${cutSentences.length - alreadyCut.length} cut (FORAY_UNVERIFIED_SEAM_POLICY=cut, GV-108): ${why.slice(0, 200)}`
   );
   return { ...page, evidence: evidenceCarriedBy(seam, page) };
 }
