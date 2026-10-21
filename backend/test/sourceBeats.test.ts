@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import { sourceBeats, summarizeSourcing, deriveItemId, placementAllows, D5_TOLERANCE, M4_ITEM_SHARE_MAX, M4_LONG_CLIP_SEC, MERGE_GAP_SEC, m4SegmentCapFor } from "../src/generation/sourceBeats";
+import { BEAT_JUDGE_MAX_CHARS, BEAT_JUDGE_MAX_OPTIONS, beatJudgeCandidates, beatVerdictKey, capBeatOptions } from "../src/generation/sourceBeats";
 import { placementEscapesD5Pair } from "../src/generation/d5Pair";
 import { capArgumentBeats, deepenActs } from "../src/generation/deepenActs";
 import { buildResearchShape } from "../src/generation/researchShape";
@@ -4520,5 +4521,305 @@ describe("sourceBeats — F-101: one placement predicate, asked by both the tier
     /* Growing `ep-a`'s ONLY clip past the threshold is not a second long clip —
        there is no other long clip of `ep-a` once this one is taken out. */
     expect(placementAllows("ep-a", long, ledgerState([{ itemId: "ep-b", sec: 4000 }, { itemId: "ep-a", sec: 200 }]), { replacing: 1 })).toBe(null);
+  });
+});
+
+/* GV-107 (docs/roadmap/generation-v2.md, W5-04; R1-20, R2-03): the windows
+   the pre-judge offers, enumerated ahead of the synchronous walk from the same
+   read-only inputs and the same helpers, with no ledger. Every test names the
+   mutation it kills; each was run red. */
+describe("beatJudgeCandidates — GV-107: every window the walk could take, enumerated for the judge", () => {
+  const usable = () => true;
+  function indexOver(entries: TranscriptDigestEntry[], cuesByGuid: Record<string, TranscriptCue[]>): TranscriptTextIndex {
+    const bodies: TranscriptBodySource = {
+      getCues: (e) => cuesByGuid[e.guid] ?? null,
+      bodyStat: (e) => (cuesByGuid[e.guid] ? { mtimeMs: 1, size: 1 } : null)
+    };
+    return new FileTranscriptTextIndex({ archive: entries, bodies, cache: false });
+  }
+  function act(beats: Array<Record<string, unknown>>, label = "J"): DeepenedAct {
+    return makeDeepenedAct({ slots: [{ title: `${label} slot`, beats: beats.map((b) => ({ exploration: false, kind: "account", ...b })) as never }] }, label);
+  }
+
+  /* Fixture 1, F-61's: one episode, a prose claim the tape says in speech. */
+  const gearboxEntry: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-gearbox",
+    title: "Episode 204",
+    cues: 6,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-204.mp3"
+  };
+  const gearboxClaim =
+    "Wind turbine gearboxes fail early because their bearings take torque reversals that the original load case never modelled.";
+  const gearboxCues: TranscriptCue[] = [
+    { text: "welcome back to the programme this week we are at a test facility in denmark", start_sec: 0, end_sec: 20 },
+    { text: "so the gearboxes are where the trouble starts and it is the bearings that give up first", start_sec: 20, end_sec: 40 },
+    { text: "you get reversals of torque that nobody put into the design envelope back then", start_sec: 40, end_sec: 60 },
+    { text: "and so they fail early years before the load case said they would", start_sec: 60, end_sec: 80 },
+    { text: "anyway we will be back after a word from the people who pay for this show", start_sec: 80, end_sec: 100 }
+  ];
+
+  /* Fixture 2, WS-L's: a seeded episode and a louder decoy. */
+  const seededEpisode: TranscriptDigestEntry = { ...gearboxEntry, guid: "pa-900", title: "Episode 900", enclosure_url: "https://cdn.example/pa-900.mp3" };
+  const decoyEpisode: TranscriptDigestEntry = { ...seededEpisode, guid: "pa-901", title: "Episode 901" };
+  const labelCues: TranscriptCue[] = [
+    { text: "welcome back to the show today we are talking about benchmarks", start_sec: 70, end_sec: 100 },
+    { text: "the labels in that benchmark were wrong more often than anyone admitted", start_sec: 100, end_sec: 108 },
+    { text: "an audit found thousands of mislabelled validation images across the whole benchmark", start_sec: 108, end_sec: 120 },
+    { text: "and those wrong labels put a ceiling on the accuracy anyone could report", start_sec: 120, end_sec: 132 },
+    { text: "we will come back to that after the break", start_sec: 132, end_sec: 150 }
+  ];
+  const louderCues: TranscriptCue[] = [
+    ...labelCues,
+    { text: "an audit found thousands of mislabelled validation images across the whole benchmark", start_sec: 150, end_sec: 175 },
+    { text: "and those wrong labels put a ceiling on the accuracy anyone could report", start_sec: 175, end_sec: 200 }
+  ];
+  const labelClaim =
+    "An audit found thousands of mislabelled validation images across the whole benchmark, and those wrong labels put a ceiling on the accuracy anyone could report.";
+  const labelSeed = { episodeId: "practical-ai--episode-900", startSec: 100, endSec: 132 };
+
+  /* Fixture 3, F-06/F-29's: a pool segment whose own transcript window the
+     archive holds. */
+  function hyattSegment(): SegmentRecord {
+    return {
+      ...fixtureSegmentPool()[0]!,
+      id: "causality-engineered-network--47-hyatt-regency-kansas-city#972",
+      item_id: "causality-engineered-network--47-hyatt-regency-kansas-city",
+      topic: "engineering/disasters",
+      start_sec: 972,
+      end_sec: 1100,
+      why: "A phone call splits one hanger rod into two and doubles the load on the box beam",
+      start_anchor: "so the fabricator picks up the phone",
+      end_anchor: "and the box beam is now carrying both walkways"
+    };
+  }
+  const hyattEntry: TranscriptDigestEntry = {
+    show_id: "causality-engineered-network",
+    show_title: "Causality — Engineered Network",
+    guid: "c47",
+    title: "47: Hyatt Regency Kansas City",
+    cues: 4,
+    feed_duration_sec: 3600,
+    span_implausible: false
+  };
+  const hyattClaim = "The second-floor skywalk fell into the crowded atrium of the Hyatt Regency in Kansas City during a Friday tea dance.";
+  const hyattCues: TranscriptCue[] = [
+    { text: "unrelated cold open about the show itself", start_sec: 10, end_sec: 40 },
+    { text: "the second floor skywalk came down into the atrium", start_sec: 980, end_sec: 1000 },
+    { text: "during a friday tea dance with hundreds of people watching", start_sec: 1000, end_sec: 1020 },
+    { text: "the hyatt regency in kansas city never reopened that atrium the same way", start_sec: 1020, end_sec: 1060 }
+  ];
+
+  interface Fixture {
+    name: string;
+    acts: DeepenedAct[];
+    options: NonNullable<Parameters<typeof sourceBeats>[1]>;
+    cuesByGuid: Record<string, TranscriptCue[]>;
+    archive: TranscriptDigestEntry[];
+    index: TranscriptTextIndex | null;
+  }
+  function fixtures(): Fixture[] {
+    const gearIndex = indexOver([gearboxEntry], { "pa-gearbox": gearboxCues });
+    const labelCuesByGuid: Record<string, TranscriptCue[]> = { "pa-900": labelCues, "pa-901": louderCues };
+    const labelIndex = indexOver([seededEpisode, decoyEpisode], labelCuesByGuid);
+    return [
+      {
+        name: "F-61 gearbox",
+        acts: [act([{ claim: gearboxClaim }])],
+        options: { segmentPool: [], transcriptArchive: [gearboxEntry], cueProvider: { getCues: () => gearboxCues }, textIndex: gearIndex, topic: "engineering/ai-robotics" },
+        cuesByGuid: { "pa-gearbox": gearboxCues },
+        archive: [gearboxEntry],
+        index: gearIndex
+      },
+      {
+        name: "WS-L seeded + decoy",
+        acts: [act([{ claim: labelClaim, seed: labelSeed }])],
+        options: {
+          segmentPool: [],
+          transcriptArchive: [seededEpisode, decoyEpisode],
+          cueProvider: { getCues: (e) => labelCuesByGuid[e.guid] ?? null },
+          textIndex: labelIndex,
+          topic: "engineering/ai-robotics"
+        },
+        cuesByGuid: labelCuesByGuid,
+        archive: [seededEpisode, decoyEpisode],
+        index: labelIndex
+      },
+      {
+        name: "F-06 pool window",
+        acts: [act([{ claim: hyattClaim }])],
+        options: { segmentPool: [hyattSegment()], transcriptArchive: [hyattEntry], cueProvider: { getCues: () => hyattCues } },
+        cuesByGuid: { c47: hyattCues },
+        archive: [hyattEntry],
+        index: null
+      }
+    ];
+  }
+
+  /* MUTATION THAT KILLS THIS: ask the seed-window option without `within`
+     (the whole episode), or key a window by its seconds instead of its cues.
+     Ran it: red. */
+  it("on three fixtures, every emitted key's window is selectTapeWindow recomputed for that episode, mode and seed", () => {
+    const modesSeen = new Set<string>();
+    for (const fx of fixtures()) {
+      const sets = beatJudgeCandidates(fx.acts, fx.options);
+      expect(sets, fx.name).toHaveLength(1);
+      const beat = fx.acts[0]!.slots[0]!.beats[0]!;
+      expect(sets[0]!.options.length, fx.name).toBeGreaterThan(0);
+      for (const option of sets[0]!.options) {
+        modesSeen.add(option.mode);
+        if (option.mode === "pool") {
+          const segment = fx.options.segmentPool!.find((s) => `pool:${s.id}` === option.key)!;
+          expect(segment, option.key).toBeDefined();
+          expect([option.startSec, option.endSec]).toEqual([segment.start_sec, segment.end_sec]);
+          continue;
+        }
+        const m = /^(seed-window|search):(.+)#(\d+)-(\d+)$/.exec(option.key);
+        expect(m, option.key).not.toBeNull();
+        const [, mode, itemId, first, last] = m!;
+        const entry = fx.archive.find((e) => deriveItemId(e) === itemId)!;
+        const cues = fx.cuesByGuid[entry.guid]!;
+        const idf = fx.index?.search(beat.claim, { limit: 8, isUsable: usable }).find((h) => h.entry.guid === entry.guid)?.idf;
+        const recomputed =
+          mode === "seed-window"
+            ? selectTapeWindow(beat.claim, cues, { idf, within: { startSec: beat.seed!.startSec, endSec: beat.seed!.endSec } })
+            : selectTapeWindow(beat.claim, cues, { idf });
+        expect(recomputed, option.key).not.toBeNull();
+        expect([recomputed!.firstCue, recomputed!.lastCue], option.key).toEqual([Number(first), Number(last)]);
+        expect([option.startSec, option.endSec, option.share]).toEqual([recomputed!.startSec, recomputed!.endSec, recomputed!.weightedShare]);
+        expect(option.floorCleared).toBe(tapeWindowIsRelevant(recomputed, mode === "seed-window" ? "seed-window" : "archive-search"));
+      }
+    }
+    expect([...modesSeen].sort()).toEqual(["pool", "search", "seed-window"]);
+  });
+
+  /* MUTATION THAT KILLS THIS: drop capBeatOptions (or drop the HIGHEST share
+     first). Ran it: red. */
+  it("no beat's option list exceeds 20 entries or 40,000 characters, the lowest share dropped first", () => {
+    /* Three episodes whose windows each carry ~30,000 characters: one must
+       go, and it is the one that says least of the claim. */
+    const padding = " and so on".repeat(1_500);
+    const mk = (guid: string, lines: string[]): [TranscriptDigestEntry, TranscriptCue[]] => [
+      { ...gearboxEntry, guid, title: `Episode ${guid}` },
+      lines.map((text, i) => ({ text: `${text}${padding}`, start_sec: i * 20, end_sec: i * 20 + 20 }))
+    ];
+    const eps = [
+      mk("g1", ["the gearboxes are where the trouble starts and the bearings give up first", "torque reversals the load case never modelled so they fail early"]),
+      mk("g2", ["wind turbine gearboxes and their bearings", "torque reversals"]),
+      mk("g3", ["wind turbine towers", "the load case"])
+    ];
+    const archive = eps.map(([e]) => e);
+    const cuesByGuid: Record<string, TranscriptCue[]> = Object.fromEntries(eps.map(([e, c]) => [e.guid, c]));
+    const sets = beatJudgeCandidates([act([{ claim: gearboxClaim }])], {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+      textIndex: indexOver(archive, cuesByGuid),
+      topic: "engineering/ai-robotics"
+    });
+    const options = sets[0]!.options;
+    const uncapped = 3;
+    expect(options.length).toBeLessThan(uncapped);
+    expect(options.length).toBeLessThanOrEqual(BEAT_JUDGE_MAX_OPTIONS);
+    expect(options.reduce((n, o) => n + o.text.length, 0)).toBeLessThanOrEqual(BEAT_JUDGE_MAX_CHARS);
+    /* The lowest share went first. */
+    const kept = Math.min(...options.map((o) => o.share));
+    expect(options.some((o) => o.itemId === deriveItemId(archive[2]!))).toBe(false);
+    expect(kept).toBeGreaterThan(0);
+
+    /* And the count cap, on 25 short options: the five lowest shares go, the
+       rest keep their order. */
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      key: `search:item-${i}#0-1`,
+      mode: "search" as const,
+      itemId: `item-${i}`,
+      startSec: 0,
+      endSec: 40,
+      firstCue: 0,
+      lastCue: 1,
+      text: "x",
+      share: (i % 5) / 10 + 0.05 + i / 1000,
+      floorCleared: true
+    }));
+    const capped = capBeatOptions(many);
+    expect(capped).toHaveLength(BEAT_JUDGE_MAX_OPTIONS);
+    expect(capped.map((o) => o.key)).toEqual(many.filter((_, i) => i % 5 !== 0).map((o) => o.key));
+  });
+
+  /* MUTATION THAT KILLS THIS: enumerate argument beats, or ignore
+     actIndices. Ran it: red. */
+  it("skips argument beats, reads only the acts it is asked for, and keys each set act/slot/beat", () => {
+    const fx = fixtures()[0]!;
+    const acts = [
+      act([{ claim: gearboxClaim }, { claim: "Every failure chain is judged locally and never globally.", kind: "argument" }], "A"),
+      act([{ claim: gearboxClaim }], "B")
+    ];
+    const all = beatJudgeCandidates(acts, fx.options);
+    expect(all.map((s) => beatVerdictKey(s))).toEqual(["0/0/0", "1/0/0"]);
+    expect(beatJudgeCandidates(acts, fx.options, { actIndices: [1] }).map((s) => beatVerdictKey(s))).toEqual(["1/0/0"]);
+    /* A sparse act list (the per-act pipeline before later acts are deepened). */
+    const sparse: DeepenedAct[] = [];
+    sparse[1] = acts[1]!;
+    expect(beatJudgeCandidates(sparse, fx.options).map((s) => beatVerdictKey(s))).toEqual(["1/0/0"]);
+  });
+
+  /* MUTATION THAT KILLS THIS: read a ledger (usedSegmentIds) while
+     enumerating, or let enumeration change the sourcing that follows. Ran it:
+     red. */
+  it("keeps no ledger: a pool row tier 1 places once is offered to both beats, and sourcing after it is unchanged", () => {
+    const opts = { segmentPool: [hyattSegment()], transcriptArchive: [hyattEntry], cueProvider: { getCues: () => hyattCues } };
+    const acts = [act([{ claim: hyattClaim }, { claim: hyattClaim.replace("Friday", "crowded Friday") }])];
+    const sets = beatJudgeCandidates(acts, opts);
+    expect(sets).toHaveLength(2);
+    for (const s of sets) expect(s.options.map((o) => o.key)).toContain(`pool:${hyattSegment().id}`);
+    const before = sourceBeats(acts, opts);
+    beatJudgeCandidates(acts, opts);
+    expect(sourceBeats(acts, opts)).toEqual(before);
+    /* The walk itself places the row once: the ledgers are the walk's. */
+    expect(allSourcedBeats(before.acts).filter((b) => b.sourcing === "tape" && b.tape.segmentId === hyattSegment().id)).toHaveLength(1);
+  });
+
+  /* MUTATION THAT KILLS THIS: drop the GV-106 bound (offer a pool row the
+     ceiling can never admit), or reserve the floor for the beat itself. Ran
+     it: red. */
+  it("respects GV-106's clip ceiling: a pool row longer than the bound is not offered, and a beat with no room is offered nothing", () => {
+    const opts = { segmentPool: [hyattSegment()], transcriptArchive: [hyattEntry], cueProvider: { getCues: () => hyattCues } };
+    const seed = { episodeId: "elsewhere", startSec: 0, endSec: 60 };
+    /* The judged beat is seeded too: it is not counted among the beats after it. */
+    const acts = [act([{ claim: hyattClaim, seed }, { claim: "Another seeded beat about walkways.", seed }])];
+    const poolKey = `pool:${hyattSegment().id}`;
+    const first = (budget?: number) => {
+      const s = beatJudgeCandidates(acts, budget === undefined ? opts : { ...opts, runtimeBudgetSec: budget })[0]!;
+      return { keys: s.options.map((o) => o.key), ceilingSec: s.ceilingSec };
+    };
+    const open = first();
+    expect(open.keys).toContain(poolKey);
+    expect(open.ceilingSec).toBeUndefined();
+    /* 300 s with one seeded beat after: 300 - 60 = 240 s >= the 128 s row. */
+    const roomy = first(300);
+    expect(roomy.keys).toContain(poolKey);
+    expect(roomy.ceilingSec).toBe(240);
+    /* 180 s: 180 - 60 = 120 s < 128 s, so the row can never be placed. */
+    const tight = first(180);
+    expect(tight.ceilingSec).toBe(120);
+    expect(tight.keys).not.toContain(poolKey);
+    /* 100 s: 100 - 60 = 40 s, under the 60 s floor: no room, no options. */
+    expect(first(100)).toEqual({ keys: [], ceilingSec: 0 });
+    /* The plan the budget counts over can be given apart from the acts read
+       (the per-act pipeline's spine-planned later acts). */
+    const plan = [...acts, act([{ claim: "x", seed }, { claim: "y", seed }], "P")];
+    expect(beatJudgeCandidates(acts, { ...opts, runtimeBudgetSec: 300 }, { runtimePlan: plan })[0]!.ceilingSec).toBe(120);
+  });
+
+  /* MUTATION THAT KILLS THIS: drop the topic part of the pool filter. Ran it:
+     red. */
+  it("filters pool rows by tier 1's topic gate", () => {
+    const opts = { segmentPool: [hyattSegment()], transcriptArchive: [hyattEntry], cueProvider: { getCues: () => hyattCues } };
+    const acts = [act([{ claim: hyattClaim }])];
+    const poolKey = `pool:${hyattSegment().id}`;
+    expect(beatJudgeCandidates(acts, { ...opts, topic: "engineering/disasters" })[0]!.options.map((o) => o.key)).toContain(poolKey);
+    expect(beatJudgeCandidates(acts, { ...opts, topic: "food/grilling-bbq" })[0]!.options.map((o) => o.key)).not.toContain(poolKey);
   });
 });

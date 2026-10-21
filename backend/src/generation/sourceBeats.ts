@@ -445,6 +445,32 @@ type SourcingConfigKey =
   | "audioSourceFor"
   | "supersedableCut";
 
+/** GV-107: the configuration half of `SourcingState`: everything sourcing
+ * READS and no beat ever writes. */
+type SourcingInputs = Pick<SourcingState, SourcingConfigKey>;
+
+/** GV-107: the read-only inputs a `SourcingSession` (and the pre-judge's
+ * `beatJudgeCandidates`) builds from its options: the pool, the archive, the
+ * cue provider, the text index, the pool's window text, the topic gate and
+ * the resolvers. No ledger. */
+function sourcingInputsFor(options: SourceBeatsOptions): SourcingInputs {
+  const segmentPool = options.segmentPool ?? loadSegmentPool();
+  const transcriptArchive = options.transcriptArchive ?? loadTranscriptArchive();
+  const cueProvider = options.cueProvider ?? new NullTranscriptCueProvider();
+  const textIndex = options.textIndex ?? new NullTranscriptTextIndex();
+  return {
+    segmentPool,
+    transcriptArchive,
+    cueProvider,
+    textIndex,
+    windowText: makeSegmentWindowText(transcriptArchive, cueProvider),
+    forayTopic: options.topic ?? null,
+    root: options.root,
+    audioSourceFor: options.audioSourceFor,
+    supersedableCut: options.supersedableCut
+  };
+}
+
 /** Every Foray-wide ledger in `SourcingState`. A new member of the state is a
  * ledger unless it is named in `SourcingConfigKey`, and `exportState` will not
  * compile until `SourcingSnapshot` carries it. */
@@ -477,10 +503,10 @@ export class SourcingSession {
   private acts: SourcedAct[] = [];
 
   constructor(options: SourceBeatsOptions = {}) {
-    const segmentPool = options.segmentPool ?? loadSegmentPool();
-    const transcriptArchive = options.transcriptArchive ?? loadTranscriptArchive();
-    const cueProvider = options.cueProvider ?? new NullTranscriptCueProvider();
-    const textIndex = options.textIndex ?? new NullTranscriptTextIndex();
+    /* GV-107: the read-only inputs are built by `sourcingInputsFor`, the one
+       place `beatJudgeCandidates` builds them too. */
+    const inputs = sourcingInputsFor(options);
+    const segmentPool = inputs.segmentPool;
 
     const newSegments: NewSegment[] = [];
     /* One row per episode a segment was minted from, deduplicated by item id:
@@ -522,17 +548,8 @@ export class SourcingSession {
        parallel to `placedDurations`. */
     const placed: PlacedSegment[] = [];
 
-    const forayTopic = options.topic ?? null;
     this.state = {
-      segmentPool,
-      transcriptArchive,
-      cueProvider,
-      textIndex,
-      windowText: makeSegmentWindowText(transcriptArchive, cueProvider),
-      forayTopic,
-      root: options.root,
-      audioSourceFor: options.audioSourceFor,
-      supersedableCut: options.supersedableCut,
+      ...inputs,
       mintedIds,
       newSegments,
       newSegmentSources,
@@ -1058,7 +1075,7 @@ function tier1VetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tie
      how a Kansas City walkway beat took a British hearth-cooking segment.
      Checked inside the ranked walk, like the assembly rules below, so the
      search falls through to the next ON-TOPIC candidate instead of giving up. */
-  if (!familyGateAllows(state.forayTopic, nodesForPoolSegment(segment, state.root), state.root)) return "topic-lineage";
+  if (!poolTopicAllows(segment, state)) return "topic-lineage";
   /* Already spoken for by an earlier beat of this Foray — F-29's "exhaustion of
      the one relevant episode", which is what sent run 1 to a griddle segment. */
   if (state.usedSegmentIds.has(segment.id)) return "exhausted";
@@ -1077,6 +1094,12 @@ function tier1VetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tie
      refused and the walk falls through. Asked last of all. */
   const durationSec = segment.end_sec - segment.start_sec;
   return durationVetoFor(segment.item_id, durationSec, state) ?? tierBudgetVetoFor(durationSec, state);
+}
+
+/** The topic part of `tier1VetoFor` alone (F-29's lineage gate on a pool
+ * segment): what GV-107's pre-judge filters pool rows by, with no ledger. */
+function poolTopicAllows(segment: SegmentRecord, state: Pick<SourcingState, "forayTopic" | "root">): boolean {
+  return familyGateAllows(state.forayTopic, nodesForPoolSegment(segment, state.root), state.root);
 }
 
 function tier1IsUsable(segment: SegmentRecord, state: SourcingState): boolean {
@@ -1485,7 +1508,7 @@ function archiveTraceRow(entry: TranscriptDigestEntry, score: number, gate: Tier
 
 /** The lineage gate as a predicate over archive entries — what tier 2's
  * candidate search and the act's thesis query (F-96) both filter by. */
-function usableArchiveEntry(state: SourcingState): (entry: TranscriptDigestEntry) => boolean {
+function usableArchiveEntry(state: Pick<SourcingState, "forayTopic" | "root">): (entry: TranscriptDigestEntry) => boolean {
   return (entry: TranscriptDigestEntry) => familyGateAllows(state.forayTopic, nodesForArchiveEntry(entry, state.root), state.root);
 }
 
@@ -1588,6 +1611,257 @@ function mergeIdf(claimIdf: ReadonlyMap<string, number> | undefined, thesisIdf: 
   if (!thesisIdf) return claimIdf;
   if (!claimIdf) return thesisIdf;
   return new Map([...thesisIdf, ...claimIdf]);
+}
+
+/* ---------------------------------------------------------------------------
+   GV-107 (docs/roadmap/generation-v2.md, W5-04; R1-20, R2-03): EVERY WINDOW
+   THE WALK COULD TAKE FOR A BEAT, ENUMERATED AHEAD FOR THE JUDGE.
+
+   The judge (Jev, behind `clipJudge.ts`) is asynchronous and this module is
+   not: `sourceBeats` stays synchronous so the Foray-wide ledgers (M3, M4, D2,
+   the F-96 merge) keep their order and every existing caller is untouched.
+   So the windows are enumerated BEFORE the walk, from the same read-only
+   inputs and the same helpers the walk calls, and judged then
+   (`prejudgeClips.ts`); GV-119's judged walk reads the verdicts back by the
+   keys below. Nothing here reads or writes a ledger, so the options are what
+   the walk could be offered, not what it would accept: the ledgers are still
+   the walk's to apply.
+
+   Per non-argument beat (an argument beat searches nothing, F-38):
+     - 'seed-window': the seeded candidate's window confined to the seed
+       (`selectTapeWindow(..., {idf, within: seed})`), as `Tier2Walk.run`'s
+       seed pass asks it, on the seed floor;
+     - 'search': every candidate's whole-episode window, as the search pass
+       asks it, on the searching floor;
+     - 'pool': the top `BEAT_JUDGE_POOL_ROWS` pool rows
+       `scoreSegmentsAgainstClaim` ranks (with the claim search's idf, as tier
+       1 is judged), filtered by tier 1's topic gate only, on tier 1's bar,
+       with the segment's own transcript window as the passage.
+   A window with share 0 is no passage at all and is dropped, and a search
+   window identical to the seed window (same episode, same cues) is not asked
+   twice. `selectTapeWindow` is deterministic in (claim, cues, idf, within),
+   so a key names the window the walk recomputes.
+
+   GV-106: under a tier runtime budget (`runtimeBudgetSec`) the clip ceiling
+   is respected with the best bound available before any clip is placed:
+   `clipCeilingSec` with nothing placed and the plan's seeded beats AFTER this
+   one reserved (placements only lower it). A pool row longer than that bound
+   can never be placed (a pool cut cannot be shortened) and is not offered,
+   and a beat whose bound is 0 is offered nothing: the walk will narrate it
+   under `tier-budget` whatever a judge says.
+   --------------------------------------------------------------------------- */
+
+/** GV-107: at most this many options per beat, and this many characters of
+ * passage text across them (about 10k tokens), the lowest share dropped
+ * first (LM-23). */
+export const BEAT_JUDGE_MAX_OPTIONS = 20;
+export const BEAT_JUDGE_MAX_CHARS = 40_000;
+/** GV-107: how many pool rows a beat offers the judge. */
+export const BEAT_JUDGE_POOL_ROWS = 3;
+
+/** GV-107: how a candidate window was found, i.e. how the walk would ask it. */
+export type BeatCandidateMode = "seed-window" | "search" | "pool";
+
+/** GV-107: one window a beat's judge is offered. */
+export interface BeatCandidateOption {
+  /** `pool:<segmentId>`, or `<mode>:<itemId>#<firstCue>-<lastCue>` (cue
+   * indices as `selectTapeWindow` counts them, empty cues dropped). */
+  key: string;
+  mode: BeatCandidateMode;
+  itemId: string;
+  /** The pool row, for a 'pool' option. */
+  segmentId?: string;
+  startSec: number;
+  endSec: number;
+  /** The window's cues, for a 'seed-window' or 'search' option. */
+  firstCue?: number;
+  lastCue?: number;
+  /** The passage the judge reads: the window's own cue text. */
+  text: string;
+  /** The idf-weighted share of the claim the passage speaks (the number every
+   * floor here reads), and the lowest-share-first drop order. */
+  share: number;
+  /** Whether the walk's lexical floor for this mode admits it:
+   * `tapeWindowIsRelevant` on the seed or searching floor, tier 1's bar
+   * (`tier1BarClears`) for a pool row. */
+  floorCleared: boolean;
+}
+
+/** GV-107: one beat's options, in walk order (seed window, search windows in
+ * candidate order, pool rows by rank). */
+export interface BeatCandidateSet {
+  actIndex: number;
+  slotIndex: number;
+  beatIndex: number;
+  claim: string;
+  options: BeatCandidateOption[];
+  /** GV-106: the clip-ceiling bound the options were filtered by, present
+   * only under a runtime budget. */
+  ceilingSec?: number;
+}
+
+/** GV-107: a beat's key in the verdict book (`prejudgeClips.ts`):
+ * `act/slot/beat`. */
+export function beatVerdictKey(at: { actIndex: number; slotIndex: number; beatIndex: number }): string {
+  return `${at.actIndex}/${at.slotIndex}/${at.beatIndex}`;
+}
+
+/** GV-107: a tier-2 option's key. */
+export function windowOptionKey(mode: Exclude<BeatCandidateMode, "pool">, itemId: string, window: Pick<TapeWindow, "firstCue" | "lastCue">): string {
+  return `${mode}:${itemId}#${window.firstCue}-${window.lastCue}`;
+}
+
+/** The window's own cue text, as `selectTapeWindow` indexed the cues. */
+function windowPassage(cues: TranscriptCue[], window: TapeWindow): string {
+  return indexCues(cues)
+    .cues.slice(window.firstCue, window.lastCue + 1)
+    .map((c) => c.text)
+    .join(" ")
+    .trim();
+}
+
+/** Drops the lowest-share options (the latest first among equals) until at
+ * most `BEAT_JUDGE_MAX_OPTIONS` remain within `BEAT_JUDGE_MAX_CHARS`, keeping
+ * the survivors in their order. */
+export function capBeatOptions(options: BeatCandidateOption[]): BeatCandidateOption[] {
+  const byDropOrder = options.map((o, i) => ({ o, i })).sort((a, b) => a.o.share - b.o.share || b.i - a.i);
+  const dropped = new Set<number>();
+  let count = options.length;
+  let chars = options.reduce((sum, o) => sum + o.text.length, 0);
+  for (const { o, i } of byDropOrder) {
+    if (count <= BEAT_JUDGE_MAX_OPTIONS && chars <= BEAT_JUDGE_MAX_CHARS) break;
+    dropped.add(i);
+    count -= 1;
+    chars -= o.text.length;
+  }
+  return options.filter((_, i) => !dropped.has(i));
+}
+
+/** The options one beat offers (see the block comment above). */
+function beatCandidateOptions(beat: Beat, inputs: SourcingInputs, ceilingSec: number | undefined): BeatCandidateOption[] {
+  if (ceilingSec === 0) return [];
+  const claim = beat.claim;
+  const candidates = tier2Candidates(claim, inputs, usableArchiveEntry(inputs), beat.seed);
+  const options: BeatCandidateOption[] = [];
+  const seen = new Set<string>();
+  const addWindow = (mode: "seed-window" | "search", candidate: Tier2Candidate, cues: TranscriptCue[], window: TapeWindow | null): void => {
+    if (!window || window.weightedShare <= 0) return;
+    const itemId = deriveItemId(candidate.entry);
+    const span = `${itemId}#${window.firstCue}-${window.lastCue}`;
+    if (seen.has(span)) return;
+    const text = windowPassage(cues, window);
+    if (text.length === 0) return;
+    seen.add(span);
+    options.push({
+      key: windowOptionKey(mode, itemId, window),
+      mode,
+      itemId,
+      startSec: window.startSec,
+      endSec: window.endSec,
+      firstCue: window.firstCue,
+      lastCue: window.lastCue,
+      text,
+      share: window.weightedShare,
+      floorCleared: tapeWindowIsRelevant(window, mode === "seed-window" ? "seed-window" : "archive-search")
+    });
+  };
+
+  const seeded = beat.seed ? candidates.find((c) => c.fromSeed) : undefined;
+  if (seeded) {
+    const cues = inputs.cueProvider.getCues(seeded.entry);
+    if (cues) {
+      addWindow("seed-window", seeded, cues, selectTapeWindow(claim, cues, { idf: seeded.text?.idf, within: { startSec: beat.seed!.startSec, endSec: beat.seed!.endSec } }));
+    }
+  }
+  for (const candidate of candidates) {
+    const cues = inputs.cueProvider.getCues(candidate.entry);
+    if (cues) addWindow("search", candidate, cues, selectTapeWindow(claim, cues, { idf: candidate.text?.idf }));
+  }
+
+  /* Tier 1's rows, judged with the claim search's idf exactly as
+     `resolveOneBeat` judges them. */
+  const idf = candidates.find((c) => c.text?.idf)?.text?.idf;
+  let poolRows = 0;
+  for (const match of scoreSegmentsAgainstClaim(claim, inputs.segmentPool, { windowText: inputs.windowText, idf })) {
+    if (poolRows >= BEAT_JUDGE_POOL_ROWS) break;
+    const segment = match.segment;
+    if (!poolTopicAllows(segment, inputs)) continue;
+    if (ceilingSec !== undefined && segment.end_sec - segment.start_sec > ceilingSec) continue;
+    if (match.weightedShare <= 0) continue;
+    const text = inputs.windowText(segment);
+    if (!text) continue;
+    poolRows += 1;
+    options.push({
+      key: `pool:${segment.id}`,
+      mode: "pool",
+      itemId: segment.item_id,
+      segmentId: segment.id,
+      startSec: segment.start_sec,
+      endSec: segment.end_sec,
+      text,
+      share: match.weightedShare,
+      floorCleared: tier1BarClears(match)
+    });
+  }
+  return capBeatOptions(options);
+}
+
+/**
+ * GV-107: every non-argument beat's candidate windows, for the judge
+ * (`prejudgeClips`), in playing order. `actIndices` limits it to those acts
+ * (the per-act pipeline judges act 0 first); default every act present in
+ * `deepenedActs` (which may be sparse). `runtimePlan` is the act plan the
+ * GV-106 budget counts seeded beats over (default `deepenedActs`); it is read
+ * only when `options.runtimeBudgetSec` is set. Pure over its inputs plus the
+ * cue provider's reads: no ledger is built, nothing is written.
+ */
+export function beatJudgeCandidates(
+  deepenedActs: ReadonlyArray<DeepenedAct | undefined>,
+  options: SourceBeatsOptions = {},
+  scope: { actIndices?: readonly number[]; runtimePlan?: ReadonlyArray<RuntimeAct | undefined> } = {}
+): BeatCandidateSet[] {
+  const inputs = sourcingInputsFor(options);
+  const budgetSec = options.runtimeBudgetSec;
+  /* GV-106: the seeded beats the plan holds after each beat, so each beat's
+     bound reserves the floor for the others still to come, not for itself. */
+  const seededAfter = new Map<string, number>();
+  if (budgetSec !== undefined) {
+    const plan = scope.runtimePlan ?? deepenedActs;
+    let after = 0;
+    for (let a = plan.length - 1; a >= 0; a--) {
+      const act = plan[a];
+      if (!act) continue;
+      for (let s = act.slots.length - 1; s >= 0; s--) {
+        const beats = act.slots[s]!.beats;
+        for (let b = beats.length - 1; b >= 0; b--) {
+          seededAfter.set(beatVerdictKey({ actIndex: a, slotIndex: s, beatIndex: b }), after);
+          if (tapesFromSeed(beats[b]!)) after += 1;
+        }
+      }
+    }
+  }
+  const wanted = scope.actIndices ? new Set(scope.actIndices) : null;
+  const sets: BeatCandidateSet[] = [];
+  deepenedActs.forEach((act, actIndex) => {
+    if (!act || (wanted && !wanted.has(actIndex))) return;
+    act.slots.forEach((slot, slotIndex) => {
+      slot.beats.forEach((beat, beatIndex) => {
+        if (beat.kind === "argument") return;
+        const at = { actIndex, slotIndex, beatIndex };
+        const ceilingSec =
+          budgetSec === undefined
+            ? undefined
+            : clipCeilingSec({ runtimeBudgetSec: budgetSec, remainingSeededBeats: seededAfter.get(beatVerdictKey(at)) ?? 0, placedDurations: [] });
+        sets.push({
+          ...at,
+          claim: beat.claim,
+          options: beatCandidateOptions(beat, inputs, ceilingSec),
+          ...(ceilingSec !== undefined ? { ceilingSec } : {})
+        });
+      });
+    });
+  });
+  return sets;
 }
 
 function resolveOneBeat(beat: Beat, state: SourcingState, act: ActContext, at: BeatAt): BeatResolution {
@@ -2579,7 +2853,7 @@ function furtherOf(current: Tier2Progress | null, next: Tier2Progress): Tier2Pro
  */
 function tier2Candidates(
   claim: string,
-  state: SourcingState,
+  state: Pick<SourcingState, "textIndex" | "transcriptArchive">,
   isUsable: (entry: TranscriptDigestEntry) => boolean,
   seed: BeatSeed | undefined
 ): Tier2Candidate[] {
@@ -2627,7 +2901,7 @@ function tier2Candidates(
 function seededFirst(
   candidates: Tier2Candidate[],
   claimTokens: Set<string>,
-  state: SourcingState,
+  state: Pick<SourcingState, "transcriptArchive">,
   isUsable: (entry: TranscriptDigestEntry) => boolean,
   seed: BeatSeed | undefined
 ): Tier2Candidate[] {

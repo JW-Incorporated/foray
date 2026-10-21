@@ -365,6 +365,11 @@ export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: Routin
  * after `source`: it is built from the sourced clips and the spine alone, so
  * a rerun from `source` or earlier rebuilds it and a rerun from `narrate`
  * keeps it.
+ *
+ * `clip-judge` (GV-107, banked only with FORAY_CLIP_JUDGE=enforce; per act as
+ * `clip-judge:<i>` on the per-act path) sits between `deepen` and `source`:
+ * it is built from the deepened acts and the corpus, before sourcing, so a
+ * rerun from `deepen` rebuilds it and a rerun from `source` keeps it.
  */
 export const CHECKPOINT_STAGE_ORDER = [
   "understand",
@@ -373,6 +378,7 @@ export const CHECKPOINT_STAGE_ORDER = [
   "spine",
   "identity",
   "deepen",
+  "clip-judge",
   "source",
   "clip-scores",
   "narrate",
@@ -432,7 +438,11 @@ export const ROUTED_STAGE_FIRST_CHECKPOINT: Readonly<Record<StageId, CheckpointS
   writer: "narrate",
   verifier: "narrate",
   continuity: "stitch",
-  judge: "source"
+  /* GV-107: the judge's first banked stage is now the pre-judge's book
+     (`clip-judge`, before `source`), so a fork that changes the judge route
+     reruns from `clip-judge` (which, with no book banked, redoes exactly what
+     a rerun from `source` did) and never keeps another judge's book. */
+  judge: "clip-judge"
 };
 
 /**

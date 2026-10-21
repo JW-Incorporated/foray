@@ -42,6 +42,7 @@ import { deepenActs, foldsDeepen } from "./deepenActs";
 import {
   SOURCING_SNAPSHOT_VERSION,
   SourcingSession,
+  beatJudgeCandidates,
   sourceBeats,
   sourcingBodies,
   sourcingSearches,
@@ -96,6 +97,7 @@ import { buildVeracityMetrics, computeActVeracity, evaluateVeracityGate, type Ac
 import { showKeyForItem, type ShowIdentityContext } from "./showIdentity";
 import { clipLevelFor, createClipJudge, subjectSentenceFor, type ClipJudge } from "./clipJudge";
 import { applyClipScores, scoreSourcedClips, type ClipScoreRecord } from "./scoreClips";
+import { ClipVerdictBookSchema, prejudgeClips, summarizeClipVerdicts, type ClipVerdictBook } from "./prejudgeClips";
 import { createJevClient } from "./jevClient";
 import { assessAct, DEFAULT_READINESS_POLICY, itemKeyOf, preludeProvenance, type ItemProvenance } from "./itemReadiness";
 import { emitActReady, emitItemReady, readinessNowMs } from "./readiness";
@@ -2197,6 +2199,15 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     return mintedPool.length ? [...mintedPool, ...segmentPool] : segmentPool;
   };
 
+  /* GV-79: the run's clip judge, built only inside a stage that runs (a
+     resumed stage builds none): the injected one, or `createClipJudge` over
+     the judge route, metered through the default budget guard. */
+  const clipJudgeOf = (): ClipJudge =>
+    deps.clipJudge ??
+    createClipJudge(gates, createJevClient({ routing }), {
+      meter: { guard: defaultBudgetGuard, userId: options.userId, ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}) }
+    });
+
   /* GV-79: the checkpointed clip-scores stage over `sourced`, started off the
      timed path and awaited just before the veracity metrics. */
   const startClipScores = (sourced: SourceBeatsResult): Promise<ClipScoreRecord[]> =>
@@ -2208,13 +2219,37 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
           cueProvider: deps.cueProvider ?? new NullTranscriptCueProvider(),
           transcriptArchive: archive,
           catalogue: deps.clipCatalogue ?? loadCatalogueData(),
-          judge:
-            deps.clipJudge ??
-            createClipJudge(gates, createJevClient({ routing }), {
-              meter: { guard: defaultBudgetGuard, userId: options.userId, ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}) }
-            }),
+          judge: clipJudgeOf(),
           subjectSentence: subjectSentenceFor(spine, intent)
         })
+    );
+
+  /* GV-107 (W5-04; R1-20, R2-03): THE PRE-JUDGE, under FORAY_CLIP_JUDGE=
+     enforce only. Every non-argument beat of `acts` (only `actIndices`, on
+     the per-act path) has its candidate windows enumerated from the same
+     read-only inputs sourcing uses (`beatJudgeCandidates`, with the GV-106
+     budget when the tier cap is on), then one choice per beat and two Scores
+     on its top K (`prejudgeClips`). Checkpointed under `name` (`clip-judge`,
+     or `clip-judge:<i>` per act) so a resume never re-pays the judge. The
+     book is what GV-119's judged walk will read; until then it is reported
+     on one log line and sourcing is unchanged. In `off` and `shadow` this is
+     never called and no candidate set is built. */
+  const prejudgeStage = (
+    name: string,
+    acts: ReadonlyArray<DeepenedAct | undefined>,
+    scope: { actIndices?: number[]; runtimeBudgetSec?: number; runtimePlan?: ReadonlyArray<RuntimeAct | undefined> }
+  ): Promise<ClipVerdictBook> =>
+    stage(
+      name,
+      (raw) => ClipVerdictBookSchema.parse(raw),
+      async () => {
+        const sets = beatJudgeCandidates(
+          acts,
+          scope.runtimeBudgetSec === undefined ? sourceOptionsOf() : { ...sourceOptionsOf(), runtimeBudgetSec: scope.runtimeBudgetSec },
+          { ...(scope.actIndices ? { actIndices: scope.actIndices } : {}), ...(scope.runtimePlan ? { runtimePlan: scope.runtimePlan } : {}) }
+        );
+        return prejudgeClips(sets, clipJudgeOf(), { subjectSentence: subjectSentenceFor(spine, intent), topK: gates.clipJudgeTopK });
+      }
     );
 
   /* WS-D2 + GV-33: the stitcher's act-ready wrapper (see the classic call
@@ -2696,6 +2731,18 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
               );
             });
           }
+          /* GV-107: under FORAY_CLIP_JUDGE=enforce, act i's beats are judged
+             here, after its bodies are fetched and before it is sourced, so
+             act 0 is judged first (R1-04). Banked per act (`clip-judge:<i>`). */
+          if (gates.clipJudge === "enforce") {
+            const plannedNow: RuntimeAct[] = spine.acts.map((spineAct, k) => (k <= i ? deepenedSoFar[k] ?? spineAct : spineAct));
+            const judgeBudgetSec = runtimeBudgetFor(plannedNow);
+            const book = await prejudgeStage(`clip-judge:${i}`, deepenedSoFar, {
+              actIndices: [i],
+              ...(judgeBudgetSec !== undefined ? { runtimeBudgetSec: judgeBudgetSec, runtimePlan: plannedNow } : {})
+            });
+            console.log(`  act ${i + 1}: ${summarizeClipVerdicts(book)}`);
+          }
           const banked = await timed(`source:${i}`, async (): Promise<SourceActCheckpoint> => {
             session ??= new SourcingSession(sourceOptionsOf());
             /* GV-106: the tier's budget, re-planned at every act on the acts
@@ -2864,6 +2911,17 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
         { pin: true }
       );
     });
+  }
+
+  /* GV-107 (W5-04) — THE PRE-JUDGE, FORAY_CLIP_JUDGE=enforce only: every
+     beat's candidate windows judged after the bodies are fetched and before
+     sourcing (see `prejudgeStage`). Not when `source` is banked and this
+     stage is not: that sourcing is already decided, and the bodies were not
+     fetched for it. */
+  if (gates.clipJudge === "enforce" && (!checkpoint.has("source") || checkpoint.has("clip-judge"))) {
+    const judgeBudgetSec = runtimeBudgetFor(deepened);
+    const book = await prejudgeStage("clip-judge", deepened, judgeBudgetSec !== undefined ? { runtimeBudgetSec: judgeBudgetSec } : {});
+    console.log(`  ${summarizeClipVerdicts(book)}`);
   }
 
   /* §4.5-4.6 — source each beat against tape, then resolve the pointer. Purely

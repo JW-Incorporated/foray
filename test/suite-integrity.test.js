@@ -3519,6 +3519,18 @@ const BACKEND_FLOORS = {
      1.0, the placed span only, a merged beat scored once on its carrier, no
      transcript is unscored, the truncation mark, all-unscored is null. */
   "test/scoreClips.test.ts": 6,
+  /* GV-107 (docs/roadmap/generation-v2.md, W5-04, #1286; R1-20, R2-03): the
+     async pre-judge -- JevClipJudge.choose asks one choice (o1..oN plus
+     'none', its own purpose) and maps it back onto the keys, fails closed,
+     the keyless proxy and the null judge never choose; prejudgeClips makes
+     one choice per beat and Scores on at most topK windows over synthetic
+     multi-episode bodies, holds at most 8 calls in flight, books unavailable
+     answers without throwing (a budget stop propagates), the summary line;
+     FORAY_CLIP_JUDGE_TOP_K; clip-judge between deepen and source; and
+     runForayPipeline's wiring (off/shadow build nothing, enforce banks the
+     book before source and leaves the Foray unchanged, a banked book
+     resumes, per-act judges act 0 first in clip-judge:<i>). New, zero slack. */
+  "test/prejudgeClips.test.ts": 13,
   /* GV-83 (docs/roadmap/generation-v2.md, W3-12, #1286; MQ-07): a tape
      item's show key -- a non-empty key for every committed data/segments.json
      item, the catalogue show_id for every pool item whose segment-sources

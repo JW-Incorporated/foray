@@ -5,8 +5,10 @@ import type { Spine } from "../types/spine";
 import { tokenizeForSourcing } from "./catalogueLookup";
 import type { GateConfig } from "./gateConfig";
 import { NullJevClient, createJevPool, meteredJevClient, type MeteredJevClientOptions } from "./jevClient";
-import type { JevClient, JevResult, JevScoreAnswer, JevScoreQuestion, JevState } from "./jevTypes";
+import type { JevChoiceQuestion, JevClient, JevResult, JevScoreAnswer, JevScoreQuestion, JevState } from "./jevTypes";
 import { CLIP_ON_SUBJECT_LEVEL } from "./veracityMetrics";
+
+import type { ClipUnavailable } from "../types/tapeSourcing";
 
 export type { ClipJudgeId, ClipScoreOutcome, ClipScores, ClipUnavailable } from "../types/tapeSourcing";
 
@@ -50,7 +52,37 @@ export interface ClipJudge {
    * an `{unavailable}` row); a budget stop propagates like every model
    * call's. */
   score(questions: readonly ClipQuestion[]): Promise<Map<string, ClipScoreOutcome>>;
+  /**
+   * GV-107 (W5-04): which of a beat's candidate passages makes its claim
+   * about the listener's subject, 'none' allowed. Same contract as `score`:
+   * an outage is `{unavailable}`, a budget stop propagates. Optional so a
+   * judge that only scores (a test's spy) still is one; `prejudgeClips`
+   * reads a missing `choose` as `{unavailable: 'no-choice'}`.
+   */
+  choose?(question: ClipChoiceQuestion): Promise<ClipChoiceOutcome>;
 }
+
+/** GV-107: one candidate passage of a beat: the caller's key
+ * (`beatJudgeCandidates`'s option key) and the passage's own transcript. */
+export interface ClipChoiceOption {
+  key: string;
+  text: string;
+}
+
+/** GV-107: one beat's choice: its claim, the listener's subject sentence and
+ * the candidate passages (at least one). */
+export interface ClipChoiceQuestion {
+  subjectSentence: string;
+  claim: string;
+  options: readonly ClipChoiceOption[];
+}
+
+/** GV-107: the choice's answer. `ranked` holds every option, highest
+ * probability first (ties keep the option order); `noneP` is the probability
+ * of 'no passage makes this claim about this subject'. A choice probability
+ * is not comparable with a noul's or with another judge's (GV-47), so it is
+ * tagged with the judge that answered. */
+export type ClipChoiceOutcome = { ranked: Array<{ key: string; p: number }>; noneP: number; judge: ClipJudgeId } | ClipUnavailable;
 
 /** Levels on both Score cards (0..4). */
 export const CLIP_SCORE_LEVELS = 5;
@@ -85,6 +117,72 @@ export const CLIP_CLAIM_QUESTION: Readonly<JevScoreQuestion> = Object.freeze({
 });
 
 export const CLIP_QUESTIONS: readonly JevScoreQuestion[] = Object.freeze([CLIP_SUBJECT_QUESTION, CLIP_CLAIM_QUESTION]);
+
+/** GV-107: the purpose every clip-choice ask is metered and recorded under,
+ * apart from the Scores' so the live step can read the choice's latency per
+ * beat on its own. */
+export const CLIP_CHOICE_PURPOSE = "clip-choice";
+/** GV-107: the choice question's id, and the criterion that says no passage
+ * fits. Passages are criteria `o1`..`oN`, in the caller's option order. */
+export const CLIP_CHOICE_QUESTION_ID = "passage";
+export const CLIP_CHOICE_NONE = "none";
+
+/** GV-107: the criterion id of the i-th option (0-based): `o1`, `o2`, ... */
+export function clipChoiceOptionId(index: number): string {
+  return `o${index + 1}`;
+}
+
+/** GV-107: the one choice question for `optionCount` passages: criteria
+ * `o1`..`oN` ({what:'passage oN'}) plus 'none'. */
+export function clipChoiceQuestion(optionCount: number): JevChoiceQuestion {
+  const criteria: Record<string, { what: string }> = {};
+  for (let i = 0; i < optionCount; i++) criteria[clipChoiceOptionId(i)] = { what: `passage ${clipChoiceOptionId(i)}` };
+  criteria[CLIP_CHOICE_NONE] = { what: "no passage makes this claim about this subject" };
+  return {
+    id: CLIP_CHOICE_QUESTION_ID,
+    type: "choice",
+    instructions: "Which passage in `passages` makes the point in `claim` about `subject`?",
+    criteria
+  };
+}
+
+/** GV-107: what Jev reads for one beat's choice: the subject sentence, the
+ * claim and the passages keyed `o1`..`oN` (never the caller's keys, which name
+ * episodes; LM-25). */
+export function clipChoiceState(q: ClipChoiceQuestion): JevState {
+  return {
+    subject: q.subjectSentence,
+    claim: q.claim,
+    passages: Object.fromEntries(q.options.map((o, i) => [clipChoiceOptionId(i), o.text]))
+  };
+}
+
+const clampP = (p: number): number => Math.min(1, Math.max(0, p));
+
+/** GV-107: reads the choice's probabilities back onto the caller's keys.
+ * Fail-closed: a failure, a missing or wrongly typed answer, or a missing or
+ * non-finite probability for any option (or for 'none') is `unavailable`. */
+export function clipChoiceFromResult(result: JevResult, options: readonly ClipChoiceOption[]): ClipChoiceOutcome {
+  if (!result.ok) return { unavailable: result.error.reason || result.error.category };
+  const answer = result.answers.find((a) => a.id === CLIP_CHOICE_QUESTION_ID);
+  if (!answer || answer.type !== "choice") return { unavailable: "malformed" };
+  const probabilities: Record<string, number> = answer.probabilities ?? {};
+  const pOf = (id: string): number | null => {
+    const p = probabilities[id];
+    return typeof p === "number" && Number.isFinite(p) ? clampP(p) : null;
+  };
+  const noneP = pOf(CLIP_CHOICE_NONE);
+  if (noneP === null) return { unavailable: "malformed" };
+  const ranked: Array<{ key: string; p: number }> = [];
+  for (let i = 0; i < options.length; i++) {
+    const p = pOf(clipChoiceOptionId(i));
+    if (p === null) return { unavailable: "malformed" };
+    ranked.push({ key: options[i]!.key, p });
+  }
+  /* Array.prototype.sort is stable: equal probabilities keep the option order. */
+  ranked.sort((a, b) => b.p - a.p);
+  return { ranked, noneP, judge: result.judge ?? "jev" };
+}
 
 /** What Jev reads for one clip: only the subject sentence, the claim and the
  * clip's own transcript (LM-25: keep what leaves the network minimal). */
@@ -167,6 +265,20 @@ export class JevClipJudge implements ClipJudge {
     );
     return new Map(outcomes);
   }
+
+  /** GV-107: one ask, one choice question, for the beat's passages. */
+  async choose(question: ClipChoiceQuestion): Promise<ClipChoiceOutcome> {
+    if (question.options.length === 0) return { unavailable: "no-options" };
+    try {
+      const result = await this.client.ask(clipChoiceState(question), [clipChoiceQuestion(question.options.length)], { purpose: CLIP_CHOICE_PURPOSE });
+      return clipChoiceFromResult(result, question.options);
+    } catch (err) {
+      /* The same rule as `score`: a budget stop propagates, anything else a
+         JevClient throws is this beat being unjudged. */
+      if (findBudgetError(err) !== null || findUnitBudgetError(err) !== null) throw err;
+      return { unavailable: "threw" };
+    }
+  }
 }
 
 /** The proxy's share cut-points: a share at or above `CODE_PROXY_CUTS[i]`
@@ -222,6 +334,14 @@ export class CodeProxyClipJudge implements ClipJudge {
     });
     return out;
   }
+
+  /** GV-107: no keyless choice. The lexical walk already orders a beat's
+   * windows by these same words, so a word-overlap "choice" would only
+   * restate it with probabilities nobody measured; every beat is
+   * `unavailable`, which GV-119's judged walk reads as "walk as today". */
+  async choose(): Promise<ClipChoiceOutcome> {
+    return { unavailable: "no-judge" };
+  }
 }
 
 /** Scores nothing: every clip is `unavailable: 'off'`. */
@@ -230,6 +350,10 @@ export class NullClipJudge implements ClipJudge {
 
   async score(questions: readonly ClipQuestion[]): Promise<Map<string, ClipScoreOutcome>> {
     return new Map(questions.map((q): [string, ClipScoreOutcome] => [q.key, { unavailable: "off" }]));
+  }
+
+  async choose(): Promise<ClipChoiceOutcome> {
+    return { unavailable: "off" };
   }
 }
 
