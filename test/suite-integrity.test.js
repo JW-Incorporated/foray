@@ -2827,8 +2827,15 @@ const BACKEND_FLOORS = {
      same file, two cases being written in the multi-line `it(
  "name",`
      form. The two numbers have always differed by two; only this one is the
-     floor.) */
-  "test/sourceBeats.test.ts": 128,
+     floor.)
+     GV-107 (docs/roadmap/generation-v2.md, W5-04, #1286; R1-20, R2-03):
+     beatJudgeCandidates -- every key's window is selectTapeWindow recomputed
+     on three fixtures, at most 20 options / 40,000 characters (lowest share
+     dropped first), argument beats skipped and actIndices honoured, no
+     ledger, GV-106's clip ceiling respected, pool rows filtered by tier 1's
+     topic gate. Six new cases, and the one main already carried over the
+     floor: 128 -> 135, zero slack. */
+  "test/sourceBeats.test.ts": 135,
   /* GV-18 (docs/roadmap/generation-v2.md, from W4-06): SourcingSession —
      sourceBeats cut at the act boundary. Act by act equals sourceBeats and the
      pre-extraction output's digest, act 0 stays deep-frozen while acts 1+ are
