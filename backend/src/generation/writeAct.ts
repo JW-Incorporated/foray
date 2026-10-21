@@ -54,6 +54,7 @@ import {
 } from "./actSeams";
 import { pageDocIdFor } from "./synthesisVerify";
 import { prepareSpecificsSources, unsupportedSpecificsInScript, type PreparedSources, type SpecificsMode } from "./specifics";
+import { voiceGateEnforces, voiceReport, type VoiceGate } from "./voiceChecks";
 import { withCallContext } from "./runLog";
 import {
   decideConnectiveNarration,
@@ -232,6 +233,18 @@ export interface WriteActOptions {
    * (`veracityMetrics.ts`), not here.
    */
   specifics?: SpecificsMode;
+  /**
+   * GV-104 (W5-18): the voice gate (FORAY_VOICE_GATE and
+   * FORAY_VOICE_ENFORCE_FROM_ACT, threaded from the run's `GateConfig`).
+   * Only `enforce` does anything here, and only on an act at position
+   * `enforceFromAct` or later (`ctx.actIndex`, else `actIndex`, else 0):
+   * every sentence of a seam goes through spokenLine.js's spoken-line rules
+   * (N7-N9) and N24's numeric cap (`voiceReport().hardErrors`), and a finding
+   * is a mechanical issue, so the seam is re-asked. Sentence shape and the
+   * reading grade never gate. Omitted, `report` and `off` leave the act
+   * exactly as before.
+   */
+  voiceGate?: VoiceGate;
   /**
    * GV-38 (W4-08): the act frame, sent on every round's request. Absent
    * (the default driver) means the request carries no `frame` key at all.
@@ -423,6 +436,8 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
     throw new Error("writeActNarration: the writer and verifier must both offer the per-act contract (writeAct / verifyAct)");
   }
   const ground = options.ground ?? [];
+  /* GV-104: whether this act's seams answer to the voice rules in code. */
+  const voiceEnforce = voiceEnforcedFor(options, ctx);
 
   /* 1. THE ACT'S EVIDENCE, through the same builder the prefetch used
         (`evidenceBeatFor`), so every gather here is a memo hit (G-35).
@@ -579,7 +594,7 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
        set is the union of what survives), then every seam's script through
        the structural rules against that set. A frozen seam is not re-read:
        its text is kept whatever the writer returned. */
-    const mechanical = mechanicalPass(seams, reply, clipById, clipSourceCount, round, act.title, options.specifics, cut);
+    const mechanical = mechanicalPass(seams, reply, clipById, clipSourceCount, round, act.title, options.specifics, cut, voiceEnforce);
     if (mechanical.length > 0) {
       console.warn(`writeAct: act "${act.title}" round ${round} refused in code — ${mechanical.join(" | ").slice(0, 600)}`);
     }
@@ -812,7 +827,8 @@ function mechanicalPass(
   round: number,
   actTitle: string,
   specifics: SpecificsMode = "report",
-  cut?: StreamCut
+  cut?: StreamCut,
+  voiceEnforce = false
 ): string[] {
   const mechanical: string[] = [];
   const pending = new Map<string, { script: string; claims: SelectedClaim[]; hints: NarratedBeat["pronunciationHints"] }>();
@@ -859,11 +875,22 @@ function mechanicalPass(
     const issues = validateSeam(seam, p, clipById, round, {
       actSourceCount: clipSourceCount + totalClaims - p.claims.length,
       actSourceQuotes: quotesOf(seam.plan.seamId),
-      ...(specificsScope ? { specifics: specificsScope } : {})
+      ...(specificsScope ? { specifics: specificsScope } : {}),
+      ...(voiceEnforce ? { voice: true as const } : {})
     });
     if (issues.length > 0) mechanical.push(`seam ${seam.plan.seamId}: ${issues.join("; ")}`);
   }
   return mechanical;
+}
+
+/**
+ * GV-104: whether the voice gate re-asks this act's seams. The act's
+ * position is `ctx.actIndex` (the pipeline sets it per `narrate:<i>` stage,
+ * where `writeNarration` sees one act at index 0), else the options' own
+ * `actIndex`, else 0.
+ */
+function voiceEnforcedFor(options: WriteActOptions, ctx: NarrationBuildContext): boolean {
+  return voiceGateEnforces(options.voiceGate, ctx.actIndex ?? options.actIndex ?? 0);
 }
 
 /** GV-34: what `validateSeam` checks a seam's specifics against. */
@@ -1208,7 +1235,7 @@ function validateSeam(
   pending: { script: string; claims: SelectedClaim[]; hints: NarratedBeat["pronunciationHints"] },
   clipById: Map<string, GateClip>,
   round: number,
-  actScope: { actSourceCount: number; actSourceQuotes: string[]; specifics?: SpecificsScope }
+  actScope: { actSourceCount: number; actSourceQuotes: string[]; specifics?: SpecificsScope; voice?: true }
 ): string[] {
   const { script, claims, hints } = pending;
   /* The provisional page: the seam's own claims as its sources, under the
@@ -1301,6 +1328,18 @@ function validateSeam(
         `the sentence "${sentence.slice(0, 160)}" states ${unsupported.map((u) => `"${u}"`).join(", ")}, which no source of this act carries (not a clip's transcript window, a claim's quote or an earlier act's page) — ` +
           "state only the numbers, dates and names the sources say, or leave the specific out (GV-34)"
       );
+    }
+  }
+
+  /* GV-104, `enforce` from the configured act on: the spoken-line rules the
+     prompt states (N7-N9) and N24's one-number-per-sentence cap, asked in
+     CODE because the local writer breaks them more often than the prompt's
+     first model did (R2). Hard errors only; shape and grade never gate. A
+     rhetorical question is allowed only where tape plays beside the seam. */
+  if (actScope.voice) {
+    const hasTape = seam.plan.introduces !== undefined || seam.plan.follows !== undefined;
+    for (const error of voiceReport(script, { hasTape }).hardErrors) {
+      issues.push(`${error} — rewrite it in the narrator's spoken voice (narration-craft.md §5c-§5d, GV-104)`);
     }
   }
 
@@ -1534,7 +1573,8 @@ function releaseProbe(rc: StreamRoundContext, ctx: NarrationBuildContext): (writ
     const issues = validateSeam(scratch, gated, rc.clipById, round, {
       actSourceCount: rc.clipSourceCount + others.length,
       actSourceQuotes: otherQuotes,
-      ...(scope ? { specifics: scope } : {})
+      ...(scope ? { specifics: scope } : {}),
+      ...(voiceEnforcedFor(options, ctx) ? { voice: true as const } : {})
     });
     if (issues.length > 0) return;
     cleared.set(seam.plan.seamId, scratch);

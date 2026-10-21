@@ -1866,3 +1866,113 @@ describe("GV-38 — the ACT FRAME block in the writer prompt", () => {
     for (const r of plain.requests) expect(r).not.toHaveProperty("frame");
   });
 });
+
+describe("GV-104 — the voice gate re-asks a seam that breaks a spoken-line rule, from act 2 on", () => {
+  const DIGIT_LINE = "In 1957 the walkway opened to the public.";
+  /** Round 1 opens seam s0 with a numeral; later rounds are the stub's own text. */
+  const withDigit = () =>
+    builders((reply, _request, round) => (round > 1 ? reply : { seams: reply.seams.map((seam, i) => (i === 0 ? { ...seam, script: `${DIGIT_LINE} ${seam.script}` } : seam)) }));
+  const enforce = { mode: "enforce" as const, enforceFromAct: 1 };
+  const atAct = (actIndex: number): NarrationBuildContext => ({ ...ctx, actIndex });
+
+  it("enforce: a digit in an act-2 seam is a mechanical issue and the seam is re-asked; the same seam in act 1 is not", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `actScope.voice` block from
+       validateSeam (act 2 ships the numeral in one round), or enforce from
+       act 0 (act 1 is re-asked too). Ran both — red. */
+    const act2 = withDigit();
+    const second = await writeActNarration(fourBeatsTwoClips(), { writer: act2.writer, verifier: act2.verifier, evidence: gatherer(), voiceGate: enforce }, voice, atAct(1));
+    expect(act2.calls.write).toBe(2);
+    expect(act2.requests[1]!.retryNote).toContain("digit in a spoken line");
+    expect(act2.requests[1]!.retryNote).toContain("GV-104");
+    for (const page of pagesInOrder(second)) expect(page.script).not.toMatch(/\d/);
+
+    const act1 = withDigit();
+    const first = await writeActNarration(fourBeatsTwoClips(), { writer: act1.writer, verifier: act1.verifier, evidence: gatherer(), voiceGate: enforce }, voice, atAct(0));
+    expect(act1.calls.write).toBe(1);
+    expect(pagesInOrder(first)[0]!.script.startsWith(DIGIT_LINE)).toBe(true);
+  });
+
+  it("enforce: a rhetorical question is kept in a seam beside a clip and re-asked in a seam with no tape", async () => {
+    /* MUTATION THAT KILLS THIS: `const hasTape = false;` in validateSeam's
+       voice block (the clip-side question is re-asked: two rounds), or
+       `const hasTape = true;` (the tapeless question ships in one round).
+       Ran both — red. */
+    const QUESTION = "Who signed the drawing?";
+    const withQuestion = () =>
+      builders((reply, _request, round) => (round > 1 ? reply : { seams: reply.seams.map((seam, i) => (i === 0 ? { ...seam, script: `${QUESTION} ${seam.script}` } : seam)) }));
+
+    /* fourBeatsTwoClips' s0 introduces clip c0: the tape answers the question (§5c). */
+    const beside = withQuestion();
+    const kept = await writeActNarration(fourBeatsTwoClips(), { writer: beside.writer, verifier: beside.verifier, evidence: gatherer(), voiceGate: enforce }, voice, atAct(1));
+    expect(beside.calls.write).toBe(1);
+    expect(pagesInOrder(kept)[0]!.script.startsWith(QUESTION)).toBe(true);
+
+    /* An act with no tape: its only seam neither introduces nor follows a clip. */
+    const noTape: SourcedAct = { title: "N", slots: [{ title: "S", beats: [narration(CLAIMS.b0), narration(CLAIMS.b1)] }] };
+    const alone = withQuestion();
+    const reasked = await writeActNarration(noTape, { writer: alone.writer, verifier: alone.verifier, evidence: gatherer(), voiceGate: enforce }, voice, atAct(1));
+    expect(alone.calls.write).toBe(2);
+    expect(alone.requests[1]!.retryNote).toContain("rhetorical question");
+    for (const page of pagesInOrder(reasked)) expect(page.script).not.toContain(QUESTION);
+  });
+
+  it("report and off never change the rounds or the text, in any act", async () => {
+    /* MUTATION THAT KILLS THIS: enforce for any mode but `off`
+       (`mode !== "off"` in voiceGateEnforces) — report then re-asks act 2. Ran it — red. */
+    const plain = withDigit();
+    const byDefault = await writeActNarration(fourBeatsTwoClips(), { writer: plain.writer, verifier: plain.verifier, evidence: gatherer() }, voice, atAct(1));
+    expect(plain.calls.write).toBe(1);
+    for (const mode of ["report", "off"] as const) {
+      const b = withDigit();
+      const act = await writeActNarration(fourBeatsTwoClips(), { writer: b.writer, verifier: b.verifier, evidence: gatherer(), voiceGate: { mode, enforceFromAct: 0 } }, voice, atAct(2));
+      expect(b.calls.write).toBe(1);
+      expect(pagesInOrder(act).map((p) => p.script)).toEqual(pagesInOrder(byDefault).map((p) => p.script));
+    }
+  });
+
+  it("outside the pipeline (no ctx.actIndex) writeNarration hands each act its own position with the gate", async () => {
+    /* MUTATION THAT KILLS THIS: drop `actIndex` from the voiceGate spread in
+       writeNarration (every act reads position 0 and none is re-asked), or
+       drop `voiceGate` from it. Ran both — red. */
+    /* Every act's FIRST round (no retry note yet) opens s0 with the numeral. */
+    const b = builders((reply, request) => (request.retryNote ? reply : { seams: reply.seams.map((seam, i) => (i === 0 ? { ...seam, script: `${DIGIT_LINE} ${seam.script}` } : seam)) }));
+    await writeNarration([fourBeatsTwoClips(), fourBeatsTwoClips()], { writer: b.writer, verifier: b.verifier, evidence: gatherer(), voiceGate: enforce, actConcurrency: 1 }, voice, ctx);
+    /* Act 1 (position 0) writes once and keeps the numeral; act 2 (position
+       1) is re-asked once. */
+    expect(b.calls.write).toBe(3);
+  });
+
+  it("the streamed path does not release early a seam the voice gate refuses", async () => {
+    /* MUTATION THAT KILLS THIS: drop the voice scope from releaseProbe's
+       validateSeam call — the numeral seam is released ahead of the act's
+       verifier. Ran it — red. */
+    /* s0 is the introduction alone on the streamed layout. With clip A's
+       window not held it carries no claim, so it is released on code checks
+       alone (GV-73); its "next" becomes a numeral of the same length, so its
+       band still holds. */
+    const released = async (voiceGate?: { mode: "enforce" | "report"; enforceFromAct: number }) => {
+      const b = builders((reply, _request, round) => (round > 1 ? reply : { seams: reply.seams.map((seam) => (seam.seamId === "s0" ? { ...seam, script: seam.script.replace(/\bnext\b/, "1st,") } : seam)) }));
+      const stats: NarrationWriteStats = { retryRounds: 0 };
+      const ids: string[] = [];
+      await writeActNarration(
+        fourBeatsTwoClips(),
+        {
+          writer: b.writer,
+          verifier: b.verifier,
+          evidence: gatherer({ [SEGMENT_B]: WINDOW_B_PLAIN }),
+          stats,
+          streamSeams: true,
+          onSeamChecked: (e) => ids.push(`${e.seamId}:${/\d/.test(e.script) ? "digit" : "clean"}`),
+          ...(voiceGate ? { voiceGate } : {})
+        },
+        voice,
+        atAct(1)
+      );
+      return ids;
+    };
+    const reported = await released({ mode: "report", enforceFromAct: 1 });
+    const enforced = await released(enforce);
+    expect(reported).toContain("s0:digit");
+    expect(enforced.some((id) => id.startsWith("s0"))).toBe(false);
+  });
+});

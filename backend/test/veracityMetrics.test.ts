@@ -28,6 +28,7 @@ import {
 import type { WrittenAct, WrittenBeat } from "../src/generation/writeNarration";
 import type { NarratedBeat, Source } from "../src/types/narration";
 import { findHoldingDoc } from "../src/types/narration";
+import { computeVoiceMetrics, voiceReport } from "../src/generation/voiceChecks";
 import type { SourceBeatsResult, SourcedAct, SourcingTrace, TapePointer, TapeRelevanceInput } from "../src/types/tapeSourcing";
 import { CheckpointSession, type CheckpointFile, type CheckpointStore } from "../src/generation/checkpoint";
 
@@ -1139,5 +1140,42 @@ describe("GV-83 — computeShowVariety: distinct shows and the largest show's ta
     expect(single.showVariety).toMatchObject({ distinctShows: 1, largestShowKey: "one-show", largestShowTapeShare: 1 });
     /* One show carrying all the tape (QK-21's finding) refuses nothing. */
     expect(evaluateVeracityGate(single)).toEqual(evaluateVeracityGate(plain));
+  });
+});
+
+/**
+ * GV-104 (W5-18 + W4-12; MQ-15..MQ-18): the voice block on meta.veracity,
+ * from the final narration items. Measure-only: the gate never reads it.
+ */
+describe("GV-104 — buildVeracityMetrics carries the voice block from the final narration items", () => {
+  const base = { sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, pipelineTokens: 0, stageTimings: [] };
+  const scripts = [
+    { id: "prelude", script: "This is a Foray about bridges. Much of what you'll hear is written by AI.", hasTape: false },
+    { id: "s0", script: "Interestingly, about 40 percent of the hangers were never checked. So who signed the drawing?", hasTape: false },
+    { id: "s1", script: "The walkway hung from a single steel rod that ran through both of them. It held for a year.", hasTape: true }
+  ];
+
+  /* MUTATION THAT KILLS THIS: always add `voice` (computed over `[]` when no
+     scripts were passed), or ignore `readingGradeBand`. Ran both: red. */
+  it("only when given the scripts, read against the given band, and the gate is unchanged", () => {
+    const plain = buildVeracityMetrics(base);
+    expect("voice" in plain).toBe(false);
+    const voiced = buildVeracityMetrics({ ...base, narrationScripts: scripts });
+    expect(voiced.voice).toEqual(computeVoiceMetrics(scripts));
+    expect(voiced.voice!.gradeBand).toEqual([6, 9]);
+    expect(voiced.voice!.items).toBe(3);
+    /* s0: a digit, an opener and a question with no tape beside it. */
+    expect(voiced.voice!.hardErrors).toBe(voiceReport(scripts[1]!.script, { hasTape: false }).hardErrors.length);
+    expect(voiced.voice!.hardErrors).toBe(3);
+    expect(buildVeracityMetrics({ ...base, narrationScripts: scripts, readingGradeBand: [0, 1] }).voice!.gradeBand).toEqual([0, 1]);
+    expect(evaluateVeracityGate(voiced)).toEqual(evaluateVeracityGate(plain));
+  });
+
+  /* MUTATION THAT KILLS THIS: read hasTape from the item itself rather than
+     its neighbours (every question then counts as tapeless). Ran it: red. */
+  it("a question beside tape is not a hard error; the same question with none is", () => {
+    const q = (hasTape: boolean) => buildVeracityMetrics({ ...base, narrationScripts: [{ script: "So who signed the drawing?", hasTape }] }).voice!.hardErrors;
+    expect(q(true)).toBe(0);
+    expect(q(false)).toBe(1);
   });
 });
