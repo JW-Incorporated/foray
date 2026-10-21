@@ -28,7 +28,7 @@ import type { SpecificsMode } from "./specifics";
 import type { VoiceGate } from "./voiceChecks";
 import type { UnverifiedSeamPolicy } from "./gateConfig";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
-import { writeActNarration } from "./writeAct";
+import { writeActNarration, type WriterExchange } from "./writeAct";
 import { planActSeams } from "./actSeams";
 
 /**
@@ -274,6 +274,13 @@ export interface WriteNarrationOptions {
    * policy: three whole-act rounds, and no act's options carry the key.
    */
   roundPolicy?: ActRoundPolicy;
+  /**
+   * GV-110 (W7-09): the bench-only writer exchange recorder, handed to every
+   * act's `writeActNarration` unchanged (one call per act per round). The
+   * driver narrates one act per call and adds the act's index itself
+   * (`RunPipelineDeps.onWriterExchange`). Omitted: no act's options carry it.
+   */
+  onExchange?: (exchange: WriterExchange) => void;
 }
 
 /**
@@ -764,7 +771,9 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
               ...(options.streamSeams ? { streamSeams: true } : {}),
               ...(options.onSeamChecked ? { actIndex, onSeamChecked: options.onSeamChecked } : {}),
               /* GV-80: the run's round policy, when the driver set one. */
-              ...(options.roundPolicy ? { roundPolicy: options.roundPolicy } : {})
+              ...(options.roundPolicy ? { roundPolicy: options.roundPolicy } : {}),
+              /* GV-110: the bench recorder, only when one is listening. */
+              ...(options.onExchange ? { onExchange: options.onExchange } : {})
             },
             voice,
             ctx

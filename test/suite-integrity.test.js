@@ -1607,6 +1607,7 @@ const FLOORS = {
      wrong number: parallel calls counted as serial, a re-ask counted twice, a
      reservation read as spend, a decode rate diluted with end-to-end calls,
      a 0 standing in for a field no provider reported. */
+  "tools/generation-bench/exchanges.test.mjs": 5, // GV-110: new -- the writer exchange reader: index without request/reply text, finalRound per act per attempt, recursive directory walk, readExchange by file line, corrupt/foreign/incomplete lines refused naming the line
   "tools/generation-bench/runlog.test.mjs": 14, // GV-85 follow-up (MT-08): codeMsByStage sums exclusive selfMs over a nested fixture (45, not the 146 of inclusive totals), an event without selfMs falls back to totalMs; 12 -> 14 // GV-17: new -- runlog/1 header, MT-06 series (5 on runlog-synth) + before first ready, MT-07 repeat work counted once, MT-05 per stage, null-skipping sums, MT-04 medians + cache share, MT-12 decode vs e2e, MT-08/09/10, rule 1 on an empty log, fixture kinds/fields
   /* GV-24 (W1-11, MQ-01..MQ-21): the quality scorecard. Each test is one
      quiet wrong number: a clip-only Foray scored as a voice of zero, a pool
@@ -3859,6 +3860,18 @@ const BACKEND_FLOORS = {
      byte-identical off or without words and respects a ceiling; the cue
      cache weighs a worded body four times. Offline; synthetic cues. */
   "test/pauseSnap.test.ts": 14,
+  /* GV-110 (W7-09; R2-17): the bench-only writer exchange recorder. One
+     exchange per round at the round's end (request, reply, mechanical issues,
+     verdict), byte-identical acts without it and a throwing callback ignored,
+     the streamed and seam-edit calls, a recorded round 1 replayed through
+     replayMechanicalGate with the same issues (refused and clean), the real
+     act index on the classic and per-act paths with byte-identical banked
+     narration, a banked act records nothing, and the CLI's --record-exchanges
+     (parse, bench-only and data-local-only refusals before anything runs, one
+     line per exchange with the writer's assignment and no key, exchangesFile,
+     nothing recorded without the flag, under --dry-run or for a non-bench
+     prompt). Offline; mutations named in the suite. */
+  "test/writerExchanges.test.ts": 14,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

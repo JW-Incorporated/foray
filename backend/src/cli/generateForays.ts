@@ -52,6 +52,7 @@ import { AUDIO_POLICIES, DEFAULT_AUDIO_POLICY, isAudioPolicy, NarrationRenderTra
 import { EMPTY_JOB_PROGRESS, JOB_LANES, isJobForayId, isJobLane, progressWithEvent, progressWithPartial, snapshotFrom, type GenerationJobSink, type JobCloseOutcome, type JobIdentity, type JobLane } from "../generation/jobSink";
 import { readAuthorIdFlag, type ClarityDecider, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
+import type { WriterExchange } from "../generation/writeAct";
 import type { FinalizeForayInput } from "../generation/finalizeForay";
 import type { TierFit, VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
 import type { PublishRecord } from "./publishForay";
@@ -142,6 +143,7 @@ import { UnitBudgetStopError, defaultUnitBudgetGuard, unitSpendOf, type UnitSpen
  *                              [--seed-checkpoints <dir> --rerun-from <stage>]
  *                              [--lane on-demand|catalogue]
  *                              [--keep-calibration data-local/<dir>]
+ *                              [--record-exchanges]
  *   (author_id defaults to `DEFAULT_AUTHOR_ID` in types/generation.ts, the
  *   same default `generate-foray` uses; `--author` still works for one
  *   release and prints a deprecation line)
@@ -204,6 +206,17 @@ import { UnitBudgetStopError, defaultUnitBudgetGuard, unitSpendOf, type UnitSpen
  * prompt; `<hash>` is the prompt's sha1 prefix the candidate's name also ends
  * in. `tools/generation/calibrate-judges.mjs` reads it. Nothing else in the
  * run changes.
+ *
+ * `--record-exchanges` (GV-110, off by default; bench prompts only, and the
+ * resolved --out must lie under data-local/, else the CLI refuses before any
+ * model call; refused with --dry-run, which writes nothing) appends one JSONL
+ * line per act per writer round to `<out>/<checkpointKey>.exchanges.jsonl`:
+ * the request the writer was sent (transcript window text included, which is
+ * why it never leaves data-local/), its reply, the round's mechanical issues
+ * and the verifier's verdict, with the act's index, the attempt and the
+ * writer's stage assignment (`generator`). Never a key or a header. The row
+ * records `exchangesFile`. `tools/generation-bench/exchanges.mjs` reads it.
+ * Nothing else in the run changes.
  *
  * `--lane on-demand|catalogue` (GV-81, default catalogue) names the lane the
  * batch's candidates are for. Given, it is written onto every report row
@@ -300,6 +313,10 @@ export interface CliArgs {
    * Absent unless given, so the parsed args of a run without it are
    * unchanged. */
   keepCalibration?: string;
+  /** GV-110: `--record-exchanges`, record every writer exchange of a bench
+   * prompt to `<out>/<checkpointKey>.exchanges.jsonl`. Absent unless given,
+   * so the parsed args of a run without it are unchanged. */
+  recordExchanges?: boolean;
 }
 
 /** A command-line value the driver refuses. `main` prints the message and
@@ -460,6 +477,10 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
   const render = parseRenderFlags(argv);
   const lane = parseLaneFlag(argv);
   const keepCalibration = parseKeepCalibrationFlag(argv);
+  /* GV-110: a dry run writes nothing, so there is nothing to record into. */
+  if (argv.includes("--record-exchanges") && argv.includes("--dry-run")) {
+    throw new CliArgError("--record-exchanges cannot be used with --dry-run (a dry run writes nothing)");
+  }
   return {
     prompts: get("--prompts") ?? null,
     out: get("--out") ?? path.join("data-local", "foray-candidates"),
@@ -479,7 +500,8 @@ export function parseArgs(argv: string[], envVars: NodeJS.ProcessEnv = process.e
     ...fork,
     ...render,
     ...(lane !== undefined ? { lane } : {}),
-    ...(keepCalibration !== undefined ? { keepCalibration } : {})
+    ...(keepCalibration !== undefined ? { keepCalibration } : {}),
+    ...(argv.includes("--record-exchanges") ? { recordExchanges: true } : {})
   };
 }
 
@@ -644,6 +666,34 @@ export function benchFlagRefusal(args: Pick<CliArgs, "keepCheckpoints" | "seedCh
   if (notBench < 0) return null;
   return `${flag} is for bench prompts only: prompt ${notBench + 1} of ${specs.length} has no "bench": true`;
 }
+
+/**
+ * GV-110: `--record-exchanges` is for bench prompts written under data-local/
+ * only. Returns why the run is refused when the flag is given and any prompt
+ * about to run lacks `bench: true` (a listener's prompt is discarded, §9.4),
+ * or the resolved --out is not inside the repository's data-local/ (the
+ * lines carry transcript window text, which never goes in git), else null.
+ * `main` checks it before anything is resolved, read or spent.
+ */
+export function exchangesFlagRefusal(
+  args: Pick<CliArgs, "recordExchanges" | "out">,
+  specs: readonly PromptSpec[],
+  cwd: string = process.cwd(),
+  repoRoot?: string
+): string | null {
+  if (args.recordExchanges !== true) return null;
+  const notBench = specs.findIndex((spec) => spec.bench !== true);
+  if (notBench >= 0) return `--record-exchanges is for bench prompts only: prompt ${notBench + 1} of ${specs.length} has no "bench": true`;
+  return dataLocalRefusal("--record-exchanges (its --out)", args.out, cwd, repoRoot);
+}
+
+/** GV-110: the exchanges file of one prompt, relative to --out. */
+export function exchangesFilename(checkpointKey: string): string {
+  return `${checkpointKey}.exchanges.jsonl`;
+}
+
+/** GV-110: the schema tag on every recorded exchange line. */
+export const WRITER_EXCHANGE_SCHEMA = "writer-exchange/1";
 
 /** Accepts both file shapes; a bare string is the common case. */
 export function normalizePrompts(raw: unknown): PromptSpec[] {
@@ -1119,6 +1169,10 @@ export type ReportEntry = {
   /** GV-01: the final attempt's RunLog, relative to the report's directory
    * (`runlogs/<checkpointKey>.<attempt>.runlog.jsonl`). Absent under --dry-run. */
   runLog?: string;
+  /** GV-110: under `--record-exchanges`, the prompt's writer exchanges file
+   * relative to the report's directory (`<checkpointKey>.exchanges.jsonl`),
+   * once a line was written. Absent otherwise. */
+  exchangesFile?: string;
   /** GV-15: the pipeline flags this prompt ran under (env merged with
    * `--fast-path`), the same object the checkpoint variant was built from. */
   flags?: PipelineFlags;
@@ -1658,6 +1712,46 @@ export async function generateOneCandidate(
       runLogRel = undefined;
     }
   };
+  /* GV-110: --record-exchanges. Only for a bench prompt (main refused the
+     flag unless every prompt is one and --out is under data-local/; the spec
+     is checked again here) and never under --dry-run. One JSONL line per act
+     per writer round, appended as the round ends, so a run that dies keeps
+     what it recorded. Named fields only: the writer's stage assignment is
+     {impl, model, machine?}, never a key or a header. A write failure is a
+     warning, never the Foray. */
+  const recordExchanges = args.recordExchanges === true && spec.bench === true && !args.dryRun;
+  const exchangesRel = exchangesFilename(checkpointKey);
+  let exchangesWritten = 0;
+  let exchangeAttempt = 1;
+  const onWriterExchange = recordExchanges
+    ? (x: WriterExchange & { actIndex: number }): void => {
+        const line = {
+          schema: WRITER_EXCHANGE_SCHEMA,
+          forayKey: checkpointKey,
+          ...(spec.id !== undefined ? { promptId: spec.id } : {}),
+          attempt: exchangeAttempt,
+          actIndex: x.actIndex,
+          actTitle: x.actTitle,
+          round: x.round,
+          call: x.call,
+          generator: stageAssignments.writer ?? null,
+          request: x.request,
+          reply: x.reply,
+          mechanical: x.mechanical,
+          ...(x.verdict !== undefined ? { verdict: x.verdict } : {}),
+          recordedAt: now().toISOString()
+        };
+        try {
+          // eslint-disable-next-line security/detect-non-literal-fs-filename -- --out, refused unless under data-local/ (main).
+          fs.mkdirSync(path.resolve(args.out), { recursive: true });
+          // eslint-disable-next-line security/detect-non-literal-fs-filename -- the driver's own exchanges file under --out; the name is the checkpoint key.
+          fs.appendFileSync(path.join(path.resolve(args.out), exchangesRel), `${JSON.stringify(line)}\n`);
+          exchangesWritten += 1;
+        } catch (err) {
+          console.warn(`  exchanges: could not record act ${x.actIndex} round ${x.round}: ${errorMessage(err)}`);
+        }
+      }
+    : undefined;
   const finishEntry = async (entry: ReportEntry, notifyOutcome: string, id: string | null): Promise<ReportEntry> => {
     /* GV-44: every return goes through here, so the job row closes once,
        with the same outcome code the notify hook gets ("built",
@@ -1673,6 +1767,7 @@ export async function generateOneCandidate(
       duration: request.duration,
       ...(spec.id !== undefined ? { promptId: spec.id } : {}),
       ...(runLogRel !== undefined ? { runLog: runLogRel } : {}),
+      ...(exchangesWritten > 0 ? { exchangesFile: exchangesRel } : {}),
       flags,
       gates,
       stageAssignments,
@@ -1717,6 +1812,7 @@ export async function generateOneCandidate(
     const attemptTimeline = timeline;
     render?.beginAttempt();
     const attempt = resumes.length + 1;
+    exchangeAttempt = attempt;
     const runAttempt: typeof runPipeline = (req, opts, pipelineDeps) =>
       runWithRunLog(runLog, () => withCallContext({ resumeAttempt: resumes.length, sessionId: checkpointKey }, () => runPipeline(req, opts, pipelineDeps)));
     try {
@@ -1750,6 +1846,7 @@ export async function generateOneCandidate(
           ...(deps.retrieval ? { retrieval: deps.retrieval } : {}),
           checkpoint: args.dryRun ? undefined : checkpointStore,
           onActReady,
+          ...(onWriterExchange ? { onWriterExchange } : {}),
           onItemReady: async (ev) => {
             attemptTimeline.record(ev);
             if (render) {
@@ -1976,7 +2073,7 @@ export async function main(
         "[--max-resumes N] [--continue-on-refused-partial] [--notify <command>] [--author-id <id>] [--fast-path] [--job-dir <dir>] " +
         "[--render-spool <dir> [--audio-policy phone-voice-first|await-render]] " +
         "[--stage-provider stage=provider[:lane][,...]] [--keep-checkpoints] [--seed-checkpoints <dir> --rerun-from <stage>] " +
-        "[--lane on-demand|catalogue] [--allow-short-archive] [--keep-calibration data-local/<dir>]"
+        "[--lane on-demand|catalogue] [--allow-short-archive] [--keep-calibration data-local/<dir>] [--record-exchanges]"
     );
     process.exitCode = 1;
     return;
@@ -2006,6 +2103,14 @@ export async function main(
     const benchRefusal = benchFlagRefusal(args, queue);
     if (benchRefusal !== null) {
       console.error(benchRefusal);
+      process.exitCode = 1;
+      return;
+    }
+    /* GV-110: --record-exchanges, bench prompts under data-local/ only,
+       refused here before any route is resolved or any model called. */
+    const exchangesRefusal = exchangesFlagRefusal(args, queue);
+    if (exchangesRefusal !== null) {
+      console.error(exchangesRefusal);
       process.exitCode = 1;
       return;
     }
