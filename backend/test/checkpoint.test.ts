@@ -14,7 +14,10 @@ import {
   CheckpointForkStampSchema,
   retrievalModeVariant,
   routingVariant,
+  specificsCheckVariant,
   spineTierSizingVariant,
+  tierRuntimeCapVariant,
+  voiceGateVariant,
   writerExemplarsVariant,
   type CheckpointStore
 } from "../src/generation/checkpoint";
@@ -232,11 +235,12 @@ describe("checkpointRunVariant (GV-55)", () => {
     expect(checkpointRunVariant(sequential)).toBe("narration=sequential");
     expect(fp(checkpointRunVariant(sequential))).not.toBe(TODAY);
     expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, narrationOrder: "parallel" })).toBeUndefined();
-    /* The fast path: GV-15's flag variant, then the order, then (local) the routing. */
+    /* The fast path: GV-15's flag variant, then the order, then (GV-127) the
+       tier cap the umbrella turns on, then (local) the routing. */
     const local = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
-    expect(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS)).toBe(`${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential`);
+    expect(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS)).toBe(`${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|tierCap=on`);
     expect(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS, local)).toBe(
-      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|${routingVariant(local)}`
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|tierCap=on|${routingVariant(local)}`
     );
     expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS, local)).toBe(routingVariant(local));
   });
@@ -258,7 +262,7 @@ describe("checkpointRunVariant (GV-55)", () => {
     expect(fp(checkpointRunVariant(hybrid))).not.toBe(TODAY);
     /* After the flags and the narration order, before the spine best-of and the routing. */
     expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, retrievalMode: "hybrid", spineBestOf: 2 }, local)).toBe(
-      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|spine=best-of-2|${routingVariant(local)}`
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|spine=best-of-2|tierCap=on|${routingVariant(local)}`
     );
   });
 
@@ -297,7 +301,7 @@ describe("checkpointRunVariant (GV-55)", () => {
     expect(prints.size).toBe(4);
     /* After the spine best-of, before the routing. */
     expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, retrievalMode: "hybrid", spineBestOf: 2, spineTierSizing: true, writerExemplars: "on" }, local)).toBe(
-      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|spine=best-of-2|spine=tier-sized|exemplars=on|${routingVariant(local)}`
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|spine=best-of-2|spine=tier-sized|exemplars=on|tierCap=on|${routingVariant(local)}`
     );
   });
 
@@ -334,6 +338,104 @@ describe("checkpointRunVariant (GV-55)", () => {
     expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(stamp({ spineTierSizing: true, writerExemplars: "on" }))))).toEqual(
       stamp({ spineTierSizing: true, writerExemplars: "on" })
     );
+  });
+
+  /* GV-127 (#1413 items 36, 40). MUTATIONS THAT KILL THIS: drop any one of
+     tierRuntimeCapVariant, voiceGateVariant or specificsCheckVariant from
+     checkpointRunVariant (a cap-on or enforcing run would resume a spine,
+     sourcing or narration banked without it); join a gate in `report` mode
+     too (`voiceGate !== "off"`: every default run, report being the
+     default, would stop resuming); or join the cap when off. Ran each: red. */
+  it("joins tierCap=on only when the cap is on and voice=enforce / specifics=enforce only when enforcing; otherwise the fingerprint is today's", () => {
+    const local = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
+    const dark = [
+      {},
+      { tierRuntimeCap: false, voiceGate: "report" as const, specifics: "report" as const },
+      { tierRuntimeCap: false, voiceGate: "off" as const, specifics: "off" as const },
+      { tierRuntimeCap: undefined, voiceGate: undefined, specifics: undefined }
+    ];
+    for (const off of dark) {
+      const label = JSON.stringify(off);
+      expect(tierRuntimeCapVariant(off), label).toBeUndefined();
+      expect(voiceGateVariant(off), label).toBeUndefined();
+      expect(specificsCheckVariant(off), label).toBeUndefined();
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off }), label).toBeUndefined();
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off })), label).toBe(TODAY);
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off }, resolveRouting({}))), label).toBe(TODAY);
+    }
+    const cap = { ...CLASSIC_PIPELINE_FLAGS, tierRuntimeCap: true };
+    const voice = { ...CLASSIC_PIPELINE_FLAGS, voiceGate: "enforce" as const };
+    const specifics = { ...CLASSIC_PIPELINE_FLAGS, specifics: "enforce" as const };
+    expect(checkpointRunVariant(cap)).toBe("tierCap=on");
+    expect(checkpointRunVariant(voice)).toBe("voice=enforce");
+    expect(checkpointRunVariant(specifics)).toBe("specifics=enforce");
+    const prints = new Set([
+      TODAY,
+      fp(checkpointRunVariant(cap)),
+      fp(checkpointRunVariant(voice)),
+      fp(checkpointRunVariant(specifics)),
+      fp(checkpointRunVariant({ ...voice, specifics: "enforce" }))
+    ]);
+    expect(prints.size).toBe(5);
+    /* The fast path turns the cap on, and its other parts do not separate a
+       cap-off fast path from it: the cap's own part does. */
+    expect(FAST_PATH_PIPELINE_FLAGS.tierRuntimeCap).toBe(true);
+    const capOffFast = checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, tierRuntimeCap: false }, local);
+    expect(capOffFast).toBe(`${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|${routingVariant(local)}`);
+    expect(checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS, local)).not.toBe(capOffFast);
+    /* After the writer exemplars, before the routing, in a fixed order. */
+    expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, writerExemplars: "on", voiceGate: "enforce", specifics: "enforce" }, local)).toBe(
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|exemplars=on|tierCap=on|voice=enforce|specifics=enforce|${routingVariant(local)}`
+    );
+  });
+
+  /* GV-127. MUTATIONS THAT KILL THIS: put the cap or an enforcing gate in the
+     stamp's `flags` (an arm with the cap on could no longer fork a cap-off
+     arm from spine); drop a lever comparison (a seed rerun from deepen under
+     another cap, or from stitch under another gate mode, would keep work
+     built under the other setting); or write the fields when off or in
+     report mode (an off stamp would differ from a pre-GV-127 one). Ran
+     each: red. */
+  it("the fork stamp carries the cap and the enforcing gates only when on, and compares them like a route to the stage they feed", () => {
+    const routing = resolveRouting({});
+    type Mode = "off" | "report" | "enforce";
+    const stamp = (extra: { tierRuntimeCap?: boolean; voiceGate?: Mode; specifics?: Mode } = {}) =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, ...extra }, routing });
+    const before = stamp();
+    expect(stamp({ tierRuntimeCap: false, voiceGate: "report", specifics: "report" })).toEqual(before);
+    expect(stamp({ voiceGate: "off", specifics: "off" })).toEqual(before);
+    expect(Object.keys(before).sort()).toEqual(["flags", "request", "routes", "selfCritique", "spineBestOf"]);
+    const armA = { version: CHECKPOINT_VERSION, fingerprint: "arm-a", fork: before };
+    /* The tier cap feeds the spine (and sourcing after it). */
+    const capped = { fingerprint: "capped", stamp: stamp({ tierRuntimeCap: true }) };
+    expect(capped.stamp.flags).toBe(before.flags);
+    expect(capped.stamp.tierCap).toBe("on");
+    expect(forkSeedRefusal(armA, capped, "spine")).toBeNull();
+    expect(forkSeedRefusal(armA, capped, "deepen")).toMatch(/FORAY_TIER_RUNTIME_CAP differs \(off; this run on\) and feeds spine/);
+    expect(forkSeedRefusal(armA, capped, "source")).toMatch(/FORAY_TIER_RUNTIME_CAP differs/);
+    expect(forkSeedRefusal({ ...armA, fingerprint: "capped", fork: capped.stamp }, { fingerprint: "arm-a", stamp: before }, "narrate")).toMatch(
+      /FORAY_TIER_RUNTIME_CAP differs \(on; this run off\)/
+    );
+    /* Each enforcing gate feeds narration. */
+    for (const [lever, extra] of [
+      ["FORAY_VOICE_GATE", { voiceGate: "enforce" }],
+      ["FORAY_SPECIFICS_CHECK", { specifics: "enforce" }]
+    ] as const) {
+      const enforcing = { fingerprint: "enforcing", stamp: stamp(extra) };
+      expect(enforcing.stamp.flags).toBe(before.flags);
+      expect(forkSeedRefusal(armA, enforcing, "narrate")).toBeNull();
+      expect(forkSeedRefusal(armA, enforcing, "source")).toBeNull();
+      expect(forkSeedRefusal(armA, enforcing, "stitch")).toBe(
+        `${lever} differs (not enforce; this run enforce) and feeds narrate, before --rerun-from stitch`
+      );
+      expect(forkSeedRefusal({ ...armA, fingerprint: "enforcing", fork: enforcing.stamp }, { fingerprint: "arm-a", stamp: before }, "stitch")).toBe(
+        `${lever} differs (enforce; this run not enforce) and feeds narrate, before --rerun-from stitch`
+      );
+    }
+    /* A stamp round-trips through its schema (what a kept checkpoint holds). */
+    const all = stamp({ tierRuntimeCap: true, voiceGate: "enforce", specifics: "enforce" });
+    expect(all).toMatchObject({ tierCap: "on", voice: "enforce", specifics: "enforce" });
+    expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(all)))).toEqual(all);
   });
 });
 

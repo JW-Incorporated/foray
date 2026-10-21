@@ -148,6 +148,13 @@ export function resolvePipelineFlags(overrides: Partial<PipelineFlags> = {}, env
  * The parts are in a fixed order and only the "on" ones appear, so each
  * combination maps to one string. GV-55 later joins the local routing into
  * the same variant at both call sites.
+ *
+ * GV-127 (#1413 item 40): `tierRuntimeCap` is the exception to "how, not
+ * what". Since GV-89 it changes the banked `spine` and since GV-106 the
+ * banked `source`, so it joins the variant too, but as its own part
+ * (`tierCap=on`, `checkpoint.ts` `tierRuntimeCapVariant`), not here: the
+ * fork stamp compares these flags exactly, and the cap is compared like a
+ * spine route instead, so a stage-swap arm may still fork from `spine`.
  */
 export function checkpointVariant(flags: Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline">): string | undefined {
   const parts: string[] = [];

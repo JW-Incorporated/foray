@@ -1455,14 +1455,20 @@ export async function generateOneCandidate(
      (#1413 items 21, 24): plus FORAY_SPINE_TIER_SIZING and
      FORAY_WRITER_EXEMPLARS, read from the environment the pipeline reads
      them from; each adds a part only when on, and neither joins the fork
-     stamp's flags (each is compared like a route to the stage it feeds). */
+     stamp's flags (each is compared like a route to the stage it feeds).
+     GV-127 (#1413 items 36, 40): plus FORAY_VOICE_GATE and
+     FORAY_SPECIFICS_CHECK from the gate config handed to the pipeline whole
+     (`options.gates`), each a part only when `enforce`; `flags` already
+     carries FORAY_TIER_RUNTIME_CAP, a part only when on. */
+  const gates = resolveGateConfig();
   const variantFlags = {
     ...flags,
     retrievalMode: deps.retrieval?.mode,
     spineTierSizing: readSpineTierSizing(process.env),
-    writerExemplars: writerExemplarsMode(process.env)
+    writerExemplars: writerExemplarsMode(process.env),
+    voiceGate: gates.voice,
+    specifics: gates.specifics
   };
-  const gates = resolveGateConfig();
   /* GV-55: the routing table, resolved once here with the --stage-provider
      overrides applied (main() also sets them on process.env, which the stage
      factories read), handed to the pipeline whole like the flags, so the

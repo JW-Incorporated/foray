@@ -500,7 +500,10 @@ describe("GV-124 — FORAY_SPINE_BEST_OF joins the checkpoint variant", () => {
     expect(checkpointRunVariant(readPipelineFlags({}))).toBeUndefined();
     expect(checkpointRunVariant(readPipelineFlags({ FORAY_SPINE_BEST_OF: "1" }))).toBeUndefined();
     expect(checkpointRunVariant(readPipelineFlags({ FORAY_SPINE_BEST_OF: "2" }))).toBe("spine=best-of-2");
-    expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, spineBestOf: 2 })).toBe(`${checkpointRunVariant(FAST_PATH_PIPELINE_FLAGS)}|spine=best-of-2`);
+    /* GV-127: the fast path's tier cap part comes after the spine best-of. */
+    expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, spineBestOf: 2 })).toBe(
+      `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|spine=best-of-2|tierCap=on`
+    );
     const fp = (n: 1 | 2) => checkpointFingerprint({ prompt: spec.prompt, duration: "short", variant: checkpointRunVariant(readPipelineFlags({ FORAY_SPINE_BEST_OF: String(n) })) });
     expect(fp(1)).toBe(checkpointFingerprint({ prompt: spec.prompt, duration: "short" }));
     expect(fp(2)).not.toBe(fp(1));
@@ -628,6 +631,132 @@ describe("GV-126 — FORAY_SPINE_TIER_SIZING and FORAY_WRITER_EXEMPLARS join the
       /* Under its own setting (on) the banked spine resumes. */
       const own = new CountingSpineBuilder();
       expect((await run(own, false)).entry?.outcome).toBe("generated");
+      expect(own.calls).toBe(0);
+    }, 120_000);
+  }
+});
+
+/* GV-127 (#1413 items 36, 40): FORAY_TIER_RUNTIME_CAP changes what the
+   spine (GV-89) and source (GV-106) stages bank, and FORAY_VOICE_GATE=enforce
+   and FORAY_SPECIFICS_CHECK=enforce what every narrate:<i> banks, so each
+   joins the checkpoint variant at BOTH sites (the driver's store and the
+   pipeline's session): the cap only when on, the gates only when enforcing.
+   With none set (or the gates in report or off) every fingerprint, the fork
+   stamp and the report row are today's. */
+describe("GV-127 — the tier cap and the enforcing gates join the checkpoint variant at both sites", () => {
+  let dir: string;
+  const spec = { prompt: "the history of grilling and barbecue" };
+  const GATE_ENV = ["FORAY_VOICE_GATE", "FORAY_SPECIFICS_CHECK"];
+
+  class CountingSpineBuilder extends StubSpineBuilder {
+    calls = 0;
+    override async buildSpine(...args: Parameters<StubSpineBuilder["buildSpine"]>): ReturnType<StubSpineBuilder["buildSpine"]> {
+      this.calls++;
+      return super.buildSpine(...args);
+    }
+  }
+  class KilledAfterSpine extends StubDeepenActBuilder {
+    override async deepenAct(): Promise<never> {
+      throw new Error("killed after spine");
+    }
+  }
+  const run = (spine: CountingSpineBuilder, killAfterSpine: boolean, theSpec: { prompt: string; bench?: boolean } = spec, keep = false) =>
+    generateOneCandidate(theSpec, baseArgs(dir, { duration: "short", maxResumes: 0, ...(keep ? { keepCheckpoints: true } : {}) }), {
+      cueProvider,
+      runPipeline: (request, options, deps) =>
+        stubPipeline()(request, options, { ...deps, spineBuilder: spine, ...(killAfterSpine ? { deepenBuilder: new KilledAfterSpine() } : {}) })
+    });
+  const readCheckpointFile = (): { fingerprint: string; fork?: Record<string, unknown> } => {
+    const file = fs.readdirSync(dir).find((f) => f.endsWith(".checkpoint.json"))!;
+    return JSON.parse(fs.readFileSync(path.join(dir, file), "utf8")) as { fingerprint: string; fork?: Record<string, unknown> };
+  };
+  const clearEnv = (): void => {
+    for (const name of [...Object.values(PIPELINE_FLAG_ENV), ...GATE_ENV]) delete process.env[name];
+  };
+  const freshDir = (): void => {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(dir, { recursive: true });
+  };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "foray-candidates-gv127-"));
+    clearEnv();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    clearEnv();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /* The dark default. MUTATIONS THAT KILL THIS: join a gate in report mode
+     (`voiceGateVariant` testing `!== "off"`), or the cap when off; or write a
+     stamp field when off. Ran each: red. */
+  it("with none set, or the gates in report/off and the cap off, the fingerprint, the kept fork stamp and the report row are today's", async () => {
+    const rows: string[] = [];
+    for (const env of [
+      {},
+      { FORAY_TIER_RUNTIME_CAP: "0", FORAY_VOICE_GATE: "report", FORAY_SPECIFICS_CHECK: "report" },
+      { FORAY_VOICE_GATE: "off", FORAY_SPECIFICS_CHECK: "off" }
+    ]) {
+      freshDir();
+      clearEnv();
+      Object.assign(process.env, env);
+      const label = JSON.stringify(env);
+      expect((await run(new CountingSpineBuilder(), true)).entry?.outcome, label).toBe("error");
+      expect(readCheckpointFile().fingerprint, label).toBe(checkpointFingerprint({ prompt: spec.prompt, duration: "short" }));
+      /* The pipeline's session hashes the same: the banked spine resumes. */
+      const own = new CountingSpineBuilder();
+      const done = await run(own, false);
+      expect(done.entry?.outcome, label).toBe("generated");
+      expect(own.calls, label).toBe(0);
+      /* The report row carries no new part, and names the same flags and gates. */
+      const row = JSON.stringify(done.entry);
+      for (const part of ["tierCap", "voice=enforce", "specifics=enforce"]) expect(row, label).not.toContain(part);
+      const { flags, gates } = done.entry as ReportEntry;
+      rows.push(JSON.stringify({ flags, gates: { ...gates, voice: undefined, specifics: undefined } }));
+      /* A kept bench checkpoint's stamp has exactly the pre-GV-127 fields. */
+      freshDir();
+      expect((await run(new CountingSpineBuilder(), false, { prompt: "a bench prompt about grilling", bench: true }, true)).entry?.outcome, label).toBe("generated");
+      expect(Object.keys(readCheckpointFile().fork ?? {}).sort(), label).toEqual(["flags", "request", "routes", "selfCritique", "spineBestOf"]);
+    }
+    expect(new Set(rows).size).toBe(1);
+  }, 240_000);
+
+  for (const [name, on, part] of [
+    ["FORAY_TIER_RUNTIME_CAP", "1", "tierCap=on"],
+    ["FORAY_VOICE_GATE", "enforce", "voice=enforce"],
+    ["FORAY_SPECIFICS_CHECK", "enforce", "specifics=enforce"]
+  ] as const) {
+    it(`${name}=${on}: a run killed after its spine is not resumed across a flip, in either direction, and resumes its own`, async () => {
+      /* MUTATIONS THAT KILL THIS: drop the part from checkpointRunVariant
+         (the flipped run resumes the other setting's spine: b.calls 0), or
+         pass the setting at ONE site only (runPipeline.ts's session hashes
+         without it while the driver's store hashes with it, so the run under
+         its own setting cannot resume: own.calls 1). Ran each: red. */
+      for (const [first, second] of [
+        [false, true],
+        [true, false]
+      ] as const) {
+        freshDir();
+        clearEnv();
+        if (first) process.env[name] = on;
+        const a = new CountingSpineBuilder();
+        expect((await run(a, true)).entry?.outcome).toBe("error");
+        expect(a.calls).toBe(1);
+        expect(readCheckpointFile().fingerprint).toBe(
+          checkpointFingerprint({ prompt: spec.prompt, duration: "short", ...(first ? { variant: part } : {}) })
+        );
+        clearEnv();
+        if (second) process.env[name] = on;
+        const b = new CountingSpineBuilder();
+        expect((await run(b, true)).entry?.outcome).toBe("error");
+        expect(b.calls, `${first} -> ${second}`).toBe(1);
+      }
+      /* Under its own setting (on) the banked spine resumes. */
+      const own = new CountingSpineBuilder();
+      await run(own, false);
       expect(own.calls).toBe(0);
     }, 120_000);
   }

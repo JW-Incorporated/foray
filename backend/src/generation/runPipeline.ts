@@ -56,6 +56,7 @@ import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBefor
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics, type PrefetchOptions } from "./evidencePrefetch";
 import { evidencePrefetchMode, numberParser, readFlag, type FlagSource } from "./generationFlags";
+import { spineActBand } from "./replySchemas";
 import { readSpineTierSizing } from "./chat/ChatSpineBuilder";
 import { writerExemplarsMode } from "./voiceExemplars";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
@@ -1205,10 +1206,14 @@ type SourceActCheckpoint = { act: SourcedAct; snapshot: SourcingSnapshot };
  * more acts at once, so a value above it is a typo (an extra digit), and it
  * fails fast like any malformed value rather than reading as "every act".
  * Documented in docs/curation/generation-providers.md.
+ *
+ * GV-127 (#1413 item 34): derived, not typed in, so it cannot drift from the
+ * act band: spineActBand('long')[1] is DURATION_SHAPE_BUDGETS.long's most
+ * acts with SHAPE_TOLERANCE's 15 % headroom, floor(7 x 1.15) = 8 today.
  */
 export const DEEPEN_CONCURRENCY_ENV = "FORAY_DEEPEN_CONCURRENCY";
 export const DEFAULT_DEEPEN_CONCURRENCY = 1;
-export const MAX_DEEPEN_CONCURRENCY = 8;
+export const MAX_DEEPEN_CONCURRENCY = spineActBand("long")[1];
 export function deepenConcurrency(env: FlagSource = process.env): number {
   return readFlag(
     DEEPEN_CONCURRENCY_ENV,
@@ -1426,7 +1431,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      hashed (`deps.retrieval.mode`). GV-126 (#1413 items 21, 24): and
      FORAY_SPINE_TIER_SIZING and FORAY_WRITER_EXEMPLARS when on, read here
      from the same environment the driver hashed (a malformed value fails
-     here, naming the variable, before any call). */
+     here, naming the variable, before any call). GV-127 (#1413 items 36,
+     40): and FORAY_TIER_RUNTIME_CAP when on, FORAY_VOICE_GATE and
+     FORAY_SPECIFICS_CHECK when enforcing. */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
@@ -1437,7 +1444,17 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       /* GV-94: plus the self-critique's part, only when it is on. */
       variant: joinCheckpointVariant(
         checkpointRunVariant(
-          { ...flags, retrievalMode: deps.retrieval?.mode, spineTierSizing: readSpineTierSizing(), writerExemplars: writerExemplarsMode() },
+          {
+            ...flags,
+            retrievalMode: deps.retrieval?.mode,
+            spineTierSizing: readSpineTierSizing(),
+            writerExemplars: writerExemplarsMode(),
+            /* GV-127 (#1413 item 36): the enforcing gates, from the run's
+               resolved gate config (the driver hands it whole, so its store
+               hashes the same). `flags` already carries the tier cap. */
+            voiceGate: gates.voice,
+            specifics: gates.specifics
+          },
           routing
         ),
         selfCritique
