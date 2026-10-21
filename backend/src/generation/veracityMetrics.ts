@@ -13,6 +13,7 @@ import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
 import type { ClipJudgeId, ClipScores } from "../types/tapeSourcing";
 import { computeVoiceMetrics, type VoiceMetrics, type VoiceScript } from "./voiceChecks";
+import type { VoiceDrift } from "./voiceDrift";
 import type { CleanCutGateMode, SentencePolicy, UnverifiedSeamPolicy } from "./gateConfig";
 import { splitSpokenSentences } from "../copy/spokenLine";
 import { DURATION_RUNTIME_TARGET_SEC, TIER_RUNTIME_TOLERANCE, tierRuntimeBand, type DurationTier } from "../types/spine";
@@ -1486,8 +1487,14 @@ export interface VeracityMetrics {
    * writer's voice gate would re-ask on, and the per-item sentence shape
    * (`computeVoiceMetrics`). Absent when the caller passed no
    * `narrationScripts` (FORAY_VOICE_GATE=off, or a candidate built before
-   * GV-104). Reported, never gated. */
-  voice?: VoiceMetrics;
+   * GV-104). Reported, never gated.
+   *
+   * GV-116 (W4-12; R2-08, GP-24): `drift`, the voice drift alarm's per-act
+   * "same narrator as the exemplar?" Scores (voiceDrift.ts), present only
+   * with FORAY_VOICE_DRIFT=on, a judge that can answer and a founder-selected
+   * exemplar seam; absent otherwise, never zero. Report only: nothing here
+   * or in `evaluateVeracityGate` reads it. */
+  voice?: VoiceMetrics & { drift?: VoiceDrift };
   /** GV-106 (MQ-14): the runtime against its tier (`computeTierFit`). On
    * every outcome `runPipeline` generates; absent on a candidate built before
    * GV-106 or by a caller that passed no `tierFit`. Gated only under
@@ -1553,6 +1560,10 @@ export interface BuildVeracityMetricsInput {
   /** GV-104: every final narration item's script, in order, with whether
    * tape sits beside it (`voiceScriptsOf`). Omitted, `voice` is absent. */
   narrationScripts?: readonly VoiceScript[];
+  /** GV-116: the voice drift alarm's block, carried verbatim into
+   * `voice.drift`. Only with `narrationScripts` (it rides on the scorecard);
+   * omitted, `voice` is exactly GV-104's. */
+  voiceDrift?: VoiceDrift;
   /** GV-104: the reading-grade band (`GateConfig.readingGradeBand`).
    * Omitted, spokenLine.js's READING_GRADE_BAND (6-9). */
   readingGradeBand?: readonly [number, number];
@@ -1642,7 +1653,14 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
         }
       : {}),
     ...(input.showItems ? { showVariety: computeShowVariety(input.showItems) } : {}),
-    ...(input.narrationScripts ? { voice: computeVoiceMetrics(input.narrationScripts, input.readingGradeBand) } : {}),
+    ...(input.narrationScripts
+      ? {
+          voice: {
+            ...computeVoiceMetrics(input.narrationScripts, input.readingGradeBand),
+            ...(input.voiceDrift ? { drift: input.voiceDrift } : {})
+          }
+        }
+      : {}),
     ...(input.tierFit
       ? { tierFit: Number.isFinite(input.tierFit.runtimeSec) ? computeTierFit(input.tierFit.tier, input.tierFit.runtimeSec) : null }
       : {}),
