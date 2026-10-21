@@ -319,6 +319,43 @@ describe("GV-106: sourcing under the tier's runtime budget (FORAY_TIER_RUNTIME_C
     expect(sourceBeats(one(), options(long)).newSegments).toHaveLength(0);
   });
 
+  it("two seeded beats in one stretch of tape merge into one clip (F-96) that stays at or under the merge's own ceiling; with no budget the merged clip rides", () => {
+    /* MUTATION THAT KILLS THIS: in mergeIntoClip, ignore the clip ceiling
+       (`const ceiling = undefined`, so the merge keeps Q-01's thirty-minute
+       TAPE_WINDOW_MAX_SEC) — the second beat's thought carries the merged
+       clip past the 600 s budget. Ran it: red. */
+    const BUDGET = 600;
+    const SECOND_LONG_CLAIM = "Engineers redesigned the blade pitch bearings so tidal turbines in the Pentland Firth survived winter storms.";
+    const sameStretch = () => [
+      act([
+        { claim: LONG_CLAIM, exploration: false, seed: LONG_SEED },
+        { claim: SECOND_LONG_CLAIM, exploration: false, seed: seed("ep-long", 700, 760) }
+      ])
+    ];
+    const free = sourceBeats(sameStretch(), options());
+    expect(beats(free)[1]!.mergedInto).toBeDefined();
+    expect(free.newSegments).toHaveLength(1);
+    expect(clipSec(free, 0)).toBeGreaterThan(1400);
+
+    const capped = sourceBeats(sameStretch(), { ...options(), runtimeBudgetSec: BUDGET });
+    const [first, second] = beats(capped);
+    expect(first!.sourcing).toBe("tape");
+    expect(second!.sourcing).toBe("tape");
+    if (first!.sourcing !== "tape" || second!.sourcing !== "tape") return;
+    /* One clip: the second beat rides in the first beat's, extended. */
+    expect(second!.mergedInto).toEqual({ slot: 0, beat: 0 });
+    expect(second!.tape.segmentId).toBe(first!.tape.segmentId);
+    expect(capped.newSegments).toHaveLength(1);
+    /* The merge's ceiling: the budget, less nothing else placed (the merged
+       clip replaces the first), less no seeded beat ahead (0 x 60). */
+    const ceiling = BUDGET - 0 - 0 * TAPE_WINDOW_MIN_SEC;
+    const sec = clipSec(capped, 0);
+    expect(sec).toBeLessThanOrEqual(ceiling);
+    const row = capped.newSegments[0]!;
+    expect(row.endSec - row.startSec).toBe(sec);
+    expect(onCueBoundaries("ep-long", first!.tape.startSec, first!.tape.endSec)).toBe(true);
+  });
+
   it("without a budget the result is byte-identical to sourcing with no budget option at all, and the snapshot carries neither new field", () => {
     /* MUTATION THAT KILLS THIS: default `remainingSeededBeats` to 0 in the
        SourcingSession constructor (the snapshot grows a key). Ran it: red. */
