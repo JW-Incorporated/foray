@@ -154,6 +154,8 @@ describe("cueWordsOf / cuesFromBodyJson — a body's word timings are kept only 
     /* MUTATIONS THAT KILL THIS: drop the monotonic check, the span check or
        the canonical-join check — the bad array is kept. Ran each: red. */
     expect(cueWordsOf([good[1], good[0], ...good.slice(2)], cue)).toBeUndefined();
+    /* In the cue's order, spelling it, inside the span, but timed backwards. */
+    expect(cueWordsOf([good[0], good[1], { text: "It's", start: 10.2, end: 10.3 }, good[3]], cue)).toBeUndefined();
     expect(cueWordsOf([{ ...good[0]!, start: 9.4 }, ...good.slice(1)], cue)).toBeUndefined();
     expect(cueWordsOf([...good.slice(0, 3), { text: "fine", start: 11.9, end: 13.6 }], cue)).toBeUndefined();
     expect(cueWordsOf([...good.slice(0, 3), { text: "good", start: 11.9, end: 12.6 }], cue)).toBeUndefined();
@@ -280,19 +282,24 @@ describe("cutWindowToSegment — snapToPauses moves the edges and re-mints the a
 
   it("an outward snap may not push a capped cut past its ceiling", () => {
     /* The previous cue ends its sentence 1.4 s before the window's start; a
-       ceiling of the whole-cue length leaves no room to reach back for it.
+       ceiling of the whole-cue length leaves no room to reach back for it,
+       so the capped cut takes the plain pause 1 s inside its own cue.
        MUTATION THAT KILLS THIS: drop `notBeforeSec` from the start snap —
-       the capped cut starts at 8.6 s. Ran it: red. */
+       the sentence pause is picked, overruns the cap and is dropped whole,
+       so the capped cut stays at 10 s. Ran it: red. */
     const twoCues: TranscriptCue[] = [
       wordedCue(6, 10, [
         ["the job is done.", 6, 8.05],
         ["Turbine", 8.6, 10.05]
       ]),
-      wordedCue(10, 80, [[`blades crack under thermal cycling stress every winter season because the alloy fatigues quickly`, 10, 80.05]])
+      wordedCue(10, 80, [
+        ["blades", 10, 10.65],
+        ["crack under thermal cycling stress every winter season because the alloy fatigues quickly", 11, 80.05]
+      ])
     ];
     const window: TapeWindow = { ...windowOf(), firstCue: 1, lastCue: 1, startSec: 10, endSec: 80 };
     expect(cutWindowToSegment(claim, twoCues, window, { snapToPauses: true })!.startSec).toBe(8.6);
-    expect(cutWindowToSegment(claim, twoCues, window, { snapToPauses: true, maxSec: 70 })!.startSec).toBe(10);
+    expect(cutWindowToSegment(claim, twoCues, window, { snapToPauses: true, maxSec: 70 })!.startSec).toBe(11);
   });
 });
 
