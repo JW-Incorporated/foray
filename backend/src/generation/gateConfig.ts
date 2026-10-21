@@ -143,7 +143,41 @@ export interface GateConfig {
    * stays today's, and no run resumes narration banked under the other mode.
    */
   unverifiedSeamPolicy: UnverifiedSeamPolicy;
+
+  /**
+   * GV-109 (W5-13; R2-05, MQ-06): FORAY_CLAIM_ONLY_OPENING = allow|refuse,
+   * default `allow`. `refuse` turns down a tier-2 cut whose OPENING edge sits
+   * on no turn or sentence boundary (`claim-only`) under the gate
+   * `claim-only-open` (`sourceBeats.ts`), and the walk falls through to the
+   * next candidate; `allow` is today's sourcing, byte for byte.
+   *
+   * `refuse` changes what `source` / `source:<i>` bank, so by GV-127's rule
+   * above it joins `checkpointRunVariant` as `claimOnlyOpening=refuse`
+   * (checkpoint.ts `claimOnlyOpeningVariant`, at both fingerprint sites, and
+   * in the fork stamp compared like a route feeding `source`), only under
+   * `refuse`: an allow run's fingerprint stays today's.
+   */
+  claimOnlyOpening: ClaimOnlyOpening;
+
+  /**
+   * GV-109 (MQ-06): FORAY_CLEAN_CUT_GATE = report|enforce, default `report`.
+   * `meta.veracity.cleanCutRate` (the share of extended clips whose both
+   * edges sit on a turn or sentence boundary) is always computed; `enforce`
+   * adds GATE_MIN_CLEAN_CUT_RATE (0.9) to the veracity verdict
+   * (`evaluateVeracityGate`), in the run report and in publishForay's
+   * read-only gate check. A verdict, not a stage: it changes nothing any
+   * stage banks, so it stays out of the checkpoint variant.
+   */
+  cleanCutGate: CleanCutGateMode;
 }
+
+/** GV-109: FORAY_CLAIM_ONLY_OPENING's values. */
+export const CLAIM_ONLY_OPENING_MODES = ["allow", "refuse"] as const;
+export type ClaimOnlyOpening = (typeof CLAIM_ONLY_OPENING_MODES)[number];
+
+/** GV-109: FORAY_CLEAN_CUT_GATE's values. */
+export const CLEAN_CUT_GATE_MODES = ["report", "enforce"] as const;
+export type CleanCutGateMode = (typeof CLEAN_CUT_GATE_MODES)[number];
 
 /** GV-108: the policies for a seam the verifier never confirmed. */
 export const UNVERIFIED_SEAM_POLICIES = ["keep", "cut"] as const;
@@ -220,7 +254,9 @@ export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
     parse: gradeBandParser,
     default: [READING_GRADE_BAND[0], READING_GRADE_BAND[1]]
   } satisfies GateTableEntry<[number, number]>,
-  { key: "unverifiedSeamPolicy", env: "FORAY_UNVERIFIED_SEAM_POLICY", parse: enumParser(UNVERIFIED_SEAM_POLICIES), default: "keep" } satisfies GateTableEntry<UnverifiedSeamPolicy>
+  { key: "unverifiedSeamPolicy", env: "FORAY_UNVERIFIED_SEAM_POLICY", parse: enumParser(UNVERIFIED_SEAM_POLICIES), default: "keep" } satisfies GateTableEntry<UnverifiedSeamPolicy>,
+  { key: "claimOnlyOpening", env: "FORAY_CLAIM_ONLY_OPENING", parse: enumParser(CLAIM_ONLY_OPENING_MODES), default: "allow" } satisfies GateTableEntry<ClaimOnlyOpening>,
+  { key: "cleanCutGate", env: "FORAY_CLEAN_CUT_GATE", parse: enumParser(CLEAN_CUT_GATE_MODES), default: "report" } satisfies GateTableEntry<CleanCutGateMode>
 ]);
 
 /**

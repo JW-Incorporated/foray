@@ -18,12 +18,14 @@ import {
   computeClipOnSubject,
   computeShowVariety,
   computeTierFit,
+  computeCleanCuts,
   CLIP_ON_SUBJECT_LEVEL,
   buildVeracityMetrics,
   evaluateVeracityGate,
   GATE_MIN_GROUNDED_QUOTE_RATE,
   GATE_MIN_PURPOSE_FIDELITY,
   GATE_MIN_TAPE_RELEVANCE,
+  GATE_MIN_CLEAN_CUT_RATE,
   type VeracityMetrics
 } from "../src/generation/veracityMetrics";
 import type { WrittenAct, WrittenBeat } from "../src/generation/writeNarration";
@@ -32,6 +34,7 @@ import { findHoldingDoc } from "../src/types/narration";
 import { computeVoiceMetrics, voiceReport } from "../src/generation/voiceChecks";
 import type { SourceBeatsResult, SourcedAct, SourcingTrace, TapePointer, TapeRelevanceInput } from "../src/types/tapeSourcing";
 import { CheckpointSession, type CheckpointFile, type CheckpointStore } from "../src/generation/checkpoint";
+import { publishGateOptions } from "../src/cli/publishForay";
 
 /**
  * WS-B (docs/curation/generation-fix-plan-2026-09-09.md): every metric this
@@ -1234,5 +1237,142 @@ describe("GV-106 — MQ-14 tier fit: reported on every candidate, gated only und
       expect(gate.ok).toBe(false);
       expect(gate.failures[0]).toMatch(/^tierFit is null/);
     }
+  });
+});
+
+describe("GV-109 — MQ-06 clean cuts: computed on every candidate, gated only under FORAY_CLEAN_CUT_GATE=enforce", () => {
+  const base = { sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, pipelineTokens: 0, stageTimings: [] };
+  function row(beatIndex: number, extra: Partial<TapeRelevanceInput> = {}): TapeRelevanceInput {
+    return {
+      actIndex: 0,
+      slotIndex: 0,
+      beatIndex,
+      claim: `claim ${beatIndex}`,
+      itemId: `item-${beatIndex}`,
+      segmentId: `seg-${beatIndex}`,
+      tier: 2,
+      taxonomyNodeIds: ["health/medicine"],
+      families: ["health"],
+      forayTopic: "health/medicine",
+      forayFamily: "health",
+      onTopic: true,
+      ...extra
+    };
+  }
+  /** A tier-2 clip with both edge kinds, `boundary` the weaker. */
+  const cut = (beatIndex: number, start: TapeRelevanceInput["boundary"], end: TapeRelevanceInput["boundary"]) => {
+    const rank = { "claim-only": 0, sentence: 1, turn: 2 } as const;
+    return row(beatIndex, { boundary: rank[start!] <= rank[end!] ? start : end, startBoundary: start, endBoundary: end, extendedBySec: 10 });
+  };
+
+  /* MUTATIONS THAT KILL THIS: count a clip clean when EITHER edge is on a
+     boundary (`||` for `&&`) — the rate reads 3/4; count tier-1 rows (no
+     boundary) as known — known reads 6; count a merged beat's row as a clip
+     of its own — known reads 5. Ran each: red. */
+  it("computeCleanCuts on mixed rows: both edges clean, the opening alone, unknown tier-1 and pool cuts, merged beats counted once", () => {
+    const rows = [
+      cut(0, "turn", "turn"),
+      cut(1, "sentence", "turn"),
+      cut(2, "claim-only", "sentence"),
+      cut(3, "turn", "claim-only"),
+      /* Tier 1 and a reused pool cut: a curator's edges, unknown. */
+      row(4, { tier: 1 }),
+      row(5, { tier: 1, poolCut: "reused" }),
+      /* A beat riding in clip 0 (F-96): the clip is counted once, on row 0. */
+      { ...cut(6, "turn", "turn"), mergedInto: { slot: 0, beat: 0 } }
+    ];
+    const result = computeCleanCuts(rows);
+    expect(result.known).toBe(4);
+    expect(result.unknown).toBe(2);
+    expect(result.rate).toBe(0.5);
+    expect(result.openingCleanRate).toBe(0.75);
+    expect(result.claimOnlyOpenings).toEqual([{ itemId: "item-2", segmentId: "seg-2", claim: "claim 2" }]);
+  });
+
+  /* MUTATION THAT KILLS THIS: read a row with no per-edge kinds as unknown
+     (require `startBoundary` for `known`) — known reads 0 and both rates null. */
+  it("unknown handling: a row written before GV-109 (boundary only) still counts, by its weaker edge; no boundary at all is null, not zero", () => {
+    const legacy = computeCleanCuts([row(0, { boundary: "sentence" }), row(1, { boundary: "claim-only" })]);
+    expect(legacy.known).toBe(2);
+    expect(legacy.rate).toBe(0.5);
+    /* A sentence-or-better `boundary` says the opening is clean; a claim-only
+       one cannot say which edge, so the opening is not counted. */
+    expect(legacy.openingCleanRate).toBe(1);
+    expect(legacy.claimOnlyOpenings).toEqual([]);
+    expect(computeCleanCuts([row(0, { tier: 1 })])).toEqual({ rate: null, openingCleanRate: null, known: 0, unknown: 1, claimOnlyOpenings: [] });
+    expect(computeCleanCuts([])).toEqual({ rate: null, openingCleanRate: null, known: 0, unknown: 0, claimOnlyOpenings: [] });
+  });
+
+  /* MUTATION THAT KILLS THIS: compute the fields with no rows (`computeCleanCuts(
+     input.tapeRelevanceRows ?? [])`) — a candidate built without rows grows
+     `cleanCutRate: null`. Ran it: red. */
+  it("buildVeracityMetrics always carries the clean-cut fields when given the rows, and not otherwise", () => {
+    const plain = buildVeracityMetrics(base);
+    expect("cleanCutRate" in plain).toBe(false);
+    expect("cleanCutDetails" in plain).toBe(false);
+    const measured = buildVeracityMetrics({ ...base, tapeRelevanceRows: [cut(0, "turn", "turn"), cut(1, "claim-only", "turn")] });
+    expect(measured.cleanCutRate).toBe(0.5);
+    expect(measured.cleanCutDetails).toEqual({
+      openingCleanRate: 0.5,
+      known: 2,
+      unknown: 0,
+      claimOnlyOpenings: [{ itemId: "item-1", segmentId: "seg-1", claim: "claim 1" }]
+    });
+  });
+
+  /* MUTATIONS THAT KILL THIS: drop the `options.cleanCutGate === "enforce"`
+     guard (report refuses the 0.5 Foray); compare with `<=` (a 0.9 Foray is
+     refused); fail a Foray with no known clip (known 0); pass an unmeasured
+     candidate. Ran each: red. */
+  it("the gate in report vs enforce: report is the verdict before GV-109; enforce refuses under 0.9, N/A at known 0, fails null or unmeasured", () => {
+    const passing = (rows: TapeRelevanceInput[]): VeracityMetrics => ({
+      ...buildVeracityMetrics({ ...base, tapeRelevanceRows: rows }),
+      groundedQuoteRate: 1,
+      purposeFidelity: 1,
+      tapeRelevance: 1
+    });
+    const half = passing([cut(0, "turn", "turn"), cut(1, "claim-only", "turn")]);
+    expect(evaluateVeracityGate(half)).toEqual({ ok: true, failures: [] });
+    expect(evaluateVeracityGate(half, { cleanCutGate: "report" })).toEqual({ ok: true, failures: [] });
+    const refused = evaluateVeracityGate(half, { cleanCutGate: "enforce" });
+    expect(refused.ok).toBe(false);
+    expect(refused.failures).toEqual([
+      `cleanCutRate 0.500 < ${GATE_MIN_CLEAN_CUT_RATE} over 2 clip(s) with a boundary`,
+      "  opens mid-thought: seg-1 (claim 1)"
+    ]);
+    expect(GATE_MIN_CLEAN_CUT_RATE).toBe(0.9);
+    /* Nine clean of ten is exactly the floor, and passes. */
+    const nine = passing([...Array.from({ length: 9 }, (_, k) => cut(k, "turn", "sentence")), cut(9, "turn", "claim-only")]);
+    expect(nine.cleanCutRate).toBe(0.9);
+    expect(evaluateVeracityGate(nine, { cleanCutGate: "enforce" }).ok).toBe(true);
+    /* No clip carries a boundary (tier-1 tape only): N/A. */
+    expect(evaluateVeracityGate(passing([row(0, { tier: 1 })]), { cleanCutGate: "enforce" }).ok).toBe(true);
+    /* A null rate with known clips fails, and so does a candidate on which the
+       measurement never ran. */
+    const nulled = { ...half, cleanCutRate: null };
+    expect(evaluateVeracityGate(nulled, { cleanCutGate: "enforce" }).failures[0]).toMatch(/^cleanCutRate is null despite 2 clip\(s\)/);
+    const unmeasured = { ...half };
+    delete unmeasured.cleanCutRate;
+    delete unmeasured.cleanCutDetails;
+    expect(evaluateVeracityGate(unmeasured, { cleanCutGate: "enforce" }).failures[0]).toMatch(/^cleanCutRate was never measured/);
+    expect(evaluateVeracityGate(unmeasured)).toEqual({ ok: true, failures: [] });
+  });
+
+  /* publishForay's read-only gate check reads the same key. MUTATION THAT
+     KILLS THIS: drop the `cleanCutGate === "enforce"` spread from
+     `publishGateOptions` (enforce publishes the 0.5 Foray). Ran it: red. */
+  it("publishGateOptions adds the clean-cut floor only under FORAY_CLEAN_CUT_GATE=enforce, and fails fast on a malformed value", () => {
+    expect(publishGateOptions({})).toEqual({});
+    expect(publishGateOptions({ FORAY_CLEAN_CUT_GATE: "report" })).toEqual({});
+    expect(publishGateOptions({ FORAY_CLEAN_CUT_GATE: "enforce" })).toEqual({ cleanCutGate: "enforce" });
+    expect(publishGateOptions({ FORAY_CLEAN_CUT_GATE: "enforce", FORAY_GATE_TIER_FIT: "1" })).toEqual({ tierFit: true, cleanCutGate: "enforce" });
+    expect(() => publishGateOptions({ FORAY_CLEAN_CUT_GATE: "strict" })).toThrow(/FORAY_CLEAN_CUT_GATE/);
+    const half: VeracityMetrics = {
+      ...buildVeracityMetrics({ ...base, tapeRelevanceRows: [cut(0, "turn", "turn"), cut(1, "claim-only", "turn")] }),
+      groundedQuoteRate: 1,
+      purposeFidelity: 1
+    };
+    expect(evaluateVeracityGate(half, publishGateOptions({})).ok).toBe(true);
+    expect(evaluateVeracityGate(half, publishGateOptions({ FORAY_CLEAN_CUT_GATE: "enforce" })).ok).toBe(false);
   });
 });

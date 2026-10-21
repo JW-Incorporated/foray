@@ -4823,3 +4823,165 @@ describe("beatJudgeCandidates — GV-107: every window the walk could take, enum
     expect(beatJudgeCandidates(acts, { ...opts, topic: "food/grilling-bbq" })[0]!.options.map((o) => o.key)).not.toContain(poolKey);
   });
 });
+
+describe("sourceBeats — GV-109 (MQ-06): per-edge boundary kinds, and FORAY_CLAIM_ONLY_OPENING=refuse", () => {
+  /* WHAT THIS PINS THROUGH THE WHOLE STAGE: each minted clip carries its two
+     edge kinds (`startBoundary` / `endBoundary`) on the segment and on the
+     relevance row, beside the weaker `boundary` it always carried; and under
+     `claimOnlyOpening: "refuse"` a cut that would open mid-thought is refused
+     with the gate `claim-only-open` and the walk takes the next candidate. */
+
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+
+  /** No speakers, and nothing before the claim cue ends a sentence: the cue
+   * before it ends on "because", the one before that on "and". So the claim
+   * window (cue 3, 60-93 s, the thirty-three second cue the search takes on
+   * its own) has no boundary to move its start to within a minute, and the
+   * minute before it says nothing about the claim, so relevance does not walk
+   * back either: the clip OPENS claim-only. Its end runs on through two more
+   * sentences about the claim to the full stop at 135 s (a sentence boundary,
+   * one-second pauses after). */
+  const openMid: TranscriptCue[] = [
+    { text: "welcome back to the show this week we are in denver and", start_sec: 0, end_sec: 20 },
+    { text: "the coffee here is excellent and the hotels are cheap and", start_sec: 20, end_sec: 40 },
+    { text: "honestly we keep coming back to the same story because", start_sec: 40, end_sec: 60 },
+    { text: "The gearboxes fail because the bearings take torque reversals, every single one of them, and nobody designs for it.", start_sec: 60, end_sec: 93 },
+    { text: "Every rotation the torque comes back and the bearings crack.", start_sec: 94, end_sec: 114 },
+    { text: "So the bearings crack under torque that keeps switching direction.", start_sec: 115, end_sec: 135 },
+    { text: "Anyway, that is enough of that, let us talk about the conference.", start_sec: 136, end_sec: 156 },
+    { text: "The conference is in Denver and the keynote is about coffee machines.", start_sec: 157, end_sec: 177 },
+    { text: "I love Denver, the coffee there is excellent and the hotels are cheap.", start_sec: 178, end_sec: 198 }
+  ];
+  /** The Q-01 block's tape: every cue a sentence with a pause after, so both
+   * edges land on sentence boundaries (42-138 s). */
+  const clean: TranscriptCue[] = [
+    { text: "Welcome back to the show, this week we are in Denver.", start_sec: 0, end_sec: 20 },
+    { text: "The coffee here is excellent and the hotels are cheap.", start_sec: 21, end_sec: 41 },
+    { text: "The gearboxes fail because the bearings take torque reversals, every single one of them, and nobody designs for it.", start_sec: 42, end_sec: 75 },
+    { text: "Every rotation the torque comes back and the bearings crack.", start_sec: 76, end_sec: 96 },
+    { text: "So the bearings crack under torque that keeps switching direction.", start_sec: 97, end_sec: 117 },
+    { text: "That is why the gearboxes fail well before the design life says.", start_sec: 118, end_sec: 138 },
+    { text: "Anyway, that is enough of that, let us talk about the conference.", start_sec: 139, end_sec: 159 },
+    { text: "The conference is in Denver and the keynote is about coffee machines.", start_sec: 160, end_sec: 180 },
+    { text: "I love Denver, the coffee there is excellent and the hotels are cheap.", start_sec: 181, end_sec: 201 }
+  ];
+  const episodeOf = (guid: string, title: string): TranscriptDigestEntry => ({
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid,
+    title,
+    cues: 9,
+    feed_duration_sec: 3600,
+    enclosure_url: `https://cdn.example/${guid}.mp3`
+  });
+  const midEpisode = episodeOf("pa-open-mid", "Episode 801");
+  const cleanEpisode = episodeOf("pa-clean", "Episode 802");
+  const tapeOf: Record<string, TranscriptCue[]> = { "pa-open-mid": openMid, "pa-clean": clean };
+
+  /** A text index that ranks the episodes in the order given, so the
+   * claim-only opening is always the candidate the walk asks first. */
+  const rankedIndex = (entries: TranscriptDigestEntry[]): TranscriptTextIndex => ({
+    enabled: true,
+    search: () => entries.map((entry, rank) => ({ entry, score: 10 - rank, matchedTerms: 5, rank }))
+  });
+
+  function run(entries: TranscriptDigestEntry[], claimOnlyOpening?: "allow" | "refuse") {
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats: [{ claim, exploration: false, kind: "account" }] }] }, "GV109")], {
+      segmentPool: [],
+      transcriptArchive: entries,
+      cueProvider: { getCues: (e) => tapeOf[e.guid] ?? null },
+      textIndex: rankedIndex(entries),
+      ...(claimOnlyOpening ? { claimOnlyOpening } : {})
+    });
+  }
+
+  it("carries each edge's kind on the segment and the relevance row, beside the weaker `boundary` (MQ-06)", () => {
+    /* The claim-only opening, placed (allow, the default): start claim-only,
+       end on a sentence, and `boundary` the weaker of the two, as before.
+       MUTATION THAT KILLS THIS: drop `...edgeKindsOf(span)` from the minted
+       segment, or the two `startBoundary`/`endBoundary` spreads from the
+       relevance row — the fields go undefined. Ran both — red. */
+    const result = run([midEpisode]);
+    const segment = result.newSegments[0]!;
+    expect(segment.itemId).toBe(deriveItemId(midEpisode));
+    expect(segment.startSec).toBe(60);
+    expect(segment.startBoundary).toBe("claim-only");
+    expect(segment.endBoundary).toBe("sentence");
+    expect(segment.boundary).toBe("claim-only");
+    const row = result.tapeRelevance[0]!;
+    expect(row.startBoundary).toBe("claim-only");
+    expect(row.endBoundary).toBe("sentence");
+    expect(row.boundary).toBe("claim-only");
+
+    /* And the clean tape: both edges on sentences. */
+    const tidy = run([cleanEpisode]);
+    expect(tidy.newSegments[0]!.startBoundary).toBe("sentence");
+    expect(tidy.newSegments[0]!.endBoundary).toBe("sentence");
+    expect(tidy.tapeRelevance[0]!.startBoundary).toBe("sentence");
+  });
+
+  it("refuse mode rejects a claim-only opening with `claim-only-open`, and the next candidate wins", () => {
+    /* The claim-only opening is ranked first. Under refuse it is turned down
+       and the walk opens the clean episode, whose clip opens on a sentence.
+       MUTATION THAT KILLS THIS: make `claimOnlyOpeningGate` return null —
+       the mid-thought clip from Episode 801 is placed. Ran it — red. */
+    const result = run([midEpisode, cleanEpisode], "refuse");
+    const beat = allSourcedBeats(result.acts)[0]!;
+    expect(beat.sourcing).toBe("tape");
+    expect(result.newSegments).toHaveLength(1);
+    expect(result.newSegments[0]!.itemId).toBe(deriveItemId(cleanEpisode));
+    expect(result.newSegments[0]!.startBoundary).toBe("sentence");
+
+    /* With no other candidate the beat is narrated, and the trace names the
+       gate and the cut it refused. MUTATION THAT KILLS THIS: return
+       `m3-order` instead of `claim-only-open` from `claimOnlyOpeningGate`. */
+    const alone = run([midEpisode], "refuse");
+    expect(allSourcedBeats(alone.acts)[0]!.sourcing).toBe("narration");
+    expect(alone.newSegments).toHaveLength(0);
+    const tier2 = alone.sourcingTrace[0]!.tier2!;
+    expect(tier2.gate).toBe("claim-only-open");
+    expect(tier2.windowStartSec).toBe(60);
+    expect(alone.transcriptionQueueCandidates[0]!.reason).toContain("FORAY_CLAIM_ONLY_OPENING=refuse");
+  });
+
+  it("refuse mode judges the opening edge alone: a clip that opens on a sentence but ends claim-only is still placed", () => {
+    /* The tape opens cleanly (a full stop and a pause before the claim cue)
+       but nothing after the claim ends a sentence, so the END is claim-only
+       and the weaker `boundary` is claim-only too. Refuse is about where a
+       clip opens, so this cut stands.
+       MUTATION THAT KILLS THIS: test `span.boundary` instead of
+       `span.startBoundary` in `claimOnlyOpeningGate` — the clip is refused
+       and the beat narrated. */
+    const openEnd: TranscriptCue[] = [
+      { text: "Welcome back to the show, this week we are in Denver.", start_sec: 0, end_sec: 20 },
+      { text: "The coffee here is excellent and the hotels are cheap.", start_sec: 21, end_sec: 41 },
+      { text: "The gearboxes fail because the bearings take torque reversals, every single one of them, and nobody designs for it because", start_sec: 42, end_sec: 75 },
+      { text: "honestly the conference is in denver and the keynote is about coffee machines and", start_sec: 75, end_sec: 95 },
+      { text: "i love denver the coffee there is excellent and the hotels are cheap and", start_sec: 95, end_sec: 115 },
+      { text: "we keep going back every year for the food and the people and", start_sec: 115, end_sec: 135 },
+      { text: "the mountains are close enough to drive to on a free afternoon and", start_sec: 135, end_sec: 155 },
+      { text: "the airport is a long way out of town but the train is quick and", start_sec: 155, end_sec: 175 },
+      { text: "next year we might bring the whole team along with us and", start_sec: 175, end_sec: 195 }
+    ];
+    const endEpisode = episodeOf("pa-open-end", "Episode 803");
+    tapeOf["pa-open-end"] = openEnd;
+    const result = run([endEpisode], "refuse");
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("tape");
+    const segment = result.newSegments[0]!;
+    expect(segment.itemId).toBe(deriveItemId(endEpisode));
+    expect(segment.startBoundary).toBe("sentence");
+    expect(segment.endBoundary).toBe("claim-only");
+    expect(segment.boundary).toBe("claim-only");
+    expect(result.sourcingTrace).toHaveLength(0);
+  });
+
+  it("allow mode (and the option omitted) is deep-equal to today: the claim-only opening is placed", () => {
+    /* MUTATION THAT KILLS THIS: default `claimOnlyOpening` to `refuse` in
+       `sourcingInputsFor` — the omitted run places Episode 802 instead. */
+    const omitted = run([midEpisode, cleanEpisode]);
+    const allowed = run([midEpisode, cleanEpisode], "allow");
+    expect(allowed).toEqual(omitted);
+    expect(omitted.newSegments[0]!.itemId).toBe(deriveItemId(midEpisode));
+    expect(omitted.sourcingTrace).toHaveLength(0);
+  });
+});

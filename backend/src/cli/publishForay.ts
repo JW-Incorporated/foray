@@ -19,7 +19,8 @@ import {
 } from "../generation/finalizeForay";
 import { evaluateVeracityGate, type VeracityGateOptions, type VeracityGateResult, type VeracityMetrics } from "../generation/veracityMetrics";
 import { PIPELINE_FLAG_ENV } from "../generation/pipelineFlags";
-import { readBooleanFlag, type FlagSource } from "../generation/generationFlags";
+import { enumParser, readBooleanFlag, readFlag, type FlagSource } from "../generation/generationFlags";
+import { CLEAN_CUT_GATE_MODES } from "../generation/gateConfig";
 import { JOB_LANES, isJobLane, type JobLane } from "../generation/jobSink";
 import {
   formatSuiteFailure,
@@ -512,9 +513,18 @@ export function synthesisVerifiedLines(veracity: Pick<VeracityMetrics, "synthesi
  * default) the options are empty and the verdict is the one every publish
  * before GV-106 reached. A malformed value throws naming the variable
  * (`generationFlags.ts`). Reads the environment only, writes nothing.
+ *
+ * GV-109 (MQ-06): likewise the clean-cut floor, only under
+ * FORAY_CLEAN_CUT_GATE=enforce (read alone, not the whole gate table, so an
+ * unrelated gate flag cannot fail a publish). `report` (the default) adds
+ * nothing. Still a read-only check: nothing is written on either verdict.
  */
 export function publishGateOptions(env: FlagSource = process.env): VeracityGateOptions {
-  return readBooleanFlag(PIPELINE_FLAG_ENV.tierFitGate, false, env) ? { tierFit: true } : {};
+  const cleanCutGate = readFlag("FORAY_CLEAN_CUT_GATE", enumParser(CLEAN_CUT_GATE_MODES), "report", env);
+  return {
+    ...(readBooleanFlag(PIPELINE_FLAG_ENV.tierFitGate, false, env) ? { tierFit: true } : {}),
+    ...(cleanCutGate === "enforce" ? { cleanCutGate: "enforce" as const } : {})
+  };
 }
 
 /** Where the checkout was before the publish branch was cut — what

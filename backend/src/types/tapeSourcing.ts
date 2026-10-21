@@ -212,6 +212,14 @@ export const NewSegmentSchema = z
      * accepts (G-21c) and reads to decide which length regime a Foray is under.
      */
     boundary: TapeBoundarySchema.optional(),
+    /**
+     * MQ-06 (GV-109): each edge's own kind — `boundary` above is the weaker of
+     * the two. Optional for the same reasons, and run-only: `finalizeForay.ts`
+     * maps its fields explicitly and keeps writing only `boundary`, so the pool
+     * row, `check-forays.mjs` and committed data are untouched.
+     */
+    startBoundary: TapeBoundarySchema.optional(),
+    endBoundary: TapeBoundarySchema.optional(),
     extendedBySec: z.number().nonnegative().optional(),
     /**
      * F-98: this row REPLACES a committed pool row at the same id and start,
@@ -336,6 +344,11 @@ export interface TapeRelevanceInput {
    * reused cut), whose edges a curator chose.
    */
   boundary?: TapeBoundary;
+  /** MQ-06 (GV-109): each edge's own kind, copied from the minted segment;
+   * the clean-cut measurement (`veracityMetrics.ts`'s `computeCleanCuts`)
+   * reads them. Absent where `boundary` is, and on rows written before them. */
+  startBoundary?: TapeBoundary;
+  endBoundary?: TapeBoundary;
   extendedBySec?: number;
   /**
    * Tier 2's window was cut to a start the committed pool already holds a
@@ -553,7 +566,12 @@ export type Tier2Gate =
      (`clipCeilingSec` is 0), or the cut would still run past the ceiling.
      Same name and meaning as the `Tier1Gate` twin; only under
      FORAY_TIER_RUNTIME_CAP. The beat is narrated; undershoot is never padded. */
-  | "tier-budget";
+  | "tier-budget"
+  /* GV-109 (MQ-06): the cut's OPENING edge sits on no turn or sentence
+     boundary (`TapeSpan.startBoundary` is `claim-only`), so the listener would
+     join the clip mid-thought. Only under FORAY_CLAIM_ONLY_OPENING=refuse;
+     the walk falls through to the next candidate. */
+  | "claim-only-open";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */

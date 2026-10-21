@@ -5,7 +5,7 @@ import type { RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 import type { SpecificsMode } from "./specifics";
 import type { VoiceGateMode } from "./voiceChecks";
-import type { UnverifiedSeamPolicy } from "./gateConfig";
+import type { ClaimOnlyOpening, UnverifiedSeamPolicy } from "./gateConfig";
 
 /**
  * Per-stage resume for ONE Foray (generation run 2026-09-09, findings F-17 and
@@ -209,6 +209,9 @@ export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeep
     /** GV-108 (#1476 review): FORAY_UNVERIFIED_SEAM_POLICY
      * (`GateConfig.unverifiedSeamPolicy`). Absent reads as `keep`. */
     unverifiedSeamPolicy?: UnverifiedSeamPolicy | undefined;
+    /** GV-109: FORAY_CLAIM_ONLY_OPENING (`GateConfig.claimOnlyOpening`).
+     * Absent reads as `allow`. */
+    claimOnlyOpening?: ClaimOnlyOpening | undefined;
   };
 
 /**
@@ -323,6 +326,18 @@ export function seamPolicyVariant(flags: Pick<CheckpointRunFlags, "unverifiedSea
 }
 
 /**
+ * GV-109 (W5-13; MQ-06): the claim-only-opening refusal's part of the
+ * variant, only under FORAY_CLAIM_ONLY_OPENING=refuse. `refuse` turns down a
+ * cut that opens on no boundary and the walk takes the next candidate, so
+ * what `source` (classic) and `source:<i>` (per act) bank differs from an
+ * `allow` run's; a resume across the two would keep the other mode's tape.
+ * `allow` (the default) adds nothing and every fingerprint is unchanged.
+ */
+export function claimOnlyOpeningVariant(flags: Pick<CheckpointRunFlags, "claimOnlyOpening">): string | undefined {
+  return flags.claimOnlyOpening === "refuse" ? "claimOnlyOpening=refuse" : undefined;
+}
+
+/**
  * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
@@ -330,7 +345,7 @@ export function seamPolicyVariant(flags: Pick<CheckpointRunFlags, "unverifiedSea
  *     [checkpointVariant(flags), narration order, retrieval mode,
  *      spine best-of, tier-sized spine, writer exemplars, tier cap,
  *      voice gate, specifics check, unverified-seam policy,
- *      routingVariant(routing)].filter(Boolean).join("|")
+ *      claim-only opening, routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
  * follow-up to the wave 5/6 reviews): a resumed run can then never mix acts
@@ -342,7 +357,8 @@ export function seamPolicyVariant(flags: Pick<CheckpointRunFlags, "unverifiedSea
  * is not bm25 (GV-125, `retrievalModeVariant`), the tier-sized spine and the
  * writer exemplars only when on (GV-126), the tier runtime cap only when on
  * and the voice gate and the specifics check only when enforcing (GV-127),
- * the unverified-seam policy only when `cut` (GV-108).
+ * the unverified-seam policy only when `cut` (GV-108), the claim-only
+ * opening only when `refuse` (GV-109).
  * Undefined when every part is.
  */
 export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
@@ -355,6 +371,7 @@ export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: Routin
     voiceGateVariant(flags),
     specificsCheckVariant(flags),
     seamPolicyVariant(flags),
+    claimOnlyOpeningVariant(flags),
     routingVariant(routing)
   ].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
@@ -516,7 +533,11 @@ export const CheckpointForkStampSchema = z.object({
   /** GV-108 (#1476 review): FORAY_UNVERIFIED_SEAM_POLICY, written only when
    * `cut`; compared like `voice` (it changes what `narrate` banks). Absent:
    * `keep`. */
-  seamPolicy: z.literal("cut").optional()
+  seamPolicy: z.literal("cut").optional(),
+  /** GV-109: FORAY_CLAIM_ONLY_OPENING, written only when `refuse`. Compared
+   * like a route feeding `source` (it changes what sourcing banks), so a
+   * difference needs --rerun-from source or earlier. Absent: `allow`. */
+  claimOnlyOpening: z.literal("refuse").optional()
 });
 export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
 
@@ -547,7 +568,9 @@ export function checkpointForkStamp(input: {
     ...(input.flags.voiceGate === "enforce" ? { voice: "enforce" as const } : {}),
     ...(input.flags.specifics === "enforce" ? { specifics: "enforce" as const } : {}),
     /* GV-108: likewise only when cut. */
-    ...(input.flags.unverifiedSeamPolicy === "cut" ? { seamPolicy: "cut" as const } : {})
+    ...(input.flags.unverifiedSeamPolicy === "cut" ? { seamPolicy: "cut" as const } : {}),
+    /* GV-109: likewise only when refusing. */
+    ...(input.flags.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {})
   };
 }
 
@@ -597,7 +620,9 @@ export function forkSeedRefusal(
     ["FORAY_TIER_RUNTIME_CAP", stamp.tierCap ?? "off", run.stamp.tierCap ?? "off", "spine"],
     ["FORAY_VOICE_GATE", stamp.voice ?? "not enforce", run.stamp.voice ?? "not enforce", "narrate"],
     ["FORAY_SPECIFICS_CHECK", stamp.specifics ?? "not enforce", run.stamp.specifics ?? "not enforce", "narrate"],
-    ["FORAY_UNVERIFIED_SEAM_POLICY", stamp.seamPolicy ?? "keep", run.stamp.seamPolicy ?? "keep", "narrate"]
+    ["FORAY_UNVERIFIED_SEAM_POLICY", stamp.seamPolicy ?? "keep", run.stamp.seamPolicy ?? "keep", "narrate"],
+    /* GV-109: the refusal feeds sourcing. */
+    ["FORAY_CLAIM_ONLY_OPENING", stamp.claimOnlyOpening ?? "allow", run.stamp.claimOnlyOpening ?? "allow", "source"]
   ];
   for (const [lever, seedValue, runValue, feeds] of levers) {
     if (seedValue !== runValue && CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {

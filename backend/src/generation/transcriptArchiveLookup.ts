@@ -949,6 +949,11 @@ export interface TapeWindow {
    * straight out of `selectTapeWindow`, which knows nothing about thoughts.
    */
   boundary?: TapeBoundary;
+  /** Each edge's own kind (MQ-06, GV-109); `boundary` is the weaker of the
+   * two. Absent until extended, and absent on a window extended before these
+   * fields existed — a reader then knows only `boundary`. */
+  startBoundary?: TapeBoundary;
+  endBoundary?: TapeBoundary;
   /** How many seconds the extension added over the claim window it started
    * from, both directions together. Absent until extended. */
   extendedBySec?: number;
@@ -1234,6 +1239,11 @@ export interface TapeSpan {
    * top of the extension as well, so it is always "seconds past the claim
    * window". Absent for a cut of an unextended window. */
   boundary?: TapeBoundary;
+  /** Each edge's own kind (MQ-06, GV-109), carried from the window's
+   * `startBoundary` / `endBoundary` when it has them; an edge the floor growth
+   * moved is `"claim-only"`, the edge it left keeps its kind. */
+  startBoundary?: TapeBoundary;
+  endBoundary?: TapeBoundary;
   extendedBySec?: number;
 }
 
@@ -1314,6 +1324,11 @@ export function cutWindowToSegment(
        a clip that no longer sits on it says so rather than claim a boundary
        (Q-01). */
     span.boundary = first === window.firstCue && last === window.lastCue ? window.boundary : "claim-only";
+    /* Per edge (MQ-06, GV-109): only the edge the growth moved loses its
+       boundary. `span.boundary` above keeps today's both-edges rule, so the
+       minted row's `boundary` is unchanged. */
+    if (window.startBoundary !== undefined) span.startBoundary = first === window.firstCue ? window.startBoundary : "claim-only";
+    if (window.endBoundary !== undefined) span.endBoundary = last === window.lastCue ? window.endBoundary : "claim-only";
     /* Everything past the claim window: the extension's own seconds plus
        whatever the growth above added to reach the floor. */
     const claimSec =
