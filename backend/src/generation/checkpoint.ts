@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import { z } from "zod";
 import type { RoutingTable, StageId } from "../config/stageRouting";
-import type { RetrievalModeFlag } from "./generationFlags";
+import { researchShortlist, type RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 import type { SpecificsMode } from "./specifics";
 import type { VoiceGateMode } from "./voiceChecks";
@@ -196,6 +196,12 @@ export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeep
     /** The retrieval server's FORAY_RETRIEVAL_MODE (`RetrievalPreparer.mode`);
      * undefined with no server. */
     retrievalMode?: RetrievalModeFlag | undefined;
+    /** GV-112: whether research-shape takes windows from the topic node's
+     * shortlist (FORAY_RESEARCH_SHORTLIST with a retrieval server). Absent:
+     * read from the environment when `retrievalMode` says there is a server
+     * (`researchShortlistVariant`), so a caller that passes only the mode
+     * hashes what the pipeline hashes. */
+    researchShortlist?: boolean | undefined;
     /** GV-126 (#1413 item 24): FORAY_SPINE_TIER_SIZING
      * (ChatSpineBuilder.ts `readSpineTierSizing`). */
     spineTierSizing?: boolean | undefined;
@@ -228,15 +234,38 @@ export function retrievalModeVariant(mode: RetrievalModeFlag | undefined): strin
   return mode !== undefined && mode !== "bm25" ? `retrieval=${mode}` : undefined;
 }
 
+/**
+ * GV-112 (W3-25): the research shortlist's part of the variant, or undefined
+ * when it is off (today), so every classic fingerprint is unchanged.
+ * FORAY_RESEARCH_SHORTLIST=1 with a retrieval server changes what
+ * `research-shape` banks (up to two shortlist windows per subtopic), so a
+ * resume across a flip must not reuse a map built under the other setting.
+ *
+ * `researchShortlist` when given (the pipeline passes it); otherwise the flag
+ * as the environment holds it, but only with a retrieval server
+ * (`retrievalMode` set: `RemoteRetrieval.mode` is always one), since without
+ * one the flag is inert. That fallback is how the batch driver's store
+ * (generateForays.ts, which passes the mode but not this) hashes the same
+ * variant as the pipeline's session, from the same environment (decision 20).
+ */
+export function researchShortlistVariant(
+  flags: Pick<CheckpointRunFlags, "researchShortlist" | "retrievalMode">,
+  source: Readonly<Record<string, string | undefined>> = process.env
+): string | undefined {
+  const on = flags.researchShortlist ?? (flags.retrievalMode !== undefined && researchShortlist(source));
+  return on ? "research=shortlist" : undefined;
+}
+
 /** The flag parts the fork stamp compares exactly: the semantics-changing
- * flags, the narration order and (GV-125) a non-bm25 retrieval mode, which
- * feeds the stage `research-shape` so no seed built under another mode is
- * worth forking. */
+ * flags, the narration order, (GV-125) a non-bm25 retrieval mode and (GV-112)
+ * the research shortlist, both of which feed the stage `research-shape`, so
+ * no seed built under another setting is worth forking. */
 function flagParts(flags: CheckpointRunFlags): string[] {
   return [
     checkpointVariant(flags),
     flags.narrationOrder === "sequential" ? "narration=sequential" : undefined,
-    retrievalModeVariant(flags.retrievalMode)
+    retrievalModeVariant(flags.retrievalMode),
+    researchShortlistVariant(flags)
   ].filter((p): p is string => Boolean(p));
 }
 
@@ -359,7 +388,7 @@ export function pauseSnapVariant(flags: Pick<CheckpointRunFlags, "pauseSnap">): 
  * same merged flags and the same routing table:
  *
  *     [checkpointVariant(flags), narration order, retrieval mode,
- *      spine best-of, tier-sized spine, writer exemplars, tier cap,
+ *      research shortlist, spine best-of, tier-sized spine, writer exemplars, tier cap,
  *      voice gate, specifics check, unverified-seam policy,
  *      claim-only opening, pause snap,
  *      routingVariant(routing)].filter(Boolean).join("|")
@@ -371,8 +400,10 @@ export function pauseSnapVariant(flags: Pick<CheckpointRunFlags, "pauseSnap">): 
  * value, not "differs from the default", so flipping the default later does
  * not move any banked file's fingerprint. The spine best-of joins it only
  * above 1 (GV-124, `spineBestOfVariant`), the retrieval mode only when it
- * is not bm25 (GV-125, `retrievalModeVariant`), the tier-sized spine and the
- * writer exemplars only when on (GV-126), the tier runtime cap only when on
+ * is not bm25 (GV-125, `retrievalModeVariant`), the research shortlist only
+ * when on with a server (GV-112, `researchShortlistVariant`), the tier-sized
+ * spine and the writer exemplars only when on (GV-126), the tier runtime cap
+ * only when on
  * and the voice gate and the specifics check only when enforcing (GV-127),
  * the unverified-seam policy only when `cut` (GV-108), the claim-only
  * opening only when `refuse` (GV-109), the pause snap only when `on`
@@ -514,8 +545,9 @@ export const CheckpointForkStampSchema = z.object({
   /** checkpointRunVariant without the routing, the spine best-of, the
    * tier-sized spine and the writer exemplars (GV-126), the tier cap and the
    * enforcing gates (GV-127): the
-   * semantics-changing flags, the narration order and (GV-125) a non-bm25
-   * retrieval mode (null when none is on). */
+   * semantics-changing flags, the narration order, (GV-125) a non-bm25
+   * retrieval mode and (GV-112) the research shortlist (null when none is
+   * on). */
   flags: z.string().nullable(),
   /** Per routed stage, its route as `routingVariant` spells it. */
   routes: z.record(z.string()),

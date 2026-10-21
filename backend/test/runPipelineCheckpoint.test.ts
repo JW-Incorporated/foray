@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { runForayPipeline } from "../src/generation/runPipeline";
+import { runForayPipeline, type RetrievalPreparer } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -30,6 +30,10 @@ import { createEvidenceGatherer, type EvidenceGatherer } from "../src/generation
 import { HANDOFF_SCRIPT, type WrittenAct } from "../src/generation/writeNarration";
 import { droppedReasonOf, type NarratedBeat } from "../src/types/narration";
 import { SourcingSession } from "../src/generation/sourceBeats";
+import type { RetrievalStats } from "../src/generation/retrievalClient";
+import type { TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
+import type { ResearchShape, ResearchTapeWindow } from "../src/types/research";
+import { familyGateAllows, nodesForArchiveEntry } from "../src/generation/taxonomyFamily";
 
 /**
  * F-17/F-18, driven through the real pipeline.
@@ -986,6 +990,207 @@ describe("GV-111: FORAY_PAUSE_SNAP reaches sourcing and the fingerprint on both 
         expect(seen.length).toBeGreaterThan(0);
         expect(new Set(seen)).toEqual(new Set([want]));
       }
+    }
+  }, 240_000);
+});
+
+/**
+ * GV-112 (W3-25; orchestrator note): FORAY_RESEARCH_SHORTLIST=1 with a
+ * retrieval server changes what `research-shape` banks (up to two shortlist
+ * windows per subtopic), so it joins the checkpoint variant through
+ * `flagParts` at the pipeline's own fingerprint site; the driver's site
+ * (generateForays.ts) passes the retrieval mode and reads the flag from the
+ * same environment (`researchShortlistVariant`). The one research-shape stage
+ * serves the classic and the per-act paths, so both are driven here. Off,
+ * the shortlist is never asked and the fingerprint is today's.
+ *
+ * The retrieval server is a fake RetrievalPreparer: it answers no search (so
+ * the text index below reports every search as a miss, and the subject probe
+ * refuses nothing) and serves a shortlist of synthetic passages under a real
+ * catalogue show the pinned topic's lineage admits.
+ */
+describe("GV-112: FORAY_RESEARCH_SHORTLIST reaches research-shape and the fingerprint on both paths, and off is today's", () => {
+  const at = () => new Date("2026-09-09T00:00:00Z");
+  const ENV = "FORAY_RESEARCH_SHORTLIST";
+  /* Pinned, so the fake shortlist can serve rows the lineage admits: the
+     grilling prompt's own node has no transcript row in the committed digest.
+     `practical-ai` is a real catalogue show filed under this node. */
+  const TOPIC = "engineering/ai-robotics";
+  const fingerprintFor = (flags: Partial<PipelineFlags>, extra: { retrievalMode?: "bm25"; researchShortlist?: boolean } = {}): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      topic: TOPIC,
+      variant: joinCheckpointVariant(checkpointRunVariant({ ...resolvePipelineFlags(flags), ...extra }, resolveRouting()), readSelfCritique())
+    });
+
+  const emptyStats = (): RetrievalStats => ({
+    prepared: 0,
+    hits: 0,
+    misses: 0,
+    degraded: 0,
+    hydrated: 0,
+    hydrationMisses: 0,
+    hydrationAbsent: 0,
+    unmapped: 0,
+    unprepared: 0,
+    evictions: 0,
+    evictedPinned: 0,
+    heldBytes: 0,
+    pinned: 0,
+    scopeMismatches: 0,
+    reasons: []
+  });
+
+  function fakeRetrieval() {
+    const asked: Array<{ node: string; queryText: string; limit: number }> = [];
+    const retrieval: RetrievalPreparer = {
+      mode: "bm25",
+      prepareScope: async () => true,
+      prepare: async () => 0,
+      answerFor: () => undefined,
+      hydrate: async () => 0,
+      stats: emptyStats,
+      shortlist: async (node, queryText, limit) => {
+        asked.push({ node, queryText, limit });
+        const admitted = [1, 2, 3]
+          .map(
+            (n): TranscriptDigestEntry => ({
+              show_id: "practical-ai",
+              show_title: "Practical AI",
+              guid: `gv112-${n}`,
+              title: `Shortlisted ${n}`,
+              cues: 10,
+              feed_duration_sec: 3600
+            })
+          )
+          .filter((e) => familyGateAllows(node, nodesForArchiveEntry(e)));
+        return admitted.map((entry, n) => ({
+          entry,
+          passageId: `p-${n}`,
+          startSec: 200,
+          endSec: 320,
+          text: `This is shortlisted passage ${n}, spoken about the subject at hand.`,
+          rank: n,
+          score: 0.5,
+          rerankScore: null
+        }));
+      }
+    };
+    /* Enabled, but it answers nothing it was asked: every search is a miss. */
+    const textIndex: TranscriptTextIndex & { answers(): boolean } = { enabled: true, search: () => [], answers: () => false };
+    return { retrieval, textIndex, asked };
+  }
+
+  const shortlistWindows = (store: FakeCheckpointStore): ResearchTapeWindow[] => {
+    const shape = store.files.get(KEY)?.stages["research-shape"] as ResearchShape | undefined;
+    return (shape?.subtopics ?? []).flatMap((s) => s.tapeWindows).filter((w) => w.origin === "shortlist");
+  };
+
+  const withEnv = async (value: string | undefined, fn: () => Promise<void>): Promise<void> => {
+    const prior = process.env[ENV];
+    if (value === undefined) delete process.env[ENV];
+    else process.env[ENV] = value;
+    try {
+      await fn();
+    } finally {
+      if (prior === undefined) delete process.env[ENV];
+      else process.env[ENV] = prior;
+    }
+  };
+
+  /* MUTATIONS THAT KILL THIS: (1) drop `researchShortlistVariant(flags)`
+     from checkpoint.ts's flagParts (the on run's fingerprint is the off one,
+     so it resumes stages banked without the shortlist); (2) drop the
+     `shortlist` spread from runPipeline.ts's research-shape call (no window
+     is banked). Ran each: red. */
+  it("an on run banks shortlist windows in research-shape, resumes only a checkpoint banked under research=shortlist, and an off run does not resume it", async () => {
+    await withEnv("1", async () => {
+      for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+        const onFingerprint = fingerprintFor(flags, { retrievalMode: "bm25" });
+        /* The driver's flags (mode only, the flag read from the environment)
+           and the pipeline's (explicit) hash the same. */
+        expect(onFingerprint).toBe(fingerprintFor(flags, { retrievalMode: "bm25", researchShortlist: true }));
+        expect(onFingerprint).not.toBe(fingerprintFor(flags));
+        const store = new FakeCheckpointStore(onFingerprint);
+        const remote = fakeRetrieval();
+        await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, topic: TOPIC }, {
+          ...countingDeps().deps,
+          finalize: fakeFinalize().fn,
+          checkpoint: store,
+          retrieval: remote.retrieval,
+          textIndex: remote.textIndex
+        });
+        expect(remote.asked.length).toBeGreaterThan(0);
+        const banked = shortlistWindows(store);
+        expect(banked.length).toBeGreaterThan(0);
+        expect(banked.every((w) => w.text.startsWith("This is shortlisted passage"))).toBe(true);
+
+        const again = countingDeps();
+        const resumedRemote = fakeRetrieval();
+        await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, topic: TOPIC }, {
+          ...again.deps,
+          finalize: fakeFinalize().fn,
+          checkpoint: store,
+          retrieval: resumedRemote.retrieval,
+          textIndex: resumedRemote.textIndex
+        });
+        expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+        expect(resumedRemote.asked).toEqual([]);
+
+        /* Off (the same server, the flag unset): another fingerprint, so
+           nothing banked under on is resumed. */
+        await withEnv(undefined, async () => {
+          const off = countingDeps();
+          const offRemote = fakeRetrieval();
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, topic: TOPIC }, {
+            ...off.deps,
+            finalize: fakeFinalize().fn,
+            checkpoint: store,
+            retrieval: offRemote.retrieval,
+            textIndex: offRemote.textIndex
+          });
+          expect(off.calls.spine).toBe(1);
+          expect(offRemote.asked).toEqual([]);
+        });
+      }
+    });
+  }, 240_000);
+
+  /* The default keeps today's fingerprint: with a bm25 server and the flag
+     unset (or 0), a run resumes a store keyed with the fingerprint computed
+     with no retrieval part at all, the shortlist is never asked, and no
+     window carries an origin. MUTATION THAT KILLS THIS: join the shortlist
+     part whenever there is a server (`flags.retrievalMode !== undefined` alone
+     in researchShortlistVariant). Ran it: red. */
+  it("off, with a retrieval server, resumes a checkpoint keyed with today's fingerprint and never asks the shortlist, on both paths", async () => {
+    for (const value of [undefined, "0"]) {
+      await withEnv(value, async () => {
+        for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+          expect(fingerprintFor(flags, { retrievalMode: "bm25" })).toBe(fingerprintFor(flags));
+          const store = new FakeCheckpointStore(fingerprintFor(flags));
+          const remote = fakeRetrieval();
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, topic: TOPIC }, {
+            ...countingDeps().deps,
+            finalize: fakeFinalize().fn,
+            checkpoint: store,
+            retrieval: remote.retrieval,
+            textIndex: remote.textIndex
+          });
+          expect(remote.asked).toEqual([]);
+          expect(shortlistWindows(store)).toEqual([]);
+          expect(JSON.stringify(store.files.get(KEY)?.stages["research-shape"])).not.toContain("origin");
+          const again = countingDeps();
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, topic: TOPIC }, {
+            ...again.deps,
+            finalize: fakeFinalize().fn,
+            checkpoint: store,
+            retrieval: remote.retrieval,
+            textIndex: remote.textIndex
+          });
+          expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+        }
+      });
     }
   }, 240_000);
 });
