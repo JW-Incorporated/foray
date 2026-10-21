@@ -13,6 +13,7 @@ import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
 import type { ClipJudgeId, ClipScores } from "../types/tapeSourcing";
 import { computeVoiceMetrics, type VoiceMetrics, type VoiceScript } from "./voiceChecks";
+import { DURATION_RUNTIME_TARGET_SEC, TIER_RUNTIME_TOLERANCE, tierRuntimeBand, type DurationTier } from "../types/spine";
 
 /**
  * WS-B (docs/curation/generation-fix-plan-2026-09-09.md §WS-B): "the AI
@@ -1133,6 +1134,40 @@ export function computeShowVariety(items: readonly ShowVarietyItem[]): ShowVarie
   };
 }
 
+/** GV-106 (MQ-14; R2-15, QK-28, GP-25): how far the finished runtime is from
+ * its tier. */
+export interface TierFit {
+  tier: DurationTier;
+  /** The tier's committed runtime target (`DURATION_RUNTIME_TARGET_SEC`). */
+  targetSec: number;
+  /** The candidate's `runtimeSec` (`runtimeSecFor`). */
+  runtimeSec: number;
+  /** runtimeSec / targetSec, to three decimals. */
+  ratio: number;
+  /** Inside the tier's band, target ± `TIER_RUNTIME_TOLERANCE`
+   * (`tierRuntimeBand`, short [765, 1035]), both ends inclusive. */
+  withinTolerance: boolean;
+}
+
+/**
+ * GV-106 (MQ-14): the tier fit of one finished runtime. Pure. 14 Sep's short
+ * ran 37 min: 2,220 s over a 900 s target is a ratio of 2.467, outside.
+ * Reported on every generated outcome; only an overrun is ever gated, and only
+ * under FORAY_GATE_TIER_FIT (`evaluateVeracityGate`'s `tierFit` option): a
+ * thin topic may undershoot (§9.3's thin-topic ruling).
+ */
+export function computeTierFit(tier: DurationTier, runtimeSec: number): TierFit {
+  const targetSec = DURATION_RUNTIME_TARGET_SEC[tier];
+  const [min, max] = tierRuntimeBand(tier);
+  return {
+    tier,
+    targetSec,
+    runtimeSec,
+    ratio: Math.round((runtimeSec / targetSec) * 1000) / 1000,
+    withinTolerance: runtimeSec >= min && runtimeSec <= max
+  };
+}
+
 /* ------------------------------------------------------------------ */
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
@@ -1271,6 +1306,11 @@ export interface VeracityMetrics {
    * `narrationScripts` (FORAY_VOICE_GATE=off, or a candidate built before
    * GV-104). Reported, never gated. */
   voice?: VoiceMetrics;
+  /** GV-106 (MQ-14): the runtime against its tier (`computeTierFit`). On
+   * every outcome `runPipeline` generates; absent on a candidate built before
+   * GV-106 or by a caller that passed no `tierFit`. Gated only under
+   * FORAY_GATE_TIER_FIT, which treats it absent or null as failing. */
+  tierFit?: TierFit | null;
 }
 
 export interface BuildVeracityMetricsInput {
@@ -1326,6 +1366,9 @@ export interface BuildVeracityMetricsInput {
   /** GV-104: the reading-grade band (`GateConfig.readingGradeBand`).
    * Omitted, spokenLine.js's READING_GRADE_BAND (6-9). */
   readingGradeBand?: readonly [number, number];
+  /** GV-106: the run's tier and its finished `runtimeSec`. Omitted,
+   * `tierFit` is absent; a non-finite runtime reports `tierFit: null`. */
+  tierFit?: { tier: DurationTier; runtimeSec: number };
 }
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
@@ -1397,7 +1440,10 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
         }
       : {}),
     ...(input.showItems ? { showVariety: computeShowVariety(input.showItems) } : {}),
-    ...(input.narrationScripts ? { voice: computeVoiceMetrics(input.narrationScripts, input.readingGradeBand) } : {})
+    ...(input.narrationScripts ? { voice: computeVoiceMetrics(input.narrationScripts, input.readingGradeBand) } : {}),
+    ...(input.tierFit
+      ? { tierFit: Number.isFinite(input.tierFit.runtimeSec) ? computeTierFit(input.tierFit.tier, input.tierFit.runtimeSec) : null }
+      : {})
   };
 }
 
@@ -1408,6 +1454,14 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
 export const GATE_MIN_GROUNDED_QUOTE_RATE = 1;
 export const GATE_MIN_PURPOSE_FIDELITY = 0.8;
 export const GATE_MIN_TAPE_RELEVANCE = 0.9;
+
+/** GV-106: the gate's options. Every key defaults off, and off leaves the
+ * verdict exactly what it was before the key existed. */
+export interface VeracityGateOptions {
+  /** FORAY_GATE_TIER_FIT (`PipelineFlags.tierFitGate`): refuse a runtime
+   * above the tier's +15 % ceiling, and an absent or null `tierFit`. */
+  tierFit?: boolean;
+}
 
 export interface VeracityGateResult {
   ok: boolean;
@@ -1446,7 +1500,7 @@ export interface VeracityGateResult {
  * against the catalogue (`tapeRelevance === null` but anchors exist) DOES
  * block — that is a real "cannot confirm" gap, not an absence of tape.
  */
-export function evaluateVeracityGate(veracity: VeracityMetrics | null | undefined): VeracityGateResult {
+export function evaluateVeracityGate(veracity: VeracityMetrics | null | undefined, options: VeracityGateOptions = {}): VeracityGateResult {
   const failures: string[] = [];
 
   if (!veracity) {
@@ -1496,6 +1550,21 @@ export function evaluateVeracityGate(veracity: VeracityMetrics | null | undefine
     failures.push(`tapeRelevance ${veracity.tapeRelevance.toFixed(3)} < ${GATE_MIN_TAPE_RELEVANCE}`);
     for (const a of veracity.tapeRelevanceAnchors.filter((a) => a.onTopic === false)) {
       failures.push(`  off-topic: ${a.itemId} (families: ${a.families.join(", ") || "none"}) — ${a.claim.slice(0, 80)}`);
+    }
+  }
+
+  /* GV-106 (MQ-14), ONLY UNDER FORAY_GATE_TIER_FIT: a runtime above the tier's
+     +15 % ceiling is refused (an undershoot never is), and so is a candidate
+     whose tier fit was never measured — unmeasured is not passing. Off, the
+     verdict is byte-identical to the one before GV-106. */
+  if (options.tierFit === true) {
+    const fit = veracity.tierFit;
+    if (fit === undefined || fit === null) {
+      failures.push(`tierFit is null — the runtime was never measured against its tier, so the tier runtime cannot be confirmed (FORAY_GATE_TIER_FIT)`);
+    } else if (fit.runtimeSec > tierRuntimeBand(fit.tier)[1]) {
+      failures.push(
+        `tier runtime above +${Math.round(TIER_RUNTIME_TOLERANCE * 100)}%: ${Math.round(fit.runtimeSec)} s is ${fit.ratio.toFixed(3)}x the ${fit.tier} tier's ${fit.targetSec} s target, over its ${tierRuntimeBand(fit.tier)[1]} s ceiling`
+      );
     }
   }
 

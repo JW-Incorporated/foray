@@ -17,6 +17,7 @@ import {
   computeSpecificsUnsupported,
   computeClipOnSubject,
   computeShowVariety,
+  computeTierFit,
   CLIP_ON_SUBJECT_LEVEL,
   buildVeracityMetrics,
   evaluateVeracityGate,
@@ -1177,5 +1178,61 @@ describe("GV-104 — buildVeracityMetrics carries the voice block from the final
     const q = (hasTape: boolean) => buildVeracityMetrics({ ...base, narrationScripts: [{ script: "So who signed the drawing?", hasTape }] }).voice!.hardErrors;
     expect(q(true)).toBe(0);
     expect(q(false)).toBe(1);
+  });
+});
+
+describe("GV-106 — MQ-14 tier fit: reported on every candidate, gated only under FORAY_GATE_TIER_FIT", () => {
+  const base = { sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, pipelineTokens: 0, stageTimings: [] };
+
+  /* MUTATION THAT KILLS THIS: drop the lower bound from `withinTolerance`
+     (`runtimeSec <= max`), or leave `ratio` unrounded. Ran both: red. */
+  it("computeTierFit: target, ratio and the ±15 % band, both ends inclusive (14 Sep's 37-minute short is 2.467x)", () => {
+    expect(computeTierFit("short", 37 * 60)).toEqual({ tier: "short", targetSec: 900, runtimeSec: 2220, ratio: 2.467, withinTolerance: false });
+    expect(computeTierFit("short", 1035).withinTolerance).toBe(true);
+    expect(computeTierFit("short", 1036).withinTolerance).toBe(false);
+    expect(computeTierFit("short", 765).withinTolerance).toBe(true);
+    expect(computeTierFit("short", 764).withinTolerance).toBe(false);
+    expect(computeTierFit("medium", 3600)).toEqual({ tier: "medium", targetSec: 3600, runtimeSec: 3600, ratio: 1, withinTolerance: true });
+    expect(computeTierFit("long", 9000).ratio).toBe(0.833);
+  });
+
+  /* MUTATION THAT KILLS THIS: always add `tierFit` (computed with runtime
+     0 when the caller passed none). Ran it: red. */
+  it("buildVeracityMetrics carries tierFit only when given the tier and runtime; a non-finite runtime reports null", () => {
+    const plain = buildVeracityMetrics(base);
+    expect("tierFit" in plain).toBe(false);
+    const fitted = buildVeracityMetrics({ ...base, tierFit: { tier: "short", runtimeSec: 990 } });
+    expect(fitted.tierFit).toEqual(computeTierFit("short", 990));
+    expect(buildVeracityMetrics({ ...base, tierFit: { tier: "short", runtimeSec: Number.NaN } }).tierFit).toBeNull();
+    /* The default gate cannot see it. */
+    expect(evaluateVeracityGate(fitted)).toEqual(evaluateVeracityGate(plain));
+  });
+
+  /* MUTATIONS THAT KILL THIS: drop the `options.tierFit === true` guard (the
+     default gate refuses the 37-minute short); compare against the band's
+     target instead of its ceiling (a 1,000 s short is refused); treat a null
+     tierFit as passing. Ran each: red. */
+  it("evaluateVeracityGate is unchanged unless {tierFit: true}, which refuses a 37-minute short and a null or absent tierFit, never an undershoot", () => {
+    const passing = (): VeracityMetrics => ({
+      ...buildVeracityMetrics(base),
+      groundedQuoteRate: 1,
+      purposeFidelity: 1
+    });
+    expect(evaluateVeracityGate(passing()).ok).toBe(true);
+    const long = { ...passing(), tierFit: computeTierFit("short", 37 * 60) };
+    expect(evaluateVeracityGate(long)).toEqual(evaluateVeracityGate(passing()));
+    expect(evaluateVeracityGate(long, {})).toEqual(evaluateVeracityGate(passing()));
+    const refused = evaluateVeracityGate(long, { tierFit: true });
+    expect(refused.ok).toBe(false);
+    expect(refused.failures).toHaveLength(1);
+    expect(refused.failures[0]).toMatch(/^tier runtime above \+15%: 2220 s is 2\.467x the short tier's 900 s target, over its 1035 s ceiling$/);
+    expect(evaluateVeracityGate({ ...passing(), tierFit: computeTierFit("short", 1000) }, { tierFit: true }).ok).toBe(true);
+    expect(evaluateVeracityGate({ ...passing(), tierFit: computeTierFit("short", 1035) }, { tierFit: true }).ok).toBe(true);
+    expect(evaluateVeracityGate({ ...passing(), tierFit: computeTierFit("short", 300) }, { tierFit: true }).ok).toBe(true);
+    for (const unmeasured of [{ ...passing(), tierFit: null }, passing()]) {
+      const gate = evaluateVeracityGate(unmeasured, { tierFit: true });
+      expect(gate.ok).toBe(false);
+      expect(gate.failures[0]).toMatch(/^tierFit is null/);
+    }
   });
 });

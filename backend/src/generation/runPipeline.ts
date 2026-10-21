@@ -36,7 +36,7 @@ import { understandPrompt, understandPromptFast } from "./understandPrompt";
 import { provisionalTitle } from "./preSpineIntent";
 import { buildResearchShape, type ResearchSearchRequest } from "./researchShape";
 import { buildSpineWithReasks, reaskForRuntime, type SpineReask } from "./buildSpine";
-import { spineRuntimeLine, spineRuntimeOf, type SpineRuntime } from "./tierRuntime";
+import { spineRuntimeLine, spineRuntimeOf, tierClipBudgetSec, type RuntimeAct, type SpineRuntime } from "./tierRuntime";
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
 import { deepenActs, foldsDeepen } from "./deepenActs";
 import {
@@ -994,7 +994,9 @@ const TIER2_GATE_SCHEMA = z
     "d5-pair",
     "m4-runtime",
     "pool-cut",
-    "past-duration"
+    "past-duration",
+    /* GV-106: FORAY_TIER_RUNTIME_CAP's refusal, so a capped run resumes. */
+    "tier-budget"
   ]);
 const SourcingTraceSchema = z.object({
   actIndex: z.number().int(),
@@ -1020,7 +1022,9 @@ const SourcingTraceSchema = z.object({
           "d2-short-run",
           "d3-mean",
           "d5-pair",
-          "m4-runtime"
+          "m4-runtime",
+          /* GV-106: a pool segment longer than the clip ceiling. */
+          "tier-budget"
         ]),
       /* G-24 R2: tier 1's weighted floor, when a transcript window was scored. */
       windowWeightedShare: z.number().optional(),
@@ -1178,6 +1182,9 @@ const SourcingSnapshotSchema = z.object({
   longestSecByItem: LedgerEntriesSchema,
   placed: z.array(z.object({ itemId: z.string(), startSec: z.number() })),
   lastMintedClip: z.null(),
+  /* GV-106: present only on a snapshot banked under FORAY_TIER_RUNTIME_CAP. */
+  runtimeBudgetSec: z.number().optional(),
+  remainingSeededBeats: z.number().int().nonnegative().optional(),
   tapeRelevance: z.array(TapeRelevanceInputSchema),
   sourcingTrace: z.array(SourcingTraceSchema),
   acts: z.array(SourcedActSchema)
@@ -2138,6 +2145,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     supersedableCut: makeSupersedableCut(options.root)
   });
 
+  /* GV-106 (W4-15): the tier's tape budget under FORAY_TIER_RUNTIME_CAP —
+     the tier's ceiling minus the narration the acts are expected to cost
+     (`tierClipBudgetSec`) — or undefined, and sourcing is today's. */
+  const runtimeBudgetFor = (acts: ReadonlyArray<RuntimeAct>): number | undefined =>
+    flags.tierRuntimeCap ? tierClipBudgetSec(req.duration, acts) : undefined;
+
   /* GV-95: the archive entry of every clip `acts` play, fetched before
      anything reads clip text (the clip scores and the evidence stage). */
   const clipEpisodesOf = (acts: readonly SourcedAct[]): TranscriptDigestEntry[] => {
@@ -2389,6 +2402,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
        "the whole Foray" to attach it to. Prepending also keeps it out of the
        runtime sum below by construction — it is a spoken marker, not tape. */
     const items = [preludeItem(spine.subject, spine.overview, slots[0]!.id), ...stitchedItems];
+    /* GV-106 (MQ-14): the finished runtime, computed once BEFORE the metrics
+       so the tier fit can be reported beside them; the same number the
+       candidate carries as `runtimeSec`. */
+    const runtimeSec = runtimeSecFor(items, runtimePool);
 
     /* WS-B: computed here, with the resolved `topic` (`tapeRelevance` needs
        it) and before `finalize` runs, so `meta.veracity` rides along on
@@ -2448,11 +2465,15 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
          with whether tape sits beside it. From the items, so a resumed run
          reports the same numbers. FORAY_VOICE_GATE=off leaves it out. */
       ...(gates.voice === "off" ? {} : { narrationScripts: voiceScriptsOf(items), readingGradeBand: gates.readingGradeBand }),
+      /* GV-106 (MQ-14): how far the runtime is from the tier, on every
+         generated outcome. Reported; gated only under FORAY_GATE_TIER_FIT. */
+      tierFit: { tier: req.duration, runtimeSec },
       root: options.root
     });
     /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is
-       refused on it — the candidate stays local either way. */
-    const veracityGate = evaluateVeracityGate(veracity);
+       refused on it — the candidate stays local either way. GV-106: with
+       FORAY_GATE_TIER_FIT the tier fit joins it, exactly as in publishForay. */
+    const veracityGate = evaluateVeracityGate(veracity, flags.tierFitGate ? { tierFit: true } : undefined);
 
     const input: FinalizeForayInput = {
       id: forayId,
@@ -2461,7 +2482,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       summary,
       slots,
       items,
-      runtimeSec: runtimeSecFor(items, runtimePool),
+      runtimeSec,
       builtAt: generatedAt,
       meta: { veracity },
       /* What §4.5 tier 2 cut this run, travelling WITH the candidate: nothing
@@ -2660,6 +2681,14 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
           }
           const banked = await timed(`source:${i}`, async (): Promise<SourceActCheckpoint> => {
             session ??= new SourcingSession(sourceOptionsOf());
+            /* GV-106: the tier's budget, re-planned at every act on the acts
+               deepened so far and the spine's acts after them (a later act is
+               not deepened yet), with the seeded beats of act i onward still
+               ahead. Cap off: undefined, which also lifts a budget a resumed
+               snapshot carried. */
+            const planned: RuntimeAct[] = spine.acts.map((spineAct, k) => (k <= i ? deepenedSoFar[k] ?? spineAct : spineAct));
+            const budgetSec = runtimeBudgetFor(planned);
+            session.planRuntime(budgetSec === undefined ? undefined : { budgetSec, actsAhead: planned.slice(i) });
             const one = session.sourceAct(act, i);
             return { act: one, snapshot: session.exportState() };
           });
@@ -2828,7 +2857,11 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const sourced = await stage(
     "source",
     (raw) => SourceCheckpointSchema.parse(raw),
-    async () => sourceBeats(deepened, sourceOptionsOf())
+    async () => {
+      /* GV-106: the cap's budget, from every deepened act; absent with the cap off. */
+      const runtimeBudgetSec = runtimeBudgetFor(deepened);
+      return sourceBeats(deepened, runtimeBudgetSec === undefined ? sourceOptionsOf() : { ...sourceOptionsOf(), runtimeBudgetSec });
+    }
   );
 
   /* ONE LINE PER SLOT, SAYING WHAT §4.5 DID (F-49). Run 2 finished with zero

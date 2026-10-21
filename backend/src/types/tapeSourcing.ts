@@ -459,7 +459,12 @@ export type ClipScoreOutcome = z.infer<typeof ClipScoreOutcomeSchema>;
  *   - `m4-runtime`     — its episode already supplies a long clip, or its
  *                        quarter of the Foray's tape SECONDS beyond its longest
  *                        clip (Q-04's restatement of the clause #569 left to
- *                        the checker). */
+ *                        the checker).
+ *   - `tier-budget`    — GV-106 (W4-15, FORAY_TIER_RUNTIME_CAP only): the
+ *                        segment is longer than the clip ceiling the tier's
+ *                        runtime budget has left (`clipCeilingSec`). A pool
+ *                        segment's length is fixed, so it is refused, never
+ *                        cut. Never emitted with the cap off. */
 export type Tier1Gate =
   | "no-candidates"
   | "threshold"
@@ -470,7 +475,8 @@ export type Tier1Gate =
   | "d2-short-run"
   | "d3-mean"
   | "d5-pair"
-  | "m4-runtime";
+  | "m4-runtime"
+  | "tier-budget";
 
 /** Which tier-2 gate turned down the best-scoring archive episode.
  *
@@ -542,7 +548,12 @@ export type Tier2Gate =
      plausible-looking segment nobody has reason to re-examine. Run 7 attempt 3
      minted `…bp-texas-city#2292` ending at 2375.72 s on a 2071 s episode and
      `check-forays.mjs` refused act 1's partial after every act was narrated. */
-  | "past-duration";
+  | "past-duration"
+  /* GV-106 (W4-15): the tier's runtime budget has no room left for a clip
+     (`clipCeilingSec` is 0), or the cut would still run past the ceiling.
+     Same name and meaning as the `Tier1Gate` twin; only under
+     FORAY_TIER_RUNTIME_CAP. The beat is narrated; undershoot is never padded. */
+  | "tier-budget";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */

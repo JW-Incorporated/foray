@@ -17,7 +17,9 @@ import {
   type PoolRowLike,
   type RuntimeRestatement
 } from "../generation/finalizeForay";
-import { evaluateVeracityGate, type VeracityGateResult, type VeracityMetrics } from "../generation/veracityMetrics";
+import { evaluateVeracityGate, type VeracityGateOptions, type VeracityGateResult, type VeracityMetrics } from "../generation/veracityMetrics";
+import { PIPELINE_FLAG_ENV } from "../generation/pipelineFlags";
+import { readBooleanFlag, type FlagSource } from "../generation/generationFlags";
 import { JOB_LANES, isJobLane, type JobLane } from "../generation/jobSink";
 import {
   formatSuiteFailure,
@@ -502,6 +504,17 @@ export function synthesisVerifiedLines(veracity: Pick<VeracityMetrics, "synthesi
     `${veracity.synthesisVerifiedPages} page(s) verified by synthesis of the Foray's own verified pages (F-88):`,
     ...veracity.synthesisVerifiedPageDetails.map((p) => `[${p.mode}] ${p.claim.slice(0, 80)} — verified by synthesis of pages ${p.restsOn.join(", ")}`)
   ];
+}
+
+/**
+ * GV-106 (MQ-14): the veracity gate's options for this publish. The tier-fit
+ * gate joins the verdict only when FORAY_GATE_TIER_FIT is set; unset (the
+ * default) the options are empty and the verdict is the one every publish
+ * before GV-106 reached. A malformed value throws naming the variable
+ * (`generationFlags.ts`). Reads the environment only, writes nothing.
+ */
+export function publishGateOptions(env: FlagSource = process.env): VeracityGateOptions {
+  return readBooleanFlag(PIPELINE_FLAG_ENV.tierFitGate, false, env) ? { tierFit: true } : {};
 }
 
 /** Where the checkout was before the publish branch was cut — what
@@ -1061,7 +1074,7 @@ async function main(): Promise<void> {
   console.log(`Foray "${input.id}" passed validation.`);
 
   // WS-B veracity gate — see this file's own doc comment.
-  const gate = evaluateVeracityGate(input.meta?.veracity);
+  const gate = evaluateVeracityGate(input.meta?.veracity, publishGateOptions());
   for (const line of synthesisVerifiedLines(input.meta?.veracity)) console.log(`  ${line}`);
   if (!gate.ok) {
     console.error(`Foray "${input.id}" FAILED the veracity gate:`);

@@ -768,7 +768,7 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
   /* GV-08 added the first detail columns and GV-17 the runlog's speed
      columns; every earlier column stays core. GV-55 adds the stack, GV-91
      the best-of-2 cell, GV-83 the two show-variety columns, GV-104 the two
-     voice columns. */
+     voice columns, GV-106 the tier fit. */
   assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), [
     "listen",
     "last_listen",
@@ -780,7 +780,8 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
     "shows",
     "top_show_pct",
     "sent_mean",
-    "grade"
+    "grade",
+    "tier_fit"
   ]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
@@ -2014,4 +2015,44 @@ test("GV-104: a voice block that scored no words has an absent sentence mean and
   assert.equal(row.values.sent_mean, null);
   assert.equal(row.values.grade, null);
   assert.equal(formatCell(column("sent_mean"), row), ABSENT);
+});
+
+/* GV-106 (MQ-14; R2-15, QK-28, GP-25): the tier fit, off the row's `tierFit`
+   (generateForays lifts it from `veracity.tierFit`). One detail column, so the
+   committed KPI table is unchanged; absent on every report written before the
+   field existed. */
+const tierFitOf = (ratio) => ({ tier: "short", targetSec: 900, runtimeSec: Math.round(900 * ratio), ratio, withinTolerance: ratio >= 0.85 && ratio <= 1.15 });
+
+test("GV-106: out-4 and out-9 carry no tierFit, so tier fit is — and never 0", () => {
+  /* MUTATION: `tier_fit: num(entry.tierFit?.ratio) ?? num(v.tierFit?.ratio) ?? 0`. Ran it: red. */
+  for (const row of [run4(), run9()]) {
+    assert.equal(row.values.tier_fit, null, `${row.values.run}/tier_fit`);
+    assert.equal(row.sources.tier_fit, "absent");
+    assert.equal(formatCell(column("tier_fit"), row), ABSENT);
+  }
+  /* A row whose tier fit could not be measured (`tierFit: null`) is absent too. */
+  const unmeasured = rowFor({ outcome: "generated", detail: "OK x", tierFit: null, veracity: { tierFit: null } }, { runId: "run-n" });
+  assert.equal(unmeasured.values.tier_fit, null);
+  assert.equal(formatCell(column("tier_fit"), unmeasured), ABSENT);
+});
+
+test("GV-106: the bench prints tier fit under --wide, from the row's tierFit or its veracity block, never in the committed table", () => {
+  /* MUTATION: read only `v.tierFit?.ratio` (drop the row's own copy), or read
+     `tierFit.runtimeSec` instead of the ratio. Ran both: red. */
+  const row = rowFor({ outcome: "generated", detail: "OK x", tierFit: tierFitOf(2.467), veracity: {} }, { runId: "run-t" });
+  assert.equal(row.values.tier_fit, 2.467);
+  assert.equal(row.sources.tier_fit, "report");
+  assert.equal(formatCell(column("tier_fit"), row), "2.47");
+  assert.equal(column("tier_fit").group, DETAIL);
+  assert.equal(column("tier_fit").target, undefined, "rule 2: no target the bench compares against");
+  /* A report whose row predates the lift still carries it in veracity. */
+  const fromVeracity = rowFor({ outcome: "generated", detail: "OK x", veracity: { tierFit: tierFitOf(1.05) } }, { runId: "run-u" });
+  assert.equal(fromVeracity.values.tier_fit, 1.05);
+  assert.equal(markdownHeader()[0].includes("tier fit"), false, "the committed header is unchanged");
+  const wide = formatTable([row], { wide: true });
+  assert.match(wide, /tier fit/);
+  assert.equal(formatTable([row]).includes("tier fit"), false, "the default table is core only");
+  const line = JSON.parse(jsonlLine(row));
+  assert.equal(line.metrics.tier_fit, 2.467);
+  assert.equal(formatTable([rowFromJsonl(line)], { wide: true }), wide);
 });

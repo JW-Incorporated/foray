@@ -519,6 +519,11 @@ describe("Q-05 — the listening KPIs are computed from the candidate", () => {
     expect(veracity.narrationCallsPerAct).toBe(2);
     expect(veracity.introRestates).toBe(0);
     expect(veracity.firstAttemptPassRate).toBe(1);
+    /* GV-106 (MQ-14): the tier fit is computed from the finished runtime, which
+       only runPipeline holds; a caller that passes no tier and runtime gets no
+       tierFit rather than a guessed one. MUTATION THAT KILLS THIS LINE: add
+       `tierFit: null` unconditionally in buildVeracityMetrics. Ran it: red. */
+    expect("tierFit" in veracity).toBe(false);
     const shares = computeListeningShares([sourced], [act!]);
     expect(shares.tapeSec).toBe(240);
     expect(shares.narrationSec).toBeGreaterThan(0);

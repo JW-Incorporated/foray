@@ -658,6 +658,24 @@ export const COLUMNS = [
     kind: "number",
     digits: 1,
     targetNote: "MQ-15: Flesch-Kincaid grade of the narration, word-weighted over its items (`voice.readingGrade`); band 6-9 (OQ-02); — without the voice block or with no narration"
+  },
+  /* GV-106 (MQ-14; R2-15, QK-28, GP-25): the tier fit, the finished runtime
+     over its tier's target, off the row's `tierFit` (or `veracity.tierFit`).
+     A detail column, so the committed KPI table does not change shape; absent
+     on reports written before GV-106 (runs 4-9), never 0 (rule 1). No target
+     here: the ±15 % band is the pipeline's, gated only under
+     FORAY_GATE_TIER_FIT, and nothing in the bench compares a value to it
+     (rule 2). */
+  {
+    key: "tier_fit",
+    group: "detail",
+    header: "tier fit",
+    from: "report",
+    width: 8,
+    kind: "number",
+    digits: 2,
+    targetNote:
+      "MQ-14: the finished runtime over the tier's target (`tierFit.ratio`: runtimeSec / targetSec; short 900 s, medium 3,600 s); the tier's band is ±15 %; — on reports written before GV-106"
   }
 ];
 
@@ -1090,7 +1108,10 @@ export function rowFor(entry, context = {}) {
     /* GV-104: absent without the block, and absent when it scored no words
        (its sentence mean then reads 0, which is not a measurement). */
     sent_mean: num(v.voice?.words) ? num(v.voice.meanSentenceWords) : null,
-    grade: num(v.voice?.readingGrade)
+    grade: num(v.voice?.readingGrade),
+    /* GV-106: the row's own copy first, the veracity block's otherwise;
+       absent (and null) stays absent. */
+    tier_fit: num(entry.tierFit?.ratio) ?? num(v.tierFit?.ratio)
   };
   const sources = {};
   for (const col of COLUMNS) {
