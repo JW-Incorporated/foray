@@ -58,11 +58,23 @@ export interface GateConfig {
    * much it is about the listener's subject and how directly it makes its
    * beat's claim (`clipJudge.ts`, `scoreClips.ts`), and the result reported
    * as `meta.veracity.clipOnSubjectRate`. `shadow` records and reports;
-   * `enforce` does the same today and is reserved for the publish gate's
-   * card (GV-118, W5-06), which reads it. `off` runs nothing and the report
-   * carries none of the fields.
+   * `enforce` does the same, and is reserved for the publish gate's card
+   * (GV-118, W5-06), which reads it. GV-107: `enforce` also pre-judges every
+   * beat's candidate windows before sourcing (the checkpointed `clip-judge`
+   * stage, `prejudgeClips.ts`); the book it banks is what GV-119's judged
+   * walk will read, and until then it changes no sourcing. `off` runs nothing
+   * and the report carries none of the fields.
    */
   clipJudge: ClipJudgeMode;
+
+  /**
+   * GV-107 (W5-04; R1-20, R2-03): FORAY_CLIP_JUDGE_TOP_K, default 2. Under
+   * FORAY_CLIP_JUDGE=enforce each beat's candidate windows are put to the
+   * judge as one choice (`prejudgeClips.ts`), and the K windows it ranks
+   * highest are then asked the two clip Scores. Read only in `enforce` mode;
+   * `off` and `shadow` build no candidate sets.
+   */
+  clipJudgeTopK: number;
 
   /*
    * GV-47 (OQ-05, W2-12 + W5-19): PER-JUDGE thresholds. Jev and the Qwen
@@ -152,6 +164,7 @@ export function defineGateTable(entries: readonly GateTableEntry[]): readonly Ga
 const probabilityParser = numberParser(z.number().min(0).max(1), "a number from 0 to 1");
 const clipLevelParser = numberParser(z.number().int().min(0).max(4), "an integer from 0 to 4");
 const actIndexParser = numberParser(z.number().int().min(0).max(99), "an integer from 0 to 99");
+const topKParser = numberParser(z.number().int().min(0).max(20), "an integer from 0 to 20");
 
 /** GV-104: a grade band, `<lo>-<hi>` (or `<lo>,<hi>`), each 0..20, lo <= hi. */
 export const gradeBandParser: FlagParser<[number, number]> = {
@@ -169,6 +182,7 @@ export const gradeBandParser: FlagParser<[number, number]> = {
 export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
   { key: "specifics", env: "FORAY_SPECIFICS_CHECK", parse: enumParser(SPECIFICS_MODES), default: "report" } satisfies GateTableEntry<SpecificsMode>,
   { key: "clipJudge", env: "FORAY_CLIP_JUDGE", parse: enumParser(CLIP_JUDGE_MODES), default: "off" } satisfies GateTableEntry<ClipJudgeMode>,
+  { key: "clipJudgeTopK", env: "FORAY_CLIP_JUDGE_TOP_K", parse: topKParser, default: 2 } satisfies GateTableEntry<number>,
   { key: "supportMinP.jev", env: "FORAY_SUPPORT_MIN_P_JEV", parse: probabilityParser, default: 0.5 } satisfies GateTableEntry<number>,
   { key: "supportMinP.qwen", env: "FORAY_SUPPORT_MIN_P_QWEN", parse: probabilityParser, default: 0.7 } satisfies GateTableEntry<number>,
   { key: "clipLevel.jev", env: "FORAY_CLIP_LEVEL_JEV", parse: clipLevelParser, default: 3 } satisfies GateTableEntry<number>,

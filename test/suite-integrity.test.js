@@ -2827,8 +2827,15 @@ const BACKEND_FLOORS = {
      same file, two cases being written in the multi-line `it(
  "name",`
      form. The two numbers have always differed by two; only this one is the
-     floor.) */
-  "test/sourceBeats.test.ts": 128,
+     floor.)
+     GV-107 (docs/roadmap/generation-v2.md, W5-04, #1286; R1-20, R2-03):
+     beatJudgeCandidates -- every key's window is selectTapeWindow recomputed
+     on three fixtures, at most 20 options / 40,000 characters (lowest share
+     dropped first), argument beats skipped and actIndices honoured, no
+     ledger, GV-106's clip ceiling respected, pool rows filtered by tier 1's
+     topic gate. Six new cases, and the one main already carried over the
+     floor: 128 -> 135, zero slack. */
+  "test/sourceBeats.test.ts": 135,
   /* GV-18 (docs/roadmap/generation-v2.md, from W4-06): SourcingSession —
      sourceBeats cut at the act boundary. Act by act equals sourceBeats and the
      pre-extraction output's digest, act 0 stays deep-frozen while acts 1+ are
@@ -3519,6 +3526,18 @@ const BACKEND_FLOORS = {
      1.0, the placed span only, a merged beat scored once on its carrier, no
      transcript is unscored, the truncation mark, all-unscored is null. */
   "test/scoreClips.test.ts": 6,
+  /* GV-107 (docs/roadmap/generation-v2.md, W5-04, #1286; R1-20, R2-03): the
+     async pre-judge -- JevClipJudge.choose asks one choice (o1..oN plus
+     'none', its own purpose) and maps it back onto the keys, fails closed,
+     the keyless proxy and the null judge never choose; prejudgeClips makes
+     one choice per beat and Scores on at most topK windows over synthetic
+     multi-episode bodies, holds at most 8 calls in flight, books unavailable
+     answers without throwing (a budget stop propagates), the summary line;
+     FORAY_CLIP_JUDGE_TOP_K; clip-judge between deepen and source; and
+     runForayPipeline's wiring (off/shadow build nothing, enforce banks the
+     book before source and leaves the Foray unchanged, a banked book
+     resumes, per-act judges act 0 first in clip-judge:<i>). New, zero slack. */
+  "test/prejudgeClips.test.ts": 13,
   /* GV-83 (docs/roadmap/generation-v2.md, W3-12, #1286; MQ-07): a tape
      item's show key -- a non-empty key for every committed data/segments.json
      item, the catalogue show_id for every pool item whose segment-sources
