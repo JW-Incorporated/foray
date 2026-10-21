@@ -333,7 +333,8 @@ describe("GV-106: sourcing under the tier's runtime budget (FORAY_TIER_RUNTIME_C
       ])
     ];
     const free = sourceBeats(sameStretch(), options());
-    expect(beats(free)[1]!.mergedInto).toBeDefined();
+    const freeSecond = beats(free)[1]!;
+    expect(freeSecond.sourcing === "tape" ? freeSecond.mergedInto : undefined).toBeDefined();
     expect(free.newSegments).toHaveLength(1);
     expect(clipSec(free, 0)).toBeGreaterThan(1400);
 
