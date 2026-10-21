@@ -73,6 +73,15 @@ const FILLER = [
  */
 const PRE_EXTRACTION_DIGEST = "e82d02ed3ab7d8c7f82ce96c5cfdf8595991d35c641b028ac1e3cb74ad3baa95";
 
+/**
+ * GV-109 adds per-edge boundary kinds (`startBoundary`, `endBoundary`) to every
+ * minted NewSegment and tier-2 relevance row, in default (allow) mode too, so
+ * the clean-cut metric is always computed. That is the only addition: with
+ * those two keys stripped the output still hashes to PRE_EXTRACTION_DIGEST (no
+ * sourcing decision moved), and the full output, kinds included, is pinned here.
+ */
+const GV109_FULL_DIGEST = "7543996de630a9e8e1d5911ffb0e8996aff4a4bcc6a22121b3c9931574c80a80";
+
 /** A claim's own words, spoken over four 20 s cues from `startSec`. */
 function claimCues(claim: string, startSec: number): TranscriptCue[] {
   const words = claim
@@ -202,6 +211,20 @@ function digest(result: SourceBeatsResult): string {
   return createHash("sha256").update(JSON.stringify(result)).digest("hex");
 }
 
+/** The digest with GV-109's per-edge boundary kinds dropped: the pre-GV-109 output. */
+function digestWithoutEdgeKinds(result: SourceBeatsResult): string {
+  const json = JSON.stringify(result, (key, value: unknown) =>
+    key === "startBoundary" || key === "endBoundary" ? undefined : value,
+  );
+  return createHash("sha256").update(json).digest("hex");
+}
+
+/** Both pins: no sourcing decision moved since the extraction, and the GV-109 kinds are stable. */
+function expectDefaultOutput(result: SourceBeatsResult): void {
+  expect(digestWithoutEdgeKinds(result)).toBe(PRE_EXTRACTION_DIGEST);
+  expect(digest(result)).toBe(GV109_FULL_DIGEST);
+}
+
 function tapeCount(result: SourceBeatsResult, actIndex: number): number {
   return result.acts[actIndex]!.slots.flatMap((s) => s.beats).filter((b) => b.sourcing === "tape").length;
 }
@@ -229,7 +252,7 @@ describe("SourcingSession — the extraction changed nothing", () => {
   });
 
   it("sourceBeats over the corpus is byte-identical to the pre-extraction sourceBeats", () => {
-    expect(digest(sourceBeats(RUN2, options()))).toBe(PRE_EXTRACTION_DIGEST);
+    expectDefaultOutput(sourceBeats(RUN2, options()));
   });
 
   it("act by act, with result() read between acts, deep-equals sourceBeats over all acts", () => {
@@ -244,7 +267,7 @@ describe("SourcingSession — the extraction changed nothing", () => {
     });
     const byAct = session.result(RUN2);
     expect(byAct).toStrictEqual(whole);
-    expect(digest(byAct)).toBe(PRE_EXTRACTION_DIGEST);
+    expectDefaultOutput(byAct);
   });
 });
 
@@ -297,7 +320,7 @@ describe("SourcingSession — exportState / resume", () => {
       const result = resumed.result(RUN2);
 
       expect(result).toEqual(uninterrupted());
-      expect(digest(result)).toBe(PRE_EXTRACTION_DIGEST);
+      expectDefaultOutput(result);
     });
   }
 
