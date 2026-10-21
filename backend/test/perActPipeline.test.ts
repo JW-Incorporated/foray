@@ -12,6 +12,8 @@ import {
   type RunPipelineOptions,
   type RunPipelineOutcome
 } from "../src/generation/runPipeline";
+import { spineActBand } from "../src/generation/replySchemas";
+import { DURATION_SHAPE_BUDGETS, SHAPE_TOLERANCE } from "../src/types/spine";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubSpineBuilder } from "../src/generation/StubSpineBuilder";
@@ -815,6 +817,18 @@ describe("GV-126: FORAY_DEEPEN_CONCURRENCY has an upper bound", () => {
       expect(() => deepenConcurrency({ [DEEPEN_CONCURRENCY_ENV]: bad }), bad).toThrow(FlagValueError);
       expect(() => deepenConcurrency({ [DEEPEN_CONCURRENCY_ENV]: bad }), bad).toThrow(/FORAY_DEEPEN_CONCURRENCY.*an integer from 1 to 8/);
     }
+  });
+
+  /* GV-127 (#1413 item 34): the cap is derived from the long tier's act band,
+     so it cannot drift from it. MUTATIONS THAT KILL THIS: type the value in
+     again as a different number (`= 9`: not the band's), or derive it from
+     the wrong tier (`spineActBand("medium")[1]` = 4) or without the headroom
+     (`= 7`, the long tier's acts before the headroom). Ran each: red. */
+  it("is the long tier's most acts with the 15 % shape headroom: spineActBand('long')[1], 8 today", () => {
+    expect(SHAPE_TOLERANCE).toBe(0.15);
+    expect(MAX_DEEPEN_CONCURRENCY).toBe(spineActBand("long")[1]);
+    expect(MAX_DEEPEN_CONCURRENCY).toBe(Math.floor(DURATION_SHAPE_BUDGETS.long.acts[1] * (1 + SHAPE_TOLERANCE)));
+    expect(MAX_DEEPEN_CONCURRENCY).toBe(8);
   });
 
   /* MUTATION THAT KILLS THIS: read FORAY_DEEPEN_CONCURRENCY on the classic

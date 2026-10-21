@@ -28,6 +28,15 @@ import { READING_GRADE_BAND } from "../copy/spokenLine";
  * run is invalidated on a gate flip. A run resumed from stages banked under
  * another gate mode keeps that mode's output, so each gate card tests both its
  * default and its new mode (generation-architecture.md §12.2).
+ *
+ * GV-127 (#1413 item 36) narrows that rule to the gates that only REPORT. A
+ * gate whose `enforce` mode re-asks the writer changes what `narrate:<i>`
+ * banks, so FORAY_VOICE_GATE=enforce and FORAY_SPECIFICS_CHECK=enforce each
+ * add one part (`voice=enforce`, `specifics=enforce`) to `checkpointRunVariant`
+ * at both fingerprint sites; their `report` (default) and `off` modes add
+ * nothing, so flipping between those, or any other gate, still invalidates no
+ * banked run. A new gate whose enforce mode changes a banked stage joins the
+ * variant the same way, only in that mode.
  */
 
 /* Each gate card adds `key: Type` here. */

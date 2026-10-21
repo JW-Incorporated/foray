@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { RoutingTable, StageId } from "../config/stageRouting";
 import type { RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
+import type { SpecificsMode } from "./specifics";
+import type { VoiceGateMode } from "./voiceChecks";
 
 /**
  * Per-stage resume for ONE Foray (generation run 2026-09-09, findings F-17 and
@@ -185,9 +187,11 @@ function routeDescriptor(stage: string, route: RoutingTable["routes"][StageId]):
  * caller holding only the four GV-15 flags reads as best-of-1, and
  * `retrievalMode` (GV-125) so one without a retrieval server reads as bm25.
  * GV-126: `spineTierSizing` and `writerExemplars` are optional for the same
- * reason (absent reads as off). */
+ * reason (absent reads as off). GV-127 (#1413 items 36, 40):
+ * `tierRuntimeCap`, `voiceGate` and `specifics` likewise (absent reads as
+ * off, and as not enforcing). */
 export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeepen" | "perActPipeline" | "narrationOrder"> &
-  Partial<Pick<PipelineFlags, "spineBestOf">> & {
+  Partial<Pick<PipelineFlags, "spineBestOf" | "tierRuntimeCap">> & {
     /** The retrieval server's FORAY_RETRIEVAL_MODE (`RetrievalPreparer.mode`);
      * undefined with no server. */
     retrievalMode?: RetrievalModeFlag | undefined;
@@ -197,6 +201,10 @@ export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeep
     /** GV-126 (#1413 item 21): FORAY_WRITER_EXEMPLARS
      * (voiceExemplars.ts `writerExemplarsMode`). */
     writerExemplars?: "off" | "on" | undefined;
+    /** GV-127 (#1413 item 36): FORAY_VOICE_GATE (`GateConfig.voice`). */
+    voiceGate?: VoiceGateMode | undefined;
+    /** GV-127 (#1413 item 36): FORAY_SPECIFICS_CHECK (`GateConfig.specifics`). */
+    specifics?: SpecificsMode | undefined;
   };
 
 /**
@@ -259,12 +267,53 @@ export function writerExemplarsVariant(flags: Pick<CheckpointRunFlags, "writerEx
 }
 
 /**
+ * GV-127 (#1413 item 40): the tier runtime cap's part of the variant, or
+ * undefined when FORAY_TIER_RUNTIME_CAP is off (today), so every classic
+ * fingerprint is unchanged. On, the cap changes what `spine` banks (the
+ * post-spine runtime re-ask, GV-89) and what `source` banks (the tier clip
+ * ceiling, GV-106), so a plain resume across a flip must not reuse either.
+ *
+ * FORAY_FAST_PATH turns the cap on, and the fast path's existing parts
+ * (`foldCopy;foldDeepen=short;perAct`, `narration=sequential`) do not
+ * separate it: `FORAY_FAST_PATH=1 FORAY_TIER_RUNTIME_CAP=0` carries the same
+ * parts. So a fast-path run carries `tierCap=on` too (its fingerprint moves
+ * once), and the cap-off fast path stays apart from it.
+ */
+export function tierRuntimeCapVariant(flags: Pick<CheckpointRunFlags, "tierRuntimeCap">): string | undefined {
+  return flags.tierRuntimeCap === true ? "tierCap=on" : undefined;
+}
+
+/**
+ * GV-127 (#1413 item 36): the voice gate's part of the variant, only under
+ * FORAY_VOICE_GATE=enforce. `enforce` makes a seam's voice hard errors
+ * mechanical issues, so the writer is re-asked and what `narrate:<i>` banks
+ * differs; `report` (today's default) and `off` change nothing the writer
+ * returns, so they add nothing and every fingerprint is unchanged. Without
+ * it, an enforce run resuming narration banked in report mode would reuse
+ * seams nobody checked.
+ */
+export function voiceGateVariant(flags: Pick<CheckpointRunFlags, "voiceGate">): string | undefined {
+  return flags.voiceGate === "enforce" ? "voice=enforce" : undefined;
+}
+
+/**
+ * GV-127 (#1413 item 36): the specifics check's part of the variant, only
+ * under FORAY_SPECIFICS_CHECK=enforce (GV-34: a seam stating a specific no
+ * act source carries is re-asked, so what `narrate:<i>` banks differs).
+ * `report` (the default) and `off` add nothing.
+ */
+export function specificsCheckVariant(flags: Pick<CheckpointRunFlags, "specifics">): string | undefined {
+  return flags.specifics === "enforce" ? "specifics=enforce" : undefined;
+}
+
+/**
  * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
  *
  *     [checkpointVariant(flags), narration order, retrieval mode,
- *      spine best-of, tier-sized spine, writer exemplars,
+ *      spine best-of, tier-sized spine, writer exemplars, tier cap,
+ *      voice gate, specifics check,
  *      routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
@@ -275,7 +324,9 @@ export function writerExemplarsVariant(flags: Pick<CheckpointRunFlags, "writerEx
  * not move any banked file's fingerprint. The spine best-of joins it only
  * above 1 (GV-124, `spineBestOfVariant`), the retrieval mode only when it
  * is not bm25 (GV-125, `retrievalModeVariant`), the tier-sized spine and the
- * writer exemplars only when on (GV-126). Undefined when every part is.
+ * writer exemplars only when on (GV-126), the tier runtime cap only when on
+ * and the voice gate and the specifics check only when enforcing (GV-127).
+ * Undefined when every part is.
  */
 export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
   const parts = [
@@ -283,6 +334,9 @@ export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: Routin
     spineBestOfVariant(flags),
     spineTierSizingVariant(flags),
     writerExemplarsVariant(flags),
+    tierRuntimeCapVariant(flags),
+    voiceGateVariant(flags),
+    specificsCheckVariant(flags),
     routingVariant(routing)
   ].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
@@ -393,7 +447,8 @@ export const CheckpointForkStampSchema = z.object({
   /** checkpointFingerprint with no variant: the prompt, duration and topic. */
   request: z.string(),
   /** checkpointRunVariant without the routing, the spine best-of, the
-   * tier-sized spine and the writer exemplars (GV-126): the
+   * tier-sized spine and the writer exemplars (GV-126), the tier cap and the
+   * enforcing gates (GV-127): the
    * semantics-changing flags, the narration order and (GV-125) a non-bm25
    * retrieval mode (null when none is on). */
   flags: z.string().nullable(),
@@ -416,7 +471,19 @@ export const CheckpointForkStampSchema = z.object({
    * Compared like a writer route (like `selfCritique`), so E3's arm B forks
    * arm A from `narrate` while a seed rerun from `stitch` cannot keep
    * narration built under the other setting. Absent: off. */
-  exemplars: z.literal("on").optional()
+  exemplars: z.literal("on").optional(),
+  /** GV-127 (#1413 item 40): FORAY_TIER_RUNTIME_CAP, written only when on.
+   * Compared like a spine route: the cap feeds `spine` (GV-89) and `source`
+   * (GV-106), and the earlier of the two is named, so a difference needs
+   * --rerun-from spine or earlier. Absent: off. */
+  tierCap: z.literal("on").optional(),
+  /** GV-127 (#1413 item 36): FORAY_VOICE_GATE, written only when `enforce`.
+   * Compared like a writer route: a difference needs --rerun-from narrate or
+   * earlier. Absent: not enforcing (`report` or `off`). */
+  voice: z.literal("enforce").optional(),
+  /** GV-127 (#1413 item 36): FORAY_SPECIFICS_CHECK, written only when
+   * `enforce`; compared like `voice`. Absent: not enforcing. */
+  specifics: z.literal("enforce").optional()
 });
 export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
 
@@ -441,7 +508,11 @@ export function checkpointForkStamp(input: {
     /* GV-126: only when on, so a stamp written with both off is byte-identical
        to one written before them. */
     ...(input.flags.spineTierSizing === true ? { spineTierSizing: true as const } : {}),
-    ...(input.flags.writerExemplars === "on" ? { exemplars: "on" as const } : {})
+    ...(input.flags.writerExemplars === "on" ? { exemplars: "on" as const } : {}),
+    /* GV-127: likewise only when on (or enforcing). */
+    ...(input.flags.tierRuntimeCap === true ? { tierCap: "on" as const } : {}),
+    ...(input.flags.voiceGate === "enforce" ? { voice: "enforce" as const } : {}),
+    ...(input.flags.specifics === "enforce" ? { specifics: "enforce" as const } : {})
   };
 }
 
@@ -457,7 +528,9 @@ export function checkpointForkStamp(input: {
  *     kept stage was built by a route this run would not use. A different
  *     spine best-of counts as a changed `spine` route and a different
  *     self-critique as a changed `writer` route (GV-124); likewise the
- *     tier-sized spine (`spine`) and the writer exemplars (`writer`), GV-126.
+ *     tier-sized spine (`spine`) and the writer exemplars (`writer`), GV-126;
+ *     the tier runtime cap (`spine`) and the enforcing voice gate and
+ *     specifics check (`writer`), GV-127.
  *
  * Throws on an unknown `rerunFrom`.
  */
@@ -484,7 +557,11 @@ export function forkSeedRefusal(
     ["self-critique", stamp.selfCritique ?? "off", run.stamp.selfCritique ?? "off", "narrate"],
     /* GV-126 (#1413 items 21, 24). */
     ["FORAY_SPINE_TIER_SIZING", stamp.spineTierSizing ? "on" : "off", run.stamp.spineTierSizing ? "on" : "off", "spine"],
-    ["FORAY_WRITER_EXEMPLARS", stamp.exemplars ?? "off", run.stamp.exemplars ?? "off", "narrate"]
+    ["FORAY_WRITER_EXEMPLARS", stamp.exemplars ?? "off", run.stamp.exemplars ?? "off", "narrate"],
+    /* GV-127 (#1413 items 36, 40). */
+    ["FORAY_TIER_RUNTIME_CAP", stamp.tierCap ?? "off", run.stamp.tierCap ?? "off", "spine"],
+    ["FORAY_VOICE_GATE", stamp.voice ?? "not enforce", run.stamp.voice ?? "not enforce", "narrate"],
+    ["FORAY_SPECIFICS_CHECK", stamp.specifics ?? "not enforce", run.stamp.specifics ?? "not enforce", "narrate"]
   ];
   for (const [lever, seedValue, runValue, feeds] of levers) {
     if (seedValue !== runValue && CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {

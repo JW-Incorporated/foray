@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -408,6 +408,51 @@ describe("GV-103 the export --keep-calibration writes", () => {
     /* A per-act run whose narration is missing is still refused, by act. */
     delete perAct["narrate:1"];
     expect(calibrationExportFromStages(perAct, { key: "k" })).toEqual({ error: "no narrate:1 stage" });
+  });
+});
+
+/* GV-127 (#1413 item 33): the `!path.isAbsolute(rel)` arm of
+   isUnderDataLocal. It is reachable only under Windows path rules: on a
+   different drive path.relative cannot build a relative path and returns the
+   target itself (`D:\x\data-local\f.json`), whose first segment is `D:`, not
+   `..`; POSIX path.relative always returns a relative path, so the arm never
+   fires there. judgeCalibration.ts takes no path module, so the module is
+   loaded here with `path` mocked to path.win32: the test then runs the
+   Windows rules on any OS (the dev machine is Windows; CI is not). */
+describe("GV-127 isUnderDataLocal on Windows paths, a --out on another drive", () => {
+  afterEach(() => {
+    vi.doUnmock("path");
+    vi.resetModules();
+  });
+
+  /* MUTATION THAT KILLS THIS: drop `!path.isAbsolute(rel) &&` from
+     isUnderDataLocal (a cross-drive D:\x\data-local\f.json is then accepted,
+     since its first segment `D:` is not `..`). Ran it: red. */
+  it("refuses a data-local/ on another drive, and still accepts the repository's own, under path.win32", async () => {
+    vi.resetModules();
+    vi.doMock("path", async () => {
+      const actual = await vi.importActual<typeof import("path")>("path");
+      return { ...actual.win32, default: actual.win32 };
+    });
+    const win = await import("../src/generation/judgeCalibration");
+    const repo = "C:\\repo";
+    const cwd = "C:\\repo\\backend";
+    /* The arm itself: path.relative across drives is absolute. */
+    expect(path.win32.isAbsolute(path.win32.relative("C:\\repo\\data-local", "D:\\x\\data-local\\f.json"))).toBe(true);
+    expect(win.isUnderDataLocal("D:\\x\\data-local\\f.json", cwd, repo)).toBe(false);
+    expect(win.isUnderDataLocal("D:\\repo\\data-local\\f.json", cwd, repo)).toBe(false);
+    expect(win.isUnderDataLocal("D:\\repo\\backend\\data-local\\f.json", cwd, repo)).toBe(false);
+    expect(win.dataLocalRefusal("--out", "D:\\x\\data-local\\f.json", cwd, repo)).toMatch(/--out must be under data-local\//);
+    /* The same rules still accept the repository's own data-local/, in
+       either separator, relative or absolute, and a drive letter in another
+       case (Windows paths are case-insensitive). */
+    expect(win.isUnderDataLocal("data-local\\judge-calibration\\x.json", cwd, repo)).toBe(true);
+    expect(win.isUnderDataLocal("data-local/judge-calibration/x.json", cwd, repo)).toBe(true);
+    expect(win.isUnderDataLocal("..\\data-local\\c\\x.json", cwd, repo)).toBe(true);
+    expect(win.isUnderDataLocal("C:\\repo\\backend\\data-local\\x.json", "D:\\elsewhere", repo)).toBe(true);
+    expect(win.isUnderDataLocal("c:\\repo\\data-local\\x.json", cwd, repo)).toBe(true);
+    expect(win.isUnderDataLocal("data-local", cwd, repo)).toBe(false);
+    expect(win.isUnderDataLocal("..\\..\\data-local\\x.json", cwd, repo)).toBe(false);
   });
 });
 

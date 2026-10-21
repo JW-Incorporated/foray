@@ -11,7 +11,7 @@ import { StubSpineBuilder, STUB_TWO_SENTENCE_CLAIM } from "../src/generation/Stu
 import { InvalidSpineStructureError, countSentences } from "../src/generation/spineStructure";
 import { AnthropicSpineBuilder, buildSpineFixInstruction, buildSpinePrompt, spineReplyText } from "../src/generation/AnthropicSpineBuilder";
 import { runForayPipeline } from "../src/generation/runPipeline";
-import { checkpointFingerprint } from "../src/generation/checkpoint";
+import { checkpointFingerprint, tierRuntimeCapVariant } from "../src/generation/checkpoint";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
 import { StubDeepenActBuilder } from "../src/generation/StubDeepenActBuilder";
@@ -420,9 +420,12 @@ describe("GV-89 — the post-spine runtime check re-asks only a spine that canno
     }) as unknown as FinalizeForayResult;
 
   /** A store with the research map already banked, so §4.3 is asked against
-   * the fixture's windows (the stub researcher quotes none). */
-  function storeWithMap(key: string): FakeCheckpointStore {
-    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic }));
+   * the fixture's windows (the stub researcher quotes none). GV-127 (#1413
+   * item 40): the cap joins the checkpoint variant (`tierCap=on`), so a
+   * cap-on run's store carries it, or the run would not resume the map. */
+  function storeWithMap(key: string, tierRuntimeCap = false): FakeCheckpointStore {
+    const variant = tierRuntimeCapVariant({ tierRuntimeCap });
+    const store = new FakeCheckpointStore(checkpointFingerprint({ prompt: request.prompt, duration: request.duration, topic, variant }));
     store.save(key, "research-shape", runtimeShape);
     return store;
   }
@@ -450,7 +453,7 @@ describe("GV-89 — the post-spine runtime check re-asks only a spine that canno
        postSeedWithFloor) instead of on the post-seeded spine. The plan as
        written fits, so no re-ask is made. Ran it: red. */
     const builder = new RecordingSpineBuilder([fitsUntilPostSeeded, fittingPlan]);
-    const store = storeWithMap("gv89-on");
+    const store = storeWithMap("gv89-on", true);
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     try {
       const out = await run(builder, store, "gv89-on", true);
@@ -509,7 +512,7 @@ describe("GV-89 — the post-spine runtime check re-asks only a spine that canno
     const builder = new RecordingSpineBuilder([fittingPlan]);
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     try {
-      const out = await run(builder, storeWithMap("gv89-fits"), "gv89-fits", true);
+      const out = await run(builder, storeWithMap("gv89-fits", true), "gv89-fits", true);
       expect(builder.calls).toHaveLength(1);
       if (!("spineReasks" in out)) throw new Error("run stopped before the spine");
       expect(out.spineReasks).toEqual([]);
