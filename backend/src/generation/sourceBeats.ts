@@ -194,6 +194,7 @@ import {
   NullTranscriptCueProvider,
   TAPE_CUE_GAP_MAX_SEC,
   TAPE_WINDOW_MAX_SEC,
+  TAPE_WINDOW_MIN_SEC,
   TIER2_MATCH_THRESHOLD,
   TIER2_WINDOW_MIN_SHARE,
   TIER2_WINDOW_MIN_TERMS,
@@ -213,6 +214,7 @@ import {
 import { tokenizeForSourcing } from "./catalogueLookup";
 import { codeSpanSync } from "./codeSpans";
 import { placementEscapesD5Pair } from "./d5Pair";
+import { seededBeatCount, tapesFromSeed, type RuntimeAct } from "./tierRuntime";
 import { extendToThought, thoughtTerms, type ThoughtExtent } from "./tapeExtent";
 
 /**
@@ -341,6 +343,21 @@ export interface SourceBeatsOptions {
    * exactly the unconditional reuse this module did before F-98.
    */
   supersedableCut?: (segment: SegmentRecord) => boolean;
+  /**
+   * GV-106 (W4-15; R2-15, QK-28, GP-25): the TAPE seconds this Foray's tier
+   * can still afford (`tierRuntime.ts`'s `tierClipBudgetSec`: the tier's
+   * ceiling minus the narration estimate). With it, no clip may run past
+   * `clipCeilingSec` — min(`TAPE_WINDOW_MAX_SEC`, the budget left once every
+   * seeded beat still ahead is reserved `TAPE_WINDOW_MIN_SEC`) — and a beat
+   * with no room left is narrated under the gate `tier-budget`.
+   *
+   * INERT WHEN OMITTED, like every option above: no ceiling, which is exactly
+   * the sourcing this module did before GV-106. `runPipeline.ts` passes it
+   * only under FORAY_TIER_RUNTIME_CAP. `sourceBeats` counts the seeded beats
+   * from the acts it is given; a `SourcingSession` driven act by act is told
+   * them by `planRuntime`.
+   */
+  runtimeBudgetSec?: number;
 }
 
 /**
@@ -357,6 +374,8 @@ export function sourceBeats(deepenedActs: DeepenedAct[], options: SourceBeatsOpt
      synchronous, and inert outside a run log. */
   return codeSpanSync("sourcing.all", () => {
     const session = new SourcingSession(options);
+    /* GV-106: the whole Foray's seeded beats are known up front here. */
+    if (options.runtimeBudgetSec !== undefined) session.planRuntime({ budgetSec: options.runtimeBudgetSec, actsAhead: deepenedActs });
     deepenedActs.forEach((act, actIndex) => session.sourceAct(act, actIndex));
     return session.result(deepenedActs);
   });
@@ -402,6 +421,12 @@ export interface SourcingSnapshot {
   longestSecByItem: Array<[string, number]>;
   placed: Array<{ itemId: string; startSec: number }>;
   lastMintedClip: null;
+  /** GV-106: the tier's tape budget and the seeded beats still ahead.
+   * ABSENT (not null) unless the run sourced under FORAY_TIER_RUNTIME_CAP, so
+   * a default snapshot is byte-identical to one banked before GV-106 and
+   * `SOURCING_SNAPSHOT_VERSION` does not move. */
+  runtimeBudgetSec?: number;
+  remainingSeededBeats?: number;
   tapeRelevance: TapeRelevanceInput[];
   sourcingTrace: SourcingTrace[];
   acts: SourcedAct[];
@@ -521,7 +546,9 @@ export class SourcingSession {
       placedSecByItem,
       longestSecByItem,
       placed,
-      lastMintedClip: null
+      lastMintedClip: null,
+      runtimeBudgetSec: options.runtimeBudgetSec,
+      remainingSeededBeats: options.runtimeBudgetSec !== undefined ? 0 : undefined
     };
   }
 
@@ -550,6 +577,8 @@ export class SourcingSession {
     state.longestSecByItem = new Map(copy.longestSecByItem);
     state.placed = copy.placed;
     state.lastMintedClip = null;
+    state.runtimeBudgetSec = copy.runtimeBudgetSec;
+    state.remainingSeededBeats = copy.remainingSeededBeats;
     session.tapeRelevance = copy.tapeRelevance;
     session.sourcingTrace = copy.sourcingTrace;
     session.acts = copy.acts;
@@ -559,6 +588,19 @@ export class SourcingSession {
   /** How many acts this session has sourced — the index the next one must carry. */
   get sourcedActCount(): number {
     return this.acts.length;
+  }
+
+  /**
+   * GV-106 (W4-15): sets the tier's tape budget and counts the seeded beats
+   * still to be sourced from `actsAhead` (the act about to be sourced and
+   * every act after it), or, given `undefined`, lifts the ceiling. The
+   * per-act pipeline calls it before each act, because a later act is not
+   * deepened when act 0 is sourced; `sourceBeats` calls it once with every
+   * act. The count then falls by one as each seeded beat is sourced.
+   */
+  planRuntime(plan: { budgetSec: number; actsAhead: ReadonlyArray<RuntimeAct> } | undefined): void {
+    this.state.runtimeBudgetSec = plan?.budgetSec;
+    this.state.remainingSeededBeats = plan ? seededBeatCount(plan.actsAhead) : undefined;
   }
 
   /** Sources every beat of one act, in playing order, against the ledgers the
@@ -586,7 +628,15 @@ export class SourcingSession {
       // not just this one — ended up tape-sourced (§4.5: "pick based on
       // whether the SLOT the beat belongs to has any other tape-sourced
       // beats").
-      const resolutions = slot.beats.map((beat, beatIndex) => resolveOneBeat(beat, this.state, actContext, { slot: slotIndex, beat: beatIndex }));
+      const resolutions = slot.beats.map((beat, beatIndex) => {
+        /* GV-106: a seeded beat stops being "ahead" as it is sourced, so the
+           ceiling it is cut under reserves the floor for the OTHER seeded
+           beats still to come, not for itself. */
+        if (this.state.remainingSeededBeats !== undefined && tapesFromSeed(beat)) {
+          this.state.remainingSeededBeats = Math.max(0, this.state.remainingSeededBeats - 1);
+        }
+        return resolveOneBeat(beat, this.state, actContext, { slot: slotIndex, beat: beatIndex });
+      });
       const slotHasTape = resolutions.some((r) => r.kind === "tape");
 
       const beats: SourcedBeat[] = slot.beats.map((beat, beatIndex) => {
@@ -729,7 +779,9 @@ export class SourcingSession {
       placedSecByItem: [...state.placedSecByItem.entries()],
       longestSecByItem: [...state.longestSecByItem.entries()],
       placed: state.placed,
-      lastMintedClip: null
+      lastMintedClip: null,
+      runtimeBudgetSec: state.runtimeBudgetSec,
+      remainingSeededBeats: state.remainingSeededBeats
     };
     const snapshot: SourcingSnapshot = {
       version: SOURCING_SNAPSHOT_VERSION,
@@ -851,6 +903,47 @@ interface SourcingState {
   /** The one clip a later beat's window may merge into (F-96) — the last
    * segment this run minted, while nothing has been placed after it. */
   lastMintedClip: LastMintedClip | null;
+  /** GV-106: the tier's tape budget in seconds (`SourceBeatsOptions.
+   * runtimeBudgetSec`, or `planRuntime`), undefined with no cap — and then
+   * `clipCeilingSec` is undefined and nothing below changes. */
+  runtimeBudgetSec: number | undefined;
+  /** GV-106: the seeded beats not yet sourced, each reserved
+   * `TAPE_WINDOW_MIN_SEC` of the budget. Undefined with no cap. */
+  remainingSeededBeats: number | undefined;
+}
+
+/**
+ * GV-106 (W4-15; R2-15, QK-28, GP-25): THE LONGEST CLIP THE TIER CAN STILL
+ * AFFORD. One clip must not swallow the Foray (14 Sep: a short was asked for
+ * and 37 min came out), so Q-01's thirty-minute thought ceiling becomes
+ * min(`TAPE_WINDOW_MAX_SEC`, the budget left):
+ *
+ *     left = runtimeBudgetSec - Σ placedDurations - remainingSeededBeats × TAPE_WINDOW_MIN_SEC
+ *
+ *   - undefined with no budget: exactly today's sourcing;
+ *   - 0 ('no room') when left < `TAPE_WINDOW_MIN_SEC` — the beat is refused
+ *     tape under `tier-budget` and narrated, and undershoot is never padded;
+ *   - otherwise min(left, `TAPE_WINDOW_MAX_SEC`).
+ *
+ * `replacing` is a merge's clip index (F-96): the merged clip REPLACES that
+ * placement, so its old length is given back to the budget first.
+ */
+export function clipCeilingSec(
+  state: { runtimeBudgetSec: number | undefined; remainingSeededBeats: number | undefined; placedDurations: readonly number[] },
+  replacing?: number
+): number | undefined {
+  if (state.runtimeBudgetSec === undefined) return undefined;
+  const placedSec = state.placedDurations.reduce((sum, d) => sum + d, 0) - (replacing !== undefined ? state.placedDurations[replacing] ?? 0 : 0);
+  const left = state.runtimeBudgetSec - placedSec - (state.remainingSeededBeats ?? 0) * TAPE_WINDOW_MIN_SEC;
+  return left < TAPE_WINDOW_MIN_SEC ? 0 : Math.min(left, TAPE_WINDOW_MAX_SEC);
+}
+
+/** GV-106: whether a clip of `durationSec` is over the ceiling — `null` with
+ * no cap. A 0 ceiling refuses every clip. */
+function tierBudgetVetoFor(durationSec: number, state: SourcingState): "tier-budget" | null {
+  const ceiling = clipCeilingSec(state);
+  if (ceiling === undefined) return null;
+  return ceiling === 0 || durationSec > ceiling ? "tier-budget" : null;
 }
 
 /** One placement's identity, for the rules the spread pass has to re-ask about
@@ -979,7 +1072,11 @@ function tier1VetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tie
      identity. (`d5-triple` included, since F-80: a curated segment that would
      make a uniform triple is passed over for the next candidate, and then for
      tier 2, whose cut CAN change length — see `durationVetoFor`.) */
-  return durationVetoFor(segment.item_id, segment.end_sec - segment.start_sec, state);
+  /* GV-106: and, under FORAY_TIER_RUNTIME_CAP only, the tier's runtime budget.
+     A pool segment cannot be cut, so one longer than the clip ceiling is
+     refused and the walk falls through. Asked last of all. */
+  const durationSec = segment.end_sec - segment.start_sec;
+  return durationVetoFor(segment.item_id, durationSec, state) ?? tierBudgetVetoFor(durationSec, state);
 }
 
 function tier1IsUsable(segment: SegmentRecord, state: SourcingState): boolean {
@@ -1022,7 +1119,10 @@ function reuseVetoFor(segment: SegmentRecord, state: SourcingState): Exclude<Tie
   if (state.usedSegmentIds.has(segment.id)) return "exhausted";
   if (!m4ShareAllows(segment.item_id, state)) return "m4-share";
   if (!m3OrderAllows(segment.item_id, segment.start_sec, state)) return "m3-order";
-  return durationVetoFor(segment.item_id, segment.end_sec - segment.start_sec, state);
+  /* GV-106: a reused pool cut keeps the pool's length, so it faces the
+     budget the way a tier-1 hit does. */
+  const durationSec = segment.end_sec - segment.start_sec;
+  return durationVetoFor(segment.item_id, durationSec, state) ?? tierBudgetVetoFor(durationSec, state);
 }
 
 /* THE TWO FORAY-WIDE ASSEMBLY RULES, ASKED THE SAME WAY BY BOTH TIERS (F-70).
@@ -2132,8 +2232,13 @@ class Tier2Walk {
     const { state } = this;
     const claim = this.beat.claim;
     if (window.startSec < last.segment.startSec) return null;
+    /* GV-106: the merged clip replaces the last one, so its ceiling gives the
+       old length back; with no cap it is Q-01's thirty minutes, as before. */
+    const ceiling = clipCeilingSec(state, last.placedIndex);
+    if (ceiling === 0) return null;
+    const maxSec = ceiling ?? TAPE_WINDOW_MAX_SEC;
     const terms = extentTermsFor(claim, this.act, candidate.text?.idf);
-    const extent = extendToThought(window, cues, { ...terms, maxSec: TAPE_WINDOW_MAX_SEC });
+    const extent = extendToThought(window, cues, { ...terms, maxSec });
     if (extent.startSec > last.segment.endSec + MERGE_GAP_SEC) return null;
     const lastCue = Math.max(extent.lastCue, last.span.lastCue);
     if (holeBetweenCues(cues, last.span.lastCue, lastCue)) return null;
@@ -2149,7 +2254,7 @@ class Tier2Walk {
       claimEndSec: last.claimEndSec,
       extendedBySec: 0
     };
-    if (mergedWindow.endSec - mergedWindow.startSec > TAPE_WINDOW_MAX_SEC) return null;
+    if (mergedWindow.endSec - mergedWindow.startSec > maxSec) return null;
     /* Cut with the FIRST beat's claim: the growth (a no-op past the floor)
        and the anchors are the clip's, and `boundary` stays what the two
        extents found unless the cut has to move an edge. */
@@ -2255,7 +2360,7 @@ interface PlacementCut {
   extent: ThoughtExtent;
 }
 
-type PlacementGate = "past-duration" | "m3-order" | DurationGate;
+type PlacementGate = "past-duration" | "m3-order" | DurationGate | "tier-budget";
 
 /** The chooser's answer: the cut to place (and whether it lands inside D5's
  * band with the clip before it — a mark, not a decision, F-102), or the cut
@@ -2333,9 +2438,15 @@ function chooseCutForPlacement(
      to ask for: the only rule that ever asked for one was D5's pair clause, and
      a variety rule that can only be satisfied by playing less tape is the wrong
      rule now that clips are cut at thought boundaries. */
-  const full = cutExtent(claim, cues, window, terms, undefined);
+  /* GV-106: EXCEPT UNDER THE TIER'S RUNTIME BUDGET. The thought is cut at the
+     clip ceiling (`cutExtent` threads it into `extendToThought` and
+     `cutWindowToSegment`, so it still ends on a boundary); with no room left
+     the full extent is cut only so the trace can say what was refused, and
+     the gate is `tier-budget`, asked last. No cap: `undefined`, as before. */
+  const ceiling = clipCeilingSec(state);
+  const full = cutExtent(claim, cues, window, terms, ceiling === 0 ? undefined : ceiling);
   if (!full) return null;
-  const gate = placementGateFor(full, itemId, feedDurationSec, state);
+  const gate = placementGateFor(full, itemId, feedDurationSec, state) ?? tierBudgetVetoFor(full.durationSec, state);
   if (gate !== null) return { refused: full, gate };
   /* Placed at its own length, and marked if it happens to land inside the band
      with the clip before — the clause's entire say in the matter. */
@@ -2425,6 +2536,9 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
   "d3-mean": 10,
   "d5-pair": 10,
   "m4-runtime": 11,
+  /* GV-106: asked last of the length rules, on the cut the ceiling allowed,
+     so after the M4 gates and before the pool's own cut is consulted. */
+  "tier-budget": 11.5,
   /* F-84: asked after the cut has cleared M3 and the length rules on ITS
      length — the pool's cut at the same start then faces the same ledger and
      is what refused the candidate. Further than any of them, before the
@@ -2645,6 +2759,9 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
       return "Tape for this beat was found, but no cut of it escapes the length of the segment before it, and two segments of one length in a row would make the Foray sound metronomic.";
     case "m4-runtime":
       return "Tape for this beat is in an episode that already supplies a long clip or a quarter of this Foray's tape seconds beyond its longest clip, so taking more would let one episode dominate.";
+    /* GV-106: the tape exists; the tier's runtime has no room left for it. */
+    case "tier-budget":
+      return "Tape for this beat was found, but this Foray's length tier has no runtime left for another clip, so the beat is narrated instead.";
     case "no-audio-source":
       return "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.";
     /* F-87: the tape exists and is about the claim; its transcript's timeline
@@ -2698,6 +2815,13 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
         claim,
         showId: candidate.entry.show_id,
         reason: `${found} ("${candidate.entry.title}") and the tape is usable, but this Foray's own assembly rules refused it (${ASSEMBLY_REFUSAL_CLAUSE[gate]}). Nothing to transcribe.`
+      };
+    /* GV-106: not a transcription gap either: the tier's runtime is spent. */
+    case "tier-budget":
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason: `${found} ("${candidate.entry.title}") and the tape is usable, but this Foray's length tier has no runtime left for the clip (FORAY_TIER_RUNTIME_CAP). Nothing to transcribe.`
       };
     case "no-audio-source":
       return {

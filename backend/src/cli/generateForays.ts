@@ -53,7 +53,7 @@ import { EMPTY_JOB_PROGRESS, JOB_LANES, isJobForayId, isJobLane, progressWithEve
 import { readAuthorIdFlag, type ClarityDecider, type GenerationRequest } from "../types/generation";
 import type { PartialCandidate } from "../generation/partialCandidate";
 import type { FinalizeForayInput } from "../generation/finalizeForay";
-import type { VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
+import type { TierFit, VeracityGateResult, VeracityMetrics } from "../generation/veracityMetrics";
 import type { PublishRecord } from "./publishForay";
 import { modelSummary } from "../config/models";
 import {
@@ -1132,6 +1132,12 @@ export type ReportEntry = {
    * gate, so it could be published without `--force`. Only on a `generated`
    * row. */
   publishable?: boolean;
+  /** GV-106 (MQ-14): how far the finished runtime is from its tier
+   * (`computeTierFit`: tier, target, runtime, ratio, within ±15 %), lifted
+   * from `veracity.tierFit` so the bench's tier fit column reads it off the
+   * row. On every `generated` row whose veracity carries it; absent
+   * otherwise, never guessed. Reported whatever FORAY_GATE_TIER_FIT says. */
+  tierFit?: TierFit | null;
   /** GV-33 (decision 14; MT-01, MT-11): the final attempt's delivery timeline
    * — when the first item, the first servable item and the last item were
    * ready (ms since the attempt started), the smallest lead over the playhead
@@ -1884,6 +1890,7 @@ export async function generateOneCandidate(
     ...("topicDecision" in outcome ? { topicDecision: outcome.topicDecision } : {}),
     veracity,
     ...(outcome.outcome === "generated" && gate ? { gate, publishable: outcome.result.validation.ok && gate.ok } : {}),
+    ...(veracity?.tierFit !== undefined ? { tierFit: veracity.tierFit } : {}),
     ...(delivery ? { delivery } : {}),
     ...(outcome.outcome !== "rejected" && outcome.clarityDecidedBy !== undefined ? { clarityDecidedBy: outcome.clarityDecidedBy } : {}),
     ...(resumes.length ? { resumes } : {}),

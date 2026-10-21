@@ -59,7 +59,7 @@ export interface RuntimeAct {
 /** A beat that will be sourced from tape: it carries a seed and is not an
  * argument (§4.5 skips the tape lookup for an argument whatever its seed says,
  * F-38). An absent `kind` is `account`. */
-function tapesFromSeed(beat: Beat): beat is Beat & { seed: BeatSeed } {
+export function tapesFromSeed(beat: Beat): beat is Beat & { seed: BeatSeed } {
   return beat.seed !== undefined && beat.kind !== "argument";
 }
 
@@ -161,6 +161,28 @@ export function spineRuntimeLowerBoundSec(spine: Spine): number {
  */
 export function narrationEstimateSec(acts: ReadonlyArray<RuntimeAct>): number {
   return actFramingSec(acts) + narratedBeatCount(acts) * NARRATED_BEAT_ESTIMATE_SEC;
+}
+
+/**
+ * GV-106 (W4-15): the beats of an act list sourcing will look for seeded tape
+ * for, one per BEAT (two beats seeded from one window are two beats sourcing
+ * resolves, and each may take a clip). The clip ceiling reserves
+ * `TAPE_WINDOW_MIN_SEC` for every one of them still ahead.
+ */
+export function seededBeatCount(acts: ReadonlyArray<RuntimeAct>): number {
+  let n = 0;
+  for (const act of acts) for (const slot of act.slots) for (const beat of slot.beats) if (tapesFromSeed(beat)) n += 1;
+  return n;
+}
+
+/**
+ * GV-106 (W4-15): the TAPE seconds a tier can still afford once its
+ * narration is paid for: the tier's hard ceiling (`tierRuntimeBand(tier)[1]`,
+ * short 1,035 s) minus `narrationEstimateSec(acts)`. What runPipeline hands
+ * sourcing as `runtimeBudgetSec` under FORAY_TIER_RUNTIME_CAP; never below 0.
+ */
+export function tierClipBudgetSec(tier: DurationTier, acts: ReadonlyArray<RuntimeAct>): number {
+  return Math.max(0, tierRuntimeBand(tier)[1] - narrationEstimateSec(acts));
 }
 
 /**
