@@ -5,7 +5,7 @@
  * Published Forays keep only scripts, so no act-level training or calibration
  * example can exist without the writer's INPUT. `generate-forays
  * --record-exchanges` (bench prompts only, --out under data-local/) appends
- * one `foray-writer-exchange/1` JSONL line per act per writer round to
+ * one `writer-exchange/1` JSONL line per act per writer round to
  * `<out>/<checkpointKey>.exchanges.jsonl`: the request the writer was sent,
  * its reply, the round's mechanical issues and the verifier's verdict, with
  * the act's index, the attempt and the writer's stage assignment
@@ -25,9 +25,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isEntryScript } from "../ci/entry.mjs";
 
-export const EXCHANGE_SCHEMA = "foray-writer-exchange/1";
+export const EXCHANGE_SCHEMA = "writer-exchange/1";
 
 /** The file-name suffix the batch driver writes (`exchangesFilename`). */
 export const EXCHANGES_SUFFIX = ".exchanges.jsonl";
@@ -167,6 +167,6 @@ function main(argv) {
   return 1;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (isEntryScript(import.meta.url)) {
   process.exitCode = main(process.argv.slice(2));
 }

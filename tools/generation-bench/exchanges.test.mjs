@@ -144,7 +144,7 @@ test("readExchange returns the whole record on its file line, blank lines counte
    MUTATION: drop the required-field check -> red. */
 test("a corrupt, foreign or incomplete line is refused, naming its line", () => {
   assert.throws(() => parseExchanges(`${JSON.stringify(exchange())}\n{oops\n`, "f"), /f: line 2 is not JSON/);
-  assert.throws(() => parseExchanges(JSON.stringify({ ...exchange(), schema: "runlog/1" }), "f"), /line 1 is not a foray-writer-exchange\/1 line/);
+  assert.throws(() => parseExchanges(JSON.stringify({ ...exchange(), schema: "runlog/1" }), "f"), /line 1 is not a writer-exchange\/1 line/);
   const { request: _r, ...noRequest } = exchange();
   assert.throws(() => parseExchanges(JSON.stringify(noRequest), "f"), /line 1 has no request/);
   assert.throws(() => parseExchanges(JSON.stringify(exchange({ call: "verifyAct" })), "f"), /unknown call/);

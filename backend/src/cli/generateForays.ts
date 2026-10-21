@@ -693,7 +693,7 @@ export function exchangesFilename(checkpointKey: string): string {
 }
 
 /** GV-110: the schema tag on every recorded exchange line. */
-export const WRITER_EXCHANGE_SCHEMA = "foray-writer-exchange/1";
+export const WRITER_EXCHANGE_SCHEMA = "writer-exchange/1";
 
 /** Accepts both file shapes; a bare string is the common case. */
 export function normalizePrompts(raw: unknown): PromptSpec[] {
