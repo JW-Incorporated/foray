@@ -281,6 +281,49 @@ test("only final-round, verified, keep-labelled, non-claude exchanges count towa
   );
 });
 
+/* MUTATION: isVerifiedRound returns true once mechanical is clean (replace
+   its last line, or the `seams.length === 0` and isPlainObject(verdict)
+   guards, with `return true`) -> a clean, final, keep-labelled, non-claude
+   round whose verifier rejected a seam or a beat, judged no seam, or never
+   ran is verified and counts, and usable is 1, not 0. MUTATION: drop the
+   `beats.every(... carried === true)` clause -> the dropped-beat act is
+   verified. */
+test("a clean, final, keep-labelled round the verifier rejected, judged empty or never ran is not verified and does not count", () => {
+  const root = tmpRoot();
+  const dir = path.join(root, "runs");
+  const BEAT_DROPPED = { beats: [{ beatId: "b0", carried: false }], seams: PASSED.seams };
+  const NO_SEAMS = { beats: [{ beatId: "b0", carried: true }], seams: [] };
+  const candidateSha = writeRun(
+    dir,
+    "k",
+    [
+      exchange({ forayKey: "k", actIndex: 0, verdict: FAILED, script: "Seam rejected." }),
+      exchange({ forayKey: "k", actIndex: 1, verdict: BEAT_DROPPED, script: "Beat dropped." }),
+      exchange({ forayKey: "k", actIndex: 2, verdict: NO_SEAMS, script: "No seams judged." }),
+      exchange({ forayKey: "k", actIndex: 3, verdict: undefined, script: "No verifier call." }),
+      exchange({ forayKey: "k", actIndex: 4, verdict: PASSED, script: "Passed." })
+    ],
+    { id: "cand-v", items: [] }
+  );
+  const raw = fs.readFileSync(path.join(dir, "k.exchanges.jsonl"), "utf8").split("\n");
+  assert.equal("verdict" in JSON.parse(raw[3]), false, "act 4's exchange carries no verdict field");
+  const verdicts = [verdictRow("cand-v", 1, candidateSha, "pass"), verdictRow("cand-v", 5, candidateSha, "pass")];
+  const outcomes = [1, 2, 3].map((actIndex) => ({ experiment: "E1", promptId: "p1", actIndex, dir, forayKey: "k", outcome: "win" }));
+  const rows = buildExamples({ exchangeDirs: [dir], verdicts, outcomes, root });
+  assert.deepEqual(
+    rows.map((r) => [r.actIndex, r.finalRound, r.label, r.labelSource, r.claudeDerived, r.verified]),
+    [
+      [0, true, "keep", "founder-verdict", false, false],
+      [1, true, "keep", "pairwise-win", false, false],
+      [2, true, "keep", "pairwise-win", false, false],
+      [3, true, "keep", "pairwise-win", false, false],
+      [4, true, "keep", "founder-verdict", false, true]
+    ]
+  );
+  assert.equal(readiness(rows.slice(0, 4), 0).usable, 0, "no rejected, empty or missing verdict counts");
+  assert.equal(readiness(rows, 0).usable, 1, "the PASSED round alone counts");
+});
+
 /* MUTATION: count every item of a Foray as an act (items.length) instead of
    actCount -> the synthetic count is 9, not 4. */
 test("count over the Forays alone reports 0 usable and their acts as historic reference", async () => {
