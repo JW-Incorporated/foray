@@ -768,7 +768,7 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
   /* GV-08 added the first detail columns and GV-17 the runlog's speed
      columns; every earlier column stays core. GV-55 adds the stack, GV-91
      the best-of-2 cell, GV-83 the two show-variety columns, GV-104 the two
-     voice columns, GV-106 the tier fit. */
+     voice columns, GV-106 the tier fit, GV-116 the voice drift alarm. */
   assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), [
     "listen",
     "last_listen",
@@ -781,7 +781,8 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
     "top_show_pct",
     "sent_mean",
     "grade",
-    "tier_fit"
+    "tier_fit",
+    "drift"
   ]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
@@ -2054,5 +2055,60 @@ test("GV-106: the bench prints tier fit under --wide, from the row's tierFit or 
   assert.equal(formatTable([row]).includes("tier fit"), false, "the default table is core only");
   const line = JSON.parse(jsonlLine(row));
   assert.equal(line.metrics.tier_fit, 2.467);
+  assert.equal(formatTable([rowFromJsonl(line)], { wide: true }), wide);
+});
+
+/* GV-116 (W4-12; R2-08, GP-24): the voice drift alarm, off the report's
+   `veracity.voice.drift.min`. One detail column, so the committed KPI table
+   is unchanged; absent on every report written before the field existed and
+   on every run with the alarm off. */
+const driftOf = (min, acts) => ({
+  question: "same-narrator",
+  scale: [1, 5],
+  exemplarIds: ["the-hyatt-walkway-ab12cd34:act-0-introduction"],
+  fileSha: "f".repeat(64),
+  acts,
+  measured: acts.filter((a) => a.score !== null).length,
+  unmeasured: acts.filter((a) => a.score === null).length,
+  min,
+  minAct: min === null ? null : acts.find((a) => a.score === min).act,
+  mean: null
+});
+
+test("GV-116: out-4, out-9 and a voice block without the alarm carry no drift, so drift is — and never 0", () => {
+  /* MUTATION: `drift: num(v.voice?.drift?.min) ?? 0`. Ran it: red. */
+  const noAlarm = rowFor(voiceEntry({ items: 3, words: 120, readingGrade: 7.84, gradeBand: [6, 9], meanSentenceWords: 13.25 }), { runId: "run-d0" });
+  for (const row of [run4(), run9(), noAlarm]) {
+    assert.equal(row.values.drift, null, `${row.values.run}/drift`);
+    assert.equal(row.sources.drift, "absent");
+    assert.equal(formatCell(column("drift"), row), ABSENT);
+  }
+  /* An alarm that measured no act (every ask failed) is absent too. */
+  const unmeasured = rowFor(voiceEntry({ items: 3, words: 120, drift: driftOf(null, [{ act: 0, score: null, seams: 2, unmeasured: "network" }]) }), { runId: "run-d1" });
+  assert.equal(unmeasured.values.drift, null);
+  assert.equal(formatCell(column("drift"), unmeasured), ABSENT);
+});
+
+test("GV-116: the bench prints drift (the lowest act's Score) under --wide, from the report, never in the committed table", () => {
+  /* MUTATION: read `drift` off `voice.drift.mean`, or off the first act's
+     score. Ran both: red. */
+  const acts = [
+    { act: 0, score: 4.5, seams: 2, judge: "jev" },
+    { act: 1, score: 2.25, seams: 1, judge: "jev" },
+    { act: 2, score: 5, seams: 3, judge: "jev" }
+  ];
+  const row = rowFor(voiceEntry({ items: 3, words: 120, readingGrade: 7.84, meanSentenceWords: 13.25, drift: { ...driftOf(2.25, acts), mean: 3.92 } }), { runId: "run-d" });
+  assert.equal(row.values.drift, 2.25);
+  assert.equal(row.sources.drift, "report");
+  assert.equal(formatCell(column("drift"), row), "2.3");
+  assert.equal(column("drift").group, DETAIL);
+  assert.equal(column("drift").target, undefined, "rule 2: no target the bench compares against");
+  assert.equal(COLUMNS.filter((c) => c.key === "sent_mean").length, 1, "the sentence mean stays GV-104's one column");
+  assert.equal(markdownHeader()[0].includes("drift"), false, "the committed header is unchanged");
+  const wide = formatTable([row], { wide: true });
+  assert.match(wide, /drift/);
+  assert.equal(formatTable([row]).includes("drift"), false, "the default table is core only");
+  const line = JSON.parse(jsonlLine(row));
+  assert.equal(line.metrics.drift, 2.25);
   assert.equal(formatTable([rowFromJsonl(line)], { wide: true }), wide);
 });

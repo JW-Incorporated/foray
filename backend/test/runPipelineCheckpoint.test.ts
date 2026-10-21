@@ -36,6 +36,10 @@ import type { RetrievalStats } from "../src/generation/retrievalClient";
 import type { TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { ResearchShape, ResearchTapeWindow } from "../src/types/research";
 import { familyGateAllows, nodesForArchiveEntry } from "../src/generation/taxonomyFamily";
+import { VOICE_DRIFT_ENV, VOICE_DRIFT_QUESTION, VOICE_DRIFT_STAGE } from "../src/generation/voiceDrift";
+import type { LoadedVoiceExemplars } from "../src/generation/voiceExemplars";
+import type { JevAskOptions, JevClient, JevQuestion, JevResult, JevState } from "../src/generation/jevTypes";
+import { FakeJevClient, scoreAnswer } from "./helpers/fakeJevClient";
 
 /**
  * F-17/F-18, driven through the real pipeline.
@@ -60,6 +64,28 @@ const request: GenerationRequest = {
 
 const KEY = "the-history-of-grilling-and-barbecue-deadbeef";
 const FP = checkpointFingerprint({ prompt: request.prompt, duration: request.duration });
+
+/** GV-116: a founder-selected exemplar file, injected (the committed one is
+ * empty until the founder's listen). */
+const DRIFT_EXEMPLARS: LoadedVoiceExemplars = {
+  file: {
+    version: 1,
+    voiceCard: null,
+    exemplars: [
+      {
+        role: "act-introduction",
+        text: "It held for a year. Then the hotel threw a party, and the walkways filled with people watching the dancers below.",
+        forayId: "the-hyatt-walkway-ab12cd34",
+        itemIds: ["act-0-introduction"],
+        sourceKind: "candidate",
+        provenance: "qwen-pipeline",
+        selectedBy: "Wyatt",
+        listenedOn: "2026-10-18"
+      }
+    ]
+  },
+  fileSha: "d".repeat(64)
+};
 
 function fakeFinalize() {
   const seen: FinalizeForayInput[] = [];
@@ -631,6 +657,131 @@ describe("GV-79 clip-scores checkpoint", () => {
     expect(v1.clipOnSubjectRate).toBeLessThan(1);
     expect(resumed.tapeRelevance).toEqual(first.tapeRelevance);
   }, 120_000);
+
+  /* GV-116 (the GV-79 lesson): a report-only judge never outlives a failed
+     run. The drift alarm starts beside the pending clip scores; the clip
+     judge waits for the alarm's first ask, then hits the run cap, so the run
+     fails while that ask is in flight. On the classic and per-act paths.
+     MUTATION THAT KILLS THIS: drop `driftAbort.abort()` from finishRun's
+     catch. Ran it: red (the held ask's signal never aborts). */
+  it("GV-116: a run that fails while the voice drift alarm is in flight aborts the alarm's ask", async () => {
+    vi.stubEnv(VOICE_DRIFT_ENV, "on");
+    try {
+      for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+        const signals: AbortSignal[] = [];
+        let firstAsk!: () => void;
+        const asked = new Promise<void>((resolve) => (firstAsk = resolve));
+        const heldDrift: JevClient = {
+          ask(_state: JevState, _q: readonly JevQuestion[], opts: JevAskOptions): Promise<JevResult> {
+            signals.push(opts.signal!);
+            firstAsk();
+            return new Promise((resolve) =>
+              opts.signal!.addEventListener("abort", () => resolve({ ok: false, error: { category: "timeout", reason: "aborted" }, latencyMs: 0 }), { once: true })
+            );
+          }
+        };
+        const cappedClips: ClipJudge = {
+          name: "capped",
+          async score() {
+            await asked;
+            throw new BudgetExceededError(1.99, 0.01, 2);
+          }
+        };
+        const err = await runWithRunLog(new RunLog(), () =>
+          runForayPipeline(
+            request,
+            { userId: "u", now: at, gates: SHADOW, flags },
+            {
+              ...countingDeps().deps,
+              ...clipFixture(),
+              clipJudge: cappedClips,
+              voiceDriftJudge: heldDrift,
+              voiceDriftExemplars: DRIFT_EXEMPLARS,
+              finalize: fakeFinalize().fn
+            }
+          )
+        ).then(
+          () => null,
+          (e: unknown) => e
+        );
+        expect(err, JSON.stringify(flags)).toBeInstanceOf(BudgetStopError);
+        expect((err as BudgetStopError).stage).toBe("clip-scores");
+        expect(signals.length).toBeGreaterThan(0);
+        expect(signals.every((sig) => sig.aborted)).toBe(true);
+      }
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  }, 240_000);
+});
+
+/* GV-116 (W4-12): the voice drift alarm is computed at finalize from the
+   run's narration, banked or fresh, and banks nothing, so it joins no
+   checkpoint variant: a checkpoint banked with it off resumes with it on
+   (and the reverse), and a resumed run re-asks the judge over the banked
+   acts and reports the same scores. */
+describe("GV-116: the voice drift alarm reads banked narration and needs no checkpoint variant", () => {
+  const fingerprintFor = (flags: Partial<PipelineFlags>): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      variant: joinCheckpointVariant(checkpointRunVariant(resolvePipelineFlags(flags), resolveRouting()), readSelfCritique())
+    });
+
+  /* MUTATION THAT KILLS THIS: give the alarm a variant part (append
+     `voiceDrift=on` to the session's variant when FORAY_VOICE_DRIFT=on).
+     Ran it: red (the on run no longer resumes the off run's stages and
+     writes every act again). */
+  it("an off-banked checkpoint resumes under FORAY_VOICE_DRIFT=on for nothing, and the alarm scores the banked acts", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const store = new FakeCheckpointStore(fingerprintFor(flags));
+      const at = () => new Date("2026-09-09T00:00:00Z");
+      const first = countingDeps();
+      const off = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...first.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (off.outcome !== "generated") throw new Error("expected the off run to generate");
+      expect(off.input.meta!.veracity!.voice!.drift).toBeUndefined();
+
+      vi.stubEnv(VOICE_DRIFT_ENV, "on");
+      try {
+        const runOn = async () => {
+          const deps = countingDeps();
+          const jev = new FakeJevClient({ byId: { [VOICE_DRIFT_QUESTION.id]: scoreAnswer(2.5, 5) } });
+          const out = await runForayPipeline(
+            request,
+            { userId: "u", checkpointKey: KEY, now: at, flags },
+            { ...deps.deps, finalize: fakeFinalize().fn, checkpoint: store, voiceDriftJudge: jev, voiceDriftExemplars: DRIFT_EXEMPLARS }
+          );
+          if (out.outcome !== "generated") throw new Error("expected the on run to generate");
+          return { out, jev, calls: deps.calls };
+        };
+        const a = await runOn();
+        expect(a.calls, JSON.stringify(flags)).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+        expect(a.out.input.items).toEqual(off.input.items);
+        const acts = a.out.timings.filter((t) => /^narrate:\d+$/.test(t.name));
+        expect(acts.length).toBeGreaterThan(0);
+        expect(acts.every((t) => t.resumed)).toBe(true);
+        expect(a.jev.calls).toHaveLength(acts.length);
+        expect(a.out.input.meta!.veracity!.voice!.drift!.acts.map((x) => x.score)).toEqual(acts.map(() => 3.5));
+        expect(a.out.timings.find((t) => t.name === VOICE_DRIFT_STAGE)?.resumed).toBeFalsy();
+        expect(store.stageKeys(KEY).some((k) => k.startsWith(VOICE_DRIFT_STAGE))).toBe(false);
+
+        /* Again: the judge is asked the same states, the report is the same. */
+        const b = await runOn();
+        expect(b.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+        expect(b.jev.calls.map((c) => c.state)).toEqual(a.jev.calls.map((c) => c.state));
+        expect(b.out.input.meta!.veracity!.voice!.drift).toEqual(a.out.input.meta!.veracity!.voice!.drift);
+      } finally {
+        vi.unstubAllEnvs();
+      }
+
+      /* And back off: still resumes, no drift. */
+      const back = countingDeps();
+      const offAgain = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...back.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(back.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+      if (offAgain.outcome !== "generated") throw new Error("expected the off run to generate");
+      expect(offAgain.input.meta!.veracity!.voice!.drift).toBeUndefined();
+    }
+  }, 240_000);
 });
 
 /* GV-102 (W4-07): the per-act pipeline banks per-act sourcing (`source:<i>`)

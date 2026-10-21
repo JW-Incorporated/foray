@@ -676,6 +676,26 @@ export const COLUMNS = [
     digits: 2,
     targetNote:
       "MQ-14: the finished runtime over the tier's target (`tierFit.ratio`: runtimeSec / targetSec; short 900 s, medium 3,600 s); the tier's band is ±15 %; — on reports written before GV-106"
+  },
+  /* GV-116 (W4-12; R2-08, GP-24): the voice drift alarm, off
+     `meta.veracity.voice.drift.min` (voiceDrift.ts): the lowest per-act
+     "same narrator as the exemplar?" Score, 1-5. The sentence mean is
+     GV-104's `sent mean` and is not repeated. A detail column, so the
+     committed KPI table does not change shape; absent (never 0, rule 1)
+     without the block -- FORAY_VOICE_DRIFT off (the default), no judge, no
+     founder-selected exemplar, every report before GV-116 -- and when no act
+     was measured. No target: the alarm threshold waits on the founder's
+     R2-01 listening cards, and nothing compares a value to it (rule 2). */
+  {
+    key: "drift",
+    group: "detail",
+    header: "drift",
+    from: "report",
+    width: 5,
+    kind: "number",
+    digits: 1,
+    targetNote:
+      "R2-08: the lowest per-act Jev Score (1-5) on 'same narrator as the founder-selected exemplar?' (`voice.drift.min`; report only, no threshold until the founder's listening cards); — without the alarm or with no act measured"
   }
 ];
 
@@ -1111,7 +1131,10 @@ export function rowFor(entry, context = {}) {
     grade: num(v.voice?.readingGrade),
     /* GV-106: the row's own copy first, the veracity block's otherwise;
        absent (and null) stays absent. */
-    tier_fit: num(entry.tierFit?.ratio) ?? num(v.tierFit?.ratio)
+    tier_fit: num(entry.tierFit?.ratio) ?? num(v.tierFit?.ratio),
+    /* GV-116: absent without the block, and absent (null) when no act was
+       measured. */
+    drift: num(v.voice?.drift?.min)
   };
   const sources = {};
   for (const col of COLUMNS) {

@@ -60,7 +60,8 @@ import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics, type Prefetc
 import { evidencePrefetchMode, numberParser, readFlag, researchShortlist, showShareFlag, type FlagSource, type ShowShareFlag } from "./generationFlags";
 import { spineActBand } from "./replySchemas";
 import { readSpineTierSizing } from "./chat/ChatSpineBuilder";
-import { writerExemplarsMode } from "./voiceExemplars";
+import { loadVoiceExemplars, writerExemplarsMode, type LoadedVoiceExemplars } from "./voiceExemplars";
+import { VOICE_DRIFT_STAGE, voiceDriftLine, voiceDriftMode, voiceDriftReference, voiceDriftScores, type VoiceDrift } from "./voiceDrift";
 import { createEvidenceGatherer, findDigestForItem, titlesForItem, type EvidenceGatherer } from "./gatherEvidence";
 import { loadCatalogueData, type CatalogueData } from "./catalogueLookup";
 import { ForayStitcher, type StitchForayOptions } from "./stitchForay";
@@ -99,7 +100,8 @@ import { showKeyForItem, type ShowIdentityContext } from "./showIdentity";
 import { clipLevelFor, createClipJudge, subjectSentenceFor, type ClipJudge } from "./clipJudge";
 import { applyClipScores, scoreSourcedClips, type ClipScoreRecord } from "./scoreClips";
 import { ClipVerdictBookSchema, prejudgeClips, summarizeClipVerdicts, type ClipVerdictBook } from "./prejudgeClips";
-import { createJevClient } from "./jevClient";
+import { NullJevClient, createJevClient, meteredJevClient } from "./jevClient";
+import type { JevClient } from "./jevTypes";
 import { assessAct, DEFAULT_READINESS_POLICY, itemKeyOf, preludeProvenance, type ItemProvenance } from "./itemReadiness";
 import { emitActReady, emitItemReady, readinessNowMs } from "./readiness";
 import type { ItemReadyEvent } from "./deliveryTimeline";
@@ -222,6 +224,19 @@ export interface RunPipelineDeps {
    * the keyless code proxy. Injectable so a test can script and count it.
    */
   clipJudge?: ClipJudge;
+  /**
+   * GV-116 (W4-12): the voice drift alarm's judge, asked only with
+   * FORAY_VOICE_DRIFT=on. Defaults to the judge route's client
+   * (`createJevClient`), metered through the default budget guard; a
+   * NullJevClient (no key, a 'none' route) means no alarm. Injectable so a
+   * test can script and count it. Never an Anthropic call.
+   */
+  voiceDriftJudge?: JevClient;
+  /** GV-116: the exemplar reference the alarm compares each act with.
+   * Defaults to `loadVoiceExemplars()` (the founder-selected
+   * narration-exemplars.json, GV-99); null means none. Injectable because
+   * the committed file is empty until the founder's listen. */
+  voiceDriftExemplars?: LoadedVoiceExemplars | null;
   /** GV-79: the catalogue the `clip-scores` stage resolves a clip's
    * transcript digest through (`findDigestForItem`). Defaults to
    * `loadCatalogueData()`; read by that stage only. */
@@ -1478,6 +1493,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      and `sourceOptionsOf` hands the rule to the classic `source` and every
      per-act `source:<i>` alike. */
   const showShare = showShareFlag();
+  /* GV-116 (W4-12; R2-08, GP-24): FORAY_VOICE_DRIFT, read once here (a
+     malformed value fails the run before it spends a call). Off (the
+     default) builds no judge and asks nothing. It is computed at finalize
+     from the run's (possibly banked) narration and banks nothing, so it
+     joins no checkpoint variant. */
+  const voiceDriftOn = voiceDriftMode() === "on";
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
@@ -2312,6 +2333,38 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       meter: { guard: defaultBudgetGuard, userId: options.userId, ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}) }
     });
 
+  /* GV-116: the voice drift alarm's judge, built only when the alarm runs:
+     the injected one, or the judge route's client metered through the
+     default budget guard. Null (no alarm, `voice.drift` absent) when it
+     cannot answer, or when building it throws: a report-only judge never
+     fails a run. */
+  const voiceDriftJudgeOf = (): JevClient | null => {
+    let jev: JevClient;
+    try {
+      jev = deps.voiceDriftJudge ?? createJevClient({ routing });
+    } catch (err) {
+      console.warn(`  voice drift: no judge (${err instanceof Error ? err.name : "error"}); voice.drift is left out`);
+      return null;
+    }
+    if (jev instanceof NullJevClient) return null;
+    if (deps.voiceDriftJudge) return jev;
+    return meteredJevClient(jev, { guard: defaultBudgetGuard, userId: options.userId, ...(options.sessionId !== undefined ? { sessionId: options.sessionId } : {}) });
+  };
+
+  /* GV-116: the alarm over `written`, started in `finishRun` (after the
+     ordered stitch loop, so never before first audio) as a timed, unbanked
+     `voice-drift` stage, so a budget stop inside it is named like any
+     stage's. Null when it does not run: the flag off, the voice scorecard
+     off (drift rides on it), no exemplar seam, or no judge. */
+  const startVoiceDrift = (written: WrittenAct[], signal: AbortSignal): Promise<VoiceDrift> | null => {
+    if (!voiceDriftOn || gates.voice === "off") return null;
+    const exemplars = deps.voiceDriftExemplars !== undefined ? deps.voiceDriftExemplars : loadVoiceExemplars();
+    if (!exemplars || voiceDriftReference(exemplars.file) === null) return null;
+    const judge = voiceDriftJudgeOf();
+    if (!judge) return null;
+    return timed(VOICE_DRIFT_STAGE, () => voiceDriftScores(written, exemplars, judge, { signal }));
+  };
+
   /* GV-79: the checkpointed clip-scores stage over `sourced`, started off the
      timed path and awaited just before the veracity metrics. */
   const startClipScores = (sourced: SourceBeatsResult): Promise<ClipScoreRecord[]> =>
@@ -2578,9 +2631,27 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     /* G-35: printed now, when the hit rate is finally known, and carried into
        `report.json` through `meta.veracity.retrieval`. */
     console.log(`  ${evidence.summaryLine()}`);
-    /* GV-79: the clip-scores stage, awaited only now. Off, the rows are
-       §4.5's own, untouched. */
-    const tapeRelevanceRows = clipScoresPending ? applyClipScores(sourced.tapeRelevance, await clipScoresPending) : sourced.tapeRelevance;
+    /* GV-116: the voice drift alarm, started now (every act is stitched)
+       beside the clip scores. If the run fails first, its asks still
+       waiting are aborted; its own judge failures never fail the run, but a
+       budget stop inside it does, named `voice-drift`. Off: null, nothing
+       asked. */
+    const driftAbort = new AbortController();
+    const voiceDriftPending = startVoiceDrift(written, driftAbort.signal);
+    /* Handled at its await below; this keeps a rejection that lands while
+       the clip scores are still pending from reading as unhandled. */
+    voiceDriftPending?.catch(() => undefined);
+    let tapeRelevanceRows: typeof sourced.tapeRelevance;
+    try {
+      /* GV-79: the clip-scores stage, awaited only now. Off, the rows are
+         §4.5's own, untouched. */
+      tapeRelevanceRows = clipScoresPending ? applyClipScores(sourced.tapeRelevance, await clipScoresPending) : sourced.tapeRelevance;
+    } catch (err) {
+      driftAbort.abort();
+      throw err;
+    }
+    const voiceDrift = voiceDriftPending ? await voiceDriftPending : undefined;
+    if (voiceDrift) console.log(`  ${voiceDriftLine(voiceDrift)}`);
     /* GV-95: the retrieval server's counts and degraded reasons beside the
        prefetch's, only when the run had one. */
     const retrievalMetrics: RunRetrievalMetrics =
@@ -2628,6 +2699,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
          with whether tape sits beside it. From the items, so a resumed run
          reports the same numbers. FORAY_VOICE_GATE=off leaves it out. */
       ...(gates.voice === "off" ? {} : { narrationScripts: voiceScriptsOf(items), readingGradeBand: gates.readingGradeBand }),
+      /* GV-116: the drift alarm's per-act Scores into `voice.drift`, only
+         when it ran. Report only: the gate below never reads it. */
+      ...(voiceDrift ? { voiceDrift } : {}),
       /* GV-106 (MQ-14): how far the runtime is from the tier, on every
          generated outcome. Reported; gated only under FORAY_GATE_TIER_FIT. */
       tierFit: { tier: req.duration, runtimeSec },
