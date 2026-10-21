@@ -2874,6 +2874,8 @@ const BACKEND_FLOORS = {
      banked off resumes under the rule with the ledger rebuilt. 10 -> 13
      (static; the per-mode case is one `it(` in a loop). */
   "test/sourcingSession.test.ts": 13,
+  /* GV-115 (orchestrator, #1483 governed review): the show-share rule that REACHES sourcing (sourceBeats / SourcingSession wrapped pass-through): a one-show topic hands supplyShows 1 (inert), a two-show topic 2, on the classic and per-act paths. */
+  "test/showSharePlumbing.test.ts": 1,
   /* Q-04: the checker's D5 arithmetic mirrored in `d5Pair.ts` — the pair
      clause that replaced F-80's triple — pinned to `check-forays.mjs`'s own
      `d5UniformPairs` row by row (run in a Node subprocess, the only way that
