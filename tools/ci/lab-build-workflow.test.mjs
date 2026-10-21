@@ -80,7 +80,8 @@ function runGuard(script, { workflowRef = "refs/heads/main", ref, platforms = "b
     },
   });
   const outputs = fs.readFileSync(outFile, "utf8");
-  return { status: r.status, allowed: /allowed=true/.test(outputs), refused: /allowed=false/.test(outputs), out: (r.stdout || "") + (r.stderr || "") };
+  const map = Object.fromEntries(outputs.split(/\r?\n/).filter((l) => l.includes("=")).map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]));
+  return { status: r.status, map, allowed: /allowed=true/.test(outputs), refused: /allowed=false/.test(outputs), out: (r.stdout || "") + (r.stderr || "") };
 }
 
 const GUARD = BASH ? runScript("Refuse anything that could ship the real app") : "";
@@ -112,6 +113,64 @@ const REFUSED = [
   ["redesign/x:main", "refspec syntax"],
   ["redesign/*", "glob"],
 ];
+
+/* ref -> [direction, app id, home-screen name]. The ONE mapping the ios, android and
+   summary jobs all read from the guard's outputs. */
+const LAB = ["lab", "ai.jwlabs.foura.lab", "4a Lab"];
+const TACTILE = ["tactile", "ai.jwlabs.foura.lab.tactile", "4a Tactile"];
+const AMBIENT = ["ambient", "ai.jwlabs.foura.lab", "4a Ambient"];
+const MAPPING = [
+  ["feature/redesign-2026-tactile", TACTILE],
+  ["refs/heads/feature/redesign-2026-tactile", TACTILE],
+  ["redesign/tactile-p3", TACTILE],
+  ["redesign/tactile-", TACTILE],
+  ["feature/redesign-2026-ambient", AMBIENT],
+  ["redesign/ambient-p4", AMBIENT],
+  ["feature/redesign-2026", LAB],
+  ["feature/redesign-2026-aurora", LAB],
+  ["redesign/p0-lab", LAB],
+  ["redesign/tactile", LAB], // only `tactile-*` is the Tactile app: a near miss stays plain lab
+  ["redesign/p2-tactile-x", LAB],
+  ["redesign/ambient", LAB],
+  ["feature/redesign-2026-tactilex", LAB],
+];
+
+test("the guard maps each ref to ONE app: id, home-screen name and direction", needBash, () => {
+  /* MUTATION A: change the tactile arm's `APP_ID=ai.jwlabs.foura.lab.tactile` to
+     `ai.jwlabs.foura.lab` -> Tactile installs over the other direction (red).
+     MUTATION B: delete the ambient arm -> Ambient builds as "4a Lab" (red).
+     MUTATION C: widen `redesign/tactile-*` to `redesign/*tactile*` -> the
+     `redesign/p2-tactile-x` row turns into Tactile (red). */
+  for (const [ref, [direction, appId, appName]] of MAPPING) {
+    const r = runGuard(GUARD, { ref });
+    assert.equal(r.status, 0, `${ref} was refused: ${r.out}`);
+    assert.deepEqual([r.map.direction, r.map.app_id, r.map.app_name], [direction, appId, appName], `${ref} maps to the wrong app`);
+  }
+});
+
+test("a refused ref publishes no app identity, and no mapping ever yields the real app id or name", needBash, () => {
+  /* MUTATION: move the `echo app_id=` block above the ref checks -> a refused ref
+     leaves an app_id behind (red). */
+  for (const [ref] of REFUSED) {
+    const r = runGuard(GUARD, { ref });
+    assert.equal(r.map.app_id, undefined, `${JSON.stringify(ref)} left an app_id output`);
+  }
+  for (const [ref] of [...MAPPING, ...ALLOWED.map((x) => [x])]) {
+    const { map } = runGuard(GUARD, { ref });
+    assert.ok(["ai.jwlabs.foura.lab", "ai.jwlabs.foura.lab.tactile"].includes(map.app_id), `${ref} -> ${map.app_id}`);
+    assert.match(map.app_name, /^4a [A-Z][a-z]+$/, `${ref} -> ${map.app_name}`);
+  }
+});
+
+test("the app-id backstop in the guard refuses a mapping table that went wrong", needBash, () => {
+  /* The backstop is the second `case "$APP_ID"` arm. Break the table (the real id)
+     and the backstop alone must still refuse. MUTATION: delete the backstop `case`
+     -> this goes red. */
+  const broken = GUARD.replace("DIRECTION=lab; APP_ID=ai.jwlabs.foura.lab;", "DIRECTION=lab; APP_ID=ai.jwlabs.foura;");
+  assert.notEqual(broken, GUARD, "could not break the table");
+  const r = runGuard(broken, { ref: "redesign/p0-lab" });
+  assert.ok(!r.allowed && r.status !== 0 && r.refused, "a real app id got through the backstop");
+});
 
 test("the guard ALLOWS redesign branches and the trunk, dispatched from main", needBash, () => {
   for (const ref of ALLOWED) {
@@ -231,8 +290,24 @@ test("the iOS job builds the LAB app with the LAB profile, never the real one", 
   const b = block(YML, "ios", 2);
   assert.match(b, /uses: \.\/\.github\/actions\/ios-archive/);
   assert.match(b, /lab: "true"/);
-  assert.match(b, /app_id: ai\.jwlabs\.foura\.lab\s*$/m);
-  assert.match(b, /ios_provisioning_profile_base64: \$\{\{ secrets\.IOS_LAB_PROVISIONING_PROFILE_BASE64 \}\}/);
+  /* MUTATION: `app_id: ${{ needs.guard.outputs.app_id }}` -> `app_id: ai.jwlabs.foura.lab`
+     -> the Tactile app is archived under the plain lab id (red). */
+  assert.match(b, /app_id: \$\{\{ needs\.guard\.outputs\.app_id \}\}\s*$/m);
+  assert.match(b, /app_name: \$\{\{ needs\.guard\.outputs\.app_name \}\}\s*$/m);
+  /* THE SECRET CHOICE. Tactile -> its own profile; everything else -> the plain lab
+     profile. MUTATION A: swap the two secrets in the expression -> the Tactile app
+     is signed with the plain lab profile (red). MUTATION B: `== 'tactile'` ->
+     `!= 'tactile'` (red). MUTATION C: drop the "needs its own provisioning profile"
+     step -> an unset secret silently falls back to the plain lab profile (red). */
+  assert.match(b, /ios_provisioning_profile_base64: \$\{\{ needs\.guard\.outputs\.direction == 'tactile' && secrets\.IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64 \|\| secrets\.IOS_LAB_PROVISIONING_PROFILE_BASE64 \}\}/);
+  const need = step(b, "needs its own provisioning profile");
+  assert.ok(need, "the Tactile-secret presence step is gone");
+  assert.match(need, /if: needs\.guard\.outputs\.direction == 'tactile'/);
+  assert.match(need, /TACTILE_PROFILE: \$\{\{ secrets\.IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64 \}\}/);
+  assert.match(need, /\[ -n "\$TACTILE_PROFILE" \] \|\| \{[^}]*exit 1/);
+  assert.ok(b.indexOf("needs its own provisioning profile") < b.indexOf("uses: ./.github/actions/ios-archive"), "the presence check must precede the archive");
+  const profileSecrets = [...YML.matchAll(/secrets\.(IOS_[A-Z_]*PROVISIONING_PROFILE_BASE64)/g)].map((m) => m[1]);
+  assert.deepEqual([...new Set(profileSecrets)].sort(), ["IOS_LAB_PROVISIONING_PROFILE_BASE64", "IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64"], "a provisioning-profile secret other than the two lab ones is referenced");
   assert.ok(!/secrets\.IOS_PROVISIONING_PROFILE_BASE64/.test(YML), "the real app's provisioning profile is referenced");
   assert.match(b, /secrets\.IOS_DIST_CERT_P12_BASE64/);
   assert.match(b, /secrets\.APP_STORE_CONNECT_PRIVATE_KEY_BASE64/);
@@ -242,7 +317,8 @@ test("the Android job builds the LAB package, uploads under a lab artifact name,
   const b = block(YML, "android", 2);
   assert.match(b, /uses: \.\/\.github\/actions\/android-bundle/);
   assert.match(b, /lab: "true"/);
-  assert.match(b, /app_id: ai\.jwlabs\.foura\.lab\s*$/m);
+  assert.match(b, /app_id: \$\{\{ needs\.guard\.outputs\.app_id \}\}\s*$/m);
+  assert.match(b, /app_name: \$\{\{ needs\.guard\.outputs\.app_name \}\}\s*$/m);
   assert.match(b, /artifact_name: foray-lab-android-release/);
   for (const s of ["ANDROID_KEYSTORE_B64", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "PLAY_SERVICE_ACCOUNT_JSON"]) {
     assert.match(b, new RegExp(`secrets\\.${s}`), `${s} is not passed`);
@@ -260,7 +336,22 @@ test("each build job refuses a ref whose actions cannot build the lab, BEFORE ru
     assert.ok(gate > 0 && use > 0 && gate < use, `${job}: the lab-path check must precede the action`);
     assert.match(b, new RegExp(`grep -q "inputs\\.lab" \\.github/actions/${action}/action\\.yml`));
     assert.match(b, /test -f tools\/mobile\/lab-variant\.mjs/);
+    /* MUTATION: delete the `grep -q "inputs.app_name"` line -> an old ref whose action
+       cannot take a name builds "4a Lab" under an Ambient/Tactile dispatch (red). */
+    assert.match(b, new RegExp(`grep -q "inputs\\.app_name" \\.github/actions/${action}/action\\.yml \\|\\| \\{[^}]*exit 1`));
   }
+});
+
+test("the summary table shows the ACTUAL app id and name from the guard, and the Play/TestFlight targets follow app_id", () => {
+  /* MUTATION: put a literal `ai.jwlabs.foura.lab` back in a summary row -> a Tactile
+     run reports the wrong app (red). */
+  const b = block(YML, "summary", 2);
+  assert.match(b, /needs: \[guard, version, ios, android\]/);
+  assert.match(b, /APP_ID: \$\{\{ needs\.guard\.outputs\.app_id \}\}/);
+  assert.match(b, /APP_NAME: \$\{\{ needs\.guard\.outputs\.app_name \}\}/);
+  assert.match(b, /iOS \/ TestFlight \(\$\{APP_ID\}\)/);
+  assert.match(b, /Android \/ Play internal \(\$\{APP_ID\}\)/);
+  assert.ok(!/ai\.jwlabs\.foura\./.test(b), "the summary hard-codes an app id");
 });
 
 test("a re-run is refused (it would replay attempt 1's build number)", () => {
