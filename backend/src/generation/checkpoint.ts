@@ -425,7 +425,12 @@ export function stagesAtOrAfter(keys: readonly CheckpointStageKey[], rerunFrom: 
  * a route could reach more than one banked stage the earliest is named, so
  * the rule errs towards refusing a seed: the title is written by the
  * understander (`understand.title` names `understand`), and `judge` names
- * `source`, the earliest stage a support judge could serve.
+ * `clip-judge`, the earliest stage a judge could serve. GV-107: that is the
+ * pre-judge's book (`clip-judge`, before `source`), so a fork that changes
+ * the judge route reruns from `clip-judge` (which, with no book banked,
+ * redoes exactly what a rerun from `source` did) and never keeps another
+ * judge's book. Keep the map body plain `key: "value"` lines:
+ * tools/generation-bench/swap-experiment.mjs parses it from this source.
  */
 export const ROUTED_STAGE_FIRST_CHECKPOINT: Readonly<Record<StageId, CheckpointStage>> = {
   "understand.clarity": "understand",
@@ -438,10 +443,6 @@ export const ROUTED_STAGE_FIRST_CHECKPOINT: Readonly<Record<StageId, CheckpointS
   writer: "narrate",
   verifier: "narrate",
   continuity: "stitch",
-  /* GV-107: the judge's first banked stage is now the pre-judge's book
-     (`clip-judge`, before `source`), so a fork that changes the judge route
-     reruns from `clip-judge` (which, with no book banked, redoes exactly what
-     a rerun from `source` did) and never keeps another judge's book. */
   judge: "clip-judge"
 };
 
