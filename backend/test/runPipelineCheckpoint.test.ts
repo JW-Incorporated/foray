@@ -694,11 +694,14 @@ describe("GV-102: classic and per-act checkpoints do not resume each other", () 
 describe("GV-108: a cut act banks and resumes on both pipeline paths", () => {
   const at = () => new Date("2026-09-09T00:00:00Z");
   const CUT = { unverifiedSeamPolicy: "cut" as const };
+  /* The cut run's own fingerprint: `seamPolicy=cut` joins the variant
+     (orchestrator, #1476 review), so a store keyed without it would not
+     resume. */
   const fingerprintFor = (flags: Partial<PipelineFlags>): string =>
     checkpointFingerprint({
       prompt: request.prompt,
       duration: request.duration,
-      variant: joinCheckpointVariant(checkpointRunVariant(resolvePipelineFlags(flags), resolveRouting()), readSelfCritique())
+      variant: joinCheckpointVariant(checkpointRunVariant({ ...resolvePipelineFlags(flags), ...CUT }, resolveRouting()), readSelfCritique())
     });
 
   function cutDeps() {

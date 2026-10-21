@@ -5,6 +5,7 @@ import type { RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 import type { SpecificsMode } from "./specifics";
 import type { VoiceGateMode } from "./voiceChecks";
+import type { UnverifiedSeamPolicy } from "./gateConfig";
 
 /**
  * Per-stage resume for ONE Foray (generation run 2026-09-09, findings F-17 and
@@ -205,6 +206,9 @@ export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeep
     voiceGate?: VoiceGateMode | undefined;
     /** GV-127 (#1413 item 36): FORAY_SPECIFICS_CHECK (`GateConfig.specifics`). */
     specifics?: SpecificsMode | undefined;
+    /** GV-108 (#1476 review): FORAY_UNVERIFIED_SEAM_POLICY
+     * (`GateConfig.unverifiedSeamPolicy`). Absent reads as `keep`. */
+    unverifiedSeamPolicy?: UnverifiedSeamPolicy | undefined;
   };
 
 /**
@@ -307,13 +311,25 @@ export function specificsCheckVariant(flags: Pick<CheckpointRunFlags, "specifics
 }
 
 /**
+ * GV-108 (#1476 review, decision 20): the unverified-seam policy's part of
+ * the variant, only under FORAY_UNVERIFIED_SEAM_POLICY=cut. `cut` banks
+ * intro-only pages and dropped seams in `narrate:<i>` where `keep` banks the
+ * unverified page (or HANDOFF_SCRIPT), so a resume across the two would keep
+ * the other mode's narration. `keep` (the default) adds nothing and every
+ * fingerprint is unchanged.
+ */
+export function seamPolicyVariant(flags: Pick<CheckpointRunFlags, "unverifiedSeamPolicy">): string | undefined {
+  return flags.unverifiedSeamPolicy === "cut" ? "seamPolicy=cut" : undefined;
+}
+
+/**
  * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
  *
  *     [checkpointVariant(flags), narration order, retrieval mode,
  *      spine best-of, tier-sized spine, writer exemplars, tier cap,
- *      voice gate, specifics check,
+ *      voice gate, specifics check, unverified-seam policy,
  *      routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
@@ -325,7 +341,8 @@ export function specificsCheckVariant(flags: Pick<CheckpointRunFlags, "specifics
  * above 1 (GV-124, `spineBestOfVariant`), the retrieval mode only when it
  * is not bm25 (GV-125, `retrievalModeVariant`), the tier-sized spine and the
  * writer exemplars only when on (GV-126), the tier runtime cap only when on
- * and the voice gate and the specifics check only when enforcing (GV-127).
+ * and the voice gate and the specifics check only when enforcing (GV-127),
+ * the unverified-seam policy only when `cut` (GV-108).
  * Undefined when every part is.
  */
 export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
@@ -337,6 +354,7 @@ export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: Routin
     tierRuntimeCapVariant(flags),
     voiceGateVariant(flags),
     specificsCheckVariant(flags),
+    seamPolicyVariant(flags),
     routingVariant(routing)
   ].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
@@ -494,7 +512,11 @@ export const CheckpointForkStampSchema = z.object({
   voice: z.literal("enforce").optional(),
   /** GV-127 (#1413 item 36): FORAY_SPECIFICS_CHECK, written only when
    * `enforce`; compared like `voice`. Absent: not enforcing. */
-  specifics: z.literal("enforce").optional()
+  specifics: z.literal("enforce").optional(),
+  /** GV-108 (#1476 review): FORAY_UNVERIFIED_SEAM_POLICY, written only when
+   * `cut`; compared like `voice` (it changes what `narrate` banks). Absent:
+   * `keep`. */
+  seamPolicy: z.literal("cut").optional()
 });
 export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
 
@@ -523,7 +545,9 @@ export function checkpointForkStamp(input: {
     /* GV-127: likewise only when on (or enforcing). */
     ...(input.flags.tierRuntimeCap === true ? { tierCap: "on" as const } : {}),
     ...(input.flags.voiceGate === "enforce" ? { voice: "enforce" as const } : {}),
-    ...(input.flags.specifics === "enforce" ? { specifics: "enforce" as const } : {})
+    ...(input.flags.specifics === "enforce" ? { specifics: "enforce" as const } : {}),
+    /* GV-108: likewise only when cut. */
+    ...(input.flags.unverifiedSeamPolicy === "cut" ? { seamPolicy: "cut" as const } : {})
   };
 }
 
@@ -572,7 +596,8 @@ export function forkSeedRefusal(
     /* GV-127 (#1413 items 36, 40). */
     ["FORAY_TIER_RUNTIME_CAP", stamp.tierCap ?? "off", run.stamp.tierCap ?? "off", "spine"],
     ["FORAY_VOICE_GATE", stamp.voice ?? "not enforce", run.stamp.voice ?? "not enforce", "narrate"],
-    ["FORAY_SPECIFICS_CHECK", stamp.specifics ?? "not enforce", run.stamp.specifics ?? "not enforce", "narrate"]
+    ["FORAY_SPECIFICS_CHECK", stamp.specifics ?? "not enforce", run.stamp.specifics ?? "not enforce", "narrate"],
+    ["FORAY_UNVERIFIED_SEAM_POLICY", stamp.seamPolicy ?? "keep", run.stamp.seamPolicy ?? "keep", "narrate"]
   ];
   for (const [lever, seedValue, runValue, feeds] of levers) {
     if (seedValue !== runValue && CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {

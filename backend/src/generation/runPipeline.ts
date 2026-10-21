@@ -1459,6 +1459,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                resolved gate config (the driver hands it whole, so its store
                hashes the same). `flags` already carries the tier cap. */
             voiceGate: gates.voice,
+            unverifiedSeamPolicy: gates.unverifiedSeamPolicy,
             specifics: gates.specifics
           },
           routing

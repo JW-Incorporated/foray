@@ -15,6 +15,7 @@ import {
   retrievalModeVariant,
   routingVariant,
   specificsCheckVariant,
+  seamPolicyVariant,
   spineTierSizingVariant,
   tierRuntimeCapVariant,
   voiceGateVariant,
@@ -436,6 +437,41 @@ describe("checkpointRunVariant (GV-55)", () => {
     const all = stamp({ tierRuntimeCap: true, voiceGate: "enforce", specifics: "enforce" });
     expect(all).toMatchObject({ tierCap: "on", voice: "enforce", specifics: "enforce" });
     expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(all)))).toEqual(all);
+  });
+
+  /* GV-108 (orchestrator, #1476 review; decision 20). MUTATIONS THAT KILL
+     THIS: drop seamPolicyVariant from checkpointRunVariant (a cut run would
+     resume narration banked under keep, bringing back unverified pages and
+     HANDOFF_SCRIPT, and the reverse); join it under keep (every default run
+     would stop resuming); or drop the stamp's lever row. */
+  it("joins seamPolicy=cut only under cut, stamps it only under cut, and refuses a fork that keeps narration across the policy", () => {
+    for (const off of [{}, { unverifiedSeamPolicy: "keep" as const }, { unverifiedSeamPolicy: undefined }]) {
+      expect(seamPolicyVariant(off)).toBeUndefined();
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off }))).toBe(TODAY);
+    }
+    const cut = { ...CLASSIC_PIPELINE_FLAGS, unverifiedSeamPolicy: "cut" as const };
+    expect(checkpointRunVariant(cut)).toBe("seamPolicy=cut");
+    expect(fp(checkpointRunVariant(cut))).not.toBe(TODAY);
+    expect(checkpointRunVariant({ ...cut, voiceGate: "enforce", specifics: "enforce" })).toBe("voice=enforce|specifics=enforce|seamPolicy=cut");
+
+    const routing = resolveRouting({});
+    const stamp = (policy?: "keep" | "cut") =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, unverifiedSeamPolicy: policy }, routing });
+    const keepStamp = stamp("keep");
+    expect(keepStamp).toEqual(stamp());
+    expect("seamPolicy" in keepStamp).toBe(false);
+    const cutStamp = stamp("cut");
+    expect(cutStamp.seamPolicy).toBe("cut");
+    expect(cutStamp.flags).toBe(keepStamp.flags);
+    const keepArm = { version: CHECKPOINT_VERSION, fingerprint: "keep", fork: keepStamp };
+    expect(forkSeedRefusal(keepArm, { fingerprint: "cut", stamp: cutStamp }, "narrate")).toBeNull();
+    expect(forkSeedRefusal(keepArm, { fingerprint: "cut", stamp: cutStamp }, "stitch")).toBe(
+      "FORAY_UNVERIFIED_SEAM_POLICY differs (keep; this run cut) and feeds narrate, before --rerun-from stitch"
+    );
+    expect(forkSeedRefusal({ ...keepArm, fingerprint: "cut", fork: cutStamp }, { fingerprint: "keep", stamp: keepStamp }, "stitch")).toBe(
+      "FORAY_UNVERIFIED_SEAM_POLICY differs (cut; this run keep) and feeds narrate, before --rerun-from stitch"
+    );
+    expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(cutStamp)))).toEqual(cutStamp);
   });
 });
 

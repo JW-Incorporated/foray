@@ -137,18 +137,10 @@ export interface GateConfig {
    * together. HANDOFF_SCRIPT is never produced in `cut` mode.
    *
    * `cut` changes what `narrate:<i>` banks, so by GV-127's rule above it
-   * belongs in `checkpointRunVariant` (a `seamPolicy=cut` part, at both
-   * fingerprint sites, only when on). That part lives in checkpoint.ts and
-   * generateForays.ts, outside GV-108's files, and is a named follow-up:
-   * until it lands, a `cut` run can resume narration banked under `keep`
-   * (and the reverse), keeping that mode's pages -- so do not resume a
-   * checkpoint across a policy change, and do not golden-compare keep vs
-   * cut from resumed runs. The follow-up: `unverifiedSeamPolicy?` on
-   * `CheckpointRunFlags`, a `seamPolicyVariant` part ('seamPolicy=cut'
-   * only for cut) in `checkpointRunVariant`, and `unverifiedSeamPolicy:
-   * gates.unverifiedSeamPolicy` beside `voiceGate: gates.voice` at both
-   * fingerprint sites (generateForays.ts and runPipeline.ts, decision 20);
-   * a keep run's fingerprint stays today's.
+   * joins `checkpointRunVariant` as `seamPolicy=cut` (checkpoint.ts
+   * `seamPolicyVariant`, at both fingerprint sites, and in the fork stamp
+   * compared like a writer route), only under `cut`: a keep run's fingerprint
+   * stays today's, and no run resumes narration banked under the other mode.
    */
   unverifiedSeamPolicy: UnverifiedSeamPolicy;
 }
