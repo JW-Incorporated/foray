@@ -9,7 +9,8 @@ This page says how Foray decides to move a generation stage to another model or 
 | The rule, as code | `tools/generation-bench/swap-rule.mjs` (`decideSwap(evidence, { bands })`) |
 | The ledger (append-only) | `tools/generation-bench/swaps/ledger.jsonl`, written by `tools/generation-bench/swap-ledger.mjs` |
 | The adopted stack (arm A of every experiment) | `tools/generation-bench/swaps/adopted-stack.json` |
-| The runner that builds evidence and appends rows | `tools/generation-bench/swap-experiment.mjs` (GV-75, not built yet) |
+| The runner that builds evidence and appends rows | `tools/generation-bench/swap-experiment.mjs` (GV-75: plan, run, collect, decide) |
+| The act-level training-example ledger and readiness count | `tools/generation-bench/training-corpus.mjs` (GV-114) |
 
 ## The zero-Anthropic rule changes the protocol
 
@@ -131,3 +132,32 @@ The table between the markers is rebuilt from the ledger by `renderLedgerTable`.
 - `ledgerRow`: the id of the row that adopted the stack.
 
 Arm A of every experiment is built from this file (GV-75). It starts empty because no non-Anthropic stack has been measured. A stack entry that names an Anthropic model is refused.
+
+## Fine-tune readiness (the last experiment)
+
+Fine-tuning is the last item in the experiment order. The reviewers put the need at about 500 act-level examples (R2-17). `tools/generation-bench/training-corpus.mjs` (GV-114) keeps that number. It trains nothing and calls no model.
+
+An act-level example is what the writer was sent for one act, what it returned, and a label. Only bench runs recorded with `generate-forays --record-exchanges` (GV-110) have the input. The acts of the committed Forays in `data/forays.json` keep only their scripts. They are counted as reference acts and are never examples.
+
+- `build` reads every `*.exchanges.jsonl` under `data-local/swaps/`. It labels each act's final reply from two sources. The founder's review verdict (`data-local/review/verdicts.jsonl`, GV-41) comes first: pass is keep, fail is reject, fix is edited. Otherwise a swap pair's unsealed preference applies: the preferred arm's act 1 is keep and the other arm's is reject. A tie labels nothing. The rows go to `data-local/training/act-examples.jsonl`.
+- `count` prints the line below and appends it, dated, to this section.
+- `export-sft --out data-local/...` writes chat-format SFT lines. Each holds the prompt rebuilt by the Qwen writer's own prompt builder and the reply's seams as JSON.
+
+An example counts toward 500 only when all of these hold:
+
+- It is the final round of the act (the latest attempt's last round).
+- The round is verified: no mechanical issue, and every seam and beat its verifier judged passed.
+- It is labelled keep.
+- Its recorded generator is not Anthropic or Claude.
+
+The same request and reply count once (`exampleId` is their sha-256).
+
+Claude-built training data is parked (OQ-06, docs/roadmap/generation-v2.md "Constraints"). Rows whose generator is Anthropic or a Claude model are marked `claudeDerived` and counted as held, never as usable. `export-sft` leaves them out unless `--allow-claude-derived` is passed. That flag stays unused until OQ-06 is ruled on.
+
+At about 4 acts per Foray, 500 keep-labelled acts means about 150 or more reviewed Forays. The count shows how far off fine-tuning is.
+
+The lines between the markers are appended by `node tools/generation-bench/training-corpus.mjs count`. Do not edit them by hand.
+
+<!-- training:readiness:begin -->
+- 2026-10-21: usable act-level examples: 0 of 500 (non-claude, labelled keep); claude-derived held: 0; historic reference acts without inputs: 16
+<!-- training:readiness:end -->
