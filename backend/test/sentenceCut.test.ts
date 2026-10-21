@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { pageOfWrittenBeat, writeNarration, type WrittenAct, type WrittenBeat } from "../src/generation/writeNarration";
-import { SENTENCE_CUT_NOTE, writeActNarration, type WriteActOptions, type WriterExchange } from "../src/generation/writeAct";
+import { pageOfWrittenBeat, writeNarration, type NarrationWriteStats, type WrittenAct, type WrittenBeat } from "../src/generation/writeNarration";
+import { SENTENCE_CUT_NOTE, writeActNarration, type SeamVerifyResult, type WriteActOptions, type WriterExchange } from "../src/generation/writeAct";
 import { seamBand } from "../src/generation/actSeams";
 import { StubNarrationWriterBuilder } from "../src/generation/StubNarrationWriterBuilder";
 import { StubNarrationVerifierBuilder } from "../src/generation/StubNarrationVerifierBuilder";
@@ -529,5 +529,49 @@ describe("GV-113 — the rewrite policy and the records", () => {
     expect(resolveGateConfig({ sentencePolicy: "cut" }, {}).sentencePolicy).toBe("cut");
     expect(() => readGateConfig({ FORAY_UNSUPPORTED_SENTENCE_POLICY: "trim" })).toThrow(/FORAY_UNSUPPORTED_SENTENCE_POLICY/);
     expect(GATE_TABLE.find((e) => e.key === "sentencePolicy")).toMatchObject({ env: "FORAY_UNSUPPORTED_SENTENCE_POLICY", default: "rewrite" });
+  });
+});
+
+describe("GV-113 — what a cut never touches (orchestrator, #1482 governed review)", () => {
+  it("a seam whose contested point is unhandled takes the rewrite path, even with some statements supported", async () => {
+    /* §4.7 rule 3: a cut confirms a seam only when the verifier says its
+       contested point is handled. With contestedHandled false and one of
+       three statements refused, the cut must not confirm s2: the run is
+       deep-equal to the rewrite policy and the writer is re-asked.
+       MUTATION THAT KILLS THIS: drop `!verdict.contestedHandled` from
+       cutUnsupportedSentences' early return -- s2 is trimmed and confirmed
+       in round 1. */
+    const unhandled = (verdict: ActVerifyResult, request: ActVerifyRequest, round: number): ActVerifyResult => {
+      const out = withSentences(BASE_PLAN)(verdict, request, round);
+      return { ...out, seams: out.seams.map((seam) => (seam.seamId === "s2" ? { ...seam, contestedHandled: false } : seam)) };
+    };
+    const cut = builders(s2Writes(S2_SCRIPT), unhandled);
+    const cutAct = await run({ sentencePolicy: "cut" }, cut);
+    const rewrite = builders(s2Writes(S2_SCRIPT), unhandled);
+    const rewriteAct = await run({}, rewrite);
+    expect(cut.calls.write).toBeGreaterThan(1);
+    expect(cutAct).toEqual(rewriteAct);
+    expect(pagesOf(cutAct).every((p) => p.cutSentences === undefined)).toBe(true);
+    expect(s2Page(cutAct)!.script).toBe(S2_SCRIPT);
+  });
+
+  it("a seam released early on the streamed path is never trimmed, whatever the act's verifier says of its sentences", async () => {
+    /* verifySeam confirms s2 as its line closes, so it is released (it may
+       already be playing). The act's verifier then refuses one of its three
+       statements: under cut the released seam keeps every word and carries
+       no cutSentences.
+       MUTATION THAT KILLS THIS: drop `&& !seam.released` from judge()'s cut
+       branch -- the released s2 is trimmed after it was handed on. */
+    const b = builders(s2Writes(S2_SCRIPT), withSentences(BASE_PLAN));
+    const verifier = Object.assign(b.verifier, {
+      verifySeam: async (): Promise<SeamVerifyResult> => ({ confirmed: true })
+    });
+    const stats: NarrationWriteStats = { retryRounds: 0 };
+    const act = await run({ sentencePolicy: "cut", streamSeams: true, stats }, { ...b, verifier });
+    expect(stats.seamsReleasedEarly).toBeGreaterThan(0);
+    const page = s2Page(act)!;
+    expect(page.script).toBe(S2_SCRIPT);
+    expect(page.cutSentences).toBeUndefined();
+    expect(pagesOf(act).every((p) => p.cutSentences === undefined)).toBe(true);
   });
 });
