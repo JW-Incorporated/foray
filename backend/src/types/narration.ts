@@ -451,7 +451,11 @@ export type NarratedBeat = z.infer<typeof NarratedBeatSchema>;
 
 /** GV-108: true for a page cut to its code-checked introduction, and only
  * then. Like `isSynthesisVerified`, a record on an unverified page reads
- * false. */
+ * false. Its `verified: true` is a code naming check on a seam the act
+ * verifier refused, not a support verdict: a named follow-up (outside
+ * GV-108's files) has judgeCalibration.ts's `runVerdictOf` return
+ * undefined for it, as it does for a synthesis page, so a --keep-calibration
+ * cut run does not label it a positive run verdict. */
 export function isIntroOnlyVerified(beat: Pick<NarratedBeat, "verified" | "verification">): boolean {
   return beat.verified === true && beat.verification?.kind === "intro-only";
 }

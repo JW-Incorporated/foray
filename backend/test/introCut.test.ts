@@ -351,6 +351,21 @@ describe("GV-108 — a failing seam is cut to its code-checked introduction", ()
     expect(introPage(act, 0)!.script).toBe(STUB_INTRO_A);
     expect(introPage(act, 0)!.cutSentences).toContain(restating);
   });
+
+  it("cut: an introduction sentence that names the show but leaks the Foray's structure is cut (Q-08)", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `narratorStructureLeaks` clause
+       from the sentence filter (replace it with `true`) -- the leaking
+       sentence names the show, so it is kept in front of the stub
+       introduction. Ran it -- red. */
+    const leaking = `In this act, ${SHOW} explains the turn.`;
+    expect(introNamesShow(leaking, { show: SHOW })).toBe(true);
+    const withLeak = (reply: ActWriteResult): ActWriteResult => ({
+      seams: reply.seams.map((seam) => (seam.seamId === "s0" ? { ...seam, script: `${leaking} ${seam.script}` } : seam))
+    });
+    const act = await run({ unverifiedSeamPolicy: "cut" }, builders(withLeak, neverCarried("b1")));
+    expect(introPage(act, 0)!.script).toBe(STUB_INTRO_A);
+    expect(introPage(act, 0)!.cutSentences).toContain(leaking);
+  });
 });
 
 describe("GV-108 — the page and beat records", () => {

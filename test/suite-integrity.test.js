@@ -3550,7 +3550,7 @@ const BACKEND_FLOORS = {
      schema, droppedReasonOf, cutSentences internal-only, the gate row,
      pagesCut and pagesDropped, and computeUnverifiedPages ignoring a dropped
      beat. New, zero slack. */
-  "test/introCut.test.ts": 15,
+  "test/introCut.test.ts": 16,
   /* GV-83 (docs/roadmap/generation-v2.md, W3-12, #1286; MQ-07): a tape
      item's show key -- a non-empty key for every committed data/segments.json
      item, the catalogue show_id for every pool item whose segment-sources
