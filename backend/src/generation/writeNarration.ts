@@ -13,6 +13,7 @@ import {
   quoteWords,
   segmentIdOfTapeDoc,
   tapeWindowHolding,
+  type DroppedReason,
   type EvidenceDoc,
   type NarratedBeat,
   type NarrationMode,
@@ -25,6 +26,7 @@ import { beatKindOf, createEvidenceGatherer, type AdjacentTape, type EvidenceBea
 import type { ActFrame, GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
 import type { SpecificsMode } from "./specifics";
 import type { VoiceGate } from "./voiceChecks";
+import type { UnverifiedSeamPolicy } from "./gateConfig";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import { writeActNarration } from "./writeAct";
 import { planActSeams } from "./actSeams";
@@ -143,6 +145,9 @@ export type WrittenBeat =
       narration?: NarratedBeat;
       carriedBy?: { slot: number; beat: number };
       verifiedAtAttempt?: number;
+      /** GV-108: set only under FORAY_UNVERIFIED_SEAM_POLICY=cut, on a beat
+       * whose failing seam was cut to its introduction or dropped. */
+      droppedReason?: DroppedReason;
     };
 
 /** The page a written beat holds, whichever side of the union it is on,
@@ -244,6 +249,11 @@ export interface WriteNarrationOptions {
    * options carry the key (today's writer, unchanged).
    */
   voiceGate?: VoiceGate;
+  /**
+   * GV-108: the run's FORAY_UNVERIFIED_SEAM_POLICY, handed to every act's
+   * `writeActNarration`. Omitted means `keep` (today's writer, unchanged).
+   */
+  unverifiedSeamPolicy?: UnverifiedSeamPolicy;
   /**
    * GV-73 (W4-10): write each act through the writer's streamed reply
    * (`writeActStream`) when it has one -- FORAY_WRITER_STREAM or the fast
@@ -747,6 +757,8 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
               /* GV-104: the run's voice gate, with this act's position (the
                  pipeline's ctx.actIndex wins over it in writeAct). */
               ...(options.voiceGate ? { voiceGate: options.voiceGate, actIndex } : {}),
+              /* GV-108: the run's unverified-seam policy, only when set. */
+              ...(options.unverifiedSeamPolicy ? { unverifiedSeamPolicy: options.unverifiedSeamPolicy } : {}),
               /* GV-73: the streamed writer path and its early-release signal,
                  with this act's position. */
               ...(options.streamSeams ? { streamSeams: true } : {}),

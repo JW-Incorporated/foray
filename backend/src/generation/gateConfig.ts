@@ -122,7 +122,33 @@ export interface GateConfig {
    * spokenLine.js's READING_GRADE_BAND (6-9). Scorecard only: no gate reads
    * the grade. */
   readingGradeBand: [number, number];
+
+  /**
+   * GV-108 (W5-12b; R2-13, QK-29, GP-26): FORAY_UNVERIFIED_SEAM_POLICY =
+   * keep|cut, default `keep`. What a seam the act verifier never confirmed
+   * leaves behind. `keep` is today's F-51 policy, byte for byte: the last
+   * clean draft (or the confirmed text with a beat missing) kept with
+   * `verified: false`, and the `no-page` hand-off (HANDOFF_SCRIPT) when no
+   * attempt ever produced prose. `cut` keeps only the seam's introduction
+   * sentences, checked in code (`writeAct.ts`'s `cutToIntroduction`), as a
+   * verified `Intro` page on the clip it introduces; a seam with no such
+   * sentence, or one that introduces no clip, gets no page, its narration
+   * beats record `droppedReason: "unverified-cut"`, and the clips run
+   * together. HANDOFF_SCRIPT is never produced in `cut` mode.
+   *
+   * `cut` changes what `narrate:<i>` banks, so by GV-127's rule above it
+   * belongs in `checkpointRunVariant` (a `seamPolicy=cut` part, at both
+   * fingerprint sites, only when on). That part lives in checkpoint.ts and
+   * generateForays.ts, outside GV-108's files, and is a named follow-up:
+   * until it lands, a `cut` run can resume narration banked under `keep`
+   * (and the reverse), keeping that mode's pages.
+   */
+  unverifiedSeamPolicy: UnverifiedSeamPolicy;
 }
+
+/** GV-108: the policies for a seam the verifier never confirmed. */
+export const UNVERIFIED_SEAM_POLICIES = ["keep", "cut"] as const;
+export type UnverifiedSeamPolicy = (typeof UNVERIFIED_SEAM_POLICIES)[number];
 
 /** GV-104: the writer-side voice gate of a resolved config. */
 export function voiceGateOf(config: GateConfig): VoiceGate {
@@ -194,7 +220,8 @@ export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
     env: "FORAY_READING_GRADE_BAND",
     parse: gradeBandParser,
     default: [READING_GRADE_BAND[0], READING_GRADE_BAND[1]]
-  } satisfies GateTableEntry<[number, number]>
+  } satisfies GateTableEntry<[number, number]>,
+  { key: "unverifiedSeamPolicy", env: "FORAY_UNVERIFIED_SEAM_POLICY", parse: enumParser(UNVERIFIED_SEAM_POLICIES), default: "keep" } satisfies GateTableEntry<UnverifiedSeamPolicy>
 ]);
 
 /**

@@ -5,17 +5,21 @@ import { decodeEntities } from "../feeds/html";
 import type { SourcedAct } from "../types/tapeSourcing";
 import type { Voice } from "../types/spine";
 import {
+  MODE_CHAR_BANDS,
   hasDeclarativeSentence,
   isTapeSource,
   tapeDocIdFor,
   validateNarratedBeat,
   type EvidenceDoc as HeldEvidenceDoc,
+  type IntroOnlyVerification,
   type NarratedBeat,
   type NarrationAttemptRecord,
   type NarrationMode,
   type Source,
-  type SynthesisVerification
+  type SynthesisVerification,
+  type TapeSource
 } from "../types/narration";
+import { splitSpokenSentences } from "../copy/spokenLine";
 import type { EvidenceDoc, EvidenceGatherer, EvidencePack } from "./gatherEvidence";
 import type {
   ActFrame,
@@ -55,6 +59,7 @@ import {
 import { pageDocIdFor } from "./synthesisVerify";
 import { prepareSpecificsSources, unsupportedSpecificsInScript, type PreparedSources, type SpecificsMode } from "./specifics";
 import { voiceGateEnforces, voiceReport, type VoiceGate } from "./voiceChecks";
+import type { UnverifiedSeamPolicy } from "./gateConfig";
 import { withCallContext } from "./runLog";
 import {
   decideConnectiveNarration,
@@ -163,6 +168,10 @@ import {
  * intro-only seam that FAILED three times is dropped and the clips run
  * together (silence is a valid bridge, §4.8) — a clean one is kept.
  * `unverifiedPages` counts the kept ones and the gate refuses on any.
+ * GV-108: under FORAY_UNVERIFIED_SEAM_POLICY=cut (default `keep`, the policy
+ * above) a seam the verifier never confirmed keeps only its introduction
+ * sentences, checked in code, or is dropped; nothing unverified and no
+ * hand-off line is kept (`cutToIntroduction`).
  *
  * COST. A clean act is two requests (write, verify). A round is at most
  * two more (the writer, then the verifier if anything clean is
@@ -285,6 +294,17 @@ export interface WriteActOptions {
    * rounds, byte for byte.
    */
   roundPolicy?: ActRoundPolicy;
+  /**
+   * GV-108 (W5-12b; R2-13): what a seam the verifier never confirmed leaves
+   * behind (FORAY_UNVERIFIED_SEAM_POLICY, threaded from the run's
+   * `GateConfig`). Omitted or `keep` is F-51's policy, byte for byte (see
+   * FAILURE POLICY above). `cut` keeps only the seam's introduction
+   * sentences, checked in code (`cutToIntroduction`), as a verified `Intro`
+   * page on the clip it introduces, or drops the seam: its narration beats
+   * record `droppedReason: "unverified-cut"` and the clips run together.
+   * The hand-off line (HANDOFF_SCRIPT) is never produced under `cut`.
+   */
+  unverifiedSeamPolicy?: UnverifiedSeamPolicy;
 }
 
 /**
@@ -659,7 +679,11 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
     askOnly = cut ? new Set(seams.filter((s) => !s.frozen).map((s) => s.plan.seamId)) : undefined;
   }
 
-  return assemble(act, seams, beats);
+  /* GV-108: under FORAY_UNVERIFIED_SEAM_POLICY=cut a failing seam is cut to
+     its introduction or dropped, held to the gates this act enforces. */
+  const cut: CutPolicy | undefined =
+    options.unverifiedSeamPolicy === "cut" ? { clipById, voiceEnforce, specifics: options.specifics ?? "report" } : undefined;
+  return assemble(act, seams, beats, cut);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1713,7 +1737,7 @@ function roundNotes(seams: SeamState[], beats: Map<string, BeatState>, mechanica
  * narration beat or on the clip it introduces; every other narration beat
  * of the seam points at the carrier; every beat comes out where it went
  * in. */
-function assemble(act: SourcedAct, seams: SeamState[], beats: Map<string, BeatState>): WrittenAct {
+function assemble(act: SourcedAct, seams: SeamState[], beats: Map<string, BeatState>, cut?: CutPolicy): WrittenAct {
   const slots: WrittenSlot[] = act.slots.map((slot) => ({
     title: slot.title,
     beats: slot.beats.map((beat): WrittenBeat => {
@@ -1723,8 +1747,42 @@ function assemble(act: SourcedAct, seams: SeamState[], beats: Map<string, BeatSt
   }));
   const at = (slot: number, beat: number): WrittenBeat => slots[slot]!.beats[beat]!;
 
-  for (const seam of seams) {
-    const page = finalPageFor(seam, beats);
+  const pages = seams.map((seam) => finalPageFor(seam, beats, cut));
+  /* GV-108: under `cut`, a seam whose page is gone or cut to its
+     introduction no longer carries its beats. A beat of such a seam is still
+     heard when the verifier said a clip, or a seam whose page plays whole,
+     carries it; every other one is dropped. */
+  const cutSeam = (index: number): boolean => {
+    const page = pages[index];
+    return cut !== undefined && (page === undefined ? seams[index]!.plan.beats.length > 0 : page.verification?.kind === "intro-only");
+  };
+  const heardIn = new Set<string>([
+    ...(cut ? [...cut.clipById.keys()] : []),
+    ...seams.filter((seam, index) => pages[index] !== undefined && !cutSeam(index)).map((seam) => seam.plan.seamId)
+  ]);
+
+  for (const [index, seam] of seams.entries()) {
+    const page = pages[index];
+    if (cutSeam(index)) {
+      for (const b of seam.plan.beats) {
+        const written = at(b.slot, b.beat);
+        if (written.sourcing !== "narration") continue;
+        const state = beats.get(b.beatId)!;
+        if (state.carried && state.carriedBy !== undefined && heardIn.has(state.carriedBy)) {
+          if (state.verifiedAtAttempt !== undefined) written.verifiedAtAttempt = state.verifiedAtAttempt;
+          continue;
+        }
+        written.droppedReason = "unverified-cut";
+      }
+      /* The introduction plays just before its clip, as the clip's own
+         connective narration (`stitchAct` emits it there). */
+      if (page) {
+        const clip = seam.plan.introduces!;
+        const written = at(clip.slot, clip.beat);
+        if (written.sourcing === "tape") written.connectiveNarration = page;
+      }
+      continue;
+    }
     /* The page goes on the seam's first beat that plays AFTER the clip the
        seam follows -- on `planActSeams`' layout that is always its first
        beat. GV-73's `introOnlyFirstSeam` moves the first seam's beats past
@@ -1774,7 +1832,7 @@ function assemble(act: SourcedAct, seams: SeamState[], beats: Map<string, BeatSt
  * the windows of the clips on either side, so `groundedQuoteRate`
  * resolves every quote and the report's restate check has the clip's
  * opening. */
-function finalPageFor(seam: SeamState, beats: Map<string, BeatState>): NarratedBeat | undefined {
+function finalPageFor(seam: SeamState, beats: Map<string, BeatState>, cut?: CutPolicy): NarratedBeat | undefined {
   const hasBeats = seam.plan.beats.length > 0;
   const uncarried = seam.plan.beats.filter((b) => !beatSettled(beats.get(b.beatId)!)).map((b) => b.beatId);
   /* F-99: the beats closed as seed-lost — not "the writer missed them",
@@ -1797,6 +1855,12 @@ function finalPageFor(seam: SeamState, beats: Map<string, BeatState>): NarratedB
     };
     const evidence = evidenceCarriedBy(seam, page);
     if (settled) return { ...page, ...(notes ? { verifierNotes: notes } : {}), evidence };
+    /* GV-108: confirmed text with a beat of its own not carried (or lost
+       with its seed) is a failing seam like any other under `cut`. */
+    if (cut) {
+      const missing = [...uncarried, ...seedLost];
+      return cutToIntroduction(seam, seam.draft.script, seam.draft.hints, cut, `beat${missing.length > 1 ? "s" : ""} ${missing.join(", ")} not carried`);
+    }
     /* F-99: the seam is clean and confirmed and the ONLY thing missing is
        a beat whose seed is gone. A distinct reason, not an ordinary
        refusal: nothing was retried, and nothing can be — the editor's
@@ -1819,6 +1883,9 @@ function finalPageFor(seam: SeamState, beats: Map<string, BeatState>): NarratedB
   const salvage = seam.kept?.page ?? seam.lastPage;
   const notes = (seam.kept?.notes ?? seam.notes ?? seam.attempts[seam.attempts.length - 1]?.rejectionNote ?? "").trim();
   if (salvage) {
+    /* GV-108: the verifier never confirmed this seam -- keep only its
+       introduction, or nothing. */
+    if (cut) return cutToIntroduction(seam, salvage.script, salvage.pronunciationHints, cut, notes || "never confirmed");
     if (!hasBeats) {
       console.warn(
         `writeAct: dropping the introduction before clip ${seam.plan.introduces?.clipId ?? "?"} (seam ${seam.plan.seamId}) after ${seam.attempts.length} rejected attempt(s) — clips run together, silence bridges (${notes.slice(0, 200)})`
@@ -1840,6 +1907,14 @@ function finalPageFor(seam: SeamState, beats: Map<string, BeatState>): NarratedB
     return { ...page, evidence: evidenceCarriedBy(seam, page) };
   }
   if (!hasBeats) return undefined;
+  /* GV-108: no text at all, so nothing to cut to -- and the hand-off line is
+     never produced under `cut`. */
+  if (cut) {
+    console.warn(
+      `writeAct: no page was ever produced for seam ${seam.plan.seamId} (${seam.plan.beats.map((b) => b.beatId).join(", ")}) — dropping it, no hand-off (FORAY_UNVERIFIED_SEAM_POLICY=cut, GV-108): ${notes.slice(0, 200)}`
+    );
+    return undefined;
+  }
   console.warn(
     `writeAct: no page was ever produced for seam ${seam.plan.seamId} (${seam.plan.beats.map((b) => b.beatId).join(", ")}) — keeping an unverified hand-off in its place (F-51/F-60): ${notes.slice(0, 200)}`
   );
@@ -1853,6 +1928,139 @@ function finalPageFor(seam: SeamState, beats: Map<string, BeatState>): NarratedB
     verifierNotes: notes || "no page was produced",
     attempts: seam.attempts
   };
+  return { ...page, evidence: evidenceCarriedBy(seam, page) };
+}
+
+/* ------------------------------------------------------------------ */
+/* GV-108: the cut-to-introduction policy                               */
+/* ------------------------------------------------------------------ */
+
+/** What `cutToIntroduction` needs from the act: its clips (show, episode
+ * title, opening and window), and the gates this act enforces, so a cut
+ * page never carries what the writer would have been re-asked for. */
+interface CutPolicy {
+  clipById: Map<string, GateClip>;
+  /** GV-104: the voice gate enforces on this act. */
+  voiceEnforce: boolean;
+  /** GV-34: the specifics gate's mode. */
+  specifics: SpecificsMode;
+}
+
+/** The note an intro-only page carries, so an editor reading the act sees
+ * why the seam's other sentences are gone. */
+export const INTRO_CUT_NOTE = "cut to its introduction (FORAY_UNVERIFIED_SEAM_POLICY=cut, GV-108)";
+
+/**
+ * GV-108 (W5-12b; R2-13): a failing seam's text cut to its introduction.
+ * Keeps, in order, the sentences (spokenLine.js's `splitSpokenSentences`,
+ * GV-10) that
+ *   - name the clip's show or someone its episode title names
+ *     (`introNamesSource`, Q-02),
+ *   - repeat none of the clip's first sentences (`introRestatesClip`),
+ *   - mention none of this Foray's own structure (`narratorStructureLeaks`,
+ *     Q-08),
+ *   - break no spoken-line rule when the voice gate enforces on this act
+ *     (GV-104), and state no number, year or name the clips' windows do not
+ *     carry when the specifics gate enforces (GV-34),
+ * up to the Intro band's ceiling. The page that is left rests on the clip it
+ * introduces (a tape source, the window as its document), is `verified` with
+ * `verification: {kind: "intro-only", clipId}`, and lists the rest as
+ * `cutSentences`. It must still do what the seam's introduction owed: a full
+ * introduction to a show's first clip says the show's name (Q-09), and the
+ * page clears the structural validator in the Intro band.
+ *
+ * Undefined -- no page, the clips run together -- for a seam that introduces
+ * no clip, or when no sentence survives or the survivors fail a rule. A clip
+ * whose window the act does not hold is still the page's source (named by
+ * its source row, which is all the naming check reads), as the introduction
+ * the writer owed it would have been. Intro sentences
+ * pass a naming check only, not a support check (GV-120 and GV-121 add
+ * those).
+ */
+function cutToIntroduction(
+  seam: SeamState,
+  script: string,
+  hints: NarratedBeat["pronunciationHints"],
+  cut: CutPolicy,
+  why: string
+): NarratedBeat | undefined {
+  const drop = (reason: string): undefined => {
+    console.warn(
+      `writeAct: dropping seam ${seam.plan.seamId} (${seam.plan.beats.map((b) => b.beatId).join(", ") || "intro only"}) after ${seam.attempts.length} attempt(s), ${reason} — clips run together (FORAY_UNVERIFIED_SEAM_POLICY=cut, GV-108): ${why.slice(0, 200)}`
+    );
+    return undefined;
+  };
+  const introduces = seam.plan.introduces;
+  if (!introduces) return drop("it introduces no clip");
+  const clip = cut.clipById.get(introduces.clipId);
+  if (!clip) return drop(`clip ${introduces.clipId} is not in the act`);
+  const { brief, window } = clip;
+
+  /* The texts a kept sentence's specifics may rest on: the windows the page
+     carries as evidence (the clip it introduces and the clip before it). */
+  const follows = seam.plan.follows ? cut.clipById.get(seam.plan.follows.clipId) : undefined;
+  const specificsTexts = cut.specifics === "enforce" ? [window?.text ?? "", follows?.window?.text ?? ""].filter((t) => t.length > 0) : [];
+  const allowNames = [brief.show, brief.title, follows?.brief.show ?? "", follows?.brief.title ?? ""].filter((n) => n.trim().length > 0);
+  const introMax = MODE_CHAR_BANDS.Intro[1];
+
+  const kept: string[] = [];
+  const cutSentences: string[] = [];
+  for (const sentence of splitSpokenSentences(script)) {
+    const keeps =
+      introNamesSource(sentence, brief) &&
+      !introRestatesClip(sentence, brief.opening).restates &&
+      narratorStructureLeaks(sentence).length === 0 &&
+      (!cut.voiceEnforce || voiceReport(sentence, { hasTape: true }).hardErrors.length === 0) &&
+      (cut.specifics !== "enforce" || unsupportedSpecificsInScript(sentence, specificsTexts, { allowNames }).length === 0) &&
+      [...kept, sentence].join(" ").length <= introMax;
+    (keeps ? kept : cutSentences).push(sentence);
+  }
+  const intro = kept.join(" ");
+  if (intro.length === 0) return drop("no sentence of it is an introduction that passes in code");
+  /* Q-09, as `validateSeam` holds it: a full introduction to the first clip
+     this Foray plays from a show says the show's name. */
+  if (seam.intro === "full" && brief.show.trim().length > 0 && brief.showFirstHeard !== false && !introNamesShow(intro, brief)) {
+    return drop(`its introduction never says the name of "${brief.show}" (Q-09)`);
+  }
+  /* A run of words can straddle two kept sentences. */
+  if (introRestatesClip(intro, brief.opening).restates) return drop("its introduction repeats the clip's first sentences (Q-02)");
+
+  const source: TapeSource = {
+    kind: "tape",
+    segmentId: brief.segmentId,
+    claimText: `the clip that follows is from ${brief.show || "the show"}: "${brief.title}"`,
+    /* The window's own title when the act holds it (the attribution rule
+       reads it off the document); else the source row's show and episode,
+       which is all the naming check read. */
+    publication: window?.title ?? ([brief.show, brief.title].filter((t) => t.trim().length > 0).join(" — ") || brief.segmentId),
+    contested: false
+  };
+  const verification: IntroOnlyVerification = { kind: "intro-only", clipId: brief.clipId };
+  const canonIntro = intro.toLowerCase();
+  const page: NarratedBeat = {
+    mode: "Intro",
+    script: intro,
+    sources: [source],
+    pronunciationHints: hints.filter((h) => canonIntro.includes(h.word.toLowerCase())),
+    verified: true,
+    verifierNotes: `${INTRO_CUT_NOTE}: ${why}`.slice(0, 600),
+    attempts: seam.attempts,
+    verification,
+    ...(cutSentences.length > 0 ? { cutSentences } : {})
+  };
+  /* With the window held, the tape source is checked against it (the
+     window is a held document, the publication its title); without one only
+     the rules that need no document run, as for any page without one. */
+  const structural = validateNarratedBeat(page, {
+    bannedPhrasePatterns: BANNED,
+    ...(window ? { heldDocs: heldDocsOf(seam.gate.evidence) } : {}),
+    charBand: MODE_CHAR_BANDS.Intro,
+    tapeCitable: true
+  });
+  if (!structural.valid) return drop(`its introduction fails the structural rules (${structural.issues.map((i) => i.message).join("; ").slice(0, 200)})`);
+  console.warn(
+    `writeAct: cutting seam ${seam.plan.seamId} (${seam.plan.beats.map((b) => b.beatId).join(", ") || "intro only"}) to its introduction before clip ${brief.clipId} — ${kept.length} sentence(s) kept, ${cutSentences.length} cut (FORAY_UNVERIFIED_SEAM_POLICY=cut, GV-108): ${why.slice(0, 200)}`
+  );
   return { ...page, evidence: evidenceCarriedBy(seam, page) };
 }
 
