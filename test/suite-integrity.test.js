@@ -2841,7 +2841,7 @@ const BACKEND_FLOORS = {
      `claim-only-open` and the next candidate wins (narrated with the gate in
      the trace when none does); allow and the option omitted are deep-equal;
      135 -> 138. */
-  "test/sourceBeats.test.ts": 138,
+  "test/sourceBeats.test.ts": 139,
   /* GV-18 (docs/roadmap/generation-v2.md, from W4-06): SourcingSession —
      sourceBeats cut at the act boundary. Act by act equals sourceBeats and the
      pre-extraction output's digest, act 0 stays deep-frozen while acts 1+ are

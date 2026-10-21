@@ -4944,6 +4944,37 @@ describe("sourceBeats — GV-109 (MQ-06): per-edge boundary kinds, and FORAY_CLA
     expect(alone.transcriptionQueueCandidates[0]!.reason).toContain("FORAY_CLAIM_ONLY_OPENING=refuse");
   });
 
+  it("refuse mode judges the opening edge alone: a clip that opens on a sentence but ends claim-only is still placed", () => {
+    /* The tape opens cleanly (a full stop and a pause before the claim cue)
+       but nothing after the claim ends a sentence, so the END is claim-only
+       and the weaker `boundary` is claim-only too. Refuse is about where a
+       clip opens, so this cut stands.
+       MUTATION THAT KILLS THIS: test `span.boundary` instead of
+       `span.startBoundary` in `claimOnlyOpeningGate` — the clip is refused
+       and the beat narrated. */
+    const openEnd: TranscriptCue[] = [
+      { text: "Welcome back to the show, this week we are in Denver.", start_sec: 0, end_sec: 20 },
+      { text: "The coffee here is excellent and the hotels are cheap.", start_sec: 21, end_sec: 41 },
+      { text: "The gearboxes fail because the bearings take torque reversals, every single one of them, and nobody designs for it because", start_sec: 42, end_sec: 75 },
+      { text: "honestly the conference is in denver and the keynote is about coffee machines and", start_sec: 75, end_sec: 95 },
+      { text: "i love denver the coffee there is excellent and the hotels are cheap and", start_sec: 95, end_sec: 115 },
+      { text: "we keep going back every year for the food and the people and", start_sec: 115, end_sec: 135 },
+      { text: "the mountains are close enough to drive to on a free afternoon and", start_sec: 135, end_sec: 155 },
+      { text: "the airport is a long way out of town but the train is quick and", start_sec: 155, end_sec: 175 },
+      { text: "next year we might bring the whole team along with us and", start_sec: 175, end_sec: 195 }
+    ];
+    const endEpisode = episodeOf("pa-open-end", "Episode 803");
+    tapeOf["pa-open-end"] = openEnd;
+    const result = run([endEpisode], "refuse");
+    expect(allSourcedBeats(result.acts)[0]!.sourcing).toBe("tape");
+    const segment = result.newSegments[0]!;
+    expect(segment.itemId).toBe(deriveItemId(endEpisode));
+    expect(segment.startBoundary).toBe("sentence");
+    expect(segment.endBoundary).toBe("claim-only");
+    expect(segment.boundary).toBe("claim-only");
+    expect(result.sourcingTrace).toHaveLength(0);
+  });
+
   it("allow mode (and the option omitted) is deep-equal to today: the claim-only opening is placed", () => {
     /* MUTATION THAT KILLS THIS: default `claimOnlyOpening` to `refuse` in
        `sourcingInputsFor` — the omitted run places Episode 802 instead. */
