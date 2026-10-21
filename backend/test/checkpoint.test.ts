@@ -16,6 +16,7 @@ import {
   routingVariant,
   specificsCheckVariant,
   seamPolicyVariant,
+  claimOnlyOpeningVariant,
   spineTierSizingVariant,
   tierRuntimeCapVariant,
   voiceGateVariant,
@@ -472,6 +473,44 @@ describe("checkpointRunVariant (GV-55)", () => {
       "FORAY_UNVERIFIED_SEAM_POLICY differs (cut; this run keep) and feeds narrate, before --rerun-from stitch"
     );
     expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(cutStamp)))).toEqual(cutStamp);
+  });
+
+  /* GV-109 (W5-13; MQ-06; orchestrator note, the GV-108 pattern). MUTATIONS
+     THAT KILL THIS: drop claimOnlyOpeningVariant from checkpointRunVariant (a
+     refuse run would resume tape sourced under allow, claim-only openings
+     and all, and the reverse); join it under allow (every default run's
+     fingerprint moves and no banked run resumes); drop the stamp field or
+     the lever row (a seed rerun from narrate would keep the other mode's
+     sourcing). Ran each: red. */
+  it("joins claimOnlyOpening=refuse only under refuse, stamps it only under refuse, and refuses a fork that keeps sourcing across the mode", () => {
+    for (const off of [{}, { claimOnlyOpening: "allow" as const }, { claimOnlyOpening: undefined }]) {
+      expect(claimOnlyOpeningVariant(off)).toBeUndefined();
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off })).toBeUndefined();
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off }))).toBe(TODAY);
+    }
+    const refuse = { ...CLASSIC_PIPELINE_FLAGS, claimOnlyOpening: "refuse" as const };
+    expect(checkpointRunVariant(refuse)).toBe("claimOnlyOpening=refuse");
+    expect(fp(checkpointRunVariant(refuse))).not.toBe(TODAY);
+    expect(checkpointRunVariant({ ...refuse, unverifiedSeamPolicy: "cut" })).toBe("seamPolicy=cut|claimOnlyOpening=refuse");
+
+    const routing = resolveRouting({});
+    const stamp = (mode?: "allow" | "refuse") =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, claimOnlyOpening: mode }, routing });
+    const allowStamp = stamp("allow");
+    expect(allowStamp).toEqual(stamp());
+    expect("claimOnlyOpening" in allowStamp).toBe(false);
+    const refuseStamp = stamp("refuse");
+    expect(refuseStamp.claimOnlyOpening).toBe("refuse");
+    expect(refuseStamp.flags).toBe(allowStamp.flags);
+    const allowArm = { version: CHECKPOINT_VERSION, fingerprint: "allow", fork: allowStamp };
+    expect(forkSeedRefusal(allowArm, { fingerprint: "refuse", stamp: refuseStamp }, "source")).toBeNull();
+    expect(forkSeedRefusal(allowArm, { fingerprint: "refuse", stamp: refuseStamp }, "narrate")).toBe(
+      "FORAY_CLAIM_ONLY_OPENING differs (allow; this run refuse) and feeds source, before --rerun-from narrate"
+    );
+    expect(forkSeedRefusal({ ...allowArm, fingerprint: "refuse", fork: refuseStamp }, { fingerprint: "allow", stamp: allowStamp }, "narrate")).toBe(
+      "FORAY_CLAIM_ONLY_OPENING differs (refuse; this run allow) and feeds source, before --rerun-from narrate"
+    );
+    expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(refuseStamp)))).toEqual(refuseStamp);
   });
 });
 

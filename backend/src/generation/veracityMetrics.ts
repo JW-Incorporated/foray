@@ -13,7 +13,7 @@ import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
 import type { ClipJudgeId, ClipScores } from "../types/tapeSourcing";
 import { computeVoiceMetrics, type VoiceMetrics, type VoiceScript } from "./voiceChecks";
-import type { UnverifiedSeamPolicy } from "./gateConfig";
+import type { CleanCutGateMode, UnverifiedSeamPolicy } from "./gateConfig";
 import { DURATION_RUNTIME_TARGET_SEC, TIER_RUNTIME_TOLERANCE, tierRuntimeBand, type DurationTier } from "../types/spine";
 
 /**
@@ -1218,6 +1218,88 @@ export function computeTierFit(tier: DurationTier, runtimeSec: number): TierFit 
 /* Assembly                                                             */
 /* ------------------------------------------------------------------ */
 
+/** GV-109 (MQ-06): one clip that opens on no boundary, named for the report. */
+export interface ClaimOnlyOpeningClip {
+  itemId: string;
+  segmentId: string;
+  claim: string;
+}
+
+/** GV-109 (MQ-06): `computeCleanCuts`' answer. */
+export interface CleanCutResult {
+  /** Clean clips over `known`: a clean clip has BOTH edges on a turn or
+   * sentence boundary. `null` when `known` is 0. */
+  rate: number | null;
+  /** Clips whose OPENING edge is on a boundary, over the clips whose opening
+   * edge is known. `null` when none is. */
+  openingCleanRate: number | null;
+  /** Clips that carry a boundary (Q-01's extended tier-2 cuts). */
+  known: number;
+  /** Clips that carry none: tier-1 pool segments and reused pool cuts
+   * (F-84), whose edges a curator chose. */
+  unknown: number;
+  /** The clips that open claim-only: what FORAY_CLAIM_ONLY_OPENING=refuse
+   * would have refused. */
+  claimOnlyOpenings: ClaimOnlyOpeningClip[];
+}
+
+/** Whether a row's opening edge is on a boundary: its own kind when the row
+ * carries one; otherwise `boundary` (the weaker of the two edges) answers
+ * only when it is not `claim-only`; `null` when it cannot be told. */
+function openingIsClean(row: TapeRelevanceInput): boolean | null {
+  if (row.startBoundary !== undefined) return row.startBoundary !== "claim-only";
+  if (row.boundary !== undefined && row.boundary !== "claim-only") return true;
+  return null;
+}
+
+/**
+ * GV-109 (W5-13; R2-05, MQ-06): THE CLEAN-CUT MEASUREMENT. Q-01 already
+ * computes where each extended clip's edges land (`tapeExtent.ts`) and puts it
+ * on the minted segment and its relevance row, but nothing aggregated it.
+ *
+ * One clip per row, except a row whose beat rides in an earlier beat's clip
+ * (`mergedInto`, F-96): that clip is counted once, on the row it merged into.
+ * A clip is clean when both edges are on a turn or sentence boundary: by its
+ * own `startBoundary` / `endBoundary` when the row carries them, else by
+ * `boundary` (the weaker of the two, so `claim-only` exactly when an edge is),
+ * which a row written before GV-109 still carries. Tier-1 and reused pool
+ * cuts carry no boundary and count as unknown. Pure; reads nothing else.
+ */
+export function computeCleanCuts(rows: readonly TapeRelevanceInput[]): CleanCutResult {
+  let known = 0;
+  let unknown = 0;
+  let clean = 0;
+  let openingKnown = 0;
+  let openingClean = 0;
+  const claimOnlyOpenings: ClaimOnlyOpeningClip[] = [];
+  for (const row of rows) {
+    if (row.mergedInto) continue;
+    if (row.boundary === undefined) {
+      unknown += 1;
+      continue;
+    }
+    known += 1;
+    const bothClean =
+      row.startBoundary !== undefined && row.endBoundary !== undefined
+        ? row.startBoundary !== "claim-only" && row.endBoundary !== "claim-only"
+        : row.boundary !== "claim-only";
+    if (bothClean) clean += 1;
+    const opening = openingIsClean(row);
+    if (opening !== null) {
+      openingKnown += 1;
+      if (opening) openingClean += 1;
+    }
+    if (row.startBoundary === "claim-only") claimOnlyOpenings.push({ itemId: row.itemId, segmentId: row.segmentId, claim: row.claim });
+  }
+  return {
+    rate: known === 0 ? null : clean / known,
+    openingCleanRate: openingKnown === 0 ? null : openingClean / openingKnown,
+    known,
+    unknown,
+    claimOnlyOpenings
+  };
+}
+
 export interface VeracityMetrics {
   groundedQuoteRate: number | null;
   groundedQuoteCounts: { checkable: number; grounded: number };
@@ -1361,6 +1443,14 @@ export interface VeracityMetrics {
    * GV-106 or by a caller that passed no `tierFit`. Gated only under
    * FORAY_GATE_TIER_FIT, which treats it absent or null as failing. */
   tierFit?: TierFit | null;
+  /** GV-109 (MQ-06): clean clips (both edges on a turn or sentence
+   * boundary) over the clips that carry a boundary (`computeCleanCuts`).
+   * `null` when none does. Present whenever the caller passed
+   * `tapeRelevanceRows` (every `runPipeline` outcome); absent on a candidate
+   * built before GV-109. Gated only under FORAY_CLEAN_CUT_GATE=enforce. */
+  cleanCutRate?: number | null;
+  /** GV-109: the rest of `computeCleanCuts`' answer. */
+  cleanCutDetails?: Omit<CleanCutResult, "rate">;
 }
 
 export interface BuildVeracityMetricsInput {
@@ -1435,6 +1525,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
   const firstAttempt = computeFirstAttemptPassRates(input.writtenActs);
   const specifics = (input.specifics ?? "report") === "off" ? null : computeSpecificsUnsupported(input.writtenActs);
   const clips = input.clipOnSubject ? computeClipOnSubject(input.tapeRelevanceRows ?? [], input.clipOnSubject.levelFor) : null;
+  const cleanCuts = input.tapeRelevanceRows ? computeCleanCuts(input.tapeRelevanceRows) : null;
 
   return {
     groundedQuoteRate: grounded.rate,
@@ -1497,6 +1588,18 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
     ...(input.narrationScripts ? { voice: computeVoiceMetrics(input.narrationScripts, input.readingGradeBand) } : {}),
     ...(input.tierFit
       ? { tierFit: Number.isFinite(input.tierFit.runtimeSec) ? computeTierFit(input.tierFit.tier, input.tierFit.runtimeSec) : null }
+      : {}),
+    /* GV-109 (MQ-06): always computed from the rows sourcing wrote. */
+    ...(cleanCuts
+      ? {
+          cleanCutRate: cleanCuts.rate,
+          cleanCutDetails: {
+            openingCleanRate: cleanCuts.openingCleanRate,
+            known: cleanCuts.known,
+            unknown: cleanCuts.unknown,
+            claimOnlyOpenings: cleanCuts.claimOnlyOpenings
+          }
+        }
       : {})
   };
 }
@@ -1508,6 +1611,9 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
 export const GATE_MIN_GROUNDED_QUOTE_RATE = 1;
 export const GATE_MIN_PURPOSE_FIDELITY = 0.8;
 export const GATE_MIN_TAPE_RELEVANCE = 0.9;
+/** GV-109 (MQ-06): the clean-cut floor, asked only under
+ * FORAY_CLEAN_CUT_GATE=enforce. */
+export const GATE_MIN_CLEAN_CUT_RATE = 0.9;
 
 /** GV-106: the gate's options. Every key defaults off, and off leaves the
  * verdict exactly what it was before the key existed. */
@@ -1515,6 +1621,10 @@ export interface VeracityGateOptions {
   /** FORAY_GATE_TIER_FIT (`PipelineFlags.tierFitGate`): refuse a runtime
    * above the tier's +15 % ceiling, and an absent or null `tierFit`. */
   tierFit?: boolean;
+  /** GV-109: FORAY_CLEAN_CUT_GATE (`GateConfig.cleanCutGate`). `enforce`
+   * refuses a `cleanCutRate` under GATE_MIN_CLEAN_CUT_RATE; `report` or
+   * absent leaves the verdict as it was. */
+  cleanCutGate?: CleanCutGateMode;
 }
 
 export interface VeracityGateResult {
@@ -1619,6 +1729,27 @@ export function evaluateVeracityGate(veracity: VeracityMetrics | null | undefine
       failures.push(
         `tier runtime above +${Math.round(TIER_RUNTIME_TOLERANCE * 100)}%: ${Math.round(fit.runtimeSec)} s is ${fit.ratio.toFixed(3)}x the ${fit.tier} tier's ${fit.targetSec} s target, over its ${tierRuntimeBand(fit.tier)[1]} s ceiling`
       );
+    }
+  }
+
+  /* GV-109 (MQ-06), ONLY UNDER FORAY_CLEAN_CUT_GATE=enforce: fewer than 0.9 of
+     the extended clips cut cleanly at both edges is refused. A Foray with no
+     clip that carries a boundary (no tape, or tier-1 tape only) has nothing
+     for the floor to judge, so it does not block; a rate that is null with
+     known clips does, and so does a candidate on which the measurement never
+     ran: unmeasured is not passing. Report (the default): byte-identical. */
+  if (options.cleanCutGate === "enforce") {
+    const details = veracity.cleanCutDetails;
+    const rate = veracity.cleanCutRate;
+    if (details === undefined) {
+      failures.push(`cleanCutRate was never measured on this candidate, so clean cuts cannot be confirmed (FORAY_CLEAN_CUT_GATE)`);
+    } else if (details.known === 0) {
+      // No clip carries a boundary: nothing for the clean-cut floor to judge.
+    } else if (rate === undefined || rate === null) {
+      failures.push(`cleanCutRate is null despite ${details.known} clip(s) with a boundary, so clean cuts cannot be confirmed (FORAY_CLEAN_CUT_GATE)`);
+    } else if (rate < GATE_MIN_CLEAN_CUT_RATE) {
+      failures.push(`cleanCutRate ${rate.toFixed(3)} < ${GATE_MIN_CLEAN_CUT_RATE} over ${details.known} clip(s) with a boundary`);
+      for (const c of details.claimOnlyOpenings) failures.push(`  opens mid-thought: ${c.segmentId} (${c.claim.slice(0, 80)})`);
     }
   }
 

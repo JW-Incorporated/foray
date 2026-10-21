@@ -947,6 +947,10 @@ const TapeRelevanceInputSchema = z.object({
   /* Q-01: where the clip's edges landed and how far relevance carried it.
      Optional so a checkpoint written before Q-01 still resumes. */
   boundary: TapeBoundarySchema.optional(),
+  /* GV-109 (MQ-06): each edge's own kind. Optional so a checkpoint written
+     before GV-109 still resumes. */
+  startBoundary: TapeBoundarySchema.optional(),
+  endBoundary: TapeBoundarySchema.optional(),
   extendedBySec: z.number().optional(),
   /* F-84: the pool's cut at the same start was reused. Optional likewise. */
   poolCut: z.literal("reused").optional(),
@@ -999,7 +1003,9 @@ const TIER2_GATE_SCHEMA = z
     "pool-cut",
     "past-duration",
     /* GV-106: FORAY_TIER_RUNTIME_CAP's refusal, so a capped run resumes. */
-    "tier-budget"
+    "tier-budget",
+    /* GV-109: FORAY_CLAIM_ONLY_OPENING=refuse's refusal, likewise. */
+    "claim-only-open"
   ]);
 const SourcingTraceSchema = z.object({
   actIndex: z.number().int(),
@@ -1439,7 +1445,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      from the same environment the driver hashed (a malformed value fails
      here, naming the variable, before any call). GV-127 (#1413 items 36,
      40): and FORAY_TIER_RUNTIME_CAP when on, FORAY_VOICE_GATE and
-     FORAY_SPECIFICS_CHECK when enforcing. */
+     FORAY_SPECIFICS_CHECK when enforcing. GV-109: and
+     FORAY_CLAIM_ONLY_OPENING when refusing. */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
@@ -1460,7 +1467,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                hashes the same). `flags` already carries the tier cap. */
             voiceGate: gates.voice,
             unverifiedSeamPolicy: gates.unverifiedSeamPolicy,
-            specifics: gates.specifics
+            specifics: gates.specifics,
+            /* GV-109: a refused claim-only opening changes what `source`
+               banks; `allow` (the default) adds nothing. */
+            claimOnlyOpening: gates.claimOnlyOpening
           },
           routing
         ),
@@ -2166,7 +2176,11 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
        per candidate. A checkout without `data/forays.json` (CI, a fixture
        run) supersedes nothing, which is the same inert default every other
        catalogue-reading option in this call has. */
-    supersedableCut: makeSupersedableCut(options.root)
+    supersedableCut: makeSupersedableCut(options.root),
+    /* GV-109: FORAY_CLAIM_ONLY_OPENING, only when refusing, so the default
+       run's options are today's. One builder serves the classic and the
+       per-act path. */
+    ...(gates.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {})
   });
 
   /* GV-106 (W4-15): the tier's tape budget under FORAY_TIER_RUNTIME_CAP —
@@ -2536,7 +2550,17 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is
        refused on it — the candidate stays local either way. GV-106: with
        FORAY_GATE_TIER_FIT the tier fit joins it, exactly as in publishForay. */
-    const veracityGate = evaluateVeracityGate(veracity, flags.tierFitGate ? { tierFit: true } : undefined);
+    const veracityGate = evaluateVeracityGate(
+      veracity,
+      flags.tierFitGate || gates.cleanCutGate === "enforce"
+        ? {
+            ...(flags.tierFitGate ? { tierFit: true } : {}),
+            /* GV-109 (MQ-06): with FORAY_CLEAN_CUT_GATE=enforce the clean-cut
+               floor joins it, exactly as in publishForay. */
+            ...(gates.cleanCutGate === "enforce" ? { cleanCutGate: "enforce" as const } : {})
+          }
+        : undefined
+    );
 
     const input: FinalizeForayInput = {
       id: forayId,

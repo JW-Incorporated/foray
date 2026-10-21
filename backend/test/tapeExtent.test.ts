@@ -403,3 +403,113 @@ describe("extendToThought — Q-01: thought boundaries, relevance, the clamp", (
     expect(QUESTION_TURN_MAX_SEC).toBe(60);
   });
 });
+
+/* ------------------------------------------------------- GV-109 (MQ-06) */
+
+describe("GV-109 (MQ-06): each edge's own boundary kind", () => {
+  /** The host's last line is a statement, not a question, and the guest's
+   * answer opens the claim window (cues 2-3, 40-80 s). Nothing after the
+   * window ends a sentence or a turn within a minute of it, and the minute
+   * after says nothing about the claim, so the end stays where the claim
+   * search left it. */
+  const turnThenDrift: TranscriptCue[] = [
+    cue(0, 20, "Welcome back to the show, this week we are in Denver.", "Host"),
+    cue(20, 40, "Our guest has spent ten years in the energy business.", "Host"),
+    cue(40, 60, "the gearboxes fail because the bearings take torque reversals and", "Guest"),
+    cue(60, 80, "every rotation the torque comes back and the bearings crack and", "Guest"),
+    cue(80, 100, "anyway that is enough of that let us talk about the conference and", "Guest"),
+    cue(100, 120, "the conference is in denver and the keynote is about coffee machines and", "Guest"),
+    cue(120, 140, "i love denver the coffee there is excellent and the hotels are cheap and", "Guest"),
+    cue(140, 160, "we went to three cafes and two hotels on the first day alone and", "Guest"),
+    cue(160, 180, "the second day we saw the mountains and ate far too much and", "Guest")
+  ];
+
+  it("start on a turn and end claim-only: startBoundary turn, endBoundary claim-only, boundary claim-only (unchanged)", () => {
+    /* MUTATION THAT KILLS THIS: return `startBoundary: boundary` (the weaker
+       kind for both edges, which is all the extent reported before GV-109)
+       — the start reads claim-only. Ran it — red. */
+    const extent = extendToThought(windowAt(turnThenDrift, 2, 3), turnThenDrift, terms());
+    expect(extent.startSec).toBe(40);
+    expect(extent.endSec).toBe(80);
+    expect(extent.startBoundary).toBe("turn");
+    expect(extent.endBoundary).toBe("claim-only");
+    expect(extent.boundary).toBe("claim-only");
+    /* Both edges on turns: both kinds turn, and so the weaker. */
+    const both = extendToThought(windowAt(qa, 5, 6), qa, terms());
+    expect([both.startBoundary, both.endBoundary, both.boundary]).toEqual(["turn", "turn", "turn"]);
+  });
+
+  it("a window it cannot extend (here an inverted cue range) comes back unchanged, claim-only on both edges", () => {
+    /* MUTATION THAT KILLS THIS: drop the two kinds from `unchanged()`. */
+    const extent = extendToThought(windowAt(qa, 9, 3), qa, terms());
+    expect([extent.startBoundary, extent.endBoundary, extent.boundary]).toEqual(["claim-only", "claim-only", "claim-only"]);
+  });
+});
+
+describe("GV-109 (MQ-06): cutWindowToSegment's floor growth rewrites only the edge it moved", () => {
+  /** Cues 2-3 are forty seconds, under the sixty-second floor, so the cut
+   * grows by one cue towards the side that shares the claim's words. */
+  const endShares: TranscriptCue[] = [
+    cue(0, 20, "Welcome back to the show, this week we are in Denver."),
+    cue(20, 40, "The coffee here is excellent and the hotels are cheap."),
+    cue(40, 60, "The gearboxes fail because the bearings take torque reversals."),
+    cue(60, 80, "Every rotation the torque comes back and the bearings crack."),
+    cue(80, 100, "So the bearings crack under torque reversals that keep switching direction."),
+    cue(100, 120, "The conference is in Denver and the keynote is about coffee machines.")
+  ];
+  const startShares: TranscriptCue[] = [
+    cue(0, 20, "Welcome back to the show, this week we are in Denver."),
+    cue(20, 40, "So the bearings crack under torque reversals that keep switching direction."),
+    cue(40, 60, "The gearboxes fail because the bearings take torque reversals."),
+    cue(60, 80, "Every rotation the torque comes back and the bearings crack."),
+    cue(80, 100, "The conference is in Denver and the keynote is about coffee machines."),
+    cue(100, 120, "I love Denver, the coffee there is excellent and the hotels are cheap.")
+  ];
+  /** A window the extension already moved: start on a turn, end on a
+   * sentence, so `boundary` is the weaker, `sentence`. */
+  const extended = (cues: TranscriptCue[]): TapeWindow => ({
+    ...windowAt(cues, 2, 3),
+    boundary: "sentence",
+    startBoundary: "turn",
+    endBoundary: "sentence",
+    extendedBySec: 0,
+    claimStartSec: 40,
+    claimEndSec: 80
+  });
+
+  it("growth that moves only the end leaves startBoundary intact", () => {
+    /* MUTATION THAT KILLS THIS: rewrite both edges when either moved (`first
+       === window.firstCue && last === window.lastCue` for each) — the start
+       reads claim-only. Ran it — red. */
+    const span = cutWindowToSegment(claim, endShares, extended(endShares))!;
+    expect(span.firstCue).toBe(2);
+    expect(span.lastCue).toBe(4);
+    expect(span.startBoundary).toBe("turn");
+    expect(span.endBoundary).toBe("claim-only");
+    /* `boundary` keeps today's rule: an edge moved, so claim-only. */
+    expect(span.boundary).toBe("claim-only");
+  });
+
+  it("growth that moves only the start leaves endBoundary intact", () => {
+    /* MUTATION THAT KILLS THIS: rewrite the END edge whenever either edge
+       moved (`first === window.firstCue && last === window.lastCue` for it)
+       — the end reads claim-only. Ran it — red. */
+    const span = cutWindowToSegment(claim, startShares, extended(startShares))!;
+    expect(span.firstCue).toBe(1);
+    expect(span.lastCue).toBe(3);
+    expect(span.startBoundary).toBe("claim-only");
+    expect(span.endBoundary).toBe("sentence");
+    expect(span.boundary).toBe("claim-only");
+  });
+
+  it("no growth keeps both kinds, and a window extended before GV-109 (boundary only) gets no per-edge kinds", () => {
+    const wide: TapeWindow = { ...windowAt(qa, 3, 7), boundary: "turn", startBoundary: "turn", endBoundary: "turn", claimStartSec: 95, claimEndSec: 135 };
+    const span = cutWindowToSegment(claim, qa, wide)!;
+    expect([span.startBoundary, span.endBoundary, span.boundary]).toEqual(["turn", "turn", "turn"]);
+    const legacy: TapeWindow = { ...windowAt(qa, 3, 7), boundary: "turn", claimStartSec: 95, claimEndSec: 135 };
+    const old = cutWindowToSegment(claim, qa, legacy)!;
+    expect(old.boundary).toBe("turn");
+    expect(old.startBoundary).toBeUndefined();
+    expect(old.endBoundary).toBeUndefined();
+  });
+});

@@ -772,3 +772,139 @@ describe("GV-108: a cut act banks and resumes on both pipeline paths", () => {
     expect(banked(store).some((b) => droppedReasonOf(b) !== undefined)).toBe(false);
   }, 120_000);
 });
+
+/**
+ * GV-109 (W5-13; MQ-06): the per-edge boundary kinds ride on the banked
+ * sourcing rows (`source` on the classic path, `source:<i>`'s snapshot on the
+ * per-act path), and the new tier-2 gate `claim-only-open` rides on its trace
+ * rows. A checkpoint written before GV-109 carries neither and still resumes;
+ * one that carries both round-trips through the stage schemas rather than
+ * being stripped or dropped and re-sourced.
+ */
+describe("GV-109: per-edge kinds and the claim-only-open gate survive a resume, and a pre-GV-109 checkpoint resumes", () => {
+  const at = () => new Date("2026-09-09T00:00:00Z");
+  const fingerprintFor = (flags: Partial<PipelineFlags>): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      variant: joinCheckpointVariant(checkpointRunVariant(resolvePipelineFlags(flags), resolveRouting()), readSelfCritique())
+    });
+  type Rows = { tapeRelevance: Array<Record<string, unknown>>; sourcingTrace: Array<Record<string, unknown>>; newSegments: Array<Record<string, unknown>> };
+  /** The banked rows the run's sourcing resumes from, on either path. */
+  const bankedRows = (store: FakeCheckpointStore, perAct: boolean): Rows => {
+    const stages = store.files.get(KEY)!.stages as Record<string, unknown>;
+    if (!perAct) return stages.source as Rows;
+    const last = Object.keys(stages)
+      .filter((k) => k.startsWith("source:"))
+      .sort()
+      .pop()!;
+    return (stages[last] as { snapshot: Rows }).snapshot;
+  };
+  const sourceSaves = (store: FakeCheckpointStore) => store.saves.filter((s) => s.stage === "source" || s.stage.startsWith("source:")).length;
+  const claimOnlyOpenRow = {
+    actIndex: 0,
+    slotIndex: 0,
+    beatIndex: 0,
+    claim: "a beat whose only tape opened mid-thought",
+    outcome: "no-tape",
+    tier1: null,
+    tier2: { bestShowId: "practical-ai", bestEpisodeTitle: "Episode 801", score: 3, requiredScore: 2, gate: "claim-only-open", windowStartSec: 60, boundary: "claim-only" }
+  };
+
+  /* MUTATIONS THAT KILL THIS: drop `startBoundary`/`endBoundary` from
+     runPipeline.ts's TapeRelevanceInputSchema (the object strips them on
+     resume and the resumed row has none: cleanCutDetails reads the row as a
+     claim-only legacy one); drop "claim-only-open" from TIER2_GATE_SCHEMA
+     (the banked stage no longer parses, is dropped and re-sourced: a new
+     source save). Ran both: red. */
+  it("a checkpoint carrying the new kinds and gate round-trips on both paths", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const perAct = flags.perActPipeline === true;
+      const store = new FakeCheckpointStore(fingerprintFor(flags));
+      const fresh = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (fresh.outcome !== "generated") throw new Error("expected a generated outcome");
+      const rows = bankedRows(store, perAct);
+      expect(rows.tapeRelevance.length).toBeGreaterThan(0);
+      /* The banked row as GV-109 writes a tier-2 clip that opens on a turn and
+         trails off claim-only, and a trace row refused under the new gate. */
+      Object.assign(rows.tapeRelevance[0]!, { tier: 2, boundary: "claim-only", startBoundary: "turn", endBoundary: "claim-only", extendedBySec: 12 });
+      rows.sourcingTrace.push(claimOnlyOpenRow);
+
+      const savesBefore = sourceSaves(store);
+      const second = countingDeps();
+      const resumed = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...second.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (resumed.outcome !== "generated") throw new Error("expected a generated outcome");
+      expect(sourceSaves(store)).toBe(savesBefore);
+      expect(second.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+      expect(resumed.tapeRelevance[0]).toMatchObject({ boundary: "claim-only", startBoundary: "turn", endBoundary: "claim-only" });
+      const veracity = resumed.input.meta!.veracity!;
+      expect(veracity.cleanCutRate).toBe(0);
+      expect(veracity.cleanCutDetails!.known).toBe(1);
+      expect(veracity.cleanCutDetails!.openingCleanRate).toBe(1);
+      expect(bankedRows(store, perAct).sourcingTrace.at(-1)).toMatchObject({ tier2: { gate: "claim-only-open" } });
+    }
+  }, 240_000);
+
+  /* The pipeline's own fingerprint site (decision 20; the driver's is
+     generateForays.ts, from the same gate config): a refuse run banks under
+     `claimOnlyOpening=refuse`, resumes its own stages, and is not resumed by
+     an allow run, on both paths. MUTATION THAT KILLS THIS: drop
+     `claimOnlyOpening: gates.claimOnlyOpening` from runPipeline.ts's
+     checkpointRunVariant call (the refuse run's session fingerprint is the
+     allow one, so it never matches its own refuse-keyed store and every
+     stage is paid for again). Ran it: red. */
+  it("a refuse run resumes only a checkpoint banked under refuse, and an allow run does not resume it", async () => {
+    const REFUSE = { claimOnlyOpening: "refuse" as const };
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const refuseFingerprint = checkpointFingerprint({
+        prompt: request.prompt,
+        duration: request.duration,
+        variant: joinCheckpointVariant(checkpointRunVariant({ ...resolvePipelineFlags(flags), ...REFUSE }, resolveRouting()), readSelfCritique())
+      });
+      expect(refuseFingerprint).not.toBe(fingerprintFor(flags));
+      const store = new FakeCheckpointStore(refuseFingerprint);
+      const first = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: REFUSE }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(first.outcome).toBe("generated");
+      const again = countingDeps();
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: REFUSE }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+      const allow = countingDeps();
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...allow.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(allow.calls.spine).toBe(1);
+    }
+  }, 240_000);
+
+  /* MUTATION THAT KILLS THIS: make TapeRelevanceInputSchema's
+     `startBoundary` required — a pre-GV-109 stage no longer parses and is
+     re-sourced (a new source save). Ran it: red. */
+  it("a checkpoint written before GV-109 (boundary only, no per-edge kinds) resumes with nothing re-sourced", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const perAct = flags.perActPipeline === true;
+      const store = new FakeCheckpointStore(fingerprintFor(flags));
+      const fresh = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (fresh.outcome !== "generated") throw new Error("expected a generated outcome");
+      const rows = bankedRows(store, perAct);
+      /* A Q-01 row as a build before GV-109 banked it. */
+      Object.assign(rows.tapeRelevance[0]!, { tier: 2, boundary: "sentence", extendedBySec: 12 });
+      for (const row of rows.tapeRelevance) {
+        delete row.startBoundary;
+        delete row.endBoundary;
+      }
+      for (const segment of rows.newSegments) {
+        delete segment.startBoundary;
+        delete segment.endBoundary;
+      }
+
+      const savesBefore = sourceSaves(store);
+      const second = countingDeps();
+      const resumed = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...second.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (resumed.outcome !== "generated") throw new Error("expected a generated outcome");
+      expect(sourceSaves(store)).toBe(savesBefore);
+      expect(second.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+      expect(resumed.input.items).toEqual(fresh.input.items);
+      expect(resumed.tapeRelevance[0]!.startBoundary).toBeUndefined();
+      /* Measured from `boundary` alone: one known clip, clean. */
+      expect(resumed.input.meta!.veracity!.cleanCutRate).toBe(1);
+    }
+  }, 240_000);
+});

@@ -193,6 +193,12 @@ export interface ExtendToThoughtOptions {
  * the Q-01 fields always present. */
 export interface ThoughtExtent extends TapeWindow {
   boundary: TapeBoundary;
+  /** The kind of each edge on its own (MQ-06, GV-109): `boundary` is the
+   * weaker of these two. The clean-cut measurement and the claim-only-opening
+   * refusal read the start edge alone — a clip that ends mid-thought trails
+   * off, but one that opens mid-thought drops the listener into it. */
+  startBoundary: TapeBoundary;
+  endBoundary: TapeBoundary;
   extendedBySec: number;
   claimStartSec: number;
   claimEndSec: number;
@@ -215,6 +221,8 @@ export function extendToThought(window: TapeWindow, cues: TranscriptCue[], optio
   const unchanged = (): ThoughtExtent => ({
     ...window,
     boundary: "claim-only",
+    startBoundary: "claim-only",
+    endBoundary: "claim-only",
     extendedBySec: 0,
     claimStartSec,
     claimEndSec
@@ -356,6 +364,8 @@ export function extendToThought(window: TapeWindow, cues: TranscriptCue[], optio
     startSec: startOf(first),
     endSec: endOf(last),
     boundary,
+    startBoundary: startKind,
+    endBoundary: endKind,
     extendedBySec: Math.max(0, extendedBySec),
     claimStartSec,
     claimEndSec

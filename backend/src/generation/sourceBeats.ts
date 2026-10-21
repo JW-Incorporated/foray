@@ -15,6 +15,7 @@ import type {
   TranscriptionQueueCandidate
 } from "../types/tapeSourcing";
 import { validateSourcing } from "../types/tapeSourcing";
+import type { ClaimOnlyOpening } from "./gateConfig";
 import type { AudioSourceResolver, MintedSegmentSource } from "./audioSourceLookup";
 import { whyFromClaim } from "./mintedSegmentCopy";
 import {
@@ -358,6 +359,19 @@ export interface SourceBeatsOptions {
    * them by `planRuntime`.
    */
   runtimeBudgetSec?: number;
+  /**
+   * GV-109 (W5-13; R2-05, MQ-06): FORAY_CLAIM_ONLY_OPENING (`GateConfig.
+   * claimOnlyOpening`). `refuse` turns down a tier-2 cut whose OPENING edge
+   * sits on no turn or sentence boundary (`TapeSpan.startBoundary` is
+   * `claim-only`) under the gate `claim-only-open`, and the walk falls
+   * through to the next candidate: the listener would join that clip
+   * mid-thought. A cut that only ENDS claim-only is still placed.
+   *
+   * INERT WHEN OMITTED: `allow`, exactly the sourcing this module did before
+   * GV-109. Sourcing-only and measured by `computeCleanCuts`; the checker
+   * (`check-forays.mjs`) gains no rule.
+   */
+  claimOnlyOpening?: ClaimOnlyOpening;
 }
 
 /**
@@ -443,7 +457,8 @@ type SourcingConfigKey =
   | "forayTopic"
   | "root"
   | "audioSourceFor"
-  | "supersedableCut";
+  | "supersedableCut"
+  | "claimOnlyOpening";
 
 /** GV-107: the configuration half of `SourcingState`: everything sourcing
  * READS and no beat ever writes. */
@@ -467,7 +482,8 @@ function sourcingInputsFor(options: SourceBeatsOptions): SourcingInputs {
     forayTopic: options.topic ?? null,
     root: options.root,
     audioSourceFor: options.audioSourceFor,
-    supersedableCut: options.supersedableCut
+    supersedableCut: options.supersedableCut,
+    claimOnlyOpening: options.claimOnlyOpening ?? "allow"
   };
 }
 
@@ -691,6 +707,11 @@ export class SourcingSession {
                the claim window relevance carried it — the two numbers the
                ledger reads to say how often a real boundary was found. */
             boundary: resolution.boundary,
+            /* GV-109 (MQ-06): each edge's own kind, for the clean-cut
+               measurement. Only when known, so a row without them is the row
+               written before GV-109. */
+            ...(resolution.startBoundary !== undefined ? { startBoundary: resolution.startBoundary } : {}),
+            ...(resolution.endBoundary !== undefined ? { endBoundary: resolution.endBoundary } : {}),
             extendedBySec: resolution.extendedBySec,
             /* F-84: and whether the tape is the pool's own cut at the start
                tier 2's window reached — reused, never minted beside. */
@@ -891,6 +912,9 @@ interface SourcingState {
   /** See `SourceBeatsOptions.supersedableCut` — undefined means nothing is
    * supersedable and every committed cut is reused at its own length (F-84). */
   supersedableCut: ((segment: SegmentRecord) => boolean) | undefined;
+  /** See `SourceBeatsOptions.claimOnlyOpening` — `allow` (the default) places
+   * a claim-only opening exactly as before GV-109. */
+  claimOnlyOpening: ClaimOnlyOpening;
   mintedIds: Set<string>;
   newSegments: NewSegment[];
   newSegmentSources: Map<string, MintedSegmentSource>;
@@ -1002,6 +1026,9 @@ type BeatResolution =
       seedFloor?: "share-only";
       lengthGate?: "d5-pair";
       boundary?: TapeBoundary;
+      /** GV-109 (MQ-06): each edge's own kind; `boundary` is the weaker. */
+      startBoundary?: TapeBoundary;
+      endBoundary?: TapeBoundary;
       extendedBySec?: number;
       poolCut?: "reused";
       /** F-96: for a reused pool cut, how many seconds longer this run's
@@ -2423,6 +2450,9 @@ class Tier2Walk {
       /* Q-01: where the clip's edges landed and how far past the claim window
          relevance carried it — onto the row, so the ledger can count both. */
       ...(span.boundary !== undefined ? { boundary: span.boundary, extendedBySec: span.extendedBySec ?? 0 } : {}),
+      /* GV-109 (MQ-06): and each edge's own kind, run-only (`finalizeForay`
+         writes `boundary` alone onto the pool row). */
+      ...edgeKindsOf(span),
       /* F-98: the end this cut replaces. `publishForay` writes it onto the row
          as `superseded_from` and rewrites the row in place; `mintedPoolCollisions`
          reads it to tell a deliberate supersede from the shadowing F-84 refuses. */
@@ -2446,6 +2476,7 @@ class Tier2Walk {
       seedFloor,
       lengthGate,
       boundary: span.boundary,
+      ...edgeKindsOf(span),
       extendedBySec: span.extendedBySec,
       nodes: nodesForArchiveEntry(candidate.entry, state.root),
       pointer
@@ -2517,6 +2548,22 @@ class Tier2Walk {
     const lastCue = Math.max(extent.lastCue, last.span.lastCue);
     if (holeBetweenCues(cues, last.span.lastCue, lastCue)) return null;
     const boundary = weakerBoundary(last.segment.boundary ?? "claim-only", extent.boundary);
+    /* GV-109 (MQ-06): the merged clip opens where the last one opened, so it
+       keeps that edge's kind; it ends on whichever extent reaches further (the
+       weaker of the two when both end on the same cue). Only when the last
+       clip knew its edges — a clip minted before GV-109 knows only `boundary`. */
+    const mergedEdges: Pick<TapeWindow, "startBoundary" | "endBoundary"> =
+      last.segment.startBoundary !== undefined && last.segment.endBoundary !== undefined
+        ? {
+            startBoundary: last.segment.startBoundary,
+            endBoundary:
+              extent.lastCue > last.span.lastCue
+                ? extent.endBoundary
+                : extent.lastCue < last.span.lastCue
+                  ? last.segment.endBoundary
+                  : weakerBoundary(extent.endBoundary, last.segment.endBoundary)
+          }
+        : {};
     const mergedWindow: TapeWindow = {
       ...window,
       firstCue: last.span.firstCue,
@@ -2524,6 +2571,7 @@ class Tier2Walk {
       startSec: last.segment.startSec,
       endSec: Math.max(extent.endSec, last.segment.endSec),
       boundary,
+      ...mergedEdges,
       claimStartSec: last.claimStartSec,
       claimEndSec: last.claimEndSec,
       extendedBySec: 0
@@ -2543,14 +2591,28 @@ class Tier2Walk {
     last.segment.endAnchor = span.endAnchor;
     last.segment.boundary = span.boundary ?? boundary;
     last.segment.extendedBySec = span.extendedBySec ?? 0;
+    /* GV-109: the edge kinds follow the end like every other copy of it. */
+    const edges = edgeKindsOf(span);
+    if (edges.startBoundary !== undefined && edges.endBoundary !== undefined) {
+      last.segment.startBoundary = edges.startBoundary;
+      last.segment.endBoundary = edges.endBoundary;
+    }
     last.pointer.endSec = span.endSec;
     last.pointer.endAnchor = span.endAnchor;
     last.span = span;
     last.resolution.boundary = last.segment.boundary;
     last.resolution.extendedBySec = last.segment.extendedBySec;
+    if (edges.startBoundary !== undefined && edges.endBoundary !== undefined) {
+      last.resolution.startBoundary = edges.startBoundary;
+      last.resolution.endBoundary = edges.endBoundary;
+    }
     if (last.relevanceRow) {
       last.relevanceRow.boundary = last.segment.boundary;
       last.relevanceRow.extendedBySec = last.segment.extendedBySec;
+      if (edges.startBoundary !== undefined && edges.endBoundary !== undefined) {
+        last.relevanceRow.startBoundary = edges.startBoundary;
+        last.relevanceRow.endBoundary = edges.endBoundary;
+      }
     }
     /* F-101: through `placeTape`, like every other ledger write in this file,
        so the invariant its comment claims is true. */
@@ -2561,6 +2623,7 @@ class Tier2Walk {
       fromSeed: candidate.fromSeed === true,
       seedFloor,
       boundary: last.segment.boundary,
+      ...edgeKindsOf(last.segment),
       extendedBySec: last.segment.extendedBySec,
       nodes: nodesForArchiveEntry(candidate.entry, state.root),
       pointer: last.pointer,
@@ -2582,6 +2645,15 @@ function holeBetweenCues(cues: TranscriptCue[], from: number, to: number): boole
 const BOUNDARY_RANK: Record<TapeBoundary, number> = { "claim-only": 0, sentence: 1, turn: 2 };
 function weakerBoundary(a: TapeBoundary, b: TapeBoundary): TapeBoundary {
   return BOUNDARY_RANK[a] <= BOUNDARY_RANK[b] ? a : b;
+}
+
+/** GV-109 (MQ-06): a span's (or segment's) per-edge kinds, as fields to
+ * spread — both or neither, so a segment, resolution or row never carries half
+ * a pair. */
+function edgeKindsOf(span: Pick<TapeSpan, "startBoundary" | "endBoundary">): { startBoundary?: TapeBoundary; endBoundary?: TapeBoundary } {
+  return span.startBoundary !== undefined && span.endBoundary !== undefined
+    ? { startBoundary: span.startBoundary, endBoundary: span.endBoundary }
+    : {};
 }
 
 /**
@@ -2634,7 +2706,7 @@ interface PlacementCut {
   extent: ThoughtExtent;
 }
 
-type PlacementGate = "past-duration" | "m3-order" | DurationGate | "tier-budget";
+type PlacementGate = "past-duration" | "claim-only-open" | "m3-order" | DurationGate | "tier-budget";
 
 /** The chooser's answer: the cut to place (and whether it lands inside D5's
  * band with the clip before it — a mark, not a decision, F-102), or the cut
@@ -2668,12 +2740,28 @@ function pastDurationGate(span: TapeSpan, feedDurationSec: number | null): "past
   return feedDurationSec !== null && span.endSec > feedDurationSec ? "past-duration" : null;
 }
 
-/** The duration ceiling first (F-87), then M3 on the span's own start, then
- * the length rules on its own length — the order the walk has asked them in
- * since F-73. */
+/**
+ * GV-109 (W5-13; R2-05, MQ-06): under FORAY_CLAIM_ONLY_OPENING=refuse, a cut
+ * whose OPENING edge could be moved to no turn or sentence boundary — it
+ * starts wherever the claim search (or the floor growth) left it — is refused:
+ * the listener would join that clip mid-thought. Only the start edge is asked:
+ * a clip that trails off at its end is a lesser fault, and the measurement
+ * (`computeCleanCuts`) reports both. A cut with no per-edge kind (an
+ * unextended window) is never refused here. `allow` (the default) refuses
+ * nothing.
+ */
+function claimOnlyOpeningGate(span: TapeSpan, state: SourcingState): "claim-only-open" | null {
+  return state.claimOnlyOpening === "refuse" && span.startBoundary === "claim-only" ? "claim-only-open" : null;
+}
+
+/** The duration ceiling first (F-87), then (GV-109, refuse mode only) a
+ * claim-only opening, then M3 on the span's own start, then the length rules
+ * on its own length — the order the walk has asked them in since F-73. */
 function placementGateFor(cut: PlacementCut, itemId: string, feedDurationSec: number | null, state: SourcingState): PlacementGate | null {
   const pastDuration = pastDurationGate(cut.span, feedDurationSec);
   if (pastDuration) return pastDuration;
+  const claimOnlyOpen = claimOnlyOpeningGate(cut.span, state);
+  if (claimOnlyOpen) return claimOnlyOpen;
   if (!m3OrderAllows(itemId, cut.span.startSec, state)) return "m3-order";
   return durationVetoFor(itemId, cut.durationSec, state);
 }
@@ -2799,6 +2887,9 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
      ends past the episode's declared audio is not a placement question at
      all, so it sits between "no anchors" and the ledger. */
   "past-duration": 7,
+  /* GV-109: asked right after `past-duration` and before M3, on the same cut
+     span — a question about the cut's own edge, not about the ledger. */
+  "claim-only-open": 7.5,
   "m3-order": 8,
   /* The length gates sit where the walk asks them too: after the span is cut
      (so its duration is real) and before the audio-source row is written. A
@@ -3036,6 +3127,10 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
     /* GV-106: the tape exists; the tier's runtime has no room left for it. */
     case "tier-budget":
       return "Tape for this beat was found, but this Foray's length tier has no runtime left for another clip, so the beat is narrated instead.";
+    /* GV-109: the tape exists and is about the claim; every cut of it would
+       open mid-thought (FORAY_CLAIM_ONLY_OPENING=refuse). */
+    case "claim-only-open":
+      return "Tape for this beat was found, but the clip would open mid-thought, on no turn or sentence boundary, so the beat is narrated instead.";
     case "no-audio-source":
       return "Tape was found for this beat but its episode's audio cannot be resolved, so it cannot be played.";
     /* F-87: the tape exists and is about the claim; its transcript's timeline
@@ -3096,6 +3191,14 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
         claim,
         showId: candidate.entry.show_id,
         reason: `${found} ("${candidate.entry.title}") and the tape is usable, but this Foray's length tier has no runtime left for the clip (FORAY_TIER_RUNTIME_CAP). Nothing to transcribe.`
+      };
+    /* GV-109: a transcription gap of a kind: a body with speaker labels or
+       timed pauses would give the opening edge a boundary to land on. */
+    case "claim-only-open":
+      return {
+        claim,
+        showId: candidate.entry.show_id,
+        reason: `${found} ("${candidate.entry.title}") and a window of its tape is about the claim, but the cut would open on no turn or sentence boundary (FORAY_CLAIM_ONLY_OPENING=refuse). A transcript with speaker turns or timed pauses would give it one.`
       };
     case "no-audio-source":
       return {
