@@ -5,7 +5,7 @@ import { researchShortlist, type RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 import type { SpecificsMode } from "./specifics";
 import type { VoiceGateMode } from "./voiceChecks";
-import type { ClaimOnlyOpening, PauseSnapMode, UnverifiedSeamPolicy } from "./gateConfig";
+import type { ClaimOnlyOpening, PauseSnapMode, SentencePolicy, UnverifiedSeamPolicy } from "./gateConfig";
 
 /**
  * Per-stage resume for ONE Foray (generation run 2026-09-09, findings F-17 and
@@ -221,6 +221,9 @@ export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeep
     /** GV-111: FORAY_PAUSE_SNAP (`GateConfig.pauseSnap`). Absent reads as
      * `off`. */
     pauseSnap?: PauseSnapMode | undefined;
+    /** GV-113: FORAY_UNSUPPORTED_SENTENCE_POLICY (`GateConfig.sentencePolicy`).
+     * Absent reads as `rewrite`. */
+    sentencePolicy?: SentencePolicy | undefined;
   };
 
 /**
@@ -383,6 +386,18 @@ export function pauseSnapVariant(flags: Pick<CheckpointRunFlags, "pauseSnap">): 
 }
 
 /**
+ * GV-113 (W5-11; R2-10): the unsupported-sentence policy's part of the
+ * variant, only under FORAY_UNSUPPORTED_SENTENCE_POLICY=cut. `cut` banks
+ * seams trimmed of their unsupported sentences in `narrate:<i>` where
+ * `rewrite` banks the writer's re-asked text, so a resume across the two
+ * would keep the other mode's narration. `rewrite` (the default) adds
+ * nothing and every fingerprint is unchanged.
+ */
+export function sentencePolicyVariant(flags: Pick<CheckpointRunFlags, "sentencePolicy">): string | undefined {
+  return flags.sentencePolicy === "cut" ? "sentencePolicy=cut" : undefined;
+}
+
+/**
  * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
@@ -390,7 +405,7 @@ export function pauseSnapVariant(flags: Pick<CheckpointRunFlags, "pauseSnap">): 
  *     [checkpointVariant(flags), narration order, retrieval mode,
  *      research shortlist, spine best-of, tier-sized spine, writer exemplars, tier cap,
  *      voice gate, specifics check, unverified-seam policy,
- *      claim-only opening, pause snap,
+ *      claim-only opening, pause snap, unsupported-sentence policy,
  *      routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
@@ -407,7 +422,7 @@ export function pauseSnapVariant(flags: Pick<CheckpointRunFlags, "pauseSnap">): 
  * and the voice gate and the specifics check only when enforcing (GV-127),
  * the unverified-seam policy only when `cut` (GV-108), the claim-only
  * opening only when `refuse` (GV-109), the pause snap only when `on`
- * (GV-111).
+ * (GV-111), the unsupported-sentence policy only when `cut` (GV-113).
  * Undefined when every part is.
  */
 export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
@@ -422,6 +437,7 @@ export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: Routin
     seamPolicyVariant(flags),
     claimOnlyOpeningVariant(flags),
     pauseSnapVariant(flags),
+    sentencePolicyVariant(flags),
     routingVariant(routing)
   ].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
@@ -592,7 +608,11 @@ export const CheckpointForkStampSchema = z.object({
   /** GV-111: FORAY_PAUSE_SNAP, written only when `on`. Compared like a route
    * feeding `source` (it changes the cuts and anchors sourcing banks), so a
    * difference needs --rerun-from source or earlier. Absent: `off`. */
-  pauseSnap: z.literal("on").optional()
+  pauseSnap: z.literal("on").optional(),
+  /** GV-113: FORAY_UNSUPPORTED_SENTENCE_POLICY, written only when `cut`;
+   * compared like `seamPolicy` (it changes what `narrate` banks), so a
+   * difference needs --rerun-from narrate or earlier. Absent: `rewrite`. */
+  sentencePolicy: z.literal("cut").optional()
 });
 export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
 
@@ -627,7 +647,9 @@ export function checkpointForkStamp(input: {
     /* GV-109: likewise only when refusing. */
     ...(input.flags.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {}),
     /* GV-111: likewise only when on. */
-    ...(input.flags.pauseSnap === "on" ? { pauseSnap: "on" as const } : {})
+    ...(input.flags.pauseSnap === "on" ? { pauseSnap: "on" as const } : {}),
+    /* GV-113: likewise only when cut. */
+    ...(input.flags.sentencePolicy === "cut" ? { sentencePolicy: "cut" as const } : {})
   };
 }
 
@@ -681,7 +703,9 @@ export function forkSeedRefusal(
     /* GV-109: the refusal feeds sourcing. */
     ["FORAY_CLAIM_ONLY_OPENING", stamp.claimOnlyOpening ?? "allow", run.stamp.claimOnlyOpening ?? "allow", "source"],
     /* GV-111: the pause snap feeds sourcing too. */
-    ["FORAY_PAUSE_SNAP", stamp.pauseSnap ?? "off", run.stamp.pauseSnap ?? "off", "source"]
+    ["FORAY_PAUSE_SNAP", stamp.pauseSnap ?? "off", run.stamp.pauseSnap ?? "off", "source"],
+    /* GV-113: the sentence cut feeds narration. */
+    ["FORAY_UNSUPPORTED_SENTENCE_POLICY", stamp.sentencePolicy ?? "rewrite", run.stamp.sentencePolicy ?? "rewrite", "narrate"]
   ];
   for (const [lever, seedValue, runValue, feeds] of levers) {
     if (seedValue !== runValue && CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {

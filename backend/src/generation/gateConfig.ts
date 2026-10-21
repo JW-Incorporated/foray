@@ -188,7 +188,32 @@ export interface GateConfig {
    * fingerprint stays today's.
    */
   pauseSnap: PauseSnapMode;
+
+  /**
+   * GV-113 (W5-11; R2-10, MQ-02, MQ-11, GP-26):
+   * FORAY_UNSUPPORTED_SENTENCE_POLICY = rewrite|cut, default `rewrite`. What
+   * the act writer does with a seam whose per-sentence verdicts
+   * (`SeamVerdict.sentences`, GV-51) mark some, but not all, of its statement
+   * sentences `unsupported`. `rewrite` is today's policy, byte for byte: the
+   * seam is refused and the writer re-asked. `cut` removes those sentences in
+   * code at no writer cost (`writeAct.ts`'s `cutUnsupportedSentences`): the
+   * trimmed seam is re-validated with seamBand's floor relaxed and confirmed
+   * in the same round, and only a beat the cut leaves uncarried re-opens the
+   * seam, for exactly one more writer round. A verifier that answers per
+   * seam (no `sentences`) is unaffected either way.
+   *
+   * `cut` changes what `narrate:<i>` banks, so by GV-127's rule above it
+   * joins `checkpointRunVariant` as `sentencePolicy=cut` (checkpoint.ts
+   * `sentencePolicyVariant`, at both fingerprint sites, and in the fork stamp
+   * compared like a route feeding `narrate`), only under `cut`: a rewrite
+   * run's fingerprint stays today's.
+   */
+  sentencePolicy: SentencePolicy;
 }
+
+/** GV-113: FORAY_UNSUPPORTED_SENTENCE_POLICY's values. */
+export const SENTENCE_POLICIES = ["rewrite", "cut"] as const;
+export type SentencePolicy = (typeof SENTENCE_POLICIES)[number];
 
 /** GV-111: FORAY_PAUSE_SNAP's values. */
 export const PAUSE_SNAP_MODES = ["off", "on"] as const;
@@ -280,7 +305,8 @@ export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
   { key: "unverifiedSeamPolicy", env: "FORAY_UNVERIFIED_SEAM_POLICY", parse: enumParser(UNVERIFIED_SEAM_POLICIES), default: "keep" } satisfies GateTableEntry<UnverifiedSeamPolicy>,
   { key: "claimOnlyOpening", env: "FORAY_CLAIM_ONLY_OPENING", parse: enumParser(CLAIM_ONLY_OPENING_MODES), default: "allow" } satisfies GateTableEntry<ClaimOnlyOpening>,
   { key: "cleanCutGate", env: "FORAY_CLEAN_CUT_GATE", parse: enumParser(CLEAN_CUT_GATE_MODES), default: "report" } satisfies GateTableEntry<CleanCutGateMode>,
-  { key: "pauseSnap", env: "FORAY_PAUSE_SNAP", parse: enumParser(PAUSE_SNAP_MODES), default: "off" } satisfies GateTableEntry<PauseSnapMode>
+  { key: "pauseSnap", env: "FORAY_PAUSE_SNAP", parse: enumParser(PAUSE_SNAP_MODES), default: "off" } satisfies GateTableEntry<PauseSnapMode>,
+  { key: "sentencePolicy", env: "FORAY_UNSUPPORTED_SENTENCE_POLICY", parse: enumParser(SENTENCE_POLICIES), default: "rewrite" } satisfies GateTableEntry<SentencePolicy>
 ]);
 
 /**

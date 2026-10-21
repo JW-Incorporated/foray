@@ -26,7 +26,7 @@ import { beatKindOf, createEvidenceGatherer, type AdjacentTape, type EvidenceBea
 import type { ActFrame, GroundPageBrief, NarrationBuildContext, NarrationWriterBuilder, SelectedClaim } from "./NarrationWriterBuilder";
 import type { SpecificsMode } from "./specifics";
 import type { VoiceGate } from "./voiceChecks";
-import type { UnverifiedSeamPolicy } from "./gateConfig";
+import type { SentencePolicy, UnverifiedSeamPolicy } from "./gateConfig";
 import type { NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import { writeActNarration, type WriterExchange } from "./writeAct";
 import { planActSeams } from "./actSeams";
@@ -254,6 +254,9 @@ export interface WriteNarrationOptions {
    * `writeActNarration`. Omitted means `keep` (today's writer, unchanged).
    */
   unverifiedSeamPolicy?: UnverifiedSeamPolicy;
+  /** GV-113: the run's FORAY_UNSUPPORTED_SENTENCE_POLICY, handed to every
+   * act's `writeActNarration`. Omitted means `rewrite` (unchanged). */
+  sentencePolicy?: SentencePolicy;
   /**
    * GV-73 (W4-10): write each act through the writer's streamed reply
    * (`writeActStream`) when it has one -- FORAY_WRITER_STREAM or the fast
@@ -766,6 +769,8 @@ export async function writeNarration(acts: SourcedAct[], options: WriteNarration
               ...(options.voiceGate ? { voiceGate: options.voiceGate, actIndex } : {}),
               /* GV-108: the run's unverified-seam policy, only when set. */
               ...(options.unverifiedSeamPolicy ? { unverifiedSeamPolicy: options.unverifiedSeamPolicy } : {}),
+              /* GV-113: the run's unsupported-sentence policy, only when set. */
+              ...(options.sentencePolicy ? { sentencePolicy: options.sentencePolicy } : {}),
               /* GV-73: the streamed writer path and its early-release signal,
                  with this act's position. */
               ...(options.streamSeams ? { streamSeams: true } : {}),

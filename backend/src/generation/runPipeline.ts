@@ -1506,7 +1506,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
             claimOnlyOpening: gates.claimOnlyOpening,
             /* GV-111: a pause snap changes the cuts and anchors `source`
                banks; `off` (the default) adds nothing. */
-            pauseSnap: gates.pauseSnap
+            pauseSnap: gates.pauseSnap,
+            /* GV-113: a sentence cut changes what `narrate:<i>` banks; `rewrite` (the default) adds nothing. */
+            sentencePolicy: gates.sentencePolicy
           },
           routing
         ),
@@ -2467,6 +2469,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
             /* GV-108: FORAY_UNVERIFIED_SEAM_POLICY reaches the writer only
                when it is `cut`; the default `keep` adds no key. */
             ...(gates.unverifiedSeamPolicy === "cut" ? { unverifiedSeamPolicy: "cut" as const } : {}),
+            ...(gates.sentencePolicy === "cut" ? { sentencePolicy: "cut" as const } : {}), // GV-113: FORAY_UNSUPPORTED_SENTENCE_POLICY, only when cut
             /* GV-73: FORAY_WRITER_STREAM (or the fast path) streams the
                writer's reply; early releases reach deps.onSeamChecked with
                this act's index (`writeNarration` sees one act, index 0). */

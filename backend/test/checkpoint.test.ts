@@ -18,6 +18,7 @@ import {
   seamPolicyVariant,
   claimOnlyOpeningVariant,
   pauseSnapVariant,
+  sentencePolicyVariant,
   researchShortlistVariant,
   spineTierSizingVariant,
   tierRuntimeCapVariant,
@@ -552,6 +553,43 @@ describe("checkpointRunVariant (GV-55)", () => {
       "FORAY_PAUSE_SNAP differs (on; this run off) and feeds source, before --rerun-from clip-scores"
     );
     expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(onStamp)))).toEqual(onStamp);
+  });
+
+  /* GV-113 (W5-11; orchestrator note, the GV-108..GV-111 pattern). MUTATIONS
+     THAT KILL THIS: drop sentencePolicyVariant from checkpointRunVariant (a
+     cut run would resume narration a rewrite run banked, and the reverse);
+     join it under rewrite (every default run's fingerprint moves and no
+     banked run resumes); drop the stamp field or the lever row (a seed rerun
+     from stitch would keep the other policy's narration). Ran each: red. */
+  it("joins sentencePolicy=cut only under cut, stamps it only under cut, and refuses a fork that keeps narration across the policy", () => {
+    for (const off of [{}, { sentencePolicy: "rewrite" as const }, { sentencePolicy: undefined }]) {
+      expect(sentencePolicyVariant(off)).toBeUndefined();
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off })).toBeUndefined();
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off }))).toBe(TODAY);
+    }
+    const cut = { ...CLASSIC_PIPELINE_FLAGS, sentencePolicy: "cut" as const };
+    expect(checkpointRunVariant(cut)).toBe("sentencePolicy=cut");
+    expect(fp(checkpointRunVariant(cut))).not.toBe(TODAY);
+    expect(checkpointRunVariant({ ...cut, unverifiedSeamPolicy: "cut", pauseSnap: "on" })).toBe("seamPolicy=cut|pauseSnap=on|sentencePolicy=cut");
+
+    const routing = resolveRouting({});
+    const stamp = (policy?: "rewrite" | "cut") =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, sentencePolicy: policy }, routing });
+    const rewriteStamp = stamp("rewrite");
+    expect(rewriteStamp).toEqual(stamp());
+    expect("sentencePolicy" in rewriteStamp).toBe(false);
+    const cutStamp = stamp("cut");
+    expect(cutStamp.sentencePolicy).toBe("cut");
+    expect(cutStamp.flags).toBe(rewriteStamp.flags);
+    const rewriteArm = { version: CHECKPOINT_VERSION, fingerprint: "rewrite", fork: rewriteStamp };
+    expect(forkSeedRefusal(rewriteArm, { fingerprint: "cut", stamp: cutStamp }, "narrate")).toBeNull();
+    expect(forkSeedRefusal(rewriteArm, { fingerprint: "cut", stamp: cutStamp }, "stitch")).toBe(
+      "FORAY_UNSUPPORTED_SENTENCE_POLICY differs (rewrite; this run cut) and feeds narrate, before --rerun-from stitch"
+    );
+    expect(forkSeedRefusal({ ...rewriteArm, fingerprint: "cut", fork: cutStamp }, { fingerprint: "rewrite", stamp: rewriteStamp }, "stitch")).toBe(
+      "FORAY_UNSUPPORTED_SENTENCE_POLICY differs (cut; this run rewrite) and feeds narrate, before --rerun-from stitch"
+    );
+    expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(cutStamp)))).toEqual(cutStamp);
   });
 
   /* GV-112 (W3-25; orchestrator note: the shortlist flag lives in

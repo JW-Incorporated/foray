@@ -19,6 +19,7 @@ import {
   computeShowVariety,
   computeTierFit,
   computeCleanCuts,
+  computeSentencesSurviving,
   CLIP_ON_SUBJECT_LEVEL,
   buildVeracityMetrics,
   evaluateVeracityGate,
@@ -1374,5 +1375,65 @@ describe("GV-109 — MQ-06 clean cuts: computed on every candidate, gated only u
     };
     expect(evaluateVeracityGate(half, publishGateOptions({})).ok).toBe(true);
     expect(evaluateVeracityGate(half, publishGateOptions({ FORAY_CLEAN_CUT_GATE: "enforce" })).ok).toBe(false);
+  });
+});
+
+describe("GV-113 — sentencesSurviving: the sentences the writer wrote that reach the listener (R2-10)", () => {
+  const base = { sourcedActs: [], writtenActs: [], topic: "t", writerCalls: 1, verifierCalls: 1, pipelineTokens: 0, stageTimings: [] };
+  const page = (script: string, extra: Partial<NarratedBeat> = {}): NarratedBeat => ({ mode: "Patch", script, sources: [], pronunciationHints: [], verified: true, ...extra });
+  const narrationBeat = (narration: NarratedBeat): WrittenBeat => ({ sourcing: "narration", claim: "c", exploration: false, narration });
+  const clipPointer: TapePointer = { segmentId: "item-a#10", itemId: "item-a", startSec: 10, endSec: 70, startAnchor: "so the first thing", endAnchor: "was a hire", tier: 1, confidence: "high" };
+  const act = (...beats: WrittenBeat[]): WrittenAct => ({ title: "Act 1", slots: [{ title: "s", beats }] });
+  /* Two pages: a trimmed one (two sentences kept, one cut), and one untouched
+     (three sentences). A carried beat holds no page and counts nothing. */
+  const trimmed = act(
+    narrationBeat(page("The hangers carried double the load. Investigators traced the change.", { cutSentences: ["Nobody ever checked the welds."] })),
+    { sourcing: "narration", claim: "c2", exploration: false, carriedBy: { slot: 0, beat: 0 } },
+    narrationBeat(page("One. Two sentences here. And a third?"))
+  );
+
+  /* MUTATION THAT KILLS THIS: count a page's cut sentences as surviving (or
+     skip them), or count every page's sentences from `cutSentences` alone.
+     Ran both: red. */
+  it("counts every kept page's sentences against the ones the pages record as cut", () => {
+    expect(computeSentencesSurviving([trimmed])).toEqual({ surviving: 5, cut: 1, rate: 5 / 6 });
+    expect(computeSentencesSurviving([])).toEqual({ surviving: 0, cut: 0, rate: null });
+    /* A page cut to its introduction (GV-108) counts its cut sentences too. */
+    const intro = act({
+      sourcing: "tape",
+      claim: "t",
+      exploration: false,
+      tape: clipPointer,
+      connectiveNarration: page("Next, from Practical AI.", { mode: "Intro", verification: { kind: "intro-only", clipId: "c0" }, cutSentences: ["A.", "B."] })
+    });
+    expect(computeSentencesSurviving([intro])).toEqual({ surviving: 1, cut: 2, rate: 1 / 3 });
+  });
+
+  /* MUTATION THAT KILLS THIS: report the two fields unconditionally (the
+     default report gains keys), or only under the `cut` input (a pipeline
+     run, which does not pass the policy, never reports a cut it made), or
+     count GV-108's intro-only pages as a sentence cut (a cut-seam-policy
+     report gains keys). Ran all three: red. */
+  it("reported under the cut policy or when a sentence-cut page plays whole, never on a default report", () => {
+    const untouched = act(narrationBeat(page("One sentence. And another.")));
+    const plain = buildVeracityMetrics({ ...base, writtenActs: [untouched] });
+    expect("sentencesSurvivingRate" in plain).toBe(false);
+    expect("sentencesCut" in plain).toBe(false);
+    expect("sentencesCut" in buildVeracityMetrics({ ...base, writtenActs: [untouched], sentencePolicy: "rewrite" })).toBe(false);
+    const policyOn = buildVeracityMetrics({ ...base, writtenActs: [untouched], sentencePolicy: "cut" });
+    expect(policyOn.sentencesSurvivingRate).toBe(1);
+    expect(policyOn.sentencesCut).toBe(0);
+    const fromPages = buildVeracityMetrics({ ...base, writtenActs: [trimmed] });
+    expect(fromPages.sentencesSurvivingRate).toBe(5 / 6);
+    expect(fromPages.sentencesCut).toBe(1);
+    const introOnly = act({
+      sourcing: "tape",
+      claim: "t",
+      exploration: false,
+      tape: clipPointer,
+      connectiveNarration: page("Next, from Practical AI.", { mode: "Intro", verification: { kind: "intro-only", clipId: "c0" }, cutSentences: ["A."] })
+    });
+    expect("sentencesCut" in buildVeracityMetrics({ ...base, writtenActs: [introOnly], unverifiedSeamPolicy: "cut" })).toBe(false);
+    expect(evaluateVeracityGate(fromPages)).toEqual(evaluateVeracityGate(plain));
   });
 });
