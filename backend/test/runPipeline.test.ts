@@ -2709,3 +2709,92 @@ describe("runForayPipeline — GV-98 act 1's evidence on the timed path, the res
     expect((caught as BudgetStopError).stage).toMatch(/^narrate:\d+$/);
   }, 60_000);
 });
+
+describe("runForayPipeline — FORAY_SHOW_SHARE reaches sourcing with the topic's supplying shows, on both paths (GV-115)", () => {
+  /* The rule's `supplyShows` is counted by runPipeline from the topic
+     decision's own supply measure (`byShow`), so the plumbing is pinned on a
+     fixture catalogue: two grilling shows, or one. The archive has no bodies,
+     so every beat narrates (`no-tape`); sourcing still runs, which is all
+     this needs. The count is read off the one line the run prints when the
+     rule is on. */
+  const REAL_DATA = join(__dirname, "..", "..", "data");
+  const ENV = "FORAY_SHOW_SHARE";
+  const roots: string[] = [];
+
+  function fixtureRoot(showIds: string[]): string {
+    const root = mkdtempSync(join(tmpdir(), "gv115-pipeline-"));
+    mkdirSync(join(root, "data"));
+    copyFileSync(join(REAL_DATA, "taxonomy.json"), join(root, "data", "taxonomy.json"));
+    copyFileSync(join(REAL_DATA, "semantic-index.json"), join(root, "data", "semantic-index.json"));
+    writeFileSync(
+      join(root, "data", "catalog.json"),
+      JSON.stringify({ shows: showIds.map((show_id) => ({ show_id, title: show_id, taxonomy_node_ids: ["food/grilling-bbq"] })) })
+    );
+    roots.push(root);
+    return root;
+  }
+
+  const episodes = (showId: string, n: number): TranscriptDigestEntry[] =>
+    Array.from({ length: n }, (_, i) => ({ show_id: showId, show_title: showId, guid: `${showId}-${i + 1}`, title: `${showId} episode ${i + 1}`, cues: 100 }));
+
+  async function showShareLines(value: string | undefined, shows: string[], flags: { perActPipeline?: boolean }): Promise<{ lines: string[]; outcome: string }> {
+    const prior = process.env[ENV];
+    if (value === undefined) delete process.env[ENV];
+    else process.env[ENV] = value;
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    try {
+      const root = fixtureRoot(shows);
+      const out = await runForayPipeline(
+        request,
+        { userId: "founder-1", now: options.now, root, topic: "food/grilling-bbq", flags },
+        { ...stubDeps(), transcriptArchive: shows.flatMap((s) => episodes(s, 4)), segmentPool: [] }
+      );
+      const lines = log.mock.calls.map((c) => String(c[0])).filter((l) => l.includes("show share"));
+      return { lines, outcome: out.outcome };
+    } finally {
+      log.mockRestore();
+      if (prior === undefined) delete process.env[ENV];
+      else process.env[ENV] = prior;
+    }
+  }
+
+  beforeEach(() => {
+    resetTaxonomyCache();
+    resetTaxonomyFamilyCache();
+  });
+
+  afterEach(() => {
+    resetTaxonomyCache();
+    resetTaxonomyFamilyCache();
+    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+  });
+
+  /* MUTATIONS THAT KILL THIS, each ran red: (1) drop the `showShare` spread
+     from `sourceOptionsOf` (no supply is counted and no line printed); (2)
+     count the topic's archive rows (`measure(...).get(topic)?.archive`)
+     instead of its shows (the two-show run reports 8). */
+  it("counts the shows that can supply the topic and hands the rule to the classic `source` and the per-act `source:<i>` alike", async () => {
+    for (const flags of [{}, { perActPipeline: true }]) {
+      const two = await showShareLines("gate", ["grill-a", "grill-b"], flags);
+      expect(two.lines).toEqual(["  source: show share gate at 0.6 — 2 show(s) can supply food/grilling-bbq"]);
+      const one = await showShareLines("order", ["grill-a"], flags);
+      expect(one.lines).toEqual(["  source: show share order at 0.6 — 1 show(s) can supply food/grilling-bbq (inert under two)"]);
+    }
+  }, 120_000);
+
+  it("off (the default) counts nothing and prints nothing, on both paths", async () => {
+    /* MUTATION THAT KILLS THIS: build the rule whatever the flag says
+       (`showShare: showShareOptionsFor(showShare ?? { mode: "order", max: 0.6 }, topic)`
+       with no guard on the spread). Ran it: red. */
+    for (const flags of [{}, { perActPipeline: true }]) {
+      for (const value of [undefined, "off"]) {
+        expect((await showShareLines(value, ["grill-a", "grill-b"], flags)).lines).toEqual([]);
+      }
+    }
+  }, 120_000);
+
+  it("a malformed FORAY_SHOW_SHARE fails the run at its start, naming the variable", async () => {
+    await expect(showShareLines("sometimes", ["grill-a"], {})).rejects.toThrow(FlagValueError);
+    await expect(showShareLines("sometimes", ["grill-a"], {})).rejects.toThrow(ENV);
+  });
+});

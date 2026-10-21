@@ -477,7 +477,14 @@ export type ClipScoreOutcome = z.infer<typeof ClipScoreOutcomeSchema>;
  *                        segment is longer than the clip ceiling the tier's
  *                        runtime budget has left (`clipCeilingSec`). A pool
  *                        segment's length is fixed, so it is refused, never
- *                        cut. Never emitted with the cap off. */
+ *                        cut. Never emitted with the cap off.
+ *   - `show-share`     — GV-115 (W3-14; R2-16, FORAY_SHOW_SHARE=gate only):
+ *                        with two or more shows able to supply the topic and
+ *                        at least two clips placed, the segment would put its
+ *                        show past FORAY_SHOW_SHARE_MAX (default 60 %) of the
+ *                        Foray's tape seconds. A fall-through, like
+ *                        `m4-runtime`. Never emitted with the rule off or in
+ *                        `order` mode. */
 export type Tier1Gate =
   | "no-candidates"
   | "threshold"
@@ -489,7 +496,8 @@ export type Tier1Gate =
   | "d3-mean"
   | "d5-pair"
   | "m4-runtime"
-  | "tier-budget";
+  | "tier-budget"
+  | "show-share";
 
 /** Which tier-2 gate turned down the best-scoring archive episode.
  *
@@ -571,7 +579,11 @@ export type Tier2Gate =
      boundary (`TapeSpan.startBoundary` is `claim-only`), so the listener would
      join the clip mid-thought. Only under FORAY_CLAIM_ONLY_OPENING=refuse;
      the walk falls through to the next candidate. */
-  | "claim-only-open";
+  | "claim-only-open"
+  /* GV-115 (W3-14; R2-16): the cut would put its show past
+     FORAY_SHOW_SHARE_MAX of the Foray's tape. Same name and meaning as the
+     `Tier1Gate` twin; only under FORAY_SHOW_SHARE=gate. */
+  | "show-share";
 
 export interface Tier1TraceRow {
   /** The best-scoring pool segment, whatever gate then refused it. */

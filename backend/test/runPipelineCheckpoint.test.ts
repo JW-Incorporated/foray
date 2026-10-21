@@ -1303,3 +1303,115 @@ describe("GV-112: FORAY_RESEARCH_SHORTLIST reaches research-shape and the finger
     }
   }, 240_000);
 });
+
+/**
+ * GV-115 (W3-14; R2-16; orchestrator note, the GV-112 pattern):
+ * FORAY_SHOW_SHARE is a generationFlags flag, so it joins the variant through
+ * `flagParts`: the pipeline passes what it resolved, and the driver's store
+ * (generateForays.ts, which passes nothing) reads it from the same environment
+ * (`showShareVariant`). Either mode changes what `source` / `source:<i>` bank.
+ * Off (the default) adds nothing and the fingerprint is today's.
+ */
+describe("GV-115: FORAY_SHOW_SHARE reaches sourcing and the fingerprint on both paths, and off is today's", () => {
+  const at = () => new Date("2026-09-09T00:00:00Z");
+  const ENV = "FORAY_SHOW_SHARE";
+  /* The driver's view: the flag is read from the environment. */
+  const fingerprintFor = (flags: Partial<PipelineFlags>): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      variant: joinCheckpointVariant(checkpointRunVariant(resolvePipelineFlags(flags), resolveRouting()), readSelfCritique())
+    });
+
+  const withEnv = async (value: string | undefined, fn: () => Promise<void>): Promise<void> => {
+    const prior = process.env[ENV];
+    if (value === undefined) delete process.env[ENV];
+    else process.env[ENV] = value;
+    try {
+      await fn();
+    } finally {
+      if (prior === undefined) delete process.env[ENV];
+      else process.env[ENV] = prior;
+    }
+  };
+
+  /* MUTATIONS THAT KILL THIS, each ran red: (1) pass `showShare: null` in
+     runPipeline.ts's checkpointRunVariant call (the on run's session hashes
+     the off fingerprint, never matches its own on-keyed store, and every
+     stage is paid for again); (2) drop showShareVariant from checkpoint.ts's
+     flagParts (the on and off fingerprints are equal, so the off run resumes
+     the on run's tape). */
+  it("an on run resumes only a checkpoint keyed with the driver's on fingerprint, and an off run does not resume it", async () => {
+    for (const mode of ["order", "gate"]) {
+      for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+        let onFingerprint = "";
+        let store = new FakeCheckpointStore("unset");
+        await withEnv(mode, async () => {
+          onFingerprint = fingerprintFor(flags);
+          store = new FakeCheckpointStore(onFingerprint);
+          const first = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+          expect(first.outcome).toBe("generated");
+          const again = countingDeps();
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+          expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+        });
+        await withEnv(undefined, async () => {
+          expect(fingerprintFor(flags)).not.toBe(onFingerprint);
+          const off = countingDeps();
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...off.deps, finalize: fakeFinalize().fn, checkpoint: store });
+          expect(off.calls.spine).toBe(1);
+        });
+      }
+    }
+  }, 240_000);
+
+  /* The default keeps today's fingerprint: with the flag unset or `off`, a
+     run resumes a store keyed with the fingerprint computed with no
+     show-share part (the classic FP when nothing else is on). MUTATION THAT
+     KILLS THIS: join `showShare=off:0.6` when off in showShareVariant. Ran
+     it: red. */
+  it("off resumes a checkpoint keyed with today's fingerprint, on both paths", async () => {
+    for (const value of [undefined, "off"]) {
+      await withEnv(value, async () => {
+        expect(fingerprintFor({})).toBe(FP);
+        for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+          const store = new FakeCheckpointStore(fingerprintFor(flags));
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+          const again = countingDeps();
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+          expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+        }
+      });
+    }
+  }, 240_000);
+
+  /* MUTATION THAT KILLS THIS: drop the `showShare` spread from
+     runPipeline.ts's `sourceOptionsOf` (every session sources with no rule
+     under FORAY_SHOW_SHARE=gate). Ran it: red. */
+  it("every act's sourcing session carries the rule under on, and none by default, on both paths", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      for (const [value, want] of [
+        ["gate", "gate"],
+        [undefined, "none"]
+      ] as const) {
+        const seen: string[] = [];
+        const real = SourcingSession.prototype.sourceAct;
+        vi.spyOn(SourcingSession.prototype, "sourceAct").mockImplementation(function (this: SourcingSession, ...args: Parameters<SourcingSession["sourceAct"]>) {
+          const state = (this as unknown as { state: { showShare?: { mode: string }; placedSecByShow?: unknown } }).state;
+          seen.push(state.showShare ? `${state.showShare.mode}${state.placedSecByShow ? "" : " (no ledger)"}` : "none");
+          return real.apply(this, args);
+        });
+        try {
+          await withEnv(value, async () => {
+            const outcome = await runForayPipeline(request, { userId: "u", now: at, flags }, { ...countingDeps().deps, finalize: fakeFinalize().fn });
+            expect(outcome.outcome).toBe("generated");
+          });
+        } finally {
+          vi.restoreAllMocks();
+        }
+        expect(seen.length).toBeGreaterThan(0);
+        expect(new Set(seen)).toEqual(new Set([want]));
+      }
+    }
+  }, 240_000);
+});
