@@ -337,7 +337,7 @@ let bankedWithout: Record<string, string>;
 /** A banked stage as JSON, with the wall-clock stamps the dry-run evidence
  * fixture puts on every print claim (`retrieved`) masked: everything else
  * must match byte for byte. */
-const ISO_STAMP = /"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z"/g;
+const ISO_STAMP = /"\d{4}-\d{2}-\d{2}T[\d:.]+Z"/g;
 const stable = (stage: unknown): string => JSON.stringify(stage).replace(ISO_STAMP, '"<time>"');
 let deepened: DeepenedAct[];
 
