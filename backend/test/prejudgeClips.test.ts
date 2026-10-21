@@ -476,6 +476,16 @@ describe("GV-107 runForayPipeline: the clip-judge stage", () => {
       for (const key of Object.keys(book)) expect(key.startsWith(`${i}/`)).toBe(true);
     }
     expect(saves).not.toContain("clip-judge");
+
+    /* Orchestrator (#1475 review): the per-act gate is enforce-only too, so a
+       shadow per-act run pays for no Jev choice. MUTATION: `!== "off"` at the
+       per-act gate -> red here. */
+    const shadowStore = new FakeCheckpointStore(checkpointFingerprint({ prompt: medium.prompt, duration: medium.duration }));
+    const shadowJudge = scriptedJudge();
+    const shadow = await run({ clipJudge: "shadow" }, { perActPipeline: true }, { ...fixture, clipJudge: shadowJudge, checkpoint: shadowStore }, medium);
+    if (shadow.outcome !== "generated") throw new Error("expected the shadow per-act run to generate");
+    expect(shadowJudge.chooseStages).toEqual([]);
+    expect(shadowStore.saves.map((s) => s.stage).filter((s) => s.startsWith("clip-judge"))).toEqual([]);
   }, 180_000);
 });
 
