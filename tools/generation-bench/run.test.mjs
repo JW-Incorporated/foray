@@ -767,7 +767,8 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
   for (const col of COLUMNS) assert.equal([CORE, DETAIL].includes(col.group), true, `${col.key} declares a group`);
   /* GV-08 added the first detail columns and GV-17 the runlog's speed
      columns; every earlier column stays core. GV-55 adds the stack, GV-91
-     the best-of-2 cell, GV-83 the two show-variety columns. */
+     the best-of-2 cell, GV-83 the two show-variety columns, GV-104 the two
+     voice columns. */
   assert.deepEqual(COLUMNS.filter((c) => c.group === DETAIL).map((c) => c.key), [
     "listen",
     "last_listen",
@@ -777,7 +778,9 @@ test("core/detail: a detail column is in the JSONL and --wide, never in the comm
     "stack",
     "bo2",
     "shows",
-    "top_show_pct"
+    "top_show_pct",
+    "sent_mean",
+    "grade"
   ]);
   const probe = { key: "probe_x", group: DETAIL, header: "probeX", from: "report", width: 6, kind: "number", digits: 1 };
   COLUMNS.push(probe);
@@ -1963,4 +1966,52 @@ test("GV-83: a Foray with no tape has a show count of 0 and an absent share, nev
   assert.equal(row.values.top_show_pct, null);
   assert.equal(row.sources.top_show_pct, "absent");
   assert.equal(formatCell(column("top_show_pct"), row), ABSENT);
+});
+
+/* GV-104 (MQ-15, MQ-16; R2-14, QK-25): the narration's voice, off the
+   report's `veracity.voice`. Two detail columns, so the committed KPI table is
+   unchanged; absent on every report written before the field existed. */
+const VOICE_KEYS = ["sent_mean", "grade"];
+const voiceEntry = (voice) => ({ outcome: "generated", detail: "OK x", veracity: { voice } });
+
+test("GV-104: out-4 and out-9 carry no voice block, so sent mean and grade are — and never 0", () => {
+  /* MUTATION: `grade: num(v.voice?.readingGrade) ?? 0`. Ran it: red. */
+  for (const row of [run4(), run9()]) {
+    for (const key of VOICE_KEYS) {
+      assert.equal(row.values[key], null, `${row.values.run}/${key}`);
+      assert.equal(row.sources[key], "absent");
+      assert.equal(formatCell(column(key), row), ABSENT);
+    }
+  }
+});
+
+test("GV-104: the bench prints sent mean and grade under --wide, from the report, never in the committed table", () => {
+  /* MUTATION: read `sent_mean` off `voice.seamShape.maxWords`, or `grade` off
+     `gradeBand[1]`. Ran both: red. */
+  const row = rowFor(voiceEntry({ items: 3, words: 120, readingGrade: 7.84, gradeBand: [6, 9], meanSentenceWords: 13.25, seamShape: { maxWords: 31 } }), { runId: "run-v" });
+  assert.equal(row.values.sent_mean, 13.25);
+  assert.equal(row.values.grade, 7.84);
+  assert.equal(row.sources.sent_mean, "report");
+  assert.equal(row.sources.grade, "report");
+  assert.equal(formatCell(column("sent_mean"), row), "13.3");
+  assert.equal(formatCell(column("grade"), row), "7.8");
+  for (const key of VOICE_KEYS) assert.equal(column(key).group, DETAIL, key);
+  assert.equal(markdownHeader()[0].includes("sent mean"), false, "the committed header is unchanged");
+  const wide = formatTable([row], { wide: true });
+  assert.match(wide, /sent mean/);
+  assert.match(wide, /grade/);
+  assert.equal(formatTable([row]).includes("sent mean"), false, "the default table is core only");
+  const line = JSON.parse(jsonlLine(row));
+  assert.equal(line.metrics.sent_mean, 13.25);
+  assert.equal(line.metrics.grade, 7.84);
+  assert.equal(formatTable([rowFromJsonl(line)], { wide: true }), wide);
+});
+
+test("GV-104: a voice block that scored no words has an absent sentence mean and grade, never 0", () => {
+  /* MUTATION: `sent_mean: num(v.voice?.meanSentenceWords)` -- an empty block
+     reads 0 words per sentence. Ran it: red. */
+  const row = rowFor(voiceEntry({ items: 0, words: 0, readingGrade: null, gradeBand: [6, 9], meanSentenceWords: 0 }), { runId: "run-w" });
+  assert.equal(row.values.sent_mean, null);
+  assert.equal(row.values.grade, null);
+  assert.equal(formatCell(column("sent_mean"), row), ABSENT);
 });

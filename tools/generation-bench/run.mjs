@@ -631,6 +631,33 @@ export const COLUMNS = [
     kind: "number",
     digits: 0,
     targetNote: "MQ-07: the largest show's share of the tape seconds, in percent (`showVariety.largestShowTapeShare` x 100); — with no tape"
+  },
+  /* GV-104 (MQ-15, MQ-16; R2-14, QK-25): the narration's voice, off
+     `meta.veracity.voice` (voiceChecks.ts computeVoiceMetrics, over every
+     final narration item). Detail columns, so the committed KPI table does
+     not change shape; absent on reports written before GV-104 (runs 4-9) and
+     on a run with FORAY_VOICE_GATE=off, never 0 (rule 1). No target here:
+     the band is a scorecard reading until the founder's listening cards
+     calibrate it, and nothing compares a value to it (rule 2). */
+  {
+    key: "sent_mean",
+    group: "detail",
+    header: "sent mean",
+    from: "report",
+    width: 9,
+    kind: "number",
+    digits: 1,
+    targetNote: "MQ-16: mean words per narration sentence (`voice.meanSentenceWords`); narration-craft §5d's band is 12-15; — without the voice block or with no narration"
+  },
+  {
+    key: "grade",
+    group: "detail",
+    header: "grade",
+    from: "report",
+    width: 5,
+    kind: "number",
+    digits: 1,
+    targetNote: "MQ-15: Flesch-Kincaid grade of the narration, word-weighted over its items (`voice.readingGrade`); band 6-9 (OQ-02); — without the voice block or with no narration"
   }
 ];
 
@@ -1059,7 +1086,11 @@ export function rowFor(entry, context = {}) {
     bo2: bestOfCell(entry.spineSelection),
     /* GV-83: absent without the block, and the share absent with no tape. */
     shows: num(v.showVariety?.distinctShows),
-    top_show_pct: num(v.showVariety?.largestShowTapeShare) === null ? null : v.showVariety.largestShowTapeShare * 100
+    top_show_pct: num(v.showVariety?.largestShowTapeShare) === null ? null : v.showVariety.largestShowTapeShare * 100,
+    /* GV-104: absent without the block, and absent when it scored no words
+       (its sentence mean then reads 0, which is not a measurement). */
+    sent_mean: num(v.voice?.words) ? num(v.voice.meanSentenceWords) : null,
+    grade: num(v.voice?.readingGrade)
   };
   const sources = {};
   for (const col of COLUMNS) {
