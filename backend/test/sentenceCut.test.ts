@@ -395,6 +395,56 @@ describe("GV-113 — beat coverage after a cut (MQ-11): only an orphaned beat ea
     expect(s2Page(act)!.verified).toBe(true);
   });
 
+  it("a second beat orphaned by a cut in the edit round earns nothing: a two-beat seam gets no third writer round", async () => {
+    /* s0 carries b0 and b1. Round 1's cut removes b0's carrier, so s0 earns
+       its one edit round; round 2's cut removes b1's carrier. b1 is stamped
+       with the round s0's edit was earned in, so it is spent at once: no
+       note, and s0 freezes with round 2's trimmed text.
+       MUTATION THAT KILLS THIS: stamp a newly orphaned beat with the current
+       round even when its seam already spent its edit round
+       (`state.orphanedAt ??= round`) -- b1's note sends the act back a third
+       time. Ran it -- red. */
+    const S0_B0 = "The walkway hangers at the Hyatt ended up carrying double the load that the original design had assumed for them.";
+    const S0_B1 = "Nobody ever checked that connection for adequacy, not once, at any stage of the design or the construction.";
+    const s0Writes = (reply: ActWriteResult): ActWriteResult => ({
+      seams: reply.seams.map((seam) => (seam.seamId === "s0" ? { ...seam, script: `${S0_B0} ${S0_B1} ${seam.script}` } : seam))
+    });
+    const refuse = (verdict: ActVerifyResult, request: ActVerifyRequest, round: number): ActVerifyResult => {
+      const brief = request.seams.find((s) => s.seamId === "s0");
+      if (!brief) return verdict;
+      const refused = round === 1 ? S0_B0 : S0_B1;
+      const sentences: SentenceVerdict[] = splitSpokenSentences(brief.script).map((text, index) =>
+        !isStatementSentence(text)
+          ? { index, text, kind: "imperative", verdict: "exempt" }
+          : text === refused
+            ? { index, text, kind: "statement", verdict: "unsupported" }
+            : { index, text, kind: "statement", verdict: "supported", restsOn: [...brief.selected] }
+      );
+      const carrierOf: Record<string, string> = { b0: S0_B0, b1: S0_B1 };
+      return {
+        beats: verdict.beats.map((b) => {
+          const carrier = carrierOf[b.beatId];
+          if (carrier === undefined) return b;
+          const index = sentences.findIndex((s) => s.text === carrier);
+          return { beatId: b.beatId, carried: true, carriedBy: "s0", restsOn: [...brief.selected], ...(index >= 0 ? { carriedBySentence: { seamId: "s0", index } } : {}) };
+        }),
+        seams: verdict.seams.map((seam) =>
+          seam.seamId === "s0" ? { ...seam, sentences, claimsSupported: false, notes: `Unsupported: "${refused}" is not backed by any source in the act.` } : seam
+        )
+      };
+    };
+    const b = builders(s0Writes, refuse);
+    const act = await run({ sentencePolicy: "cut" }, b);
+    expect(b.calls.write).toBe(2);
+    /* Round 2 re-asked s0 for b0 alone. */
+    const s0Brief = b.writes[1]!.seams.find((s) => s.seamId === "s0")!;
+    expect(s0Brief.notes).toContain("beat b0");
+    const s0Page = narrationBeats(act)[0]!.narration!;
+    expect(s0Page.cutSentences).toEqual([S0_B1]);
+    expect(s0Page.script).toContain(S0_B0);
+    expect(s0Page.verified).toBe(false);
+  });
+
   it("an edit round that ends unconfirmed puts the trimmed text back, and it stands: no third round", async () => {
     /* Round 2's s2 asserts only what nothing supports, so it is refused.
        MUTATION THAT KILLS THIS: drop holdOrphanEdits -- the refused s2 is a

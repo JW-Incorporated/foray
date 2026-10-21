@@ -2213,7 +2213,10 @@ function reopenOrphans(seam: SeamState, cut: Set<number>, open: BeatState[], ver
     delete state.restsOn;
     delete state.verifiedAtAttempt;
     state.notes = "the sentence that carried it was cut as unsupported (GV-113)";
-    if (state.orphanedAt === undefined) state.orphanedAt = round;
+    /* A seam that already spent its one edit round earns nothing more: a
+       beat it orphans now is stamped with that round, so it is spent at once
+       (no note, keeps no seam open) and the seam freezes. */
+    state.orphanedAt ??= seam.orphanEdit ? seam.orphanEdit.round : round;
     orphaned.push(state.brief.beatId);
   }
   if (orphaned.length === 0) return;

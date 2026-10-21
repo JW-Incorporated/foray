@@ -3873,7 +3873,7 @@ const BACKEND_FLOORS = {
      follows FORAY_UNVERIFIED_SEAM_POLICY; rewrite is deep-equal to omitted;
      writeNarration forwards the policy; no cut text reaches the items; the
      gate row defaults to rewrite. Offline; stub builders. */
-  "test/sentenceCut.test.ts": 13,
+  "test/sentenceCut.test.ts": 14,
   /* GV-110 (W7-09; R2-17): the bench-only writer exchange recorder. One
      exchange per round at the round's end (request, reply, mechanical issues,
      verdict), byte-identical acts without it and a throwing callback ignored,
