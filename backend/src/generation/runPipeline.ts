@@ -30,7 +30,7 @@ import {
 } from "../types/tapeSourcing";
 import { ResearchShapeSchema } from "../types/research";
 import { ForayItemSchema } from "./forayItems";
-import { NarratedBeatSchema } from "../types/narration";
+import { DroppedReasonSchema, NarratedBeatSchema } from "../types/narration";
 
 import { understandPrompt, understandPromptFast } from "./understandPrompt";
 import { provisionalTitle } from "./preSpineIntent";
@@ -1147,7 +1147,11 @@ const WrittenBeatSchema = z.union([
     exploration: z.boolean(),
     narration: NarratedBeatSchema.optional(),
     carriedBy: z.object({ slot: z.number().int().nonnegative(), beat: z.number().int().nonnegative() }).optional(),
-    verifiedAtAttempt: z.number().int().min(1).optional()
+    verifiedAtAttempt: z.number().int().min(1).optional(),
+    /* GV-108: the beat's seam was cut under FORAY_UNVERIFIED_SEAM_POLICY=cut.
+       Declared, not passed through: the object strips unknown keys, so a
+       resumed act would otherwise lose it. */
+    droppedReason: DroppedReasonSchema.optional()
   })
 ]);
 const WrittenSlotSchema = z.object({ title: z.string(), beats: z.array(WrittenBeatSchema) });
@@ -1455,6 +1459,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                resolved gate config (the driver hands it whole, so its store
                hashes the same). `flags` already carries the tier cap. */
             voiceGate: gates.voice,
+            unverifiedSeamPolicy: gates.unverifiedSeamPolicy,
             specifics: gates.specifics
           },
           routing
@@ -2402,6 +2407,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                (the act's position is ctx.actIndex below). Default `report`:
                nothing changes in writeAct. */
             voiceGate: voiceGateOf(gates),
+            /* GV-108: FORAY_UNVERIFIED_SEAM_POLICY reaches the writer only
+               when it is `cut`; the default `keep` adds no key. */
+            ...(gates.unverifiedSeamPolicy === "cut" ? { unverifiedSeamPolicy: "cut" as const } : {}),
             /* GV-73: FORAY_WRITER_STREAM (or the fast path) streams the
                writer's reply; early releases reach deps.onSeamChecked with
                this act's index (`writeNarration` sees one act, index 0). */
@@ -2520,6 +2528,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
       /* GV-106 (MQ-14): how far the runtime is from the tier, on every
          generated outcome. Reported; gated only under FORAY_GATE_TIER_FIT. */
       tierFit: { tier: req.duration, runtimeSec },
+      /* GV-108: `pagesCut` is reported only under the cut policy; the default
+         run's report is unchanged. */
+      ...(gates.unverifiedSeamPolicy === "cut" ? { unverifiedSeamPolicy: "cut" as const } : {}),
       root: options.root
     });
     /* GV-26: the same verdict publishForay.ts reaches, reached here. Nothing is

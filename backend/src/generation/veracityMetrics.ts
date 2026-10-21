@@ -6,13 +6,14 @@ import type { SourcedAct, SourcedSlot, SourcingTrace, TapeRelevanceInput } from 
 import type { WrittenAct, WrittenBeat } from "./writeNarration";
 import { HANDOFF_SCRIPT, decideConnectiveNarration, pageOfWrittenBeat } from "./writeNarration";
 import { clipOpening, introRestatesClip, planActSeams } from "./actSeams";
-import { findHoldingDoc, isSynthesisVerified, isTapeSource, purposeWasRevised, scriptSeconds, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
+import { droppedReasonOf, findHoldingDoc, isIntroOnlyVerified, isSynthesisVerified, isTapeSource, purposeWasRevised, scriptSeconds, tapeDocIdFor, type NarratedBeat, type NarrationAttemptRecord } from "../types/narration";
 import { phraseIsInWindow } from "../types/anchorText";
 import { loadCatalogueData, type CatalogueShow } from "./catalogueLookup";
 import { loadSegmentPool, type SegmentRecord } from "./segmentPoolLookup";
 import { unsupportedSpecificsInScript, type SpecificsMode } from "./specifics";
 import type { ClipJudgeId, ClipScores } from "../types/tapeSourcing";
 import { computeVoiceMetrics, type VoiceMetrics, type VoiceScript } from "./voiceChecks";
+import type { UnverifiedSeamPolicy } from "./gateConfig";
 import { DURATION_RUNTIME_TARGET_SEC, TIER_RUNTIME_TOLERANCE, tierRuntimeBand, type DurationTier } from "../types/spine";
 
 /**
@@ -482,6 +483,10 @@ export function tapeRelevanceFromRows(rows: TapeRelevanceInput[]): TapeRelevance
  * `connectiveNarration`), this recomputes the decision from `sourcedActs`
  * (the same pure, deterministic function the pipeline itself used) rather
  * than guessing from the written output alone.
+ *
+ * GV-108: a clip whose seam page the cut policy removed (the narration beat
+ * before it records `droppedReason`) is not counted here: the policy chose
+ * that silence, and `computePagesCut` reports it.
  */
 export function computePagesDropped(sourcedActs: SourcedAct[], writtenActs: WrittenAct[]): number {
   let dropped = 0;
@@ -507,11 +512,47 @@ export function computePagesDropped(sourcedActs: SourcedAct[], writtenActs: Writ
         if (!decideConnectiveNarration(sourcedSlot, i)) continue;
         const own = writtenBeat && writtenBeat.sourcing === "tape" && !!writtenBeat.connectiveNarration;
         const seamPageBefore = before !== undefined && before.sourcing === "narration" && (before.narration !== undefined || before.carriedBy !== undefined);
-        if (!own && !seamPageBefore) dropped++;
+        const cutBefore = before !== undefined && before.sourcing === "narration" && droppedReasonOf(before) !== undefined;
+        if (!own && !seamPageBefore && !cutBefore) dropped++;
       }
     }
   }
   return dropped;
+}
+
+/**
+ * GV-108 (W5-12b): the seam pages FORAY_UNVERIFIED_SEAM_POLICY=cut changed —
+ * every page cut to its introduction (`verification.kind: "intro-only"`) plus
+ * every seam it dropped whole. A dropped seam is a run of narration beats,
+ * consecutive in the act's play order, each recording `droppedReason`; a run
+ * that leads straight into a clip whose introduction survived is that same
+ * seam, already counted by its page. Reported, never gated: nothing
+ * unverified plays for a cut seam, but the listening golden set must hear the
+ * shape before `cut` becomes the default.
+ */
+export function computePagesCut(writtenActs: WrittenAct[]): number {
+  let cut = 0;
+  for (const act of writtenActs) {
+    let inRun = false;
+    for (const slot of act.slots) {
+      for (const beat of slot.beats) {
+        if (beat.sourcing === "narration") {
+          if (droppedReasonOf(beat) !== undefined) inRun = true;
+          else if (beat.narration !== undefined || beat.carriedBy !== undefined) {
+            if (inRun) cut++;
+            inRun = false;
+          }
+          continue;
+        }
+        const introOnly = beat.connectiveNarration !== undefined && isIntroOnlyVerified(beat.connectiveNarration);
+        if (introOnly) cut++;
+        else if (inRun) cut++;
+        inRun = false;
+      }
+    }
+    if (inRun) cut++;
+  }
+  return cut;
 }
 
 /* ------------------------------------------------------------------ */
@@ -591,7 +632,11 @@ export interface UnverifiedPagesResult {
  */
 export function computeUnverifiedPages(writtenActs: WrittenAct[]): UnverifiedPagesResult {
   const pages: FailingPage[] = [];
-  for (const { claim, page } of flattenWrittenPages(writtenActs)) {
+  /* GV-108: a beat the cut policy dropped plays nothing, so nothing of it is
+     a page a listener would hear (`droppedReason`; such a beat holds no page
+     by construction, and is skipped here should one ever carry one). */
+  const heard = writtenActs.map((act) => ({ ...act, slots: act.slots.map((slot) => ({ ...slot, beats: slot.beats.filter((beat) => droppedReasonOf(beat) === undefined) })) }));
+  for (const { claim, page } of flattenWrittenPages(heard)) {
     if (page.verified) continue;
     /* F-99: a seed-lost page is still a stop — the beat's claim is not
        carried and a listener would hear the gap — but it is not the same
@@ -744,8 +789,9 @@ export interface SynthesisVerifiedPagesResult {
 export function computeSynthesisVerifiedPages(writtenActs: WrittenAct[]): SynthesisVerifiedPagesResult {
   const pages: SynthesisPageNote[] = [];
   for (const { claim, page } of flattenWrittenPages(writtenActs)) {
-    if (!isSynthesisVerified(page)) continue;
-    pages.push({ claim, mode: page.mode, restsOn: [...page.verification!.restsOn] });
+    const verification = page.verification;
+    if (!isSynthesisVerified(page) || verification?.kind !== "synthesis") continue;
+    pages.push({ claim, mode: page.mode, restsOn: [...verification.restsOn] });
   }
   return { count: pages.length, pages };
 }
@@ -1225,6 +1271,10 @@ export interface VeracityMetrics {
   releasedThenRefused?: number;
   firstSeamCheckedMs?: number | null;
   pagesDropped: number;
+  /** GV-108: seam pages FORAY_UNVERIFIED_SEAM_POLICY=cut cut to their
+   * introduction or dropped (`computePagesCut`). Present only under `cut`;
+   * reported, never gated. */
+  pagesCut?: number;
   /** F-51: pages kept with `verified: false`. Any is a publish stop. */
   unverifiedPages: number;
   /** The same pages, named, so the gate can print which ones. */
@@ -1369,6 +1419,9 @@ export interface BuildVeracityMetricsInput {
   /** GV-106: the run's tier and its finished `runtimeSec`. Omitted,
    * `tierFit` is absent; a non-finite runtime reports `tierFit: null`. */
   tierFit?: { tier: DurationTier; runtimeSec: number };
+  /** GV-108: the run's FORAY_UNVERIFIED_SEAM_POLICY. `cut` adds `pagesCut`;
+   * omitted or `keep`, the field is absent and the report is unchanged. */
+  unverifiedSeamPolicy?: UnverifiedSeamPolicy;
 }
 
 export function buildVeracityMetrics(input: BuildVeracityMetricsInput): VeracityMetrics {
@@ -1409,6 +1462,7 @@ export function buildVeracityMetrics(input: BuildVeracityMetricsInput): Veracity
         }
       : {}),
     pagesDropped: computePagesDropped(input.sourcedActs, input.writtenActs),
+    ...(input.unverifiedSeamPolicy === "cut" ? { pagesCut: computePagesCut(input.writtenActs) } : {}),
     unverifiedPages: unverified.count,
     unverifiedPageDetails: unverified.pages,
     synthesisVerifiedPages: synthesis.count,

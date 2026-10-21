@@ -3681,3 +3681,49 @@ test("a narration-led running order may not be more than 75 % narrator; a Foray-
   assert.ok(checkForays(foray).report.forays[0].narration_share > 0.75);
   assert.deepEqual(shareErrors(foray), []);
 });
+
+/* ---------------------------------------------------------------- GV-108 */
+
+test("GV-108: a generated Foray in which one seam's narration was dropped -- a clip straight after a clip, each segment in its slot -- passes with no error", () => {
+  /* docs/roadmap/generation-v2.md GV-108 and decision 39: the cut policy
+     (FORAY_UNVERIFIED_SEAM_POLICY=cut) emits a seam it dropped rather than
+     withholding the act, because nothing here requires a narration item
+     before a clip. Read-only: built from a clone of the boundary fixture,
+     never data/forays.json.
+     MUTATION (run on this PR): add to check-forays.mjs's item loop an error
+     for a generated Foray's segment whose previous item is a segment ("a
+     clip must follow narration") -> red here, while the control below
+     (every clip introduced) stays green. */
+  const narrated = (dropAt) => {
+    const f = stampQ01(fx());
+    const foray = boundary(f);
+    /* A generated Foray's shape: an introduction before every clip, in that
+       clip's slot -- except the one at `dropAt`, the seam the cut dropped. */
+    const out = [];
+    let clip = 0;
+    for (const item of foray.items) {
+      if (item.type === "segment") {
+        if (clip !== dropAt) {
+          out.push({ type: "narration", id: `intro-${clip}`, mode: "intro", script: "Here is the next voice, and what to listen for in it.", slot: item.slot });
+        }
+        clip++;
+      }
+      out.push(item);
+    }
+    foray.items = out;
+    delete foray.runtime_sec;
+    return f;
+  };
+
+  const control = narrated(-1);
+  assert.deepEqual(errorsFor(control), [], "the fully narrated control must pass");
+  assert.ok(!segmentItems(boundary(control)).some((seg) => boundary(control).items[boundary(control).items.indexOf(seg) - 1].type === "segment"), "the control introduces every clip");
+
+  const dropped = narrated(1);
+  const items = boundary(dropped).items;
+  const at = items.findIndex((i) => i.type === "segment" && i.label === "B-1");
+  assert.equal(items[at - 1].type, "segment", "B-1 must follow A-1 with no narration between them");
+  assert.ok(items.slice(0, at).some((i) => i.type === "narration" && i.id !== "prelude"), "narration still plays elsewhere");
+  for (const item of items.filter((i) => i.type === "segment")) assert.ok(typeof item.slot === "string" && item.slot.length > 0, `${item.label} declares its slot`);
+  assert.deepEqual(errorsFor(dropped), []);
+});

@@ -401,8 +401,11 @@ export function toForayItems(items: StitchedItem[]): ForayItem[] {
  * place (`types/stitching.ts` is `.strict()` and had no such fields) — the
  * provenance died one hop upstream, and this list was guarding an
  * impossible mistake. The stitched item carries both now, so both are a
- * spread away from `data/forays.json` and this assertion is live. */
-const INTERNAL_ONLY_FIELD_NAMES = ["sources", "verified", "pronunciationHints", "beatIndex", "narrationKind", "startSec", "endSec", "itemId"];
+ * spread away from `data/forays.json` and this assertion is live.
+ *
+ * GV-108: `cutSentences` (a page's sentences the cut-to-introduction policy
+ * removed) never reaches a stitched item today; listed so it never can. */
+export const INTERNAL_ONLY_FIELD_NAMES = ["sources", "verified", "pronunciationHints", "beatIndex", "narrationKind", "startSec", "endSec", "itemId", "cutSentences"];
 export function assertNoInternalFieldsLeaked(items: ForayItem[]): void {
   for (const [i, item] of items.entries()) {
     for (const field of INTERNAL_ONLY_FIELD_NAMES) {

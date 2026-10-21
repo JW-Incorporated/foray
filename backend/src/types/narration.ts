@@ -308,6 +308,51 @@ export const SynthesisVerificationSchema = z
   .strict();
 export type SynthesisVerification = z.infer<typeof SynthesisVerificationSchema>;
 
+/**
+ * GV-108 (docs/roadmap/generation-v2.md, W5-12b; R2-13): a page verified
+ * IN CODE as an introduction and nothing else. Under
+ * FORAY_UNVERIFIED_SEAM_POLICY=cut a seam the verifier never confirmed is
+ * cut to its introduction sentences — each one names the clip's show or
+ * someone its episode title names (`introNamesSource`), repeats none of the
+ * clip's first sentences (`introRestatesClip`) and mentions none of the
+ * Foray's own structure (`narratorStructureLeaks`) — or dropped. What is
+ * left rests on the clip it introduces (`clipId`, the act's `c<n>`), and on
+ * nothing a model judged. Only `writeAct.ts`'s cut writes it; the default
+ * `keep` policy never does.
+ */
+export const IntroOnlyVerificationSchema = z
+  .object({
+    kind: z.literal("intro-only"),
+    /** The act's id of the clip the page introduces (`c<n>`). */
+    clipId: z.string().trim().min(1)
+  })
+  .strict();
+export type IntroOnlyVerification = z.infer<typeof IntroOnlyVerificationSchema>;
+
+/** How a page came to be verified when it was not by the act verifier: a
+ * synthesis (F-88) or an introduction checked in code (GV-108). */
+export const PageVerificationSchema = z.discriminatedUnion("kind", [SynthesisVerificationSchema, IntroOnlyVerificationSchema]);
+export type PageVerification = z.infer<typeof PageVerificationSchema>;
+
+/**
+ * GV-108: why a narration beat holds no page and is carried by none.
+ * `unverified-cut`: its seam failed verification under
+ * FORAY_UNVERIFIED_SEAM_POLICY=cut and was cut to its introduction or
+ * dropped, so the beat's claim is not heard. Recorded on the written beat
+ * (`WrittenBeat`, read through `droppedReasonOf`), never on a page.
+ */
+export const DroppedReasonSchema = z.enum(["unverified-cut"]);
+export type DroppedReason = z.infer<typeof DroppedReasonSchema>;
+
+/** GV-108: the beat's `droppedReason`, or undefined when it has none (or
+ * carries a value this build does not know). Structural, so it reads a
+ * written beat of either shape without this module importing the writer's
+ * types. */
+export function droppedReasonOf(beat: object): DroppedReason | undefined {
+  const parsed = DroppedReasonSchema.safeParse((beat as { droppedReason?: unknown }).droppedReason);
+  return parsed.success ? parsed.data : undefined;
+}
+
 export const NarratedBeatSchema = z
   .object({
     mode: NarrationModeSchema,
@@ -392,11 +437,28 @@ export const NarratedBeatSchema = z
      * `NarratedBeat` in a test fixture carry none. */
     attempts: z.array(NarrationAttemptRecordSchema).optional(),
     /** F-88: present only on a page verified as a synthesis of the
-     * Foray's own verified pages — see `SynthesisVerificationSchema`. */
-    verification: SynthesisVerificationSchema.optional()
+     * Foray's own verified pages — see `SynthesisVerificationSchema`.
+     * GV-108: or on an introduction verified in code, the page a failing
+     * seam is cut to (`IntroOnlyVerificationSchema`). */
+    verification: PageVerificationSchema.optional(),
+    /** GV-108: the sentences of the failing seam's text the cut removed,
+     * in order (an editor reads what the listener does not hear). Never
+     * spoken and never published (`forayItems.ts`'s internal-only list). */
+    cutSentences: z.array(z.string().trim().min(1)).optional()
   })
   .strict();
 export type NarratedBeat = z.infer<typeof NarratedBeatSchema>;
+
+/** GV-108: true for a page cut to its code-checked introduction, and only
+ * then. Like `isSynthesisVerified`, a record on an unverified page reads
+ * false. Its `verified: true` is a code naming check on a seam the act
+ * verifier refused, not a support verdict: a named follow-up (outside
+ * GV-108's files) has judgeCalibration.ts's `runVerdictOf` return
+ * undefined for it, as it does for a synthesis page, so a --keep-calibration
+ * cut run does not label it a positive run verdict. */
+export function isIntroOnlyVerified(beat: Pick<NarratedBeat, "verified" | "verification">): boolean {
+  return beat.verified === true && beat.verification?.kind === "intro-only";
+}
 
 /** F-88: true for a page that is verified BY SYNTHESIS — and only then.
  * A page that carries a `verification` record but is not `verified` is

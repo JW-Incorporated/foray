@@ -1981,3 +1981,50 @@ describe("GV-104 — the voice gate re-asks a seam that breaks a spoken-line rul
     expect(enforced.some((id) => id.startsWith("s0"))).toBe(false);
   });
 });
+
+describe("GV-108 — FORAY_UNVERIFIED_SEAM_POLICY reaches every act, on the one-shot and the streamed writer paths", () => {
+  /** The verifier never finds beat b1 carried, every round: seam s0 (b0, b1)
+   * is confirmed with a beat of its own missing and fails the act. */
+  const b1NeverCarried = (verdict: ActVerifyResult): ActVerifyResult => ({
+    ...verdict,
+    beats: verdict.beats.map((b) => (b.beatId === "b1" ? { beatId: "b1", carried: false, notes: "the prose never carries b1" } : b))
+  });
+  const dropped = (act: WrittenAct): Array<string | undefined> => narrationBeatsOf(act).map((b) => (b as { droppedReason?: string }).droppedReason);
+
+  it("writeNarration hands the cut policy to every act; without it the act is written under keep", async () => {
+    /* MUTATION THAT KILLS THIS: drop the `unverifiedSeamPolicy` spread from
+       writeNarration's writeActNarration options -- the act is written under
+       keep and b0 holds s0's unverified page. Ran it -- red. */
+    const cut = builders(undefined, b1NeverCarried);
+    const [cutAct] = await writeNarration([fourBeatsTwoClips()], { writer: cut.writer, verifier: cut.verifier, evidence: gatherer(), unverifiedSeamPolicy: "cut" }, voice, ctx);
+    expect(dropped(cutAct!)).toEqual(["unverified-cut", "unverified-cut", undefined, undefined]);
+    const intro = cutAct!.slots[0]!.beats[2]!;
+    expect(intro.sourcing === "tape" && intro.connectiveNarration?.verification).toEqual({ kind: "intro-only", clipId: "c0" });
+    expect(computeUnverifiedPages([cutAct!]).count).toBe(0);
+
+    const keep = builders(undefined, b1NeverCarried);
+    const [keptAct] = await writeNarration([fourBeatsTwoClips()], { writer: keep.writer, verifier: keep.verifier, evidence: gatherer() }, voice, ctx);
+    expect(dropped(keptAct!)).toEqual([undefined, undefined, undefined, undefined]);
+    expect(computeUnverifiedPages([keptAct!]).count).toBe(1);
+  });
+
+  it("the streamed path: the released introduction stays, and the failing seam after it is cut to its own clip's introduction", async () => {
+    /* On the streamed layout s0 is the introduction alone (released on code
+       checks, GV-73) and b0, b1 move to s1, which introduces c1; b1 never
+       carried fails s1.
+       MUTATION THAT KILLS THIS: place the intro-only page on the seam's
+       first narration beat (assemble's ordinary carrier) instead of the
+       clip it introduces -- c1 holds no page and b0 holds an Intro. Ran it -- red. */
+    const b = builders(undefined, b1NeverCarried);
+    const act = await writeActNarration(fourBeatsTwoClips(), { writer: b.writer, verifier: b.verifier, evidence: gatherer(), streamSeams: true, unverifiedSeamPolicy: "cut" }, voice, ctx);
+    const tapes = act.slots.flatMap((s) => s.beats).filter((x) => x.sourcing === "tape");
+    const [c0, c1] = tapes.map((x) => (x.sourcing === "tape" ? x.connectiveNarration : undefined));
+    expect(c0!.verified).toBe(true);
+    expect(c0!.verification).toBeUndefined();
+    expect(c1!.script).toBe('Next, from Practical AI, "A robot in a simulator".');
+    expect(c1!.verification).toEqual({ kind: "intro-only", clipId: "c1" });
+    expect(dropped(act)).toEqual(["unverified-cut", "unverified-cut", "unverified-cut", undefined]);
+    expect(narrationBeatsOf(act).slice(0, 3).every((x) => x.sourcing === "narration" && x.narration === undefined)).toBe(true);
+    expect(computeUnverifiedPages([act]).count).toBe(0);
+  });
+});

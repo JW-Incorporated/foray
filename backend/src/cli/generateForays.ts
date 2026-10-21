@@ -1467,6 +1467,7 @@ export async function generateOneCandidate(
     spineTierSizing: readSpineTierSizing(process.env),
     writerExemplars: writerExemplarsMode(process.env),
     voiceGate: gates.voice,
+    unverifiedSeamPolicy: gates.unverifiedSeamPolicy,
     specifics: gates.specifics
   };
   /* GV-55: the routing table, resolved once here with the --stage-provider

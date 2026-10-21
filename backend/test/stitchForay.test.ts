@@ -3,6 +3,8 @@ import { stitchForay, ActCoverageFailedError, ForayStitcher } from "../src/gener
 import { itemKeyOf, PRELUDE_ITEM_COUNT, type ItemProvenance } from "../src/generation/itemReadiness";
 import type { ForayItem } from "../src/generation/forayItems";
 import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
+import { countActBeats, stitchAct } from "../src/generation/stitchAct";
+import { validateActCoverage } from "../src/types/stitching";
 import type { ContinuityBuildContext } from "../src/generation/ContinuityBuilder";
 import type { DeepenedAct } from "../src/types/spine";
 import type { WrittenAct } from "../src/generation/writeNarration";
@@ -295,6 +297,58 @@ describe("stitchForay — end-to-end orchestration", () => {
       expect(tampered.provenance().every((p) => p.check === "unverified")).toBe(true);
       expect(tampered.provenance().map((p) => p.itemId)).toEqual(swapped.map((it, k) => itemKeyOf(it, k + PRELUDE_ITEM_COUNT)));
     });
+  });
+});
+
+/* GV-108 (W5-12b): the act the cut-to-introduction policy leaves -- a seam
+   cut to its introduction (an intro-only page on its clip, its beats
+   dropped) and a seam dropped whole between two clips -- stitches, covers
+   every beat, and plays clip after clip where the dropped seam was. */
+describe("a cut act stitches (GV-108)", () => {
+  const introOnly: NarratedBeat = {
+    mode: "Intro",
+    script: "Next, from Practical AI, a guest on why skills come first.",
+    sources: [{ kind: "tape", segmentId: "cut-a-ep#0", claimText: "the clip that follows", publication: "Practical AI — Skills", contested: false }],
+    pronunciationHints: [],
+    verified: true,
+    verification: { kind: "intro-only", clipId: "c0" },
+    cutSentences: ["A sentence the verifier never confirmed."]
+  };
+  const written: WrittenAct = {
+    title: "Act Cut",
+    slots: [
+      {
+        title: "Act Cut slot",
+        beats: [
+          { sourcing: "narration", claim: "A claim whose seam was cut.", exploration: false, droppedReason: "unverified-cut" },
+          { sourcing: "tape", claim: "The first clip.", exploration: false, tape: tapePointer("cut-a-ep", 0, 30), connectiveNarration: introOnly },
+          { sourcing: "narration", claim: "A claim whose seam was dropped whole.", exploration: false, droppedReason: "unverified-cut" },
+          { sourcing: "tape", claim: "The second clip.", exploration: false, tape: tapePointer("cut-b-ep", 0, 30) },
+          { sourcing: "narration", claim: "A claim its seam carried.", exploration: false, narration: narratedBeat() }
+        ]
+      }
+    ]
+  };
+  const deepened: DeepenedAct = {
+    ...makeDeepened("Act Cut", 1),
+    slots: [{ title: "Act Cut slot", beats: written.slots[0]!.beats.map((b) => ({ claim: b.claim, exploration: false })) }]
+  };
+
+  it("passes validateActCoverage and stitchForay: the dropped beats are present in coverage and emit nothing, the introduction plays before its clip, and clip follows clip where the seam was dropped", async () => {
+    /* MUTATION THAT KILLS THIS: have stitchAct emit a placeholder for a
+       narration beat with no page (the hand-off line instead of `continue`)
+       -- a narration item appears for each dropped beat. Ran it -- red. */
+    const stitched = stitchAct(written, "act-1");
+    expect(validateActCoverage(stitched.coverage, countActBeats(written)).valid).toBe(true);
+    expect(stitched.coverage.entries.map((e) => e.status)).toEqual(["present", "present", "present", "present", "present"]);
+    expect(stitched.items.map((i) => (i.kind === "narration" ? `narration:${i.mode}` : i.kind))).toEqual(["narration:Intro", "tape", "jingle", "tape", "narration:Frame"]);
+
+    const result = await stitchForay([deepened], [written], { continuity: { builder: new StubContinuityBuilder() } }, ctx);
+    const kinds = result.items.map((i) => i.type);
+    const firstSegment = kinds.indexOf("segment");
+    expect(kinds[firstSegment - 1]).toBe("narration");
+    expect(kinds.slice(firstSegment, firstSegment + 3)).toEqual(["segment", "jingle", "segment"]);
+    for (const item of result.items) expect(item).not.toHaveProperty("cutSentences");
   });
 });
 

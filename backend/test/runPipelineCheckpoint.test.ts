@@ -26,6 +26,9 @@ import { loadCatalogueData } from "../src/generation/catalogueLookup";
 import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
 import { loadTranscriptArchive, type TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
 import type { PartialCandidate } from "../src/generation/partialCandidate";
+import { createEvidenceGatherer, type EvidenceGatherer } from "../src/generation/gatherEvidence";
+import { HANDOFF_SCRIPT, type WrittenAct } from "../src/generation/writeNarration";
+import { droppedReasonOf, type NarratedBeat } from "../src/types/narration";
 
 /**
  * F-17/F-18, driven through the real pipeline.
@@ -678,4 +681,94 @@ describe("GV-102: classic and per-act checkpoints do not resume each other", () 
     expect(classicAgain).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
     expect(fingerprintFor(PER_ACT)).not.toBe(fingerprintFor({}));
   }, 240_000);
+});
+
+/**
+ * GV-108 (W5-12b): under FORAY_UNVERIFIED_SEAM_POLICY=cut the `narrate:<i>`
+ * stage banks intro-only pages and `droppedReason` beats, and a resumed run
+ * reads them back as written, on the classic and the per-act path. The
+ * verifier refuses every seam, so every seam is cut; the gatherer names each
+ * clip's show and episode (a checkout's pool has no catalogue titles), so a
+ * seam into a clip keeps its naming sentence as an intro-only page.
+ */
+describe("GV-108: a cut act banks and resumes on both pipeline paths", () => {
+  const at = () => new Date("2026-09-09T00:00:00Z");
+  const CUT = { unverifiedSeamPolicy: "cut" as const };
+  /* The cut run's own fingerprint: `seamPolicy=cut` joins the variant
+     (orchestrator, #1476 review), so a store keyed without it would not
+     resume. */
+  const fingerprintFor = (flags: Partial<PipelineFlags>): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      variant: joinCheckpointVariant(checkpointRunVariant({ ...resolvePipelineFlags(flags), ...CUT }, resolveRouting()), readSelfCritique())
+    });
+
+  function cutDeps() {
+    const counted = countingDeps();
+    const verifier = counted.deps.narrationVerifier;
+    const realVerify = verifier.verifyAct.bind(verifier);
+    verifier.verifyAct = async (...args: Parameters<typeof realVerify>) => {
+      const verdict = await realVerify(...args);
+      return { ...verdict, seams: verdict.seams.map((seam) => ({ ...seam, claimsSupported: false, notes: "refused for GV-108" })) };
+    };
+    const real = createEvidenceGatherer({});
+    const evidence: EvidenceGatherer = {
+      async gather(beat, buildCtx) {
+        const pack = await real.gather(beat, buildCtx);
+        if (!beat.tape) return pack;
+        const { itemId, startSec, endSec } = beat.tape;
+        return { ...pack, tape: { itemId, showTitle: "Pitmaster Radio", episodeTitle: `Smoke stories ${itemId.slice(-6)}`, startSec, endSec } };
+      }
+    };
+    return { calls: counted.calls, deps: { ...counted.deps, evidence } };
+  }
+
+  const banked = (store: FakeCheckpointStore) =>
+    Object.entries(store.files.get(KEY)!.stages)
+      .filter(([k]) => k.startsWith("narrate:"))
+      .flatMap(([, v]) => (v as WrittenAct).slots.flatMap((slot) => slot.beats));
+
+  /* MUTATION THAT KILLS THIS: drop `droppedReason` from runPipeline.ts's
+     WrittenBeatSchema (the object strips it on resume) -- the resumed act
+     loses its drops and `pagesCut` falls. Ran it -- red. And: leave
+     NarratedBeatSchema's `verification` synthesis-only -- the banked
+     intro-only page no longer parses and the resume fails. Ran it -- red. */
+  it("banks intro-only pages and droppedReason beats with no hand-off, and a resumed run writes nothing and reads the same Foray", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const store = new FakeCheckpointStore(fingerprintFor(flags));
+      const first = cutDeps();
+      const fresh = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: CUT }, { ...first.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (fresh.outcome !== "generated") throw new Error("expected a generated outcome");
+      const beats = banked(store);
+      const pages = beats.map((b) => (b.sourcing === "tape" ? b.connectiveNarration : b.narration)).filter((p): p is NarratedBeat => p !== undefined);
+      expect(pages.some((p) => p.verification?.kind === "intro-only")).toBe(true);
+      expect(beats.some((b) => droppedReasonOf(b) === "unverified-cut")).toBe(true);
+      expect(pages.every((p) => p.verified)).toBe(true);
+      expect(JSON.stringify(store.files.get(KEY)!.stages)).not.toContain(HANDOFF_SCRIPT);
+      const pagesCut = fresh.input.meta!.veracity!.pagesCut;
+      expect(pagesCut).toBeGreaterThan(0);
+      expect(fresh.input.meta!.veracity!.unverifiedPages).toBe(0);
+
+      store.drop(KEY, store.stageKeys(KEY).filter((k) => k.startsWith("stitch:")));
+      const second = cutDeps();
+      const resumed = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: CUT }, { ...second.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      if (resumed.outcome !== "generated") throw new Error("expected a generated outcome");
+      expect(second.calls.write).toBe(0);
+      expect(resumed.input.items).toEqual(fresh.input.items);
+      expect(resumed.input.meta!.veracity!.pagesCut).toBe(pagesCut);
+    }
+  }, 240_000);
+
+  it("the default run under the same refusals keeps today's shape: no pagesCut, no intro-only page, no dropped beat", async () => {
+    /* MUTATION THAT KILLS THIS: thread the policy into the writer whatever
+       its value (drop the `=== "cut"` test in narrateOneAct) or report
+       `pagesCut` unconditionally. Ran both -- red. */
+    const store = new FakeCheckpointStore(fingerprintFor({}));
+    const out = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at }, { ...cutDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+    if (out.outcome !== "generated") throw new Error("expected a generated outcome");
+    expect(Object.prototype.hasOwnProperty.call(out.input.meta!.veracity!, "pagesCut")).toBe(false);
+    expect(out.input.meta!.veracity!.unverifiedPages).toBeGreaterThan(0);
+    expect(banked(store).some((b) => droppedReasonOf(b) !== undefined)).toBe(false);
+  }, 120_000);
 });
