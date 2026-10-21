@@ -5310,6 +5310,43 @@ describe("sourceBeats — GV-115: the per-show tape ledger, the soft show-divers
       expect(snapshot.placedSecByShow).toEqual([["practical-ai", 140]]);
     });
 
+    it("gate: a merge is asked with the grown clip's OLD length taken out, so it is not counted twice", () => {
+      /* Bravo's b1 places first (beat C3), then F-96's merge on pa-970: clip
+         A (120 s) grows to 140 s. Two clips are placed, so the gate asks the
+         merge. Asked right, practical-ai is 140 / (bravo + 140), under 0.65;
+         with clip A's old 120 s still counted it is (120 + 140) /
+         (bravo + 120 + 140), over it, and the merge is refused. MUTATION
+         THAT KILLS THIS: in `showShareAllows`, `const before = 0;` (the old
+         length counted twice); the merge is refused and beat B does not
+         grow clip A. Ran it: red. */
+      const archive = [f96, b1];
+      const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-970": cues, b1: cuesC3Weak };
+      const session = new SourcingSession({
+        segmentPool: [],
+        transcriptArchive: archive,
+        cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+        textIndex: memoryTextIndex(archive, cuesByGuid),
+        showShare: { ...GATE, max: 0.65 }
+      });
+      const merged = act(
+        [beat(C3), beat(claimA, { episodeId: "pa-970", startSec: 100, endSec: 160 }), beat(claimB, { episodeId: "pa-970", startSec: 201, endSec: 240 })],
+        "GV115-gate-merge"
+      );
+      session.sourceAct(merged, 0);
+      const snapshot = session.exportState();
+      expect(snapshot.placedTapeCount).toBe(2);
+      const bravoSec = snapshot.placedDurations[0]!;
+      expect(snapshot.placedDurations).toEqual([bravoSec, 140]);
+      /* The fixture is not vacuous: the two readings fall either side of max. */
+      expect(140 / (bravoSec + 140)).toBeLessThanOrEqual(0.65);
+      expect(260 / (bravoSec + 260)).toBeGreaterThan(0.65);
+      expect(snapshot.placedSecByShow).toEqual([
+        ["bravo", bravoSec],
+        ["practical-ai", 140]
+      ]);
+      expect(snapshot.sourcingTrace).toHaveLength(0);
+    });
+
     it("is keyed by show (`showKeyForItem` over the archive) and sums every placement of it, or by an injected `showKeyFor`", () => {
       /* MUTATION THAT KILLS THIS: key the ledger by item id in `placeTape`
          (`set(itemId, ...)`); three alpha episodes then make three rows. */

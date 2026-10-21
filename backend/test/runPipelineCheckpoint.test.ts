@@ -1414,4 +1414,44 @@ describe("GV-115: FORAY_SHOW_SHARE reaches sourcing and the fingerprint on both 
       }
     }
   }, 240_000);
+
+  /* The per-act path banks `source:<i>` through SourcingSnapshotSchema, a
+     z.object that strips unknown keys: the ledger must be in it, or every
+     resume silently falls back to rebuilding it from the placement log.
+     MUTATION THAT KILLS THIS: drop `placedSecByShow` from runPipeline.ts's
+     SourcingSnapshotSchema; the resumed snapshot then has no ledger. Ran
+     it: red. */
+  it("a per-act resume under on hands the session the banked per-show ledger, and off banks none", async () => {
+    const flags: Partial<PipelineFlags> = { perActPipeline: true };
+    for (const value of ["gate", undefined]) {
+      await withEnv(value, async () => {
+        const store = new FakeCheckpointStore(fingerprintFor(flags));
+        await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+        const sourceKeys = store.stageKeys(KEY).filter((k) => k.startsWith("source:"));
+        expect(sourceKeys.length).toBeGreaterThan(0);
+        const lastBanked = (store.load(KEY)!.stages[sourceKeys.at(-1)!] as { snapshot: Record<string, unknown> }).snapshot;
+        const resumedWith: Array<Record<string, unknown>> = [];
+        const real = SourcingSession.resume;
+        vi.spyOn(SourcingSession, "resume").mockImplementation((...args: Parameters<typeof SourcingSession.resume>) => {
+          resumedWith.push(args[1] as unknown as Record<string, unknown>);
+          return real.apply(SourcingSession, args);
+        });
+        try {
+          const again = countingDeps();
+          await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+          expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+        } finally {
+          vi.restoreAllMocks();
+        }
+        expect(resumedWith).toHaveLength(1);
+        if (value === "gate") {
+          expect(Array.isArray(lastBanked.placedSecByShow)).toBe(true);
+          expect(resumedWith[0]!.placedSecByShow).toEqual(lastBanked.placedSecByShow);
+        } else {
+          expect(Object.keys(lastBanked)).not.toContain("placedSecByShow");
+          expect(resumedWith[0]!.placedSecByShow).toBeUndefined();
+        }
+      });
+    }
+  }, 240_000);
 });

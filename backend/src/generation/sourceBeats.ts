@@ -690,10 +690,11 @@ export class SourcingSession {
     state.lastMintedClip = null;
     state.runtimeBudgetSec = copy.runtimeBudgetSec;
     state.remainingSeededBeats = copy.remainingSeededBeats;
-    /* GV-115: the banked per-show ledger when the rule is on. A snapshot
-       banked without it (the checkpoint variant keeps a flag-on run off a
-       flag-off file, so only a hand-built resume gets here) is rebuilt from
-       the placement log, which is what `placeTape` would have written. */
+    /* GV-115: the banked per-show ledger when the rule is on (the per-act
+       pipeline's `source:<i>` schema carries it). A snapshot without it is
+       rebuilt from the placement log, which is what `placeTape` would have
+       written: the checkpoint variant keeps a flag-on run off a flag-off
+       file, so that is a snapshot built or edited by hand. */
     if (state.placedSecByShow) {
       state.placedSecByShow = copy.placedSecByShow ? new Map(copy.placedSecByShow) : placedSecByShowOf(state);
     }

@@ -1226,6 +1226,10 @@ const SourcingSnapshotSchema = z.object({
   /* GV-106: present only on a snapshot banked under FORAY_TIER_RUNTIME_CAP. */
   runtimeBudgetSec: z.number().optional(),
   remainingSeededBeats: z.number().int().nonnegative().optional(),
+  /* GV-115: present only on a snapshot banked under FORAY_SHOW_SHARE; a
+     z.object strips unknown keys, so without this a per-act resume dropped
+     the banked per-show ledger. */
+  placedSecByShow: LedgerEntriesSchema.optional(),
   tapeRelevance: z.array(TapeRelevanceInputSchema),
   sourcingTrace: z.array(SourcingTraceSchema),
   acts: z.array(SourcedActSchema)
