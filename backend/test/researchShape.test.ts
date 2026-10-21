@@ -8,12 +8,15 @@ import {
   RESEARCH_TAPE_WINDOW_MAX_CHARS,
   RESEARCH_TAPE_WINDOW_MAX_SEC,
   RESEARCH_TAPE_WINDOW_MIN_SEC,
+  RESEARCH_SHORTLIST_CANDIDATES,
+  RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC,
   SUBJECT_PROBE_LIMIT,
   subjectProbeQuery,
   subtopicQueryText,
-  type ResearchSearchRequest
+  type ResearchSearchRequest,
+  type ResearchShortlist
 } from "../src/generation/researchShape";
-import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval } from "../src/generation/retrievalClient";
+import { HydratingCueProvider, PrecomputedTextIndex, RemoteRetrieval, type ShortlistPassage } from "../src/generation/retrievalClient";
 import {
   TAPE_CLAIM_SEARCH_MAX_SEC,
   TAPE_CLAIM_SEARCH_MIN_SEC,
@@ -24,7 +27,14 @@ import {
 } from "../src/generation/transcriptArchiveLookup";
 import { tokenizeForSourcing } from "../src/generation/catalogueLookup";
 import { ResearchShapeSchema, type ResearchTapeWindow } from "../src/types/research";
-import { FlagValueError, RESEARCH_SHOW_QUOTA_ENV, researchShowQuota } from "../src/generation/generationFlags";
+import {
+  FlagValueError,
+  RESEARCH_SHORTLIST_ENV,
+  RESEARCH_SHOW_QUOTA_ENV,
+  researchShortlist,
+  researchShowQuota,
+  retrievalConfig
+} from "../src/generation/generationFlags";
 import { FileTranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptBodySource, TranscriptTextIndex } from "../src/generation/transcriptTextIndex";
 import type { TranscriptCue, TranscriptCueProvider, TranscriptDigestEntry } from "../src/generation/transcriptArchiveLookup";
@@ -1258,5 +1268,263 @@ describe("GV-95: research-shape asks every search ahead of the first (prepareQue
     expect(shape.subtopics.find((s) => s.label === "Fusion")!.windowsUnavailable).toMatch(/did not answer this subtopic's search/);
     /* No search was made on a miss: nothing counted as one. */
     expect(retrieval.stats()).toMatchObject({ hits: 0, misses: 0 });
+  });
+});
+
+describe("GV-112: research-map windows from the topic node's precomputed shortlist (FORAY_RESEARCH_SHORTLIST)", () => {
+  /* A synthetic archive under a REAL catalogue show id, so the lineage gate
+     runs over committed data: `practical-ai` is filed under
+     engineering/ai-robotics, the Foray's topic here, and `fusion-weekly` is
+     in no catalogue row, so the gate refuses it. The BM25 episodes have
+     bodies the index searches; the shortlist episodes have none, so only the
+     stub shortlist can offer them. */
+  const TOPIC = "engineering/ai-robotics";
+  const searched = (n: number): TranscriptDigestEntry => ({
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: `pa-bm-${n}`,
+    title: `Searched ${n}`,
+    cues: 3,
+    feed_duration_sec: 3600
+  });
+  const listed = (n: number, extra: Partial<TranscriptDigestEntry> = {}): TranscriptDigestEntry => ({
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: `pa-sl-${n}`,
+    title: `Listed ${n}`,
+    cues: 3,
+    feed_duration_sec: 3600,
+    ...extra
+  });
+  const cues: TranscriptCue[] = [
+    { text: "fusion in a tokamak is the whole show today and the tokamak is the hard part", start_sec: 0, end_sec: 50 },
+    { text: "fusion reactors need the tokamak to hold the plasma long enough for fusion to pay", start_sec: 50, end_sec: 100 },
+    { text: "so every tokamak group measures fusion gain before anything else", start_sec: 100, end_sec: 150 }
+  ];
+  /* Well over 600 characters, so the cut is exercised. */
+  const longText = Array.from({ length: 30 }, (_, i) => `The tokamak held its plasma for run ${i} and the fusion gain was measured.`).join("   ");
+
+  function tape(bm25: number) {
+    const archive = Array.from({ length: bm25 }, (_, i) => searched(i));
+    const bodies: TranscriptBodySource = {
+      getCues: (entry) => (entry.guid.startsWith("pa-bm-") ? cues : null),
+      bodyStat: (entry) => (entry.guid.startsWith("pa-bm-") ? { mtimeMs: 1, size: 1 } : null)
+    };
+    const cueProvider: TranscriptCueProvider = { getCues: (entry) => (entry.guid.startsWith("pa-bm-") ? cues : null) };
+    /* `cache: false`: nothing in a test may touch the disk cache. */
+    return { textIndex: new FileTranscriptTextIndex({ archive, bodies, cache: false }), cueProvider };
+  }
+
+  const passage = (entry: TranscriptDigestEntry, startSec = 600, endSec = 720, text = longText): ShortlistPassage => ({
+    entry,
+    passageId: `p-${entry.guid}-${startSec}`,
+    startSec,
+    endSec,
+    text,
+    rank: 0,
+    score: 0.42,
+    rerankScore: null
+  });
+
+  function stub(passages: ShortlistPassage[]) {
+    const calls: Array<{ node: string; queryText: string; limit: number }> = [];
+    const fn: ResearchShortlist = async (node, queryText, limit) => {
+      calls.push({ node, queryText, limit });
+      return passages;
+    };
+    return { fn, calls };
+  }
+
+  function twoSubtopicCatalogue(): CatalogueData {
+    const base = tapeFixtureCatalogue();
+    return {
+      ...base,
+      itemTags: Object.fromEntries(base.items.map((it) => [it.id, ["fusion", "tokamak", "plasma"]])),
+      concepts: { ...base.concepts, plasma: { terms: ["plasma", "tokamak"], topics: ["engineering/energy-fusion"], related: [] } }
+    };
+  }
+
+  async function map(opts: { flag?: string; shortlist?: ResearchShortlist; bm25: number; topic?: string | null; catalogue?: CatalogueData }) {
+    if (opts.flag === undefined) delete process.env[RESEARCH_SHORTLIST_ENV];
+    else process.env[RESEARCH_SHORTLIST_ENV] = opts.flag;
+    const { guard } = guardAndSink();
+    const shape = await buildResearchShape(makeIntent(), {
+      researcher: new StubExternalResearcher(guard),
+      ctx: { userId: "founder-1" },
+      catalogue: opts.catalogue ?? tapeFixtureCatalogue(),
+      topic: opts.topic === undefined ? TOPIC : opts.topic,
+      ...tape(opts.bm25),
+      ...(opts.shortlist ? { shortlist: opts.shortlist } : {})
+    });
+    return { shape, fusion: shape.subtopics.find((s) => s.label === "Fusion")! };
+  }
+
+  const withoutStamp = (shape: { generatedAt: string }) => JSON.stringify({ ...shape, generatedAt: "" });
+  const ids = (windows: ResearchTapeWindow[]) => windows.map((w) => w.episodeId);
+  const listedId = (n: number) => `practical-ai--listed-${n}`;
+  const searchedId = (n: number) => `practical-ai--searched-${n}`;
+
+  afterEach(() => {
+    delete process.env[RESEARCH_SHORTLIST_ENV];
+  });
+
+  it("with the flag unset (or 0) the shortlist is never asked and the map is byte-identical to a run without the seam", async () => {
+    /* MUTATION THAT KILLS THIS: drop `!researchShortlist()` from
+       prefetchShortlists' guard (the seam alone switches it on). Ran it: red,
+       the stub was called and two shortlist windows joined the map. */
+    const valid = stub([passage(listed(1)), passage(listed(2))]);
+    const without = await map({ bm25: 3 });
+    const unset = await map({ bm25: 3, shortlist: valid.fn });
+    const zero = await map({ flag: "0", bm25: 3, shortlist: valid.fn });
+    expect(valid.calls).toEqual([]);
+    expect(withoutStamp(unset.shape)).toBe(withoutStamp(without.shape));
+    expect(withoutStamp(zero.shape)).toBe(withoutStamp(without.shape));
+    expect(JSON.stringify(without.shape)).not.toContain("origin");
+    /* And the flag with no seam (no retrieval server) changes nothing either. */
+    const flagOnly = await map({ flag: "1", bm25: 3 });
+    expect(withoutStamp(flagOnly.shape)).toBe(withoutStamp(without.shape));
+  });
+
+  it("with the flag and the seam, a subtopic gets at most two shortlist windows, after its BM25 windows, marked origin 'shortlist' and cut to 600 characters", async () => {
+    /* MUTATIONS THAT KILL THIS: (1) drop the
+       `out.length >= RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC` break in
+       shortlistWindows: red, three shortlist windows; (2) quote
+       `passage.text` without trimToSentence: red, the text is over 600
+       characters. Ran both. */
+    const listing = stub([1, 2, 3, 4, 5].map((n) => passage(listed(n))));
+    const { fusion } = await map({ flag: "1", bm25: 3, shortlist: listing.fn });
+    expect(listing.calls).toEqual([
+      { node: TOPIC, queryText: subtopicQueryText({ label: "Fusion", terms: ["fusion", "tokamak"] }), limit: RESEARCH_SHORTLIST_CANDIDATES }
+    ]);
+    expect(fusion.windowsUnavailable).toBeNull();
+    expect(fusion.tapeWindows.map((w) => w.origin ?? "bm25")).toEqual(["bm25", "bm25", "bm25", "shortlist", "shortlist"]);
+    expect(ids(fusion.tapeWindows)).toEqual([searchedId(0), searchedId(1), searchedId(2), listedId(1), listedId(2)]);
+    expect(fusion.tapeWindows.filter((w) => w.origin === "shortlist").length).toBeLessThanOrEqual(RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC);
+    const extra = fusion.tapeWindows[3]!;
+    expect(extra).toMatchObject({ showTitle: "Practical AI", episodeTitle: "Listed 1", startSec: 600, endSec: 720, score: 0.42 });
+    expect(extra.text.length).toBeLessThanOrEqual(RESEARCH_TAPE_WINDOW_MAX_CHARS);
+    expect(extra.text.length).toBeGreaterThan(0);
+    /* The passage's own words, whitespace collapsed, cut at a sentence end. */
+    expect(longText.replace(/\s+/g, " ").startsWith(extra.text)).toBe(true);
+    expect(extra.text.endsWith(".")).toBe(true);
+    /* No showId with the quota off, as for every BM25 window. */
+    expect(extra.showId).toBeUndefined();
+  });
+
+  it("stays inside the cap of six: six BM25 windows leave no room, five leave one", async () => {
+    /* MUTATION THAT KILLS THIS: append the shortlist windows after the cut
+       (`[...ranked.slice(0, 6), ...extra]` in keepWindows). Ran it: red,
+       eight windows. */
+    const listing = stub([1, 2, 3].map((n) => passage(listed(n))));
+    const full = await map({ flag: "1", bm25: 8, shortlist: listing.fn });
+    expect(full.fusion.tapeWindows.length).toBe(RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
+    expect(full.fusion.tapeWindows.some((w) => w.origin === "shortlist")).toBe(false);
+    const five = await map({ flag: "1", bm25: 5, shortlist: listing.fn });
+    expect(five.fusion.tapeWindows.length).toBe(RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC);
+    expect(five.fusion.tapeWindows.map((w) => w.origin ?? "bm25")).toEqual(["bm25", "bm25", "bm25", "bm25", "bm25", "shortlist"]);
+  });
+
+  it("drops a passage from an episode already quoted, a span_implausible row, one past the declared audio, one under 90 s, an off-lineage show and a second passage of one episode", async () => {
+    /* MUTATIONS THAT KILL THIS, each ran red on its own: drop the
+       `span_implausible` check; drop the `feed_duration_sec` check; drop the
+       RESEARCH_TAPE_WINDOW_MIN_SEC check; drop the `isUsable(entry)` check;
+       drop `seen.has(episodeId)` (the BM25 episode and the second passage of
+       one episode both come back). */
+    const offLineage: TranscriptDigestEntry = {
+      show_id: "fusion-weekly",
+      show_title: "Fusion Weekly",
+      guid: "fw-1",
+      title: "Weekly 1",
+      cues: 3,
+      feed_duration_sec: 3600
+    };
+    const listing = stub([
+      passage(searched(0)),
+      passage(listed(1, { span_implausible: true })),
+      passage(listed(2, { feed_duration_sec: 700 }), 600, 720),
+      passage(listed(3), 600, 600 + RESEARCH_TAPE_WINDOW_MIN_SEC - 1),
+      passage(offLineage),
+      passage(listed(4)),
+      passage(listed(4), 900, 1000),
+      passage(listed(5))
+    ]);
+    const { fusion } = await map({ flag: "1", bm25: 3, shortlist: listing.fn });
+    const extra = fusion.tapeWindows.filter((w) => w.origin === "shortlist");
+    expect(ids(extra)).toEqual([listedId(4), listedId(5)]);
+    expect(extra[0]!.startSec).toBe(600);
+    /* One window per episode across the subtopic. */
+    expect(new Set(ids(fusion.tapeWindows)).size).toBe(fusion.tapeWindows.length);
+  });
+
+  it("respects the map-wide ledger: an episode the first subtopic took from the shortlist is not offered again, and a subtopic with no BM25 window left can still be offered shortlist windows", async () => {
+    /* MUTATION THAT KILLS THIS: drop `usedEpisodes.has(episodeId)` in
+       shortlistWindows. Ran it: red, "Plasma" re-quotes Listed 1 and 2. */
+    const listing = stub([1, 2, 3, 4, 5].map((n) => passage(listed(n))));
+    const { shape } = await map({ flag: "1", bm25: 2, shortlist: listing.fn, catalogue: twoSubtopicCatalogue() });
+    const fusion = shape.subtopics.find((s) => s.label === "Fusion")!;
+    const plasma = shape.subtopics.find((s) => s.label === "Plasma")!;
+    expect(ids(fusion.tapeWindows)).toEqual([searchedId(0), searchedId(1), listedId(1), listedId(2)]);
+    /* Both BM25 episodes are spent under "Fusion"; "Plasma" is offered the
+       shortlist's next two. */
+    expect(plasma.tapeWindows.map((w) => w.origin)).toEqual(["shortlist", "shortlist"]);
+    expect(ids(plasma.tapeWindows)).toEqual([listedId(3), listedId(4)]);
+    expect(plasma.windowsUnavailable).toBeNull();
+    expect(listing.calls.length).toBe(2);
+    const all = shape.subtopics.flatMap((s) => ids(s.tapeWindows));
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("asks nothing without a resolved topic node, and a seam that rejects leaves the map built with no shortlist windows", async () => {
+    /* MUTATION THAT KILLS THIS: drop `node === null` from prefetchShortlists'
+       guard (the stub is then asked for node null). Ran it: red. */
+    const listing = stub([passage(listed(1))]);
+    const unresolved = await map({ flag: "1", bm25: 3, shortlist: listing.fn, topic: null });
+    expect(listing.calls).toEqual([]);
+    expect(unresolved.fusion.tapeWindows.some((w) => w.origin === "shortlist")).toBe(false);
+
+    const failing: ResearchShortlist = async () => {
+      throw new Error("refused");
+    };
+    const failed = await map({ flag: "1", bm25: 3, shortlist: failing });
+    const plain = await map({ bm25: 3 });
+    expect(withoutStamp(failed.shape)).toBe(withoutStamp(plain.shape));
+  });
+
+  it("is deterministic, carries showId under the per-show quota, and a checkpointed map round-trips origin", async () => {
+    /* MUTATION THAT KILLS THIS: remove `origin` from ResearchTapeWindowSchema
+       (zod strips it on the reload). Ran it: red. */
+    const listing = () => stub([1, 2].map((n) => passage(listed(n)))).fn;
+    const a = await map({ flag: "1", bm25: 3, shortlist: listing() });
+    const b = await map({ flag: "1", bm25: 3, shortlist: listing() });
+    expect(withoutStamp(a.shape)).toBe(withoutStamp(b.shape));
+    const reloaded = ResearchShapeSchema.parse(JSON.parse(JSON.stringify(a.shape)));
+    expect(reloaded).toEqual(a.shape);
+    expect(reloaded.subtopics[0]!.tapeWindows.filter((w) => w.origin === "shortlist").length).toBe(2);
+
+    process.env[RESEARCH_SHOW_QUOTA_ENV] = "1";
+    try {
+      const quoted = await map({ flag: "1", bm25: 3, shortlist: listing() });
+      expect(quoted.fusion.tapeWindows.length).toBe(5);
+      expect(quoted.fusion.tapeWindows.every((w) => w.showId === "practical-ai")).toBe(true);
+    } finally {
+      delete process.env[RESEARCH_SHOW_QUOTA_ENV];
+    }
+  });
+
+  it("reads FORAY_RESEARCH_SHORTLIST at call time, and retrievalConfig refuses it without FORAY_RETRIEVAL_URL, naming the variable", () => {
+    /* MUTATION THAT KILLS THIS: drop the shortlist check in retrievalConfig
+       (it then returns null, the flag silently inert). Ran it: red. */
+    expect(researchShortlist({})).toBe(false);
+    expect(researchShortlist({ [RESEARCH_SHORTLIST_ENV]: "1" })).toBe(true);
+    expect(researchShortlist({ [RESEARCH_SHORTLIST_ENV]: "0" })).toBe(false);
+    expect(() => researchShortlist({ [RESEARCH_SHORTLIST_ENV]: "yes please" })).toThrow(FlagValueError);
+    expect(() => researchShortlist({ [RESEARCH_SHORTLIST_ENV]: "yes please" })).not.toThrow(/please/);
+    expect(() => retrievalConfig({ [RESEARCH_SHORTLIST_ENV]: "1" })).toThrow(RESEARCH_SHORTLIST_ENV);
+    expect(retrievalConfig({ [RESEARCH_SHORTLIST_ENV]: "0" })).toBeNull();
+    expect(retrievalConfig({ [RESEARCH_SHORTLIST_ENV]: "1", FORAY_RETRIEVAL_URL: "http://127.0.0.1:7311" })).toEqual({
+      baseUrl: "http://127.0.0.1:7311",
+      token: undefined,
+      mode: "bm25"
+    });
   });
 });

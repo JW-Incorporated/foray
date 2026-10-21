@@ -34,7 +34,7 @@ import { DroppedReasonSchema, NarratedBeatSchema } from "../types/narration";
 
 import { understandPrompt, understandPromptFast } from "./understandPrompt";
 import { provisionalTitle } from "./preSpineIntent";
-import { buildResearchShape, type ResearchSearchRequest } from "./researchShape";
+import { buildResearchShape, type ResearchSearchRequest, type ResearchShortlist } from "./researchShape";
 import { buildSpineWithReasks, reaskForRuntime, type SpineReask } from "./buildSpine";
 import { spineRuntimeLine, spineRuntimeOf, tierClipBudgetSec, type RuntimeAct, type SpineRuntime } from "./tierRuntime";
 import { postSeedWithFloor, summarizeSeedFloor, SPINE_SEED_FLOOR } from "./postSeedSpine";
@@ -50,13 +50,13 @@ import {
   type SourceBeatsOptions,
   type SourcingSnapshot
 } from "./sourceBeats";
-import { retrievalStatsSince, type RetrievalMode, type RetrievalSearchRequest, type RetrievalStats } from "./retrievalClient";
+import { retrievalStatsSince, type RetrievalMode, type RetrievalSearchRequest, type RetrievalStats, type ShortlistPassage } from "./retrievalClient";
 import { summarizeSeeding } from "./spineSeeding";
 import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./audioSourceLookup";
 import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeAct, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics, type PrefetchOptions } from "./evidencePrefetch";
-import { evidencePrefetchMode, numberParser, readFlag, type FlagSource } from "./generationFlags";
+import { evidencePrefetchMode, numberParser, readFlag, researchShortlist, type FlagSource } from "./generationFlags";
 import { spineActBand } from "./replySchemas";
 import { readSpineTierSizing } from "./chat/ChatSpineBuilder";
 import { writerExemplarsMode } from "./voiceExemplars";
@@ -186,6 +186,17 @@ export interface RetrievalPreparer {
   /** GV-125 (#1413 item 17): the mode sent with every search. Anything but
    * bm25 joins the checkpoint variant at both call sites. Absent: bm25. */
   readonly mode?: RetrievalMode;
+  /** GV-112 (W3-25): GET /v1/shortlist, the topic node's precomputed
+   * passages ranked for `queryText` and mapped onto archive rows; never
+   * throws (degraded: empty). Asked by research-shape only with
+   * FORAY_RESEARCH_SHORTLIST on. Absent: no shortlist windows. */
+  shortlist?(node: string, queryText: string, limit: number): Promise<ShortlistPassage[]>;
+}
+
+/** GV-112: the preparer's shortlist as research-shape's seam, called on the
+ * preparer itself (none: no passages). */
+function shortlistSeam(retrieval: RetrievalPreparer): ResearchShortlist {
+  return async (node, queryText, limit) => (retrieval.shortlist ? retrieval.shortlist(node, queryText, limit) : []);
 }
 
 /** G-35's prefetch metrics, plus GV-95's retrieval-server counts when the run
@@ -1443,6 +1454,13 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   /* GV-102: FORAY_DEEPEN_CONCURRENCY, read once here and only on the per-act
      path, so a classic run never reads it. */
   const perActDeepenConcurrency = flags.perActPipeline ? deepenConcurrency() : undefined;
+  /* GV-112 (W3-25): FORAY_RESEARCH_SHORTLIST, read once here and only with a
+     retrieval server (without one the flag is inert, so a run without one
+     never reads it). On, research-shape is handed the server's shortlist and
+     the variant below carries `research=shortlist`, which the driver's store
+     hashes from the same environment (`researchShortlistVariant`). The one
+     research-shape stage serves the classic and the per-act paths alike. */
+  const shortlistOn = deps.retrieval !== undefined && researchShortlist();
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
@@ -1473,6 +1491,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
           {
             ...flags,
             retrievalMode: deps.retrieval?.mode,
+            /* GV-112: the research shortlist, only when on with a server. */
+            researchShortlist: shortlistOn,
             spineTierSizing: readSpineTierSizing(),
             writerExemplars: writerExemplarsMode(),
             /* GV-127 (#1413 item 36): the enforcing gates, from the run's
@@ -1879,7 +1899,12 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                   );
                 })
             }
-          : {})
+          : {}),
+        /* GV-112: with FORAY_RESEARCH_SHORTLIST on and a server that serves
+           it, each searched subtopic is also offered up to two windows from
+           the topic node's precomputed shortlist. Off, nothing is passed and
+           the stage is called exactly as before. */
+        ...(shortlistOn && retrieval?.shortlist ? { shortlist: shortlistSeam(retrieval) } : {})
       })
   );
 

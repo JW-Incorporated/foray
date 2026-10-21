@@ -6,6 +6,7 @@ import { RetrievalService } from "../src/cli/retrievalServer";
 import type { CueStore } from "../src/generation/manifestBodySource";
 import {
   HydratingCueProvider,
+  MAX_SHORTLIST_LIMIT,
   PrecomputedTextIndex,
   RemoteRetrieval,
   transcriptSourceOfBody,
@@ -697,6 +698,103 @@ describe("RemoteRetrieval: the manifest's shows and /healthz (GV-95)", () => {
     const broken = client(fakeFetch({ route: () => ({ status: 500, json: { error: "x" } }) }).fetchFn);
     expect(await broken.health()).toBeNull();
     expect(broken.stats().reasons).toEqual(["healthz: HTTP 500"]);
+  });
+});
+
+describe("RemoteRetrieval.shortlist: GET /v1/shortlist mapped onto the archive (GV-112)", () => {
+  /** A row in the server's ShortlistAnswer shape (retrievalServer.ts). */
+  const row = (entry: TranscriptDigestEntry, extra: Record<string, unknown> = {}) => ({
+    passageId: `p-${String(entry.guid)}`,
+    show_id: entry.show_id,
+    guid: entry.guid,
+    startSec: 120,
+    endSec: 230.5,
+    startBoundary: "sentence",
+    endBoundary: "pause",
+    startAnchor: null,
+    endAnchor: null,
+    text: "hannibal crossed the alps with elephants",
+    rank: 0,
+    storedRank: 4,
+    score: 0.031,
+    rerankScore: 0.77,
+    ...extra
+  });
+
+  it("asks GET /v1/shortlist?node=&query=&limit= and maps each passage onto this process's archive row; unknown or malformed rows are dropped and counted", async () => {
+    /* MUTATIONS THAT KILL THIS: (1) map by guid alone (`this.archive.find((e)
+       => e.guid === p.guid)`): red, the archive-only twin under another show
+       is taken; (2) keep a row whose seconds are not numbers: red. Ran both. */
+    const twin: TranscriptDigestEntry = { ...ARCHIVE[0]!, show_id: "titans-of-nuclear" };
+    const answer = {
+      node: TOPIC,
+      builtAt: "2026-10-20T00:00:00.000Z",
+      reranked: "bm25",
+      passages: [
+        row(ARCHIVE[1]!, { rank: 0, rerankScore: null }),
+        row(ARCHIVE[0]!, { rank: 1 }),
+        row({ ...ARCHIVE[0]!, guid: "not-in-this-archive" }, { rank: 2 }),
+        row(ARCHIVE[2]!, { rank: 3, startSec: "12" }),
+        "not a row"
+      ]
+    };
+    const fake = fakeFetch({ route: (call) => (call.url.pathname === "/v1/shortlist" ? { json: answer } : undefined) });
+    const retrieval = client(fake.fetchFn, { archive: [twin, ...ARCHIVE] });
+    const passages = await retrieval.shortlist(TOPIC, "hannibal & the alps", 12);
+
+    expect(fake.calls).toHaveLength(1);
+    const call = fake.calls[0]!;
+    expect(call.method).toBe("GET");
+    expect(call.url.pathname).toBe("/v1/shortlist");
+    expect(call.url.searchParams.get("node")).toBe(TOPIC);
+    expect(call.url.searchParams.get("query")).toBe("hannibal & the alps");
+    expect(call.url.searchParams.get("limit")).toBe("12");
+    expect(call.headers.authorization).toBe("Bearer t0ken");
+
+    expect(passages.map((p) => p.entry)).toEqual([ARCHIVE[1], ARCHIVE[0]]);
+    /* The archive's own row objects, not copies: research-shape keys on them. */
+    expect(passages[1]!.entry).toBe(ARCHIVE[0]);
+    expect(passages[0]).toEqual({
+      entry: ARCHIVE[1],
+      passageId: `p-${String(ARCHIVE[1]!.guid)}`,
+      startSec: 120,
+      endSec: 230.5,
+      text: "hannibal crossed the alps with elephants",
+      rank: 0,
+      score: 0.031,
+      rerankScore: null
+    });
+    expect(passages[1]!.rerankScore).toBe(0.77);
+    expect(retrieval.stats()).toMatchObject({ unmapped: 3, degraded: 0, unprepared: 0 });
+  });
+
+  it("degrades to an empty list, never throws and never logs the query; a request the server would refuse is not sent", async () => {
+    /* MUTATION THAT KILLS THIS: drop the limit bound (send limit 51): red, a
+       request goes out. Ran it. */
+    const broken = fakeFetch({ route: () => ({ status: 503, json: { error: "the shortlist needs the passage store" } }) });
+    const retrieval = client(broken.fetchFn);
+    expect(await retrieval.shortlist(TOPIC, "secret subtopic words", 12)).toEqual([]);
+    expect(retrieval.stats().reasons).toEqual(["shortlist: HTTP 503"]);
+    expect(retrieval.stats().reasons.join(" ")).not.toMatch(/secret/);
+
+    const shapeless = client(fakeFetch({ route: () => ({ json: { node: TOPIC } }) }).fetchFn);
+    expect(await shapeless.shortlist(TOPIC, "q", 12)).toEqual([]);
+    expect(shapeless.stats().reasons).toEqual(["shortlist: reply has no passage list"]);
+
+    const refused = client(fakeFetch({ route: () => "network-error" }).fetchFn);
+    expect(await refused.shortlist(TOPIC, "q", 12)).toEqual([]);
+    expect(refused.stats().degraded).toBe(1);
+
+    const bounded = fakeFetch({ route: () => ({ json: { passages: [] } }) });
+    const quiet = client(bounded.fetchFn);
+    expect(await quiet.shortlist(TOPIC, "q", MAX_SHORTLIST_LIMIT + 1)).toEqual([]);
+    expect(await quiet.shortlist(TOPIC, "q", 0)).toEqual([]);
+    expect(await quiet.shortlist("", "q", 12)).toEqual([]);
+    expect(await quiet.shortlist(TOPIC, "x".repeat(20_001), 12)).toEqual([]);
+    expect(bounded.calls).toHaveLength(0);
+    expect(quiet.stats()).toMatchObject({ unprepared: 4, degraded: 0 });
+    expect(await quiet.shortlist(TOPIC, "q", MAX_SHORTLIST_LIMIT)).toEqual([]);
+    expect(bounded.calls).toHaveLength(1);
   });
 });
 
