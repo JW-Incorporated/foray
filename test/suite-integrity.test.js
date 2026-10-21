@@ -3462,6 +3462,19 @@ const BACKEND_FLOORS = {
      continuing the row's seq above its floor, close with and without a
      snapshot, the key never in an error. Offline. */
   "test/supabaseJobSink.test.ts": 9,
+  /* GV-105 (docs/roadmap/generation-v2.md, #1286; from W6-19): the Spark
+     generation worker, offline (fake RPC, in-memory sink or SupabaseJobSink
+     over a fake PostgREST, fake render client, fake clock, the real stub
+     pipeline): a job claimed once runs with the job sink and render client,
+     snapshots in seq order, closed complete, heartbeat at 10 s cancelled; a
+     throwing pipeline and an escaping exception close the job failed and the
+     loop goes on; a bad job closed without running; empty-queue backoff
+     doubling to the cap and reset after a job, --once; the loop stops when
+     an Anthropic request was sent; the prompt in no sink call, log line or
+     file name (promptLabel, candidateKey, console redaction); the
+     zero-Anthropic start refusal and a refused environment claims nothing;
+     the RPC client's claim and guarded heartbeat; --out under data-local/. */
+  "test/generationWorker.test.ts": 17,
   /* GV-81 (docs/roadmap/generation-v2.md, #1286; from W6-17; D7, D9): the
      two lanes. publishLane: --review-verdict parsed; laneCheck lets a
      catalogue candidate through untouched and refuses an on-demand one
