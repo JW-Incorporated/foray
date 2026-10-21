@@ -1446,7 +1446,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      here, naming the variable, before any call). GV-127 (#1413 items 36,
      40): and FORAY_TIER_RUNTIME_CAP when on, FORAY_VOICE_GATE and
      FORAY_SPECIFICS_CHECK when enforcing. GV-109: and
-     FORAY_CLAIM_ONLY_OPENING when refusing. */
+     FORAY_CLAIM_ONLY_OPENING when refusing. GV-111: and FORAY_PAUSE_SNAP
+     when on. */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
@@ -1470,7 +1471,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
             specifics: gates.specifics,
             /* GV-109: a refused claim-only opening changes what `source`
                banks; `allow` (the default) adds nothing. */
-            claimOnlyOpening: gates.claimOnlyOpening
+            claimOnlyOpening: gates.claimOnlyOpening,
+            /* GV-111: a pause snap changes the cuts and anchors `source`
+               banks; `off` (the default) adds nothing. */
+            pauseSnap: gates.pauseSnap
           },
           routing
         ),
@@ -2180,7 +2184,9 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
     /* GV-109: FORAY_CLAIM_ONLY_OPENING, only when refusing, so the default
        run's options are today's. One builder serves the classic and the
        per-act path. */
-    ...(gates.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {})
+    ...(gates.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {}),
+    /* GV-111: FORAY_PAUSE_SNAP, only when on, likewise. */
+    ...(gates.pauseSnap === "on" ? { pauseSnap: "on" as const } : {})
   });
 
   /* GV-106 (W4-15): the tier's tape budget under FORAY_TIER_RUNTIME_CAP —

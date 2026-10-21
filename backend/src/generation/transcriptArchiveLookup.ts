@@ -5,6 +5,7 @@ import { tokenizeForSourcing } from "./catalogueLookup";
 import { canonicalizeForAnchorMatch } from "../types/anchorText";
 import { codeHit, codeSpanSync } from "./codeSpans";
 import { corpusSafeKey, isLetterSpacedCue } from "./transcriptCorpus";
+import { snapEdge, type SnappedEdge } from "./pauseSnap";
 import { TranscriptSourceSchema, type TapeBoundary, type TranscriptSource } from "../types/tapeSourcing";
 
 /**
@@ -245,6 +246,63 @@ export interface TranscriptCue {
    * boundaries and falls back to sentence + pause boundaries when it is absent.
    */
   speaker?: string | null;
+  /**
+   * GV-111 (W5-14b): the cue's words with their own timings, when the body
+   * carries them (whisper `word_timestamps`, from the transcript farm). Kept
+   * by the reader only when they are trustworthy (`cueWordsOf`): monotonic,
+   * inside the cue's span give or take `CUE_WORD_SPAN_TOLERANCE_SEC`, and
+   * spelling the cue's own text once both are canonicalised. The cue's
+   * `text` is never rewritten from them, so the text index
+   * (`TRANSCRIPT_TEXT_INDEX_VERSION`) does not move. Read only by the pause
+   * snap (`pauseSnap.ts`, under FORAY_PAUSE_SNAP=on); absent on every body
+   * today.
+   */
+  words?: TranscriptWord[];
+}
+
+/** GV-111: one timed word of a cue. */
+export interface TranscriptWord {
+  text: string;
+  start: number;
+  end: number;
+}
+
+/** GV-111: how far outside its cue's span a word may be timed and still be
+ * believed. Whisper's word timing and its segment timing disagree by a few
+ * hundred milliseconds at the edges; further than this, the words are not
+ * this cue's. */
+export const CUE_WORD_SPAN_TOLERANCE_SEC = 0.5;
+
+/**
+ * GV-111: the body's `words` for one cue, or undefined when they cannot be
+ * trusted — and then the cue is read exactly as it was before words existed.
+ *
+ * Kept only when every word has a non-empty `text` (whisper's own key,
+ * `word`, is read too) and finite `start <= end`; starts and ends never go
+ * backwards; every word lies within the cue's span ±
+ * `CUE_WORD_SPAN_TOLERANCE_SEC`; and the words joined spell the cue's text
+ * once both are canonicalised (`canonicalizeForAnchorMatch`). The last rule
+ * is what lets an anchor minted from a run of words (`cutWindowToSegment`
+ * under `snapToPauses`) be verbatim tape by construction: the words ARE the
+ * cue's canonical words, split at the same places.
+ */
+export function cueWordsOf(raw: unknown, cue: { text: string; start_sec: number; end_sec: number }): TranscriptWord[] | undefined {
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const words: TranscriptWord[] = [];
+  for (const w of raw as Array<Record<string, unknown>>) {
+    if (w === null || typeof w !== "object") return undefined;
+    const rawText = typeof w.text === "string" ? w.text : typeof w.word === "string" ? w.word : null;
+    const text = rawText === null ? "" : rawText.trim();
+    const start = w.start;
+    const end = w.end;
+    if (!text || typeof start !== "number" || typeof end !== "number" || !Number.isFinite(start) || !Number.isFinite(end) || end < start) return undefined;
+    const prev = words[words.length - 1];
+    if (prev && (start < prev.start || end < prev.end)) return undefined;
+    if (start < cue.start_sec - CUE_WORD_SPAN_TOLERANCE_SEC || end > cue.end_sec + CUE_WORD_SPAN_TOLERANCE_SEC) return undefined;
+    words.push({ text, start, end });
+  }
+  if (canonicalizeForAnchorMatch(words.map((w) => w.text).join(" ")) !== canonicalizeForAnchorMatch(cue.text)) return undefined;
+  return words;
 }
 
 /** Supplies real transcript cue text for an episode, if it is available.
@@ -307,10 +365,24 @@ export class NullTranscriptCueProvider implements TranscriptCueProvider {
  * held a whole corpus after one index rebuild. */
 export const CUE_CACHE_MAX_ENTRIES = 256;
 
+/** GV-111: the same cache's bound in bodies that carry word timings. A word
+ * array multiplies a parsed body several times over, so such a body costs
+ * `CUE_CACHE_MAX_ENTRIES / CUE_CACHE_WORDS_MAX_ENTRIES` (4) of the bound: a
+ * cache of nothing but worded bodies holds 64, and one of bodies without
+ * words holds 256, exactly as before. */
+export const CUE_CACHE_WORDS_MAX_ENTRIES = 64;
+
+/** GV-111: what one cached answer costs of `CUE_CACHE_MAX_ENTRIES`. */
+function cueCacheWeight(cues: TranscriptCue[] | null): number {
+  return cues !== null && cues.some((c) => c.words !== undefined) ? CUE_CACHE_MAX_ENTRIES / CUE_CACHE_WORDS_MAX_ENTRIES : 1;
+}
+
 export class FileTranscriptCueProvider implements TranscriptCueProvider {
   private readonly root: string;
   private readonly dirByShow = new Map<string, string | null>();
   private readonly cuesByKey = new Map<string, TranscriptCue[] | null>();
+  /** GV-111: the summed `cueCacheWeight` of everything in `cuesByKey`. */
+  private cueCacheLoad = 0;
   private readonly guidIndexByDir = new Map<string, Map<string, string>>();
   private readonly filesByDir = new Map<string, Map<string, string>>();
   /** gen-7: every locate() answer, the misses included (about a fifth of the
@@ -334,10 +406,13 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
     }
     const result = this.readCuesUncached(entry);
     this.cuesByKey.set(key, result);
-    while (this.cuesByKey.size > CUE_CACHE_MAX_ENTRIES) {
+    this.cueCacheLoad += cueCacheWeight(result);
+    /* GV-111: bounded by weight, so a body carrying words counts four times;
+       with no words anywhere this is gen-15's entry count, unchanged. */
+    while (this.cueCacheLoad > CUE_CACHE_MAX_ENTRIES) {
       const oldest = this.cuesByKey.keys().next().value;
       if (oldest === undefined) break;
-      this.cuesByKey.delete(oldest);
+      this.dropCached(oldest);
     }
     return result;
   }
@@ -360,6 +435,13 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
         return null;
       }
     });
+  }
+
+  /** GV-111: forget one cached answer, and its weight. */
+  private dropCached(key: string): void {
+    if (!this.cuesByKey.has(key)) return;
+    this.cueCacheLoad -= cueCacheWeight(this.cuesByKey.get(key) ?? null);
+    this.cuesByKey.delete(key);
   }
 
   /** How many parsed cue arrays the provider holds right now (tests). */
@@ -389,7 +471,7 @@ export class FileTranscriptCueProvider implements TranscriptCueProvider {
     }
     const prefix = `${showId}\u0000`;
     for (const key of [...this.locatedByKey.keys()]) if (key.startsWith(prefix)) this.locatedByKey.delete(key);
-    for (const key of [...this.cuesByKey.keys()]) if (key.startsWith(prefix)) this.cuesByKey.delete(key);
+    for (const key of [...this.cuesByKey.keys()]) if (key.startsWith(prefix)) this.dropCached(key);
   }
 
   /**
@@ -672,7 +754,11 @@ export function cuesFromBodyJson(json: unknown): TranscriptCue[] | null {
        spelling a word out loud. */
     if (isLetterSpacedCue(text)) continue;
     const speaker = typeof c?.speaker === "string" && c.speaker.trim().length > 0 ? c.speaker.trim() : null;
-    cues.push({ text, start_sec: start, end_sec: end, speaker });
+    /* GV-111: word timings, only when they can be trusted (`cueWordsOf`);
+       the key is absent otherwise, so a body without words reads exactly as
+       it did. */
+    const words = cueWordsOf(c?.words, { text, start_sec: start, end_sec: end });
+    cues.push(words ? { text, start_sec: start, end_sec: end, speaker, words } : { text, start_sec: start, end_sec: end, speaker });
   }
   return cues.length ? cues : null;
 }
@@ -1294,6 +1380,22 @@ export interface CutWindowOptions {
    * `MAX_TAPE_SEGMENT_SEC`, exactly as before.
    */
   maxSec?: number;
+  /**
+   * GV-111 (W5-14b; R2-05, MQ-06): FORAY_PAUSE_SNAP=on, passed by
+   * `sourceBeats.ts`. When an edge cue carries word timings
+   * (`TranscriptCue.words`), that edge moves from the cue's edge to the word
+   * boundary of a real pause (`pauseSnap.ts`'s `snapEdge`: a gap of 0.3 s or
+   * more, at most 4 s away, a pause after terminal punctuation preferred),
+   * and its anchor is re-minted with `mintStartAnchor` / `mintEndAnchor` from
+   * the words that start (or end) at the snapped word — still the cue's own
+   * canonical words, so `canonical()` parity holds. A snap after terminal
+   * punctuation upgrades that edge's kind to `sentence`; an edge already on a
+   * turn is never moved, and one on a sentence boundary moves only to another
+   * sentence boundary. An edge whose cue has no words, whose pauses are all
+   * too far, or whose snapped words yield no anchor stays exactly where the
+   * cue put it. Omitted or false: today's cut.
+   */
+  snapToPauses?: boolean;
 }
 
 export function cutWindowToSegment(
@@ -1310,14 +1412,42 @@ export function cutWindowToSegment(
   const claimTerms = new Set(tokenizeForSourcing(claimText));
   const { first, last } = growByClaimOverlap(index, claimTerms, window.firstCue, window.lastCue, options.targetSec, options.maxSec);
 
-  const startSec = index.cues[first]!.start_sec;
-  const endSec = index.cues[last]!.end_sec;
+  let startSec = index.cues[first]!.start_sec;
+  let endSec = index.cues[last]!.end_sec;
   if (!(endSec > startSec)) return null;
 
-  const startAnchor = startAnchorFor(index, first, last);
-  const endAnchor = endAnchorFor(index, first, last);
+  let startAnchor = startAnchorFor(index, first, last);
+  let endAnchor = endAnchorFor(index, first, last);
   if (!startAnchor || !endAnchor) return null;
 
+  /* GV-111: the edges' kinds after the floor growth, which the snap reads
+     (a turn is never moved, a sentence edge moves only to a sentence) and
+     may upgrade. */
+  let startKind: TapeBoundary | undefined =
+    window.boundary !== undefined && window.startBoundary !== undefined ? (first === window.firstCue ? window.startBoundary : "claim-only") : undefined;
+  let endKind: TapeBoundary | undefined =
+    window.boundary !== undefined && window.endBoundary !== undefined ? (last === window.lastCue ? window.endBoundary : "claim-only") : undefined;
+  let snapped = false;
+  if (options.snapToPauses) {
+    const snap = snapSpanToPauses(index, first, last, startKind, endKind, options.maxSec ?? MAX_TAPE_SEGMENT_SEC);
+    if (snap.start) {
+      startSec = snap.start.sec;
+      startAnchor = snap.start.anchor;
+      if (startKind !== undefined && snap.start.kind === "sentence") startKind = "sentence";
+      snapped = true;
+    }
+    if (snap.end) {
+      endSec = snap.end.sec;
+      endAnchor = snap.end.anchor;
+      if (endKind !== undefined && snap.end.kind === "sentence") endKind = "sentence";
+      snapped = true;
+    }
+  }
+
+  /* `firstCue`/`lastCue` stay the whole-cue run the cut was made from, even
+     when a snap moved an edge into a neighbour cue or inside its own: a
+     merge re-cuts from them (`sourceBeats.ts`'s `mergeIntoClip`) and must
+     land on the same snapped start. */
   const span: TapeSpan = { startSec, endSec, startAnchor, endAnchor, firstCue: first, lastCue: last };
   if (window.boundary !== undefined) {
     /* Growth to the floor moves an edge off the boundary the extension chose;
@@ -1327,8 +1457,11 @@ export function cutWindowToSegment(
     /* Per edge (MQ-06, GV-109): only the edge the growth moved loses its
        boundary. `span.boundary` above keeps today's both-edges rule, so the
        minted row's `boundary` is unchanged. */
-    if (window.startBoundary !== undefined) span.startBoundary = first === window.firstCue ? window.startBoundary : "claim-only";
-    if (window.endBoundary !== undefined) span.endBoundary = last === window.lastCue ? window.endBoundary : "claim-only";
+    if (startKind !== undefined) span.startBoundary = startKind;
+    if (endKind !== undefined) span.endBoundary = endKind;
+    /* GV-111: a snap re-derives the clip's boundary from its two edges (the
+       weaker of them), so an edge the snap put on a sentence counts. */
+    if (snapped && startKind !== undefined && endKind !== undefined) span.boundary = weakerOfBoundaries(startKind, endKind);
     /* Everything past the claim window: the extension's own seconds plus
        whatever the growth above added to reach the floor. */
     const claimSec =
@@ -1338,6 +1471,98 @@ export function cutWindowToSegment(
     span.extendedBySec = Math.max(0, Math.round((endSec - startSec - claimSec) * 1000) / 1000);
   }
   return span;
+}
+
+/** GV-111: the weaker of two boundary kinds (`tapeExtent.ts`'s rank). */
+function weakerOfBoundaries(a: TapeBoundary, b: TapeBoundary): TapeBoundary {
+  const rank: Record<TapeBoundary, number> = { "claim-only": 0, sentence: 1, turn: 2 };
+  return rank[a] <= rank[b] ? a : b;
+}
+
+/** GV-111: one snapped edge, with the anchor minted at it. */
+interface SnappedSpanEdge {
+  sec: number;
+  kind: SnappedEdge["kind"];
+  anchor: string;
+}
+
+/**
+ * GV-111: both edges of the whole-cue run `first..last` snapped to pauses,
+ * each with its anchor re-minted from the words that start (or end) at the
+ * snapped word. An edge that cannot be snapped, or whose words yield no
+ * anchor, is absent.
+ *
+ * The clip may not come out shorter than the shorter of its whole-cue length
+ * and `ABSOLUTE_MIN_TAPE_SEGMENT_SEC`, nor longer than the larger of its
+ * whole-cue length and `ceilingSec` (the caller's `maxSec`, so an outward
+ * snap cannot push a capped cut past its cap); when the two snaps together
+ * break that, the end snap is dropped first, then the start.
+ */
+function snapSpanToPauses(
+  index: CueIndex,
+  first: number,
+  last: number,
+  startKind: TapeBoundary | undefined,
+  endKind: TapeBoundary | undefined,
+  ceilingSec: number
+): { start?: SnappedSpanEdge; end?: SnappedSpanEdge } {
+  const cueStart = index.cues[first]!.start_sec;
+  const cueEnd = index.cues[last]!.end_sec;
+  const cueLength = cueEnd - cueStart;
+  const minLength = Math.min(cueLength, ABSOLUTE_MIN_TAPE_SEGMENT_SEC);
+  const maxLength = Math.max(cueLength, ceilingSec);
+
+  let start: SnappedSpanEdge | undefined;
+  if (startKind !== "turn") {
+    const edge = snapEdge(index.cues, first, "start", { requireSentence: startKind === "sentence", notBeforeSec: cueEnd - maxLength });
+    const anchor = edge ? snappedStartAnchor(index, edge, last) : null;
+    if (edge && anchor) start = { sec: edge.sec, kind: edge.kind, anchor };
+  }
+  let end: SnappedSpanEdge | undefined;
+  if (endKind !== "turn") {
+    const edge = snapEdge(index.cues, last, "end", { requireSentence: endKind === "sentence", notAfterSec: cueStart + maxLength });
+    const anchor = edge ? snappedEndAnchor(index, edge, first) : null;
+    if (edge && anchor) end = { sec: edge.sec, kind: edge.kind, anchor };
+  }
+  const fits = (s: SnappedSpanEdge | undefined, e: SnappedSpanEdge | undefined): boolean => {
+    const length = (e?.sec ?? cueEnd) - (s?.sec ?? cueStart);
+    return length >= minLength && length <= maxLength;
+  };
+  if (fits(start, end)) return { ...(start ? { start } : {}), ...(end ? { end } : {}) };
+  if (fits(start, undefined)) return start ? { start } : {};
+  if (fits(undefined, end)) return end ? { end } : {};
+  return {};
+}
+
+/** How many of cue `cueIndex`'s canonical words come before its word
+ * `wordIndex`. `cueWordsOf` guarantees the words spell the cue's canonical
+ * text, and canonicalisation never joins across a space, so this is a clean
+ * split of `index.words[cueIndex]`. */
+function canonicalWordsBefore(index: CueIndex, cueIndex: number, wordIndex: number): number {
+  const words = index.cues[cueIndex]!.words ?? [];
+  return canonicalWords(words.slice(0, wordIndex).map((w) => w.text).join(" ")).length;
+}
+
+/** GV-111: the start anchor from the words that start at the snapped word —
+ * its own cue's rest first, then (like `startAnchorFor`'s spill) on through
+ * the clip's cues when that is too short or too generic. */
+function snappedStartAnchor(index: CueIndex, edge: SnappedEdge, last: number): string | null {
+  const own = index.words[edge.cueIndex]!.slice(canonicalWordsBefore(index, edge.cueIndex, edge.wordIndex));
+  const minted = mintStartAnchor(own);
+  if (minted) return minted;
+  const spill = [...own];
+  for (let cue = edge.cueIndex + 1; cue <= last && spill.length < MAX_ANCHOR_WORDS * 4; cue++) spill.push(...index.words[cue]!);
+  return mintStartAnchor(spill);
+}
+
+/** GV-111: and the end anchor from the words that end at the snapped word. */
+function snappedEndAnchor(index: CueIndex, edge: SnappedEdge, first: number): string | null {
+  const own = index.words[edge.cueIndex]!.slice(0, canonicalWordsBefore(index, edge.cueIndex, edge.wordIndex + 1));
+  const minted = mintEndAnchor(own);
+  if (minted) return minted;
+  const spill = [...own];
+  for (let cue = edge.cueIndex - 1; cue >= first && spill.length < MAX_ANCHOR_WORDS * 4; cue--) spill.unshift(...index.words[cue]!);
+  return mintEndAnchor(spill);
 }
 
 /** F-62's rule, stated once: grow toward the claim, never symmetrically. */

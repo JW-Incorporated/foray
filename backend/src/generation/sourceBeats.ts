@@ -15,7 +15,7 @@ import type {
   TranscriptionQueueCandidate
 } from "../types/tapeSourcing";
 import { validateSourcing } from "../types/tapeSourcing";
-import type { ClaimOnlyOpening } from "./gateConfig";
+import type { ClaimOnlyOpening, PauseSnapMode } from "./gateConfig";
 import type { AudioSourceResolver, MintedSegmentSource } from "./audioSourceLookup";
 import { whyFromClaim } from "./mintedSegmentCopy";
 import {
@@ -372,6 +372,18 @@ export interface SourceBeatsOptions {
    * (`check-forays.mjs`) gains no rule.
    */
   claimOnlyOpening?: ClaimOnlyOpening;
+  /**
+   * GV-111 (W5-14b; R2-05, MQ-06): FORAY_PAUSE_SNAP (`GateConfig.pauseSnap`).
+   * `on` asks `cutWindowToSegment` to snap each tier-2 cut's edges to real
+   * pauses read from the cues' word timings (`snapToPauses`), at both cuts
+   * this module makes (a placement and a merge), with the anchors re-minted
+   * from the words. Inert on cues without words, which today is all of them.
+   *
+   * INERT WHEN OMITTED: `off`, exactly the sourcing this module did before
+   * GV-111. `runPipeline.ts` passes it only under `on`, from the one options
+   * builder the classic and the per-act path share.
+   */
+  pauseSnap?: PauseSnapMode;
 }
 
 /**
@@ -458,7 +470,8 @@ type SourcingConfigKey =
   | "root"
   | "audioSourceFor"
   | "supersedableCut"
-  | "claimOnlyOpening";
+  | "claimOnlyOpening"
+  | "pauseSnap";
 
 /** GV-107: the configuration half of `SourcingState`: everything sourcing
  * READS and no beat ever writes. */
@@ -483,7 +496,8 @@ function sourcingInputsFor(options: SourceBeatsOptions): SourcingInputs {
     root: options.root,
     audioSourceFor: options.audioSourceFor,
     supersedableCut: options.supersedableCut,
-    claimOnlyOpening: options.claimOnlyOpening ?? "allow"
+    claimOnlyOpening: options.claimOnlyOpening ?? "allow",
+    pauseSnap: options.pauseSnap ?? "off"
   };
 }
 
@@ -915,6 +929,9 @@ interface SourcingState {
   /** See `SourceBeatsOptions.claimOnlyOpening` — `allow` (the default) places
    * a claim-only opening exactly as before GV-109. */
   claimOnlyOpening: ClaimOnlyOpening;
+  /** See `SourceBeatsOptions.pauseSnap` — `off` (the default) cuts at cue
+   * edges exactly as before GV-111. */
+  pauseSnap: PauseSnapMode;
   mintedIds: Set<string>;
   newSegments: NewSegment[];
   newSegmentSources: Map<string, MintedSegmentSource>;
@@ -2580,7 +2597,7 @@ class Tier2Walk {
     /* Cut with the FIRST beat's claim: the growth (a no-op past the floor)
        and the anchors are the clip's, and `boundary` stays what the two
        extents found unless the cut has to move an edge. */
-    const span = cutWindowToSegment(last.claim, cues, mergedWindow);
+    const span = cutWindowToSegment(last.claim, cues, mergedWindow, snapOptionsOf(state));
     if (!span || !startsCoincide(span.startSec, last.segment.startSec)) return null;
     const durationSec = span.endSec - span.startSec;
     if (pastDurationGate(span, last.feedDurationSec)) return null;
@@ -2806,7 +2823,7 @@ function chooseCutForPlacement(
      the full extent is cut only so the trace can say what was refused, and
      the gate is `tier-budget`, asked last. No cap: `undefined`, as before. */
   const ceiling = clipCeilingSec(state);
-  const full = cutExtent(claim, cues, window, terms, ceiling === 0 ? undefined : ceiling);
+  const full = cutExtent(claim, cues, window, terms, ceiling === 0 ? undefined : ceiling, state);
   if (!full) return null;
   const gate = placementGateFor(full, itemId, feedDurationSec, state) ?? tierBudgetVetoFor(full.durationSec, state);
   if (gate !== null) return { refused: full, gate };
@@ -2817,7 +2834,14 @@ function chooseCutForPlacement(
 
 /** The window extended to its thought (to `maxSec` when given) and cut to
  * anchored cues — `null` only when the tape yields no anchor. */
-function cutExtent(claim: string, cues: TranscriptCue[], window: TapeWindow, terms: ExtentTerms, maxSec: number | undefined): PlacementCut | null {
+function cutExtent(
+  claim: string,
+  cues: TranscriptCue[],
+  window: TapeWindow,
+  terms: ExtentTerms,
+  maxSec: number | undefined,
+  state: Pick<SourcingState, "pauseSnap">
+): PlacementCut | null {
   const extent = extendToThought(window, cues, {
     claimTerms: terms.claimTerms,
     thesisTerms: terms.thesisTerms,
@@ -2826,9 +2850,15 @@ function cutExtent(claim: string, cues: TranscriptCue[], window: TapeWindow, ter
   });
   /* The same ceiling on the floor growth: a cut shortened to escape D5's band
      must not be grown back into it one cue at a time. */
-  const span = cutWindowToSegment(claim, cues, extent, maxSec !== undefined ? { maxSec } : {});
+  const span = cutWindowToSegment(claim, cues, extent, { ...(maxSec !== undefined ? { maxSec } : {}), ...snapOptionsOf(state) });
   if (!span) return null;
   return { span, durationSec: span.endSec - span.startSec, extent };
+}
+
+/** GV-111: the pause snap's part of a cut's options — nothing under `off`,
+ * so the default cut's options are exactly today's. */
+function snapOptionsOf(state: Pick<SourcingState, "pauseSnap">): { snapToPauses?: true } {
+  return state.pauseSnap === "on" ? { snapToPauses: true } : {};
 }
 
 /** One episode tier 2 is willing to open for a claim, and how it was found. */

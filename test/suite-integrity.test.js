@@ -2841,7 +2841,13 @@ const BACKEND_FLOORS = {
      `claim-only-open` and the next candidate wins (narrated with the gate in
      the trace when none does); allow and the option omitted are deep-equal;
      135 -> 138. */
-  "test/sourceBeats.test.ts": 139,
+  /* GV-111 (generation v2, R2-05/MQ-06): under FORAY_PAUSE_SNAP=on a clip
+     whose edge cues carry word timings opens on the word after the pause,
+     with its anchor re-minted from those words and a sentence opening; it
+     turns GV-109's refused claim-only opening into a placed clip; off,
+     omitted and on over a body without words are deep-equal to today;
+     139 -> 142. */
+  "test/sourceBeats.test.ts": 142,
   /* GV-18 (docs/roadmap/generation-v2.md, from W4-06): SourcingSession —
      sourceBeats cut at the act boundary. Act by act equals sourceBeats and the
      pre-extraction output's digest, act 0 stays deep-frozen while acts 1+ are
@@ -3182,7 +3188,7 @@ const BACKEND_FLOORS = {
        models — one file holds every model id, plus the grep that fails when a
          new literal appears anywhere in src/;
        generateForaysArgs — the --budget-usd flag and what it actually moves. */
-  "test/checkpoint.test.ts": 27, /* GV-109 (orchestrator note, the GV-108 pattern): claimOnlyOpening=refuse joins the variant and the fork stamp only under refuse (allow: today's fingerprint), compared like a route to source; 26 -> 27 */ /* GV-108 (orchestrator, #1476 review): seamPolicy=cut joins the variant and the fork stamp only under cut (keep: today's fingerprint), compared like a route to narrate; 25 -> 26 */ /* GV-127 (#1413 items 36, 40): tierCap=on joins the variant only when the cap is on (the fast path too) and voice=enforce / specifics=enforce only when enforcing (report, off: today's fingerprint), and the fork stamp carries them only then, compared like a route to spine and narrate; 23 -> 25 */ /* GV-126 (#1413 items 21, 24): spine=tier-sized and exemplars=on join the variant only when on (off: today's fingerprint), and the fork stamp carries them only when on, compared like a route to spine and narrate (E3 arm B still forks arm A); 21 -> 23 */ /* GV-125 (#1413 item 17): hybrid joins the variant (bm25 byte-identical), and the fork stamp refuses a seed built under another mode; 19 -> 21 */ // GV-55: checkpointRunVariant -- stub/legacy fingerprint pinned to today, two local routings differ, an overridden stage joins the routing, no URL or key in it, sequential narration joins the variant; 14 -> 19
+  "test/checkpoint.test.ts": 28, /* GV-111 (orchestrator note, the GV-108/GV-109 pattern): pauseSnap=on joins the variant and the fork stamp only when on (off: today's fingerprint), compared like a route to source; 27 -> 28 */ /* GV-109 (orchestrator note, the GV-108 pattern): claimOnlyOpening=refuse joins the variant and the fork stamp only under refuse (allow: today's fingerprint), compared like a route to source; 26 -> 27 */ /* GV-108 (orchestrator, #1476 review): seamPolicy=cut joins the variant and the fork stamp only under cut (keep: today's fingerprint), compared like a route to narrate; 25 -> 26 */ /* GV-127 (#1413 items 36, 40): tierCap=on joins the variant only when the cap is on (the fast path too) and voice=enforce / specifics=enforce only when enforcing (report, off: today's fingerprint), and the fork stamp carries them only then, compared like a route to spine and narrate; 23 -> 25 */ /* GV-126 (#1413 items 21, 24): spine=tier-sized and exemplars=on join the variant only when on (off: today's fingerprint), and the fork stamp carries them only when on, compared like a route to spine and narrate (E3 arm B still forks arm A); 21 -> 23 */ /* GV-125 (#1413 item 17): hybrid joins the variant (bm25 byte-identical), and the fork stamp refuses a seed built under another mode; 19 -> 21 */ // GV-55: checkpointRunVariant -- stub/legacy fingerprint pinned to today, two local routings differ, an overridden stage joins the routing, no URL or key in it, sequential narration joins the variant; 14 -> 19
   "test/generateForaysArgs.test.ts": 27, /* GV-101 (PKG-23): --allow-short-archive parses (default false), runStartIntegrity checks the server's manifest when remote and the sync state when local (an unreadable state is a verdict), integrityGate refuses unless the flag and prints the same shortfall either way; 24 -> 27 */ // GV-55: --stage-provider parsed (comma list, repeats, absent adds nothing), applied as FORAY_STAGE_* overrides, a malformed entry refused naming it, main exits 1 naming it, MODE/MODELS/STAGES lines, generate-foray prints its understand route; 18 -> 24 // CH2-25 (2026-10-09): +5 -- both generation CLIs default to DEFAULT_AUTHOR_ID, both read --author-id, --author kept one release with a deprecation line, --author-id wins, and no-flag runs of both record into BudgetGuard under one userId; 13 -> 18 // round-3 L6 (2026-09-25): backend-rest-7: report.json merged across re-runs, publish records kept; 10 -> 13
   "test/models.test.ts": 7,
   "test/researchTopicFilter.test.ts": 17,
@@ -3198,7 +3204,7 @@ const BACKEND_FLOORS = {
      partway through an act re-pays only for the slots that never landed, and
      the per-Foray budget cap the batch path left inert by never passing a
      sessionId. */
-  "test/runPipelineCheckpoint.test.ts": 23, // GV-109 (generation v2, MQ-06): a banked source stage carrying the per-edge kinds and a claim-only-open trace row round-trips with nothing re-sourced, a refuse run resumes only a checkpoint banked under claimOnlyOpening=refuse and an allow run does not, and one written before GV-109 (boundary only) resumes, on the classic and per-act paths; 20 -> 23 // GV-108 (generation v2): under FORAY_UNVERIFIED_SEAM_POLICY=cut narrate:<i> banks intro-only pages and droppedReason beats with no hand-off and resumes with no writes and the same items on the classic and per-act paths, and the default run under the same refusals keeps today's shape; 18 -> 20 // GV-102 (W4-07): a classic checkpoint is not resumed by a per-act run and the reverse, each resumes its own; 17 -> 18. GV-79: a pre-GV-79 checkpoint resumes under shadow with only the clip scores as new work, and a banked clip-scores stage resumes with zero judge calls; 15 -> 17. GV-21: a banked act's provenance and veracity equal a fresh run's; 14 -> 15. GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
+  "test/runPipelineCheckpoint.test.ts": 26, // GV-111 (generation v2): an on run resumes only a checkpoint banked under pauseSnap=on and an off run does not, an off run resumes today's fingerprint, and the sourcing options carry the mode to every act's session, on the classic and per-act paths; 23 -> 26 // GV-109 (generation v2, MQ-06): a banked source stage carrying the per-edge kinds and a claim-only-open trace row round-trips with nothing re-sourced, a refuse run resumes only a checkpoint banked under claimOnlyOpening=refuse and an allow run does not, and one written before GV-109 (boundary only) resumes, on the classic and per-act paths; 20 -> 23 // GV-108 (generation v2): under FORAY_UNVERIFIED_SEAM_POLICY=cut narrate:<i> banks intro-only pages and droppedReason beats with no hand-off and resumes with no writes and the same items on the classic and per-act paths, and the default run under the same refusals keeps today's shape; 18 -> 20 // GV-102 (W4-07): a classic checkpoint is not resumed by a per-act run and the reverse, each resumes its own; 17 -> 18. GV-79: a pre-GV-79 checkpoint resumes under shadow with only the clip scores as new work, and a banked clip-scores stage resumes with zero judge calls; 15 -> 17. GV-21: a banked act's provenance and veracity equal a fresh run's; 14 -> 15. GV-01: a banked topic or identity is a resumed `topic` stage; 13 -> 14
   /* G-32: acts narrated in parallel, stitch and continuity in act order. Seven
      cases latch the writer to PROVE overlap (acts start while act 1 is held,
      the cap holds, a failure still banks in-flight acts and never starts
@@ -3840,6 +3846,19 @@ const BACKEND_FLOORS = {
      exemplar refused by the quote gate, and levers.exemplars on the report
      row. Offline; one named mutation per test. */
   "test/voiceExemplars.test.ts": 10,
+  /* GV-111 (docs/roadmap/generation-v2.md, W5-14b; R2-05, MQ-06): clip edges
+     snapped to real pauses from word timestamps. pausesNear/snapEdge snap to
+     the 0.42 s gap after 'world.' and never a 0.1 s one, respect
+     maxShiftSec, leave a cue without words alone, prefer a pause after
+     terminal punctuation (requireSentence takes nothing else) and reach back
+     into the outward neighbour but never another speaker's; cueWordsOf keeps
+     only monotonic, in-span words that spell the cue and the reader adds
+     `words` only then; cutWindowToSegment with snapToPauses moves both edges
+     with anchors minted from the words at the snapped word, upgrades the
+     kinds, leaves turn edges and sentence edges' non-sentence pauses, is
+     byte-identical off or without words and respects a ceiling; the cue
+     cache weighs a worded body four times. Offline; synthetic cues. */
+  "test/pauseSnap.test.ts": 14,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */

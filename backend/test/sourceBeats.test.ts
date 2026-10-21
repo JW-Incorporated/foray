@@ -4985,3 +4985,106 @@ describe("sourceBeats — GV-109 (MQ-06): per-edge boundary kinds, and FORAY_CLA
     expect(omitted.sourcingTrace).toHaveLength(0);
   });
 });
+
+describe("sourceBeats — GV-111 (R2-05, MQ-06): FORAY_PAUSE_SNAP=on snaps a clip's edges to real pauses", () => {
+  /* WHAT THIS PINS THROUGH THE WHOLE STAGE: with `pauseSnap: "on"` a minted
+     clip whose edge cues carry word timings opens on the word after a real
+     pause (here the full stop before "Because", 2 s before the claim cue),
+     its start anchor is re-minted from the words that start there, and its
+     opening edge counts as a sentence boundary. Off (or omitted) is today's
+     sourcing, words or no words. */
+
+  const claim = "Gearboxes fail because bearings take torque reversals.";
+
+  /** GV-109's claim-only opening, with words on the two cues around the
+   * start: the cue before the claim cue says "...the same story." and,
+   * after a 0.5 s pause, "Because" — the cue break falls after it. Nothing
+   * in either cue's TEXT ends a sentence at the cue edge, so the cue-level
+   * cut opens claim-only at 60 s. */
+  const spreadWords = (phrase: string, start: number, end: number) => {
+    const parts = phrase.split(/\s+/).filter(Boolean);
+    const step = (end - start) / parts.length;
+    return parts.map((text, i) => ({ text, start: start + i * step, end: start + (i + 1) * step - 0.05 }));
+  };
+  const claimCueText = "The gearboxes fail because the bearings take torque reversals, every single one of them, and nobody designs for it.";
+  const worded: TranscriptCue[] = [
+    { text: "welcome back to the show this week we are in denver and", start_sec: 0, end_sec: 20 },
+    { text: "the coffee here is excellent and the hotels are cheap and", start_sec: 20, end_sec: 40 },
+    {
+      text: "honestly we keep coming back to the same story. Because",
+      start_sec: 40,
+      end_sec: 60,
+      words: [...spreadWords("honestly we keep coming back to the same story.", 40, 57.55), ...spreadWords("Because", 58, 60.05)]
+    },
+    { text: claimCueText, start_sec: 60, end_sec: 93, words: spreadWords(claimCueText, 60, 93.05) },
+    { text: "Every rotation the torque comes back and the bearings crack.", start_sec: 94, end_sec: 114 },
+    { text: "So the bearings crack under torque that keeps switching direction.", start_sec: 115, end_sec: 135 },
+    { text: "Anyway, that is enough of that, let us talk about the conference.", start_sec: 136, end_sec: 156 },
+    { text: "The conference is in Denver and the keynote is about coffee machines.", start_sec: 157, end_sec: 177 },
+    { text: "I love Denver, the coffee there is excellent and the hotels are cheap.", start_sec: 178, end_sec: 198 }
+  ];
+  const bare: TranscriptCue[] = worded.map((cue) => ({ text: cue.text, start_sec: cue.start_sec, end_sec: cue.end_sec }));
+  const episode: TranscriptDigestEntry = {
+    show_id: "practical-ai",
+    show_title: "Practical AI",
+    guid: "pa-snap",
+    title: "Episode 811",
+    cues: 9,
+    feed_duration_sec: 3600,
+    enclosure_url: "https://cdn.example/pa-snap.mp3"
+  };
+  const index: TranscriptTextIndex = { enabled: true, search: () => [{ entry: episode, score: 10, matchedTerms: 5, rank: 0 }] };
+
+  function run(tape: TranscriptCue[], options: { pauseSnap?: "off" | "on"; claimOnlyOpening?: "allow" | "refuse" } = {}) {
+    return sourceBeats([makeDeepenedAct({ slots: [{ title: "Gearboxes", beats: [{ claim, exploration: false, kind: "account" }] }] }, "GV111")], {
+      segmentPool: [],
+      transcriptArchive: [episode],
+      cueProvider: { getCues: () => tape },
+      textIndex: index,
+      ...options
+    });
+  }
+
+  it("on: the clip opens on the word after the pause, with an anchor from those words and a sentence opening", () => {
+    /* MUTATION THAT KILLS THIS: drop `...snapOptionsOf(state)` from
+       `cutExtent` — the clip opens at 60 s, claim-only. Ran it: red. */
+    const result = run(worded, { pauseSnap: "on" });
+    const segment = result.newSegments[0]!;
+    expect(segment.startSec).toBe(58);
+    expect(segment.startBoundary).toBe("sentence");
+    expect(segment.endBoundary).toBe("sentence");
+    expect(segment.boundary).toBe("sentence");
+    const row = result.tapeRelevance[0]!;
+    expect(row.startBoundary).toBe("sentence");
+    expect(row.boundary).toBe("sentence");
+    /* The anchor is verbatim tape from "Because" on: the cue text from the
+       snapped word, canonicalised, holds it word for word. */
+    const fromSnapped = canonicalizeForAnchorMatch(`Because ${claimCueText}`);
+    expect(` ${fromSnapped} `).toContain(` ${canonicalizeForAnchorMatch(segment.startAnchor)} `);
+    expect(segment.startAnchor).not.toMatch(/honestly|story/);
+    const beat = allSourcedBeats(result.acts)[0]!;
+    if (beat.sourcing !== "tape") throw new Error("expected a tape beat");
+    expect(beat.tape.startSec).toBe(58);
+    expect(beat.tape.startAnchor).toBe(segment.startAnchor);
+  });
+
+  it("on turns GV-109's refused claim-only opening into a placed clip", () => {
+    /* The same tape under FORAY_CLAIM_ONLY_OPENING=refuse: unsnapped it is
+       refused (`claim-only-open`), snapped it opens on a sentence and stands. */
+    expect(run(worded, { claimOnlyOpening: "refuse" }).sourcingTrace[0]!.tier2!.gate).toBe("claim-only-open");
+    const snapped = run(worded, { claimOnlyOpening: "refuse", pauseSnap: "on" });
+    expect(allSourcedBeats(snapped.acts)[0]!.sourcing).toBe("tape");
+    expect(snapped.sourcingTrace).toHaveLength(0);
+  });
+
+  it("off, omitted, and on over a body without words are today's sourcing", () => {
+    /* MUTATION THAT KILLS THIS: default `pauseSnap` to `on` in
+       `sourcingInputsFor` — the omitted run opens at 58 s. Ran it: red. */
+    const omitted = run(worded);
+    expect(omitted.newSegments[0]!.startSec).toBe(60);
+    expect(omitted.newSegments[0]!.startBoundary).toBe("claim-only");
+    expect(run(worded, { pauseSnap: "off" })).toEqual(omitted);
+    expect(run(bare)).toEqual(omitted);
+    expect(run(bare, { pauseSnap: "on" })).toEqual(omitted);
+  });
+});
