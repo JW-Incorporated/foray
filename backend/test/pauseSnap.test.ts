@@ -179,11 +179,13 @@ describe("cueWordsOf / cuesFromBodyJson — a body's word timings are kept only 
 describe("cutWindowToSegment — snapToPauses moves the edges and re-mints the anchors from the words", () => {
   /* Cue 1 is the window. It opens on a lead-in ("Engineers explained
      honestly.") with a 0.45 s pause before "Turbine", and closes on
-     "there." with a 0.45 s pause before a trailing remark. The cues
+     "outages." with a 0.45 s pause before a trailing remark. The body's last
+     eight words are all content words, so the end anchor must stop exactly
+     at the snapped word: a run that stopped one word short would differ. The cues
      either side carry no words and end on no full stop, so the pauses at the
      cue edges themselves are plain ones. */
   const lead = "Engineers explained honestly.";
-  const body = "Turbine blades crack under thermal cycling stress every winter season because the alloy fatigues quickly and that is what we see all the time out there.";
+  const body = "Turbine blades crack under thermal cycling stress every winter season because the alloy fatigues quickly and that is what we see all the time out there so inspectors replace cracked blades during scheduled spring outages.";
   const tail = "Metallurgists recommend nickel cobalt chromium superalloys";
   const tape: TranscriptCue[] = [
     { text: "Welcome back everyone to another long episode of the program and", start_sec: 0, end_sec: 19 },
@@ -214,16 +216,21 @@ describe("cutWindowToSegment — snapToPauses moves the edges and re-mints the a
   it("with words and the option on: snapped times, anchors that are verbatim word runs starting (ending) at the snapped word, kinds upgraded", () => {
     /* MUTATIONS THAT KILL THIS: mint the snapped start anchor from the whole
        cue (`index.words[cue]`) — it opens on "engineers"; keep the cue edge
-       times — 20/100; skip the kind upgrade — claim-only stays. Ran each: red. */
+       times — 20/100; skip the kind upgrade — claim-only stays; cut the
+       snapped end anchor's words at `edge.wordIndex` instead of
+       `edge.wordIndex + 1` in `snappedEndAnchor` — the anchor drops the
+       snapped word and ends on "spring". Ran each: red. */
     const span = cutWindowToSegment(claim, tape, extended("claim-only", "claim-only"), { snapToPauses: true })!;
     expect(span.startSec).toBe(22);
     expect(span.endSec).toBe(98);
     const fromSnapped = canonicalizeForAnchorMatch(`${body}`);
     expect(canonicalizeForAnchorMatch(span.startAnchor)).toBe(fromSnapped.split(" ").slice(0, 8).join(" "));
     expect(span.startAnchor.startsWith("turbine blades")).toBe(true);
-    /* The end anchor is a run of the words that END at "there." — never
+    /* The end anchor is the run of words that END at "outages." — never
        the trailing "Metallurgists recommend nickel superalloys" the cue goes
        on to, which the cue-edge anchor would quote. */
+    expect(canonicalizeForAnchorMatch(span.endAnchor)).toBe(fromSnapped.split(" ").slice(-8).join(" "));
+    expect(span.endAnchor).toMatch(/outages$/);
     expect(` ${canonicalizeForAnchorMatch(`${lead} ${body}`)} `).toContain(` ${canonicalizeForAnchorMatch(span.endAnchor)} `);
     expect(span.endAnchor).not.toMatch(/metallurgists|nickel|superalloys/);
     for (const anchor of [span.startAnchor, span.endAnchor]) {
