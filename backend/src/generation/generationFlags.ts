@@ -186,6 +186,49 @@ export function researchShortlist(source: FlagSource = process.env): boolean {
   return readBooleanFlag(RESEARCH_SHORTLIST_ENV, false, source);
 }
 
+/** GV-115 (W3-14; R2-16, QK-21): the Foray-wide show-share rule in sourcing
+ * (`sourceBeats.ts`, `SourceBeatsOptions.showShare`). */
+export const SHOW_SHARE_ENV = "FORAY_SHOW_SHARE";
+export const SHOW_SHARE_MAX_ENV = "FORAY_SHOW_SHARE_MAX";
+export const SHOW_SHARE_MODES = ["off", "order", "gate"] as const;
+export type ShowShareMode = (typeof SHOW_SHARE_MODES)[number];
+/** R2-16: the largest show at or below 60% of the Foray's tape. */
+export const DEFAULT_SHOW_SHARE_MAX = 0.6;
+
+/** The rule as configured: a mode that is on and the largest share one show
+ * may carry. */
+export interface ShowShareFlag {
+  mode: Exclude<ShowShareMode, "off">;
+  max: number;
+}
+
+/** A share of the Foray's tape: a number strictly between 0 and 1 (1 would
+ * refuse and reorder nothing). */
+const showShareMaxParser: FlagParser<number> = {
+  parse: (raw) => {
+    const value = Number(raw);
+    return Number.isFinite(value) && value > 0 && value < 1 ? value : undefined;
+  },
+  expected: "a number in (0, 1)"
+};
+
+/**
+ * GV-115: `FORAY_SHOW_SHARE=order|gate` with `FORAY_SHOW_SHARE_MAX` (default
+ * 0.6). `order` moves other shows' tier-2 candidates ahead once the dominant
+ * show's share of the placed tape exceeds the max (it reorders, never
+ * refuses); `gate` refuses a placement that would push one show past it under
+ * the gate `show-share`. Both are inert when fewer than two shows can supply
+ * the topic. Unset or `off` gives `undefined`: off, today's sourcing byte for
+ * byte (decision 23: the show-share rule defaults off), and then
+ * FORAY_SHOW_SHARE_MAX is never read. A malformed value of either throws
+ * naming the variable.
+ */
+export function showShareFlag(source: FlagSource = process.env): ShowShareFlag | undefined {
+  const mode = readEnumFlag(SHOW_SHARE_ENV, SHOW_SHARE_MODES, "off", source);
+  if (mode === "off") return undefined;
+  return { mode, max: readFlag(SHOW_SHARE_MAX_ENV, showShareMaxParser, DEFAULT_SHOW_SHARE_MAX, source) };
+}
+
 /* ---------------------------------------------------------------------------
    GV-95 (W3-11; decision 23): the retrieval server. FORAY_RETRIEVAL_URL unset
    keeps today's local path (the File cue provider and text index); set, the

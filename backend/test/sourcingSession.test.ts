@@ -422,3 +422,60 @@ describe("SourcingSession — acts arrive in order", () => {
     expect(() => session.result([])).toThrow(/beat-preservation guardrail/);
   });
 });
+
+describe("SourcingSession — GV-115: the per-show ledger crosses acts, banks and resumes (the per-act path)", () => {
+  /* The corpus has two shows to the ledger: `practical-ai` (every archive
+     episode) and the pool row's item, which no catalogue names, so
+     `showKeyForItem` keys it by its id. `supplyShows` is what runPipeline
+     would count; here it is set by hand. */
+  const withRule = (showShare: NonNullable<SourceBeatsOptions["showShare"]>) => (): SourceBeatsOptions => ({ ...options(), showShare });
+
+  it("with fewer than two supplying shows, either mode leaves the default output byte for byte (the pre-extraction digest)", () => {
+    /* MUTATION THAT KILLS THIS: drop the `supplyShows >= 2` test in
+       `activeShowShare`; the gate then refuses practical-ai's later clips
+       and the digest moves. Ran it: red. */
+    for (const mode of ["order", "gate"] as const) {
+      expectDefaultOutput(sourceBeats(RUN2, withRule({ mode, max: 0.6, supplyShows: 1 })()));
+    }
+  });
+
+  for (const mode of ["order", "gate"] as const) {
+    it(`${mode}: banking after every act, a JSON round trip and a resume source the rest exactly as an uninterrupted session, ledger included`, () => {
+      const opts = withRule({ mode, max: 0.6, supplyShows: 2 });
+      const uninterrupted = sourceBeats(RUN2, opts());
+      if (mode === "gate") {
+        /* Not vacuous: the gate decides something in this corpus. */
+        expect(uninterrupted.sourcingTrace.some((t) => t.tier2?.gate === "show-share" || t.tier1?.gate === "show-share")).toBe(true);
+      }
+      let session = new SourcingSession(opts());
+      for (let i = 0; i < RUN2.length; i++) {
+        session.sourceAct(RUN2[i]!, i);
+        const banked = JSON.parse(JSON.stringify(session.exportState())) as SourcingSnapshot;
+        /* The ledger is banked, and equals the placement log's own sums. */
+        expect(banked.placedSecByShow).toBeDefined();
+        const recomputed = new Map<string, number>();
+        banked.placed.forEach(({ itemId }, k) => {
+          const show = itemId.startsWith("practical-ai--") ? "practical-ai" : itemId;
+          recomputed.set(show, (recomputed.get(show) ?? 0) + banked.placedDurations[k]!);
+        });
+        expect(new Map(banked.placedSecByShow)).toStrictEqual(recomputed);
+        /* MUTATIONS THAT KILL THIS: (1) drop `placedSecByShow` from
+           `exportState` (red on the banked ledger); (2) restore an empty
+           ledger in `resume` (the rule then judges later acts against
+           nothing and the result differs). Ran each: red. */
+        session = SourcingSession.resume(opts(), banked);
+      }
+      expect(session.result(RUN2)).toEqual(uninterrupted);
+    });
+  }
+
+  it("a snapshot banked without the ledger (rule off) resumes under the rule with the ledger rebuilt from the placement log", () => {
+    const off = new SourcingSession(options());
+    off.sourceAct(RUN2[0]!, 0);
+    const snapshot = off.exportState();
+    expect(Object.keys(snapshot)).not.toContain("placedSecByShow");
+    const resumed = SourcingSession.resume(withRule({ mode: "order", max: 0.6, supplyShows: 2 })(), snapshot).exportState();
+    const total = snapshot.placedDurations.reduce((a, b) => a + b, 0);
+    expect(resumed.placedSecByShow!.reduce((a, [, sec]) => a + sec, 0)).toBe(total);
+  });
+});

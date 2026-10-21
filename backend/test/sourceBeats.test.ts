@@ -41,6 +41,8 @@ import { loadSegmentPool } from "../src/generation/segmentPoolLookup";
 import { loadTranscriptArchive } from "../src/generation/transcriptArchiveLookup";
 import { RawVttCueProvider } from "./helpers/rawVttCueProvider";
 import { tokenizeForSourcing } from "../src/generation/catalogueLookup";
+import { SourcingSession, type ShowShareOptions, type SourceBeatsOptions } from "../src/generation/sourceBeats";
+import { DEFAULT_SHOW_SHARE_MAX, FlagValueError, SHOW_SHARE_ENV, SHOW_SHARE_MAX_ENV, showShareFlag } from "../src/generation/generationFlags";
 
 function makeDeepenedAct(overrides: Partial<DeepenedAct> = {}, label = "A"): DeepenedAct {
   return {
@@ -5086,5 +5088,312 @@ describe("sourceBeats — GV-111 (R2-05, MQ-06): FORAY_PAUSE_SNAP=on snaps a cli
     expect(run(worded, { pauseSnap: "off" })).toEqual(omitted);
     expect(run(bare)).toEqual(omitted);
     expect(run(bare, { pauseSnap: "on" })).toEqual(omitted);
+  });
+});
+
+describe("sourceBeats — GV-115: the per-show tape ledger, the soft show-diversity order and the 60% show-share gate", () => {
+  /**
+   * TWO SHOWS (R2-16). `alpha` has three episodes, `bravo` one. Beats 1 and
+   * 2 can only be carried by alpha (a1, a2), so after them alpha holds 100%
+   * of the placed tape. Beat 3's claim is spoken in alpha's a3 (the stronger
+   * text match: every claim word twice) and, in the "both" archive, in
+   * bravo's b1 as well (once). Off, beat 3 takes a3; the rule decides
+   * whether it takes b1 instead.
+   */
+  const ep = (show: string, guid: string, title: string): TranscriptDigestEntry => ({
+    show_id: show,
+    show_title: show === "alpha" ? "Alpha Hour" : "Bravo Weekly",
+    guid,
+    title,
+    cues: 5,
+    feed_duration_sec: 3600,
+    enclosure_url: `https://cdn.example/${guid}.mp3`
+  });
+  const a1 = ep("alpha", "a1", "Alpha one");
+  const a2 = ep("alpha", "a2", "Alpha two");
+  const a3 = ep("alpha", "a3", "Alpha three");
+  const b1 = ep("bravo", "b1", "Bravo one");
+
+  const C1 = "Gearboxes fail because bearings take torque reversals.";
+  const C2 = "Glaciers retreat because meltwater lubricates bedrock channels.";
+  const C3 = "Tokamaks leak heat because plasma turbulence spreads sideways.";
+
+  const opener = (start: number): TranscriptCue => ({ text: "welcome back everybody, it is good to have you with us again.", start_sec: start, end_sec: start + 30 });
+  const closer = (start: number): TranscriptCue => ({ text: "right, now for the weather and the traffic in the city tonight.", start_sec: start, end_sec: start + 30 });
+  const cuesC1: TranscriptCue[] = [
+    opener(0),
+    { text: "the gearboxes here fail well before the design life says they should.", start_sec: 100, end_sec: 130 },
+    { text: "the bearings take torque that keeps switching direction on them.", start_sec: 131, end_sec: 160 },
+    { text: "and those reversals were never in the load case at all.", start_sec: 161, end_sec: 190 },
+    closer(300)
+  ];
+  const cuesC2: TranscriptCue[] = [
+    opener(0),
+    { text: "the glaciers retreat faster every single summer up there.", start_sec: 100, end_sec: 130 },
+    { text: "because the meltwater lubricates the ice where it meets the bedrock.", start_sec: 131, end_sec: 160 },
+    { text: "it runs down through channels under the whole sheet.", start_sec: 161, end_sec: 190 },
+    closer(300)
+  ];
+  const cuesC3Strong: TranscriptCue[] = [
+    opener(0),
+    { text: "tokamaks leak heat, tokamaks leak heat all the time, that is the problem.", start_sec: 100, end_sec: 130 },
+    { text: "the plasma turbulence, the plasma turbulence is what carries it.", start_sec: 131, end_sec: 160 },
+    { text: "it spreads sideways, it spreads sideways across the field lines.", start_sec: 161, end_sec: 190 },
+    closer(300)
+  ];
+  const cuesC3Weak: TranscriptCue[] = [
+    opener(0),
+    { text: "in a tokamak the heat can leak out of the machine.", start_sec: 100, end_sec: 130 },
+    { text: "plasma turbulence is the reason it does that.", start_sec: 131, end_sec: 160 },
+    { text: "the turbulence spreads sideways and carries heat with it.", start_sec: 161, end_sec: 190 },
+    closer(300)
+  ];
+  const elsewhere: TranscriptCue[] = [
+    opener(0),
+    { text: "today we are talking about sourdough starters and rye flour.", start_sec: 100, end_sec: 130 },
+    { text: "a starter wants feeding twice a day in a warm kitchen.", start_sec: 131, end_sec: 160 },
+    closer(300)
+  ];
+
+  type Gv115Beat = { claim: string; exploration: boolean; kind: "account"; seed?: { episodeId: string; startSec: number; endSec: number } };
+  const beat = (claim: string, seed?: { episodeId: string; startSec: number; endSec: number }): Gv115Beat => ({
+    claim,
+    exploration: false,
+    kind: "account",
+    ...(seed ? { seed } : {})
+  });
+  const act = (beats: Gv115Beat[], label = "GV115"): DeepenedAct => makeDeepenedAct({ slots: [{ title: "Machines and ice", beats }] }, label);
+
+  /** `bravoCarries`: whether b1 speaks C3 (the "both" archive) or only
+   * something else (bravo can supply the topic but not this beat). */
+  function optionsFor(bravoCarries: boolean, showShare?: ShowShareOptions): SourceBeatsOptions {
+    const cuesByGuid: Record<string, TranscriptCue[]> = { a1: cuesC1, a2: cuesC2, a3: cuesC3Strong, b1: bravoCarries ? cuesC3Weak : elsewhere };
+    const archive = [a1, a2, a3, b1];
+    return {
+      segmentPool: [],
+      transcriptArchive: archive,
+      cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+      textIndex: memoryTextIndex(archive, cuesByGuid),
+      ...(showShare ? { showShare } : {})
+    };
+  }
+  const run = (beats: Gv115Beat[], bravoCarries: boolean, showShare?: ShowShareOptions) => sourceBeats([act(beats)], optionsFor(bravoCarries, showShare));
+  const itemOf = (result: ReturnType<typeof sourceBeats>, i: number): string | null => {
+    const b = allSourcedBeats(result.acts)[i]!;
+    return b.sourcing === "tape" ? b.tape.itemId : null;
+  };
+  const A3 = deriveItemId(a3);
+  const B1 = deriveItemId(b1);
+  const ORDER: ShowShareOptions = { mode: "order", max: 0.6, supplyShows: 2 };
+  const GATE: ShowShareOptions = { mode: "gate", max: 0.6, supplyShows: 2 };
+  const three = (): Gv115Beat[] => [beat(C1), beat(C2), beat(C3)];
+
+  it("the fixture is not vacuous: off, beats 1-2 are alpha's and beat 3 takes alpha's stronger a3 over bravo's b1", () => {
+    const off = run(three(), true);
+    expect(allSourcedBeats(off.acts).map((b) => b.sourcing)).toEqual(["tape", "tape", "tape"]);
+    expect(itemOf(off, 0)).toBe(deriveItemId(a1));
+    expect(itemOf(off, 1)).toBe(deriveItemId(a2));
+    expect(itemOf(off, 2)).toBe(A3);
+    /* Every clip clears D2, so no length rule is in play below. */
+    expect(off.newSegments.every((s) => s.endSec - s.startSec >= 60)).toBe(true);
+  });
+
+  it("with showShare unset, or set to either mode with fewer than two supplying shows, sourcing is today's", () => {
+    /* MUTATION THAT KILLS THIS: drop the `supplyShows >= 2` test in
+       `activeShowShare`; one supplying show then turns both modes on and
+       beat 3 moves to b1. Ran it: red. */
+    const off = run(three(), true);
+    for (const mode of ["order", "gate"] as const) {
+      expect(run(three(), true, { mode, max: 0.6, supplyShows: 1 })).toEqual(off);
+      expect(run(three(), true, { mode, max: 0.6, supplyShows: 0 })).toEqual(off);
+    }
+  });
+
+  it("order: once alpha holds more than 60% of the placed tape, bravo's candidate is tried first and wins", () => {
+    /* MUTATION THAT KILLS THIS: return `candidates` unchanged from
+       `showDiversityOrder` (or drop its call in `resolveOneBeat`); beat 3
+       then takes a3, as off does. Ran it: red. */
+    const order = run(three(), true, ORDER);
+    expect(allSourcedBeats(order.acts).map((b) => b.sourcing)).toEqual(["tape", "tape", "tape"]);
+    expect(itemOf(order, 2)).toBe(B1);
+    /* A preference, not a refusal: with bravo unable to carry beat 3, the
+       dominant show still supplies it, so no beat loses tape. */
+    const onlyAlpha = run(three(), false, ORDER);
+    expect(itemOf(onlyAlpha, 2)).toBe(A3);
+    expect(onlyAlpha.sourcingTrace).toHaveLength(0);
+  });
+
+  it("order: the seeded candidate stays first, ahead of the other show's", () => {
+    /* Beat 3 is seeded to a3's opener (0-30 s, not about the claim), so the
+       seed window is refused at `window-overlap` and the search pass walks the
+       seeded episode again, from the front of the list (F-68's fallback). The
+       order must keep it there: a3 wins although alpha is over its share.
+       MUTATION THAT KILLS THIS: in `showDiversityOrder`, sort the seeded
+       candidate with the rest (no `seeded` group); b1 then wins. Ran it: red. */
+    const seeded = run([beat(C1), beat(C2), beat(C3, { episodeId: A3, startSec: 0, endSec: 30 })], true, ORDER);
+    expect(itemOf(seeded, 2)).toBe(A3);
+    const row = seeded.tapeRelevance.find((r) => r.itemId === A3)!;
+    /* The tape is the seeded episode's (`seedWindowWon` counts the
+       whole-episode fallback too, WS-L). */
+    expect(row.seededEpisode).toBe(A3);
+    expect(row.seedWindowWon).toBe(true);
+  });
+
+  it("gate: a placement pushing alpha past 60% after two placements is refused with `show-share` and falls through", () => {
+    /* MUTATION THAT KILLS THIS: drop the `show-share` return in
+       `placementAllows`; beat 3 then takes a3 in both archives. Ran it: red. */
+    const gate = run(three(), true, GATE);
+    expect(itemOf(gate, 2)).toBe(B1);
+    /* With bravo unable to carry the beat, nothing clears the gate: the beat
+       is narrated and the trace names the gate. */
+    const refused = run(three(), false, GATE);
+    expect(allSourcedBeats(refused.acts).map((b) => b.sourcing)).toEqual(["tape", "tape", "narration"]);
+    const trace = refused.sourcingTrace[0]!;
+    expect(trace.tier2!.gate).toBe("show-share");
+    expect(trace.tier2!.bestEpisodeTitle).toBe("Alpha three");
+    expect(summarizeSourcing(refused).some((line) => line.includes("top reason: tier2:show-share"))).toBe(true);
+    const narrated = allSourcedBeats(refused.acts)[2]!;
+    expect(narrated.sourcing === "narration" && narrated.narration.reason).toContain("one show dominate");
+    expect(refused.transcriptionQueueCandidates[0]!.reason).toContain("Nothing to transcribe");
+  });
+
+  it("gate: asked only once two clips are placed, so the second alpha clip is placed", () => {
+    /* After beat 1 alpha holds 100%, and beat 2 from a2 keeps it there, but
+       only one clip is placed: the gate does not ask. MUTATION THAT KILLS
+       THIS: drop `state.placedTapeCount < 2` from `showShareAllows`; beat 2
+       is refused and narrated. Ran it: red. */
+    const gate = run([beat(C1), beat(C2)], false, GATE);
+    expect(allSourcedBeats(gate.acts).map((b) => b.sourcing)).toEqual(["tape", "tape"]);
+  });
+
+  it("gate: the share asked is (show + dur) / (total + dur) against max, so even a 0.99 max refuses a third alpha clip", () => {
+    /* Alpha's a3 would make alpha 3 of 3 clips (100%), over any max below 1,
+       and bravo's b1 a third, under it. */
+    expect(itemOf(run(three(), true, { ...GATE, max: 0.99 }), 2)).toBe(B1);
+    expect(itemOf(run(three(), false, { ...GATE, max: 0.99 }), 2)).toBe(null);
+  });
+
+  describe("the ledger (`placedSecByShow`)", () => {
+    const f96 = ep("practical-ai", "pa-970", "Episode 970");
+    const claimA = "Gearboxes fail because bearings take torque reversals.";
+    const claimB = "The reversals were never in the original load case.";
+    const cues: TranscriptCue[] = [
+      { text: "welcome back to the programme we are in denmark this week.", start_sec: 0, end_sec: 30 },
+      { text: "the gearboxes here are the part that gives everybody trouble.", start_sec: 100, end_sec: 120 },
+      { text: "and it is the bearings that give up first on almost all of them.", start_sec: 121, end_sec: 140 },
+      { text: "you get a lot of torque coming back the other direction as well.", start_sec: 141, end_sec: 160 },
+      { text: "so the gearboxes fail well before the design life says they should.", start_sec: 161, end_sec: 180 },
+      { text: "bearings crack under torque that keeps switching direction on them.", start_sec: 181, end_sec: 200 },
+      { text: "and those reversals were never in the original load case at all.", start_sec: 201, end_sec: 220 },
+      { text: "the load case simply never had one of those in it.", start_sec: 221, end_sec: 240 },
+      { text: "right, let us talk about the conference in denver next month.", start_sec: 241, end_sec: 260 }
+    ];
+
+    it("the merge path keeps it consistent: a clip grown by a merge counts at its new length", () => {
+      /* F-96's merge: beat B's seed (201-240) grows clip A (100-220) to
+         100-240, one placement. The show's seconds must be the merged 140,
+         equal to the placement log's. MUTATION THAT KILLS THIS: drop the
+         GV-115 update in `placeTape`'s `replacing` branch; the ledger keeps
+         the pre-merge 120. Ran it: red. */
+      const session = new SourcingSession({
+        segmentPool: [],
+        transcriptArchive: [f96],
+        cueProvider: { getCues: () => cues },
+        textIndex: memoryTextIndex([f96], { "pa-970": cues }),
+        showShare: ORDER
+      });
+      const merged = act([beat(claimA, { episodeId: "pa-970", startSec: 100, endSec: 160 }), beat(claimB, { episodeId: "pa-970", startSec: 201, endSec: 240 })], "GV115-merge");
+      session.sourceAct(merged, 0);
+      const snapshot = session.exportState();
+      expect(snapshot.placedTapeCount).toBe(1);
+      expect(snapshot.placedDurations).toEqual([140]);
+      expect(snapshot.placedSecByShow).toEqual([["practical-ai", 140]]);
+    });
+
+    it("gate: a merge is asked with the grown clip's OLD length taken out, so it is not counted twice", () => {
+      /* Bravo's b1 places first (beat C3), then F-96's merge on pa-970: clip
+         A (120 s) grows to 140 s. Two clips are placed, so the gate asks the
+         merge. Asked right, practical-ai is 140 / (bravo + 140), under 0.65;
+         with clip A's old 120 s still counted it is (120 + 140) /
+         (bravo + 120 + 140), over it, and the merge is refused. MUTATION
+         THAT KILLS THIS: in `showShareAllows`, `const before = 0;` (the old
+         length counted twice); the merge is refused and beat B does not
+         grow clip A. Ran it: red. */
+      const archive = [f96, b1];
+      const cuesByGuid: Record<string, TranscriptCue[]> = { "pa-970": cues, b1: cuesC3Weak };
+      const session = new SourcingSession({
+        segmentPool: [],
+        transcriptArchive: archive,
+        cueProvider: { getCues: (e) => cuesByGuid[e.guid] ?? null },
+        textIndex: memoryTextIndex(archive, cuesByGuid),
+        showShare: { ...GATE, max: 0.65 }
+      });
+      const merged = act(
+        [beat(C3), beat(claimA, { episodeId: "pa-970", startSec: 100, endSec: 160 }), beat(claimB, { episodeId: "pa-970", startSec: 201, endSec: 240 })],
+        "GV115-gate-merge"
+      );
+      session.sourceAct(merged, 0);
+      const snapshot = session.exportState();
+      expect(snapshot.placedTapeCount).toBe(2);
+      const bravoSec = snapshot.placedDurations[0]!;
+      expect(snapshot.placedDurations).toEqual([bravoSec, 140]);
+      /* The fixture is not vacuous: the two readings fall either side of max. */
+      expect(140 / (bravoSec + 140)).toBeLessThanOrEqual(0.65);
+      expect(260 / (bravoSec + 260)).toBeGreaterThan(0.65);
+      expect(snapshot.placedSecByShow).toEqual([
+        ["bravo", bravoSec],
+        ["practical-ai", 140]
+      ]);
+      expect(snapshot.sourcingTrace).toHaveLength(0);
+    });
+
+    it("is keyed by show (`showKeyForItem` over the archive) and sums every placement of it, or by an injected `showKeyFor`", () => {
+      /* MUTATION THAT KILLS THIS: key the ledger by item id in `placeTape`
+         (`set(itemId, ...)`); three alpha episodes then make three rows. */
+      const session = new SourcingSession({ ...optionsFor(false), showShare: ORDER });
+      session.sourceAct(act(three()), 0);
+      const snapshot = session.exportState();
+      expect(snapshot.placedTapeCount).toBe(3);
+      const total = snapshot.placedDurations.reduce((a, b) => a + b, 0);
+      expect(snapshot.placedSecByShow).toEqual([["alpha", total]]);
+
+      const byEpisode = new SourcingSession({ ...optionsFor(false), showShare: ORDER, showKeyFor: (itemId) => `ep:${itemId}` });
+      byEpisode.sourceAct(act([beat(C1)]), 0);
+      const one = byEpisode.exportState();
+      expect(one.placedSecByShow).toEqual([[`ep:${deriveItemId(a1)}`, one.placedDurations[0]]]);
+    });
+
+    it("is neither kept nor banked with the rule off", () => {
+      const session = new SourcingSession(optionsFor(true));
+      session.sourceAct(act([beat(C1), beat(C2)]), 0);
+      expect(Object.keys(session.exportState())).not.toContain("placedSecByShow");
+    });
+  });
+
+  describe("FORAY_SHOW_SHARE / FORAY_SHOW_SHARE_MAX (generationFlags.ts)", () => {
+    it("defaults OFF: unset, or `off`, is undefined, and FORAY_SHOW_SHARE_MAX is then never read", () => {
+      /* Decision 23: the show-share rule defaults off. MUTATION THAT KILLS
+         THIS: default the mode to `order` in `showShareFlag`. Ran it: red. */
+      expect(showShareFlag({})).toBeUndefined();
+      expect(showShareFlag({ [SHOW_SHARE_ENV]: "off" })).toBeUndefined();
+      expect(showShareFlag({ [SHOW_SHARE_ENV]: "off", [SHOW_SHARE_MAX_ENV]: "lots" })).toBeUndefined();
+      expect(DEFAULT_SHOW_SHARE_MAX).toBe(0.6);
+    });
+
+    it("reads the mode and the max at call time, 0.6 by default", () => {
+      expect(showShareFlag({ [SHOW_SHARE_ENV]: "order" })).toEqual({ mode: "order", max: 0.6 });
+      expect(showShareFlag({ [SHOW_SHARE_ENV]: " gate ", [SHOW_SHARE_MAX_ENV]: "0.5" })).toEqual({ mode: "gate", max: 0.5 });
+    });
+
+    it("throws naming the variable, never its value, on a malformed mode or max", () => {
+      for (const bad of ["", "on", "GATE"]) {
+        expect(() => showShareFlag({ [SHOW_SHARE_ENV]: bad })).toThrow(FlagValueError);
+        expect(() => showShareFlag({ [SHOW_SHARE_ENV]: bad })).toThrow(SHOW_SHARE_ENV);
+      }
+      for (const bad of ["0", "1", "-0.2", "1.5", "lots", " "]) {
+        expect(() => showShareFlag({ [SHOW_SHARE_ENV]: "gate", [SHOW_SHARE_MAX_ENV]: bad })).toThrow(SHOW_SHARE_MAX_ENV);
+      }
+      expect(() => showShareFlag({ [SHOW_SHARE_ENV]: "gate", [SHOW_SHARE_MAX_ENV]: "lots" })).not.toThrow(/lots/);
+    });
   });
 });

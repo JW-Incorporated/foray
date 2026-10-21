@@ -217,6 +217,7 @@ import { codeSpanSync } from "./codeSpans";
 import { placementEscapesD5Pair } from "./d5Pair";
 import { seededBeatCount, tapesFromSeed, type RuntimeAct } from "./tierRuntime";
 import { extendToThought, thoughtTerms, type ThoughtExtent } from "./tapeExtent";
+import { showKeyForItem } from "./showIdentity";
 
 /**
  * §4.5-4.6 orchestrator (docs/curation/generation-architecture.md §4.5,
@@ -384,6 +385,43 @@ export interface SourceBeatsOptions {
    * builder the classic and the per-act path share.
    */
   pauseSnap?: PauseSnapMode;
+  /**
+   * GV-115 (W3-14; R2-16, QK-21): FORAY_SHOW_SHARE / FORAY_SHOW_SHARE_MAX
+   * (`generationFlags.ts` `showShareFlag`): keep the largest show at or below
+   * `max` of the Foray's tape seconds when two or more shows can supply the
+   * topic. `order` is the preference that cannot lose tape: once the
+   * dominant show's share of the placed tape exceeds `max`, other shows'
+   * tier-2 candidates are walked first (`showDiversityOrder`), the seeded one
+   * still first of all. `gate` is the hard rule: a placement that would push
+   * its show past `max` with at least two clips placed is refused under
+   * `show-share` and falls through, like `m4-runtime`.
+   *
+   * `supplyShows` is the number of shows with at least one usable archive row
+   * for the topic (`topicSupply.ts` `byShow`), counted by `runPipeline.ts`.
+   * Under two, neither mode does anything (one show cannot be diversified).
+   *
+   * INERT WHEN OMITTED, like every option above: no ledger, no reordering, no
+   * gate, exactly the sourcing this module did before GV-115. `runPipeline.ts`
+   * passes it only with the flag on, from the one options builder the classic
+   * and the per-act path share.
+   */
+  showShare?: ShowShareOptions;
+  /**
+   * GV-115: which show a tape item belongs to, for the show-share ledger.
+   * Defaults to `showKeyForItem` (`showIdentity.ts`, GV-83) over this
+   * session's archive (every minted item's show) and the catalogue under
+   * `root` (a pool row's). Read only while `showShare` is set. Tests only.
+   */
+  showKeyFor?: (itemId: string) => string;
+}
+
+/** GV-115: the show-share rule as sourcing receives it. */
+export interface ShowShareOptions {
+  mode: "order" | "gate";
+  /** The largest share of the Foray's tape seconds one show may carry. */
+  max: number;
+  /** Shows with at least one usable archive row for the topic. */
+  supplyShows: number;
 }
 
 /**
@@ -453,6 +491,10 @@ export interface SourcingSnapshot {
    * `SOURCING_SNAPSHOT_VERSION` does not move. */
   runtimeBudgetSec?: number;
   remainingSeededBeats?: number;
+  /** GV-115: tape SECONDS per show (`showKeyOf`). ABSENT unless the run
+   * sourced under FORAY_SHOW_SHARE, so a default snapshot is byte-identical
+   * to one banked before GV-115, as GV-106's two fields are. */
+  placedSecByShow?: Array<[string, number]>;
   tapeRelevance: TapeRelevanceInput[];
   sourcingTrace: SourcingTrace[];
   acts: SourcedAct[];
@@ -471,7 +513,9 @@ type SourcingConfigKey =
   | "audioSourceFor"
   | "supersedableCut"
   | "claimOnlyOpening"
-  | "pauseSnap";
+  | "pauseSnap"
+  | "showShare"
+  | "showKeyOf";
 
 /** GV-107: the configuration half of `SourcingState`: everything sourcing
  * READS and no beat ever writes. */
@@ -497,7 +541,24 @@ function sourcingInputsFor(options: SourceBeatsOptions): SourcingInputs {
     audioSourceFor: options.audioSourceFor,
     supersedableCut: options.supersedableCut,
     claimOnlyOpening: options.claimOnlyOpening ?? "allow",
-    pauseSnap: options.pauseSnap ?? "off"
+    pauseSnap: options.pauseSnap ?? "off",
+    showShare: options.showShare,
+    showKeyOf: options.showKeyFor ?? defaultShowKeyOf(transcriptArchive, options.root)
+  };
+}
+
+/** GV-115: `showKeyForItem` over the archive and the catalogue under `root`,
+ * memoised per item (a Foray asks about the same few episodes again and
+ * again). Built eagerly but never called unless `showShare` is set. */
+function defaultShowKeyOf(archive: readonly TranscriptDigestEntry[], root: string | undefined): (itemId: string) => string {
+  const memo = new Map<string, string>();
+  return (itemId) => {
+    let key = memo.get(itemId);
+    if (key === undefined) {
+      key = showKeyForItem(itemId, { archive, root });
+      memo.set(itemId, key);
+    }
+    return key;
   };
 }
 
@@ -595,7 +656,10 @@ export class SourcingSession {
       placed,
       lastMintedClip: null,
       runtimeBudgetSec: options.runtimeBudgetSec,
-      remainingSeededBeats: options.runtimeBudgetSec !== undefined ? 0 : undefined
+      remainingSeededBeats: options.runtimeBudgetSec !== undefined ? 0 : undefined,
+      /* GV-115: the per-show ledger, kept only under the show-share rule, so
+         a default session neither builds nor banks it. */
+      placedSecByShow: inputs.showShare ? new Map<string, number>() : undefined
     };
   }
 
@@ -626,6 +690,14 @@ export class SourcingSession {
     state.lastMintedClip = null;
     state.runtimeBudgetSec = copy.runtimeBudgetSec;
     state.remainingSeededBeats = copy.remainingSeededBeats;
+    /* GV-115: the banked per-show ledger when the rule is on (the per-act
+       pipeline's `source:<i>` schema carries it). A snapshot without it is
+       rebuilt from the placement log, which is what `placeTape` would have
+       written: the checkpoint variant keeps a flag-on run off a flag-off
+       file, so that is a snapshot built or edited by hand. */
+    if (state.placedSecByShow) {
+      state.placedSecByShow = copy.placedSecByShow ? new Map(copy.placedSecByShow) : placedSecByShowOf(state);
+    }
     session.tapeRelevance = copy.tapeRelevance;
     session.sourcingTrace = copy.sourcingTrace;
     session.acts = copy.acts;
@@ -833,7 +905,8 @@ export class SourcingSession {
       placed: state.placed,
       lastMintedClip: null,
       runtimeBudgetSec: state.runtimeBudgetSec,
-      remainingSeededBeats: state.remainingSeededBeats
+      remainingSeededBeats: state.remainingSeededBeats,
+      placedSecByShow: state.placedSecByShow ? [...state.placedSecByShow.entries()] : undefined
     };
     const snapshot: SourcingSnapshot = {
       version: SOURCING_SNAPSHOT_VERSION,
@@ -932,6 +1005,11 @@ interface SourcingState {
   /** See `SourceBeatsOptions.pauseSnap` — `off` (the default) cuts at cue
    * edges exactly as before GV-111. */
   pauseSnap: PauseSnapMode;
+  /** See `SourceBeatsOptions.showShare` — undefined (the default) is no
+   * show-share rule at all, exactly as before GV-115. */
+  showShare: ShowShareOptions | undefined;
+  /** See `SourceBeatsOptions.showKeyFor`. */
+  showKeyOf: (itemId: string) => string;
   mintedIds: Set<string>;
   newSegments: NewSegment[];
   newSegmentSources: Map<string, MintedSegmentSource>;
@@ -968,6 +1046,52 @@ interface SourcingState {
   /** GV-106: the seeded beats not yet sourced, each reserved
    * `TAPE_WINDOW_MIN_SEC` of the budget. Undefined with no cap. */
   remainingSeededBeats: number | undefined;
+  /** GV-115: tape SECONDS per show (`showKeyOf`), the show-share rule's
+   * ledger. Mutated by `placeTape` only, on the fresh and the merge path
+   * alike. Undefined unless `showShare` is set. */
+  placedSecByShow: Map<string, number> | undefined;
+}
+
+/** GV-115: the per-show ledger recomputed from the placement log
+ * (`placed`, positionally parallel to `placedDurations`). */
+function placedSecByShowOf(state: Pick<SourcingState, "placed" | "placedDurations" | "showKeyOf">): Map<string, number> {
+  const byShow = new Map<string, number>();
+  state.placed.forEach((p, i) => {
+    const show = state.showKeyOf(p.itemId);
+    byShow.set(show, (byShow.get(show) ?? 0) + (state.placedDurations[i] ?? 0));
+  });
+  return byShow;
+}
+
+/** GV-115: the show-share rule in force (set, its ledger kept, and at least
+ * two shows able to supply the topic), or null. */
+function activeShowShare(state: Pick<SourcingState, "showShare" | "placedSecByShow">): { rule: ShowShareOptions; ledger: Map<string, number> } | null {
+  const rule = state.showShare;
+  const ledger = state.placedSecByShow;
+  return rule !== undefined && ledger !== undefined && rule.supplyShows >= 2 ? { rule, ledger } : null;
+}
+
+/**
+ * GV-115, `gate` mode: whether one more placement of `durationSec` from
+ * `itemId`'s show keeps that show at or below `max` of the Foray's tape
+ * seconds:
+ *
+ *     (showSec + dur) / (totalSec + dur) <= max
+ *
+ * asked only once two clips are placed (the first two clips of a Foray are
+ * one show's whole tape, or half of it, by construction). `replacing` is a
+ * merge's clip index (F-96): its old length is taken out of both figures
+ * first, the way `episodeLedgerExcluding` does for M4. True whenever the rule
+ * is not in force or is in `order` mode.
+ */
+function showShareAllows(itemId: string, durationSec: number, state: SourcingState, replacing?: number): boolean {
+  const active = activeShowShare(state);
+  if (!active || active.rule.mode !== "gate" || state.placedTapeCount < 2) return true;
+  const before = replacing !== undefined ? state.placedDurations[replacing] ?? 0 : 0;
+  const showSec = (active.ledger.get(state.showKeyOf(itemId)) ?? 0) - before + durationSec;
+  const totalSec = state.placedDurations.reduce((a, b) => a + b, 0) - before + durationSec;
+  if (!(totalSec > 0)) return true;
+  return showSec / totalSec <= active.rule.max;
 }
 
 /**
@@ -1261,7 +1385,7 @@ function m3OrderAllows(itemId: string, startSec: number, state: SourcingState): 
  * legacy spelling a checkpoint written before it can still carry, exactly as
  * `d3-mean` does. Nothing emits it any more: D5's pair clause is measured, not
  * enforced. */
-type DurationGate = "d2-short-run" | "m4-runtime";
+type DurationGate = "d2-short-run" | "m4-runtime" | "show-share";
 
 /**
  * BOTH ARE HARD. Each refuses tape whose LENGTH does damage no later placement
@@ -1457,6 +1581,10 @@ export function placementAllows(
      `placementMakesUniformPair` marks the row instead. See the note above
      `durationVetoFor`. */
   if (!m4RuntimeAllows(itemId, durationSec, state, replacing)) return "m4-runtime";
+  /* GV-115: FORAY_SHOW_SHARE=gate only, a fall-through like M4's, asked
+     last because it is the only rule here about the SHOW rather than the
+     episode. Inert with the rule off, in `order` mode, or with one show. */
+  if (!showShareAllows(itemId, durationSec, state, replacing)) return "show-share";
   return null;
 }
 
@@ -1490,6 +1618,11 @@ function placeTape(
        this episode must clear the NEW end (defect 2). Its start did not, so
        `lastStartByItem` is right as it stands. */
     state.lastEndByItem.set(itemId, Math.max(state.lastEndByItem.get(itemId) ?? 0, startSec + durationSec));
+    /* GV-115: the clip's show carries its new length, not its old one. */
+    if (state.placedSecByShow) {
+      const show = state.showKeyOf(itemId);
+      state.placedSecByShow.set(show, (state.placedSecByShow.get(show) ?? 0) - before + durationSec);
+    }
     return;
   }
   /* A placement after a minted clip closes it to merging (F-96): a beat
@@ -1504,6 +1637,11 @@ function placeTape(
   state.placed.push({ itemId, startSec });
   state.placedSecByItem.set(itemId, (state.placedSecByItem.get(itemId) ?? 0) + durationSec);
   state.longestSecByItem.set(itemId, Math.max(state.longestSecByItem.get(itemId) ?? 0, durationSec));
+  /* GV-115: and the show's seconds, only under the show-share rule. */
+  if (state.placedSecByShow) {
+    const show = state.showKeyOf(itemId);
+    state.placedSecByShow.set(show, (state.placedSecByShow.get(show) ?? 0) + durationSec);
+  }
 }
 
 /** What tier 1 saw, once it has decided it has nothing (F-49). Must be called
@@ -1933,7 +2071,11 @@ function resolveOneBeat(beat: Beat, state: SourcingState, act: ActContext, at: B
      of them is asked first. Gathering is a text-index query and a title scan —
      no body is opened here. */
   const archiveIsUsable = usableArchiveEntry(state);
-  const candidates = tier2Candidates(claim, state, archiveIsUsable, beat.seed);
+  /* GV-115: under FORAY_SHOW_SHARE=order, other shows' candidates move ahead
+     once one show holds more than its share; otherwise the order is as
+     gathered. Applied here, not in `tier2Candidates`, which GV-107's
+     pre-judge also calls with no ledger. */
+  const candidates = showDiversityOrder(tier2Candidates(claim, state, archiveIsUsable, beat.seed), state);
   const walk = new Tier2Walk(beat, candidates, state, act, at);
 
   /* THE SEED WINDOW IS ASKED BEFORE TIER 1 (G-24 R2; tape-yield brief §4 cause
@@ -2931,6 +3073,9 @@ const TIER2_GATE_PROGRESS: Record<Tier2Gate, number> = {
   "d3-mean": 10,
   "d5-pair": 10,
   "m4-runtime": 11,
+  /* GV-115: asked right after `m4-runtime`, in the same predicate
+     (`placementAllows`), and before the budget. */
+  "show-share": 11.25,
   /* GV-106: asked last of the length rules, on the cut the ceiling allowed,
      so after the M4 gates and before the pool's own cut is consulted. */
   "tier-budget": 11.5,
@@ -2995,6 +3140,39 @@ function tier2Candidates(
     candidates.push({ entry: byTitle.entry, titleScore: byTitle.score, text: null });
   }
   return seededFirst(candidates, claimTokens, state, isUsable, seed);
+}
+
+/**
+ * GV-115 (W3-14; R2-16), FORAY_SHOW_SHARE=order: THE SOFT SHOW-DIVERSITY
+ * ORDER. When the show holding the most placed tape seconds already holds
+ * more than `max` of them, every candidate from another show is walked before
+ * any from that show, each group in its own (relevance) order; the seeded
+ * candidate, which `seededFirst` put at the front, stays first.
+ *
+ * ORDER IS ALL IT CHANGES, the way `seededFirst` changes order: every
+ * candidate still faces every gate, none is dropped, and a beat that only the
+ * dominant show can carry still gets its tape from it. Returns `candidates`
+ * itself when the rule is off, in `gate` mode, with fewer than two supplying
+ * shows, or while no show is over its share.
+ */
+function showDiversityOrder(candidates: Tier2Candidate[], state: SourcingState): Tier2Candidate[] {
+  const active = activeShowShare(state);
+  if (!active || active.rule.mode !== "order") return candidates;
+  const totalSec = state.placedDurations.reduce((a, b) => a + b, 0);
+  if (!(totalSec > 0)) return candidates;
+  let dominant: string | null = null;
+  let dominantSec = 0;
+  for (const [show, sec] of active.ledger) {
+    if (sec > dominantSec) {
+      dominant = show;
+      dominantSec = sec;
+    }
+  }
+  if (dominant === null || dominantSec / totalSec <= active.rule.max) return candidates;
+  const isDominant = (c: Tier2Candidate): boolean => state.showKeyOf(deriveItemId(c.entry)) === dominant;
+  const seeded = candidates.filter((c) => c.fromSeed);
+  const rest = candidates.filter((c) => !c.fromSeed);
+  return [...seeded, ...rest.filter((c) => !isDominant(c)), ...rest.filter(isDominant)];
 }
 
 /**
@@ -3154,6 +3332,9 @@ function narrationReasonFor(furthest: Tier2Progress | null): string {
       return "Tape for this beat was found, but no cut of it escapes the length of the segment before it, and two segments of one length in a row would make the Foray sound metronomic.";
     case "m4-runtime":
       return "Tape for this beat is in an episode that already supplies a long clip or a quarter of this Foray's tape seconds beyond its longest clip, so taking more would let one episode dominate.";
+    /* GV-115: the tape exists; its show already carries its share (FORAY_SHOW_SHARE=gate). */
+    case "show-share":
+      return "Tape for this beat was found, but its show already carries as much of this Foray's tape as one show may when others can supply the topic, so taking more would let one show dominate.";
     /* GV-106: the tape exists; the tier's runtime has no room left for it. */
     case "tier-budget":
       return "Tape for this beat was found, but this Foray's length tier has no runtime left for another clip, so the beat is narrated instead.";
@@ -3185,7 +3366,9 @@ const ASSEMBLY_REFUSAL_CLAUSE: Record<"m4-share" | "m3-order" | "d5-pair" | Dura
   "m3-order": "the window sits earlier in an episode already joined later, or inside tape from it this Foray already plays",
   "d2-short-run": "it is short and the segment before it is short too",
   "d5-pair": "every cut of it is within a fifth of the length of the segment before it",
-  "m4-runtime": "the episode already supplies a long clip, or its quarter of the tape seconds beyond its longest clip"
+  "m4-runtime": "the episode already supplies a long clip, or its quarter of the tape seconds beyond its longest clip",
+  /* GV-115 (FORAY_SHOW_SHARE=gate). */
+  "show-share": "its show would carry more than its share of this Foray's tape seconds"
 };
 
 /** One queue row per narrated beat, naming the episode the search got furthest
@@ -3210,6 +3393,7 @@ function transcriptionQueueRow(claim: string, furthest: Tier2Progress | null): T
     case "d2-short-run":
     case "d5-pair":
     case "m4-runtime":
+    case "show-share":
       return {
         claim,
         showId: candidate.entry.show_id,

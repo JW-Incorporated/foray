@@ -47,6 +47,7 @@ import {
   sourcingBodies,
   sourcingSearches,
   summarizeSourcing,
+  type ShowShareOptions,
   type SourceBeatsOptions,
   type SourcingSnapshot
 } from "./sourceBeats";
@@ -56,7 +57,7 @@ import { createDigestAudioSourceResolver, type AudioSourceResolver } from "./aud
 import { buildActFrames, createActGate, narrationActConcurrency, showsHeardBeforeAct, showsHeardBeforeEachAct, writeNarration } from "./writeNarration";
 import { verifiedPageSummaries } from "./synthesisVerify";
 import { PrefetchingEvidenceGatherer, type EvidencePrefetchMetrics, type PrefetchOptions } from "./evidencePrefetch";
-import { evidencePrefetchMode, numberParser, readFlag, researchShortlist, type FlagSource } from "./generationFlags";
+import { evidencePrefetchMode, numberParser, readFlag, researchShortlist, showShareFlag, type FlagSource, type ShowShareFlag } from "./generationFlags";
 import { spineActBand } from "./replySchemas";
 import { readSpineTierSizing } from "./chat/ChatSpineBuilder";
 import { writerExemplarsMode } from "./voiceExemplars";
@@ -1028,7 +1029,9 @@ const TIER2_GATE_SCHEMA = z
     /* GV-106: FORAY_TIER_RUNTIME_CAP's refusal, so a capped run resumes. */
     "tier-budget",
     /* GV-109: FORAY_CLAIM_ONLY_OPENING=refuse's refusal, likewise. */
-    "claim-only-open"
+    "claim-only-open",
+    /* GV-115: FORAY_SHOW_SHARE=gate's refusal, likewise. */
+    "show-share"
   ]);
 const SourcingTraceSchema = z.object({
   actIndex: z.number().int(),
@@ -1056,7 +1059,9 @@ const SourcingTraceSchema = z.object({
           "d5-pair",
           "m4-runtime",
           /* GV-106: a pool segment longer than the clip ceiling. */
-          "tier-budget"
+          "tier-budget",
+          /* GV-115: FORAY_SHOW_SHARE=gate refused the pool segment's show. */
+          "show-share"
         ]),
       /* G-24 R2: tier 1's weighted floor, when a transcript window was scored. */
       windowWeightedShare: z.number().optional(),
@@ -1221,6 +1226,10 @@ const SourcingSnapshotSchema = z.object({
   /* GV-106: present only on a snapshot banked under FORAY_TIER_RUNTIME_CAP. */
   runtimeBudgetSec: z.number().optional(),
   remainingSeededBeats: z.number().int().nonnegative().optional(),
+  /* GV-115: present only on a snapshot banked under FORAY_SHOW_SHARE; a
+     z.object strips unknown keys, so without this a per-act resume dropped
+     the banked per-show ledger. */
+  placedSecByShow: LedgerEntriesSchema.optional(),
   tapeRelevance: z.array(TapeRelevanceInputSchema),
   sourcingTrace: z.array(SourcingTraceSchema),
   acts: z.array(SourcedActSchema)
@@ -1461,6 +1470,14 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      hashes from the same environment (`researchShortlistVariant`). The one
      research-shape stage serves the classic and the per-act paths alike. */
   const shortlistOn = deps.retrieval !== undefined && researchShortlist();
+  /* GV-115 (W3-14; R2-16): FORAY_SHOW_SHARE / FORAY_SHOW_SHARE_MAX, read once
+     here (a malformed value fails the run before it spends a call). Off
+     (the default) is undefined: sourcing's options and the variant below are
+     today's. On, the variant carries `showShare=<mode>:<max>`, which the
+     driver's store hashes from the same environment (`showShareVariant`),
+     and `sourceOptionsOf` hands the rule to the classic `source` and every
+     per-act `source:<i>` alike. */
+  const showShare = showShareFlag();
 
   /* F-17/F-18. `open` returns an inert session when there is no store, no key,
      or a checkpoint written for a different request — so everything below is
@@ -1477,7 +1494,7 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
      40): and FORAY_TIER_RUNTIME_CAP when on, FORAY_VOICE_GATE and
      FORAY_SPECIFICS_CHECK when enforcing. GV-109: and
      FORAY_CLAIM_ONLY_OPENING when refusing. GV-111: and FORAY_PAUSE_SNAP
-     when on. */
+     when on. GV-115: and FORAY_SHOW_SHARE when on. */
   const checkpoint = await CheckpointSession.open(
     deps.checkpoint,
     options.checkpointKey,
@@ -1493,6 +1510,8 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
             retrievalMode: deps.retrieval?.mode,
             /* GV-112: the research shortlist, only when on with a server. */
             researchShortlist: shortlistOn,
+            /* GV-115: the show-share rule, only when on. */
+            showShare: showShare ?? null,
             spineTierSizing: readSpineTierSizing(),
             writerExemplars: writerExemplarsMode(),
             /* GV-127 (#1413 item 36): the enforcing gates, from the run's
@@ -2199,6 +2218,24 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
   const skipNarratedSlot = (actIndex: number, slotIndex: number): boolean =>
     checkpoint.has(`narrate:${actIndex}`) || checkpoint.has(`narrate:${actIndex}:${slotIndex}`);
 
+  /* GV-115: the shows with at least one usable archive row for `forTopic`
+     (`topicSupply.ts` `byShow`, measured the way the topic decision measured
+     its supply), memoised per topic and said once, joined to the rule as
+     sourcing receives it. Asked only under FORAY_SHOW_SHARE, so a default run
+     walks the archive no extra time. Under two, the show-share rule is inert
+     (`SourceBeatsOptions.showShare`). */
+  const supplyShowsMemo = new Map<string, number>();
+  const showShareOptionsFor = (rule: ShowShareFlag, forTopic: string | null): ShowShareOptions => {
+    if (!forTopic) return { ...rule, supplyShows: 0 };
+    let shows = supplyShowsMemo.get(forTopic);
+    if (shows === undefined) {
+      shows = Object.values(measure([forTopic]).get(forTopic)?.byShow ?? {}).filter((n) => n >= 1).length;
+      supplyShowsMemo.set(forTopic, shows);
+      console.log(`  source: show share ${rule.mode} at ${rule.max} — ${shows} show(s) can supply ${forTopic}${shows < 2 ? " (inert under two)" : ""}`);
+    }
+    return { ...rule, supplyShows: shows };
+  };
+
   /* §4.5's options, built where the stage runs (the classic `source`, or each
      per-act `source:<i>`), so a resumed stage builds none of them. */
   const sourceOptionsOf = (): SourceBeatsOptions => ({
@@ -2225,7 +2262,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
        per-act path. */
     ...(gates.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {}),
     /* GV-111: FORAY_PAUSE_SNAP, only when on, likewise. */
-    ...(gates.pauseSnap === "on" ? { pauseSnap: "on" as const } : {})
+    ...(gates.pauseSnap === "on" ? { pauseSnap: "on" as const } : {}),
+    /* GV-115: FORAY_SHOW_SHARE, only when on, likewise, with the number of
+       shows that can supply the topic (`showShareOptionsFor`). */
+    ...(showShare ? { showShare: showShareOptionsFor(showShare, topic) } : {})
   });
 
   /* GV-106 (W4-15): the tier's tape budget under FORAY_TIER_RUNTIME_CAP —

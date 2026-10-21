@@ -20,6 +20,7 @@ import {
   pauseSnapVariant,
   sentencePolicyVariant,
   researchShortlistVariant,
+  showShareVariant,
   spineTierSizingVariant,
   tierRuntimeCapVariant,
   voiceGateVariant,
@@ -27,7 +28,7 @@ import {
   type CheckpointRunFlags,
   type CheckpointStore
 } from "../src/generation/checkpoint";
-import { RESEARCH_SHORTLIST_ENV } from "../src/generation/generationFlags";
+import { RESEARCH_SHORTLIST_ENV, SHOW_SHARE_ENV, SHOW_SHARE_MAX_ENV } from "../src/generation/generationFlags";
 import { CLASSIC_PIPELINE_FLAGS, FAST_PATH_PIPELINE_FLAGS, checkpointVariant } from "../src/generation/pipelineFlags";
 import { resolveRouting } from "../src/config/stageRouting";
 import { FileCheckpointStore } from "../src/cli/checkpointStore";
@@ -645,6 +646,81 @@ describe("checkpointRunVariant (GV-55)", () => {
     } finally {
       if (prior === undefined) delete process.env[RESEARCH_SHORTLIST_ENV];
       else process.env[RESEARCH_SHORTLIST_ENV] = prior;
+    }
+  });
+
+  /* GV-115 (W3-14; orchestrator note: FORAY_SHOW_SHARE lives in
+     generationFlags, so it joins checkpointRunVariant through flagParts, and
+     the fork stamp's flags with it, the GV-112 pattern). Either mode changes
+     what `source` / `source:<i>` bank. MUTATIONS THAT KILL THIS, each ran
+     red: drop showShareVariant from flagParts (an on run would resume tape
+     sourced off, and the stamp would not carry it); drop the environment
+     fallback (`flags.showShare ?? null`: the driver's store, which passes
+     nothing, would hash another variant than the pipeline's session); spell
+     the part without the max (`showShare=${mode}`: a resume across
+     FORAY_SHOW_SHARE_MAX would keep tape cut under the other share). */
+  it("joins showShare=<mode>:<max> only with FORAY_SHOW_SHARE on; the driver's fallback and the pipeline's explicit value agree; off is today's", () => {
+    const ORDER_ENV = { [SHOW_SHARE_ENV]: "order" };
+    expect(showShareVariant({}, {})).toBeUndefined();
+    expect(showShareVariant({}, { [SHOW_SHARE_ENV]: "off" })).toBeUndefined();
+    expect(showShareVariant({ showShare: null }, ORDER_ENV)).toBeUndefined();
+    expect(showShareVariant({}, ORDER_ENV)).toBe("showShare=order:0.6");
+    expect(showShareVariant({}, { [SHOW_SHARE_ENV]: "gate", [SHOW_SHARE_MAX_ENV]: "0.5" })).toBe("showShare=gate:0.5");
+    expect(showShareVariant({ showShare: { mode: "gate", max: 0.6 } }, {})).toBe("showShare=gate:0.6");
+
+    const saved = { mode: process.env[SHOW_SHARE_ENV], max: process.env[SHOW_SHARE_MAX_ENV], shortlist: process.env[RESEARCH_SHORTLIST_ENV] };
+    const routing = resolveRouting({});
+    const stamp = (flags: Partial<CheckpointRunFlags>) =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, ...flags }, routing });
+    try {
+      delete process.env[RESEARCH_SHORTLIST_ENV];
+      delete process.env[SHOW_SHARE_ENV];
+      delete process.env[SHOW_SHARE_MAX_ENV];
+      /* Off (the default): today's fingerprint and stamp, byte for byte. */
+      expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS)).toBeUndefined();
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, showShare: null })).toBeUndefined();
+      expect(fp(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS))).toBe(TODAY);
+      const offStamp = stamp({});
+      expect(offStamp.flags).toBeNull();
+      expect(stamp({ showShare: null })).toEqual(offStamp);
+
+      for (const mode of ["order", "gate"] as const) {
+        process.env[SHOW_SHARE_ENV] = mode;
+        /* The driver passes nothing; the pipeline passes what it resolved. */
+        const driver = checkpointRunVariant(CLASSIC_PIPELINE_FLAGS);
+        const pipeline = checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, showShare: { mode, max: 0.6 } });
+        expect(driver).toBe(`showShare=${mode}:0.6`);
+        expect(pipeline).toBe(driver);
+        expect(fp(driver)).not.toBe(TODAY);
+        /* The per-act path's flag joins the same string. */
+        expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, perActPipeline: true })).toBe(
+          `${checkpointVariant({ ...CLASSIC_PIPELINE_FLAGS, perActPipeline: true })}|showShare=${mode}:0.6`
+        );
+        /* The fork stamp's flags carry it: a seed sourced without the rule
+           (or under the other mode) is not forked into this run. */
+        const onStamp = stamp({});
+        expect(onStamp.flags).toBe(`showShare=${mode}:0.6`);
+        const seed = { version: CHECKPOINT_VERSION, fingerprint: "seed-print", fork: offStamp };
+        expect(forkSeedRefusal(seed, { fingerprint: "run-print", stamp: onStamp }, "narrate")).toMatch(/other pipeline flags/);
+        expect(forkSeedRefusal(seed, { fingerprint: "run-print", stamp: onStamp }, "understand")).toMatch(/other pipeline flags/);
+      }
+      /* A different max is a different variant. */
+      process.env[SHOW_SHARE_MAX_ENV] = "0.5";
+      expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS)).toBe("showShare=gate:0.5");
+      /* After the research shortlist, before the spine best-of and the routing. */
+      process.env[SHOW_SHARE_MAX_ENV] = "0.6";
+      process.env[RESEARCH_SHORTLIST_ENV] = "1";
+      const local = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
+      expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, retrievalMode: "hybrid", spineBestOf: 2 }, local)).toBe(
+        `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|research=shortlist|showShare=gate:0.6|spine=best-of-2|tierCap=on|${routingVariant(local)}`
+      );
+    } finally {
+      if (saved.shortlist === undefined) delete process.env[RESEARCH_SHORTLIST_ENV];
+      else process.env[RESEARCH_SHORTLIST_ENV] = saved.shortlist;
+      if (saved.mode === undefined) delete process.env[SHOW_SHARE_ENV];
+      else process.env[SHOW_SHARE_ENV] = saved.mode;
+      if (saved.max === undefined) delete process.env[SHOW_SHARE_MAX_ENV];
+      else process.env[SHOW_SHARE_MAX_ENV] = saved.max;
     }
   });
 });
