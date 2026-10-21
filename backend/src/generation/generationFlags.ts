@@ -173,6 +173,19 @@ export function researchShowQuota(source: FlagSource = process.env): number | un
   return readFlag<number | undefined>(RESEARCH_SHOW_QUOTA_ENV, showQuotaParser, undefined, source);
 }
 
+/** GV-112 (W3-25; QK-22, R1-09): research-map windows from the topic node's
+ * precomputed shortlist (`researchShape.ts`, GET /v1/shortlist). */
+export const RESEARCH_SHORTLIST_ENV = "FORAY_RESEARCH_SHORTLIST";
+
+/** GV-112: `FORAY_RESEARCH_SHORTLIST=1` offers each subtopic up to two extra
+ * windows from the resolved topic node's shortlist on the retrieval server,
+ * after the BM25 ones. It needs FORAY_RETRIEVAL_URL (`retrievalConfig`
+ * refuses it without one). Unset gives false: off, today's map byte for
+ * byte. A malformed value throws naming the variable. */
+export function researchShortlist(source: FlagSource = process.env): boolean {
+  return readBooleanFlag(RESEARCH_SHORTLIST_ENV, false, source);
+}
+
 /* ---------------------------------------------------------------------------
    GV-95 (W3-11; decision 23): the retrieval server. FORAY_RETRIEVAL_URL unset
    keeps today's local path (the File cue provider and text index); set, the
@@ -290,12 +303,17 @@ export interface RetrievalConfig {
  *   - a token with a plain-http URL to a non-loopback host throws naming
  *     FORAY_RETRIEVAL_URL (GV-29 review: the token would cross the network in
  *     clear). Use https, or a loopback URL (an SSH tunnel, say).
+ *   - GV-112: FORAY_RESEARCH_SHORTLIST on with no URL throws naming
+ *     FORAY_RESEARCH_SHORTLIST (the shortlist lives on the server only, so
+ *     the flag would silently do nothing).
  */
 export function retrievalConfig(source: FlagSource = process.env, readFile?: (file: string) => string): RetrievalConfig | null {
   const baseUrl = retrievalUrl(source);
   const mode = retrievalMode(source);
+  const shortlist = researchShortlist(source);
   if (baseUrl === undefined) {
     if (mode !== "bm25") throw new FlagValueError(RETRIEVAL_MODE_ENV, `bm25 when ${RETRIEVAL_URL_ENV} is unset (the local index is BM25 only)`);
+    if (shortlist) throw new FlagValueError(RESEARCH_SHORTLIST_ENV, `0 or unset when ${RETRIEVAL_URL_ENV} is unset (the shortlist is served by the retrieval server)`);
     return null;
   }
   const token = retrievalToken(source, readFile);

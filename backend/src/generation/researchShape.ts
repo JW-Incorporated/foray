@@ -30,8 +30,9 @@ import {
   type TranscriptDigestEntry
 } from "./transcriptArchiveLookup";
 import { corpusCoverage } from "./transcriptCorpus";
-import { codeSpanSync } from "./codeSpans";
-import { researchShowQuota } from "./generationFlags";
+import { codeSpan, codeSpanSync } from "./codeSpans";
+import { researchShortlist, researchShowQuota } from "./generationFlags";
+import type { ShortlistPassage } from "./retrievalClient";
 import { NullTranscriptTextIndex, type TranscriptTextIndex, type TranscriptTextSearchOptions } from "./transcriptTextIndex";
 import type { ExternalResearcher, ExternalResearchContext } from "./ExternalResearcher";
 
@@ -173,6 +174,27 @@ export const RESEARCH_TAPE_WINDOW_MAX_SEC = 180;
 /** And the same window as characters. Cut at a sentence end below this, never
  * mid-word — a truncated quote is still the tape's own words. */
 export const RESEARCH_TAPE_WINDOW_MAX_CHARS = 600;
+
+/**
+ * GV-112 (W3-25; QK-22, R1-09): WINDOWS FROM THE TOPIC NODE'S PRECOMPUTED
+ * SHORTLIST. The retrieval server keeps about fifty passages per taxonomy node
+ * (GV-48, found by a hybrid BM25 + dense search over the node's lineage); with
+ * FORAY_RESEARCH_SHORTLIST on and a retrieval server, each subtopic asks it for
+ * the passages ranked for its own query and is offered at most
+ * `RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC` of them as extra windows, after the
+ * BM25 ones and inside the same cap of six. More seedable windows means more
+ * seeded beats, and clip count follows seeds (QK-22).
+ */
+export const RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC = 2;
+/** Passages asked of the shortlist per subtopic: as many as the BM25 search
+ * asks for episodes, since most are dropped (an episode already quoted, a
+ * span the digest distrusts, a stretch past the audio, a short tail). */
+export const RESEARCH_SHORTLIST_CANDIDATES = 12;
+
+/** GV-112: the shortlist seam research-shape is handed: the resolved topic
+ * node, the subtopic's query (`subtopicQueryText`) and how many passages to
+ * return. `RemoteRetrieval.shortlist` (GET /v1/shortlist) in production. */
+export type ResearchShortlist = (node: string, queryText: string, limit: number) => Promise<ShortlistPassage[]>;
 
 const MAX_SUBTOPICS = 8;
 /** How many of the top-matched concept's `related` concepts to pull in for
@@ -353,11 +375,26 @@ interface TapeWindowResult {
  * GV-85: timed as 'research.tapeWindows' (inclusive of its index searches and
  * transcript reads); inert outside a run log.
  */
-function tapeWindowsFor(seed: CandidateSeed, tape: TapeAvailability, deps: TapeWindowDeps, usedEpisodes: Set<string>): TapeWindowResult {
-  return codeSpanSync("research.tapeWindows", () => tapeWindowsForUntimed(seed, tape, deps, usedEpisodes));
+function tapeWindowsFor(
+  seed: CandidateSeed,
+  tape: TapeAvailability,
+  deps: TapeWindowDeps,
+  usedEpisodes: Set<string>,
+  shortlist?: readonly ShortlistPassage[]
+): TapeWindowResult {
+  return codeSpanSync("research.tapeWindows", () => tapeWindowsForUntimed(seed, tape, deps, usedEpisodes, shortlist));
 }
 
-function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps: TapeWindowDeps, usedEpisodes: Set<string>): TapeWindowResult {
+/** `shortlist`: GV-112's prefetched passages for this subtopic, or undefined
+ * when the shortlist is off (the default), which leaves every line below as it
+ * was. */
+function tapeWindowsForUntimed(
+  seed: CandidateSeed,
+  tape: TapeAvailability,
+  deps: TapeWindowDeps,
+  usedEpisodes: Set<string>,
+  shortlist?: readonly ShortlistPassage[]
+): TapeWindowResult {
   if (!deps.textIndex.enabled) {
     return { windows: [], unavailable: "no transcript text index on this machine, so nothing could be quoted", episodesMatched: 0 };
   }
@@ -375,9 +412,17 @@ function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps
     familyGateAllows(deps.topic, nodesForArchiveEntry(entry, deps.root), deps.root);
 
   const searchOptions = { limit: RESEARCH_TAPE_EPISODE_CANDIDATES, isUsable };
+  /* GV-112: the shortlist's windows for this subtopic, none of them from an
+     episode in `taken` (this subtopic's own BM25 windows). Empty when off. */
+  const fromShortlist = (taken: ReadonlySet<string>): ResearchTapeWindow[] =>
+    shortlist === undefined ? [] : shortlistWindows(shortlist, deps, usedEpisodes, taken, isUsable);
   /* GV-29 review: a search the retrieval server never answered says so,
      rather than reading as an archive that holds nothing on the subtopic. */
   if (!indexAnswers(deps.textIndex, queryText, searchOptions)) {
+    /* GV-112: the shortlist is a separate question the server may still
+       have answered. */
+    const extra = fromShortlist(new Set());
+    if (extra.length > 0) return keepWindows([], extra, deps, usedEpisodes, 0);
     return {
       windows: [],
       unavailable: "the retrieval server did not answer this subtopic's search (a miss: degraded or not prepared), so nothing could be quoted",
@@ -386,6 +431,8 @@ function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps
   }
   const candidates = deps.textIndex.search(queryText, searchOptions);
   if (candidates.length === 0) {
+    const extra = fromShortlist(new Set());
+    if (extra.length > 0) return keepWindows([], extra, deps, usedEpisodes, 0);
     return { windows: [], unavailable: "no episode in this Foray's taxonomy lineage says enough of this subtopic to open", episodesMatched: 0 };
   }
 
@@ -439,6 +486,8 @@ function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps
   }
 
   if (windows.length === 0) {
+    const extra = fromShortlist(new Set());
+    if (extra.length > 0) return keepWindows([], extra, deps, usedEpisodes, candidates.length);
     return {
       episodesMatched: candidates.length,
       windows: [],
@@ -453,17 +502,126 @@ function tapeWindowsForUntimed(seed: CandidateSeed, tape: TapeAvailability, deps
   /* Best window first; ties by episode id so a replay of the same archive
      produces the same prompt, byte for byte. */
   windows.sort((a, b) => b.score - a.score || (a.episodeId < b.episodeId ? -1 : a.episodeId > b.episodeId ? 1 : 0));
+  return keepWindows(windows, fromShortlist(new Set(windows.map((w) => w.episodeId))), deps, usedEpisodes, candidates.length);
+}
+
+/**
+ * The cut every subtopic's list goes through: the BM25 windows in rank order,
+ * then (GV-112) the shortlist's, NOT merged by score (the two scores are on
+ * different scales), all under the one cap of six and, when on, the per-show
+ * quota (GV-87). With no shortlist windows this is exactly the cut it
+ * replaced.
+ */
+function keepWindows(
+  ranked: ResearchTapeWindow[],
+  extra: ResearchTapeWindow[],
+  deps: TapeWindowDeps,
+  usedEpisodes: Set<string>,
+  episodesMatched: number
+): TapeWindowResult {
+  const pool = extra.length > 0 ? [...ranked, ...extra] : ranked;
   const kept =
     deps.showQuota === undefined
-      ? windows.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC)
-      : selectWithShowQuota(windows, {
+      ? pool.slice(0, RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC)
+      : selectWithShowQuota(pool, {
           max: RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC,
           perShowMax: Math.ceil(deps.showQuota * RESEARCH_TAPE_WINDOWS_PER_SUBTOPIC)
         });
   /* Only the kept windows are spent: an episode the quota skipped is still free
      for the next subtopic. */
   for (const w of kept) usedEpisodes.add(w.episodeId);
-  return { windows: kept, unavailable: null, episodesMatched: candidates.length };
+  return { windows: kept, unavailable: null, episodesMatched };
+}
+
+/**
+ * GV-112 (W3-25): THE SHORTLIST'S PASSAGES AS RESEARCH WINDOWS, at most
+ * `RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC`, in the server's order.
+ *
+ * Each passage arrives mapped to its archive row (`RemoteRetrieval.shortlist`)
+ * and is held to the rules a BM25 window is held to, so nothing the shortlist
+ * offers is a seed §4.5 is bound to refuse:
+ *   - an episode already quoted on this map (`usedEpisodes`, G-24 R3), or
+ *     among this subtopic's own BM25 windows (`taken`), or by an earlier
+ *     shortlist passage, is skipped: one window per episode;
+ *   - a `span_implausible` row is skipped, and so is a passage ending past the
+ *     row's `feed_duration_sec` (F-87, #315, the same comparison);
+ *   - a passage shorter than RESEARCH_TAPE_WINDOW_MIN_SEC is skipped (an
+ *     episode's short tail: every other passage is cut at 90 s or more);
+ *   - the lineage gate the BM25 search filters by (`isUsable`) runs here too:
+ *     the server built the node's shortlist by lineage, but the client is
+ *     where lineage is decided (retrievalClient.ts).
+ * The text is the passage's own words through `trimToSentence`, so it is cut
+ * to RESEARCH_TAPE_WINDOW_MAX_CHARS like every quote. The score is the
+ * shortlist's (its rerank score when it has one) and ranks nothing against
+ * BM25; `origin: 'shortlist'` says which list a window came from.
+ */
+function shortlistWindows(
+  passages: readonly ShortlistPassage[],
+  deps: TapeWindowDeps,
+  usedEpisodes: ReadonlySet<string>,
+  taken: ReadonlySet<string>,
+  isUsable: (entry: TranscriptDigestEntry) => boolean
+): ResearchTapeWindow[] {
+  const out: ResearchTapeWindow[] = [];
+  const seen = new Set(taken);
+  for (const passage of passages) {
+    if (out.length >= RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC) break;
+    const entry = passage.entry;
+    const episodeId = deriveItemId(entry);
+    if (usedEpisodes.has(episodeId) || seen.has(episodeId)) continue;
+    if (entry.span_implausible === true) continue;
+    if (!Number.isFinite(passage.startSec) || !Number.isFinite(passage.endSec) || passage.startSec < 0 || passage.endSec <= passage.startSec) continue;
+    if (typeof entry.feed_duration_sec === "number" && passage.endSec > entry.feed_duration_sec) continue;
+    if (passage.endSec - passage.startSec < RESEARCH_TAPE_WINDOW_MIN_SEC) continue;
+    if (!isUsable(entry)) continue;
+    const text = trimToSentence(passage.text);
+    if (text.length === 0) continue;
+    seen.add(episodeId);
+    const score = passage.rerankScore ?? passage.score;
+    out.push({
+      episodeId,
+      showTitle: entry.show_title,
+      episodeTitle: entry.title,
+      startSec: Number(passage.startSec.toFixed(1)),
+      endSec: Number(passage.endSec.toFixed(1)),
+      text,
+      score: Number((Number.isFinite(score) ? score : 0).toFixed(3)),
+      ...(deps.showQuota !== undefined ? { showId: String(entry.show_id) } : {}),
+      origin: "shortlist"
+    });
+  }
+  return out;
+}
+
+/**
+ * GV-112: every subtopic's shortlist passages, asked before the subtopic loop
+ * (in parallel, one request per subtopic the loop will search), so the loop
+ * itself stays synchronous. Undefined at a position means the shortlist is off
+ * for that subtopic: no seam, the flag off, no resolved topic node (a
+ * shortlist is per node), no text index, or catalogue tape too thin to be
+ * searched at all. A seam that rejects gives that subtopic no passages; the
+ * map is built either way.
+ */
+async function prefetchShortlists(
+  withTape: ReadonlyArray<{ seed: CandidateSeed; tape: TapeAvailability }>,
+  deps: TapeWindowDeps,
+  shortlist: ResearchShortlist | undefined
+): Promise<Array<readonly ShortlistPassage[] | undefined>> {
+  const node = deps.topic;
+  if (!shortlist || node === null || !deps.textIndex.enabled || !researchShortlist()) return withTape.map(() => undefined);
+  return codeSpan("research.shortlist", () =>
+    Promise.all(
+      withTape.map(async ({ seed, tape }): Promise<readonly ShortlistPassage[] | undefined> => {
+        if (!tapeWorthSearching(tape)) return undefined;
+        try {
+          return await shortlist(node, subtopicQueryText(seed), RESEARCH_SHORTLIST_CANDIDATES);
+        } catch {
+          console.warn(`researchShape: the shortlist for "${seed.label}" could not be read; that subtopic has no shortlist windows`);
+          return [];
+        }
+      })
+    )
+  );
 }
 
 /**
@@ -707,6 +865,16 @@ export interface BuildResearchShapeOptions {
    * stage is unchanged; not called when the text index is disabled.
    */
   prepareQueries?: (requests: ResearchSearchRequest[]) => Promise<void>;
+  /**
+   * GV-112 (W3-25): the topic node's precomputed shortlist
+   * (`RemoteRetrieval.shortlist`, GET /v1/shortlist). Used only when
+   * FORAY_RESEARCH_SHORTLIST is on and the map has a resolved topic: each
+   * searched subtopic is then offered up to
+   * RESEARCH_SHORTLIST_WINDOWS_PER_SUBTOPIC extra windows from it, after its
+   * BM25 windows. Omitted (the default), or with the flag off, the map is
+   * unchanged byte for byte.
+   */
+  shortlist?: ResearchShortlist;
 }
 
 /**
@@ -833,10 +1001,12 @@ export async function buildResearchShape(
      walked in order, so the first subtopic an episode ranks for is the one that
      quotes it. Deterministic — the order is the candidate order, which is the
      concept order, which is stable for a given catalogue. */
+  /* GV-112: each subtopic's shortlist passages, asked before the loop. */
+  const shortlists = await prefetchShortlists(withTape, windowDeps, options.shortlist);
   const usedEpisodes = new Set<string>();
-  const subtopics: SubtopicCandidate[] = withTape.map(({ seed, tape }) => {
+  const subtopics: SubtopicCandidate[] = withTape.map(({ seed, tape }, i) => {
     const external = externalResults.get(seed.label);
-    const windows = tapeWindowsFor(seed, tape, windowDeps, usedEpisodes);
+    const windows = tapeWindowsFor(seed, tape, windowDeps, usedEpisodes, shortlists[i]);
     return {
       label: seed.label,
       source: seed.source,

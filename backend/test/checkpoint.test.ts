@@ -19,12 +19,15 @@ import {
   claimOnlyOpeningVariant,
   pauseSnapVariant,
   sentencePolicyVariant,
+  researchShortlistVariant,
   spineTierSizingVariant,
   tierRuntimeCapVariant,
   voiceGateVariant,
   writerExemplarsVariant,
+  type CheckpointRunFlags,
   type CheckpointStore
 } from "../src/generation/checkpoint";
+import { RESEARCH_SHORTLIST_ENV } from "../src/generation/generationFlags";
 import { CLASSIC_PIPELINE_FLAGS, FAST_PATH_PIPELINE_FLAGS, checkpointVariant } from "../src/generation/pipelineFlags";
 import { resolveRouting } from "../src/config/stageRouting";
 import { FileCheckpointStore } from "../src/cli/checkpointStore";
@@ -587,6 +590,62 @@ describe("checkpointRunVariant (GV-55)", () => {
       "FORAY_UNSUPPORTED_SENTENCE_POLICY differs (cut; this run rewrite) and feeds narrate, before --rerun-from stitch"
     );
     expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(cutStamp)))).toEqual(cutStamp);
+  });
+
+  /* GV-112 (W3-25; orchestrator note: the shortlist flag lives in
+     generationFlags, so it joins checkpointRunVariant through flagParts, and
+     the fork stamp's flags with it). MUTATIONS THAT KILL THIS, each ran red:
+     drop researchShortlistVariant from flagParts (an on run would resume a
+     research map banked off); drop the `retrievalMode !== undefined` guard
+     in its fallback (a run with no server would move its fingerprint); drop
+     the environment fallback (`flags.researchShortlist ?? false`: the
+     driver's store, which passes only the mode, would hash another variant
+     than the pipeline's session). */
+  it("joins research=shortlist only with the flag on and a retrieval server; the driver's fallback and the pipeline's explicit value agree; off is today's", () => {
+    const ENV = { [RESEARCH_SHORTLIST_ENV]: "1" };
+    for (const off of [{}, { researchShortlist: false }, { researchShortlist: undefined }, { retrievalMode: "bm25" as const, researchShortlist: false }]) {
+      expect(researchShortlistVariant(off, ENV)).toBeUndefined();
+    }
+    expect(researchShortlistVariant({ retrievalMode: "bm25" }, {})).toBeUndefined();
+    expect(researchShortlistVariant({ retrievalMode: "bm25" }, { [RESEARCH_SHORTLIST_ENV]: "0" })).toBeUndefined();
+    expect(researchShortlistVariant({ retrievalMode: "bm25" }, ENV)).toBe("research=shortlist");
+    expect(researchShortlistVariant({ researchShortlist: true }, {})).toBe("research=shortlist");
+
+    const prior = process.env[RESEARCH_SHORTLIST_ENV];
+    const routing = resolveRouting({});
+    const stamp = (flags: Partial<CheckpointRunFlags>) =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, ...flags }, routing });
+    try {
+      delete process.env[RESEARCH_SHORTLIST_ENV];
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, retrievalMode: "bm25" })).toBeUndefined();
+      const offStamp = stamp({ retrievalMode: "bm25" });
+      expect(offStamp).toEqual(stamp({}));
+
+      process.env[RESEARCH_SHORTLIST_ENV] = "1";
+      /* No server: the flag is inert and the fingerprint is today's. */
+      expect(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS)).toBeUndefined();
+      expect(fp(checkpointRunVariant(CLASSIC_PIPELINE_FLAGS))).toBe(TODAY);
+      /* The driver passes the mode only; the pipeline passes the value. */
+      const driver = checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, retrievalMode: "bm25" });
+      const pipeline = checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, retrievalMode: "bm25", researchShortlist: true });
+      expect(driver).toBe("research=shortlist");
+      expect(pipeline).toBe(driver);
+      expect(fp(driver)).not.toBe(TODAY);
+      /* After the retrieval mode, before the spine best-of and the routing. */
+      const local = resolveRouting({ FORAY_LLM_BASE_URL: LLM });
+      expect(checkpointRunVariant({ ...FAST_PATH_PIPELINE_FLAGS, retrievalMode: "hybrid", spineBestOf: 2 }, local)).toBe(
+        `${checkpointVariant(FAST_PATH_PIPELINE_FLAGS)}|narration=sequential|retrieval=hybrid|research=shortlist|spine=best-of-2|tierCap=on|${routingVariant(local)}`
+      );
+      /* The fork stamp's flags carry it: a seed built without the shortlist
+         is not forked into a shortlist run. */
+      const onStamp = stamp({ retrievalMode: "bm25" });
+      expect(onStamp.flags).toBe("research=shortlist");
+      const seed = { version: CHECKPOINT_VERSION, fingerprint: "seed-print", fork: offStamp };
+      expect(forkSeedRefusal(seed, { fingerprint: "run-print", stamp: onStamp }, "narrate")).toMatch(/other pipeline flags/);
+    } finally {
+      if (prior === undefined) delete process.env[RESEARCH_SHORTLIST_ENV];
+      else process.env[RESEARCH_SHORTLIST_ENV] = prior;
+    }
   });
 });
 

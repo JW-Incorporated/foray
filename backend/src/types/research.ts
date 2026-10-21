@@ -75,7 +75,14 @@ export const ResearchTapeWindowSchema = z.object({
    * the default map is unchanged; optional, so a checkpoint written without it
    * still parses. In the schema rather than added after it because zod strips
    * unknown keys, and a checkpoint reload would drop it. */
-  showId: z.string().min(1).optional()
+  showId: z.string().min(1).optional(),
+  /** GV-112: 'shortlist' on a window taken from the topic node's precomputed
+   * shortlist (FORAY_RESEARCH_SHORTLIST) rather than found by this stage's
+   * BM25 search; its `score` is then the shortlist's own, on another scale,
+   * and is never compared with a BM25 window's. Absent on every BM25 window,
+   * so the default map is unchanged; in the schema so a checkpoint reload
+   * keeps it. */
+  origin: z.literal("shortlist").optional()
 });
 export type ResearchTapeWindow = z.infer<typeof ResearchTapeWindowSchema>;
 

@@ -32,7 +32,8 @@ import {
  * ahead (`hydrate`), and the synchronous seams then read the stored answers.
  *
  *   RemoteRetrieval       the network half: /v1/episodes, /v1/scopes,
- *                         /v1/search and /v1/cues, each bounded by a timeout.
+ *                         /v1/search and /v1/cues (and GV-112's
+ *                         /v1/shortlist), each bounded by a timeout.
  *   PrecomputedTextIndex  a `TranscriptTextIndex` over the prepared answers,
  *                         keyed by scope + limit + query text (verbatim).
  *   HydratingCueProvider  a `TranscriptBodySource` over the hydrated bodies,
@@ -93,6 +94,9 @@ export const MAX_REMOTE_SEARCH_LIMIT = 200;
 export const MAX_REMOTE_QUERY_CHARS = 20_000;
 /** How many degraded reasons `stats()` keeps (the count is exact). */
 export const MAX_DEGRADED_REASONS = 50;
+/** GV-112: the server's SHORTLIST_SIZE, the most GET /v1/shortlist answers. A
+ * request outside 1..this is not sent (it would be refused). */
+export const MAX_SHORTLIST_LIMIT = 50;
 
 export type RetrievalScope = "lineage" | "all";
 /** FORAY_RETRIEVAL_MODE's values (GV-95 reads the flag). 'hybrid' is sent to
@@ -157,6 +161,27 @@ export interface RemoteEpisodeRow {
 export interface CandidateHint {
   via?: string;
   passage?: unknown;
+}
+
+/**
+ * GV-112 (W3-25): one passage of a topic node's precomputed shortlist (GV-48,
+ * GET /v1/shortlist), mapped onto this process's archive row by show_id +
+ * guid. The server's own `rank`, `score` and `rerankScore` are kept as it
+ * sent them: they are on the shortlist's scale, never BM25's.
+ */
+export interface ShortlistPassage {
+  entry: TranscriptDigestEntry;
+  passageId: string;
+  startSec: number;
+  endSec: number;
+  /** The passage's own words, as the server stores them. */
+  text: string;
+  /** Position in this answer (after the rerank against the query). */
+  rank: number;
+  /** The build's fused score. */
+  score: number;
+  /** The rerank score against the query; null without one. */
+  rerankScore: number | null;
 }
 
 /** GET /healthz: what the server says it is serving. */
@@ -630,6 +655,74 @@ export class RemoteRetrieval {
   /** GV-48's via / passage hints for a stored answer, by candidate entry. */
   hintsFor(scope: RetrievalScope, limit: number, text: string): ReadonlyMap<TranscriptDigestEntry, CandidateHint> {
     return this.answers.get(precomputedKey(scope, limit, text))?.hints ?? new Map();
+  }
+
+  /**
+   * GV-112 (W3-25): GET /v1/shortlist?node=&query=&limit= — the topic node's
+   * precomputed passages (GV-48), reranked by the server against `queryText`,
+   * each mapped onto this process's archive row by show_id + guid (an unknown
+   * one, or a malformed row, is dropped and counted as unmapped). In the
+   * server's order. Never throws: a degraded call resolves an empty list with
+   * a recorded reason (never the query text), and a request the server would
+   * refuse (limit outside 1..MAX_SHORTLIST_LIMIT, query over
+   * MAX_REMOTE_QUERY_CHARS, no node) is not sent and counts as unprepared.
+   * Nothing is stored: research-shape asks it once per subtopic.
+   */
+  async shortlist(node: string, queryText: string, limit: number): Promise<ShortlistPassage[]> {
+    if (
+      typeof node !== "string" ||
+      node.length === 0 ||
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > MAX_SHORTLIST_LIMIT ||
+      typeof queryText !== "string" ||
+      queryText.length > MAX_REMOTE_QUERY_CHARS
+    ) {
+      this.counters.unprepared += 1;
+      return [];
+    }
+    const query = `node=${encodeURIComponent(node)}&query=${encodeURIComponent(queryText)}&limit=${limit}`;
+    const reply = await this.call("GET", `/v1/shortlist?${query}`);
+    if (!reply.ok) {
+      this.degrade("shortlist", reply.reason);
+      return [];
+    }
+    const passages = (reply.json as { passages?: unknown } | null)?.passages;
+    if (!Array.isArray(passages)) {
+      this.degrade("shortlist", "reply has no passage list");
+      return [];
+    }
+    const out: ShortlistPassage[] = [];
+    for (const raw of passages as unknown[]) {
+      const p = raw as Record<string, unknown> | null;
+      const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+      const entry =
+        p && typeof p.show_id === "string" && typeof p.guid === "string" ? this.archiveByKey.get(entryKey(p.show_id, p.guid)) : undefined;
+      if (
+        !p ||
+        !entry ||
+        typeof p.passageId !== "string" ||
+        !finite(p.startSec) ||
+        !finite(p.endSec) ||
+        typeof p.text !== "string" ||
+        !finite(p.score) ||
+        (p.rerankScore !== null && p.rerankScore !== undefined && !finite(p.rerankScore))
+      ) {
+        this.counters.unmapped += 1;
+        continue;
+      }
+      out.push({
+        entry,
+        passageId: p.passageId,
+        startSec: p.startSec,
+        endSec: p.endSec,
+        text: p.text,
+        rank: finite(p.rank) ? p.rank : out.length,
+        score: p.score,
+        rerankScore: finite(p.rerankScore) ? p.rerankScore : null
+      });
+    }
+    return out;
   }
 
   /** Counted by PrecomputedTextIndex. */
