@@ -17,6 +17,7 @@ import {
   specificsCheckVariant,
   seamPolicyVariant,
   claimOnlyOpeningVariant,
+  pauseSnapVariant,
   spineTierSizingVariant,
   tierRuntimeCapVariant,
   voiceGateVariant,
@@ -511,6 +512,43 @@ describe("checkpointRunVariant (GV-55)", () => {
       "FORAY_CLAIM_ONLY_OPENING differs (refuse; this run allow) and feeds source, before --rerun-from narrate"
     );
     expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(refuseStamp)))).toEqual(refuseStamp);
+  });
+
+  /* GV-111 (W5-14b; orchestrator note, the GV-108/GV-109 pattern). MUTATIONS
+     THAT KILL THIS: drop pauseSnapVariant from checkpointRunVariant (an on
+     run would resume cue-edge cuts banked under off, and the reverse); join
+     it under off (every default run's fingerprint moves and no banked run
+     resumes); drop the stamp field or the lever row (a seed rerun from
+     narrate would keep the other mode's cuts). Ran each: red. */
+  it("joins pauseSnap=on only when on, stamps it only when on, and refuses a fork that keeps sourcing across the mode", () => {
+    for (const off of [{}, { pauseSnap: "off" as const }, { pauseSnap: undefined }]) {
+      expect(pauseSnapVariant(off)).toBeUndefined();
+      expect(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off })).toBeUndefined();
+      expect(fp(checkpointRunVariant({ ...CLASSIC_PIPELINE_FLAGS, ...off }))).toBe(TODAY);
+    }
+    const on = { ...CLASSIC_PIPELINE_FLAGS, pauseSnap: "on" as const };
+    expect(checkpointRunVariant(on)).toBe("pauseSnap=on");
+    expect(fp(checkpointRunVariant(on))).not.toBe(TODAY);
+    expect(checkpointRunVariant({ ...on, claimOnlyOpening: "refuse" })).toBe("claimOnlyOpening=refuse|pauseSnap=on");
+
+    const routing = resolveRouting({});
+    const stamp = (mode?: "off" | "on") =>
+      checkpointForkStamp({ prompt: input.prompt, duration: input.duration, topic: input.topic, flags: { ...CLASSIC_PIPELINE_FLAGS, pauseSnap: mode }, routing });
+    const offStamp = stamp("off");
+    expect(offStamp).toEqual(stamp());
+    expect("pauseSnap" in offStamp).toBe(false);
+    const onStamp = stamp("on");
+    expect(onStamp.pauseSnap).toBe("on");
+    expect(onStamp.flags).toBe(offStamp.flags);
+    const offArm = { version: CHECKPOINT_VERSION, fingerprint: "off", fork: offStamp };
+    expect(forkSeedRefusal(offArm, { fingerprint: "on", stamp: onStamp }, "source")).toBeNull();
+    expect(forkSeedRefusal(offArm, { fingerprint: "on", stamp: onStamp }, "narrate")).toBe(
+      "FORAY_PAUSE_SNAP differs (off; this run on) and feeds source, before --rerun-from narrate"
+    );
+    expect(forkSeedRefusal({ ...offArm, fingerprint: "on", fork: onStamp }, { fingerprint: "off", stamp: offStamp }, "clip-scores")).toBe(
+      "FORAY_PAUSE_SNAP differs (on; this run off) and feeds source, before --rerun-from clip-scores"
+    );
+    expect(CheckpointForkStampSchema.parse(JSON.parse(JSON.stringify(onStamp)))).toEqual(onStamp);
   });
 });
 

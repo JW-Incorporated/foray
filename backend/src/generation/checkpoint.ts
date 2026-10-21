@@ -5,7 +5,7 @@ import type { RetrievalModeFlag } from "./generationFlags";
 import { checkpointVariant, type PipelineFlags } from "./pipelineFlags";
 import type { SpecificsMode } from "./specifics";
 import type { VoiceGateMode } from "./voiceChecks";
-import type { ClaimOnlyOpening, UnverifiedSeamPolicy } from "./gateConfig";
+import type { ClaimOnlyOpening, PauseSnapMode, UnverifiedSeamPolicy } from "./gateConfig";
 
 /**
  * Per-stage resume for ONE Foray (generation run 2026-09-09, findings F-17 and
@@ -212,6 +212,9 @@ export type CheckpointRunFlags = Pick<PipelineFlags, "foldSpineCopy" | "foldDeep
     /** GV-109: FORAY_CLAIM_ONLY_OPENING (`GateConfig.claimOnlyOpening`).
      * Absent reads as `allow`. */
     claimOnlyOpening?: ClaimOnlyOpening | undefined;
+    /** GV-111: FORAY_PAUSE_SNAP (`GateConfig.pauseSnap`). Absent reads as
+     * `off`. */
+    pauseSnap?: PauseSnapMode | undefined;
   };
 
 /**
@@ -338,6 +341,19 @@ export function claimOnlyOpeningVariant(flags: Pick<CheckpointRunFlags, "claimOn
 }
 
 /**
+ * GV-111 (W5-14b; R2-05, MQ-06): the pause snap's part of the variant, only
+ * under FORAY_PAUSE_SNAP=on. `on` moves a tier-2 clip's edges to the word
+ * boundary of a real pause (when the edge cues carry word timings) and
+ * re-mints its anchors from those words, so what `source` (classic) and
+ * `source:<i>` (per act) bank differs from an `off` run's; a resume across
+ * the two would keep the other mode's cuts. `off` (the default) adds nothing
+ * and every fingerprint is unchanged.
+ */
+export function pauseSnapVariant(flags: Pick<CheckpointRunFlags, "pauseSnap">): string | undefined {
+  return flags.pauseSnap === "on" ? "pauseSnap=on" : undefined;
+}
+
+/**
  * GV-55 (decision 20): THE checkpoint variant both call sites hash (the
  * driver's FileCheckpointStore and the pipeline's CheckpointSession), from the
  * same merged flags and the same routing table:
@@ -345,7 +361,8 @@ export function claimOnlyOpeningVariant(flags: Pick<CheckpointRunFlags, "claimOn
  *     [checkpointVariant(flags), narration order, retrieval mode,
  *      spine best-of, tier-sized spine, writer exemplars, tier cap,
  *      voice gate, specifics check, unverified-seam policy,
- *      claim-only opening, routingVariant(routing)].filter(Boolean).join("|")
+ *      claim-only opening, pause snap,
+ *      routingVariant(routing)].filter(Boolean).join("|")
  *
  * The narration order joins it only when it is `sequential` (orchestrator's
  * follow-up to the wave 5/6 reviews): a resumed run can then never mix acts
@@ -358,7 +375,8 @@ export function claimOnlyOpeningVariant(flags: Pick<CheckpointRunFlags, "claimOn
  * writer exemplars only when on (GV-126), the tier runtime cap only when on
  * and the voice gate and the specifics check only when enforcing (GV-127),
  * the unverified-seam policy only when `cut` (GV-108), the claim-only
- * opening only when `refuse` (GV-109).
+ * opening only when `refuse` (GV-109), the pause snap only when `on`
+ * (GV-111).
  * Undefined when every part is.
  */
 export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: RoutingTable): string | undefined {
@@ -372,6 +390,7 @@ export function checkpointRunVariant(flags: CheckpointRunFlags, routing?: Routin
     specificsCheckVariant(flags),
     seamPolicyVariant(flags),
     claimOnlyOpeningVariant(flags),
+    pauseSnapVariant(flags),
     routingVariant(routing)
   ].filter((p): p is string => Boolean(p));
   return parts.length ? parts.join("|") : undefined;
@@ -537,7 +556,11 @@ export const CheckpointForkStampSchema = z.object({
   /** GV-109: FORAY_CLAIM_ONLY_OPENING, written only when `refuse`. Compared
    * like a route feeding `source` (it changes what sourcing banks), so a
    * difference needs --rerun-from source or earlier. Absent: `allow`. */
-  claimOnlyOpening: z.literal("refuse").optional()
+  claimOnlyOpening: z.literal("refuse").optional(),
+  /** GV-111: FORAY_PAUSE_SNAP, written only when `on`. Compared like a route
+   * feeding `source` (it changes the cuts and anchors sourcing banks), so a
+   * difference needs --rerun-from source or earlier. Absent: `off`. */
+  pauseSnap: z.literal("on").optional()
 });
 export type CheckpointForkStamp = z.infer<typeof CheckpointForkStampSchema>;
 
@@ -570,7 +593,9 @@ export function checkpointForkStamp(input: {
     /* GV-108: likewise only when cut. */
     ...(input.flags.unverifiedSeamPolicy === "cut" ? { seamPolicy: "cut" as const } : {}),
     /* GV-109: likewise only when refusing. */
-    ...(input.flags.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {})
+    ...(input.flags.claimOnlyOpening === "refuse" ? { claimOnlyOpening: "refuse" as const } : {}),
+    /* GV-111: likewise only when on. */
+    ...(input.flags.pauseSnap === "on" ? { pauseSnap: "on" as const } : {})
   };
 }
 
@@ -622,7 +647,9 @@ export function forkSeedRefusal(
     ["FORAY_SPECIFICS_CHECK", stamp.specifics ?? "not enforce", run.stamp.specifics ?? "not enforce", "narrate"],
     ["FORAY_UNVERIFIED_SEAM_POLICY", stamp.seamPolicy ?? "keep", run.stamp.seamPolicy ?? "keep", "narrate"],
     /* GV-109: the refusal feeds sourcing. */
-    ["FORAY_CLAIM_ONLY_OPENING", stamp.claimOnlyOpening ?? "allow", run.stamp.claimOnlyOpening ?? "allow", "source"]
+    ["FORAY_CLAIM_ONLY_OPENING", stamp.claimOnlyOpening ?? "allow", run.stamp.claimOnlyOpening ?? "allow", "source"],
+    /* GV-111: the pause snap feeds sourcing too. */
+    ["FORAY_PAUSE_SNAP", stamp.pauseSnap ?? "off", run.stamp.pauseSnap ?? "off", "source"]
   ];
   for (const [lever, seedValue, runValue, feeds] of levers) {
     if (seedValue !== runValue && CHECKPOINT_STAGE_ORDER.indexOf(feeds) < from) {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { runForayPipeline } from "../src/generation/runPipeline";
 import { StubPromptUnderstander } from "../src/generation/StubPromptUnderstander";
 import { StubExternalResearcher } from "../src/generation/StubExternalResearcher";
@@ -29,6 +29,7 @@ import type { PartialCandidate } from "../src/generation/partialCandidate";
 import { createEvidenceGatherer, type EvidenceGatherer } from "../src/generation/gatherEvidence";
 import { HANDOFF_SCRIPT, type WrittenAct } from "../src/generation/writeNarration";
 import { droppedReasonOf, type NarratedBeat } from "../src/types/narration";
+import { SourcingSession } from "../src/generation/sourceBeats";
 
 /**
  * F-17/F-18, driven through the real pipeline.
@@ -905,6 +906,86 @@ describe("GV-109: per-edge kinds and the claim-only-open gate survive a resume, 
       expect(resumed.tapeRelevance[0]!.startBoundary).toBeUndefined();
       /* Measured from `boundary` alone: one known clip, clean. */
       expect(resumed.input.meta!.veracity!.cleanCutRate).toBe(1);
+    }
+  }, 240_000);
+});
+
+/**
+ * GV-111 (W5-14b; R2-05, MQ-06; orchestrator note, the GV-108/GV-109
+ * pattern): FORAY_PAUSE_SNAP=on changes the cuts and anchors `source`
+ * (classic) and `source:<i>` (per act) bank, so it joins the variant at the
+ * pipeline's own fingerprint site (the driver's is generateForays.ts, from
+ * the same gate config), and the one sourcing-options builder hands it to
+ * sourcing on both paths. Off adds nothing anywhere.
+ */
+describe("GV-111: FORAY_PAUSE_SNAP reaches sourcing and the fingerprint on both paths, and off is today's", () => {
+  const at = () => new Date("2026-09-09T00:00:00Z");
+  const ON = { pauseSnap: "on" as const };
+  const fingerprintFor = (flags: Partial<PipelineFlags>, extra: { pauseSnap?: "on" } = {}): string =>
+    checkpointFingerprint({
+      prompt: request.prompt,
+      duration: request.duration,
+      variant: joinCheckpointVariant(checkpointRunVariant({ ...resolvePipelineFlags(flags), ...extra }, resolveRouting()), readSelfCritique())
+    });
+
+  /* MUTATION THAT KILLS THIS: drop `pauseSnap: gates.pauseSnap` from
+     runPipeline.ts's checkpointRunVariant call (the on run's session
+     fingerprint is the off one, so it never matches its own on-keyed store
+     and every stage is paid for again). Ran it: red. */
+  it("an on run resumes only a checkpoint banked under pauseSnap=on, and an off run does not resume it", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const onFingerprint = fingerprintFor(flags, ON);
+      expect(onFingerprint).not.toBe(fingerprintFor(flags));
+      const store = new FakeCheckpointStore(onFingerprint);
+      const first = await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: ON }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(first.outcome).toBe("generated");
+      const again = countingDeps();
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: ON }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+      const off = countingDeps();
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...off.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(off.calls.spine).toBe(1);
+    }
+  }, 240_000);
+
+  /* The default run keeps today's fingerprint: an off run resumes a store
+     keyed with the fingerprint computed with no pause-snap part at all.
+     MUTATION THAT KILLS THIS: join `pauseSnap=off` under off in
+     pauseSnapVariant. Ran it: red. */
+  it("an off run resumes a checkpoint keyed with today's fingerprint, on both paths", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      const store = new FakeCheckpointStore(fingerprintFor(flags));
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags, gates: { pauseSnap: "off" } }, { ...countingDeps().deps, finalize: fakeFinalize().fn, checkpoint: store });
+      const again = countingDeps();
+      await runForayPipeline(request, { userId: "u", checkpointKey: KEY, now: at, flags }, { ...again.deps, finalize: fakeFinalize().fn, checkpoint: store });
+      expect(again.calls).toEqual({ understand: 0, spine: 0, deepen: 0, write: 0, smooth: 0 });
+    }
+  }, 240_000);
+
+  /* MUTATION THAT KILLS THIS: drop the `pauseSnap` spread from
+     runPipeline.ts's `sourceOptionsOf` (every session sources with the
+     default `off` under FORAY_PAUSE_SNAP=on). Ran it: red. */
+  it("the sourcing options carry `on` to every act's session under on, and `off` by default, on both paths", async () => {
+    for (const flags of [{}, { perActPipeline: true }] as Array<Partial<PipelineFlags>>) {
+      for (const [gates, want] of [
+        [ON, "on"],
+        [{}, "off"]
+      ] as const) {
+        const seen: string[] = [];
+        const real = SourcingSession.prototype.sourceAct;
+        vi.spyOn(SourcingSession.prototype, "sourceAct").mockImplementation(function (this: SourcingSession, ...args: Parameters<SourcingSession["sourceAct"]>) {
+          seen.push((this as unknown as { state: { pauseSnap: string } }).state.pauseSnap);
+          return real.apply(this, args);
+        });
+        try {
+          const outcome = await runForayPipeline(request, { userId: "u", now: at, flags, gates }, { ...countingDeps().deps, finalize: fakeFinalize().fn });
+          expect(outcome.outcome).toBe("generated");
+        } finally {
+          vi.restoreAllMocks();
+        }
+        expect(seen.length).toBeGreaterThan(0);
+        expect(new Set(seen)).toEqual(new Set([want]));
+      }
     }
   }, 240_000);
 });

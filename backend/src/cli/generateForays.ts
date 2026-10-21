@@ -1460,7 +1460,8 @@ export async function generateOneCandidate(
      FORAY_SPECIFICS_CHECK from the gate config handed to the pipeline whole
      (`options.gates`), each a part only when `enforce`; `flags` already
      carries FORAY_TIER_RUNTIME_CAP, a part only when on. GV-109: plus
-     FORAY_CLAIM_ONLY_OPENING, a part only when `refuse`. */
+     FORAY_CLAIM_ONLY_OPENING, a part only when `refuse`. GV-111: plus
+     FORAY_PAUSE_SNAP, a part only when `on`. */
   const gates = resolveGateConfig();
   const variantFlags = {
     ...flags,
@@ -1470,7 +1471,8 @@ export async function generateOneCandidate(
     voiceGate: gates.voice,
     unverifiedSeamPolicy: gates.unverifiedSeamPolicy,
     specifics: gates.specifics,
-    claimOnlyOpening: gates.claimOnlyOpening
+    claimOnlyOpening: gates.claimOnlyOpening,
+    pauseSnap: gates.pauseSnap
   };
   /* GV-55: the routing table, resolved once here with the --stage-provider
      overrides applied (main() also sets them on process.env, which the stage

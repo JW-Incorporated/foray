@@ -169,7 +169,30 @@ export interface GateConfig {
    * stage banks, so it stays out of the checkpoint variant.
    */
   cleanCutGate: CleanCutGateMode;
+
+  /**
+   * GV-111 (W5-14b; R2-05, MQ-06): FORAY_PAUSE_SNAP = off|on, default `off`.
+   * `on` moves each edge of a tier-2 cut (`cutWindowToSegment`'s
+   * `snapToPauses`, passed by `sourceBeats.ts`) from the caption cue's edge
+   * to the word boundary of a real pause (a gap of 0.3 s or more between two
+   * timed words, at most 4 s away; `pauseSnap.ts`), preferring a pause after
+   * terminal punctuation, and re-mints that edge's anchor from the words that
+   * start or end there. It needs cues that carry word timings
+   * (`TranscriptCue.words`), which no body on disk carries today, so it is
+   * also inert on every body without them; `off` is today's sourcing.
+   *
+   * `on` changes what `source` / `source:<i>` bank, so by GV-127's rule above
+   * it joins `checkpointRunVariant` as `pauseSnap=on` (checkpoint.ts
+   * `pauseSnapVariant`, at both fingerprint sites, and in the fork stamp
+   * compared like a route feeding `source`), only under `on`: an off run's
+   * fingerprint stays today's.
+   */
+  pauseSnap: PauseSnapMode;
 }
+
+/** GV-111: FORAY_PAUSE_SNAP's values. */
+export const PAUSE_SNAP_MODES = ["off", "on"] as const;
+export type PauseSnapMode = (typeof PAUSE_SNAP_MODES)[number];
 
 /** GV-109: FORAY_CLAIM_ONLY_OPENING's values. */
 export const CLAIM_ONLY_OPENING_MODES = ["allow", "refuse"] as const;
@@ -256,7 +279,8 @@ export const GATE_TABLE: readonly GateTableEntry[] = defineGateTable([
   } satisfies GateTableEntry<[number, number]>,
   { key: "unverifiedSeamPolicy", env: "FORAY_UNVERIFIED_SEAM_POLICY", parse: enumParser(UNVERIFIED_SEAM_POLICIES), default: "keep" } satisfies GateTableEntry<UnverifiedSeamPolicy>,
   { key: "claimOnlyOpening", env: "FORAY_CLAIM_ONLY_OPENING", parse: enumParser(CLAIM_ONLY_OPENING_MODES), default: "allow" } satisfies GateTableEntry<ClaimOnlyOpening>,
-  { key: "cleanCutGate", env: "FORAY_CLEAN_CUT_GATE", parse: enumParser(CLEAN_CUT_GATE_MODES), default: "report" } satisfies GateTableEntry<CleanCutGateMode>
+  { key: "cleanCutGate", env: "FORAY_CLEAN_CUT_GATE", parse: enumParser(CLEAN_CUT_GATE_MODES), default: "report" } satisfies GateTableEntry<CleanCutGateMode>,
+  { key: "pauseSnap", env: "FORAY_PAUSE_SNAP", parse: enumParser(PAUSE_SNAP_MODES), default: "off" } satisfies GateTableEntry<PauseSnapMode>
 ]);
 
 /**
