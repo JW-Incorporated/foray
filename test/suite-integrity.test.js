@@ -3881,7 +3881,7 @@ const BACKEND_FLOORS = {
      unchanged, no judge / no exemplar seam / FORAY_VOICE_GATE=off leave it
      absent, a failing judge never fails the run, a budget stop is named
      voice-drift. Offline (GV-20's Jev fake); one named mutation per test. */
-  "test/voiceDrift.test.ts": 14,
+  "test/voiceDrift.test.ts": 17,
   /* GV-111 (docs/roadmap/generation-v2.md, W5-14b; R2-05, MQ-06): clip edges
      snapped to real pauses from word timestamps. pausesNear/snapEdge snap to
      the 0.42 s gap after 'world.' and never a 0.1 s one, respect

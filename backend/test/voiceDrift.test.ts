@@ -12,10 +12,11 @@ import {
 } from "../src/generation/voiceDrift";
 import type { LoadedVoiceExemplars, VoiceExemplarsFile } from "../src/generation/voiceExemplars";
 import type { WrittenAct } from "../src/generation/writeNarration";
+import type { CreateJevClientOptions } from "../src/generation/jevClient";
 import type { JevAskOptions, JevClient, JevQuestion, JevResult, JevState } from "../src/generation/jevTypes";
 import { NullJevClient } from "../src/generation/jevClient";
 import { FlagValueError } from "../src/generation/generationFlags";
-import { BudgetExceededError, BudgetStopError } from "../src/cost/budgetGuard";
+import { BudgetExceededError, BudgetStopError, defaultBudgetGuard } from "../src/cost/budgetGuard";
 import { UnitBudgetExceededError } from "../src/cost/unitBudget";
 import { buildVeracityMetrics, evaluateVeracityGate } from "../src/generation/veracityMetrics";
 import { runForayPipeline, type RunPipelineDeps } from "../src/generation/runPipeline";
@@ -31,6 +32,25 @@ import { StubContinuityBuilder } from "../src/generation/StubContinuityBuilder";
 import type { FinalizeForayInput, FinalizeForayResult } from "../src/generation/finalizeForay";
 import type { GenerationRequest } from "../src/types/generation";
 import { FakeJevClient, scoreAnswer } from "./helpers/fakeJevClient";
+
+/* The default judge builder, reachable: `createJevClient` is the real one
+   unless a test sets `judgeFactory.build`, so the production path (no
+   `voiceDriftJudge` injected: build, NullJevClient check, meter) runs with a
+   scripted client and never the network. `meteredJevClient` and
+   `NullJevClient` stay the real ones. `vi.hoisted` because `vi.mock` is
+   hoisted above the imports. */
+const judgeFactory = vi.hoisted(() => ({ build: null as null | ((opts?: unknown) => unknown), calls: 0 }));
+vi.mock("../src/generation/jevClient", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/generation/jevClient")>();
+  return {
+    ...actual,
+    createJevClient: (opts?: CreateJevClientOptions) => {
+      if (!judgeFactory.build) return actual.createJevClient(opts);
+      judgeFactory.calls += 1;
+      return judgeFactory.build(opts) as JevClient;
+    }
+  };
+});
 
 /**
  * GV-116 (docs/roadmap/generation-v2.md, #1286; from W4-12, covers R2-08 and
@@ -107,6 +127,9 @@ function withoutDrift<T extends { drift?: unknown }>(voice: T): Omit<T, "drift">
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+  judgeFactory.build = null;
+  judgeFactory.calls = 0;
 });
 
 describe("GV-116: the flag, the reference and the state", () => {
@@ -412,6 +435,94 @@ describe("GV-116: the alarm in the pipeline", () => {
       );
       expect(err, pathName(flags)).toBeInstanceOf(BudgetStopError);
       expect((err as BudgetStopError).stage).toBe(VOICE_DRIFT_STAGE);
+    }
+  }, 120_000);
+});
+
+/* ------------------------------------------------------------------------ */
+/* The default judge: built from the judge route, metered, never injected    */
+/* ------------------------------------------------------------------------ */
+
+/** A judge that scores only the drift question; every other purpose (the
+    clip judge shares `createJevClient`) is answered as having no key. */
+const driftOnlyJudge = () =>
+  new FakeJevClient({
+    byId: { [VOICE_DRIFT_QUESTION.id]: scoreAnswer(1, 5) },
+    fail: (_state, _questions, opts) => (opts.purpose === VOICE_DRIFT_PURPOSE ? undefined : { category: "no_key", reason: "no_key" })
+  });
+
+describe("GV-116: the default judge (no voiceDriftJudge injected)", () => {
+  it("each drift ask goes through the default budget guard as a 'voice-drift' operation", async () => {
+    /* MUTATION: in voiceDriftJudgeOf, `return meteredJevClient(jev, {...})`
+       -> `return jev` (unmetered Jev, Decision 6). Ran it: red (no
+       'voice-drift' event reaches the guard). */
+    vi.stubEnv(VOICE_DRIFT_ENV, "on");
+    for (const flags of PATHS) {
+      const jev = driftOnlyJudge();
+      judgeFactory.build = () => jev;
+      const record = vi.spyOn(defaultBudgetGuard, "checkAndRecord").mockResolvedValue(undefined as never);
+      const out = await run(flags, { voiceDriftExemplars: EXEMPLARS });
+      const acts = narrateStages(out);
+      expect(acts, pathName(flags)).toBeGreaterThan(0);
+      expect(jev.callsFor(VOICE_DRIFT_PURPOSE)).toHaveLength(acts);
+      const driftEvents = record.mock.calls.map(([e]) => e).filter((e) => e.operation === VOICE_DRIFT_PURPOSE);
+      expect(driftEvents).toHaveLength(acts);
+      for (const e of driftEvents) expect(e).toMatchObject({ userId: "u", provider: "jev" });
+      expect(out.input.meta!.veracity!.voice!.drift).toMatchObject({ measured: acts, min: 2 });
+      record.mockRestore();
+    }
+  }, 120_000);
+
+  it("the guard's budget stop on a drift ask ends the run with a BudgetStopError naming the voice-drift stage", async () => {
+    /* MUTATION: `return meteredJevClient(...)` -> `return jev`. Ran it: red
+       (the guard is never asked, the run generates). */
+    vi.stubEnv(VOICE_DRIFT_ENV, "on");
+    for (const flags of PATHS) {
+      const jev = driftOnlyJudge();
+      judgeFactory.build = () => jev;
+      const record = vi.spyOn(defaultBudgetGuard, "checkAndRecord").mockImplementation(async (e) => {
+        if (e.operation === VOICE_DRIFT_PURPOSE) throw new BudgetExceededError(1.99, 0.01, 2);
+        return undefined as never;
+      });
+      const err = await runForayPipeline(
+        request,
+        { userId: "u", now: () => new Date("2026-10-21T00:00:00Z"), topic: "food/grilling-bbq", flags },
+        { ...stubDeps(), voiceDriftExemplars: EXEMPLARS }
+      ).then(
+        () => null,
+        (e: unknown) => e
+      );
+      expect(err, pathName(flags)).toBeInstanceOf(BudgetStopError);
+      expect((err as BudgetStopError).stage).toBe(VOICE_DRIFT_STAGE);
+      expect(jev.callsFor(VOICE_DRIFT_PURPOSE)).toHaveLength(0);
+      record.mockRestore();
+    }
+  }, 120_000);
+
+  it("a judge route that builds a NullJevClient, or a builder that throws: the run generates and voice.drift is absent", async () => {
+    /* MUTATIONS: drop `if (jev instanceof NullJevClient) return null;` (the
+       metered null judge answers no_key, so drift appears, every act
+       unmeasured); and drop the try/catch around the builder (the throw
+       fails the run). Ran both: red. */
+    vi.stubEnv(VOICE_DRIFT_ENV, "on");
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    for (const flags of PATHS) {
+      judgeFactory.build = () => new NullJevClient();
+      const nullJudge = await run(flags, { voiceDriftExemplars: EXEMPLARS });
+      expect(judgeFactory.calls, pathName(flags)).toBeGreaterThan(0);
+      expect(nullJudge.input.meta!.veracity!.voice).toBeDefined();
+      expect(nullJudge.input.meta!.veracity!.voice!.drift).toBeUndefined();
+      expect(nullJudge.timings.some((t) => t.name === VOICE_DRIFT_STAGE)).toBe(false);
+
+      judgeFactory.calls = 0;
+      judgeFactory.build = () => {
+        throw new TypeError("judge route misconfigured");
+      };
+      const thrown = await run(flags, { voiceDriftExemplars: EXEMPLARS });
+      expect(judgeFactory.calls).toBeGreaterThan(0);
+      expect(thrown.input.meta!.veracity!.voice).toBeDefined();
+      expect(thrown.input.meta!.veracity!.voice!.drift).toBeUndefined();
+      expect(warn.mock.calls.some(([m]) => String(m).includes("voice drift: no judge (TypeError)"))).toBe(true);
     }
   }, 120_000);
 });
