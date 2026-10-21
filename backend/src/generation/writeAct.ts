@@ -305,7 +305,36 @@ export interface WriteActOptions {
    * The hand-off line (HANDOFF_SCRIPT) is never produced under `cut`.
    */
   unverifiedSeamPolicy?: UnverifiedSeamPolicy;
+  /**
+   * GV-110 (W7-09; R2-17): the bench-only writer exchange recorder. Called
+   * once per round, at the end of the round (after the mechanical gate and
+   * the verifier), with what the writer was sent, what it returned, the
+   * round's mechanical issues and the verifier's verdict. A callback only:
+   * this module never writes it anywhere (the CLI's `--record-exchanges`
+   * does, under data-local/, for bench prompts only). Omitted (the default)
+   * means nothing is built or called, byte for byte. A throwing callback is
+   * logged, never fatal.
+   */
+  onExchange?: (exchange: WriterExchange) => void;
 }
+
+/**
+ * GV-110: one writer round, as the recorder sees it. `request` is exactly
+ * what the writer was sent and `reply` exactly what it returned: on a whole-
+ * act round (`call` `writeAct`, or `writeActStream` on the streamed path, whose
+ * reply is the seams that arrived) an `ActWriteRequest`; on a GV-80 seam-edit
+ * round (`editSeams`) the shorter `SeamEditRequest` and the edited seams only.
+ * `mechanical` is the round's mechanical gate, as `replayMechanicalGate`
+ * re-derives it from a recorded whole-act round 1. `verdict` is the verifier's
+ * answer, absent on a round where no seam changed (no verifier call).
+ */
+export type WriterExchange = {
+  actTitle: string;
+  round: number;
+  reply: ActWriteResult;
+  mechanical: string[];
+  verdict?: ActVerifyResult;
+} & ({ call: "writeAct" | "writeActStream"; request: ActWriteRequest } | { call: "editSeams"; request: SeamEditRequest });
 
 /**
  * GV-73: the default idle bound on a streamed act reply -- the same 120 s
@@ -581,6 +610,9 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
     };
     let reply: ActWriteResult;
     let cut: StreamCut | undefined;
+    /* GV-110: what the writer was sent and returned this round, for
+       `onExchange`. Set only when a recorder is listening. */
+    let exchange: Pick<WriterExchange, "call" | "request" | "reply"> | undefined;
     /* GV-80: the timed policy's edit round -- only the failing seams, the
        seams beside them, the clips they touch and the documents they cite.
        Every other seam is padded back with its current text, so the gate
@@ -594,6 +626,7 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
         ...(options.frame ? { frame: options.frame } : {})
       });
       const edited = await withCallContext({ attempt: round, role: "writer" }, () => writer.editSeams!(editRequest, ctx));
+      if (options.onExchange) exchange = { call: "editSeams", request: editRequest, reply: edited };
       reply = padSeamEdit(seams, editRequest, edited, act.title, round);
     } else if (streaming) {
       /* GV-73: the same request, streamed (the frame rides along as on the
@@ -604,8 +637,10 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
       reply = { seams: streamed.seams };
       cut = streamed.cut;
       if (cut) console.warn(`writeAct: act "${act.title}" round ${round} — the streamed reply was cut (${cut.note}); keeping the ${streamed.seams.length} finished seam(s)`);
+      if (options.onExchange) exchange = { call: "writeActStream", request: writeRequest, reply };
     } else {
       reply = await withCallContext({ attempt: round, role: "writer" }, () => writer.writeAct(writeRequest, ctx));
+      if (options.onExchange) exchange = { call: "writeAct", request: writeRequest, reply };
     }
     if (seamEdits) noteCitations(citedBy, reply);
 
@@ -639,6 +674,8 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
        checklist — asking again costs a round and cannot change the
        answer, and asking twice would count it twice. */
     const open = [...beats.values()].filter((b) => !b.carried && !b.seedLostClosed && hasScript(b.seamId));
+    /* GV-110: the round's verdict, for `onExchange`. */
+    let verdict: ActVerifyResult | undefined;
     if (toJudge.length > 0) {
       const verifyRequest = {
         actTitle: act.title,
@@ -652,6 +689,7 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
       };
       const verdicts = await withCallContext({ attempt: round, role: "verifier" }, () => verifier.verifyAct(verifyRequest, ctx));
       judge(toJudge, open, verdicts, actSources, round, act.title, stats);
+      verdict = verdicts;
     }
     /* GV-73: a released seam the verifier refused is not edited (it may be
        playing); its beats move to the next seam still open. */
@@ -673,6 +711,14 @@ export async function writeActNarration(act: SourcedAct, options: WriteActOption
       }
       /* GV-73: released means never edited again, whatever the verdict. */
       if (seam.released) seam.frozen = true;
+    }
+    /* GV-110: the bench recorder, once per round, at the round's end. */
+    if (options.onExchange && exchange) {
+      try {
+        options.onExchange({ actTitle: act.title, round, ...exchange, mechanical: [...mechanical], ...(verdict ? { verdict } : {}) } as WriterExchange);
+      } catch (err) {
+        console.warn(`writeAct: onExchange threw for act "${act.title}" round ${round}; ignored (${err instanceof Error ? err.message : String(err)})`);
+      }
     }
     if (notes.length === 0) break;
     actRejections.push(notes.join(" | "));

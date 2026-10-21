@@ -121,6 +121,7 @@ import type { ActFrame, ActWriteRequest, NarrationBuildContext, NarrationWriterB
 import type { ActVerifyRequest, NarrationVerifierBuilder } from "./NarrationVerifierBuilder";
 import type { ContinuityBuilder } from "./ContinuityBuilder";
 import type { NarrationWriteStats, SeamCheckedEvent, WrittenAct } from "./writeNarration";
+import type { WriterExchange } from "./writeAct";
 import { NullTranscriptCueProvider, loadTranscriptArchive, type TranscriptCueProvider, type TranscriptDigestEntry } from "./transcriptArchiveLookup";
 import type { TranscriptTextIndex } from "./transcriptTextIndex";
 import type { SourceBeatsResult, SourcedAct, TapePointer, TapeRelevanceInput } from "../types/tapeSourcing";
@@ -305,6 +306,17 @@ export interface RunPipelineDeps {
    * per-act veracity gate). Never fires on the default path.
    */
   onSeamChecked?: (event: SeamCheckedEvent) => void;
+  /**
+   * GV-110 (W7-09; R2-17): the bench-only writer exchange recorder. Fired once
+   * per act per writer round, at the round's end, with the request the writer
+   * was sent, its reply, the round's mechanical issues, the verifier's verdict
+   * and the act's index in the Foray (`narrate:<i>`), on the classic and the
+   * per-act path alike. A resumed (banked) act fires nothing. The pipeline
+   * never writes it anywhere: the batch driver's `--record-exchanges` does,
+   * for bench prompts under data-local/ only. Absent (the default): nothing
+   * is recorded and the run is unchanged.
+   */
+  onWriterExchange?: (exchange: WriterExchange & { actIndex: number }) => void;
   /**
    * GV-33: the wall clock (epoch ms) the pipeline's start, `ttlA1Ms` and every
    * `ItemReadyEvent.readyAtMs` are read from. Defaults to `Date.now`. NOT
@@ -2434,7 +2446,10 @@ async function runParsedPipeline(req: GenerationRequest, options: RunPipelineOpt
                writer's reply; early releases reach deps.onSeamChecked with
                this act's index (`writeNarration` sees one act, index 0). */
             ...(flags.writerStream ? { streamSeams: true } : {}),
-            ...(deps.onSeamChecked ? { onSeamChecked: (event: SeamCheckedEvent) => deps.onSeamChecked!({ ...event, actIndex: i }) } : {})
+            ...(deps.onSeamChecked ? { onSeamChecked: (event: SeamCheckedEvent) => deps.onSeamChecked!({ ...event, actIndex: i }) } : {}),
+            /* GV-110: the bench recorder, with this act's index (writeNarration
+               sees one act); absent, no act's options carry it. */
+            ...(deps.onWriterExchange ? { onExchange: (exchange: WriterExchange) => deps.onWriterExchange!({ ...exchange, actIndex: i }) } : {})
           },
           spine.voice,
           /* GV-94: this act's position (writeNarration sees one act, index
