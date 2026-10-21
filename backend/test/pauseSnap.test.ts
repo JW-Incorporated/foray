@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { PAUSE_MAX_SHIFT_SEC, PAUSE_MIN_GAP_SEC, pausesNear, snapEdge } from "../src/generation/pauseSnap";
+import { readGateConfig } from "../src/generation/gateConfig";
 import {
   CUE_CACHE_MAX_ENTRIES,
   CUE_CACHE_WORDS_MAX_ENTRIES,
@@ -340,5 +341,15 @@ describe("FileTranscriptCueProvider — bodies carrying words count four times i
     expect(provider.cachedCueCount()).toBe(0);
     for (const entry of entries) provider.getCues(entry);
     expect(provider.cachedCueCount()).toBe(CUE_CACHE_WORDS_MAX_ENTRIES);
+  });
+});
+
+describe("FORAY_PAUSE_SNAP — dark by default", () => {
+  it("is off with the flag unset, and on only when set to `on`", () => {
+    /* Every other test here passes the mode explicitly, so nothing else pins
+       the default. MUTATION THAT KILLS THIS: default the GATE_TABLE row to
+       "on" — an unset environment would start snapping edges. */
+    expect(readGateConfig({}).pauseSnap).toBe("off");
+    expect(readGateConfig({ FORAY_PAUSE_SNAP: "on" }).pauseSnap).toBe("on");
   });
 });

@@ -3858,7 +3858,7 @@ const BACKEND_FLOORS = {
      kinds, leaves turn edges and sentence edges' non-sentence pauses, is
      byte-identical off or without words and respects a ceiling; the cue
      cache weighs a worded body four times. Offline; synthetic cues. */
-  "test/pauseSnap.test.ts": 13,
+  "test/pauseSnap.test.ts": 14,
 };
 
 /* `it(` as well as `test(`: backend's suites use both spellings. */
