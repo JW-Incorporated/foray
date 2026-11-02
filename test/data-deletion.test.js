@@ -580,11 +580,17 @@ test("the shipped source names exactly the 22 cp_ key families the audit found",
      Kokoro probe (founder ruling, issue #1076) — the switch and
      `player/kokoro-probe.js` are gone — but it stays a family, the way
      `cp_lastpick` did, because app.js's RETIRED_STORAGE_KEYS names it to
-     remove a copy left on an older device, and its policy row says Retired. */
+     remove a copy left on an older device, and its policy row says Retired.
+
+     33 -> 34 on 2026-10-15: `cp_jbi_dismissed`, the items the listener removed
+     from Home's "Jump back in" with its x (founder, 2026-10-15;
+     player/jump-back-in.js). Per removed item: `<kind>:<id>` and when, capped at
+     100. Device-only, never sent. Same mechanism: this count failed first,
+     then the policy check, until privacy-policy.md §1 got the row. */
   const families = [...keyFamiliesInSource().keys()].sort();
   assert.strictEqual(
-    families.length, 33,
-    `expected 33 cp_ key families, found ${families.length}:\n${families.join("\n")}`
+    families.length, 34,
+    `expected 34 cp_ key families, found ${families.length}:\n${families.join("\n")}`
   );
   assert.ok(families.includes("cp_foray:"), "the patterned Foray resume key must be found as a family");
   assert.ok(families.includes("cp_pos:"), "the patterned episode-position key must be found as a family");
