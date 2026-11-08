@@ -6,6 +6,12 @@ name: lab-build
 #   iOS     TestFlight app "4a Lab", bundle id ai.jwlabs.foura.lab    (Wyatt's iPhone)
 #   Android Play internal-testing app "4a Lab", applicationId
 #           ai.jwlabs.foura.lab, plus a debug APK as a run artifact   (Joey's phone)
+# WHICH APP is picked from the ref, in the guard job, and nowhere else:
+#   feature/redesign-2026-tactile, redesign/tactile-*  -> ai.jwlabs.foura.lab.tactile, "4a Tactile",
+#                                                         iOS profile IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64
+#   feature/redesign-2026-ambient, redesign/ambient-*  -> ai.jwlabs.foura.lab, "4a Ambient"
+#   any other allowed ref                              -> ai.jwlabs.foura.lab, "4a Lab"
+# so the Tactile and the Ambient/Lab apps install side by side.
 # The lab web bundle carries window.__FORAY_LAB__ = true, so it never signs a user
 # up, refreshes a token or POSTs an event to production (test/lab-flag.test.js).
 #
@@ -29,7 +35,8 @@ name: lab-build
 #
 # SECRETS. The same iOS certificate and App Store Connect key and the same Android
 # upload key and Play service account as release.yml, plus the lab's own
-# IOS_LAB_PROVISIONING_PROFILE_BASE64. HA #115 moves the signing secrets behind a
+# IOS_LAB_PROVISIONING_PROFILE_BASE64 (and, for the Tactile app only,
+# IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64). HA #115 moves the signing secrets behind a
 # protected `release` environment; that environment does not exist yet, and naming
 # a missing environment would auto-create it unprotected, which would pre-empt that
 # item. When #115 lands, add `environment: release` to the `ios` and `android` jobs
@@ -62,6 +69,9 @@ jobs:
     timeout-minutes: 5
     outputs:
       allowed: ${{ steps.guard.outputs.allowed }}
+      direction: ${{ steps.guard.outputs.direction }}
+      app_id: ${{ steps.guard.outputs.app_id }}
+      app_name: ${{ steps.guard.outputs.app_name }}
     steps:
       - name: Refuse anything that could ship the real app
         id: guard
@@ -90,8 +100,26 @@ jobs:
             redesign/*|feature/redesign-2026|feature/redesign-2026-*) ;;
             *) refuse "ref '$REF' is not a redesign branch (redesign/* or feature/redesign-2026*)" ;;
           esac
-          echo "allowed=true" >> "$GITHUB_OUTPUT"
-          echo "Building '$SHORT' as 4a Lab for: $PLATFORMS"
+
+          # WHICH LAB APP. The one place the ref picks the app; every later job reads
+          # these outputs. Tactile is its own app id so both directions install together.
+          case "$SHORT" in
+            feature/redesign-2026-tactile|redesign/tactile-*) DIRECTION=tactile; APP_ID=ai.jwlabs.foura.lab.tactile; APP_NAME="4a Tactile" ;;
+            feature/redesign-2026-ambient|redesign/ambient-*) DIRECTION=ambient; APP_ID=ai.jwlabs.foura.lab; APP_NAME="4a Ambient" ;;
+            *) DIRECTION=lab; APP_ID=ai.jwlabs.foura.lab; APP_NAME="4a Lab" ;;
+          esac
+          # Defence in depth: whatever the table above says, only a lab id leaves this step.
+          case "$APP_ID" in
+            ai.jwlabs.foura.lab|ai.jwlabs.foura.lab.tactile) ;;
+            *) refuse "computed app id '$APP_ID' is not a lab app id" ;;
+          esac
+          {
+            echo "allowed=true"
+            echo "direction=$DIRECTION"
+            echo "app_id=$APP_ID"
+            echo "app_name=$APP_NAME"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building '$SHORT' as $APP_NAME ($APP_ID) for: $PLATFORMS"
 
   version:
     needs: guard
@@ -167,6 +195,14 @@ jobs:
           set -euo pipefail
           test -f tools/mobile/lab-variant.mjs || { echo "::error::this ref has no tools/mobile/lab-variant.mjs; merge the lab build path (redesign/p0-lab) into it first"; exit 1; }
           grep -q "inputs.lab" .github/actions/ios-archive/action.yml || { echo "::error::this ref's ios-archive action has no 'lab' input; it would build the REAL bundle id"; exit 1; }
+          grep -q "inputs.app_name" .github/actions/ios-archive/action.yml || { echo "::error::this ref's ios-archive action has no 'app_name' input; it would build the wrong app name/id. Merge the current feature/redesign-2026 into it first"; exit 1; }
+
+      - name: The Tactile app needs its own provisioning profile (never fall back to the plain lab one)
+        if: needs.guard.outputs.direction == 'tactile'
+        env:
+          TACTILE_PROFILE: ${{ secrets.IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          [ -n "$TACTILE_PROFILE" ] || { echo "::error::IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64 is not set; the Tactile app (ai.jwlabs.foura.lab.tactile) cannot be signed with the plain lab profile"; exit 1; }
 
       - uses: ./.github/actions/ios-archive
         id: ios
@@ -174,10 +210,11 @@ jobs:
           marketing_version: ${{ needs.version.outputs.marketing_version }}
           build_number: ${{ needs.version.outputs.build_number }}
           lab: "true"
-          app_id: ai.jwlabs.foura.lab
+          app_id: ${{ needs.guard.outputs.app_id }}
+          app_name: ${{ needs.guard.outputs.app_name }}
           ios_dist_cert_p12_base64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
           ios_dist_cert_password: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
-          ios_provisioning_profile_base64: ${{ secrets.IOS_LAB_PROVISIONING_PROFILE_BASE64 }}
+          ios_provisioning_profile_base64: ${{ needs.guard.outputs.direction == 'tactile' && secrets.IOS_LAB_TACTILE_PROVISIONING_PROFILE_BASE64 || secrets.IOS_LAB_PROVISIONING_PROFILE_BASE64 }}
           apple_team_id: ${{ secrets.APPLE_TEAM_ID }}
           app_store_connect_key_id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           app_store_connect_issuer_id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -210,6 +247,7 @@ jobs:
           set -euo pipefail
           test -f tools/mobile/lab-variant.mjs || { echo "::error::this ref has no tools/mobile/lab-variant.mjs; merge the lab build path (redesign/p0-lab) into it first"; exit 1; }
           grep -q "inputs.lab" .github/actions/android-bundle/action.yml || { echo "::error::this ref's android-bundle action has no 'lab' input; it would upload the REAL package to Play"; exit 1; }
+          grep -q "inputs.app_name" .github/actions/android-bundle/action.yml || { echo "::error::this ref's android-bundle action has no 'app_name' input; it would build the wrong app name/id. Merge the current feature/redesign-2026 into it first"; exit 1; }
 
       - uses: ./.github/actions/android-bundle
         id: android
@@ -217,7 +255,8 @@ jobs:
           marketing_version: ${{ needs.version.outputs.marketing_version }}
           build_number: ${{ needs.version.outputs.build_number }}
           lab: "true"
-          app_id: ai.jwlabs.foura.lab
+          app_id: ${{ needs.guard.outputs.app_id }}
+          app_name: ${{ needs.guard.outputs.app_name }}
           artifact_name: foray-lab-android-release
           android_keystore_b64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
           android_keystore_password: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -225,7 +264,7 @@ jobs:
           play_service_account_json: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
 
   summary:
-    needs: [version, ios, android]
+    needs: [guard, version, ios, android]
     if: always() && needs.version.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -233,6 +272,8 @@ jobs:
       - name: One table - which lab apps were built and uploaded
         env:
           REF: ${{ inputs.ref }}
+          APP_ID: ${{ needs.guard.outputs.app_id }}
+          APP_NAME: ${{ needs.guard.outputs.app_name }}
           MARKETING_VERSION: ${{ needs.version.outputs.marketing_version }}
           BUILD_NUMBER: ${{ needs.version.outputs.build_number }}
           IOS_RESULT: ${{ needs.ios.result }}
@@ -244,12 +285,12 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "## 4a Lab ${MARKETING_VERSION} (build ${BUILD_NUMBER}) from ${REF}"
+            echo "## ${APP_NAME} ${MARKETING_VERSION} (build ${BUILD_NUMBER}) from ${REF}"
             echo
             echo "| | job | credential state | uploaded |"
             echo "|---|---|---|---|"
-            echo "| iOS / TestFlight (ai.jwlabs.foura.lab) | ${IOS_RESULT} | ${IOS_STATE:-not reached} | ${IOS_UPLOADED:-false} |"
-            echo "| Android / Play internal (ai.jwlabs.foura.lab) | ${ANDROID_RESULT} | ${ANDROID_STATE:-not reached} | ${ANDROID_UPLOADED:-false} |"
+            echo "| iOS / TestFlight (${APP_ID}) | ${IOS_RESULT} | ${IOS_STATE:-not reached} | ${IOS_UPLOADED:-false} |"
+            echo "| Android / Play internal (${APP_ID}) | ${ANDROID_RESULT} | ${ANDROID_STATE:-not reached} | ${ANDROID_UPLOADED:-false} |"
             echo
             echo "The Android debug APK is the run artifact foray-lab-android-apk. It cannot update a Play-installed lab build (different signature): uninstall one before installing the other."
           } >> "$GITHUB_STEP_SUMMARY"
