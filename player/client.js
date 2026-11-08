@@ -134,6 +134,7 @@ import { createTtsBridge } from "./tts-bridge.js";
 import { createInterludePlayer, readInterludePref, writeInterludePref } from "./interlude.js";
 import { makeIdbTier } from "./idb-tier.js";
 import { createEventLog } from "./event-log.js";
+import { visibleJumpBackIn, withDismissed } from "./jump-back-in.js";
 import {
   createMediaSession, mediaSessionView, SEEK_BACKWARD_SEC, SEEK_FORWARD_SEC,
 } from "./media-session.js";
@@ -5162,6 +5163,18 @@ const ForayPlayer = {
    * Returns the restored item, or null — so a caller and a test can tell "there
    * was nothing to restore" from "it happened".
    */
+  /**
+   * "Jump back in" housekeeping (founder, 2026-10-15): which rail entries to
+   * show (age-out after JBI_MAX_AGE_DAYS, minus the ones the listener removed
+   * with the x), and the dismissal record after one more x. Pure: app.js owns
+   * the `cp_jbi_dismissed` storage and the markup (player/jump-back-in.js).
+   */
+  visibleJumpBackIn(entries, opts) {
+    return visibleJumpBackIn(entries, opts);
+  },
+  withJumpBackInDismissed(dismissed, entry, now) {
+    return withDismissed(dismissed, entry, now);
+  },
   /**
    * The stored pointer as a home-rail row, or null — "Jump back in"'s episode
    * card (founder, 2026-09-18: "podcasts and playlists should be there too").
