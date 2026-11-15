@@ -11465,9 +11465,20 @@ function jumpBackInEntries(limit = 6) {
     });
   }
 
+  /* AGED OUT OR REMOVED (founder, 2026-10-15: "add a little x ... so I can
+     remove items from Jump Back In. Also, if they have been there a long time
+     then they should just go away on their own"). Filtered BEFORE the cap, so a
+     removed card frees its slot for the next one. The rule lives in
+     player/jump-back-in.js; without the player module yet, the rail shows
+     everything, as it did before. */
+  const player = window.ForayPlayer;
+  const shown = typeof player?.visibleJumpBackIn === "function"
+    ? player.visibleJumpBackIn(entries, { dismissed: lsGet(JBI_DISMISSED_KEY, {}), now: Date.now() })
+    : entries;
+
   /* An entry with no timestamp sorts last rather than first — an unknown time
      must never out-rank a known one. */
-  return entries
+  return shown
     .sort((a, b) => String(b.at || "").localeCompare(String(a.at || "")))
     .slice(0, limit);
 }
@@ -11538,6 +11549,11 @@ function jumpBackInCardHtml(c, { inSection = false } = {}) {
      which is where `bindPlay` looks the id up — so the button can play an episode
      the catalogue has never heard of, which is the whole point of the pointer. */
   const play = c.kind === "episode" ? playBtn(c.item, "jbi-episode") : "";
+  /* THE X (founder, 2026-10-15). On the rail only (`inSection`): a card shown
+     on a mixed surface is not "Jump back in" there, so removing it from that
+     rail would be the wrong verb. A sibling of the stretched link, lifted above
+     it like the play button, so a press never also opens the card. */
+  const remove = inSection ? jumpBackInRemoveBtn(c) : "";
   const id = esc(encodeURIComponent(c.id));
   /* THE `#/` IS LITERAL IN THE TEMPLATE, and only the route segment and the id
      are interpolated — the form every other link in this file uses.
@@ -11561,8 +11577,48 @@ function jumpBackInCardHtml(c, { inSection = false } = {}) {
     <div class="hv2-jbi-card">
       ${inSection ? "" : `<span class="hv2-jbi-kicker">Jump back in</span>`}
       <a class="hv2-jbi-title hv2-jbi-link" href="#/${route}/${id}"${ev}>${esc(c.title)}</a>
-      ${sub}${bar}${left}${play}
+      ${sub}${bar}${left}${play}${remove}
     </div>`;
+}
+
+/* "Jump back in"'s removals: `{ "<kind>:<id>": <ISO time removed> }`, kept on
+   this device and never sent. player/jump-back-in.js decides what they hide:
+   a removed card stays off until it is played again. */
+const JBI_DISMISSED_KEY = "cp_jbi_dismissed";
+
+function jumpBackInRemoveBtn(c) {
+  bindJumpBackInRemove();
+  return `<button type="button" class="hv2-jbi-x" data-jbi-remove-kind="${esc(c.kind)}" data-jbi-remove-id="${esc(c.id)}" aria-label="${esc(`Remove ${c.title} from Jump back in`)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>`;
+}
+
+/** The press: record the removal, then redraw so the rail refills its slot
+    and Home's play button stops naming what was just removed. Off Home (the
+    Forays page's rail) the card simply goes. */
+function onJumpBackInRemove(e) {
+  const btn = e.target && e.target.closest && e.target.closest("[data-jbi-remove-id]");
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const player = window.ForayPlayer;
+  if (typeof player?.withJumpBackInDismissed !== "function") return;
+  const entry = { kind: btn.dataset.jbiRemoveKind, id: btn.dataset.jbiRemoveId };
+  lsSet(JBI_DISMISSED_KEY, player.withJumpBackInDismissed(lsGet(JBI_DISMISSED_KEY, {}), entry, Date.now()));
+  if (document.querySelector("#view .hv2-home")) {
+    const y = window.scrollY;
+    renderHome();
+    window.scrollTo(0, y);
+    return;
+  }
+  const section = btn.closest(".hv2-jbi");
+  btn.closest(".hv2-jbi-card")?.remove();
+  if (section && !section.querySelector(".hv2-jbi-card")) section.remove();
+}
+
+let jbiRemoveBound = false;
+function bindJumpBackInRemove() {
+  if (jbiRemoveBound || typeof document === "undefined" || typeof document.addEventListener !== "function") return;
+  document.addEventListener("click", onJumpBackInRemove);
+  jbiRemoveBound = true;
 }
 
 /** One Foray card for "Forays for you", carrying its SegmentStrip (U-04) —
