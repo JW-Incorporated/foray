@@ -1,30 +1,30 @@
 {
   "version": 2,
-  "export_version": "Sat, 07 Nov 2026 23:16:17 GMT",
-  "release_tag": "shows-index-sat-07-nov-2026-23-16-17-gmt",
-  "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-07-nov-2026-23-16-17-gmt",
-  "manifest_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-07-nov-2026-23-16-17-gmt/manifest.json",
-  "published_at": "2026-11-08T13:36:42.619Z",
+  "export_version": "Sat, 14 Nov 2026 23:21:27 GMT",
+  "release_tag": "shows-index-sat-14-nov-2026-23-21-27-gmt",
+  "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-14-nov-2026-23-21-27-gmt",
+  "manifest_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-14-nov-2026-23-21-27-gmt/manifest.json",
+  "published_at": "2026-11-15T14:14:53.281Z",
   "counts": {
-    "read": 4756004,
-    "in_4a": 890349,
-    "canonical": 881004
+    "read": 4762560,
+    "in_4a": 890324,
+    "canonical": 881038
   },
   "shards_published": true,
   "shard_releases": [
     {
-      "tag": "shows-index-sat-07-nov-2026-23-16-17-gmt-shards-1",
-      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-07-nov-2026-23-16-17-gmt-shards-1",
+      "tag": "shows-index-sat-14-nov-2026-23-21-27-gmt-shards-1",
+      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-14-nov-2026-23-21-27-gmt-shards-1",
       "first_key": "00",
-      "last_key": "p5",
+      "last_key": "p6",
       "count": 900
     },
     {
-      "tag": "shows-index-sat-07-nov-2026-23-16-17-gmt-shards-2",
-      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-07-nov-2026-23-16-17-gmt-shards-2",
-      "first_key": "p6",
+      "tag": "shows-index-sat-14-nov-2026-23-21-27-gmt-shards-2",
+      "asset_base_url": "https://github.com/JW-Incorporated/foray/releases/download/shows-index-sat-14-nov-2026-23-21-27-gmt-shards-2",
+      "first_key": "p7",
       "last_key": "zz",
-      "count": 396
+      "count": 395
     }
   ]
 }
