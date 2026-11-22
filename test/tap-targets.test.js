@@ -224,6 +224,7 @@ const BUTTONS = {
   ".rate-option": { tall: ".rate-option", why: "a row of the speed sheet's full-width column" },
   ".reorder": { rule: "button.reorder" },
   ".share-btn": { size: ["button.share-btn"] }, // #1071 SH-1: 44x44 by its own declarations
+  ".hv2-jbi-x": { size: ["body.ui-v2 .hv2-jbi-card > .hv2-jbi-x"] }, // founder 2026-10-15: Jump back in's remove x, 44x44 by its own declarations
   ".show-star": { rule: "button.show-star" },
   ".star": { rule: "button.star" },
   ".up-next": { rule: "button.up-next" },
